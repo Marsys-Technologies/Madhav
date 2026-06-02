@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.67
+version: 5.68
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,26 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.68 (2026-06-02, BRAHMA-DESIGN-SEAL — Cowork design stream):
+    **Project BRAHMA — re-architecture DESIGN PHASE SEALED.** Authoritative architecture =
+    MARSYS_MASTER_ARCHITECTURE v2.1 (supersedes the M5_REARCHITECTURE_DESIGN_CLOSE v1 baseline).
+    Build experience + tool taxonomy = BUILD_WORKFLOW_AND_TOOLING_DESIGN v2.0; UI/UX =
+    BRAHMA_BUILD_UX_SPEC v1.0; swarm handoff = CONTRACT_REGISTRY_SEED_BRIEF v1.0; infra decision =
+    INFRA_RECONCILIATION_v1_0. External Brahma lexicon LOCKED (Brahmagyan · Gaṇita · Bodha · Kāla ·
+    Phala · Mīmāṃsā; no "L0–L5" shown externally). Decisions locked: account-management CRUD;
+    birth-data edit → auto-cascade full rebuild; delete → immediate hard wipeout; one-time global
+    Brahmagyan + GCP-infra build (native only); parallel real-tool build (no stubs); three-tier tool
+    taxonomy; volume-based amber gates. 5 docs registered in CAPABILITY_MANIFEST (entry_count
+    296→301; BUILD_GUARANTOR_SWARM_CHARTER back-registered). schema_validator: only 2 pre-existing
+    unrelated SESSION_LOG violations (SRP-DEPLOY heading); 0 new. drift_detector is CI-scale (exceeds
+    sandbox cap) — full repo-wide drift/schema pass deferred to Claude Code/CI.
+    cowork_note: Cowork design/planning stream. No formal SESSION_LOG close ceremony performed here;
+    the formal session-close + full drift/schema CI pass are Claude Code follow-ups. Last formally
+    closed session unchanged (PYJHORA-POSTMERGE-DEPLOY-B).
+    next_session_objective: "Infrastructure provisioning discussion (decommission/realign per
+    INFRA_RECONCILIATION_v1_0), then the human-gated legacy teardown + Build-Guarantor Swarm
+    Nirīkṣaka first pass to seed the Asset Contract Registry."
+    file_updated_at: 2026-06-02. file_updated_by_session: BRAHMA-DESIGN-SEAL (Cowork).
   - v5.67 (2026-06-01, PYJHORA-POSTMERGE-DEPLOY):
     **PyJHora engine LIVE in production. PR #184 (engine swap) + #186 (Dockerfile hotfix:
     libgl1-mesa-glx→libgl1 for Bookworm) merged. amjis-sidecar-00511-pz7 — clean headless
@@ -3664,6 +3684,8 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> ⚠️ **AUTHORITATIVE STATE (2026-06-02): Project BRAHMA — re-architecture design phase SEALED.** Authoritative architecture = `MARSYS_MASTER_ARCHITECTURE` v2.1; build experience = `BUILD_WORKFLOW_AND_TOOLING_DESIGN` v2.0; UI/UX = `BRAHMA_BUILD_UX_SPEC` v1.0; swarm seed = `CONTRACT_REGISTRY_SEED_BRIEF` v1.0; infra = `INFRA_RECONCILIATION_v1_0`. Next steps: infrastructure provisioning, then the human-gated legacy teardown + Build-Guarantor Swarm. The banner below is pre-Brahma legacy state — much of it (the migrations-140-153 / ACC operator queue) is **moot once the teardown executes**. See changelog v5.68.
+>
 > ⚠️ **AUTHORITATIVE STATE: M6 INCOMING. CLAUDE.md §F is STALE (frozen at M5-A).** Always read THIS FILE for "you are here." Next session cannot open until `OPERATOR_ACTIONS_PENDING.md` CRITICAL section is complete (migrations 140-153 + chart build + ACC gates). Added 2026-05-31.
 
 ```yaml

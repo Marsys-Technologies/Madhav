@@ -1,0 +1,21 @@
+schema: v1
+chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+chart_subject: "Abhisek Mohanty (native)"
+operator_auth_tier: observe-only
+walk_scope: minimum
+arc_started_at: 2026-06-01T07:16:00Z
+agents_authorized: [drashta, pramana_drashta]
+prod_url: https://amjis-web-938361928218.asia-south1.run.app
+guest_seed:
+  full_name: "Abhisek Mohanty"
+  preferred_name: "Abhisek"
+  gender: Male
+  birth_date: "1984-02-05"
+  birth_time: "10:43:00"
+  birth_place: "Bhubaneswar, Odisha, India"
+  latitude: 20.2960
+  longitude: 85.8246
+  timezone_id: "Asia/Kolkata"
+  tz_offset: 5.5
+  ayanamshas: [lahiri, true_chitra, kp, raman, surya_siddhanta]
+  canonical_source: "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md (JH-derived)"

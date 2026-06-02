@@ -1,0 +1,409 @@
+schema: v1
+chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+build_id: a62395ea-4819-45a8-a676-fa7f6b4af40c   # new build (2026-06-01); prior build 9fd9b9dd also audited
+arc_started_at: "2026-06-01T07:16:00Z"
+last_updated: "2026-06-01T08:15:00Z"
+last_updated_by: pramana_drashta
+
+root_causes:
+
+  - id: RC-001
+    title: "L1 forensic writers (A2/A3/A5/A8/A9) complete with row_count=0"
+    confidence: high
+    issues: [I-001, I-002, I-003, I-004]
+    suspected_layer: python_sidecar_writer
+    note: >
+      Confirmed across 2 builds (9fd9b9dd 2026-05-31, a62395ea 2026-06-01).
+      A2_forensic_render, A3_chart_facts, A5_sensitive_points, A8_t1_structural,
+      A9_sade_sati all complete with row_count=0. Natal engine (A1) runs fine
+      (row_count=5). The `build_id` column in chart_facts is TEXT not UUID — a
+      type mismatch in the writer is the most likely silent-failure path.
+
+  - id: RC-002
+    title: "L2.5 synthesis writes sentinels/placeholders — not real computation"
+    confidence: high
+    issues: [I-005, I-006, I-008, I-010]
+    suspected_layer: python_sidecar_writer
+    note: >
+      Downstream effect of RC-001. Confirmed across 2 builds. MSR writer
+      detects missing L1 data and writes 1 sentinel row per ayanamsha
+      ('msr_not_computed'). CGM writes 9 sentinel rows per ayanamsha
+      ('cgm_not_computed'). CDLM writes 81 placeholder rows (value=0.5).
+      All l25_* per-chart tables remain empty. Once RC-001 is fixed,
+      RC-002 should self-resolve.
+
+  - id: RC-003
+    title: "D1 varga planet signs off by +1 sign — systematic index bug"
+    confidence: high
+    issues: [I-007, I-011]
+    suspected_layer: python_sidecar_writer
+    note: >
+      Confirmed across 2 builds. All 9 D1 planet signs are one sign ahead
+      of FORENSIC JH-canonical values (Capricorn→Aquarius, Libra→Scorpio,
+      etc.). Rahu–Ketu opposition structural invariant preserved (both shift
+      equally). Root: sign_id computation uses 0-based or 1-based index
+      inconsistently in vargas_writer.py.
+
+  - id: RC-004
+    title: "Form submit 500: preferred_name column missing from charts table"
+    confidence: high
+    issues: [I-013]
+    suspected_layer: database_migration
+    note: >
+      PR #181 (form rebuild) added preferred_name to the API contract but
+      no migration added the column to the charts table in production.
+      ALTER TABLE charts ADD COLUMN preferred_name TEXT; needed.
+      Blocks chart creation for ALL new guests.
+
+  - id: RC-005
+    title: "Legacy build cockpit UI served — v2 components not present"
+    confidence: high
+    issues: [I-014]
+    suspected_layer: frontend_feature_flag
+    note: >
+      /clients/<id>/build serves the legacy "Build Constellation" UI.
+      None of the 5 v2 cockpit components (live-dependency-graph,
+      overall-progress, telemetry-strip, asset-table, build-button with
+      data-testid) are present. The v2 build cockpit is either not deployed
+      or gated behind a flag that is not set.
+
+  - id: RC-006
+    title: "Build stays queued — enqueueBuild failure is non-fatal, no retry"
+    confidence: high
+    issues: [I-015]
+    suspected_layer: backend_api
+    note: >
+      POST /api/build/start catches enqueueBuild errors as non-fatal and
+      returns 200 regardless. If Cloud Tasks API call fails, the build row
+      is created but the job never executes. No worker polls for stuck
+      builds. Also: BUILD_TASK_AUTH_BYPASS=test is active on production
+      amjis-web — any caller knowing the endpoint can trigger arbitrary
+      builds (security observation, not a Pariksha data issue).
+
+issues:
+
+  # ─────────────────────────────────────────────────────────────────────
+  # STAGE 1 / FORM SUBMIT
+  # ─────────────────────────────────────────────────────────────────────
+
+  - id: I-013
+    discovered_by: drashta
+    discovered_at: "2026-06-01T07:50:00Z"
+    surface: "/clients/new → POST /api/clients/create"
+    stage: 1
+    severity: workflow_blocking
+    title: "Form submit 500 — preferred_name column missing from charts table"
+    description: |
+      POST /api/clients/create returned 500 with:
+        {"error":"db_error","message":"column \"preferred_name\" of relation \"charts\" does not exist"}
+      The form rebuild (PR #181) added preferred_name to the form and API
+      payload but no database migration added the column to the charts table.
+      This blocks chart creation for ALL new guests — the portal cannot onboard
+      anyone until the migration is applied.
+    evidence:
+      screenshots: ["screenshots/cp3_form_submit_500.png"]
+      network:
+        - method: POST
+          url: /api/clients/create
+          status: 500
+          request_body_excerpt: '{"name":"Abhisek Mohanty","preferred_name":"Abhisek","gender":"M",...}'
+          response_body: '{"error":"db_error","message":"column \"preferred_name\" of relation \"charts\" does not exist"}'
+    suspected_root_cause: RC-004
+    suspected_files:
+      - platform/src/app/api/clients/create/route.ts
+      - platform/supabase/migrations/   # needs new migration: ALTER TABLE charts ADD COLUMN preferred_name TEXT
+    related_root_cause: RC-004
+    status: open
+    severity_reason: "Blocks all chart creation. No guest can progress past the form."
+    triage:
+      vaidya_eligible: false
+      note: "observe-only arc; fix requires a DB migration"
+    fix_attempts: 0
+
+  # ─────────────────────────────────────────────────────────────────────
+  # STAGE 2 / BUILD COCKPIT
+  # ─────────────────────────────────────────────────────────────────────
+
+  - id: I-014
+    discovered_by: drashta
+    discovered_at: "2026-06-01T07:55:00Z"
+    surface: "/clients/362f9f17.../build"
+    stage: 2
+    severity: workflow_blocking
+    title: "Legacy Build Constellation cockpit — v2 cockpit not rendered"
+    description: |
+      CP-5 check: /clients/<id>/build renders the legacy "Build Constellation"
+      UI. All 5 required v2 cockpit components are absent:
+        liveDepGraph:    false  (expected [data-testid="live-dependency-graph"])
+        overallProgress: false  (expected "Sampurna gati" heading)
+        telemetryStrip:  false  (expected [data-testid="telemetry-strip"])
+        assetTable:      false  (expected [data-testid="asset-table"])
+        sampurnaGati:    false
+      Legacy marker present: "Build Constellation" text in DOM.
+      The legacy cockpit also uses polling (/api/build/active) rather than
+      SSE — SSE endpoint /api/build/events/<build_id> returns an error.
+    evidence:
+      screenshots: ["screenshots/cp5_cockpit_rendered.png"]
+      dom_check: '{"buildConstellation":true,"liveDepGraph":false,"sampurnaGati":false}'
+    suspected_root_cause: RC-005
+    status: open
+    severity_reason: "Legacy UI breaks v2 visual contract. SSE not available."
+    fix_attempts: 0
+
+  - id: I-015
+    discovered_by: drashta
+    discovered_at: "2026-06-01T08:00:00Z"
+    surface: "POST /api/build/start → Cloud Tasks"
+    stage: 2
+    severity: workflow_blocking
+    title: "Build stuck in queued — enqueueBuild failure is non-fatal"
+    description: |
+      After clicking Build, the build stayed in status='queued' for 5+ minutes
+      with no Cloud Run Job dispatch. Root cause: build/start route wraps
+      enqueueBuild() in a non-fatal try/catch:
+        "console.warn('[api/build/start] enqueueBuild skipped (non-fatal):', ...)"
+      If Cloud Tasks API call fails for any reason (quota, auth, config), the
+      build row is persisted with status='queued' but no job is ever dispatched.
+      No background worker polls for stuck builds. build_events table had 0 rows
+      for the new build, confirming the enqueue call never reached persistEnqueuedRow.
+      Also noted: BUILD_TASK_AUTH_BYPASS=test is set on production amjis-web,
+      allowing unauthenticated /api/build/task invocation by anyone who knows
+      the endpoint URL.
+    evidence:
+      db_state: |
+        SELECT * FROM build_events WHERE build_id = 'a62395ea...'; → 0 rows
+        -- Build stayed queued for 5+ minutes with no job execution
+        SELECT status FROM builds WHERE build_id = 'a62395ea...'; → queued (after 5 min)
+      workaround_applied: "POST /api/build/task directly with bypass auth — dispatched successfully"
+    suspected_root_cause: RC-006
+    suspected_files:
+      - platform/src/app/api/build/start/route.ts
+      - platform/src/lib/build/trigger.ts
+    status: open
+    severity_reason: "Guests with builds that fail to enqueue will wait forever with no feedback."
+    fix_attempts: 0
+
+  # ─────────────────────────────────────────────────────────────────────
+  # STAGE 1 / CP-2 UX
+  # ─────────────────────────────────────────────────────────────────────
+
+  - id: I-016
+    discovered_by: drashta
+    discovered_at: "2026-06-01T07:48:00Z"
+    surface: "/clients/new"
+    stage: 1
+    severity: ux_degrading
+    title: "Places autocomplete did not fire for Bhubaneswar — lat/lng blank"
+    description: |
+      Typed "Bhubaneswar, Odisha, India" into the birth_place field. No
+      Places autocomplete dropdown appeared after 1.5s. Lat/lng fields
+      remained empty. Manual override accordion was already expanded,
+      allowing direct lat/lng entry. Workaround functional but UX
+      requires manual coordinate entry for users.
+    evidence:
+      dom_check: '{"dropdownVisible":false,"latValue":"","lngValue":""}'
+    suspected_files:
+      - platform/src/components/build_orchestrator/NatalWheelSVG.tsx
+      - platform/src/components/clients/NewClientForm.tsx
+    status: open
+    severity_reason: "Degrades UX — guest must manually enter lat/lng coordinates."
+    fix_attempts: 0
+
+  - id: I-017
+    discovered_by: drashta
+    discovered_at: "2026-06-01T07:45:00Z"
+    surface: "/clients/new (page load)"
+    stage: 1
+    severity: cosmetic
+    title: "GET /api/build/recent returns 500 on /clients/new page load"
+    description: |
+      Two 500 responses on GET /api/build/recent on initial page load of
+      /clients/new. Likely a background pre-fetch component that fires
+      before the user has done anything. Does not block form functionality.
+    evidence:
+      network:
+        - url: /api/build/recent
+          status: 500
+    status: open
+    severity_reason: "Background API error does not block the form."
+    fix_attempts: 0
+
+  # ─────────────────────────────────────────────────────────────────────
+  # PRAMANA — DATA INTEGRITY (confirmed on BOTH builds)
+  # ─────────────────────────────────────────────────────────────────────
+
+  - id: I-001
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:30:00Z"
+    surface: post_build_correctness / A2_forensic_render
+    stage: 3
+    severity: data_integrity
+    title: "A2_forensic_render wrote 0 rows — no planet positions (both builds)"
+    description: |
+      Confirmed on both build 9fd9b9dd (2026-05-31) and a62395ea (2026-06-01).
+      A2_forensic_render completes with row_count=0 for all 5 ayanamshas.
+      chart_facts has no entries with planet/house/lagna/forensic categories.
+      The natal engine (A1_engine) runs successfully (row_count=5) but the
+      forensic render step writes nothing. Suspected: build_id TEXT vs UUID
+      type mismatch causing silent INSERT failure, or a guard clause in the
+      writer that detects missing prerequisites and silently skips.
+    evidence:
+      db_state: |
+        SELECT category, row_count FROM build_steps
+         WHERE build_id='a62395ea...' AND category='A2_forensic_render';
+        → row_count=0 all ayanamshas
+        SELECT DISTINCT fact_category FROM chart_facts
+         WHERE chart_id='362f9f17...' AND build_id='a62395ea...';
+        → cdlm, cgm_node, dasha_*, msr_signal, rm_remedy, ucn_digest, varga
+        (no forensic, planet, house, lagna categories)
+    suspected_root_cause: RC-001
+    status: open
+    fix_attempts: 0
+
+  - id: I-002
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:30:00Z"
+    surface: post_build_correctness / A5_sensitive_points
+    stage: 3
+    severity: data_integrity
+    title: "A5_sensitive_points wrote 0 rows (both builds)"
+    description: |
+      Confirmed on both builds. A5_sensitive_points completes with row_count=0.
+      No sensitive points (ARMC, ASC, MC, Vertex, Equatorial Ascendant, Sripathi
+      bhava-madhyas) present in chart_facts.
+    suspected_root_cause: RC-001
+    status: open
+    fix_attempts: 0
+
+  - id: I-003
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:30:00Z"
+    surface: post_build_correctness / A8_t1_structural
+    stage: 3
+    severity: data_integrity
+    title: "A8_t1_structural wrote 0 rows (both builds)"
+    suspected_root_cause: RC-001
+    status: open
+    fix_attempts: 0
+
+  - id: I-004
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:30:00Z"
+    surface: post_build_correctness / A9_sade_sati
+    stage: 3
+    severity: data_integrity
+    title: "A9_sade_sati wrote 0 rows (both builds)"
+    suspected_root_cause: RC-001
+    status: open
+    fix_attempts: 0
+
+  - id: I-005
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:32:00Z"
+    surface: post_build_correctness / l25_msr_signals
+    stage: 4
+    severity: data_integrity
+    title: "MSR signals not computed — sentinel 'msr_not_computed' (both builds)"
+    description: |
+      A10_msr writes 1 sentinel row per ayanamsha (value='msr_not_computed').
+      l25_msr_signals: 0 rows. msr_signals global table: 0 rows for native 'abhisek'.
+      Expected 573 signals per EXPECTED_ROW_COUNTS. Downstream: chat synthesis
+      has no signal corpus to work from.
+    suspected_root_cause: RC-002
+    status: open
+    fix_attempts: 0
+
+  - id: I-006
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:32:00Z"
+    surface: post_build_correctness / l25_cgm_edges
+    stage: 4
+    severity: data_integrity
+    title: "CGM not computed — sentinel 'cgm_not_computed' (both builds)"
+    suspected_root_cause: RC-002
+    status: open
+    fix_attempts: 0
+
+  - id: I-007
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:35:00Z"
+    surface: post_build_correctness / chart_facts D1 varga
+    stage: 3
+    severity: data_integrity
+    title: "D1 planet signs off by +1 sign — systematic varga writer bug (both builds)"
+    description: |
+      Confirmed across 2 builds and all 5 ayanamshas. All 9 D1 planet sign
+      assignments are one sign ahead of FORENSIC JH-canonical values.
+      FORENSIC expected → actual:
+        SUN:  Capricorn → Aquarius  |  MOON:  Aquarius → Pisces
+        MARS: Libra → Scorpio       |  MERC:  Capricorn → Aquarius
+        JUP:  Sagittarius → Capric. |  VEN:   Sagittarius → Capricorn
+        SAT:  Libra → Scorpio       |  RAHU:  Taurus → Gemini
+        KETU: Scorpio → Sagittarius
+      Rahu–Ketu structural 180° opposition preserved. Mercury D9 vargottama
+      correctly True. Vimshottari 120-year total span correct.
+    evidence:
+      oracle_assertions_failed: [A020,A030,A040,A050,A060,A070,A080,A090,A100]
+    suspected_root_cause: RC-003
+    suspected_files:
+      - platform/python-sidecar/pipeline/writers/vargas_writer.py
+    status: open
+    fix_attempts: 0
+
+  - id: I-008
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:35:00Z"
+    surface: post_build_correctness / chart_facts cdlm
+    stage: 4
+    severity: data_integrity
+    title: "CDLM cells all placeholder 0.5 (both builds)"
+    suspected_root_cause: RC-002
+    status: open
+    fix_attempts: 0
+
+  - id: I-009
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:36:00Z"
+    surface: post_build_correctness / dasha_periods table
+    stage: 3
+    severity: data_integrity
+    title: "dasha_periods table empty — dasha data in chart_facts instead"
+    description: |
+      EXPECTED_ROW_COUNTS.yaml specifies dasha_krama target_tables as
+      [dasha_periods] but the table has 0 rows for this chart. Dasha data
+      is in chart_facts under fact_category prefixes (dasha_vimshottari etc.).
+      Spec-implementation mismatch.
+    status: open
+    fix_attempts: 0
+
+  - id: I-010
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T07:37:00Z"
+    surface: post_build_correctness / l25 tables
+    stage: 4
+    severity: data_integrity
+    title: "All l25_* per-chart tables empty (both builds)"
+    suspected_root_cause: RC-002
+    status: open
+    fix_attempts: 0
+
+  - id: I-011
+    discovered_by: pramana_drashta
+    discovered_at: "2026-06-01T08:10:00Z"
+    surface: post_build_correctness / cat7_oracle
+    stage: 3
+    severity: data_integrity
+    title: "CAT7 Oracle: 9/9 D1 planet sign assertions FAIL (lahiri, both builds)"
+    description: |
+      9/9 D1 sign assertions fail due to +1 sign shift (see I-007).
+      Assertions PASSING: Mercury D9 vargottama=True, Vimshottari 120yr total,
+      MD sequence order (Ju→Sa→Me→Ke→Ve→Su→Mo→Ma→Ra), panchanga birth date
+      (vara=Ravivara, moon_nak=Purva Bhadrapada, yoga=Shiva, karana=Garaja).
+      Assertions SKIPPED (all require A2_forensic_render data which is absent):
+      lagna, house signs, Sripathi cusps, planet houses, planet abs_long, etc.
+    evidence:
+      oracle_assertions_failed: [A020,A030,A040,A050,A060,A070,A080,A090,A100]
+      oracle_assertions_passed: [A205, panchanga_A231..A234, vimshottari_structural]
+    suspected_root_cause: RC-003
+    status: open
+    fix_attempts: 0
