@@ -1,4 +1,9 @@
 // MARSYS-JIS Platform Modernization — Wave 4 unit 4.edge_and_infra_hygiene
+// Amended 2026-06-03 (Brahma Infra Verification remediation):
+//   - web_gcs: project-wide objectViewer → per-bucket objectAdmin (chat-attachments + chart-documents)
+//   - web_bq_job_user: added bigquery.jobUser (was live, not codified)
+//   - web_triggers_bootstrap_job: added run.jobsExecutorWithOverrides on brahma-foundation-bootstrap job;
+//       apply the same resource pattern for any future chart-build job created during the Brahma build arc.
 //
 // Per-service least-privilege runtime service accounts:
 //   amjis-web-runtime      — Cloud Run service amjis-web
@@ -83,10 +88,36 @@ resource "google_project_iam_member" "web_vertex" {
   member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
-resource "google_project_iam_member" "web_gcs" {
+// GCS: scoped objectAdmin on the two buckets web actually writes to
+// (chat attachment uploads, chart document exports). Project-wide objectViewer
+// removed — bucket-level objectAdmin supersedes it and is least-priv.
+resource "google_storage_bucket_iam_member" "web_chat_attachments_admin" {
+  bucket = "madhav-astrology-chat-attachments"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
+resource "google_storage_bucket_iam_member" "web_chart_docs_admin" {
+  bucket = "madhav-astrology-chart-documents"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
+resource "google_project_iam_member" "web_bq_job_user" {
   project = var.gcp_project
-  role    = "roles/storage.objectViewer"
+  role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
+// Brahma build arc: web-runtime triggers brahma-foundation-bootstrap (and any
+// future chart-build job) via direct jobs.run. Duplicate this resource block
+// for each new Cloud Run job added during the Brahma build arc.
+resource "google_cloud_run_v2_job_iam_member" "web_triggers_bootstrap_job" {
+  project  = var.gcp_project
+  location = var.gcp_region
+  name     = "brahma-foundation-bootstrap"
+  role     = "roles/run.jobsExecutorWithOverrides"
+  member   = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
 // Cloud Run invoker on amjis-mcp (per-service binding, not project-wide).
