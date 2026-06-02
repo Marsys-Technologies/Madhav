@@ -267,7 +267,7 @@ jobs:
         run: |
           pip install -r platform/python-sidecar/requirements.txt --quiet
           cd platform/python-sidecar
-          pytest pipeline/__tests__/ pipeline/linters/__tests__/ tests/ \
+          pytest tests/ \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
