@@ -124,6 +124,18 @@ WHITELIST_TICKETS = {
         ],
         "booked_for": "Quarterly governance pass (§H) — rotate fingerprints after GISMCP arc",
     },
+    # Brahma infra arc (sessions S774–S784, 2026-06-02/03) modified these governance
+    # documents but fingerprints were not rotated in the same session arc. Booked
+    # for the next governance pass (§H, due 2026-07-24).
+    "WARN.10": {
+        "description": "Brahma infra arc fingerprint rotation pending (3 docs modified 2026-06-02/03)",
+        "canonical_ids": [
+            "INFRA_RECONCILIATION",
+            "INFRA_COST_COMPARISON_BRAHMA",
+            "CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING",
+        ],
+        "booked_for": "Quarterly governance pass (§H) — rotate fingerprints after Brahma infra arc",
+    },
 }
 
 # Canonical IDs whose fingerprint_mismatch findings carry a whitelist ticket.
@@ -473,6 +485,13 @@ _FUTURE_ARTIFACTS = {
     "LIFE_EVENT_LOG_v1_0.md",      # pre-v1.2 LEL
     "DEEP_ANALYSIS_v2_0.md",       # pre-MATRIX_*.md consolidated analysis
     "EXTERNAL_COMPUTATION_SPEC.md", # un-versioned cite of the v2.0 spec
+    # Layer-0 teardown (PR #187, 2026-06-02) removed these files as part of the
+    # clean-slate rebuild. CLAUDE.md references them as forthcoming L1/tool artefacts.
+    # Re-enable check when each file is re-authored in the Build-Guarantor arc.
+    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md",  # L1 canonical fact layer — pending L0 rebuild
+    "bootstrap_panchanga.py",               # panchang bootstrap script — pending L1 rebuild
+    "tool_health.ts",                       # MCP ops tool — pending L2 rebuild
+    "data_coverage.ts",                     # MCP ops tool — pending L2 rebuild
 }
 
 # Regex for template/example path placeholders (vX_Y, vN_N, etc.)

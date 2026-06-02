@@ -221,11 +221,16 @@ def run_gate(
     manifest_status = "FAIL" if missing_from_manifest else "PASS"
 
     # --- Asset gate ---
-    asset_coverage = parse_manifest_asset_coverage(manifest_path, asset_dirs)
-    unbound_dirs = sorted(
-        d for d in asset_dirs
-        if (repo_root / d).is_dir() and d not in asset_coverage
-    )
+    # Vacuous pass when RETRIEVAL_TOOLS is empty (clean-slate rebuild arc):
+    # tool-to-asset bindings cannot exist until tools are re-registered.
+    if not retrieval_tools:
+        unbound_dirs = []
+    else:
+        asset_coverage = parse_manifest_asset_coverage(manifest_path, asset_dirs)
+        unbound_dirs = sorted(
+            d for d in asset_dirs
+            if (repo_root / d).is_dir() and d not in asset_coverage
+        )
 
     asset_status = "FAIL" if unbound_dirs else "PASS"
 
