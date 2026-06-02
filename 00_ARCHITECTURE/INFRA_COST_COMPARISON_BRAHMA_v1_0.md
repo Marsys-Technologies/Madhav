@@ -99,9 +99,12 @@ LLM API spend is excluded here (separate, usage-based). All figures $/month, app
   acceptable for an internal tool.
 - **Memorystore is the worst $/value at this scale.** A 1 GB Redis floor (~$35–49/mo) to cache panchang for a
   handful of users is not worth it; Postgres caching per (location×date) is free and plenty fast here.
-- **The Load Balancer is built for scale you don't have.** A global HTTPS LB + CDN (~$20/mo floor) makes
-  sense for public traffic; for 10 users, Cloud Run's own HTTPS URL (or a free direct custom-domain mapping)
-  is enough. Dropping it loses CDN caching you don't need.
+- **The Load Balancer is built for scale you don't have — but in asia-south1 it's load-bearing for the custom
+  domain.** Correction (2026-06-02): Cloud Run *direct domain mapping is not available in asia-south1*, so you
+  can't simply map `madhav.marsys.in` to the service. To drop the LB you must front it with a **free**
+  alternative — Firebase Hosting rewrite (test region support) or Cloudflare (region-agnostic) — and only
+  after it's verified serving. If neither works, **keep the LB** (~$18–22/mo). So this saving is *contingent*:
+  the GCP total is **~$30–60/mo** with a free front, **~$50–80/mo** if the LB stays.
 - **Cloud SQL is the irreducible floor.** It's the one thing that benefits from staying warm (it's your live
   data). Right-sizing to a shared-core instance brings it to ~$25–35/mo — the single largest line in the
   Brahma budget, and appropriately so.

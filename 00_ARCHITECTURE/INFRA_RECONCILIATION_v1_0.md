@@ -34,15 +34,20 @@ the build pipeline contents") and avoids a needless, risky teardown of working i
 
 **Decommission (5):** `amjis-tracker` (already retired), Memorystore `amjis-cache` (cost), the Cloud Tasks
 `amjis-build-queue` (replace with a direct Cloud Run Job trigger — removes the build-task 401 class), the
-`ANTHROPIC_API_KEY` secret (no Anthropic in any production path), and the **external HTTPS Load Balancer + CDN
-(`infra/edge`)** — serve via Cloud Run direct domain mapping (resolved 2026-06-02; see note below).
+`ANTHROPIC_API_KEY` secret (no Anthropic in any production path), and — **conditionally** — the **external
+HTTPS Load Balancer + CDN (`infra/edge`)**, replaced by a free front (Firebase Hosting / Cloudflare) only
+after it's verified serving `madhav.marsys.in`; kept if neither free front works in asia-south1 (see note below).
 
-> **Conflict resolution (2026-06-02):** v1.0 first listed `infra/edge` as KEEP·REALIGN. The subsequent
-> cost-optimization pass (INFRA_COST_COMPARISON_BRAHMA §B) and the provisioning brief both DROP it. Under the
-> native's "highly cost-optimized, ~10 internal users" mandate, **DROP wins** (Option A): a global LB+CDN is
-> built for public scale we don't have; Cloud Run's direct domain mapping gives free HTTPS + custom domain.
-> CDN edge-caching and Cloud Armor are not needed at this scale and can be re-added later if traffic grows.
-> All three docs are now aligned to DROP.
+> **Conflict resolution + correction (2026-06-02):** v1.0 first listed `infra/edge` as KEEP·REALIGN; the
+> cost-optimization pass then said DROP via "Cloud Run direct domain mapping." **That was wrong for this
+> region** — direct domain mapping is *not available in asia-south1* (only us-central1/us-east1/europe-west1/
+> asia-northeast1), so the LB is load-bearing for the custom domain today. Corrected decision: **replace** the
+> LB with a *free* front — **Firebase Hosting rewrite → Cloud Run** (native's choice; test asia-south1 support
+> with a throwaway `firebase deploy` first), **Cloudflare** as the region-agnostic fallback — and **only delete
+> the LB after the front is verified serving `madhav.marsys.in`.** If neither free front works, **keep the LB**
+> (~$18–22/mo). So the LB saving (~$18–22/mo) is *contingent*, not guaranteed; the cost-optimized total is
+> ~$30–60/mo if a free front lands, ~$50–80/mo if the LB stays. Public domain = `madhav.marsys.in` (update the
+> `infra/edge` domain var, currently `amjis.madhavstreamc.io`).
 
 **Add (2, in the provisioning session):** BigQuery + Parquet-export path for L5 cross-corpus OLAP (Master Arch
 C3); a one-time **Brahmagyan/L0 + infra bootstrap** Cloud Run Job (admin-only).
@@ -65,7 +70,7 @@ C3); a one-time **Brahmagyan/L0 + infra bootstrap** Cloud Run Job (admin-only).
 | **GCS tf-state bucket** | **KEEP** | Terraform backend. |
 | **Vertex AI embeddings** (`text-multilingual-embedding-002`, 768-dim) | **KEEP (pending spike)** | Default retained; **final model gated on the C4 embedding spike** (Master Arch) before L0.4/L2 build — re-embed if the spike changes it. |
 | **IaC `infra/iam`** | **KEEP · REALIGN** | Reuse SAs; prune/rename for Brahma; drop the tracker SA + (if Cloud Tasks dropped) `amjis-build-invoker`. |
-| **IaC `infra/edge`** (HTTPS LB + CDN, `amjis.madhavstreamc.io`) | **DECOMMISSION** | Drop the global LB + CDN; serve via Cloud Run direct domain mapping (free HTTPS + custom domain). Resolved 2026-06-02 (Option A — cost-optimization supersedes the earlier KEEP). Re-addable if public traffic ever justifies it. |
+| **IaC `infra/edge`** (HTTPS LB + CDN, domain `madhav.marsys.in`) | **DECOMMISSION — conditional** | Drop the global LB + CDN **only after** a free front is verified serving `madhav.marsys.in`. **Correction 2026-06-02:** Cloud Run *direct domain mapping is NOT available in asia-south1*, so the LB is load-bearing today; replace it with **Firebase Hosting rewrite → Cloud Run** (test asia-south1 support first; native's choice) with **Cloudflare** as the region-agnostic fallback, else **KEEP the LB** (~$18–22/mo). Verify-before-delete; never delete the LB first. |
 | **IaC `infra/memorystore`** | **DECOMMISSION** | Remove the module with the Memorystore decision. |
 | **IaC `infra/cloud_scheduler`** | **KEEP** | Reaper cron. |
 | **IaC `infra/cloud_tasks`** | **DECOMMISSION** | Remove with the queue (direct-trigger decision). |

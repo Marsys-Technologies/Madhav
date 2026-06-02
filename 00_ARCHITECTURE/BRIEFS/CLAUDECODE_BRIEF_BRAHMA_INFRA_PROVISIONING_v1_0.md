@@ -148,11 +148,19 @@ done
 gcloud redis instances delete amjis-cache --region asia-south1
 #   then remove the infra/memorystore module (Phase 5) + any REDIS_* env on amjis-web
 
-# Lever 3 — drop external HTTPS LB + CDN; use Cloud Run direct domain mapping  🔒
-#   (remove infra/edge in Phase 5; map the domain straight to Cloud Run)
-gcloud beta run domain-mappings create --service amjis-web \
-  --domain <your-domain> --region asia-south1     # or simply use the *.run.app URL
-#   update DNS to the domain-mapping target; delete the forwarding rule / LB in Phase 5
+# Lever 3 — replace the external HTTPS LB + CDN with a FREE front for madhav.marsys.in  🔒
+#   CORRECTION (2026-06-02): Cloud Run DIRECT domain mapping is NOT available in asia-south1
+#   (supported only in us-central1/us-east1/europe-west1/asia-northeast1). The LB is therefore
+#   load-bearing today. Replace it with a free front, in this order — NEVER delete the LB first:
+#     (1) PREFERRED: Firebase Hosting rewrite → Cloud Run. First TEST region support (zero-risk):
+#         firebase.json: {"hosting":{"rewrites":[{"source":"**","run":{"serviceId":"amjis-web","region":"asia-south1"}}]}}
+#         firebase deploy --only hosting   # errors immediately if asia-south1 unsupported (no change)
+#     (2) FALLBACK if Firebase rejects asia-south1: Cloudflare (region-agnostic) — proxy
+#         madhav.marsys.in → the amjis-web *.run.app URL (free SSL + CDN).
+#     (3) If both disappoint: KEEP the LB (~$18–22/mo) — acceptable, nothing lost.
+#   Then point madhav.marsys.in DNS at the chosen front, VERIFY end-to-end serving, and only THEN
+#   delete the LB + infra/edge (Phase 5). Domain = madhav.marsys.in (update infra/edge domain var,
+#   currently defaulted to amjis.madhavstreamc.io).
 
 # Lever 4 — drop Cloud Tasks; wire direct jobs.run trigger  🔒
 gcloud tasks queues delete amjis-build-queue --location asia-south1
@@ -188,8 +196,9 @@ secret absent. **Rollback:** restore `min-instances=1` + recreate deleted resour
 # Right-size to shared-core (requires a brief restart — do in a window)
 gcloud sql instances patch amjis-postgres --tier=db-g1-small   # ~$25–35/mo; current=db-custom-1-3840; watch pgvector RAM
 
-# Wipe in place: drop legacy schema, recreate clean, re-enable pgvector
-#   (connect via cloud-sql-proxy as a superuser)
+# Full wipe in place: drop schema, recreate clean, re-enable pgvector.
+# LEL note (native directive 2026-06-02): do NOT preserve the DB's life_events rows — a full copy
+# (57 events) lives in LIFE_EVENT_LOG_v1_2.md + the facts-only file + git. The straight DROP is fine.
 psql "$ADMIN_CONN" <<'SQL'
   DROP SCHEMA public CASCADE;
   CREATE SCHEMA public;
@@ -201,10 +210,12 @@ SQL
 #   e.g. the new platform/migrations/brahma/0001_*.sql … run in order
 ```
 
-**Verify:** `db-g1-small` tier active; `\dt` shows only Brahma tables; `vector` extension present; a trivial
-embedding insert/query works. **Rollback:** `gcloud sql import sql amjis-postgres <preflight .sql.gz>` restores
-the pre-wipe DB; revert tier with `--tier=<original>`. **Gate:** native explicitly confirms "wipe now" with the
-backup verified.
+**Verify:** `db-g1-small` tier active; `\dt` shows only the Brahma baseline tables; `vector` extension present;
+a trivial embedding insert/query works. **LEL:** `life_events` is intentionally empty post-wipe — the
+authoritative **57** events live in `LIFE_EVENT_LOG_v1_2.md` (git); the rebuild's LEL intake
+(`LEL_SCHEMA_AND_INTAKE §0`) ingests them from that `.md` (the locked source). **Rollback:** none — the Phase-0
+backup was deleted per the native's wipe directive (legacy data is useless); tier revert via
+`--tier=db-custom-1-3840`. **Gate:** native explicitly confirms "wipe now."
 
 ## §6 — Phase 4 · New provisioning
 
@@ -224,23 +235,46 @@ dataset/job (no data yet). **Gate:** none (additive, no destruction).
 
 ## §7 — Phase 5 · IaC + CI realign  🔒 HUMAN-GATED (terraform apply)
 
+**Split this phase: 5a (safe IaC, now) and 5b (LB swap, gated on the front serving). Do NOT bundle them.**
+
 ```bash
+# ── Phase 5a · safe IaC removals (memorystore + cloud_tasks + iam) — does NOT touch edge/LB ──
 cd infra
 git rm -r memorystore cloud_tasks          # drop the two modules
-#   edit iam/main.tf  → drop tracker SA + (Tasks gone) amjis-build-invoker
-#   edit edge/main.tf → remove the LB/CDN (or repurpose); keep cloud_scheduler (reaper)
-terraform plan -out=brahma.plan            # REVIEW the plan with the native
-terraform apply brahma.plan                # 🔒 only after approval
+#   edit iam/main.tf → drop tracker SA + (Tasks gone) amjis-build-invoker; KEEP runtime SAs
+#   DO NOT edit/remove edge/main.tf in 5a — the LB stays until 5b verifies the replacement.
+
+# STATE RECONCILE: amjis-cache + amjis-build-queue were deleted by hand in Phase 2, but Terraform
+#   state still references them → a plain plan will show drift. Drop them from state first so the
+#   plan is clean (not a confusing "recreate"/"destroy-missing"):
+terraform state list | grep -E "memorystore|redis|cloud_tasks|amjis-build-queue|amjis-cache"
+terraform state rm <those addresses>       # reconcile before planning
+
+terraform plan -out=brahma5a.plan          # 🔒 PRESENT the plan to the native; it must show ONLY
+                                           #    iam SA drops + the (already-gone) module cleanup,
+                                           #    and MUST NOT show edge/LB/forwarding-rule destroy.
+terraform apply brahma5a.plan              # 🔒 only after the native approves the plan
 cd ..
 
-# deploy.yml: set --min-instances=0; remove Cloud Tasks deploy steps; add BigQuery/bootstrap-job steps;
-#   keep NEXT_PUBLIC build-arg discipline; prune legacy MARSYS_FLAG_R9/R10/R11 flags.
+# deploy.yml realign (safe): set --min-instances=0 ×3; remove Cloud Tasks deploy steps; add the
+#   BigQuery/bootstrap-job env; keep NEXT_PUBLIC build-arg discipline; prune legacy R9/R10/R11 flags.
 ```
 
-**Verify:** `terraform plan` shows only the intended removals/changes; post-apply `terraform state list` has no
-memorystore/cloud_tasks; CI deploys all 3 services at `min=0`. **Rollback:** `git revert` the IaC commit +
-`terraform apply` the prior plan; prior tf-state in `/tmp/preflight-tfstate.json`. **Gate:** plan reviewed
-before apply.
+```bash
+# ── Phase 5b · LB → free front (gated: front must serve madhav.marsys.in BEFORE the LB is deleted) ──
+# 1. TEST Firebase asia-south1 support (zero-risk): firebase.json rewrite run.region=asia-south1 →
+#    firebase deploy --only hosting  (errors immediately + harmlessly if unsupported).
+# 2. If OK → Firebase front; else → Cloudflare proxy to the *.run.app URL; else → KEEP the LB (stop 5b).
+# 3. Point madhav.marsys.in DNS at the chosen front; VERIFY end-to-end HTTPS serving.
+# 4. ONLY THEN: edit edge/main.tf out, terraform plan/apply to destroy the LB + CDN + cert + NEG.
+#    (set the edge domain var to madhav.marsys.in if any transitional step still needs it.)
+```
+
+**Verify:** post-5a `terraform state list` has no memorystore/cloud_tasks and **still has edge** (LB intact);
+CI deploys all 3 at `min=0`. Post-5b (only if a free front landed): `madhav.marsys.in` serves over HTTPS via
+the front, and the LB/forwarding-rule is gone. **Rollback:** 5a — `git revert` + re-apply prior plan; 5b — the
+LB is only removed after the front works, so the fallback is simply "don't run 5b / keep edge." **Gate:** plan
+reviewed before each apply; LB destroy gated on the front serving.
 
 ## §8 — Phase 6 · Verify, cost-check, seal
 
