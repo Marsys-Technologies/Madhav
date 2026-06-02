@@ -228,13 +228,14 @@ jobs:
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_R11V2_USE_ADAPTERS=true
             MARSYS_FLAG_R11D_PROMPT_LAYOUT=true
-            MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true
+            MARSYS_FLAG_R11D_ANTHROPIC_CACHE=false
             MARSYS_FLAG_R11D_GEMINI_CACHE=true
             MARSYS_FLAG_R11E_ANTHROPIC_LOOP=false
             MARSYS_FLAG_R11E_GEMINI_LOOP=true
             MARSYS_FLAG_R11E_OPENAI_LOOP=true
             MARSYS_FLAG_R11E_DEEPSEEK_LOOP=true
             MARSYS_FLAG_R11E_NVIDIA_LOOP=true
+            MARSYS_FLAG_OBSERVATORY_ENABLED=true
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at
