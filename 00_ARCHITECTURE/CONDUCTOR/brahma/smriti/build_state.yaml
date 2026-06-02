@@ -1,0 +1,661 @@
+---
+# Smṛti — Brahma Build State (disk-of-record)
+# The Conductor reads this on every re-kick to resume from where it left off.
+# Updated atomically at every gate decision (PASS / FAIL / PARK / FIX-ATTEMPT).
+# Never hand-edit during a live run; the driver owns writes.
+
+meta:
+  instrument: Brahma
+  build_id: brahma-autonomous-20260603
+  native_chart: "Abhisek Mohanty — 1984-02-05 10:43 IST Bhubaneswar"
+  autonomous_mode: true
+  max_fix_attempts: 5
+  max_run_budget_usd: 5000
+  max_spend_per_asset_usd: 300
+  rules_asset_cap_usd: 1000
+  max_wallclock_per_asset_hours: 6
+  started_at: "2026-06-03T00:00:00+05:30"
+  last_updated: "2026-06-03T00:00:00+05:30"
+  batch_count: 0
+
+budget:
+  total_spent_usd: 0.00
+  per_asset: {}
+
+queue_summary:
+  total_sessions: 45
+  complete: 0
+  in_progress: 0
+  parked: 0
+  pending: 45
+  layers_complete: []
+  layers_in_progress: []
+
+# Per-asset gate state (Conductor updates this on every gate decision)
+assets:
+
+  # ─────────────── L0 Brahmagyan ───────────────
+  - id: BG-0-1
+    asset_id: brahmagyan.ephemeris
+    layer: L0
+    wave: 1
+    parallel_eligible: true
+    depends_on: []
+    status: pending          # pending | in_progress | gate1_pass | gate2_pass | green | parked
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-2
+    asset_id: brahmagyan.reference
+    layer: L0
+    wave: 1
+    parallel_eligible: true
+    depends_on: []
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-3
+    asset_id: brahmagyan.texts
+    layer: L0
+    wave: 1
+    parallel_eligible: true
+    depends_on: []
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-5
+    asset_id: brahmagyan.ontology
+    layer: L0
+    wave: 1
+    parallel_eligible: true
+    depends_on: []
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-4
+    asset_id: brahmagyan.text_index
+    layer: L0
+    wave: 2
+    parallel_eligible: false
+    depends_on: [BG-0-3, BG-0-5]
+    gated_sub_step: "embedding-model spike (C4) — must pass before bulk embed"
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-6
+    asset_id: brahmagyan.rules
+    layer: L0
+    wave: 2
+    parallel_eligible: true
+    depends_on: [BG-0-3, BG-0-5]
+    gated_sub_step: "gold-standard BPHS extraction pilot — must clear quality bar before full canon"
+    spend_cap_override_usd: 1000
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-8
+    asset_id: brahmagyan.almanac
+    layer: L0
+    wave: 2
+    parallel_eligible: true
+    depends_on: [BG-0-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-0-7
+    asset_id: brahmagyan.concordance
+    layer: L0
+    wave: 3
+    parallel_eligible: false
+    depends_on: [BG-0-6]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BG-L0-VERIFY
+    asset_id: brahmagyan.layer_complete
+    layer: L0
+    wave: 4
+    parallel_eligible: false
+    depends_on: [BG-0-1, BG-0-2, BG-0-3, BG-0-4, BG-0-5, BG-0-6, BG-0-7, BG-0-8]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+  # ─────────────── L1 Gaṇita ───────────────
+  - id: GA-1-1
+    asset_id: ganita.engine
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [BG-L0-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-2
+    asset_id: ganita.positions
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-3
+    asset_id: ganita.divisionals
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-4
+    asset_id: ganita.dashas
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-5
+    asset_id: ganita.strength
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-6
+    asset_id: ganita.sensitive_points
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-7
+    asset_id: ganita.panchanga
+    layer: L1
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-1-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-1-8
+    asset_id: ganita.facts_store
+    layer: L1
+    wave: 2
+    parallel_eligible: false
+    depends_on: [GA-1-2, GA-1-3, GA-1-4, GA-1-5, GA-1-6, GA-1-7]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: GA-L1-VERIFY
+    asset_id: ganita.layer_complete
+    layer: L1
+    wave: 3
+    parallel_eligible: false
+    depends_on: [GA-1-1, GA-1-2, GA-1-3, GA-1-4, GA-1-5, GA-1-6, GA-1-7, GA-1-8]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+  # ─────────────── L2 Bodha ───────────────
+  - id: BO-2-1
+    asset_id: bodha.signals
+    layer: L2
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY, BG-0-6, BG-0-7]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-2
+    asset_id: bodha.graph
+    layer: L2
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY, BG-0-6, BG-0-7]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-3
+    asset_id: bodha.domain_links
+    layer: L2
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-4
+    asset_id: bodha.resonance
+    layer: L2
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-5
+    asset_id: bodha.lenses
+    layer: L2
+    wave: 2
+    parallel_eligible: false
+    depends_on: [BO-2-1, BO-2-2]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-6
+    asset_id: bodha.remediation
+    layer: L2
+    wave: 2
+    parallel_eligible: true
+    depends_on: [BO-2-1, BG-0-7]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-7
+    asset_id: bodha.embeddings
+    layer: L2
+    wave: 2
+    parallel_eligible: true
+    depends_on: [BO-2-1, BG-0-4]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-2-8
+    asset_id: bodha.holistic_bundle
+    layer: L2
+    wave: 3
+    parallel_eligible: false
+    depends_on: [BO-2-1, BO-2-2, BO-2-3, BO-2-4, BO-2-5]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: BO-L2-VERIFY
+    asset_id: bodha.layer_complete
+    layer: L2
+    wave: 4
+    parallel_eligible: false
+    depends_on: [BO-2-1, BO-2-2, BO-2-3, BO-2-4, BO-2-5, BO-2-6, BO-2-7, BO-2-8]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+  # ─────────────── L3 Kāla ───────────────
+  - id: KA-3-1
+    asset_id: kala.timeline
+    layer: L3
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY, BO-L2-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: KA-3-2
+    asset_id: kala.convergence
+    layer: L3
+    wave: 1
+    parallel_eligible: true
+    depends_on: [GA-L1-VERIFY, BO-L2-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: KA-3-3
+    asset_id: kala.obstruction
+    layer: L3
+    wave: 2
+    parallel_eligible: false
+    depends_on: [KA-3-1, KA-3-2]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: KA-3-4
+    asset_id: kala.temporal
+    layer: L3
+    wave: 3
+    parallel_eligible: false
+    depends_on: [KA-3-1, KA-3-2, KA-3-3]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: KA-L3-VERIFY
+    asset_id: kala.layer_complete
+    layer: L3
+    wave: 4
+    parallel_eligible: false
+    depends_on: [KA-3-1, KA-3-2, KA-3-3, KA-3-4]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+  # ─────────────── L4 Phala ───────────────
+  - id: PH-4-1
+    asset_id: phala.anchors
+    layer: L4
+    wave: 1
+    parallel_eligible: true
+    depends_on: [BO-L2-VERIFY, KA-L3-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: PH-4-2
+    asset_id: phala.mitigation
+    layer: L4
+    wave: 1
+    parallel_eligible: true
+    depends_on: [BO-L2-VERIFY, KA-L3-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: PH-4-3
+    asset_id: phala.rectification
+    layer: L4
+    wave: 1
+    parallel_eligible: true
+    depends_on: [BO-L2-VERIFY, KA-L3-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: PH-4-4
+    asset_id: phala.muhurta
+    layer: L4
+    wave: 2
+    parallel_eligible: true
+    depends_on: [PH-4-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: PH-4-5
+    asset_id: phala.outlook
+    layer: L4
+    wave: 3
+    parallel_eligible: false
+    depends_on: [PH-4-1, PH-4-2, PH-4-3, PH-4-4]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: PH-L4-VERIFY
+    asset_id: phala.layer_complete
+    layer: L4
+    wave: 4
+    parallel_eligible: false
+    depends_on: [PH-4-1, PH-4-2, PH-4-3, PH-4-4, PH-4-5]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+  # ─────────────── L5 Mīmāṃsā ───────────────
+  - id: MI-5-1
+    asset_id: mimamsa.lel_intake
+    layer: L5
+    wave: 1
+    parallel_eligible: false
+    depends_on: [PH-L4-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-5-2
+    asset_id: mimamsa.prediction_ledger
+    layer: L5
+    wave: 1
+    parallel_eligible: true
+    depends_on: [PH-L4-VERIFY]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-5-3
+    asset_id: mimamsa.outcome
+    layer: L5
+    wave: 2
+    parallel_eligible: false
+    depends_on: [MI-5-1, MI-5-2]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-5-4
+    asset_id: mimamsa.multiplier
+    layer: L5
+    wave: 2
+    parallel_eligible: false
+    depends_on: [MI-5-3]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-5-5
+    asset_id: mimamsa.research
+    layer: L5
+    wave: 2
+    parallel_eligible: true
+    depends_on: [MI-5-1]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-5-6
+    asset_id: mimamsa.answer_quality
+    layer: L5
+    wave: 3
+    parallel_eligible: false
+    depends_on: [MI-5-4]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: null
+    parked_reason: null
+
+  - id: MI-L5-VERIFY
+    asset_id: mimamsa.instrument_complete
+    layer: L5
+    wave: 4
+    parallel_eligible: false
+    depends_on: [MI-5-1, MI-5-2, MI-5-3, MI-5-4, MI-5-5, MI-5-6]
+    status: pending
+    fix_attempts: 0
+    spent_usd: 0.00
+
+# Deferred (parked by design — need multi-native data or specialist scope)
+deferred:
+  - bodha.relational    # needs multi-native data + consent
+  - kala.spatial        # relocational specialist module
+
+# Parked log (populated during run)
+parked_log: []
+
+# Decision audit (populated during run)
+decision_audit: []
