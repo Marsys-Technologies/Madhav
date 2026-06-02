@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "site": "madhav-astrology",
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "amjis-web",
+          "region": "asia-south1"
+        }
+      }
+    ]
+  }
+}
