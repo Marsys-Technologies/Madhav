@@ -259,7 +259,16 @@ jobs:
         # The || true soft-pass was removed 2026-05-30 (CF.V13.8 resolved).
         # natal_engine/ deleted by pyjhora engine replacement (2026-06-01);
         # pyjhora_adapter tests live under tests/test_pyjhora_adapter/ (covered by tests/).
+        # TEARDOWN-EXCLUDED (Layer-0 rebuild arc, 2026-06-02):
+        #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
+        #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
+        #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
+        #   Re-enable when L0 engine rebuild re-populates these modules.
         run: |
           pip install -r platform/python-sidecar/requirements.txt --quiet
           cd platform/python-sidecar
-          pytest pipeline/__tests__/ pipeline/linters/__tests__/ tests/ -q --tb=short --no-header
+          pytest pipeline/__tests__/ pipeline/linters/__tests__/ tests/ \
+            --ignore=tests/test_pyjhora_adapter \
+            --ignore=tests/test_dasha_chain.py \
+            --ignore=tests/extractors/test_cgm_extractor.py \
+            -q --tb=short --no-header

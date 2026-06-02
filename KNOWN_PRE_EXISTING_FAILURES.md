@@ -19,6 +19,14 @@ Root cause: PR #187 `feat: Legacy teardown — clean slate for Layer-0 rebuild` 
 
 The Build-Guarantor swarm charter (`00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`) governs re-enablement: each exclusion is lifted as the layer/asset it guards is re-authored and its contract verified.
 
+### Python pytest exclusions (ci.yml `--ignore` flags)
+
+| File | Root cause | Re-enable trigger |
+|---|---|---|
+| `tests/test_pyjhora_adapter/` | pyjhora_adapter package cleared (empty dir after teardown) | L0 pyjhora engine rebuild |
+| `tests/test_dasha_chain.py` | imports `pipeline.transit_search` (removed in teardown) | L0 pipeline.transit_search rebuild |
+| `tests/extractors/test_cgm_extractor.py` | imports `pipeline.extractors.cgm_extractor` (removed in teardown) | L0 CGM extractor rebuild |
+
 ---
 
 **v1.6 — 0 pre-existing failures (2026-05-31)**
