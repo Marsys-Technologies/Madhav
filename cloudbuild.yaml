@@ -1,40 +1,13 @@
-steps:
-  - id: build-pipeline-image
-    name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -f
-      - platform/python-sidecar/Dockerfile.pipeline
-      - -t
-      - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline:$BUILD_ID
-      - -t
-      - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline:latest
-      - --build-arg
-      - PIPELINE_VERSION=$BUILD_ID
-      - .
+# cloudbuild.yaml — LEGACY TEARDOWN APPLIED
+#
+# The build-pipeline image build + deploy-job steps have been removed.
+# The marsys-build-pipeline-job Cloud Run Job should be deleted via
+# infra/teardown/03_delete_cloud_run_job.sh.
+#
+# This file is intentionally empty of build steps pending the Layer-0 rebuild.
+# When the new data pipeline is authored, add its build steps here.
 
-  - id: push-image
-    name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - --all-tags
-      - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline
-
-  # Updated by C-06 to use new multi-ayanamsha pipeline entrypoint (pipeline.build_chart)
-  - id: deploy-job
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - update
-      - marsys-build-pipeline-job
-      - --image=asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline:$BUILD_ID
-      - --region=asia-south1
+steps: []
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
-images:
-  - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline:$BUILD_ID
-  - asia-south1-docker.pkg.dev/$PROJECT_ID/marsys-pipeline/pipeline:latest

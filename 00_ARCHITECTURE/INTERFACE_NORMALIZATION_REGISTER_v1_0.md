@@ -1,8 +1,10 @@
 ---
 title: Interface Normalization Register
 canonical_id: INTERFACE_NORMALIZATION_REGISTER
-version: 1.1
-status: CURRENT
+version: 2.0
+status: WIPED
+wiped_by: legacy-teardown (feature/legacy-teardown)
+wiped_date: 2026-06-02
 authored: 2026-05-25
 authored_by: UDA-3-S1
 amended: 2026-05-25

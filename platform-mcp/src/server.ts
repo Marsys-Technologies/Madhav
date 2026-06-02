@@ -1,39 +1,16 @@
 /**
  * server.ts — MARSYS-JIS MCP HTTP/SSE server entry point.
  *
+ * CLEAN SLATE — legacy-teardown (feature/legacy-teardown).
+ * All tool registrations stripped. 0 tools registered.
+ * Serves: auth + transport + health only.
+ * Rebuild tools per layer during the Layer-0 → Layer-3 arc.
+ *
  * Architecture: thin HTTP adapter over the MARSYS platform.
  * - Each POST /mcp request creates a new stateless McpServer + transport.
  * - Auth: Bearer key validated via /api/mcp/keys/validate before tool dispatch.
  * - Stateless per D10 (no conversation history; host chat owns the thread).
- * - 40 tools registered (v4.5, per arch §3.7 + MCPT v3.2 Phase 4c + TR Wave PR #159 + UDA-2-S1..S8 + R1 de-gating). All 40 unconditional for every tier.
- *
- * Tool count (v4.5, 40 tools):
- *   Tier 1 super-endpoint (1): chart_summary
- *   Tier 2 bundles (2): holistic_bundle, multi_school_bundle
- *   Tier 3 surgical primitives (28): query_chart_facts, query_signals, query_dasha_periods,
- *                query_panchanga, query_ephemeris, query_transit_event,
- *                lel_query, vector_search, get_cgm_subgraph, cross_school_lookup,
- *                query_varshphal, query_divisional_chart, query_remedial_mantras, muhurta_finder,
- *                msr_sql, temporal, kp_query, query_kp_ruling_planets,
- *                pattern_register, resonance_register,
- *                cluster_atlas, contradiction_register,
- *                query_ucn_walk, query_cdlm_lookup,
- *                query_rm_walk, query_jaimini_drishti,
- *                timeline_query, query_signal_state
- *                (last 4 added TR Wave PR #159 — Class A: engine existed;
- *                temporal added UDA-2-S2 — portal-only → MCP parity;
- *                kp_query + query_kp_ruling_planets added UDA-2-S3 — KP system parity;
- *                pattern_register + resonance_register added UDA-2-S4 — Discovery Layer parity;
- *                cluster_atlas + contradiction_register added UDA-2-S5 — Discovery Layer cluster/contradiction parity;
- *                query_ucn_walk + query_cdlm_lookup added UDA-2-S6 — UCN + CDLM holistic-synthesis parity;
- *                query_rm_walk + query_jaimini_drishti added UDA-2-S7 — RM walk + Jaimini drishti parity;
- *                timeline_query + query_signal_state added UDA-2-S8 — L5 timeline + signal state parity)
- *   Tier 4 raw-asset reads (2): read_asset, read_classical_text
- *   Tier 5 observability (2): get_trace, list_recent_queries
- *   Tier 5 perf (2): tool_health, data_coverage
- *   Tier 6 writes (3): log_prediction, record_outcome, flag_disagreement
- *
- * Cloud Run configuration (amjis-mcp service):
+ * - Cloud Run configuration (amjis-mcp service):
  *   Memory: 512 MB, Min instances: 1, Concurrency: 80, Region: asia-south1.
  *   Health check: GET /health → 200 { status: "ok", service: "marsys-mcp" }
  */
@@ -43,65 +20,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
-import { registerResources } from './resources/index.js'
-// Tier 3: surgical primitives (original 10)
-import { registerQueryChartFacts } from './tools/query_chart_facts.js'
-import { registerQuerySignals } from './tools/query_signals.js'
-import { registerQueryDashaPeriods } from './tools/query_dasha_periods.js'
-import { registerQueryPanchanga } from './tools/query_panchanga.js'
-import { registerQueryEphemeris } from './tools/query_ephemeris.js'
-import { registerQueryTransitEvent } from './tools/query_transit_event.js'
-import { registerLelQuery } from './tools/lel_query.js'
-import { registerVectorSearch } from './tools/vector_search.js'
-import { registerGetCgmSubgraph } from './tools/get_cgm_subgraph.js'
-import { registerCrossSchoolLookup } from './tools/cross_school_lookup.js'
-// Tier 3: TR Wave additions (PR #159 — Class A: engine existed)
-import { registerQueryVarshphal } from './tools/query_varshphal.js'
-import { registerQueryDivisionalChart } from './tools/query_divisional_chart.js'
-import { registerQueryRemedialMantras } from './tools/query_remedial_mantras.js'
-import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
-// Tier 3: UDA-2-S1 — msr_sql portal-only → MCP parity
-import { registerMsrSql } from './tools/msr_sql.js'
-// Tier 3: UDA-2-S2 — temporal portal-only → MCP parity
-import { registerTemporal } from './tools/temporal.js'
-// Tier 3: UDA-2-S3 — kp_query + query_kp_ruling_planets portal-only → MCP parity
-import { registerKpQuery } from './tools/kp_query.js'
-import { registerQueryKpRulingPlanets } from './tools/query_kp_ruling_planets.js'
-// Tier 3: UDA-2-S4 — pattern_register + resonance_register Discovery Layer parity
-import { registerPatternRegister } from './tools/pattern_register.js'
-import { registerResonanceRegister } from './tools/resonance_register.js'
-// Tier 3: UDA-2-S5 — cluster_atlas + contradiction_register Discovery Layer cluster/contradiction parity
-import { registerClusterAtlas } from './tools/cluster_atlas.js'
-import { registerContradictionRegister } from './tools/contradiction_register.js'
-// Tier 3: UDA-2-S6 — query_ucn_walk + query_cdlm_lookup UCN + CDLM holistic-synthesis parity
-import { registerQueryUcnWalk } from './tools/query_ucn_walk.js'
-import { registerQueryCdlmLookup } from './tools/query_cdlm_lookup.js'
-// Tier 3: UDA-2-S7 — query_rm_walk + query_jaimini_drishti RM walk + Jaimini drishti parity
-import { registerQueryRmWalk } from './tools/query_rm_walk.js'
-import { registerQueryJaiminiDrishti } from './tools/query_jaimini_drishti.js'
-// Tier 3: UDA-2-S8 — timeline_query + query_signal_state L5 timeline + signal state parity
-import { registerTimelineQuery } from './tools/timeline_query.js'
-import { registerQuerySignalState } from './tools/query_signal_state.js'
-// Tier 4: raw-asset reads
-import { registerReadAsset } from './tools/read_asset.js'
-import { registerReadClassicalText } from './tools/read_classical_text.js'
-// Tier 5: observability + perf
-import { registerGetTrace } from './tools/get_trace.js'
-import { registerListRecentQueries } from './tools/list_recent_queries.js'
-// Tier 6: write tools
-import { registerLogPrediction } from './tools/log_prediction.js'
-import { registerRecordOutcome } from './tools/record_outcome.js'
-import { registerFlagDisagreement } from './tools/flag_disagreement.js'
-// Tier 1: super-endpoint (MCPT v3.2 Phase 4c)
-import { registerChartSummaryTool } from './tools/chart_summary.js'
-// Tier 2: composite bundles (MCPT v3.1.0-S2)
-import { registerHolisticBundle } from './tools/holistic_bundle_tool.js'
-import { registerMultiSchoolBundle } from './tools/multi_school_bundle_tool.js'
-// Perf system (MCPT v3.1.0-S4)
-import { registerToolHealth } from './tools/tool_health.js'
-import { registerDataCoverage } from './tools/data_coverage.js'
 import type { Principal } from './types.js'
-// Tier-aware catalog removed (Stream A 3.tier_excision 2026-05-28).
 
 const app = express()
 app.use(express.json())
@@ -111,28 +30,10 @@ app.use(express.json())
 /**
  * POST /mcp — main MCP protocol endpoint (Streamable HTTP transport).
  *
- * Per the MCP protocol specification, all JSON-RPC messages (initialize,
- * tools/list, tools/call, etc.) are POST'd to this single endpoint.
- * The StreamableHTTPServerTransport handles SSE streaming for long-running
- * calls and direct responses for quick ones.
- *
  * Each request gets its own McpServer + transport instance, enforcing
  * statelessness (D10: no conversation history; no shared session state).
  */
 app.post('/mcp', async (req: Request, res: Response) => {
-  // Validate the Bearer key before doing any work.
-  //
-  // Auth source priority:
-  //   1. Authorization: Bearer <key> header (preferred — Claude Code via .mcp.json,
-  //      direct API clients, anything that supports custom headers).
-  //   2. ?api_key=<key> URL query parameter (fallback — Claude.ai's "Add custom
-  //      connector" UI has no Bearer field as of 2026-05; this lets users embed
-  //      the key in the connector URL itself).
-  //
-  // T.3 (red-team class-2): URL-key form restricted to super_admin tier only.
-  // URL-embedded tokens leak into logs and referrers; acceptable only for the
-  // fully-trusted super_admin audience. Client/acharya callers must use the
-  // Authorization header.
   const headerAuth = req.headers['authorization']
   const queryKey = typeof req.query['api_key'] === 'string' ? req.query['api_key'] : undefined
   const fromUrlParam = !headerAuth && !!queryKey
@@ -145,81 +46,15 @@ app.post('/mcp', async (req: Request, res: Response) => {
     return
   }
 
-  // URL-key auth: post tier-excision, no tier-based restriction remains.
-  // (T.3 hardening for URL-key leakage was a tier-only restriction; access
-  // is now governed by authorizeChartAccess (G2) downstream.)
   void fromUrlParam
 
-  // Each request is fully stateless: new server + transport per request.
   const server = new McpServer({
     name: 'marsys-jis',
     version: '1.0.0',
   })
 
-  const getPrincipal = (): Principal => principal
+  // No tools registered — clean slate for Layer-0 rebuild.
 
-  // Tier-aware catalog removed (Stream A 3.tier_excision 2026-05-28).
-  // All 40 tools are registered unconditionally per GISMCP R1 de-gating.
-
-  // Register MCP resources (marsys://chart-overview, marsys://house-rules, etc.).
-  // Resources are read once at session attach — they orient Claude to the
-  // singleton chart and operating discipline without burning per-turn tool calls.
-  registerResources(server)
-
-  // Register Tier 1 super-endpoint.
-  registerChartSummaryTool(server, getPrincipal)
-
-  // Register Tier 2 bundles (post tier-excision: no tier-specific description).
-  registerHolisticBundle(server, getPrincipal, undefined)
-  registerMultiSchoolBundle(server, getPrincipal, undefined)
-
-  // Register Tier 3 surgical primitives (original 10).
-  registerQueryChartFacts(server, getPrincipal)
-  registerQuerySignals(server, getPrincipal)
-  registerQueryDashaPeriods(server, getPrincipal)
-  registerQueryPanchanga(server, getPrincipal)
-  registerQueryEphemeris(server, getPrincipal)
-  registerQueryTransitEvent(server, getPrincipal)
-  registerLelQuery(server, getPrincipal)
-  registerVectorSearch(server, getPrincipal)
-  registerGetCgmSubgraph(server, getPrincipal)
-  registerCrossSchoolLookup(server, getPrincipal)
-  // TR Wave additions (PR #159 — Class A: existing retrieval engines).
-  registerQueryVarshphal(server, getPrincipal)
-  registerQueryDivisionalChart(server, getPrincipal)
-  registerQueryRemedialMantras(server, getPrincipal)
-  registerMuhurtaFinder(server, getPrincipal)
-  registerMsrSql(server, getPrincipal)
-  registerTemporal(server, getPrincipal)
-  registerKpQuery(server, getPrincipal)
-  registerQueryKpRulingPlanets(server, getPrincipal)
-  registerPatternRegister(server, getPrincipal)
-  registerResonanceRegister(server, getPrincipal)
-  registerClusterAtlas(server, getPrincipal)
-  registerContradictionRegister(server, getPrincipal)
-  registerQueryUcnWalk(server, getPrincipal)
-  registerQueryCdlmLookup(server, getPrincipal)
-  registerQueryRmWalk(server, getPrincipal)
-  registerQueryJaiminiDrishti(server, getPrincipal)
-  registerTimelineQuery(server, getPrincipal)
-  registerQuerySignalState(server, getPrincipal)
-
-  // Register Tier 4 raw-asset reads.
-  registerReadAsset(server, getPrincipal)
-  registerReadClassicalText(server, getPrincipal)
-
-  // Register Tier 5 observability + perf tools.
-  registerGetTrace(server, getPrincipal)
-  registerListRecentQueries(server, getPrincipal)
-
-  // All ops tools registered unconditionally — native is super_admin of his own instrument.
-  registerToolHealth(server, getPrincipal)
-  registerDataCoverage(server, getPrincipal)
-  registerLogPrediction(server, getPrincipal)
-  registerRecordOutcome(server, getPrincipal)
-  registerFlagDisagreement(server, getPrincipal)
-
-  // Stateless mode: sessionIdGenerator: undefined (per MCP SDK docs).
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   })
@@ -236,8 +71,6 @@ app.post('/mcp', async (req: Request, res: Response) => {
 })
 
 // ── GET /mcp — SSE subscription endpoint ─────────────────────────────────────
-// Some MCP clients use a separate GET for SSE event streams. Return 405 with
-// a clear message — we use the stateless POST-only pattern.
 app.get('/mcp', (_req: Request, res: Response) => {
   res.status(405).json({
     error: 'Method Not Allowed',
@@ -248,13 +81,13 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0' })
+  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 0 })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const port = parseInt(process.env['MCP_PORT'] ?? '8080', 10)
 app.listen(port, () => {
-  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port}`)
+  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (0 tools — clean slate)`)
   console.log(`[mcp:server] Platform URL: ${process.env['PLATFORM_URL'] ?? 'http://localhost:3000'}`)
 })
