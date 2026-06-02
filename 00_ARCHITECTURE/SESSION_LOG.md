@@ -28513,3 +28513,94 @@ session_close:
 
 Native decides Stream F Q1/Q3 (scoping brief: `STREAM_F_FORENSIC_RENDER_SCOPING_v1_0.md`). Verify build-task 401 end-to-end smoke. Apply migrations 121/122/124 (now unblocked).
 
+
+---
+
+## BRAHMA-INFRA-PROVISIONING (2026-06-03)
+
+### Session open
+
+```yaml
+session_open:
+  session_id: BRAHMA-INFRA-PROVISIONING
+  date: 2026-06-03
+  predecessor_session: BRAHMA-DESIGN-SEAL (Cowork)
+  active_phase_plan: PHASE_M5_PLAN_v1_0.md
+  active_phase_plan_sub_phase: M6 INCOMING (infrastructure provisioning)
+  scope_declaration:
+    may_touch:
+      - "infra/**"
+      - "platform/migrations/**"
+      - "platform/src/app/api/build/**"
+      - "platform/src/lib/build/**"
+      - ".github/workflows/deploy.yml"
+      - "firebase.json"
+      - ".firebaserc"
+      - "public/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0.md"
+    must_not_touch:
+      - "platform/src/components/**"
+      - "platform/python-sidecar/**"
+      - "01_FACTS_LAYER/**"
+      - "025_HOLISTIC_SYNTHESIS/**"
+  brief: CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0.md
+  red_team_due: false
+  current_state_version_at_open: 5.68
+```
+
+### Summary
+
+Full infrastructure provisioning per `CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0`.
+All 9 acceptance criteria met. 6 gated phases executed across ~8 hours.
+
+Key outcomes:
+- Legacy teardown merged (PR #187), Brahma design canon landed (43 files), CAPABILITY_MANIFEST 296→175
+- Cloud SQL wiped + right-sized to db-g1-small, `001_baseline.sql` applied (46 KEEP tables, pgvector 0.8.1)
+- Memorystore, Cloud Tasks, external LB/CDN, ANTHROPIC secret all decommissioned
+- Firebase Hosting front live: `madhav.marsys.in` → Firebase CDN → amjis-web (HTTPS 200, cert CN=madhav.marsys.in, Google Trust Services, expires 2026-08-31)
+- BigQuery `brahma_l5_olap` + analytics SA + `gs://madhav-brahma-olap/parquet/` created
+- `brahma-foundation-bootstrap` Cloud Run Job placeholder registered
+- All 3 services at min-instances=0; deploy.yml R9/R10/R11 flags pruned; direct `invokeBuildJob()` wired
+- CLAUDECODE_BRIEF status → COMPLETE
+
+### Session close
+
+```yaml
+session_close:
+  session_id: BRAHMA-INFRA-PROVISIONING
+  date: 2026-06-03
+  production_revisions:
+    amjis_web: amjis-web-00502-57t
+    amjis_sidecar: amjis-sidecar-00515-latest
+    amjis_mcp: amjis-mcp-00150-8sp
+  artifacts_produced:
+    - "platform/migrations/001_baseline.sql (fixed: auth stub + FK drop + mv_tool_grounding_24h removed)"
+    - "platform/src/app/api/build/start/route.ts (direct invokeBuildJob)"
+    - ".github/workflows/deploy.yml (brahma realignment)"
+    - "firebase.json + .firebaserc + public/.gitkeep"
+    - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json (296→175)"
+    - "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0.md (status COMPLETE)"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (v5.69)"
+    - "00_ARCHITECTURE/SESSION_LOG.md (this entry)"
+  infrastructure_changes:
+    deleted: ["amjis-cache (Memorystore)", "amjis-build-queue (Cloud Tasks)", "amjis-build-invoker SA", "LB/CDN (infra/edge terraform + legacy unmanaged LB)", "ANTHROPIC_API_KEY secret"]
+    added: ["BigQuery brahma_l5_olap", "GCS madhav-brahma-olap", "brahma-analytics SA", "brahma-foundation-bootstrap Job", "Firebase Hosting madhav.marsys.in"]
+    changed: ["Cloud SQL db-custom-1-3840 → db-g1-small", "DB schema wiped + 001_baseline.sql applied", "amjis-db-password v3 (rotated)", "all services min=0"]
+    iac_removed: ["infra/memorystore", "infra/cloud_tasks", "infra/edge"]
+  current_state_updated: true
+  current_state_version: 5.69
+  mirror_updates_propagated: false
+  worktrees_retired: []
+  branches_deleted: []
+  open_residuals:
+    - "5 uppercase secrets rename deferred (DEEPSEEK_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, NVIDIA_NIM_API_KEY, PYTHON_SIDECAR_API_KEY, SUPER_ADMIN_EMAIL)"
+    - "brahma-foundation-bootstrap Job: replace cloud-sdk:slim placeholder with actual L0 build image"
+    - "amjis.madhavstreamc.io: cert was PROVISIONING at LB teardown — verify no orphaned cert resource"
+  next_session_objective: "Brahma build arc: author Layer-0 foundation asset writers (Gaṇita + Bodha tier), seed the Asset Contract Registry per BUILD_GUARANTOR_SWARM_CHARTER, author the build job image for brahma-foundation-bootstrap."
+```
+
+### Next session objective
+
+Brahma build arc: author Layer-0 foundation asset writers (Gaṇita + Bodha tier), seed the Asset Contract Registry per `BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`, author the build job image for `brahma-foundation-bootstrap`.

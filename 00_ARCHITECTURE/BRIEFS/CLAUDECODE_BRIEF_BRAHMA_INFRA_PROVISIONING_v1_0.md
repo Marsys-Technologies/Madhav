@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0.md
 canonical_id: CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING
 version: 1.0
-status: NOT_STARTED          # Claude Code flips → IN_PROGRESS → COMPLETE
+status: COMPLETE
 project_codename: Brahma
 authored_by: Claude (Cowork) 2026-06-02
 authored_for: Claude Code (Antigravity execution session, with GCP credentials)

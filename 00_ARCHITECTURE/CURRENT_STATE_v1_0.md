@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.68
+version: 5.69
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,30 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.69 (2026-06-03, BRAHMA-INFRA-PROVISIONING):
+    **Brahma Infrastructure Provisioning COMPLETE. All 9 acceptance criteria met.**
+    All phases of CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0 executed; brief status → COMPLETE.
+    Phase 0: on-demand Cloud SQL backup + GCS export + 5-module terraform state snapshots + repo tag brahma-preflight-20260602.
+    Phase 1: PR #187 (legacy teardown) squash-merged (30640c96); Brahma design canon committed (e6092402, 43 files); preflight backup/export deleted per directive; 01_drop_tables.sql applied (65 DROPs, COMMIT clean); life_events before=36 after=36 ✓; madhav-marsys-build-artifacts purged; CAPABILITY_MANIFEST reconciled 296→175 (drop 129 tools/missing, add 8 Brahma docs; actual 175 not 172 — 3 extra Brahma governance docs in reconcile script).
+    Phase 2: min-instances=0 ×3; amjis-tracker confirmed absent; Memorystore amjis-cache deleted; Cloud Tasks amjis-build-queue deleted; build/start/route.ts rewired to invokeBuildJob() directly (enqueueBuild/Cloud Tasks removed); ANTHROPIC_API_KEY secret deleted + removed from amjis-web + amjis-sidecar; amjis-db-password rotated (v3); deploy.yml R9/R10/R11 flags pruned + BQ/bootstrap env added. Cloud Run domain mapping for amjis.madhavstreamc.io blocked (domain not verified) — deferred to Phase 5b.
+    Phase 3: Cloud SQL right-sized db-custom-1-3840→db-g1-small; DROP SCHEMA public CASCADE (98 objects); CREATE SCHEMA public + vector extension; 001_baseline.sql applied with 3 fixes (auth stub, predictions.query_id FK dropped, mv_tool_grounding_24h removed — mcp_audit_findings was DROP not KEEP); 46 base tables, pgvector 0.8.1, life_events=0 (expected).
+    Phase 4: BigQuery dataset brahma_l5_olap created (asia-south1); analytics SA brahma-analytics@madhav-astrology.iam.gserviceaccount.com created + WRITER ACL + bigquery.jobUser; GCS bucket madhav-brahma-olap + Parquet prefix gs://madhav-brahma-olap/parquet/; brahma-foundation-bootstrap Cloud Run Job placeholder (cloud-sdk:slim; replace image before executing).
+    Phase 5a: terraform state rm amjis-cache + amjis-build-queue; cloud_tasks terraform destroy (3 resources: build-invoker SA + 2 IAM bindings); memorystore + cloud_tasks IaC modules git-rm'd; deploy.yml realigned (min=0 ×3, ANTHROPIC removed, R9/R10/R11 pruned, BQ/bootstrap env, DB_PASSWORD v3). NOTE: terraform apply on memorystore module accidentally recreated amjis-cache — deleted immediately in Phase 6; orphaned GCS state wiped.
+    Phase 5b: Firebase Hosting test PASS (madhav-astrology.web.app → amjis-web 200); madhav.marsys.in custom domain added to Firebase (cert CN=madhav.marsys.in, Google Trust Services, expires 2026-08-31); Hostinger DNS updated madhav A → 199.36.158.100 (Firebase) + _acme-challenge TXT; terraform destroy infra/edge (8 resources); legacy unmanaged LB (34.54.231.91, madhav.marsys.in) deleted manually (forwarding rules, proxies, URL maps, SSL cert, backend, NEG, static IP); infra/edge git-rm'd.
+    Phase 6: Cost check PASS — min=0 ×3, Memorystore NONE, no forwarding rules, Cloud SQL db-g1-small RUNNABLE. Smoke PASS — madhav.marsys.in HTTPS 200 (Firebase), MCP /health 200 + tools=0 (tool-less ✓), DB 46 tables + pgvector 0.8.1 + distance query ✓. Main HEAD 3cc97cba.
+    cost_target: ~$30–60/mo. Removed: Memorystore (~$35/mo), LB/CDN/Cloud Armor (~$18–25/mo), Cloud Tasks (usage), amjis-build-invoker SA.
+    infrastructure_post_brahma: 3 Cloud Run services (min=0), Cloud SQL db-g1-small, GCS ×4 buckets (chat-attachments, chart-documents, tf-state, madhav-brahma-olap), BigQuery brahma_l5_olap, Firebase Hosting (madhav.marsys.in), Cloud Scheduler (build-reaper kept), brahma-foundation-bootstrap Job (placeholder), Vertex AI embeddings (text-multilingual-embedding-002).
+    open_items:
+      - "Verify amjis.madhavstreamc.io domain mapping (cert was PROVISIONING, now both LBs gone — may need cleanup)"
+      - "Secret rename (5 uppercase secrets deferred per secret_naming.md 'later operations wave')"
+      - "Bootstrap job image: replace cloud-sdk:slim with actual L0 build image before executing"
+      - "BUILD_REAPER_SA_EMAIL env var references build-reaper@madhav-astrology.iam.gserviceaccount.com — verify SA still exists (scheduler kept)"
+    files_touched: ["platform/migrations/001_baseline.sql", "platform/src/app/api/build/start/route.ts", ".github/workflows/deploy.yml", "firebase.json", ".firebaserc", "public/.gitkeep", "infra/ (memorystore+cloud_tasks+edge modules removed)", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0.md"]
+    active_phase_plan_sub_phase: M6 INCOMING (infrastructure provisioning session; no macro-phase change).
+    last_session_id: BRAHMA-INFRA-PROVISIONING. predecessor_session: BRAHMA-DESIGN-SEAL (Cowork).
+    carry_forwards: ["5 uppercase secrets rename (deferred)", "bootstrap Job image swap when L0 build image ready", "amjis.madhavstreamc.io cleanup if needed", "Brahma build arc — Layer-0 asset writers + retrieval tools rebuild"]
+    next_session_objective: "Brahma build arc: author Layer-0 foundation asset writers (Gaṇita + Bodha tier), seed the Asset Contract Registry per BUILD_GUARANTOR_SWARM_CHARTER, author the build job image for brahma-foundation-bootstrap."
+    file_updated_at: 2026-06-03. file_updated_by_session: BRAHMA-INFRA-PROVISIONING.
   - v5.68 (2026-06-02, BRAHMA-DESIGN-SEAL — Cowork design stream):
     **Project BRAHMA — re-architecture DESIGN PHASE SEALED.** Authoritative architecture =
     MARSYS_MASTER_ARCHITECTURE v2.1 (supersedes the M5_REARCHITECTURE_DESIGN_CLOSE v1 baseline).
