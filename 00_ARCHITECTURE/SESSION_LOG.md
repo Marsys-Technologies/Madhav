@@ -28443,7 +28443,7 @@ _[Conductor autonomous session — no forward objective; workstream complete.]_
 
 
 
----
+## PYJHORA-POSTMERGE-DEPLOY-B — 2026-06-01
 
 ```yaml
 session_open:
@@ -28516,7 +28516,7 @@ Native decides Stream F Q1/Q3 (scoping brief: `STREAM_F_FORENSIC_RENDER_SCOPING_
 
 ---
 
-## BRAHMA-INFRA-PROVISIONING (2026-06-03)
+## BRAHMA-INFRA-PROVISIONING — 2026-06-03
 
 ### Session open
 
