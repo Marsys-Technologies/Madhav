@@ -1321,7 +1321,7 @@ COMMENT ON TABLE public.runtime_config IS
 
 CREATE TABLE IF NOT EXISTS public.predictions (
   id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  query_id            UUID        NOT NULL REFERENCES public.query_trace_steps(query_id) ON DELETE CASCADE,
+  query_id            UUID,
   conversation_id     UUID        REFERENCES public.conversations(id) ON DELETE SET NULL,
   prediction_text     TEXT        NOT NULL,
   confidence          NUMERIC(4, 3) CHECK (confidence >= 0 AND confidence <= 1),
@@ -1415,29 +1415,10 @@ GROUP BY COALESCE(mcp_key_id, 'web'), COALESCE(audience_tier, 'unknown'),
 CREATE UNIQUE INDEX IF NOT EXISTS mv_session_summary_pk
   ON public.mv_session_summary(mcp_key_id, session_hour);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_tool_grounding_24h AS
-SELECT
-  tel.mcp_tool_name,
-  count(DISTINCT tel.id)                                                         AS traces,
-  count(DISTINCT af.id)                                                          AS audit_findings_count,
-  count(DISTINCT af.id) FILTER (WHERE af.severity = 'info')::FLOAT /
-    NULLIF(count(DISTINCT tel.id), 0)                                            AS info_rate,
-  count(DISTINCT af.id) FILTER (WHERE af.severity IN ('warn', 'class_1', 'class_2'))::FLOAT /
-    NULLIF(count(DISTINCT tel.id), 0)                                            AS violation_rate
-FROM public.tool_execution_log tel
-LEFT JOIN public.mcp_audit_findings af
-  ON af.tool_name = tel.mcp_tool_name
-  AND af.attached_at >= NOW() - INTERVAL '24 hours'
-WHERE tel.created_at >= NOW() - INTERVAL '24 hours'
-  AND tel.mcp_tool_name IS NOT NULL
-GROUP BY tel.mcp_tool_name;
-
-CREATE UNIQUE INDEX IF NOT EXISTS mv_tool_grounding_24h_pk
-  ON public.mv_tool_grounding_24h(mcp_tool_name);
+-- mv_tool_grounding_24h removed: referenced mcp_audit_findings (reclassified DROP).
 
 -- Initial population of MVs (empty DB; safe no-op)
 REFRESH MATERIALIZED VIEW public.mv_tool_metrics_24h;
 REFRESH MATERIALIZED VIEW public.mv_session_summary;
-REFRESH MATERIALIZED VIEW public.mv_tool_grounding_24h;
 
 COMMIT;
