@@ -63,8 +63,10 @@ interface Props {
   onPersonaChange?: (personaId: string | null) => void
 }
 
+const ANTHROPIC_HIDDEN = process.env.NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN === 'true'
+
 export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, disabled, activePersonaId, onPersonaChange }: Props) {
-  const stacks = stackPicker()
+  const stacks = stackPicker().filter(s => !(ANTHROPIC_HIDDEN && s.stack === 'anthropic'))
   const currentStack = stacks.find(s => s.stack === stack) ?? stacks[0]
   const currentStyle = STYLE_OPTIONS.find(s => s.id === style) ?? STYLE_OPTIONS[0]
   const ctxLabel = formatCtx(currentStack.synthesisContextWindow)

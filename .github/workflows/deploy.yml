@@ -42,8 +42,7 @@ jobs:
           mkdir -p platform/00_ARCHITECTURE
           cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json
           cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
-          cp 00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md
-          cp 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v*.md platform/00_ARCHITECTURE/
           cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
           cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
           cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
@@ -64,6 +63,18 @@ jobs:
             NEXT_PUBLIC_APP_URL=https://amjis-web.run.app
             NEXT_PUBLIC_NIM_STACK_DEGRADED=false
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
+            NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN=true
 
   deploy-web:
     name: Build & Deploy Web
@@ -144,8 +155,7 @@ jobs:
           mkdir -p platform/00_ARCHITECTURE
           cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json
           cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
-          cp 00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v1_0.md
-          cp 00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md platform/00_ARCHITECTURE/PLANNER_PROMPT_v2_0.md
+          cp 00_ARCHITECTURE/PLANNER_PROMPT_v*.md platform/00_ARCHITECTURE/
           cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
           cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
           cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
@@ -169,6 +179,18 @@ jobs:
             NEXT_PUBLIC_APP_URL=https://amjis-web.run.app
             NEXT_PUBLIC_NIM_STACK_DEGRADED=false
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_SCROLL_DISCIPLINE=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_INTERACTIVE_TABLES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_MERMAID=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_CITATION_FRESHNESS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
+            NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
+            NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN=true
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
@@ -200,6 +222,19 @@ jobs:
             BOOTSTRAP_JOB_NAME=brahma-foundation-bootstrap
             BQ_DATASET=brahma_l5_olap
             GCS_OLAP_PREFIX=gs://madhav-brahma-olap/parquet/
+            MARSYS_REPO_ROOT=/app
+            CONSUME_UI_V2_ENABLED=true
+            VECTOR_SEARCH_ENABLED=true
+            MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
+            MARSYS_FLAG_R11V2_USE_ADAPTERS=true
+            MARSYS_FLAG_R11D_PROMPT_LAYOUT=true
+            MARSYS_FLAG_R11D_ANTHROPIC_CACHE=true
+            MARSYS_FLAG_R11D_GEMINI_CACHE=true
+            MARSYS_FLAG_R11E_ANTHROPIC_LOOP=false
+            MARSYS_FLAG_R11E_GEMINI_LOOP=true
+            MARSYS_FLAG_R11E_OPENAI_LOOP=true
+            MARSYS_FLAG_R11E_DEEPSEEK_LOOP=true
+            MARSYS_FLAG_R11E_NVIDIA_LOOP=true
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at
@@ -214,6 +249,8 @@ jobs:
             NVIDIA_NIM_API_KEY=NVIDIA_NIM_API_KEY:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
+            MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
+            MCP_INTERNAL_TOKEN=mcp-internal-token:latest
 
       - name: Post-deploy smoke
         continue-on-error: true
