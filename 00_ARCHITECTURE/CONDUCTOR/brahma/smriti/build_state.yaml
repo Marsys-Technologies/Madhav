@@ -9,27 +9,27 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: '2026-06-03T00:00:00+05:30'
-  last_updated: '2026-06-03T21:16:00.000000+00:00'
-  batch_count: 10
+  last_updated: '2026-06-04T00:00:00.000000+00:00'
+  batch_count: 11
 budget:
   total_spent_usd: 0.0
   per_asset: {}
 queue_summary:
   total_sessions: 45
-  complete: 32
+  complete: 40
   in_progress: 0
   parked: 3
-  pending: 2
-  gate1_pass: 8
+  pending: 0
+  gate1_pass: 0
   layers_complete:
   - L0
   - L1
   - L2
   - L3
-  layers_in_progress:
   - L4
   - L5
-  last_updated: '2026-06-03T21:16:00+00:00'
+  layers_in_progress: []
+  last_updated: '2026-06-04T00:00:00+00:00'
 assets:
 - id: BG-0-1
   asset_id: brahmagyan.ephemeris
@@ -624,14 +624,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - PH-4-1
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: PH-4-5
   asset_id: phala.outlook
   layer: L4
@@ -642,14 +642,14 @@ assets:
   - PH-4-2
   - PH-4-3
   - PH-4-4
-  status: gate1_pass
+  status: green
   fix_attempts: 1
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 fix applied. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 fix applied. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: PH-L4-VERIFY
   asset_id: phala.layer_complete
   layer: L4
@@ -661,9 +661,11 @@ assets:
   - PH-4-3
   - PH-4-4
   - PH-4-5
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
+  gate3_at: '2026-06-04T00:00:00+00:00'
+  build_note: L4 layer complete declared Batch 11. PH-4-4 + PH-4-5 last to go green.
 - id: MI-5-1
   asset_id: mimamsa.lel_intake
   layer: L5
@@ -671,14 +673,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - PH-L4-VERIFY
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: MI-5-2
   asset_id: mimamsa.prediction_ledger
   layer: L5
@@ -686,14 +688,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - PH-L4-VERIFY
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: MI-5-3
   asset_id: mimamsa.outcome
   layer: L5
@@ -702,14 +704,14 @@ assets:
   depends_on:
   - MI-5-1
   - MI-5-2
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: MI-5-4
   asset_id: mimamsa.multiplier
   layer: L5
@@ -717,14 +719,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - MI-5-3
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: MI-5-5
   asset_id: mimamsa.research
   layer: L5
@@ -732,14 +734,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - MI-5-1
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T03:02:00+05:30'
   parked_reason: null
-  build_note: Built Batch 10 as export_to_bigquery. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10 as export_to_bigquery. Gate-1 PASS. Gate-3 GREEN — 45/45 tests pass (source_citation non-null, provenance_envelope, GCS path format, leakage guard, tool smoke).
 - id: MI-5-6
   asset_id: mimamsa.answer_quality
   layer: L5
@@ -747,14 +749,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - MI-5-4
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-04T00:00:00+00:00'
   parked_reason: null
-  build_note: Built Batch 10. 81 tests pass. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 10. 81 tests pass. Gate-1 PASS. Gate-3 GREEN Batch 11.
 - id: MI-L5-VERIFY
   asset_id: mimamsa.instrument_complete
   layer: L5
@@ -767,9 +769,12 @@ assets:
   - MI-5-4
   - MI-5-5
   - MI-5-6
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
+  gate3_at: '2026-06-04T00:00:00+00:00'
+  build_note: INSTRUMENT COMPLETE. All L0-L5 layers green. Batch 11 seal. Mīmāṃsā
+    MI-5-1..6 all Gate-3 GREEN. L4 PH-4-4/5 Gate-3 GREEN.
 deferred:
 - bodha.relational
 - kala.spatial
