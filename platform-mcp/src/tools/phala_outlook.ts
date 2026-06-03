@@ -1,0 +1,281 @@
+/**
+ * phala_outlook.ts — BRAHMA-PH-4-5: phala.outlook
+ *
+ * Composite predictive bundle — B.11 L4 entrypoint.
+ *
+ * Contract (BRAHMA PH-4-5):
+ *   Tool:   phala_outlook(chart_id, horizon_months) →
+ *             {
+ *               anchors: [...],           // PH-4-1
+ *               mitigations: [...],       // PH-4-2
+ *               rectification: {...},     // PH-4-3
+ *               auspicious_windows: [...], // PH-4-4 / panchanga_daily
+ *               summary_confidence: FLOAT, // mean(anchor.confidence)
+ *               provenance_envelope: {
+ *                 source: "phala.outlook",
+ *                 layers: ["PH-4-1","PH-4-2","PH-4-3","PH-4-4"],
+ *                 computed_at: ISO,
+ *                 ...
+ *               }
+ *             }
+ *   No new table — API aggregation only.
+ *   summary_confidence = mean(anchors[].confidence), clamped to [0.0, 1.0].
+ *   Acceptance:
+ *     AC1 — all 4 subsystems present in response
+ *     AC2 — summary_confidence in [0.0, 1.0]
+ *     AC3 — tool smoke: native chart returns valid structure
+ *
+ * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *
+ * Wiring: registerPhalaOutlookTool(server) → server.ts during L4 Phala registration.
+ *
+ * BRAHMA-PH-4-5
+ */
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+
+// ── Environment ────────────────────────────────────────────────────────────────
+
+const PYTHON_SIDECAR_URL = (
+  process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
+).replace(/\/$/, '')
+
+const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
+const TOOL_TIMEOUT_MS = 45_000  // Composite call needs more time than individual sub-tools
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface OutlookProvenanceEnvelope {
+  source: 'phala.outlook'
+  asset: 'PH-4-5'
+  asset_version: string
+  layers: ['PH-4-1', 'PH-4-2', 'PH-4-3', 'PH-4-4']
+  layer_provenances: {
+    'PH-4-1': Record<string, unknown>
+    'PH-4-2': Record<string, unknown>
+    'PH-4-3': Record<string, unknown>
+    'PH-4-4': Record<string, unknown>
+  }
+  chart_id: string
+  horizon_months: number
+  date_range: { start: string; end: string }
+  summary_confidence_algorithm: string
+  computed_at: string  // ISO datetime
+}
+
+export interface PhalOutlookResult {
+  ok: boolean
+  chart_id: string
+  horizon_months: number
+  query_window: { start: string; end: string }
+  anchors: Array<Record<string, unknown>>
+  mitigations: Array<Record<string, unknown>>
+  rectification: Record<string, unknown>
+  auspicious_windows: Array<Record<string, unknown>>
+  summary_confidence: number  // mean(anchor.confidence), in [0.0, 1.0]
+  provenance_envelope: OutlookProvenanceEnvelope
+}
+
+// ── Sidecar call ───────────────────────────────────────────────────────────────
+
+async function callSidecar<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  const url = `${PYTHON_SIDECAR_URL}${path}`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (SIDECAR_API_KEY) {
+    headers['X-API-Key'] = SIDECAR_API_KEY
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TOOL_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(
+        `Sidecar HTTP ${response.status} from ${path}: ${text.slice(0, 300)}`
+      )
+    }
+
+    return (await response.json()) as T
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// ── Core composite fetch ───────────────────────────────────────────────────────
+
+/**
+ * Fetch the composite phala.outlook bundle.
+ *
+ * Calls /api/compute/phala/outlook on the Python sidecar which aggregates
+ * all 4 L4 Phala subsystems in one server-side call:
+ *   - PH-4-1: calibrated event anchors (anchors[])
+ *   - PH-4-2: classical BPHS remedies (mitigations[])
+ *   - PH-4-3: birth-time rectification (rectification{})
+ *   - PH-4-4: auspicious muhurat windows (auspicious_windows[])
+ *
+ * summary_confidence = mean(anchors[].confidence), clamped to [0.0, 1.0].
+ */
+export async function fetchPhalaOutlook(
+  chartId: string,
+  horizonMonths: number = 12,
+  opts: { minConfidence?: number } = {}
+): Promise<PhalOutlookResult> {
+  const body: Record<string, unknown> = {
+    chart_id: chartId,
+    horizon_months: horizonMonths,
+  }
+  if (opts.minConfidence !== undefined) {
+    body.min_confidence = opts.minConfidence
+  }
+  return callSidecar<PhalOutlookResult>('/api/compute/phala/outlook', body)
+}
+
+// ── Tool registration ──────────────────────────────────────────────────────────
+
+const TOOL_NAME = 'phala_outlook'
+
+const InputSchema = z.object({
+  chart_id: z
+    .string()
+    .uuid()
+    .describe(
+      'UUID of the chart. ' +
+        'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar): ' +
+        '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+    ),
+
+  horizon_months: z
+    .number()
+    .int()
+    .min(1)
+    .max(120)
+    .default(12)
+    .describe(
+      'Forecast horizon in months (1–120, default 12). ' +
+        'The date range is computed as today → today + horizon_months*30 days. ' +
+        'All 4 subsystems are queried for this window.'
+    ),
+
+  min_confidence: z
+    .number()
+    .min(0.0)
+    .max(1.0)
+    .optional()
+    .describe(
+      'Optional minimum confidence filter applied to PH-4-1 anchors [0.0–1.0]. ' +
+        'Default 0.0 (all anchors returned). ' +
+        'High confidence ≥ 0.65; Medium 0.45–0.64; Low < 0.45.'
+    ),
+})
+
+/**
+ * Register the phala_outlook MCP tool (PH-4-5) on an McpServer.
+ *
+ * This is the B.11 entrypoint for L4 Phala — a single call that surfaces
+ * the full predictive picture for a horizon:
+ *
+ *   anchors           — PH-4-1: calibrated probabilistic event anchors
+ *   mitigations       — PH-4-2: BPHS-grounded classical remedies per anchor
+ *   rectification     — PH-4-3: birth-time rectification result
+ *   auspicious_windows — PH-4-4: panchanga-derived muhurat windows
+ *   summary_confidence — mean(anchors[].confidence) across all anchors
+ *   provenance_envelope — source="phala.outlook", layers=[PH-4-1..PH-4-4]
+ *
+ * Called from server.ts during L4 Phala registration.
+ *
+ * Example:
+ *   import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
+ *   registerPhalaOutlookTool(server)
+ */
+export function registerPhalaOutlookTool(server: McpServer): void {
+  server.tool(
+    TOOL_NAME,
+    'Composite predictive bundle for a chart and forecast horizon (BRAHMA-PH-4-5).\n\n' +
+      'Aggregates all 4 L4 Phala subsystems in one call:\n' +
+      '  anchors           (PH-4-1) — calibrated probabilistic event anchors\n' +
+      '                               confidence = dasha_quality × signal_strength × convergence_score\n' +
+      '                               each anchor has falsifier + source_citation (B.3 mandate)\n' +
+      '  mitigations       (PH-4-2) — BPHS-grounded classical remedies per anchor\n' +
+      '                               mitigation_type ∈ {mantra, charity, gemstone, ritual, timing}\n' +
+      '  rectification     (PH-4-3) — birth-time rectification via LEL train/test split\n' +
+      '                               best_candidate_time, confidence, train_score, test_score\n' +
+      '  auspicious_windows (PH-4-4) — panchanga-derived muhurat windows for the horizon\n' +
+      '                               per-day: tithi, vara, nakshatra, yoga, choghadiya slots\n\n' +
+      'summary_confidence = mean(anchors[].confidence), clamped to [0.0, 1.0].\n' +
+      '  Returns 0.0 when no anchors exist for the requested horizon.\n\n' +
+      'provenance_envelope:\n' +
+      '  source: "phala.outlook"\n' +
+      '  layers: ["PH-4-1", "PH-4-2", "PH-4-3", "PH-4-4"]\n' +
+      '  layer_provenances: per-layer provenance from each sub-system\n' +
+      '  computed_at: ISO UTC datetime\n\n' +
+      'No new DB table — pure API aggregation layer over the 4 L4 sub-tools.\n' +
+      'All 4 subsystems degrade gracefully: if a sub-system is unavailable,\n' +
+      'its slot is returned as empty list / empty dict + an error provenance.\n\n' +
+      'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar):\n' +
+      '  chart_id = 362f9f17-95a5-490b-a5a7-027d3e0efda0\n\n' +
+      'BRAHMA-PH-4-5 | phala.outlook contract.',
+    InputSchema.shape,
+    async (params) => {
+      const input = InputSchema.parse(params)
+
+      try {
+        const result = await fetchPhalaOutlook(
+          input.chart_id,
+          input.horizon_months,
+          { minConfidence: input.min_confidence }
+        )
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  error: true,
+                  tool: TOOL_NAME,
+                  asset: 'PH-4-5',
+                  chart_id: input.chart_id,
+                  horizon_months: input.horizon_months,
+                  message,
+                  hint:
+                    'Ensure all 4 L4 sub-systems are seeded: ' +
+                    'PH-4-1 (phala_anchors), PH-4-2 (phala_mitigation), ' +
+                    'PH-4-3 (phala_rectification), PH-4-4 (panchanga_daily). ' +
+                    'Also verify DATABASE_URL and PYTHON_SIDECAR_URL are set.',
+                },
+                null,
+                2
+              ),
+            },
+          ],
+          isError: true,
+        }
+      }
+    }
+  )
+}

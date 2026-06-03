@@ -22,6 +22,7 @@ import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
+import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 
 const app = express()
 app.use(express.json())
@@ -56,6 +57,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L4 Phala tools
   registerMitigationMapTool(server, principal)
+  registerPhalaOutlookTool(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

@@ -289,7 +289,17 @@ Any session that touches the chart-build workflow:
 
 ## §J — Standing constraints binding on the swarm
 
+> **AUTONOMOUS MODE AMENDMENT — 2026-06-03 (native directive).**
+> The Brahma build (L0–L5) runs fully autonomously per `BUILD_GUARANTOR_AUTONOMOUS_MODE_v1_0.md`.
+> The original human-gating constraint below is **superseded for the Brahma arc** by automated
+> safety rails (§C of AUTONOMOUS_MODE): reversibility-by-construction + verify-before-promote
+> (canary) + bounded retries (MAX_FIX_ATTEMPTS=5 → park) + budget ceilings
+> (MAX_RUN_BUDGET=$5000 / MAX_SPEND_PER_ASSET=$300 / rules-asset $1000 / 6h wall-clock per asset).
+> The bot identity `brahma-conductor-bot@madhav-astrology.iam.gserviceaccount.com` holds the
+> delegated authority and may merge to main only when all CI checks pass.
+
 - **PR-to-main, prod deploy, prod DB ops, secret rotation, flag flips are human-gated.**
+  *(Superseded for Brahma arc — see AUTONOMOUS_MODE amendment above. Retained for all other arcs.)*
   Nirīkṣaka and Racayitā are **advisory**; they never auto-merge or mutate prod.
 - **No Anthropic models in any production path.** Default planner Gemini Pro; fallback
   DeepSeek; dev-loop agents are unconstrained.
