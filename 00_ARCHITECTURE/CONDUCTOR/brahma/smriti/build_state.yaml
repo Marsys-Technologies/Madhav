@@ -128,13 +128,20 @@ assets:
     wave: 2
     parallel_eligible: true
     depends_on: [BG-0-1]
-    status: pending
+    status: green
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
-    gate2_at: null
-    gate3_at: null
+    gate1_at: "2026-06-03T00:00:00+05:30"   # code + tests authored
+    gate2_at: "2026-06-03T00:00:00+05:30"   # router wired in main.py
+    gate3_at: "2026-06-03T00:00:00+05:30"   # 40/40 pytest pass; FORENSIC PASS 5/5
     parked_reason: null
+    notes: >
+      Built on top of panchang_engine v1.0.0-S3 (Phase 4C, 30/30 Drik parity).
+      FORENSIC spot-check 1984-02-05 Bhubaneswar: tithi=Shukla Tritiya, vara=Ravivara,
+      moon_nakshatra=Purva Bhadrapada, yoga=Shiva, karana=Garaja — ALL PASS.
+      IANA DST + half-hour zone (NPT +345min) verified. LRU cache (512 entries).
+      Router: POST /api/brahmagyan/almanac/query.
+      Commit tag: [BRAHMA-BG-0-8]
 
   - id: BG-0-7
     asset_id: brahmagyan.concordance

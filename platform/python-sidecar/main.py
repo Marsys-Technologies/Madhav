@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from routers import ephemeris, events, eclipses, retrogrades, sade_sati, jaimini, v7_additions, dasha_chain, transit_search
 from routers import panchang as panchang_router
 from routers import muhurat as muhurat_router
+from routers import brahmagyan_almanac as almanac_router
 from rag.routers.rag_retrieve import router as rag_retrieve_router
 from rag.routers.rag_router import router as rag_router_router
 from rag.routers.rag_synthesize import router as rag_synthesize_router
@@ -52,6 +53,9 @@ app.include_router(panchang_router.router, prefix="/api/compute", dependencies=[
 
 # Phase 4C-6 — Muhurat Finder endpoint
 app.include_router(muhurat_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# Brahmagyan L0 Wave-2 — Daily Almanac (BG-0-8) [BRAHMA-BG-0-8]
+app.include_router(almanac_router.router, prefix="/api/brahmagyan/almanac", dependencies=[Depends(verify_api_key)])
 
 
 @app.get("/health")
