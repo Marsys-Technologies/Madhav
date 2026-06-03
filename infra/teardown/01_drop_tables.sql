@@ -155,7 +155,8 @@ DROP TABLE IF EXISTS public.school_convergence_index             CASCADE;
 DROP TABLE IF EXISTS public.data_source_expected                 CASCADE;
 DROP TABLE IF EXISTS public.pyramid_layers                       CASCADE;
 DROP TABLE IF EXISTS public.documents                            CASCADE;
-DROP TABLE IF EXISTS public.predictions                          CASCADE;
+-- predictions (mig 062, Chat V2 PPL / Prospective Prediction Log) is a KEEP table —
+-- it is a core Learning Layer asset (sacrosanct per CLAUDE.md §E). Do NOT drop it here.
 DROP TABLE IF EXISTS public.mcp_bundle_cache                     CASCADE;
 DROP TABLE IF EXISTS public.mcp_audit_findings                   CASCADE;
 DROP TABLE IF EXISTS public.audit_job_runs                       CASCADE;
@@ -191,7 +192,7 @@ COMMIT;
 --   llm_provider_cost_reports, llm_stack_config, llm_usage_events,
 --   mcp_alerts_config, mcp_api_keys, mcp_disagreements, mcp_prediction_outcomes,
 --   mcp_predictions, pending_streams, performance_judge_verdict,
---   performance_queries, personas, plan_alternatives_log, profiles,
+--   performance_queries, personas, plan_alternatives_log, predictions, profiles,
 --   project_conversations, project_files, projects, query_baseline_stats,
 --   query_plan_log, query_trace_steps, runtime_config, selective_shares,
 --   synthesis_quality_scorecard, tool_execution_log, tool_registry
