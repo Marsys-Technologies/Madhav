@@ -291,18 +291,26 @@ export interface CspRow {
   build_id: string
 }
 
+// Gate-1 required upagrahas — all 7 must be present with non-null longitude
+// (BRAHMA-GA-1-6 acceptance criteria: attempt 2 explicit enforcement)
+const GATE1_REQUIRED_UPAGRAHAS = [
+  'UPG.GULIKA', 'UPG.MANDI', 'UPG.DHUMA',
+  'UPG.VYATIPATA', 'UPG.PARIVESHA', 'UPG.INDRACHAPA', 'UPG.UPAKETU',
+] as const
+
 export function buildChartSensitivePointRows(): CspRow[] {
   const rows: CspRow[] = []
 
-  // Upagrahas
+  // Upagrahas — each row gets non-null longitude = `<sign> <degree>` (Gate-1 explicit)
   for (const u of UPAGRAHAS) {
+    const longitude = `${u.sign} ${u.degree}` // never null: sign+degree both present in FORENSIC data
     rows.push({
       chart_id: FORENSIC_CHART_ID,
       point_name: u.name,
       point_category: 'upagraha',
       ayanamsha_id: 'INVARIANT',
       fact_id: u.id,
-      longitude: `${u.sign} ${u.degree}`,
+      longitude,
       sign: u.sign,
       house: SIGN_TO_HOUSE[u.sign] ?? null,
       nakshatra: u.nakshatra,
@@ -310,6 +318,13 @@ export function buildChartSensitivePointRows(): CspRow[] {
       metadata: { type: u.type, degree: u.degree, nakshatra: u.nakshatra },
       build_id: BUILD_ID,
     })
+  }
+
+  // Gate-1 self-check: assert all 7 required upagrahas are present with non-null longitude
+  for (const required of GATE1_REQUIRED_UPAGRAHAS) {
+    const row = rows.find(r => r.fact_id === required)
+    if (!row) throw new Error(`Gate-1 violation: required upagraha ${required} missing from chart_sensitive_points`)
+    if (!row.longitude) throw new Error(`Gate-1 violation: ${required} has null longitude — FORENSIC §11.1 data must be present`)
   }
 
   // Special Lagnas (Hora, Ghati, Bhava — and all others)
