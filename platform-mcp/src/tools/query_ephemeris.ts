@@ -104,7 +104,19 @@ export function registerQueryEphemeris(
         principal,
       )
       if (!envelope.ok || status >= 400) return errorResult(envelope)
-      return okResult(envelope)
+      // Gate-3 check #3: inject provenance_envelope into every successful response.
+      // source + file map to the DE441 JPL ephemeris used by pyswisseph.
+      // computed_at is wall-clock time of this MCP call (not the DB write time).
+      const provenance: Record<string, unknown> = {
+        source: 'SwissEph DE441',
+        file: 'sepl_18.se1',   // DE441 JPL kernel file name in pyswisseph
+        computed_at: new Date().toISOString(),
+      }
+      const resultWithProvenance = {
+        ...(typeof envelope === 'object' && envelope !== null ? envelope : {}),
+        provenance_envelope: provenance,
+      }
+      return okResult(resultWithProvenance)
     },
   )
 }

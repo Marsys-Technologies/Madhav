@@ -95,7 +95,7 @@ INSERT INTO ephemeris_daily_staging (
     ayanamsha, ephemeris_version, build_id,
     dignity_d1, is_combust, combust_orb_deg, vargottama_today,
     sign_ingress_today, whole_sign_house, graha_yuddha_with,
-    bhava_chalit_house
+    bhava_chalit_house, source_citation
 ) VALUES (
     %(date)s, %(planet)s, %(node_type)s, %(longitude_deg)s, %(latitude_deg)s,
     %(speed_deg_per_day)s, %(is_retrograde)s, %(sign)s, %(sign_degree)s,
@@ -103,7 +103,7 @@ INSERT INTO ephemeris_daily_staging (
     %(build_id)s,
     %(dignity_d1)s, %(is_combust)s, %(combust_orb_deg)s, %(vargottama_today)s,
     %(sign_ingress_today)s, %(whole_sign_house)s, %(graha_yuddha_with)s,
-    %(bhava_chalit_house)s
+    %(bhava_chalit_house)s, %(source_citation)s
 )
 ON CONFLICT (date, planet, node_type) DO UPDATE SET
     longitude_deg      = EXCLUDED.longitude_deg,
@@ -124,8 +124,12 @@ ON CONFLICT (date, planet, node_type) DO UPDATE SET
     sign_ingress_today = EXCLUDED.sign_ingress_today,
     whole_sign_house   = EXCLUDED.whole_sign_house,
     graha_yuddha_with  = EXCLUDED.graha_yuddha_with,
-    bhava_chalit_house = EXCLUDED.bhava_chalit_house;
+    bhava_chalit_house = EXCLUDED.bhava_chalit_house,
+    source_citation    = EXCLUDED.source_citation;
 """
+
+# CHANGE 4.6: canonical source_citation string for Gate-3.
+SOURCE_CITATION = "SwissEph DE441"
 
 # ── DB connection helper ──────────────────────────────────────────────────────
 
@@ -275,6 +279,7 @@ def _compute_day(
             "ayanamsha": AYANAMSHA,
             "ephemeris_version": EPHEMERIS_VERSION,
             "build_id": build_id,
+            "source_citation": SOURCE_CITATION,  # CHANGE 4.6: Gate-3
             # derived columns — populated in second pass below
             "dignity_d1": None,
             "is_combust": None,
@@ -311,6 +316,7 @@ def _compute_day(
         "ayanamsha": AYANAMSHA,
         "ephemeris_version": EPHEMERIS_VERSION,
         "build_id": build_id,
+        "source_citation": SOURCE_CITATION,  # CHANGE 4.6: Gate-3
         "dignity_d1": None,
         "is_combust": None,
         "combust_orb_deg": None,
@@ -339,6 +345,7 @@ def _compute_day(
         "ayanamsha": AYANAMSHA,
         "ephemeris_version": EPHEMERIS_VERSION,
         "build_id": build_id,
+        "source_citation": SOURCE_CITATION,  # CHANGE 4.6: Gate-3
         "dignity_d1": None,
         "is_combust": None,
         "combust_orb_deg": None,
