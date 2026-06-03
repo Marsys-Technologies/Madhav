@@ -176,6 +176,18 @@ export function registerReferenceLookup(
     async (input: Input) => {
       try {
         const rows = await queryTable(input)
+
+        // Collect unique source citations from returned rows for the provenance envelope.
+        // Every reference row carries source_citation; the provenance envelope surfaces
+        // them so the host LLM can cite classical authority without fabricating references.
+        const sourceCitations: string[] = []
+        for (const row of rows as Record<string, unknown>[]) {
+          const cite = row['source_citation']
+          if (typeof cite === 'string' && cite && !sourceCitations.includes(cite)) {
+            sourceCitations.push(cite)
+          }
+        }
+
         return {
           content: [
             {
@@ -186,6 +198,12 @@ export function registerReferenceLookup(
                   table: input.table,
                   rows,
                   count: rows.length,
+                },
+                provenance_envelope: {
+                  source: sourceCitations,
+                  school: 'classical',
+                  tier: 'L0_reference',
+                  confidence: 1.0,
                 },
                 epistemics: {
                   surgical: true,

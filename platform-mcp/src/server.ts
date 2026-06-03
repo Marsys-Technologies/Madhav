@@ -22,6 +22,7 @@ import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
 import { registerReferenceLookup } from './tools/reference_lookup.js'
+import { registerReferenceTablesResource } from './resources/reference_tables_resource.js'
 
 const app = express()
 app.use(express.json())
@@ -55,6 +56,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   })
 
   registerReferenceLookup(server, () => principal as Principal)
+  registerReferenceTablesResource(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -82,13 +84,13 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 0 })
+  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 1, resources: 1 })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const port = parseInt(process.env['MCP_PORT'] ?? '8080', 10)
 app.listen(port, () => {
-  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (0 tools — clean slate)`)
+  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (1 tool: reference_lookup; 1 resource: reference-tables)`)
   console.log(`[mcp:server] Platform URL: ${process.env['PLATFORM_URL'] ?? 'http://localhost:3000'}`)
 })

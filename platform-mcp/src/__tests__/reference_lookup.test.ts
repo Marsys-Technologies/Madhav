@@ -91,7 +91,17 @@ describe('T2 — FORENSIC vara assertion (native birth: Sunday = vara_id 1)', ()
     expect(row.vara_id).toBe(1)
     expect(row.lord).toBe('Sun')
     expect(row.name_sanskrit).toBe('Ravivara')
-    expect(row.source_citation).toBeTruthy()
+    // source_citation must be a non-empty string containing a classical section reference (§ or named text)
+    expect(typeof row.source_citation).toBe('string')
+    expect(row.source_citation.length).toBeGreaterThan(5)
+    expect(row.source_citation).toMatch(/§|Hora|Samhita|Panchang|Smriti|Phaladeepika|Parasara/)
+    // provenance_envelope must be present with source array
+    expect(parsed.provenance_envelope).toBeDefined()
+    expect(Array.isArray(parsed.provenance_envelope.source)).toBe(true)
+    expect(parsed.provenance_envelope.source.length).toBeGreaterThan(0)
+    expect(parsed.provenance_envelope.school).toBe('classical')
+    expect(parsed.provenance_envelope.tier).toBe('L0_reference')
+    expect(parsed.provenance_envelope.confidence).toBe(1.0)
   })
 })
 
@@ -124,7 +134,15 @@ describe('T3 — FORENSIC nakshatra assertion (native Moon nakshatra_id=25)', ()
     expect(row.nakshatra_id).toBe(25)
     expect(row.lord).toBe('Jupiter')
     expect(row.deity).toBe('Aja Ekapad')
-    expect(row.source_citation).toBeTruthy()
+    // source_citation must be a non-empty string containing a classical section reference
+    expect(typeof row.source_citation).toBe('string')
+    expect(row.source_citation.length).toBeGreaterThan(5)
+    expect(row.source_citation).toMatch(/§|Hora|Samhita|Panchang|Smriti|Phaladeepika|Parasara/)
+    // provenance_envelope must surface the classical source citations
+    expect(parsed.provenance_envelope).toBeDefined()
+    expect(Array.isArray(parsed.provenance_envelope.source)).toBe(true)
+    expect(parsed.provenance_envelope.source.length).toBeGreaterThan(0)
+    expect(parsed.provenance_envelope.confidence).toBe(1.0)
   })
 })
 
@@ -146,9 +164,82 @@ describe('T4 — Error path', () => {
   })
 })
 
-// ── T5: Live DB smoke (skipped without DATABASE_URL) ─────────────────────────
+// ── T5-smoke: All-rows tool smoke (acceptance gate: tool smoke) ───────────────
+// Verifies tool can be called with no key (return all rows), and the response
+// structure is correct: ok, result.rows array, count >= 0, provenance_envelope present.
+// Uses mock DB — live-DB row-count floor asserted in T6 below.
 
-describe('T5 — Live DB row-count floor assertions (skipped without DATABASE_URL)', () => {
+describe('T5-smoke — tool smoke: all-rows fetch returns correct structure', () => {
+  it('nakshatra_attrs all-rows returns ok + provenance_envelope', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://mock/db')
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          id: 25,
+          nakshatra_id: 25,
+          name: 'Purva Bhadrapada',
+          deity: 'Aja Ekapad',
+          lord: 'Jupiter',
+          source_citation: 'BS §2; MC §3; Parasara Hora Shastra (Vimshottari Dasha chapter)',
+        },
+      ],
+    })
+    const { server, toolHandlers } = createMockServer()
+    registerReferenceLookup(server, () => MOCK_PRINCIPAL)
+    const handler = toolHandlers['reference_lookup']
+
+    // Call without a key — fetch all rows
+    const result = await handler({ table: 'nakshatra_attrs' }) as { content: Array<{ text: string }> }
+    const parsed = JSON.parse(result.content[0]!.text)
+
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.table).toBe('nakshatra_attrs')
+    expect(Array.isArray(parsed.result.rows)).toBe(true)
+    expect(typeof parsed.result.count).toBe('number')
+    expect(parsed.result.count).toBe(parsed.result.rows.length)
+    // provenance_envelope must be present on every tool response
+    expect(parsed.provenance_envelope).toBeDefined()
+    expect(parsed.provenance_envelope.school).toBe('classical')
+    expect(parsed.provenance_envelope.tier).toBe('L0_reference')
+  })
+
+  it('event_quality filtered by event_type + factor_type returns structure', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://mock/db')
+    mockQuery.mockResolvedValue({
+      rows: [
+        {
+          id: 1,
+          event_type: 'vivah',
+          factor_type: 'tithi',
+          factor_id: 2,
+          quality_score: '0.9',
+          source_citation: 'MC 3.2 (tithis); MC 3.5 (nakshatras); MC §3 (varas)',
+        },
+      ],
+    })
+    const { server, toolHandlers } = createMockServer()
+    registerReferenceLookup(server, () => MOCK_PRINCIPAL)
+    const handler = toolHandlers['reference_lookup']
+
+    const result = await handler({
+      table: 'event_quality',
+      event_type: 'vivah',
+      factor_type: 'tithi',
+    }) as { content: Array<{ text: string }> }
+    const parsed = JSON.parse(result.content[0]!.text)
+
+    expect(parsed.ok).toBe(true)
+    expect(parsed.result.table).toBe('event_quality')
+    expect(parsed.provenance_envelope).toBeDefined()
+    // source_citation in provenance.source must reference a classical section (§ marker)
+    const sourceArr: string[] = parsed.provenance_envelope.source as string[]
+    expect(sourceArr.some((s: string) => s.includes('§') || s.includes('MC'))).toBe(true)
+  })
+})
+
+// ── T6: Live DB smoke (skipped without DATABASE_URL) ─────────────────────────
+
+describe('T6 — Live DB row-count floor assertions (skipped without DATABASE_URL)', () => {
   const DB_URL = process.env['DATABASE_URL']
 
   it.skipIf(!DB_URL)('nakshatra_attrs ≥ 27 rows, all have source_citation', async () => {
