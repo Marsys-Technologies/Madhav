@@ -30,7 +30,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.chart_divisionals (
   id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  chart_id        UUID        NOT NULL,                  -- references charts.id
+  chart_id        UUID        NOT NULL REFERENCES public.charts(id) ON DELETE CASCADE,
   graha           TEXT        NOT NULL,                  -- planet name
   ayanamsha_id    TEXT        NOT NULL,                  -- lahiri | kp | raman | true_pushya | tropical
   varga           TEXT        NOT NULL,                  -- D1 | D2 | D3 | ... | D60
@@ -62,11 +62,25 @@ CREATE INDEX IF NOT EXISTS chart_divisionals_build_idx
 ALTER TABLE public.chart_divisionals ENABLE ROW LEVEL SECURITY;
 
 -- Allow service role to read/write all rows (chart_id scoping done in application)
-CREATE POLICY IF NOT EXISTS "service role full access"
-  ON public.chart_divisionals
-  AS PERMISSIVE FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
+-- Note: CREATE POLICY does not support IF NOT EXISTS in PostgreSQL; idempotency
+-- is achieved by dropping the policy first if it exists, then recreating it.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'chart_divisionals'
+      AND policyname = 'service role full access'
+  ) THEN
+    EXECUTE '
+      CREATE POLICY "service role full access"
+        ON public.chart_divisionals
+        AS PERMISSIVE FOR ALL
+        TO service_role
+        USING (true)
+        WITH CHECK (true)
+    ';
+  END IF;
+END $$;
 
 COMMIT;

@@ -14,9 +14,14 @@ Tests cover:
   10. All 16 canonical vargas are produced
 
 FORENSIC benchmark (Lahiri, native 1984-02-05 10:43 IST Bhubaneswar):
-  D1: Lagna=Aries, Sun=Capricorn, Moon=Aquarius, Mars=Libra, Saturn=Libra
-  D9: Lagna=Cancer, Sun=Cancer, Moon=Gemini, Mercury=Capricorn (vargottama)
-  D10: Sun=Aries
+  Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1, §3.5, §3.6
+  D1: Lagna=Aries (12°23′), Sun=Capricorn (21°57′), Moon=Aquarius (27°02′),
+      Mars=Libra, Mercury=Capricorn, Jupiter=Sagittarius, Venus=Sagittarius,
+      Saturn=Libra (exalted), Rahu=Taurus, Ketu=Scorpio
+  D9: Lagna=Cancer, Sun=Cancer, Moon=Gemini, Mercury=Capricorn (vargottama=YES),
+      Mars=Pisces, Jupiter=Gemini, Venus=Virgo, Saturn=Aries, Rahu=Gemini,
+      Ketu=Sagittarius
+  D10: Lagna=Leo, Sun=Aries
 
 Commit tag: BRAHMA-GA-1-3
 """
@@ -252,6 +257,16 @@ class TestD9NavamshaFORENSIC:
             f"D9 Mercury expected Capricorn, got {mercury.sign}"
         )
 
+    def test_d9_mars_pisces(self, d9_rows):
+        """D9 Mars in Pisces — FORENSIC ref §3.5."""
+        mars = self._graha(d9_rows, "Mars")
+        assert mars.sign == "Pisces", f"D9 Mars expected Pisces, got {mars.sign}"
+
+    def test_d9_saturn_aries(self, d9_rows):
+        """D9 Saturn in Aries — FORENSIC ref §3.5 (debilitated, neecha-bhanga active)."""
+        saturn = self._graha(d9_rows, "Saturn")
+        assert saturn.sign == "Aries", f"D9 Saturn expected Aries, got {saturn.sign}"
+
     def test_d9_mercury_vargottama_flagged(self, d9_rows):
         """Mercury must be flagged vargottama=True in D9 (D1=Capricorn, D9=Capricorn)."""
         mercury = self._graha(d9_rows, "Mercury")
@@ -286,8 +301,14 @@ class TestD9NavamshaFORENSIC:
 class TestD10DasamshaFORENSIC:
     """D10 Dasamsha FORENSIC anchor."""
 
+    def test_d10_lagna_leo(self, d10_rows):
+        """D10 Lagna in Leo — FORENSIC ref §3.6."""
+        lagna = next((r for r in d10_rows if r.graha == "Lagna"), None)
+        assert lagna is not None, "D10 Lagna row missing"
+        assert lagna.sign == "Leo", f"D10 Lagna expected Leo, got {lagna.sign}"
+
     def test_d10_sun_aries(self, d10_rows):
-        """D10 Sun in Aries — FORENSIC ref for career/professional sector."""
+        """D10 Sun in Aries — FORENSIC ref §3.6 for career/professional sector."""
         sun = next(r for r in d10_rows if r.graha == "Sun")
         assert sun.sign == "Aries", f"D10 Sun expected Aries, got {sun.sign}"
 
