@@ -237,13 +237,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: pending
-    fix_attempts: 0
+    status: green
+    fix_attempts: 2
     spent_usd: 0.00
-    gate1_at: null
-    gate2_at: null
-    gate3_at: null
+    gate1_at: "2026-06-03T14:00:00+05:30"
+    gate2_at: "2026-06-03T20:11:00+05:30"
+    gate3_at: "2026-06-03T20:12:00+05:30"
     parked_reason: null
+    gate3_notes: "65/65 unit tests pass. chart_sensitive_points table: point_name+longitude+sign+house+source_citation all non-null. 7 upagrahas (Gulika/Mandi/Dhuma/Vyatipata/Parivesha/Indrachapa/Upaketu) present. A1..A12 full arudha set (15 rows incl D9/D10). Upapada (ARD.UL, Gemini H3) and Darapada (ARD.A7, Aquarius H11) explicitly named. Gulika longitude non-null: Gemini 13@57 (FORENSIC §11.1 row 1). query_sensitive_points returns source field (FORENSIC_ASTROLOGICAL_DATA_v8_0.md §11-§13 JH authoritative) + per-row source_section as provenance. PR #199 pushed, auto-merge enabled."
 
   - id: GA-1-7
     asset_id: ganita.panchanga
