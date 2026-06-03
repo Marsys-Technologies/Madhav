@@ -3163,7 +3163,7 @@
       "produced_during": "M5-BRAHMA-DESIGN",
       "note": "Build-Workflow Guarantor Swarm charter",
       "channel": "none",
-      "fingerprint_sha256": "76f90eeb2d85bbe5e56a6f7843f3b557186cca2ecfc232f7c735dd443ec10df0",
+      "fingerprint_sha256": "a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19",
       "last_verified_session": "BRAHMA-TEARDOWN-RECONCILE",
       "last_verified_on": "2026-06-02"
     },
@@ -3182,7 +3182,7 @@
       "produced_during": "M5-BRAHMA-DESIGN",
       "note": "Infra decommission-vs-realign decision (LOCKED)",
       "channel": "none",
-      "fingerprint_sha256": "3ba24805bf23a686bf153903c59bf004879890424fab4c4b7939febce8bac5c4",
+      "fingerprint_sha256": "9eee20d44dd238dce7cd000b5a96a192b702435abaf8ff1a401ba93c34c62f46",
       "last_verified_session": "BRAHMA-TEARDOWN-RECONCILE",
       "last_verified_on": "2026-06-02"
     },
@@ -3201,7 +3201,7 @@
       "produced_during": "M5-BRAHMA-DESIGN",
       "note": "Current-vs-Brahma GCP cost comparison",
       "channel": "none",
-      "fingerprint_sha256": "633d084fe9d43b5807e63c3ea123244deddf83fc9716634b5c3ac203bd511dbd",
+      "fingerprint_sha256": "3936a39c0595ff9292b85b829fff3d7eee1448c61eb5847477a63f24116ee14c",
       "last_verified_session": "BRAHMA-TEARDOWN-RECONCILE",
       "last_verified_on": "2026-06-02"
     },
@@ -3220,7 +3220,7 @@
       "produced_during": "M5-BRAHMA-DESIGN",
       "note": "Gated infra provisioning runbook for Antigravity execution",
       "channel": "none",
-      "fingerprint_sha256": "df1a4dab233dc39bfdbd5a7b19dc3b7380d6c0a6b51c0fef969ac1365df86a17",
+      "fingerprint_sha256": "cc3a531e886ccc2d8e50cab75276aca4e4d663cbcf54e46cf868174ccb7d7078",
       "last_verified_session": "BRAHMA-TEARDOWN-RECONCILE",
       "last_verified_on": "2026-06-02"
     }
