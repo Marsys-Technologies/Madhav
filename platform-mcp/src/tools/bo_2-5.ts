@@ -116,6 +116,13 @@ export interface LensQueryResult {
   }
   total_returned: number
   rows: ConcordanceRow[] | ContradictionRow[] | NegativeSpaceRow[] | SalienceRow[] | pg.QueryResultRow[]
+  provenance_envelope?: {
+    source: string
+    asset: string
+    lens: string
+    chart_id: string
+    computed_at: string
+  }
 }
 
 // ── Core query functions ───────────────────────────────────────────────────────

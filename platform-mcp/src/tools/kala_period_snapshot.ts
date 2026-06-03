@@ -181,8 +181,8 @@ export async function computePeriodSnapshot(
            LIMIT 1`,
           [chartId, snapshotDate]
         )
-        if (tRes.rows.length > 0 && tRes.rows[0].transit_positions) {
-          const raw = tRes.rows[0].transit_positions
+        if (tRes.rows.length > 0 && tRes.rows[0]!.transit_positions) {
+          const raw = tRes.rows[0]!.transit_positions
           transitPositions =
             typeof raw === 'string' ? (JSON.parse(raw) as Record<string, number>) : (raw as Record<string, number>)
         }
