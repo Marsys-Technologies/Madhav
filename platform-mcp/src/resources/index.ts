@@ -22,6 +22,7 @@ import { registerCapabilities } from './capabilities.js'
 import { registerSchoolConventions } from './school_conventions.js'
 import { registerChartBundleResource } from './chart_bundle_resource.js'
 import { registerMultiAyanamshaResource } from './multi_ayanamsha_resource.js'
+import { registerClassicalTextsResource } from './classical_texts_resource.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -66,4 +67,9 @@ export function registerResources(server: McpServer): void {
   //    Dynamic resource template marsys://multi-ayanamsha/{chart_id}.
   //    INF11-S1 [BUILD-ORCH-J-03]
   registerMultiAyanamshaResource(server)
+
+  // 8. classical-texts: verse-addressable corpus metadata per text_key
+  //    Dynamic resource template marsys://classical-texts/{text_key}.
+  //    brahmagyan.texts delta build 2026-06-03
+  registerClassicalTextsResource(server)
 }

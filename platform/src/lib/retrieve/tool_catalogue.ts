@@ -1,15 +1,20 @@
 /**
- * tool_catalogue.ts — CLEAN SLATE STUB
+ * tool_catalogue.ts — Tool Catalogue (Brahma delta build 2026-06-03)
  *
- * All tools removed as part of legacy-teardown (feature/legacy-teardown).
- * buildChatToolsFromNames returns []; normalizeInputSchema preserved.
- * Rebuild per layer during the Layer-0 → Layer-3 arc.
+ * Rebuilding from clean-slate stub. Wires read_classical_text as the first
+ * entry. When the Layer-0 → Layer-3 arc adds further tools, append to
+ * CATALOGUE below.
+ *
+ * buildChatToolsFromNames returns ChatTool[] filtered from contract registry by name.
+ * Unknown names are silently excluded (no throw).
  */
 
 // Re-export ChatTool from providers/types so run_adapter_dispatch.ts and
 // provider adapters share the same structural type for their tools arrays.
 export type { ChatTool } from '@/lib/providers/types'
 import type { ChatTool } from '@/lib/providers/types'
+import { getContractNames, getContract } from '@/lib/contract/registry'
+import { zodToJsonSchema } from '@/lib/contract/json_schema'
 
 export type NormalizedSchema = {
   type: 'object'
@@ -34,6 +39,20 @@ export function normalizeInputSchema(raw: Record<string, unknown> | null | undef
   return result
 }
 
-export function buildChatToolsFromNames(_names: string[]): ChatTool[] {
-  return []
+/**
+ * Returns ChatTool descriptors for the requested canonical_names.
+ * Names not in the contract registry are excluded without error.
+ */
+export function buildChatToolsFromNames(names: string[]): ChatTool[] {
+  return names
+    .filter(n => getContractNames().includes(n))
+    .map(n => {
+      const contract = getContract(n)!
+      const rawSchema = zodToJsonSchema(contract.input_schema)
+      return {
+        name: contract.canonical_name,
+        description: contract.description,
+        inputSchema: normalizeInputSchema(rawSchema as Record<string, unknown>),
+      } satisfies ChatTool
+    })
 }
