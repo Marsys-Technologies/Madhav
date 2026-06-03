@@ -15,8 +15,8 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: "2026-06-03T00:00:00+05:30"
-  last_updated: "2026-06-03T19:57:00+05:30"
-  batch_count: 4
+  last_updated: "2026-06-03T21:30:00+05:30"
+  batch_count: 5
 
 budget:
   total_spent_usd: 0.00
@@ -24,20 +24,21 @@ budget:
 
 queue_summary:
   total_sessions: 45
-  # Breakdown after Batch 4:
-  #   green (complete) : 11  (BG-0-2, BG-0-8, GA-1-8 pre-existing + BG-0-3, BG-0-5, BG-0-4, BG-0-7 B3 + BG-0-1, GA-1-1, GA-1-3, GA-1-7 newly green B4)
-  #   gate1_pass       : 2   (GA-1-2 gate1_pass; GA-1-4 gate1_pass — still awaiting Gate-3)
-  #   in_progress      : 10  (BG-0-6 parked; GA-1-2,4 gate1_pass; GA-1-5 fix_attempts=2; GA-1-6 gate1_pass; BO-2-1..4 L2 Wave-1 built)
-  #   pending          : 25  (BG-L0-VERIFY, GA-L1-VERIFY, all L2 Wave-2+, L3–L5 untouched)
+  # Breakdown after Batch 5:
+  #   green (complete) : 15  (BG-0-1/2/3/4/5/7/8, BG-L0-VERIFY, GA-1-1/3/6/7/8, BO-2-1, BO-2-3)
+  #   in_progress      : 9   (GA-1-2, GA-1-4, GA-1-5 fix pending; BO-2-2/4 gate1_pass awaiting Gate-3; BO-2-5/6/7/8 L2 Wave-2 built)
+  #   pending          : 20  (GA-L1-VERIFY; BO-L2-VERIFY; L3–L5 untouched; BO-2-8 blocked on BO-2-5)
   #   parked           : 1   (BG-0-6 quality gate failed)
-  #   L0 layer complete: true (all L0 assets green; BG-L0-VERIFY promoted to green)
-  complete: 12
-  in_progress: 10
+  #   L0 layer complete: true
+  #   L1 layer complete: false (GA-1-2/4/5 still failing Gate-1)
+  complete: 15
+  in_progress: 9
   parked: 1
-  pending: 24
+  pending: 20
   gate1_pass: 0
   layers_complete: [L0]
   layers_in_progress: [L1, L2]
+  last_updated: "2026-06-03T21:30:00+05:30"
 
 # Per-asset gate state
 assets:
@@ -269,14 +270,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: gate1_pass          # Gate-1 PASS Batch 4 attempt 2; awaiting Gate-3
+    status: green               # Gate-1 PASS Batch 4; Gate-3 GREEN Batch 5
     fix_attempts: 2
     spent_usd: 0.00
     gate1_at: "2026-06-03T19:57:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T21:30:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — Gate-1 PASS; Gate-3 pending Batch 5."
+    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — Gate-1 PASS. Gate-3 GREEN Batch 5."
 
   - id: GA-1-7
     asset_id: ganita.panchanga
@@ -325,14 +326,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-L1-VERIFY, BG-0-6, BG-0-7]
-    status: in_progress         # built Batch 4; Gate-1 review pending Batch 5
+    status: green               # Gate-1 PASS + Gate-3 GREEN Batch 5
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T21:30:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T21:30:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 4 (MSR signals). Gate-1 review Batch 5."
+    build_note: "Built Batch 4 (MSR signals). Gate-1 PASS + Gate-3 GREEN Batch 5."
 
   - id: BO-2-2
     asset_id: bodha.graph
@@ -340,14 +341,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-L1-VERIFY, BG-0-6, BG-0-7]
-    status: in_progress         # built Batch 4; Gate-1 review pending Batch 5
+    status: in_progress         # Gate-1 PASS Batch 5; Gate-3 pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T21:30:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 4 (CGM signal graph). Gate-1 review Batch 5."
+    build_note: "Built Batch 4 (CGM signal graph). Gate-1 PASS Batch 5; Gate-3 pending Batch 6."
 
   - id: BO-2-3
     asset_id: bodha.domain_links
@@ -355,14 +356,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-L1-VERIFY]
-    status: in_progress         # built Batch 4; Gate-1 review pending Batch 5
+    status: green               # Gate-1 PASS + Gate-3 GREEN Batch 5
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T21:30:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T21:30:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 4 (CDLM cross-domain links). Gate-1 review Batch 5."
+    build_note: "Built Batch 4 (CDLM cross-domain links). Gate-1 PASS + Gate-3 GREEN Batch 5."
 
   - id: BO-2-4
     asset_id: bodha.resonance
@@ -370,14 +371,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-L1-VERIFY]
-    status: in_progress         # built Batch 4; Gate-1 review pending Batch 5
+    status: in_progress         # Gate-1 PASS Batch 5; Gate-3 pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T21:30:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 4 (RM resonance). Gate-1 review Batch 5."
+    build_note: "Built Batch 4 (RM resonance). Gate-1 PASS Batch 5; Gate-3 pending Batch 6."
 
   - id: BO-2-5
     asset_id: bodha.lenses
@@ -385,13 +386,14 @@ assets:
     wave: 2
     parallel_eligible: false
     depends_on: [BO-2-1, BO-2-2]
-    status: pending
+    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
+    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6."
 
   - id: BO-2-6
     asset_id: bodha.remediation
@@ -399,13 +401,14 @@ assets:
     wave: 2
     parallel_eligible: true
     depends_on: [BO-2-1, BG-0-7]
-    status: pending
+    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
+    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6."
 
   - id: BO-2-7
     asset_id: bodha.embeddings
@@ -413,13 +416,14 @@ assets:
     wave: 2
     parallel_eligible: true
     depends_on: [BO-2-1, BG-0-4]
-    status: pending
+    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
+    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6."
 
   - id: BO-2-8
     asset_id: bodha.holistic_bundle
@@ -427,13 +431,14 @@ assets:
     wave: 3
     parallel_eligible: false
     depends_on: [BO-2-1, BO-2-2, BO-2-3, BO-2-4, BO-2-5]
-    status: pending
+    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
+    build_note: "Built Batch 5 (L2 Wave-3). Gate-1 review Batch 6."
 
   - id: BO-L2-VERIFY
     asset_id: bodha.layer_complete
@@ -880,3 +885,46 @@ decision_audit:
       - asset: BO-2-4  # bodha.resonance
         decision: built_ungated
         note: "L2 Wave-1; built Batch 4 (RM resonance); Gate-1 deferred to Batch 5; status: in_progress"
+
+  - batch: 5
+    timestamp: "2026-06-03T21:30:00+05:30"
+    events:
+      - asset: GA-1-6  # ganita.sensitive_points
+        decision: gate3_pass
+        note: "L1 Wave-1; Gate-3 GREEN Batch 5; status: green. Total L1 green: GA-1-1/3/6/7/8."
+      - asset: BO-2-1  # bodha.signals
+        decision: gate3_pass
+        note: "L2 Wave-1; Gate-1 PASS + Gate-3 GREEN Batch 5; status: green."
+      - asset: BO-2-2  # bodha.graph
+        decision: gate1_pass
+        note: "L2 Wave-1; Gate-1 PASS Batch 5; Gate-3 pending Batch 6; status: in_progress."
+      - asset: BO-2-3  # bodha.domain_links
+        decision: gate3_pass
+        note: "L2 Wave-1; Gate-1 PASS + Gate-3 GREEN Batch 5; status: green."
+      - asset: BO-2-4  # bodha.resonance
+        decision: gate1_pass
+        note: "L2 Wave-1; Gate-1 PASS Batch 5; Gate-3 pending Batch 6; status: in_progress."
+      - asset: BO-2-5  # bodha.lenses
+        decision: built_ungated
+        note: "L2 Wave-2; built Batch 5; Gate-1 deferred to Batch 6; status: in_progress."
+      - asset: BO-2-6  # bodha.remediation
+        decision: built_ungated
+        note: "L2 Wave-2; built Batch 5; Gate-1 deferred to Batch 6; status: in_progress."
+      - asset: BO-2-7  # bodha.embeddings
+        decision: built_ungated
+        note: "L2 Wave-2; built Batch 5; Gate-1 deferred to Batch 6; status: in_progress."
+      - asset: BO-2-8  # bodha.holistic_bundle
+        decision: built_ungated
+        note: "L2 Wave-3; built Batch 5; Gate-1 deferred to Batch 6; status: in_progress."
+      - asset: GA-1-2  # ganita.positions
+        decision: gate1_fail
+        note: "L1 Wave-1; Gate-1 still failing Batch 5; fix_attempts=3; L1 not complete."
+      - asset: GA-1-4  # ganita.dashas
+        decision: gate1_fail
+        note: "L1 Wave-1; Gate-1 still failing Batch 5; fix_attempts=3; L1 not complete."
+      - asset: GA-1-5  # ganita.strength
+        decision: gate1_fail
+        note: "L1 Wave-1; Gate-1 still failing Batch 5; fix_attempts=2; L1 not complete."
+      - asset: GA-L1-VERIFY  # ganita.layer_complete
+        decision: blocked
+        note: "L1 not complete — GA-1-2/4/5 still failing Gate-1; GA-L1-VERIFY remains pending."
