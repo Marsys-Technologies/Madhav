@@ -144,11 +144,38 @@ export function registerRmWalk(server: McpServer, principal: Principal): void {
         }
       }
 
+      // Gate-1 contract: rm_walk returns {elements: [...], provenance_envelope: {...}}
+      // result.envelope.result may be a flat array or already shaped; normalise here.
+      const raw = result.envelope.result
+      const elements: unknown[] = Array.isArray(raw)
+        ? raw
+        : (raw as { elements?: unknown[] })?.elements ?? []
+      const provenanceEnvelope = Array.isArray(raw)
+        ? {
+            source_citation: elements.length > 0
+              ? (elements[0] as { source_citation?: string })?.source_citation ?? null
+              : null,
+            constituents_sample: elements.length > 0
+              ? (elements[0] as { constituents?: unknown[] })?.constituents ?? []
+              : [],
+            element_count: elements.length,
+            asset_id: 'BO-2-4',
+            tool: 'rm_walk',
+          }
+        : ((raw as { provenance_envelope?: unknown })?.provenance_envelope ?? {})
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result.envelope.result, null, 2),
+            text: JSON.stringify(
+              {
+                elements,
+                provenance_envelope: provenanceEnvelope,
+              },
+              null,
+              2
+            ),
           },
         ],
       }

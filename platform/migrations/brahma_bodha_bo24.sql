@@ -27,16 +27,17 @@ CREATE TABLE IF NOT EXISTS bodha_resonance (
     element_id      TEXT        NOT NULL,   -- e.g. 'RM.01', 'RM.21A', 'RM.35'
 
     -- Element classification
+    -- Gate-1 contract enum: yoga | stellium | mutual_aspect | exchange | parivartana
+    -- (RM resonance elements describe yoga/stellium/aspect/exchange/parivartana patterns,
+    --  not raw planetary categories; 'other' kept as safe fallback for future types)
     element_type    TEXT        NOT NULL
                     CHECK (element_type IN (
-                        'planet',     -- graha elements (RM.01 Mercury, RM.02 Saturn, …)
-                        'house',      -- bhava elements (RM.10 Ascendant, RM.13 4H, …)
-                        'lagna',      -- special lagna / sensitive points (RM.11 AL, RM.12 UL, …)
-                        'dasha',      -- temporal activation (RM.17 Mercury MD, RM.18 Saturn AD, …)
-                        'yoga',       -- yoga stacks (RM.28 Saraswati-Lakshmi-Raja, RM.29 Devata, …)
-                        'meta',       -- meta / paradox (RM.30 Central Paradox)
-                        'cross_varga',-- cross-varga resonances (RM.31–RM.35)
-                        'other'       -- fallback for unclassified
+                        'yoga',           -- yoga stacks (RM.28 Saraswati-Lakshmi-Raja, RM.29, …)
+                        'stellium',       -- multi-planet conjunctions in one house/sign
+                        'mutual_aspect',  -- reciprocal drishti between two planets
+                        'exchange',       -- nakshatra/house exchange (parivartana variant)
+                        'parivartana',    -- sign-lord exchange (rashi parivartana yoga)
+                        'other'           -- fallback for unclassified resonance types
                     )),
 
     -- Resonance metrics

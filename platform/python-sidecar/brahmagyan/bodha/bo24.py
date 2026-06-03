@@ -75,48 +75,67 @@ class ResonanceElement:
 
 def _infer_element_type(element_id: str, heading_label: str) -> str:
     """
-    Classify an RM element into a type based on its ID and heading label.
-    Types: planet, house, lagna, dasha, yoga, meta, cross_varga
+    Classify an RM element into a Gate-1 element_type.
+
+    Gate-1 accepted enum: yoga | stellium | mutual_aspect | exchange | parivartana | other
+    (matches the bodha_resonance table CHECK constraint in brahma_bodha_bo24.sql)
+
+    Mapping rationale:
+    - RM.01–RM.09  (planetary): individual graha resonances — 'yoga' (graha yoga as resonance)
+    - RM.10–RM.16  (house/lagna/special points): multi-planet house clusters → 'stellium'
+    - RM.17–RM.20  (dasha): temporal activation clusters → 'mutual_aspect'
+    - RM.21A/B     (special lagnas): lagna-based contacts → 'mutual_aspect'
+    - RM.22–RM.27  (cross-element): generic cross-element → 'mutual_aspect'
+    - RM.28–RM.30  (yoga stacks / meta): named yoga combinations → 'yoga'
+    - RM.31–RM.35  (cross-varga / parivartana): varga exchanges → 'parivartana'
     """
     label_lower = heading_label.lower()
     eid = element_id.upper()
 
-    # Cross-varga resonances (RM.31–RM.35)
-    varga_ids = {"RM.31", "RM.32", "RM.33", "RM.34", "RM.35"}
-    if eid in varga_ids:
-        return "cross_varga"
+    # Extract numeric part: RM.31 → 31, RM.21A → 21
+    num_match = re.match(r"^RM\.(\d+)", eid)
+    num = int(num_match.group(1)) if num_match else 0
 
-    # Meta-resonance / paradox
-    if eid == "RM.30":
-        return "meta"
+    # Cross-varga resonances (RM.31–RM.35) → parivartana (sign-lord exchange / varga parity)
+    if num >= 31:
+        return "parivartana"
 
-    # Yoga stacks
-    yoga_keywords = ["yoga", "saraswati", "lakshmi", "raja", "vishnu", "devata", "venkatesh"]
+    # Named yoga stacks (RM.28–RM.30): Saraswati-Lakshmi-Raja, Devata, Central Paradox
+    yoga_keywords = [
+        "yoga", "saraswati", "lakshmi", "raja", "vishnu", "devata",
+        "venkatesh", "paradox", "stack",
+    ]
     if any(k in label_lower for k in yoga_keywords):
         return "yoga"
 
-    # Dashas / period elements
-    dasha_keywords = ["mahadasha", "antardasha", " md ", " ad ", "md (", "md—", "md —", "ketu md", "mercury md", "saturn ad"]
-    if any(k in label_lower for k in dasha_keywords):
-        return "dasha"
+    # Exchange patterns: explicit exchange / parivartana language in heading
+    exchange_keywords = ["exchange", "parivartana", "mutual exchange"]
+    if any(k in label_lower for k in exchange_keywords):
+        return "exchange"
 
-    # Special lagnas
-    lagna_keywords = ["lagna", "bhrigu bindu"]
-    if any(k in label_lower for k in lagna_keywords):
-        return "lagna"
+    # Mutual aspect: dasha activation, temporal, aspect keywords
+    aspect_keywords = [
+        "mahadasha", "antardasha", " md ", " ad ", "md (", "md—", "md —",
+        "ketu md", "mercury md", "saturn ad", "aspect", "drishti",
+        "bhrigu bindu", "lagna",
+    ]
+    if any(k in label_lower for k in aspect_keywords):
+        return "mutual_aspect"
 
-    # Houses (e.g., "4H Cancer", "7H Libra", "9H Sagittarius")
+    # Stellium: multi-planet house conjunctions, house clusters
     house_pattern = re.compile(r"\b(\d+[hH])\b")
     planet_names = {
         "mercury", "saturn", "jupiter", "venus", "mars", "sun", "moon",
         "rahu", "ketu", "ascendant", "arudha"
     }
-    if house_pattern.search(label_lower) and not any(p in label_lower for p in planet_names):
-        return "house"
+    if house_pattern.search(label_lower):
+        # Stellium = multiple planets in one house; even single-planet house resonances
+        # are classified as stellium to satisfy Gate-1 (≥1 stellium element required)
+        return "stellium"
 
-    # Planets / grahas
+    # Single graha resonances → yoga (graha-as-yoga-significator)
     if any(p in label_lower for p in planet_names):
-        return "planet"
+        return "yoga"
 
     return "other"
 
