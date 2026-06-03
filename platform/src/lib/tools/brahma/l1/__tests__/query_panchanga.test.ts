@@ -34,10 +34,12 @@ import {
 // FORENSIC ground truth for native 1984-02-05 10:43 IST Bhubaneswar
 // Authoritative source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §15 Panchanga DNA
 // Phase 4C FORENSIC spot-check PASS 5/5 (2026-05-21):
-//   tithi=Shukla Tritiya (3), vara=Ravivara (1), nakshatra=Purva Bhadrapada (25),
-//   yoga=Shiva (14), karana=Garaja (5)
-// nakshatra_index uses PyJHora 1-based convention (1=Ashwini..27=Revati)
-// source_citation per GA-1-7 contract: "PyJHora / SwissEph DE441"
+//   tithi=Shukla Tritiya (3), vara=Ravivara (1=Sunday),
+//   nakshatra=Purva Bhadrapada (index=25, 1-based per PyJHora: 1=Ashwini..27=Revati),
+//   yoga=Shiva (num=20, 1-based per PyJHora yoga table: 1=Vishkambha..20=Shiva..27=Vaidhriti),
+//   karana=Garaja (num=5, 1-based per PyJHora: 1=Bava..5=Garaja..11=Kimstughna)
+// CORRECTION (2026-06-03 attempt 2): yoga_num=20 (not 14); Shiva is the 20th yoga
+//   in the canonical PyJHora list. Harshana is 14th. FORENSIC §15 confirmed.
 const FORENSIC_ROW = {
   chart_id: 'native-1984-chart-uuid',
   build_id: 'brahma-ga-1-7-test',
@@ -51,7 +53,7 @@ const FORENSIC_ROW = {
   moon_nakshatra_index: 25,
   moon_nakshatra_pada: 2,
   moon_longitude_deg: 335.6789,
-  yoga_num: 14,
+  yoga_num: 20,
   yoga_name: 'Shiva',
   karana_num: 5,
   karana_name: 'Garaja',
@@ -96,10 +98,10 @@ describe('queryPanchanga — FORENSIC spot-check (native 1984-02-05)', () => {
     expect(result.nakshatra.pada).toBe(2)
   })
 
-  it('returns yoga=Shiva (num 14)', async () => {
+  it('returns yoga=Shiva (num 20, canonical PyJHora 1-based index)', async () => {
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.yoga.name).toBe('Shiva')
-    expect(result.yoga.num).toBe(14)
+    expect(result.yoga.num).toBe(20)
   })
 
   it('returns karana=Garaja', async () => {
