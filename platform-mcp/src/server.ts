@@ -26,6 +26,8 @@ import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 import { registerMimamsaLelIntakeTool } from './tools/mimamsa_lel_intake.js'
 import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
+import { registerHolisticBundleTool } from './tools/bo_2-8.js'
+import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
 
 const app = express()
 app.use(express.json())
@@ -58,13 +60,20 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
+  // L2 Bodha tools
+  registerHolisticBundleTool(server, principal)
   // L4 Phala tools
-  registerMitigationMapTool(server, principal)
+  registerPhalaEventAnchorsTool(server)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerMitigationMapTool(server as any, principal)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerMuhurtaFinder(server as any, () => principal)
   registerPhalaOutlookTool(server)
-  registerMuhurtaFinder(server, () => principal)
   // L5 Mīmāṃsā tools
-  registerMimamsaLelIntakeTool(server)
-  registerMimamsaOutcomeTool(server)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerMimamsaLelIntakeTool(server as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerMimamsaOutcomeTool(server as any)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
