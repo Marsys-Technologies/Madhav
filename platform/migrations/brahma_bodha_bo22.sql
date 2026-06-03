@@ -7,15 +7,12 @@
 --   gate:    valenced edges present; traversal returns provenance; no self-loops
 --   FORENSIC: ≥5 edges for native chart (1984-02-05 / chart_id = 362f9f17-...)
 --
--- Edge type vocabulary (valenced — reinforce/contradict/modulate):
---   DISPOSITED_BY    — planet X is disposited by planet Y (sign-lord chain)
---   NAKSHATRA_LORD_IS — planet X's nakshatra is lorded by planet Y
---   ASPECTS_3RD      — Saturn's 3rd-house special aspect
---   ASPECTS_4TH      — Mars' 4th-house special aspect
---   ASPECTS_8TH      — Mars' 8th-house special aspect
---   REINFORCES       — two signals amplify each other's theme
---   CONTRADICTS      — two signals pull in opposite directions (contradiction hub)
---   MODULATES        — one signal contextually modulates another
+-- Edge type vocabulary (Gate-1 contract enum — valenced only):
+--   reinforce  — two signals amplify each other's theme
+--   contradict — two signals pull in opposite directions (contradiction hub)
+--   modulate   — one signal contextually modulates another
+--   amplify    — one signal intensifies another's expression
+--   suppress   — one signal dampens or blocks another
 --
 -- Source: 22 edges from 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json
 --         (Batch 2 reconciled, 0 P2 violations, session Madhav_M2A_Exec_5/6)
@@ -38,7 +35,10 @@ CREATE TABLE IF NOT EXISTS bodha_graph (
   computed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT bodha_graph_pk PRIMARY KEY (edge_id),
-  CONSTRAINT bodha_graph_no_self_loops CHECK (from_signal_id <> to_signal_id)
+  CONSTRAINT bodha_graph_no_self_loops CHECK (from_signal_id <> to_signal_id),
+  CONSTRAINT bodha_graph_edge_type_enum CHECK (
+    edge_type IN ('reinforce', 'contradict', 'modulate', 'amplify', 'suppress')
+  )
 );
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
