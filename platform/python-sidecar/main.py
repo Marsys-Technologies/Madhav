@@ -53,6 +53,20 @@ app.include_router(panchang_router.router, prefix="/api/compute", dependencies=[
 # Phase 4C-6 — Muhurat Finder endpoint
 app.include_router(muhurat_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# BRAHMA PH-4-4 — phala.muhurta electional finder (inverts Phala prediction engine)
+from brahmagyan.phala.muhurta import router as phala_muhurta_router
+app.include_router(phala_muhurta_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# BRAHMA L4 Phala — event anchors (PH-4-1) + composite outlook (PH-4-5)
+from brahmagyan.phala.anchors import router as phala_anchors_router
+from brahmagyan.phala.outlook import router as phala_outlook_router
+app.include_router(phala_anchors_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+app.include_router(phala_outlook_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# BRAHMA MI-5-2 — Mīmāṃsā L5 prediction ledger (log_prediction + record_outcome)
+from brahmagyan.mimamsa.prediction_ledger import router as mimamsa_prediction_router
+app.include_router(mimamsa_prediction_router, prefix="/api/brahma", dependencies=[Depends(verify_api_key)])
+
 
 @app.get("/health")
 def health():

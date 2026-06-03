@@ -23,6 +23,9 @@ import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
 import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
+import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
+import { registerMimamsaLelIntakeTool } from './tools/mimamsa_lel_intake.js'
+import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
 
 const app = express()
 app.use(express.json())
@@ -58,6 +61,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // L4 Phala tools
   registerMitigationMapTool(server, principal)
   registerPhalaOutlookTool(server)
+  registerMuhurtaFinder(server, () => principal)
+  // L5 Mīmāṃsā tools
+  registerMimamsaLelIntakeTool(server)
+  registerMimamsaOutcomeTool(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
