@@ -417,6 +417,13 @@ export function registerBodhaLensesTool(server: McpServer): void {
           },
           total_returned: rows.length,
           rows: rows as LensQueryResult['rows'],
+          provenance_envelope: {
+            source: 'bodha.lenses',
+            asset: 'BO-2-5',
+            lens: input.lens ?? 'concordance',
+            chart_id: input.chart_id,
+            computed_at: new Date().toISOString(),
+          },
         }
 
         return {
