@@ -70,7 +70,7 @@ COMMENT ON FUNCTION bodha_concordance_lens(TEXT, NUMERIC) IS
 -- Surfaces signal PAIRS within the same domain where one is benefic and the other
 -- malefic (or context-dependent vs. malefic), indicating genuine interpretive tension.
 -- Each pair carries both signal IDs, the domain, the edge via bodha_graph if it
--- exists (CONTRADICTS edge), and a tension_score = product of confidences.
+-- exists (contradict edge), and a tension_score = product of confidences.
 
 CREATE OR REPLACE FUNCTION bodha_contradiction_lens(
     p_chart_id  TEXT,
@@ -119,7 +119,7 @@ AS $$
         )
     LEFT JOIN public.bodha_graph g
         ON  g.chart_id       = a.chart_id
-        AND g.edge_type      = 'CONTRADICTS'
+        AND g.edge_type      = 'contradict'
         AND (
               (g.from_signal_id = a.signal_id AND g.to_signal_id = b.signal_id)
            OR (g.from_signal_id = b.signal_id AND g.to_signal_id = a.signal_id)
@@ -131,7 +131,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION bodha_contradiction_lens(TEXT, NUMERIC) IS
-'BO-2-5 contradiction lens: surfaces same-domain signal pairs with opposing valence (benefic vs malefic). tension_score = product of confidences x saliencies. Links to bodha_graph CONTRADICTS edges when present. Native chart test: must return >=1 row (at least one contradiction-hub).';
+'BO-2-5 contradiction lens: surfaces same-domain signal pairs with opposing valence (benefic vs malefic). tension_score = product of confidences x saliencies. Links to bodha_graph contradict edges when present. Native chart test: must return >=1 row (at least one contradiction-hub).';
 
 
 -- ── §3 — Negative Space Lens ──────────────────────────────────────────────────
@@ -258,6 +258,8 @@ RETURNS TABLE (
     composite_salience  NUMERIC,
     claim_text          TEXT,
     source_citation     TEXT,
+    source_l1_fact_ids  TEXT[],
+    source_l0_rule_id   TEXT,
     grounding_status    TEXT
 )
 LANGUAGE sql
@@ -285,7 +287,7 @@ AS $$
             COUNT(*)          AS reinforce_count
         FROM public.bodha_graph g
         WHERE g.chart_id  = p_chart_id
-          AND g.edge_type = 'REINFORCES'
+          AND g.edge_type = 'reinforce'
         GROUP BY g.from_signal_id
     )
     SELECT
@@ -313,6 +315,8 @@ AS $$
         )                                                   AS composite_salience,
         s.claim_text,
         s.source_citation,
+        s.source_l1_fact_ids,
+        s.source_l0_rule_id,
         s.grounding_status
     FROM public.bodha_signals s
     LEFT JOIN domain_weights dw ON dw.domain = s.domain
@@ -325,7 +329,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION bodha_salience_lens(TEXT, NUMERIC, NUMERIC, INT) IS
-'BO-2-5 salience lens: ranks signals by composite_salience = confidence x base_salience x (1+reinforcement_count/10) x domain_weight. Domain weights: career=1.0, wealth=0.9, ..., house_domain=0.65. Signals reinforced by bodha_graph REINFORCES edges rank higher.';
+'BO-2-5 salience lens: ranks signals by composite_salience = confidence x base_salience x (1+reinforcement_count/10) x domain_weight. Domain weights: career=1.0, wealth=0.9, ..., house_domain=0.65. Signals reinforced by bodha_graph reinforce edges rank higher.';
 
 
 -- ── §5 — Unified entry point: query_signals with lens parameter ───────────────
@@ -403,7 +407,7 @@ COMMIT;
 --
 -- Population: no bootstrap needed — all functions are computed views over existing data.
 --   bodha_signals (BO-2-1) must be seeded first.
---   bodha_graph (BO-2-2) must be seeded for REINFORCES/CONTRADICTS edges to be used
+--   bodha_graph (BO-2-2) must be seeded for reinforce/contradict edges to be used
 --   in salience and contradiction lenses respectively.
 --
 -- MCP tool: platform-mcp/src/tools/bo_2-5.ts
