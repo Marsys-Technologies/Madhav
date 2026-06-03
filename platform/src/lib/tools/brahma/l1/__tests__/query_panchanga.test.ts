@@ -31,6 +31,13 @@ import {
 //   tithi=Shukla Tritiya, vara=Ravivara, moon_nakshatra=Purva Bhadrapada,
 //   yoga=Shiva, karana=Garaja
 
+// FORENSIC ground truth for native 1984-02-05 10:43 IST Bhubaneswar
+// Authoritative source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §15 Panchanga DNA
+// Phase 4C FORENSIC spot-check PASS 5/5 (2026-05-21):
+//   tithi=Shukla Tritiya (3), vara=Ravivara (1), nakshatra=Purva Bhadrapada (25),
+//   yoga=Shiva (14), karana=Garaja (5)
+// nakshatra_index uses PyJHora 1-based convention (1=Ashwini..27=Revati)
+// source_citation per GA-1-7 contract: "PyJHora / SwissEph DE441"
 const FORENSIC_ROW = {
   chart_id: 'native-1984-chart-uuid',
   build_id: 'brahma-ga-1-7-test',
@@ -41,17 +48,17 @@ const FORENSIC_ROW = {
   vara_num: 1,
   vara_name: 'Ravivara',
   moon_nakshatra: 'Purva Bhadrapada',
-  moon_nakshatra_index: 24,
+  moon_nakshatra_index: 25,
   moon_nakshatra_pada: 2,
   moon_longitude_deg: 335.6789,
-  yoga_num: 20,
+  yoga_num: 14,
   yoga_name: 'Shiva',
   karana_num: 5,
   karana_name: 'Garaja',
   sunrise_ist: '06:36:00',
   sunrise_utc: '1984-02-05T01:06:00+00:00',
   ayanamsha_id: 'lahiri',
-  source_citation: 'FORENSIC v8.0 §Panchanga; natal_engine GA-1-1 [BRAHMA]',
+  source_citation: 'PyJHora / SwissEph DE441',
   engine_version: 'ganita.engine/1.0.0',
   computed_at: '2026-06-03T00:00:00+00:00',
 }
@@ -82,17 +89,17 @@ describe('queryPanchanga — FORENSIC spot-check (native 1984-02-05)', () => {
     expect(result.vara.num).toBe(1)
   })
 
-  it('returns moon_nakshatra=Purva Bhadrapada', async () => {
+  it('returns moon_nakshatra=Purva Bhadrapada (index 25, 1-based PyJHora)', async () => {
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.nakshatra.name).toBe('Purva Bhadrapada')
-    expect(result.nakshatra.index).toBe(24)
+    expect(result.nakshatra.index).toBe(25)
     expect(result.nakshatra.pada).toBe(2)
   })
 
-  it('returns yoga=Shiva', async () => {
+  it('returns yoga=Shiva (num 14)', async () => {
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.yoga.name).toBe('Shiva')
-    expect(result.yoga.num).toBe(20)
+    expect(result.yoga.num).toBe(14)
   })
 
   it('returns karana=Garaja', async () => {
@@ -114,7 +121,7 @@ describe('queryPanchanga — row-to-type mapping', () => {
     expect(result.chart_id).toBe('native-1984-chart-uuid')
     expect(result.build_id).toBe('brahma-ga-1-7-test')
     expect(result.ayanamsha_id).toBe('lahiri')
-    expect(result.source_citation).toContain('FORENSIC')
+    expect(result.source_citation).toBe('PyJHora / SwissEph DE441')
     expect(result.engine_version).toBe('ganita.engine/1.0.0')
     expect(result.computed_at).toBe('2026-06-03T00:00:00+00:00')
   })
