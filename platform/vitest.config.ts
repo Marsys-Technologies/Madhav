@@ -50,7 +50,9 @@ export default defineConfig({
       'src/lib/db/__tests__/migrations.test.ts',
       'src/lib/observatory/__tests__/queries.test.ts',
       // Group E — integration tests requiring live tools (re-enable: L1–L2 tools live)
-      'tests/classical/classical_pipeline_integration.test.ts',
+      // classical_pipeline_integration.test.ts RE-ENABLED: brahmagyan.texts delta build 2026-06-03
+      // classical_text_search_tool + classical_attribution_lookup_tool + classical_disclosure_filter
+      // all created in platform/src/lib/retrieve/ — unblocked [BRAHMA-BG-0-3]
       'tests/integration/test_query_panchanga_e2e.test.ts',
       // Group F — build trigger infra (re-enable: new build job wired, Gate-2)
       'src/app/api/build/__tests__/e2e.test.ts',
