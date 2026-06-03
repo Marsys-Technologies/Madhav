@@ -15,8 +15,8 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: "2026-06-03T00:00:00+05:30"
-  last_updated: "2026-06-03T17:40:00+05:30"
-  batch_count: 2
+  last_updated: "2026-06-03T18:28:00+05:30"
+  batch_count: 3
 
 budget:
   total_spent_usd: 0.00
@@ -24,17 +24,17 @@ budget:
 
 queue_summary:
   total_sessions: 45
-  # Breakdown after Batch 2:
-  #   green (complete) : 3   (BG-0-2, BG-0-8, GA-1-8 — reached gate3_pass this batch)
-  #   gate1_pass       : 4   (BG-0-1, BG-0-3, BG-0-5 from B1 + BG-0-7 gate1 pass / gate3 fail)
-  #   in_progress      : 9   (BG-0-4, BG-0-6 gate1 fail; GA-1-1..4 still fail; GA-1-5,6,7 gate1 fail)
+  # Breakdown after Batch 3:
+  #   green (complete) : 7   (BG-0-2, BG-0-8, GA-1-8 pre-existing + BG-0-3, BG-0-5, BG-0-4, BG-0-7 newly green)
+  #   gate1_pass       : 1   (BG-0-1 still awaiting Gate-2/3)
+  #   in_progress      : 6   (BG-0-6 parked; GA-1-1..4 fix_attempts=2; GA-1-5,6,7 fix_attempts=1)
   #   pending          : 29  (BG-L0-VERIFY, GA-L1-VERIFY, all L2–L5 untouched)
-  #   parked           : 0
-  complete: 3
-  in_progress: 9
-  parked: 0
+  #   parked           : 1   (BG-0-6 quality gate failed)
+  complete: 7
+  in_progress: 6
+  parked: 1
   pending: 29
-  gate1_pass: 4
+  gate1_pass: 1
   layers_complete: []
   layers_in_progress: [L0, L1]
 
@@ -79,13 +79,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: []
-    status: gate1_pass          # built + Gate-1 cleared Batch 1; awaiting Gate-2/3 run
+    status: green               # gate3 PASS Batch 3
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: "2026-06-03T15:22:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T18:28:00+05:30"
     parked_reason: null
+    build_note: "Built Batch 1 (Gate-1 cleared). Gate-3 GREEN Batch 3."
 
   - id: BG-0-5
     asset_id: brahmagyan.ontology
@@ -93,13 +94,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: []
-    status: gate1_pass          # built + Gate-1 cleared Batch 1; awaiting Gate-2/3 run
+    status: green               # gate3 PASS Batch 3
     fix_attempts: 0
     spent_usd: 0.00
     gate1_at: "2026-06-03T15:22:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T18:28:00+05:30"
     parked_reason: null
+    build_note: "Built Batch 1 (Gate-1 cleared). Gate-3 GREEN Batch 3."
 
   # Wave-2 — BG-0-8 gate3 GREEN; BG-0-4, BG-0-6 gate1 fail (Batch 3 fix cycle)
   - id: BG-0-4
@@ -109,14 +111,14 @@ assets:
     parallel_eligible: false
     depends_on: [BG-0-3, BG-0-5]
     gated_sub_step: "embedding-model spike (C4) — must pass before bulk embed"
-    status: in_progress         # gate1 FAIL Batch 2; fix cycle opens Batch 3
-    fix_attempts: 0
+    status: green               # fix applied Batch 3; gate3 PASS
+    fix_attempts: 1
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T18:28:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T18:28:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Batch 3 fix cycle."
+    build_note: "Built Batch 1. Gate-1 FAIL Batch 2. Fix cycle Batch 3 — gate3 GREEN."
 
   - id: BG-0-6
     asset_id: brahmagyan.rules
@@ -126,14 +128,14 @@ assets:
     depends_on: [BG-0-3, BG-0-5]
     gated_sub_step: "gold-standard BPHS extraction pilot — must clear quality bar before full canon"
     spend_cap_override_usd: 1000
-    status: in_progress         # gate1 FAIL Batch 2; fix cycle opens Batch 3
-    fix_attempts: 0
+    status: parked              # quality gate failed Batch 3; awaiting operator resolution
+    fix_attempts: 1
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
-    parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Batch 3 fix cycle."
+    parked_reason: "Quality gate failed Batch 3 — BPHS extraction pilot did not clear required quality bar"
+    build_note: "Built Batch 1. Gate-1 FAIL Batch 2. Fix cycle Batch 3 — quality gate failed; parked."
 
   - id: BG-0-8
     asset_id: brahmagyan.almanac
@@ -157,14 +159,14 @@ assets:
     wave: 3
     parallel_eligible: false
     depends_on: [BG-0-6]
-    status: in_progress         # gate1 PASS Batch 2; gate3 FAIL — Batch 3 fix cycle
-    fix_attempts: 0
+    status: green               # fix applied Batch 3; gate3 PASS
+    fix_attempts: 1
     spent_usd: 0.00
     gate1_at: "2026-06-03T17:40:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T18:28:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 PASS Batch 2; gate3 FAIL — fix cycle Batch 3."
+    build_note: "Built Batch 1. Gate-1 PASS Batch 2; gate3 FAIL. Fix cycle Batch 3 — gate3 GREEN."
 
   # Wave-4 — Layer verify; blocked until all L0 assets reach green
   - id: BG-L0-VERIFY
@@ -186,14 +188,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [BG-L0-VERIFY]
-    status: in_progress         # fix attempt Batch 2 — still failing Gate-1
-    fix_attempts: 1
+    status: in_progress         # fix attempt Batch 3 — still failing Gate-1
+    fix_attempts: 2
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Batch 3 continues."
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-2
     asset_id: ganita.positions
@@ -201,14 +203,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix attempt Batch 2 — still failing Gate-1
-    fix_attempts: 1
+    status: in_progress         # fix attempt Batch 3 — still failing Gate-1
+    fix_attempts: 2
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Batch 3 continues."
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-3
     asset_id: ganita.divisionals
@@ -216,14 +218,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix attempt Batch 2 — still failing Gate-1
-    fix_attempts: 1
+    status: in_progress         # fix attempt Batch 3 — still failing Gate-1
+    fix_attempts: 2
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Batch 3 continues."
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-4
     asset_id: ganita.dashas
@@ -231,14 +233,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix attempt Batch 2 — still failing Gate-1
-    fix_attempts: 1
+    status: in_progress         # fix attempt Batch 3 — still failing Gate-1
+    fix_attempts: 2
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Batch 3 continues."
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-5
     asset_id: ganita.strength
@@ -246,14 +248,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # gate1 scored Batch 2 — FAIL
-    fix_attempts: 0
+    status: in_progress         # fix cycle Batch 3 — still failing Gate-1
+    fix_attempts: 1
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3."
+    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-6
     asset_id: ganita.sensitive_points
@@ -261,14 +263,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # gate1 scored Batch 2 — FAIL
-    fix_attempts: 0
+    status: in_progress         # fix cycle Batch 3 — still failing Gate-1
+    fix_attempts: 1
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3."
+    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-7
     asset_id: ganita.panchanga
@@ -276,14 +278,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # gate1 PASS Batch 2; gate3 FAIL — fix cycle Batch 3
-    fix_attempts: 0
+    status: in_progress         # fix cycle Batch 3 — gate3 still failing
+    fix_attempts: 1
     spent_usd: 0.00
     gate1_at: "2026-06-03T17:40:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 PASS Batch 2; gate3 FAIL — fix cycle Batch 3."
+    build_note: "Built Batch 1. Gate-1 PASS Batch 2; gate3 FAIL. Fix cycle Batch 3 — still fail."
 
   - id: GA-1-8
     asset_id: ganita.facts_store
@@ -681,8 +683,13 @@ deferred:
   - bodha.relational    # needs multi-native data + consent
   - kala.spatial        # relocational specialist module
 
-# Parked log (populated during run; 0 assets parked after Batch 2)
-parked_log: []
+# Parked log (populated during run; 1 asset parked after Batch 3)
+parked_log:
+  - id: BG-0-6
+    asset_id: brahmagyan.rules
+    parked_at: "2026-06-03T18:28:00+05:30"
+    batch: 3
+    reason: "Quality gate failed Batch 3 — BPHS extraction pilot did not clear required quality bar"
 
 # Decision audit — full record
 decision_audit:
@@ -780,3 +787,43 @@ decision_audit:
       - asset: GA-1-8  # ganita.facts_store
         decision: gate3_pass
         note: "L1 Wave-2; Gate-1 PASS + gate3 GREEN — status: green"
+
+  - batch: 3
+    timestamp: "2026-06-03T18:28:00+05:30"
+    events:
+      - asset: BG-0-3  # brahmagyan.texts
+        decision: gate3_pass
+        note: "L0 Wave-1; gate1_pass from Batch 1; gate3 GREEN Batch 3 — status: green"
+      - asset: BG-0-5  # brahmagyan.ontology
+        decision: gate3_pass
+        note: "L0 Wave-1; gate1_pass from Batch 1; gate3 GREEN Batch 3 — status: green"
+      - asset: BG-0-4  # brahmagyan.text_index
+        decision: gate3_pass
+        note: "L0 Wave-2; fix cycle Batch 3 — gate3 GREEN; status: green"
+      - asset: BG-0-7  # brahmagyan.concordance
+        decision: gate3_pass
+        note: "L0 Wave-3; fix cycle Batch 3 — gate3 GREEN; status: green"
+      - asset: BG-0-6  # brahmagyan.rules
+        decision: parked
+        note: "L0 Wave-2; quality gate failed Batch 3 — BPHS extraction pilot below required bar; status: parked"
+      - asset: GA-1-1  # ganita.engine
+        decision: gate1_fail
+        note: "L1 Wave-1; fix attempt Batch 3 — still failing Gate-1; fix_attempts=2"
+      - asset: GA-1-2  # ganita.positions
+        decision: gate1_fail
+        note: "L1 Wave-1; fix attempt Batch 3 — still failing Gate-1; fix_attempts=2"
+      - asset: GA-1-3  # ganita.divisionals
+        decision: gate1_fail
+        note: "L1 Wave-1; fix attempt Batch 3 — still failing Gate-1; fix_attempts=2"
+      - asset: GA-1-4  # ganita.dashas
+        decision: gate1_fail
+        note: "L1 Wave-1; fix attempt Batch 3 — still failing Gate-1; fix_attempts=2"
+      - asset: GA-1-5  # ganita.strength
+        decision: gate1_fail
+        note: "L1 Wave-1; fix cycle Batch 3 — still failing Gate-1; fix_attempts=1"
+      - asset: GA-1-6  # ganita.sensitive_points
+        decision: gate1_fail
+        note: "L1 Wave-1; fix cycle Batch 3 — still failing Gate-1; fix_attempts=1"
+      - asset: GA-1-7  # ganita.panchanga
+        decision: gate3_fail
+        note: "L1 Wave-1; fix cycle Batch 3 — gate3 still failing; fix_attempts=1"
