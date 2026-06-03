@@ -131,7 +131,20 @@ export async function handleQueryRemediation(
   }
 
   const result = await callPlatformPrimitive('query_remediation', params, principal)
-  return result.envelope
+  const env = result.envelope
+  if (!env.ok) return env
+  return {
+    ...env,
+    result: {
+      remedies: env.result,
+      provenance_envelope: {
+        source: 'bodha.remediation',
+        asset: 'BO-2-6',
+        chart_id: input.chart_id,
+        computed_at: new Date().toISOString(),
+      },
+    },
+  }
 }
 
 // ── MCP server registration helper ────────────────────────────────────────────
