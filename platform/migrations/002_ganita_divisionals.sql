@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.chart_divisionals (
   degree_in_sign  NUMERIC(8,4) NOT NULL CHECK (degree_in_sign >= 0 AND degree_in_sign < 30),
   house           SMALLINT    CHECK (house BETWEEN 1 AND 12),
   vargottama      BOOLEAN,                               -- NULL unless varga=D9
-  source_citation TEXT        NOT NULL DEFAULT 'FORENSIC:BRAHMA-GA-1-3',
+  source_citation TEXT        NOT NULL DEFAULT 'PyJHora DE441 / MARSYS-engine v1',
   build_id        TEXT        NOT NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

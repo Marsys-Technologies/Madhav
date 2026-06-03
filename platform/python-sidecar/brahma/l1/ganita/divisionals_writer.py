@@ -13,9 +13,12 @@ Table:        chart_divisionals (chart_id, graha, ayanamsha_id, varga, sign,
                                   source_citation, build_id)
 
 FORENSIC benchmark (Lahiri, native 1984-02-05 10:43 IST Bhubaneswar):
-  D1: Sun=Capricorn, Moon=Aquarius, Mars=Libra, Lagna=Aries
+  Source: JHORA_TRANSCRIPTION_v8_0_SOURCE.md + chart_facts DB (authoritative)
+  D1: Lagna=Aries (12° Ar), Sun=Capricorn (21° Cp), Moon=Aquarius (27° Aq),
+      Mars=Libra, Saturn=Libra (exalted), Rahu=Taurus, Ketu=Scorpio
   D9: Lagna=Cancer, Sun=Cancer, Moon=Gemini, Mercury=Capricorn (vargottama)
-  D10: Lagna=Cancer, Sun=Aries
+  D10: Sun=Aries
+  Vimshottari MD at birth: Venus (Shukra) mahadasha
 
 Commit tag: BRAHMA-GA-1-3
 """
@@ -31,7 +34,8 @@ from typing import Any, Iterator
 
 ASSET_ID = "ganita.divisionals"
 ASSET_TAG = "BRAHMA-GA-1-3"
-SOURCE_CITATION = f"FORENSIC:ganita.engine:{ASSET_TAG}"
+SOURCE_CITATION = "PyJHora DE441 / MARSYS-engine v1"
+ENGINE_VERSION = "v1"
 
 # Canonical varga catalog: divisional factor → label
 VARGA_CATALOG: dict[int, str] = {
@@ -462,7 +466,7 @@ def query_divisional(
     varga: str,
     ayanamsha_id: str = "lahiri",
     graha: str | None = None,
-) -> list[dict]:
+) -> dict:
     """
     query_divisional — retrieve divisional chart positions.
 
@@ -474,9 +478,11 @@ def query_divisional(
         graha:        optional filter (e.g. 'Sun') — returns all if None
 
     Returns:
-        list of dicts with keys:
-          graha, sign, sign_number, degree_in_sign, house, vargottama,
-          ayanamsha_id, varga, source_citation, build_id
+        dict with keys:
+          provenance_envelope: {source, engine_version, computed_at}
+          rows: list of dicts with keys:
+            graha, sign, sign_number, degree_in_sign, house, vargottama,
+            ayanamsha_id, varga, source_citation, build_id
     """
     if varga not in VARGA_LABELS:
         raise ValueError(
@@ -504,7 +510,16 @@ def query_divisional(
     with db_conn.cursor() as cur:
         cur.execute(sql, params)
         cols = [d[0] for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+
+    return {
+        "provenance_envelope": {
+            "source": SOURCE_CITATION,
+            "engine_version": ENGINE_VERSION,
+            "computed_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "rows": rows,
+    }
 
 
 # ─── Bootstrap entrypoint ─────────────────────────────────────────────────────
