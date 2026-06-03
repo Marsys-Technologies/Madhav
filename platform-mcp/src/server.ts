@@ -21,6 +21,7 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
+import { registerQueryEphemeris } from './tools/query_ephemeris.js'
 
 const app = express()
 app.use(express.json())
@@ -53,7 +54,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
-  // No tools registered — clean slate for Layer-0 rebuild.
+  // Layer-0: brahmagyan.ephemeris
+  registerQueryEphemeris(server, () => principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -81,13 +83,13 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 0 })
+  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 1 })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const port = parseInt(process.env['MCP_PORT'] ?? '8080', 10)
 app.listen(port, () => {
-  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (0 tools — clean slate)`)
+  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (1 tool — brahmagyan.ephemeris)`)
   console.log(`[mcp:server] Platform URL: ${process.env['PLATFORM_URL'] ?? 'http://localhost:3000'}`)
 })
