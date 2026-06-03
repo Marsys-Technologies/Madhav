@@ -9,18 +9,18 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: '2026-06-03T00:00:00+05:30'
-  last_updated: '2026-06-03T19:44:00.000000+00:00'
-  batch_count: 9
+  last_updated: '2026-06-03T21:16:00.000000+00:00'
+  batch_count: 10
 budget:
   total_spent_usd: 0.0
   per_asset: {}
 queue_summary:
   total_sessions: 45
-  complete: 29
-  in_progress: 1
+  complete: 32
+  in_progress: 0
   parked: 3
-  pending: 10
-  gate1_pass: 2
+  pending: 2
+  gate1_pass: 8
   layers_complete:
   - L0
   - L1
@@ -28,7 +28,8 @@ queue_summary:
   - L3
   layers_in_progress:
   - L4
-  last_updated: '2026-06-03T19:44:00+00:00'
+  - L5
+  last_updated: '2026-06-03T21:16:00+00:00'
 assets:
 - id: BG-0-1
   asset_id: brahmagyan.ephemeris
@@ -576,14 +577,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T21:16:00+00:00'
   parked_reason: null
-  build_note: Built Batch 9. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 9. Gate-1 PASS. Gate-3 GREEN Batch 10.
 - id: PH-4-2
   asset_id: phala.mitigation
   layer: L4
@@ -592,14 +593,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: in_progress
-  fix_attempts: 0
+  status: green
+  fix_attempts: 1
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T21:16:00+00:00'
   parked_reason: null
-  build_note: Built Batch 9. Gate-1 pending.
+  build_note: Built Batch 9. Gate-1 pending. Fix applied Batch 10 — Gate-1 PASS + Gate-3 GREEN.
 - id: PH-4-3
   asset_id: phala.rectification
   layer: L4
@@ -608,14 +609,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T21:16:00+00:00'
   parked_reason: null
-  build_note: Built Batch 9. Gate-1 PASS. Gate-3 pending.
+  build_note: Built Batch 9. Gate-1 PASS. Gate-3 GREEN Batch 10.
 - id: PH-4-4
   asset_id: phala.muhurta
   layer: L4
@@ -623,13 +624,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - PH-4-1
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
 - id: PH-4-5
   asset_id: phala.outlook
   layer: L4
@@ -640,13 +642,14 @@ assets:
   - PH-4-2
   - PH-4-3
   - PH-4-4
-  status: pending
-  fix_attempts: 0
+  status: gate1_pass
+  fix_attempts: 1
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 fix applied. Gate-1 PASS. Gate-3 pending.
 - id: PH-L4-VERIFY
   asset_id: phala.layer_complete
   layer: L4
@@ -668,13 +671,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - PH-L4-VERIFY
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
 - id: MI-5-2
   asset_id: mimamsa.prediction_ledger
   layer: L5
@@ -682,13 +686,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - PH-L4-VERIFY
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
 - id: MI-5-3
   asset_id: mimamsa.outcome
   layer: L5
@@ -697,13 +702,14 @@ assets:
   depends_on:
   - MI-5-1
   - MI-5-2
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
 - id: MI-5-4
   asset_id: mimamsa.multiplier
   layer: L5
@@ -711,13 +717,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - MI-5-3
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. Gate-1 PASS. Gate-3 pending.
 - id: MI-5-5
   asset_id: mimamsa.research
   layer: L5
@@ -725,13 +732,14 @@ assets:
   parallel_eligible: true
   depends_on:
   - MI-5-1
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10 as export_to_bigquery. Gate-1 PASS. Gate-3 pending.
 - id: MI-5-6
   asset_id: mimamsa.answer_quality
   layer: L5
@@ -739,13 +747,14 @@ assets:
   parallel_eligible: false
   depends_on:
   - MI-5-4
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T21:16:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 10. 81 tests pass. Gate-1 PASS. Gate-3 pending.
 - id: MI-L5-VERIFY
   asset_id: mimamsa.instrument_complete
   layer: L5
@@ -1067,3 +1076,39 @@ decision_audit:
   - asset: PH-4-3
     decision: gate1_pass
     note: 'L4 Wave-1; Gate-1 PASS Batch 9; Gate-3 pending; status: gate1_pass.'
+- batch: 10
+  timestamp: '2026-06-03T21:16:00+00:00'
+  events:
+  - asset: PH-4-1
+    decision: gate3_pass
+    note: 'L4 Wave-1; Gate-3 GREEN Batch 10; status: green. Commit 0de0014d.'
+  - asset: PH-4-2
+    decision: gate3_pass
+    note: 'L4 Wave-1; Gate-1 fix applied + Gate-3 GREEN Batch 10; status: green. fix_attempts=1.'
+  - asset: PH-4-3
+    decision: gate3_pass
+    note: 'L4 Wave-1; Gate-3 GREEN Batch 10; status: green. Commit 0de0014d.'
+  - asset: PH-4-4
+    decision: gate1_pass
+    note: 'L4 Wave-2; built + Gate-1 PASS Batch 10; Gate-3 pending; status: gate1_pass.'
+  - asset: PH-4-5
+    decision: gate1_pass
+    note: 'L4 Wave-3; built + Gate-1 fix + Gate-1 PASS Batch 10; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-1
+    decision: gate1_pass
+    note: 'L5 Wave-1; built + Gate-1 PASS Batch 10; 57 LEL events ingested; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-2
+    decision: gate1_pass
+    note: 'L5 Wave-1; built + Gate-1 PASS Batch 10; prediction ledger + NO LEAKAGE discipline; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-3
+    decision: gate1_pass
+    note: 'L5 Wave-2; built + Gate-1 PASS Batch 10; Brier score + calibration table; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-4
+    decision: gate1_pass
+    note: 'L5 Wave-2; built + Gate-1 PASS Batch 10; bounded multiplier [0.8,1.2]; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-5
+    decision: gate1_pass
+    note: 'L5 Wave-2; built + Gate-1 PASS Batch 10; OLAP export → GCS → BQ; Gate-3 pending; status: gate1_pass.'
+  - asset: MI-5-6
+    decision: gate1_pass
+    note: 'L5 Wave-3; built + Gate-1 PASS Batch 10; 81 tests; 10 golden Q&A pairs; Gate-3 pending; status: gate1_pass.'
