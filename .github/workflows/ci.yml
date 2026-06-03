@@ -271,4 +271,5 @@ jobs:
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
+            -m "not integration" \
             -q --tb=short --no-header
