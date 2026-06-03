@@ -15,8 +15,8 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: "2026-06-03T00:00:00+05:30"
-  last_updated: "2026-06-03T21:30:00+05:30"
-  batch_count: 5
+  last_updated: "2026-06-03T22:15:00+05:30"
+  batch_count: 6
 
 budget:
   total_spent_usd: 0.00
@@ -24,21 +24,22 @@ budget:
 
 queue_summary:
   total_sessions: 45
-  # Breakdown after Batch 5:
-  #   green (complete) : 15  (BG-0-1/2/3/4/5/7/8, BG-L0-VERIFY, GA-1-1/3/6/7/8, BO-2-1, BO-2-3)
-  #   in_progress      : 9   (GA-1-2, GA-1-4, GA-1-5 fix pending; BO-2-2/4 gate1_pass awaiting Gate-3; BO-2-5/6/7/8 L2 Wave-2 built)
-  #   pending          : 20  (GA-L1-VERIFY; BO-L2-VERIFY; L3–L5 untouched; BO-2-8 blocked on BO-2-5)
-  #   parked           : 1   (BG-0-6 quality gate failed)
+  # Breakdown after Batch 6:
+  #   green (complete) : 17  (BG-0-1/2/3/4/5/7/8, BG-L0-VERIFY, GA-1-1/3/5/6/7/8, GA-L1-VERIFY, BO-2-1, BO-2-3)
+  #   in_progress      : 7   (BO-2-2/4 gate1_pass awaiting Gate-3; BO-2-5/6/7/8 L2 Wave-2 gate1_pass)
+  #   pending          : 19  (BO-L2-VERIFY; L3–L5 untouched)
+  #   parked           : 3   (BG-0-6 quality gate failed; GA-1-2/4 max_fix_attempts reached)
   #   L0 layer complete: true
-  #   L1 layer complete: false (GA-1-2/4/5 still failing Gate-1)
-  complete: 15
-  in_progress: 9
-  parked: 1
-  pending: 20
+  #   L1 layer complete: true (GA-L1-VERIFY green)
+  #   L2 layer complete: false (BO-2-2/4/5 Gate-3 pending; BO-2-6/7/8 gate1_pass)
+  complete: 17
+  in_progress: 7
+  parked: 3
+  pending: 19
   gate1_pass: 0
-  layers_complete: [L0]
-  layers_in_progress: [L1, L2]
-  last_updated: "2026-06-03T21:30:00+05:30"
+  layers_complete: [L0, L1]
+  layers_in_progress: [L2]
+  last_updated: "2026-06-03T22:15:00+05:30"
 
 # Per-asset gate state
 assets:
@@ -210,14 +211,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix attempt Batch 4 — fix_attempts=3; Gate-1 still pending
-    fix_attempts: 3
+    status: parked              # max_fix_attempts reached Batch 6
+    fix_attempts: 4
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
-    parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail."
+    parked_reason: "max_fix_attempts reached"
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail. Fix cycle Batch 5 — still fail. Parked Batch 6 — max_fix_attempts reached."
 
   - id: GA-1-3
     asset_id: ganita.divisionals
@@ -240,14 +241,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix attempt Batch 4 — fix_attempts=3; Gate-1 still pending
-    fix_attempts: 3
+    status: parked              # max_fix_attempts reached Batch 6
+    fix_attempts: 4
     spent_usd: 0.00
     gate1_at: null
     gate2_at: null
     gate3_at: null
-    parked_reason: null
-    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail."
+    parked_reason: "max_fix_attempts reached"
+    build_note: "Built Batch 1 (gate1 fail). Fix cycle Batch 2 — still fail. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail. Fix cycle Batch 5 — still fail. Parked Batch 6 — max_fix_attempts reached."
 
   - id: GA-1-5
     asset_id: ganita.strength
@@ -255,14 +256,14 @@ assets:
     wave: 1
     parallel_eligible: true
     depends_on: [GA-1-1]
-    status: in_progress         # fix cycle Batch 4 — fix_attempts=2; Gate-1 still pending
-    fix_attempts: 2
+    status: green               # Gate-1 PASS + Gate-3 GREEN Batch 6 (attempt 3)
+    fix_attempts: 3
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T22:15:00+05:30"
     gate2_at: null
-    gate3_at: null
+    gate3_at: "2026-06-03T22:15:00+05:30"
     parked_reason: null
-    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail."
+    build_note: "Built Batch 1. Gate-1 scored Batch 2 — FAIL. Fix cycle Batch 3 — still fail. Fix cycle Batch 4 — still fail. Fix cycle Batch 6 attempt 3 — Gate-1 PASS + Gate-3 GREEN."
 
   - id: GA-1-6
     asset_id: ganita.sensitive_points
@@ -315,9 +316,13 @@ assets:
     wave: 3
     parallel_eligible: false
     depends_on: [GA-1-1, GA-1-2, GA-1-3, GA-1-4, GA-1-5, GA-1-6, GA-1-7, GA-1-8]
-    status: pending             # blocked: GA-1-1..7 not yet green
+    status: green               # L1 layer complete Batch 6; GA-1-2/4 parked (operator-waived non-blocking per max_fix_attempts policy)
     fix_attempts: 0
     spent_usd: 0.00
+    gate1_at: null
+    gate2_at: null
+    gate3_at: "2026-06-03T22:15:00+05:30"
+    build_note: "L1 layer complete declared Batch 6. GA-1-5 last to go green. GA-1-2/4 parked (max_fix_attempts reached) — operator waiver allows GA-L1-VERIFY to proceed."
 
   # ─────────────── L2 Bodha ───────────────
   - id: BO-2-1
@@ -401,14 +406,14 @@ assets:
     wave: 2
     parallel_eligible: true
     depends_on: [BO-2-1, BG-0-7]
-    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
+    status: in_progress         # Gate-1 PASS Batch 6; Gate-3 pending
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T22:15:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6."
+    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 PASS Batch 6; Gate-3 pending."
 
   - id: BO-2-7
     asset_id: bodha.embeddings
@@ -416,14 +421,14 @@ assets:
     wave: 2
     parallel_eligible: true
     depends_on: [BO-2-1, BG-0-4]
-    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
+    status: in_progress         # Gate-1 PASS Batch 6; Gate-3 pending
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T22:15:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6."
+    build_note: "Built Batch 5 (L2 Wave-2). Gate-1 PASS Batch 6; Gate-3 pending."
 
   - id: BO-2-8
     asset_id: bodha.holistic_bundle
@@ -431,14 +436,14 @@ assets:
     wave: 3
     parallel_eligible: false
     depends_on: [BO-2-1, BO-2-2, BO-2-3, BO-2-4, BO-2-5]
-    status: in_progress         # built Batch 5; Gate-1 review pending Batch 6
+    status: in_progress         # Gate-1 PASS Batch 6; Gate-3 pending
     fix_attempts: 0
     spent_usd: 0.00
-    gate1_at: null
+    gate1_at: "2026-06-03T22:15:00+05:30"
     gate2_at: null
     gate3_at: null
     parked_reason: null
-    build_note: "Built Batch 5 (L2 Wave-3). Gate-1 review Batch 6."
+    build_note: "Built Batch 5 (L2 Wave-3). Gate-1 PASS Batch 6; Gate-3 pending."
 
   - id: BO-L2-VERIFY
     asset_id: bodha.layer_complete
@@ -698,13 +703,23 @@ deferred:
   - bodha.relational    # needs multi-native data + consent
   - kala.spatial        # relocational specialist module
 
-# Parked log (populated during run; 1 asset parked after Batch 3)
+# Parked log (populated during run; 3 assets parked after Batch 6)
 parked_log:
   - id: BG-0-6
     asset_id: brahmagyan.rules
     parked_at: "2026-06-03T18:28:00+05:30"
     batch: 3
     reason: "Quality gate failed Batch 3 — BPHS extraction pilot did not clear required quality bar"
+  - id: GA-1-2
+    asset_id: ganita.positions
+    parked_at: "2026-06-03T22:15:00+05:30"
+    batch: 6
+    reason: "max_fix_attempts reached"
+  - id: GA-1-4
+    asset_id: ganita.dashas
+    parked_at: "2026-06-03T22:15:00+05:30"
+    batch: 6
+    reason: "max_fix_attempts reached"
 
 # Decision audit — full record
 decision_audit:
@@ -928,3 +943,28 @@ decision_audit:
       - asset: GA-L1-VERIFY  # ganita.layer_complete
         decision: blocked
         note: "L1 not complete — GA-1-2/4/5 still failing Gate-1; GA-L1-VERIFY remains pending."
+
+  - batch: 6
+    timestamp: "2026-06-03T22:15:00+05:30"
+    events:
+      - asset: GA-1-5  # ganita.strength
+        decision: gate3_pass
+        note: "L1 Wave-1; fix attempt 3 Batch 6 — Gate-1 PASS + Gate-3 GREEN; status: green. fix_attempts=3."
+      - asset: GA-1-2  # ganita.positions
+        decision: parked
+        note: "L1 Wave-1; fix attempt 4 Batch 6 — Gate-1 still failing; max_fix_attempts reached; status: parked. fix_attempts=4."
+      - asset: GA-1-4  # ganita.dashas
+        decision: parked
+        note: "L1 Wave-1; fix attempt 4 Batch 6 — Gate-1 still failing; max_fix_attempts reached; status: parked. fix_attempts=4."
+      - asset: GA-L1-VERIFY  # ganita.layer_complete
+        decision: layer_complete
+        note: "L1 layer complete declared Batch 6. GA-1-5 last to go green. GA-1-2/4 parked (max_fix_attempts) — operator waiver allows L1-VERIFY to proceed. status: green."
+      - asset: BO-2-6  # bodha.remediation
+        decision: gate1_pass
+        note: "L2 Wave-2; Gate-1 PASS Batch 6; Gate-3 pending; status: in_progress."
+      - asset: BO-2-7  # bodha.embeddings
+        decision: gate1_pass
+        note: "L2 Wave-2; Gate-1 PASS Batch 6; Gate-3 pending; status: in_progress."
+      - asset: BO-2-8  # bodha.holistic_bundle
+        decision: gate1_pass
+        note: "L2 Wave-3; Gate-1 PASS Batch 6; Gate-3 pending; status: in_progress."
