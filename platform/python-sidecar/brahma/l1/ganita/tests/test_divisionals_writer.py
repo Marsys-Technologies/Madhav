@@ -497,8 +497,31 @@ class TestQueryDivisionalGuard:
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
         result = query_divisional(db_conn=mock_conn, chart_id="x", varga="D9")
-        assert result == []
+        assert "provenance_envelope" in result, "query_divisional must return provenance_envelope"
+        assert "rows" in result, "query_divisional must return rows key"
+        assert result["rows"] == []
         mock_cur.execute.assert_called_once()
+
+    def test_provenance_envelope_fields(self):
+        from brahma.l1.ganita.divisionals_writer import query_divisional, SOURCE_CITATION, ENGINE_VERSION
+
+        mock_cur = MagicMock()
+        mock_cur.description = [("graha",), ("sign",), ("sign_number",),
+                                 ("degree_in_sign",), ("house",), ("vargottama",),
+                                 ("ayanamsha_id",), ("varga",), ("source_citation",),
+                                 ("build_id",)]
+        mock_cur.fetchall.return_value = []
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = lambda s: mock_cur
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = query_divisional(db_conn=mock_conn, chart_id="x", varga="D1")
+        env = result["provenance_envelope"]
+        assert env["source"] == SOURCE_CITATION, (
+            f"provenance_envelope.source expected '{SOURCE_CITATION}', got '{env['source']}'"
+        )
+        assert env["engine_version"] == ENGINE_VERSION
+        assert "computed_at" in env, "provenance_envelope must include computed_at"
 
 
 # ─── 10. VARGA_CATALOG completeness ──────────────────────────────────────────
@@ -557,3 +580,63 @@ class TestBootstrapEntrypoint:
             ayanamsha_ids=["lahiri"],
         )
         assert all(r.build_id.startswith("ganita-divisionals-") for r in rows)
+
+
+# ─── 12. SOURCE_CITATION canonical value ──────────────────────────────────────
+
+class TestSourceCitationCanonical:
+    def test_source_citation_is_canonical(self):
+        """source_citation must be 'PyJHora DE441 / MARSYS-engine v1' per Gate-1 contract."""
+        from brahma.l1.ganita.divisionals_writer import SOURCE_CITATION
+        assert SOURCE_CITATION == "PyJHora DE441 / MARSYS-engine v1", (
+            f"SOURCE_CITATION is '{SOURCE_CITATION}' — must be "
+            "'PyJHora DE441 / MARSYS-engine v1'"
+        )
+
+    def test_all_rows_carry_canonical_citation(self, native_rows):
+        """Every DivisionalRow must carry the canonical source_citation."""
+        from brahma.l1.ganita.divisionals_writer import SOURCE_CITATION
+        bad = [r for r in native_rows if r.source_citation != SOURCE_CITATION]
+        assert not bad, (
+            f"{len(bad)} rows have wrong source_citation. "
+            f"First bad: {bad[0].source_citation!r}"
+        )
+
+
+# ─── 13. Determinism test (same input → hash-stable sign outputs) ─────────────
+
+class TestDeterminism:
+    def test_same_input_produces_same_signs(self):
+        """
+        Two independent calls to build_divisional_rows with identical inputs
+        must produce identical sign/sign_number outputs (determinism gate).
+        This validates that the engine has no randomness or clock-sensitive state.
+        """
+        import hashlib
+        from brahma.l1.ganita.divisionals_writer import build_divisional_rows
+
+        kwargs = dict(
+            chart_id="det-test-001",
+            birth_datetime_iso="1984-02-05T10:43:00",
+            tz_offset_hours=5.5,
+            latitude_deg=20.2961,
+            longitude_deg=85.8245,
+            ayanamsha_id="lahiri",
+            build_id="det-run-1",
+        )
+
+        rows_a = build_divisional_rows(**kwargs)
+        rows_b = build_divisional_rows(**{**kwargs, "build_id": "det-run-2"})
+
+        def fingerprint(rows):
+            key = "|".join(
+                sorted(f"{r.varga}:{r.graha}:{r.sign_number}:{r.degree_in_sign}"
+                       for r in rows)
+            )
+            return hashlib.sha256(key.encode()).hexdigest()
+
+        fp_a = fingerprint(rows_a)
+        fp_b = fingerprint(rows_b)
+        assert fp_a == fp_b, (
+            f"Non-deterministic output detected: run1={fp_a!r} run2={fp_b!r}"
+        )
