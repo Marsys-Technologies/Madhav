@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date as DateObj
+from datetime import date as DateObj, datetime, timezone
 from typing import Any
 
 import swisseph as swe
@@ -521,10 +521,19 @@ def compute_chart(
     jd_ut = _jd_ut(birth_date, birth_time_hhmm, tz_offset_hours)
 
     # Build the document, ayanamsha-by-ayanamsha for positions, then shared computations
+    computed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     output: dict[str, Any] = {
         "schema_version": "1.0",
         "engine_version": ENGINE_VERSION,
         "chart_id": chart_id,
+        # Provenance envelope — required by BRAHMA Gate-1 contract
+        "provenance_envelope": {
+            "source": "PyJHora DE441 / MARSYS-engine v1",
+            "engine_version": ENGINE_VERSION,
+            "computed_at": computed_at,
+        },
+        # source_citation — required for chart_* table row provenance
+        "source_citation": "PyJHora DE441 / MARSYS-engine v1",
         "birth": {
             "date": birth_date.isoformat(),
             "time_local": birth_time_hhmm,
@@ -578,8 +587,10 @@ def compute_chart(
     # Vimshottari dasha to Sukshma depth (Lahiri, canonical)
     output["vimshottari"] = _compute_vimshottari(jd_ut, lat, lon)
 
-    # Strip sha256 field before hashing, add hash
-    output_for_hash = {k: v for k, v in output.items() if k != "sha256"}
+    # Strip sha256 + provenance_envelope (contains computed_at timestamp) before hashing.
+    # The hash must be deterministic across runs for the same birth data.
+    HASH_EXCLUDE = {"sha256", "provenance_envelope"}
+    output_for_hash = {k: v for k, v in output.items() if k not in HASH_EXCLUDE}
     output["sha256"] = _hash_output(output_for_hash)
 
     return output
