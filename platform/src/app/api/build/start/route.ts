@@ -149,17 +149,18 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
-  // ── Verify chart_id exists in charts table ─────────────────────────────────
-  // authorizeChartAccess above already confirms ownership (or deny → 404 above),
-  // but we also need chart_id (uuid column) to insert into builds.chart_id (uuid FK).
-  const chartRow = await query<{ chart_id: string }>(
-    'SELECT chart_id FROM charts WHERE chart_id=$1',
+  // ── Verify chart exists in charts table ────────────────────────────────────
+  // authorizeChartAccess above confirms ownership using charts.id (PK).
+  // We use the same PK here so both lookups are consistent.
+  // builds.chart_id FK references charts(id), so we pass the PK as the FK value.
+  const chartRow = await query<{ id: string }>(
+    'SELECT id FROM charts WHERE id=$1',
     [chartId],
   )
   if (!chartRow.rows[0]) {
     return NextResponse.json({ error: 'chart_not_found' }, { status: 404 })
   }
-  const resolvedChartId = chartRow.rows[0].chart_id
+  const resolvedChartId = chartRow.rows[0].id
 
   // ── Concurrency guard ──────────────────────────────────────────────────────
   // Refuse if a non-terminal build already exists for this chart. Returns 409
