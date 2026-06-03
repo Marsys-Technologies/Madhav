@@ -34,7 +34,7 @@ export interface BirthPanchangaVara {
 }
 
 export interface BirthPanchangaNakshatra {
-  index: number         // 0-based (0=Ashwini .. 26=Revati)
+  index: number         // 1-based (1=Ashwini .. 27=Revati), per PyJHora output
   name: string          // e.g. 'Purva Bhadrapada'
   pada: number          // 1..4
   longitude_deg?: number | null  // sidereal Lahiri moon longitude
