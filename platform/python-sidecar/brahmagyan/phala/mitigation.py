@@ -453,8 +453,30 @@ def lookup_concordance_mitigations(conn, classified_theme: str) -> list[dict]:
     return _build_bphs_mitigations(classified_theme)
 
 
+def _is_valid_bphs_citation(citation: str) -> bool:
+    """
+    Returns True if citation is a well-formed BPHS chapter/verse reference.
+
+    Valid format: BPHS.<chapter>.<verse_or_range>
+    Examples: BPHS.3.6-8, BPHS.25.41-56, BPHS.83.1-6, BPHS.3.5
+    Rejects: 'BPHS concordance / L0 BG-0-7', 'null', '', None, etc.
+    """
+    if not citation or not isinstance(citation, str):
+        return False
+    import re
+    # Must match BPHS.<int>.<int-or-range> — no free-form text allowed
+    return bool(re.match(r'^BPHS\.\d+\.\d+(-\d+)?$', citation.strip()))
+
+
 def _query_concordance(conn, theme: str) -> list[dict]:
-    """Try to fetch from concordance_lookup if it exists and has rows."""
+    """
+    Try to fetch from concordance_lookup if it exists and has rows.
+
+    Citation validation: only rows where source_citation matches the canonical
+    BPHS.<chapter>.<verse> format (e.g. BPHS.25.41-56) are returned.
+    Rows with free-form strings like 'BPHS concordance / L0 BG-0-7' are
+    silently dropped — the caller falls back to the built-in BPHS map.
+    """
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
@@ -487,11 +509,17 @@ def _query_concordance(conn, theme: str) -> list[dict]:
         mtype = row.get("remedy_type", "mantra")
         if mtype not in VALID_MITIGATION_TYPES:
             mtype = "mantra"
+        citation = row.get("source_citation") or ""
+        # Gate-1 contract: reject any citation that is not BPHS.<ch>.<verse>
+        # A citation like 'BPHS concordance / L0 BG-0-7' is NOT a valid verse ref.
+        if not _is_valid_bphs_citation(citation):
+            # Skip this row; caller will fall back to built-in BPHS map
+            continue
         result.append({
             "mitigation_type": mtype,
             "mitigation_text": row["remedy_text"],
             "source_l0_rule_id": str(row["rule_id"]),
-            "source_citation": row["source_citation"],
+            "source_citation": citation,
         })
     return result
 

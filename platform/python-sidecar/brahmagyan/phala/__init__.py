@@ -1,8 +1,7 @@
 """
-brahmagyan/phala — Brahma L4 Phala package
+brahmagyan.phala — Brahma L4 Phala (Outcome) layer.
 
-L4 Phala: calibrated ensemble predictors → falsifiable probabilistic event anchors.
-
-Sub-modules:
-    anchors — phala.anchors (PH-4-1): event_anchors() tool + phala_anchors table engine
+Sub-packages:
+    rectification — phala.rectification (PH-4-3)
+                    Birth-time rectification via held-out LEL train/test split.
 """
