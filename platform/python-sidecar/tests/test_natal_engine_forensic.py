@@ -48,8 +48,30 @@ def test_top_level_keys_present(chart):
         "schema_version", "engine_version", "chart_id", "birth",
         "jd_ut", "ayanamsha_values", "per_ayanamsha",
         "panchanga", "sensitive_points", "vimshottari", "sha256",
+        "provenance_envelope", "source_citation",
     }
     assert required <= set(chart.keys()), f"Missing: {required - set(chart.keys())}"
+
+
+def test_provenance_envelope_structure(chart):
+    """Gate-1: provenance_envelope must carry source, engine_version, computed_at."""
+    pe = chart["provenance_envelope"]
+    assert pe["source"] == "PyJHora DE441 / MARSYS-engine v1", (
+        f"source_citation mismatch: {pe['source']}"
+    )
+    assert pe["engine_version"], "engine_version missing from provenance_envelope"
+    assert pe["computed_at"], "computed_at missing from provenance_envelope"
+    # computed_at must be ISO-8601 UTC
+    assert "T" in pe["computed_at"] and pe["computed_at"].endswith("Z"), (
+        f"computed_at not UTC ISO-8601: {pe['computed_at']}"
+    )
+
+
+def test_source_citation_present(chart):
+    """Gate-1: source_citation must be set on the chart document (maps to chart_* table rows)."""
+    assert chart["source_citation"] == "PyJHora DE441 / MARSYS-engine v1", (
+        f"source_citation wrong: {chart['source_citation']}"
+    )
 
 
 def test_all_five_ayanamshas_computed(chart):
@@ -241,6 +263,26 @@ def test_vimshottari_maha_lords(chart):
     expected = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
     missing = expected - all_lords
     assert not missing, f"Missing lords in Vimshottari: {missing}"
+
+
+def test_vimshottari_birth_maha_venus(chart):
+    """FORENSIC: native born in Venus (Shukra) Mahadasha.
+    The first or an early entry whose maha lord is Venus must be present and
+    its start_date must be on or before 1984-02-05 (birth date).
+    """
+    v = chart["vimshottari"]
+    if "error" in v:
+        pytest.skip(f"Vimshottari error: {v['error']}")
+    # Find entries where maha lord is Venus and start_date <= birth
+    birth_str = "1984-02-05"
+    birth_venus_entries = [
+        d for d in v["dashas"]
+        if d["lords"].get("maha") == "Venus" and d["start_date"] <= birth_str
+    ]
+    assert birth_venus_entries, (
+        "No Venus mahadasha entry found with start_date <= 1984-02-05. "
+        "FORENSIC: native born in Venus (Shukra) mahadasha."
+    )
 
 
 # ---------------------------------------------------------------------------
