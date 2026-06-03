@@ -23,6 +23,7 @@ import {
   buildSpecialLagnaRows,
   buildSahamRows,
   buildArudhaRows,
+  buildChartSensitivePointRows,
 } from '../../scripts/bootstrap/bootstrap_chart_facts_sensitive_points'
 
 // ── Aggregate row tests ───────────────────────────────────────────────────────
@@ -30,13 +31,14 @@ import {
 describe('buildRows() — aggregate', () => {
   const rows = buildRows()
 
-  it('produces exactly 63 rows total (9+9+36+9)', () => {
-    expect(rows).toHaveLength(63)
+  // 9 upagrahas + 9 special_lagnas + 36 sahams + 15 arudhas (AL+A2-A12+UL+A12+D9+D10)
+  it('produces exactly 69 rows total (9+9+36+15)', () => {
+    expect(rows).toHaveLength(69)
   })
 
   it('all fact_ids are unique (no duplicates)', () => {
     const ids = rows.map(r => r.fact_id)
-    expect(new Set(ids).size).toBe(63)
+    expect(new Set(ids).size).toBe(69)
   })
 
   it('all rows have a non-empty build_id', () => {
@@ -54,7 +56,7 @@ describe('buildRows() — aggregate', () => {
     expect(rows.every(r => r.source_section.startsWith('FORENSIC_v8_0_§'))).toBe(true)
   })
 
-  it('category distribution: 9+9+36+9', () => {
+  it('category distribution: 9+9+36+15', () => {
     const byCat: Record<string, number> = {}
     for (const r of rows) {
       byCat[r.category] = (byCat[r.category] ?? 0) + 1
@@ -62,7 +64,7 @@ describe('buildRows() — aggregate', () => {
     expect(byCat['upagraha']).toBe(9)
     expect(byCat['special_lagna']).toBe(9)
     expect(byCat['saham']).toBe(36)
-    expect(byCat['arudha']).toBe(9)
+    expect(byCat['arudha']).toBe(15)
   })
 })
 
@@ -251,11 +253,12 @@ describe('buildSahamRows() — FORENSIC §12.2', () => {
 
 // ── Arudha tests ──────────────────────────────────────────────────────────────
 
-describe('buildArudhaRows() — FORENSIC §13.1', () => {
+describe('buildArudhaRows() — FORENSIC §13.1 + §13.2', () => {
   const rows = buildArudhaRows()
 
-  it('produces exactly 9 arudha rows', () => {
-    expect(rows).toHaveLength(9)
+  // 15 = AL(A1), A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, UL, A12, AL.D9, AL.D10
+  it('produces exactly 15 arudha rows (full A1-A12 + UL + A12 + D9 + D10)', () => {
+    expect(rows).toHaveLength(15)
   })
 
   it('all rows have category=arudha', () => {
@@ -304,11 +307,146 @@ describe('buildArudhaRows() — FORENSIC §13.1', () => {
     expect(json.sign).toBe('Sagittarius')
   })
 
-  it('all ARD.* fact_ids present', () => {
-    const expected = ['ARD.AL', 'ARD.A2', 'ARD.A6', 'ARD.A7', 'ARD.A10',
-      'ARD.A11', 'ARD.UL', 'ARD.AL.D9', 'ARD.AL.D10']
+  it('all ARD.* fact_ids present — complete A1-A12 + UL + divisionals', () => {
+    const expected = [
+      'ARD.AL', 'ARD.A2', 'ARD.A3', 'ARD.A4', 'ARD.A5',
+      'ARD.A6', 'ARD.A7', 'ARD.A8', 'ARD.A9', 'ARD.A10',
+      'ARD.A11', 'ARD.UL', 'ARD.A12', 'ARD.AL.D9', 'ARD.AL.D10',
+    ]
     for (const id of expected) {
-      expect(rows.some(r => r.fact_id === id)).toBe(true)
+      expect(rows.some(r => r.fact_id === id), `Missing arudha ${id}`).toBe(true)
+    }
+  })
+
+  it('FORENSIC §13.2: A3 in Leo H5', () => {
+    const a3 = rows.find(r => r.fact_id === 'ARD.A3')!
+    const json = a3.value_json as Record<string, unknown>
+    expect(json.sign).toBe('Leo')
+    expect(json.house).toBe(5)
+  })
+
+  it('FORENSIC §13.2: A8 in Virgo H6 (Darapada alt)', () => {
+    const a8 = rows.find(r => r.fact_id === 'ARD.A8')!
+    const json = a8.value_json as Record<string, unknown>
+    expect(json.sign).toBe('Virgo')
+    expect(json.house).toBe(6)
+  })
+
+  it('FORENSIC §13.2: A5 in Gemini H3', () => {
+    const a5 = rows.find(r => r.fact_id === 'ARD.A5')!
+    const json = a5.value_json as Record<string, unknown>
+    expect(json.sign).toBe('Gemini')
+    expect(json.house).toBe(3)
+  })
+})
+
+// ── Gate-1: chart_sensitive_points rows ──────────────────────────────────────
+
+describe('buildChartSensitivePointRows() — Gate-1 compliance', () => {
+  const rows = buildChartSensitivePointRows()
+
+  it('produces rows (non-empty)', () => {
+    expect(rows.length).toBeGreaterThan(0)
+  })
+
+  it('all rows have chart_id = FORENSIC native UUID', () => {
+    expect(rows.every(r => r.chart_id === '362f9f17-95a5-490b-a5a7-027d3e0efda0')).toBe(true)
+  })
+
+  it('all rows have non-null source_citation (Gate-1 check)', () => {
+    for (const r of rows) {
+      expect(r.source_citation, `source_citation null in ${r.fact_id}`).toBeTruthy()
+    }
+  })
+
+  it('all fact_ids are unique (no duplicates in chart_sensitive_points)', () => {
+    const ids = rows.map(r => r.fact_id)
+    expect(new Set(ids).size).toBe(rows.length)
+  })
+
+  it('Gate-1: Gulika present with non-null longitude', () => {
+    const gulika = rows.find(r => r.fact_id === 'UPG.GULIKA')
+    expect(gulika).toBeDefined()
+    expect(gulika!.longitude).not.toBeNull()
+    expect(gulika!.longitude).toContain('Gemini')
+    expect(gulika!.sign).toBe('Gemini')
+  })
+
+  it('Gate-1: Mandi present with non-null longitude', () => {
+    const mandi = rows.find(r => r.fact_id === 'UPG.MANDI')
+    expect(mandi).toBeDefined()
+    expect(mandi!.longitude).not.toBeNull()
+    expect(mandi!.sign).toBe('Cancer')
+  })
+
+  it('Gate-1: 7 core upagrahas present (Gulika, Mandi, Dhuma, Vyatipata, Parivesha, Indrachapa, Upaketu)', () => {
+    const required = ['UPG.GULIKA', 'UPG.MANDI', 'UPG.DHUMA', 'UPG.VYATIPATA', 'UPG.PARIVESHA', 'UPG.INDRACHAPA', 'UPG.UPAKETU']
+    for (const id of required) {
+      expect(rows.some(r => r.fact_id === id), `Missing Gate-1 upagraha ${id}`).toBe(true)
+    }
+  })
+
+  it('Gate-1: Hora Lagna present (special_lagna)', () => {
+    const hora = rows.find(r => r.fact_id === 'LAG.HORA')
+    expect(hora).toBeDefined()
+    expect(hora!.sign).toBe('Gemini')
+    expect(hora!.house).toBe(3)
+    expect(hora!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: Ghati Lagna present (special_lagna)', () => {
+    const ghati = rows.find(r => r.fact_id === 'LAG.GHATI')
+    expect(ghati).toBeDefined()
+    expect(ghati!.sign).toBe('Sagittarius')
+    expect(ghati!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: Bhava Lagna present (special_lagna)', () => {
+    const bhava = rows.find(r => r.fact_id === 'LAG.BHAVA')
+    expect(bhava).toBeDefined()
+    expect(bhava!.sign).toBe('Pisces')
+    expect(bhava!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: Upapada (UL) present — ARD.UL', () => {
+    const ul = rows.find(r => r.fact_id === 'ARD.UL')
+    expect(ul).toBeDefined()
+    expect(ul!.sign).toBe('Gemini')
+    expect(ul!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: Darapada (A7) present — ARD.A7', () => {
+    const a7 = rows.find(r => r.fact_id === 'ARD.A7')
+    expect(a7).toBeDefined()
+    expect(a7!.sign).toBe('Aquarius')
+    expect(a7!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: Darapada alt (A8) present — ARD.A8', () => {
+    const a8 = rows.find(r => r.fact_id === 'ARD.A8')
+    expect(a8).toBeDefined()
+    expect(a8!.sign).toBe('Virgo')
+    expect(a8!.source_citation).toBeTruthy()
+  })
+
+  it('Gate-1: complete A1-A12 arudha coverage', () => {
+    const requiredArudhas = [
+      'ARD.AL', 'ARD.A2', 'ARD.A3', 'ARD.A4', 'ARD.A5',
+      'ARD.A6', 'ARD.A7', 'ARD.A8', 'ARD.A9', 'ARD.A10',
+      'ARD.A11', 'ARD.UL', 'ARD.A12',
+    ]
+    for (const id of requiredArudhas) {
+      expect(rows.some(r => r.fact_id === id), `Missing Gate-1 arudha ${id}`).toBe(true)
+    }
+  })
+
+  it('all ayanamsha_ids are INVARIANT', () => {
+    expect(rows.every(r => r.ayanamsha_id === 'INVARIANT')).toBe(true)
+  })
+
+  it('all source_citations reference FORENSIC_v8_0', () => {
+    for (const r of rows) {
+      expect(r.source_citation, `source_citation in ${r.fact_id} must reference FORENSIC_v8_0`).toContain('FORENSIC_v8_0')
     }
   })
 })

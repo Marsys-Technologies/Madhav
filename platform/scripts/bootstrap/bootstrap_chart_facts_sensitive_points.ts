@@ -135,21 +135,43 @@ const SAHAMS = [
   { id: 'SAH.LABHA',       name: 'Labha',       longitude: '2°23′51″ Vi',  sign: 'Virgo',       house: 6,  nakshatra: 'UPhal',       meaning: 'Gains', source: '§12.2 row 36',     note: null },
 ] as const
 
-// ── §13.1 Arudhas ─────────────────────────────────────────────────────────────
-// Source: FORENSIC v8.0 §13.1 / JH confirmed
-// CHART_FACTS_EXTRACTION_v1_0.yaml §13.1 rows 1-9
+// ── §13.1 + §13.2 Arudhas — FULL A1..A12 + UL (Upapada) set ──────────────────
+// Source: FORENSIC v8.0 §13.1 (explicit placements) + §13.2 (sign occupancy for A3/A5/A8/A9/A12)
+// Gate-1 requires A1..A12 + Upapada (UL/A12) + Darapada (A7).
+// §13.1 explicit: AL(A1)=Capricorn, A2=Cancer, A6=Taurus, A7=Aquarius, A10=Aries, A11=Gemini, UL=Gemini
+// §13.2 occupancy: A3=Leo, A4=Virgo, A5=Gemini, A8=Virgo, A9=Virgo, A12=Pisces (UL=A12 explicit)
+// Note: A8 = Darapada in some traditions (7th-house mirror); A7 = Darapada in Parashari; both included.
 
 const ARUDHAS = [
-  { id: 'ARD.AL',     name: 'AL (Lagna Arudha)',  sign: 'Capricorn', house: 10, div: 'D1', tenants: ['Sun', 'Mercury'], note: 'Arudha of 1st house', source: '§13.1 row 1' },
-  { id: 'ARD.A2',     name: 'A2 (Family)',         sign: 'Cancer',    house: 4,  div: 'D1', tenants: [],                note: 'Arudha of 2nd house', source: '§13.1 row 2' },
-  { id: 'ARD.A6',     name: 'A6 (Enemy)',          sign: 'Taurus',    house: 2,  div: 'D1', tenants: ['Rahu'],          note: 'Arudha of 6th house', source: '§13.1 row 3' },
-  { id: 'ARD.A7',     name: 'A7 (Partner)',        sign: 'Aquarius',  house: 11, div: 'D1', tenants: ['Moon'],          note: 'Arudha of 7th house; also Darapada', source: '§13.1 row 4' },
-  { id: 'ARD.A10',    name: 'A10 (Status)',        sign: 'Aries',     house: 1,  div: 'D1', tenants: [],                note: 'Arudha of 10th house', source: '§13.1 row 5' },
-  { id: 'ARD.A11',    name: 'A11 (Gains)',         sign: 'Gemini',    house: 3,  div: 'D1', tenants: ['UL', 'A5'],      note: 'Arudha of 11th house', source: '§13.1 row 6' },
-  { id: 'ARD.UL',     name: 'UL (Upapada Lagna)',  sign: 'Gemini',    house: 3,  div: 'D1', tenants: ['A11', 'A5'],     note: 'Arudha of 12th house; spouse-image significator', source: '§13.1 row 7' },
-  { id: 'ARD.AL.D9',  name: 'AL in D9 (Navamsa)',  sign: 'Taurus',    house: null, div: 'D9', tenants: [],             note: 'D9 Lagna Cancer; Moon in D9 12th (Gemini); 12th from Gemini = Taurus', source: '§13.1 row 8' },
-  { id: 'ARD.AL.D10', name: 'AL in D10 (Dasamsa)', sign: 'Sagittarius', house: null, div: 'D10', tenants: [],          note: 'D10 Lagna Leo; Sun in D10 9th (Aries); 9th from Aries = Sagittarius', source: '§13.1 row 9' },
+  // §13.1 explicit placements
+  { id: 'ARD.AL',     name: 'AL (Lagna Arudha / A1)',  sign: 'Capricorn',   house: 10, div: 'D1', tenants: ['Sun', 'Mercury'], note: 'Arudha of 1st house. Lagna Aries; Lord Mars in 7H Libra → Capricorn (exception applied).', source: '§13.1 row 1' },
+  { id: 'ARD.A2',     name: 'A2 (Family)',              sign: 'Cancer',      house: 4,  div: 'D1', tenants: [],                note: 'Arudha of 2nd house. 2H Taurus; Lord Venus 8 signs to Sagittarius → Cancer.', source: '§13.1 row 2' },
+  // §13.2 — A3 occupies Leo H5
+  { id: 'ARD.A3',     name: 'A3 (Siblings)',            sign: 'Leo',         house: 5,  div: 'D1', tenants: [],                note: 'Arudha of 3rd house. Source: FORENSIC §13.2 ARO.LEO.', source: '§13.2 ARO.LEO' },
+  // §13.2 — A4 occupies Virgo H6
+  { id: 'ARD.A4',     name: 'A4 (Home / Mother)',       sign: 'Virgo',       house: 6,  div: 'D1', tenants: [],                note: 'Arudha of 4th house. Source: FORENSIC §13.2 ARO.VIRGO.', source: '§13.2 ARO.VIRGO' },
+  // §13.2 — A5 occupies Gemini H3 (co-located with UL, A11)
+  { id: 'ARD.A5',     name: 'A5 (Children / Intellect)', sign: 'Gemini',    house: 3,  div: 'D1', tenants: ['UL', 'A11'],     note: 'Arudha of 5th house. Source: FORENSIC §13.2 ARO.GEMINI.', source: '§13.2 ARO.GEMINI' },
+  { id: 'ARD.A6',     name: 'A6 (Enemy / Service)',     sign: 'Taurus',      house: 2,  div: 'D1', tenants: ['Rahu'],          note: 'Arudha of 6th house. Co-located with Rahu.', source: '§13.1 row 3' },
+  { id: 'ARD.A7',     name: 'A7 (Partner / Darapada)',  sign: 'Aquarius',    house: 11, div: 'D1', tenants: ['Moon'],          note: 'Arudha of 7th house. Darapada (spouse-image significator in Parashari). Co-located with Moon.', source: '§13.1 row 4' },
+  // §13.2 — A8 occupies Virgo H6 (co-located with A4, A9). Darapada in some Jaimini traditions.
+  { id: 'ARD.A8',     name: 'A8 (Longevity / Darapada alt)', sign: 'Virgo', house: 6,  div: 'D1', tenants: ['A4', 'A9'],     note: 'Arudha of 8th house. Source: FORENSIC §13.2 ARO.VIRGO. Also called Darapada in Jaimini.', source: '§13.2 ARO.VIRGO' },
+  // §13.2 — A9 occupies Virgo H6 (co-located with A4, A8)
+  { id: 'ARD.A9',     name: 'A9 (Dharma / Guru)',       sign: 'Virgo',       house: 6,  div: 'D1', tenants: ['A4', 'A8'],     note: 'Arudha of 9th house. Source: FORENSIC §13.2 ARO.VIRGO.', source: '§13.2 ARO.VIRGO' },
+  { id: 'ARD.A10',    name: 'A10 (Karma / Status)',      sign: 'Aries',       house: 1,  div: 'D1', tenants: [],               note: 'Arudha of 10th house. 10H Capricorn → Saturn in Libra → Cancer (exception) → Aries.', source: '§13.1 row 5' },
+  { id: 'ARD.A11',    name: 'A11 (Gains)',               sign: 'Gemini',      house: 3,  div: 'D1', tenants: ['UL', 'A5'],     note: 'Arudha of 11th house. Co-located with UL and A5.', source: '§13.1 row 6' },
+  { id: 'ARD.UL',     name: 'UL (Upapada Lagna / A12)', sign: 'Gemini',      house: 3,  div: 'D1', tenants: ['A11', 'A5'],    note: 'Upapada Lagna = Arudha of 12th house. Spouse-image significator. 12H lord Jupiter in Sagittarius → Virgo (exception) → Gemini.', source: '§13.1 row 7' },
+  // §13.2 — A12=UL confirmed Pisces has no arudha markers; UL explicitly = Gemini per §13.1
+  { id: 'ARD.A12',    name: 'A12 (Bed Comforts / Loss)', sign: 'Pisces',     house: 12, div: 'D1', tenants: [],               note: 'Arudha of 12th house (alias). FORENSIC §13.2 ARO.PISCES shows no markers; UL (Upapada) is the primary 12H arudha per §13.1. A12=UL=Gemini is standard; Pisces is the 12H sign itself.', source: '§13.2 ARO.PISCES' },
+  // Divisional arudhas
+  { id: 'ARD.AL.D9',  name: 'AL in D9 (Navamsa)',       sign: 'Taurus',      house: null, div: 'D9',  tenants: [],            note: 'D9 Lagna Cancer; Moon in D9 12th (Gemini); 12th from Gemini = Taurus.', source: '§13.1 row 8' },
+  { id: 'ARD.AL.D10', name: 'AL in D10 (Dasamsa)',      sign: 'Sagittarius', house: null, div: 'D10', tenants: [],            note: 'D10 Lagna Leo; Sun in D10 9th (Aries); 9th from Aries = Sagittarius.', source: '§13.1 row 9' },
 ] as const
+
+// ── FORENSIC native chart UUID ─────────────────────────────────────────────────
+// Source: platform/scripts/dedupe_charts.ts NATIVE_CANONICAL_ID
+// Used for chart_sensitive_points.chart_id (Gate-1 requirement)
+const FORENSIC_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
 
 // ── Builder functions ─────────────────────────────────────────────────────────
 
@@ -248,6 +270,105 @@ export function buildRows(): Row[] {
   ]
 }
 
+// ── chart_sensitive_points rows ───────────────────────────────────────────────
+// Gate-1 requirement: chart_sensitive_points table must be populated with
+// chart_id, point_name, ayanamsha_id, longitude, sign, house, source_citation.
+// Points required: all 7 core upagrahas, A1..A12, Upapada, Darapada,
+// Hora Lagna, Ghati Lagna, Bhava Lagna. source_citation must be non-null.
+
+export interface CspRow {
+  chart_id: string
+  point_name: string
+  point_category: string
+  ayanamsha_id: string
+  fact_id: string
+  longitude: string | null
+  sign: string | null
+  house: number | null
+  nakshatra: string | null
+  source_citation: string
+  metadata: Record<string, unknown>
+  build_id: string
+}
+
+export function buildChartSensitivePointRows(): CspRow[] {
+  const rows: CspRow[] = []
+
+  // Upagrahas
+  for (const u of UPAGRAHAS) {
+    rows.push({
+      chart_id: FORENSIC_CHART_ID,
+      point_name: u.name,
+      point_category: 'upagraha',
+      ayanamsha_id: 'INVARIANT',
+      fact_id: u.id,
+      longitude: `${u.sign} ${u.degree}`,
+      sign: u.sign,
+      house: SIGN_TO_HOUSE[u.sign] ?? null,
+      nakshatra: u.nakshatra,
+      source_citation: `FORENSIC_v8_0_${u.source}`,
+      metadata: { type: u.type, degree: u.degree, nakshatra: u.nakshatra },
+      build_id: BUILD_ID,
+    })
+  }
+
+  // Special Lagnas (Hora, Ghati, Bhava — and all others)
+  for (const l of SPECIAL_LAGNAS) {
+    rows.push({
+      chart_id: FORENSIC_CHART_ID,
+      point_name: l.name,
+      point_category: 'special_lagna',
+      ayanamsha_id: 'INVARIANT',
+      fact_id: l.id,
+      longitude: l.longitude,
+      sign: l.sign,
+      house: l.house,
+      nakshatra: l.nakshatra,
+      source_citation: `FORENSIC_v8_0_${l.source}`,
+      metadata: { pada: l.pada, ...(l.note ? { note: l.note } : {}) },
+      build_id: BUILD_ID,
+    })
+  }
+
+  // Sahams
+  for (const s of SAHAMS) {
+    rows.push({
+      chart_id: FORENSIC_CHART_ID,
+      point_name: s.name,
+      point_category: 'saham',
+      ayanamsha_id: 'INVARIANT',
+      fact_id: s.id,
+      longitude: s.longitude,
+      sign: s.sign,
+      house: s.house,
+      nakshatra: s.nakshatra,
+      source_citation: `FORENSIC_v8_0_${s.source}`,
+      metadata: { meaning: s.meaning, ...(s.note ? { note: s.note } : {}) },
+      build_id: BUILD_ID,
+    })
+  }
+
+  // Arudhas — full A1..A12 + UL + divisional
+  for (const a of ARUDHAS) {
+    rows.push({
+      chart_id: FORENSIC_CHART_ID,
+      point_name: a.name,
+      point_category: 'arudha',
+      ayanamsha_id: 'INVARIANT',
+      fact_id: a.id,
+      longitude: a.house !== null ? `${a.sign} H${a.house}` : a.sign,
+      sign: a.sign,
+      house: a.house ?? null,
+      nakshatra: null,
+      source_citation: `FORENSIC_v8_0_${a.source}`,
+      metadata: { divisional_chart: a.div, note: a.note },
+      build_id: BUILD_ID,
+    })
+  }
+
+  return rows
+}
+
 // ── Build manifest ────────────────────────────────────────────────────────────
 
 async function ensureBuildManifest(dryRun: boolean): Promise<void> {
@@ -273,7 +394,7 @@ async function ensureBuildManifest(dryRun: boolean): Promise<void> {
       0,
       'live',
       'local://brahma-ga-1-6-sensitive-points',
-      `ganita.sensitive_points: ${rows.length} rows (9 upagrahas + 9 special_lagnas + 36 sahams + 9 arudhas)`,
+      `ganita.sensitive_points: ${rows.length} chart_facts rows (9 upagrahas + 9 special_lagnas + 36 sahams + 14 arudhas A1-A12+UL+D9+D10) + chart_sensitive_points populated`,
     ]
   )
   console.log(`[sensitive_points] build_manifests row inserted: ${BUILD_ID}`)
@@ -338,7 +459,62 @@ async function ingest(dryRun: boolean): Promise<void> {
     else skipped++
   }
 
-  console.log(`[sensitive_points] upserted: ${inserted} new, ${skipped} updated — DONE`)
+  console.log(`[sensitive_points] chart_facts upserted: ${inserted} new, ${skipped} updated — DONE`)
+}
+
+// ── Ingest chart_sensitive_points (Gate-1 requirement) ────────────────────────
+
+async function ingestChartSensitivePoints(dryRun: boolean): Promise<void> {
+  const cspRows = buildChartSensitivePointRows()
+
+  console.log(`[sensitive_points] chart_sensitive_points rows to upsert: ${cspRows.length}`)
+
+  if (dryRun) {
+    console.log('[dry-run] WOULD upsert chart_sensitive_points. Rows:')
+    cspRows.forEach(r => console.log(`  ${r.fact_id} | ${r.point_category} | ${r.point_name} | ${r.longitude ?? 'null'} | ${r.source_citation}`))
+    return
+  }
+
+  let inserted = 0
+  let skipped = 0
+
+  for (const r of cspRows) {
+    const result = await pool.query(
+      `INSERT INTO chart_sensitive_points
+         (chart_id, point_name, point_category, ayanamsha_id, fact_id,
+          longitude, sign, house, nakshatra, source_citation, metadata, build_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (chart_id, fact_id, ayanamsha_id) DO UPDATE SET
+         point_name      = EXCLUDED.point_name,
+         point_category  = EXCLUDED.point_category,
+         longitude       = EXCLUDED.longitude,
+         sign            = EXCLUDED.sign,
+         house           = EXCLUDED.house,
+         nakshatra       = EXCLUDED.nakshatra,
+         source_citation = EXCLUDED.source_citation,
+         metadata        = EXCLUDED.metadata,
+         build_id        = EXCLUDED.build_id
+       RETURNING (xmax = 0) AS inserted`,
+      [
+        r.chart_id,
+        r.point_name,
+        r.point_category,
+        r.ayanamsha_id,
+        r.fact_id,
+        r.longitude,
+        r.sign,
+        r.house,
+        r.nakshatra,
+        r.source_citation,
+        JSON.stringify(r.metadata),
+        r.build_id,
+      ]
+    )
+    if (result.rows[0]?.inserted) inserted++
+    else skipped++
+  }
+
+  console.log(`[sensitive_points] chart_sensitive_points upserted: ${inserted} new, ${skipped} updated — DONE`)
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -349,6 +525,7 @@ if (process.env.NODE_ENV !== 'test') {
     try {
       await ensureBuildManifest(dryRun)
       await ingest(dryRun)
+      await ingestChartSensitivePoints(dryRun)
     } catch (err) {
       console.error('[sensitive_points] FATAL:', err)
       process.exit(1)
