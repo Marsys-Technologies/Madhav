@@ -72,8 +72,8 @@ NATIVE_CHART_ID = os.environ.get(
     "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
 )
 
-GCP_PROJECT   = os.environ.get("GCP_PROJECT",  "marsys-jis")
-GCS_BUCKET    = os.environ.get("GCS_BUCKET",   "marsys-brahma-exports")
+GCP_PROJECT   = os.environ.get("GCP_PROJECT",  "madhav-astrology")
+GCS_BUCKET    = os.environ.get("GCS_BUCKET",   "madhav-brahma-olap")
 BQ_DATASET    = os.environ.get("BQ_DATASET",   "brahma_l5_olap")
 
 # Source citation for the export log — references canonical L1/L2 artifacts
@@ -433,7 +433,8 @@ def export_table(
 
     export_id  = str(uuid.uuid4())
     ts         = export_timestamp or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    gcs_path   = f"brahma/l5/mimamsa/{bq_table}/{ts}/{bq_table}.parquet"
+    # GCS path contract: gs://madhav-brahma-olap/<table>/<date>.parquet
+    gcs_path   = f"{bq_table}/{ts}.parquet"
 
     logger.info(
         "MI-5-5 export: table=%s | description=%s | export_id=%s | dry_run=%s",

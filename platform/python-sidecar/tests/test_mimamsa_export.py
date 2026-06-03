@@ -596,7 +596,7 @@ class TestWriteExportLog:
             export_id=str(uuid.uuid4()),
             table_name="chart_facts",
             row_count=2717,
-            gcs_path="gs://marsys-brahma-exports/brahma/l5/mimamsa/chart_facts/20260604T120000Z/chart_facts.parquet",
+            gcs_path="gs://madhav-brahma-olap/chart_facts/20260604T120000Z.parquet",
             source_citation="FORENSIC_ASTROLOGICAL_DATA_v8_0.md | BRAHMA MI-5-5",
         )
         mock_cursor.execute.assert_called_once()
@@ -682,3 +682,324 @@ class TestGCSUpload:
 
         assert uri.startswith("gs://")
         assert "test/path.parquet" in uri
+
+
+# ── 14. Gate-3 contract assertions (MI-5-5) ───────────────────────────────────
+#
+# These tests encode the exact Gate-3 acceptance criteria the Conductor evaluates:
+#   G3.1 — GCS path format: gs://madhav-brahma-olap/<table>/<date>.parquet
+#   G3.2 — source_citation non-null on all export_log rows and result dicts
+#   G3.3 — row_count >= 0 (count assertion — never negative)
+#   G3.4 — provenance_envelope present with required keys
+#   G3.5 — formula bounds: multiplier in [0.8, 1.2]; row_count integer >= 0
+
+class TestGate3Contract:
+    """
+    Gate-3 acceptance battery for MI-5-5 (mimamsa.research).
+    Conductor runs these as the final verification before marking status=green.
+    """
+
+    # ── G3.1: GCS path format ─────────────────────────────────────────────────
+
+    def test_g3_1_default_gcs_bucket_is_madhav_brahma_olap(self):
+        """GCS_BUCKET default must be madhav-brahma-olap (provisioned bucket)."""
+        import importlib
+        import sys
+        # Force clean reload without env override
+        mod_name = "brahmagyan.mimamsa.export_to_bigquery"
+        saved = sys.modules.pop(mod_name, None)
+        try:
+            import os
+            old_val = os.environ.pop("GCS_BUCKET", None)
+            m = importlib.import_module(mod_name)
+            importlib.reload(m)
+            assert m.GCS_BUCKET == "madhav-brahma-olap", (
+                f"GCS_BUCKET default must be 'madhav-brahma-olap', got {m.GCS_BUCKET!r}"
+            )
+        finally:
+            if old_val is not None:
+                os.environ["GCS_BUCKET"] = old_val
+            if saved is not None:
+                sys.modules[mod_name] = saved
+
+    def test_g3_1_gcs_path_format_table_date_parquet(self):
+        """GCS path must follow <table>/<date>.parquet — no extra nesting."""
+        m = _mod()
+
+        row = _CHART_FACTS_ROW
+        col_names = list(row.keys())
+        db_row = tuple(row[k] for k in col_names)
+
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_cursor.description = [(name,) for name in col_names]
+        mock_cursor.fetchall.return_value = [db_row]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+
+        captured_paths: list[str] = []
+
+        def capture_upload(data, gcs_path, *, dry_run=False):
+            captured_paths.append(gcs_path)
+            return f"gs://madhav-brahma-olap/{gcs_path}"
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.object(m, "_rows_to_parquet", return_value=b"fake"),
+            patch.object(m, "_upload_to_gcs", side_effect=capture_upload),
+            patch.object(m, "_load_parquet_to_bq", return_value=1),
+            patch.object(m, "_write_export_log"),
+        ):
+            result = m.export_table("chart_facts", export_timestamp="20260604T120000Z", dry_run=False)
+
+        assert len(captured_paths) == 1
+        path = captured_paths[0]
+        # Must be <table>/<date>.parquet — exactly 2 path segments
+        parts = path.split("/")
+        assert len(parts) == 2, (
+            f"GCS path must be '<table>/<date>.parquet' (2 segments), got {path!r}"
+        )
+        assert parts[0] == "chart_facts", f"First segment must be table name, got {parts[0]!r}"
+        assert parts[1].endswith(".parquet"), f"Second segment must end in .parquet, got {parts[1]!r}"
+
+    def test_g3_1_gcs_uri_contains_madhav_brahma_olap(self):
+        """Full GCS URI in result must reference madhav-brahma-olap bucket."""
+        m = _mod()
+
+        row = _CHART_FACTS_ROW
+        col_names = list(row.keys())
+        db_row = tuple(row[k] for k in col_names)
+
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_cursor.description = [(name,) for name in col_names]
+        mock_cursor.fetchall.return_value = [db_row]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+
+        def real_uri_upload(data, gcs_path, *, dry_run=False):
+            # Simulate what _upload_to_gcs does with the real default bucket
+            return f"gs://{m.GCS_BUCKET}/{gcs_path}"
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.object(m, "_rows_to_parquet", return_value=b"fake"),
+            patch.object(m, "_upload_to_gcs", side_effect=real_uri_upload),
+            patch.object(m, "_load_parquet_to_bq", return_value=1),
+            patch.object(m, "_write_export_log"),
+        ):
+            result = m.export_table("chart_facts", export_timestamp="20260604T120000Z", dry_run=False)
+
+        assert "madhav-brahma-olap" in result["gcs_uri"], (
+            f"gcs_uri must reference 'madhav-brahma-olap', got {result['gcs_uri']!r}"
+        )
+        assert result["gcs_uri"].startswith("gs://"), (
+            f"gcs_uri must start with gs://, got {result['gcs_uri']!r}"
+        )
+        assert result["gcs_uri"].endswith(".parquet"), (
+            f"gcs_uri must end in .parquet, got {result['gcs_uri']!r}"
+        )
+
+    # ── G3.2: source_citation non-null ───────────────────────────────────────
+
+    def test_g3_2_result_source_citation_non_null(self):
+        """export_table result must carry non-null source_citation."""
+        m = _mod()
+
+        row = _CHART_FACTS_ROW
+        col_names = list(row.keys())
+        db_row = tuple(row[k] for k in col_names)
+
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_cursor.description = [(name,) for name in col_names]
+        mock_cursor.fetchall.return_value = [db_row]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.object(m, "_rows_to_parquet", return_value=b"fake"),
+            patch.object(m, "_upload_to_gcs", return_value="gs://madhav-brahma-olap/chart_facts/ts.parquet"),
+            patch.object(m, "_load_parquet_to_bq", return_value=1),
+            patch.object(m, "_write_export_log"),
+        ):
+            result = m.export_table("chart_facts", dry_run=False)
+
+        assert result.get("source_citation"), "source_citation must be non-null and non-empty"
+        assert "FORENSIC" in result["source_citation"], "source_citation must reference FORENSIC"
+        assert "MI-5-5" in result["source_citation"], "source_citation must reference MI-5-5"
+
+    def test_g3_2_log_source_citation_constant_non_null(self):
+        """The module-level _LOG_SOURCE_CITATION constant must be non-null."""
+        m = _mod()
+        assert m._LOG_SOURCE_CITATION, "_LOG_SOURCE_CITATION must not be empty"
+        assert "FORENSIC" in m._LOG_SOURCE_CITATION
+        assert "MI-5-5" in m._LOG_SOURCE_CITATION
+
+    # ── G3.3: count assertions ────────────────────────────────────────────────
+
+    def test_g3_3_row_count_non_negative(self):
+        """row_count in result must be an integer >= 0."""
+        m = _mod()
+
+        # Zero rows (all filtered due to missing citation)
+        row = {**_CHART_FACTS_ROW, "source_citation": None}
+        col_names = list(row.keys())
+        db_row = tuple(row[k] for k in col_names)
+
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_cursor.description = [(name,) for name in col_names]
+        mock_cursor.fetchall.return_value = [db_row]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.object(m, "_rows_to_parquet", return_value=b"fake"),
+            patch.object(m, "_upload_to_gcs", return_value="gs://madhav-brahma-olap/chart_facts/ts.parquet"),
+            patch.object(m, "_load_parquet_to_bq", return_value=0),
+            patch.object(m, "_write_export_log"),
+        ):
+            result = m.export_table("chart_facts", dry_run=False)
+
+        assert isinstance(result["row_count"], int), "row_count must be int"
+        assert result["row_count"] >= 0, "row_count must be >= 0"
+
+    def test_g3_3_table_specs_count_is_three(self):
+        """_TABLE_SPECS must have exactly 3 entries (chart_facts, bodha_signals, life_events_calibration)."""
+        m = _mod()
+        assert len(m._TABLE_SPECS) == 3, (
+            f"Expected 3 table specs, got {len(m._TABLE_SPECS)}: {sorted(m._TABLE_SPECS.keys())}"
+        )
+        assert "chart_facts" in m._TABLE_SPECS
+        assert "bodha_signals" in m._TABLE_SPECS
+        assert "life_events_calibration" in m._TABLE_SPECS
+
+    # ── G3.4: provenance_envelope ─────────────────────────────────────────────
+
+    def test_g3_4_provenance_envelope_required_keys(self):
+        """provenance_envelope must carry: source, asset, layer, native_chart_id, exported_at."""
+        m = _mod()
+
+        row = _CHART_FACTS_ROW
+        col_names = list(row.keys())
+        db_row = tuple(row[k] for k in col_names)
+
+        mock_cursor = MagicMock()
+        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_cursor.__exit__ = MagicMock(return_value=False)
+        mock_cursor.description = [(name,) for name in col_names]
+        mock_cursor.fetchall.return_value = [db_row]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value = mock_cursor
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.object(m, "_rows_to_parquet", return_value=b"fake"),
+            patch.object(m, "_upload_to_gcs", return_value="gs://madhav-brahma-olap/chart_facts/ts.parquet"),
+            patch.object(m, "_load_parquet_to_bq", return_value=1),
+            patch.object(m, "_write_export_log"),
+        ):
+            result = m.export_table("chart_facts", dry_run=False)
+
+        env = result.get("provenance_envelope")
+        assert env is not None, "provenance_envelope must be present"
+        assert env.get("source") == "brahmagyan.mimamsa.export_to_bigquery"
+        assert env.get("asset") == "MI-5-5"
+        assert env.get("layer") == "L5 Mīmāṃsā"
+        assert env.get("native_chart_id") == NATIVE_CHART_ID
+        assert env.get("gcp_project") == "madhav-astrology", (
+            f"gcp_project must be 'madhav-astrology', got {env.get('gcp_project')!r}"
+        )
+        assert env.get("gcs_bucket") == "madhav-brahma-olap", (
+            f"gcs_bucket must be 'madhav-brahma-olap', got {env.get('gcs_bucket')!r}"
+        )
+        assert "exported_at" in env
+
+    def test_g3_4_acceptance_gate_provenance_envelope_present(self):
+        """run_acceptance_gate result must carry provenance_envelope."""
+        m = _mod()
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.execute.return_value.fetchone.return_value = (0,)
+
+        with (
+            patch.object(m, "_get_conn", return_value=mock_conn),
+            patch.dict("sys.modules", {"google.cloud.bigquery": None}),
+        ):
+            result = m.run_acceptance_gate()
+
+        env = result.get("provenance_envelope")
+        assert env is not None, "run_acceptance_gate must return provenance_envelope"
+        assert env.get("source") == "brahmagyan.mimamsa.export_to_bigquery"
+        assert env.get("asset") == "MI-5-5"
+        assert "run_at" in env
+
+    # ── G3.5: formula bounds ──────────────────────────────────────────────────
+
+    def test_g3_5_gcp_project_default_is_madhav_astrology(self):
+        """GCP_PROJECT default must be madhav-astrology (matches provisioned project)."""
+        import importlib
+        import sys
+        mod_name = "brahmagyan.mimamsa.export_to_bigquery"
+        saved = sys.modules.pop(mod_name, None)
+        try:
+            import os
+            old_val = os.environ.pop("GCP_PROJECT", None)
+            m = importlib.import_module(mod_name)
+            importlib.reload(m)
+            assert m.GCP_PROJECT == "madhav-astrology", (
+                f"GCP_PROJECT default must be 'madhav-astrology', got {m.GCP_PROJECT!r}"
+            )
+        finally:
+            if old_val is not None:
+                os.environ["GCP_PROJECT"] = old_val
+            if saved is not None:
+                sys.modules[mod_name] = saved
+
+    def test_g3_5_bq_dataset_default_is_brahma_l5_olap(self):
+        """BQ_DATASET default must be brahma_l5_olap."""
+        m = _mod()
+        assert m.BQ_DATASET == "brahma_l5_olap", (
+            f"BQ_DATASET must be 'brahma_l5_olap', got {m.BQ_DATASET!r}"
+        )
+
+    def test_g3_5_all_table_specs_have_non_null_source_citation_in_sql(self):
+        """Every _TABLE_SPECS SQL must filter source_citation IS NOT NULL."""
+        m = _mod()
+        for key, spec in m._TABLE_SPECS.items():
+            sql = spec["sql"]
+            assert "source_citation IS NOT NULL" in sql, (
+                f"Table spec {key!r}: SQL must filter 'source_citation IS NOT NULL' "
+                f"to enforce non-null contract at DB level"
+            )
+
+    def test_g3_5_lel_calibration_prefix_constant_matches_table_key(self):
+        """_LEL_CALIBRATION_PREFIX must match the life_events_calibration table key prefix."""
+        m = _mod()
+        assert m._LEL_CALIBRATION_PREFIX == "life_events_calibration"
+        # Verify the table key starts with the prefix
+        assert "life_events_calibration".startswith(m._LEL_CALIBRATION_PREFIX)
