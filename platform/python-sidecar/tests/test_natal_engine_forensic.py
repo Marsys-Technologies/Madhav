@@ -265,23 +265,29 @@ def test_vimshottari_maha_lords(chart):
     assert not missing, f"Missing lords in Vimshottari: {missing}"
 
 
-def test_vimshottari_birth_maha_venus(chart):
-    """FORENSIC: native born in Venus (Shukra) Mahadasha.
-    The first or an early entry whose maha lord is Venus must be present and
-    its start_date must be on or before 1984-02-05 (birth date).
+def test_vimshottari_birth_maha_jupiter_antara_venus(chart):
+    """FORENSIC DSH.V.001: native born in Jupiter MD – Venus AD.
+    FORENSIC v8.0 §5.1: DSH.V.001 Jupiter/Venus AD starts 1984-02-05.
+    The maha lord at birth is Jupiter (not Venus — Venus MD starts 2034-08-21).
+    Antara lord at birth is Venus.
+
+    Strategy: find an entry with maha=Jupiter, antara=Venus, start_date <= 1984-02-05.
+    The engine produces Sukshma-level entries; any Jup/Ven antara entry before/on birth satisfies this.
     """
     v = chart["vimshottari"]
     if "error" in v:
         pytest.skip(f"Vimshottari error: {v['error']}")
-    # Find entries where maha lord is Venus and start_date <= birth
     birth_str = "1984-02-05"
-    birth_venus_entries = [
+    # Find any sukshma-level entry that falls within Jupiter MD / Venus AD before or on birth
+    jup_ven_entries = [
         d for d in v["dashas"]
-        if d["lords"].get("maha") == "Venus" and d["start_date"] <= birth_str
+        if d["lords"].get("maha") == "Jupiter"
+        and d["lords"].get("antara") == "Venus"
+        and d["start_date"] <= birth_str
     ]
-    assert birth_venus_entries, (
-        "No Venus mahadasha entry found with start_date <= 1984-02-05. "
-        "FORENSIC: native born in Venus (Shukra) mahadasha."
+    assert jup_ven_entries, (
+        "No Jupiter MD / Venus AD entry found with start_date <= 1984-02-05. "
+        "FORENSIC DSH.V.001: native born in Jupiter MD – Venus AD starting 1984-02-05."
     )
 
 
