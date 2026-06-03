@@ -13,12 +13,15 @@ Table:        chart_divisionals (chart_id, graha, ayanamsha_id, varga, sign,
                                   source_citation, build_id)
 
 FORENSIC benchmark (Lahiri, native 1984-02-05 10:43 IST Bhubaneswar):
-  Source: JHORA_TRANSCRIPTION_v8_0_SOURCE.md + chart_facts DB (authoritative)
-  D1: Lagna=Aries (12° Ar), Sun=Capricorn (21° Cp), Moon=Aquarius (27° Aq),
-      Mars=Libra, Saturn=Libra (exalted), Rahu=Taurus, Ketu=Scorpio
-  D9: Lagna=Cancer, Sun=Cancer, Moon=Gemini, Mercury=Capricorn (vargottama)
-  D10: Sun=Aries
-  Vimshottari MD at birth: Venus (Shukra) mahadasha
+  Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1, §3.5, §3.6 (authoritative)
+  D1: Lagna=Aries (12°23′), Sun=Capricorn (21°57′), Moon=Aquarius (27°02′),
+      Mars=Libra, Mercury=Capricorn, Jupiter=Sagittarius, Venus=Sagittarius,
+      Saturn=Libra (exalted), Rahu=Taurus, Ketu=Scorpio
+  D9: Lagna=Cancer, Sun=Cancer, Moon=Gemini, Mercury=Capricorn (vargottama=YES),
+      Mars=Pisces, Jupiter=Gemini, Venus=Virgo, Saturn=Aries, Rahu=Gemini,
+      Ketu=Sagittarius
+  D10: Lagna=Leo, Sun=Aries
+  Vimshottari MD at birth: Venus (Shukra) mahadasha (1982–2002)
 
 Commit tag: BRAHMA-GA-1-3
 """
