@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from routers import ephemeris, events, eclipses, retrogrades, sade_sati, jaimini, v7_additions, dasha_chain
 from routers import panchang as panchang_router
 from routers import muhurat as muhurat_router
+import importlib as _importlib
+bodha_holistic_bundle_router = _importlib.import_module("brahmagyan.bodha.bo_2-8").router
 from rag.routers.rag_retrieve import router as rag_retrieve_router
 from rag.routers.rag_router import router as rag_router_router
 from rag.routers.rag_synthesize import router as rag_synthesize_router
@@ -52,6 +54,9 @@ app.include_router(panchang_router.router, prefix="/api/compute", dependencies=[
 
 # Phase 4C-6 — Muhurat Finder endpoint
 app.include_router(muhurat_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# Brahma BO-2-8 — holistic_bundle (L2 Bodha whole-chart-read B.11 entrypoint)
+app.include_router(bodha_holistic_bundle_router, prefix="/api/compute/brahma/bodha", dependencies=[Depends(verify_api_key)])
 
 
 @app.get("/health")
