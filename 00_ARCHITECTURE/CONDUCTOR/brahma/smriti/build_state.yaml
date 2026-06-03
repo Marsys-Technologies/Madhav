@@ -9,25 +9,26 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: '2026-06-03T00:00:00+05:30'
-  last_updated: '2026-06-03T18:57:00.543271+00:00'
+  last_updated: '2026-06-03T19:44:00.000000+00:00'
   batch_count: 9
 budget:
   total_spent_usd: 0.0
   per_asset: {}
 queue_summary:
   total_sessions: 45
-  complete: 24
-  in_progress: 0
+  complete: 29
+  in_progress: 1
   parked: 3
-  pending: 18
-  gate1_pass: 0
+  pending: 10
+  gate1_pass: 2
   layers_complete:
   - L0
   - L1
   - L2
+  - L3
   layers_in_progress:
-  - L2
-  last_updated: '2026-06-03T22:15:00+05:30'
+  - L4
+  last_updated: '2026-06-03T19:44:00+00:00'
 assets:
 - id: BG-0-1
   asset_id: brahmagyan.ephemeris
@@ -495,13 +496,14 @@ assets:
   depends_on:
   - GA-L1-VERIFY
   - BO-L2-VERIFY
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T19:44:00+00:00'
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS + Gate-3 GREEN.
 - id: KA-3-2
   asset_id: kala.convergence
   layer: L3
@@ -510,13 +512,14 @@ assets:
   depends_on:
   - GA-L1-VERIFY
   - BO-L2-VERIFY
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T19:44:00+00:00'
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS + Gate-3 GREEN.
 - id: KA-3-3
   asset_id: kala.obstruction
   layer: L3
@@ -525,13 +528,14 @@ assets:
   depends_on:
   - KA-3-1
   - KA-3-2
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T19:44:00+00:00'
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS + Gate-3 GREEN.
 - id: KA-3-4
   asset_id: kala.temporal
   layer: L3
@@ -541,13 +545,14 @@ assets:
   - KA-3-1
   - KA-3-2
   - KA-3-3
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T19:44:00+00:00'
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS + Gate-3 GREEN.
 - id: KA-L3-VERIFY
   asset_id: kala.layer_complete
   layer: L3
@@ -558,9 +563,11 @@ assets:
   - KA-3-2
   - KA-3-3
   - KA-3-4
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
+  gate3_at: '2026-06-03T19:44:00+00:00'
+  build_note: L3 layer complete declared Batch 9. All 4 KA assets gate1_pass + gate3_green.
 - id: PH-4-1
   asset_id: phala.anchors
   layer: L4
@@ -569,13 +576,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS. Gate-3 pending.
 - id: PH-4-2
   asset_id: phala.mitigation
   layer: L4
@@ -584,13 +592,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: pending
+  status: in_progress
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: null
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 pending.
 - id: PH-4-3
   asset_id: phala.rectification
   layer: L4
@@ -599,13 +608,14 @@ assets:
   depends_on:
   - BO-L2-VERIFY
   - KA-L3-VERIFY
-  status: pending
+  status: gate1_pass
   fix_attempts: 0
   spent_usd: 0.0
-  gate1_at: null
+  gate1_at: '2026-06-03T19:44:00+00:00'
   gate2_at: null
   gate3_at: null
   parked_reason: null
+  build_note: Built Batch 9. Gate-1 PASS. Gate-3 pending.
 - id: PH-4-4
   asset_id: phala.muhurta
   layer: L4
@@ -1030,3 +1040,30 @@ decision_audit:
   - asset: BO-2-8
     decision: gate1_pass
     note: 'L2 Wave-3; Gate-1 PASS Batch 6; Gate-3 pending; status: in_progress.'
+- batch: 9
+  timestamp: '2026-06-03T19:44:00+00:00'
+  events:
+  - asset: KA-3-1
+    decision: gate3_pass
+    note: 'L3 Wave-1; Gate-1 PASS + Gate-3 GREEN; status: green.'
+  - asset: KA-3-2
+    decision: gate3_pass
+    note: 'L3 Wave-1; Gate-1 PASS + Gate-3 GREEN; status: green.'
+  - asset: KA-3-3
+    decision: gate3_pass
+    note: 'L3 Wave-2; Gate-1 PASS + Gate-3 GREEN; status: green.'
+  - asset: KA-3-4
+    decision: gate3_pass
+    note: 'L3 Wave-3; Gate-1 PASS + Gate-3 GREEN; status: green.'
+  - asset: KA-L3-VERIFY
+    decision: layer_complete
+    note: 'L3 layer complete declared Batch 9. All 4 KA assets green. status: green.'
+  - asset: PH-4-1
+    decision: gate1_pass
+    note: 'L4 Wave-1; Gate-1 PASS Batch 9; Gate-3 pending; status: gate1_pass.'
+  - asset: PH-4-2
+    decision: built_ungated
+    note: 'L4 Wave-1; built Batch 9; Gate-1 pending; status: in_progress.'
+  - asset: PH-4-3
+    decision: gate1_pass
+    note: 'L4 Wave-1; Gate-1 PASS Batch 9; Gate-3 pending; status: gate1_pass.'
