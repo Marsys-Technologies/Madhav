@@ -6,6 +6,11 @@ from routers import ephemeris, events, sade_sati, jaimini, v7_additions
 from routers import panchang as panchang_router
 from routers import pyhora as pyhora_router
 from routers import prashna as prashna_router
+from routers import muhurat as muhurat_router
+from routers import brahmagyan_almanac as almanac_router
+from rag.routers.rag_retrieve import router as rag_retrieve_router
+from rag.routers.rag_router import router as rag_router_router
+from rag.routers.rag_synthesize import router as rag_synthesize_router
 
 load_dotenv()
 
@@ -60,6 +65,9 @@ app.include_router(pyhora_router.router, prefix="/api/pyhora", dependencies=[Dep
 
 # L1 Prashna — horary cast + judgment (namespace-isolated, never writes to native natal stream)
 app.include_router(prashna_router.router, prefix="/api/compute/prashna", dependencies=[Depends(verify_api_key)])
+
+# Brahmagyan L0 Wave-2 — Daily Almanac (BG-0-8) [BRAHMA-BG-0-8]
+app.include_router(almanac_router.router, prefix="/api/brahmagyan/almanac", dependencies=[Depends(verify_api_key)])
 
 
 @app.get("/health")

@@ -1,2 +1,9 @@
-# brahmagyan — Brahma instrument layer builders
-# BRAHMA project: L0 Brahmagyan → L1 Gaṇita → L2 Bodha → L3 Kāla → L4 Phala → L5 Mīmāṃsā
+"""
+brahmagyan — Layer 0 (Brahmagyan) foundation package for MARSYS-JIS.
+External-facing name: "Brahmagyan / Foundation"
+
+Package-level public API re-exports the most commonly used entry points
+from each sub-module so callers can do:
+    from brahmagyan.almanac import query as almanac_query
+"""
+__version__ = "0.1.0"
