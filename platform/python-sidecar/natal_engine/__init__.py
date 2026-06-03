@@ -556,11 +556,21 @@ def compute_chart(
 
     # Per-ayanamsha: planet positions, lagna, divisional charts
     for ayan_key in ayanamshas:
-        swe.set_sid_mode(AYANAMSHA_REGISTRY[ayan_key])
         from jhora.panchanga import drik as _drik
+        # Step 1: tell PyJHora which ayanamsha it should use for its own computations.
+        # drik.set_ayanamsa_mode() internally calls swe.set_sid_mode() with its own
+        # mapping, which may silently fall back to a different ayanamsha for keys it
+        # does not recognise (e.g. TRUE_CHITRA → TRUE_PUSHYA).  This corrupts the
+        # swisseph sid mode and produces wrong longitudes in subsequent swe.calc_ut()
+        # and swe.get_ayanamsa_ut() calls.
+        # Step 2: always re-assert our canonical swe sid mode AFTER the drik call so
+        # that _compute_graha_positions / _compute_lagna / _compute_divisional_charts
+        # all run against the correct ayanamsha regardless of what drik did internally.
         _drik.set_ayanamsa_mode(ayan_key.upper() if ayan_key.upper() in [
             "LAHIRI", "RAMAN", "KRISHNAMURTI", "TRUE_CITRA", "TRUE_CHITRA"
         ] else "LAHIRI")
+        # Re-assert: drik may have overridden swe's sid mode; restore canonical mode.
+        swe.set_sid_mode(AYANAMSHA_REGISTRY[ayan_key])
 
         ayan_data: dict[str, Any] = {}
 
