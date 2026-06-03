@@ -1,11 +1,12 @@
 /**
  * server_tier_visibility.test.ts — R1-T1
- * Assert all 40 tools register unconditionally.
+ * Assert all 41 tools register unconditionally.
  *
  * GISMCP Remediation R1 de-gating made tiers redundant; Stream A
  * 3.tier_excision (2026-05-28) removed `audience_tier` from Principal.
  * Test retained as the "tool-count parity" invariant — exercises every
  * register* call site once.
+ * brahmagyan.reference (reference_lookup) added 2026-06-03 — count 40→41.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -53,6 +54,7 @@ import { registerRecordOutcome } from '../tools/record_outcome.js'
 import { registerFlagDisagreement } from '../tools/flag_disagreement.js'
 import { registerToolHealth } from '../tools/tool_health.js'
 import { registerDataCoverage } from '../tools/data_coverage.js'
+import { registerReferenceLookup } from '../tools/reference_lookup.js'
 
 // ── Mock server ───────────────────────────────────────────────────────────────
 
@@ -66,7 +68,7 @@ function createMockServer() {
   }
 }
 
-// ── Helper: register all 40 tools with a given principal ─────────────────────
+// ── Helper: register all 41 tools with a given principal ─────────────────────
 
 function registerAll(server: ReturnType<typeof createMockServer>, principal: Principal) {
   const getPrincipal = () => principal
@@ -111,6 +113,7 @@ function registerAll(server: ReturnType<typeof createMockServer>, principal: Pri
   registerFlagDisagreement(server as unknown as McpServer, getPrincipal)
   registerToolHealth(server as unknown as McpServer, getPrincipal)
   registerDataCoverage(server as unknown as McpServer, getPrincipal)
+  registerReferenceLookup(server as unknown as McpServer, getPrincipal)
 }
 
 // ── Principals ────────────────────────────────────────────────────────────────
@@ -128,22 +131,22 @@ const makePrincipal = (tier: string): Principal => ({
 
 describe('server tool registration — tier visibility (R1 de-gating)', () => {
 
-  it('registers all 40 tools for client tier', () => {
+  it('registers all 41 tools for client tier', () => {
     const server = createMockServer()
     registerAll(server, makePrincipal('client'))
-    expect(server._registeredNames).toHaveLength(40)
+    expect(server._registeredNames).toHaveLength(41)
   })
 
-  it('registers all 40 tools for acharya tier', () => {
+  it('registers all 41 tools for acharya tier', () => {
     const server = createMockServer()
     registerAll(server, makePrincipal('acharya'))
-    expect(server._registeredNames).toHaveLength(40)
+    expect(server._registeredNames).toHaveLength(41)
   })
 
-  it('registers all 40 tools for super_admin tier', () => {
+  it('registers all 41 tools for super_admin tier', () => {
     const server = createMockServer()
     registerAll(server, makePrincipal('super_admin'))
-    expect(server._registeredNames).toHaveLength(40)
+    expect(server._registeredNames).toHaveLength(41)
   })
 
   it('tool_health is present for client tier', () => {
@@ -186,15 +189,15 @@ describe('server tool registration — tier visibility (R1 de-gating)', () => {
     }
   })
 
-  it('tool count is identical across all tiers (40 each)', () => {
+  it('tool count is identical across all tiers (41 each)', () => {
     const counts = ['client', 'acharya', 'super_admin'].map(tier => {
       const server = createMockServer()
       registerAll(server, makePrincipal(tier))
       return server._registeredNames.length
     })
-    expect(counts[0]).toBe(40)
-    expect(counts[1]).toBe(40)
-    expect(counts[2]).toBe(40)
+    expect(counts[0]).toBe(41)
+    expect(counts[1]).toBe(41)
+    expect(counts[2]).toBe(41)
   })
 
   it('no duplicate tool registrations', () => {

@@ -21,6 +21,7 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
+import { registerReferenceLookup } from './tools/reference_lookup.js'
 
 const app = express()
 app.use(express.json())
@@ -53,7 +54,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
-  // No tools registered — clean slate for Layer-0 rebuild.
+  registerReferenceLookup(server, () => principal as Principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

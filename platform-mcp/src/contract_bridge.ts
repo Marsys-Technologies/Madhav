@@ -28,6 +28,7 @@ export const MCP_CONTRACT_TOOL_NAMES: string[] = [
   'kp_query',
   'query_ephemeris',
   'read_classical_text',
+  'reference_lookup',   // brahmagyan.reference — added here
 ]
 
 /**
