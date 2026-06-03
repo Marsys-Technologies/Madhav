@@ -4,13 +4,17 @@
  * NEW in v3.1 (MCPT v3.1.0-S3). Structured L1 facts generated at session attach.
  * ~2.5k tokens. Pure facts — no prose synthesis.
  *
- * Reads from: chart_facts table + query_dasha_periods(active_only:true) +
- *   query_panchanga(today) + query_transit_event(now)
+ * Reads from: chart_facts table (categories: planet, karaka, house, metadata) +
+ *   query_dasha_periods(active_only:true) + query_panchanga(today)
  *
- * Tier conditioning: all tiers receive the same content; client tier gets inline
- * Sanskrit glosses (planet names etc.) in parentheses.
+ * IMPORTANT — B.10 compliance: ALL L1 chart values (planetary positions, lagna
+ * degree, karaka assignments) are read live from the chart_facts DB table via
+ * query_chart_facts. No L1 values are hardcoded in this file. If the DB does
+ * not yet contain a fact, this resource emits an explicit placeholder directing
+ * the consumer to call query_chart_facts directly. This ensures consumers always
+ * receive the DB-authoritative value, never a stale static string.
  *
- * MCPT v3.1.0-S3
+ * MCPT v3.1.0-S3 (B.10-fixed: GA-1-7)
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -42,56 +46,190 @@ async function fetchPrimitive(toolName: string, params: Record<string, unknown>)
   }
 }
 
+// ── chart_facts row type ───────────────────────────────────────────────────────
+
+interface ChartFactRow {
+  fact_id: string
+  category: string
+  divisional_chart?: string
+  value_text?: string | null
+  value_number?: number | null
+  value_json?: unknown
+  source_section?: string
+}
+
+/** Extract facts array from a fetchPrimitive response. Returns [] if absent. */
+function extractFacts(response: unknown): ChartFactRow[] {
+  if (!response || typeof response !== 'object') return []
+  const r = response as Record<string, unknown>
+  // Shape: { result: { count, facts: [...] } }
+  const result = r['result']
+  if (!result || typeof result !== 'object') return []
+  const rr = result as Record<string, unknown>
+  const facts = rr['facts']
+  if (!Array.isArray(facts)) return []
+  return facts as ChartFactRow[]
+}
+
+// ── Section renderers — all read from DB rows only ────────────────────────────
+
+/**
+ * Render Lagna section from DB rows with fact_id prefix 'PLN.LAGNA' or
+ * category 'metadata'/'special_lagna'. If absent: explicit placeholder.
+ */
+function renderLagna(facts: ChartFactRow[]): string[] {
+  const lines: string[] = ['## Lagna']
+  // Lagna rows are stored with fact_id matching PLN.LAGNA.* or category metadata/special_lagna
+  const lagnaRows = facts.filter(
+    (f) =>
+      f.fact_id.startsWith('PLN.LAGNA') ||
+      f.category === 'special_lagna' ||
+      (f.category === 'metadata' && f.fact_id.includes('LAGNA'))
+  )
+  if (lagnaRows.length === 0) {
+    lines.push(
+      '- [DATA_NOT_IN_DB — lagna position not yet seeded into chart_facts.' +
+        ' Call query_chart_facts(category:"special_lagna") or query_chart_facts(fact_id:"PLN.LAGNA.D1") for live data.]'
+    )
+  } else {
+    for (const row of lagnaRows) {
+      const val = row.value_text ?? (row.value_number !== null ? String(row.value_number) : '?')
+      lines.push(`- ${row.fact_id}: ${val}`)
+    }
+  }
+  lines.push('')
+  return lines
+}
+
+/**
+ * Render Planetary Positions (D1) section from DB rows with category 'planet'
+ * and divisional_chart 'D1'. Groups attribute rows by planet name extracted
+ * from fact_id (PLN.<PLANET>.<ATTRIBUTE>). If absent: explicit placeholder.
+ */
+function renderPlanetaryPositions(facts: ChartFactRow[]): string[] {
+  const lines: string[] = ['## Planetary Positions (D1)', '*Source: chart_facts table — category:planet, D1 rows*']
+  const planetRows = facts.filter((f) => f.category === 'planet' && (f.divisional_chart === 'D1' || !f.divisional_chart))
+
+  if (planetRows.length === 0) {
+    lines.push(
+      '',
+      '[DATA_NOT_IN_DB — planetary position rows (house, sign, degree, nakshatra) not yet seeded' +
+        ' into chart_facts. Call query_chart_facts(category:"planet", divisional_chart:"D1") for' +
+        ' live data once seeding is complete.]'
+    )
+    lines.push('')
+    return lines
+  }
+
+  // Group by planet name (second segment of fact_id: PLN.<PLANET>.<ATTR>)
+  const byPlanet = new Map<string, Record<string, string>>()
+  for (const row of planetRows) {
+    const parts = row.fact_id.split('.')
+    if (parts.length < 3) continue
+    const planet = parts[1] ?? ''
+    const attr = parts.slice(2).join('.')
+    if (!planet || !attr) continue
+    if (!byPlanet.has(planet)) byPlanet.set(planet, {})
+    const val = row.value_text ?? (row.value_number != null ? String(row.value_number) : '')
+    const planetAttrs = byPlanet.get(planet)
+    if (planetAttrs) planetAttrs[attr] = val
+  }
+
+  if (byPlanet.size === 0) {
+    lines.push(
+      '',
+      '[DATA_NOT_IN_DB — no recognisable PLN.<planet>.<attr> rows found in DB result.' +
+        ' Call query_chart_facts(category:"planet") for live data.]'
+    )
+    lines.push('')
+    return lines
+  }
+
+  lines.push('| Planet | Attributes (from chart_facts) |')
+  lines.push('|---|---|')
+  for (const [planet, attrs] of byPlanet) {
+    const attrStr = Object.entries(attrs)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('; ')
+    lines.push(`| ${planet} | ${attrStr} |`)
+  }
+  lines.push('')
+  lines.push(
+    '*Note: Full positional detail (house, sign, degree, nakshatra, retrograde) is available via' +
+      ' `query_chart_facts(category:"planet", divisional_chart:"D1")` once all position rows are seeded.*'
+  )
+  lines.push('')
+  return lines
+}
+
+/**
+ * Render Karakas section from DB rows with category 'karaka' or fact_ids
+ * matching PLN.<PLANET>.CHARA_KARAKA. If absent: explicit placeholder.
+ */
+function renderKarakas(facts: ChartFactRow[]): string[] {
+  const lines: string[] = ['## Karakas (Jaimini, D1)', '*Source: chart_facts table — category:karaka or CHARA_KARAKA attribute rows*']
+  const karakaRows = facts.filter(
+    (f) =>
+      f.category === 'karaka' ||
+      f.fact_id.endsWith('.CHARA_KARAKA') ||
+      f.fact_id.includes('KARAKA')
+  )
+
+  if (karakaRows.length === 0) {
+    lines.push(
+      '',
+      '[DATA_NOT_IN_DB — karaka assignment rows not yet seeded into chart_facts.' +
+        ' Call query_chart_facts(category:"karaka") or query_chart_facts(category:"planet",' +
+        ' value_contains:"karaka") for live data.]'
+    )
+    lines.push('')
+    return lines
+  }
+
+  for (const row of karakaRows) {
+    const val = row.value_text ?? '?'
+    lines.push(`- ${row.fact_id}: ${val}`)
+  }
+  lines.push('')
+  return lines
+}
+
 // ── Snapshot generator ─────────────────────────────────────────────────────────
 
 async function generateChartSnapshot(): Promise<string> {
   const now = new Date().toISOString()
   const today = now.slice(0, 10)
 
-  // Fetch in parallel
-  const [chartFacts, dashaPeriods, panchanga] = await Promise.all([
-    fetchPrimitive('query_chart_facts', { category: 'house', limit: 100 }),
+  // Fetch in parallel — planet category covers positions + karaka attributes
+  const [planetFacts, karakaFacts, dashaPeriods, panchanga] = await Promise.all([
+    fetchPrimitive('query_chart_facts', { category: 'planet', divisional_chart: 'D1', limit: 100 }),
+    fetchPrimitive('query_chart_facts', { category: 'karaka', limit: 50 }),
     fetchPrimitive('query_dasha_periods', { active_only: true }),
     fetchPrimitive('query_panchanga', { date: today }),
   ])
+
+  // Merge all chart_facts rows (planet rows may contain CHARA_KARAKA attrs; karaka category holds dedicated rows)
+  const allChartFacts: ChartFactRow[] = [
+    ...extractFacts(planetFacts),
+    ...extractFacts(karakaFacts),
+  ]
 
   // Build markdown sections
   const lines: string[] = []
   lines.push(`# MARSYS-JIS Chart Snapshot (auto-generated, last refresh: ${now})`)
   lines.push('')
-  lines.push('*Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md (L1). No synthesis. Pure facts.*')
+  lines.push('*All L1 values sourced live from chart_facts DB table. No values are hardcoded.*')
+  lines.push('*Source artifact: FORENSIC_ASTROLOGICAL_DATA_v8_0.md (L1) as seeded into chart_facts.*')
   lines.push('')
 
-  // Lagna
-  lines.push('## Lagna')
-  lines.push('- Sign: Aries (Mesha) | Degree: 12°23′55″ | Lord: Mars | State: Neutral | Nakshatra: Ashwini | Nak-Lord: Ketu')
-  lines.push('')
+  // Lagna — from DB
+  lines.push(...renderLagna(allChartFacts))
 
-  // Planetary positions (D1) — sourced from FORENSIC v8.0
-  lines.push('## Planetary Positions (D1)')
-  lines.push('| Planet | House | Sign | Degree | Dignity | Nakshatra | Nak-Lord | Retro? |')
-  lines.push('|---|---|---|---|---|---|---|---|')
-  lines.push('| Sun | 10 | Capricorn | 21°57′35″ | Enemy Sign | Shravana | Moon | — |')
-  lines.push('| Moon | 11 | Aquarius | 27°02′48″ | Neutral | Purva Bhadrapada | Jupiter | — |')
-  lines.push('| Mars | 7 | Libra | 18°31′38″ | Enemy Sign | Swati | Rahu | — |')
-  lines.push('| Mercury | 10 | Capricorn | 00°50′11″ | Neutral | Uttara Ashadha | Sun | — |')
-  lines.push('| Jupiter | 9 | Sagittarius | 09°48′28″ | Own Sign | Moola | Ketu | — |')
-  lines.push('| Venus | 9 | Sagittarius | 19°10′12″ | Neutral | Purva Ashadha | Venus | — |')
-  lines.push('| Saturn | 7 | Libra | 22°27′04″ | Exalted | Vishakha | Jupiter | — |')
-  lines.push('| Rahu | 2 | Taurus | 19°01′47″ | Neutral | Rohini | Moon | Yes |')
-  lines.push('| Ketu | 8 | Scorpio | 19°01′47″ | Neutral | Jyeshtha | Mercury | Yes |')
-  lines.push('')
+  // Planetary positions — from DB
+  lines.push(...renderPlanetaryPositions(allChartFacts))
 
-  // Karakas (Jaimini)
-  lines.push('## Karakas (Jaimini, D1 — 7-karaka system)')
-  lines.push('- Atmakaraka (AK): Moon (27°02′48″ — highest degree)')
-  lines.push('- Amatyakaraka (AmK): Saturn (22°27′04″)')
-  lines.push('- Bhatrikaraka (BK): Sun (21°57′35″)')
-  lines.push('- Matrikaraka (MK): Venus (19°10′12″)')
-  lines.push('- Pitrikaraka (PiK): Mars (18°31′38″)')
-  lines.push('- Putrakaraka (PK): Jupiter (09°48′28″)')
-  lines.push('- Gnatikaraka (GK): Mercury (00°50′11″)')
-  lines.push('')
+  // Karakas — from DB
+  lines.push(...renderKarakas(allChartFacts))
 
   // Active dasha
   lines.push('## Active Dasha (Vimshottari)')
@@ -134,17 +272,10 @@ async function generateChartSnapshot(): Promise<string> {
   }
   lines.push('')
 
-  // Used chart_facts data if available
-  if (chartFacts && typeof chartFacts === 'object') {
-    const d = chartFacts as Record<string, unknown>
-    const result = d['result']
-    if (result && typeof result === 'object') {
-      const r = result as Record<string, unknown>
-      if (typeof r['count'] === 'number') {
-        lines.push(`*chart_facts table: ${r['count']} house-category rows loaded.*`)
-      }
-    }
-  }
+  // DB inventory summary
+  const planetCount = extractFacts(planetFacts).length
+  const karakaCount = extractFacts(karakaFacts).length
+  lines.push(`*chart_facts DB: ${planetCount} planet-category rows + ${karakaCount} karaka-category rows loaded at attach time.*`)
 
   return lines.join('\n')
 }
