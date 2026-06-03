@@ -65,181 +65,222 @@ NATIVE_CHART_ID = os.environ.get(
 #   ASPECTS_4TH       → 0.85 (Mars 4th-house special aspect)
 #   ASPECTS_8TH       → 0.85 (Mars 8th-house special aspect)
 
-WEIGHT_MAP: dict[str, float] = {
-    "DISPOSITED_BY": 0.90,
-    "NAKSHATRA_LORD_IS": 0.80,
-    "ASPECTS_3RD": 0.85,
-    "ASPECTS_4TH": 0.85,
-    "ASPECTS_8TH": 0.85,
-    "REINFORCES": 0.70,
-    "CONTRADICTS": 0.70,
-    "MODULATES": 0.60,
+# Gate-1 contract enum (lowercase, matches DB CHECK constraint):
+#   reinforce  — two signals amplify each other's theme
+#   contradict — two signals pull in opposite directions
+#   modulate   — one signal contextually modulates another
+#   amplify    — one signal intensifies another's expression
+#   suppress   — one signal dampens or blocks another
+VALID_EDGE_TYPES: frozenset[str] = frozenset(
+    {"reinforce", "contradict", "modulate", "amplify", "suppress"}
+)
+
+# Map legacy manifest edge_type labels → Gate-1 contract enum
+_EDGE_TYPE_MAP: dict[str, str] = {
+    "DISPOSITED_BY":    "modulate",   # sign-lord modulates planet's expression
+    "NAKSHATRA_LORD_IS": "amplify",   # nakshatra lord amplifies planet's significations
+    "ASPECTS_3RD":      "reinforce",  # Saturn 3rd drishti reinforces target planet's themes
+    "ASPECTS_4TH":      "reinforce",  # Mars 4th drishti reinforces target planet's themes
+    "ASPECTS_8TH":      "reinforce",  # Mars 8th drishti reinforces (pressurises) themes
+    "REINFORCES":       "reinforce",
+    "CONTRADICTS":      "contradict",
+    "MODULATES":        "modulate",
 }
+
+WEIGHT_MAP: dict[str, float] = {
+    "modulate":   0.90,  # DISPOSITED_BY: fundamental sign-lord relationship
+    "amplify":    0.80,  # NAKSHATRA_LORD_IS: stellar lord amplification
+    "reinforce":  0.85,  # ASPECTS_*: aspect-based reinforcement
+    "contradict": 0.70,
+    "suppress":   0.70,
+}
+
+
+def _normalise_edge_type(raw: str) -> str:
+    """Map a raw/legacy edge_type to the Gate-1 contract enum value."""
+    if raw in VALID_EDGE_TYPES:
+        return raw
+    mapped = _EDGE_TYPE_MAP.get(raw)
+    if mapped:
+        return mapped
+    raise ValueError(
+        f"Unknown edge_type {raw!r}. Valid values: {sorted(VALID_EDGE_TYPES)}"
+    )
 
 # Canonical edges (from cgm_edges_manifest_v1_0.json, batch 2 reconciled)
 # CGM_EDGE_014 excluded: PLN.VENUS→PLN.VENUS self-loop (Venus NAKSHATRA_LORD_IS Venus)
+# edge_type values use Gate-1 contract enum (lowercase):
+#   modulate  ← DISPOSITED_BY  (sign-lord modulates planet's expression)
+#   amplify   ← NAKSHATRA_LORD_IS (nakshatra lord amplifies significations)
+#   reinforce ← ASPECTS_3RD/4TH/8TH (aspect reinforces target's themes)
+# source_citation cites both signal endpoints per BO-2-2 contract.
 CANONICAL_EDGES: list[dict[str, str]] = [
     {
         "edge_id": "CGM_EDGE_001",
         "from_signal_id": "PLN.SUN",
         "to_signal_id": "PLN.SATURN",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Sun in Capricorn (291.96°); Saturn rules Capricorn",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.SUN + L2:BO-2-1:PLN.SATURN | FORENSIC_v8_0 §2.1: Sun in Capricorn (291.96°); Saturn rules Capricorn — sign-lord modulates Sun's expression",
     },
     {
         "edge_id": "CGM_EDGE_002",
         "from_signal_id": "PLN.MOON",
         "to_signal_id": "PLN.SATURN",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Moon in Aquarius (327.05°); Saturn rules Aquarius",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.MOON + L2:BO-2-1:PLN.SATURN | FORENSIC_v8_0 §2.1: Moon in Aquarius (327.05°); Saturn rules Aquarius — sign-lord modulates Moon's expression",
     },
     {
         "edge_id": "CGM_EDGE_003",
         "from_signal_id": "PLN.MARS",
         "to_signal_id": "PLN.VENUS",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Mars in Libra (198.53°); Venus rules Libra",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.MARS + L2:BO-2-1:PLN.VENUS | FORENSIC_v8_0 §2.1: Mars in Libra (198.53°); Venus rules Libra — sign-lord modulates Mars's expression",
     },
     {
         "edge_id": "CGM_EDGE_004",
         "from_signal_id": "PLN.MERCURY",
         "to_signal_id": "PLN.SATURN",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Mercury in Capricorn (270.84°); Saturn rules Capricorn",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.MERCURY + L2:BO-2-1:PLN.SATURN | FORENSIC_v8_0 §2.1: Mercury in Capricorn (270.84°); Saturn rules Capricorn — sign-lord modulates Mercury's expression",
     },
     {
         "edge_id": "CGM_EDGE_005",
         "from_signal_id": "PLN.VENUS",
         "to_signal_id": "PLN.JUPITER",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Venus in Sagittarius (259.17°); Jupiter rules Sagittarius",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.VENUS + L2:BO-2-1:PLN.JUPITER | FORENSIC_v8_0 §2.1: Venus in Sagittarius (259.17°); Jupiter rules Sagittarius — sign-lord modulates Venus's expression",
     },
     {
         "edge_id": "CGM_EDGE_006",
         "from_signal_id": "PLN.SATURN",
         "to_signal_id": "PLN.VENUS",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Saturn in Libra (202.45°); Venus rules Libra",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.SATURN + L2:BO-2-1:PLN.VENUS | FORENSIC_v8_0 §2.1: Saturn in Libra (202.45°); Venus rules Libra — sign-lord modulates Saturn's expression",
     },
     {
         "edge_id": "CGM_EDGE_007",
         "from_signal_id": "PLN.RAHU",
         "to_signal_id": "PLN.VENUS",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Rahu in Taurus (49.03°); Venus rules Taurus",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.RAHU + L2:BO-2-1:PLN.VENUS | FORENSIC_v8_0 §2.1: Rahu in Taurus (49.03°); Venus rules Taurus — sign-lord modulates Rahu's expression",
     },
     {
         "edge_id": "CGM_EDGE_008",
         "from_signal_id": "PLN.KETU",
         "to_signal_id": "PLN.MARS",
-        "edge_type": "DISPOSITED_BY",
-        "source_citation": "FORENSIC_v8_0 §2.1: Ketu in Scorpio (229.03°); Mars rules Scorpio (traditional)",
+        "edge_type": "modulate",
+        "source_citation": "L2:BO-2-1:PLN.KETU + L2:BO-2-1:PLN.MARS | FORENSIC_v8_0 §2.1: Ketu in Scorpio (229.03°); Mars rules Scorpio (traditional) — sign-lord modulates Ketu's expression",
     },
     {
         "edge_id": "CGM_EDGE_009",
         "from_signal_id": "PLN.SUN",
         "to_signal_id": "PLN.MOON",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Sun in Shravana pada 4 (291.96°); Shravana lord = Moon",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.SUN + L2:BO-2-1:PLN.MOON | FORENSIC_v8_0 §2.1: Sun in Shravana pada 4 (291.96°); Shravana lord = Moon — nakshatra lord amplifies Sun's significations",
     },
     {
         "edge_id": "CGM_EDGE_010",
         "from_signal_id": "PLN.MOON",
         "to_signal_id": "PLN.JUPITER",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Moon in Purva Bhadrapada pada 3 (327.05°); lord = Jupiter",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.MOON + L2:BO-2-1:PLN.JUPITER | FORENSIC_v8_0 §2.1: Moon in Purva Bhadrapada pada 3 (327.05°); lord = Jupiter — nakshatra lord amplifies Moon's significations",
     },
     {
         "edge_id": "CGM_EDGE_011",
         "from_signal_id": "PLN.MARS",
         "to_signal_id": "PLN.RAHU",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Mars in Swati pada 4 (198.53°); Swati lord = Rahu",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.MARS + L2:BO-2-1:PLN.RAHU | FORENSIC_v8_0 §2.1: Mars in Swati pada 4 (198.53°); Swati lord = Rahu — nakshatra lord amplifies Mars's significations",
     },
     {
         "edge_id": "CGM_EDGE_012",
         "from_signal_id": "PLN.MERCURY",
         "to_signal_id": "PLN.SUN",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Mercury in Uttara Ashadha pada 2 (270.84°); lord = Sun",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.MERCURY + L2:BO-2-1:PLN.SUN | FORENSIC_v8_0 §2.1: Mercury in Uttara Ashadha pada 2 (270.84°); lord = Sun — nakshatra lord amplifies Mercury's significations",
     },
     {
         "edge_id": "CGM_EDGE_013",
         "from_signal_id": "PLN.JUPITER",
         "to_signal_id": "PLN.KETU",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Jupiter in Moola pada 3 (249.81°); Moola lord = Ketu",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.JUPITER + L2:BO-2-1:PLN.KETU | FORENSIC_v8_0 §2.1: Jupiter in Moola pada 3 (249.81°); Moola lord = Ketu — nakshatra lord amplifies Jupiter's significations",
     },
     # CGM_EDGE_014 excluded: PLN.VENUS→PLN.VENUS self-loop (contract: no self-loops)
     {
         "edge_id": "CGM_EDGE_015",
         "from_signal_id": "PLN.SATURN",
         "to_signal_id": "PLN.JUPITER",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Saturn in Vishakha pada 1 (202.45°); lord = Jupiter",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.SATURN + L2:BO-2-1:PLN.JUPITER | FORENSIC_v8_0 §2.1: Saturn in Vishakha pada 1 (202.45°); lord = Jupiter — nakshatra lord amplifies Saturn's significations",
     },
     {
         "edge_id": "CGM_EDGE_016",
         "from_signal_id": "PLN.RAHU",
         "to_signal_id": "PLN.MOON",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Rahu in Rohini pada 3 (49.03°); Rohini lord = Moon",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.RAHU + L2:BO-2-1:PLN.MOON | FORENSIC_v8_0 §2.1: Rahu in Rohini pada 3 (49.03°); Rohini lord = Moon — nakshatra lord amplifies Rahu's significations",
     },
     {
         "edge_id": "CGM_EDGE_017",
         "from_signal_id": "PLN.KETU",
         "to_signal_id": "PLN.MERCURY",
-        "edge_type": "NAKSHATRA_LORD_IS",
-        "source_citation": "FORENSIC_v8_0 §2.1: Ketu in Jyeshtha pada 1 (229.03°); lord = Mercury",
+        "edge_type": "amplify",
+        "source_citation": "L2:BO-2-1:PLN.KETU + L2:BO-2-1:PLN.MERCURY | FORENSIC_v8_0 §2.1: Ketu in Jyeshtha pada 1 (229.03°); lord = Mercury — nakshatra lord amplifies Ketu's significations",
     },
     {
         "edge_id": "CGM_EDGE_018",
         "from_signal_id": "PLN.SATURN",
         "to_signal_id": "PLN.JUPITER",
-        "edge_type": "ASPECTS_3RD",
+        "edge_type": "reinforce",
         "source_citation": (
+            "L2:BO-2-1:PLN.SATURN + L2:BO-2-1:PLN.JUPITER | "
             "FORENSIC_v8_0 §2.1: Saturn in Libra H7 (202.45°); "
-            "3rd drishti from H7 = H9 (Sagittarius); Jupiter in H9 (249.81°)"
+            "3rd drishti from H7 = H9 (Sagittarius); Jupiter in H9 (249.81°) — aspect reinforces Jupiter's themes"
         ),
     },
     {
         "edge_id": "CGM_EDGE_019",
         "from_signal_id": "PLN.SATURN",
         "to_signal_id": "PLN.VENUS",
-        "edge_type": "ASPECTS_3RD",
+        "edge_type": "reinforce",
         "source_citation": (
+            "L2:BO-2-1:PLN.SATURN + L2:BO-2-1:PLN.VENUS | "
             "FORENSIC_v8_0 §2.1: Saturn in Libra H7 (202.45°); "
-            "3rd drishti from H7 = H9 (Sagittarius); Venus in H9 (259.17°)"
+            "3rd drishti from H7 = H9 (Sagittarius); Venus in H9 (259.17°) — aspect reinforces Venus's themes"
         ),
     },
     {
         "edge_id": "CGM_EDGE_020",
         "from_signal_id": "PLN.MARS",
         "to_signal_id": "PLN.SUN",
-        "edge_type": "ASPECTS_4TH",
+        "edge_type": "reinforce",
         "source_citation": (
+            "L2:BO-2-1:PLN.MARS + L2:BO-2-1:PLN.SUN | "
             "FORENSIC_v8_0 §2.1: Mars in Libra H7 (198.53°); "
-            "4th drishti from H7 = H10 (Capricorn); Sun in H10 (291.96°)"
+            "4th drishti from H7 = H10 (Capricorn); Sun in H10 (291.96°) — aspect reinforces Sun's themes"
         ),
     },
     {
         "edge_id": "CGM_EDGE_021",
         "from_signal_id": "PLN.MARS",
         "to_signal_id": "PLN.MERCURY",
-        "edge_type": "ASPECTS_4TH",
+        "edge_type": "reinforce",
         "source_citation": (
+            "L2:BO-2-1:PLN.MARS + L2:BO-2-1:PLN.MERCURY | "
             "FORENSIC_v8_0 §2.1: Mars in Libra H7 (198.53°); "
-            "4th drishti from H7 = H10 (Capricorn); Mercury in H10 (270.84°)"
+            "4th drishti from H7 = H10 (Capricorn); Mercury in H10 (270.84°) — aspect reinforces Mercury's themes"
         ),
     },
     {
         "edge_id": "CGM_EDGE_022",
         "from_signal_id": "PLN.MARS",
         "to_signal_id": "PLN.RAHU",
-        "edge_type": "ASPECTS_8TH",
+        "edge_type": "reinforce",
         "source_citation": (
+            "L2:BO-2-1:PLN.MARS + L2:BO-2-1:PLN.RAHU | "
             "FORENSIC_v8_0 §2.1: Mars in Libra H7 (198.53°); "
-            "8th drishti from H7 = H2 (Taurus); Rahu in H2 (49.03°)"
+            "8th drishti from H7 = H2 (Taurus); Rahu in H2 (49.03°) — aspect reinforces Rahu's themes"
         ),
     },
 ]
@@ -367,14 +408,15 @@ def seed_bodha_graph(
             )
             continue
 
-        weight = WEIGHT_MAP.get(e["edge_type"], 0.70)
+        edge_type = _normalise_edge_type(e["edge_type"])
+        weight = WEIGHT_MAP.get(edge_type, 0.70)
         rows.append(
             (
                 e["edge_id"],          # edge_id
                 chart_id,              # chart_id
                 from_id,               # from_signal_id
                 to_id,                 # to_signal_id
-                e["edge_type"],        # edge_type
+                edge_type,             # edge_type (normalised Gate-1 enum)
                 weight,                # weight
                 e["source_citation"],  # source_citation
                 ayanamsha_id,          # ayanamsha_id
@@ -536,12 +578,13 @@ def query_cgm_subgraph(
 
     edges = [
         {
-            "edge_id": r[0],
-            "from_signal_id": r[1],
-            "to_signal_id": r[2],
-            "edge_type": r[3],
+            "from": r[1],
+            "to": r[2],
+            "type": r[3],
             "weight": float(r[4]) if r[4] is not None else None,
             "source_citation": r[5],
+            # extended fields for internal / gate use
+            "edge_id": r[0],
             "ayanamsha_id": r[6],
             "build_id": r[7],
         }
@@ -549,10 +592,14 @@ def query_cgm_subgraph(
     ]
 
     return {
-        "chart_id": chart_id,
-        "signal_ids_requested": signal_ids,
-        "edge_count": len(edges),
         "edges": edges,
+        "provenance_envelope": {
+            "source": "bodha.graph",
+            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "chart_id": chart_id,
+            "signal_ids_requested": signal_ids,
+            "edge_count": len(edges),
+        },
     }
 
 
@@ -688,7 +735,7 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
         result = query_cgm_subgraph(
             chart_id, signal_ids=["PLN.SATURN", "PLN.MARS"], hops=1
         )
-        traversal_edges = result["edge_count"]
+        traversal_edges = result["provenance_envelope"]["edge_count"]
         checks.append(
             {
                 "id": "AC5",

@@ -22,6 +22,7 @@ import pytest
 
 from brahmagyan.bodha.bo22 import (
     CANONICAL_EDGES,
+    VALID_EDGE_TYPES,
     WEIGHT_MAP,
     NATIVE_CHART_ID,
     load_edges_from_manifest,
@@ -115,10 +116,48 @@ class TestCanonicalEdges:
             )
 
     def test_at_least_three_distinct_edge_types(self):
-        """AC gate: ≥3 distinct edge types (DISPOSITED_BY, NAKSHATRA_LORD_IS, ASPECTS_*)."""
+        """AC gate: ≥3 distinct edge types from the Gate-1 contract enum."""
         types = {e["edge_type"] for e in CANONICAL_EDGES}
         assert len(types) >= 3, (
             f"Expected ≥3 distinct edge types; got {sorted(types)}"
+        )
+
+    def test_all_edge_types_in_valid_enum(self):
+        """Contract: every edge_type must be a Gate-1 enum value."""
+        invalid = [
+            e["edge_id"]
+            for e in CANONICAL_EDGES
+            if e["edge_type"] not in VALID_EDGE_TYPES
+        ]
+        assert invalid == [], (
+            f"Edges with invalid edge_type (must be one of {sorted(VALID_EDGE_TYPES)}): {invalid}"
+        )
+
+    def test_minimum_five_edges_for_native(self):
+        """FORENSIC gate: ≥5 edges for the native chart (Abhisek Mohanty, 1984-02-05)."""
+        assert len(CANONICAL_EDGES) >= 5, (
+            f"FORENSIC gate requires ≥5 edges; got {len(CANONICAL_EDGES)}"
+        )
+
+    def test_source_citation_non_null(self):
+        """Contract: source_citation must be non-null and cite both signal sources."""
+        missing = [
+            e["edge_id"]
+            for e in CANONICAL_EDGES
+            if not e.get("source_citation", "").strip()
+        ]
+        assert missing == [], f"Edges with null/empty source_citation: {missing}"
+
+    def test_source_citation_cites_both_signals(self):
+        """Contract: source_citation format includes both endpoint signal IDs."""
+        not_dual = [
+            e["edge_id"]
+            for e in CANONICAL_EDGES
+            if e["from_signal_id"] not in e.get("source_citation", "")
+            or e["to_signal_id"] not in e.get("source_citation", "")
+        ]
+        assert not_dual == [], (
+            f"Edges whose source_citation does not cite both signal IDs: {not_dual}"
         )
 
     def test_cgm_edge_014_not_in_canonical(self):
@@ -129,27 +168,28 @@ class TestCanonicalEdges:
         )
 
     def test_forensic_grounded_edge_present(self):
-        """FORENSIC grounding: PLN.SUN→PLN.SATURN DISPOSITED_BY must be present."""
+        """FORENSIC grounding: PLN.SUN→PLN.SATURN 'modulate' (DISPOSITED_BY) must be present."""
         found = any(
             e["from_signal_id"] == "PLN.SUN"
             and e["to_signal_id"] == "PLN.SATURN"
-            and e["edge_type"] == "DISPOSITED_BY"
+            and e["edge_type"] == "modulate"  # DISPOSITED_BY maps to 'modulate' in Gate-1 enum
             for e in CANONICAL_EDGES
         )
         assert found, (
-            "Expected PLN.SUN→PLN.SATURN DISPOSITED_BY edge (grounded in FORENSIC_v8_0 §2.1)"
+            "Expected PLN.SUN→PLN.SATURN modulate edge (DISPOSITED_BY → Gate-1 enum 'modulate'; "
+            "grounded in FORENSIC_v8_0 §2.1)"
         )
 
     def test_mars_in_h7_aspects_present(self):
-        """FORENSIC grounding: Mars aspects from H7 (ASPECTS_4TH, ASPECTS_8TH) present."""
+        """FORENSIC grounding: Mars aspects from H7 (reinforce edges) present."""
         mars_aspects = [
             e for e in CANONICAL_EDGES
             if e["from_signal_id"] == "PLN.MARS"
-            and e["edge_type"] in {"ASPECTS_4TH", "ASPECTS_8TH"}
+            and e["edge_type"] == "reinforce"  # ASPECTS_4TH/8TH → 'reinforce' in Gate-1 enum
         ]
         assert len(mars_aspects) >= 2, (
-            f"Expected ≥2 Mars aspect edges; got {len(mars_aspects)}: "
-            f"{[e['edge_id'] for e in mars_aspects]}"
+            f"Expected ≥2 Mars reinforce edges (ASPECTS_4TH + ASPECTS_8TH); "
+            f"got {len(mars_aspects)}: {[e['edge_id'] for e in mars_aspects]}"
         )
 
     def test_source_citations_reference_forensic(self):
@@ -171,8 +211,11 @@ class TestWeightMap:
     """Tests on edge weight configuration."""
 
     def test_all_canonical_edge_types_have_weight(self):
-        """Every edge_type in CANONICAL_EDGES must have a weight mapping."""
+        """Every Gate-1 enum edge_type in CANONICAL_EDGES must have a weight mapping."""
         types_in_canonical = {e["edge_type"] for e in CANONICAL_EDGES}
+        # All values must already be Gate-1 enum values (lowercase)
+        unknown = types_in_canonical - VALID_EDGE_TYPES
+        assert unknown == set(), f"Canonical edges use non-enum edge_types: {unknown}"
         missing_weights = types_in_canonical - set(WEIGHT_MAP.keys())
         assert missing_weights == set(), (
             f"Edge types without weight mapping: {missing_weights}"
@@ -336,14 +379,19 @@ class TestAcceptanceGateIntegration:
             signal_ids=["PLN.SATURN", "PLN.MARS"],
             hops=1,
         )
-        assert result["edge_count"] >= 3, (
+        edge_count = result["provenance_envelope"]["edge_count"]
+        assert edge_count >= 3, (
             f"Traversal on PLN.SATURN + PLN.MARS should return ≥3 edges; "
-            f"got {result['edge_count']}"
+            f"got {edge_count}"
         )
         for edge in result["edges"]:
             assert edge.get("source_citation", "").strip(), (
-                f"Edge {edge['edge_id']} missing source_citation"
+                f"Edge {edge.get('edge_id')} missing source_citation"
             )
+        # Verify provenance_envelope shape
+        env = result["provenance_envelope"]
+        assert env["source"] == "bodha.graph"
+        assert "computed_at" in env
 
     def test_no_self_loops_in_db(self):
         """Confirm no self-loops exist in the seeded bodha_graph."""

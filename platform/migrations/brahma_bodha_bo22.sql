@@ -24,21 +24,18 @@
 
 CREATE TABLE IF NOT EXISTS bodha_graph (
   edge_id          TEXT        NOT NULL,
-  chart_id         UUID        NOT NULL,
+  chart_id         UUID        REFERENCES charts(chart_id),
   from_signal_id   TEXT        NOT NULL,
   to_signal_id     TEXT        NOT NULL,
-  edge_type        TEXT        NOT NULL,
-  weight           NUMERIC     NOT NULL DEFAULT 1.0,
+  edge_type        TEXT        NOT NULL CHECK (edge_type IN ('reinforce','contradict','modulate','amplify','suppress')),
+  weight           FLOAT       NOT NULL CHECK (weight >= 0 AND weight <= 1),
   source_citation  TEXT        NOT NULL,
   ayanamsha_id     TEXT        NOT NULL DEFAULT 'lahiri',
   build_id         TEXT,
   computed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT bodha_graph_pk PRIMARY KEY (edge_id),
-  CONSTRAINT bodha_graph_no_self_loops CHECK (from_signal_id <> to_signal_id),
-  CONSTRAINT bodha_graph_edge_type_enum CHECK (
-    edge_type IN ('reinforce', 'contradict', 'modulate', 'amplify', 'suppress')
-  )
+  CONSTRAINT no_self_loop CHECK (from_signal_id != to_signal_id)
 );
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
