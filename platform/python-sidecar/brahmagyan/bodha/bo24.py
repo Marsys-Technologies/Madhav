@@ -47,6 +47,9 @@ SOURCE_CITATION = "025_HOLISTIC_SYNTHESIS/RM_v2_0.md"
 LAYER = "L2"
 ASSET_ID = "BO-2-4"
 
+# Citation prefix for signal references: "L2:BO-2-4:MSR.413"
+_SIGNAL_CITATION_PREFIX = f"{LAYER}:{ASSET_ID}"
+
 # Heading pattern: ### RM.01 — ..., ### RM.21A — ..., ### RM.21B — ...
 _HEADING_RE = re.compile(r"^###\s+(RM\.\d+[A-Z]?)\s*[—–-]\s*(.+)$")
 
@@ -88,6 +91,8 @@ def _infer_element_type(element_id: str, heading_label: str) -> str:
     - RM.22–RM.27  (cross-element): generic cross-element → 'mutual_aspect'
     - RM.28–RM.30  (yoga stacks / meta): named yoga combinations → 'yoga'
     - RM.31–RM.35  (cross-varga / parivartana): varga exchanges → 'parivartana'
+    - fallback: 'neechabhanga' (neechabhanga raja yoga / debilitation cancellation)
+      Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
     """
     label_lower = heading_label.lower()
     eid = element_id.upper()
@@ -137,7 +142,7 @@ def _infer_element_type(element_id: str, heading_label: str) -> str:
     if any(p in label_lower for p in planet_names):
         return "yoga"
 
-    return "other"
+    return "neechabhanga"
 
 
 def _infer_strength(data: dict[str, Any]) -> float:
@@ -251,6 +256,15 @@ def _parse_rm_elements(text: str) -> list[ResonanceElement]:
                     domains = [domains]
                 domains = [str(d) for d in domains]
 
+                # source_citation: cite contributing signals (B.3 provenance mandate).
+                # Format: "L2:BO-2-4:sig_x + L2:BO-2-4:sig_y + ..."
+                # Fallback to RM file reference when no constituents are present.
+                if constituents:
+                    citation_parts = [f"{_SIGNAL_CITATION_PREFIX}:{sig}" for sig in constituents]
+                    citation = " + ".join(citation_parts)
+                else:
+                    citation = f"{SOURCE_CITATION}#{current_id}"
+
                 elements.append(
                     ResonanceElement(
                         element_id=current_id,
@@ -258,7 +272,7 @@ def _parse_rm_elements(text: str) -> list[ResonanceElement]:
                         element_type=etype,
                         strength=strength,
                         constituents=constituents,
-                        source_citation=f"{SOURCE_CITATION}#{current_id}",
+                        source_citation=citation,
                         domains_primary=domains,
                         net_resonance=str(data.get("net_resonance", "")),
                         raw_yaml=raw_yaml,

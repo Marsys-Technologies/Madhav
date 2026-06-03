@@ -56,11 +56,11 @@ const RmWalkSchema = z.object({
   ayanamsha_id: z.string().default('jh_true_chitra'),
 
   /**
-   * Filter by element type.
-   * Types: planet | house | lagna | dasha | yoga | meta | cross_varga | other
+   * Filter by element type (Gate-1 enum).
+   * Types: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
    */
   element_type: z
-    .enum(['planet', 'house', 'lagna', 'dasha', 'yoga', 'meta', 'cross_varga', 'other'])
+    .enum(['yoga', 'stellium', 'mutual_aspect', 'exchange', 'parivartana', 'neechabhanga'])
     .optional(),
 
   /**
@@ -81,16 +81,18 @@ Each element is a named resonance pattern from RM_v2_0.md (37 elements across \
 RM.01–RM.35 including RM.21A/B). Every row carries source_citation, strength, \
 constituents (MSR/CDLM anchors), and domains_primary for B.3 provenance compliance.
 
-Outputs per element: element_id (e.g. RM.01), element_type (planet/house/lagna/\
-dasha/yoga/meta/cross_varga), strength (0.0–1.0; 0.90=STRONGLY AMPLIFIED, \
-0.75=TENSION-BEARING, 0.60=MIXED), constituents (MSR+CDLM anchor IDs), \
-domains_primary, net_resonance (text summary), source_citation (non-null provenance).
+Outputs per element: element_id (e.g. RM.01), element_type (Gate-1 enum: yoga/\
+stellium/mutual_aspect/exchange/parivartana/neechabhanga), strength (0.0–1.0; \
+0.90=STRONGLY AMPLIFIED, 0.75=TENSION-BEARING, 0.60=MIXED), constituents \
+(JSONB array of MSR+CDLM anchor IDs, always non-empty), domains_primary, \
+net_resonance (text summary), source_citation (signal-citation: "L2:BO-2-4:sig_x \
++ L2:BO-2-4:sig_y" — cites contributing MSR/CDLM anchors per B.3).
 
 When to prefer: Use rm_walk when you need the RM (Resonance Map) layer of the \
 L2.5 holistic synthesis — resonance elements, their strengths, and MSR/CDLM anchor \
 provenance. Pair with holistic_bundle (B.11 floor) for whole-chart synthesis. \
 Use element= to drill into a single resonance (e.g. RM.17 Mercury MD activation). \
-Use element_type='dasha' to surface temporal activation elements only. \
+Use element_type='mutual_aspect' to surface temporal/dasha activation elements. \
 Use min_strength=0.90 to retrieve only STRONGLY AMPLIFIED elements. \
 Prefer holistic_bundle over rm_walk when you need MSR+CGM+CDLM+RM in one call.`
 

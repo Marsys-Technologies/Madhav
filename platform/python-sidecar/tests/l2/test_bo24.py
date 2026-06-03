@@ -4,15 +4,18 @@ BRAHMA Layer 2 / Bodha wave-1 acceptance gate tests.
 
 Acceptance criteria:
   1. load_rm_elements parses ≥30 elements from RM_v2_0.md (RM v2.2 has 37).
-  2. Every element has a non-null source_citation.
+  2. Every element has a non-null source_citation in signal-citation format.
   3. Every element.element_id matches the RM.NN pattern.
-  4. Every element has non-empty constituents list (B.3 provenance mandate).
+  4. Every element has non-empty constituents list (JSONB array, B.3 provenance mandate).
   5. Known RM elements (RM.01 Mercury, RM.17 Mercury MD) parse correctly.
-  6. element_type classification covers the core types.
+  6. element_type classification covers the core Gate-1 types.
   7. strength values are in [0.0, 1.0].
-  8. RM.31–RM.35 (cross-varga) classify as 'cross_varga'.
+  8. RM.31–RM.35 (cross-varga) classify as 'parivartana'.
   9. No duplicate element_ids in parsed output.
  10. ResonanceElement.domains_primary is always a list.
+ 11. Native chart has ≥3 elements total (Gate-1 minimum).
+ 12. element_type always within Gate-1 enum (yoga|stellium|mutual_aspect|exchange|parivartana|neechabhanga).
+ 13. constituents is always a list (JSONB array contract).
 """
 
 from __future__ import annotations
@@ -61,12 +64,20 @@ def test_source_citation_non_null(rm_elements):
 
 
 def test_source_citation_format(rm_elements):
-    """AC.2 — source_citation points to RM_v2_0.md with the element fragment."""
-    _pattern = re.compile(r"^025_HOLISTIC_SYNTHESIS/RM_v2_0\.md#RM\.\d+[A-Z]?$")
+    """AC.2 — source_citation cites contributing signals (B.3 mandate).
+
+    Format: "L2:BO-2-4:sig_x + L2:BO-2-4:sig_y + ..."
+    Fallback for elements with no constituents: "025_HOLISTIC_SYNTHESIS/RM_v2_0.md#RM.NN"
+    """
+    # Signal citation: "L2:BO-2-4:<sig>" parts joined by " + "
+    # Signals may contain spaces and parens (e.g. "MSR.089 (Moolatrikona-band variance)")
+    _signal_pattern = re.compile(r"^L2:BO-2-4:.+?( \+ L2:BO-2-4:.+?)*$")
+    _fallback_pattern = re.compile(r"^025_HOLISTIC_SYNTHESIS/RM_v2_0\.md#RM\.\d+[A-Z]?$")
     bad = [
         (e.element_id, e.source_citation)
         for e in rm_elements
-        if not _pattern.match(e.source_citation)
+        if not _signal_pattern.match(e.source_citation)
+           and not _fallback_pattern.match(e.source_citation)
     ]
     assert bad == [], f"Elements with malformed source_citation: {bad}"
 
@@ -79,10 +90,23 @@ def test_element_id_pattern(rm_elements):
 
 
 def test_constituents_non_empty(rm_elements):
-    """AC.4 — B.3 provenance: every element has ≥1 constituent (MSR/CDLM anchor)."""
-    # Note: RM.30 (meta/paradox) references "all" anchors implicitly; we allow
-    # it to have an empty list since its YAML block uses msr_anchors: [MSR.419, MSR.420].
-    # So in practice all 37 elements should have constituents.
+    """AC.4 / AC.13 — B.3 provenance + JSONB array contract.
+
+    Every element must have:
+    - constituents of type list (JSONB array, not TEXT or None)
+    - ≥1 constituent (MSR/CDLM anchor) — every RM element YAML block must have
+      msr_anchors and/or cdlm_anchors.
+    """
+    # Check list type (JSONB array contract)
+    not_list = [
+        (e.element_id, type(e.constituents).__name__)
+        for e in rm_elements
+        if not isinstance(e.constituents, list)
+    ]
+    assert not_list == [], (
+        f"Elements where constituents is not a list (JSONB array contract): {not_list}"
+    )
+    # Check non-empty (B.3 provenance mandate)
     bad = [e.element_id for e in rm_elements if len(e.constituents) == 0]
     assert bad == [], (
         f"Elements with no constituents (B.3 provenance gap): {bad}. "
@@ -92,12 +116,12 @@ def test_constituents_non_empty(rm_elements):
 
 def test_known_element_rm01(rm_elements):
     """AC.5 — RM.01 (Mercury 10H) parses with Gate-1 element_type and fields.
-    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | other
+    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
     RM.01 is a planetary graha resonance → 'yoga' (graha-as-yoga-significator).
     """
     el = next((e for e in rm_elements if e.element_id == "RM.01"), None)
     assert el is not None, "RM.01 not found in parsed elements"
-    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "other"}
+    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
     assert el.element_type in _GATE1_TYPES, (
         f"RM.01 element_type '{el.element_type}' not in Gate-1 enum {_GATE1_TYPES}"
     )
@@ -107,17 +131,25 @@ def test_known_element_rm01(rm_elements):
     assert "MSR." in " ".join(el.constituents), (
         "RM.01 expected at least one MSR anchor in constituents"
     )
-    assert el.source_citation == "025_HOLISTIC_SYNTHESIS/RM_v2_0.md#RM.01"
+    # source_citation: signal-citation format when constituents present
+    # e.g. "L2:BO-2-4:MSR.413 + L2:BO-2-4:MSR.190"
+    assert el.source_citation.startswith("L2:BO-2-4:"), (
+        f"RM.01 source_citation should be signal-citation format, got: {el.source_citation}"
+    )
+    for sig in el.constituents:
+        assert f"L2:BO-2-4:{sig}" in el.source_citation, (
+            f"constituent {sig} not found in source_citation {el.source_citation}"
+        )
 
 
 def test_known_element_rm17(rm_elements):
     """AC.5 — RM.17 (Mercury MD) parses with Gate-1 element_type.
-    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | other
+    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
     RM.17 is a dasha/temporal activation → 'mutual_aspect' in Gate-1 schema.
     """
     el = next((e for e in rm_elements if e.element_id == "RM.17"), None)
     assert el is not None, "RM.17 not found in parsed elements"
-    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "other"}
+    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
     assert el.element_type in _GATE1_TYPES, (
         f"RM.17 element_type '{el.element_type}' not in Gate-1 enum {_GATE1_TYPES}"
     )
@@ -127,14 +159,15 @@ def test_known_element_rm17(rm_elements):
 
 
 def test_element_types_coverage(rm_elements):
-    """AC.6 — the parsed set covers the Gate-1 element types.
-    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | other
+    """AC.6 / AC.12 — the parsed set covers the Gate-1 element types.
+    Gate-1 enum: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
+    'neechabhanga' is the fallback for unclassified resonance types.
     At minimum, 'yoga', 'stellium', and 'mutual_aspect' must appear (native chart
     has yogas, house clusters, and dasha/aspect activations).
     """
     types = {e.element_type for e in rm_elements}
-    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "other"}
-    # All emitted types must be within the Gate-1 enum
+    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
+    # All emitted types must be within the Gate-1 enum (AC.12)
     invalid = types - _GATE1_TYPES
     assert invalid == set(), (
         f"element_types outside Gate-1 enum found: {invalid}. "
@@ -199,7 +232,7 @@ def test_known_element_rm30_meta(rm_elements):
     """
     el = next((e for e in rm_elements if e.element_id == "RM.30"), None)
     assert el is not None, "RM.30 not found in parsed elements"
-    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "other"}
+    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
     assert el.element_type in _GATE1_TYPES, (
         f"RM.30 element_type '{el.element_type}' not in Gate-1 enum {_GATE1_TYPES}"
     )
@@ -212,11 +245,14 @@ def test_known_element_rm21a(rm_elements):
     """
     el = next((e for e in rm_elements if e.element_id == "RM.21A"), None)
     assert el is not None, "RM.21A not found in parsed elements"
-    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "other"}
+    _GATE1_TYPES = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
     assert el.element_type in _GATE1_TYPES, (
         f"RM.21A element_type '{el.element_type}' not in Gate-1 enum {_GATE1_TYPES}"
     )
-    assert el.source_citation == "025_HOLISTIC_SYNTHESIS/RM_v2_0.md#RM.21A"
+    # source_citation: signal-citation format when constituents present
+    assert el.source_citation.startswith("L2:BO-2-4:"), (
+        f"RM.21A source_citation should be signal-citation format, got: {el.source_citation}"
+    )
 
 
 def test_rm_elements_at_least_33(rm_elements):
@@ -242,3 +278,53 @@ def test_net_resonance_non_empty_for_core_elements(rm_elements):
         if e.element_id in core_ids and not e.net_resonance.strip()
     ]
     assert bad == [], f"Core elements with empty net_resonance: {bad}"
+
+
+# ── Gate-1 mandatory assertions (AC.11–AC.13) ─────────────────────────────────
+
+def test_native_chart_min_three_elements(rm_elements):
+    """AC.11 — Gate-1 minimum: ≥3 resonance elements for the native chart.
+
+    RM_v2_0.md has 33+ headed elements; if the parser returns fewer than 3,
+    the bodha_resonance table cannot satisfy the rm_walk acceptance gate.
+    """
+    assert len(rm_elements) >= 3, (
+        f"Gate-1 minimum ≥3 elements required for native chart; got {len(rm_elements)}. "
+        "Parser may have failed to read RM_v2_0.md."
+    )
+
+
+def test_all_element_types_in_gate1_enum(rm_elements):
+    """AC.12 — every element_type is within the Gate-1 enum.
+
+    Gate-1 enum (matches bodha_resonance table CHECK constraint):
+      yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
+    'neechabhanga' is the fallback for elements that do not match the other patterns.
+    """
+    _GATE1_ENUM = {"yoga", "stellium", "mutual_aspect", "exchange", "parivartana", "neechabhanga"}
+    invalid = [
+        (e.element_id, e.element_type)
+        for e in rm_elements
+        if e.element_type not in _GATE1_ENUM
+    ]
+    assert invalid == [], (
+        f"Elements with element_type outside Gate-1 enum {_GATE1_ENUM}: {invalid}"
+    )
+
+
+def test_constituents_is_list_jsonb_contract(rm_elements):
+    """AC.13 — constituents is always a Python list (matches JSONB array in DB).
+
+    The bodha_resonance table stores constituents as JSONB NOT NULL DEFAULT '[]'.
+    The bo24 writer serialises constituents via json.dumps() — the in-memory type
+    must be a list (not str, None, or dict) so that json.dumps produces a valid
+    JSON array.
+    """
+    not_list = [
+        (e.element_id, type(e.constituents).__name__, repr(e.constituents)[:60])
+        for e in rm_elements
+        if not isinstance(e.constituents, list)
+    ]
+    assert not_list == [], (
+        f"constituents is not a list for these elements (JSONB array violation): {not_list}"
+    )

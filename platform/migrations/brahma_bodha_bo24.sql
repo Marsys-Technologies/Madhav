@@ -27,9 +27,8 @@ CREATE TABLE IF NOT EXISTS bodha_resonance (
     element_id      TEXT        NOT NULL,   -- e.g. 'RM.01', 'RM.21A', 'RM.35'
 
     -- Element classification
-    -- Gate-1 contract enum: yoga | stellium | mutual_aspect | exchange | parivartana
-    -- (RM resonance elements describe yoga/stellium/aspect/exchange/parivartana patterns,
-    --  not raw planetary categories; 'other' kept as safe fallback for future types)
+    -- Gate-1 contract enum: yoga | stellium | mutual_aspect | exchange | parivartana | neechabhanga
+    -- (RM resonance elements describe yoga/stellium/aspect/exchange/parivartana/neechabhanga patterns)
     element_type    TEXT        NOT NULL
                     CHECK (element_type IN (
                         'yoga',           -- yoga stacks (RM.28 Saraswati-Lakshmi-Raja, RM.29, …)
@@ -37,7 +36,7 @@ CREATE TABLE IF NOT EXISTS bodha_resonance (
                         'mutual_aspect',  -- reciprocal drishti between two planets
                         'exchange',       -- nakshatra/house exchange (parivartana variant)
                         'parivartana',    -- sign-lord exchange (rashi parivartana yoga)
-                        'other'           -- fallback for unclassified resonance types
+                        'neechabhanga'    -- neechabhanga raja yoga (debilitation cancellation)
                     )),
 
     -- Resonance metrics
