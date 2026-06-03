@@ -134,7 +134,14 @@ export function registerBodyaSignalSearch(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify({
+              ...result,
+              provenance_envelope: {
+                source: 'bodha.embeddings',
+                asset: 'BO-2-7',
+                computed_at: new Date().toISOString(),
+              },
+            }, null, 2),
           },
         ],
       }
