@@ -9,21 +9,22 @@ meta:
   rules_asset_cap_usd: 1000
   max_wallclock_per_asset_hours: 6
   started_at: '2026-06-03T00:00:00+05:30'
-  last_updated: '2026-06-03T16:57:51.128082+00:00'
-  batch_count: 8
+  last_updated: '2026-06-03T18:57:00.543271+00:00'
+  batch_count: 9
 budget:
   total_spent_usd: 0.0
   per_asset: {}
 queue_summary:
   total_sessions: 45
-  complete: 17
+  complete: 24
   in_progress: 0
   parked: 3
-  pending: 19
-  gate1_pass: 6
+  pending: 18
+  gate1_pass: 0
   layers_complete:
   - L0
   - L1
+  - L2
   layers_in_progress:
   - L2
   last_updated: '2026-06-03T22:15:00+05:30'
@@ -360,12 +361,12 @@ assets:
   - GA-L1-VERIFY
   - BG-0-6
   - BG-0-7
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.127915+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 4 (CGM signal graph). Gate-1 PASS Batch 5; Gate-3 pending
     Batch 6.
@@ -392,12 +393,12 @@ assets:
   parallel_eligible: true
   depends_on:
   - GA-L1-VERIFY
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.128074+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 4 (RM resonance). Gate-1 PASS Batch 5; Gate-3 pending Batch
     6.
@@ -409,12 +410,12 @@ assets:
   depends_on:
   - BO-2-1
   - BO-2-2
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.128076+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 5 (L2 Wave-2). Gate-1 review Batch 6.
 - id: BO-2-6
@@ -425,12 +426,12 @@ assets:
   depends_on:
   - BO-2-1
   - BG-0-7
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.128077+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 5 (L2 Wave-2). Gate-1 PASS Batch 6; Gate-3 pending.
 - id: BO-2-7
@@ -441,12 +442,12 @@ assets:
   depends_on:
   - BO-2-1
   - BG-0-4
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.128078+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 5 (L2 Wave-2). Gate-1 PASS Batch 6; Gate-3 pending.
 - id: BO-2-8
@@ -460,12 +461,12 @@ assets:
   - BO-2-3
   - BO-2-4
   - BO-2-5
-  status: gate1_pass
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
   gate1_at: '2026-06-03T16:57:51.128079+00:00'
   gate2_at: null
-  gate3_at: null
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
   parked_reason: null
   build_note: Built Batch 5 (L2 Wave-3). Gate-1 PASS Batch 6; Gate-3 pending.
 - id: BO-L2-VERIFY
@@ -482,9 +483,10 @@ assets:
   - BO-2-6
   - BO-2-7
   - BO-2-8
-  status: pending
+  status: green
   fix_attempts: 0
   spent_usd: 0.0
+  gate3_at: '2026-06-03T18:57:00.543271+00:00'
 - id: KA-3-1
   asset_id: kala.timeline
   layer: L3
