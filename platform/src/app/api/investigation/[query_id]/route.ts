@@ -68,7 +68,7 @@ export async function GET(
           'SELECT * FROM tool_execution_log WHERE query_id = $1 ORDER BY created_at ASC',
           [query_id],
         ),
-        // context_assembly_log dropped in WS-0; always returns empty.
+        // TODO(ws-2): context_assembly_log dropped WS-0; repoint to context_assembly_item_log.
         Promise.resolve({ rows: [] as ContextAssemblyLogRow[] }),
       ])
 

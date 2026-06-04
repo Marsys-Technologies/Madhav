@@ -1,4 +1,4 @@
-// eclipses dropped in WS-0; stub returns empty until WS-2 rebuild.
+// TODO(ws-2): eclipses dropped WS-0; repoint to Brahma kala_eclipses once recreated.
 import { tool } from 'ai'
 import { z } from 'zod'
 

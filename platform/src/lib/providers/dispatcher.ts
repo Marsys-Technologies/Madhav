@@ -25,7 +25,8 @@
 import type { CapabilityAdapter } from './adapter';
 import { CapabilityUnsupportedError } from './adapter';
 import type { ProviderCapabilities } from './capabilities';
-// capability_telemetry deleted WS-0C-2 (capability_path_events dropped in WS-0).
+// TODO(ws-2): capability_path_events dropped WS-0; restore emitCapabilityPath once Observatory
+// capability telemetry table is recreated in Brahma schema.
 const emitCapabilityPath = (_opts: unknown): void => { /* no-op */ }
 import { AnthropicAdapter } from './anthropic/adapter';
 import { ANTHROPIC_MANIFEST } from './anthropic/manifest';

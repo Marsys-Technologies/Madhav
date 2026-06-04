@@ -211,7 +211,7 @@ export async function setGate(
     ],
   )
 
-  // gate_change_log dropped in WS-0; audit write is a no-op until WS-2 rebuild.
+  // TODO(ws-2): gate_change_log dropped WS-0; restore to Brahma governance audit table once defined.
 
   // Invalidate cache for this composite key.
   _cache.delete(cacheKey(key, opts.chartId))
@@ -243,7 +243,7 @@ export async function resetGate(
     [key, opts.chartId ?? null],
   )
 
-  // gate_change_log dropped in WS-0; audit write is a no-op until WS-2 rebuild.
+  // TODO(ws-2): gate_change_log dropped WS-0; restore to Brahma governance audit table once defined.
 
   _cache.delete(cacheKey(key, opts.chartId))
 }

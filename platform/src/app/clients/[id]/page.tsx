@@ -49,7 +49,7 @@ export default async function ClientPage({
           [id],
         )
       : Promise.resolve({ rows: [] }),
-    // build_manifests dropped in WS-0; always return empty until WS-2.
+    // TODO(ws-2): build_manifests dropped WS-0; repoint to builds table once migrations 124+ applied.
     Promise.resolve({ rows: [] as { promoted_at: string | null; build_id: string }[] }),
   ])
 

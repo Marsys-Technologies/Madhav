@@ -1,4 +1,4 @@
-// retrogrades dropped in WS-0; stub returns empty until WS-2 rebuild.
+// TODO(ws-2): retrogrades dropped WS-0; repoint to Brahma kala_retrogrades once recreated.
 import { tool } from 'ai'
 import { z } from 'zod'
 
