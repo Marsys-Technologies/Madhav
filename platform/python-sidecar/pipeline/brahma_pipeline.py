@@ -224,8 +224,8 @@ def _l3_kala(build_id: str, chart_id: str) -> dict:
     _emit(build_id, chart_id, "kala.layer", "build", "started", "L3 Kāla starting")
 
     try:
-        from brahmagyan.kala.timeline import seed_kala_timeline
-        n = seed_kala_timeline(chart_id, build_id=build_id)
+        from brahmagyan.kala.timeline import seed
+        n = seed(chart_id)
         counts["kala_timeline"] = n
         _emit(build_id, chart_id, "kala.timeline", "seed", "complete",
               f"kala_timeline: {n} rows", metadata={"rows": n})
@@ -245,8 +245,9 @@ def _l4_phala(build_id: str, chart_id: str) -> dict:
     _emit(build_id, chart_id, "phala.layer", "build", "started", "L4 Phala starting")
 
     try:
-        from brahmagyan.phala.anchors import seed_phala_anchors
-        n = seed_phala_anchors(chart_id, build_id=build_id)
+        from brahmagyan.phala.anchors import seed_native_anchors
+        result = seed_native_anchors(chart_id)
+        n = result.get("seeded", 0) if isinstance(result, dict) else 0
         counts["phala_anchors"] = n
         _emit(build_id, chart_id, "phala.anchors", "seed", "complete",
               f"phala_anchors: {n} rows", metadata={"rows": n})
@@ -254,8 +255,8 @@ def _l4_phala(build_id: str, chart_id: str) -> dict:
         logger.warning("[L4] phala.anchors failed (non-fatal): %s", exc)
 
     try:
-        from brahmagyan.phala.mitigation import seed_phala_mitigation
-        n = seed_phala_mitigation(chart_id, build_id=build_id)
+        from brahmagyan.phala.mitigation import seed_mitigation
+        n = seed_mitigation(chart_id) if callable(globals().get('seed_mitigation')) else 0
         counts["phala_mitigation"] = n
     except Exception as exc:
         logger.warning("[L4] phala.mitigation failed (non-fatal): %s", exc)
@@ -273,8 +274,9 @@ def _l5_mimamsa(build_id: str, chart_id: str) -> dict:
     _emit(build_id, chart_id, "mimamsa.layer", "build", "started", "L5 Mīmāṃsā starting")
 
     try:
-        from brahmagyan.mimamsa.lel_intake import run_lel_intake
-        n = run_lel_intake(chart_id, build_id=build_id)
+        from brahmagyan.mimamsa.lel_intake import seed_lel_intake
+        result = seed_lel_intake()
+        n = result.get("seeded", 0) if isinstance(result, dict) else int(result or 0)
         counts["life_events"] = n
         _emit(build_id, chart_id, "mimamsa.lel_intake", "seed", "complete",
               f"life_events: {n} rows", metadata={"rows": n})
