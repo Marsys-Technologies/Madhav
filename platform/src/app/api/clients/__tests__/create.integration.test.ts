@@ -370,13 +370,8 @@ describe.skipIf(!DB_AVAILABLE)('POST /api/clients/create (integration)', () => {
 
   // ── Test 17 ─────────────────────────────────────────────────────────────────
 
-  it('ayanamsha_registry has all 5 canonical ayanamshas', async () => {
-    const { rows } = await pool.query(
-      `SELECT ayanamsha_id FROM ayanamsha_registry WHERE is_canonical = true ORDER BY ayanamsha_id`,
-    )
-    const ids = rows.map((r: { ayanamsha_id: string }) => r.ayanamsha_id)
-    expect(ids).toEqual(expect.arrayContaining([...ALL_AYANAMSHAS]))
-    expect(ids).toHaveLength(5)
+  it.skip('ayanamsha_registry dropped in WS-0 (WS-2 pending)', async () => {
+    // ayanamsha_registry table dropped in WS-0. Skip until WS-2 rebuild.
   })
 
   // ── Test 18 ─────────────────────────────────────────────────────────────────

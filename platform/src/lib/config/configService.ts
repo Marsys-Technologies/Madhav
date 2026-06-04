@@ -211,19 +211,7 @@ export async function setGate(
     ],
   )
 
-  // Append to gate_change_log.
-  await query(
-    `INSERT INTO gate_change_log (gate_key, chart_id, old_value, new_value, changed_by, reason)
-     VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)`,
-    [
-      key,
-      opts.chartId ?? null,
-      JSON.stringify(oldValue ?? null),
-      JSON.stringify(value),
-      principalUid,
-      opts.reason ?? null,
-    ],
-  )
+  // gate_change_log dropped in WS-0; audit write is a no-op until WS-2 rebuild.
 
   // Invalidate cache for this composite key.
   _cache.delete(cacheKey(key, opts.chartId))
@@ -255,18 +243,7 @@ export async function resetGate(
     [key, opts.chartId ?? null],
   )
 
-  await query(
-    `INSERT INTO gate_change_log (gate_key, chart_id, old_value, new_value, changed_by, reason)
-     VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)`,
-    [
-      key,
-      opts.chartId ?? null,
-      JSON.stringify(oldValue ?? null),
-      JSON.stringify(spec.default),
-      principalUid,
-      opts.reason ?? 'reset_to_default',
-    ],
-  )
+  // gate_change_log dropped in WS-0; audit write is a no-op until WS-2 rebuild.
 
   _cache.delete(cacheKey(key, opts.chartId))
 }

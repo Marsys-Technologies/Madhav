@@ -1,6 +1,8 @@
 import 'server-only'
 import type { StorageClient } from '@/lib/storage/types'
-import { resolveBaseline } from './baseline_resolver'
+// baseline_resolver deleted WS-0C-2 (query_baseline_stats dropped in WS-0).
+// TODO(ws-2): restore once query_baseline_stats is recreated.
+const resolveBaseline = async (_: unknown, __: unknown) => null
 import type {
   AssembledTrace,
   AuditStepMetadata,

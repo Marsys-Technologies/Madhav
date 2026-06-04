@@ -396,9 +396,9 @@ const classical_text_search: RetrievalCapabilityEntry = {
     'Use when the query requires classical textual authority, source verse citation, or ' +
     'cross-tradition validation of astrological principles. Triggers query_class=classical_grounding.',
   data_surface:
-    'L8 — tables classical_chunks JOIN classical_texts. ' +
-    'Fields: text_key, title, author, tradition, school, tier, chapter, verse_range, content, ' +
-    'attribution_baseline_confidence, similarity (1 − cosine_distance from pgvector).',
+    'L8 — brahmagyan.texts classical corpus (classical_chunks/classical_texts retired WS-0; ' +
+    'stub returns empty until WS-2 repoint). Fields: text_key, title, author, tradition, ' +
+    'school, tier, chapter, verse_range, content, attribution_baseline_confidence, similarity.',
   supported_params:
     '{ query?: string (default: user query); schools?: string[] (e.g. ["parashari","jaimini","bnn"]); ' +
     'tier_max?: number (1=mandatory, 2=high, 3=standard, 4=nadi/bnn); limit?: number (default 5, max 20) }',
@@ -422,10 +422,10 @@ const classical_attribution_lookup: RetrievalCapabilityEntry = {
     'translation cross-check status. Use when the query requires classical authority for specific ' +
     'MSR signals or to show the user which texts support/refute a given astrological claim.',
   data_surface:
-    'L8 — table classical_attributions JOIN classical_chunks JOIN classical_texts. ' +
-    'Fields: msr_signal_id, text_key, title, author, chapter, verse_range, content, ' +
-    'attribution_type (confirms/contradicts/partial/extends/silent), confidence, confidence_tier ' +
-    '(HIGH/MEDIUM/LOW), derivation_notes, translation_cross_checked.',
+    'L8 — classical_attributions/classical_chunks/classical_texts retired WS-0; stub returns ' +
+    'empty until WS-2 repoint. Fields: msr_signal_id, text_key, title, author, chapter, ' +
+    'verse_range, content, attribution_type, confidence, confidence_tier, derivation_notes, ' +
+    'translation_cross_checked.',
   supported_params:
     '{ signal_ids: string[] (required, e.g. ["SIG.MSR.001","SIG.MSR.042"]); ' +
     'attribution_type?: "confirms"|"contradicts"|"partial"|"extends"|"silent"; ' +

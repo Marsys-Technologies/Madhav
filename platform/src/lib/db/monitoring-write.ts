@@ -134,35 +134,12 @@ export async function writeToolExecutionLog(
   }
 }
 
+// context_assembly_log dropped in WS-0; write is a no-op until WS-2.
+// TODO(ws-2): repoint to context_assembly_item_log (platform-modernization replacement).
 export async function writeContextAssemblyLog(
-  row: Omit<ContextAssemblyLogRow, 'id' | 'created_at' | 'total_tokens'>
+  _row: Omit<ContextAssemblyLogRow, 'id' | 'created_at' | 'total_tokens'>
 ): Promise<void> {
-  try {
-    await getStorageClient().query(
-      `INSERT INTO context_assembly_log
-        (query_id, l1_tokens, l2_5_signal_tokens, l2_5_pattern_tokens,
-         l4_tokens, vector_tokens, cgm_tokens, synthesis_model_id,
-         model_max_context, b3_compliant, citation_count, verified_citations)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       ON CONFLICT (query_id) DO NOTHING`,
-      [
-        row.query_id,
-        row.l1_tokens,
-        row.l2_5_signal_tokens,
-        row.l2_5_pattern_tokens,
-        row.l4_tokens,
-        row.vector_tokens,
-        row.cgm_tokens,
-        row.synthesis_model_id,
-        row.model_max_context,
-        row.b3_compliant,
-        row.citation_count,
-        row.verified_citations,
-      ]
-    )
-  } catch (err) {
-    console.warn('[mon] writeContextAssemblyLog failed:', err)
-  }
+  // no-op
 }
 
 export function resolveProvider(modelId: string): string {

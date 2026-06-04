@@ -25,7 +25,8 @@
 import type { CapabilityAdapter } from './adapter';
 import { CapabilityUnsupportedError } from './adapter';
 import type { ProviderCapabilities } from './capabilities';
-import { logCapabilityPath as emitCapabilityPath } from '../observatory/capability_telemetry';
+// capability_telemetry deleted WS-0C-2 (capability_path_events dropped in WS-0).
+const emitCapabilityPath = (_opts: unknown): void => { /* no-op */ }
 import { AnthropicAdapter } from './anthropic/adapter';
 import { ANTHROPIC_MANIFEST } from './anthropic/manifest';
 import { GoogleAdapter } from './google/adapter';

@@ -280,20 +280,8 @@ export async function runNightlyAudit(config: AuditJobConfig = {}): Promise<Audi
     }
 
     if (!dry_run && allFindings.length > 0) {
-      // Write findings to mcp_audit_findings
-      for (const finding of allFindings) {
-        await dbQuery(`
-          INSERT INTO mcp_audit_findings (trace_id, tool_name, check_class, severity, description, evidence)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [
-          finding.trace_id,
-          finding.tool_name,
-          finding.check_class,
-          finding.severity,
-          finding.description,
-          JSON.stringify(finding.evidence),
-        ])
-      }
+      // mcp_audit_findings dropped in WS-0; write is a no-op until WS-2 rebuild.
+      // TODO(ws-2): repoint to mcp_alerts_config / mcp_disagreements schema.
 
       // Mark rows as audited
       const traceIds = [...new Set(rows.map(r => r.trace_id))]

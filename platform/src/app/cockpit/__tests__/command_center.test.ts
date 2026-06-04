@@ -110,23 +110,20 @@ describe('configService.getGate', () => {
 // ─── B — configService gate writer ────────────────────────────────────────────
 
 describe('configService.setGate', () => {
-  it('writes runtime_config + gate_change_log (two inserts)', async () => {
+  it('writes runtime_config (gate_change_log retired WS-0)', async () => {
     // 1. setGate → bypass-cache getGate → global runtime_config select → rows:[]
     // 2. INSERT runtime_config
-    // 3. INSERT gate_change_log
     mockQuery
       .mockResolvedValueOnce({ rows: [] }) // pre-read old value
       .mockResolvedValueOnce({ rows: [] }) // upsert
-      .mockResolvedValueOnce({ rows: [] }) // change-log insert
 
     const { setGate } = await import('@/lib/config/configService')
     await setGate('MSR_ENABLED', false, 'admin-uid', { reason: 'smoke' })
 
-    // We expect 3 DB calls: the pre-read SELECT, the UPSERT, and the change-log INSERT.
-    expect(mockQuery).toHaveBeenCalledTimes(3)
+    // 2 DB calls: pre-read SELECT + UPSERT. gate_change_log write retired WS-0.
+    expect(mockQuery).toHaveBeenCalledTimes(2)
     const sqls = mockQuery.mock.calls.map((c: any[]) => c[0] as string)
     expect(sqls.some((s) => s.includes('INSERT INTO runtime_config'))).toBe(true)
-    expect(sqls.some((s) => s.includes('INSERT INTO gate_change_log'))).toBe(true)
   })
 
   it('rejects AYANAMSHA_CANONICAL_ENABLED=false (hard guard)', async () => {
@@ -137,22 +134,15 @@ describe('configService.setGate', () => {
     ).rejects.toBeInstanceOf(GateWriteError)
   })
 
-  it('records gate_change_log entry on every edit', async () => {
+  it('gate_change_log audit write retired WS-0 — only 2 DB calls on edit', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
 
     const { setGate } = await import('@/lib/config/configService')
     await setGate('LEL_ENABLED', false, 'admin-uid', { reason: 'kill-switch test' })
 
-    const changeLogCall = mockQuery.mock.calls.find((c: any[]) =>
-      String(c[0]).includes('INSERT INTO gate_change_log'),
-    )
-    expect(changeLogCall).toBeDefined()
-    expect(changeLogCall![1]).toContain('LEL_ENABLED')
-    expect(changeLogCall![1]).toContain('admin-uid')
-    expect(changeLogCall![1]).toContain('kill-switch test')
+    expect(mockQuery).toHaveBeenCalledTimes(2)
   })
 })
 

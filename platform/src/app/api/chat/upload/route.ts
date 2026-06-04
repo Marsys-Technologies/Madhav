@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
+
 import { chatBucket, gcsSignedUpload } from '@/lib/storage/client'
 import { res } from '@/lib/errors'
 
@@ -47,21 +47,10 @@ export async function POST(request: Request) {
     return res.internal('failed to create upload URL')
   }
 
-  // Persist metadata so we can re-sign later if the URL expires. conversation_id
-  // and message_id are nullable — the upload happens before the message is sent.
-  let rows: { id: string }[]
-  try {
-    const result = await query<{ id: string }>(
-      'INSERT INTO chat_attachments (user_id, storage_path, mime, size_bytes) VALUES ($1,$2,$3,$4) RETURNING id',
-      [user.uid, storagePath, mime, file.size]
-    )
-    rows = result.rows
-  } catch {
-    return res.internal('attachment metadata persist failed')
-  }
-
+  // chat_attachments dropped in WS-0; skip metadata persist, return synthetic id.
+  // TODO(ws-2): restore once chat_attachments is recreated in Brahma schema.
   return NextResponse.json({
-    id: rows[0]?.id,
+    id: crypto.randomUUID(),
     uploadUrl,
     storagePath,
     mime,

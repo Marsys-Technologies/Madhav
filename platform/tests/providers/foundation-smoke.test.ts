@@ -14,11 +14,10 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getAdapter, getManifest, VALID_STACK_IDS } from '../../src/lib/providers/dispatcher';
-import {
-  clearCapabilityPathRecords,
-  logCapabilityPath,
-  drainCapabilityPathRecords,
-} from '../../src/lib/observatory/capability_telemetry';
+// capability_telemetry deleted WS-0C-2.
+const clearCapabilityPathRecords = () => {}
+const logCapabilityPath = (..._: unknown[]) => {}
+const drainCapabilityPathRecords = () => []
 import { vi } from 'vitest';
 import type { ChatEvent } from '../../src/lib/providers/types';
 

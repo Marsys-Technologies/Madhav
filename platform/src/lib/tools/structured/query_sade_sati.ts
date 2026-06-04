@@ -1,6 +1,7 @@
+// sade_sati_phases dropped in WS-0; stub returns empty until WS-2 rebuild.
+// TODO(ws-2): repoint once sade_sati_phases is recreated in Brahma kala schema.
 import { tool } from 'ai'
 import { z } from 'zod'
-import { query } from '@/lib/db/client'
 
 export const query_sade_sati = tool({
   description:
@@ -22,37 +23,7 @@ export const query_sade_sati = tool({
       'Filter by phase type. Omit for all phases.'
     ),
   }),
-  execute: async ({ date, cycle_number, phase }) => {
-    try {
-      const conditions: string[] = []
-      const params: (string | number)[] = []
-      let idx = 1
-
-      if (date) {
-        conditions.push(`start_date <= $${idx} AND end_date >= $${idx}`)
-        params.push(date)
-        idx++
-      }
-      if (cycle_number !== undefined) {
-        conditions.push(`cycle_number = $${idx++}`)
-        params.push(cycle_number)
-      }
-      if (phase) {
-        conditions.push(`phase = $${idx++}`)
-        params.push(phase)
-      }
-
-      const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-      const sql = `
-        SELECT cycle_number, phase, start_date, end_date, saturn_sign_at_start, notes, source_section
-        FROM sade_sati_phases
-        ${where}
-        ORDER BY start_date ASC
-      `
-      const { rows } = await query(sql, params)
-      return { count: rows.length, phases: rows }
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) }
-    }
+  execute: async (_input) => {
+    return { count: 0, phases: [] }
   },
 })

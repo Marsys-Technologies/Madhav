@@ -49,14 +49,8 @@ export default async function ClientPage({
           [id],
         )
       : Promise.resolve({ rows: [] }),
-    canBuild
-      ? query<{ promoted_at: string | null; build_id: string }>(
-          `SELECT build_id, promoted_at FROM build_manifests
-           WHERE status='live'
-           ORDER BY promoted_at DESC NULLS LAST LIMIT 1`,
-          [],
-        )
-      : Promise.resolve({ rows: [] }),
+    // build_manifests dropped in WS-0; always return empty until WS-2.
+    Promise.resolve({ rows: [] as { promoted_at: string | null; build_id: string }[] }),
   ])
 
   const recentConversations = conversationsResult.rows

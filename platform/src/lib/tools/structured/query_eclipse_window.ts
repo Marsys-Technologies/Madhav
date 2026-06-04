@@ -1,6 +1,6 @@
+// eclipses dropped in WS-0; stub returns empty until WS-2 rebuild.
 import { tool } from 'ai'
 import { z } from 'zod'
-import { query } from '@/lib/db/client'
 
 export const query_eclipse_window = tool({
   description:
@@ -22,32 +22,7 @@ export const query_eclipse_window = tool({
       'Filter to eclipses in this sidereal sign (e.g. Aquarius, Capricorn, Scorpio).'
     ),
   }),
-  execute: async ({ start_date, end_date, type, sign }) => {
-    try {
-      const conditions: string[] = ['date BETWEEN $1 AND $2']
-      const params: (string | number)[] = [start_date, end_date]
-      let idx = 3
-
-      if (type) {
-        conditions.push(`type = $${idx++}`)
-        params.push(type)
-      }
-      if (sign) {
-        conditions.push(`sign = $${idx++}`)
-        params.push(sign)
-      }
-
-      const sql = `
-        SELECT date, type, longitude_deg, sign, nakshatra, visibility_region
-        FROM eclipses
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY date ASC
-        LIMIT 50
-      `
-      const { rows } = await query(sql, params)
-      return { window: { start_date, end_date }, count: rows.length, eclipses: rows }
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) }
-    }
+  execute: async ({ start_date, end_date }) => {
+    return { window: { start_date, end_date }, count: 0, eclipses: [] }
   },
 })
