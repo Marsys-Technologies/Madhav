@@ -68,10 +68,8 @@ export async function GET(
           'SELECT * FROM tool_execution_log WHERE query_id = $1 ORDER BY created_at ASC',
           [query_id],
         ),
-        query<ContextAssemblyLogRow>(
-          'SELECT * FROM context_assembly_log WHERE query_id = $1 LIMIT 1',
-          [query_id],
-        ),
+        // TODO(ws-2): context_assembly_log dropped WS-0; repoint to context_assembly_item_log.
+        Promise.resolve({ rows: [] as ContextAssemblyLogRow[] }),
       ])
 
     const noRecords =

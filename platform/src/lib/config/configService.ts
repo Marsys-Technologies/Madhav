@@ -211,19 +211,7 @@ export async function setGate(
     ],
   )
 
-  // Append to gate_change_log.
-  await query(
-    `INSERT INTO gate_change_log (gate_key, chart_id, old_value, new_value, changed_by, reason)
-     VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)`,
-    [
-      key,
-      opts.chartId ?? null,
-      JSON.stringify(oldValue ?? null),
-      JSON.stringify(value),
-      principalUid,
-      opts.reason ?? null,
-    ],
-  )
+  // TODO(ws-2): gate_change_log dropped WS-0; restore to Brahma governance audit table once defined.
 
   // Invalidate cache for this composite key.
   _cache.delete(cacheKey(key, opts.chartId))
@@ -255,18 +243,7 @@ export async function resetGate(
     [key, opts.chartId ?? null],
   )
 
-  await query(
-    `INSERT INTO gate_change_log (gate_key, chart_id, old_value, new_value, changed_by, reason)
-     VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)`,
-    [
-      key,
-      opts.chartId ?? null,
-      JSON.stringify(oldValue ?? null),
-      JSON.stringify(spec.default),
-      principalUid,
-      opts.reason ?? 'reset_to_default',
-    ],
-  )
+  // TODO(ws-2): gate_change_log dropped WS-0; restore to Brahma governance audit table once defined.
 
   _cache.delete(cacheKey(key, opts.chartId))
 }

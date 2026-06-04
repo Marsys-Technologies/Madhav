@@ -1,6 +1,6 @@
+// TODO(ws-2): retrogrades dropped WS-0; repoint to Brahma kala_retrogrades once recreated.
 import { tool } from 'ai'
 import { z } from 'zod'
-import { query } from '@/lib/db/client'
 
 export const query_retrograde_window = tool({
   description:
@@ -22,32 +22,7 @@ export const query_retrograde_window = tool({
       'Filter to start (goes retrograde) or end (goes direct) stations. Omit for both.'
     ),
   }),
-  execute: async ({ start_date, end_date, planet, station_type }) => {
-    try {
-      const conditions: string[] = ['date BETWEEN $1 AND $2']
-      const params: (string | number)[] = [start_date, end_date]
-      let idx = 3
-
-      if (planet) {
-        conditions.push(`planet = $${idx++}`)
-        params.push(planet)
-      }
-      if (station_type) {
-        conditions.push(`station_type = $${idx++}`)
-        params.push(station_type)
-      }
-
-      const sql = `
-        SELECT planet, station_type, date, longitude_deg, sign
-        FROM retrogrades
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY date ASC
-        LIMIT 50
-      `
-      const { rows } = await query(sql, params)
-      return { window: { start_date, end_date }, count: rows.length, stations: rows }
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) }
-    }
+  execute: async ({ start_date, end_date }) => {
+    return { window: { start_date, end_date }, count: 0, stations: [] }
   },
 })

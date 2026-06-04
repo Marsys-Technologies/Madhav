@@ -131,71 +131,11 @@ describe('writeAuditEvent — failure isolation', () => {
   })
 })
 
-// ── writeQueryPlan — happy path ───────────────────────────────────────────────
+// ── writeQueryPlan — no-op (query_plans dropped WS-0) ────────────────────────
 
-describe('writeQueryPlan — happy path', () => {
-  it('inserts into query_plans with ON CONFLICT DO NOTHING', async () => {
-    await writeQueryPlan(makeQueryPlan())
-
-    expect(mockQuery).toHaveBeenCalledOnce()
-    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(sql).toContain('INSERT INTO query_plans')
-    expect(sql).toContain('ON CONFLICT (query_plan_id) DO NOTHING')
-    expect(params[0]).toBe('aaaaaaaa-0000-0000-0000-000000000001') // query_plan_id
-    expect(params[1]).toBe('aaaaaaaa-0000-0000-0000-000000000001') // query_id (same as query_plan_id)
-    expect(params[2]).toBe('What sign is my Mercury placed in?')
-    expect(params[3]).toBe('factual')
-  })
-
-  it('passes domains array directly', async () => {
-    await writeQueryPlan(makeQueryPlan({ domains: ['planets', 'houses'] }))
-
-    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(params[4]).toEqual(['planets', 'houses'])
-  })
-
-  it('sets optional fields to null when omitted', async () => {
-    await writeQueryPlan(makeQueryPlan())
-
-    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(params[5]).toBeNull()  // planets
-    expect(params[6]).toBeNull()  // houses
-    expect(params[13]).toBeNull() // graph_seed_hints
-  })
-
-  it('serialises vector_search_filter as JSON when present', async () => {
-    await writeQueryPlan(makeQueryPlan({
-      vector_search_filter: { doc_type: ['ucn_section', 'msr_signal'] },
-    }))
-
-    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    const vsf = JSON.parse(params[16] as string) as { doc_type: string[] }
-    expect(vsf.doc_type).toEqual(['ucn_section', 'msr_signal'])
-  })
-
-  it('sets vector_search_filter to null when absent', async () => {
-    await writeQueryPlan(makeQueryPlan())
-
-    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(params[16]).toBeNull()
-  })
-})
-
-// ── writeQueryPlan — failure isolation ───────────────────────────────────────
-
-describe('writeQueryPlan — failure isolation', () => {
-  it('does not throw when DB query rejects', async () => {
-    mockQuery.mockRejectedValueOnce(new Error('db down'))
+describe('writeQueryPlan — no-op stub', () => {
+  it('resolves without making any DB calls', async () => {
     await expect(writeQueryPlan(makeQueryPlan())).resolves.toBeUndefined()
-  })
-
-  it('records telemetry error with correct component and type', async () => {
-    mockQuery.mockRejectedValueOnce(new Error('constraint violation'))
-    await writeQueryPlan(makeQueryPlan())
-
-    expect(mockRecordError).toHaveBeenCalledOnce()
-    const [component, type] = mockRecordError.mock.calls[0] as [string, string]
-    expect(component).toBe('audit_writer')
-    expect(type).toBe('write_query_plan_failed')
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

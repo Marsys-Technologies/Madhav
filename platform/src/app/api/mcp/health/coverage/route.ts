@@ -49,63 +49,16 @@ export async function GET(req: NextRequest): Promise<Response> {
   const now = new Date().toISOString()
 
   try {
-    // Query data_source_expected for all rows
-    const coverageResult = await query<DataSourceExpectedRow>(
-      `SELECT tool_name, category, expected_rows, actual_rows, backfill_phase, notes, updated_at
-       FROM data_source_expected
-       ORDER BY tool_name, category`
-    )
-
-    // If table is empty (Phase 7a seed not yet applied), return graceful empty response
-    if (coverageResult.rows.length === 0) {
-      return NextResponse.json({
-        ok: true,
-        generated_at: now,
-        // tier removed (Stream A 3.tier_excision 2026-05-28).
-        coverage: [],
-        caveats: [],
-        note: 'data_source_expected table not yet seeded — run Phase 7a seed load',
-      })
-    }
-
-    // Build coverage array from real DB rows
-    const coverage = coverageResult.rows.map(row => ({
-      tool: row.tool_name,
-      category: row.category,
-      expected_rows: row.expected_rows,
-      actual_rows: row.actual_rows,
-      last_updated_at: row.updated_at,
-      backfill_phase: row.backfill_phase,
-      notes: row.notes ?? undefined,
-      status: row.actual_rows !== null && row.actual_rows >= row.expected_rows ? 'ok' : 'low',
-    }))
-
-    // Query active caveats from tool_caveats
-    let caveats: Array<{ tool: string; caveat: string; severity: string }> = []
-    try {
-      const caveatResult = await query<ToolCaveatRow>(
-        `SELECT tool_name, caveat_text, severity
-         FROM tool_caveats
-         WHERE active = true
-         ORDER BY tool_name, severity`
-      )
-      caveats = caveatResult.rows.map(row => ({
-        tool: row.tool_name,
-        caveat: row.caveat_text,
-        severity: row.severity,
-      }))
-    } catch {
-      // tool_caveats query failure is non-fatal — return coverage without caveats
-      caveats = []
-    }
-
+    // data_source_expected + tool_caveats dropped in WS-0; always return empty.
+    // TODO(ws-2): restore once coverage tables are recreated.
     return NextResponse.json({
       ok: true,
       generated_at: now,
-      // tier removed (Stream A 3.tier_excision 2026-05-28).
-      coverage,
-      caveats,
+      coverage: [],
+      caveats: [],
+      note: 'data_source_expected / tool_caveats retired in WS-0 — WS-2 pending',
     })
+
   } catch (err) {
     // DB unavailable or table doesn't exist yet — graceful degradation
     const message = err instanceof Error ? err.message : String(err)

@@ -92,3 +92,37 @@ to this tool gets an empty multi-school result — planner should fall through g
 
 **Rebuild trigger.** WS-2 Brahma depth-build: repopulate `school_signal_coverage` JOIN
 `bodha_signals` (replaces `l25_msr_signals`). SQL prototype in git history at 01c32903.
+
+---
+
+## 4. WS-0C-2 stubs — 13 additional surfaces awaiting WS-2
+
+**Created:** 2026-06-05, WS-0C-2 (commit 2cece0bb).
+
+All tables below were dropped in WS-0 and confirmed ABSENT from production via `information_schema.tables` check. Each file carries an inline `// TODO(ws-2): ...` comment naming the rebuild target.
+
+| File | Dropped table | Current state | Rebuild target |
+|---|---|---|---|
+| `lib/tools/classical_text_search.ts` | `classical_chunks`, `classical_texts` | Empty result stub | `brahmagyan.texts` (sidecar L0 corpus) |
+| `lib/tools/classical_attribution_lookup.ts` | `classical_attributions`, `classical_chunks` | Empty result stub | `brahmagyan.texts` + `bodha_signals` citation scaffolds |
+| `lib/tools/convergence_score_lookup.ts` | `convergence_scores` | Empty result stub | `school_signal_coverage` + convergence tables (WS-2 depth-build) |
+| `lib/tools/structured/query_sade_sati.ts` | `sade_sati_phases` | Empty result stub | Brahma `kala` schema Sade Sati table |
+| `lib/tools/structured/query_retrograde_window.ts` | `retrogrades` | Empty result stub | Brahma `kala_retrogrades` |
+| `lib/tools/structured/query_eclipse_window.ts` | `eclipses` | Empty result stub | Brahma `kala_eclipses` |
+| `lib/tools/structured/query_planet_position.ts` | `ephemeris_daily` | Empty result stub | `ganita_positions` (Brahma ephemeris asset) |
+| `lib/config/configService.ts` | `gate_change_log` | No-op (write silenced ×2) | Brahma governance audit table (TBD) |
+| `lib/audit/audit_writer.ts` | `query_plans` | No-op `writeQueryPlan` | `query_plan_log` (platform-modernization replacement) |
+| `lib/db/monitoring-write.ts` | `context_assembly_log` | No-op `writeContextAssemblyLog` | `context_assembly_item_log` |
+| `lib/perf/audit_nightly.ts` | `mcp_audit_findings` | No-op write | `mcp_alerts_config` / `mcp_disagreements` schema |
+| `api/conversations/[id]/feedback/route.ts` | `message_feedback` | Stub (GET → `[]`, POST → `{ok:true}`) | `conversation_messages` JSONB feedback field or new table |
+| `api/chat/upload/route.ts` | `chat_attachments` | Skip persist, return synthetic id | Brahma schema `chat_attachments` recreation |
+| `api/mcp/health/coverage/route.ts` | `data_source_expected`, `tool_caveats` | Stub `{coverage:[],caveats:[]}` | Coverage tables in Brahma MCP health schema |
+| `api/investigation/[query_id]/route.ts` | `context_assembly_log` | Always `rows:[]` | `context_assembly_item_log` |
+| `app/clients/[id]/page.tsx` | `build_manifests` | Always `rows:[]` | `builds` table (migrations 124+ applied) |
+| `lib/admin/trace_assembler.ts` | `query_baseline_stats` | Inline `resolveBaseline → null` | `query_baseline_stats` recreated (TBD) |
+| `lib/providers/dispatcher.ts` | `capability_path_events` | Inline `emitCapabilityPath → no-op` | Observatory capability telemetry (Brahma schema) |
+
+**Rebuild trigger.** WS-2 Brahma depth-build. Each file's `TODO(ws-2)` comment names the specific target table/schema. Git history at commit `2cece0bb`.
+
+**Deferred (build-system cluster — pending migration apply, NOT a code issue):**
+`builds`, `build_steps`, `build_events`, `build_notifications`, `notification_views`, `engine_versions` — 55 hits remain in active build orchestrator routes. Requires migrations 118/124/125/126/127 applied to production, not a code change.
