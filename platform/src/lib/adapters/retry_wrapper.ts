@@ -104,7 +104,7 @@ export async function streamWithRetry(
     )
   }
 
-  const retryReq: RetryableRequest = { ...req, stack: retryStack, is_retry: true }
+  const retryReq: RetryableRequest = { ...req, stack: retryStack as ModelStack, is_retry: true }
   const startedAt = new Date().toISOString()
 
   try {
@@ -114,7 +114,7 @@ export async function streamWithRetry(
     if (req.traceId) {
       const recoveredAt = new Date().toISOString()
       writeTraceStep({
-        query_id: req.traceId,
+        query_id: req.traceId!,
         conversation_id: undefined,
         user_id: req.userId,
         step_seq: 9900,
