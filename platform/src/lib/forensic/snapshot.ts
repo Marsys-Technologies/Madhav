@@ -51,9 +51,12 @@ function buildAbhisekFallback(chartId: string): ForensicChart {
   }
 }
 
+// TODO(ws-2): repoint via ganita_positions + ganita_dashas once Brahma depth-build
+// populates those tables for every chart_id. Parsing logic lives in the original
+// chart_facts query block (pre-WS-0C); restore and adapt column names.
 export async function getForensicSnapshot(chartId: string): Promise<ForensicChart> {
-  // chart_facts table dropped in WS-0; ganita_positions schema differs.
-  // Always return the FORENSIC_ASTROLOGICAL_DATA fallback until Brahma rebuild.
+  // chart_facts dropped in WS-0; ganita_positions schema differs (no fact_id/category).
+  // Always return the FORENSIC_ASTROLOGICAL_DATA fallback until WS-2 Brahma repoint.
   try {
     const result = { rows: [] as { fact_id: string; category: string; value_text: string | null; value_number: number | null }[] }
 

@@ -3,7 +3,10 @@
  *
  * school_signal_coverage, l25_msr_signals, classical_chunks dropped in WS-0.
  * Stub retained to satisfy exports in tools/index.ts. Returns empty results.
- * Rebuild under Brahma when school_signal_coverage is repopulated.
+ *
+ * TODO(ws-2): rebuild via bodha_signals JOIN school_signal_coverage once
+ * school_signal_coverage is repopulated in the Brahma depth-build. SQL
+ * prototype lives in git history (WS-0C Sub-C commit 01c32903).
  */
 
 import 'server-only'

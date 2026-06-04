@@ -57,3 +57,38 @@ calibration concern. Single rebuild for both AIOps surfaces; do not resurrect ei
 piecemeal.
 
 **Rebuild trigger.** When Mīmāṃsā/L5 work begins.
+
+---
+
+## 3. Sub-C empty stubs awaiting WS-2 Brahma depth-build
+
+**Created:** 2026-06-04, WS-0C Sub-C.
+
+### 3a. `lib/forensic/snapshot.ts` — `getForensicSnapshot`
+
+**What it was.** Queried `chart_facts` for planet positions, house signs, lagna, and
+dasha_balance rows to build a `ForensicChart` struct displayed in the client profile
+page (`clients/[id]/page.tsx`), `RasiChartSVG`, `ChartHero`, and `ProfileSideRail`.
+
+**Current state.** The function body returns `buildAbhisekFallback()` immediately
+(hardcoded canonical Abhisek chart from FORENSIC_ASTROLOGICAL_DATA_v8_0.md §4).
+Consumers compile and render correctly — they display the native's chart. The stub
+will serve all new clients with an empty-ish chart until WS-2.
+
+**Rebuild trigger.** WS-2 Brahma depth-build: repoint to `ganita_positions` +
+`ganita_dashas` (schema differs from `chart_facts` — fact_id/category model replaced by
+typed planet/dasha rows). Parsing logic was in the original function (see git history
+commit 01c32903 for the original SQL). Adapt column names.
+
+### 3b. `lib/tools/multi_school_signal_lookup.ts` — Tool 27
+
+**What it was.** Queried `school_signal_coverage JOIN l25_msr_signals JOIN classical_chunks`
+to report per-school (Parashari/Jaimini/Tajika/KP/Nadi/BNN/Yogini) signal coverage with
+attribution references. Full implementation shipped M9-D-S1 (2026-05-14).
+
+**Current state.** Returns `{ results_by_school: [], total_signals_found: 0, ... }`.
+Exported from `lib/tools/index.ts` (CLASSICAL_TOOL_REGISTRY tool 27). Any query routed
+to this tool gets an empty multi-school result — planner should fall through gracefully.
+
+**Rebuild trigger.** WS-2 Brahma depth-build: repopulate `school_signal_coverage` JOIN
+`bodha_signals` (replaces `l25_msr_signals`). SQL prototype in git history at 01c32903.
