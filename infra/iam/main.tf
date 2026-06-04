@@ -120,6 +120,16 @@ resource "google_cloud_run_v2_job_iam_member" "web_triggers_bootstrap_job" {
   member   = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
+// Per-chart build pipeline job — invoked by /api/build/start via invokeBuildJob().
+// Same pattern as web_triggers_bootstrap_job per the header note.
+resource "google_cloud_run_v2_job_iam_member" "web_triggers_build_pipeline_job" {
+  project  = var.gcp_project
+  location = var.gcp_region
+  name     = "brahma-build-pipeline-job"
+  role     = "roles/run.jobsExecutorWithOverrides"
+  member   = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
 // Cloud Run invoker on amjis-mcp (per-service binding, not project-wide).
 resource "google_cloud_run_v2_service_iam_member" "web_invokes_mcp" {
   project  = var.gcp_project

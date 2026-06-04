@@ -53,7 +53,7 @@ interface Props {
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
-const COLUMN_ORDER: LayerKey[] = ['L1', 'L2_5', 'L3', 'L4']
+const COLUMN_ORDER: LayerKey[] = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
 const NODE_R = 10           // circle radius
 const TERMINAL_W = 22       // rect width for L4 (Vyavahara) nodes
 const TERMINAL_H = 14
@@ -224,7 +224,7 @@ export function LiveDependencyGraph({
               letterSpacing: '0.04em',
             }}
           >
-            Live dependency graph · 28 assets{' '}
+            Layer Tower · L0 Brahmagyan → L5 Mīmāṃsā{' '}
             {connected && (
               <span style={{ color: COLORS.success }}>· synced to data plane</span>
             )}

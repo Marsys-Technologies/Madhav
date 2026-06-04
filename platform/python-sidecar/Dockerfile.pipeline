@@ -16,19 +16,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # validators using Path(__file__).parent^5 resolve to WORKDIR (/app = repo_root).
 # This allows the p5/p2 validators to find their source files at runtime.
 COPY platform/python-sidecar/rag/ ./platform/python-sidecar/rag/
-COPY platform/python-sidecar/pyjhora_adapter/ ./platform/python-sidecar/pyjhora_adapter/
 COPY platform/python-sidecar/pipeline/ ./platform/python-sidecar/pipeline/
-# CGM edge manifests (static; read by pipeline.extractors.cgm_extractor at /app/035_DISCOVERY_LAYER/)
+# Brahma layer writers (L0-L5)
+COPY platform/python-sidecar/brahmagyan/ ./platform/python-sidecar/brahmagyan/
+# CGM edge manifests (read by brahmagyan.bodha.bo22 at runtime)
 COPY 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 COPY 035_DISCOVERY_LAYER/cgm_supports_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 COPY 035_DISCOVERY_LAYER/cgm_contradicts_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
-# L3 Domain Reports + STALENESS_REGISTER (read by rag/chunkers/domain_report.py)
-COPY 03_DOMAIN_REPORTS/ 03_DOMAIN_REPORTS/
-COPY 00_ARCHITECTURE/STALENESS_REGISTER.md 00_ARCHITECTURE/STALENESS_REGISTER.md
 
 ENV PYTHONPATH=/app/platform/python-sidecar
 ENV PYTHONUNBUFFERED=1
 
-# Updated by C-06 to use new multi-ayanamsha pipeline entrypoint
-ENTRYPOINT ["python", "-m", "pipeline.build_chart"]
+# Brahma pipeline entrypoint — replaces deleted pipeline.build_chart
+ENTRYPOINT ["python", "-m", "pipeline.brahma_pipeline"]
 CMD ["--help"]
