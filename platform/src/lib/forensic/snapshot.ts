@@ -1,5 +1,4 @@
 import 'server-only'
-import { query } from '@/lib/db/client'
 
 export interface PlanetPlacement {
   planet: string
@@ -53,25 +52,10 @@ function buildAbhisekFallback(chartId: string): ForensicChart {
 }
 
 export async function getForensicSnapshot(chartId: string): Promise<ForensicChart> {
+  // chart_facts table dropped in WS-0; ganita_positions schema differs.
+  // Always return the FORENSIC_ASTROLOGICAL_DATA fallback until Brahma rebuild.
   try {
-    const result = await query<{
-      fact_id: string
-      category: string
-      value_text: string | null
-      value_number: number | null
-    }>(
-      `SELECT fact_id, category, value_text, value_number
-       FROM chart_facts
-       WHERE build_id IN (
-         SELECT build_id FROM build_manifests
-         WHERE chart_id = $1
-         ORDER BY promoted_at DESC NULLS LAST
-         LIMIT 1
-       ) AND is_stale = false
-       AND category IN ('planet', 'house', 'yoga', 'dasha_balance')
-       AND divisional_chart = 'D1'`,
-      [chartId],
-    )
+    const result = { rows: [] as { fact_id: string; category: string; value_text: string | null; value_number: number | null }[] }
 
     if (result.rows.length === 0) {
       return buildAbhisekFallback(chartId)

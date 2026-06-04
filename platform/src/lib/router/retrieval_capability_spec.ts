@@ -566,7 +566,8 @@ const multi_school_signal_lookup: RetrievalCapabilityEntry = {
     'surfacing which schools agree or disagree on a domain or signal cluster. ' +
     'Triggers query_class=multi_school_triangulation.',
   data_surface:
-    'L9 — table school_signal_coverage JOIN l25_msr_signals. ' +
+    'L9 — school_signal_coverage JOIN bodha_signals (repointed WS-0C; school_signal_coverage ' +
+    'population deferred to Brahma rebuild). ' +
     'Fields: school (7 values: parashari/jaimini/tajika/kp/nadi/bnn/yogini), ' +
     'coverage_type (primary/secondary/silent), confidence, signal_id, signal_name, ' +
     'domain, attribution_ref (from classical_chunks). 4,011 coverage rows at M9-A close.',
