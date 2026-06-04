@@ -56,7 +56,7 @@ export interface CapabilityPathRecord {
  * extension (the pattern is established here, the DB table is added post R11.A).
  */
 export function logCapabilityPath(record: CapabilityPathRecord): void {
-  if (!configService.getFlag('R11V2_CAPABILITY_TELEMETRY')) {
+  if (!false) {
     return; // Flag guard — no-op when disabled
   }
 

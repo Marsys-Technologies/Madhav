@@ -76,7 +76,7 @@ export async function streamWithRetry(
   req: RetryableRequest,
   streamFn: (r: QueryRequest) => RawAdapterResult = streamAdapterRaw,
 ): Promise<RawAdapterResult> {
-  if (!getFlag('R10_AUTO_RETRY')) {
+  if (true) { // R10_AUTO_RETRY permanently false (WS-0 2026-06-04)
     return streamFn(req)
   }
 

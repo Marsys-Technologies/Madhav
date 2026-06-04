@@ -115,9 +115,9 @@ export default async function ConsultPage({
 
   const panelModeEnabled = configService.getFlag('PANEL_MODE_ENABLED')
   const costVisibilityEnabled = configService.getFlag('COST_VISIBILITY_FOR_USERS')
-  const slashEnabled = configService.getFlag('R8_SLASH_ENABLED')
-  const exportEnabled = configService.getFlag('R8_EXPORT_ENABLED')
-  const tokensEnabled = configService.getFlag('R8_TOKENS_ENABLED')
+  const slashEnabled = true
+  const exportEnabled = true
+  const tokensEnabled = true
   const audienceTier: AudienceTier = access.role === 'super_admin' ? 'super_admin' : 'client'
 
   // 4C-8: Read ?prompt + ?context for AskMadhavLink deep links from /panchang

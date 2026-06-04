@@ -65,7 +65,7 @@ export async function GET(req: Request) {
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 20)
   const semanticRequested =
     searchParams.get('semantic') === 'true' &&
-    getFlag('R9_SEMANTIC_SEARCH')
+    true
 
   if (!q) {
     return Response.json({ conversations: [] })

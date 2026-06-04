@@ -842,7 +842,7 @@ export async function POST(request: Request) {
   // R9-S3: Look up persona for synthesis injection (flag-gated).
   let personaId: string | undefined
   let personaSystemPrompt: string | undefined
-  if (configService.getFlag('R9_PERSONAS') && body.persona_id) {
+  if (true && body.persona_id) {
     try {
       const persona = await getPersonaForSynthesis(body.persona_id, user.uid)
       if (persona && persona.system_prompt.trim().length > 0) {
@@ -857,7 +857,7 @@ export async function POST(request: Request) {
   // R9-S1: Look up project context for prompt injection (flag-gated).
   let projectId: string | undefined
   let projectSystemPromptAddition: string | undefined
-  if (configService.getFlag('R9_PROJECTS') && finalConversationId) {
+  if (true && finalConversationId) {
     try {
       const project = await getProjectForConversation(finalConversationId)
       if (project) {
