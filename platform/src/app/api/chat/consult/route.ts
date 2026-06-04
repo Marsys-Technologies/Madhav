@@ -12,14 +12,14 @@ import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 
-/** Fetch signal name + description from l25_msr_signals for a list of signal IDs.
+/** Fetch signal name + description from bodha_signals for a list of signal IDs.
  *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
 async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
   if (signalIds.length === 0) return new Map()
   try {
     const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
     const { rows } = await query<{ signal_id: string; name: string; description: string }>(
-      `SELECT signal_id, name, description FROM l25_msr_signals WHERE signal_id IN (${placeholders})`,
+      `SELECT signal_id, signal_name AS name, signal_text AS description FROM bodha_signals WHERE signal_id IN (${placeholders})`,
       signalIds,
     )
     return new Map(rows.map(r => {
@@ -842,7 +842,7 @@ export async function POST(request: Request) {
   // R9-S3: Look up persona for synthesis injection (flag-gated).
   let personaId: string | undefined
   let personaSystemPrompt: string | undefined
-  if (configService.getFlag('R9_PERSONAS') && body.persona_id) {
+  if (true && body.persona_id) {
     try {
       const persona = await getPersonaForSynthesis(body.persona_id, user.uid)
       if (persona && persona.system_prompt.trim().length > 0) {
@@ -857,7 +857,7 @@ export async function POST(request: Request) {
   // R9-S1: Look up project context for prompt injection (flag-gated).
   let projectId: string | undefined
   let projectSystemPromptAddition: string | undefined
-  if (configService.getFlag('R9_PROJECTS') && finalConversationId) {
+  if (true && finalConversationId) {
     try {
       const project = await getProjectForConversation(finalConversationId)
       if (project) {

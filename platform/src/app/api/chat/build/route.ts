@@ -6,7 +6,7 @@ import { query } from '@/lib/db/client'
 import { buildTools } from '@/lib/claude/build-tools'
 import { buildSystemPrompt } from '@/lib/claude/system-prompts'
 import type { ModelMessage, UIMessage } from 'ai'
-import { insertConversationWithId, replaceConversationMessages, getConversation } from '@/lib/conversations'
+import { insertConversationWithId, getConversation } from '@/lib/conversations'
 import { res } from '@/lib/errors'
 
 export const maxDuration = 120
@@ -115,15 +115,11 @@ export async function POST(request: Request) {
       if (error instanceof Error) return error.message
       return 'Something went wrong generating the build response.'
     },
-    onFinish: async ({ messages: finalMessages }) => {
+    onFinish: async () => {
       try {
         if (pendingConversationInsert) await pendingConversationInsert
-        await replaceConversationMessages({
-          conversationId: finalConversationId,
-          messages: finalMessages as UIMessage[],
-        })
       } catch (err) {
-        console.error('[build] persistence failed', err)
+        console.error('[build] conversation insert failed', err)
       }
     },
   })

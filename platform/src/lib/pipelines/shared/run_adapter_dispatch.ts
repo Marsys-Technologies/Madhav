@@ -203,16 +203,9 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   ].filter(Boolean).join('\n\n---\n\n') || undefined
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
   const adapter = getAdapter(adapterId)
-  // R11.F — S3: Per-provider agentic loop flag map
-  const ADAPTER_TO_LOOP_FLAG: Record<string, string> = {
-    anthropic: 'R11E_ANTHROPIC_LOOP',
-    google: 'R11E_GEMINI_LOOP',
-    openai: 'R11E_OPENAI_LOOP',
-    deepseek: 'R11E_DEEPSEEK_LOOP',
-    nvidia: 'R11E_NVIDIA_LOOP',
-  }
-  const loopFlagKey = ADAPTER_TO_LOOP_FLAG[adapterId]
-  const useAgenticLoop = loopFlagKey ? configService.getFlag(loopFlagKey as Parameters<typeof configService.getFlag>[0]) : false
+  // R11E loop flags permanently true (WS-0 2026-06-04)
+  const AGENTIC_PROVIDERS = new Set(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
+  const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
 
   if (useAgenticLoop) {
     const manifest = adapter.getManifest()
@@ -229,7 +222,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   // The returned resource name is passed through cacheConfig so GoogleAdapter.chat()
   // can reference it in the streamText providerOptions.google.cachedContent field.
   // Cache creation is non-fatal — any failure falls through to a standard uncached request.
-  if (configService.getFlag('R11D_GEMINI_CACHE') && adapterId === 'google') {
+  if (false && adapterId === 'google') { // R11D_GEMINI_CACHE: NOT_IMPLEMENTED — permanently false (WS-0)
     const cacheResponse = adapter.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
     const estimatedTokens = Math.ceil((systemContent?.length ?? 0) / 4)
     if (estimatedTokens >= GEMINI_CACHE_MIN_TOKENS) {

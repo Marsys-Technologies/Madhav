@@ -2,12 +2,8 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
-from routers import ephemeris, events, eclipses, retrogrades, sade_sati, jaimini, v7_additions, dasha_chain
+from routers import ephemeris, events, sade_sati, jaimini, v7_additions
 from routers import panchang as panchang_router
-from routers import muhurat as muhurat_router
-from rag.routers.rag_retrieve import router as rag_retrieve_router
-from rag.routers.rag_router import router as rag_router_router
-from rag.routers.rag_synthesize import router as rag_synthesize_router
 
 load_dotenv()
 
@@ -36,22 +32,12 @@ def verify_api_key(x_api_key: str = Header(default="")):
 
 app.include_router(ephemeris.router, prefix="/ephemeris", dependencies=[Depends(verify_api_key)])
 app.include_router(events.router, prefix="/event_chart_states", dependencies=[Depends(verify_api_key)])
-app.include_router(eclipses.router, prefix="/eclipses", dependencies=[Depends(verify_api_key)])
-app.include_router(retrogrades.router, prefix="/retrogrades", dependencies=[Depends(verify_api_key)])
 app.include_router(sade_sati.router, prefix="/sade_sati", dependencies=[Depends(verify_api_key)])
 app.include_router(jaimini.router, prefix="/jaimini_drishti", dependencies=[Depends(verify_api_key)])
 app.include_router(v7_additions.router, prefix="/v7_additions", dependencies=[Depends(verify_api_key)])
-app.include_router(dasha_chain.router, dependencies=[Depends(verify_api_key)])
-# transit_search router removed — pipeline.transit_search torn down (teardown arc)
-app.include_router(rag_retrieve_router, prefix="/rag", dependencies=[Depends(verify_api_key)])
-app.include_router(rag_router_router, prefix="/rag", dependencies=[Depends(verify_api_key)])
-app.include_router(rag_synthesize_router, prefix="/rag", dependencies=[Depends(verify_api_key)])
 
 # Phase 4C-3 — Panchang compute endpoints (engine-direct; 4C-2 will add cache layer)
 app.include_router(panchang_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
-
-# Phase 4C-6 — Muhurat Finder endpoint
-app.include_router(muhurat_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
 # BRAHMA PH-4-4 — phala.muhurta electional finder (inverts Phala prediction engine)
 from brahmagyan.phala.muhurta import router as phala_muhurta_router

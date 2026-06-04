@@ -12,7 +12,6 @@ export {
   selectPipelineKind,
   selectPipelineForRequest,
   getPipeline,
-  ADAPTER_TO_LOOP_FLAG,
 } from './selector'
 export type {
   QueryPipeline,

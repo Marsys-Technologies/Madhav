@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { query } from '@/lib/db/client'
-import { loadConversationMessages } from '@/lib/conversations'
+import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { SharedConversation } from './SharedConversation'
 
 export const dynamic = 'force-dynamic'
@@ -42,7 +42,7 @@ export default async function SharedConversationPage({
   )
   const chart = chartResult.rows[0] ?? null
 
-  const messages = await loadConversationMessages(conversation.id)
+  const messages = await loadConversationMessagesV2(conversation.id)
 
   // X-S8: selective share — only apply when flag is enabled
   const selectiveShareEnabled = process.env.MARSYS_FLAG_R10_SELECTIVE_SHARE === 'true'

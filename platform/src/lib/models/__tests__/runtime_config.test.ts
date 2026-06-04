@@ -94,21 +94,6 @@ function makeDbWithStack(stack: string) {
   })
 }
 
-function makeDbWithRouting(stack: string, callType: string, primary: string, fallback: string) {
-  mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('llm_stack_config'))          return Promise.resolve({ rows: [] })
-    if (sql.includes('llm_stack_routing_override')) return Promise.resolve({ rows: [{ stack, call_type: callType, primary_model: primary, fallback_model: fallback }] })
-    return Promise.resolve({ rows: [] })
-  })
-}
-
-function makeDbWithParam(stack: string, callType: string, paramName: string, paramValue: unknown) {
-  mockQuery.mockImplementation((sql: string) => {
-    if (sql.includes('llm_param_override')) return Promise.resolve({ rows: [{ stack, call_type: callType, param_name: paramName, param_value: paramValue }] })
-    return Promise.resolve({ rows: [] })
-  })
-}
-
 function makeRequest(headers: Record<string, string> = {}): Request {
   return new Request('http://localhost', { headers })
 }
@@ -156,8 +141,8 @@ describe('getEffectiveStack', () => {
     makeDbWithStack('nim')
     await getEffectiveStack()
     await getEffectiveStack()
-    // 3 queries per DB hit: stack + routing + param tables
-    expect(mockQuery).toHaveBeenCalledTimes(3)
+    // 1 query per DB hit: stack only
+    expect(mockQuery).toHaveBeenCalledTimes(1)
   })
 
   it('invalidateRuntimeConfigCache forces fresh DB fetch', async () => {
@@ -166,7 +151,7 @@ describe('getEffectiveStack', () => {
     await getEffectiveStack()
     invalidateRuntimeConfigCache()
     await getEffectiveStack()
-    expect(mockQuery).toHaveBeenCalledTimes(6) // 3+3
+    expect(mockQuery).toHaveBeenCalledTimes(2) // 1+1
   })
 })
 
@@ -178,22 +163,15 @@ describe('getEffectiveModel', () => {
     vi.clearAllMocks()
   })
 
-  it('DB override wins over registry when flag=true', async () => {
+  it('header model wins over registry default', async () => {
     mockGetFlag.mockReturnValue(true)
-    makeDbWithRouting('gemini', 'synthesis', 'gemini-2.5-exp', 'gemini-2.0-flash')
-    const result = await getEffectiveModel('gemini', 'synthesis', 'primary')
-    expect(result).toBe('gemini-2.5-exp')
-  })
-
-  it('header model wins over DB override', async () => {
-    mockGetFlag.mockReturnValue(true)
-    makeDbWithRouting('gemini', 'synthesis', 'gemini-2.5-exp', 'gemini-2.0-flash')
+    makeDbEmpty()
     const req = makeRequest({ 'x-aiops-model-synthesis-primary': 'gemini-override-from-header' })
     const result = await getEffectiveModel('gemini', 'synthesis', 'primary', req)
     expect(result).toBe('gemini-override-from-header')
   })
 
-  it('falls back to registry when no DB override and flag=true', async () => {
+  it('falls back to registry when DB is empty', async () => {
     mockGetFlag.mockReturnValue(true)
     makeDbEmpty()
     const result = await getEffectiveModel('nim', 'planner_deep', 'primary')
@@ -209,16 +187,9 @@ describe('getEffectiveParam', () => {
     vi.clearAllMocks()
   })
 
-  it('returns DB param when flag=true and DB has value', async () => {
+  it('header param wins over fallback', async () => {
     mockGetFlag.mockReturnValue(true)
-    makeDbWithParam('gemini', 'synthesis', 'temperature', 0.2)
-    const result = await getEffectiveParam('gemini', 'synthesis', 'temperature', 0.7)
-    expect(result).toBe(0.2)
-  })
-
-  it('header param wins over DB', async () => {
-    mockGetFlag.mockReturnValue(true)
-    makeDbWithParam('gemini', 'synthesis', 'temperature', 0.2)
+    makeDbEmpty()
     const req = makeRequest({ 'x-aiops-param-synthesis-temperature': '0.1' })
     const result = await getEffectiveParam('gemini', 'synthesis', 'temperature', 0.7, req)
     expect(result).toBe(0.1)

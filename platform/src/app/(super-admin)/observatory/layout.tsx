@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { AppShell } from '@/components/shared/AppShell'
 import { ObservatorySubNav } from '@/components/observatory/ObservatorySubNav'
-import { AiopsTabs } from '@/lib/components/aiops/AiopsTabs'
 
 export const metadata: Metadata = {
   title: 'AIOps · Observatory — MARSYS-JIS',
@@ -29,7 +28,6 @@ export default async function ObservatorySectionLayout({
       ]}
     >
       <div className="flex h-full min-h-0 flex-col">
-        <AiopsTabs />
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <ObservatorySubNav />
           <div className="flex-1 overflow-auto">

@@ -3,7 +3,8 @@ import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { streamText } from 'ai'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { getConversation, loadConversationMessages } from '@/lib/conversations'
+import { getConversation } from '@/lib/conversations'
+import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
   // Load conversation messages for context.
   let uiMessages
   try {
-    uiMessages = await loadConversationMessages(conversation_id)
+    uiMessages = await loadConversationMessagesV2(conversation_id)
   } catch {
     return res.dbError()
   }

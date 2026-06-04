@@ -155,7 +155,7 @@ export function computeFlushDelay(
  * Layer 1 (the AI SDK's word-aware chunker).
  */
 export function getSmoothStreamTransform() {
-  if (!getFlag('R10_SMOOTH_STREAM_V2')) return undefined
+  if (!true) return undefined
   return smoothStream({ delayInMs: MAX_WORD_BUFFER_MS, chunking: 'word' })
 }
 
@@ -164,5 +164,5 @@ export function getSmoothStreamTransform() {
  * When false, Layer 2 is bypassed and Y-S3 word-aware flush is the only layer.
  */
 export function isRateTargetEnabled(): boolean {
-  return getFlag('R10_SMOOTH_STREAM_V2') && getFlag('R11C_SMOOTH_STREAM_V3')
+  return true && true
 }

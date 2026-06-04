@@ -5,8 +5,8 @@ import { ConsumeChat } from '@/components/consume/ConsumeChat'
 import {
   getConversation,
   listConversations,
-  loadConversationMessages,
 } from '@/lib/conversations'
+import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { configService } from '@/lib/config/index'
 import type { AudienceTier } from '@/lib/prompts/types'
 
@@ -45,7 +45,7 @@ export default async function ConsultConversationPage({
   const [reportsResult, conversations, messages] = await Promise.all([
     query('SELECT * FROM reports WHERE chart_id=$1 ORDER BY domain ASC', [id]),
     listConversations({ chartId: id, userId: user.uid, module: 'consume' }),
-    loadConversationMessages(conversationId),
+    loadConversationMessagesV2(conversationId),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reports = reportsResult.rows as any[]

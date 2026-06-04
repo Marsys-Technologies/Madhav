@@ -1,13 +1,8 @@
 import 'server-only'
 import { STACK_ROUTING, DEFAULT_STACK_ID, type CallType, type ModelStack } from './registry'
-import { getFlag } from '@/lib/config'
 import { query } from '@/lib/db/client'
 import { buildKey, cacheGetOrCompute, invalidateNamespace } from '@/lib/cache/shared_cache'
-import type {
-  LlmStackConfigRow,
-  LlmStackRoutingOverrideRow,
-  LlmParamOverrideRow,
-} from '@/lib/db/schema/aiops'
+import type { LlmStackConfigRow } from '@/lib/db/schema/aiops'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Runtime-config cache (60s TTL) — backed by shared Memorystore.
@@ -16,10 +11,6 @@ import type {
 // 4.memorystore_caching, commit 3/3). Cross-process invalidation now works
 // correctly: `invalidateRuntimeConfigCache()` clears the shared cache so all
 // Cloud Run instances see the new config on the next read.
-//
-// `invalidateRuntimeConfigCache()` keeps its synchronous void signature so
-// existing fire-and-forget call sites in `app/api/admin/aiops/**` keep
-// compiling; the underlying Redis SCAN+UNLINK runs as a microtask.
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ParamName = 'max_output_tokens' | 'temperature' | 'thinkingBudget' | 'timeout_ms'
@@ -45,31 +36,9 @@ export function invalidateRuntimeConfigCache(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchFromDb(): Promise<RuntimeCache> {
-  const [stackRows, routingRows, paramRows] = await Promise.all([
-    query<LlmStackConfigRow>(`SELECT * FROM llm_stack_config WHERE scope = 'global' LIMIT 1`),
-    query<LlmStackRoutingOverrideRow>(`SELECT * FROM llm_stack_routing_override WHERE scope = 'global' AND (expires_at IS NULL OR expires_at > NOW())`),
-    query<LlmParamOverrideRow>(`SELECT * FROM llm_param_override WHERE scope = 'global'`),
-  ])
-
+  const stackRows = await query<LlmStackConfigRow>(`SELECT * FROM llm_stack_config WHERE scope = 'global' LIMIT 1`)
   const stack = (stackRows.rows[0]?.active_stack ?? DEFAULT_STACK_ID) as ModelStack
-
-  const routing: RuntimeCache['routing'] = {}
-  for (const row of routingRows.rows) {
-    if (!routing[row.stack]) routing[row.stack] = {}
-    routing[row.stack][row.call_type] = {
-      primary:  row.primary_model,
-      fallback: row.fallback_model,
-    }
-  }
-
-  const params: RuntimeCache['params'] = {}
-  for (const row of paramRows.rows) {
-    if (!params[row.stack]) params[row.stack] = {}
-    if (!params[row.stack][row.call_type]) params[row.stack][row.call_type] = {}
-    params[row.stack][row.call_type][row.param_name] = row.param_value
-  }
-
-  return { stack, routing, params, fetched_at: Date.now() }
+  return { stack, routing: {}, params: {}, fetched_at: Date.now() }
 }
 
 async function getCache(): Promise<RuntimeCache> {
@@ -129,8 +98,7 @@ export async function getEffectiveStack(req?: Request): Promise<ModelStack> {
 /**
  * Resolution priority:
  * 1. Per-request header (x-aiops-model-<callType>-<role>)
- * 2. DB override (llm_stack_routing_override)
- * 3. Static STACK_ROUTING registry entry
+ * 2. Static STACK_ROUTING registry entry
  *
  */
 export async function getEffectiveModel(
@@ -154,8 +122,7 @@ export async function getEffectiveModel(
 /**
  * Resolution priority:
  * 1. Per-request header (x-aiops-param-<callType>-<paramName>)
- * 2. DB override (llm_param_override)
- * 3. Caller-supplied fallback value
+ * 2. Caller-supplied fallback value
  *
  */
 export async function getEffectiveParam<T = unknown>(

@@ -1,6 +1,6 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { getConversation, loadConversationMessages } from '@/lib/conversations'
+import { getConversation } from '@/lib/conversations'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 
@@ -15,9 +15,7 @@ async function resolveAccess(userId: string): Promise<boolean> {
 /**
  * GET /api/conversations/[id]/messages
  *
- * Returns conversation messages for restore. Tries the V2 `conversation_messages`
- * table first; falls back to the V1 `messages` table for older conversations created
- * before the Chat V2 persistence cutover (May 18 2026).
+ * Returns conversation messages for restore from the V2 `conversation_messages` table.
  */
 export async function GET(
   _req: Request,
@@ -32,10 +30,7 @@ export async function GET(
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    let messages = await loadConversationMessagesV2(id)
-    if (messages.length === 0) {
-      messages = await loadConversationMessages(id)
-    }
+    const messages = await loadConversationMessagesV2(id)
     return Response.json({ messages })
   } catch {
     return res.dbError()

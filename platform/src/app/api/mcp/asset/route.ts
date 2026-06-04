@@ -17,7 +17,7 @@
  * for Phase 2.
  *
  * Supported canonical_ids:
- *   MSR, UCN, CDLM, CGM, RM, FORENSIC, LEL, MACRO_PLAN, PROJECT_ARCHITECTURE
+ *   FORENSIC, LEL, MACRO_PLAN, PROJECT_ARCHITECTURE
  */
 
 import 'server-only'
@@ -46,12 +46,8 @@ function validateServiceToken(req: Request): boolean {
 // We use process.cwd() which in Next.js is the platform/ directory,
 // so we go one level up to reach the repo root.
 
+// WS-0 (2026-06-04): removed MSR/UCN/CDLM/CGM/RM — superseded by Brahma L2 Bodha layer
 const SAFE_ASSET_MAP: Record<string, string> = {
-  MSR:                  '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md',
-  UCN:                  '025_HOLISTIC_SYNTHESIS/UCN_v4_0.md',
-  CDLM:                 '025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md',
-  CGM:                  '025_HOLISTIC_SYNTHESIS/CGM_v9_0.md',
-  RM:                   '025_HOLISTIC_SYNTHESIS/RM_v2_0.md',
   FORENSIC:             '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
   LEL:                  '01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md',
   MACRO_PLAN:           '00_ARCHITECTURE/MACRO_PLAN_v2_0.md',

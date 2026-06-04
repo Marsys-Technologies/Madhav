@@ -1,0 +1,13 @@
+# Per-build Pariksha artifacts are ephemeral — NOT committed to main
+builds/
+STOP
+
+# Operator-supplied per-chart oracles are optional; uncomment if you want
+# them tracked:
+# !native_oracles/
+
+# Vaidya logs (per-build, ephemeral)
+**/vaidya.log
+
+# Screenshots compressed at arc-close stay under repo limits; keep none in main
+**/screenshots/
