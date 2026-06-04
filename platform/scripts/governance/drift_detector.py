@@ -136,6 +136,15 @@ WHITELIST_TICKETS = {
         ],
         "booked_for": "Quarterly governance pass (§H) — rotate fingerprints after Brahma infra arc",
     },
+    # WS-0 Surface 2 (2026-06-03) deleted platform/python-sidecar/rag/routers/rag_router.py.
+    # FILE_REGISTRY_v1_14.md is SUPERSEDED (replaced by CAPABILITY_MANIFEST.json 2026-04-27)
+    # and is retained as historical record only — the dead pointer is expected and harmless.
+    # Booked for the next quarterly governance pass (§H, due 2026-07-24).
+    "WARN.11": {
+        "description": "FILE_REGISTRY dead pointer to deleted rag_router.py (WS-0 Surface 2, 2026-06-03)",
+        "files": ["00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"],
+        "booked_for": "Quarterly governance pass (§H) — prune SUPERSEDED FILE_REGISTRY stale entries",
+    },
 }
 
 # Canonical IDs whose fingerprint_mismatch findings carry a whitelist ticket.
