@@ -9,8 +9,8 @@ import {
 } from '../asset_names'
 
 describe('ASSET_NAMES', () => {
-  it('has at least 28 entries', () => {
-    expect(Object.keys(ASSET_NAMES).length).toBeGreaterThanOrEqual(28)
+  it('has at least 42 entries (Brahma 6-layer model)', () => {
+    expect(Object.keys(ASSET_NAMES).length).toBeGreaterThanOrEqual(42)
   })
 
   it('every entry has sanskrit, english, subtitle, and layer', () => {
@@ -18,59 +18,82 @@ describe('ASSET_NAMES', () => {
       expect(entry.sanskrit, `${key}.sanskrit`).toBeTruthy()
       expect(entry.english, `${key}.english`).toBeTruthy()
       expect(entry.subtitle, `${key}.subtitle`).toBeTruthy()
-      expect(['L1', 'L2_5', 'L3', 'L4'], `${key}.layer`).toContain(entry.layer)
+      expect(['L0', 'L1', 'L2', 'L3', 'L4', 'L5'], `${key}.layer`).toContain(entry.layer)
     }
   })
 
-  it('contains all 8 L1 Adhara foundation assets', () => {
+  it('contains all 8 L0 Brahmagyan global foundation assets', () => {
+    const l0Keys: AssetKey[] = [
+      'bg_ephemeris', 'bg_reference', 'bg_texts', 'bg_ontology',
+      'bg_text_index', 'bg_rules', 'bg_almanac', 'bg_concordance',
+    ]
+    for (const k of l0Keys) {
+      expect(ASSET_NAMES[k].layer).toBe('L0')
+    }
+  })
+
+  it('contains all 8 L1 Gaṇita chart-facts assets', () => {
     const l1Keys: AssetKey[] = [
-      'pratyaksha', 'panchanga', 'drishti_lakshana', 'graha_sthana',
-      'bhava_vibhaga', 'varga', 'dasha_krama', 'yoga_sambandha',
+      'ga_engine', 'ga_positions', 'ga_divisionals', 'ga_dashas',
+      'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_facts_store',
     ]
     for (const k of l1Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L1')
     }
   })
 
-  it('contains all 5 L2_5 Sambandha synthesis assets', () => {
-    const l25Keys: AssetKey[] = [
-      'lakshana_kosha', 'karana_jala', 'anubandha_mandala', 'upaya_kosha', 'sangam',
+  it('contains all 8 L2 Bodha intelligence assets', () => {
+    const l2Keys: AssetKey[] = [
+      'bo_signals', 'bo_graph', 'bo_domain_links', 'bo_resonance',
+      'bo_lenses', 'bo_remediation', 'bo_embeddings', 'bo_holistic',
     ]
-    for (const k of l25Keys) {
-      expect(ASSET_NAMES[k].layer).toBe('L2_5')
+    for (const k of l2Keys) {
+      expect(ASSET_NAMES[k].layer).toBe('L2')
     }
   })
 
-  it('contains all 8 core L3 Sutra meta-thread assets', () => {
-    const l3Keys: AssetKey[] = [
-      'kala_yoga', 'bandha', 'chakra_vichara', 'vedha_drishti',
-      'bhrigu_kshetra', 'tajik_varsha', 'sphurana', 'kala_smriti',
-    ]
+  it('contains all 4 L3 Kāla temporal assets', () => {
+    const l3Keys: AssetKey[] = ['ka_timeline', 'ka_convergence', 'ka_obstruction', 'ka_temporal']
     for (const k of l3Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L3')
     }
   })
 
-  it('contains all 3 L4 Vyavahara interface assets', () => {
-    const l4Keys: AssetKey[] = ['prashna', 'yantra_mcp', 'marga']
+  it('contains all 5 L4 Phala prediction assets', () => {
+    const l4Keys: AssetKey[] = [
+      'ph_anchors', 'ph_mitigation', 'ph_rectification', 'ph_muhurta', 'ph_outlook',
+    ]
     for (const k of l4Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L4')
     }
   })
 
-  it('lakshana_kosha subtitle references MSR', () => {
-    expect(ASSET_NAMES.lakshana_kosha.subtitle).toContain('MSR')
+  it('contains all 6 L5 Mīmāṃsā learning assets', () => {
+    const l5Keys: AssetKey[] = [
+      'mi_lel_intake', 'mi_ledger', 'mi_outcome', 'mi_multiplier', 'mi_research', 'mi_answer_quality',
+    ]
+    for (const k of l5Keys) {
+      expect(ASSET_NAMES[k].layer).toBe('L5')
+    }
   })
 
-  it('karana_jala subtitle references CGM', () => {
-    expect(ASSET_NAMES.karana_jala.subtitle).toContain('CGM')
+  it('ga_positions subtitle references Swiss Ephemeris', () => {
+    expect(ASSET_NAMES.ga_positions.subtitle).toContain('Swiss Ephemeris')
+  })
+
+  it('bo_signals subtitle references MSR', () => {
+    expect(ASSET_NAMES.bo_signals.subtitle).toContain('MSR')
+  })
+
+  it('bo_graph subtitle references CGM', () => {
+    expect(ASSET_NAMES.bo_graph.subtitle).toContain('CGM')
   })
 })
 
 describe('LAYER_NAMES', () => {
-  const layers: LayerKey[] = ['L1', 'L2_5', 'L3', 'L4']
+  const layers: LayerKey[] = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
 
-  it('has all four layers', () => {
+  it('has all six Brahma layers', () => {
     for (const layer of layers) {
       expect(LAYER_NAMES[layer]).toBeDefined()
     }
@@ -83,43 +106,64 @@ describe('LAYER_NAMES', () => {
     }
   })
 
-  it('L1 is Adhara Foundation', () => {
-    expect(LAYER_NAMES.L1.sanskrit).toBe('Adhara')
-    expect(LAYER_NAMES.L1.english).toBe('Foundation')
+  it('L0 is Brahmagyan Foundation', () => {
+    expect(LAYER_NAMES.L0.sanskrit).toBe('Brahmagyan')
+    expect(LAYER_NAMES.L0.english).toBe('Foundation')
   })
 
-  it('L2_5 is Sambandha Synthesis', () => {
-    expect(LAYER_NAMES.L2_5.sanskrit).toBe('Sambandha')
-    expect(LAYER_NAMES.L2_5.english).toBe('Synthesis')
+  it('L1 is Gaṇita Chart Facts', () => {
+    expect(LAYER_NAMES.L1.sanskrit).toBe('Gaṇita')
+    expect(LAYER_NAMES.L1.english).toBe('Chart Facts')
   })
 
-  it('L3 is Sutra Meta-threads', () => {
-    expect(LAYER_NAMES.L3.sanskrit).toBe('Sutra')
-    expect(LAYER_NAMES.L3.english).toBe('Meta-threads')
+  it('L2 is Bodha Intelligence', () => {
+    expect(LAYER_NAMES.L2.sanskrit).toBe('Bodha')
+    expect(LAYER_NAMES.L2.english).toBe('Intelligence')
   })
 
-  it('L4 is Vyavahara Interface', () => {
-    expect(LAYER_NAMES.L4.sanskrit).toBe('Vyavahara')
-    expect(LAYER_NAMES.L4.english).toBe('Interface')
+  it('L3 is Kāla Temporal', () => {
+    expect(LAYER_NAMES.L3.sanskrit).toBe('Kāla')
+    expect(LAYER_NAMES.L3.english).toBe('Temporal')
+  })
+
+  it('L4 is Phala Prediction', () => {
+    expect(LAYER_NAMES.L4.sanskrit).toBe('Phala')
+    expect(LAYER_NAMES.L4.english).toBe('Prediction')
+  })
+
+  it('L5 is Mīmāṃsā Learning', () => {
+    expect(LAYER_NAMES.L5.sanskrit).toBe('Mīmāṃsā')
+    expect(LAYER_NAMES.L5.english).toBe('Learning')
   })
 })
 
 describe('assetsByLayer', () => {
-  it('returns 8 L1 assets', () => {
+  it('returns 8 L0 Brahmagyan assets', () => {
+    expect(assetsByLayer('L0').length).toBe(8)
+  })
+
+  it('returns 8 L1 Gaṇita assets', () => {
     expect(assetsByLayer('L1').length).toBe(8)
   })
 
-  it('returns 5 L2_5 assets', () => {
-    expect(assetsByLayer('L2_5').length).toBe(5)
+  it('returns 8 L2 Bodha assets', () => {
+    expect(assetsByLayer('L2').length).toBe(8)
   })
 
-  it('returns L4 assets including prashna', () => {
-    const l4 = assetsByLayer('L4')
-    expect(l4).toContain('prashna')
+  it('returns 4 L3 Kāla assets', () => {
+    expect(assetsByLayer('L3').length).toBe(4)
+  })
+
+  it('returns 5 L4 Phala assets', () => {
+    expect(assetsByLayer('L4').length).toBe(5)
+  })
+
+  it('returns 6 L5 Mīmāṃsā assets', () => {
+    expect(assetsByLayer('L5').length).toBe(6)
   })
 
   it('every returned key actually has the requested layer', () => {
-    for (const layer of ['L1', 'L2_5', 'L3', 'L4'] as LayerKey[]) {
+    for (const layer of ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as LayerKey[]) {
       for (const key of assetsByLayer(layer)) {
         expect(ASSET_NAMES[key].layer).toBe(layer)
       }
@@ -128,11 +172,11 @@ describe('assetsByLayer', () => {
 })
 
 describe('assetLabel', () => {
-  it('formats pratyaksha correctly', () => {
-    expect(assetLabel('pratyaksha')).toBe('Pratyaksha · Direct perception')
+  it('formats ga_positions correctly', () => {
+    expect(assetLabel('ga_positions')).toBe('Graha Sthāna · Positions')
   })
 
-  it('formats lakshana_kosha correctly', () => {
-    expect(assetLabel('lakshana_kosha')).toBe('Lakshana Kosha · Treasury of indicators')
+  it('formats bo_signals correctly', () => {
+    expect(assetLabel('bo_signals')).toBe('Lakṣaṇa · Signals')
   })
 })

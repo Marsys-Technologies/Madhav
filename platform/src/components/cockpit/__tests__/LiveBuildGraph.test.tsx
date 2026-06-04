@@ -14,26 +14,26 @@ vi.stubGlobal('EventSource', vi.fn(() => mockEventSource))
 // Stub next/navigation (already mocked in test-setup.ts globally)
 
 const RUNNING_NODES: GraphNode[] = [
-  { asset_id: 'pratyaksha', layer: 'L1', status: 'running', progress: 0.4 },
+  { asset_id: 'ga_positions', layer: 'L1', status: 'running', progress: 0.4 },
 ]
 const COMPLETE_NODES: GraphNode[] = [
-  { asset_id: 'pratyaksha', layer: 'L1', status: 'complete' },
-  { asset_id: 'panchanga',  layer: 'L1', status: 'complete' },
+  { asset_id: 'ga_positions', layer: 'L1', status: 'complete' },
+  { asset_id: 'ga_dashas',    layer: 'L1', status: 'complete' },
 ]
 const PENDING_NODES: GraphNode[] = [
-  { asset_id: 'prashna', layer: 'L4', status: 'pending' },
+  { asset_id: 'ph_anchors', layer: 'L4', status: 'pending' },
 ]
 const FAILED_NODES: GraphNode[] = [
-  { asset_id: 'karana_jala', layer: 'L2_5', status: 'failed' },
+  { asset_id: 'bo_graph', layer: 'L2', status: 'failed' },
 ]
 const SKIPPED_NODES: GraphNode[] = [
-  { asset_id: 'sangam', layer: 'L2_5', status: 'skipped' },
+  { asset_id: 'bo_holistic', layer: 'L2', status: 'skipped' },
 ]
 const LIVE_EDGES: GraphEdge[] = [
-  { from: 'pratyaksha', to: 'lakshana_kosha', live: true },
+  { from: 'ga_positions', to: 'bo_signals', live: true },
 ]
 const NORMAL_EDGES: GraphEdge[] = [
-  { from: 'panchanga', to: 'karana_jala', live: false },
+  { from: 'ga_dashas', to: 'ka_timeline', live: false },
 ]
 
 describe('LiveDependencyGraph', () => {

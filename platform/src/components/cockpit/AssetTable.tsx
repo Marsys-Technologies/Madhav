@@ -294,7 +294,7 @@ function LayerSection({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-const LAYERS: LayerKey[] = ['L1', 'L2_5', 'L3', 'L4']
+const LAYERS: LayerKey[] = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5']
 
 export function AssetTable({ buildId, chartId, assets, onRebuild }: Props) {
   const [cascadeAsset, setCascadeAsset] = useState<string | null>(null)
