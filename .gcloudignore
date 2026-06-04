@@ -22,3 +22,7 @@ platform/.env.*
 platform/supabase/.temp/
 Assets/
 platform/python-sidecar/venv/
+**/__pycache__/
+**/*.pyc
+infra/.terraform/
+infra/**/.terraform/
