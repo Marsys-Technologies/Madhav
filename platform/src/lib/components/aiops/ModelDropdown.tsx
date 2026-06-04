@@ -5,7 +5,6 @@ import type { CallType, ModelStack, Provider } from '@/lib/models/registry'
 import { MODELS } from '@/lib/models/registry'
 import { filterCatalogForCallType } from '@/lib/aiops/specs/call_type_specs'
 import type { CatalogEntry, CatalogFetchResult } from '@/lib/aiops/catalog/types'
-import { HealthPip } from './HealthPip'
 import { PROVIDER_DISPLAY, displayOf } from './displayNames'
 
 // Synchronous fallback map — avoids flash of raw model IDs before catalog API responds
@@ -184,7 +183,6 @@ export function ModelDropdown({ stack, callType, value, onChange }: ModelDropdow
                   ].join(' ')}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <HealthPip modelId={e.model_id} />
                     <span>{e.label}</span>
                     {e.context_window && (
                       <span className="text-[10px] text-muted-foreground">

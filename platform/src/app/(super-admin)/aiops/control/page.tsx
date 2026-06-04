@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { STACK_ROUTING, type ModelStack, type CallType } from '@/lib/models/registry'
-import { StackPickerCards } from '@/lib/components/aiops/StackPickerCards'
 import { InteractiveCallTypeRow } from '@/lib/components/aiops/InteractiveCallTypeRow'
 import { StackSmokeButton } from '@/lib/components/aiops/StackSmokeButton'
 import { DirtyRowsProvider } from '@/lib/components/aiops/DirtyRowsContext'
@@ -88,8 +87,6 @@ export default async function AiopsControlPage({
             </div>
 
             <div className="px-5 py-5">
-              <StackPickerCards viewingStack={displayStack} />
-
               <div className="mt-6">
                 <p className="bt-label bt-label-upper mb-3">
                   Pipeline —{' '}

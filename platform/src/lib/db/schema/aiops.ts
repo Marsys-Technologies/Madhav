@@ -11,13 +11,6 @@ export type AiopsAction =
   | 'revert'
   | 'reset_routing'    // emitted when routing override is deleted
 
-export type AiopsModelHealthStatus =
-  | 'pass'
-  | 'fail'
-  | 'timeout'
-  | 'stale'
-  | 'never_probed'
-
 export interface LlmStackConfigRow {
   scope:        string
   active_stack: string
@@ -45,15 +38,6 @@ export interface LlmParamOverrideRow {
   param_value: unknown   // jsonb — decoded by pg client
   updated_at:  string
   updated_by:  string
-}
-
-export interface LlmModelHealthRow {
-  model_id:       string
-  status:         AiopsModelHealthStatus
-  latency_ms:     number | null
-  last_probe_at:  string | null
-  last_error:     string | null
-  last_probed_by: string | null
 }
 
 export interface LlmConfigAuditRow {
