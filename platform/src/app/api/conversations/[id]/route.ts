@@ -2,10 +2,9 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import {
   getConversation,
-  loadConversationMessages,
   updateConversationTitle,
 } from '@/lib/conversations'
-import { archiveConversation } from '@/lib/persistence/conversation_writer'
+import { archiveConversation, loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 
 async function resolveAccess(userId: string) {
@@ -26,7 +25,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
 
-    const messages = await loadConversationMessages(id)
+    const messages = await loadConversationMessagesV2(id)
     return Response.json({ conversation: conv, messages })
   } catch {
     return res.dbError()

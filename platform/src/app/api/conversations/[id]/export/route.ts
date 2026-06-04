@@ -2,7 +2,8 @@ export const runtime = 'nodejs'
 
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { getConversation, loadConversationMessages } from '@/lib/conversations'
+import { getConversation } from '@/lib/conversations'
+import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
 import type { UIMessage } from 'ai'
 
@@ -69,7 +70,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // 403: conversation exists but belongs to another user (information-hiding: 404 used for not-found)
     if (!conv) return res.notFound('conversation')
 
-    const messages = await loadConversationMessages(id)
+    const messages = await loadConversationMessagesV2(id)
 
     if (format === 'md') {
       const body = toMarkdown(id, messages)
