@@ -1,22 +1,40 @@
 # ============================================================================
-# BRAHMAGYAN CONCORDANCE v1.0
+# BRAHMAGYAN CONCORDANCE v1.1
 # WS-3 Rule Base + Grounding — Session: concordance-build
 # Authored: 2026-06-05
+# Amended: 2026-06-05 Stream E (postdeploy-e-multi-school) e5
+#   - Added AYANAMSHA_DEPENDENT concordance class (new in v1.1)
+#   - C3 sub-classes (sign boundary, nakshatra boundary, dasha lord)
+#     reclassified from ORTHOGONAL to AYANAMSHA_DEPENDENT in
+#     concordance_ayanamsha_flags table (TC.C3.SIGN_BOUNDARY,
+#     TC.C3.NAKSHATRA_BOUNDARY, TC.C3.DASHA_LORD)
+#   - C3 house cusp convention itself remains ORTHOGONAL (unchanged)
 # C1–C7 concordance flags embedded throughout
 # Schools: parashari (BPHS), jaimini, kp, tajaka
 # Rule corpus: ~1,637 rules (BPHS 761 + Jaimini 360 + KP 280 + Tajaka 236)
 # ============================================================================
 
-concordance_version: "1.0"
+concordance_version: "1.1"
 authored_date: "2026-06-05"
+amended_date: "2026-06-05"
+amendment_ref: "Stream E postdeploy-e-multi-school e5"
 total_topics: 210
 rule_corpus_size: 1637
 schools: [parashari, jaimini, kp, tajaka]
 
+# Concordance classes (v1.1 — see ConcordanceClass enum in concordance_writer.py):
+#   agree               — all schools/ayanamshas produce the same conclusion
+#   disagree            — contradictory conclusions (class-1 conflict)
+#   qualify             — same conclusion with school-specific qualifications
+#   orthogonal          — systems address different domains; not comparable
+#   ayanamsha_dependent — conclusion changes with ayanamsha offset [NEW v1.1]
+
 # C1–C7 flag index (embedded in relevant topic entries):
 # C1: Karaka frameworks PARALLEL (not competing)
 # C2: Aspect systems ORTHOGONAL
-# C3: House cusp convention SYSTEM-DEFINING
+# C3: House cusp convention SYSTEM-DEFINING (→ ORTHOGONAL for house system itself)
+#     Sub-classes TC.C3.SIGN_BOUNDARY / TC.C3.NAKSHATRA_BOUNDARY / TC.C3.DASHA_LORD
+#     reclassified as AYANAMSHA_DEPENDENT in concordance_ayanamsha_flags [v1.1]
 # C4: Strength systems NON-COMPARABLE
 # C5: Timing systems NON-COMPARABLE
 # C6: Rahu/Ketu treatment diverges per system
