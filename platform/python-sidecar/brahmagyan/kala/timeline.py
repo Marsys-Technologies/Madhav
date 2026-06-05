@@ -389,27 +389,27 @@ def seed(
 
 
 def _flush_batch(conn: Any, batch: list[tuple[Any, ...]]) -> int:
-    """Insert a batch of rows with ON CONFLICT DO NOTHING. Returns rows inserted."""
-    import psycopg.extras  # noqa: PLC0415
+    """Insert a batch of rows with ON CONFLICT DO NOTHING. Returns rows inserted.
 
-    result = conn.execute(
-        """
-        INSERT INTO kala_timeline
-            (chart_id, date, active_mahadasha, active_antardasha,
-             transit_highlights, signal_activations, source_citation)
-        VALUES
-        """ + ",".join(["(%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)"] * len(batch))
-        .replace(
-            ",".join(["(%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)"] * len(batch)),
-            ",".join(["(%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)"] * len(batch)),
+    DCB-001 fix: removed spurious psycopg.extras import (psycopg3 has no extras
+    module) and fixed the no-op string replace that produced an unparseable SQL
+    template. Now uses executemany for correct multi-row batch insertion.
+    """
+    # Use executemany — psycopg3 supports this natively without psycopg.extras
+    with conn.cursor() as cur:
+        cur.executemany(
+            """
+            INSERT INTO kala_timeline
+                (chart_id, date, active_mahadasha, active_antardasha,
+                 transit_highlights, signal_activations, source_citation)
+            VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
+            ON CONFLICT (chart_id, date) DO NOTHING
+            """,
+            batch,
         )
-        + """
-        ON CONFLICT (chart_id, date) DO NOTHING
-        """,
-        [item for row in batch for item in row],
-    )
+        inserted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else len(batch)
     conn.commit()
-    return result.rowcount if result.rowcount else 0
+    return inserted
 
 
 # ── Query ──────────────────────────────────────────────────────────────────────

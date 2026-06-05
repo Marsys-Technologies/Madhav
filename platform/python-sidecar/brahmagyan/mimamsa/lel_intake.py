@@ -1254,61 +1254,124 @@ def seed_lel_intake(
     updated = 0
 
     with _get_conn() as conn:
+        # DCB-004 fix: detect whether the production (legacy) life_events schema
+        # or the brahma (new) schema is in use.  The legacy schema has
+        # chart_state / source_section / build_id / provenance columns that are
+        # NOT NULL; the brahma schema uses outcome_observed / domain / source_citation.
+        # We probe for the 'domain' column — present only in the brahma schema.
+        with conn.cursor() as probe:
+            probe.execute(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'life_events'
+                  AND column_name = 'domain'
+                """
+            )
+            brahma_schema = probe.fetchone() is not None
+
         with conn.cursor() as cur:
             for row in rows:
-                # Upsert life_events (key: event_id)
-                cur.execute(
-                    """
-                    INSERT INTO life_events
-                        (event_id, event_date, event_type, description,
-                         domain, outcome_observed, source_citation)
-                    VALUES (%s, %s::DATE, %s, %s, %s, %s, %s)
-                    ON CONFLICT (event_id) DO UPDATE SET
-                        event_date       = EXCLUDED.event_date,
-                        event_type       = EXCLUDED.event_type,
-                        description      = EXCLUDED.description,
-                        domain           = EXCLUDED.domain,
-                        outcome_observed = EXCLUDED.outcome_observed,
-                        source_citation  = EXCLUDED.source_citation
-                    """,
-                    (
-                        row["event_id"],
-                        row["event_date"],
-                        row["event_type"],
-                        row["description"],
-                        row["domain"],
-                        row["outcome_observed"],
-                        row["source_citation"],
-                    ),
-                )
+                if brahma_schema:
+                    # Brahma schema (brahma_mimamsa_lel_intake.sql)
+                    cur.execute(
+                        """
+                        INSERT INTO life_events
+                            (event_id, event_date, event_type, description,
+                             domain, outcome_observed, source_citation)
+                        VALUES (%s, %s::DATE, %s, %s, %s, %s, %s)
+                        ON CONFLICT (event_id) DO UPDATE SET
+                            event_date       = EXCLUDED.event_date,
+                            event_type       = EXCLUDED.event_type,
+                            description      = EXCLUDED.description,
+                            domain           = EXCLUDED.domain,
+                            outcome_observed = EXCLUDED.outcome_observed,
+                            source_citation  = EXCLUDED.source_citation
+                        """,
+                        (
+                            row["event_id"],
+                            row["event_date"],
+                            row["event_type"],
+                            row["description"],
+                            row["domain"],
+                            row["outcome_observed"],
+                            row["source_citation"],
+                        ),
+                    )
+                else:
+                    # Legacy production schema: chart_state / source_section /
+                    # build_id / provenance are all NOT NULL.  Provide synthetic
+                    # defaults so the insert succeeds until the brahma migration
+                    # (brahma_mimamsa_lel_intake.sql) is applied to production.
+                    # DCB-004: this branch is the fix for the NOT NULL violation.
+                    legacy_provenance = json.dumps({
+                        "source": SOURCE_CITATION,
+                        "lel_id": row["lel_id"],
+                        "outcome": row["outcome_observed"],
+                        "dasha_md": row["dasha_md"],
+                        "dasha_ad": row["dasha_ad"],
+                    })
+                    legacy_chart_state = json.dumps({
+                        "dasha_md": row["dasha_md"],
+                        "dasha_ad": row["dasha_ad"],
+                        "key_transits": row["key_transits"],
+                    })
+                    cur.execute(
+                        """
+                        INSERT INTO life_events
+                            (event_id, event_date, category, description,
+                             source_section, build_id,
+                             chart_state, provenance)
+                        VALUES (%s, %s::DATE, %s, %s, %s, %s, %s::JSONB, %s::JSONB)
+                        ON CONFLICT (event_id) DO UPDATE SET
+                            event_date    = EXCLUDED.event_date,
+                            category      = EXCLUDED.category,
+                            description   = EXCLUDED.description,
+                            source_section = EXCLUDED.source_section,
+                            chart_state   = EXCLUDED.chart_state,
+                            provenance    = EXCLUDED.provenance
+                        """,
+                        (
+                            row["event_id"],
+                            row["event_date"],
+                            row["event_type"],         # maps to category
+                            row["description"],
+                            row["source_citation"],    # maps to source_section
+                            "lel_intake-brahma-mi-5-1",  # synthetic build_id
+                            legacy_chart_state,
+                            legacy_provenance,
+                        ),
+                    )
+
                 if cur.rowcount and cur.statusmessage and "INSERT" in (cur.statusmessage or ""):
                     inserted += 1
                 else:
                     updated += 1
 
-                # Upsert event_chart_state_index (key: event_id)
-                cur.execute(
-                    """
-                    INSERT INTO event_chart_state_index
-                        (event_id, dasha_active, antardasha_active,
-                         key_transits, convergence_score, source_citation)
-                    VALUES (%s, %s, %s, %s::JSONB, %s, %s)
-                    ON CONFLICT (event_id) DO UPDATE SET
-                        dasha_active      = EXCLUDED.dasha_active,
-                        antardasha_active = EXCLUDED.antardasha_active,
-                        key_transits      = EXCLUDED.key_transits,
-                        convergence_score = EXCLUDED.convergence_score,
-                        source_citation   = EXCLUDED.source_citation
-                    """,
-                    (
-                        row["event_id"],
-                        row["dasha_md"],
-                        row["dasha_ad"],
-                        json.dumps(row["key_transits"]),
-                        row["convergence"],
-                        row["source_citation"],
-                    ),
-                )
+                # Upsert event_chart_state_index (key: event_id) — brahma schema only
+                if brahma_schema:
+                    cur.execute(
+                        """
+                        INSERT INTO event_chart_state_index
+                            (event_id, dasha_active, antardasha_active,
+                             key_transits, convergence_score, source_citation)
+                        VALUES (%s, %s, %s, %s::JSONB, %s, %s)
+                        ON CONFLICT (event_id) DO UPDATE SET
+                            dasha_active      = EXCLUDED.dasha_active,
+                            antardasha_active = EXCLUDED.antardasha_active,
+                            key_transits      = EXCLUDED.key_transits,
+                            convergence_score = EXCLUDED.convergence_score,
+                            source_citation   = EXCLUDED.source_citation
+                        """,
+                        (
+                            row["event_id"],
+                            row["dasha_md"],
+                            row["dasha_ad"],
+                            json.dumps(row["key_transits"]),
+                            row["convergence"],
+                            row["source_citation"],
+                        ),
+                    )
 
                 if verbose:
                     logger.info("Upserted: %s %s (%s)", row["lel_id"], row["event_date"], row["domain"])
