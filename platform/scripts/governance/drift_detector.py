@@ -136,6 +136,16 @@ WHITELIST_TICKETS = {
         ],
         "booked_for": "Quarterly governance pass (§H) — rotate fingerprints after Brahma infra arc",
     },
+    # FILE_REGISTRY_v1_14.md is SUPERSEDED (2026-04-27, replaced by CAPABILITY_MANIFEST.json).
+    # Its entries for python-sidecar/rag/* were valid when written but the rag/ directory
+    # was removed in WS-0C (commit 56a7a777). Dead pointers in a SUPERSEDED registry are
+    # not live governance defects — booked for FILE_REGISTRY archival cleanup at next
+    # quarterly governance pass (§H, due 2026-07-24).
+    "WARN.11": {
+        "description": "FILE_REGISTRY_v1_14.md dead pointers to deleted python-sidecar/rag/* files (WS-0C purge, commit 56a7a777)",
+        "files": ["00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"],
+        "booked_for": "Quarterly governance pass (§H) — FILE_REGISTRY archival cleanup",
+    },
 }
 
 # Canonical IDs whose fingerprint_mismatch findings carry a whitelist ticket.
@@ -492,6 +502,11 @@ _FUTURE_ARTIFACTS = {
     "bootstrap_panchanga.py",               # panchang bootstrap script — pending L1 rebuild
     "tool_health.ts",                       # MCP ops tool — pending L2 rebuild
     "data_coverage.ts",                     # MCP ops tool — pending L2 rebuild
+    # WS-0C (commit 56a7a777) removed the MSR grounding integration test as part of
+    # the GISMCP legacy citation purge. CLAUDE.md §E references it as a historical
+    # workstream artifact. Re-enable check when the test is re-authored in the
+    # GISMCP remediation arc or a successor.
+    "msr_grounding.integration.test.ts",    # MSR grounding contract test — removed WS-0C purge
 }
 
 # Regex for template/example path placeholders (vX_Y, vN_N, etc.)
