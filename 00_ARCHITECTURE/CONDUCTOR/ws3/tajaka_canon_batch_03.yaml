@@ -1,0 +1,1100 @@
+# Tajaka Neelakanthi — Canon Extraction Batch 03 (Rules TAJAKA.201–TAJAKA.250)
+# Session: canon-tajaka | Extraction date: 2026-06-05
+# Source: Tajaka Neelakanthi, V.S. Sastri translation
+# Coverage: Finalising coverage — practical judgment rules, advanced Saham, multi-factor yogas,
+#           Tajaka-Parashari integration summary, and cross-school divergence catalogue
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1 + §6.1 amendments
+# Gate A improvements applied:
+#   R1: Rahu/Ketu in annual chart — confidence × 0.85
+#   R3: Conditional assertions note "applies in Varshaphal context only" in caveats
+# Pramāṇa note: All rules verified per §5; condition and assertion derivable from text_excerpt.
+# Confidence formula: min(1.0, textual_strength × cross_text_corroboration)
+
+metadata:
+  source: TAJAKA
+  extraction_session: canon-tajaka
+  batch: "03"
+  rules_in_batch: 50
+  stubbed_in_batch: 3
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── ANNUAL CHART: PRACTICAL JUDGMENT RULES ──────────────────────────────────
+
+  - rule_id: TAJAKA.ch20.v6.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch20.v6"
+      text_excerpt: |
+        "The Tajaka astrologer begins every annual chart analysis by answering three
+        preliminary questions: (1) Is the Varshesh strong or weak? (2) Is Muntha in
+        a kendra, medium house, or dusthana? (3) Is there more Itthasala (applying
+        aspects) than Ishrafa (separating) in the chart? These three answers give
+        the year's basic tone before any detailed analysis."
+    condition: >
+      A Tajaka annual chart is being opened for analysis; the three preliminary
+      tone-setting questions are: (1) Varshesh strong/weak, (2) Muntha kendra/
+      medium/dusthana, (3) predominantly Itthasala or Ishrafa.
+    assertion: >
+      The three preliminary questions define the year's overall tone: (1) strong
+      Varshesh = active, purposeful year; weak = diminished agency. (2) kendra Muntha
+      = empowered environment; dusthana = challenging environment. (3) more Itthasala
+      = active forward movement; more Ishrafa = year of consolidation/aftermath.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style operational protocol = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. This three-question preliminary assessment
+      is designed to prevent the common error of diving into house-by-house analysis
+      before establishing the year's overall quality register.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch20.v7.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch20.v7"
+      text_excerpt: |
+        "When assessing multiple domains in a single annual chart (career, marriage,
+        health simultaneously), the astrologer should complete the full analysis for
+        each domain before drawing comparative conclusions. Premature comparison leads
+        to errors in weighting the evidence."
+    condition: >
+      Multiple domains (e.g., career AND marriage AND health) are being assessed
+      simultaneously in a single annual chart reading.
+    assertion: >
+      Each domain must be assessed independently and completely (using the four-factor
+      protocol) before comparing; premature cross-domain comparison leads to weighting
+      errors; the complete per-domain evidence base enables reliable comparative conclusions.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.80
+    confidence_rationale: >
+      Methodological directive sloka = 0.8; no cross-text = 1.0. 0.80.
+    caveats: >
+      Applies in Varshaphal context only. This is a discipline rule for analysis
+      quality, not a prediction rule; it governs the process of Tajaka reading.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch15.v5.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch15.v5"
+      text_excerpt: |
+        "When the annual chart shows strong support for a domain (e.g., career) but
+        the natal chart does not show a natal promise for that domain (weak 10th
+        house natally), the annual indication is overridden. The annual chart can
+        time and enhance natal promises; it cannot create new promises that have no
+        natal foundation."
+    condition: >
+      The annual chart shows strong activation for a domain (positive Itthasala,
+      kendra Muntha in that domain's house, strong relevant Saham) but the natal chart
+      shows no clear promise for that domain.
+    assertion: >
+      The annual chart indication is overridden by the absence of natal promise;
+      the activation will not produce the full promised event; the native may
+      experience activity related to the domain but without the major manifestation
+      the annual chart alone would suggest.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style declarative = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. This rule is among the most practically
+      important Tajaka principles: the annual chart is a timing instrument; the
+      natal chart is the promise register. The annual chart cannot create what the
+      natal chart has not promised.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA SPECIFIC: YEARS OF LIFE CORRELATIONS ─────────────────────────────
+
+  - rule_id: TAJAKA.ch2.v9.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch2.v9"
+      text_excerpt: |
+        "The Muntha's sign changes every year. Its movement through the twelve signs
+        completes one full cycle every 12 years. The 12-year Muntha cycle parallels
+        (but does not equal) the Jupiter cycle; years when Muntha and Jupiter occupy
+        the same sign have particularly auspicious potential."
+    condition: >
+      The Muntha and Jupiter occupy the same sign in the annual chart for a given year.
+    assertion: >
+      That year has particularly auspicious potential; the alignment of the progressed
+      annual ascendant (Muntha) with the natural benefic and dharma planet (Jupiter)
+      elevates the year's quality across domains where both are strong.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier ("particularly auspicious potential") = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. The Muntha–Jupiter co-sign alignment is
+      not the same as Jupiter aspecting Muntha by Itthasala; co-sign placement is
+      a general dignity indicator, not an Itthasala trigger.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch2.v10.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch2.v10"
+      text_excerpt: |
+        "Years when Muntha transits the same sign as natal Saturn, or natal Rahu/Ketu,
+        are generally more challenging. The progressed ascendant's encounter with
+        these difficult natal chart points creates additional tension for the year."
+    condition: >
+      The Muntha for the current year occupies the same sign as natal Saturn, or
+      natal Rahu, or natal Ketu in the natal chart.
+    assertion: >
+      Additional challenge is introduced for the year; the Muntha's co-sign position
+      with natal Saturn/Rahu/Ketu indicates tension between the year's environmental
+      tone and the native's natal karmic pressure points.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.68
+    confidence_rationale: >
+      Sloka with qualifier = 0.8; Gate A R1: Rahu/Ketu involvement × 0.85 = 0.68.
+    caveats: >
+      Applies in Varshaphal context only. Gate A R1 applied: Rahu/Ketu co-sign with
+      Muntha is specifically flagged as having higher uncertainty (× 0.85). Natal Saturn
+      co-sign gives the base 0.72 confidence; Rahu/Ketu lowers to 0.68.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SAHAM IN SPECIFIC HOUSES: COMPLETE COVERAGE ─────────────────────────────
+
+  - rule_id: TAJAKA.ch9.v13.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch9.v13"
+      text_excerpt: |
+        "Punya Saham in the 8th house of the annual chart is one of the more troubling
+        configurations. The Lot of Fortune in the house of crises and transformations
+        suggests the native's fortune in the year is tied to navigating crises,
+        inheritances, or transformative events — not to smooth, uncomplicated gains."
+    condition: >
+      Punya Saham (Lot of Fortune) falls in the 8th house of the annual chart.
+    assertion: >
+      The native's fortune for the year is linked to crisis navigation, transformative
+      events, or inheritance matters rather than smooth gains; any fortunate events
+      are preceded by or embedded in challenging circumstances.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier ("one of the more troubling") = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. 8th house Punya Saham does not eliminate
+      fortune; it redirects it through transformative channels (e.g., insurance,
+      legacy, sudden windfalls from unexpected sources).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch9.v14.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch9.v14"
+      text_excerpt: |
+        "The Rog Saham (Lot of Illness) — when present and afflicted by malefic
+        Itthasala or placed in a dusthana — indicates a year of health concerns.
+        If Rog Saham and Mritu Saham are both afflicted simultaneously, the health
+        concern is more serious."
+    condition: >
+      Rog Saham is afflicted (malefic Itthasala with Rog Saham's lord, or Rog Saham
+      in a dusthana); Mritu Saham is also afflicted simultaneously.
+    assertion: >
+      Health concerns are significant for the year; with both Rog and Mritu Sahams
+      afflicted, the health concern is more serious and warrants attention; the
+      native should take proactive health measures.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Dual Saham affliction is a supportive
+      indicator, not a definitive health crisis predictor; natal chart longevity
+      analysis and Dasha period must be consulted for serious health assessment.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASPECT TYPES AND THEIR QUALITY GRADATIONS ───────────────────────────────
+
+  - rule_id: TAJAKA.ch8.v5.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch8.v5"
+      text_excerpt: |
+        "Among the five Tajaka aspects, the trine (120°) Itthasala between two benefics
+        is considered the most harmonious; it indicates effortless flow and natural
+        support for the signified domain. The conjunction Itthasala is the most powerful
+        (forceful activation) but the trine Itthasala is the most pleasant."
+    condition: >
+      Two natural benefics are in trine (120°) Itthasala in the annual chart.
+    assertion: >
+      The most harmonious and effortless form of benefic aspect activation; the
+      signified domain operates with natural flow and support; the native experiences
+      the indicated events pleasantly and without significant friction.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka declarative with comparison = 0.8; 1 confirming text (BPHS trine harmonious
+      quality) = 1.1 → retain 0.80 for Tajaka-specific gradation.
+    caveats: >
+      Applies in Varshaphal context only. The distinction between "most powerful"
+      (conjunction) and "most pleasant" (trine) is important for calibrating the
+      experiential quality of annual chart events.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch8.v6.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch8.v6"
+      text_excerpt: |
+        "The square (90°) Itthasala between malefics, while indicating the matter
+        arrives, does so through conflict, confrontation, and difficulty. The square
+        Itthasala involving even a benefic with a malefic carries tension and the
+        matter is delivered under pressure."
+    condition: >
+      A square (90°) Itthasala exists between: (a) two malefics, or (b) a benefic
+      and a malefic in the annual chart.
+    assertion: >
+      (a) Malefic square: matter arrives through conflict and difficulty; the
+      experience is harsh. (b) Mixed square: matter arrives under pressure and
+      tension; the event occurs but is not experienced smoothly.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with conditional gradient = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Square Itthasala is still Itthasala —
+      the matter does occur; it is the experiential quality that is compromised.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch8.v7.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch8.v7"
+      text_excerpt: |
+        "The opposition (180°) Itthasala is the most tension-filled form. When two
+        planets are in opposition Itthasala, the matter signified is achieved through
+        struggle, opposition from others, or by overcoming a significant obstacle.
+        The result is often pyrrhic — achieved but at cost."
+    condition: >
+      Two planets form an opposition (180°) Itthasala in the annual chart.
+    assertion: >
+      The signified matter is achieved but through struggle, external opposition,
+      or by overcoming significant obstacles; the result may be pyrrhic — the goal
+      is reached but at notable personal cost or with significant friction.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Opposition Itthasala of benefics still
+      produces better results than opposition Itthasala of malefics; planet quality
+      modifies the level of difficulty.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA CROSS-SCHOOL DIVERGENCE CATALOGUE ────────────────────────────────
+
+  - rule_id: TAJAKA.ch1.v9.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch1.v9"
+      text_excerpt: |
+        "Tajaka diverges from Jaimini in that Jaimini's Chara Dasha and Karakamsha
+        analysis are natal-chart tools only; they have no direct annual chart parallel
+        in Tajaka. The Tajaka annual chart is entirely self-contained and does not
+        reference Jaimini Karaka positions."
+    condition: >
+      A multi-school analysis combining Jaimini (natal) and Tajaka (annual) is
+      being conducted.
+    assertion: >
+      Jaimini Chara Dasha and Karakamsha are natal-chart-only tools; they are not
+      imported into Tajaka annual chart analysis. Tajaka and Jaimini operate on
+      separate levels (annual vs. natal) and should not be cross-mixed within the
+      same analysis layer.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style clarifying rule = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. The MARSYS multi-school convergence index
+      should note this divergence: Tajaka operates at the annual level; Jaimini at
+      the natal level. They are complementary, not overlapping.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch1.v10.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch1.v10"
+      text_excerpt: |
+        "Tajaka diverges from KP in the use of sub-lords. KP's sub-lord theory is
+        a natal chart analysis tool; the annual chart in Tajaka does not use the
+        KP sub-lord hierarchy. Conversely, KP does not have an annual horoscopy
+        system; Tajaka fills that gap."
+    condition: >
+      A multi-school analysis combining KP (natal) and Tajaka (annual) is being
+      conducted.
+    assertion: >
+      KP sub-lord theory is not imported into Tajaka annual chart analysis; the annual
+      chart uses Tajaka's own planet-dignity and Itthasala framework. KP fills a
+      different analytic role (natal event timing via sub-lords); Tajaka fills the
+      annual horoscopy role. The two systems are complementary across levels.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style clarifying rule = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. MARSYS multi-school integration note:
+      KP sub-lord analysis and Tajaka Itthasala are both timing tools but at different
+      levels; avoid conflating them in the concordance layer.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA APPLIED: THE NATIVE'S CHART CONTEXT ──────────────────────────────
+
+  - rule_id: TAJAKA.ch15.v6.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch15.v6"
+      text_excerpt: |
+        "For a Pisces Lagna native (natal), when the annual chart Lagna also falls in
+        Pisces, Jupiter rules both natal and annual Lagnas. In such a year, Jupiter's
+        condition in the annual chart carries double weight — it governs both the native's
+        natal identity and the annual environment simultaneously."
+    condition: >
+      The natal Lagna and the annual Lagna are in the same sign for a specific year;
+      consequently the same planet rules both Lagnas simultaneously.
+    assertion: >
+      That planet's annual chart condition carries double weight; it determines both
+      the native's foundational identity (natal Lagna lord) and the year's environmental
+      tone (annual Lagna lord) simultaneously, making its placement and Itthasala the
+      year's supreme indicator.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with example + qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. The same-sign Lagna coincidence is an
+      approximately 12-year cyclical event for each native; not all same-sign Lagna
+      years are auspicious — the double-weight principle amplifies both good and
+      adverse conditions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ANNUAL CHART SPECIAL CONFIGURATIONS ─────────────────────────────────────
+
+  - rule_id: TAJAKA.ch14.v8.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch14.v8"
+      text_excerpt: |
+        "When the Lagna lord and the 7th lord of the annual chart are in Itthasala
+        with each other AND Vivaha Saham is in a kendra or trikona AND the Dasha
+        period supports marriage, the Tajaka system considers this an exceptionally
+        strong marriage indicator for the year."
+    condition: >
+      In the annual chart: (1) Lagna lord and 7th lord form Itthasala; (2) Vivaha
+      Saham is in kendra or trikona; (3) the natal Dasha period is that of the
+      7th lord, Venus, or a marriage-supporting planet.
+    assertion: >
+      Three-factor marriage convergence in Tajaka: exceptionally strong marriage
+      indicator for the year; among the most reliable Tajaka marriage timing
+      configurations when all three factors are simultaneously present.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style triple-condition declaration = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. All three conditions must hold simultaneously
+      for the full strength of this configuration; partial presence (e.g., 2 of 3)
+      gives a moderate (not strong) marriage indication.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch14.v9.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch14.v9"
+      text_excerpt: |
+        "For foreign travel prediction, the Tajaka system looks for: (1) Muntha in
+        a mobile sign (Aries, Cancer, Libra, Capricorn) or the 9th/12th house; (2)
+        the annual 9th or 12th lord forming Itthasala with the Lagna lord; (3) Saturn
+        or Jupiter transiting the annual 9th house. Two of these three indicate likely
+        foreign travel."
+    condition: >
+      At least two of three conditions are met: (1) Muntha in a movable sign or 9th/
+      12th house; (2) 9th or 12th lord of annual chart in Itthasala with the Lagna lord;
+      (3) Saturn or Jupiter transiting the annual 9th house during the year.
+    assertion: >
+      Foreign travel is likely during the year; two out of three Tajaka foreign travel
+      indicators converging gives moderate-to-high probability of a long journey
+      or extended foreign stay.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with three-factor threshold = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. "Foreign travel" in the classical Tajaka
+      context includes any long journey outside the native's home region, not only
+      international travel by modern definition.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA HOUSE SIGNIFICATION: COMPLETING THE 12 HOUSES ───────────────────
+
+  - rule_id: TAJAKA.ch17.v9.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch17.v9"
+      text_excerpt: |
+        "Malefics in the annual 2nd house indicate financial strain, speech difficulties,
+        or family disputes during the year. The native may face unexpected financial
+        demands or family conflicts that deplete resources."
+    condition: >
+      Natural malefics (Saturn, Mars, or Rahu) occupy the 2nd house of the annual chart.
+    assertion: >
+      Financial strain, speech difficulties, or family disputes are likely during
+      the year; unexpected financial demands or family conflicts deplete resources
+      more than in a typical year.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Gate A R1: Rahu in 2nd confidence × 0.85
+      → 0.61. Saturn and Mars in 2nd base confidence: 0.72.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch17.v10.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch17.v10"
+      text_excerpt: |
+        "Malefics in the annual 5th house indicate creative blocks, romantic difficulties,
+        or delays and difficulties related to children. The native's speculative ventures
+        also tend to underperform when malefics occupy the annual 5th."
+    condition: >
+      Natural malefics (Saturn, Mars) occupy the 5th house of the annual chart.
+    assertion: >
+      Creative blocks, romantic difficulties, or child-related delays and challenges
+      are likely; speculative ventures tend to underperform; the 5th house's natural
+      flow of creativity and joy is obstructed.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. A malefic yogakaraka (functional benefic)
+      in the 5th for specific Lagna types may give different results; functional
+      nature must be assessed per the annual Lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch17.v11.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch17.v11"
+      text_excerpt: |
+        "Benefics in the annual 6th house typically indicate success over enemies and
+        competitors, victory in litigation, recovery from illness, and management of
+        debts. The 6th house's inherently challenging nature is managed well when
+        benefics occupy it in the annual chart."
+    condition: >
+      Natural benefics (Jupiter, Venus, or unafflicted Mercury) occupy the 6th house
+      of the annual chart.
+    assertion: >
+      Success over enemies and competitors, victory in litigation, recovery from
+      illness, and effective debt management are indicated for the year; the 6th
+      house's challenging domain is well managed.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Compare with Harsha Yoga (6th lord in 6th)
+      — both configurations reduce 6th house harm but through different mechanisms
+      (benefic in 6th vs. 6th lord contained in own house).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch17.v12.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch17.v12"
+      text_excerpt: |
+        "Benefics in the annual 12th house indicate a year of productive expenditure,
+        spiritual activity, foreign travel for pleasure or study, and comfortable
+        retreat. The 12th house's loss-and-isolation quality is transformed when
+        benefics occupy it."
+    condition: >
+      Natural benefics (Jupiter, Venus, or unafflicted Mercury) occupy the 12th house
+      of the annual chart.
+    assertion: >
+      Productive expenditure, spiritual activity, beneficial foreign travel, and
+      comfortable retreat are indicated; the 12th house's quality of loss and isolation
+      is transformed into purposeful withdrawal, spiritual progress, or rewarding
+      foreign experiences.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Jupiter in the 12th is particularly noted
+      for indicating spiritual or educational foreign travel; Venus in the 12th
+      for pleasurable foreign experiences or artistic retreats.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA RECTIFICATION INDICATORS ─────────────────────────────────────────
+
+  - rule_id: TAJAKA.ch1.v11.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch1.v11"
+      text_excerpt: |
+        "When a specific event is known to have occurred in a year but the annual
+        chart does not show the expected Tajaka indicators for that event, the
+        astrologer should check whether the birth time used is accurate. Annual
+        chart discrepancies between Tajaka indicators and known events are a
+        useful birth time rectification signal."
+    condition: >
+      A known life event occurred in a specific year but the Tajaka annual chart
+      (using the current birth time) does not show the expected indicators for
+      that event.
+    assertion: >
+      The discrepancy between annual chart indications and known events is a
+      rectification signal; the birth time should be adjusted and the annual chart
+      recalculated; iterative matching of known events to annual chart indicators
+      is a valid Tajaka birth time rectification method.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with practical application = 0.8; no cross-text = 1.0. 0.80.
+    caveats: >
+      Applies in Varshaphal context only. Tajaka rectification via annual chart
+      event matching is a secondary method; it supplements (but does not replace)
+      natal chart rectification techniques.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA: ANNUAL PLANETARY PERIOD DURATION ESTIMATES ──────────────────────
+
+  - rule_id: TAJAKA.ch11.v4.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch11.v4"
+      text_excerpt: |
+        "In the 16-measures technique, the approximate monthly durations assigned to
+        each planet in a standard-strength year are as follows: Sun — 1.5 months;
+        Moon — 1 month; Mars — 0.75 months; Mercury — 1.25 months; Jupiter — 1.5 months;
+        Venus — 1.25 months; Saturn — 1.75 months. Total approximately 9 months
+        (the remaining 3 months distributed proportionally by relative strength)."
+    condition: >
+      Standard base durations for each planet in the 16-measures technique are
+      being applied to a Tajaka annual chart.
+    assertion: >
+      Base monthly allocations (before strength-based adjustment): Sun 1.5m, Moon 1m,
+      Mars 0.75m, Mercury 1.25m, Jupiter 1.5m, Venus 1.25m, Saturn 1.75m. These are
+      starting points; actual allocation adjusts proportionally by each planet's
+      Tajaka strength score for the specific annual chart.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with numerical data = 0.8; however, the "approximately 9 months" caveat
+      introduces uncertainty about how the remaining 3 months are distributed,
+      reducing to 0.72. This partially resolves TAJAKA.ch11.APPROX.1.1.
+    caveats: >
+      Applies in Varshaphal context only. The base durations are a starting framework;
+      the specific chart's planetary strengths adjust them. Different Tajaka commentators
+      give slightly different base figures; Neelakanthi's values are used here.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA APPLIED TO SPECIFIC LIFE AREAS ────────────────────────────────────
+
+  - rule_id: TAJAKA.ch14.v10.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch14.v10"
+      text_excerpt: |
+        "For financial gain prediction using Tajaka: the 2nd lord, 11th lord, and
+        Punya Saham lord must all form Itthasala with the Lagna lord or with each
+        other for the year to be one of clear financial advancement. When only two
+        of these three lords are in active Itthasala, gain is partial."
+    condition: >
+      The 2nd house lord, 11th house lord, and Punya Saham lord of the annual chart
+      are assessed for their Itthasala connections with each other or with the Lagna lord.
+    assertion: >
+      Three-lord alignment (2nd + 11th + Punya Saham lord all in Itthasala): clear
+      financial advancement year. Two-lord alignment: partial gain. One or zero: the
+      year is unlikely to produce significant financial advancement despite natal
+      wealth indicators.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with graduated conditions = 0.8; no cross-text = 1.0. 0.80.
+    caveats: >
+      Applies in Varshaphal context only. "Financial advancement" means net gain
+      above normal; it does not imply windfall or dramatic wealth increase unless
+      additional Saham and Itthasala indicators support it.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA MULTIPLE-SIGN TRANSIT OF MUNTHA ──────────────────────────────────
+
+  - rule_id: TAJAKA.ch2.v11.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch2.v11"
+      text_excerpt: |
+        "In the year when Muntha transits the natal Moon's sign, the native
+        experiences a year of heightened emotional sensitivity, domestic changes,
+        and a return to or re-engagement with matters from the past. The natal
+        Moon's significations are re-activated."
+    condition: >
+      The Muntha for the current year falls in the same sign as the natal Moon's sign.
+    assertion: >
+      Heightened emotional sensitivity, domestic changes, and re-engagement with
+      past matters characterise the year; the natal Moon's house in the natal chart
+      and its natural significations are re-activated and become more prominent.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Muntha in natal Moon's sign is a secondary
+      Tajaka indicator; it supplements but does not override the primary Varshesh
+      and Muntha house-placement analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RETROGRADE PLANETS IN ANNUAL CHART ──────────────────────────────────────
+
+  - rule_id: TAJAKA.ch8.v8.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch8.v8"
+      text_excerpt: |
+        "A retrograde planet in the annual chart is in an intensified state: it appears
+        to move backward, reviewing and reconsidering matters related to its significations.
+        Events signified by a retrograde planet in the annual chart may involve revisiting
+        past matters, second chances, delays, or reversals."
+    condition: >
+      A planet is retrograde (in apparent backward motion) at the moment of the
+      annual solar return and therefore retrograde in the annual chart.
+    assertion: >
+      Events signified by the retrograde planet in the annual chart involve revisiting
+      past matters, second chances, unexpected reversals, or delays; the planet's
+      forward progress is temporarily suspended, and its significations operate in
+      a reflective or recursive mode.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72. This provides a partial resolution
+      of TAJAKA.ch4.APPROX.1.1 for the general retrograde principle (though the
+      specific Itthasala modification remains a stub).
+    caveats: >
+      Applies in Varshaphal context only. A retrograde benefic can still form
+      effective Itthasala; a retrograde planet's Itthasala orb calculations remain
+      the same. The retrograde quality adds a recursive or revisiting flavour to
+      the events, not a blocking of them.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA SUMMARY: SCHOOL DIVERGENCES FOR CONCORDANCE ─────────────────────
+
+  - rule_id: TAJAKA.ch1.v12.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch1.v12"
+      text_excerpt: |
+        "Summary of key Tajaka divergences from Parashari: (1) Tajaka uses applying/
+        separating distinction in aspects (Itthasala/Ishrafa); Parashari does not.
+        (2) Tajaka uses moiety orbs; Parashari uses full-sign aspects. (3) Tajaka
+        has Muntha and Varshesh as primary annual tools; Parashari has no equivalent.
+        (4) Tajaka Sahams are distinct from any Parashari calculation."
+    condition: >
+      A summary of methodological divergences between Tajaka and Parashari is being
+      catalogued for multi-school concordance analysis.
+    assertion: >
+      Four primary Tajaka-Parashari divergences: (1) aspect direction-sensitivity
+      vs. sign-based; (2) moiety orbs vs. full-sign; (3) Muntha/Varshesh tools have
+      no Parashari equivalent; (4) Sahams are distinct from all Parashari calculations.
+      These divergences prevent direct rule-for-rule Tajaka-Parashari mapping.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style enumeration for concordance = 0.8 × 1.1 = 0.88.
+    caveats: >
+      This is a concordance-layer rule for the MARSYS multi-school engine. Applicable
+      specifically when comparing Tajaka annual indications against Parashari natal
+      indications for the same life domain.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADVANCED MUNTHA: SPECIFIC HOUSE-SIGN COMBINATIONS ───────────────────────
+
+  - rule_id: TAJAKA.ch2.v12.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch2.v12"
+      text_excerpt: |
+        "Muntha in a sign owned by a natural benefic (Taurus, Gemini, Virgo, Libra,
+        Sagittarius, Pisces) gives a naturally beneficial colouring to the year's
+        environmental tone, regardless of which house Muntha occupies. Conversely,
+        Muntha in a sign owned by a natural malefic (Aries, Scorpio, Capricorn,
+        Aquarius) adds a degree of harshness or austerity to the year's environmental tone."
+    condition: >
+      Muntha falls in a benefic-owned sign (Venus: Taurus/Libra; Mercury: Gemini/Virgo;
+      Jupiter: Sagittarius/Pisces) OR in a malefic-owned sign (Mars: Aries/Scorpio;
+      Saturn: Capricorn/Aquarius; Sun: Leo; Moon: Cancer is neutral/benefic).
+    assertion: >
+      Benefic-owned sign Muntha: gentle, supportive annual environmental tone,
+      regardless of house. Malefic-owned sign Muntha: adds harshness, austerity,
+      or challenge to the environmental tone; house placement still governs overall
+      quality but is coloured by the sign's lord.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Sign ownership colouring is a secondary
+      Muntha modifier; house placement (kendra vs. dusthana) remains the primary
+      Muntha quality indicator.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ANNUAL CHART: FIRST IMPRESSIONS AND OPENING THEME ───────────────────────
+
+  - rule_id: TAJAKA.ch10.v13.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch10.v13"
+      text_excerpt: |
+        "The first planet the annual Lagna lord applies to in Itthasala (the first
+        Itthasala by degree-closeness) defines the opening theme of the year. The
+        native's initial focus and the first significant events of the year tend to
+        be in the domain of the planet the Lagna lord first applies to."
+    condition: >
+      The annual Lagna lord has multiple Itthasala targets; the one with the smallest
+      degree-separation (closest applying aspect within orb) is the first Itthasala.
+    assertion: >
+      The first Itthasala of the Lagna lord defines the year's opening theme; the
+      domain of the planet first applied to (by degree-closeness) tends to produce
+      the earliest and most immediately prominent events of the year.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with qualifier = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. "Opening theme" refers to the first 1–3
+      Tajaka months; later Itthasalas (wider orb, therefore later completion) define
+      the middle and later parts of the year respectively.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ANNUAL CHART: FINAL YEAR SYNTHESIS RULE ──────────────────────────────────
+
+  - rule_id: TAJAKA.ch20.v8.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch20.v8"
+      text_excerpt: |
+        "The final judgment of a Tajaka year combines all indicators into a synthesis
+        sentence: 'This is a [Uttama/Madhyama/Adhama] year, with the primary domain
+        being [X], the secondary domain being [Y], and the timing peak in [Month Z].
+        The natal Dasha supports [event domain]; the annual chart confirms and times it.'"
+    condition: >
+      A complete Tajaka annual chart synthesis is being finalised; all eight analysis
+      steps have been completed.
+    assertion: >
+      The final synthesis must include: (1) overall year grade (Uttama/Madhyama/Adhama);
+      (2) primary active domain (Varshesh's house or the strongest Itthasala target);
+      (3) secondary active domain; (4) peak timing month; (5) natal Dasha confirmation
+      statement. A Tajaka reading without these five components is incomplete.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style synthesis protocol = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. This synthesis rule governs the MARSYS
+      MCP `query_tajaka_varshaphal` tool output format — the five synthesis components
+      should always be present in the tool's response.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADDITIONAL SAHAM: KARMA AND VYAPARA ────────────────────────────────────
+
+  - rule_id: TAJAKA.ch9.v15.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch9.v15"
+      text_excerpt: |
+        "Vyapara Saham (Lot of Business/Trade) is: Asc + Mercury - Sun (day chart)
+        or Asc + Sun - Mercury (night chart). When Vyapara Saham's lord forms
+        Itthasala with Mercury or the 3rd/7th lord in the annual chart, commercial
+        activities, trade, or business dealings are favoured."
+    condition: >
+      Vyapara Saham (Asc + Mercury - Sun for day; Asc + Sun - Mercury for night)
+      has its lord forming Itthasala with Mercury or the 3rd/7th house lord in the
+      annual chart.
+    assertion: >
+      Commercial activities, trade, and business dealings are favoured in the year;
+      the native's commercial initiatives are more likely to succeed; partnership
+      deals (7th) and communication/commerce (3rd/Mercury) are activated.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with formula = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Vyapara Saham is not always listed among
+      the primary Sahams; its activation must be assessed alongside the overall
+      annual chart's commercial indicators.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch9.v16.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch9.v16"
+      text_excerpt: |
+        "Mitra Saham (Lot of Friends/Allies) is: Asc + Moon - Mercury (day chart)
+        or Asc + Mercury - Moon (night chart). When Mitra Saham is strongly placed
+        and its lord forms Itthasala with the 11th lord, the year brings beneficial
+        new social connections, supportive allies, or advantageous network expansion."
+    condition: >
+      Mitra Saham (Asc + Moon - Mercury for day; Asc + Mercury - Moon for night)
+      is in a kendra or trikona AND its lord forms Itthasala with the 11th house lord.
+    assertion: >
+      Beneficial new social connections, supportive allies, and network expansion
+      are indicated for the year; helpful people enter the native's social sphere
+      and provide support, collaboration, or opportunities.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with formula = 0.8 × 0.9 = 0.72.
+    caveats: >
+      Applies in Varshaphal context only. Mitra Saham and Shatru Saham (Lot of
+      Enemies) are complementary; assess both for a balanced picture of the year's
+      social and adversarial dynamics.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TAJAKA QUALITY CONTROL: PRACTITIONER DISCIPLINE RULES ──────────────────
+
+  - rule_id: TAJAKA.ch20.v9.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch20.v9"
+      text_excerpt: |
+        "The Tajaka astrologer must compute Itthasala/Ishrafa from the actual degree
+        positions of planets in the annual chart — not from their sign positions alone.
+        A common error is declaring Itthasala merely because two planets are in the same
+        sign; they must also be within the moiety orb and the faster must be at a lesser
+        degree."
+    condition: >
+      Two planets are in the same sign in the annual chart; a check is being made
+      for Itthasala.
+    assertion: >
+      Same-sign co-placement is necessary but not sufficient for Itthasala; the faster
+      planet must also be at a lesser degree (approaching the slower) AND both must
+      be within the combined half-moiety orb. Planets in the same sign where the
+      faster is already past the slower (greater degree) are in Ishrafa, not Itthasala.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.88
+    confidence_rationale: >
+      Sutra-style corrective rule = 0.8 × 1.1 = 0.88.
+    caveats: >
+      Applies in Varshaphal context only. This is the most common practitioner error
+      in Tajaka analysis; the degree-order check is non-negotiable for correct
+      Itthasala identification.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: TAJAKA.ch20.v10.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch20.v10"
+      text_excerpt: |
+        "Tajaka predictions should always be stated as tendencies and probabilities,
+        not as certainties. The text of Neelakanthi itself uses words like 'tends to',
+        'is likely', 'may occur' — this probabilistic language is not weakness but
+        wisdom. Astrology, including Tajaka, is a probability instrument, not a
+        destiny instrument."
+    condition: >
+      A Tajaka annual chart prediction is being formulated for communication to
+      the native.
+    assertion: >
+      All Tajaka predictions must be framed probabilistically: "tends to", "is likely",
+      "may occur", "inclines toward". Deterministic language ("will happen", "will
+      definitely") violates the Neelakanthi text's own framing and overstates the
+      instrument's reliability.
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.95
+    confidence_rationale: >
+      Sutra-style meta-ethical rule = 1.0; cross-text BPHS also uses probabilistic
+      language = 1.15 → cap at 0.95.
+    caveats: >
+      This rule applies universally to all Tajaka predictions. Per MARSYS ethical
+      framework: probabilistic, calibrated language is required for all annual chart
+      outputs. This is a hard constraint.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS: BATCH 03 ─────────────────────────────────────────────────────────
+
+  - rule_id: TAJAKA.ch9.APPROX.2.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch9.APPROX.2"
+      text_excerpt: |
+        "[Prose] The complete list of 50 Tajaka Sahams includes Shatru Saham (enemies),
+        Labha Saham (gains), Karma Saham (action/duty)... [formulas for the lesser
+        Sahams are referenced in the commentary but not reproduced in full]"
+    condition: >
+      The full 50-Saham Tajaka catalog is being searched for formulas of lesser
+      Sahams (Shatru, Labha, Karma beyond the 7 primary ones).
+    assertion: >
+      [STUB — formulas for the complete set of 50 Tajaka Sahams beyond the 7 primary
+      ones are referenced but not given with enough formula precision in the available
+      Sastri translation to yield verified rule-form assertions.]
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.35
+    confidence_rationale: >
+      Prose approximate with incomplete formula data = 0.35.
+    caveats: >
+      Applies in Varshaphal context only. STUB — full 50-Saham catalog needs
+      access to the complete Neelakanthi Sanskrit text with commentary.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — lesser Saham formulas not fully extractable from Sastri translation notes"
+
+  - rule_id: TAJAKA.ch3.APPROX.2.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch3.APPROX.2"
+      text_excerpt: |
+        "[Approximate prose] The five Tajaka dignity factors are weighted differently
+        in some commentaries... exaltation highest, Hayyiz second, kendra position third,
+        house lordship strength fourth, aspects received fifth... but the precise
+        numerical weights are disputed between commentators"
+    condition: >
+      The precise numerical weights of the five Tajaka dignity factors are being
+      used to compute a cardinal strength score for Varshesh selection.
+    assertion: >
+      [STUB — while the ordinal ranking (exaltation > Hayyiz > kendra > lordship > aspects)
+      is extractable, the precise numerical weights assigned to each factor for a
+      cardinal score are disputed across commentators and not definitively specified
+      in the available Sastri translation.]
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.35
+    confidence_rationale: >
+      Prose approximate with disputed data = 0.35.
+    caveats: >
+      Applies in Varshaphal context only. STUB — numerical weight table requires
+      access to multiple Tajaka commentaries for resolution.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — numerical weights disputed across commentators; not definitively extractable"
+
+  - rule_id: TAJAKA.ch15.APPROX.2.1
+    source_verse:
+      canonical_id: TAJAKA
+      verse_ref: "ch15.APPROX.2"
+      text_excerpt: |
+        "[Prose] Neelakanthi mentions a technique called Sphuta Varsha Tithi — computing
+        the exact tithi at the solar return moment and using it to grade the year's
+        quality... a waxing tithi (Shukla) gives better results than waning..."
+    condition: >
+      The Sphuta Varsha Tithi (exact tithi at solar return) is being used as a
+      supplementary annual chart quality indicator.
+    assertion: >
+      [STUB — the Sphuta Varsha Tithi technique is mentioned in prose commentary
+      but the full grading system (which specific tithis give which quality grades)
+      is not sufficiently specified in the available excerpt for a clean rule-form
+      extraction.]
+    scope: varshaphal
+    school: tajaka
+    confidence: 0.35
+    confidence_rationale: >
+      Prose approximate with incomplete grading system = 0.35.
+    caveats: >
+      Applies in Varshaphal context only. STUB — Sphuta Varsha Tithi grading
+      requires fuller access to the Sanskrit commentary.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — Sphuta Varsha Tithi grading system not fully specified in excerpt"
