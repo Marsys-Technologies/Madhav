@@ -10,6 +10,7 @@ import { fetchConsumedTodayCount } from '@/lib/roster/stats'
 import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
 import { Navagraha } from '@/components/brand/Navagraha'
 import { BRAHMA_LAYER_ORDER, PYRAMID_TO_BRAHMA } from '@/lib/brahma/lexicon'
+import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
 
 /**
  * Dashboard — role-gated roster (Unit 3.consult_nav, Commit 1).
@@ -158,6 +159,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden" data-testid="dashboard-root" data-role={role}>
+      {/* Chart-created toast: shown when ?chart_created=[id] is present in URL */}
+      <Suspense>
+        <ChartCreatedToast />
+      </Suspense>
       <Navagraha
         size={600}
         opacity={0.15}
