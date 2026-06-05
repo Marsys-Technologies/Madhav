@@ -1,0 +1,238 @@
+meta:
+  instrument: Brahma-WS2 (depth-build pass)
+  build_id: ws2-depth-20260605
+  native_chart: Abhisek Mohanty — 1984-02-05 10:43 IST Bhubaneswar
+  autonomous_mode: true
+  runtime_guardian_mode: true
+  max_fix_attempts: 6
+  max_run_budget_usd: 5000
+  max_spend_per_asset_usd: 300
+  rules_asset_cap_usd: 1000
+  max_wallclock_per_asset_hours: 6
+  started_at: '2026-06-05T00:00:00+05:30'
+  last_updated: '2026-06-05T00:00:00+05:30'
+  batch_count: 0
+  ws3_tag_status: WAITING
+  ws3_last_polled: '2026-06-05T00:00:00+05:30'
+
+budget:
+  total_spent_usd: 0.0
+  per_asset: {}
+
+queue_summary:
+  total_sessions: 10
+  runnable_now: 6  # l0-brahmagyan, l1-ganita, l2-bodha-scaffold, l3-kala, l4-phala, l5-mimamsa
+  blocked_ws3: 4   # l2-bodha-grounded, l3-l4-reverify, red-team-is8b, wave-close
+  complete: 0
+  in_progress: 0
+  parked: 0
+  layers_complete: []
+  layers_in_progress: []
+  last_updated: '2026-06-05T00:00:00+05:30'
+
+sessions:
+  - id: l0-brahmagyan
+    layer: brahmagyan
+    status: pending
+    ws3_blocked: false
+    assets:
+      - brahmagyan.ephemeris
+      - brahmagyan.reference
+      - brahmagyan.texts
+      - brahmagyan.text_index
+      - brahmagyan.ontology
+      - brahmagyan.almanac
+      - brahmagyan.remedy_corpus
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: l1-ganita
+    layer: ganita
+    status: pending
+    ws3_blocked: false
+    depends_on: [l0-brahmagyan]
+    assets:
+      - ganita.engine
+      - ganita.positions
+      - ganita.divisionals
+      - ganita.dashas
+      - ganita.strength
+      - ganita.sensitive_points
+      - ganita.panchanga
+      - ganita.facts_store
+      - ganita.forensic_render
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: l2-bodha-scaffold
+    layer: bodha
+    status: pending
+    ws3_blocked: false
+    depends_on: [l1-ganita]
+    assets:
+      - bodha.signals
+      - bodha.graph
+      - bodha.domain_links
+      - bodha.resonance
+      - bodha.lenses
+      - bodha.negative_space
+      - bodha.salience
+      - bodha.embeddings
+      - bodha.holistic_bundle
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: All signals MUST be explicitly UNGROUNDED (rule_id=null) in provenance envelope.
+
+  - id: l3-kala
+    layer: kala
+    status: pending
+    ws3_blocked: false
+    depends_on: [l2-bodha-scaffold]
+    assets:
+      - kala.timeline
+      - kala.convergence
+      - kala.obstruction
+      - kala.snapshot
+      - kala.temporal
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: l4-phala
+    layer: phala
+    status: pending
+    ws3_blocked: false
+    depends_on: [l2-bodha-scaffold, l3-kala]
+    assets:
+      - phala.anchors
+      - phala.mitigation
+      - phala.rectification
+      - phala.muhurta
+      - phala.outlook
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: l5-mimamsa
+    layer: mimamsa
+    status: pending
+    ws3_blocked: false
+    depends_on: [l4-phala]
+    assets:
+      - mimamsa.lel_intake
+      - mimamsa.event_chart_state_index
+      - mimamsa.calibration_substrate
+      - mimamsa.learning_multiplier
+      - mimamsa.bigquery_export
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {mimamsa.lel_intake: 57}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: l2-bodha-grounded
+    layer: bodha
+    status: blocked_ws3
+    ws3_blocked: true
+    depends_on: [l2-bodha-scaffold, 'ws3-tag:ws3-rule-base-complete']
+    assets:
+      - bodha.signals_rederive
+      - bodha.remediation
+      - bodha.lenses_reverify
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {signal_grounding_coverage_pct: 95}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: Blocked until ws3-rule-base-complete tag appears. Poll every 15 min.
+
+  - id: l3-l4-reverify
+    layer: reverify
+    status: blocked_ws3
+    ws3_blocked: true
+    depends_on: [l2-bodha-grounded]
+    assets: []
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: red-team-is8b
+    layer: red_team
+    status: blocked_ws3
+    ws3_blocked: true
+    depends_on: [l3-l4-reverify, l5-mimamsa]
+    assets: []
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {class_1_findings: 0}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: null
+
+  - id: wave-close
+    layer: close
+    status: blocked_ws3
+    ws3_blocked: true
+    depends_on: [red-team-is8b]
+    assets: []
+    assets_passed: []
+    assets_parked: []
+    volume_floors: {}
+    fix_attempts: 0
+    spent_usd: 0.0
+    started_at: null
+    completed_at: null
+    commits: []
+    notes: Emit final instrument-complete report + tag ws2-depth-build-complete + write BRAHMA_WS2_COMPLETE.md
+
+decision_audit: []
+parked_log: []
+smriti_entries: []

@@ -1,0 +1,180 @@
+---
+# WS-2 Depth Build — Session Queue
+# Conductor: Sūtradhāra (brahma-conductor-bot)
+# Mode: AUTONOMOUS_MODE + RUNTIME_GUARDIAN_MODE
+# Authored: 2026-06-05 (Conductor batch-0 setup)
+# Governs: CLAUDECODE_BRIEF_WS2_AUTONOMOUS_ACTIVATION_v1_0.md §3
+
+wave: ws2
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavWS2
+branch: feature/ws2-depth-build
+mode: AUTONOMOUS_MODE + RUNTIME_GUARDIAN_MODE
+max_run_budget_usd: 5000
+max_spend_per_asset_usd: 300
+rules_asset_cap_usd: 1000
+max_fix_attempts: 6  # per AUTONOMY_RESILIENCE_PATTERN §B.1 (6-tier)
+parallel_assets_per_layer: true
+
+sessions:
+  - id: l0-brahmagyan
+    layer: brahmagyan
+    status: pending
+    assets:
+      - brahmagyan.ephemeris
+      - brahmagyan.reference
+      - brahmagyan.texts
+      - brahmagyan.text_index
+      - brahmagyan.ontology
+      - brahmagyan.almanac
+      - brahmagyan.remedy_corpus
+    volume_floors: per L0_CONTRACT_REGISTRY_SEED + LAYER_0_FOUNDATION_DESIGN_v1_0
+    acceptance: |
+      Per asset: actual_rows >= floor; provenance envelope present; retrieval tool live web+MCP;
+      tool tested against freshly-generated data; astronomical ground-truth check passes
+      (Swiss/JPL spot-check — NOT FORENSIC parity). brahmagyan.rules is WS-3 territory — excluded.
+    depends_on: []
+    ws3_blocked: false
+    notes: |
+      L0 is one-time global. After L0 verifies, every later chart sees Brahmagyan already green.
+      Classical-text licensing decisions: flag in Smriti if uncertain (Tier-2 disposition).
+
+  - id: l1-ganita
+    layer: ganita
+    status: pending
+    assets:
+      - ganita.engine
+      - ganita.positions
+      - ganita.divisionals
+      - ganita.dashas
+      - ganita.strength
+      - ganita.sensitive_points
+      - ganita.panchanga
+      - ganita.facts_store
+      - ganita.forensic_render
+    volume_floors: per BRAHMA_L1_L5_REGISTRY_SEED §B + FACT_ENGINE_A1_SCOPE_ANALYSIS
+    acceptance: |
+      Engine reproduces FORENSIC v8.0 superset; 5 ayanamshas × bodies (NOT 1 × grahas only);
+      dashas to Sukshma depth (NOT MD/AD/PD only); ayanamsha-invariant split working;
+      determinism hash-stable across re-runs; per-asset tool live + tested.
+      Gate: astronomical sanity + internal structural anchors (Swiss/JPL, NOT FORENSIC value-parity).
+    depends_on: [l0-brahmagyan]
+    ws3_blocked: false
+
+  - id: l2-bodha-scaffold
+    layer: bodha
+    status: pending
+    assets:
+      - bodha.signals
+      - bodha.graph
+      - bodha.domain_links
+      - bodha.resonance
+      - bodha.lenses
+      - bodha.negative_space
+      - bodha.salience
+      - bodha.embeddings
+      - bodha.holistic_bundle
+    volume_floors: 573-signal target from MSR v5.0 + K-edge target from CGM v9.0
+    acceptance: |
+      Scaffold: signal-derivation logic + tool surfaces in place; volumes meet floor;
+      EXPLICITLY MARKED UNGROUNDED in provenance envelope (rule_id=null, awaiting WS-3).
+      bodha.remediation excluded here — depends on WS-3 rules.
+    depends_on: [l1-ganita]
+    ws3_blocked: false
+    important: >
+      Mark all signals UNGROUNDED (rule_id=null) in provenance envelope.
+      The l2-bodha-grounded session (below) re-derives against real rules after WS-3.
+
+  - id: l3-kala
+    layer: kala
+    status: pending
+    assets:
+      - kala.timeline
+      - kala.convergence
+      - kala.obstruction
+      - kala.snapshot
+      - kala.temporal
+    volume_floors: per LAYER_3_TEMPORAL_FABRIC_DESIGN_v1_0
+    acceptance: |
+      Fabric deterministic (hash-stable re-runs); convergence windows reproduce against
+      known life-period alignments from LEL. kala.spatial deferred per master arch §I.4.
+    depends_on: [l2-bodha-scaffold]
+    ws3_blocked: false
+
+  - id: l4-phala
+    layer: phala
+    status: pending
+    assets:
+      - phala.anchors
+      - phala.mitigation
+      - phala.rectification
+      - phala.muhurta
+      - phala.outlook
+    volume_floors: per LAYER_4_PREDICTIVE_ENGINE_DESIGN_v1_0
+    acceptance: |
+      Every anchor carries a falsifier; rectification leak-free (train/test split inside LEL);
+      muhurta returns ranked windows for a desired action; correlation-aware confidence.
+    depends_on: [l2-bodha-scaffold, l3-kala]
+    ws3_blocked: false
+
+  - id: l5-mimamsa
+    layer: mimamsa
+    status: pending
+    assets:
+      - mimamsa.lel_intake
+      - mimamsa.event_chart_state_index
+      - mimamsa.calibration_substrate
+      - mimamsa.learning_multiplier
+      - mimamsa.bigquery_export
+    volume_floors: 57 LEL events; event_chart_state_index per event; per LAYER_5_LEARNING_DESIGN_v1_0
+    acceptance: |
+      LEL stays isolated (never feeds generation); 57 events ingested from LIFE_EVENT_LOG_v1_2.md;
+      event chart-state index derives from PyJHora; multiplier wired but at 1.0 until corpus evidence;
+      OLAP export → GCS → BQ path verified.
+    depends_on: [l4-phala]
+    ws3_blocked: false
+
+  # ===== WS-3 SYNC POINT =====
+  # l2-bodha-grounded and downstream BLOCKED until tag ws3-rule-base-complete appears.
+  # Poll every 15 min: git fetch origin --tags && git tag -l 'ws3-rule-base-complete'
+  # While waiting: l3-kala, l4-phala, l5-mimamsa run in parallel (no WS-3 dependency).
+  # =============================
+
+  - id: l2-bodha-grounded
+    layer: bodha
+    status: blocked_ws3
+    assets:
+      - bodha.signals_rederive
+      - bodha.remediation
+      - bodha.lenses_reverify
+    volume_floors: 573 signals × 100% grounding coverage
+    acceptance: |
+      Every signal carries rule_id + verse citation from WS-3 Rule Base;
+      remediation prescriptions cite L0 remedy corpus; >= 95% grounding coverage.
+    depends_on: [l2-bodha-scaffold, ws3-tag:ws3-rule-base-complete]
+    ws3_blocked: true
+
+  - id: l3-l4-reverify
+    layer: reverify
+    status: blocked_ws3
+    scope: re-verify L3/L4 outputs that inherited from ungrounded signals
+    acceptance: temporal fabric + anchors still pass their gates against grounded signals.
+    depends_on: [l2-bodha-grounded]
+    ws3_blocked: true
+
+  - id: red-team-is8b
+    layer: red_team
+    status: blocked_ws3
+    role: adversarial swarm (Pramana + external red-team agent)
+    scope: per master arch §IS.8(b) — full-instrument red team on grounded, full-depth instrument
+    acceptance: no class-1 findings; class-2 findings have remediation plan committed.
+    depends_on: [l3-l4-reverify, l5-mimamsa]
+    ws3_blocked: true
+
+  - id: wave-close
+    layer: close
+    status: blocked_ws3
+    role: Sutradhara + Pramana + Pratistha
+    scope: |
+      Final WS-2 AC sweep; PR opens; CI green; swarm merges; tag ws2-depth-build-complete.
+    depends_on: [red-team-is8b]
+    ws3_blocked: true
