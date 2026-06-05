@@ -6,6 +6,7 @@ import { TabBar } from './TabBar'
 import { DataAssetsView } from './DataAssetsView'
 import { WorkflowView } from './WorkflowView'
 import { AgentsView } from './AgentsView'
+import { useChartContext } from '@/hooks/useChartContext'
 
 type Tab = 'data' | 'workflow' | 'agents'
 
@@ -15,10 +16,7 @@ interface Props {
 
 export function CockpitShell({ chartId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('data')
-
-  // isBuilding stub for this phase
-  const isBuilding = false
-  void isBuilding
+  const { chartName, birthDate, birthPlace } = useChartContext(chartId)
 
   return (
     <div
@@ -31,7 +29,12 @@ export function CockpitShell({ chartId }: Props) {
         boxSizing: 'border-box',
       }}
     >
-      <CockpitHeader chartId={chartId} />
+      <CockpitHeader
+        chartId={chartId}
+        chartName={chartName}
+        birthDate={birthDate}
+        birthPlace={birthPlace}
+      />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       {activeTab === 'data' && <DataAssetsView chartId={chartId} />}
       {activeTab === 'workflow' && <WorkflowView />}

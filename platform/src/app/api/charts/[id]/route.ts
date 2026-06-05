@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getServerUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id: chartId } = await params
+
+  const result = await query<{
+    subject_name: string
+    birth_date: string
+    birth_time: string
+    birth_place: string
+  }>(
+    'SELECT subject_name, birth_date::text, birth_time::text, birth_place FROM charts WHERE id = $1',
+    [chartId],
+  )
+
+  const row = result.rows[0] ?? null
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json({
+    subject_name: row.subject_name,
+    birth_date: row.birth_date,
+    birth_time: row.birth_time,
+    birth_place: row.birth_place,
+  })
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
