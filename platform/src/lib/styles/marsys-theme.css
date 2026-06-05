@@ -1,0 +1,168 @@
+/*
+ * marsys-theme.css — MARSYS Design System v1.0 (gold-on-black)
+ *
+ * Variables from the uploaded design system (2026-06-05).
+ * Used by the Cockpit v2 shell and all .marsys-scoped surfaces.
+ * Import path: @/lib/styles/marsys-theme.css
+ *
+ * DO NOT rename tokens without grepping all consumers.
+ */
+
+:root {
+  /* ── Surface family ──────────────────────────────────────────────────── */
+  --black:            #0A0806;
+  --black-deep:       #000000;
+  --black-raised:     #14110B;
+  --black-line:       #241D10;
+
+  /* ── Text ────────────────────────────────────────────────────────────── */
+  --cream:            #F3EEE2;
+  --on-dark:          #F3EEE2;
+  --on-dark-mut:      #B9AE93;
+  --on-dark-faint:    #7C725B;
+
+  /* ── Gold accent family ──────────────────────────────────────────────── */
+  --gold-high:        #ECC56A;
+  --gold-bright:      #D2A23C;
+  --gold-core:        #A87C2A;
+  --gold-deep:        #8A5E12;
+  --gold-engrave:     #6E4E0F;
+
+  /* ── Jewel accents (layer / state colours) ───────────────────────────── */
+  --jewel-amethyst:   #43305A;
+  --jewel-emerald:    #1F4A3D;
+  --jewel-garnet:     #5E2030;
+  --jewel-sapphire:   #1E3A5F;
+  --jewel-teal:       #1C4A4A;
+
+  /* ── Semantic status ─────────────────────────────────────────────────── */
+  --marsys-success:   #3E7C4B;
+  --marsys-warning:   #C8922A;
+  --marsys-error:     #B5474C;
+
+  /* ── Typography stacks ───────────────────────────────────────────────── */
+  --display-stack:    "Trajan Pro", "Cormorant Garamond", Garamond, "Times New Roman", serif;
+  --doc-stack:        Garamond, "Cormorant Garamond", Cambria, "Times New Roman", serif;
+  --ui-stack:         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono-stack:       ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* ── Border radius ────────────────────────────────────────────────────── */
+  --r-btn:            6px;
+  --r-card:           12px;
+}
+
+/* ── Panel variants ──────────────────────────────────────────────────────── */
+.marsys-panel {
+  background: var(--black-raised);
+  border: 1px solid var(--black-line);
+  border-radius: var(--r-card);
+  padding: 26px;
+}
+.marsys-panel-gold-top {
+  background: var(--black-raised);
+  border: 1px solid var(--black-line);
+  border-top: 2px solid var(--gold-core);
+  border-radius: var(--r-card);
+  padding: 26px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.marsys-btn-primary {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold-core));
+  color: #1A1206;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--r-btn);
+  cursor: pointer;
+}
+.marsys-btn-secondary {
+  background: transparent;
+  color: var(--gold-high);
+  border: 1px solid var(--gold-core);
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--r-btn);
+  cursor: pointer;
+}
+
+/* ── Chips ───────────────────────────────────────────────────────────────── */
+.marsys-chip {
+  border-radius: 999px;
+  background: rgba(168, 124, 42, 0.12);
+  color: var(--gold-high);
+  border: 1px solid var(--gold-engrave);
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+/* ── Typography helpers ──────────────────────────────────────────────────── */
+.marsys-h2 {
+  font-family: var(--display-stack);
+  font-variant: small-caps;
+  font-size: 44px;
+  color: var(--gold-high);
+}
+.marsys-h3 {
+  font-family: var(--display-stack);
+  font-size: 22px;
+  color: var(--gold-bright);
+}
+.marsys-h4 {
+  font-size: 17px;
+  color: var(--on-dark);
+}
+.marsys-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-core);
+}
+.marsys-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  background: var(--gold-deep);
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* ── Asset state accents ─────────────────────────────────────────────────── */
+/* lit: verified, full */
+.marsys-state-lit {
+  border-color: var(--jewel-emerald);
+  color: var(--gold-high);
+}
+/* building: in-progress */
+.marsys-state-building {
+  border-color: var(--gold-bright);
+  color: var(--gold-high);
+  animation: marsys-pulse 1.4s ease-in-out infinite;
+}
+/* amber: built but thin */
+.marsys-state-amber {
+  border-color: var(--marsys-warning);
+  color: var(--marsys-warning);
+}
+/* dim: pending */
+.marsys-state-dim {
+  border-color: var(--on-dark-faint);
+  color: var(--on-dark-mut);
+}
+/* failed */
+.marsys-state-failed {
+  border-color: var(--marsys-error);
+  color: var(--marsys-error);
+}
+/* bedrock: Brahmagyan / Mīmāṃsā substrate */
+.marsys-state-bedrock {
+  border-color: var(--gold-core);
+}
+
+@keyframes marsys-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
