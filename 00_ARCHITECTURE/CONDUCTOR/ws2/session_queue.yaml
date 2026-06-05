@@ -245,7 +245,13 @@ sessions:
 
   - id: red-team-is8b
     layer: red_team
-    status: pending
+    status: passed
+    closed_at: 2026-06-05
+    verdict: PASS_WITH_CLASS2
+    class_1_findings: []
+    class_2_findings: [C2-001, C2-002]
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/red-team-pass.md
+    report: 00_ARCHITECTURE/CONDUCTOR/ws2/RED_TEAM_IS8B_REPORT.md
     role: adversarial swarm (Pramana + external red-team agent)
     scope: per master arch §IS.8(b) — full-instrument red team on grounded, full-depth instrument
     acceptance: no class-1 findings; class-2 findings have remediation plan committed.
