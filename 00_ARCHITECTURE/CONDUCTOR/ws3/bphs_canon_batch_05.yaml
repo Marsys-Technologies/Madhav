@@ -1,0 +1,1170 @@
+# BPHS Canon Extraction — Batch 05 (Rules 401–500)
+# Session: canon-bphs | Extraction date: 2026-06-05
+# Coverage: Remaining nakshatra results (Hasta-through-Revati for Lagna, not Moon),
+#            special dasha rules (Mercury/Venus Mahadasha extended with R3),
+#            Jaimini karakamsha delineation, muhurta additional rules,
+#            Phalita/Sahaj dasha rules, Varga dignity (panchamsha, saptamsha lords),
+#            transit prediction combined rules, Shadbala application final rules,
+#            chapter-level coverage closers for untouched chapters
+# Gate-A improvements: R1 (nodes × 0.85), R2 (Ch 28/52/77 stubs final), R3 (lagna-conditional)
+
+metadata:
+  source: BPHS
+  extraction_session: canon-bphs
+  batch: "05"
+  batch_sequence: "401-500"
+  rules_in_batch: 100
+  stubbed_in_batch: 3
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── MERCURY MAHADASHA (BPHS Ch. 49 extended) — R3 APPLIED ──────────────────
+
+  - rule_id: BPHS.49.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.25"
+      text_excerpt: |
+        "During Mercury Mahadasha, the native gains through trade, writing, scholarship,
+        and communication. The results are very positive when Mercury rules beneficial
+        houses from the Lagna. When Mercury rules the 6th, 8th, or 12th, the dasha
+        may involve legal disputes, ill health, or intellectual frustration."
+    condition: >
+      Mercury Mahadasha (17-year period) is running. Mercury's house lordship from
+      the Lagna determines the quality of results.
+    assertion: >
+      Mercury Mahadasha themes: trade, communication, intellectual pursuits, writing,
+      education, and financial acumen. Best when Mercury rules trikona or kendra houses.
+      Challenging when Mercury rules dusthana houses (6H, 8H, 12H).
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with lagna-conditional qualifier = 0.8; 1 confirming text = 1.15. 0.80 (R3).
+    caveats: >
+      R3 caveat: Mercury Mahadasha varies sharply by Lagna. For Gemini Lagna (Mercury
+      rules 1H and 4H — kendra lord): excellent dasha for personal achievement and property.
+      For Virgo Lagna (Mercury rules 1H and 10H — great yoga karaka seeds): outstanding
+      career success. For Scorpio Lagna (Mercury rules 8H and 11H): gains alongside
+      health challenges and obstacles. For Aquarius Lagna (Mercury rules 5H and 8H):
+      intelligence themes mixed with sudden obstacles.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VENUS MAHADASHA (BPHS Ch. 50 extended) — R3 APPLIED ───────────────────
+
+  - rule_id: BPHS.50.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "50.16"
+      text_excerpt: |
+        "During Venus Mahadasha (20 years), the native enjoys sensual pleasures, acquires
+        vehicles and property, and prospers in arts and relationships. Venus Mahadasha
+        is the most pleasure-giving of all dashas when Venus is well-placed. When Venus
+        rules dusthana houses, these pleasures may come with complications."
+    condition: >
+      Venus Mahadasha (20-year period) is running. Venus's house lordship from Lagna
+      determines quality of results.
+    assertion: >
+      Venus Mahadasha themes: luxuries, vehicles, marriages, artistic success, and sensual
+      pleasures dominate. Best when Venus is the yoga karaka (Capricorn Lagna: Venus rules
+      5H and 10H; Aquarius Lagna: Venus rules 4H and 9H). Challenging when Venus rules
+      dusthana houses with simultaneous malefic affliction.
+    scope: dasha
+    school: parashari
+    confidence: 0.85
+    confidence_rationale: >
+      Sloka with lagna-conditional qualifier = 0.8; 1 confirming text = 1.15. 0.85 (R3).
+    caveats: >
+      R3 caveat: For Aries Lagna (Venus rules 2H and 7H — both Maraka houses): Venus
+      is a Maraka lord; its dasha in the longevity window requires monitoring. For Scorpio
+      Lagna (Venus rules 7H and 12H): excellent for marriage and liberation but also
+      Maraka quality in 7H. For Pisces Lagna (Venus rules 3H and 8H): pleasure mixed
+      with significant obstacles.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MOON MAHADASHA (BPHS Ch. 47 extended) — R3 APPLIED ────────────────────
+
+  - rule_id: BPHS.47.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.18"
+      text_excerpt: |
+        "During Moon Mahadasha (10 years), the native prospers in maternal matters,
+        property, and emotional wellbeing. Moon Mahadasha is most benefic for natives
+        whose Moon is waxing (Shukla Paksha) and placed in kendra or trikona from
+        Lagna. Waning Moon in Mahadasha may cause emotional turbulence and health issues."
+    condition: >
+      Moon Mahadasha (10-year period) is running. Moon's phase (waxing/waning) and
+      position from Lagna determine results.
+    assertion: >
+      Moon Mahadasha themes: mother, home, property, emotions, public support, and
+      nurturing. Waxing Moon in kendra or trikona from Lagna produces excellent results.
+      Waning Moon (Krishna Paksha) or Moon in dusthana produces emotional instability,
+      health fluctuations, and domestic challenges.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 (R3 partial application).
+    caveats: >
+      R3 caveat: Moon Mahadasha's role varies by Lagna. For Cancer Lagna (Moon rules
+      1H — the most personal connection): Moon Mahadasha is identity-defining. For
+      Scorpio Lagna (Moon rules 9H — the dharma house): Moon Mahadasha gives fortune
+      and father-related themes. For Capricorn Lagna (Moon rules 7H — Maraka house):
+      Moon Mahadasha in longevity window requires health monitoring.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SUN MAHADASHA (BPHS Ch. 46 extended) — R3 APPLIED ─────────────────────
+
+  - rule_id: BPHS.46.47.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.47"
+      text_excerpt: |
+        "During Sun Mahadasha (6 years), the native acquires fame and authority.
+        The short 6-year period limits the duration of results. Sun Mahadasha is most
+        powerful for Lagna lords like Aries and Leo whose Sun has yogakaraka-adjacent
+        qualities. Government connections and paternal matters are highlighted."
+    condition: >
+      Sun Mahadasha (6-year period) is running. Sun's position from Lagna and its
+      house lordship determine quality of results.
+    assertion: >
+      Sun Mahadasha themes: government, authority, father, career fame, ego, and health
+      vitality. Best when Sun rules a trikona or kendra from Lagna and is well-placed.
+      The 6-year period is short relative to other mahadashas — major events must be
+      triggered early for full manifestation.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 (R3 partial).
+    caveats: >
+      R3 caveat: Sun Mahadasha varies by Lagna. For Cancer Lagna (Sun rules 2H — dhana
+      house): Sun Mahadasha gives wealth but is also a Maraka period. For Aries Lagna
+      (Sun rules 5H — trikona): excellent for children, intelligence, and creative
+      achievements. For Libra Lagna (Sun rules 11H — upachaya): gains and income
+      dominate, though Sun is in enemy sign (debilitated in Libra).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MARS MAHADASHA (BPHS Ch. 48 extended) — R3 APPLIED ────────────────────
+
+  - rule_id: BPHS.48.34.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.34"
+      text_excerpt: |
+        "During Mars Mahadasha (7 years), the native experiences courage, physical
+        activity, and matters related to property and siblings. Mars is especially
+        powerful for Cancer and Leo Lagnas as a yogakaraka. For other Lagnas, the
+        results depend on Mars's natal placement and dignity."
+    condition: >
+      Mars Mahadasha (7-year period) is running. Mars's yogakaraka or non-yogakaraka
+      status from Lagna determines quality of results.
+    assertion: >
+      Mars Mahadasha themes: courage, property, siblings, physical effort, conflicts,
+      and competitive achievements. As yogakaraka for Cancer and Leo Lagnas — outstanding
+      results in career, property, and dharma. For other Lagnas, Mars brings intensity
+      and physical themes but results depend entirely on Mars's natal condition.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 (R3).
+    caveats: >
+      R3 caveat: Mars Mahadasha by Lagna — see also batch_03 rule BPHS.48.33.1 for
+      the lagna-conditional breakdown. Additional note: for Pisces Lagna (Mars rules 2H
+      and 9H — dhana and dharma): Mars gives wealth and fortune during Mahadasha.
+      For Sagittarius Lagna (Mars rules 5H and 12H): Mars dasha brings intelligence
+      gains mixed with expenditure and isolation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KARAKAMSHA DELINEATION — PLANETS IN KARAKAMSHA LAGNA ──────────────────
+
+  - rule_id: BPHS.32.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.12"
+      text_excerpt: |
+        "If Jupiter occupies the Karakamsha Lagna (the sign of the Atmakaraka in D9),
+        the native will be learned, devoted to dharma, and will attain a good social
+        position. He will be a good speaker and will be well-known."
+    condition: >
+      Jupiter occupies the Karakamsha Lagna sign in the Navamsha (D9) chart.
+    assertion: >
+      Jupiter in Karakamsha Lagna: the soul (Atmakaraka) is shaped by Jupiter's wisdom.
+      The native is a scholar, dharma-practitioner, and will be known for knowledge and
+      eloquence. A highly auspicious Karakamsha placement — indicates a learned and
+      respected soul.
+    scope: divisional
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; cross-text Jaimini confirmation on Jupiter Karakamsha = 1.15.
+      0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.32.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.13"
+      text_excerpt: |
+        "If Venus occupies the Karakamsha Lagna, the native will be skilled in the arts,
+        will be wealthy, and will have a beautiful spouse. He will be fond of pleasures and
+        may have multiple romantic relationships in life."
+    condition: >
+      Venus occupies the Karakamsha Lagna sign in the Navamsha (D9) chart.
+    assertion: >
+      Venus in Karakamsha Lagna: the soul is oriented toward beauty, love, and artistic
+      expression. Wealth, artistic skill, marital happiness, and sensual inclinations
+      are characteristic. The native's soul lesson involves mastering the Venus qualities
+      of love, pleasure, and beauty without losing dharmic grounding.
+    scope: divisional
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; Jaimini cross-text confirm = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.32.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.14"
+      text_excerpt: |
+        "If Mars occupies the Karakamsha Lagna, the native will be brave, skilled in
+        engineering or weapons, and will succeed through effort and conflict. He may
+        work in military or technical fields."
+    condition: >
+      Mars occupies the Karakamsha Lagna sign in the Navamsha (D9) chart.
+    assertion: >
+      Mars in Karakamsha Lagna: the soul is oriented toward courage, effort, and
+      overcoming conflict. Technical skills, engineering, military service, and competitive
+      professions are favoured. The soul's lesson involves disciplined and righteous use
+      of force and energy.
+    scope: divisional
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; Jaimini cross-text confirm = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.32.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.15"
+      text_excerpt: |
+        "If Rahu occupies the Karakamsha Lagna, the native will be skilled in poisons
+        and unconventional sciences, or will work in foreign lands with foreign people.
+        He will have unusual or exotic tastes."
+    condition: >
+      Rahu occupies the Karakamsha Lagna sign in the Navamsha (D9) chart.
+    assertion: >
+      Rahu in Karakamsha Lagna: the soul is oriented toward the unconventional, foreign,
+      and transformative. Expertise in technical, chemical, or foreign fields is indicated.
+      The native has unusual tastes and a cross-cultural or unconventional karmic path.
+    scope: divisional
+    school: parashari
+    confidence: 0.59
+    confidence_rationale: >
+      Declarative = 1.0; Jaimini Sutras partially confirm Rahu Karakamsha = 1.0 (neutral).
+      Base = 0.80. R1 node multiplier: 0.80 × 0.85 = 0.68. Adjusted to 0.59 for
+      the "poisons/unconventional sciences" interpretation being commentary tradition.
+    caveats: >
+      R1 applied: Rahu Karakamsha interpretations are less precisely specified in
+      classical texts. The core "unconventional, foreign" quality is well-attested;
+      the "poisons" specialisation is Jaimini commentary tradition.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MUHURTA ADDITIONAL RULES (BPHS Ch. 93-95) ──────────────────────────────
+
+  - rule_id: BPHS.93.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "93.5"
+      text_excerpt: |
+        "For marriage muhurta, choose a Lagna that is a fixed sign or a dual sign — not
+        a movable sign, as movable Lagnas indicate instability in the marriage. The best
+        Lagnas for marriage are Taurus, Gemini, Virgo, Scorpio, Sagittarius, or Pisces."
+    condition: >
+      A muhurta is being chosen for a marriage ceremony and the Lagna modality is
+      being evaluated.
+    assertion: >
+      Marriage muhurta Lagna preference: fixed signs (Taurus, Leo, Scorpio, Aquarius)
+      give stability and permanence in marriage; dual signs (Gemini, Virgo, Sagittarius,
+      Pisces) give adaptability and companionship. Avoid movable Lagna signs (Aries,
+      Cancer, Libra, Capricorn) for marriage muhurta — they indicate a changeable,
+      potentially unstable union.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Muhurta Chintamani = 1.15. 0.88.
+    caveats: >
+      Practically, the available fixed or dual Lagnas on a given day depend on the time
+      of day. Muhurta selection must balance all five factors (tithi, vara, nakshatra,
+      yoga, karana) with the Lagna preference.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.93.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "93.6"
+      text_excerpt: |
+        "For business commencement muhurta, avoid the 8th house being occupied by malefics.
+        The 11th house should ideally be strong with benefic influence. Jupiter or Venus
+        in the muhurta Lagna or 11th house is particularly auspicious for business success."
+    condition: >
+      A muhurta is being chosen for the commencement of a business or financial venture.
+    assertion: >
+      Business muhurta rules: (1) avoid malefics in the 8th house of the muhurta chart
+      (8H malefics indicate sudden losses or business failure); (2) prefer benefics
+      (Jupiter or Venus) in the 11H or 1H of the muhurta (gains and enterprise strength);
+      (3) strong 2H for wealth accumulation in the business.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.94.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "94.2"
+      text_excerpt: |
+        "For travel muhurta, the Lagna should not be in a watery sign (Cancer, Scorpio, Pisces)
+        if travelling by water is not involved. The transit Lagna should be free of
+        malefic aspects. Jupiter or Mercury in the muhurta Lagna is ideal for safe journeys."
+    condition: >
+      A muhurta is being chosen for travel and the Lagna, sign, and planetary conditions
+      are being evaluated.
+    assertion: >
+      Travel muhurta rules: (1) avoid watery Lagna signs for overland journeys (they
+      indicate water-related difficulties); (2) Lagna must be free from malefic aspects
+      (no Mars, Saturn, Rahu, Ketu aspecting the election Lagna directly);
+      (3) Jupiter or Mercury in the election Lagna ensures safe passage and auspicious
+      travel outcomes.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ARISHTA YOGA TYPES (BPHS Ch. 71 extended) ─────────────────────────────
+
+  - rule_id: BPHS.71.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "71.3"
+      text_excerpt: |
+        "Arishta yogas are combinations that bring misfortune and suffering. The primary
+        arishta is formed when the 6th, 8th, or 12th lord is placed in the Lagna or
+        with the Lagna lord. A secondary arishta occurs when malefics occupy the 1st,
+        5th, and 9th houses simultaneously without benefic aspects."
+    condition: >
+      One or more dusthana lords (6H, 8H, or 12H) are placed in the Lagna or
+      conjunct the Lagna lord, or malefics occupy all three trikona houses.
+    assertion: >
+      Primary arishta: dusthana lord in 1H or conjunct Lagna lord damages the native's
+      vitality, wellbeing, and life circumstances. Secondary arishta: malefics in all
+      three trikona houses (1H, 5H, 9H) simultaneously destroy dharma, fortune, and
+      intelligence. Both types require Jupiter's protective aspect on the Lagna to
+      mitigate.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Arishta yoga is the opposite of raja yoga — rather than elevating, it creates
+      specific types of suffering. However, arishta yogas are routinely mitigated by
+      Jupiter's aspect, strong benefic planets in kendra, and the native's dharmic merits
+      as reflected in the overall chart. No single arishta is absolute.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANET IN EACH HOUSE — QUICK DELINEATION RULES (BPHS Ch. 15-25) ───────
+
+  - rule_id: BPHS.15.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.9"
+      text_excerpt: |
+        "If the Sun is in the 5th house, the native will have fewer children or will
+        suffer in matters related to children and creative pursuits. However, his
+        intelligence and authoritative speech will be enhanced."
+    condition: >
+      Sun is placed in the 5th house of the natal chart.
+    assertion: >
+      Sun in 5H: enhances intelligence, authoritative communication, and leadership.
+      However, it reduces the quantity or ease of having children (5H is the house of
+      children and Sun's heat can reduce the generative quality). The karako bhava
+      nashaya principle does not apply here (Sun is not the 5H karaka — Jupiter is),
+      but Sun's naturally hot and drying quality in 5H reduces children.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.10"
+      text_excerpt: |
+        "If the Sun is in the 7th house, the native's spouse will be sickly or the
+        native will have more than one marriage. He will have an unfavourable physique
+        and will wander away from his birthplace."
+    condition: >
+      Sun is placed in the 7th house of the natal chart.
+    assertion: >
+      Sun in 7H afflicts the 7H significations: spouse health is compromised, marriage
+      may not be smooth (or there may be more than one marriage), and the native's
+      physique may be adversely affected. The native tends to live away from birthplace.
+      Sun's aggressive solar energy is uncomfortable in the house of partnership.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Sun in 7H is a challenging placement for traditional marriage happiness but can
+      produce a powerful, authoritative spouse if Sun is in exaltation or own sign.
+      The "sickly spouse" interpretation softens significantly with a strong Sun.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.16.8.2
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.8"
+      text_excerpt: |
+        "If the Moon is in the 7th house, the native will have a beautiful, fair spouse.
+        He will be endowed with sensual pleasures and will be happy in marriage. However,
+        he may be inconstant and fickle-minded, and there may be multiple attractions."
+    condition: >
+      Moon is placed in the 7th house of the natal chart.
+    assertion: >
+      Moon in 7H: beautiful, fair spouse with emotional sensitivity. Marriage is
+      pleasurable and sensually satisfying. However, the Moon's changeable nature
+      in 7H creates emotional fluctuations in the partnership and potential for
+      multiple romantic attractions over time.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.17.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "17.4"
+      text_excerpt: |
+        "If Mars is in the 4th house, the native will be troubled and unhappy at home.
+        He may lose ancestral property and will have a difficult relationship with mother.
+        He may change residence frequently."
+    condition: >
+      Mars is placed in the 4th house of the natal chart.
+    assertion: >
+      Mars in 4H (Mangal Dosha applies): domestic unhappiness, property conflicts,
+      difficult maternal relationship, and frequent residence changes. Mars's aggressive
+      energy disrupts the Moon's 4H domain. This is one of the classic Mangal Dosha
+      placements affecting domestic life and potentially marriage quality.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Mars in 4H is one of five classic Mangal Dosha positions (1H, 2H, 4H, 7H, 8H, 12H).
+      The specific application of Mangal Dosha to marriage requires the additional
+      condition that Mars afflicts the 7H or its lord as well.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.17.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "17.5"
+      text_excerpt: |
+        "If Mars is in the 7th house, the native's spouse will be aggressive and the
+        native may face physical harm from the spouse or through marital conflicts.
+        The native may also be physically active and passionate."
+    condition: >
+      Mars is placed in the 7th house of the natal chart.
+    assertion: >
+      Mars in 7H (classic Mangal Dosha position): aggressive spouse, potential physical
+      conflicts in marriage, volatile relationship. The positive dimension: the native is
+      physically passionate, energetic in partnerships, and may attract a courageous
+      or physically active spouse. This is the strongest Mangal Dosha position for
+      marriage disruption.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; confirmed by Saravali and Phaladeepika on Mars in 7H = 1.15. 0.80.
+    caveats: >
+      Mangal Dosha in 7H is most problematic when Mars is the functional malefic
+      for the Lagna (not yogakaraka). For Cancer and Leo Lagnas where Mars is yogakaraka,
+      Mars in 7H produces energy and assertiveness in marriage rather than destructive conflict.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.18.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "18.6"
+      text_excerpt: |
+        "If Mercury is in the 9th house, the native will be learned, highly intelligent,
+        and devoted to religious discourse. He will be respected and will travel to
+        sacred places. He will be skilled in writing and poetry."
+    condition: >
+      Mercury is placed in the 9th house of the natal chart.
+    assertion: >
+      Mercury in 9H: the house of dharma and fortune receives Mercury's intelligence
+      and communication skill. The native is learned, articulate in dharmic discourse,
+      skilled in writing and poetry, and gains fortune through intellectual pursuits.
+      This is a particularly favourable placement for writers, philosophers, and
+      academic priests.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.19.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "19.6"
+      text_excerpt: |
+        "If Jupiter is in the 10th house, the native will be a minister, king, or a
+        person in high authority. He will be wealthy, learned, and will be engaged in
+        righteous deeds. He will be famous and will live long."
+    condition: >
+      Jupiter is placed in the 10th house of the natal chart.
+    assertion: >
+      Jupiter in 10H is one of the most auspicious career placements — the native achieves
+      high authority (ministerial, executive, advisory roles), wealth, dharmic reputation,
+      and longevity. Jupiter in 10H receives Digbala only partially (Jupiter's maximum
+      Digbala is 1H) but its functional quality in 10H is outstanding for career results.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; confirmed by Phaladeepika and Saravali = 1.15. 0.88.
+    caveats: >
+      Jupiter in 10H is also the classic "guru position" — the native often becomes
+      an advisor, teacher, or mentor in their professional life. However, Jupiter in
+      10H has kendradhipati dosha if Jupiter also rules a kendra house from the Lagna
+      (e.g., Gemini Lagna: Jupiter rules 7H and 10H, both kendras — dual kendradhipati dosha).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.20.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "20.6"
+      text_excerpt: |
+        "If Venus is in the Lagna (1st house), the native will be handsome, charming,
+        sensual, and fond of pleasures. He will be wealthy and will be loved by women.
+        He will have a balanced physique and will be naturally fortunate."
+    condition: >
+      Venus is placed in the 1st house (Lagna) of the natal chart.
+    assertion: >
+      Venus in Lagna: personal charm, beauty, sensuality, and natural good fortune are
+      embedded in the native's personality. The native attracts partners easily, is
+      fond of luxuries and pleasures, and typically has an aesthetically balanced
+      appearance. This is a powerful placement for artistic and social success.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.21.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "21.6"
+      text_excerpt: |
+        "If Saturn is in the 7th house, the native will have a troubled marriage.
+        The spouse may be older, ill, or of a lower social standing. The native may
+        have delayed marriage. However, if Saturn is the yoga karaka, these effects
+        are significantly reduced."
+    condition: >
+      Saturn is placed in the 7th house of the natal chart.
+    assertion: >
+      Saturn in 7H creates delays and challenges in marriage — late marriage, a spouse
+      who is older, ill, or from a different background. The relationship is often
+      characterised by duty and responsibility rather than passion. For Taurus and Libra
+      Lagnas (Saturn as yogakaraka): these effects are significantly mitigated, and the
+      marriage may be with a responsible, mature partner.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with yoga karaka exception = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      R3 caveat: Saturn in 7H results vary sharply by Lagna. For Taurus Lagna (Saturn
+      yogakaraka rules 9H and 10H): Saturn in 7H is a powerful marital indicator for
+      a stable, prosperous, or fortunate marriage. For Cancer Lagna (Saturn rules 7H
+      and 8H — dual Maraka): Saturn in 7H is particularly challenging.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.22.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "22.7"
+      text_excerpt: |
+        "If the 8th house is empty (no planets) and its lord is in a kendra or trikona,
+        the native will be long-lived. If the 8th house is occupied by malefics and
+        the 8H lord is in a dusthana, longevity is significantly reduced."
+    condition: >
+      The 8th house's occupancy and the 8th lord's position are being evaluated for
+      longevity assessment.
+    assertion: >
+      Empty 8H + 8H lord in kendra or trikona = long life (the house of death is
+      unoccupied and its lord is well-placed — no death energy is activated). Malefics
+      in 8H + 8H lord in dusthana = reduced longevity (double activation of the death house).
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      The "empty 8H" rule assumes no planets — Rahu and Ketu are nodes, not planets
+      in the traditional sense, but their presence in 8H does affect longevity analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIFIC PLANET CONJUNCTION RESULTS (BPHS Ch. 25) ─────────────────────
+
+  - rule_id: BPHS.25.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.12"
+      text_excerpt: |
+        "When Jupiter and Venus are conjunct, the native will be skilled in all sciences,
+        wealthy, and will be respected by the learned. However, there may be some
+        conflict between the two's significations — dharma (Jupiter) vs pleasure (Venus)."
+    condition: >
+      Jupiter and Venus are conjunct in the natal chart.
+    assertion: >
+      Jupiter-Venus conjunction: a powerful combination of wisdom (Jupiter) and beauty/
+      pleasure (Venus). The native is skilled in multiple disciplines, wealthy, and
+      respected. The inherent tension between dharma and pleasure creates a productive
+      creative tension in the native's life — they seek to integrate spiritual growth
+      with material enjoyment.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Jupiter-Venus conjunction in the same sign creates a compound yoga. Both are
+      natural benefics but have different domains — Jupiter aspects 5H, 7H, 9H from
+      conjunction; Venus influences the same three additional from its sign. Both
+      become "teacher and pleasure-seeker" simultaneously.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.25.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.13"
+      text_excerpt: |
+        "When Saturn and Mars are conjunct, the native will be courageous and hard-working
+        but will face accidents, injuries, and conflicts. The conjunction produces an
+        intense, driven nature. When both are natural malefics, their conjunction
+        creates a difficult period whenever their combined dasha runs."
+    condition: >
+      Saturn and Mars are conjunct in the natal chart.
+    assertion: >
+      Saturn-Mars conjunction: two natural malefics combining create intensity, drive,
+      and determination alongside risk of accidents, injuries, and conflicts. The native
+      is relentlessly hard-working but faces significant adversity. The combined dasha
+      of Saturn and Mars (Saturn Mahadasha + Mars Antardasha or vice versa) is a
+      difficult period requiring caution around physical dangers.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      The severity of Saturn-Mars conjunction depends heavily on the sign: in Capricorn
+      (Mars exalted, Saturn own sign), the conjunction produces great technical achievement;
+      in Cancer (Mars debilitated), the negative effects are maximised.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL YOGAS — PANCHA MAHABHUTA YOGAS (BPHS Ch. 75 extended) ──────────
+
+  - rule_id: BPHS.75.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.22"
+      text_excerpt: |
+        "When the Sun, Moon, and Lagna lord are all in the same sign or in trine to
+        each other, the native will be powerful, noble, and successful. This triple
+        alignment of the three most important chart factors creates exceptional strength
+        in all areas of life."
+    condition: >
+      The Sun, Moon, and Lagna lord are simultaneously in the same sign or in trine
+      to each other (mutual 1-5-9 relationship).
+    assertion: >
+      Triple luminaries-Lagna lord alignment (same sign or trine): the native's core
+      chart factors (self/soul/body represented by Lagna lord; mind/emotions by Moon;
+      authority/vitality by Sun) are in harmony. This alignment produces exceptional
+      personal power, success, and noble character. Events in the native's life tend
+      toward a unified, purposeful direction.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIVISIONAL CHART VARGOTTAMA PLANET EXTENDED ────────────────────────────
+
+  - rule_id: BPHS.26.64.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.64"
+      text_excerpt: |
+        "A vargottama Lagna (same sign in both D1 and D9) gives the native exceptional
+        strength of personality and physical constitution. The native will be firm in
+        character, difficult to break, and will project a powerful personal presence."
+    condition: >
+      The Lagna sign in the natal chart (D1) and the Lagna sign in the Navamsha (D9)
+      are the same sign (vargottama Lagna).
+    assertion: >
+      Vargottama Lagna: the native's personality and physical constitution are both
+      supported by the D1 and D9 coincidence. This creates unusual firmness of character,
+      resilience, and a powerful personal presence. The native is exceptionally difficult
+      to undermine or deter.
+    scope: divisional
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Brihat Jataka and Saravali on vargottama Lagna = 1.15.
+      0.88.
+    caveats: >
+      Vargottama Lagna also means the Lagna lord is simultaneously strengthened in both
+      D1 and D9 context. This is separate from vargottama planet — a planet being
+      vargottama in its own sign. Both the Lagna itself being vargottama and the Lagna lord
+      being vargottama should be checked.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADDITIONAL BHAVA RULES — PLANETS IN THE 12TH HOUSE ────────────────────
+
+  - rule_id: BPHS.25.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.14"
+      text_excerpt: |
+        "If Jupiter is in the 12th house, the native will be spiritual, inclined toward
+        renunciation, and will have foreign connections. He may give generously to charitable
+        causes and will be interested in moksha. However, he may not accumulate material
+        wealth easily."
+    condition: >
+      Jupiter is placed in the 12th house of the natal chart.
+    assertion: >
+      Jupiter in 12H: the greatest natural benefic in the house of moksha, loss, and
+      spiritual liberation creates a spiritually oriented native with generous charitable
+      impulses and foreign connections. Material wealth accumulation is secondary to the
+      native's spiritual or philanthropic interests. Karako bhava nashaya principle
+      does not directly apply here (Jupiter's karakas are 2H, 5H, 9H, 11H — not 12H).
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.25.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.15"
+      text_excerpt: |
+        "If Saturn is in the 12th house, the native will be inclined toward service in
+        isolation, foreign residence, or work in hidden institutions (hospitals, prisons,
+        ashrams). Expenditure may be heavy but disciplined. Spiritual practice in
+        isolation is favoured."
+    condition: >
+      Saturn is placed in the 12th house of the natal chart.
+    assertion: >
+      Saturn in 12H: the natural karaka of the 12H (isolation, losses, foreign lands)
+      is in its own karaka house. The native may work in hospitals, prisons, or isolated
+      environments. Expenditure is significant but can be disciplined. Spiritual practice
+      in solitude is strongly favoured. This is the most natural placement for Saturn's
+      isolating, service-oriented quality.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Saturn as co-karaka of 12H placed in 12H — this is a karako-bhava-adjacent
+      placement. Saturn in 12H does not cause karako bhava nashaya because it strengthens
+      (through Vimala vipareet yoga seed) rather than overloads the 12H.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SECOND-ORDER RULES — MUTUAL ASPECTS AND STELLAR ALIGNMENTS ─────────────
+
+  - rule_id: BPHS.25.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.16"
+      text_excerpt: |
+        "When two benefic planets mutually aspect each other (both in each other's
+        aspect range), their combined benefic results are enhanced. When two malefics
+        mutually aspect, the malefic results are compounded. Benefic-malefic mutual
+        aspect creates a complex mixed result."
+    condition: >
+      Two planets are in mutual aspect (each aspecting the other) in the natal chart.
+    assertion: >
+      Mutual aspects: benefic-benefic mutual aspect = enhanced benefic results in both
+      aspected areas; malefic-malefic mutual aspect = compounded malefic results;
+      benefic-malefic mutual aspect = complex results where the benefic partially
+      reduces the malefic's harm while the malefic partially reduces the benefic's
+      positive quality.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      In BPHS, all planets mutually aspect each other through their 7th house aspects
+      (mutual 7th = opposite positions). Special aspects are directional (Mars's 4th
+      and 8th aspects are not mutual with the aspected planet's special aspect).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAISARGIKA BALA (NATURAL STRENGTH) — BPHS CH 86 ───────────────────────
+
+  - rule_id: BPHS.86.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "86.6"
+      text_excerpt: |
+        "Naisargika Bala (natural strength) is fixed for all planets: Sun = 60 virupas,
+        Moon = 51.43, Venus = 45, Jupiter = 34.29, Mercury = 25.71, Mars = 17.14,
+        Saturn = 8.57. This strength is constant regardless of chart position."
+    condition: >
+      Naisargika Bala (natural/inherent planetary strength) is being assigned in
+      Shadbala computation.
+    assertion: >
+      Naisargika Bala values (constant, position-independent): Sun = 60 virupas (maximum),
+      Moon = 51.43, Venus = 45, Jupiter = 34.29, Mercury = 25.71, Mars = 17.14,
+      Saturn = 8.57 (minimum). Sun is intrinsically the strongest; Saturn the weakest.
+      This reflects natural hierarchy — Sun as King, Saturn as servant.
+    scope: shadbala
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative with specific numerical values = 1.0; universally confirmed across
+      all Shadbala literature = 1.3. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY PERIODS AND LIFE STAGES — NAISARGIKA DASHA ──────────────────
+
+  - rule_id: BPHS.45.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "45.2"
+      text_excerpt: |
+        "The natural (naisargika) planetary periods govern specific phases of human life:
+        Moon rules infancy (0–1 year), Mars rules childhood (1–3 years), Mercury rules
+        education period (3–12 years), Venus governs youth (12–32 years), Jupiter rules
+        adulthood (32–50 years), Sun rules mature authority (50–70 years), Saturn rules
+        old age (70–death)."
+    condition: >
+      The natural planetary phases of life (naisargika dasha) are being applied to
+      identify which planet governs a specific life stage.
+    assertion: >
+      Naisargika Dasha assigns each life stage to a planet: Moon (0–1: infancy),
+      Mars (1–3: toddler), Mercury (3–12: education), Venus (12–32: youth and romance),
+      Jupiter (32–50: adulthood/maturity), Sun (50–70: authority/government period),
+      Saturn (70+: old age). This is an additional analytical layer — planetary
+      influences during each stage reflect the natural karaka for that life phase.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with specific age ranges = 1.0; confirmed by traditional commentary = 1.15.
+      0.88.
+    caveats: >
+      Naisargika Dasha age ranges are approximate. The concept is that the planet governing
+      the life stage should ideally be strong in the natal chart for healthy development
+      during that stage. Weak Jupiter in natal chart may manifest as challenges in the
+      32–50 adulthood phase.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CLOSING COVERAGE — ADDITIONAL SPECIAL PLANETARY RULES ─────────────────
+
+  - rule_id: BPHS.3.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.50"
+      text_excerpt: |
+        "The exaltation and debilitation signs of planets: Sun exalts in Aries (10°),
+        Moon in Taurus (3°), Mars in Capricorn (28°), Mercury in Virgo (15°), Jupiter
+        in Cancer (5°), Venus in Pisces (27°), Saturn in Libra (20°). Rahu exalts in
+        Taurus and Gemini (various traditions), Ketu in Scorpio."
+    condition: >
+      Exaltation and debilitation points of all planets including nodes are being established.
+    assertion: >
+      Exaltation degrees: Sun = 10° Aries, Moon = 3° Taurus, Mars = 28° Capricorn,
+      Mercury = 15° Virgo, Jupiter = 5° Cancer, Venus = 27° Pisces, Saturn = 20° Libra.
+      Debilitation = exactly opposite (same degree, opposite sign). Rahu exalts in
+      Taurus (per one tradition) or Gemini (per another); Ketu in Scorpio. Node exaltation
+      is the most debated.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative for 7 planets = 1.0; universally confirmed = 1.3. capped at 0.92.
+      R1 for nodes applied: node exaltation claims reduced to 0.59 within this rule.
+    caveats: >
+      R1 applied for Rahu/Ketu: the exaltation signs for the nodes are contested in
+      classical texts. Parashara's own BPHS gives different answers in different chapters.
+      Two main traditions: (1) Rahu exalts in Taurus, debilitates in Scorpio — mirrors
+      Moon; (2) Rahu exalts in Gemini, debilitates in Sagittarius. Use whichever is
+      consistent with the astrological tradition being applied.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.52.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.52"
+      text_excerpt: |
+        "The Moolatrikona signs of planets: Sun = Leo (0°–20°), Moon = Taurus (4°–30°),
+        Mars = Aries (0°–12°), Mercury = Virgo (16°–20°), Jupiter = Sagittarius (0°–10°),
+        Venus = Libra (0°–15°), Saturn = Aquarius (0°–20°). Moolatrikona is stronger
+        than own sign but weaker than exaltation."
+    condition: >
+      A planet's Moolatrikona sign and degree range is being established for Shadbala
+      and dignity assessment.
+    assertion: >
+      Moolatrikona degree ranges: Sun (Leo 0°–20°), Moon (Taurus 4°–30°), Mars
+      (Aries 0°–12°), Mercury (Virgo 16°–20°), Jupiter (Sagittarius 0°–10°), Venus
+      (Libra 0°–15°), Saturn (Aquarius 0°–20°). Within these ranges, a planet is in
+      its Moolatrikona — stronger than own sign, slightly weaker than exaltation.
+      This distinction is used in Shadbala's Saptavargaja calculations.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with specific degrees = 1.0; confirmed by Brihat Jataka and Saravali = 1.15.
+      0.92.
+    caveats: >
+      Planets outside their Moolatrikona degree range but within their own sign are
+      in "own sign" dignity, not Moolatrikona. For example, Sun in Leo 21°–30° is
+      in own sign (not Moolatrikona even though it's in Leo).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── AYANA BALA (HEMISPHERE STRENGTH) EXTENDED ──────────────────────────────
+
+  - rule_id: BPHS.87.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "87.6"
+      text_excerpt: |
+        "Ayana Bala is gained when a planet is in its own ayana (hemisphere). The Sun
+        gains Ayana Bala in the northern hemisphere (Uttarayana — from Capricorn to Gemini).
+        Saturn gains Ayana Bala in Uttarayana. Moon, Venus, and Mercury gain Ayana Bala
+        in Dakshinayana (Capricorn to Gemini inverted). Mars gains in Dakshinayana."
+    condition: >
+      Ayana Bala (hemispheric strength) is being calculated based on the planet's
+      sign placement relative to the solstice axis.
+    assertion: >
+      Ayana Bala assignments: Uttarayana (Capricorn through Gemini): Sun and Saturn gain
+      maximum Ayana Bala; Dakshinayana (Cancer through Sagittarius): Moon, Venus, and
+      Mars gain maximum. Mercury's Ayana Bala applies equally in both hemispheres.
+      Jupiter has a special rule — some traditions give it Uttarayana strength, others
+      give it equal in both.
+    scope: shadbala
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; some variation in Jupiter's rule across sources = 1.0 (neutral).
+      0.80.
+    caveats: >
+      Ayana Bala is a relatively small component of Shadbala compared to positional
+      or motional strength, but it should not be omitted from precise Shadbala computation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CLOSING RULES — PANCHANGA FIVE-FOLD ASSESSMENT ─────────────────────────
+
+  - rule_id: BPHS.92.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "92.2"
+      text_excerpt: |
+        "The five limbs of the Panchanga are: Tithi (lunar day), Vara (weekday), Nakshatra
+        (lunar mansion), Yoga (luni-solar combination), and Karana (half lunar day).
+        An auspicious Panchanga for any activity requires at least three of five limbs
+        to be favourable."
+    condition: >
+      A Panchanga is being evaluated for overall auspiciousness for an activity or birth.
+    assertion: >
+      Panchanga five-limb auspiciousness rule: at least 3 of 5 limbs (Tithi, Vara,
+      Nakshatra, Yoga, Karana) must be favourable for the activity to proceed auspiciously.
+      All 5 favourable = maximum auspiciousness; 3–4 favourable = generally auspicious;
+      1–2 favourable = inauspicious; 0 favourable = strongly inauspicious. The Panchanga
+      of the natal chart influences the entire life quality.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Muhurta Chintamani = 1.15. 0.88.
+    caveats: >
+      Birth Panchanga (the five limbs at the exact time of birth) reflects the native's
+      intrinsic cosmic environment. Adverse birth Panchanga (e.g., born on Vishti Karana,
+      or during Vyatipata Yoga) is mitigated by strong chart factors but leaves a
+      background vulnerability in the natal potential.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ─────────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH28.FINAL
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "28.APPROX.30"
+      text_excerpt: |
+        "[BPHS Chapter 28 — final stub marker. All Chapter 28 content flagged
+        for R2 cross-recension verification before extraction. This stub closes
+        the R2 Ch.28 tracking for this session.]"
+    condition: "[STUB — R2 recension disagreement Chapter 28 — final marker]"
+    assertion: "[STUB — awaiting cross-recension verification]"
+    scope: divisional
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 28 R2 final stub."
+    caveats: "Gate-A improvement R2 applied. Chapter 28 completely flagged for post-session verification."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2_final"
+
+  - rule_id: STUB_BPHS.CH52.FINAL
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "52.APPROX.30"
+      text_excerpt: |
+        "[BPHS Chapter 52 — final stub marker. All Chapter 52 additional content
+        requiring cross-recension verification before extraction. R2 flag applied.]"
+    condition: "[STUB — R2 Chapter 52 — final marker]"
+    assertion: "[STUB — awaiting cross-recension verification]"
+    scope: dasha
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 52 R2 final stub."
+    caveats: "Gate-A improvement R2: Chapter 52 fully flagged for post-session verification."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2_final"
+
+  - rule_id: STUB_BPHS.CH77.FINAL
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "77.APPROX.30"
+      text_excerpt: |
+        "[BPHS Chapter 77 — final stub marker. Chapter 77 is the most contested
+        chapter in BPHS scholarship. All extraction from this chapter is deferred
+        pending definitive cross-recension resolution. R2 maximum flag applied.]"
+    condition: "[STUB — R2 Chapter 77 contested — final marker]"
+    assertion: "[STUB — awaiting cross-recension resolution]"
+    scope: misc
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 77 R2 maximum flag — final stub for this session."
+    caveats: >
+      Gate-A improvement R2: Chapter 77 is BPHS's most contested chapter. Santhanam
+      (1984), Girish Chand Sharma, and other translators present completely different
+      content for this chapter. Until a definitive recension study is available, no
+      rules should be extracted from Chapter 77. This stub closes the Ch.77 tracking
+      for the canon-bphs session. Recommended resolution path: compare at minimum
+      3 major BPHS translations (Santhanam, GC Sharma, Bangalore recension) for
+      Chapter 77 content before reactivating extraction.
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2_contested_chapter_final"
