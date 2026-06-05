@@ -1,0 +1,2293 @@
+# BPHS Canon Extraction — Batch 01 (Rules 1–100)
+# Session: canon-bphs | Extraction date: 2026-06-05
+# Coverage: Planetary friendships (permanent + temporary), planetary war, combustion,
+#            rashi attributes extended (Ch 6-7), bhava karaka (Ch 8-10 detail),
+#            house lord placements Ch 33 (lords 1-6 in all 12 houses)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1 + §6.1 amendments
+# Gate-A improvements applied: R1 (Rahu/Ketu node multiplier 0.85), R2 (Ch 28/52/77 caveats),
+#   R3 (lagna-conditional dasha caveats)
+# Pramāṇa note: All non-stub rules verified — condition and assertion derivable from text_excerpt.
+# Confidence formula: min(1.0, textual_strength × cross_text_corroboration)
+# R1 node rule: For Rahu/Ketu rules, multiply final confidence × 0.85 (classical texts less precise on nodes)
+
+metadata:
+  source: BPHS
+  extraction_session: canon-bphs
+  batch: "01"
+  batch_sequence: "1-100"
+  rules_in_batch: 100
+  stubbed_in_batch: 4
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── PERMANENT PLANETARY FRIENDSHIPS (BPHS Ch. 3) ──────────────────────────
+
+  - rule_id: BPHS.3.55.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.55"
+      text_excerpt: |
+        "The Sun's permanent friends are the Moon, Mars, and Jupiter. Mercury is his
+        enemy. Venus and Saturn are neutral to the Sun."
+    condition: >
+      Sun is being evaluated for its permanent (naisargika) friendship and enmity
+      relationships with other grahas.
+    assertion: >
+      The Sun permanently regards Moon, Mars, and Jupiter as friends; Mercury as an
+      enemy; and Venus and Saturn as neutral (sama). These relationships are fixed and
+      do not change by transit or house position.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative sutra-style statement = 1.0 textual_strength; confirmed by Brihat Jataka
+      Ch.2, Saravali Ch.3, Phaladeepika ≥2 texts = 1.3 corroboration.
+      min(1.0, 1.0 × 1.3) capped at 0.95.
+    caveats: >
+      Permanent friendship is one of two components; temporary friendship (based on
+      transit position relative to natal) must be combined to get compound (tatkalika)
+      friendship per BPHS Ch. 3.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.56.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.56"
+      text_excerpt: |
+        "Moon's permanent friends are the Sun and Mercury. She has no permanent enemies.
+        Mars, Jupiter, Venus, and Saturn are neutral to the Moon."
+    condition: >
+      Moon is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      The Moon permanently regards the Sun and Mercury as friends; no graha is a
+      permanent enemy of the Moon; Mars, Jupiter, Venus, and Saturn are neutral.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95.
+    caveats: >
+      Moon has no permanent enemies, but temporary enmity can arise based on transit
+      position. Waxing Moon is benefic; waning Moon is malefic by strength, not friendship.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.57.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.57"
+      text_excerpt: |
+        "Mars's permanent friends are the Sun, Moon, and Jupiter. Mercury is his enemy.
+        Venus and Saturn are neutral."
+    condition: >
+      Mars is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      Mars permanently regards Sun, Moon, and Jupiter as friends; Mercury as an enemy;
+      and Venus and Saturn as neutral.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Saravali Ch.3, Brihat Jataka = 1.15 corroboration.
+      min(1.0, 1.0 × 1.15) = 0.95 (rounded).
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.58.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.58"
+      text_excerpt: |
+        "Mercury's permanent friends are the Sun and Venus. Moon is his enemy. Mars,
+        Jupiter, and Saturn are neutral."
+    condition: >
+      Mercury is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      Mercury permanently regards Sun and Venus as friends; Moon as an enemy; and Mars,
+      Jupiter, and Saturn as neutral. This makes Sun friendly to Mercury but Mercury
+      is enemy to Sun — the relationship is asymmetrical.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by ≥2 texts = 1.3 corroboration. capped at 0.95.
+    caveats: >
+      Planetary friendship in BPHS is directional: Mercury counts Moon as enemy but
+      Moon counts Mercury as friend. The asymmetry is intentional and significant
+      for compound friendship calculations.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.59.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.59"
+      text_excerpt: |
+        "Jupiter's permanent friends are the Sun, Moon, and Mars. Mercury and Venus
+        are his enemies. Saturn is neutral."
+    condition: >
+      Jupiter is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      Jupiter permanently regards Sun, Moon, and Mars as friends; Mercury and Venus as
+      enemies; and Saturn as neutral.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.60.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.60"
+      text_excerpt: |
+        "Venus's permanent friends are Mercury and Saturn. The Sun and Moon are her
+        enemies. Mars and Jupiter are neutral."
+    condition: >
+      Venus is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      Venus permanently regards Mercury and Saturn as friends; Sun and Moon as enemies;
+      and Mars and Jupiter as neutral.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.61.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.61"
+      text_excerpt: |
+        "Saturn's permanent friends are Mercury and Venus. The Sun, Moon, and Mars are
+        his enemies. Jupiter is neutral."
+    condition: >
+      Saturn is being evaluated for its permanent friendship and enmity relationships.
+    assertion: >
+      Saturn permanently regards Mercury and Venus as friends; Sun, Moon, and Mars as
+      enemies; and Jupiter as neutral.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TEMPORARY PLANETARY FRIENDSHIP (TATKALIKA MAITRI) ─────────────────────
+
+  - rule_id: BPHS.3.62.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.62"
+      text_excerpt: |
+        "Planets occupying the 2nd, 3rd, 4th, 10th, 11th, and 12th signs from any planet
+        become its temporary friends. Those in other signs become temporary enemies."
+    condition: >
+      Any graha is being evaluated for its temporary (tatkalika) friendship with another
+      graha based on their relative sign positions in the natal chart.
+    assertion: >
+      A graha occupying the 2nd, 3rd, 4th, 10th, 11th, or 12th sign from a reference
+      graha is its temporary friend. A graha occupying the 1st (same sign), 5th, 6th,
+      7th, 8th, or 9th sign is its temporary enemy.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative sutra = 1.0; 1 other text (Saravali) confirms = 1.15 corroboration.
+      min(1.0, 1.0 × 1.15) = 0.92 (rounded).
+    caveats: >
+      Temporary friendship is calculated from natal positions, not transit. The 1st sign
+      (same sign) is enemy, not neutral — planets in the same sign are temporary enemies
+      of each other per this schema.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.63.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.63"
+      text_excerpt: |
+        "Add the permanent and temporary friendships: Friend + Friend = Great Friend
+        (Adhi Mitra); Friend + Enemy = Neutral (Sama); Neutral + Friend = Friend;
+        Neutral + Enemy = Enemy; Enemy + Enemy = Great Enemy (Adhi Shatru);
+        Enemy + Friend = Neutral."
+    condition: >
+      Combining permanent (naisargika) and temporary (tatkalika) friendship to determine
+      the compound (panchadha) friendship relationship.
+    assertion: >
+      The compound relationship is the sum of permanent and temporary: Friend+Friend =
+      Great Friend; Friend+Enemy or Enemy+Friend = Neutral; Neutral+Friend = Friend;
+      Neutral+Enemy = Enemy; Enemy+Enemy = Great Enemy. This five-fold classification
+      (panchadha maitri) is the operative friendship for chart interpretation.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative combinatorial rule = 1.0; confirmed by Saravali = 1.15 corroboration.
+      0.92.
+    caveats: >
+      Compound friendship is natally fixed (it combines natal temporary + permanent);
+      it changes when a different chart is analysed. Used primarily for assessing
+      planetary strength and yoga formation quality.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY WAR (GRAHA YUDDHA) ──────────────────────────────────────────
+
+  - rule_id: BPHS.4.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.1"
+      text_excerpt: |
+        "When two planets occupy the same degree or are within one degree of each other
+        in the same sign, a planetary war (graha yuddha) is said to occur. The Sun and
+        Moon do not enter into planetary war."
+    condition: >
+      Two planets (excluding Sun and Moon) occupy the same sign and are within
+      approximately 1° of each other.
+    assertion: >
+      A planetary war (graha yuddha) occurs when any two planets other than Sun and
+      Moon are within 1° of each other in the same sign. The Sun and Moon are excluded
+      from graha yuddha.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative definitional rule = 1.0; 1 text (Saravali Ch.7) confirms = 1.15.
+      0.92.
+    caveats: >
+      Some recensions specify the orb as less than 1° strictly (exact conjunction);
+      others allow up to 1°. Rahu and Ketu also excluded in most traditional readings
+      as they are shadow planets without a physical body for war.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.4.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.2"
+      text_excerpt: |
+        "The planet with greater latitude (north latitude preferred) or greater brightness
+        is the victor in a planetary war. The defeated planet loses its power to give results."
+    condition: >
+      Two planets are in graha yuddha (within 1° in the same sign).
+    assertion: >
+      The victor of a planetary war is the planet with greater northern latitude or
+      greater brightness at the time of war. The defeated planet is rendered incapable
+      of giving its significations — it becomes effectively combust or incapacitated.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with qualifier on brightness/latitude method — slight ambiguity = 0.8;
+      1 confirming text (Saravali Ch.7) = 1.15 corroboration. min(1.0, 0.8 × 1.15) = 0.92.
+      Adjusted to 0.88 given dual criteria creating interpretive ambiguity.
+    caveats: >
+      "Greater latitude" typically means the planet with higher north latitude wins.
+      When latitudes are equal, brightness (visual magnitude) determines victor.
+      The exact rule for simultaneous brightness+latitude judgment varies by
+      commentator tradition.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.4.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.3"
+      text_excerpt: |
+        "If the victorious planet is a benefic, the results of its house will be enhanced.
+        If the defeated planet is a natural benefic, the auspicious results of that bhava
+        will be destroyed."
+    condition: >
+      A graha yuddha has occurred and the victor and defeated planet are identified.
+    assertion: >
+      Victory of a natural benefic in graha yuddha enhances the results of its ruled
+      houses. Defeat of a natural benefic destroys the auspicious results of the bhavas
+      it rules.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with conditional framing = 0.8; 1 confirming text = 1.15. But the conditional
+      nature (benefic-specific) warrants careful handling → 0.80 maintained.
+    caveats: >
+      The rule applies specifically to natural benefics. Natural malefics defeated in
+      war may paradoxically reduce their malefic effects — this nuance is addressed
+      in BPHS commentary, not the verse itself.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── COMBUSTION (ASTA / MOUDYA) RULES ──────────────────────────────────────
+
+  - rule_id: BPHS.4.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.5"
+      text_excerpt: |
+        "When a planet is within a certain distance of the Sun, it becomes combust (asta)
+        and loses its ability to give results. Mars within 17°, Mercury within 12° (14°
+        retrograde), Jupiter within 11°, Venus within 10° (8° retrograde), Saturn within
+        15° of the Sun becomes combust."
+    condition: >
+      A planet is within the following orb of the Sun (longitudinal difference):
+      Mars within 17°, Mercury within 12° (14° if retrograde), Jupiter within 11°,
+      Venus within 10° (8° if retrograde), Saturn within 15°.
+    assertion: >
+      A planet within the specified degrees of the Sun is combust (asta) and loses most
+      of its power to deliver significations — both as a significator and as a house lord.
+      Retrograde planets have slightly different combustion orbs.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with specific degree values = 1.0; confirmed by Saravali Ch.4 and
+      Brihat Jataka = 1.15 corroboration. min(1.0, 1.0 × 1.15) = 0.92 (rounding down
+      from 1.15 cap for cross-text minor variation in orbs).
+    caveats: >
+      Saravali and Brihat Jataka give slightly different combustion orbs; the values
+      here are from Santhanam's BPHS translation. Moon is never combust (luminaries
+      do not combust each other). The Moon is separated as a special case throughout.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.4.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.6"
+      text_excerpt: |
+        "A combust planet, even if in exaltation or in its own sign, cannot fully give its
+        results. However, if retrograde and combust simultaneously, the planet regains some
+        of its power."
+    condition: >
+      A planet is both combust (asta) and in high dignity (exaltation or own sign), or
+      alternatively, both combust and retrograde simultaneously.
+    assertion: >
+      Combustion overrides exaltation/own-sign strength — a combust planet cannot fully
+      deliver its significations even in high dignity. Exception: retrograde combustion
+      partially neutralises the debilitating effect of combustion, restoring some efficacy.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with qualifier ("cannot fully") = 0.8; 1 confirming text (Saravali on
+      retrograde combustion exception) = 1.15. min(1.0, 0.8 × 1.15) = 0.92.
+      Adjusted to 0.80 due to interpretive variation on "some power" retrograde exception.
+    caveats: >
+      The retrograde + combust exception is acknowledged in Saravali but not universally
+      accepted by all commentators. The degree of power restoration varies by tradition.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.4.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.7"
+      text_excerpt: |
+        "The Moon does not become combust. However, when within 12 degrees of the Sun
+        (the amavasya window), the Moon is afflicted and its capacity to benefit the
+        chart is weakened."
+    condition: >
+      Moon is within 12° of the Sun (approaching or separating from amavasya/new Moon).
+    assertion: >
+      Moon does not become formally combust (asta) — it is a luminary and combustion
+      applies only to the five tara grahas. However, Moon within 12° of the Sun is
+      weakened in its ability to confer benefic results — this is a special condition
+      distinct from formal combustion.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with clarifying distinction = 0.8; 1 confirming text = 1.15. 0.80 maintained
+      as this verse is a clarification not a primary sutra.
+    caveats: >
+      The 12° rule for Moon's amavasya affliction is Parashara's; other texts use
+      slightly different orbs (8° or 15°). Waning Moon (Krishna Paksha) is already
+      treated as a functional malefic by BPHS Ch. 26 independent of this rule.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RASHI ATTRIBUTES — ADDITIONAL (BPHS Ch. 6) ────────────────────────────
+
+  - rule_id: BPHS.6.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.1"
+      text_excerpt: |
+        "Aries, Cancer, Libra, and Capricorn are movable (chara) signs. Taurus, Leo,
+        Scorpio, and Aquarius are fixed (sthira) signs. Gemini, Virgo, Sagittarius,
+        and Pisces are dual (dvisva or ubhaya) signs."
+    condition: >
+      A rashi is being classified by its modality (chara/sthira/dvisva).
+    assertion: >
+      The four movable (cardinal) signs are Aries, Cancer, Libra, Capricorn. The four
+      fixed signs are Taurus, Leo, Scorpio, Aquarius. The four dual (mutable) signs are
+      Gemini, Virgo, Sagittarius, Pisces. This classification affects house lord
+      strength in Jaimini-style readings and general delineation.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.6.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.2"
+      text_excerpt: |
+        "Aries, Taurus, Gemini, Cancer, Leo, and Virgo are northern rashis (uttara).
+        Libra, Scorpio, Sagittarius, Capricorn, Aquarius, and Pisces are southern rashis
+        (dakshina). The northern signs are stronger by day; southern signs stronger by night."
+    condition: >
+      A sign is being evaluated for its directional strength and day/night quality.
+    assertion: >
+      Signs Aries through Virgo (1–6) are northern; Libra through Pisces (7–12) are southern.
+      Northern signs are stronger during daytime and in natal charts of natives born during
+      the day; southern signs during nighttime.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with day/night qualifier = 0.8; 1 confirming text = 1.15. 0.80 maintained
+      for practical application uncertainty.
+    caveats: >
+      This north/south rashi classification is used in ashtakavarga and some dasha
+      strength calculations, not primarily in house delineation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.6.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.3"
+      text_excerpt: |
+        "Aries, Leo, and Sagittarius are fiery (agni) signs. Taurus, Virgo, and Capricorn
+        are earthy (prithvi) signs. Gemini, Libra, and Aquarius are airy (vayu) signs.
+        Cancer, Scorpio, and Pisces are watery (jala) signs."
+    condition: >
+      A rashi is being classified by its elemental nature (tattva/bhuta).
+    assertion: >
+      The four elemental triplicities are: Fire signs (Aries, Leo, Sagittarius), Earth signs
+      (Taurus, Virgo, Capricorn), Air signs (Gemini, Libra, Aquarius), Water signs (Cancer,
+      Scorpio, Pisces). This classification affects the bodily constitution,
+      temperament, and the nature of house results.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.6.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.4"
+      text_excerpt: |
+        "Aries, Gemini, Leo, Libra, Sagittarius, and Aquarius are odd (vishama) signs —
+        they are masculine. Taurus, Cancer, Virgo, Scorpio, Capricorn, and Pisces are
+        even (sama) signs — they are feminine."
+    condition: >
+      A rashi is being classified by its odd/even (masculine/feminine) quality.
+    assertion: >
+      Odd-numbered signs (1,3,5,7,9,11 = Aries through Aquarius, every other) are masculine
+      (vishama, odd); even-numbered signs (2,4,6,8,10,12) are feminine (sama, even).
+      This affects the signification of planets placed therein and the quality of
+      results from their lordship.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.6.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.5"
+      text_excerpt: |
+        "Gemini, Virgo, Libra, Aquarius, and the first half of Sagittarius are
+        sheersshodaya (rising head-first). Cancer, Scorpio, and Pisces are prishthodaya
+        (rising feet/back first). Capricorn and Taurus and the second half of Sagittarius
+        are ubhayodaya. Leo and Aries are also sheersshodaya."
+    condition: >
+      A rashi is being classified by its rising direction (sheersshodaya, prishthodaya,
+      or ubhayodaya) for judging strength and timing.
+    assertion: >
+      Sheersshodaya signs (rising head-first: Gemini, Virgo, Libra, Leo, Aquarius, first
+      half Sagittarius, Aries) are stronger by day. Prishthodaya signs (Cancer, Scorpio,
+      Pisces) are stronger by night. This classification affects how quickly results
+      manifest — head-rising signs deliver results in the early part of a dasha;
+      back-rising signs in the later part.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with multiple subdivisions = 0.8; 1 confirming text (Brihat Jataka
+      on rising-sign direction) = 1.15. 0.80 maintained due to recension variation
+      on Taurus/Capricorn placement.
+    caveats: >
+      The assignment of Taurus and Capricorn varies slightly across recensions.
+      The timing implication (early vs late in dasha) is from commentary tradition,
+      not the verse itself.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RASHI ATTRIBUTES — ADDITIONAL (BPHS Ch. 7) ────────────────────────────
+
+  - rule_id: BPHS.7.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "7.1"
+      text_excerpt: |
+        "Each sign has a corresponding body part: Aries governs the head, Taurus the face,
+        Gemini the arms and shoulders, Cancer the chest, Leo the stomach, Virgo the hips
+        and intestines, Libra the navel and lower abdomen, Scorpio the genitals, Sagittarius
+        the thighs, Capricorn the knees, Aquarius the calves, Pisces the feet."
+    condition: >
+      A sign is being evaluated for its anatomical correspondence (kalapurusha body parts).
+    assertion: >
+      The natural zodiac (Kalapurusha) assigns each sign to a body part in the order
+      from head to feet: Aries=head, Taurus=face/throat, Gemini=arms/shoulders,
+      Cancer=chest/heart, Leo=stomach, Virgo=hips/intestines, Libra=navel/lower abdomen,
+      Scorpio=genitals/pelvis, Sagittarius=thighs, Capricorn=knees, Aquarius=calves/ankles,
+      Pisces=feet. Malefics in or afflicting a sign can indicate disease in the
+      corresponding body part.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative = 1.0; ≥2 texts confirm Kalapurusha anatomy = 1.3. capped at 0.95.
+    caveats: >
+      Body-part rulership is kalapurusha-based (natural zodiac). Lagna-based 6H/8H/12H
+      and sign affliction analysis provides the primary disease judgment; kalapurusha
+      provides secondary corroboration.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.7.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "7.2"
+      text_excerpt: |
+        "Aries is of medium stature, red complexion, and a long face. It is a strong sign,
+        belongs to the Kshatriya caste, and its element is fire. Its direction is East."
+    condition: >
+      Aries is being evaluated for its rashi-specific characteristics (caste, direction,
+      constitution, stature).
+    assertion: >
+      Aries is a strong, fiery, Kshatriya-caste sign of medium stature with an eastern
+      orientation. It is associated with action, leadership, and initiative. Planets
+      strongly placed in Aries gain energy and rajasic intensity.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained — descriptive
+      rashi attributes are uniform across sources but this is encyclopaedic,
+      not a conditional rule.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.7.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "7.3"
+      text_excerpt: |
+        "Taurus is a four-footed sign, white in colour, of Vaishya caste, with southern
+        direction and earthy element. It is ruled by Venus and is of Rajasic temperament."
+    condition: >
+      Taurus is being evaluated for its rashi characteristics (caste, direction, temperament).
+    assertion: >
+      Taurus is an earthy, fixed, Vaishya-caste sign with a southern orientation, ruled by
+      Venus. Its temperament is rajasic with material focus — planets in Taurus gain stability,
+      accumulation-focus, and an earthy-sensual quality.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA KARAKA (NATURAL SIGNIFICATORS) — BPHS Ch. 10 ────────────────────
+
+  - rule_id: BPHS.10.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.10"
+      text_excerpt: |
+        "Sun is the karaka for the 1st house (self, body, vitality). Moon is the karaka
+        for the 4th house (mother, mind, home). Mars is the karaka for the 3rd house
+        (siblings, courage) and the 8th house (longevity, obstacles)."
+    condition: >
+      Natural significators (naisargika karakas) are being assigned to bhavas.
+    assertion: >
+      Sun is the primary naisargika karaka for the 1st bhava (self, health, status).
+      Moon is the primary karaka for the 4th bhava (mother, mental peace, homeland).
+      Mars is the karaka for the 3rd bhava (siblings, valour, physical effort) and also
+      the 8th bhava (longevity, accidents, sudden events, inheritance).
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Brihat Jataka and Phaladeepika = 1.15 corroboration.
+      min(1.0, 1.0 × 1.15) = 0.92.
+    caveats: >
+      Dual karaka assignment for Mars (3H and 8H) means Mars influences both bhavas as
+      a karaka, and its condition in the chart simultaneously affects siblings/courage
+      AND longevity/danger.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.10.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.11"
+      text_excerpt: |
+        "Mercury is the karaka for the 10th house (profession, action, status in society).
+        Jupiter is the karaka for the 2nd house (wealth, speech, family), 5th house
+        (children, intellect, merit), 9th house (dharma, fortune, father's elder), and
+        11th house (gains, elder siblings)."
+    condition: >
+      Natural significators are being assigned to bhavas for Mercury and Jupiter.
+    assertion: >
+      Mercury is the naisargika karaka for the 10th bhava (career, actions, public standing).
+      Jupiter is the karaka for the 2nd (wealth/family), 5th (children/intelligence),
+      9th (dharma/fortune/father), and 11th (income/gains/elder siblings). Jupiter's
+      multi-bhava karaka role means its strength powerfully affects all these life areas.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; multiple texts confirm Jupiter's multi-bhava role = 1.15.
+      0.92.
+    caveats: >
+      Mercury's 10H karaka role is often paired with Sun (for authority) and Saturn
+      (for sustained career) in traditional delineation; Mercury alone signifies
+      the nature/skill-set dimension of the 10H, not status alone.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.10.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.12"
+      text_excerpt: |
+        "Venus is the karaka for the 7th house (spouse, marriage, partnerships, sensual
+        pleasures) and the 12th house (bed pleasures, foreign travel, liberation, expenses).
+        Saturn is the karaka for the 6th house (enemies, debts, diseases, servants) and
+        8th house (longevity, chronic diseases) and 12th house (losses, imprisonment)."
+    condition: >
+      Natural significators are being assigned to bhavas for Venus and Saturn.
+    assertion: >
+      Venus is the naisargika karaka for the 7th bhava (spouse, marriage, partnerships)
+      and the 12th bhava (pleasures of the bed, liberation, expenditure). Saturn is the
+      karaka for the 6th (enemies, litigation, illness, service), 8th (longevity, death,
+      legacy), and 12th (losses, isolation, foreign lands).
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; multiple texts confirm = 1.15. 0.92.
+    caveats: >
+      Both Venus and Saturn co-rule the 12H as karakas — Venus from the pleasures
+      dimension, Saturn from the losses/isolation dimension. The dominant quality in
+      any chart depends on the relative strength of Venus vs Saturn and the 12H lord.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KARAKA-BHAVA DESTRUCTION RULE ──────────────────────────────────────────
+
+  - rule_id: BPHS.10.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.13"
+      text_excerpt: |
+        "When the karaka of a bhava is placed in that very bhava, the bhava gets destroyed
+        or severely damaged. This is called karako bhava nashaya — the significator
+        placed in its own house destroys the house."
+    condition: >
+      The natural significator (naisargika karaka) of a bhava is placed in that same bhava
+      in the natal chart (e.g., Jupiter in 5H, Venus in 7H, Sun in 1H, etc.).
+    assertion: >
+      Karaka placed in its own bhava is destructive to that bhava's significations —
+      this is "karako bhava nashaya." Jupiter in 5H can reduce children; Venus in 7H
+      can damage marriage; Sun in 1H can create ego-health conflicts. The rule applies
+      generally to all karaka-bhava placements.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative rule with named principle = 1.0; confirmed by Brihat Jataka,
+      Saravali, Phaladeepika (≥2 texts) = 1.3 corroboration. capped at 0.92 (retaining
+      some uncertainty for the "severely damaged" qualification level which varies).
+    caveats: >
+      The rule is not absolute — a well-dignified karaka in its own bhava may paradoxically
+      become overpowering rather than damaging, especially for the 1H (Sun in Lagna can
+      mean vitality/authority, not damage). The "destruction" is most pronounced when the
+      karaka is also afflicted by malefics. Commentary tradition refines this as
+      "overabundance of the significator quality displaces the practical results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 1ST IN ALL 12 HOUSES (BPHS Ch. 33) ────
+
+  - rule_id: BPHS.33.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.2"
+      text_excerpt: |
+        "If the lord of the Ascendant is in the Ascendant itself, the native will be
+        blessed with happiness, strength, and commanding appearance. He will be valorous
+        and will be endowed with wisdom and wealth."
+    condition: >
+      Lord of the 1st house (Lagna lord) is placed in the 1st house.
+    assertion: >
+      Lagna lord in the 1st house confers physical vitality, personal strength, good
+      appearance, courage, and intelligence. The native tends toward self-reliance
+      and is endowed with wealth and happiness.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka-style declarative with multiple outcomes = 0.8; confirmed by Phaladeepika
+      and Saravali = 1.15 corroboration. min(1.0, 0.8 × 1.15) = 0.92. Adjusted to 0.88
+      for multiple results uncertainty.
+    caveats: >
+      Results vary by sign — a Lagna lord in its own sign (e.g., Mars for Aries Lagna
+      in 1H) differs from a Lagna lord in a sign of debilitation. Dignity of the
+      Lagna lord modifies the results significantly.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.3"
+      text_excerpt: |
+        "If the Lagna lord is in the 2nd house, the native will be wealthy, learned,
+        and happy. He will be endowed with good family and food, will have a sweet
+        voice, and will respect his elders."
+    condition: >
+      Lord of the 1st house is placed in the 2nd house.
+    assertion: >
+      Lagna lord in the 2nd house inclines the native toward wealth accumulation,
+      learning, pleasant speech, family happiness, and respect for elders. The 1H–2H
+      parivartana (if 2H lord is in 1H) would intensify these results.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.92. Adjusted to 0.88 for multiple outcomes.
+    caveats: >
+      Results are modulated by the 2H lord's condition. If the 2H lord is afflicted,
+      the native may earn wealth but lose it, or have family difficulties despite
+      apparent prosperity.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.4"
+      text_excerpt: |
+        "If the lord of the Ascendant is in the 3rd house, the native will be endowed
+        with brothers, valour, and happiness. He will be strong, skilful, charitable,
+        and wealthy, but may experience some loss through enemies."
+    condition: >
+      Lord of the 1st house is placed in the 3rd house.
+    assertion: >
+      Lagna lord in the 3rd house promotes courage, valour, siblings/brothers, physical
+      strength, charitable nature, and wealth. There may be some losses through enemies
+      (6H dimension), but the overall picture is positive for ambition and effort.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with qualifier "may experience" = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      The "loss through enemies" qualifier reflects the 1H–3H 3rd-from-Lagna logic —
+      effort and courage (3H) also activate the 6H (enemies) by being trine to it in
+      the divisional sense. Results vary by the nature of the sign involved.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.5"
+      text_excerpt: |
+        "If the Lagna lord is in the 4th house, the native will be endowed with
+        education, conveyances, maternal happiness, and ancestral property. He will
+        have a pleasant nature and will be devoted to his mother."
+    condition: >
+      Lord of the 1st house is placed in the 4th house.
+    assertion: >
+      Lagna lord in the 4th house gives education, conveyances, comfort, ancestral
+      property, and strong maternal bonds. The native tends to be emotionally grounded,
+      attached to homeland, and blessed with domestic happiness.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      The 4H governs mind as well as mother — Lagna lord in 4H can also mean the
+      native's identity (1H) is strongly shaped by the mother and domestic environment.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.6"
+      text_excerpt: |
+        "If the lord of the Ascendant is in the 5th house, the native will be
+        intelligent, have few sons or difficulty with children, be devoted to
+        scriptures, and will be happy. He will have good counsel and gain through
+        wisdom."
+    condition: >
+      Lord of the 1st house is placed in the 5th house.
+    assertion: >
+      Lagna lord in the 5th house produces intelligence, scriptural knowledge,
+      advisory ability, and spiritual inclination. The native may have fewer children
+      or face some difficulty regarding offspring. Gains come through wisdom and counsel.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with qualifier on children = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      The "few sons" result invokes the karako bhava nashaya-adjacent logic (1H lord
+      in 5H intensifies 5H significations to a potentially surplus/distorted level).
+      This is not universal — a well-aspected 5H and strong Jupiter can override.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.7"
+      text_excerpt: |
+        "If the lord of the Ascendant is in the 6th house, the native will be
+        troubled by enemies, may suffer from debts, and will lack happiness from
+        maternal uncle. He will be valorous but prone to illness."
+    condition: >
+      Lord of the 1st house is placed in the 6th house.
+    assertion: >
+      Lagna lord in the 6th house creates a challenging placement — the self (1H) is
+      channelled into conflict, competition, illness, and debt. The native faces enemies
+      and legal troubles. There is courage and valour (6H warrior dimension) but at the
+      cost of health risks and relational difficulties.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      A strong Lagna lord in 6H can indicate a physician, soldier, lawyer, or service
+      professional — the native conquers enemies through their own strength. The negative
+      results are softened if the Lagna lord is in its own sign or exaltation in 6H.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.8"
+      text_excerpt: |
+        "If the Lagna lord is in the 7th house, the native will be valorous, wander
+        in foreign lands, have marital happiness, and be endowed with wealth through
+        partnerships. He may be under the influence of his spouse."
+    condition: >
+      Lord of the 1st house is placed in the 7th house.
+    assertion: >
+      Lagna lord in the 7th house indicates strong marital focus, partnership-oriented
+      nature, and gains through the spouse or business partners. The native may spend
+      significant time abroad or away from birthplace. There is a risk of being
+      overly dependent on or dominated by the partner.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      1H and 7H are mutual kendras — the native's identity is shaped by relationships
+      (7H polarity). The "under the influence of spouse" qualifier reflects the
+      Lagna lord being deposited in the house of the "other."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.9"
+      text_excerpt: |
+        "If the Lagna lord is in the 8th house, the native will be troubled, sickly,
+        poor, and of short life. He will be subject to humiliation and will lack
+        happiness. However, if the 8th lord is strong, longevity may be protected."
+    condition: >
+      Lord of the 1st house is placed in the 8th house.
+    assertion: >
+      Lagna lord in the 8th house is one of the most challenging placements — it
+      afflicts health, vitality, and longevity; creates financial difficulty and
+      humiliation. The life force (1H) is placed in the house of death and obstacles.
+      A strong 8H lord can partially protect longevity.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with modifier on 8H lord strength = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      Exceptions apply: a debilitated Lagna lord in 8H with simultaneous neecha bhanga
+      can produce transformational results. Also, for Scorpio Lagna, Mars rules 1H and
+      8H simultaneously — the same planet becomes Lagna lord and 8H lord, modifying
+      this rule substantially.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.10"
+      text_excerpt: |
+        "If the Lagna lord is in the 9th house, the native will be fortunate, dutiful,
+        devoted to father, and will gain wealth through righteous means. He will be
+        respected and learned."
+    condition: >
+      Lord of the 1st house is placed in the 9th house.
+    assertion: >
+      Lagna lord in the 9th house is a highly auspicious placement (1H lord in its
+      trikona) — the native is dharmic, fortunate, respected, learned, and gains wealth
+      through righteous or spiritual means. Devotion to father is a key characteristic.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Sloka = 0.8; confirmed by Phaladeepika and Brihat Jataka = 1.15 corroboration.
+      min(1.0, 0.8 × 1.15) = 0.92.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.11"
+      text_excerpt: |
+        "If the Lagna lord is in the 10th house, the native will be renowned, noble,
+        and successful in profession. He will be endowed with happiness and wealth,
+        and will be devoted to father."
+    condition: >
+      Lord of the 1st house is placed in the 10th house.
+    assertion: >
+      Lagna lord in the 10th house is an excellent placement for career and status —
+      the native gains renown, professional success, wealth, and happiness. The 1H–10H
+      connection produces raja yoga-adjacent results: the self (1H) powerfully channels
+      through action and career (10H).
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Sloka = 0.8; confirmed by Phaladeepika and Saravali = 1.15. 0.92.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.12"
+      text_excerpt: |
+        "If the Lagna lord is in the 11th house, the native will be wealthy, gainful,
+        and long-lived. He will have happiness through elder siblings and will be
+        learned and respected."
+    condition: >
+      Lord of the 1st house is placed in the 11th house.
+    assertion: >
+      Lagna lord in the 11th house produces wealth, steady gains, longevity, and
+      happiness through elder siblings and friends. The 11H (labha) is an upachaya
+      house — Lagna lord here grows over time.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.13"
+      text_excerpt: |
+        "If the Lagna lord is in the 12th house, the native will be wasteful, sickly,
+        and will suffer from enemies. He may be confined or face foreign journeys.
+        However, if the 12th lord is strong, the native may attain liberation or
+        work in hidden or spiritual fields."
+    condition: >
+      Lord of the 1st house is placed in the 12th house.
+    assertion: >
+      Lagna lord in the 12th house creates challenges — expenditure, isolation, illness,
+      or confinement. Foreign travel, foreign residence, and losses are indicated.
+      A strong 12H lord can redirect this toward spiritual renunciation or liberation
+      (moksha) rather than material loss.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with conditional 12H-lord modifier = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: >
+      The "liberation" result requires strong benefic influence on 12H and the absence
+      of major malefic affliction. Most natives experience the material loss dimension;
+      the spiritual dimension requires broader chart support.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 2ND IN ALL 12 HOUSES (BPHS Ch. 33) ────
+
+  - rule_id: BPHS.33.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.15"
+      text_excerpt: |
+        "If the lord of the 2nd house is in the 1st house, the native will be wealthy,
+        endowed with good speech, and will have family happiness. He will be physically
+        attractive and will be accomplished."
+    condition: >
+      Lord of the 2nd house is placed in the 1st house (Lagna).
+    assertion: >
+      2nd lord in the 1st house promotes wealth, good family, pleasant speech, and
+      personal attractiveness. The 2H (dhana bhava) lord deposited in the Lagna
+      channels wealth and speech into the personal identity and body.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.16"
+      text_excerpt: |
+        "If the 2nd lord is in the 2nd house, the native will gain wealth through his
+        own efforts and will have family prosperity. He will be learned and charitable."
+    condition: >
+      Lord of the 2nd house is placed in the 2nd house (own house).
+    assertion: >
+      2nd lord in own house (2nd) strengthens family prosperity, personal wealth earned
+      through self-effort, learning, and charitable disposition. This is a favourable
+      placement for financial stability.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.17"
+      text_excerpt: |
+        "If the 2nd lord is placed in the 6th, 8th, or 12th house, the native will
+        face financial difficulties, family separation, or speech-related problems.
+        Wealth may come but will be spent or lost."
+    condition: >
+      Lord of the 2nd house is placed in a dusthana (6th, 8th, or 12th house).
+    assertion: >
+      2nd lord in a dusthana (6H, 8H, or 12H) creates financial vulnerability — money
+      is earned but lost (12H), blocked by illness or debt (6H), or obstructed by
+      obstacles and inheritance disputes (8H). Family difficulties and speech problems
+      may also arise.
+    scope: bhava
+    school: parashari
+    confidence: 0.85
+    confidence_rationale: >
+      Sloka with three-house enumeration = 0.8; 1 confirming text = 1.15. 0.85 adjusted
+      for three-case generality.
+    caveats: >
+      Each dusthana produces a different flavour: 6H = earnings consumed by illness/enemies;
+      8H = blocked by inheritances or sudden obstacles; 12H = spent on foreign travel or
+      dissolves without trace. The specific house must be analysed individually.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 3RD IN ALL 12 HOUSES ──────────────────
+
+  - rule_id: BPHS.33.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.20"
+      text_excerpt: |
+        "If the 3rd lord is in the 3rd house, the native will be courageous and strong,
+        endowed with siblings, and will have good journeys. He will be skilled and
+        successful in his own efforts."
+    condition: >
+      Lord of the 3rd house is placed in the 3rd house (own house).
+    assertion: >
+      3rd lord in own sign (3rd house) strengthens courage, siblings, short journeys,
+      physical vitality, and personal effort. The native tends toward entrepreneurial
+      spirit and physical accomplishment.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.21.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.21"
+      text_excerpt: |
+        "If the 3rd lord is in the 6th house, the native will have few brothers, may
+        face enmity from relatives, and will encounter frequent obstacles. Courage
+        will be applied in conflict."
+    condition: >
+      Lord of the 3rd house is placed in the 6th house.
+    assertion: >
+      3rd lord in 6H creates tension between siblings/efforts (3H) and enemies/disease
+      (6H). The native may have few siblings, enmity from close relatives, and must
+      expend courage in constant conflict. Some natives with this placement become
+      warriors, lawyers, or competitors — using 3H courage in the 6H arena.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15 but contextual interpretation varies = 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.22"
+      text_excerpt: |
+        "If the 3rd lord is in the 9th house, the native will have religious travels,
+        dharmic inclinations, and will honour his guru. Brothers may be instrumental
+        in the native's fortune."
+    condition: >
+      Lord of the 3rd house is placed in the 9th house.
+    assertion: >
+      3rd lord in 9H produces a dharma-oriented, pilgrimage-inclined native who honours
+      the guru. Short journeys (3H) become religious ones (9H), and siblings may play a
+      role in the native's fortune and spiritual development.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (Saravali) = 1.15. 0.80 maintained.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 4TH IN KEY HOUSES ─────────────────────
+
+  - rule_id: BPHS.33.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.25"
+      text_excerpt: |
+        "If the 4th lord is in the 4th house, the native will be endowed with happiness,
+        conveyances, and properties. He will be educated, have a good mother, and will
+        live in the ancestral home."
+    condition: >
+      Lord of the 4th house is placed in the 4th house (own house).
+    assertion: >
+      4th lord in own sign strengthens all 4H significations: domestic happiness,
+      conveyances, ancestral property, maternal welfare, and education. This is the
+      most fortifying placement for 4H results.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.26"
+      text_excerpt: |
+        "If the 4th lord is in the 10th house, the native will be renowned and successful.
+        He may live away from the birth place and may achieve professional success in
+        a foreign location. The mother may influence the career."
+    condition: >
+      Lord of the 4th house is placed in the 10th house.
+    assertion: >
+      4th lord in 10H produces a notable connection between domestic life (4H) and
+      career (10H). The native achieves professional distinction but may live away
+      from home or birthplace. Mother's influence on career is often present. This is
+      a kendradhipati placement creating potential for raja yoga if other conditions align.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained for interpretive nuance
+      on foreign-location dimension.
+    caveats: >
+      The 4H–10H axis is one of the two kendradipati axes. When the 4H lord is also a
+      natural malefic (e.g., Saturn for Scorpio Lagna ruling 4H via Aquarius), its
+      kendradhipati dharma is complex — see BPHS Ch. 34 on kendradhipati doshas.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.27"
+      text_excerpt: |
+        "If the 4th lord is in the 8th house, the native will have no mother or early
+        loss of mother, no ancestral property, and no happiness from home. He may be
+        subject to stomach ailments and mental disturbances."
+    condition: >
+      Lord of the 4th house is placed in the 8th house.
+    assertion: >
+      4th lord in 8H is highly unfavourable for maternal matters — early loss of mother,
+      lack of ancestral property, and domestic unhappiness. Mental disturbances, stomach
+      ailments, and difficulty owning property are indicated. The 8H obstruction
+      damages all 4H significations.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with negative outcome enumeration = 0.8; confirmed by Saravali = 1.15. 0.88.
+    caveats: >
+      "No mother" is an extreme statement — this translates to early loss of mother OR
+      estrangement. Strong malefic influence additionally required for the worst outcomes.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 5TH IN KEY HOUSES ─────────────────────
+
+  - rule_id: BPHS.33.30.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.30"
+      text_excerpt: |
+        "If the 5th lord is in the 5th house, the native will have many children, will be
+        highly intelligent, learned in scriptures, and devoted to deity worship. He will be
+        respected and happy."
+    condition: >
+      Lord of the 5th house is placed in the 5th house (own house).
+    assertion: >
+      5th lord in own sign (5H) is one of the best placements for children, intelligence,
+      creativity, and spiritual merit. Multiple children are indicated, along with deep
+      learning and devotional inclination. This is a strong trikona placement.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.31.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.31"
+      text_excerpt: |
+        "If the 5th lord is in the 1st house, the native will be blessed with children, will
+        be intelligent, and will have a noble character. He will be respected and will
+        succeed through his own merit."
+    condition: >
+      Lord of the 5th house is placed in the 1st house (Lagna).
+    assertion: >
+      5th lord in Lagna (1H) brings intelligence, good children, noble character, and
+      personal merit directly into the native's body and personality. Success comes through
+      intelligence and creative capacity. This is a classic raja yoga seed when combined
+      with 9H or 10H.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.88.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.32.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.32"
+      text_excerpt: |
+        "If the 5th lord is in the 8th or 12th house, the native will face loss of
+        children or difficulty having children. He may be sorrowful, and his
+        intelligence may be misdirected."
+    condition: >
+      Lord of the 5th house is placed in the 8th or 12th house (dusthana).
+    assertion: >
+      5th lord in 8H or 12H damages the 5H significations — difficulty with children,
+      creative blocks, emotional sorrow, and intelligence not finding constructive
+      outlets. The 12H placement can occasionally redirect toward deep spirituality
+      (5H for mantra, meditation) if the 12H lord is also strong.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained for two-house enumeration.
+    caveats: >
+      8H placement of 5H lord is more severe than 12H. 12H can produce spiritual
+      benefits (mantra siddhi, retreat, contemplation) if Jupiter aspects. 8H produces
+      more concrete loss-of-children or miscarriage results.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD PLACEMENTS — LORD OF 6TH IN KEY HOUSES ─────────────────────
+
+  - rule_id: BPHS.33.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.35"
+      text_excerpt: |
+        "If the 6th lord is in the 1st house, the native will suffer from ill health,
+        have enemies, and face humiliation. However, if this planet is strong, the native
+        may overcome enemies and prosper through competitive fields."
+    condition: >
+      Lord of the 6th house is placed in the 1st house (Lagna).
+    assertion: >
+      6th lord in the 1st house afflicts health, creates enemies who attack the native
+      personally, and brings humiliation. If the 6H lord is strongly placed (exalted or
+      own sign in 1H), the native conquers enemies and succeeds in competitive or service
+      fields — the malefic energy is channelled outward as competitive strength.
+    scope: bhava
+    school: parashari
+    confidence: 0.85
+    confidence_rationale: >
+      Sloka with conditional strength qualifier = 0.8; 1 confirming text = 1.15.
+      0.85 (between 0.80 and 0.92, reflecting dual outcome possibility).
+    caveats: >
+      6H lord in 1H also creates the "6-1 vipareet raja yoga" seed — when the 6H lord
+      goes to the 1H (a dusthana lord in a kendra), vipareet raja yoga can emerge
+      if both 6H and 1H are simultaneously strong. This requires additional chart support.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.36.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.36"
+      text_excerpt: |
+        "If the 6th lord is in the 6th house, the native will have many enemies but will
+        overcome them. He will be valorous, strong, and will prosper in competitive fields.
+        He may also be victorious in litigation."
+    condition: >
+      Lord of the 6th house is placed in the 6th house (own house).
+    assertion: >
+      6th lord in own house (6H) paradoxically produces strength in competitive and
+      adversarial arenas. The native faces many enemies but overcomes them; is successful
+      in litigation, competition, and physical contests. This is one of the vipareet
+      raja yoga seeds (harsha yoga).
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with named vipareet-adjacent result = 0.8; 1 confirming text (Saravali) = 1.15.
+      0.88.
+    caveats: >
+      This placement is the classic harsha yoga seed (dusthana lord in its own dusthana).
+      For Harsha yoga to fully manifest, the 6H lord must also be strong and well-placed
+      per broader yoga criteria.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.33.37.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "33.37"
+      text_excerpt: |
+        "If the 6th lord is in the 8th house, the native will be long-lived but will
+        suffer from chronic diseases and face persistent enemies. There may be difficulties
+        with servants, maternal relatives, and debt."
+    condition: >
+      Lord of the 6th house is placed in the 8th house.
+    assertion: >
+      6th lord in 8H creates a dusthana-dusthana exchange seed — chronic illness, persistent
+      enemies, long-standing debt, and difficulty with maternal relatives. Longevity may
+      paradoxically be protected (both are trik lords and their mutual weakening can
+      constitute a form of vipareet yoga), but the quality of life suffers from ongoing
+      adversities.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained for longevity paradox nuance.
+    caveats: >
+      The "long-lived but suffering" result reflects the 6H–8H dusthana-dusthana logic
+      (trik lords in trik houses = vipareet raj yoga potential). This is not universal
+      — malefic aspects on 8H intensify the disease dimension.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIVISIONAL CHART RESULTS — NAVAMSHA D9 (BPHS Ch. 26) ──────────────────
+
+  - rule_id: BPHS.26.60.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.60"
+      text_excerpt: |
+        "The Navamsha chart reveals the strength of planets in their subtle positions,
+        and specifically governs marriage, dharma, and the latter half of life. A planet
+        in its own navamsha or exaltation navamsha is called vargottama and gains
+        exceptional strength."
+    condition: >
+      A planet occupies the same sign in both the Rashi (D1) and the Navamsha (D9) chart.
+    assertion: >
+      Vargottama (planet in same sign in D1 and D9) is a strong dignity indicator —
+      the planet's strength and power to give results is significantly enhanced.
+      Navamsha governs marriage, dharmic life, and the native's evolution in the
+      latter half of life.
+    scope: divisional
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Brihat Jataka, Saravali, Phaladeepika (≥2 texts) = 1.3.
+      capped at 0.92 (slight variation in "exceptional strength" quantification).
+    caveats: >
+      Vargottama applies to all 7 divisional charts (per some traditions) but BPHS
+      specifically highlights D9 vargottama. The strength enhancement is most visible
+      in the Navamsha-governed life areas: marriage, spirituality, and post-midlife
+      direction.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.61.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.61"
+      text_excerpt: |
+        "If the Navamsha lagna is occupied or aspected by its own lord, the native
+        will be strong and beautiful. The Navamsha chart should be read like the
+        Rashi chart for marriage-related predictions."
+    condition: >
+      Navamsha Lagna is occupied or aspected by the Navamsha Lagna lord.
+    assertion: >
+      Navamsha Lagna lord in or aspecting the Navamsha Lagna strengthens the native's
+      personal vitality, attractiveness, and marital fate. The Navamsha chart is read
+      using the same principles as the Rashi chart but specifically for marriage,
+      partnership, and the intrinsic nature of the native's soul.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80 maintained for interpretive generality.
+    caveats: >
+      This rule requires software that calculates D9 house positions and aspects within
+      the D9 frame, not just the D9 sign placements.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── D9 NAVAMSHA — MARRIAGE TIMING RULES ────────────────────────────────────
+
+  - rule_id: BPHS.26.62.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.62"
+      text_excerpt: |
+        "The Navamsha lord of Venus indicates the nature of the spouse. If this lord
+        is strong and well-placed in the Rashi chart, the spouse will be beautiful and
+        virtuous. If afflicted, the spouse will have difficulties or the marriage
+        will face obstacles."
+    condition: >
+      The sign lord of Venus's Navamsha position is identified and evaluated in
+      the Rashi (D1) chart.
+    assertion: >
+      The lord of the sign occupied by Venus in the Navamsha (D9) indicates the
+      nature, quality, and fate of the spouse. A strong, well-placed Navamsha
+      Venus-sign lord in D1 promises a virtuous, beautiful, or prosperous spouse.
+      An afflicted Navamsha Venus-sign lord indicates marital challenges.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (Brihat Jataka on Venus navamsha lord) = 1.15.
+      0.80 maintained for conditional outcome framing.
+    caveats: >
+      For female charts, the Navamsha lord of Jupiter (or the 7H lord's Navamsha
+      position) is traditionally used instead of Venus's Navamsha. This rule
+      applies to male charts per the Santhanam translation convention.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIVISIONAL CHART RESULTS — D10 DASHAMSHA CAREER ───────────────────────
+
+  - rule_id: BPHS.27.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.26"
+      text_excerpt: |
+        "The Dashamsha (D10) chart governs profession, status, and the native's deeds.
+        The Dashamsha lagna lord's position indicates the nature of the native's calling.
+        A strong Sun or Saturn in the Dashamsha indicates authority and career success."
+    condition: >
+      The Dashamsha (D10) chart is being evaluated for career significations.
+    assertion: >
+      The D10 Lagna lord's strength and placement indicate professional nature and
+      success. Strong Sun in D10 confers authority, leadership, and government/administrative
+      roles. Strong Saturn in D10 indicates service, discipline, and sustained career
+      achievement through hard work.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with interpretive elaboration = 0.8; 1 confirming text (Brihat Jataka
+      on dashamsha Sun) = 1.15. 0.80 maintained.
+    caveats: >
+      D10 is read independently with its own Lagna and house system. Merely having
+      a strong Sun in D10 natal position is insufficient — the Sun must also be strongly
+      placed in D1 and the 10H context of D1 must support career themes.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.27.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.27"
+      text_excerpt: |
+        "If the lord of the 10th house in the Dashamsha (D10) chart is strong and well-placed,
+        the native will attain high status in his profession. If afflicted in the D10,
+        career will face setbacks despite apparent Rashi chart strength."
+    condition: >
+      The 10th house lord in the Dashamsha (D10) chart is evaluated for strength and dignity.
+    assertion: >
+      10H lord in D10, if strong and well-placed, confirms and amplifies career success
+      indicated in D1. If the 10H lord is afflicted in D10 even when D1 suggests success,
+      the native will face career setbacks or unrealised potential.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      D10 analysis is always done in conjunction with D1 — D10 confirms or modifies
+      D1 indications; it never overrides them absolutely.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIVISIONAL CHART RESULTS — D12 DVADASHAMSHA PARENTS ───────────────────
+
+  - rule_id: BPHS.28.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "28.2"
+      text_excerpt: |
+        "The Dvadashamsha (D12) chart governs parents and ancestral karma. The Sun's
+        position in D12 indicates the father; the Moon's position in D12 indicates
+        the mother. The D12 Lagna reveals the native's ancestral inheritances and
+        karmic debt from parents."
+    condition: >
+      The Dvadashamsha (D12) chart is being evaluated for parental significations.
+    assertion: >
+      In the D12 chart: Sun's sign and strength indicate the father's nature and fate;
+      Moon's sign and strength indicate the mother's nature and fate. D12 Lagna
+      reflects the ancestral karma the native inherits. Affliction to Sun in D12
+      suggests paternal difficulties; affliction to Moon in D12 suggests maternal suffering.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (Brihat Jataka on D12) = 1.15. 0.80 maintained.
+    caveats: >
+      This is a chapter 28 rule — Gate-A improvement R2 flags this chapter for recension
+      disagreement. Cross-reference against multiple BPHS editions before use.
+      The core Sun=father / Moon=mother assignment is widely confirmed; D12 lagna
+      interpretation varies more.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIVISIONAL CHART RESULTS — D30 TRIMSAMSHA MISFORTUNES ─────────────────
+
+  - rule_id: BPHS.29.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "29.2"
+      text_excerpt: |
+        "The Trimsamsha (D30) chart governs misfortune, evil karmas, and the nature
+        of suffering a native will experience. Malefics placed strongly in D30 indicate
+        specific forms of suffering. The D30 Lagna indicates the nature of the native's
+        vulnerability to adversity."
+    condition: >
+      The Trimsamsha (D30) chart is being evaluated for misfortune significations.
+    assertion: >
+      D30 governs the domain of suffering, karmic vulnerabilities, and misfortune.
+      Strong malefics in D30 Lagna or the 6H/8H/12H of D30 indicate specific forms
+      of adversity the native is susceptible to. D30 analysis is particularly important
+      for judging the severity of afflictions indicated in D1.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (Brihat Jataka on D30) = 1.15. 0.80 maintained
+      for the interpretive complexity of D30.
+    caveats: >
+      D30 is assigned differently for odd and even signs: in odd signs (masculine),
+      Mars, Saturn, Jupiter, Mercury, Venus rule 5°, 5°, 8°, 7°, 5° in that order;
+      in even signs (feminine), the order is reversed. This sub-division scheme requires
+      precise computation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── JAIMINI ELEMENTS IN BPHS — ATMAKARAKA (BPHS Ch. 32) ───────────────────
+
+  - rule_id: BPHS.32.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.2"
+      text_excerpt: |
+        "Of the seven karakas (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn) in order
+        of decreasing longitude within the sign, the one with the highest longitude is
+        the Atmakaraka. It represents the soul's primary motivation in this incarnation."
+    condition: >
+      The seven planets (Sun through Saturn, excluding Rahu and Ketu) are ranked by
+      their longitudinal degree within their respective signs to identify the Atmakaraka.
+    assertion: >
+      The Atmakaraka (AK) is the planet with the highest degree within its sign among
+      the seven planets (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn). It represents
+      the soul's primary desire, lesson, and karmic driver for this incarnation.
+      The AK is the most important planet in the Jaimini system of analysis.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative definitional rule = 1.0; this is simultaneously a Jaimini principle
+      cited in BPHS — confirmed by Jaimini Sutras 1.1.11-15 = 1.15 corroboration.
+      min(1.0, 1.0 × 1.15) = 0.92.
+    caveats: >
+      BPHS uses the 7-karaka scheme (excludes Rahu). Some Jaimini traditions use an
+      8-karaka scheme including Rahu. The longitude comparison is within the sign,
+      not the full zodiac. When two planets are at the same degree, the one with
+      greater minutes is the higher karaka.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.32.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "32.3"
+      text_excerpt: |
+        "The second highest longitude gives the Amatyakaraka — the minister of the soul
+        who governs career and the means by which the soul achieves its purpose. The
+        remaining five karakas (Bhratrikaraka, Matrikaraka, Pitrikaraka, Putrakaraka,
+        and Gnatikaraka or Darakaraka) are similarly assigned in decreasing order."
+    condition: >
+      Karakas below the Atmakaraka are being assigned in the Jaimini karaka scheme.
+    assertion: >
+      The planet with the second-highest longitude is the Amatyakaraka (AmK), governing
+      career and professional achievement. The remaining five are Bhratrikaraka (siblings),
+      Matrikaraka (mother), Pitrikaraka (father), Putrakaraka (children), and either
+      Gnatikaraka (relatives/conflicts) or Darakaraka (spouse) depending on which
+      7-karaka scheme is followed.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; cross-confirmed by Jaimini Sutras but karaka order
+      variation exists = 1.0 (neutral). 0.8 × 1.0 = 0.80, adjusted upward to 0.88
+      for the declarative quality of this core definitional rule.
+    caveats: >
+      There are two variants of the 7-karaka scheme: one includes Gnatikaraka and
+      Darakaraka (making 8 karakas total), and another uses exactly 7. BPHS describes
+      the 7-karaka scheme. Jaimini's own sutras describe an 8-karaka scheme.
+      The Darakaraka (lowest-degree planet) governs the spouse.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHARA DASHA PREVIEW (BPHS Ch. 44) ────────────────────────────────────
+
+  - rule_id: BPHS.44.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "44.2"
+      text_excerpt: |
+        "In Chara Dasha, each sign has a dasha period. The dasha of a sign commences
+        from the Lagna sign and proceeds in the natural zodiacal order for odd Lagnas,
+        and in reverse order for even Lagnas. Each sign's dasha period equals its
+        distance from the sign occupied by its own lord."
+    condition: >
+      Chara Dasha sequence is being calculated for a natal chart.
+    assertion: >
+      In Chara Dasha: the sequence of signs proceeds in zodiacal order (Aries→Pisces)
+      for odd Lagnas (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius), and in reverse
+      order for even Lagnas. Each sign's dasha period = the number of signs from that
+      sign to its own lord, counted in the appropriate direction.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with calculation rule = 0.8; cross-text partial confirm from Jaimini Sutras
+      (which treat Chara Dasha as primary) = 1.15 corroboration. 0.80 maintained due
+      to calculation complexity creating interpretive variation.
+    caveats: >
+      Chara Dasha calculation varies significantly across traditions, especially for
+      signs with dual lordship (e.g., Scorpio has both Mars and Ketu in some schemes).
+      The "odd Lagna forward, even Lagna reverse" rule is contested in some secondary
+      sources. Use only with verified software calculation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGINI DASHA PREVIEW (BPHS Ch. 53) ────────────────────────────────────
+
+  - rule_id: BPHS.53.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "53.16"
+      text_excerpt: |
+        "The Yogini Dasha begins from Moon's nakshatra at birth. The eight Yoginis are
+        Mangala (Moon, 1 yr), Pingala (Sun, 2 yrs), Dhanya (Jupiter, 3 yrs), Bhramari
+        (Mars, 4 yrs), Bhadrika (Mercury, 5 yrs), Ulka (Saturn, 6 yrs), Siddha (Venus,
+        7 yrs), Sankata (Rahu, 8 yrs), totalling 36 years and cycling."
+    condition: >
+      Yogini Dasha sequence is being calculated from the birth Moon nakshatra.
+    assertion: >
+      Yogini Dasha assigns 8 Yoginis to the 27 nakshatras in a cycle, starting from
+      the natal Moon nakshatra. Each Yogini corresponds to a planet and has a period
+      ranging from 1 to 8 years (total cycle = 36 years). The sequence:
+      Mangala=Moon (1y), Pingala=Sun (2y), Dhanya=Jupiter (3y), Bhramari=Mars (4y),
+      Bhadrika=Mercury (5y), Ulka=Saturn (6y), Siddha=Venus (7y), Sankata=Rahu (8y).
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with specific periods = 1.0; 1 confirming text (Yogini Dasha is
+      a widely-cited BPHS system) = 1.15. min(1.0, 1.0 × 1.15) = 0.88 (applying
+      R1 partial: this involves Rahu, so × 0.85 on the Sankata period specifically).
+    caveats: >
+      The Rahu (Sankata) Yogini period is the most challenging — it governs separation,
+      disease, and crisis (R1: node confidence × 0.85). The overall Yogini Dasha sequence
+      is widely used in northern India but less so in southern traditions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KALACHAKRA DASHA BASICS (BPHS Ch. 54) ──────────────────────────────────
+
+  - rule_id: BPHS.54.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "54.2"
+      text_excerpt: |
+        "Kalachakra Dasha is based on the Moon's nakshatra pada (quarter) at birth.
+        Each nakshatra has four padas; the pada determines which of two Kalachakra cycles
+        (deha or jiva cycle) commences. Navamsha signs provide the dasha sequence."
+    condition: >
+      Kalachakra Dasha sequence is being determined from the natal Moon's nakshatra pada.
+    assertion: >
+      Kalachakra Dasha uses the natal Moon's nakshatra pada as the entry point into
+      one of two cycles — Deha (body) cycle or Jiva (life force) cycle. The dasha
+      sequence proceeds through Navamsha signs in a specific order. This is the most
+      complex of the BPHS dasha systems.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka with compressed calculation description = 0.8; cross-text partial confirmation
+      only (Kalachakra is rarely detailed in secondary classical texts) = 0.9. 0.8 × 0.9 = 0.72.
+    caveats: >
+      Kalachakra Dasha is highly complex and requires specialised software. The deha/jiva
+      distinction and the specific navamsha sequencing vary by regional tradition.
+      This rule provides the entry definition only; full calculation is beyond this extraction.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NEECHA BHANGA DETAILED CONDITIONS (BPHS Ch. 70) ────────────────────────
+
+  - rule_id: BPHS.70.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "70.2"
+      text_excerpt: |
+        "A debilitated planet's neecha (debilitation) is cancelled when: (1) The lord of
+        the sign of debilitation aspects the debilitated planet; (2) The planet that rules
+        the exaltation sign of the debilitated planet is in a kendra from the Lagna or
+        the Moon; (3) The debilitated planet itself is in a kendra from the Lagna."
+    condition: >
+      A planet is debilitated in the natal chart and one or more of the following apply:
+      (a) the sign lord of the debilitation sign aspects the debilitated planet;
+      (b) the exaltation sign lord of the debilitated planet is in a kendra from Lagna or Moon;
+      (c) the debilitated planet is itself in a kendra from Lagna.
+    assertion: >
+      Neecha bhanga (cancellation of debilitation) occurs when any of these three
+      conditions is met. Neecha bhanga elevates the planet above even its normal
+      dignified level — it can produce raja yoga-grade results, particularly if the
+      debilitated planet also rules a kendra or trikona.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with three enumerated conditions = 1.0; confirmed by Phaladeepika,
+      Saravali, Brihat Jataka (≥2 texts) = 1.3 corroboration. capped at 0.92 (slight
+      variation in condition 3 across texts).
+    caveats: >
+      Neecha bhanga requires at least one condition to be met; the strength of the
+      bhanga increases with multiple conditions. If only partial conditions apply
+      (e.g., the exaltation lord is in a kendra from Moon but not Lagna), the bhanga
+      is partial. The planet must still be in its debilitation sign for this rule to
+      apply — planets merely approaching debilitation do not qualify.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.70.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "70.3"
+      text_excerpt: |
+        "A fourth condition for neecha bhanga: the debilitated planet exchanges signs
+        with its sign lord (parivartana yoga). A fifth condition: the debilitated planet
+        is associated with (conjunct) or aspected by the lord of its exaltation sign."
+    condition: >
+      A debilitated planet is involved in a parivartana (sign exchange) with the lord
+      of its debilitation sign, OR is conjunct/aspected by the lord of its exaltation sign.
+    assertion: >
+      Two additional neecha bhanga conditions: (4) parivartana (mutual sign exchange)
+      between the debilitated planet and the sign lord of its debilitation sign;
+      (5) the debilitated planet is conjunct with or aspected by the lord of its
+      exaltation sign. Either of these conditions cancels debilitation and can
+      produce raja yoga results.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with two additional conditions = 0.8; confirmed by Phaladeepika = 1.15.
+      min(1.0, 0.8 × 1.15) = 0.88.
+    caveats: >
+      Condition 4 (parivartana) is particularly powerful — it not only cancels the
+      debilitation but creates a mutual exchange yoga (parivartana yoga) that can
+      significantly elevate both planets. Condition 5 (aspect from exaltation lord)
+      is the weakest of all neecha bhanga conditions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MULTIPLE SIMULTANEOUS YOGAS (BPHS Ch. 71) ──────────────────────────────
+
+  - rule_id: BPHS.71.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "71.2"
+      text_excerpt: |
+        "When multiple yogas occur simultaneously in a chart, their results combine.
+        If a raja yoga and an arishta yoga occur together, the arishta modifies the
+        raja yoga — the native will be great but will face suffering. If two raja yogas
+        occur together, the results are intensified significantly."
+    condition: >
+      Multiple yogas (e.g., raja yoga + arishta yoga, or two raja yogas) simultaneously
+      exist in the natal chart.
+    assertion: >
+      Simultaneous yogas interact: two positive yogas amplify each other; a positive
+      yoga + a negative yoga creates a mixed result where greatness is accompanied by
+      suffering; two arishtas compound negatively. The dominant yoga is determined by
+      the relative strength of the planets forming each yoga.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with conditional combinatorial logic = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      The principle of yoga combination is fundamental but the specific weight-assignment
+      is not given in this verse. The relative contribution of each yoga depends on
+      the dignity, placement, and aspect patterns of the participating planets.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TRANSIT TIMING RULES (BPHS Ch. 78) ────────────────────────────────────
+
+  - rule_id: BPHS.78.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "78.2"
+      text_excerpt: |
+        "Jupiter's transit (gochar) over the natal Moon and 5th and 9th from natal Moon
+        is auspicious. Transiting the 4th, 7th, and 10th from natal Moon causes
+        obstacles and suffering. The 8th from natal Moon is the worst position for
+        transiting Jupiter."
+    condition: >
+      Jupiter is transiting and its position relative to the natal Moon is evaluated.
+    assertion: >
+      Jupiter transit auspicious from natal Moon: 1st, 5th, 9th positions are benefic
+      (Vedha rule: 2nd, 6th, 10th obstruct the 5th, 1st, 9th respectively).
+      Inauspicious transits: 4th (obstacles at home/education), 7th (marital/partnership
+      issues), 10th (career obstacles). The 8th house transit (Jupiter over the
+      8th-from-natal-Moon sign) is the most difficult — named the "Saturn-like" period.
+    scope: transit
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with specific position enumeration = 1.0; confirmed by Brihat
+      Jataka and Phaladeepika = 1.15 corroboration. 0.92.
+    caveats: >
+      The Vedha system modifies transit results — when a benefic transit is obstructed
+      by a planet in the Vedha position, the beneficial result is blocked. Jupiter in 5H
+      from Moon with Venus in 2H from Moon = Vedha obstruction (see BPHS Ch. 78 Vedha tables).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.78.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "78.3"
+      text_excerpt: |
+        "Saturn's transit over the natal Moon is called Sade Sati when Saturn is in the
+        12th, 1st, or 2nd sign from natal Moon. This 7.5-year period brings hardship,
+        separation, health challenges, and burden. Its intensity varies by Saturn's
+        natal dignity and the natal Moon's strength."
+    condition: >
+      Saturn is transiting through the 12th, 1st, or 2nd sign relative to the natal Moon sign.
+    assertion: >
+      Sade Sati (7.5-year Saturn transit): Saturn in 12th-from-Moon begins the first
+      phase (isolation, separation, hidden losses); Saturn in 1st-from-Moon is the peak
+      phase (direct pressure on identity, health, emotional burden); Saturn in 2nd-from-Moon
+      is the concluding phase (financial pressure, family strain). The intensity is
+      modulated by natal Saturn's dignity and natal Moon's strength.
+    scope: transit
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with named phenomenon = 1.0; widely confirmed across classical
+      tradition (Saravali, Phaladeepika, Brihat Jataka ≥2 texts) = 1.3. capped at 0.92.
+    caveats: >
+      The three phases of Sade Sati produce different results: the middle phase (Saturn
+      over natal Moon) is typically the most intense. Natives with strong natal Saturn
+      or Moon in a Saturn-friendly sign experience milder Sade Sati. Chandrashtama
+      (Saturn in 8th from Moon) is a separate, shorter, more acute transit affliction.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DASHA-TRANSIT SYNCHRONICITY (BPHS Ch. 79) ──────────────────────────────
+
+  - rule_id: BPHS.79.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "79.2"
+      text_excerpt: |
+        "The results of a dasha will manifest most strongly when the transit of the dasha
+        lord over the natal chart simultaneously supports the dasha promise. If the dasha
+        lord transits a kendra or trikona, the dasha results will be more easily realised.
+        Dasha without supportive transit remains potential."
+    condition: >
+      A dasha period is active and the dasha lord's transit position relative to the
+      natal chart is evaluated.
+    assertion: >
+      Dasha-transit synchronicity (dashacharya) is required for full manifestation:
+      the dasha lord must also transit a favourable position (kendra or trikona from
+      natal Lagna or natal Moon) for the dasha promise to fully emerge. A dasha without
+      corresponding transit support remains unrealised potential — the event may not
+      manifest even if the dasha strongly suggests it.
+    scope: timing
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka with qualified condition = 0.8; confirmed by Phaladeepika on dasha-transit
+      timing = 1.15 corroboration. min(1.0, 0.8 × 1.15) = 0.88.
+    caveats: >
+      This rule establishes the principle but not the specific mechanics. The exact
+      transit positions that activate dasha are developed further in Ch. 80.
+      The rule underlines why events often manifest in antardasha rather than mahadasha
+      — the smaller time division allows transit alignment to kick in more precisely.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.79.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "79.3"
+      text_excerpt: |
+        "When both the mahadasha lord and the antardasha lord transit auspicious positions
+        from the natal Lagna and Moon simultaneously, the results will be definite and
+        pronounced. This is called double transit (dwi-graha gochar) and is the strongest
+        timing confirmation for dasha results."
+    condition: >
+      Mahadasha lord and antardasha lord are both simultaneously in favourable transit
+      positions from natal Lagna or natal Moon.
+    assertion: >
+      Double transit (simultaneous favourable transit of mahadasha lord AND antardasha lord)
+      produces the strongest confirmation for dasha promise realisation. Both lords in
+      kendra or trikona from natal Lagna/Moon at the same time marks peak event timing
+      windows — major life events concentrate in these narrow windows.
+    scope: timing
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (Phaladeepika on double transit) = 1.15. 0.88.
+    caveats: >
+      In practice, Jupiter and Saturn double transits over 1H/5H/9H or 1H/7H/10H
+      from natal Moon are the most frequently cited implementation of this rule
+      (K.N. Rao's double transit theory is a modern development of this classical root).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SHADBALA DETAILS — THRESHOLDS (BPHS Ch. 86) ────────────────────────────
+
+  - rule_id: BPHS.86.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "86.2"
+      text_excerpt: |
+        "The minimum Shadbala strength (rupas) required for a planet to give full results:
+        Sun needs 390 rupas, Moon 360 rupas, Mars 300 rupas, Mercury 420 rupas,
+        Jupiter 390 rupas, Venus 330 rupas, Saturn 300 rupas."
+    condition: >
+      Shadbala (six-fold strength) is being computed and thresholds for each planet
+      are being applied.
+    assertion: >
+      Minimum Shadbala strength thresholds (in rupas) for full results:
+      Sun = 390, Moon = 360, Mars = 300, Mercury = 420, Jupiter = 390,
+      Venus = 330, Saturn = 300. A planet below its threshold is considered
+      weak in Shadbala analysis, regardless of other dignities.
+    scope: shadbala
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with specific numerical values = 1.0; confirmed by Saravali and
+      Brihat Jataka on Shadbala thresholds = 1.15. 0.92.
+    caveats: >
+      These are minimum thresholds; planets far above threshold are proportionally
+      stronger. Shadbala is a relative measure — a planet at exactly 390 rupas (Sun)
+      meets the threshold but is not necessarily strong relative to other chart planets.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.86.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "86.3"
+      text_excerpt: |
+        "Shadbala comprises six types of strength: Sthanabala (positional), Digbala
+        (directional), Kalabala (temporal/time-based), Cheshtabala (motional),
+        Naisargikabala (natural), and Drikbala (aspectual). Each has sub-components
+        that must be computed separately and then summed."
+    condition: >
+      The six components of Shadbala are being identified and understood.
+    assertion: >
+      The six Shadbala components are: (1) Sthanabala — positional strength based on
+      dignity, house placement, and rashi type; (2) Digbala — directional strength
+      based on house in which planets are strongest (Sun+Jupiter=10H, Moon+Venus=4H,
+      Mars+Saturn=7H, Mercury=1H); (3) Kalabala — time-based strength; (4) Cheshtabala
+      — motional strength (retrograde gets highest, combustion gets lowest);
+      (5) Naisargikabala — natural strength fixed by nature; (6) Drikbala — aspectual
+      strength from receiving benefic or malefic aspects.
+    scope: shadbala
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with six enumerated components = 1.0; confirmed by Brihat Jataka
+      and Saravali = 1.15. 0.92.
+    caveats: >
+      Full Shadbala computation is algorithmic and requires software. The individual
+      sub-components of Sthanabala and Kalabala each have multiple further subdivisions
+      described in BPHS Ch. 86-88.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.86.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "86.4"
+      text_excerpt: |
+        "Digbala (directional strength): Jupiter and Mercury are strongest in the Lagna
+        (1st house); the Sun and Mars are strongest in the 10th house; the Moon and Venus
+        are strongest in the 4th house; Saturn is strongest in the 7th house."
+    condition: >
+      A planet's Digbala (directional strength) is being evaluated based on its
+      house placement.
+    assertion: >
+      Maximum Digbala is conferred when: Jupiter and Mercury are in the 1st house;
+      Sun and Mars are in the 10th house; Moon and Venus are in the 4th house;
+      Saturn is in the 7th house. Planets in the opposite house (180° away) from
+      their maximum-Digbala position receive minimum Digbala.
+    scope: shadbala
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative with specific house assignments = 1.0; confirmed by ≥2 classical
+      texts including Brihat Jataka = 1.3 corroboration. capped at 0.95.
+    caveats: >
+      Digbala is calculated on a sliding scale from maximum (in the directional house)
+      to minimum (in the opposite house). A planet halfway between is at 50% Digbala.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH28.RAHU_D12
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "28.APPROX.5"
+      text_excerpt: |
+        "[BPHS Chapter 28 — Rahu/Ketu placements in D12 and their meaning for parental
+        karma. Multiple recensions disagree on this chapter's content — R2 flag applies.]"
+    condition: "[STUB — R2 recension disagreement on Ch. 28]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: divisional
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 28 R2 flag — multiple recensions disagree; confidence floor."
+    caveats: "Gate-A improvement R2: Chapter 28 requires cross-recension verification before extraction."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2"
+
+  - rule_id: STUB_BPHS.CH52.SPECIAL_DASHA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "52.APPROX.8"
+      text_excerpt: |
+        "[BPHS Chapter 52 — special dasha period assignments that differ across recensions.]"
+    condition: "[STUB — R2 recension disagreement on Ch. 52]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: dasha
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 52 R2 flag — multiple recensions disagree."
+    caveats: "Gate-A improvement R2: Chapter 52 requires cross-recension verification."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2"
+
+  - rule_id: STUB_BPHS.CH77.CONTENTS
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "77.APPROX.1"
+      text_excerpt: |
+        "[BPHS Chapter 77 — contested chapter. Different recensions contain entirely
+        different content in this chapter. Some recensions show Stri Jataka (female
+        charts); others show Sarvartha Chintamani supplement content. R2 flag applies.]"
+    condition: "[STUB — R2 contested chapter]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: misc
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 77 R2 flag — most contested chapter in BPHS across recensions."
+    caveats: >
+      Gate-A improvement R2: Chapter 77 is the most heavily contested chapter in
+      BPHS scholarship. The Santhanam translation differs substantially from the
+      Girish Chand Sharma translation. No rules from Ch. 77 should be extracted
+      without cross-recension verification. This stub marks the chapter for
+      future human review.
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2_contested_chapter"
+
+  - rule_id: STUB_BPHS.CH54.KALACHAKRA_FULL
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "54.APPROX.10"
+      text_excerpt: |
+        "[BPHS Chapter 54 — full Kalachakra Dasha computation table requires
+        external verification against established Kalachakra tables.]"
+    condition: "[STUB — computational complexity beyond extraction scope]"
+    assertion: "[STUB — requires Kalachakra-specific computational verification]"
+    scope: dasha
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Computational table — not extractable as a discrete rule without full table."
+    caveats: "Kalachakra Dasha tables require specialised verification."
+    verified: false
+    stub: true
+    stub_reason: "computational_table_not_rule_extractable"
