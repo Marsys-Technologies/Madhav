@@ -45,4 +45,33 @@ governs_under: CLAUDECODE_BRIEF_WS2_AUTONOMOUS_ACTIVATION_v1_0 + CONDUCTOR_PROMP
 
 ---
 
-*[Log continues with each batch...]*
+## WS-2 COMPLETE — 2026-06-05
+
+All sessions passed. PR merged to main. Tag `ws2-depth-build-complete` pushed.
+L0-L5 depth build complete. L2 100% grounded. IS.8(b) PASS_WITH_CLASS2.
+
+**Summary of all sessions:**
+
+| Session | Status | Key deliverable |
+|---------|--------|-----------------|
+| l0-brahmagyan | PASS | 7 assets, 184 tests |
+| l1-ganita | PASS | 9 assets, 192 tests, 5 ayanamshas, FORENSIC v8.0 verified |
+| l2-bodha-scaffold | PASS | 569 signals UNGROUNDED, 110 CGM edges, holistic_bundle |
+| l3-kala | PASS | 893 timeline rows, 23 convergence windows, 17 obstructions |
+| l4-phala | PASS | 25 anchors (0.80 ceiling, falsifiers), muhurta 6 types |
+| l5-mimamsa | PASS | 57 LEL events isolated, 88.9% concordance, 569 multipliers at 1.0 |
+| l2-bodha-grounded | PASS | 569/569 (100%) grounded against WS-3 rule corpus |
+| l3-l4-reverify | PASS | 23/23 valid, 25/25 anchors unchanged |
+| red-team-is8b | PASS_WITH_CLASS2 | 0 class-1 findings; 2 class-2 backlogged to V1.3/V1.4 |
+| wave-close | COMPLETE | AC sweep 8/8 green; PR merged; tag pushed |
+
+**Class-2 findings backlogged:**
+- C2-001: STUB signal confidence inflation → V1.4 grounding engine fix
+- C2-002: phala.anchors notes LEL text strip → V1.3 or V1.4 fix
+
+**AC scorecard:** All 8 ACs GREEN.
+**Sealing artifact:** `00_ARCHITECTURE/CONDUCTOR/ws2/smriti/wave-close-ac-sweep.md`
+
+---
+
+*WS-2 Brahma Depth Build — SEALED 2026-06-05*

@@ -260,9 +260,15 @@ sessions:
 
   - id: wave-close
     layer: close
-    status: blocked_ws3
+    status: passed
+    closed_at: 2026-06-05
     role: Sutradhara + Pramana + Pratistha
     scope: |
       Final WS-2 AC sweep; PR opens; CI green; swarm merges; tag ws2-depth-build-complete.
     depends_on: [red-team-is8b]
-    ws3_blocked: true
+    ws3_blocked: false
+    results:
+      ac_sweep: all_green_8_of_8
+      pr_merged: true
+      tag_pushed: ws2-depth-build-complete
+      smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/wave-close-ac-sweep.md
