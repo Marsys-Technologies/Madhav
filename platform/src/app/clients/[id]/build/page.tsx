@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import { CockpitShell } from '@/components/cockpit/CockpitShell'
+import { CockpitShell } from '@/lib/components/cockpit/v2/CockpitShell'
 
 // v2 cockpit — replaces legacy ConstellationCanvas per VISUAL_CONTRACT v2 §C-S8.5.
 // CockpitShell assembles LiveDependencyGraph, OverallProgress, TelemetryStrip,
