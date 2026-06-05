@@ -1,0 +1,69 @@
+wave: ws1
+worktree: /Users/Dev/Vibe-Coding/Apps/Madhav
+branch: feature/ws1-drivable-portal
+mode: AUTONOMOUS_MODE
+max_run_budget_usd: 5000
+max_spend_per_asset_usd: 300
+
+sessions:
+  - id: step-0.5-turbopack
+    role: Śilpī (lead) + Nirīkṣaka (diagnose) + Pramāṇa (verify)
+    status: passed
+    commit: 0520252c
+    scope: |
+      Diagnose the Turbopack/python-sidecar venv symlink that blocks `npm run build` (web).
+      Hypothesis: python-sidecar/.venv symlinks confuse Turbopack file tracing.
+      Fix: smallest patch that unblocks — likely a next.config.ts experimental.outputFileTracingExcludes
+      entry, or a .next-ignore pattern, or moving the venv outside the trace root.
+    acceptance:
+      - "`cd platform && npm run build` exits 0 with \"Compiled successfully\""
+      - No new TS errors vs baseline
+    parallel_safe: false  # blocks S2 deploy verification
+
+  - id: s2-cockpit-sse-inspector
+    role: full swarm (Racayitā / Śilpī / Review×5 / Pratiṣṭhā / Drashta / Pramāṇa / Darpaṇa)
+    status: passed
+    commits: [b195262b, ebbbefc3, e5fa5ef4, 3995ddda, 1f9ade7a, 531bd82f, 19d64e4c]
+    scope: |
+      Per BRAHMA_BUILD_UX_SPEC §5 (Layer Tower), §6 (push/SSE), §7 (Asset Inspector).
+      Components: LayerTower (bottom-up, Brahmagyan bedrock, Mīmāṃsā always-active band),
+      OverallProgress rebased to L0–L5, useChartBuildState (server-side via SSE not polling),
+      AssetInspector right-panel (data sample + provenance + gate verdict + live tool state).
+      Endpoints: GET /api/build/events/[buildId] (SSE), GET /api/build/pyramid-layers
+      (S1 deferred this), per-asset GET /api/assets/[chart_id]/[asset_key] for Inspector.
+      Also: chart_created toast component (S1 deferred); DCB-001 kala_timeline psycopg fix;
+      DCB-004 life_events NOT NULL fix.
+    acceptance:
+      - BRAHMA_BUILD_UX_SPEC §14.3 (live updates), §14.4 (amber shortfall), §14.5 (Inspector)
+      - Drashta drives a real build via the portal; tower fills live; no manual refresh needed
+      - Per-asset Inspector returns row counts, provenance, gate verdict, tool live state
+    parallel_safe: false  # depends on step-0.5 for deploy verification
+
+  - id: s3-consult-admin
+    role: full swarm
+    status: passed
+    commits: [7cfb391c, b8f946c1, be495a0b]
+    scope: |
+      Per BRAHMA_BUILD_UX_SPEC §9 (Progressive Consult) + §10 (admin Brahmagyan view).
+      ConsumeChatV2 capability gate (only offer prompts groundable by the verified layer's tools).
+      "Consult now (Gaṇita)" affordance on band verify.
+      New /admin/foundation route for the one-time Brahmagyan view (per spec §10 — single-band
+      tower + Infrastructure checklist).
+    acceptance:
+      - BRAHMA_BUILD_UX_SPEC §14.7 (Consult progressively capable; no ungroundable suggestions)
+      - §14.8 (Brahmagyan as global bedrock for clients; only builds on admin screen)
+    parallel_safe: true  # can run alongside Step 0.5 if S2 holds it up
+
+  - id: wave-close
+    role: Sūtradhāra + Pramāṇa + Pratiṣṭhā
+    status: passed
+    ac_sweep: 00_ARCHITECTURE/CONDUCTOR/ws1/smriti/wave-close-ac-sweep.md
+    all_acs_green: true
+    scope: |
+      Final WS-1 AC sweep across AC-1 through AC-12 (brief §1 + §5).
+      Open PR; CI green; swarm merges per AUTONOMOUS_MODE §B (no human gate).
+      Tag `ws1-drivable-portal-complete`.
+    acceptance:
+      - All 12 ACs green in the PR scorecard
+      - Six CI gates pass (typecheck, unit-tests, secret-scan, naming-lint, governance-gates, planner-regression)
+      - PR auto-merged; tag pushed

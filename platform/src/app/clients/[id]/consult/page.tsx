@@ -6,6 +6,7 @@ import { configService } from '@/lib/config/index'
 import type { AudienceTier } from '@/lib/prompts/types'
 import type { UIMessage } from 'ai'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import type { CapabilityGateState } from '@/components/consume/ConsumeChatV2'
 
 /**
  * Build an initialMessages array from ?prompt + ?context URL params.
@@ -104,9 +105,15 @@ export default async function ConsultPage({
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 
-  const [reportsResult, conversations] = await Promise.all([
+  // WS-1-S3-B: Fetch pyramid layer status to derive capability gate state.
+  // Runs in parallel with the reports + conversations queries.
+  const [reportsResult, conversations, pyramidResult] = await Promise.all([
     query('SELECT * FROM reports WHERE chart_id=$1 ORDER BY domain ASC', [id]),
     listConversations({ chartId: id, userId: access.user.uid, module: 'consume' }),
+    query<{ layer_key: string; status: string }>(
+      `SELECT layer_key, status FROM pyramid_layers WHERE chart_id = $1`,
+      [id],
+    ).catch(() => ({ rows: [] as { layer_key: string; status: string }[] })),
   ])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reports = reportsResult.rows as any[]
@@ -124,6 +131,21 @@ export default async function ConsultPage({
   const promptParam = typeof sp['prompt'] === 'string' ? sp['prompt'] : undefined
   const contextParam = typeof sp['context'] === 'string' ? sp['context'] : undefined
   const initialMessages = buildPanchangInitialMessages(promptParam, contextParam)
+
+  // WS-1-S3-B: Derive capability gate state from pyramid layers.
+  const cockpitHref = `/clients/${id}/build`
+  const pyramidRows = pyramidResult.rows
+  const l1Row = pyramidRows.find((r) => r.layer_key === 'L1')
+  const isL1Built = l1Row?.status === 'built' || l1Row?.status === 'complete'
+  const isL1Building = l1Row?.status === 'building' || l1Row?.status === 'in_progress'
+
+  const capabilityGateState: CapabilityGateState = pyramidRows.length === 0
+    ? { state: 'no-build', cockpitHref }
+    : isL1Built
+      ? { state: 'ready', capabilities: [] } // capabilities populated client-side if needed
+      : isL1Building
+        ? { state: 'l1-building', cockpitHref }
+        : { state: 'no-build', cockpitHref } // layers exist but L1 not started
 
   return (
     <div data-testid="consult-page-root" data-permission={access.permission}>
@@ -147,6 +169,7 @@ export default async function ConsultPage({
       slashEnabled={slashEnabled}
       exportEnabled={exportEnabled}
       tokensEnabled={tokensEnabled}
+      capabilityGateState={capabilityGateState}
     />
     </div>
   )

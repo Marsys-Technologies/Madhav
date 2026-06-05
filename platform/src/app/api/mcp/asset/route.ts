@@ -58,7 +58,15 @@ const SAFE_ASSET_MAP: Record<string, string> = {
 // (ENV MARSYS_REPO_ROOT=/app in the runner stage, which also copies 01_FACTS_LAYER/
 // and 025_HOLISTIC_SYNTHESIS/ into /app). Fallback to cwd/.. for local dev where
 // process.cwd() is the platform/ directory and the repo root is one level up.
-const REPO_ROOT = process.env.MARSYS_REPO_ROOT ?? join(process.cwd(), '..')
+//
+// NOTE: intentionally a lazy getter (function) rather than a module-level constant.
+// A module-level `join(process.cwd(), '..')` causes Turbopack to create a
+// DirAssetReference for the parent directory, which contains python-sidecar/venv/
+// with a broken symlink (→ python3.13) that triggers a fatal Turbopack panic.
+// Deferring to call-time resolves at runtime without any Turbopack static analysis.
+function getRepoRoot(): string {
+  return process.env.MARSYS_REPO_ROOT ?? join(process.cwd(), '..')
+}
 
 // ── Section filter ────────────────────────────────────────────────────────────
 
@@ -184,7 +192,7 @@ export async function POST(request: Request) {
   }
 
   // Resolve absolute path (repo root + relative)
-  const absolutePath = join(REPO_ROOT, relativePath)
+  const absolutePath = join(getRepoRoot(), relativePath)
 
   // Read the file
   let content: string

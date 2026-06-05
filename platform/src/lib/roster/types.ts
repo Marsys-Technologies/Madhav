@@ -1,4 +1,5 @@
 import type { Chart } from '@/lib/db/types'
+import type { BrahmaLayerId } from '@/lib/brahma/lexicon'
 
 export interface RosterStats {
   total: number
@@ -7,10 +8,27 @@ export interface RosterStats {
   predictionsOverdue: number
 }
 
+export type LayerPipState = 'dim' | 'building' | 'amber' | 'lit'
+
+export interface LayerPip {
+  layer: BrahmaLayerId
+  state: LayerPipState
+}
+
+export interface ChartBuildState {
+  build_id: string
+  status: 'queued' | 'running' | 'complete' | 'failed' | 'cancelled' | 'cancelling'
+  progress_pct: number
+  ayanamshas: string[]
+  started_at: string | null
+  error_summary: string | null
+}
+
 export interface ChartWithMeta extends Chart {
   pyramidPercent: number
-  // ISO timestamp of the most recent pyramid_layers.updated_at for this chart
   lastLayerActivity: string | null
+  buildState: ChartBuildState | null
+  layerPips: LayerPip[]
 }
 
 export interface FilterState {

@@ -12,21 +12,23 @@ import fs from 'fs';
 import path from 'path';
 import { atomicApply } from '@/lib/icr/atomic_apply';
 
-// ── Path constants ────────────────────────────────────────────────────────────
-// process.cwd() = platform/ in Next.js API routes
-const REPO_ROOT = path.join(process.cwd(), '..');
-const CONFLICT_PATCHES_DIR = path.join(REPO_ROOT, '00_ARCHITECTURE', 'CONFLICT_PATCHES');
-const PROPOSED_DIR = path.join(CONFLICT_PATCHES_DIR, 'PROPOSED');
-const RESOLVED_DIR = path.join(CONFLICT_PATCHES_DIR, 'RESOLVED');
-const REJECTED_DIR = path.join(CONFLICT_PATCHES_DIR, 'REJECTED');
-const L1_REVIEW_DIR = path.join(CONFLICT_PATCHES_DIR, 'L1_REVIEW');
-
-const MSR_PATH = path.join(REPO_ROOT, '025_HOLISTIC_SYNTHESIS', 'MSR_v5_0.md');
-const DISAGREEMENT_REGISTER_PATH = path.join(
-  REPO_ROOT,
-  '00_ARCHITECTURE',
-  'DISAGREEMENT_REGISTER_v1_0.md',
-);
+// ── Path helpers ──────────────────────────────────────────────────────────────
+// process.cwd() = platform/ in Next.js API routes.
+//
+// NOTE: intentionally lazy getters (functions) rather than module-level constants.
+// A module-level `path.join(process.cwd(), '..')` causes Turbopack to create a
+// DirAssetReference for the parent directory, which contains python-sidecar/venv/
+// with a broken symlink (→ python3.13) that triggers a fatal Turbopack panic.
+function getRepoRoot(): string { return path.join(process.cwd(), '..'); }
+function getConflictPatchesDir(): string { return path.join(getRepoRoot(), '00_ARCHITECTURE', 'CONFLICT_PATCHES'); }
+function getProposedDir(): string { return path.join(getConflictPatchesDir(), 'PROPOSED'); }
+function getResolvedDir(): string { return path.join(getConflictPatchesDir(), 'RESOLVED'); }
+function getRejectedDir(): string { return path.join(getConflictPatchesDir(), 'REJECTED'); }
+function getL1ReviewDir(): string { return path.join(getConflictPatchesDir(), 'L1_REVIEW'); }
+function getMsrPath(): string { return path.join(getRepoRoot(), '025_HOLISTIC_SYNTHESIS', 'MSR_v5_0.md'); }
+function getDisagreementRegisterPath(): string {
+  return path.join(getRepoRoot(), '00_ARCHITECTURE', 'DISAGREEMENT_REGISTER_v1_0.md');
+}
 
 // ── Path-traversal validation ─────────────────────────────────────────────────
 
@@ -51,17 +53,18 @@ function validatePatchFile(patchFile: string): string | null {
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 async function handleConfirm(patchFile: string): Promise<NextResponse> {
-  const proposedPath = path.join(PROPOSED_DIR, patchFile);
+  const proposedDir = getProposedDir();
+  const proposedPath = path.join(proposedDir, patchFile);
 
   // Double-check resolved path stays within PROPOSED/
-  if (!proposedPath.startsWith(PROPOSED_DIR + path.sep) && proposedPath !== PROPOSED_DIR) {
+  if (!proposedPath.startsWith(proposedDir + path.sep) && proposedPath !== proposedDir) {
     return NextResponse.json({ error: 'invalid patch_file (path escape)' }, { status: 400 });
   }
 
   const result = atomicApply({
     proposedPath,
-    resolvedDir: RESOLVED_DIR,
-    msrPath: MSR_PATH,
+    resolvedDir: getResolvedDir(),
+    msrPath: getMsrPath(),
   });
 
   if (!result.ok) {
@@ -72,9 +75,10 @@ async function handleConfirm(patchFile: string): Promise<NextResponse> {
 }
 
 async function handleReject(patchFile: string, reason?: string): Promise<NextResponse> {
-  const proposedPath = path.join(PROPOSED_DIR, patchFile);
+  const proposedDir = getProposedDir();
+  const proposedPath = path.join(proposedDir, patchFile);
 
-  if (!proposedPath.startsWith(PROPOSED_DIR + path.sep) && proposedPath !== PROPOSED_DIR) {
+  if (!proposedPath.startsWith(proposedDir + path.sep) && proposedPath !== proposedDir) {
     return NextResponse.json({ error: 'invalid patch_file (path escape)' }, { status: 400 });
   }
 
@@ -91,8 +95,9 @@ async function handleReject(patchFile: string, reason?: string): Promise<NextRes
     : `${yamlContent.trimEnd()}\nreject_reason: "<none provided>"\n`;
 
   try {
-    fs.mkdirSync(REJECTED_DIR, { recursive: true });
-    const rejectedPath = path.join(REJECTED_DIR, patchFile);
+    const rejectedDir = getRejectedDir();
+    fs.mkdirSync(rejectedDir, { recursive: true });
+    const rejectedPath = path.join(rejectedDir, patchFile);
     fs.writeFileSync(rejectedPath, rejectedContent, 'utf-8');
     fs.rmSync(proposedPath);
   } catch (e) {
@@ -103,15 +108,17 @@ async function handleReject(patchFile: string, reason?: string): Promise<NextRes
 }
 
 async function handleEscalate(patchFile: string, reason?: string): Promise<NextResponse> {
-  const proposedPath = path.join(PROPOSED_DIR, patchFile);
+  const proposedDir = getProposedDir();
+  const proposedPath = path.join(proposedDir, patchFile);
 
-  if (!proposedPath.startsWith(PROPOSED_DIR + path.sep) && proposedPath !== PROPOSED_DIR) {
+  if (!proposedPath.startsWith(proposedDir + path.sep) && proposedPath !== proposedDir) {
     return NextResponse.json({ error: 'invalid patch_file (path escape)' }, { status: 400 });
   }
 
   try {
-    fs.mkdirSync(L1_REVIEW_DIR, { recursive: true });
-    const l1Path = path.join(L1_REVIEW_DIR, patchFile);
+    const l1ReviewDir = getL1ReviewDir();
+    fs.mkdirSync(l1ReviewDir, { recursive: true });
+    const l1Path = path.join(l1ReviewDir, patchFile);
     fs.renameSync(proposedPath, l1Path);
   } catch (e) {
     return NextResponse.json({ error: `Failed to escalate patch: ${e}` }, { status: 500 });
@@ -122,7 +129,7 @@ async function handleEscalate(patchFile: string, reason?: string): Promise<NextR
   const stub = `\n## [AUTO] Escalated: ${patchFile} (${isoDate})\nStatus: ESCALATED_TO_L1_REVIEW\nArtifact: 00_ARCHITECTURE/CONFLICT_PATCHES/L1_REVIEW/${patchFile}\nReason: ${reason ?? '<none provided>'}\n`;
 
   try {
-    fs.appendFileSync(DISAGREEMENT_REGISTER_PATH, stub, 'utf-8');
+    fs.appendFileSync(getDisagreementRegisterPath(), stub, 'utf-8');
   } catch {
     // Non-fatal — log the escalation even if DISAGREEMENT_REGISTER append fails
     // (the file may not exist in test environments)

@@ -383,7 +383,7 @@ export function NewClientForm() {
       const data = await res.json()
 
       if (res.status === 409 || (res.ok && data.idempotent)) {
-        router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
+        router.push(`/dashboard?chart_created=${data.chart_id}`)
         return
       }
 
@@ -419,7 +419,7 @@ export function NewClientForm() {
         return
       }
 
-      router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
+      router.push(`/dashboard?chart_created=${data.chart_id}`)
     } catch {
       setErrors({ api: 'Network error — please check your connection and try again.' })
     } finally {
@@ -909,7 +909,7 @@ export function NewClientForm() {
                   opacity: loading ? 0.5 : 1,
                 }}
               >
-                {loading ? 'Computing…' : 'Compute chart'}
+                {loading ? 'Creating…' : 'Create chart'}
               </Button>
             </div>
           </div>

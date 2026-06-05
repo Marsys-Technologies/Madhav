@@ -52,6 +52,22 @@ interface ConversationRow {
   module: ConversationModule
 }
 
+/**
+ * WS-1-S3-B: Capability gate state passed from the server component.
+ *
+ * 'no-build'     — no pyramid layers exist; chart has never been built.
+ *                  Render a full-screen block with a link back to the cockpit.
+ * 'l1-building'  — L1 (Gaṇita / Chart Facts) is in progress.
+ *                  Render a dismissible amber banner; chat is still usable but
+ *                  hints that grounded tools are not yet available.
+ * 'ready'        — L1 (or better) is built; chat is fully grounded.
+ *                  No banner; capabilities list is passed for informational use.
+ */
+export type CapabilityGateState =
+  | { state: 'no-build'; cockpitHref: string }
+  | { state: 'l1-building'; cockpitHref: string }
+  | { state: 'ready'; capabilities: string[] }
+
 export interface ConsumeChatProps {
   chartId: string
   chartName: string
@@ -70,6 +86,11 @@ export interface ConsumeChatProps {
   exportEnabled?: boolean
   /** R8-S5: enable token count display in composer */
   tokensEnabled?: boolean
+  /**
+   * WS-1-S3-B: Capability gate state from the server component.
+   * When omitted, no gate is applied (backwards-compatible default).
+   */
+  capabilityGateState?: CapabilityGateState
 }
 import { EmptyState } from './EmptyState'
 import { MarkdownContent } from '../chat/MarkdownContent'
@@ -1583,12 +1604,89 @@ function V2Thread({ chartId, chartName, slashEnabled = false, tokensEnabled = fa
   )
 }
 
+// ─── WS-1-S3-B: Capability gate UI components ────────────────────────────────
+
+/**
+ * Full-screen block shown when no pyramid layers exist (chart never built).
+ * Caps the user at the cockpit — they cannot proceed to chat until L1 is built.
+ */
+function NoBuildGate({ cockpitHref }: { cockpitHref: string }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center"
+      data-testid="capability-gate-no-build"
+      role="alert"
+      aria-live="polite"
+    >
+      <div className="rounded-full bg-gray-100 p-5">
+        <svg className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      </div>
+      <div className="max-w-md">
+        <h2 className="text-lg font-semibold text-gray-900">Build required before consulting</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          This chart has not been built yet. The Gaṇita layer (L1 — Chart Facts) must complete
+          before Madhav can provide grounded astrological analysis.
+        </p>
+      </div>
+      <a
+        href={cockpitHref}
+        className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+        data-testid="capability-gate-cockpit-link"
+      >
+        Go to build cockpit
+      </a>
+    </div>
+  )
+}
+
+/**
+ * Dismissible amber banner shown when L1 is still building.
+ * Chat renders underneath — the user can type, but grounded tools are limited.
+ */
+function L1BuildingBanner({ cockpitHref, onDismiss }: { cockpitHref: string; onDismiss: () => void }) {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      data-testid="capability-gate-l1-building"
+      role="alert"
+      aria-live="polite"
+    >
+      <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+      </svg>
+      <div className="flex-1">
+        <span className="font-semibold">Gaṇita layer building</span>
+        {' — '}consult is available but grounded chart-fact tools will complete after L1 finishes.{' '}
+        <a href={cockpitHref} className="underline hover:text-amber-700 font-medium">
+          Monitor progress
+        </a>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded p-0.5 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-colors"
+        aria-label="Dismiss building banner"
+        data-testid="capability-gate-l1-dismiss"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 // ─── ConsumeChatV2 ────────────────────────────────────────────────────────────
 
 /**
  * β2: Thread with conversation list sidebar + write-through restore on mount.
  */
-export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false, initialMessages: initialMessagesProp }: ConsumeChatProps) {
+export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEnabled, audienceTier = 'client', reports = [], slashEnabled = false, exportEnabled = false, tokensEnabled = false, initialMessages: initialMessagesProp, capabilityGateState }: ConsumeChatProps) {
+  // WS-1-S3-B: L1-building banner dismiss state
+  const [l1BannerDismissed, setL1BannerDismissed] = useState(false)
+
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | undefined>(initialMessagesProp)
   const [restoredKey, setRestoredKey] = useState(0)
@@ -1808,6 +1906,19 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     },
   ], [handleNewConversation])
 
+  // WS-1-S3-B: Capability gate — full-screen block when no build exists
+  if (capabilityGateState?.state === 'no-build') {
+    return (
+      <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
+      <V2PrefsCtx.Provider value={prefsCtxValue}>
+      <div className="relative flex h-dvh text-zinc-100 consume-shell bg-gray-950" data-testid="v2-chat-shell">
+        <NoBuildGate cockpitHref={capabilityGateState.cockpitHref} />
+      </div>
+      </V2PrefsCtx.Provider>
+      </CostVisibilityCtx.Provider>
+    )
+  }
+
   return (
     <CostVisibilityCtx.Provider value={costVisibilityEnabled ?? false}>
     <V2PrefsCtx.Provider value={prefsCtxValue}>
@@ -2011,6 +2122,16 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
 
         {/* TraceDrawer — outside header but inside main column */}
         <TraceDrawer queryId={latestQueryId} open={traceOpen} onOpenChange={setTraceOpen} />
+
+        {/* WS-1-S3-B: L1-building capability gate banner */}
+        {capabilityGateState?.state === 'l1-building' && !l1BannerDismissed && (
+          <div className="px-4 md:px-6 pt-2 shrink-0">
+            <L1BuildingBanner
+              cockpitHref={capabilityGateState.cockpitHref}
+              onDismiss={() => setL1BannerDismissed(true)}
+            />
+          </div>
+        )}
 
         <main className="flex-1 overflow-hidden">
           <V2ChatRuntime

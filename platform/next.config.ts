@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
       "./node_modules/grpc-js/**",
     ],
   },
+  // Set Turbopack root to the filesystem root so that symlinks in
+  // python-sidecar/venv/bin/ (which point to /opt/homebrew/...) are not
+  // considered "outside the filesystem root" by Turbopack's path validator.
+  // Without this, Turbopack panics when it encounters the venv's python3.13
+  // symlink (→ /opt/homebrew/Cellar/...) during module graph construction.
+  // This only affects local dev/build; in production the venv is not present.
+  turbopack: {
+    root: "/",
+  },
 };
 
 export default nextConfig;

@@ -9,6 +9,8 @@ import type { Chart } from '@/lib/db/types'
 import { fetchConsumedTodayCount } from '@/lib/roster/stats'
 import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
 import { Navagraha } from '@/components/brand/Navagraha'
+import { BRAHMA_LAYER_ORDER, PYRAMID_TO_BRAHMA } from '@/lib/brahma/lexicon'
+import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
 
 /**
  * Dashboard — role-gated roster (Unit 3.consult_nav, Commit 1).
@@ -59,30 +61,65 @@ export default async function DashboardPage() {
 
   const chartIds = charts.map((c) => c.id)
 
-  // Pyramid layers — only super_admin actually drives Build, but the roster
-  // surfaces freshness/progress to guests too (read-only).
+  // Per-layer pyramid data — fetches individual rows so we can derive
+  // Brahma-layer pip states for the ClientCard pip rail.
   const layersResult = chartIds.length > 0
-    ? await query(
-        'SELECT chart_id, status, MAX(updated_at) AS last_updated FROM pyramid_layers WHERE chart_id = ANY($1::uuid[]) GROUP BY chart_id, status',
+    ? await query<{ chart_id: string; layer: string; sublayer: string; status: string; updated_at: string }>(
+        'SELECT chart_id, layer, sublayer, status, updated_at FROM pyramid_layers WHERE chart_id = ANY($1::uuid[])',
         [chartIds]
       )
     : { rows: [] }
-  const layerRows = layersResult.rows as unknown as {
-    chart_id: string
-    status: string
-    last_updated: string
-  }[]
+
+  // Active builds — latest per chart (queued/running/cancelling only).
+  const buildsResult = chartIds.length > 0
+    ? await query<{
+        build_id: string
+        chart_id: string
+        status: string
+        progress_pct: number
+        ayanamshas: string[]
+        started_at: string | null
+        error_summary: string | null
+      }>(
+        `SELECT DISTINCT ON (chart_id)
+           build_id, chart_id, status,
+           COALESCE(
+             (SELECT COUNT(*)::float / NULLIF(COUNT(*) FILTER (WHERE TRUE), 0) * 100
+              FROM build_steps WHERE build_steps.build_id = builds.build_id),
+             0
+           )::int AS progress_pct,
+           ayanamshas, started_at, error_summary
+         FROM builds
+         WHERE chart_id = ANY($1::uuid[])
+           AND status IN ('queued', 'running', 'cancelling')
+         ORDER BY chart_id, queued_at DESC`,
+        [chartIds]
+      )
+    : { rows: [] }
 
   const pyramidPercents = new Map<string, number>()
   const lastActivityMap = new Map<string, string>()
   const inActiveBuildSet = new Set<string>()
+  const layerPipsMap = new Map<string, import('@/lib/roster/types').LayerPip[]>()
+  const buildStateMap = new Map<string, import('@/lib/roster/types').ChartBuildState>()
+
+  for (const buildRow of buildsResult.rows) {
+    buildStateMap.set(buildRow.chart_id, {
+      build_id: buildRow.build_id,
+      status: buildRow.status as import('@/lib/roster/types').ChartBuildState['status'],
+      progress_pct: buildRow.progress_pct,
+      ayanamshas: Array.isArray(buildRow.ayanamshas) ? buildRow.ayanamshas : [],
+      started_at: buildRow.started_at,
+      error_summary: buildRow.error_summary,
+    })
+  }
 
   for (const chart of charts) {
-    const rows = layerRows.filter((r) => r.chart_id === chart.id)
+    const rows = layersResult.rows.filter((r) => r.chart_id === chart.id)
     const complete = rows.filter((r) => r.status === 'complete').length
     pyramidPercents.set(chart.id, Math.round((complete / 6) * 100))
 
-    const timestamps = rows.map((r) => r.last_updated).filter(Boolean)
+    const timestamps = rows.map((r) => r.updated_at).filter(Boolean)
     if (timestamps.length > 0) {
       const latest = timestamps.reduce((a, b) => (a > b ? a : b))
       lastActivityMap.set(chart.id, latest)
@@ -91,6 +128,16 @@ export default async function DashboardPage() {
     if (rows.some((r) => r.status === 'in_progress')) {
       inActiveBuildSet.add(chart.id)
     }
+
+    // Build layer pips in Brahma layer order.
+    const pips: import('@/lib/roster/types').LayerPip[] = BRAHMA_LAYER_ORDER.map((brahmaLayer) => {
+      const row = rows.find((r) => PYRAMID_TO_BRAHMA[`${r.layer}:${r.sublayer}`] === brahmaLayer)
+      if (!row) return { layer: brahmaLayer, state: 'dim' as const }
+      if (row.status === 'complete') return { layer: brahmaLayer, state: 'lit' as const }
+      if (row.status === 'in_progress') return { layer: brahmaLayer, state: 'building' as const }
+      return { layer: brahmaLayer, state: 'dim' as const }
+    })
+    layerPipsMap.set(chart.id, pips)
   }
 
   const consumedToday = await fetchConsumedTodayCount(chartIds)
@@ -99,6 +146,8 @@ export default async function DashboardPage() {
     ...c,
     pyramidPercent: pyramidPercents.get(c.id) ?? 0,
     lastLayerActivity: lastActivityMap.get(c.id) ?? null,
+    buildState: buildStateMap.get(c.id) ?? null,
+    layerPips: layerPipsMap.get(c.id) ?? BRAHMA_LAYER_ORDER.map((layer) => ({ layer, state: 'dim' as const })),
   }))
 
   const stats: RosterStats = {
@@ -110,6 +159,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="relative min-h-full overflow-hidden" data-testid="dashboard-root" data-role={role}>
+      {/* Chart-created toast: shown when ?chart_created=[id] is present in URL */}
+      <Suspense>
+        <ChartCreatedToast />
+      </Suspense>
       <Navagraha
         size={600}
         opacity={0.15}
