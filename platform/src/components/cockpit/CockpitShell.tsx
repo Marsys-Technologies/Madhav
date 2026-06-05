@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { LiveDependencyGraph } from './LiveDependencyGraph'
 import { OverallProgress } from './OverallProgress'
 import { TelemetryStrip } from './TelemetryStrip'
@@ -32,6 +33,7 @@ interface ActiveBuild {
 }
 
 export function CockpitShell({ chartId }: { chartId: string }) {
+  const router = useRouter()
   const [build, setBuild] = useState<ActiveBuild | null>(null)
   const [layers, setLayers] = useState<Layer[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
@@ -95,11 +97,13 @@ export function CockpitShell({ chartId }: { chartId: string }) {
       />
 
       {/* Layer tower — bottom-up L0→L5 with pip rail */}
+      {/* WS-1-S3-B: onConsultClick wired — navigates to consult when L1 is built */}
       <div data-testid="layer-tower-section">
         <LayerTower
           layers={layers}
           onAssetClick={setSelectedAsset}
           selectedAsset={selectedAsset}
+          onConsultClick={() => router.push(`/clients/${chartId}/consult`)}
         />
       </div>
 

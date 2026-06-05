@@ -16,6 +16,9 @@
  *   attention  = orange
  *
  * PipRail = one colored dot per asset, animate fill left-to-right on change.
+ *
+ * WS-1-S3-B: onConsultClick prop — "Consult now (Gaṇita)" affordance on L1
+ * band when status === 'built'.
  */
 
 import { useCallback } from 'react'
@@ -41,6 +44,11 @@ interface LayerTowerProps {
   onAssetClick?: (assetKey: string) => void
   /** Currently selected asset key */
   selectedAsset?: string | null
+  /**
+   * WS-1-S3-B: When provided, renders a "Consult now (Gaṇita)" button on the
+   * L1 band when L1 status === 'built'. The callback receives the chart ID.
+   */
+  onConsultClick?: () => void
 }
 
 // ── Status chip ────────────────────────────────────────────────────────────────
@@ -134,12 +142,15 @@ function LayerBand({
   isAlwaysActive,
   onAssetClick,
   selectedAsset,
+  onConsultClick,
 }: {
   layer: Layer
   isBedrock: boolean
   isAlwaysActive: boolean
   onAssetClick?: (assetKey: string) => void
   selectedAsset?: string | null
+  /** WS-1-S3-B: shown on L1 band when status==='built' */
+  onConsultClick?: () => void
 }) {
   // Normalise status for display (L5 always shows "listening" if not built)
   const displayStatus: LayerStatus =
@@ -190,13 +201,26 @@ function LayerBand({
       <div className="flex-1">
         <PipRail assets={layer.assets} onPipClick={onAssetClick} selectedAsset={selectedAsset} />
       </div>
+
+      {/* WS-1-S3-B: "Consult now (Gaṇita)" affordance — L1 band only, built status only */}
+      {layer.layer === 'L1' && layer.status === 'built' && onConsultClick && (
+        <button
+          type="button"
+          onClick={onConsultClick}
+          className="ml-2 shrink-0 inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 transition-colors"
+          data-testid="consult-now-btn"
+          aria-label="Consult now — Gaṇita layer is built"
+        >
+          Consult now (Gaṇita)
+        </button>
+      )}
     </div>
   )
 }
 
 // ── LayerTower ─────────────────────────────────────────────────────────────────
 
-export function LayerTower({ layers, onAssetClick, selectedAsset }: LayerTowerProps) {
+export function LayerTower({ layers, onAssetClick, selectedAsset, onConsultClick }: LayerTowerProps) {
   const handlePipClick = useCallback(
     (assetKey: string) => {
       onAssetClick?.(assetKey)
@@ -234,6 +258,7 @@ export function LayerTower({ layers, onAssetClick, selectedAsset }: LayerTowerPr
             isAlwaysActive={isAlwaysActive}
             onAssetClick={handlePipClick}
             selectedAsset={selectedAsset}
+            onConsultClick={onConsultClick}
           />
         )
       })}
