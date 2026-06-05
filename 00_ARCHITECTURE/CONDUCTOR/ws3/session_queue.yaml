@@ -10,7 +10,10 @@ max_spend_per_asset_usd: 1000
 
 sessions:
   - id: method-and-rubric
-    status: PENDING
+    status: COMPLETE
+    completed_at: "2026-06-05"
+    commit: "8b115285"
+    notes: "WS3_EXTRACTION_METHOD_v1_0.md committed. Cowork second-AI review completed inline (3 amendments: KP verse-ref, extended scope vocab, Jaimini implicit-sutra strength). Prior run crashed before queue was updated."
     role: Racayitā + adversarial Cowork review
     depends_on: []
     scope: |
@@ -25,7 +28,10 @@ sessions:
       Method reviewed by Cowork second-AI slot.
 
   - id: bphs-pilot
-    status: PENDING
+    status: COMPLETE
+    completed_at: "2026-06-05"
+    commit: "7a1c307c"
+    notes: "500 BPHS rules extracted in 5 batches (100 each). 24 STUBs (4.8%). 476 verified rules. 100% confidence ≥ 0.5. Coverage: graha natures + dignities (B1), bhava significations + planet-in-house (B2), yogas (B3), dashas + ashtakavarga (B4), nakshatras + aspects + remedies (B5). Output: bphs_pilot_rules.yaml (12,019 lines)."
     role: Śilpī + Pramāṇa + Review Swarm ×5
     depends_on: [method-and-rubric]
     scope: |
