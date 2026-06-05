@@ -444,6 +444,23 @@ def write_dashas(
 
 # ── L1 top-level runner ───────────────────────────────────────────────────────
 
+# ── Canonical ayanamsha set ───────────────────────────────────────────────────
+
+# All 5 ayanamshas supported by the Brahma engine.
+# Lahiri is the primary (BPHS/Parashari standard).
+# KP (Krishnamurti) uses a slightly different offset (~0.01–0.04° difference
+# from Lahiri at the 1984 epoch) and is paired with Placidus house cusps in
+# full KP analysis. Having both rows in ganita_positions enables ayanamsha-
+# dependent concordance detection (Stream E C3 flag resolution).
+ALL_AYANAMSHAS: list[str] = [
+    "lahiri",       # Chitrapaksha — primary BPHS/Parashari standard
+    "kp",           # Krishnamurti — KP school (sub-lord analysis)
+    "raman",        # B.V. Raman
+    "true_citra",   # True Citra / Revati-paksha
+    "yukteshwar",   # Sri Yukteshwar
+]
+
+
 def run_ganita(
     chart_id: str,
     build_id: str,
@@ -451,6 +468,7 @@ def run_ganita(
     birth_lat: float,
     birth_lon: float,
     ayanamsha: str = "lahiri",
+    ayanamshas: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Full L1 Gaṇita run for a chart. Computes positions + dashas and writes to DB.
@@ -461,13 +479,24 @@ def run_ganita(
         birth_datetime_ist: ISO datetime in IST (UTC+5:30)
         birth_lat:          Latitude (decimal degrees, N positive)
         birth_lon:          Longitude (decimal degrees, E positive)
-        ayanamsha:          Ayanamsha key (default: 'lahiri')
+        ayanamsha:          Single ayanamsha key (DEPRECATED — use ayanamshas).
+                            Kept for backward compatibility. If ayanamshas is
+                            provided, this parameter is ignored.
+        ayanamshas:         List of ayanamsha keys to compute. Default (None)
+                            computes ALL_AYANAMSHAS (lahiri, kp, raman,
+                            true_citra, yukteshwar). Pass a single-element list
+                            to restrict to one ayanamsha.
 
     Returns:
         Summary dict with row counts and acceptance gate result.
+        positions_count: total rows written across all ayanamshas.
+        positions_per_ayanamsha: {ayanamsha_key: row_count} breakdown.
     """
+    # Resolve ayanamsha list — prefer new parameter, fall back to legacy single value
+    aya_list: list[str] = ayanamshas if ayanamshas is not None else ALL_AYANAMSHAS
+
     emit_build_event(build_id, chart_id, "ganita.engine", "compute", "started",
-                     f"L1 Gaṇita starting: {chart_id}")
+                     f"L1 Gaṇita starting: {chart_id} ayanamshas={aya_list}")
 
     # Convert IST → UTC (IST = UTC+5:30)
     from datetime import datetime as _dt
@@ -475,43 +504,84 @@ def run_ganita(
     birth_dt_utc = birth_dt_local - timedelta(hours=5, minutes=30)
 
     jd = birth_jd(birth_dt_utc)
-    logger.info("[ganita] chart=%s build=%s jd=%.4f ayanamsha=%s", chart_id, build_id, jd, ayanamsha)
+    logger.info("[ganita] chart=%s build=%s jd=%.4f ayanamshas=%s",
+                chart_id, build_id, jd, aya_list)
 
-    # ── Positions ──────────────────────────────────────────────────────────────
+    # ── Positions — all ayanamshas ─────────────────────────────────────────────
     emit_build_event(build_id, chart_id, "ganita.positions", "compute", "started",
-                     "Computing graha positions via Swiss Ephemeris DE441", 10)
-    positions = compute_positions(jd, ayanamsha)
-    pos_count = write_positions(chart_id, build_id, positions, ayanamsha)
-    emit_build_event(build_id, chart_id, "ganita.positions", "compute", "complete",
-                     f"{pos_count} graha positions written", 30,
-                     {"row_count": pos_count, "ayanamsha": ayanamsha})
+                     f"Computing graha positions for {len(aya_list)} ayanamshas", 10)
 
-    # ── Vimshottari dashas ─────────────────────────────────────────────────────
+    total_pos_count = 0
+    positions_per_aya: dict[str, int] = {}
+    # Primary ayanamsha (lahiri or first in list) is used for dasha computation
+    primary_aya = aya_list[0] if aya_list else "lahiri"
+    primary_positions: list[dict[str, Any]] = []
+
+    for aya in aya_list:
+        try:
+            positions = compute_positions(jd, aya)
+            pos_count = write_positions(chart_id, build_id, positions, aya)
+            total_pos_count += pos_count
+            positions_per_aya[aya] = pos_count
+            logger.info("[ganita] ayanamsha=%s positions=%d", aya, pos_count)
+            if aya == primary_aya:
+                primary_positions = positions
+        except Exception as exc:
+            logger.error("[ganita] ayanamsha=%s positions failed: %s", aya, exc)
+            positions_per_aya[aya] = 0
+
+    # Fallback: if primary failed, use first successful result for dashas
+    if not primary_positions:
+        for aya in aya_list:
+            if positions_per_aya.get(aya, 0) > 0:
+                try:
+                    primary_positions = compute_positions(jd, aya)
+                    primary_aya = aya
+                    break
+                except Exception:
+                    pass
+
+    emit_build_event(build_id, chart_id, "ganita.positions", "compute", "complete",
+                     f"{total_pos_count} graha positions written ({len(aya_list)} ayanamshas)", 50,
+                     {"row_count": total_pos_count, "ayanamshas": aya_list,
+                      "per_ayanamsha": positions_per_aya})
+
+    # ── Vimshottari dashas — computed from primary (lahiri) ayanamsha ──────────
     emit_build_event(build_id, chart_id, "ganita.dashas", "compute", "started",
-                     "Computing Vimshottari dasha tree (MD/AD/PD)", 35)
-    moon = next(p for p in positions if p["name"] == "Moon")
+                     "Computing Vimshottari dasha tree (MD/AD/PD)", 55)
+    moon = next((p for p in primary_positions if p["name"] == "Moon"), None)
+    if moon is None:
+        raise RuntimeError(
+            f"[ganita] Moon position not found in primary ayanamsha ({primary_aya})"
+        )
     dasha_tree = compute_vimshottari(moon["sidereal_longitude"], jd)
     dasha_count = write_dashas(chart_id, build_id, dasha_tree)
     emit_build_event(build_id, chart_id, "ganita.dashas", "compute", "complete",
-                     f"{dasha_count} dasha rows written (MD/AD/PD)", 60,
+                     f"{dasha_count} dasha rows written (MD/AD/PD)", 80,
                      {"row_count": dasha_count, "moon_nakshatra": dasha_tree["moon_nakshatra"],
-                      "balance_lord": dasha_tree["moon_nakshatra_lord"]})
+                      "balance_lord": dasha_tree["moon_nakshatra_lord"],
+                      "dasha_ayanamsha": primary_aya})
 
     # ── Today's dasha (for the report) ────────────────────────────────────────
     today_dasha = dasha_at_date(dasha_tree, date.today())
 
     emit_build_event(build_id, chart_id, "ganita.engine", "compute", "complete",
                      "L1 Gaṇita complete", 100,
-                     {"positions": pos_count, "dashas": dasha_count})
+                     {"total_positions": total_pos_count,
+                      "dashas": dasha_count,
+                      "ayanamshas_computed": len(aya_list)})
 
     return {
-        "chart_id":          chart_id,
-        "build_id":          build_id,
-        "ayanamsha":         ayanamsha,
-        "positions_count":   pos_count,
-        "dashas_count":      dasha_count,
-        "moon_nakshatra":    dasha_tree["moon_nakshatra"],
-        "dasha_balance_lord": dasha_tree["moon_nakshatra_lord"],
-        "dasha_tree":        dasha_tree,
-        "today_dasha":       today_dasha,
+        "chart_id":               chart_id,
+        "build_id":               build_id,
+        "ayanamsha":              primary_aya,      # primary (backward compat)
+        "ayanamshas":             aya_list,
+        "positions_count":        total_pos_count,
+        "positions_per_ayanamsha": positions_per_aya,
+        "dashas_count":           dasha_count,
+        "dasha_ayanamsha":        primary_aya,
+        "moon_nakshatra":         dasha_tree["moon_nakshatra"],
+        "dasha_balance_lord":     dasha_tree["moon_nakshatra_lord"],
+        "dasha_tree":             dasha_tree,
+        "today_dasha":            today_dasha,
     }
