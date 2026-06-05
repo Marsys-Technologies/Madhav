@@ -49,6 +49,26 @@ governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIV
 
 - Poll check: ws2-depth-build-complete tag not yet present
 - Blocking session migration-squash; wave-close also blocked
-- Will continue polling
+- Background poll loop running (8 polls × 15 min = up to 2 hr watch)
+- Pre-squash schema snapshot taken (81 tables, 6178 lines)
+- _squash_tool.sh pre-authored and committed — ready to run when tag appears
+- Branch pushed to origin (ae1454e6)
+
+### [2026-06-05T02:40 UTC] Wave state summary
+
+**COMPLETE (2/4 sessions):**
+- gcs-purge: AC-1 PASS. Commit f835cb50.
+- capability-manifest-rebase: AC-2 PASS. Commit 1e820fd9.
+
+**BLOCKED (2/4 sessions):**
+- migration-squash: Waiting on ws2-depth-build-complete tag. WS-2 is at L0 layer (3/8 L0 assets built). ETA unknown.
+- wave-close: Depends on migration-squash.
+
+**Pre-work done for migration-squash:**
+- Pre-squash schema snapshot: _pre_squash_schema_snapshot.sql
+- Squash tool: platform/supabase/migrations/_squash_tool.sh
+- When tag appears: cloud-sql-proxy → run _squash_tool.sh → git add + commit → tag wsmisc-cleanup-complete
+
+**Next action:** Continue polling. When ws2-depth-build-complete appears, run _squash_tool.sh immediately.
 
 ---
