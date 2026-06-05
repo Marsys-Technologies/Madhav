@@ -1,10 +1,27 @@
 'use client'
 
 interface Props {
-  healthy: boolean
+  healthy: boolean | null
 }
 
 export function ConnectionHealthPill({ healthy }: Props) {
+  const color =
+    healthy === null
+      ? 'var(--marsys-warning)'
+      : healthy
+        ? 'var(--marsys-success)'
+        : 'var(--marsys-error)'
+
+  const bg =
+    healthy === null
+      ? 'rgba(168,124,42,0.2)'
+      : healthy
+        ? 'rgba(62,124,75,0.2)'
+        : 'rgba(181,71,76,0.2)'
+
+  const label =
+    healthy === null ? 'SIDECAR …' : healthy ? 'SIDECAR OK' : 'SIDECAR DOWN'
+
   return (
     <span
       style={{
@@ -15,9 +32,9 @@ export function ConnectionHealthPill({ healthy }: Props) {
         fontFamily: 'var(--mono-stack)',
         padding: '3px 8px',
         borderRadius: '12px',
-        background: healthy ? 'rgba(62,124,75,0.2)' : 'rgba(181,71,76,0.2)',
-        color: healthy ? 'var(--marsys-success)' : 'var(--marsys-error)',
-        border: `1px solid ${healthy ? 'var(--marsys-success)' : 'var(--marsys-error)'}`,
+        background: bg,
+        color,
+        border: `1px solid ${color}`,
       }}
     >
       <span
@@ -25,11 +42,11 @@ export function ConnectionHealthPill({ healthy }: Props) {
           width: '6px',
           height: '6px',
           borderRadius: '50%',
-          background: healthy ? 'var(--marsys-success)' : 'var(--marsys-error)',
+          background: color,
           display: 'inline-block',
         }}
       />
-      {healthy ? 'SIDECAR OK' : 'SIDECAR DOWN'}
+      {label}
     </span>
   )
 }
