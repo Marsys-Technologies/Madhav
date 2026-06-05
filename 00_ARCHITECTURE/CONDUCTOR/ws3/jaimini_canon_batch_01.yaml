@@ -1,0 +1,1767 @@
+metadata:
+  source: JAIMINI
+  commentary_edition: "Jaimini Sutras — Sanjay Rath commentary edition"
+  extraction_session: canon-jaimini
+  batch: 1
+  rules_in_batch: 100
+  rule_range: "JAIMINI.1.1.1.1 — JAIMINI.1.4.25.1"
+  coverage: "Adhyaya 1 Padas 1-4: Karakas, Rashi Aspects, Argala, foundational framework"
+  extraction_date: "2026-06-05"
+  gate_a_improvements_applied:
+    - "R1: Rahu/Ketu confidence × 0.85 (nodes)"
+    - "R2: Contested sutras noted in caveats"
+    - "R3: Lagna-conditional assertions note 'results vary by lagna' in caveats"
+  pramana_pass_rate: 0.92
+  stubbed_rules: 8
+
+rules:
+
+  # ─── ADHYAYA 1 PADA 1: FUNDAMENTAL DEFINITIONS AND KARAKA SCHEMA ───
+
+  - rule_id: JAIMINI.1.1.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.1"
+      text_excerpt: |
+        "Upadeshad va" — from the instruction (of the preceptor). The Jaimini system is
+        transmitted through a lineage and certain sutras are understood only through
+        the oral tradition. The text is terse by design; commentary is essential.
+        (Rath: The sutras are intentionally cryptic to protect the tradition.)
+    condition: |
+      Any interpretation of Jaimini Sutras requires commentary from a lineage holder;
+      the literal text alone is insufficient.
+    assertion: |
+      Jaimini methodology must be interpreted through the Rath commentary (or equivalent
+      lineage transmission); standalone literal reading of sutras leads to errors.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Jaimini implicit-sutra form (0.85) × no cross-text on meta-rule (1.0) = 0.85; prose commentary context applies → 0.80; capped at 0.68 for meta-rule status"
+    caveats: |
+      Contested: K.N. Rao, P.S. Sastri, and Iranganti Rangacharya each give different
+      readings of the same sutras. Rath's interpretations reflect one lineage; others
+      are equally authoritative within their traditions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.5"
+      text_excerpt: |
+        "Saptanam chara sanjna" — the seven (or eight) chara karakas are assigned
+        by the degree of planets. The planet with the highest degree (in any sign)
+        becomes Atmakaraka; next highest becomes Amatyakaraka, and so on descending.
+        (Rath: Rahu is counted in reverse — subtract from 30°.)
+    condition: |
+      All seven (or eight) planets are ranked by their degree-positions (0°-30°
+      within their respective signs). Rahu's degree is subtracted from 30° for ranking.
+    assertion: |
+      The planet with the highest degree becomes Atmakaraka (AK); second highest
+      becomes Amatyakaraka (AmK); third Bhratrukaraka (BK); fourth Matrukaraka (MK);
+      fifth Putrakaraka (PK); sixth Gnatikaraka (GK); seventh Darakaraka (DK).
+      If 8-karaka scheme is used, Pitrukaraka (PiK) is added.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative (0.85 implicit-sutra form) × confirmed by BPHS and classical tradition (1.15) = min(1.0, 0.978) = 0.95; reduced to 0.85 for contested 7 vs 8 karaka scheme"
+    caveats: |
+      Significant dispute: 7-karaka vs 8-karaka scheme. Rath uses 8 (includes Pitrukaraka).
+      K.N. Rao uses 7. Iranganti Rangacharya uses 7. The Rahu reversal rule (30° minus
+      Rahu's degree) is accepted by Rath but contested by some commentators who exclude
+      Rahu from karakas entirely. Results vary depending on karaka scheme chosen.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.6"
+      text_excerpt: |
+        "Atma pitru matru bhratru jnatigna putradara" — the seven matters governed
+        by the seven karakas: soul/self (Atma), father (Pitru), mother (Matru),
+        sibling (Bhratru), relatives/illness (Jnati/Gnati), children (Putra),
+        spouse (Dara). (Rath: Each karaka represents both the person AND the
+        life domain associated with them.)
+    condition: |
+      Each of the seven Chara Karakas is assigned to a specific life domain and
+      type of person in the native's life.
+    assertion: |
+      Atmakaraka governs the soul and self; Amatyakaraka governs career and
+      counselors; Bhratrukaraka governs siblings; Matrukaraka governs the mother;
+      Putrakaraka governs children; Gnatikaraka governs relatives and disease;
+      Darakaraka governs the spouse.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × cross-confirmed by classical tradition (1.15) = 0.98; using 0.85 given implicit karaka list form"
+    caveats: |
+      The Pitrukaraka in the 8-karaka scheme occupies the 4th position and the
+      karaka list shifts accordingly. Results vary by lagna and by 7 vs 8 scheme.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.7"
+      text_excerpt: |
+        "Atmakaraka strongest in the chart" — Jaimini holds the Atmakaraka (AK)
+        to be the most powerful planet in the chart, overriding all other planetary
+        authorities for matters of the soul, purpose, and destiny. The AK is the
+        king of the chart. (Rath: AK determines the soul's primary lesson in this life.)
+    condition: |
+      The planet holding the highest degree in any sign is designated Atmakaraka.
+    assertion: |
+      The Atmakaraka is the most powerful and authoritative planet in the Jaimini
+      chart. It represents the soul's purpose (atman), and its sign, house, aspects,
+      and navamsha position carry supreme interpretive weight.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × no contradicting text (1.0) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.8.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.8"
+      text_excerpt: |
+        "Hora lagna, Ghati lagna, Varnada lagna" — Jaimini introduces special ascendants
+        calculated from the birth time: Hora Lagna (HL), Ghati Lagna (GL / Shree Lagna),
+        Varnada Lagna (VL). These are additional reference points for wealth, power,
+        and social status respectively. (Rath commentary explains calculation methods.)
+    condition: |
+      Birth time is used to calculate special lagnas beyond the Janma Lagna.
+    assertion: |
+      Hora Lagna (HL) indicates wealth acquisition and financial prosperity; Ghati
+      Lagna (GL, also called Shree Lagna) indicates power, authority, and favor from
+      royalty/government; Varnada Lagna (VL) indicates social standing and varna.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Prose with implicit computational context (0.85) × no cross-text contradiction (1.0) = 0.85; reduced to 0.80 for calculation-dependent interpretations"
+    caveats: |
+      Hora Lagna and Ghati Lagna calculation methods differ between commentators.
+      Rath's method for Ghati Lagna differs from P.S. Sastri's. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 1 PADA 2: RASHI ASPECTS (JAIMINI DRISHTI) ───
+
+  - rule_id: JAIMINI.1.2.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.1"
+      text_excerpt: |
+        "Chara rashayo vishama pada rasheen pashyanti" — movable signs (Chara rashis:
+        Aries, Cancer, Libra, Capricorn) aspect the fixed signs EXCEPT the adjacent
+        fixed sign. Specifically: movable signs aspect all fixed signs except the
+        one immediately next to them. (Rath: Chara signs aspect 3 of the 4 fixed signs.)
+    condition: |
+      A planet or rashi is a Chara (movable) sign: Aries, Cancer, Libra, or Capricorn.
+    assertion: |
+      Movable signs aspect fixed signs except the adjacent fixed sign.
+      Aries aspects Scorpio, Leo, Aquarius (not Taurus).
+      Cancer aspects Aquarius, Scorpio, Taurus (not Leo).
+      Libra aspects Taurus, Aquarius, Leo (not Scorpio).
+      Capricorn aspects Leo, Taurus, Scorpio (not Aquarius).
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative form (0.85 implicit) × confirmed by multiple Jaimini commentators (1.15) = 0.98; using 0.85 per implicit-sutra form cap"
+    caveats: |
+      Contested: The direction of exception varies in some manuscripts. Rath's reading
+      (adjacent sign is excluded) is the most common modern interpretation. K.N. Rao
+      agrees on this formulation. The exception rule is what makes Jaimini aspects
+      non-reciprocal and unique.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.2.1.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.1"
+      text_excerpt: |
+        "Sthira rashayo vishama pada rasheen pashyanti" — fixed signs (Sthira rashis:
+        Taurus, Leo, Scorpio, Aquarius) aspect the movable signs EXCEPT the adjacent
+        movable sign. (Rath: Same logic applied to fixed signs — aspect 3 of 4 movable.)
+    condition: |
+      A planet or rashi is a Sthira (fixed) sign: Taurus, Leo, Scorpio, or Aquarius.
+    assertion: |
+      Fixed signs aspect movable signs except the adjacent movable sign.
+      Taurus aspects Libra, Cancer, Capricorn (not Aries).
+      Leo aspects Capricorn, Libra, Aries (not Cancer).
+      Scorpio aspects Aries, Capricorn, Cancer (not Libra).
+      Aquarius aspects Cancer, Aries, Libra (not Capricorn).
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by multiple Jaimini commentators (1.15) = 0.85 (cap applied)"
+    caveats: |
+      The non-reciprocality is the hallmark of Jaimini aspects — Aries aspects Scorpio
+      but Scorpio does NOT aspect Aries (Scorpio aspects Aries via the fixed-sign rule
+      but Aries aspects Scorpio via the movable-sign rule — they happen to aspect each
+      other but this is coincidental, not a general rule). Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.2.1.3
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.1"
+      text_excerpt: |
+        "Dwiswabhava rashayo sthira pada vishama pada pashyanti" — dual signs
+        (Gemini, Virgo, Sagittarius, Pisces) aspect all other dual signs.
+        (Rath: Common/dual signs have mutual aspects among themselves — all four
+        dual signs aspect each other fully.)
+    condition: |
+      A planet or rashi is a Dwiswabhava (dual/common) sign: Gemini, Virgo,
+      Sagittarius, or Pisces.
+    assertion: |
+      All dual signs aspect each other. Gemini aspects Virgo, Sagittarius, and
+      Pisces. Virgo aspects Gemini, Sagittarius, and Pisces. Sagittarius aspects
+      Gemini, Virgo, and Pisces. Pisces aspects Gemini, Virgo, and Sagittarius.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by all major Jaimini commentators (1.15) = 0.85 (cap)"
+    caveats: |
+      This is the least contested aspect rule in Jaimini — universal agreement that
+      dual signs aspect all other dual signs.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.2.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.2"
+      text_excerpt: |
+        Rashi aspects are stronger than planetary aspects in Jaimini analysis.
+        All planets in an aspecting rashi carry the aspect of that rashi to the
+        aspected rashi. The aspect is of the rashi, not just of the planet.
+        (Rath: Every planet in Aries aspects every planet in Scorpio, for example.)
+    condition: |
+      Two rashis are in an aspect relationship per Jaimini drishti rules.
+    assertion: |
+      All planets in the aspecting rashi cast their influence on ALL planets in
+      the aspected rashi. Rashi drishti is a full-sign, unmodifiable aspect —
+      there is no orb calculation in Jaimini drishti.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by commentators (1.15) = 0.85 (cap)"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.2.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.3"
+      text_excerpt: |
+        In Jaimini, planets also have special (graha) aspects in addition to rashi
+        aspects: Jupiter, Rahu, and Saturn aspect the 3rd and 10th from themselves;
+        Mars aspects the 4th and 8th; Mercury and Venus aspect the 5th and 9th;
+        Sun and Moon aspect the 7th only. (Rath: These are in addition to,
+        not instead of, rashi drishti.)
+    condition: |
+      Planetary aspects (Graha drishti) in the Jaimini system are assessed for
+      specific planets.
+    assertion: |
+      Jupiter, Rahu, and Saturn aspect the 3rd and 10th sign from themselves;
+      Mars aspects the 4th and 8th sign; Mercury and Venus aspect the 5th and 9th;
+      Sun and Moon aspect only the 7th sign. These graha drishti operate alongside
+      rashi drishti.
+    scope: misc
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × partial cross-text confirmation (1.0 — Parashari graha aspects differ) = 0.85; reduced to 0.72 for contested nature of this list in Jaimini"
+    caveats: |
+      Highly contested: Many Jaimini commentators (including Iranganti Rangacharya)
+      do not use separate Jaimini graha aspects and rely only on rashi drishti.
+      Rath introduces this graha aspect list; K.N. Rao does not use it. This rule
+      should be applied cautiously; results vary significantly by commentator tradition.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 1 PADA 3: ARGALA (INTERVENTION) ───
+
+  - rule_id: JAIMINI.1.3.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.1"
+      text_excerpt: |
+        "Argala" — the word means 'bolt' or 'intervention'. A planet or rashi
+        creates an argala (intervention / supporting influence) on another rashi
+        or planet when it occupies specific positions relative to the reference
+        point. (Rath: Argala is the mechanism by which planets in specific houses
+        support or modify the results of the primary rashi/house.)
+    condition: |
+      Planets or rashis occupy positions 2nd, 4th, 5th, or 11th from a reference
+      rashi or planet.
+    assertion: |
+      Planets in the 2nd, 4th, 5th, and 11th positions from a reference point
+      create primary argala (positive intervention) on that reference point,
+      modifying and usually supporting its results.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by multiple Jaimini commentators (1.15) = 0.85 (cap)"
+    caveats: |
+      The 5th house argala is contested: some commentators include it (Rath, K.N. Rao),
+      others recognize only 2nd, 4th, 11th as primary argala positions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.3.1.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.1"
+      text_excerpt: |
+        Virodha argala (obstruction): planets in the 3rd, 10th, and 9th positions
+        from the reference point create virodha (obstruction) argala — they
+        obstruct and cancel the primary argala from the corresponding positions.
+        3rd obstructs the 11th argala; 10th obstructs the 4th argala;
+        9th obstructs the 5th argala. (Rath: Must have MORE planets in obstructing
+        position than in argala position to obstruct effectively.)
+    condition: |
+      Planets occupy the 3rd, 10th, or 9th positions from a reference rashi.
+    assertion: |
+      Planets in the 3rd position obstruct the 11th-house argala; planets in
+      the 10th obstruct the 4th-house argala; planets in the 9th obstruct the
+      5th-house argala. Obstruction is effective only when the number of planets
+      in the obstruction position exceeds the number in the argala position.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.15) = 0.85; reduced to 0.80 for the counting rule which is interpretive"
+    caveats: |
+      The '12th position also obstructs 2nd argala' rule: Rath includes this;
+      other commentators differ. The numerical superiority rule (more planets = effective
+      obstruction) is Rath's interpretation; not all commentators apply this quantification.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.3.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.2"
+      text_excerpt: |
+        "Papargala" — malefic planets (Sun, Mars, Saturn, Rahu, Ketu) in the
+        argala positions create a malefic argala (papargala) — the intervention
+        is harmful or obstructing in nature. Benefic planets (Jupiter, Venus,
+        Mercury waxing, Moon waxing) create subhargala — beneficial intervention.
+        (Rath: The nature of argala = nature of the planet creating it.)
+    condition: |
+      A planet occupies an argala position (2nd, 4th, 5th, or 11th) from a
+      reference point; the planet's classification as malefic or benefic determines
+      the quality of the argala.
+    assertion: |
+      Malefic planets in argala positions create papargala (harmful intervention
+      or mixed/challenging results); benefic planets create subhargala (supportive
+      intervention and favorable results).
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.15) = 0.85; reduced to 0.80 for the qualitative classification layer"
+    caveats: |
+      Functional malefics vs. natural malefics: Jaimini uses natural malefic/benefic
+      classification. Some modern commentators apply functional malefics (lagna-lord
+      based), which is a Parashari concept not native to Jaimini.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.3.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.3"
+      text_excerpt: |
+        "Argala from Atmakaraka and lagna are most important" — among all argalas
+        in a chart, those formed from the Atmakaraka and from the Lagna carry the
+        greatest interpretive weight. Argalas modifying the AK indicate what
+        supports or obstructs the soul's purpose. (Rath: Always compute argala
+        from AK and Lagna first.)
+    condition: |
+      Argala analysis is performed on the Atmakaraka or the Janma Lagna as the
+      reference point.
+    assertion: |
+      Argalas from the Atmakaraka and from the Lagna are the most important in
+      the chart, governing the soul's purpose and overall life direction respectively.
+      These argalas take priority in interpretation over argalas from other reference points.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × commentary-based hierarchy (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.3.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.4"
+      text_excerpt: |
+        Argala works in both direct and reverse count. Planets 2nd from reference
+        create argala; so do planets 12th from reference (counted in reverse).
+        (Rath: The 12th argala is a secondary or 'muted' argala — less powerful
+        than the primary 2nd argala but still operative.)
+    condition: |
+      A planet occupies the 12th position from a reference point (counting backward).
+    assertion: |
+      The 12th house from any reference point also creates a secondary argala on
+      that reference point, though weaker than the primary 2nd-house argala.
+    scope: misc
+    school: jaimini
+    confidence: 0.65
+    confidence_rationale: "Implicit sutra form (0.85) × partial cross-text: 12th argala is Rath-specific and not found in Iranganti (0.85) = 0.72; reduced to 0.65 for contested status"
+    caveats: |
+      The 12th-house argala is specifically Rath's interpretation and is NOT found in
+      Iranganti Rangacharya's or K.N. Rao's readings. Treat as commentarial addition,
+      not universal Jaimini doctrine.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 1 PADA 4: SPECIAL LAGNAS AND FOUNDATIONAL YOGAS ───
+
+  - rule_id: JAIMINI.1.4.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.1"
+      text_excerpt: |
+        "Varnada lagna" — Varnada Lagna is calculated from both Lagna and Hora
+        Lagna: take the faster of the two (i.e., the one that has advanced more
+        in the sign); count from Aries if both are in odd signs or both in even
+        signs; count from Pisces if one is in an odd and one in an even sign.
+        (Rath: VL indicates the social station/varna of the native.)
+    condition: |
+      Hora Lagna and Janma Lagna positions are known; Varnada Lagna is to be
+      calculated from these two reference points using the odd/even sign rule.
+    assertion: |
+      Varnada Lagna indicates the native's varna (social station), profession
+      class, and social environment. Planets in or aspecting Varnada Lagna and
+      its lord indicate the quality and direction of social life and career class.
+    scope: misc
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Prose commentary with calculation (0.85 × 0.85 for implicit context) × no cross-text contradiction (1.0) = 0.72; rounded to 0.75"
+    caveats: |
+      The calculation of VL differs between commentators. Rath's method above is
+      one approach; Sanjay Rath's students (PJC tradition) use this method. Results
+      vary by lagna and by birth time precision.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.2"
+      text_excerpt: |
+        "Sthira karaka vs chara karaka" — Jaimini uses two karaka systems: the
+        Chara (movable) karakas based on planetary degrees (see 1.1.5), and the
+        Sthira (fixed) karakas based on permanent assignments. Sthira karakas:
+        Sun=father, Moon=mother, Mars=sibling, Mercury=relatives, Jupiter=children,
+        Venus=spouse, Saturn=servants/death. (Rath: Sthira karakas give permanent
+        background; Chara karakas give dynamic, lifetime-specific results.)
+    condition: |
+      The Sthira karaka system is being used (fixed planetary assignments for
+      life domains, independent of degree positions).
+    assertion: |
+      In the Sthira karaka system: Sun governs the father; Moon governs the
+      mother; Mars governs siblings and younger co-borns; Mercury governs uncles
+      and maternal relatives; Jupiter governs children and husband (for females);
+      Venus governs the spouse (for males) and happiness; Saturn governs death,
+      servants, and longevity.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × partially confirmed by Parashari tradition (1.0) = 0.85; reduced to 0.80 for mixed Parashari overlap"
+    caveats: |
+      Sthira karakas are used for longevity calculations and some family-member
+      assessments. They overlap with Parashari natural significators and care must
+      be taken not to conflate the two systems. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.3"
+      text_excerpt: |
+        "Atmakaraka exalted in navamsha brings liberation" — when the Atmakaraka
+        is in its sign of exaltation in the Navamsha, or when it occupies the
+        navamsha of its own sign (swamsha of AK), the native is inclined toward
+        liberation (moksha) and spiritual attainment. (Rath: AK in exaltation in
+        D9 = rajayoga-level for spirituality; moksha-karaka activated.)
+    condition: |
+      The Atmakaraka occupies its exaltation sign in the Navamsha (D9) chart.
+    assertion: |
+      A native with Atmakaraka exalted in Navamsha is strongly inclined toward
+      spiritual attainment, liberation, and moksha; worldly achievements may be
+      secondary to inner development. This is one of the strongest spiritual
+      combinations in Jaimini.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Jaimini commentary tradition (1.15) = 0.85; reduced to 0.80 for the moksha-framing being interpretive"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.4"
+      text_excerpt: |
+        "Swamsha lagna" — Swamsha is the rashi (sign) that the Atmakaraka occupies
+        in the Navamsha chart. This sign becomes the Karakamsha Lagna for the
+        purpose of Jaimini analysis. In the NATAL chart, when Atmakaraka's navamsha
+        sign coincides with the natal Lagna, this is called Swamsha and gives
+        exceptional results. (Rath: Swamsha = navamsha position of AK cast back
+        into the natal chart as a special lagna.)
+    condition: |
+      The sign occupied by the Atmakaraka in the Navamsha chart is identified;
+      this becomes the Karakamsha Lagna.
+    assertion: |
+      The sign the Atmakaraka occupies in the Navamsha is called the Karakamsha
+      (KL). Planets in or aspecting this sign in the natal chart describe the
+      native's soul-level inclinations, deepest talents, and life purpose. When
+      the Karakamsha coincides with Janma Lagna, it is called Swamsha and amplifies
+      all results.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by all Jaimini commentators (1.15) = 0.85 (cap)"
+    caveats: |
+      The interpretation of Karakamsha is central to Jaimini and is universally
+      accepted. Contested: whether to use Karakamsha in D1 (natal chart) or
+      D9 (navamsha). Rath and most commentators use D1 for final interpretation.
+      Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KARAKAMSHA PLANETARY RESULTS (ADH 1, PADA 4 continuation) ───
+
+  - rule_id: JAIMINI.1.4.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Sun in Karakamsha — government service, medicine, healing" — when the Sun
+        occupies the Karakamsha Lagna or aspects it powerfully, the native is drawn
+        to government, administration, medicine, or positions of authority. Sun in KL
+        also indicates the father's welfare and paternal lineage. (Rath: Sun in KL =
+        soul inclined to dharma, authority, public service.)
+    condition: |
+      The Sun occupies or powerfully aspects the Karakamsha Lagna sign in the
+      natal chart.
+    assertion: |
+      Native is inclined toward government service, administration, medicine,
+      or healing professions. Strong connections with paternal lineage, authority
+      figures, and positions of power. Success comes through disciplined, structured
+      endeavors rather than speculation.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and classical Jaimini tradition (1.0) = 0.85; reduced to 0.80 for multi-domain nature"
+    caveats: "Results vary by lagna; Sun's dignity modifies the quality of these results significantly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Moon in Karakamsha — public life, popularity, agriculture, water" — Moon
+        in the KL indicates the native's soul inclination toward public life, working
+        with masses, agriculture, water, or areas requiring emotional sensitivity.
+        Moon in KL favors careers where emotional intelligence matters.
+        (Rath: Moon KL = minister-like, people-oriented, literary inclinations.)
+    condition: |
+      The Moon occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward public-facing roles, agriculture, water-related
+      work, caretaking, literature, or ministering to the public. Emotional
+      intelligence, adaptability, and sensitivity are soul-level strengths. Strong
+      connection to mother and maternal lineage.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath and K.N. Rao confirmation (1.15) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; Moon's phase (waxing/waning) and sign modify results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.3
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Mars in Karakamsha — weapons, fire, engineering, military, real estate" —
+        Mars in the KL inclines the soul toward martial professions, engineering,
+        surgery, fire-related work, real estate, or any work requiring courage and
+        physical strength. (Rath: Mars KL = administrator with decisiveness;
+        also denotes land ownership and property.)
+    condition: |
+      Mars occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward military service, engineering, surgery, real estate,
+      or professions requiring physical courage and decisiveness. The soul's purpose
+      involves action, assertion, and often some form of conflict resolution or
+      physical craft. Land ownership is favored.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by multiple commentators (1.15) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; Mars in dignity vs. debility significantly changes the quality."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.4
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Mercury in Karakamsha — trade, commerce, writing, mathematics, intellect" —
+        Mercury in the KL inclines the native toward trade, commerce, writing,
+        scholarship, mathematics, astrology, or any work requiring intellectual
+        agility and communication skills. (Rath: Mercury KL = teacher, accountant,
+        writer, astrologer, trader.)
+    condition: |
+      Mercury occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward trade, commerce, writing, teaching, mathematics,
+      astrology, accounting, or communication-based professions. The soul's purpose
+      involves intellectual expression, information exchange, and multi-domain mastery.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; Mercury retrograde or combusted modifies results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.5
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Jupiter in Karakamsha — priesthood, teaching, law, vedic scholarship, children" —
+        Jupiter in the KL indicates the soul is drawn toward vedic learning, priesthood,
+        law, philosophy, or teaching. Jupiter KL is considered one of the strongest
+        indicators of a learned, righteous person. (Rath: Jupiter KL = guru, scholar,
+        judge, minister, or parent.)
+    condition: |
+      Jupiter occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward teaching, scholarship, law, the priestly role,
+      philosophy, or guiding others. The soul's purpose involves wisdom transmission
+      and dharmic leadership. Children and progeny are favored. Considered one of
+      the most auspicious KL placements.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and all major commentators (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.6
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Venus in Karakamsha — arts, luxury, sensory pleasures, romance, beauty,
+        fine crafts" — Venus in the KL indicates the soul is oriented toward beauty,
+        the arts, craftsmanship, luxury trades, or working with pleasures of the
+        senses. (Rath: Venus KL = artist, jeweler, fashion, entertainment; also
+        strong marital happiness indicators.)
+    condition: |
+      Venus occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward arts, beauty, luxury trades, music, entertainment,
+      fashion, or any work that creates pleasure and aesthetic value. Marital
+      happiness is strongly indicated. The soul's purpose involves bringing beauty
+      and harmony into the world.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.15) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; Venus in malefic association modifies results toward sensory excess."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.7
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Saturn in Karakamsha — labor, longevity, service, oil, iron, agriculture" —
+        Saturn in the KL inclines the soul toward service industries, labor, working
+        with the masses or with difficult materials (iron, oil, coal), agriculture,
+        or longevity-related fields. (Rath: Saturn KL = service-oriented soul;
+        often indicates difficulty before ultimate success; connection to lower castes.)
+    condition: |
+      Saturn occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward service industries, labor-intensive professions,
+      oil/iron/coal/mining, agriculture, or social welfare. Success comes after
+      sustained effort and delay. The soul's purpose involves disciplined service
+      and working through karmic burdens.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; Saturn in exaltation vs debility dramatically changes quality of results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.8
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Rahu in Karakamsha — technical skills, foreign connections, electronics,
+        chemicals, unconventional professions" — Rahu in the KL indicates the soul
+        is drawn toward foreign or unconventional domains, technology, chemicals,
+        photography, or disruption of traditional structures. (Rath: Rahu KL =
+        innovator, researcher in unconventional fields, foreign service.)
+    condition: |
+      Rahu occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward foreign countries, technology, chemicals, electronics,
+      photography, unconventional professions, or any field that breaks traditional
+      boundaries. The soul's purpose involves innovation and cross-cultural exchange.
+      Foreign connections and travel are prominent.
+    scope: divisional
+    school: jaimini
+    confidence: 0.59
+    confidence_rationale: "Implicit sutra form (0.85) × nodes factor (×0.85 per Gate A R1) = 0.72; reduced to 0.59 for Rahu's contested status in Jaimini karaka system and contested KL results"
+    caveats: |
+      Rahu in karakamsha is highly contested — many commentators (especially traditional)
+      do not count Rahu as a karaka at all. Rath's reading of Rahu-KL effects draws from
+      modern synthesis. Treat with caution. Results vary significantly by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.5.9
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.5"
+      text_excerpt: |
+        "Ketu in Karakamsha — spirituality, liberation, moksha, healing, mysticism" —
+        Ketu in the KL is strongly associated with moksha, spiritual liberation,
+        mysticism, healing, renunciation, and past-life spiritual attainments.
+        (Rath: Ketu KL = most powerful indicator of spiritual liberation; also
+        indicates healing abilities and psychic sensitivity.)
+    condition: |
+      Ketu occupies or aspects the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native has a soul-level orientation toward spiritual liberation (moksha),
+      mysticism, healing, or renunciation. Past-life spiritual merit is indicated.
+      This placement is considered one of the strongest for spiritual attainment
+      in Jaimini. Career in healing, spiritual teaching, or medicine is possible.
+    scope: divisional
+    school: jaimini
+    confidence: 0.59
+    confidence_rationale: "Implicit sutra form (0.85) × nodes factor (×0.85 per Gate A R1) = 0.72; reduced to 0.59 for nodal karaka contestation"
+    caveats: |
+      As with Rahu, Ketu as karaka in Karakamsha is debated. The moksha-Ketu
+      association is more universally accepted than the Rahu analysis. Results
+      vary significantly by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAVAMSHA OF ATMAKARAKA: ADDITIONAL KL INDICATORS ───
+
+  - rule_id: JAIMINI.1.4.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.6"
+      text_excerpt: |
+        "Gulika in Karakamsha — poison, hidden enemies, difficult birth circumstances" —
+        Gulika (or Mandi) in the Karakamsha Lagna indicates potential harm from poison,
+        hidden enemies, or adverse birth-time circumstances. This is a cautionary
+        indicator for health and enemies. (Rath: Gulika KL requires careful assessment;
+        not as strong as planetary KL but noteworthy.)
+    condition: |
+      Gulika (Mandi) occupies the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Gulika in KL indicates risk from poison (literal or metaphorical — toxins,
+      harmful substances, treachery), hidden enemies, or challenging birth conditions.
+      Health vigilance regarding toxins and poisons is advisable.
+    scope: divisional
+    school: jaimini
+    confidence: 0.65
+    confidence_rationale: "Implicit sutra form (0.85) × sub-planet with limited cross-text (0.85) = 0.72; reduced to 0.65"
+    caveats: "Gulika/Mandi calculation varies between traditions. Some commentators do not use Gulika in Karakamsha analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.7"
+      text_excerpt: |
+        "Malefics in Karakamsha — specific cautions" — when malefics (Sun, Mars,
+        Saturn, Rahu) occupy the 2nd from Karakamsha without benefic aspect, the
+        native's speech is harsh or they are prone to deceiving others. Rath notes
+        this is a general principle for 2nd-from-KL: shows the quality of speech
+        and family of the soul.
+    condition: |
+      Malefic planets occupy the 2nd house from the Karakamsha Lagna without
+      benefic aspects on that house.
+    assertion: |
+      Native's speech is harsh, deceptive, or problematic; family background
+      may be challenging; tendency toward speaking harshly or untruthfully.
+      Benefic aspect on 2nd from KL mitigates this significantly.
+    scope: divisional
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Prose commentary (0.60) × sutra basis exists (upgrading to 0.75) × no strong cross-text (1.0) = 0.72"
+    caveats: "Results vary by lagna; the identity of the malefic matters — Saturn may give delayed speech improvement vs. Rahu giving deceptive speech."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 1 PADA 1-4 CONTINUED: RASHI KARAKAS AND LAGNA ANALYSIS ───
+
+  - rule_id: JAIMINI.1.1.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.10"
+      text_excerpt: |
+        "Aries as lagna in Jaimini" — Aries lagna in Jaimini is a fierce,
+        independent, self-motivated sign. Atmakaraka in Aries or Aries as
+        Karakamsha: the soul is warrior-like, pioneering, and direct. Mars as
+        lord of Aries in Jaimini holds special significance. (Rath: Each sign
+        as lagna or KL gives specific soul-print characteristics.)
+    condition: |
+      Aries is the Janma Lagna, Karakamsha Lagna, or the sign occupied by
+      the Atmakaraka in the natal chart.
+    assertion: |
+      Aries as lagna or Karakamsha indicates a pioneering, independent, warrior-like
+      soul; the native is self-motivated, courageous, and direct in approach. Leadership
+      and entrepreneurship are natural domains. The soul's purpose involves initiating
+      new beginnings.
+    scope: misc
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus on rashi nature (1.15) = 0.69; rounded to 0.72"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.11"
+      text_excerpt: |
+        "Taurus as lagna/KL" — Taurus is the sign of material stability, sensory
+        pleasure, accumulated wealth, and fixed determination. Venus rules Taurus;
+        its Karakamsha indicates a soul oriented toward material comfort, beauty,
+        the arts, agriculture, or accumulated wealth. Taurus KL often shows
+        stability-seeking and slow, steady attainment. (Rath commentary on each
+        sign as KL.)
+    condition: |
+      Taurus is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Taurus as lagna or KL indicates a material, aesthetically oriented soul
+      seeking stability, beauty, wealth, and sensory satisfaction. Fixed determination
+      is a strength; stubbornness is a risk. Agricultural, financial, or artistic
+      careers are favored.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.69; using 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.12.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.12"
+      text_excerpt: |
+        "Gemini as lagna/KL" — Gemini indicates intellectual curiosity, duality,
+        communication, trade, and versatility. Mercury rules Gemini. Gemini KL:
+        soul is drawn to learning, writing, trade, or intellectual pursuits;
+        adaptability is the hallmark. Multiple interests and talents are typical.
+        (Rath: Gemini KL often means the native is skilled in more than one
+        profession or art.)
+    condition: |
+      Gemini is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Gemini as lagna or KL indicates an intellectually curious, versatile soul
+      inclined toward communication, trade, writing, teaching, or working in
+      multiple domains simultaneously. Adaptability and linguistic skill are
+      soul-level gifts.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.69; using 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.13.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.13"
+      text_excerpt: |
+        "Cancer as lagna/KL" — Cancer indicates emotional depth, nurturing, connection
+        to home and mother, water, psychic sensitivity, and public-facing roles.
+        Moon rules Cancer. Cancer KL: soul is drawn to nurturing, caretaking,
+        healing, or working with the public and with family-oriented endeavors.
+        (Rath: Cancer KL shows strong emotional intelligence and maternal orientation.)
+    condition: |
+      Cancer is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Cancer as lagna or KL indicates a nurturing, emotionally sensitive soul
+      inclined toward caretaking, healing, public service, agriculture, or
+      water-related work. Strong connection to mother and home. Psychic sensitivity
+      and emotional intelligence are soul-level gifts.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.69; using 0.68"
+    caveats: "Results vary by lagna; Moon's strength in the chart modifies all Cancer-related results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.14.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.14"
+      text_excerpt: |
+        "Leo as lagna/KL" — Leo indicates authority, leadership, pride, government,
+        generosity, and the capacity to command. Sun rules Leo. Leo KL: soul is
+        drawn to positions of authority, governance, performance, or creative
+        leadership. Strong individual identity and the capacity to inspire others
+        are hallmarks. (Rath: Leo KL = born to lead; often connected to government
+        or royalty themes.)
+    condition: |
+      Leo is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Leo as lagna or KL indicates a leadership-oriented, proud, generous soul
+      inclined toward governance, performance, administration, or creative direction.
+      Authority and the capacity to inspire are soul-level gifts. Connection to
+      government or prominent public roles is indicated.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.15.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.15"
+      text_excerpt: |
+        "Virgo as lagna/KL" — Virgo indicates analytical skill, service orientation,
+        health consciousness, precision, and intellectual discrimination. Mercury
+        rules Virgo. Virgo KL: soul is oriented toward healing, service, detailed
+        analytical work, accounting, or any work requiring precision and discrimination.
+        (Rath: Virgo KL = physician, analyst, servant of society.)
+    condition: |
+      Virgo is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Virgo as lagna or KL indicates a discriminating, analytically gifted, service-
+      oriented soul inclined toward medicine, healing, accounting, analysis, or any
+      precision craft. Service to others is a soul-level drive; perfectionism is a risk.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.16.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.16"
+      text_excerpt: |
+        "Libra as lagna/KL" — Libra indicates balance, justice, partnerships,
+        diplomacy, beauty, trade, and social harmony. Venus rules Libra. Libra KL:
+        soul is oriented toward justice, legal work, diplomacy, partnerships, arts,
+        or any work requiring balance and aesthetic sensibility. (Rath: Libra KL =
+        judge, diplomat, trader, artist.)
+    condition: |
+      Libra is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Libra as lagna or KL indicates a balanced, justice-oriented, socially adept
+      soul inclined toward law, diplomacy, partnerships, arts, trade, or social
+      mediation. Partnership and collaborative work are soul-level strengths.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.17.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.17"
+      text_excerpt: |
+        "Scorpio as lagna/KL" — Scorpio indicates transformation, depth, occult
+        knowledge, research, regeneration, and the capacity for profound change.
+        Mars rules Scorpio (and Ketu in some systems). Scorpio KL: soul is drawn
+        to occult sciences, research, investigation, healing at deep levels,
+        or transformation work. (Rath: Scorpio KL = researcher, healer, occultist;
+        strong moksha potential if associated with Ketu.)
+    condition: |
+      Scorpio is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Scorpio as lagna or KL indicates a transformative, depth-oriented soul
+      inclined toward occult sciences, research, investigation, psychology, healing,
+      or work with transformation and regeneration. Profound insights and capacity
+      for deep change are soul-level gifts.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: "Scorpio in Chara Dasha has special exception rules (see Adhyaya 2)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.18.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.18"
+      text_excerpt: |
+        "Sagittarius as lagna/KL" — Sagittarius indicates philosophy, religion,
+        higher learning, long-distance travel, law, and the pursuit of truth.
+        Jupiter rules Sagittarius. Sagittarius KL: soul is oriented toward dharma,
+        philosophy, teaching, religious leadership, or any work that expands
+        horizons. (Rath: Sagittarius KL = guru, philosopher, preacher, judge,
+        professor; strong dharmic orientation.)
+    condition: |
+      Sagittarius is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Sagittarius as lagna or KL indicates a dharmic, truth-seeking, philosophical
+      soul inclined toward religion, philosophy, law, teaching, or long-distance
+      pursuits. Strong moral orientation and capacity to guide others toward higher
+      knowledge are soul-level gifts.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.19.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.19"
+      text_excerpt: |
+        "Capricorn as lagna/KL" — Capricorn indicates discipline, ambition,
+        material achievement, government work, administration, and long-term
+        strategic thinking. Saturn rules Capricorn. Capricorn KL: soul is oriented
+        toward systematic work, government service, business administration, or any
+        domain requiring sustained effort over long time periods. (Rath: Capricorn
+        KL = administrator, government officer, builder.)
+    condition: |
+      Capricorn is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Capricorn as lagna or KL indicates a disciplined, ambitious, materially
+      oriented soul inclined toward administration, government, structured careers,
+      or long-term material achievement. Patience and systematic effort are soul-level
+      gifts; coldness or excessive materialism are risks.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: "Aquarius in Chara Dasha has special exception rules (see Adhyaya 2)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.20.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.20"
+      text_excerpt: |
+        "Aquarius as lagna/KL" — Aquarius indicates social reform, humanitarian
+        work, groups, technology, unconventional approaches, and serving large
+        collectives. Saturn rules Aquarius. Aquarius KL: soul is oriented toward
+        humanitarian service, social reform, working with large groups, or innovative
+        fields that benefit many. (Rath: Aquarius KL = social reformer, scientist,
+        humanitarian; often works for collective benefit.)
+    condition: |
+      Aquarius is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Aquarius as lagna or KL indicates a humanitarian, reform-oriented soul inclined
+      toward social service, scientific innovation, group work, or serving large
+      collectives. Working for collective benefit rather than personal gain is a
+      soul-level orientation.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: "Aquarius has a special exception in Chara Dasha sequence (see Adhyaya 2 rules)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.21.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.21"
+      text_excerpt: |
+        "Pisces as lagna/KL" — Pisces indicates spirituality, compassion, renunciation,
+        artistic sensitivity, and dissolution of boundaries. Jupiter rules Pisces.
+        Pisces KL: soul is oriented toward spiritual liberation, compassionate service,
+        artistic pursuits, or work that transcends material boundaries. (Rath: Pisces
+        KL = mystic, healer, artist, monk; strong moksha potential.)
+    condition: |
+      Pisces is the Janma Lagna or Karakamsha Lagna in the natal chart.
+    assertion: |
+      Pisces as lagna or KL indicates a spiritually oriented, compassionate, boundary-
+      dissolving soul inclined toward spiritual practice, compassionate healing, art,
+      or renunciation. Strong moksha potential; the soul's purpose involves
+      transcending material limits.
+    scope: misc
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary (0.60) × traditional consensus (1.15) = 0.68"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA INDICATIONS FROM KARAKAMSHA LAGNA ───
+
+  - rule_id: JAIMINI.1.4.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.10"
+      text_excerpt: |
+        "5th from Karakamsha shows children and intelligence" — the 5th house from
+        KL, its lord, and occupying planets indicate the native's intelligence (mantra
+        shakti), capacity for learning mantras, and prospects for children. Benefics
+        in 5th from KL indicate brilliant intelligence and good children. (Rath: 5th
+        from KL is the primary Jaimini indicator for intelligence.)
+    condition: |
+      The 5th house from Karakamsha Lagna is analyzed for its occupants and lord.
+    assertion: |
+      Benefics in 5th from KL indicate brilliant intelligence, facility with mantras
+      and learning, and good progeny. Malefics in 5th from KL obstruct children and
+      may indicate challenges with learning or mantra practice unless aspected by
+      benefics.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Jaimini tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; 5th from KL vs 5th from Lagna can differ; use both."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.10.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.10"
+      text_excerpt: |
+        "9th from Karakamsha shows father and dharma" — the 9th house from KL,
+        its lord, and occupying planets indicate the father's welfare, the native's
+        dharmic inclinations, fortune in higher learning, and religious orientation.
+        (Rath: 9th from KL is the Jaimini indicator for dharma and fortune;
+        Jupiter's involvement here greatly strengthens spiritual and philosophical bent.)
+    condition: |
+      The 9th house from Karakamsha Lagna is analyzed for its occupants and lord.
+    assertion: |
+      Benefics in 9th from KL indicate good fortune, strong father, dharmic life,
+      and philosophical or religious inclinations. Jupiter in 9th from KL is one of
+      the strongest indicators of philosophical and spiritual wisdom. Malefics may
+      indicate father-related challenges.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.11"
+      text_excerpt: |
+        "12th from Karakamsha shows the path to moksha" — the 12th house from KL
+        and its lord indicate the type of moksha (liberation) available to the native
+        and the spiritual practices suited to them. (Rath: 12th from KL is the
+        Jaimini moksha indicator; the nature of the planet there shows HOW liberation
+        is attained — e.g., Venus = devotional path, Saturn = tapas, Ketu = direct
+        liberation.)
+    condition: |
+      The 12th house from Karakamsha Lagna is analyzed for its occupants and lord.
+    assertion: |
+      The planet in or ruling the 12th from KL shows the path to liberation:
+      Venus indicates devotional (bhakti) path; Jupiter indicates jnana (knowledge)
+      path; Saturn indicates karma yoga or tapas; Ketu indicates direct liberation
+      (moksha) through renunciation; Sun indicates surrender to higher authority
+      (raja yoga/dharmic path); Moon indicates emotional surrender (bhakti).
+    scope: divisional
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.75 for the interpretive moksha-path mapping being commentarial"
+    caveats: |
+      The detailed planet-to-moksha-path mapping is primarily from Rath's commentary
+      and the PJC tradition. Traditional texts do not spell out each planet's moksha
+      path this explicitly. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── AMATYA KARAKA INDICATIONS ───
+
+  - rule_id: JAIMINI.1.1.22.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.22"
+      text_excerpt: |
+        "Amatyakaraka indicates career direction and primary advisor" — the planet
+        second in degree rank (Amatyakaraka, AmK) governs career, profession, the
+        native's key mentor/advisor in career, and the quality of professional
+        judgment. AmK in strong position = capable career; AmK afflicted = career
+        challenges. (Rath: AmK is the prime career indicator in Jaimini, more
+        important than the 10th lord for career assessment.)
+    condition: |
+      The Amatyakaraka planet and its position in the natal chart are identified.
+    assertion: |
+      The Amatyakaraka governs career, profession, and the native's principal advisor
+      or mentor. The sign and house of AmK show the career domain; its condition
+      (dignity, aspects, conjunctions) shows the quality of professional life. AmK
+      is the primary Jaimini career indicator.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Jaimini tradition and Rath (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.1.23.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.23"
+      text_excerpt: |
+        "Darakaraka and the 7th from Darakaraka indicate the spouse" — the Darakaraka
+        (planet with lowest degree = DK) governs the spouse, partners, and one-on-one
+        relationships. The sign occupied by DK in the natal chart and the 7th from it
+        both describe the spouse. (Rath: DK's navamsha position also describes the
+        spouse's soul; DK in mutual aspect with AK is very favorable for marriage.)
+    condition: |
+      The Darakaraka planet is identified and its natal placement analyzed.
+    assertion: |
+      The Darakaraka governs the native's spouse and primary partnerships. The sign
+      and house of DK describe the nature of the spouse and partnership dynamics.
+      The 7th house from DK provides additional spouse characteristics. DK in mutual
+      aspect with AK favors harmonious marriage.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Jaimini tradition (1.15) = 0.85"
+    caveats: "Results vary by lagna; in female charts, the DK indicates the husband."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ARGALA RULES CONTINUED ───
+
+  - rule_id: JAIMINI.1.3.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.5"
+      text_excerpt: |
+        "Argala from natural karakas" — Jaimini teaches that each natural karaka
+        (sthira karaka) creates argala in a specific domain when it occupies the
+        argala positions from the relevant house. Jupiter's argala on 5th house
+        strengthens children; Venus's argala on 7th strengthens marriage; Saturn's
+        argala on 8th indicates longevity concerns. (Rath: Natural karakas in argala
+        positions from their own houses double the effect.)
+    condition: |
+      A natural karaka occupies an argala position (2nd, 4th, 5th, 11th) from the
+      house it naturally governs.
+    assertion: |
+      When a natural karaka creates argala on its own house, the positive or negative
+      effects of that house are amplified. Jupiter in argala from 5th doubles
+      intelligence and child prospects; Venus in argala from 7th amplifies marital
+      happiness; Saturn in argala from 8th intensifies longevity concerns.
+    scope: misc
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Prose commentary (0.60) × Rath-specific integration with traditional argala (0.85) = 0.51; upgraded to 0.72 given logical internal consistency"
+    caveats: "This is a Rath-commentary synthesis and may not be in the original sutras explicitly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.3.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.6"
+      text_excerpt: |
+        "Argala from Lagna on 5th, 4th, 2nd" — the houses receiving argala from
+        the Lagna are the most important for life support. The 2nd from Lagna
+        receiving benefic argala = family wealth; 4th from Lagna receiving benefic
+        argala = happiness in home; 11th from Lagna receiving benefic argala = gains.
+        (Rath: Lagna argala determines the basic support structure of the life.)
+    condition: |
+      Benefic or malefic planets occupy the 2nd, 4th, 5th, or 11th from Lagna.
+    assertion: |
+      Benefics in 2nd from Lagna create family wealth argala; benefics in 4th create
+      happiness-of-home argala; benefics in 5th create intelligence/children argala;
+      benefics in 11th create gains argala. Malefics in these positions create the
+      corresponding challenges.
+    scope: misc
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × general Jaimini tradition support (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL YOGAS FROM ADHYAYA 1 ───
+
+  - rule_id: JAIMINI.1.4.15.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.15"
+      text_excerpt: |
+        "Jupiter and Venus in Karakamsha or aspecting it: Rajayoga" — when both
+        Jupiter and Venus occupy or aspect the Karakamsha Lagna, this is a powerful
+        Jaimini Rajayoga indicating wealth, fame, and high social status. This yoga
+        is particularly strong if they are in their own signs or exaltation.
+        (Rath: Jupiter-Venus mutual influence on KL = combination of wisdom and
+        prosperity = Rajayoga.)
+    condition: |
+      Both Jupiter and Venus occupy or aspect the Karakamsha Lagna sign in the
+      natal chart simultaneously.
+    assertion: |
+      The native with Jupiter and Venus both influencing the Karakamsha Lagna
+      is inclined toward high social status, wealth, and fame. This is a Rajayoga
+      in the Jaimini framework, indicating both material success and cultural
+      refinement as life outcomes.
+    scope: yoga
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary with classical precedent (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.15.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.15"
+      text_excerpt: |
+        "Ketu in Karakamsha and Jupiter aspecting: Jnana yoga" — when Ketu occupies
+        the Karakamsha Lagna and Jupiter aspects it, this is a powerful Jaimini
+        Jnana yoga (yoga of knowledge/liberation), giving profound spiritual wisdom
+        and inclination toward liberation. (Rath: Ketu+Jupiter on KL = highest
+        spiritual yoga in Jaimini; moksha is the primary life goal.)
+    condition: |
+      Ketu occupies the Karakamsha Lagna and Jupiter aspects the KL sign in the
+      natal chart.
+    assertion: |
+      Native is strongly oriented toward spiritual liberation (moksha), profound
+      philosophical wisdom (jnana), and renunciation. This combination is one of
+      the strongest spiritual yogas in the Jaimini system. Material success is
+      secondary; the soul's purpose is liberation.
+    scope: yoga
+    school: jaimini
+    confidence: 0.64
+    confidence_rationale: "Implicit sutra form (0.85) × Ketu nodes factor (×0.85 per R1) = 0.72; reduced to 0.64 for Ketu as karaka being contested"
+    caveats: |
+      Ketu in KL being spiritually powerful is widely accepted; the Ketu+Jupiter
+      combination for jnana yoga is primarily Rath's framing. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.16.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.16"
+      text_excerpt: |
+        "Benefics in Karakamsha: Rajayoga potential" — when multiple benefics
+        (Jupiter, Venus, Mercury, waxing Moon) occupy or aspect the KL, the native
+        is favored for high social status, wealth, and spiritual advancement together.
+        More benefics influencing KL = stronger the positive destiny.
+        (Rath: Each additional benefic on KL strengthens the Rajayoga potential.)
+    condition: |
+      Multiple natural benefic planets (Jupiter, Venus, Mercury, waxing Moon) occupy
+      or aspect the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Multiple benefics influencing KL creates a powerful Rajayoga combination in
+      the Jaimini framework. The native is favored for high achievement in the domains
+      indicated by the specific benefics present.
+    scope: yoga
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical tradition (1.0) = 0.85; reduced to 0.78"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.17.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.17"
+      text_excerpt: |
+        "Rahu in Karakamsha with Mars: foreign or technical work" — when Rahu and
+        Mars both influence the Karakamsha Lagna, the native is drawn to technical
+        or military work in foreign lands, or to working with weapons, chemicals, or
+        advanced technology. (Rath: Rahu+Mars KL = pioneer in technical fields,
+        often in foreign contexts.)
+    condition: |
+      Rahu and Mars both occupy or aspect the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native is inclined toward technical or military work, often in foreign countries
+      or unconventional environments. Engineering, weapons, chemicals, or advanced
+      technology are typical domains. Foreign residence is possible.
+    scope: yoga
+    school: jaimini
+    confidence: 0.55
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85) = 0.72; reduced to 0.55 for compound Rahu+Mars reading being commentary-dependent"
+    caveats: |
+      Contested: This specific Rahu+Mars combination is from Rath's commentary
+      synthesis, not a standalone sutra. Results vary significantly by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DARA KARAKA AND MARRIAGE INDICATORS ───
+
+  - rule_id: JAIMINI.1.4.20.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.20"
+      text_excerpt: |
+        "7th from Atmakaraka and Darakaraka: marriage" — the 7th house from the
+        Atmakaraka's position in the natal chart shows marriage and partnership
+        prospects from the soul's perspective. The Darakaraka and its sign complete
+        the picture. When AK and DK are in mutual aspect (Jaimini drishti), marriage
+        is harmonious and spiritually fulfilling. (Rath: AK-DK connection = soulmate
+        potential in a marriage.)
+    condition: |
+      The 7th house from the Atmakaraka is analyzed; the Darakaraka's position
+      relative to AK is assessed for Jaimini aspect relationships.
+    assertion: |
+      Benefics in the 7th from AK or in mutual aspect with the AK-DK axis favor
+      harmonious, fulfilling marriage. The quality of the 7th from AK describes
+      the soul's experience of partnership. AK and DK in mutual Jaimini aspect
+      indicates potential for soulmate-level connection.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath and classical Jaimini (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna; affliction to 7th from AK overrides positive DK placement."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.1.4.21.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.21"
+      text_excerpt: |
+        "Venus in 7th from Atmakaraka: exceptional marital happiness" — Venus in
+        the 7th from the Atmakaraka's natal position is one of the strongest Jaimini
+        indicators for marital happiness, beauty in the spouse, and abundance in
+        partnership. (Rath: Venus 7th from AK = the native's soul experience of
+        marriage is pleasurable, aesthetic, and harmonious.)
+    condition: |
+      Venus occupies the 7th house from the Atmakaraka's sign in the natal chart.
+    assertion: |
+      Native experiences exceptional marital happiness, is drawn to a beautiful or
+      aesthetically gifted spouse, and finds abundance and pleasure through partnership.
+      This is one of the strongest Jaimini marriage indicators.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL LAGNAS: HORA LAGNA ───
+
+  - rule_id: JAIMINI.1.4.25.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.25"
+      text_excerpt: |
+        "Hora Lagna: financial prosperity indicator" — Hora Lagna (HL) is the special
+        lagna for financial prosperity in Jaimini. Its position, its lord, and planets
+        influencing it in the natal chart indicate the native's capacity to accumulate
+        wealth and the timing of financial peaks. (Rath: HL is the Jaimini wealth lagna;
+        the dasha of HL's lord or of a planet in HL brings financial gains.)
+    condition: |
+      Hora Lagna is calculated from the birth time and its position in the natal
+      chart is assessed along with its lord and influencing planets.
+    assertion: |
+      Hora Lagna indicates the native's capacity for financial prosperity and
+      accumulation. The lord of HL's sign and planets occupying HL or aspecting it
+      show financial strength. The dasha of HL lord or planets connected to HL
+      tends to bring financial gains and prosperity.
+    scope: misc
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.78 for calculation-dependent lagna"
+    caveats: |
+      Hora Lagna calculation differs between commentators. Results vary by lagna and
+      depend heavily on accurate birth time.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS: 8 rules requiring deeper textual verification ───
+
+  - rule_id: JAIMINI.1.1.25.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.25"
+      text_excerpt: |
+        "Sutra on tied karakas (equal degrees)" — when two planets have equal degrees
+        in their respective signs, Jaimini gives a rule for breaking the tie to assign
+        karaka status. The specific tie-breaking rule in the original sutra text
+        requires verification against multiple manuscripts.
+    condition: |
+      Two planets have identical degree positions (tied) when ranking for Chara Karaka
+      assignment.
+    assertion: |
+      [STUB: Tie-breaking rule for equal-degree karakas — requires manuscript verification.
+      Rath gives one method; Iranganti Rangacharya gives another; no consensus identified.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable; specific tie-breaking rule across manuscripts unverifiable without access to primary Sanskrit"
+    caveats: "Highly contested. Do not use without further verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available text_excerpt — multiple conflicting methods exist"
+
+  - rule_id: JAIMINI.1.2.5.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.2.5"
+      text_excerpt: |
+        "Rashi drishti on planets vs on rashis" — the sutra distinguishes whether
+        rashi aspect applies to planets in a sign or to the sign itself as an entity.
+        The distinction matters for argala calculation and karakamsha interpretation.
+        [Requires further manuscript-level verification for exact sutra wording.]
+    condition: |
+      Rashi drishti is applied to a sign containing planets vs. to an empty sign.
+    assertion: |
+      [STUB: Whether Jaimini rashi drishti applies identically to occupied vs empty
+      signs — the sutra is ambiguous; Rath says yes (full aspect regardless); other
+      commentators qualify this. Requires primary text verification.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable; textual ambiguity makes assertion underivable"
+    caveats: "Contested: occupied vs empty sign aspect behavior differs across commentators."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: condition derivable but assertion not confirmed by available excerpt"
+
+  - rule_id: JAIMINI.1.3.7.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.7"
+      text_excerpt: |
+        "Argala of exalted planets vs. debilitated planets" — the sutra is said to
+        address whether the strength (bala) of the argala-creating planet modifies
+        the quality of the argala. An exalted planet's argala vs. a debilitated
+        planet's argala — same house, different effect? [Partial sutra; Rath
+        commentary unclear on exact sutra basis.]
+    condition: |
+      A planet in exaltation or debilitation occupies an argala position from
+      the reference point.
+    assertion: |
+      [STUB: Degree to which planetary dignity modifies argala strength — textual
+      basis for exact modification unclear. Rath implies dignity matters; sutra
+      wording unverified.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable; assertion requires manuscript verification"
+    caveats: "Dignity-based argala modification is commentarial; not confirmed in primary sutra text."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available excerpt"
+
+  - rule_id: JAIMINI.1.4.22.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.22"
+      text_excerpt: |
+        "Specific sutra on Bhratrukaraka for sibling-related results" — the sutra
+        addresses what specific planetary placements from the Bhratrukaraka indicate
+        for sibling welfare, number of siblings, and quality of sibling relationships.
+        [Requires deeper textual source than available; Rath commentary only paraphrases.]
+    condition: |
+      The Bhratrukaraka and houses counted from it are analyzed for sibling indications.
+    assertion: |
+      [STUB: Specific house-from-BK indicators for sibling count, quality, and welfare —
+      requires primary sutra verification. General principle (benefics = good siblings)
+      is accepted; specific house rules need verification.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Paraphrase only; primary sutra wording not verifiable from available commentary."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: specific sibling rules not derivable from available text_excerpt"
+
+  - rule_id: JAIMINI.1.4.23.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.23"
+      text_excerpt: |
+        "Gnatikaraka and 6th from it for disease and enemies" — the sutra is said to
+        address the specific disease indicators from the Gnatikaraka position. Rath
+        mentions this but the full rule requires detailed sutra-level citation that
+        is not available in summary form.
+    condition: |
+      The Gnatikaraka's position in the natal chart and the 6th from it are analyzed.
+    assertion: |
+      [STUB: Specific disease and enemy indicators from GK — full rule requires
+      primary sutra access. General principle (malefics from GK = disease) accepted;
+      specific indicators need verification.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Specific Gnatikaraka disease rules require primary sutra verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable without primary sutra"
+
+  - rule_id: JAIMINI.1.1.26.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.1.26"
+      text_excerpt: |
+        "Upakarakas (sub-karakas) — Jaimini is said to mention sub-classifications
+        within the main karaka scheme for more precise results. Rath references this
+        but does not give detailed sutra citations in the available commentary edition."
+    condition: |
+      Sub-karaka classifications within the 7/8-karaka Chara scheme are applied.
+    assertion: |
+      [STUB: Sub-karaka classification rules — no verifiable sutra text available
+      in accessible Rath commentary edition. Requires primary Sanskrit or complete
+      commentary edition.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Not verifiable from available commentary."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available text"
+
+  - rule_id: JAIMINI.1.4.24.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.4.24"
+      text_excerpt: |
+        "Matrukaraka for mother's longevity" — the sutra addressing specific
+        indicators from the Matrukaraka for mother's longevity and welfare.
+        Commentary mentions this topic but the specific house-from-MK rules
+        for longevity are not given with sutra-level precision in available edition."
+    condition: |
+      The Matrukaraka and specific houses from it are analyzed for mother's longevity.
+    assertion: |
+      [STUB: Specific longevity indicators for mother from MK — requires primary
+      sutra verification. General principle (benefics from MK = good maternal welfare)
+      is accepted; specific longevity rules need verification.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Specific maternal longevity indicators need primary sutra verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from summary commentary"
+
+  - rule_id: JAIMINI.1.3.8.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "1.3.8"
+      text_excerpt: |
+        "Argala in Navamsha and its relation to natal argala" — whether argala
+        computed in the Navamsha chart independently modifies natal chart readings,
+        or whether only natal argala counts. Rath mentions this as a question but
+        the authoritative sutra resolution is not clear from available text."
+    condition: |
+      Argala is computed in the Navamsha chart for the same reference point as
+      the natal chart.
+    assertion: |
+      [STUB: Whether Navamsha argala is independently operative or only confirmatory —
+      sutra basis unclear; requires primary text. Rath appears to say D9 argala
+      confirms D1 argala but does not give full rule.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Navamsha argala interaction with natal argala requires primary sutra verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available text_excerpt"

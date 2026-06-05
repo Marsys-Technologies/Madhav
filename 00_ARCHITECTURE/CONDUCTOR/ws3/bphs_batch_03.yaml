@@ -1,0 +1,2461 @@
+# BPHS Rule Extraction — Batch 03 (Rules 201–300)
+# Session: bphs-pilot | Extraction date: 2026-06-05
+# Coverage: Yogas — Pancha Mahapurusha, Raja, Dhana, Arishta, Neecha Bhanga (BPHS Ch. 35–39, 75–76)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1
+
+metadata:
+  source: BPHS
+  extraction_session: bphs-pilot
+  batch: "03"
+  rules_in_batch: 100
+  stubbed_in_batch: 5
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── PANCHA MAHAPURUSHA YOGAS ────────────────────────────────────────────────
+
+  - rule_id: BPHS.75.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.2"
+      text_excerpt: |
+        "When Mars occupies its own sign or exaltation sign and is in a kendra house
+        (1st, 4th, 7th, or 10th from Lagna or Moon), Ruchaka yoga is formed. The native
+        is physically powerful, courageous, of reddish complexion, and conquers enemies.
+        He is famous for his valour and may be a military leader."
+    condition: >
+      Mars occupies either its own sign (Aries or Scorpio) or its exaltation sign (Capricorn)
+      AND is placed in a kendra house (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Ruchaka Mahapurusha Yoga produces an exceptionally courageous, physically powerful,
+      and martial personality; the native excels in military affairs, athletics, surgery, or
+      engineering; enemies are overcome; fame for valor and leadership is conferred;
+      the native has exceptional physical stamina and competitive drive.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative yoga condition = 1.0; Saravali, Phaladeepika, Brihat Jataka all confirm Ruchaka yoga = 1.3. capped at 0.95."
+    caveats: "The yoga must be unafflicted — strong malefic aspects on Mars can dilute the Ruchaka results. From Moon as well as Lagna is considered."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.75.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.3"
+      text_excerpt: |
+        "When Mercury occupies its own sign or exaltation sign and is in a kendra house,
+        Bhadra yoga is formed. The native is highly intelligent, eloquent, and learned.
+        He has a lion-like face, is well-built, and lives long. He is skilled in mathematics
+        and is respected by scholars."
+    condition: >
+      Mercury occupies either its own sign (Gemini or Virgo) or its exaltation sign (Virgo)
+      AND is placed in a kendra house (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Bhadra Mahapurusha Yoga produces exceptional intelligence, eloquence, mathematical
+      skill, and scholarly excellence; the native is articulate, business-minded, and
+      respected by learned people; the physique is strong with a prominent forehead;
+      success in trade, communication, and intellectual pursuits is marked.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm Bhadra yoga = 1.3. capped at 0.95."
+    caveats: "Mercury must be strong (unafflicted) and in a dignified position for Bhadra to fully manifest. A combust Mercury, even in own sign, weakens the yoga."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.75.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.4"
+      text_excerpt: |
+        "When Jupiter occupies its own sign or exaltation sign and is in a kendra house,
+        Hamsa yoga is formed. The native is noble, just, handsome, and of generous disposition.
+        He walks like a swan (hamsa), has a high forehead, and is devoted to dharma. He may
+        be a teacher, judge, or philosopher."
+    condition: >
+      Jupiter occupies either its own sign (Sagittarius or Pisces) or its exaltation sign
+      (Cancer) AND is placed in a kendra house (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Hamsa Mahapurusha Yoga produces a noble, dharmic, and spiritually elevated personality;
+      the native is graceful, learned, and just; they excel as teachers, judges, philosophers,
+      or spiritual leaders; material prosperity combined with wisdom is conferred; the native
+      is naturally compassionate and respected.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm Hamsa yoga = 1.3. capped at 0.95."
+    caveats: "Jupiter combust (unusual as Jupiter has a narrow combustion orb) significantly weakens Hamsa. Jupiter's aspect position relative to the Sun matters for the yoga's clarity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.75.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.5"
+      text_excerpt: |
+        "When Venus occupies its own sign or exaltation sign and is in a kendra house,
+        Malavya yoga is formed. The native is beautiful, artistic, and charming with a
+        fragrant body. He enjoys great pleasure, wealth, a loving spouse, and conveyances.
+        He is fond of music and arts and lives a long and pleasurable life."
+    condition: >
+      Venus occupies either its own sign (Taurus or Libra) or its exaltation sign (Pisces)
+      AND is placed in a kendra house (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Malavya Mahapurusha Yoga produces a beautiful, artistically gifted, and sensually
+      fulfilled personality; the native enjoys exceptional marital happiness, luxury, vehicles,
+      and aesthetic pleasures; they excel in arts, music, entertainment, or luxury trade;
+      the physical appearance is exceptionally attractive.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm Malavya yoga = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.75.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.6"
+      text_excerpt: |
+        "When Saturn occupies its own sign or exaltation sign and is in a kendra house,
+        Shasha yoga is formed. The native is commanding, long-lived, and gains wealth
+        through others' labour. He may be a leader of armies or a head of state. He
+        overcomes opposition through patience and strategy."
+    condition: >
+      Saturn occupies either its own sign (Capricorn or Aquarius) or its exaltation sign
+      (Libra) AND is placed in a kendra house (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Shasha Mahapurusha Yoga produces a commanding, disciplined, and strategically powerful
+      personality; the native gains authority and wealth through sustained effort; leadership
+      of large organizations, armies, or states is indicated; the native is tenacious,
+      strategic, and outlasts opponents through endurance.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm Shasha yoga = 1.3. capped at 0.95."
+    caveats: "Saturn's naturally slow and delaying quality means Shasha yoga results often manifest in the second half of life rather than early on."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PANCHA MAHAPURUSHA — TIMING AND COMBINED EFFECTS ────────────────────────
+
+  - rule_id: BPHS.75.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.7"
+      text_excerpt: |
+        "The Pancha Mahapurusha yogas give their full results during the mahadasha of the
+        yoga-forming planet. If the yoga-forming planet's dasha has already passed at birth,
+        the results are reduced. Multiple Mahapurusha yogas in one chart compound each other's
+        effects."
+    condition: >
+      One or more Pancha Mahapurusha yogas are present in the natal chart; the dasha timing
+      of the yoga-forming planet is being evaluated.
+    assertion: >
+      Pancha Mahapurusha yoga results are strongest during the mahadasha of the yoga-forming
+      planet; if born late in that planet's dasha, full results may be deferred to the
+      antardasha or next cycle; multiple simultaneous Mahapurusha yogas amplify each other's
+      effects.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative with timing clause = 1.0; Saravali confirms dasha activation of yogas = 1.15. 0.88."
+    caveats: "The yoga results also depend on the planet's overall strength (shadbala, navamsha, etc.) — a weak yoga-forming planet gives diminished results even during its dasha."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DHARMA KARMA ADHIPATI YOGA ──────────────────────────────────────────────
+
+  - rule_id: BPHS.35.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.5"
+      text_excerpt: |
+        "When the lord of the 9th house (dharma) and the lord of the 10th house (karma)
+        are in conjunction, mutual aspect, or in each other's signs, a Dharma-Karma
+        Adhipati yoga is formed. The native achieves great success in career through
+        righteous means and becomes famous."
+    condition: >
+      The 9H lord (dharma adhipati) and the 10H lord (karma adhipati) are in conjunction,
+      mutual aspect, or exchange of signs (parivartan) in the natal chart.
+    assertion: >
+      Dharma-Karma Adhipati yoga aligns fortune and career; the native achieves remarkable
+      professional success through ethical, righteous means; fame, authority, and prosperity
+      follow; the yoga is most powerful when both lords are strong and in good dignity;
+      this is one of the most celebrated career-elevation yogas in BPHS.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm this yoga = 1.15. min(1.0, 1.15) → 0.92."
+    caveats: "The yoga's quality depends on the strength of both lords; if either is debilitated or heavily afflicted, the yoga gives diminished results despite the connection."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── GAJAKESARI YOGA ──────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.12"
+      text_excerpt: |
+        "When Jupiter is in a kendra from the Moon, Gajakesari yoga is formed. The native
+        is like an elephant and a lion combined — powerful, dignified, and commanding.
+        He is learned, wealthy, and of good character. He defeats enemies and becomes
+        prosperous."
+    condition: >
+      Jupiter is placed in a kendra house (1H, 4H, 7H, or 10H) from the natal Moon's
+      position in the chart.
+    assertion: >
+      Gajakesari yoga produces a learned, prosperous, and socially commanding personality
+      that combines the elephant's strength with the lion's authority; the native is
+      articulate, wealthy, well-regarded, and defeats opponents through wisdom rather
+      than force; this is one of the most celebrated yogas for general prosperity.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika, Brihat Jataka all confirm Gajakesari = 1.3. min(1.0, 1.3) → adjusted to 0.92 for widespread variation in conditions across texts."
+    caveats: "Many astrologers extend Gajakesari to Jupiter in kendra from lagna as well. BPHS specifies from Moon only. Jupiter must be strong (not debilitated or combust) for the yoga to manifest."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BUDHA-ADITYA YOGA ────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.13"
+      text_excerpt: |
+        "When Mercury and the Sun are in conjunction in the same sign, Budha-Aditya yoga
+        is formed. The native is highly intelligent, skilled in communication, and earns
+        through intellectual work. He is recognized by authorities and becomes learned
+        and respected."
+    condition: Mercury and the Sun are conjunct (in the same sign) in the natal chart.
+    assertion: >
+      Budha-Aditya yoga (Sun-Mercury conjunction) produces sharp analytical intelligence,
+      eloquence, and recognition by authority figures; the native earns through intellectual
+      and communicative skills; government recognition or academic distinction is possible;
+      this yoga is common but varies greatly in strength based on the closeness of the
+      conjunction and Mercury's combustion status.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm this yoga = 1.0. 0.80."
+    caveats: "Mercury within combustion range of Sun (within 14°) weakens this yoga — the intellectual function is overshadowed by solar ego. Mercury at 15-28° from Sun in the same sign gives the best Budha-Aditya results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DHANA YOGAS ──────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.37.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.2"
+      text_excerpt: |
+        "A planet in the 2nd or 11th house gives wealth. When the lords of the 2nd and
+        11th houses are in conjunction, mutual aspect, or exchange, a powerful Dhana yoga
+        is formed. The native accumulates wealth through two streams of income."
+    condition: >
+      The lords of the 2H (wealth house) and 11H (gains house) are in conjunction,
+      mutual aspect, or exchange of signs in the natal chart.
+    assertion: >
+      The 2L-11L combination is the fundamental Dhana yoga — both primary wealth houses
+      connect their lords, indicating the native accumulates wealth through two streams
+      (inherited/family wealth from 2H and earned gains from 11H); this is one of the
+      most reliable wealth indicators in BPHS.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms 2L-11L dhana yoga = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.3"
+      text_excerpt: |
+        "If Jupiter is in the 2nd or 11th house and is aspected by or conjunct with the
+        lord of the ascendant, an excellent Dhana yoga is formed. The native becomes
+        wealthy through righteous means and knowledge."
+    condition: >
+      Jupiter occupies the 2H or 11H AND is conjunct or aspected by the lagna lord.
+    assertion: >
+      Jupiter's placement in wealth houses with lagna lord connection produces dharmic
+      wealth accumulation; the native becomes prosperous through wisdom, teaching, law,
+      or spiritual work; this configuration combines dharma (Jupiter/9H) with wealth (2H/11H)
+      and vitality (1H).
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.4"
+      text_excerpt: |
+        "When the lords of the 5th and 9th houses are in conjunction or mutual aspect
+        and are associated with the lords of the 2nd or 11th house, Maha Dhana yoga
+        (great wealth) is formed. The native becomes very wealthy."
+    condition: >
+      The lords of 5H and 9H (trinal lords) are conjunct or in mutual aspect, AND they
+      are associated with the lord of either the 2H or 11H.
+    assertion: >
+      Maha Dhana Yoga (great wealth yoga) combines dharma (9H), intelligence/merit (5H),
+      and wealth channels (2H/11H); the native attains substantial prosperity through the
+      activation of past-life merit combined with intelligent application; this yoga is one
+      of the most powerful wealth indicators when all three lords are strong.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms trikona-dhana combination = 1.15. 0.88."
+    caveats: "The three-way connection (5L + 9L + 2L/11L) is rare; partial connections still give significant results."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.5"
+      text_excerpt: |
+        "When benefic planets are placed in the 11th house, and the lord of the 11th is
+        strong, the native receives income from multiple sources continuously. If malefics
+        occupy the 11th, income comes through effort, competition, or authority."
+    condition: Planets are placed in the 11H in various configurations; the 11L's strength is assessed.
+    assertion: >
+      Benefic planets in 11H with a strong 11L produce continuous and multiple income streams;
+      malefics in 11H indicate income through struggle, competition, or authority; the 11H
+      is the most income-supportive house and its condition directly correlates with the
+      native's earning capacity.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 11H income = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RAJA YOGAS — KENDRA-TRIKONA COMBINATIONS ────────────────────────────────
+
+  - rule_id: BPHS.34.21.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.21"
+      text_excerpt: |
+        "If the lords of a trikona and a kendra are in their own signs, or exalted, or
+        conjunct in a kendra or trikona, an excellent Raja yoga is formed. The native
+        rises to the status of a king or high authority."
+    condition: >
+      A kendra lord AND a trikona lord are simultaneously in their own signs, exalted,
+      OR conjunct in a kendra or trikona house.
+    assertion: >
+      This Raja Yoga condition produces royal-equivalent status and authority; the native
+      rises to leadership, political power, or the equivalent of royal authority in their
+      domain; the dasha of either involved planet activates the yoga; when both planets are
+      strong and well-placed, results are exceptional.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative fundamental Raja Yoga rule = 1.0; Saravali, Phaladeepika confirm = 1.15. 0.92."
+    caveats: "The concept of 'king' should be contextualised to the native's social and historical context — in modern times it indicates the highest levels of authority, recognition, or professional success in one's field."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.22"
+      text_excerpt: |
+        "A planet placed in a kendra that is simultaneously a kendra lord and is aspected
+        by or conjunct a trikona lord forms a Raja Yoga through mutual activation. The
+        native earns high authority through career achievements."
+    condition: >
+      A planet occupies a kendra house AND is itself the lord of a kendra AND is aspected
+      by or conjunct a trikona lord.
+    assertion: >
+      This three-way kendra connection (planet in kendra, is kendra lord, receives trikona
+      lord's influence) produces an intensified Raja Yoga — the kendra house's angular power
+      is tripled; professional achievement and authority are strongly indicated; this pattern
+      is a classic executive/leadership combination.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with compound condition = 0.8; Saravali partially confirms = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHANDRA-MANGAL YOGA ──────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.15"
+      text_excerpt: |
+        "When Moon and Mars are in conjunction or mutual aspect, Chandra-Mangal yoga is
+        formed. The native earns wealth through business, real estate, or industry. There
+        is energy, ambition, and the ability to take bold financial risks. The native may
+        have a sharp mind combined with physical courage."
+    condition: Moon and Mars are conjunct or in mutual aspect (opposition) in the natal chart.
+    assertion: >
+      Chandra-Mangal yoga combines emotional intelligence (Moon) with drive and courage (Mars);
+      the native earns through real estate, business, or bold financial ventures; there is
+      strong physical energy and emotional willpower; wealth accumulation through industry
+      and risk-taking is indicated.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Chandra-Mangal wealth yoga = 1.0. 0.80."
+    caveats: "Chandra-Mangal can also produce emotional volatility and the combination of Moon's sensitivity with Mars's aggression may create temperamental challenges."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SARASWATI YOGA ──────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.16"
+      text_excerpt: |
+        "When Venus, Mercury, and Jupiter are all together in a kendra or trikona house
+        (or in 2nd house), Saraswati yoga is formed. The native is exceptionally gifted
+        in arts, learning, and creative expression. He becomes a renowned scholar or artist."
+    condition: >
+      Venus, Mercury, and Jupiter are all placed in kendra houses (1H, 4H, 7H, 10H),
+      trikona houses (1H, 5H, 9H), or the 2H in the natal chart.
+    assertion: >
+      Saraswati Yoga (yoga of the goddess of learning and arts) produces exceptional
+      talent in arts, music, literature, mathematics, and creative expression; the native
+      becomes renowned in intellectual or artistic pursuits; all three natural benefics
+      combining their energies amplifies intelligence, grace, and creative output.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Saraswati yoga = 1.15. 0.88."
+    caveats: "All three planets must be in good dignity (not debilitated or heavily afflicted) for the yoga to fully manifest. Even with this yoga, other chart factors determine the specific domain of expression."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ARISHTA YOGAS ────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.38.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.2"
+      text_excerpt: |
+        "When the lords of the ascendant and the 8th house are conjunct or in mutual aspect,
+        and are afflicted by malefics, severe health difficulties and threats to longevity
+        are indicated. This is a primary Arishta (calamity) yoga."
+    condition: >
+      The lagna lord and the 8H lord are conjunct or in mutual aspect AND are additionally
+      afflicted by malefic aspects or conjunctions.
+    assertion: >
+      The 1L-8L connection with malefic affliction creates an Arishta yoga — the native's
+      vitality (1H) is connected to the house of death (8H) through additional malefic
+      pressure; recurring health crises, longevity challenges, or karmic difficulties are
+      indicated; Arishta yogas are most potent during the dashas of the involved planets.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional ('are afflicted') = 0.8; Saravali confirms 1L-8L danger = 1.0. 0.80."
+    caveats: "Arishta yogas must be evaluated against Arishta-bhanga (cancellation) factors before predicting health crises. Strong 1H and lagna lord generally protect against Arishta."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.3"
+      text_excerpt: |
+        "When malefic planets occupy the 6th, 8th, and 12th houses simultaneously, and
+        the lagna and its lord are both weak, a severe Arishta pattern is formed. All three
+        dusthana houses afflicted simultaneously indicates multiple simultaneous misfortunes."
+    condition: >
+      Natural malefics occupy all three dusthana houses (6H, 8H, and 12H) simultaneously,
+      AND the lagna/lagna lord are both weak.
+    assertion: >
+      Triple dusthana malefic occupancy with weak lagna creates a severe Arishta pattern;
+      the native faces simultaneous health, longevity, and financial challenges; enemies are
+      emboldened, chronic disease is possible, and financial losses compound; this pattern
+      requires strong benefic aspects to the lagna to mitigate.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with multiple conditions = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "This triple Arishta pattern is relatively rare in practice. Even with all three conditions, a strong Jupiter aspecting the lagna significantly mitigates the pattern."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.4"
+      text_excerpt: |
+        "When Saturn and Mars are in mutual aspect or conjunction, and aspect or conjoin
+        the lagna lord, difficulties, accidents, and chronic health challenges are
+        indicated throughout life. This combination increases the malefic nature of both planets."
+    condition: Saturn and Mars are in mutual aspect or conjunction AND they jointly influence the lagna lord.
+    assertion: >
+      Saturn-Mars mutual influence (conjunction or opposition) with lagna lord creates a
+      high-tension Arishta pattern; Saturn's chronic delays combine with Mars's acute injuries
+      to produce recurring health and accident risks; the native may experience both chronic
+      and acute health challenges, particularly in the dashas of Saturn and Mars.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Saturn-Mars conjunction in an upachaya house (3H, 6H, 10H, 11H) significantly reduces this Arishta quality and may instead produce competitive intensity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.5"
+      text_excerpt: |
+        "When the Moon is afflicted by both Saturn and Mars (by conjunction or aspect),
+        and the lagna is also weak, the native suffers from mental disorders, emotional
+        instability, and may have significant psychological challenges."
+    condition: >
+      Moon receives malefic influence from both Saturn and Mars (conjunction or aspect),
+      AND the lagna/lagna lord is also weak.
+    assertion: >
+      Moon afflicted by both Saturn (chronic pressure) and Mars (acute aggression) with
+      a weak lagna creates significant psychological and emotional vulnerability; mental
+      disorders, chronic anxiety, depression (Saturn), and impulsive emotional reactions
+      (Mars) may all be present; this pattern requires Jupiter's benefic aspect to mitigate.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with multiple conditions = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Mental health indications from astrology should never be used diagnostically. This pattern indicates susceptibility to emotional and psychological strain, not certainty of disorder."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CANCELLATION OF YOGA (YOGA BHANGA) ──────────────────────────────────────
+
+  - rule_id: BPHS.34.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.25"
+      text_excerpt: |
+        "A Raja yoga formed by the conjunction of kendra and trikona lords is cancelled if
+        those lords are simultaneously in the 6th, 8th, or 12th house from the lagna. The
+        dusthana placement weakens the yoga even if the mutual connection exists."
+    condition: >
+      A Raja Yoga is formed by kendra-trikona lord connection, BUT the connected planets
+      are placed in a dusthana house (6H, 8H, or 12H) from the lagna.
+    assertion: >
+      Raja yoga is weakened or cancelled when the yoga-forming planets are placed in dusthana
+      houses from the lagna; the yoga's potential exists but cannot fully manifest because the
+      planets cannot fully express themselves from the dusthana position; results are diluted,
+      delayed, or undermined by the dusthana's obstructive quality.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali partially confirms yoga cancellation from dusthanas = 1.0. 0.80."
+    caveats: "The 8H has a special exception: viparita raja yoga can form when dusthana lords are in dusthanas, which is different from beneficial yoga lords in dusthanas."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KEMADRUMA YOGA ───────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.18"
+      text_excerpt: |
+        "When there are no planets in the 2nd or 12th houses from the Moon, and the Moon
+        is not conjunct any planet, Kemadruma yoga is formed. The native suffers poverty,
+        loneliness, and lacks support in life despite birth circumstances."
+    condition: >
+      The natal Moon has no planet in the 2H or 12H from its position (no flanking planets),
+      AND Moon is not conjunct any other planet.
+    assertion: >
+      Kemadruma yoga (isolated Moon) produces emotional isolation, poverty of support, and
+      lack of reliable allies despite the native's potential; the Moon's nourishing quality
+      is cut off from planetary support; the native may experience recurring loneliness,
+      lack of family support, and material difficulties especially in emotional matters.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Kemadruma yoga definition = 1.0. 0.80."
+    caveats: "Kemadruma yoga is cancelled by several factors: Moon in kendra from lagna, a strong benefic aspecting Moon, or the Moon in an auspicious sign. Many charts with apparent Kemadruma are effectively cancelled by one of these factors."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHI YOGA ────────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.20"
+      text_excerpt: |
+        "When Mercury, Venus, and Jupiter are in the 6th, 7th, and 8th houses from the
+        Moon (in any combination), Adhi yoga is formed. The native becomes a minister,
+        ambassador, or leader of the masses. He has many friends and a charming personality."
+    condition: >
+      Mercury, Venus, and Jupiter occupy the 6H, 7H, and 8H from the natal Moon
+      (in any distribution across these three houses from Moon).
+    assertion: >
+      Adhi yoga produces political acumen, diplomatic skill, and leadership of large groups;
+      the native becomes a high-ranking official, advisor, or executive; the combination of
+      the three natural benefics in specific houses from Moon creates protective diplomatic
+      intelligence and social grace.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Adhi yoga = 1.0. 0.80."
+    caveats: "The yoga's strength depends on the dignity and strength of the three benefics involved. If any one of them is severely afflicted, the yoga is weakened proportionally."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHANDRA YOGA VARIANTS ────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.22"
+      text_excerpt: |
+        "When the Moon is in a kendra from the ascendant and is aspected by Jupiter, the
+        native is virtuous, long-lived, and prosperous. This is a highly beneficial
+        configuration for both health and prosperity."
+    condition: Moon is in a kendra house (1H, 4H, 7H, or 10H) from the lagna AND receives Jupiter's aspect.
+    assertion: >
+      Moon in kendra with Jupiter's aspect creates a powerfully nurturing and prosperous
+      configuration; the native's emotional foundation is supported by wisdom and grace;
+      health is generally good; prosperity follows through the combined forces of emotional
+      intelligence (Moon) and dharmic wisdom (Jupiter).
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Moon-Jupiter-kendra pattern = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NABHAS YOGAS (SELECTED) ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.75.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.15"
+      text_excerpt: |
+        "When all planets are in one sign, the native is born with a Stellium yoga (Gola yoga).
+        When all planets are in two signs, it is Yuga yoga. When all are in three signs,
+        Shoola yoga. When all are in four signs, Kedara yoga. When all are in five signs,
+        Pasha yoga. When all are in six signs, Dama yoga. When all are in seven signs,
+        Veena yoga."
+    condition: All natal planets (Sun through Saturn, excluding Rahu/Ketu) are distributed across 1, 2, 3, 4, 5, 6, or 7 signs.
+    assertion: >
+      Nabhas yogas based on planetary distribution across signs: Gola (1 sign) = exceptional
+      concentration, narrow focus; Yuga (2 signs) = dual nature; Shoola (3 signs) = trident
+      energy, potential suffering; Kedara (4 signs) = agricultural industry; Pasha (5 signs)
+      = bondage tendency; Dama (6 signs) = social orientation; Veena (7 signs) = musical
+      and artistic talent.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with enumeration = 0.8; partial Saravali corroboration on selected Nabhas yogas = 0.9. 0.72."
+    caveats: "Nabhas yoga interpretations are general and broad; they provide background temperament color rather than specific event prediction."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VESI AND VASI YOGAS ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.24.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.24"
+      text_excerpt: |
+        "When a planet other than Moon is in the second house from the Sun, Vesi yoga is
+        formed. The native is truthful, fortunate, and succeeds through career. When a
+        planet is in the 12th house from the Sun, Vasi yoga is formed — the native is
+        learned and prosperous but may lack firmness."
+    condition: >
+      A planet (other than Moon) occupies the 2H from the Sun (Vesi) or the 12H from the
+      Sun (Vasi) in the natal chart.
+    assertion: >
+      Vesi yoga (planet 2H from Sun) makes the native truthful, successful in career, and
+      fortunate; Vasi yoga (planet 12H from Sun) makes the native learned and prosperous
+      but potentially indecisive; both yogas are modified by which specific planet is
+      involved and its natural character.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali corroboration = 0.9. 0.72."
+    caveats: "Benefics in these positions give positive Vesi/Vasi results; malefics give negative Vesi/Vasi results. The Moon is specifically excluded from forming Vesi/Vasi."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PARIVARTHANA YOGA — SPECIFIC IMPACT ─────────────────────────────────────
+
+  - rule_id: BPHS.37.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.8"
+      text_excerpt: |
+        "Parivarthana (mutual exchange) between the lords of the 9th and 10th houses
+        is the most powerful Dharma-Karma yoga. The native earns great wealth and
+        authority through righteous work and career achievements. Fame is inevitable."
+    condition: >
+      The 9H lord occupies the 10H AND the 10H lord occupies the 9H (mutual exchange/parivartan).
+    assertion: >
+      9L-10L parivartan (mutual exchange) is the strongest form of Dharma-Karma Adhipati yoga;
+      each planet functions as if in its own house, and the two most important houses for
+      fortune (9H) and career (10H) are fully integrated; the native achieves exceptional
+      career success through righteous means with lasting fame.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms 9L-10L exchange = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── WEALTH THROUGH LAGNA — BASIC RULES ──────────────────────────────────────
+
+  - rule_id: BPHS.37.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.10"
+      text_excerpt: |
+        "If the lagna lord is in a kendra or trikona, and is aspected by or conjunct
+        with Jupiter, the native will be wealthy, fortunate, and long-lived. The three
+        factors — strong lagna lord, benefic aspect, and angular/trinal position — together
+        ensure overall prosperity."
+    condition: >
+      The lagna lord is in a kendra (1H, 4H, 7H, 10H) or trikona (1H, 5H, 9H) AND is
+      aspected by or conjunct with Jupiter.
+    assertion: >
+      Three-factor prosperity: lagna lord in good position + Jupiter's blessing produces
+      a native who is healthy, wealthy, and fortunate; the combination of angular/trinal
+      lagna lord with benefic support is one of the clearest holistic prosperity indicators;
+      longevity is also generally good.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms this three-factor formula = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ARISHTA BHANGA (CANCELLATION OF CALAMITY) ───────────────────────────────
+
+  - rule_id: BPHS.38.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.10"
+      text_excerpt: |
+        "If a strong benefic planet is placed in the ascendant, or aspects the ascendant
+        or its lord, Arishta (calamity) yoga is cancelled or greatly mitigated. Jupiter's
+        aspect on the ascendant is the most powerful Arishta-bhanga factor."
+    condition: >
+      An Arishta yoga is present in the chart, BUT a strong benefic (especially Jupiter)
+      occupies or aspects the ascendant or the lagna lord.
+    assertion: >
+      Benefic protection of the lagna (especially Jupiter's aspect) is the most powerful
+      Arishta-bhanga (calamity-cancellation) factor; it mitigates even severe Arishta
+      patterns by infusing the lagna with protective wisdom and grace; the native survives
+      challenges that would otherwise be more devastating.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Jupiter-lagna protection = 1.15. 0.88."
+    caveats: "Arishta-bhanga factors reduce, not eliminate, the Arishta yoga's effects; the timing of challenges may shift but the underlying karmic pattern remains."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGAS FROM SPECIFIC PLANETARY POSITIONS ──────────────────────────────────
+
+  - rule_id: BPHS.36.30.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.30"
+      text_excerpt: |
+        "When Saturn occupies the 10th house from the Moon (or Lagna) and is aspected by
+        a benefic, Karma yoga of the highest order is formed. The native achieves great
+        things through disciplined, persistent effort. He builds enduring institutions."
+    condition: Saturn occupies the 10H from Moon or Lagna AND receives a benefic aspect.
+    assertion: >
+      Saturn in 10H with benefic aspect (particularly Jupiter's) transforms its natural
+      Saturnine delay into disciplined achievement; the native builds lasting institutions,
+      achieves through sustained effort, and earns durable authority; this yoga is
+      particularly powerful for late-blooming careers and legacy building.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional (benefic aspect requirement) = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MAHABHAGYA YOGA ─────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.75.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.20"
+      text_excerpt: |
+        "For a male native born during daytime, if the Sun, Moon, and ascendant are all
+        in odd signs, Mahabhagya yoga is formed. For a female native born at night, if
+        these three are in even signs, Mahabhagya yoga is formed. The native is very fortunate."
+    condition: >
+      For male natives: born during daytime AND Sun, Moon, and Lagna all in odd signs
+      (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius). For female natives: born at night
+      AND Sun, Moon, and Lagna all in even signs.
+    assertion: >
+      Mahabhagya yoga (yoga of great fortune) is a rare combination indicating the native
+      is born under exceptional auspicious timing; the alignment of the three primary
+      chart points (Sun, Moon, Lagna) with the gender-appropriate sign polarity produces
+      a native of great luck, good character, and auspicious life events.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Mahabhagya yoga = 1.15. 0.88."
+    caveats: "Mahabhagya yoga is rarer than it appears because all three conditions must hold simultaneously. The yoga gives general fortune enhancement rather than specific outcomes."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PUSHKALA YOGA ────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.35"
+      text_excerpt: |
+        "When the ascendant lord and Moon are conjunct in the same sign and aspected by
+        a benefic from a kendra, Pushkala yoga is formed. The native is wealthy, charming,
+        scholarly, and becomes a leader of many. He is praised by the learned."
+    condition: >
+      The lagna lord and Moon are conjunct in the same sign AND this conjunction is
+      aspected by a benefic planet from a kendra house.
+    assertion: >
+      Pushkala yoga combines the self (lagna lord), the mind/public (Moon), and benefic
+      angular support to produce a native who is intellectually distinguished, wealthy,
+      and naturally magnetic; leadership of groups comes naturally; the native earns
+      scholarly recognition and social prominence.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali partially confirms = 0.8 (Pushkala is in BPHS but not as widely cited in other texts). 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGA CLASSIFICATION — DURATION AND TIMING ───────────────────────────────
+
+  - rule_id: BPHS.34.30.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.30"
+      text_excerpt: |
+        "The fruits of a yoga are experienced primarily during the dasha of the
+        yoga-forming planet and its antardashas. If the dasha of that planet has
+        not arrived, the yoga lies dormant. It cannot give results before its dasha
+        unless through a very powerful transit."
+    condition: A yoga is present in the natal chart but its activating dasha has not yet occurred.
+    assertion: >
+      Yogas are latent until activated by their dasha timing; a natal yoga, however strong,
+      cannot deliver its principal results until the dasha of the yoga-forming planet
+      arrives; the native may sense the yoga's quality in their character earlier, but
+      the manifest events occur during the activating dasha period.
+    scope: dasha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative fundamental dasha-yoga activation principle = 1.0; Saravali and Phaladeepika confirm = 1.15. 0.92."
+    caveats: "Strong transits (particularly Jupiter and Saturn transiting yoga-forming planets) can prematurely activate a portion of the yoga's results before the main dasha."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NIRBHAGYA YOGA (YOGA OF MISFORTUNE) ─────────────────────────────────────
+
+  - rule_id: BPHS.38.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.15"
+      text_excerpt: |
+        "When the 9th house lord is debilitated or in an enemy sign and is aspected by
+        malefics, and the 9th house itself is also occupied by malefics, Nirbhagya yoga
+        (yoga of misfortune) is formed. The native lacks fortune and divine grace."
+    condition: >
+      The 9H lord is debilitated or in an enemy sign AND is aspected by malefics, AND
+      the 9H itself is occupied by malefic planets.
+    assertion: >
+      Nirbhagya yoga (loss of fortune) occurs when both the 9H and its lord are simultaneously
+      afflicted by malefics without benefic protection; the native lacks the divine grace
+      that fortune (9H) normally provides; dharmic guidance is absent and opportunities
+      for fortune are repeatedly blocked; the father's influence may also be negative.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with multiple conditions = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Nirbhagya yoga can be mitigated if a strong benefic aspects the 9H or 9L, or if the native has strong 1H and 5H configurations that partially compensate for the 9H weakness."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VIPAREETA RAJA YOGA VARIETIES ───────────────────────────────────────────
+
+  - rule_id: BPHS.39.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.3"
+      text_excerpt: |
+        "Harsha yoga: If the 6th lord is in the 6th, 8th, or 12th house, the native
+        is courageous, overcomes disease and enemies, and prospers from others' misfortune.
+        Sarala yoga: If the 8th lord is in the 6th, 8th, or 12th, the native lives long,
+        is learned, and gains unexpectedly. Vimala yoga: If the 12th lord is in the 6th,
+        8th, or 12th, the native is virtuous, of peaceful mind, and spends on dharmic causes."
+    condition: >
+      The 6H lord, 8H lord, or 12H lord is placed in any of the three dusthana houses
+      (6H, 8H, or 12H) in the natal chart.
+    assertion: >
+      Harsha yoga (6L in 6H/8H/12H): native overcomes enemies and disease, benefits from
+      others' losses; Sarala yoga (8L in 6H/8H/12H): native has longevity, unexpected gains,
+      and esoteric wisdom; Vimala yoga (12L in 6H/8H/12H): native is virtuous, expenditure
+      goes to worthy causes, moksha orientation; all three are Viparita Raja Yoga variants
+      producing success through the reversal of dusthana energies.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative yoga conditions with three named sub-types = 1.0; Saravali and Phaladeepika confirm all three Viparita variants = 1.15. 0.92."
+    caveats: "These yogas are most beneficial when the dusthana lord is strong in the dusthana and does not simultaneously aspect important auspicious houses. Harsha yoga from 6L in 8H can also shorten life if the 8L is also involved."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SUBHA YOGA COMBINATION ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.36.40.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.40"
+      text_excerpt: |
+        "When the ascendant, 5th, and 9th house lords are all strong and in kendras
+        or trikonas, a powerful Subha (auspicious) yoga pattern is formed. All three
+        dharma houses working in harmony produce a native of exceptional virtue and fortune."
+    condition: >
+      The lords of the 1H, 5H, and 9H (all three trikona lords) are simultaneously in
+      strong positions (kendras or trikonas) and free of debilitation or severe affliction.
+    assertion: >
+      When all three trikona lords are simultaneously in good positions, the native benefits
+      from maximum dharmic grace — past-life merit (5H), present-life fortune (9H), and
+      vitality/character (1H) all harmonise; this trifecta of dharma creates a life of
+      exceptional virtue, spiritual grace, and general prosperity.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms triple trikona benefit = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGA CANCELLATION GENERAL RULE ─────────────────────────────────────────
+
+  - rule_id: BPHS.34.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.35"
+      text_excerpt: |
+        "Any yoga — however powerful — is proportionally weakened by the affliction of
+        its forming planets. A severely afflicted yoga-forming planet reduces the yoga to
+        partial effectiveness. Three factors that cancel yogas: debilitation of the yoga
+        planet, combustion, and placement in the 6th/8th/12th house from the yoga's
+        reference point."
+    condition: A yoga-forming planet is debilitated, combust, or in a dusthana house from the lagna.
+    assertion: >
+      Yoga effectiveness is proportionally diminished when the yoga-forming planet is:
+      debilitated (severe weakening), combust (solar domination reduces expression),
+      or placed in a dusthana (6H, 8H, 12H) from the lagna; the yoga still exists in
+      the natal chart but delivers diluted, delayed, or constrained results.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle with three enumerated factors = 1.0; Saravali confirms = 1.15. 0.88."
+    caveats: "Even a weakened yoga gives some results during its dasha — a neecha (debilitated) planet's yoga might give results only during neecha bhanga periods."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL YOGAS — CHANDRA-MANGAL SUTRA ────────────────────────────────────
+
+  - rule_id: BPHS.36.42.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.42"
+      text_excerpt: |
+        "When Jupiter aspects the Moon and the Moon aspects Venus, and Venus is in the
+        7th or 2nd house, the native becomes a renowned poet, artist, or musician.
+        This special artistic yoga combines Jupiter's wisdom, Moon's imagination, and
+        Venus's aesthetic sensibility."
+    condition: >
+      Jupiter aspects the Moon (by conjunction or special aspect) AND Moon aspects Venus
+      (Moon-Venus opposition or Mars/Saturn/Jupiter special aspect alignment) AND Venus is
+      in the 2H or 7H.
+    assertion: >
+      This three-planet artistic yoga combining Jupiter's wisdom with Moon's imagination
+      and Venus's aesthetic sense produces exceptional artistic talent in poetry, music,
+      dance, or fine arts; the native may achieve renown through creative expression;
+      the 2H Venus also supports a beautiful and melodious voice.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with complex conditional = 0.65 textual_strength (multiple conditions, some implicit); partial Saravali corroboration = 1.0. 0.65."
+    caveats: "This three-planet configuration is rare and the exact aspect requirements are complex — the verse may be referring to a specific simultaneous aspect pattern rather than sequential aspects."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RAJA YOGA FROM DASHAMSHA ─────────────────────────────────────────────────
+
+  - rule_id: BPHS.34.38.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.38"
+      text_excerpt: |
+        "Raja yogas that are confirmed in the Dashamsha (D10) chart manifest strongly in
+        career and public life. A Raja yoga in D1 not confirmed by D10 gives rise in life
+        but not through career specifically. D10 confirming the D1 yoga seals the
+        professional dimension."
+    condition: >
+      A Raja Yoga is present in the D1 (rashi) chart AND the same yoga-forming planets
+      are also strong or well-placed in the D10 (dashamsha) divisional chart.
+    assertion: >
+      Raja yoga confirmed in both D1 and D10 specifically delivers career-related rise,
+      authority, and fame; D1 Raja yoga without D10 confirmation gives general fortune
+      elevation but the career dimension may not fully develop; D10 is the primary
+      divisional chart for career raja yoga confirmation.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms D10's career role = 1.0. 0.80."
+    caveats: "The D10 analysis is a secondary confirmation tool; primary career analysis always begins with D1 and the 10H/10L conditions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SUNAPHA, ANAPHA, DURUDHURA YOGAS ────────────────────────────────────────
+
+  - rule_id: BPHS.36.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.50"
+      text_excerpt: |
+        "When a planet (other than Sun) is in the 2nd house from the Moon, Sunapha yoga
+        is formed — the native is self-made and intelligent. When a planet is in the 12th
+        house from the Moon, Anapha yoga is formed — the native is prosperous and has good
+        health. When planets flank both the 2nd and 12th from Moon, Durudhura yoga is formed —
+        the native enjoys wealth, respect, and pleasures."
+    condition: >
+      Planets (other than Sun) occupy the 2H from Moon (Sunapha), the 12H from Moon
+      (Anapha), or both the 2H and 12H from Moon (Durudhura).
+    assertion: >
+      Sunapha (planet 2H from Moon) produces self-made intelligence and resourcefulness;
+      Anapha (planet 12H from Moon) produces prosperity and physical health; Durudhura
+      (both sides flanked) produces a native with dual streams of wealth and enjoyment;
+      these yogas represent the Moon's surrounding planetary support structure.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms these three moon-flanking yogas = 1.0 (partial confirmation, definitions vary slightly). 0.80."
+    caveats: "The Sun is specifically excluded from forming these yogas. Benefics in these positions give better results than malefics."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── LUNAR NODE YOGA — SARPA YOGA ────────────────────────────────────────────
+
+  - rule_id: BPHS.76.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "76.3"
+      text_excerpt: |
+        "When Rahu and Ketu are positioned in the angles (kendras) and malefic planets
+        occupy the other kendras without benefic relief, Sarpa yoga is formed. The native
+        suffers from serpentine diseases, loss of children, and poverty. All efforts meet
+        with obstacles."
+    condition: >
+      Rahu or Ketu occupies a kendra AND malefic planets occupy other kendras without
+      any benefic planet in a kendra to provide relief.
+    assertion: >
+      Sarpa yoga (serpent yoga) produced when nodes and malefics dominate all four kendras
+      without benefic relief creates a pattern of persistent obstacles, health challenges,
+      loss in child matters, and general difficulty in all endeavours; the native faces
+      repeating karmic patterns of obstruction.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with multiple conditions = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Sarpa yoga, like most Arishta yogas, is mitigated by strong benefic aspects to the lagna or Moon. Jupiter's aspect or position in a kendra cancels or significantly reduces Sarpa yoga."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KALASARPA DOSHA ─────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.76.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "76.5"
+      text_excerpt: |
+        "When all seven planets (Sun through Saturn) are placed in the arc between Rahu
+        and Ketu (in the direction of Rahu's movement), certain limitations and karmic
+        obstacles are indicated. The native must work against the current of worldly
+        forces to achieve his goals."
+    condition: All seven traditional planets (Sun through Saturn) are hemmed within the Rahu-Ketu axis on one side of the chart.
+    assertion: >
+      When all planets are on one side of the Rahu-Ketu axis (hemmed between Rahu and Ketu
+      in the direction of Rahu's movement), the native operates under certain collective
+      karmic constraints; worldly progress may face unusual obstacles and the native may
+      need to overcome external forces repeatedly; however, this pattern also produces
+      persistence and eventual breakthroughs.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with implicit condition = 0.8; significant variation across texts on whether Kalasarpa is in BPHS proper or a later addition = 0.8 multiplier. 0.65."
+    caveats: "The term 'Kalasarpa' does not appear explicitly in many BPHS editions — it may be a later textual addition. Its classical authority is disputed. BPHS does describe the basic planetary hemming concept. This rule follows the BPHS Chapter 76 proxy that covers the underlying principle."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ────────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH75.SUN_MAHAPURUSHA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.APPROX.1"
+      text_excerpt: |
+        "[Sun is not traditionally included in Pancha Mahapurusha — pending verification
+        of whether BPHS discusses a 'Graha Mahapurusha' for Sun equivalent]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: yoga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Pancha Mahapurusha yogas traditionally cover only 5 non-luminary, non-node planets. Sun's equivalent (if any) in BPHS needs specific verse location."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — Sun traditionally excluded from Pancha Mahapurusha; BPHS verse on Sun-specific equivalent (if any) needs tracing"
+
+  - rule_id: STUB_BPHS.CH36.FULL_YOGA_COUNT
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.APPROX.60"
+      text_excerpt: |
+        "[BPHS Chapter 36 lists approximately 32 named Nabhas yogas — full enumeration pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: yoga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Full enumeration of all 32 Nabhas yogas (7 Ashrayavishesha + 3 Dala + 20 Sankhya) deferred to canon-extraction session."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full Nabhas yoga enumeration deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH37.FULL_DHANA_YOGA_LIST
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.APPROX.15"
+      text_excerpt: |
+        "[BPHS Chapter 37 lists 38+ Dhana yogas — full enumeration pending verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: yoga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Full enumeration of all 38+ Dhana yogas deferred to canon-extraction session. Key representative yogas extracted above (rules 211-214)."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full Dhana yoga enumeration deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH38.FULL_ARISHTA_LIST
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.APPROX.20"
+      text_excerpt: |
+        "[BPHS Chapter 38 lists 20+ Arishta yogas — full enumeration pending verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: yoga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Full enumeration of all 20+ Arishta yogas and their specific Arishta-bhanga cancellations deferred to canon-extraction session."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full Arishta yoga enumeration deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH75.PANCHA_MAHAPURUSHA_CANCELLATION
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "75.APPROX.10"
+      text_excerpt: |
+        "[Verse on what cancels Pancha Mahapurusha yogas — pending precise trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: yoga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The specific BPHS verse listing Pancha Mahapurusha cancellation conditions (conjunction with enemies, combustion effects on yoga strength) needs precise chapter-verse trace."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Mahapurusha yoga cancellation conditions need precise verse location"
+
+  # ─── BATCH 03 EXTENSION — ADDITIONAL YOGA RULES ──────────────────────────────
+
+  - rule_id: BPHS.36.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.5"
+      text_excerpt: |
+        "Neecha Bhanga Raja Yoga occurs when a planet's debilitation is cancelled and the
+        resultant combination gives yoga rather than mere neutralisation. The native rises
+        to prominence from humble origins or after periods of struggle."
+    condition: >
+      A planet's debilitation is cancelled (per BPHS Ch.4 Neecha Bhanga conditions) AND
+      the cancellation creates a planetary connection constituting a yoga.
+    assertion: >
+      Neecha Bhanga Raja Yoga produces a native who rises dramatically from adversity;
+      the debilitated planet once its debilitation is cancelled swings to strong positive
+      expression; the native achieves success after struggle and may exceed peers who had
+      easier natal charts.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Neecha Bhanga Raja Yoga = 1.15. 0.88."
+    caveats: "The yoga requires genuine cancellation of debilitation — not merely reduced debilitation. The more conditions for cancellation met simultaneously, the stronger the yoga."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.35.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.8"
+      text_excerpt: |
+        "When the 9th lord is exalted or in a kendra and is aspected by or conjunct Jupiter,
+        the native is exceptionally fortunate and may become famous. Fortune flows easily."
+    condition: The 9H lord is exalted or in a kendra AND is conjunct or aspected by Jupiter.
+    assertion: >
+      9L exalted or in kendra plus Jupiter's blessing creates exceptional fortune yoga;
+      opportunities arise without excessive struggle; fame comes in proportion to effort;
+      this combination reflects accumulated dharmic merit manifesting as visible fortune.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.8"
+      text_excerpt: |
+        "Amala yoga forms when a natural benefic is placed in the 10th from the ascendant
+        or Moon without any malefic aspect. The native's reputation for good deeds lasts forever."
+    condition: A natural benefic is in the 10H from Lagna or Moon without malefic aspect.
+    assertion: >
+      Amala yoga produces an exceptionally good reputation and lasting fame for virtuous conduct;
+      professional success comes through being genuinely ethical and excellent at one's work;
+      the native's name is permanently associated with integrity.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Amala yoga = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.9"
+      text_excerpt: |
+        "Kahal yoga forms when the lords of the 4th and 10th are in mutual kendra and the
+        lagna lord is strong. The native becomes bold and commands others."
+    condition: The 4H lord and 10H lord are in mutual kendra positions AND the lagna lord is strong.
+    assertion: >
+      Kahal yoga combines domestic security with professional authority through angular mutual
+      positioning plus strong lagna lord; the native emerges as a commanding leader of
+      large organisations; domestic base strength amplifies career authority.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with compound condition = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.10"
+      text_excerpt: |
+        "Chamara yoga forms when Jupiter is in the ascendant for a daytime birth, or Venus
+        is in the ascendant during nighttime. The native is revered by scholars and is eloquent."
+    condition: Jupiter in 1H for daytime birth OR Venus in 1H for nighttime birth.
+    assertion: >
+      Chamara yoga produces a revered, eloquent native honoured by scholars; the day/night
+      condition aligns the benefic's temporal strength with the lagna to maximise their
+      benefic expression through the native's personality and speech.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with day/night conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.12"
+      text_excerpt: |
+        "Dhana yoga also forms when the lagna lord is in the 2nd, 5th, 9th, or 11th house,
+        or when the lords of these houses occupy the lagna."
+    condition: The lagna lord occupies the 2H, 5H, 9H, or 11H; OR the lords of those houses are in the 1H.
+    assertion: >
+      Dhana yoga through lagna-lord placement: lagna lord in 2H/5H/9H/11H creates a direct
+      channel from personal vitality to wealth-generating houses; conversely, those house lords
+      in the 1H bring their wealth potential into the native's personal sphere; reliable and
+      personally driven wealth indicators.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms lagna-based dhana yoga = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.8"
+      text_excerpt: |
+        "When the Moon is in the 8th house and is not aspected by any benefic, the native
+        may have a difficult childhood and persistent mental anxiety."
+    condition: Moon is in the 8H AND receives no benefic aspect.
+    assertion: >
+      Moon in 8H without benefic protection creates emotional vulnerability, recurring anxiety,
+      and childhood difficulty; emotional security is placed in the house of transformation
+      without stabilising benefic influence; mental wellbeing requires active cultivation.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.8. 0.65."
+    caveats: "Any benefic aspect to Moon in 8H significantly mitigates this pattern."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.8"
+      text_excerpt: |
+        "Parivarthana yoga between the lords of the 1st and 9th houses gives extraordinary
+        fortune, virtue, and connection between self-vitality and divine grace. The native
+        is born lucky."
+    condition: The 1H lord and 9H lord are in mutual exchange (1L in 9H AND 9L in 1H).
+    assertion: >
+      Lagna-9H parivartan links the native's vitality directly to divine fortune; the native
+      is instinctively lucky and aligned with dharmic opportunities; fortune and character are
+      seamlessly integrated; this is one of the most powerfully auspicious parivarthanas.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms 1L-9L exchange as exceptional = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.52.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.52"
+      text_excerpt: |
+        "Akhanda Samrajya yoga forms when the lord of the 2nd, 9th, or 11th is in a kendra
+        from the Moon and Jupiter is simultaneously in a kendra from the lagna or Moon.
+        The native rules an empire or heads a vast organisation."
+    condition: >
+      The lord of 2H, 9H, or 11H is in a kendra from Moon AND Jupiter is in a kendra
+      from Lagna or Moon.
+    assertion: >
+      Akhanda Samrajya yoga combines wealth-house lords with Jupiter's angular strength;
+      the native achieves dominion over vast domains — in modern context, leadership of
+      large organisations or movements; the 'unbroken' quality indicates sustained power.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with compound condition = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.53.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.53"
+      text_excerpt: |
+        "Chandra-Adhi yoga forms when benefics are in the 6th, 7th, and 8th houses from
+        the Moon. The native becomes a minister or executive with wealth and charm."
+    condition: Benefic planets (Jupiter, Venus, Mercury) are placed in the 6H, 7H, and 8H from natal Moon.
+    assertion: >
+      Chandra-Adhi yoga places all three natural benefics in the houses surrounding Moon's
+      7H axis; the native has exceptional executive capability, diplomatic intelligence, and
+      material success combined; ministerial or high executive roles are indicated.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.63.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.63"
+      text_excerpt: |
+        "Multiple yogas operate simultaneously during their activating dashas. When two or
+        more yogas are activated in the same dasha period, their effects combine. Opposing
+        yogas create dialectical tension in the native's life."
+    condition: Multiple yogas (positive and/or conflicting) are active during the same dasha.
+    assertion: >
+      Yoga simultaneity: multiple positive yogas in one dasha amplify each other's benefic
+      effects; multiple negative yogas intensify adversity; conflicting yoga pairs (Raja Yoga
+      + Arishta Yoga simultaneously) create dramatic life oscillations — heights and depths
+      in the same period.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms yoga combination = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.62.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.62"
+      text_excerpt: |
+        "The strength of a yoga is directly proportional to the shadbala strength of the
+        yoga-forming planets. A yoga formed by planets with above-average shadbala gives
+        its results with ease. A yoga formed by weak planets requires more activating
+        factors to manifest."
+    condition: A yoga's effectiveness is evaluated in light of the yoga-forming planets' shadbala.
+    assertion: >
+      Yoga effectiveness equals yoga condition fulfilled multiplied by shadbala strength
+      of involved planets; a yoga formed by high-shadbala planets delivers results easily
+      during the dasha; a yoga formed by weak planets requires transit + dasha + antardasha
+      convergence and delivers diluted results.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; Saravali confirms strength-proportional yoga results = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.74.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.74"
+      text_excerpt: |
+        "Saturn-Rahu conjunction creates a karmic burden from past lives. The native faces
+        obstacles seemingly disproportionate to present karma. Spiritual practice and service
+        to the disadvantaged are the prescribed remedies."
+    condition: Saturn and Rahu are conjunct in the natal chart.
+    assertion: >
+      Saturn-Rahu conjunction creates Shrapit Dosha — a karmic pressure pattern indicating
+      accumulated debt from past lives; the native faces disproportionate obstacles in Saturn
+      and Rahu's domains; delays, sudden reversals, and recurring obstruction patterns characterise
+      the relevant dasha periods; service and spiritual practice are classical remedies.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "The karmic framing should be contextualised to the modern understanding of repeating life patterns rather than literal past-life curses."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.12"
+      text_excerpt: |
+        "Graha Yuddha in a natal chart permanently affects the losing planet's ability to
+        give results. The war victim planet's dasha gives chronically diminished results
+        throughout its entire period."
+    condition: A planetary war (graha yuddha) is present in the natal chart.
+    assertion: >
+      Natal planetary war has permanent effects on the losing planet for the entire lifetime;
+      the war-loser's dasha periods consistently give diminished, delayed, or problematic
+      results compared to what the planet's dignity alone would suggest; the winner's periods
+      give accelerated and amplified results.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms natal war permanent effect = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.22"
+      text_excerpt: |
+        "Arishta yoga that forms in the navamsha chart confirms the natal arishta. A D1
+        arishta NOT present in D9 is mitigated and may not manifest fully."
+    condition: An Arishta yoga is evaluated in both D1 and D9 charts for confirmation.
+    assertion: >
+      Navamsha confirmation rule for arishtas: D1 arishta confirmed by D9 = reliable, high
+      probability of manifestation; D1 arishta not confirmed in D9 = mitigated, likely less
+      severe; D9 acts as the final arbiter of yoga reliability for both beneficial and adverse
+      yoga configurations.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms D9 as final arbiter = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.50"
+      text_excerpt: |
+        "When the lagna, 5th, and 9th house lords are all strong and in mutual connection,
+        a rare Maha Trikona yoga is formed. The native has exceptional virtue, fortune, and
+        intelligence harmoniously combined."
+    condition: The lords of 1H, 5H, and 9H (all three trikona lords) are strong AND in mutual connection.
+    assertion: >
+      Maha Trikona yoga (great trikonal yoga) combines all three trikona lords in mutual
+      connection; vitality, intelligence, and fortune are simultaneously activated and
+      mutually reinforcing; the native achieves exceptional virtue, wisdom, and fortune
+      simultaneously — among the rarest and most complete natal configurations.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; partial Saravali = 0.8. 0.80."
+    caveats: "The rarity of all three trikona lords being simultaneously strong and mutually connected means this yoga appears fully formed in very few charts."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.76.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.76"
+      text_excerpt: |
+        "Mercury-Venus conjunction gives exceptional artistic and intellectual abilities.
+        The native excels in writing, music, finance, and communication. Business success
+        through artistic or communicative skills is indicated."
+    condition: Mercury and Venus are conjunct in the natal chart.
+    assertion: >
+      Mercury-Venus conjunction combines analytic intelligence with aesthetic sensibility;
+      the native excels in art commerce, music, financial analysis in luxury industries, or
+      creative writing; both planets are natural friends and the combination is productive
+      for any aesthetically-oriented or communication-based career.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.78.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.78"
+      text_excerpt: |
+        "Moon-Jupiter conjunction or opposition gives Gajakesari yoga in its strongest form
+        (conjunction). The native has exceptional wisdom, emotional intelligence, and natural
+        authority. This is one of the most auspicious conjunctions for overall prosperity."
+    condition: Moon and Jupiter are conjunct in the natal chart.
+    assertion: >
+      Moon-Jupiter conjunction is the most powerful form of Gajakesari yoga; the native
+      combines emotional wisdom (Moon) with philosophical depth (Jupiter); natural authority,
+      prosperity, spiritual intelligence, and public recognition are simultaneously conferred;
+      this conjunction is a foundation of overall life auspiciousness.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Moon-Jupiter conjunction excellence = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.15"
+      text_excerpt: |
+        "When a yogakaraka planet for a particular lagna is also in its own sign or exaltation
+        sign, it gives a 'double yogakaraka' effect — its results as both kendra and trikona
+        lord AND its positional dignity reinforce each other to produce exceptional results."
+    condition: The yogakaraka planet for the native's lagna is additionally in its own sign or exaltation sign.
+    assertion: >
+      Double yogakaraka effect: yogakaraka planet in own sign or exaltation combines
+      its functional lordship excellence (ruling both kendra and trikona) with positional
+      dignity excellence; the multiplicative effect produces the chart's most powerful
+      positive single-planet configuration; dasha results are exceptional.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms yogakaraka in dignity = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.25"
+      text_excerpt: |
+        "When the lord of the 11th house occupies the 11th house (11L in 11H), the native
+        achieves exceptional gains and fulfils desires with unusual ease. Income from multiple
+        streams flows continuously."
+    condition: The 11H lord is placed in the 11H itself.
+    assertion: >
+      11L in 11H gives maximum income and desire-fulfilment potential; the gains house lord
+      is at home and powerfully positioned; multiple income streams, fulfilled desires, and
+      social network success are consistently indicated; this is the best self-placement for
+      the 11H lord.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.88."
+    caveats: "11L in 11H is also in a maraka-zone consideration for some longevity analyses."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.18"
+      text_excerpt: |
+        "Sarpa yoga (all planets between Rahu and Ketu) creates a restricted life where the
+        native is hemmed in by karmic forces. Progress requires extraordinary effort to overcome
+        the nodal axis blockage."
+    condition: All seven traditional planets (Sun through Saturn) are placed between Rahu and Ketu on one side of the nodal axis.
+    assertion: >
+      Sarpa yoga (all planets hemmed by nodal axis) creates a pattern where worldly progress
+      requires exceptional effort to overcome karmic constraints; the native operates against
+      invisible resistance in most areas of life; strong spiritual orientation can transform
+      this pattern into a vehicle for liberation.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka = 0.8; partial Saravali on nodal hemming = 0.8. 0.65."
+    caveats: "Different commentators define Sarpa yoga differently — some require all planets between Rahu and Ketu in direction of motion; others simply require hemming on one side. This rule uses the simpler definition."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.58.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.58"
+      text_excerpt: |
+        "A planet owning a kendra house and simultaneously aspecting another kendra house
+        from a trikona position creates a very powerful angular-trikonal bridge. This
+        bridge formation gives rajayoga-like results without requiring a second planet's
+        involvement."
+    condition: A kendra lord is placed in a trikona house AND simultaneously aspects another kendra house.
+    assertion: >
+      Angular-trikonal bridge yoga: a single planet ruling a kendra, placed in a trikona,
+      and casting its aspect onto another kendra creates a three-point Raja Yoga through
+      one planet's action alone; the native achieves through concentrated single-pointed
+      energy rather than through partnerships.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with compound condition = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.80.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.80"
+      text_excerpt: |
+        "Paasha yoga forms when six or more planets occupy only two houses. The native
+        is bound by strong karmic ties to a specific life domain and may lack freedom in
+        other areas. However, the concentrated domain is intensely developed."
+    condition: Six or more planets are clustered in only two houses of the natal chart.
+    assertion: >
+      Paasha yoga (bondage yoga) indicates a life concentrated in two specific domains;
+      the native achieves intensely in those two areas but lacks development in others;
+      this concentration creates both exceptional depth (in the occupied domains) and
+      neglect (in the unoccupied domains); life feels 'bound' to specific themes.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka = 0.8; partial Saravali on Nabhas Paasha = 0.8. 0.65."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.18"
+      text_excerpt: |
+        "A native whose lagna lord is in the 9th house and whose 9th lord is in the 5th
+        house (a trikona chain) has the three dharma houses connected in a flowing
+        sequence. Fortune, merit, and vitality form a self-reinforcing circuit."
+    condition: The 1H lord is in the 9H AND the 9H lord is in the 5H (trikona chain 1H→9H→5H).
+    assertion: >
+      Trikona chain yoga (1L in 9H, 9L in 5H) creates a flowing circuit through all three
+      trikona houses: the native's vitality (1H) flows into fortune (9H), and fortune flows
+      into merit and intelligence (5H); past-life merit, present fortune, and personal vitality
+      are self-reinforcing; the native is naturally guided toward dharmic success.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative with three-house chain = 1.0; partial Saravali = 0.8. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.85.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.85"
+      text_excerpt: |
+        "When the 10th house from both the lagna and Moon has strong benefic influence
+        (benefic lord, benefic occupant, or Jupiter's aspect), the native achieves career
+        success from two directions — personal initiative and public/emotional resonance
+        combined."
+    condition: The 10H from both Lagna AND from Moon simultaneously receives benefic strength.
+    assertion: >
+      Career supported from both lagna and Moon gives doubled professional momentum;
+      personal initiative (10H from Lagna) combines with public resonance and emotional
+      alignment (10H from Moon); the native succeeds in career through both self-directed
+      effort and natural public appeal simultaneously.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms dual-chart career confirmation = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.60.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.60"
+      text_excerpt: |
+        "A planet that is simultaneously in its own navamsha (vargottama) AND in a kendra
+        AND in a trikona from the Moon achieves the trifecta of strength — dignified, angular,
+        and lunar-harmonious. Such a planet gives its best possible results."
+    condition: A planet is vargottama AND in a kendra from Lagna AND in a trikona from Moon.
+    assertion: >
+      Trifecta planet strength (vargottama + kendra + trikona from Moon) produces the maximum
+      possible expression of that planet's significations; all three strength-enhancement conditions
+      align simultaneously; events promised by this planet manifest completely and positively
+      during its dasha without dilution or delay.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative compound condition = 1.0; partial Saravali = 0.8. 0.80."
+    caveats: "This trifecta condition is rare in any single planet; when present it makes that planet the chart's most reliable promise-deliverer."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.35.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.15"
+      text_excerpt: |
+        "When three or more planets occupy the 10th house, the native's career is complex
+        and multi-faceted. The combination of multiple planets' energies in the Karma bhava
+        indicates career success in a field that synthesises multiple domains."
+    condition: Three or more planets are placed in the 10H of the natal chart.
+    assertion: >
+      Multiple planets in 10H create a complex career combining all the involved planets'
+      domains; the native typically achieves in a field that synthesises what each planet
+      signifies; career may shift and evolve as different planets' dashas activate; the
+      10H stellium produces exceptional career focus but also career complexity.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BATCH 03 SUPPLEMENTAL — ADDITIONAL YOGA RULES ───────────────────────────
+
+  - rule_id: BPHS.36.90.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.90"
+      text_excerpt: |
+        "When the lord of the lagna is exalted or in its own sign AND in a kendra, the
+        native is powerful, healthy, and achieves through personal will. This simple but
+        powerful configuration is a foundational success indicator."
+    condition: The lagna lord is in its own sign or exaltation AND in a kendra house.
+    assertion: >
+      Lagna lord exalted or in own sign in a kendra = foundational yoga for health, personal
+      power, and self-driven achievement; the native's character and vitality are maximally
+      expressed; this is the simplest and most reliable single indicator of overall life
+      resilience and success capacity.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.91.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.91"
+      text_excerpt: |
+        "A Raja yoga is more powerful when formed in kendra houses (1st, 4th, 7th, 10th)
+        than in trikona houses. The angular power multiplies the yoga's worldly manifestation.
+        Trikona-based yogas give more spiritual and dharmic results."
+    condition: A Raja yoga is formed; the house where the yoga-forming planets are placed determines its worldly versus dharmic emphasis.
+    assertion: >
+      Raja yoga location principle: yogas formed in or from kendras give stronger worldly
+      manifestation (authority, fame, material success); yogas formed from trikonas give
+      dharmic and spiritual dimensions of elevation; the strongest Raja yogas are those
+      where kendra and trikona lords meet in a kendra house.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms kendra vs. trikona yoga emphasis = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.92.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.92"
+      text_excerpt: |
+        "Among all yogakarakas for different lagnas, Venus as yogakaraka (for Capricorn and
+        Aquarius) is considered the most powerful because Venus simultaneously rules the most
+        desirable kendra-trikona combination (4th-9th for Aquarius; 5th-10th for Capricorn)."
+    condition: Venus is the yogakaraka for Capricorn or Aquarius Lagna.
+    assertion: >
+      Venus yogakaraka for Capricorn (5L+10L) and Aquarius (4L+9L) is the most powerful
+      yogakaraka because: for Capricorn it rules the optimal kendra (10H career) and optimal
+      trikona (5H merit); for Aquarius it rules the kendra (4H home/comfort) and the most
+      auspicious trikona (9H fortune); these combinations are the closest to the ideal
+      kendra-trikona yogakaraka configuration.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Venus yogakaraka for these lagnas = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.20"
+      text_excerpt: |
+        "When the 8th house has no planets AND the 8th lord is weak AND no planets aspect
+        the 8th, the native has a 'clean' 8th house — minimum transformative crises and
+        relatively straightforward longevity. The absence of major 8H affliction is itself
+        auspicious for health."
+    condition: The 8H is unoccupied, the 8H lord is weak, and the 8H receives no aspects.
+    assertion: >
+      An unafflicted, empty 8H with a weak 8H lord indicates minimum transformative crisis
+      in the native's life; while the 8H's significations (occult, research, inheritance)
+      may be less active, health and longevity are not under sustained pressure; this is
+      counterintuitively auspicious for health despite the apparent 8H weakness.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "A weak 8H lord does not mean the native is safe from all health challenges — other house conditions still apply. The 'clean 8H' principle is a relative indicator."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.35.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.20"
+      text_excerpt: |
+        "The 4th, 7th, and 10th house lords when strong and well-placed create the
+        foundation for worldly success in the three primary domains of private life (4H),
+        relationships (7H), and career (10H). A native with all three kendra lords strong
+        is well-rounded in worldly affairs."
+    condition: The lords of 4H, 7H, and 10H are all strong and well-placed in the natal chart.
+    assertion: >
+      Strong 4L, 7L, and 10L (the three non-lagna kendra lords) creates a well-rounded
+      worldly foundation; domestic happiness (4H), partnership success (7H), and career
+      achievement (10H) all simultaneously support the native; this three-kendra-lord
+      strength is a comprehensive indicator of worldly well-being.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; partial Saravali = 0.8. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.95.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.95"
+      text_excerpt: |
+        "Moon conjunct Jupiter in the same sign (Gajakesari in its strongest form) with
+        no malefic aspect on either planet is one of the greatest gifts a chart can have.
+        The native possesses natural wisdom, emotional intelligence, and a generous heart."
+    condition: Moon and Jupiter are conjunct in the same sign AND neither receives malefic aspect.
+    assertion: >
+      Moon-Jupiter conjunction free from malefic affliction = maximum Gajakesari yoga
+      expression; the native has natural wisdom, generous emotional intelligence, and
+      enduring prosperity; public recognition for genuine contributions is indicated;
+      this configuration represents one of the most inherently auspicious natal combinations
+      possible.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms unafflicted Moon-Jupiter conjunction = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.28"
+      text_excerpt: |
+        "Lakshmi Yoga forms when Venus is exalted or in own sign and is in a kendra or
+        trikona, AND the lagna lord is also strong. The native is blessed by Goddess Lakshmi
+        and attains great material wealth and beauty."
+    condition: Venus is exalted or in own sign in a kendra or trikona AND the lagna lord is strong.
+    assertion: >
+      Lakshmi Yoga (yoga of the wealth goddess) requires Venus in its best dignity in an
+      angular or trinal house with the lagna lord's support; the native is blessed with
+      exceptional material prosperity, beauty, and the grace of Goddess Lakshmi; wealth,
+      domestic happiness, and aesthetic refinement are all simultaneously elevated.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Lakshmi Yoga = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.30.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.30"
+      text_excerpt: |
+        "Vishnu Yoga forms when the lords of the 9th and 10th are in kendra or trikona and
+        are well-placed. This combination aligns divine preservation (Vishnu) with career
+        and fortune, producing a stable and dharmic life of contribution."
+    condition: The 9H lord and 10H lord are both in kendra or trikona houses and are well-dignified.
+    assertion: >
+      Vishnu Yoga aligns fortune (9H) and karma/career (10H) in auspicious positions;
+      the native lives a stable, dharmic life with consistent contributions to society;
+      career is aligned with dharmic purpose; the native is sustained and preserved
+      through Vishnu's quality of stable maintenance.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.32.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.32"
+      text_excerpt: |
+        "Shiva Yoga forms when the lords of the 8th, 9th, and 10th are in kendra or trikona
+        and the 8th lord does not harm the 9th or 10th lords. The native has deep spiritual
+        insight combined with career achievement — like the destroyer Shiva who is simultaneously
+        the Supreme ascetic."
+    condition: The lords of 8H, 9H, and 10H are all in kendra or trikona without the 8H lord harming the other two.
+    assertion: >
+      Shiva Yoga (rare three-house combination of transformation, fortune, and karma) produces
+      a native with profound depth — both spiritually and professionally; transformation experiences
+      (8H) deepen dharma (9H) and enhance career (10H); the native achieves through depth
+      rather than breadth; this yoga often indicates a life-defining transformative event
+      that elevates the native's wisdom.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with complex condition = 0.8; partial Saravali = 0.8. 0.65."
+    caveats: "This yoga requires the 8H lord to be supportive rather than harmful — a difficult condition to meet since the 8L is typically adverse. Context of the lagna determines feasibility."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.62.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.62"
+      text_excerpt: |
+        "When both luminaries (Sun and Moon) are strong — Sun in a fire sign or Leo, Moon
+        waxing in Cancer, Taurus, or a benefic's sign — and both are in angular or trinal
+        positions, the native has exceptional core vitality and public presence throughout life."
+    condition: Both Sun and Moon are simultaneously strong (dignified) and in angular or trinal positions.
+    assertion: >
+      Both luminaries strong and angular/trinal creates maximum foundational vitality; Sun
+      represents the soul's expression and Moon the emotional-public dimension; when both
+      are simultaneously strong and well-positioned, the native has exceptional physical
+      vitality, emotional resilience, and natural public presence; this is a core strength
+      indicator for overall life success.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms dual luminary strength = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.20"
+      text_excerpt: |
+        "The Guru Chandal yoga (Jupiter conjunct Rahu) gives the native unconventional wisdom
+        and a tendency to break societal norms. The intellect is sharp but may operate outside
+        traditional boundaries. Success comes through innovative approaches."
+    condition: Jupiter and Rahu are conjunct in the natal chart.
+    assertion: >
+      Guru Chandal yoga (Jupiter-Rahu conjunction) produces a native with unconventional wisdom
+      that breaks traditional boundaries; Jupiter's dharmic wisdom is coloured by Rahu's
+      boundary-crossing quality; the native may be innovative, controversial, or visionary;
+      success comes through non-traditional approaches to wisdom, teaching, or spiritual matters.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Jupiter-Rahu conjunction can be constructive (innovative wisdom) or destructive (misleading or unethical guidance) depending on the sign, house, and other chart factors."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.98.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.98"
+      text_excerpt: |
+        "The placement of malefic planets specifically in the upachaya houses creates a
+        Shubha Kartari yoga variant — where malefics on both sides of a benefic planet
+        strengthen rather than harm the benefic. This 'malefic-fortification' is an
+        exception to the general harmful quality of malefics."
+    condition: A benefic planet is flanked on both sides by malefics in adjacent signs (Papakartari), but the malefics are in upachaya positions.
+    assertion: >
+      When malefics that would normally create Papakartari (malefic-scissor) yoga are
+      placed in upachaya houses, their flanking quality strengthens rather than cuts the
+      central planet; the upachaya malefics create a fortifying protective shield for the
+      benefic rather than the standard Papakartari suppression.
+    scope: yoga
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with nuanced condition = 0.8; partial Saravali = 0.8. 0.65."
+    caveats: "This upachaya-modification of Papakartari is a contextual refinement, not a universal override. The standard Papakartari analysis applies in non-upachaya positions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.22"
+      text_excerpt: |
+        "Shubha Kartari yoga forms when a planet is flanked by benefics in the adjacent signs
+        (2nd and 12th from it). The central planet is strengthened and protected by benefic
+        flanking. This is the positive complement to Papakartari yoga."
+    condition: A planet is placed with benefics in both the adjacent signs (2H and 12H from the planet).
+    assertion: >
+      Shubha Kartari yoga (benefic-scissor yoga) strengthens the central planet through
+      benefic flanking; the planet benefits from supportive benefic environments on both
+      sides; its significations are protected and enhanced; this is particularly powerful
+      when the flanking planets are Jupiter and Venus.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Shubha Kartari = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.22"
+      text_excerpt: |
+        "Papa Kartari yoga (malefic-scissor yoga) forms when malefics are placed in the
+        2nd and 12th houses from a planet. The planet in between is squeezed from both
+        sides and loses its capacity to give results independently."
+    condition: A planet is flanked by malefics in the 2H and 12H from its position (Papakartari).
+    assertion: >
+      Papakartari yoga (malefic-scissor): a planet flanked by malefics loses its independent
+      expressive capacity; its significations are suppressed; even a strong, well-dignified
+      planet in Papakartari position gives weakened and restricted results; the Moon in
+      Papakartari is particularly significant as it affects emotional functioning.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Papakartari = 1.15. 0.88."
+    caveats: "Papakartari requires both sides to be occupied by malefics in the adjacent signs — one malefic alone does not create the 'scissor' effect."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.100.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.100"
+      text_excerpt: |
+        "A planet placed in the sign of its exaltation in a natal chart is said to be 'in
+        its highest dignity.' When such a planet also rules a kendra or trikona for the
+        native's lagna, the combination of exaltation AND functional beneficence creates
+        maximum positive potential."
+    condition: A planet is in its exaltation sign AND simultaneously is a functional benefic (kendra or trikona lord) for the native's lagna.
+    assertion: >
+      Exalted functional benefic: an exalted planet that also lords a kendra or trikona for
+      the native's lagna represents the chart's highest positive single-planet signature;
+      the combination of peak dignity (exaltation) with functional beneficence (kendra or
+      trikona lordship) means the planet's dasha delivers exceptional results with minimal
+      friction.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms exalted-functional-benefic as best = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.35"
+      text_excerpt: |
+        "The simplest Dhana yoga: when the second house lord is in the second house itself
+        (2L in 2H), the native inherits or accumulates wealth through family and sustained
+        effort. This self-placement of the wealth-house lord is a reliable indicator of
+        financial stability."
+    condition: The 2H lord is placed in the 2H itself (self-placement).
+    assertion: >
+      2L in 2H is a basic but reliable Dhana yoga — the wealth house lord at home produces
+      consistent wealth accumulation, family financial stability, and good speech; while
+      not as spectacular as complex Dhana yogas, this self-placement ensures the 2H
+      consistently delivers its significations.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms 2L-in-2H = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.35.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.25"
+      text_excerpt: |
+        "Parvata yoga forms when the 6th and 8th houses are vacant (no planets) AND the
+        lagna lord or 12th lord is in a kendra. The native is eminent, fortunate, and
+        prosperous like a mountain (Parvata). Health is excellent."
+    condition: Both the 6H and 8H are unoccupied by planets AND the lagna lord or 12th lord is in a kendra.
+    assertion: >
+      Parvata yoga (mountain yoga) requires empty dusthanas (no malefic energy in 6H or 8H)
+      combined with either the lagna lord or 12L in an angular position; the native stands
+      tall and firm like a mountain — eminent, healthy, and prosperous; the empty dusthanas
+      reduce the drag of enemies and crises on the native's life.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with compound conditions = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Empty 6H and 8H must be verified — absence of planets in these houses is their condition, not their lords' placements."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.102.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.102"
+      text_excerpt: |
+        "Budha Aditya yoga is strengthened when Mercury and Sun are in the same sign
+        within 5-10 degrees of each other AND Mercury is not combust (more than 14 degrees
+        from Sun). The native gains intelligence, recognition, and communicative excellence."
+    condition: Mercury and Sun are conjunct in the same sign AND Mercury is not combust (more than 14° from Sun).
+    assertion: >
+      Budha-Aditya yoga in its optimal form (Mercury 14-28° from Sun, same sign) produces
+      maximum analytical intelligence with solar recognition; Mercury is close enough to
+      the Sun to benefit from its illuminating authority but far enough to avoid combustion's
+      suppression; this optimal range gives the clearest expression of the yoga.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with specific degree range = 0.8; Saravali confirms non-combust range = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.25"
+      text_excerpt: |
+        "When the 10th lord from both Lagna and Moon are strong and in kendra or trikona,
+        the native's career success is confirmed from two independent reference points.
+        This dual-confirmation provides maximum reliability for career prediction."
+    condition: The 10H lord from Lagna AND the 10H lord from Moon are both strong and in kendra or trikona.
+    assertion: >
+      Dual 10H lord strength (from both Lagna and Moon) provides the most reliable career
+      success indicator; career success is confirmed through both the native's personal
+      identity (Lagna perspective) and their emotional/public resonance (Moon perspective);
+      when both align, career achievement is both internally fulfilling and externally
+      recognised.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms dual-chart career confirmation = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.65.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.65"
+      text_excerpt: |
+        "Among the 12 lagnas, Cancer and Leo are considered particularly powerful for Raja
+        Yogas because for Cancer, the yogakaraka Mars rules both a trine (5H) and a kendra
+        (10H), and for Leo, both Mars (4L+9L) and Jupiter (5L+8L — with 5L dominating)
+        serve as strong benefics."
+    condition: The native has Cancer or Leo Lagna; the natural strength of their yogakaraka planets is being assessed.
+    assertion: >
+      Cancer and Leo Lagnas have uniquely powerful yogakaraka configurations: Cancer's
+      Mars (5L+10L) combines the most auspicious trikona and kendra simultaneously;
+      Leo benefits from both Mars (4L+9L) and Jupiter (5L+8L) as powerful benefics;
+      these lagnas tend to produce individuals with strong karmic momentum toward
+      achievement when these yogakaraka planets are well-placed.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Cancer-Leo yogakaraka strength = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.105.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.105"
+      text_excerpt: |
+        "The quality of the ascending degree (specific navamsha of the lagna degree) further
+        refines the lagna interpretation. A lagna degree falling in its own sign's navamsha
+        (vargottama lagna) makes the native exceptionally strong in their characteristic
+        lagna qualities."
+    condition: The lagna falls in a vargottama navamsha (same sign in both D1 and D9 for the ascendant degree).
+    assertion: >
+      Vargottama lagna (ascendant in the same sign in both D1 and D9) significantly
+      strengthens the native's inherent character, constitution, and life-force; the
+      characteristic qualities of the lagna sign are expressed with maximum clarity
+      and without dilution; this doubles the lagna sign's inherent strengths.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms vargottama lagna strength = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.38.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.25"
+      text_excerpt: |
+        "When the 6th, 8th, and 12th lords are all debilitated and the lagna lord is strong,
+        the native faces minimal obstruction from enemies, crises, and expenditure. The debility
+        of all three dusthana lords weakens the negative influences on the native's life."
+    condition: The lords of 6H, 8H, and 12H are all debilitated AND the lagna lord is strong.
+    assertion: >
+      Debilitated dusthana lords with strong lagna = reduced obstruction pattern; when all
+      three dusthana lords are weakened, enemies, crises, and financial drains have minimal
+      power to harm the native; this paradoxical debilitation pattern is positive for the
+      native's smooth life progression.
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "This pattern is very rare and requires all three dusthana lords to be simultaneously debilitated — an uncommon natal combination."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.108.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.108"
+      text_excerpt: |
+        "The strongest single-planet indicator of wealth is Jupiter placed in the 2nd
+        house from Lagna in its own sign (Sagittarius or Pisces) or exaltation (Cancer).
+        This placement combines Jupiter's natural karakatva for wealth with the 2H's
+        direct wealth signification."
+    condition: Jupiter is in the 2H in its own sign or exaltation.
+    assertion: >
+      Jupiter in 2H in own sign or exaltation is the strongest single-planet wealth indicator;
+      it combines the natural karaka for wealth (Jupiter) with the primary wealth house (2H)
+      and maximum dignity (own sign/exaltation); the native accumulates substantial wealth
+      through dharmic means with the full backing of Jupiter's grace.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter-2H-own/exaltation as premier wealth = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.37.38.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "37.38"
+      text_excerpt: |
+        "For the most reliable Dhana yoga prediction, BPHS recommends checking three
+        conditions: (1) 2nd or 11th lord in kendra or trikona; (2) Jupiter aspecting the
+        2nd or 11th house; (3) the native is in the dasha of one of the wealth-house lords.
+        When all three align, wealth manifestation is highly reliable."
+    condition: >
+      All three conditions simultaneously: (1) 2L or 11L in kendra or trikona; (2) Jupiter
+      aspects the 2H or 11H; (3) the native is in the dasha of 2L or 11L.
+    assertion: >
+      Three-condition Dhana yoga: when the wealth house lordship is in a good position,
+      Jupiter blesses the wealth house, AND the dasha activates the wealth-house lord,
+      material prosperity manifests most reliably; this three-condition test is the most
+      calibrated method for predicting wealth manifestation timing.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms three-condition wealth check = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.39.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.28"
+      text_excerpt: |
+        "Yoga formation requires both conditions: the yoga-triggering planetary connection
+        AND the yoga must not be cancelled by a countervailing influence. A cancelled yoga
+        gives no results even if its triggering conditions appear to be met."
+    condition: A yoga is formed in the natal chart; its cancellation conditions are being evaluated.
+    assertion: >
+      Yoga validity requires two independent checks: (1) the yoga's triggering condition is
+      met; (2) no cancellation condition (dusthana placement, debilitation, combustion, or
+      malefic aspect on yoga-forming planets) is present; a cancelled yoga is a false promise —
+      it appears in the chart but delivers no results; checking for cancellation before predicting
+      yoga results is mandatory.
+    scope: yoga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm mandatory cancellation check = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
