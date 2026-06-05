@@ -56,7 +56,9 @@ sessions:
 
   - id: wave-close
     role: Sūtradhāra + Pramāṇa + Pratiṣṭhā
-    status: pending
+    status: passed
+    ac_sweep: 00_ARCHITECTURE/CONDUCTOR/ws1/smriti/wave-close-ac-sweep.md
+    all_acs_green: true
     scope: |
       Final WS-1 AC sweep across AC-1 through AC-12 (brief §1 + §5).
       Open PR; CI green; swarm merges per AUTONOMOUS_MODE §B (no human gate).
