@@ -44,7 +44,11 @@ sessions:
       (or equiv JSON). Quality bar passes Pramāṇa + Review Swarm + Cowork adversarial sample.
 
   - id: gate-a-acharya
-    status: PENDING
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    mean_composite: 0.849
+    notes: "50-rule stratified sample. All 3 thresholds met. 3 optional (non-blocking) revisions recommended. Proceed to canon-extraction."
     role: AI-assessed autonomous gate (per AUTONOMY_RESILIENCE_PATTERN §D)
     depends_on: [bphs-pilot]
     type: ai-assessed-gate
