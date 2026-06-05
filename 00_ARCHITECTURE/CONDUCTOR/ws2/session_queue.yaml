@@ -43,7 +43,19 @@ sessions:
 
   - id: l1-ganita
     layer: ganita
-    status: in_flight
+    status: passed
+    closed_at: 2026-06-05
+    assets_passed: [ganita.engine, ganita.positions, ganita.divisionals, ganita.dashas, ganita.strength, ganita.sensitive_points, ganita.panchanga, ganita.facts_store, ganita.forensic_render]
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/l1-ganita-pass.md
+    commits:
+      - 7fa3ae3e  # ganita.engine
+      - 77f240e6  # ganita.positions
+      - da0f3643  # ganita.divisionals
+      - eda653a8  # ganita.dashas
+      - 4921408c  # ganita.strength
+      - eb224238  # ganita.sensitive_points
+      - 4416a880  # ganita.panchanga + facts_store + forensic_render
+    tests_green: 192
     assets:
       - ganita.engine
       - ganita.positions
@@ -65,7 +77,7 @@ sessions:
 
   - id: l2-bodha-scaffold
     layer: bodha
-    status: pending
+    status: in_flight
     assets:
       - bodha.signals
       - bodha.graph
