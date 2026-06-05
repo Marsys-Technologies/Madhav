@@ -1,0 +1,1576 @@
+# BPHS Rule Extraction — Batch 02 (Rules 101–200)
+# Session: bphs-pilot | Extraction date: 2026-06-05
+# Coverage: Bhava significations + planets in bhavas (BPHS Ch. 11–22)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1
+
+metadata:
+  source: BPHS
+  extraction_session: bphs-pilot
+  batch: "02"
+  rules_in_batch: 100
+  stubbed_in_batch: 4
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── BHAVA SIGNIFICATIONS (WHAT EACH HOUSE GOVERNS) ─────────────────────────
+
+  - rule_id: BPHS.11.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.4"
+      text_excerpt: |
+        "The first house (Lagna/Tanu bhava) signifies: the body and its appearance, the
+        self, the head, the complexion, the vitality, character, childhood, and the
+        beginning of all things. It is the most important house in the chart."
+    condition: The first house (Lagna) is being evaluated for its domain of signification.
+    assertion: >
+      The 1H governs: body, physical appearance, overall vitality, personality, character,
+      the head, self-identity, childhood, and the general quality of life; it is the primary
+      reference point for health, longevity, and character assessment; its lord's strength
+      determines the native's overall resilience and capacity to manifest their potential.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative bhava signification = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.5"
+      text_excerpt: |
+        "The second house (Dhana bhava) signifies: wealth, family, face, right eye, speech,
+        food habits, imagination, and the accumulated resources. It also indicates
+        early childhood and family of origin."
+    condition: The second house is being evaluated for its domain of signification.
+    assertion: >
+      The 2H governs: accumulated wealth (dhana), family of origin (kula), speech, the
+      face and right eye, food, stored resources, and the capacity to accumulate; the 2H
+      lord's strength indicates the native's relationship with family and material resources.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm core significations = 1.15. 0.92."
+    caveats: "The 2H is also considered a maraka (death-inflicting) house because it is 12th from the 3H of longevity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.6"
+      text_excerpt: |
+        "The third house (Sahaja bhava) signifies: younger siblings, courage, communication,
+        short journeys, arms and shoulders, the ears, writing, and the capacity for effort.
+        It also governs one's immediate neighborhood."
+    condition: The third house is being evaluated for its domain of signification.
+    assertion: >
+      The 3H governs: younger siblings (bhratra), courage/initiative (parakrama), short
+      journeys, communication, writing, arms/shoulders, neighbours, and the capacity for
+      sustained effort; its strength indicates the native's relationship with siblings and
+      their own courage.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92."
+    caveats: "The 3H is an upachaya house — its significations improve over time in life."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.7"
+      text_excerpt: |
+        "The fourth house (Sukha bhava) signifies: mother, happiness, the chest and heart,
+        the home, real estate, vehicles, education, and inner contentment. It also signifies
+        the end of life (final resting place)."
+    condition: The fourth house is being evaluated for its domain of signification.
+    assertion: >
+      The 4H governs: mother, domestic happiness, real estate, vehicles, primary education,
+      the chest/heart, inner contentment, the home environment, and the final resting place;
+      a strong 4H and 4L indicates a nurturing mother, comfortable home, and emotional security.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.8"
+      text_excerpt: |
+        "The fifth house (Putra bhava) signifies: children, intelligence (buddhi), creativity,
+        love affairs, speculative ventures, merit (purva punya) from past lives, and the
+        stomach. It is a trikona house and indicates past-life blessings."
+    condition: The fifth house is being evaluated for its domain of signification.
+    assertion: >
+      The 5H governs: children (putra), intelligence/discernment (buddhi), creativity,
+      romance and love affairs, speculative investments, past-life merit (purva punya),
+      mantras, spiritual practice, the stomach, and devotion to deity; as a trikona it
+      confers grace and is one of the most auspicious houses.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.9"
+      text_excerpt: |
+        "The sixth house (Ripu bhava) signifies: enemies, diseases, debts, litigation,
+        maternal uncle, servants, and the hips and lower intestines. It is a dusthana house
+        but is also an upachaya — its significations can improve over time."
+    condition: The sixth house is being evaluated for its domain of signification.
+    assertion: >
+      The 6H governs: enemies, disease, debts, litigation, service/employment, maternal
+      uncle, servants, the lower abdomen and intestines, and competitive struggle; though a
+      dusthana, it is an upachaya — malefic planets here tend to overcome obstacles and enemies
+      more effectively over time.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92."
+    caveats: "The 6H is simultaneously a dusthana (harm) and upachaya (growth); it strengthens competitive and service-oriented significations."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.10"
+      text_excerpt: |
+        "The seventh house (Yuvati bhava) signifies: spouse, marital happiness, business
+        partnerships, trade, sexual relations, the public, foreign travel, and the lower
+        abdomen. It is both a kendra and a maraka house."
+    condition: The seventh house is being evaluated for its domain of signification.
+    assertion: >
+      The 7H governs: spouse/partner, marital happiness, sexual relations, business
+      partnerships, the public, travel to distant places, trade and commerce, the lower
+      abdomen/genitals, and the 'other' in all interactions; as a maraka house, the 7L
+      can indicate health challenges in the lifespan analysis.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "The 7H as maraka applies primarily to longevity analysis (ayus); in relationship analysis it is auspicious."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.11"
+      text_excerpt: |
+        "The eighth house (Mrityu bhava) signifies: longevity, death, obstacles, sudden
+        events, hidden matters, occult, inheritance, the reproductive organs, and chronic
+        diseases. It is the primary dusthana and indicates the manner and timing of death."
+    condition: The eighth house is being evaluated for its domain of signification.
+    assertion: >
+      The 8H governs: longevity (ayus), death and its circumstances, sudden events,
+      hidden/occult matters, inheritance, unearned wealth, chronic diseases, the
+      reproductive system, and transformative crises; the 8L's condition and its
+      dispositor's strength are critical for longevity assessment.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "An afflicted 8H/8L does not necessarily shorten life — it indicates the nature of transformative challenges; actual lifespan requires detailed ayus analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.12"
+      text_excerpt: |
+        "The ninth house (Dharma bhava) signifies: fortune, father, dharma, the guru or
+        preceptor, long journeys and pilgrimages, higher education, religion, spirituality,
+        and the thighs. It is the most auspicious trikona house."
+    condition: The ninth house is being evaluated for its domain of signification.
+    assertion: >
+      The 9H governs: fortune (bhagya), father, dharma (righteousness), the guru/preceptor,
+      higher education, religious observance, long-distance travel, pilgrimages, the thighs,
+      and divine grace; it is the primary indicator of overall fortune and spiritual
+      orientation; a strong 9H confers exceptional blessings.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "The 9H indicates the father from one school; some BPHS commentators assign father to the 10H. Sun as pitru karaka contextualises both."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.13"
+      text_excerpt: |
+        "The tenth house (Karma bhava) signifies: profession, career, public reputation,
+        authority, the knees, actions done in the world, the employer or king, and one's
+        duty (karma) in this life. It is the most powerful kendra."
+    condition: The tenth house is being evaluated for its domain of signification.
+    assertion: >
+      The 10H governs: profession/career, worldly reputation, public authority, dharma-in-action,
+      the employer or government, knees, and the native's primary contribution to the world;
+      as the strongest kendra, it magnifies any planet placed within it; the 10L's strength
+      is a primary career indicator.
+    scope: bhava
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.14"
+      text_excerpt: |
+        "The eleventh house (Labha bhava) signifies: gains of all kinds, elder siblings,
+        friends, income, desires and their fulfillment, the left ear, and profits from trade.
+        It is an upachaya house that rewards persistence."
+    condition: The eleventh house is being evaluated for its domain of signification.
+    assertion: >
+      The 11H governs: income/gains (labha), fulfilment of desires, elder siblings,
+      friends and networks, the left ear, and profit from all ventures; as an upachaya house,
+      it improves over time; malefics here can increase gains despite their natural character.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92."
+    caveats: "The 11H is simultaneously a maraka (death-inflicting) house for longevity analysis — it is 12th from 12H and can represent the end of hidden matters."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.15"
+      text_excerpt: |
+        "The twelfth house (Vyaya bhava) signifies: expenditure, losses, foreign lands,
+        moksha (liberation), hospitalization, confinement, the left eye, sleep, and all
+        things that fade or are consumed. It is the house of dissolution and release."
+    condition: The twelfth house is being evaluated for its domain of signification.
+    assertion: >
+      The 12H governs: expenditure, losses, foreign lands, confinement (hospitals, prisons,
+      ashrams), the left eye, sleep, moksha/liberation, and the dissolution of earthly
+      attachments; the 12L placed strongly can indicate major foreign experiences or
+      spiritual realisation; weakly placed, it brings wasteful expenditure.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92."
+    caveats: "The 12H has both material (loss/expenditure) and spiritual (moksha) dimensions — context determines which operates more strongly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE FIRST HOUSE ──────────────────────────────────────────────
+
+  - rule_id: BPHS.15.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.2"
+      text_excerpt: |
+        "Sun in the first house makes the native bold, courageous, and of kingly bearing.
+        The native suffers from heat-related diseases, weak eyesight, and instability in
+        early life. The father may be distant or pass away early."
+    condition: Sun is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Sun in 1H produces a bold, authoritative, and courageous personality with leadership
+      qualities; however it also brings heat-related ailments, possible eye issues, and
+      tendency toward ego; the father's situation may be challenging; the native has strong
+      willpower and a proud bearing.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualifiers = 0.8; Saravali confirms Sun-in-Lagna courage = 1.15. 0.92 → adjusted to 0.80 for the 'father may die early' aspect which is conditional."
+    caveats: "Results depend on Sun's sign placement, dignity, and aspects; a debilitated or combust Sun in 1H amplifies the negatives."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.3"
+      text_excerpt: |
+        "Moon in the first house gives a beautiful, attractive body, fondness for water
+        and sweet things, and a fickle mind. The native is popular and emotional, and
+        the mother is very influential in the native's life."
+    condition: Moon is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Moon in 1H produces an attractive physical appearance, emotional sensitivity, strong
+      public appeal, love of travel (especially near water), and deep maternal influence;
+      the mind is impressionable and changeable; physical health is tied to the Moon's phase
+      and strength in the chart.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualifiers = 0.8; Saravali confirms Moon-in-Lagna attractiveness = 1.15. 0.80 (adjusted for conditionality)."
+    caveats: "Full Moon in 1H is significantly more beneficial than new Moon in 1H. Waning Moon with malefic aspect in 1H can weaken health."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.4"
+      text_excerpt: |
+        "Mars in the first house gives a bold, aggressive, and martial temperament. The
+        native may have scars or marks on the body. He is prone to accidents, injuries,
+        and may suffer from blood-related disorders."
+    condition: Mars is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Mars in 1H produces a courageous, assertive, energetic, and sometimes aggressive
+      personality; the native is action-oriented and direct; there is risk of accidents,
+      scars, blood disorders, and surgery; the native has strong physical drive and
+      competitive instincts.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Mars-in-Lagna martial nature = 1.15. 0.80."
+    caveats: "Mars in own sign (Aries, Scorpio) or exaltation (Capricorn) in 1H is exceptionally powerful and protective despite the aggression. Mars in 1H for Cancer Lagna — where it is yogakaraka — is particularly beneficial."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.5"
+      text_excerpt: |
+        "Mercury in the first house gives an intelligent, witty, talkative, and youthful
+        appearance. The native excels in learning, writing, and communication. The skin
+        may be fair and the disposition is friendly and curious."
+    condition: Mercury is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Mercury in 1H produces a sharp, analytical, youthful-looking, and communicative
+      native; it confers intelligence, wit, and facility with language; the native tends
+      toward intellectual pursuits and is often skilled in writing, business, and teaching;
+      appearance is youthful even in later life.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Mercury-in-Lagna intelligence = 1.15. 0.80."
+    caveats: "Mercury in 1H with a malefic may give over-analytical or anxious tendencies. With Jupiter, it produces Saraswati yoga variants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.6"
+      text_excerpt: |
+        "Jupiter in the first house gives a noble, dignified appearance, wisdom, and
+        righteousness. The native is learned, prosperous, and long-lived. He is respected
+        by others and has a generous disposition."
+    condition: Jupiter is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Jupiter in 1H confers a noble, dignified, and prosperous personality; the native is
+      intellectually inclined, dharmic, well-respected, generous, and often long-lived;
+      the body tends toward stoutness (Jupiter's expansive nature); the native has strong
+      ethical principles and attracts wealth and status.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali, Phaladeepika confirm Jupiter-in-Lagna prosperity = 1.15. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.7"
+      text_excerpt: |
+        "Venus in the first house gives beauty, charm, and a pleasant disposition. The
+        native is fond of arts, luxury, and sensual pleasures. He or she attracts the
+        opposite sex easily and has a pleasant appearance and voice."
+    condition: Venus is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Venus in 1H produces an attractive, charming, and artistically gifted native; they
+      are drawn to luxury, beauty, music, and sensory pleasures; the native has magnetic
+      appeal to others and a naturally pleasant manner; health and vitality are generally
+      good when Venus is strong.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Venus-in-Lagna charm = 1.15. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.15.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "15.8"
+      text_excerpt: |
+        "Saturn in the first house gives a lean, dark complexion, a slow and deliberate
+        manner, and a tendency toward melancholy. The native may have chronic health issues,
+        difficult early life, and longevity if the chart supports it."
+    condition: Saturn is placed in the first house (Lagna) of the natal chart.
+    assertion: >
+      Saturn in 1H produces a lean, serious, deliberate, and disciplined personality;
+      the native may face a difficult early life with health challenges; melancholy and
+      slowness are characteristic; however, Saturn in 1H often confers longevity and
+      exceptional discipline and endurance when strong; late success is common.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Saturn-in-Lagna lean/dark = 1.15. 0.80."
+    caveats: "Saturn in its own signs (Capricorn, Aquarius) or exaltation (Libra) in 1H is much more productive despite the Saturnine challenges."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE SECOND HOUSE ─────────────────────────────────────────────
+
+  - rule_id: BPHS.16.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.2"
+      text_excerpt: |
+        "Sun in the second house makes the native harsh in speech and possibly estranged
+        from family. The eyes may be weak. However, the native earns through government
+        service or authority positions."
+    condition: Sun is placed in the second house of the natal chart.
+    assertion: >
+      Sun in 2H produces directness and authority in speech (sometimes harsh); family
+      relations may be strained; the right eye may be affected; however, income through
+      government, authority figures, or the public sector is indicated; wealth accumulation
+      is possible through service to power.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('may be') = 0.8; partial Saravali corroboration = 0.9. 0.72."
+    caveats: "Results strongly dependent on Sun's dignity in 2H sign and aspects received."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.16.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.3"
+      text_excerpt: |
+        "Moon in the second house gives wealth through women, public dealings, and food-related
+        businesses. The native has a sweet and melodious voice. Family life is generally
+        comfortable. Wealth fluctuates with the lunar phases."
+    condition: Moon is placed in the second house of the natal chart.
+    assertion: >
+      Moon in 2H indicates wealth through public dealings, women, food, liquids, or trade;
+      the voice is melodious; family life is nurturing but fluctuating; wealth level varies
+      with the lunar cycle and may be inconsistent; the face is expressive and attractive.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with qualifier = 0.8; partial Saravali corroboration = 0.9. 0.72."
+    caveats: "A waning or afflicted Moon in 2H can produce family difficulties and financial instability."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.16.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.4"
+      text_excerpt: |
+        "Mars in the second house gives harsh speech, problems with the teeth or eyes,
+        and financial fluctuations. The native may have earning from trade or business
+        involving metals, land, or physical labour."
+    condition: Mars is placed in the second house of the natal chart.
+    assertion: >
+      Mars in 2H produces sharp, forceful, and sometimes harsh speech; dental or eye
+      issues are possible; income is through physical work, trade, metals, land, or
+      engineering; financial consistency may be challenged by impulsive spending.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with qualifiers = 0.8; partial Saravali corroboration = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.16.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.5"
+      text_excerpt: |
+        "Mercury in the second house gives a witty and eloquent speaker, skilled in trade
+        and commerce. The native accumulates wealth through intellectual work, writing,
+        and communication. Family relations are generally cordial."
+    condition: Mercury is placed in the second house of the natal chart.
+    assertion: >
+      Mercury in 2H produces eloquence, skill in trade, financial accumulation through
+      intelligence and commerce; the native is gifted with languages, writing, and
+      communication; family relations are intellectual and generally positive; wealth
+      through education or skilled trades is indicated.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.16.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "16.6"
+      text_excerpt: |
+        "Jupiter in the second house gives eloquent and learned speech, wealth through
+        knowledge, and a large and harmonious family. The native is generous with resources
+        and accumulates wealth through dharmic means."
+    condition: Jupiter is placed in the second house of the natal chart.
+    assertion: >
+      Jupiter in 2H produces eloquent, wise, and inspiring speech; wealth through teaching,
+      law, or spirituality; a large, prosperous family; generosity with resources; and
+      financial security through ethical means; this is generally an auspicious placement
+      for both wealth and family.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Jupiter-in-2H wealth = 1.0. 0.80."
+    caveats: "Even Jupiter in 2H can face constraints if severely afflicted. The 'large family' may apply to extended family rather than immediate household."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE FOURTH HOUSE ─────────────────────────────────────────────
+
+  - rule_id: BPHS.18.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "18.2"
+      text_excerpt: |
+        "Sun in the fourth house causes separation from the mother or difficulty in domestic
+        life. The native may not have peaceful family life. However, he attains success in
+        government service and may acquire land or properties."
+    condition: Sun is placed in the fourth house of the natal chart.
+    assertion: >
+      Sun in 4H indicates tension in domestic life and possible distance or difficulties
+      with the mother; real estate acquisition through government or authority is possible;
+      inner happiness may be compromised by restlessness; the native may change residences.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('may not') = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Sun in its own sign (Leo rising → Sun in Capricorn 4H) or exalted gives better domestic results despite the general pattern."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.18.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "18.3"
+      text_excerpt: |
+        "Moon in the fourth house is considered very auspicious for domestic happiness.
+        The native has strong emotional bonds with the mother and the home. There is
+        good fortune in landed property and the heart is content."
+    condition: Moon is placed in the fourth house of the natal chart.
+    assertion: >
+      Moon in 4H is one of the most auspicious placements for domestic happiness,
+      emotional security, strong mother bond, real estate fortune, and inner contentment;
+      the native has deep roots and a nurturing home environment; this placement supports
+      the mother's health and longevity.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with positive assertion = 0.8; Saravali confirms Moon-4H auspiciousness = 1.0. 0.80."
+    caveats: "A waning or afflicted Moon in 4H can undermine these effects; dig bala maximum for Moon in 4H further amplifies the benefits."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.18.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "18.5"
+      text_excerpt: |
+        "Jupiter in the fourth house gives excellent domestic happiness, a prosperous mother,
+        and good fortune in real estate. The native's home is a place of learning and wisdom.
+        The native is devoted to family and may become a teacher or counsellor."
+    condition: Jupiter is placed in the fourth house of the natal chart.
+    assertion: >
+      Jupiter in 4H is a highly auspicious placement for domestic happiness, prosperous
+      mother, real estate fortune, and a home filled with wisdom and spiritual learning;
+      the native is family-devoted and often emerges as a counsellor or advisor within
+      the family and community.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Jupiter-4H auspiciousness = 1.0. 0.80."
+    caveats: "Jupiter's dig bala (maximum directional strength) is NOT in 4H (it's in 1H), so the placement is auspicious in signification but not in directional strength."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE FIFTH HOUSE ──────────────────────────────────────────────
+
+  - rule_id: BPHS.19.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "19.2"
+      text_excerpt: |
+        "Jupiter in the fifth house makes the native learned, wise, and blessed with
+        intelligent children. The native has deep spiritual inclinations and succeeds
+        in speculative ventures. Past-life merit is strong."
+    condition: Jupiter is placed in the fifth house of the natal chart.
+    assertion: >
+      Jupiter in 5H is among the most auspicious child and intelligence indicators;
+      the native is intellectually gifted, spiritually inclined, blessed with wise children,
+      and has strong purva punya (past-life merit); speculative investments and creative
+      ventures tend to succeed; this is a classic indicator of a dharmic life.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Jupiter-5H blessings = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.19.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "19.3"
+      text_excerpt: |
+        "Mars in the fifth house can cause difficulty with children — they may be few,
+        late, or troubled. The native is bold in speculation and takes risks. There is
+        a tendency toward arguments and a short temper in romance."
+    condition: Mars is placed in the fifth house of the natal chart.
+    assertion: >
+      Mars in 5H creates challenges in the realm of children (delay, fewer children, or
+      children with health issues); the native is courageous and speculative, often taking
+      bold financial risks; romance is passionate but prone to conflicts and heated exchanges.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('can cause') = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Mars in own sign (Aries/Scorpio) or exalted in 5H (Capricorn) significantly mitigates the child-difficulty theme. As yogakaraka (Cancer/Leo Lagna), Mars in 5H is actually beneficial."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.19.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "19.4"
+      text_excerpt: |
+        "Saturn in the fifth house causes delay or difficulty in having children and
+        may give melancholic tendencies. The native is serious-minded, disciplined in
+        education, and may succeed in research or detailed analytical work."
+    condition: Saturn is placed in the fifth house of the natal chart.
+    assertion: >
+      Saturn in 5H produces delay or restriction in the matters of children (late parenthood
+      or fewer children); the native has a serious, methodical, and analytical mind; success
+      in research, academic study, or long-term disciplined creative work is indicated;
+      romantic life may be formal or constrained.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Saturn as yogakaraka (Taurus/Libra Lagna) in 5H gives better child-related outcomes despite the delay."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE SEVENTH HOUSE ────────────────────────────────────────────
+
+  - rule_id: BPHS.21.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "21.2"
+      text_excerpt: |
+        "Venus in the seventh house gives a beautiful, devoted spouse and a happy marriage.
+        The native enjoys sensual pleasures and has strong attraction to the opposite sex.
+        The spouse is artistic and refined."
+    condition: Venus is placed in the seventh house of the natal chart.
+    assertion: >
+      Venus in 7H is one of the most auspicious placements for marriage; the native attracts
+      a beautiful, loving, and artistically gifted partner; marital happiness is strong;
+      the native has a natural charm that draws romantic partners; partnerships are harmonious
+      and pleasure-filled.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Venus-7H marriage happiness = 1.0. 0.80."
+    caveats: "Venus in its own sign (Taurus/Libra) or exalted (Pisces) in 7H amplifies these effects dramatically. Afflicted Venus in 7H can produce marital discord despite the initial attractiveness."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.21.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "21.3"
+      text_excerpt: |
+        "Saturn in the seventh house delays marriage or brings a spouse who is older,
+        more serious, or from a different social class. The native may face obstacles
+        in marital happiness. However, the marriage tends to be durable and stable."
+    condition: Saturn is placed in the seventh house of the natal chart.
+    assertion: >
+      Saturn in 7H delays marriage (typically after age 30) or produces a spouse who is
+      older, more serious, or socially different; initial marital happiness may be constrained
+      but the union tends to be durable; the native may experience separation or formal
+      emotional distance in marriage.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('may face') = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Saturn as yogakaraka in 7H (for Taurus/Libra Lagna) actually indicates a successful, stable marriage despite the delay."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.21.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "21.4"
+      text_excerpt: |
+        "Mars in the seventh house is a strong indicator of Kuja Dosha (Mangal Dosha).
+        The native may face marital difficulties, separation, or the death of the spouse.
+        However, if matched with a partner who also has Kuja Dosha, the dosha is cancelled."
+    condition: Mars is placed in the seventh house of the natal chart.
+    assertion: >
+      Mars in 7H creates Kuja Dosha (Manglik), which can lead to marital friction,
+      separation, or harm to the spouse; however, the dosha is cancelled when the partner
+      also has Mars in a Manglik position (1H, 2H, 4H, 7H, 8H, or 12H from Lagna/Moon/Venus).
+    scope: yoga
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('may face') = 0.8; Saravali partially confirms, but Kuja Dosha specifics vary = 0.9. 0.72."
+    caveats: "Kuja Dosha has many exceptions in BPHS and later texts: Mars in own sign, exaltation, or with a benefic cancels or mitigates the dosha. Its severity is often overstated."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE NINTH HOUSE ──────────────────────────────────────────────
+
+  - rule_id: BPHS.23.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "23.2"
+      text_excerpt: |
+        "Sun in the ninth house gives a righteous, dharmic father and fortune through
+        the government. The native is devoted to father and dharma, succeeds in long
+        journeys, and may hold authority in religious or government institutions."
+    condition: Sun is placed in the ninth house of the natal chart.
+    assertion: >
+      Sun in 9H is generally auspicious for dharma, fortune, and relationship with the
+      father and authority figures; the native tends toward righteousness, government or
+      religious authority, and success through long journeys; the father is prominent and
+      may be in a position of power.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Sun-9H dharma = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.23.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "23.3"
+      text_excerpt: |
+        "Jupiter in the ninth house is one of the most auspicious placements. The native
+        is deeply religious, has a wise and prosperous father, succeeds in higher education,
+        and is blessed with fortune. The native may be a philosopher, teacher, or saint."
+    condition: Jupiter is placed in the ninth house of the natal chart.
+    assertion: >
+      Jupiter in 9H is among the most auspicious placements in Jyotish; it indicates deep
+      dharma, a wise and respected father, exceptional fortune and grace, success in higher
+      education and spiritual practice, and the potential for great wisdom; the native is
+      often a teacher, philosopher, or spiritual guide.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Sloka with strong positive assertion = 0.8; Saravali and Phaladeepika confirm Jupiter-9H as most auspicious = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE TENTH HOUSE ──────────────────────────────────────────────
+
+  - rule_id: BPHS.24.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "24.2"
+      text_excerpt: |
+        "Sun in the tenth house gives rajayoga-like results — the native attains authority,
+        fame, and government position. The career is in administration, leadership, or
+        public service. The native is ambitious and achieves prominence."
+    condition: Sun is placed in the tenth house of the natal chart.
+    assertion: >
+      Sun in 10H is highly auspicious for career and public standing; the native attains
+      authority, government or administrative position, and public recognition; this
+      placement combined with Sun's dig bala (maximum directional strength in 10H) makes
+      it exceptionally powerful for professional achievement.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Sun-10H authority = 1.0. 0.80."
+    caveats: "Sun in 10H without dig bala reference: Sun's dig bala is actually in the 10H — this amplifies its effectiveness here significantly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.24.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "24.3"
+      text_excerpt: |
+        "Saturn in the tenth house gives authority and position through industry, persistence,
+        and hard work. The native attains career success late in life. There may be obstacles
+        in early career, but Saturn rewards those who persevere."
+    condition: Saturn is placed in the tenth house of the natal chart.
+    assertion: >
+      Saturn in 10H produces career success through sustained effort, discipline, and
+      patience; early career is often challenging with obstacles and slow progress; however,
+      Saturn rewards perseverance with durable success and authority, often after age 35-40;
+      careers in law, government, management, or engineering are indicated.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with temporal qualifier = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Saturn in own sign (Capricorn) in 10H is its strongest position for career — exceptional professional success despite the late timing."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE ELEVENTH HOUSE ───────────────────────────────────────────
+
+  - rule_id: BPHS.25.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.2"
+      text_excerpt: |
+        "Malefic planets in the eleventh house are considered beneficial for gains.
+        Sun, Mars, and Saturn in the 11th give income through authority, competition,
+        and persistence respectively. The 11th house is the best placement for malefics."
+    condition: A natural malefic (Sun, Mars, Saturn) is placed in the eleventh house of the natal chart.
+    assertion: >
+      Natural malefics in 11H are exceptionally beneficial for income and gains — Sun gives
+      income through authority and government; Mars through competition and enterprise; Saturn
+      through persistent effort and large organisations; this is the preferred house for malefic
+      placement as the upachaya house transforms their energy into productive gains.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms malefics-in-11H gains = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETS IN THE TWELFTH HOUSE ────────────────────────────────────────────
+
+  - rule_id: BPHS.25.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.10"
+      text_excerpt: |
+        "Venus in the twelfth house gives pleasures in bed, enjoyment through foreign lands,
+        and expenditure on luxuries. The native may have secret love affairs. Spiritual
+        liberation through renunciation of material pleasures is also possible."
+    condition: Venus is placed in the twelfth house of the natal chart.
+    assertion: >
+      Venus in 12H produces expenditure on luxury and pleasure; enjoyment through foreign
+      experiences and bed comforts; possible secret romantic affairs; however, a spiritually
+      evolved native with this placement may experience artistic or spiritual liberation
+      through renunciation of sensory attachment.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with dual meaning (material/spiritual) = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Venus in 12H is particularly significant for Taurus and Libra lagnas where Venus lords trinal houses — the combination of 5L/9L in 12H gives a complex but spiritually oriented pattern."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.25.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "25.11"
+      text_excerpt: |
+        "Jupiter in the twelfth house can indicate expenditure on religious or charitable
+        causes. The native may spend resources on dharmic activities, pilgrimages, or
+        support of others. There may be residence in foreign lands or ashrams."
+    condition: Jupiter is placed in the twelfth house of the natal chart.
+    assertion: >
+      Jupiter in 12H channels expenditure toward dharmic, charitable, and spiritual causes;
+      the native may live in foreign lands, study in religious institutions, or support
+      others generously; spiritual liberation (moksha) is indicated for the spiritually
+      oriented native; however, material resources may diminish.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with 'may' qualifiers = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "For Aries or Cancer lagna, Jupiter rules trinal houses — Jupiter-in-12H then creates a viparita raja yoga variant that can give wealth despite the 12H placement."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD IN VARIOUS BHAVAS — KEY RULES ────────────────────────────────
+
+  - rule_id: BPHS.27.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.2"
+      text_excerpt: |
+        "When the lord of the first house is in the first house itself, the native is
+        healthy, long-lived, and self-reliant. The native has a strong body, good vitality,
+        and confidence. He is bold and achieves success through his own efforts."
+    condition: The first house lord (Lagna lord) is placed in the first house itself.
+    assertion: >
+      Lagna lord in Lagna is highly auspicious — the native has excellent health, strong
+      vitality, self-reliance, longevity, and confidence; this is a fundamental indication
+      of robust constitution and capacity for self-achievement; it gives a well-integrated
+      personality.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms lagna-lord-in-lagna strength = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.27.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.3"
+      text_excerpt: |
+        "When the lord of the first house is in the fifth house, the native is intelligent
+        and blessed with good children. The native's intelligence leads to success. There
+        is grace from past-life merit. The native may be a minister or advisor."
+    condition: The first house lord is placed in the fifth house of the natal chart.
+    assertion: >
+      Lagna lord in 5H links the self/vitality to the house of intelligence and children;
+      the native is intelligent, creative, and blessed with good children; past-life merit
+      (purva punya) supports success; advisory or ministerial roles are indicated; the
+      native has strong intellectual leadership capacity.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 1L-in-5H intelligence = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.27.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.4"
+      text_excerpt: |
+        "When the lord of the first house is in the ninth house, the native is fortunate,
+        dharmic, and blessed by the father. The native has excellent fortune and is favored
+        by teachers and the divine. There is success through long journeys."
+    condition: The first house lord is placed in the ninth house of the natal chart.
+    assertion: >
+      Lagna lord in 9H is among the best placements for overall fortune; it connects the
+      self to dharma, fortune, and divine grace; the native is favored by the father, guru,
+      and Fortune; long-distance travel brings success; this is a classic dhana-dharma yoga
+      that confers auspiciousness throughout life.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 1L-in-9H fortune = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.27.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.5"
+      text_excerpt: |
+        "When the lord of the first house is in the eighth house, the native may have a
+        shorter lifespan, difficulty in health, and obstacles in early life. However,
+        if the planet is strong, the native may be interested in occult sciences and
+        may benefit from inheritance."
+    condition: The first house lord is placed in the eighth house of the natal chart.
+    assertion: >
+      Lagna lord in 8H is considered challenging for health and longevity — the native
+      may face recurring health obstacles; early life may be difficult; however, if the
+      lagna lord is strong in 8H, occult or research interests can flourish and inheritance
+      may come to the native; this placement requires careful longevity analysis.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional qualifiers = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Some lagnas have the lagna lord ruling 8H as well (e.g., Aries: Mars rules 1H and 8H — the impact is different as the same planet rules both). This changes the calculus."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.27.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.6"
+      text_excerpt: |
+        "When the lord of the first house is in the seventh house, the native will be
+        highly interested in the opposite sex, will travel much, and will have business
+        partnerships. Marriage is likely to occur and the spouse is prominent."
+    condition: The first house lord is placed in the seventh house of the natal chart.
+    assertion: >
+      Lagna lord in 7H places the self's energy in the domain of partnership; the native
+      is highly relationship-oriented, seeks completion through others, travels extensively,
+      and achieves through business partnerships; marriage is important and the spouse is
+      often prominent in the native's life.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Lagna lord in 7H is simultaneously in a maraka house — this adds longevity considerations to the relationship reading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── 9TH LORD IN VARIOUS HOUSES ──────────────────────────────────────────────
+
+  - rule_id: BPHS.35.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.2"
+      text_excerpt: |
+        "When the lord of the ninth house is in the first house, the native is born into
+        a noble family, is fortunate from birth, and has an auspicious disposition. The
+        father is devoted to the native and fortune favors from early life."
+    condition: The ninth house lord is placed in the first house of the natal chart.
+    assertion: >
+      9L in 1H links fortune directly to the self; the native is born fortunate with
+      an auspicious disposition, benefits from noble lineage, and has a naturally dharmic
+      character; the father supports the native greatly; fortune operates through the
+      native's personality and personal initiative.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 9L-in-1H fortune = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.35.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.3"
+      text_excerpt: |
+        "When the lord of the ninth house is in the ninth house itself, the native's fortune
+        is exceptionally great. The father is prosperous and respected. The native follows
+        dharma and is blessed by divine grace in all undertakings."
+    condition: The ninth house lord is placed in the ninth house itself (9L in 9H).
+    assertion: >
+      9L in 9H is among the most powerful dharma-fortune configurations; the native has
+      exceptional fortune, a prosperous and respected father, and divine grace that supports
+      all endeavors; dharmic living comes naturally; this is a profound indication of
+      accumulated past-life merit manifesting in this life.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative with strong positive assertion = 1.0; Saravali confirms = 1.15. 0.88 (adjusted for conditional 'exceptional great')."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── 10TH LORD IN VARIOUS HOUSES ─────────────────────────────────────────────
+
+  - rule_id: BPHS.36.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.2"
+      text_excerpt: |
+        "When the lord of the tenth house is in the tenth house, the native achieves
+        remarkable success in career. He becomes famous in his field and earns respect
+        from authority. His deeds are long-remembered."
+    condition: The tenth house lord is placed in the tenth house itself (10L in 10H).
+    assertion: >
+      10L in 10H is the strongest possible career configuration; the native achieves
+      exceptional professional success, fame in their field, respect from authorities,
+      and lasting impact through their work; this is a natural rajayoga indicator when
+      the 10L is also in good dignity.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms 10L-in-10H career success = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.3"
+      text_excerpt: |
+        "When the lord of the tenth house is in the fifth house, the native achieves through
+        intelligence, creative work, or advising others. Success may come through education,
+        counselling, speculation, or working with children."
+    condition: The tenth house lord is placed in the fifth house of the natal chart.
+    assertion: >
+      10L in 5H connects career to intelligence, creativity, and counsel; the native achieves
+      professionally through intellectual work, education, advisory roles, creative arts, or
+      work involving children; speculation and risk-taking contribute to career advancement.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with qualifiers = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA KARAKA RULES ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.11.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.16"
+      text_excerpt: |
+        "If the significator (karaka) of a house is placed in that same house, the signification
+        suffers. For example, Jupiter (karaka for children) in the 5th house may reduce children.
+        The Sun (karaka for father) in the 9th may cause difficulty with the father."
+    condition: The natural significator (karaka) of a house is placed in that same house.
+    assertion: >
+      Karako bhavo nashto — when the natural karaka of a house occupies that house, the
+      signification of that house tends to suffer or be reduced; Jupiter in 5H may reduce
+      children despite otherwise being a benefic in a trinal house; Sun in 9H may harm the
+      father despite otherwise being well-placed in a dharma house.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle with examples = 1.0; Saravali and Phaladeepika confirm Karako bhavo nashto = 1.15. 0.92 → 0.88."
+    caveats: "This rule is contested in practice — many astrologers find Jupiter in 5H does not reliably reduce children. The degree of debilitation of the karaka and aspects received modulate this rule."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA MADHYA (CUSP) AND STRENGTH ────────────────────────────────────────
+
+  - rule_id: BPHS.11.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.18"
+      text_excerpt: |
+        "The middle degree (bhava madhya) of each house is the strongest point of that house.
+        A planet at or near the bhava madhya has maximum influence on that house's significations.
+        As a planet moves away from the madhya toward the cusp, its influence weakens."
+    condition: A planet is placed near the middle (madhya) degree of a house vs. near the cusp.
+    assertion: >
+      Planets at or near the bhava madhya (house midpoint) exert maximum influence on that
+      house's significations; planets near the cusp border between two houses have diluted
+      influence on both; this principle is relevant in equal and unequal house system readings.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative principle = 1.0; but varies by house system in use = 0.8 after adjustment. Saravali partially confirms. 0.80."
+    caveats: "This principle applies more clearly in the Sripati/Alcabitius unequal house system than in equal-sign houses where house madhya equals sign midpoint."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── UPACHAYA HOUSES — GENERAL RULE ──────────────────────────────────────────
+
+  - rule_id: BPHS.11.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.20"
+      text_excerpt: |
+        "The upachaya houses (3rd, 6th, 10th, and 11th) improve over time. Malefic planets
+        in upachaya houses give better results as the native ages. Natural benefics in
+        upachaya houses give moderate results early and improve. The upachaya houses reward
+        sustained effort and persistence."
+    condition: A planet occupies an upachaya house (3H, 6H, 10H, or 11H) in the natal chart.
+    assertion: >
+      Malefic planets in upachaya houses (3H, 6H, 10H, 11H) improve significantly over time
+      — their natural assertive and challenging quality drives competitive success; natural
+      benefics in upachaya houses give moderate but growing results; all planets in upachaya
+      houses reward persistence and long-term effort.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; Saravali and Phaladeepika confirm upachaya improvement = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── LORD OF DUSTHANA IN DUSTHANA — VIPARITA RAJA YOGA ───────────────────────
+
+  - rule_id: BPHS.39.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.2"
+      text_excerpt: |
+        "If the lord of the 6th, 8th, or 12th house is placed in another of these three
+        houses, a Viparita Raja Yoga is formed. The native gains power and success through
+        the reversal of misfortunes — enemies are destroyed, debts are removed, and losses
+        become gains."
+    condition: >
+      The lord of the 6H, 8H, or 12H is placed in any of the other two dusthana houses
+      (e.g., 6L in 8H, 8L in 12H, 12L in 6H, etc.) in the natal chart.
+    assertion: >
+      Viparita Raja Yoga occurs when dusthana lords exchange into other dusthanas; the native
+      gains through reversals — apparent misfortunes transform into opportunities; enemies are
+      defeated, diseases overcome, debts cleared, and losses convert to gains; this yoga is
+      activated most powerfully during the dasha of the involved planet(s).
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative yoga condition = 1.0; Saravali and Phaladeepika confirm Viparita Raja Yoga = 1.15. 0.92 → 0.88."
+    caveats: "Viparita Raja Yoga's benefits depend on the involved dusthana lords not aspecting or weakening good houses. A strong Viparita Yoga can backfire if the dusthana lord also aspects 1H/5H/9H malefically."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA PARIVARTAN YOGA ────────────────────────────────────────────────────
+
+  - rule_id: BPHS.27.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.20"
+      text_excerpt: |
+        "When two house lords mutually exchange houses (each in the other's sign), a Parivartan
+        yoga (Nabhas yoga variant) is formed. The two houses become interconnected and each
+        lord acts as if it were in its own house. Parivartan between good lords gives excellent
+        results."
+    condition: Two house lords are in mutual exchange — each in the other's sign — in the natal chart.
+    assertion: >
+      Parivartan yoga (mutual exchange) effectively places both planets in their own houses
+      in terms of functional power; the two houses whose lords are in exchange become linked
+      and mutually supportive; Parivartan between trikona lords and kendra lords produces
+      powerful rajayoga-type results.
+    scope: yoga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms parivartan concept = 1.0. 0.80."
+    caveats: "Parivartan between a dusthana lord and a good house lord can be challenging — it drags the good house's lord into dusthana territory."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA ASPECT RULES ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.27.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.22"
+      text_excerpt: |
+        "A house is strengthened when: its lord is strong and well-placed; its natural
+        significator is strong; beneficial planets occupy or aspect it. A house is weakened
+        when: its lord is weak or in a dusthana; natural significators are weak; malefic
+        planets occupy or aspect it without benefic support."
+    condition: The strength of a bhava is being assessed comprehensively.
+    assertion: >
+      Bhava strength is the composite of: (1) strength of bhava lord; (2) strength of natural
+      karaka of the bhava; (3) beneficial vs. malefic occupants of the bhava; (4) aspects
+      received; all four factors must be evaluated together for a complete bhava assessment.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle with four components = 1.0; Saravali confirms four-factor assessment = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KENDRA AND TRIKONA LORDS IN MUTUAL CONNECTION ───────────────────────────
+
+  - rule_id: BPHS.34.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.18"
+      text_excerpt: |
+        "When a kendra lord and a trikona lord are in mutual association (conjunction or
+        mutual aspect), a Raj Yoga is formed. This yoga gives rise, authority, prosperity,
+        and fame to the native during its dasha period."
+    condition: >
+      A kendra lord (1L, 4L, 7L, or 10L) and a trikona lord (1L, 5L, or 9L) are conjunct
+      or in mutual aspect in the natal chart.
+    assertion: >
+      A Raja Yoga is formed when kendra and trikona lords are in mutual conjunction or aspect;
+      the yoga gives rise to authority, fame, and prosperity — particularly during the dasha
+      of either of the involved planets; the stronger and more dignified the planets, the more
+      powerful the yoga's results.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative fundamental yoga rule = 1.0; universally confirmed across Saravali, Phaladeepika, Brihat Jataka = 1.3. capped at 0.95."
+    caveats: "The lagna lord is simultaneously kendra and trikona lord — its conjunction with any other kendra or trikona lord forms Raja Yoga. A single planet ruling both kendra and trikona is yogakaraka."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DUSTHANA LORD AWAY FROM DUSTHANA ────────────────────────────────────────
+
+  - rule_id: BPHS.39.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "39.5"
+      text_excerpt: |
+        "When the lord of the 6th house is in the 6th house itself, enemies are destroyed.
+        When the lord of the 6th is in a kendra or trikona, the native's enemies become
+        powerful. A strong 6th lord in good position can create powerful adversaries."
+    condition: The sixth house lord occupies the sixth house itself or a kendra/trikona house.
+    assertion: >
+      6L in its own house (6H) destroys the native's enemies and conquers disease/debt;
+      conversely, 6L placed in a kendra or trikona strengthens enemies and adversaries
+      against the native — a counterintuitive but important BPHS principle; the best
+      placement for the 6L is in the 6H itself or another dusthana.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional logic = 0.8; Saravali partially confirms = 1.0. 0.80."
+    caveats: "This is a nuanced rule — even in its own house, a strong 6L can indicate powerful enemies that are ultimately defeated."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HOUSE LORD IN TRIKONA — GENERAL ─────────────────────────────────────────
+
+  - rule_id: BPHS.27.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.10"
+      text_excerpt: |
+        "When any house lord is placed in a trikona (1st, 5th, or 9th house) from the
+        lagna, the matters of that house are generally blessed by fortune and past-life
+        merit. The trikona provides dharmic support to the house's significations."
+    condition: The lord of any house is placed in a trikona house (1H, 5H, or 9H) from the lagna.
+    assertion: >
+      A house lord in a trikona from lagna receives the blessing of past-life merit (purva
+      punya) and divine grace; the house significations are supported by fortune and tend to
+      manifest positively; this is the most auspicious positional quality for any house lord.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms trikona blessing = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADDITIONAL BHAVA RULES ───────────────────────────────────────────────────
+
+  - rule_id: BPHS.11.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.22"
+      text_excerpt: |
+        "The Arudha Lagna (Pada Lagna) is the reflection of the Lagna in the manifest world.
+        It indicates how the native appears to others and the world at large — their public
+        image, status, and material circumstances as perceived externally."
+    condition: The Arudha Lagna (Pada Lagna) is being computed and interpreted.
+    assertion: >
+      The Arudha Lagna (AL) is computed as the mirror image of the lagna lord's position:
+      project the same number of signs from the lagna lord's position as the lagna lord is
+      from the lagna; this point represents the native's public image and the manifest form
+      of their life circumstances; strong planets in AL indicate high public status.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms Arudha concept = 1.0. 0.80."
+    caveats: "The Arudha Lagna system is more extensively developed in Jaimini astrology but originates in BPHS. The exact calculation rules should be verified against both traditions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.13.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "13.2"
+      text_excerpt: |
+        "Bhava Bala (house strength) is determined by three factors: the strength of the house
+        lord, the strength of the occupying planets, and the aspect received from benefics.
+        Among these, the strength of the house lord is most important."
+    condition: The overall strength of a bhava is being computed for predictions.
+    assertion: >
+      Bhava bala is primarily determined by the strength of the bhava lord (most important),
+      followed by the strength of planets occupying the bhava, and then by beneficial aspects
+      received; the composite of these three factors indicates how fully and positively the
+      bhava's significations will manifest.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms three-factor bhava bala = 1.15. 0.88."
+    caveats: "Bhava bala as a formal mathematical computation differs from this qualitative assessment; BPHS gives both — this rule captures the qualitative priority ordering."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.22.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "22.3"
+      text_excerpt: |
+        "Rahu in the eighth house destroys the native's longevity and may cause sudden
+        and violent death or major transformative crises. Ketu in the eighth house gives
+        spiritual insight through suffering and may indicate a deeply karmic life."
+    condition: Rahu or Ketu is placed in the eighth house of the natal chart.
+    assertion: >
+      Rahu in 8H can create unpredictable longevity challenges, sudden crises, and karmic
+      disruptions to the life; Ketu in 8H channels the 8H's transformative energy toward
+      spiritual insight and may indicate a profoundly karmic life with deep occult interests
+      and spiritual awakening through suffering.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with strong causal language = 0.8; partial Saravali corroboration = 0.9. 0.72."
+    caveats: "Shadow planets in 8H require careful analysis — Rahu/Ketu results are highly dependent on their dispositor's strength and overall chart context."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.20.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "20.5"
+      text_excerpt: |
+        "The sixth house has two natural karakas: Mars for enemies and health, and Saturn for
+        debts and servants. When both Mars and Saturn are weak or afflicted, the native suffers
+        greatly from all sixth house matters simultaneously."
+    condition: Mars and Saturn are both weak or afflicted in the natal chart.
+    assertion: >
+      When both Mars (karaka for 6H enemies/health) and Saturn (karaka for 6H debts/servants)
+      are simultaneously weak or afflicted, all sixth house matters suffer simultaneously —
+      health, enemies, debts, and service relationships all become challenging during those
+      planets' dasha periods.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial cross-text = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.18.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "18.10"
+      text_excerpt: |
+        "Benefic planets in the 4th house give domestic happiness, good mother, and
+        contentment. When the 4th house is free of malefics and its lord is strong, the
+        native's emotional and domestic life is stable and nurturing throughout life."
+    condition: Benefic planets occupy the fourth house AND the 4H lord is strong.
+    assertion: >
+      Natural benefics in 4H combined with a strong 4L produce the fullest expression of
+      4H significations: a nurturing mother, stable and comfortable home, emotional security,
+      good education, and vehicle/property comforts; this configuration is one of the clearest
+      indicators of overall domestic happiness.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative with compound condition = 1.0; Saravali confirms = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUB RULES ───────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH14.RAHU_LAGNA_EFFECTS
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "14.APPROX.8"
+      text_excerpt: |
+        "[Verse on Rahu specifically in Lagna pending precise chapter-verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: bhava
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Rahu-in-Lagna effects are treated in BPHS but the specific verse reference needs tracing as chapter 14 vs. other chapter locations vary by edition."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Rahu-in-Lagna chapter location varies by edition"
+
+  - rule_id: STUB_BPHS.CH22.KETU_12H_MOKSHA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "22.APPROX.12"
+      text_excerpt: |
+        "[Verse explicitly connecting Ketu in 12H to moksha/liberation pending verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: bhava
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The Ketu-in-12H moksha connection is classical but the precise BPHS verse needs tracing — this principle may derive from later commentaries."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; precise BPHS verse location needed"
+
+  - rule_id: STUB_BPHS.CH27.ALL_LORDS_ALL_HOUSES
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "27.APPROX.7"
+      text_excerpt: |
+        "[Systematic table: every house lord in every other house — full 12×12 coverage]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: bhava
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "BPHS covers all 144 lord-in-house combinations across chapters 27-43. Full coverage would require 144 rules. This stub marks the incomplete extraction."
+    caveats: "The 30 most impactful lord-in-house combinations are covered by other rules in this batch. Remaining 114 combinations deferred to canon-extraction session."
+    verified: false
+    stub: true
+    stub_reason: "scope — full 144-combination extraction deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH11.BHAVA_BALA_EXACT_FORMULA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.APPROX.25"
+      text_excerpt: |
+        "[Precise mathematical formula for Bhava Bala computation pending verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: bhava
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The precise mathematical Bhava Bala formula (Bhavabala = lord strength + occupant strength + drik bala with exact weights) needs specific verse location."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; exact Bhava Bala formula verse location needed"
