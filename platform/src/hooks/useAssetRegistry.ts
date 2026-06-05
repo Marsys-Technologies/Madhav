@@ -5,9 +5,6 @@ import type { AssetRow } from '@/app/api/cockpit/registry/route'
 
 export type { AssetRow }
 
-// Module-level cache with 60s TTL
-let _cache: { data: AssetRow[]; ts: number } | null = null
-
 export function useAssetRegistry(): {
   assets: AssetRow[]
   isLoading: boolean
@@ -19,46 +16,38 @@ export function useAssetRegistry(): {
   const [error, setError] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
 
-  const refetch = useCallback(() => {
-    _cache = null
-    setTick((t) => t + 1)
-  }, [])
+  const refetch = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
+    const controller = new AbortController()
     let cancelled = false
 
-    // Return cached result if fresh
-    if (_cache && Date.now() - _cache.ts < 60_000) {
-      setAssets(_cache.data)
-      setIsLoading(false)
-      setError(null)
-      return
-    }
-
     setIsLoading(true)
-
-    fetch('/api/cockpit/registry')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((json) => {
+    ;(async () => {
+      try {
+        const r = await fetch('/api/cockpit/registry', {
+          credentials: 'include',
+          signal: controller.signal,
+        })
         if (cancelled) return
-        const data: AssetRow[] = json?.data?.assets ?? []
-        _cache = { data, ts: Date.now() }
-        setAssets(data)
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        const body = await r.json()
+        if (cancelled) return
+        setAssets(body?.data?.assets ?? [])
         setError(null)
-      })
-      .catch((err: Error) => {
+      } catch (e) {
         if (cancelled) return
-        setError(err.message ?? 'Failed to load registry')
-      })
-      .finally(() => {
+        if ((e as Error)?.name === 'AbortError') return
+        setError((e as Error)?.message ?? 'Failed to load registry')
+      } finally {
         if (!cancelled) setIsLoading(false)
-      })
+      }
+    })()
 
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [tick])
 
   return { assets, isLoading, error, refetch }
