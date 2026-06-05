@@ -1,0 +1,81 @@
+wave: wsmisc
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavMisc
+branch: feature/wsmisc-cleanup
+mode: AUTONOMOUS_MODE
+max_run_budget_usd: 1500
+max_spend_per_asset_usd: 300
+
+sessions:
+  - id: gcs-purge
+    role: Silpi + Pramana
+    scope: |
+      Per WS-0 §8 #1 — purge legacy contents of GCS buckets that the cleanup arc
+      deliberately deferred:
+      - madhav-marsys-build-artifacts: legacy JSONL artifacts under l25/, rag/, msr/,
+        chart_facts/, classical/, panchanga_daily/, build_manifests/ prefixes.
+        KEEP under: brahmagyan/, ganita/, bodha/, kala/, phala/, mimamsa/, current builds/.
+      - chart-attachments + chart-documents: scan for orphaned objects belonging to
+        deleted charts (chart_id not in `charts` table).
+
+      Method:
+        1. gsutil ls + classify each prefix as KEEP / DELETE / UNCLASSIFIED per the allowlist
+        2. DRY-RUN: print the delete candidate list; HALT pause for native review
+        3. Native confirms via Smriti escalation OR auto-resume if zero UNCLASSIFIED
+        4. Execute deletes; verify allowlist-only remains
+    acceptance: |
+      Per-bucket allowlist sweep returns zero strays; orphan objects gone; KEEP prefixes
+      untouched by row count + timestamp diff vs pre-purge snapshot.
+    notes: |
+      Should run BEFORE WS-2's L0 ephemeris / L1 ganita writers start writing to these
+      buckets so the bucket state is clean when the deterministic writers run.
+
+  - id: capability-manifest-rebase
+    role: Racayita + Silpi + Pramana + Cowork adversarial review
+    scope: |
+      Per WS-0 §8 #2 — re-base 00_ARCHITECTURE/CAPABILITY_MANIFEST.json off the legacy
+      A1–A22 + META DAG and onto the L0–L5 + new-assets set from MASTER_ARCHITECTURE v2.1.
+      Each manifest entry maps to one asset/unit in the new world (Brahma layer prefix +
+      asset name + canonical-path + retrieval tools + channels + status).
+      Migrate every entry; drop entries that map to nothing in v2.1.
+    acceptance: |
+      Validator passes (drift_detector reads the new manifest cleanly); every entry has a
+      live canonical-path; zero references to deleted A1–A22 codenames in non-archive files.
+    notes: |
+      Touches 00_ARCHITECTURE/CAPABILITY_MANIFEST.json — usually `must_not_touch` in other
+      waves; whitelisted explicitly here as the asset is the work product.
+
+  - id: migration-squash
+    status: PASSED
+    completed_at: "2026-06-05"
+    commits:
+      - "e6e4c96c feat(wsmisc/squash): 0001_brahma_baseline.sql — 81-table Brahma schema baseline"
+      - "ac04bddd feat(wsmisc/squash): 0001_brahma_baseline verified — manual structural diff clean"
+      - "a580d6fd chore(wsmisc/squash): archive historical migrations"
+      - "2b52dbe1 chore(wsmisc/squash): migration tracker — squashed sentinel entry added"
+    depends_on: ["ws2-tag:ws2-depth-build-complete"]
+    role: Silpi + Pramana + Cowork adversarial review
+    scope: |
+      Per WS-0 §8 #3 — once WS-2 stabilizes the schema, snapshot the live schema and squash
+      historical migrations under platform/supabase/migrations/0*.sql into a single
+      0001_brahma_baseline.sql (or a small Brahma-era set).
+      Method:
+        1. pg_dump --schema-only against prod -> reference schema
+        2. Author 0001_brahma_baseline.sql that creates the live schema from scratch
+        3. Spin up an empty Postgres in CI, apply 0001 to it, diff against the live
+           schema -> zero structural diffs
+        4. Archive the original migrations to platform/supabase/migrations/_archive/
+        5. Update the migration tracker (insert a "squashed" sentinel)
+    acceptance: |
+      Empty DB + 0001_brahma_baseline.sql -> schema bit-identical to live prod.
+      Migration tracker has the squashed sentinel + 0001 recorded.
+      All existing tests that run against an empty DB still pass with the squashed baseline.
+    notes: |
+      LAST in the queue — depends on WS-2 closing so the schema is stable. If WS-2 churns
+      late additions, the squash runs after that churn settles.
+
+  - id: wave-close
+    status: PASSED
+    completed_at: "2026-06-05"
+    depends_on: [migration-squash]
+    role: Sutradhar
+    scope: tag `wsmisc-cleanup-complete`; close the wave.
