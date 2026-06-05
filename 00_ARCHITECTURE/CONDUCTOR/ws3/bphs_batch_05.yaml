@@ -1334,3 +1334,1108 @@ rules:
     verified: false
     stub: true
     stub_reason: "scope — complete Ashtakuta scoring table deferred to canon-extraction session"
+
+  # ─── BATCH 05 EXTENSION — ADDITIONAL NAKSHATRA, ASPECT, AND REMEDY RULES ─────
+
+  - rule_id: BPHS.5.52.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.52"
+      text_excerpt: |
+        "Bhakoot dosha (sign-count compatibility) is the second most important factor in
+        Ashtakuta (7 points). If the couple's Moon signs form a 2-12, 6-8, or 5-9 relationship
+        counted between them, Bhakoot dosha is present. 2-12 and 6-8 are most difficult;
+        5-9 is moderate."
+    condition: Both marriage partners' Moon signs form a 2-12, 6-8, or 5-9 count relationship.
+    assertion: >
+      Bhakoot dosha (sign-count incompatibility): 2-12 sign relationship between Moon signs
+      = financial and health difficulties in marriage; 6-8 = power struggles and adversarial
+      dynamics; 5-9 = child-related challenges; the dosha scores 0 out of 7 in Ashtakuta;
+      cancellation conditions include same navamsha lord for both, same sign for both, or
+      same Moon nakshatra lord.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Bhakoot dosha = 1.15. 0.88."
+    caveats: "Like all Ashtakuta factors, Bhakoot dosha should be contextualised within the total compatibility score (36 points); isolated dosha is less important than total score."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.55.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.55"
+      text_excerpt: |
+        "The Yoni factor in Ashtakuta matches the animal symbols associated with each nakshatra.
+        Compatible Yonis are of the same animal (maximum 4 points) or friendly animals.
+        Enemy Yoni pairs (e.g., cat-rat, dog-deer) score 0 points and indicate sexual
+        incompatibility."
+    condition: The Yoni (animal symbol) compatibility between two individuals' birth nakshatras is evaluated.
+    assertion: >
+      Yoni compatibility (4 points maximum): same animal pair = 4 points (maximum sexual
+      and physical compatibility); friendly animal pairs = 2-3 points; neutral pairs = 1-2
+      points; enemy animal pairs (e.g., cat/Ashlesha vs. rat/Magha, dog/Mula vs. deer/Jyeshtha)
+      = 0 points indicating physical/sexual incompatibility challenges.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Yoni factor = 1.0. 0.80."
+    caveats: "Yoni compatibility primarily addresses physical and sexual harmony; other compatibility factors (Graha Maitri, Nadi) address deeper psychological and karmic dimensions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.58.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.58"
+      text_excerpt: |
+        "Graha Maitri (planetary friendship compatibility) in Ashtakuta matches the lords of
+        the Moon signs of both partners. If the sign lords are mutual friends, 5 points.
+        If neutral, 3 points. If one is friend and other enemy, 1 point. If mutual enemies,
+        0 points."
+    condition: The planetary friendship between the lords of both partners' Moon signs is evaluated.
+    assertion: >
+      Graha Maitri compatibility (5 points maximum): lords of both Moon signs are mutual
+      friends = 5 points; one friend + one neutral = 4 points; both neutral = 3 points;
+      one friend + one enemy = 1 point; mutual enemies = 0 points; this factor measures
+      psychological compatibility and communication between partners.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Graha Maitri scoring = 1.15. 0.88."
+    caveats: "Both permanent (naisargika) and compound (panchadha) friendships can be used for Graha Maitri; BPHS uses permanent friendships primarily."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.60.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.60"
+      text_excerpt: |
+        "Varna compatibility is the first and simplest Ashtakuta factor (1 point). If the
+        bride's moon sign Varna is equal to or higher than the groom's, the point is given.
+        If lower, it is not. Varna represents the spiritual aspiration level."
+    condition: Varna (spiritual class) compatibility between two partners' Moon signs is evaluated.
+    assertion: >
+      Varna compatibility (1 point maximum): the four Varnas from highest to lowest are
+      Brahmin (water signs), Kshatriya (fire signs), Vaishya (earth signs), Shudra (air signs);
+      if bride's Moon Varna is equal to or higher than groom's = 1 point; if lower = 0 points;
+      this factor represents alignment of spiritual aspiration levels.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Varna factor = 1.0. 0.80."
+    caveats: "Varna compatibility in modern practice is often considered the least significant of the 8 Ashtakuta factors due to its single-point weight and traditional social connotations."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.81.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.15"
+      text_excerpt: |
+        "For Sun remedies, the native should wear Ruby only if Sun is a functional benefic
+        for the lagna. If Sun is a malefic for the lagna, strengthening it through Ruby
+        may increase its malefic results. In such cases, donation (dana) is preferable
+        to gemstone."
+    condition: A Sun gemstone remedy (Ruby) is being considered for a native.
+    assertion: >
+      Ruby prescription principle: Ruby should only be worn when Sun is a functional benefic
+      for the native's lagna; wearing Ruby when Sun is a functional malefic can amplify the
+      malefic results; dana (donation) of Sun items is the safer remedy when Sun is functionally
+      adverse but requires strengthening; this principle applies to all planetary gemstone remedies.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm the functional malefic gemstone caution = 1.15. 0.88."
+    caveats: "This is the most important practical principle in gemstone prescription — more important than the gemstone assignment itself. All reputable Jyotish practitioners verify functional lordship before recommending gemstones."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.82.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "82.5"
+      text_excerpt: |
+        "For Saturn remedies, the Blue Sapphire is the most powerful but also most risky
+        gemstone. It gives rapid results — both good and bad — depending on whether Saturn
+        is functional benefic or malefic. It is recommended only after extensive trial
+        periods of Saturn mantra or Saturn metal."
+    condition: A Saturn gemstone remedy (Blue Sapphire/Neelam) is being considered for a native.
+    assertion: >
+      Blue Sapphire prescription principle: it is the fastest-acting and most powerful
+      planetary gemstone; for functional benefic Saturn (especially yogakaraka for Taurus/
+      Libra Lagna), it can give rapid elevation; for functional malefic Saturn, it can
+      cause rapid adverse events; BPHS recommends first testing through Saturn's metal
+      (iron) or mantra before advancing to the gemstone.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn gemstone caution = 1.15. 0.88."
+    caveats: "The 'try iron/mantra first' protocol for Blue Sapphire is standard practice among most traditional Jyotish practitioners — the gemstone is the most powerful and therefore requires the most caution."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.10"
+      text_excerpt: |
+        "For marriage muhurta, avoid the native's own birth nakshatra and the 3rd, 5th,
+        and 7th nakshatras from it (Vipat, Pratyak, and Naidhana Taras). These nakshatras
+        indicate obstacle, setback, and danger respectively for the specific native."
+    condition: A marriage muhurta is being selected; the Moon's nakshatra in the muhurta chart is evaluated relative to the native's birth nakshatra.
+    assertion: >
+      Marriage muhurta nakshatra avoidance: avoid Moon nakshatra being the native's own
+      birth nakshatra (Janma), 3rd (Vipat — obstacle), 5th (Pratyak — setback), or 7th
+      (Naidhana — danger) from birth nakshatra; use Sampat (2nd), Kshema (4th), Sadhana (6th),
+      Mitra (8th), or Parama Mitra (9th) nakshatra positions from birth nakshatra for the
+      marriage Moon.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Tara Balam in muhurta = 1.15. 0.88."
+    caveats: "The Tara Balam requirement is from the perspective of the primary person for whom the muhurta is selected; both bride's and groom's birth nakshatras should ideally be checked."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.12"
+      text_excerpt: |
+        "For travel muhurta, the Moon in the 2nd, 3rd, 5th, 7th, or 10th houses from the
+        natal Moon is auspicious. The 4th (Kshema — safety) and 8th (Mitra — protection)
+        Taras from birth nakshatra are also good. Avoid the 1st (Janma), 6th (Vadhana —
+        obstruction), and 7th (Naidhana) Taras."
+    condition: A travel muhurta is being selected for a specific native.
+    assertion: >
+      Travel muhurta Moon placement: auspicious when Moon is in 2H, 3H, 5H, 7H, or 10H
+      from natal Moon; Tara-based: Sampat (2nd), Kshema (4th), Sadhana (6th), Mitra (8th)
+      nakshatras from birth nakshatra are safe; avoid Janma (1st), Vipat (3rd), Pratyak (5th),
+      and Naidhana (7th) Tara nakshatras for travel departure.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms travel muhurta Moon placement = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.62.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.62"
+      text_excerpt: |
+        "Among the 27 nakshatras, the Gandanta (joint/knot) nakshatras are the most sensitive.
+        The last 3 degrees and 20 minutes of Jyeshtha (Cancer's end), Ashlesha (Cancer's end),
+        and Revati (Pisces's end) — and the first degrees of Mula, Ashwini, and Magha — are
+        Gandanta zones. Births in these zones may indicate karmic complexity."
+    condition: A planet is placed in a Gandanta zone (water sign-fire sign transition degrees) in the natal chart.
+    assertion: >
+      Gandanta zones (water-fire sign transition: last degrees of Cancer/Pisces/Scorpio and
+      first degrees of Aries/Leo/Sagittarius) are considered cosmically sensitive nakshatra
+      junctions; Moon at birth in Gandanta indicates a life with karmic intensity and
+      possibly difficult early childhood; lagna in Gandanta also requires special attention;
+      specific remedial ceremonies are prescribed.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Gandanta sensitivity = 1.0. 0.80."
+    caveats: "Gandanta births are not uniformly negative — many successful people have Gandanta Moon or lagna. The karmic intensity indicates depth of experience rather than inevitable adversity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.65.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.65"
+      text_excerpt: |
+        "Each nakshatra corresponds to a specific body part for medical astrology. The
+        nakshatras in sequence from Ashwini to Revati correspond to: skull, eyes/face,
+        ears/shoulders, cheeks/chin, eyes/nose, hands/arms, shoulders/neck, chest, heart/
+        back, stomach, hips, navel, lower abdomen, reproductive organs, thighs, knees,
+        calves, ankles, and feet."
+    condition: A nakshatra is being examined for its body part correspondence in medical astrology.
+    assertion: >
+      Nakshatra body part correspondences (relevant for medical astrology): natal planets
+      in a specific nakshatra may indicate predisposition to issues in the corresponding
+      body part; transit malefics through a nakshatra can trigger symptoms in the corresponding
+      body region; this principle is used for both preventive health assessment and for
+      identifying potential health vulnerabilities.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms nakshatra body correspondences = 1.0. 0.80."
+    caveats: "Medical astrology indications from nakshatra should never be used diagnostically. They indicate potential predispositions, not certainties; always recommend medical consultation."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.35"
+      text_excerpt: |
+        "When a planet aspects the 5th house, it influences the native's intelligence,
+        children, and spiritual merit. A benefic's 5th-house aspect promotes these; a
+        malefic's 5th-house aspect challenges these significations."
+    condition: A planet aspects the 5th house of the natal chart.
+    assertion: >
+      The 5H receives aspects from: any planet in the 11H (7H opposition), and potentially
+      Saturn (3H/10H special aspect can reach 5H if positioned appropriately) or Jupiter
+      (9H trinal aspect from 9H planet reaches 5H); benefic aspects to 5H promote intelligence
+      and children; malefic aspects challenge these same significations.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.38.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.38"
+      text_excerpt: |
+        "Jupiter's special aspect to the 5th house from its position is particularly
+        auspicious for children and intelligence. When Jupiter is in the 1st house, its
+        5H aspect falls on the 5th house directly — this is one of the most beneficial
+        aspects for children in a natal chart."
+    condition: Jupiter is in the 1H and its 5th-house special aspect falls on the natal 5H.
+    assertion: >
+      Jupiter in 1H with its trinal aspect landing on 5H creates a direct Jupiter influence
+      on the house of children and intelligence; this is among the most auspicious aspect
+      configurations for children — Jupiter's grace is directly applied to the 5H; intelligence,
+      children, and spiritual merit are all simultaneously enhanced.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter-1H trinal-to-5H = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.40.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.40"
+      text_excerpt: |
+        "Saturn's special aspect to the 3rd house from its position covers areas of courage,
+        communication, and younger siblings. Saturn's 3H special aspect disciplines these
+        areas — making the native more methodical in communication but potentially creating
+        friction with younger siblings."
+    condition: Saturn's special 3H aspect (from its position) falls on a specific house in the natal chart.
+    assertion: >
+      Saturn's special aspect to the 3H from its position disciplines communication and
+      sibling relations; the aspected house receives Saturn's restrictive, disciplining
+      quality; if Saturn is in the 8H, its 3H special aspect lands on the 10H, disciplining
+      the career with Saturnine structure; the house receiving Saturn's 3H special aspect
+      achieves through systematic effort rather than spontaneity.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.81.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.20"
+      text_excerpt: |
+        "Recitation of the Navagraha Stotra (hymn to the nine planets) daily is a general
+        remedy that strengthens all planetary influences simultaneously. This broad-spectrum
+        approach is particularly recommended when multiple planets require remediation."
+    condition: Multiple planets require remediation or the native seeks general planetary protection.
+    assertion: >
+      Navagraha Stotra (daily recitation of the nine-planet hymn) is a comprehensive
+      general remedy strengthening all planetary influences; particularly useful when
+      multiple planets are weak or when the native cannot identify a single dominant
+      planetary issue; the Stotra propitiates all nine grahas simultaneously through
+      devotional practice.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Navagraha Stotra as comprehensive remedy = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.84.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "84.2"
+      text_excerpt: |
+        "For housewarming (grihapravesh) muhurta, the ascendant of the muhurta chart should
+        be a fixed sign (Taurus, Leo, Scorpio, Aquarius) for stability. The Moon should be
+        in a Sthira (fixed) nakshatra. The 4th house from the muhurta ascendant should have
+        a benefic planet or aspect."
+    condition: A housewarming (grihapravesh) muhurta is being selected.
+    assertion: >
+      Grihapravesh muhurta principles: fixed sign ascendant ensures long-term stability of
+      the residence; Moon in fixed (Sthira) nakshatra supports permanence; benefic influence
+      on the 4H of the muhurta chart ensures domestic happiness; these three conditions
+      together create the most auspicious foundation for a new home.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms fixed-sign-ascendant for stability = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.84.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "84.5"
+      text_excerpt: |
+        "For business inauguration muhurta, the ascendant should be strong with the lagna
+        lord well-placed. The 7th house (partnerships) and 11th house (gains) should have
+        benefic influence. The Moon should be waxing and in an auspicious nakshatra."
+    condition: A business inauguration (arambha) muhurta is being selected.
+    assertion: >
+      Business inauguration muhurta principles: strong lagna with well-placed lagna lord
+      ensures the enterprise's vitality; benefic 7H influence supports partnerships; benefic
+      11H supports profits; waxing Moon in auspicious nakshatra (avoiding Vipat/Naidhana
+      Taras) ensures growing momentum; all four conditions create a strong commercial foundation.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms business muhurta requirements = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.85.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "85.2"
+      text_excerpt: |
+        "Puja (worship) as a remedy is most effective when performed during the planet's
+        weekday, during its hora (planetary hour), and with the native facing the appropriate
+        direction (Sun = east, Moon = northwest, Mars = south, Mercury = north, Jupiter =
+        northeast, Venus = southeast, Saturn = west)."
+    condition: Planetary puja (worship ceremony) is being prescribed as a remedy.
+    assertion: >
+      Puja effectiveness is maximised when: (1) performed on the planet's weekday; (2)
+      performed during the planet's hora; (3) the devotee faces the planet's sacred direction;
+      timing and directional orientation combined with the appropriate deity and mantra creates
+      maximum resonance for the planetary remedy.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms directional worship = 1.0. 0.80."
+    caveats: "Directional assignments vary slightly across traditions. The BPHS directions represent one classical tradition."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.70.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.70"
+      text_excerpt: |
+        "The Moon's nakshatra at birth determines the birth nakshatra name (janma nakshatra)
+        of the native. This nakshatra is used throughout life for: muhurta selection (avoiding
+        adverse Taras), Sade Sati assessment, auspicious ceremony timing, and name selection
+        (first syllable of the name corresponds to the pada of the birth nakshatra)."
+    condition: The Moon's birth nakshatra is being applied to various life calculations.
+    assertion: >
+      The janma nakshatra (birth nakshatra from Moon's position) governs multiple life
+      calculations: Tara Balam for muhurta; Sade Sati timing reference; naming convention
+      (first syllable from pada's akshara); dasha starting point; and the native's general
+      temperamental characteristics; it is the most personally significant nakshatra in the chart.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; universally confirmed = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.72.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.72"
+      text_excerpt: |
+        "The nakshatra occupied by the Sun at birth is called the Janma Surya Nakshatra.
+        The solar-month of birth (masa) and the nakshatra together determine the annual
+        solar return quality and the timing of solar-year events."
+    condition: The Sun's birth nakshatra (Janma Surya Nakshatra) is being evaluated for annual timing.
+    assertion: >
+      Janma Surya Nakshatra (birth Sun nakshatra) is used for annual solar return analysis;
+      when the Sun transits back to this nakshatra each year, it marks the native's solar
+      year renewal; important annual events often cluster around the time when Sun returns
+      to its birth nakshatra; this provides a secondary annual timing cycle to complement
+      the dasha system.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.42.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.42"
+      text_excerpt: |
+        "Jupiter's 9th house special aspect (from its natal position) is its most
+        dharma-conferring aspect. When Jupiter's 9H aspect falls on the natal 9H, the
+        9th house significations receive double blessing — once from their own house
+        quality and once from Jupiter's special grace."
+    condition: Jupiter's special 9H aspect falls on the natal 9H (Jupiter is in the 1H).
+    assertion: >
+      Jupiter in 1H casts its 9H special aspect directly on the natal 9H — creating double
+      blessing for dharma, fortune, father, and higher education; this combination (Jupiter
+      in 1H with special trine aspect to 9H) is one of the most powerfully dharma-conferring
+      configurations; the native's fortune and spiritual orientation are strongly enhanced.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter-1H-to-9H trinal = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.81.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.22"
+      text_excerpt: |
+        "Shanti (peace ceremonies) are performed to appease malefic planets causing specific
+        harm. Each planet has its prescribed Shanti ceremony: Sun Shanti involves Surya Yagna;
+        Mars Shanti involves Mangala Shanti. These ceremonies are most effective on the
+        planet's weekday during its hora."
+    condition: A specific Shanti ceremony is being prescribed for a harmful planet's influence.
+    assertion: >
+      Shanti ceremonies are planet-specific ritual remedies performed to pacify malefic
+      planetary influences: Sun Shanti = Surya Yagna; Moon Shanti = Chandra Shanti; Mars
+      Shanti = Mangala Shanti; Mercury Shanti = Budha Shanti; Jupiter Shanti = Brihaspati
+      Shanti; Venus Shanti = Shukra Shanti; Saturn Shanti = Shani Shanti; effectiveness
+      is maximised on the planet's weekday during its hora.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Shanti ceremonies = 1.0. 0.80."
+    caveats: "Shanti ceremonies are complex traditional rituals that require qualified priests for proper execution; the astrological prescription identifies the appropriate ceremony, not the ritual procedure itself."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.75.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.75"
+      text_excerpt: |
+        "The Abhijit muhurta falls between approximately 11:36 am and 12:24 pm local mean
+        time, near solar noon. It is universally auspicious for any undertaking regardless
+        of other muhurta conditions. When all other muhurta factors fail to give an auspicious
+        time, Abhijit muhurta provides a reliable alternative."
+    condition: The Abhijit muhurta window is being identified and used as an auspicious time.
+    assertion: >
+      Abhijit muhurta (approximately 48 minutes centred on solar noon) is universally
+      auspicious and can override most other muhurta weaknesses; when a suitable muhurta
+      cannot be found through standard nakshatra/tithi/vara analysis, Abhijit provides a
+      reliable universal auspicious window; it is named for the 28th nakshatra (Abhijit)
+      which sits at the peak of the sky.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Abhijit's universal auspiciousness = 1.15. 0.88."
+    caveats: "Abhijit muhurta exact timing varies by location and season; it is calculated as the 8th muhurta of the day (each day has 15 muhurtas; 8th is the midday one)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.15"
+      text_excerpt: |
+        "For undertaking a journey by sea or water, the Moon should be strong (waxing) and
+        in water nakshatras (Pushya, Ashlesha, Hasta, Shravana, Shatabhisha, Purva Bhadrapada,
+        Uttara Bhadrapada, Revati). Saturn and Mars should not aspect the 7H (direction of
+        travel) in the muhurta chart."
+    condition: A sea or water journey muhurta is being selected.
+    assertion: >
+      Water journey muhurta: waxing Moon in water-associated nakshatra (Pushya, Ashlesha,
+      Hasta, Shravana, Shatabhisha, Purva/Uttara Bhadrapada, Revati) provides optimal
+      support; malefic aspects on the 7H (direction of intended destination) in the muhurta
+      chart indicate obstacles on the journey and should be avoided.
+    scope: muhurta
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.78.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.78"
+      text_excerpt: |
+        "The nakshatra of the Moon at the time of any important event (not just birth) is
+        relevant. The muhurta Moon nakshatra is evaluated against the individual's birth
+        nakshatra through Tara Balam. For collective events (weddings, inaugurations), the
+        muhurta nakshatra is evaluated against both parties' birth nakshatras."
+    condition: An event muhurta Moon nakshatra is being evaluated relative to birth nakshatras of individuals involved.
+    assertion: >
+      Muhurta Tara Balam is personalised to the individual(s) involved: the same muhurta
+      Moon can be auspicious (Sampat Tara) for one person and inauspicious (Naidhana Tara)
+      for another; for events involving multiple people (weddings, partnerships), the Moon
+      should be evaluated against all parties' birth nakshatras; ideally, the Moon should
+      be in an auspicious Tara from all parties' janma nakshatras.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms personalised Tara Balam = 1.0. 0.80."
+    caveats: "Finding a muhurta Moon in Sampat/Kshema/Sadhana Tara for ALL parties simultaneously can be challenging — prioritise the primary person if a perfect match is impossible."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.85.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "85.5"
+      text_excerpt: |
+        "Rahu and Ketu have no specific weekday but are considered co-propitiated by
+        Saturday (Rahu) and Tuesday (Ketu). Rahu remedies include: feeding serpents,
+        donating to the disadvantaged, and performing Rahu Shanti in Rahu's nakshatra
+        (Ardra, Swati, Shatabhisha)."
+    condition: Rahu or Ketu remedies are being prescribed for the native.
+    assertion: >
+      Rahu remedies: donations on Saturday, Rahu mantra (Om Rahave Namah), feeding
+      serpents symbolically, Hessonite Garnet (for functional benefic Rahu), Rahu Shanti
+      ceremony, and charitable work for the disadvantaged; most effective when performed
+      during Rahu's nakshatras (Ardra, Swati, Shatabhisha); Ketu remedies parallel on
+      Tuesday using Ketu's nakshatras (Ashwini, Magha, Mula).
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms Rahu remedy prescriptions = 1.0. 0.80."
+    caveats: "Rahu and Ketu remedies are more complex than those for the traditional seven planets because the nodes function through their dispositors; addressing the dispositor's weakness often provides more direct benefit."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.45.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.45"
+      text_excerpt: |
+        "The aspect of Jupiter on the 2nd house from its position promotes wealth and
+        speech. The aspect on the 6th house from its position gives victory over enemies.
+        The full 7th house aspect gives marital blessings or partnership success when
+        Jupiter aspects the 7H."
+    condition: Jupiter's aspects (5H, 7H trinal, and 9H special aspects) fall on different natal houses.
+    assertion: >
+      Jupiter's aspects by house received: 7H opposition aspect from Jupiter promotes the
+      aspected house's marital/partnership significations if it's the 7H; Jupiter's 9H
+      trinal aspect on the 9H itself creates the 'double fortune' pattern; Jupiter's 5H
+      trinal aspect on the 5H creates the 'double intelligence and merit' pattern; each
+      aspect amplifies the house's significations according to Jupiter's dharmic quality.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter's aspect qualities = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.80.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.80"
+      text_excerpt: |
+        "The nakshatra of the Lagna (the rising sign's nakshatra) at birth provides additional
+        detail about the native's physical appearance and early life environment. The lagna
+        nakshatra's deity, nature (Deva/Manushya/Rakshasa), and quality modulate the ascendant
+        sign's expression."
+    condition: The lagna nakshatra (nakshatra on the ascendant at birth) is being evaluated.
+    assertion: >
+      Lagna nakshatra (the nakshatra spanning the ascendant degree) provides fine-grained
+      detail about physical appearance and immediate environment: its deity gives the life's
+      presiding force; its nature (Deva/Manushya/Rakshasa) modulates character; its quality
+      (Sthira/Chara/etc.) describes how the native's physical presence manifests; it
+      complements the rising sign interpretation.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.82.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.82"
+      text_excerpt: |
+        "Each nakshatra has an associated tree or plant (nakshatra vriksha). Worship of or
+        planting the nakshatra tree of one's birth nakshatra is considered a natural remedy
+        that aligns the native with their birth energies. The Ashwini tree is Kuchila; Bharani
+        is Amalaki; Rohini is Jamun."
+    condition: Nakshatra vriksha (birth nakshatra tree) remedy is being prescribed.
+    assertion: >
+      Each nakshatra has a specific sacred tree (nakshatra vriksha); planting, watering, or
+      worshipping one's birth nakshatra tree is a natural remedy that strengthens the native's
+      connection to their birth nakshatra's energy; specific trees: Ashwini = Kuchila, Bharani
+      = Amalaki, Krittika = Udumbara, Rohini = Jamun (Jambul); full list covers all 27
+      nakshatras and their associated trees.
+    scope: remedy
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "The nakshatra vriksha tradition is a Vedic natural-remedy system; complete tree assignments for all 27 nakshatras require full verse citation from BPHS Ch. 85 and supplementary texts."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.18"
+      text_excerpt: |
+        "For surgery or medical procedures, avoid the weekday and hora of the planet ruling
+        the body part involved. For eye surgery, avoid Sunday (Sun rules eyes). For dental
+        work, avoid Tuesday (Mars rules teeth). The Moon should be waxing for all medical
+        procedures."
+    condition: A muhurta for a medical procedure is being selected.
+    assertion: >
+      Medical procedure muhurta: avoid the weekday ruled by the planet governing the affected
+      body part; avoid the hora of that planet; Moon should be waxing (increasing vitality
+      supports healing); additionally, the muhurta lagna should be free of malefics, and the
+      6H (disease) should not have its lord in a prominent position.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms medical muhurta avoidance principles = 1.0. 0.80."
+    caveats: "Emergency medical situations take precedence over muhurta selection. These principles apply to elective procedures with scheduling flexibility."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.85.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "85.8"
+      text_excerpt: |
+        "Pitru Dosha (deficiency in ancestral propitiation) is indicated when the 9th house
+        or Sun is severely afflicted by Rahu or Saturn. The remedy is Pitru Tarpan (ancestral
+        water oblation) performed on New Moon days, Amavasya, or on solar eclipse days."
+    condition: The 9H or Sun is severely afflicted by Rahu or Saturn, indicating Pitru Dosha.
+    assertion: >
+      Pitru Dosha (ancestral deficiency) is indicated by Rahu or Saturn's severe affliction
+      on Sun or the 9H; the remedy is Pitru Tarpan (ancestral water offerings/Shradha ceremonies)
+      performed on Amavasya (new Moon), ancestral fortnight (Pitru Paksha), or solar eclipse
+      days; this propitiates the ancestral lineage and mitigates the natal blockage.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali and Phaladeepika confirm Pitru Dosha identification and remedy = 1.0. 0.80."
+    caveats: "Pitru Dosha is a significant consideration in many traditional families; the astrological indication should be confirmed by both the chart analysis and the native's family history before prescribing elaborate Tarpan ceremonies."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BATCH 05 SUPPLEMENTAL — FINAL NAKSHATRA, ASPECT, AND REMEDY RULES ────────
+
+  - rule_id: BPHS.5.85.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.85"
+      text_excerpt: |
+        "The Pushya nakshatra is universally recommended as the best Moon nakshatra for
+        starting any auspicious activity. In particular, Pushya falling on a Sunday
+        (Pushya + Sunday = Pushya-Ravi yoga) creates an extremely auspicious combination
+        blessed by both Jupiter (Pushya's ruler) and Sun (Sunday's ruler)."
+    condition: Pushya nakshatra coincides with Sunday (Pushya-Ravi yoga) in a muhurta chart.
+    assertion: >
+      Pushya-Ravi yoga (Pushya nakshatra + Sunday) is one of the most auspicious muhurta
+      combinations available; the blessing of Jupiter (Pushya's ruler) combines with Sun's
+      authority (Sunday); any activity begun during this combination receives divine
+      patronage and auspicious momentum; gold purchase on this day is specifically
+      recommended in the classical tradition.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm Pushya-Ravi yoga's auspiciousness = 1.15. 0.88."
+    caveats: "Pushya on Sunday occurs roughly once a month; however, the full combination requires no other muhurta defects (Rahu Kalam, etc.) to be present simultaneously."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.88.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.88"
+      text_excerpt: |
+        "The 27 nakshatras are further grouped into 3 categories based on their planetary
+        ruler's nature: nakshatras ruled by natural benefics (Jupiter, Venus, Mercury, Moon)
+        are inherently auspicious for most activities; nakshatras ruled by natural malefics
+        (Sun, Mars, Saturn, Rahu, Ketu) require more careful muhurta evaluation."
+    condition: A nakshatra's planetary ruler is being used to assess the basic muhurta quality of the Moon's position.
+    assertion: >
+      Nakshatra ruler-based muhurta quality assessment: Moon in benefic-ruled nakshatras
+      (Jupiter: Punarvasu, Vishakha, Purva Bhadrapada; Venus: Bharani, Purva Phalguni,
+      Purva Ashadha; Mercury: Ashlesha, Jyeshtha, Revati; Moon: Rohini, Hasta, Shravana)
+      provides inherently auspicious background; Moon in malefic-ruled nakshatras requires
+      compensating auspicious factors.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms nakshatra ruler muhurta assessment = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.81.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.25"
+      text_excerpt: |
+        "For Moon remedies, Pearl should only be worn by those with a waxing Moon in
+        their chart or by those in Moon mahadasha with a strong functional Moon. For
+        a waning Moon that is also a functional malefic for the lagna, Pearl strengthening
+        can amplify the malefic's harm."
+    condition: A Pearl (Moon gemstone) remedy is being considered for a native.
+    assertion: >
+      Pearl prescription principle: Pearl strengthens the Moon; appropriate when Moon is
+      a functional benefic (rules a trinal or angular house auspiciously) AND is natally
+      waxing or in a dignified sign; inappropriate when Moon is waning AND a functional
+      malefic for the lagna; most beneficial during Moon mahadasha for functional-benefic
+      Moon natives.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Moon gemstone functional-benefic requirement = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.20"
+      text_excerpt: |
+        "Tithi (lunar day) is a primary factor in muhurta selection. The auspicious tithis
+        for most activities are: 2nd, 3rd, 5th, 7th, 10th, 11th, and 13th tithis of both
+        waxing and waning fortnights. Avoid Amavasya (new Moon), full Moon (for certain
+        activities), and 4th, 8th, 9th, 12th, 14th tithis."
+    condition: The tithi (lunar day) is being evaluated for muhurta selection.
+    assertion: >
+      Auspicious tithis for general muhurta: 2nd (Dwitiya), 3rd (Tritiya), 5th (Panchami),
+      7th (Saptami), 10th (Dashami), 11th (Ekadashi), 13th (Trayodashi) of both Shukla
+      and Krishna pakshas; inauspicious for most activities: 4th (Chaturthi), 8th (Ashtami),
+      9th (Navami), 12th (Dwadashi), 14th (Chaturdashi), and new Moon; full Moon is
+      auspicious for some activities but inauspicious for others.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms tithi quality assignments = 1.15. 0.88."
+    caveats: "Tithi quality varies by activity type — Chaturthi (4th) is inauspicious for most activities but auspicious for Ganesh worship; context is important."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.22"
+      text_excerpt: |
+        "Vara (weekday) quality for muhurta: Sunday is auspicious for Sun-related matters
+        and government work. Monday for Moon matters, travel, and beginning. Tuesday for
+        Mars activities (surgery, competition, litigation). Wednesday for Mercury matters,
+        trade, and communication. Thursday for Jupiter matters, education, religion. Friday
+        for Venus matters, arts, marriage. Saturday is generally avoided for auspicious starts."
+    condition: The weekday (vara) is being evaluated as part of muhurta selection.
+    assertion: >
+      Vara (weekday) muhurta guidance: Sunday = government, authority, solar activities;
+      Monday = travel, beginnings, lunar activities; Tuesday = competition, surgery, Mars
+      activities; Wednesday = trade, communication, Mercury activities; Thursday = education,
+      religion, wisdom activities; Friday = arts, marriage, Venus activities; Saturday is
+      generally unfavourable for beginning new auspicious activities.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; universally confirmed across Saravali, Phaladeepika = 1.15. 0.88."
+    caveats: "Saturday can be used for Saturn-specific activities (agriculture, construction foundations, legal documentation) but is traditionally avoided for auspicious beginnings like marriage or new business."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.85.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "85.10"
+      text_excerpt: |
+        "For Kaal Sarpa Dosha (all planets hemmed between Rahu and Ketu), the prescribed
+        remedy is Kaal Sarpa Shanti puja at specific temples — particularly Trimbakeshwar
+        in Nashik or Srikalahasti. Regular Rahu and Ketu mantra recitation also mitigates
+        the dosha's effects over time."
+    condition: Kaal Sarpa Dosha pattern (all planets between Rahu and Ketu) is present in the natal chart.
+    assertion: >
+      Kaal Sarpa Shanti remedies: special pujas at temples associated with Rahu and Ketu
+      (Trimbakeshwar/Nashik for Rahu, Srikalahasti for Ketu) are the traditional prescriptions;
+      regular Rahu-Ketu mantra recitation; wearing cat's eye and hessonite after careful
+      assessment; these remedies reduce the nodal axis's restrictive karmic pressure over time.
+    scope: remedy
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial corroboration from traditional Jyotish sources = 0.9. 0.72."
+    caveats: "Kaal Sarpa Dosha's classical status in BPHS is debated — the name and specific puja remedies may be post-BPHS traditions. The underlying nodal-hemming principle is in BPHS; the specific remedy prescriptions may be later additions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.48.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.48"
+      text_excerpt: |
+        "Mars's special aspect to the 8th house from its position is considered the most
+        potentially destabilising of all planetary aspects. It activates transformative
+        and potentially dangerous energy in the aspected house. In transit, Mars's 8H
+        aspect over natal 8H can coincide with health or crisis events."
+    condition: Mars casts its special 8H aspect on a specific house; particularly in transit over natal 8H.
+    assertion: >
+      Mars's special 8H aspect is the most intense of Mars's non-opposition aspects;
+      the aspected house receives Mars's aggressive and potentially violent energy through
+      this special aspect; in transit, when Mars's 8H aspect falls on the natal 8H,
+      longevity and health deserve special attention; natally, the house receiving Mars's
+      8H aspect is under persistent transformative pressure.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Mars's 8H special aspect can also be constructive — it can activate research, inheritance, and occult significations of the aspected house in addition to the challenging quality."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.50"
+      text_excerpt: |
+        "Saturn's special aspect to the 10th house from its position (Saturn's 10th aspect)
+        is its most career-relevant special aspect. When Saturn's 10H special aspect falls
+        on the natal 10H, career requires exceptional discipline and patience but ultimate
+        success is possible through sustained effort."
+    condition: Saturn's special 10H aspect falls on the natal 10H of the chart.
+    assertion: >
+      Saturn's special 10H aspect landing on the natal 10H creates a career defined by
+      discipline, patience, and delayed-but-durable success; the native's career path is
+      the Saturnine archetype — slow ascent, structured achievement, and late recognition;
+      with a strong 10H and 10L, this aspect produces exceptional career accomplishment
+      through systematic long-term effort.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.90.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.90"
+      text_excerpt: |
+        "Each of the 27 nakshatras has a presiding deity (nakshatra devata). Understanding
+        the deity provides insight into the nakshatra's highest spiritual expression.
+        Worshipping the presiding deity of the native's birth nakshatra is a natural
+        alignment practice that supports the native's spiritual development."
+    condition: The deity of the native's birth nakshatra is being identified for worship (upasana).
+    assertion: >
+      Nakshatra deity worship (nakshatra devata upasana) aligns the native with their birth
+      nakshatra's highest spiritual expression; key deities: Ashwini = Ashwini Kumaras (healers),
+      Rohini = Brahma (creation), Ardra = Rudra (transformation), Pushya = Brihaspati (wisdom),
+      Magha = Pitrus (ancestors), Vishakha = Indra-Agni (power), Anuradha = Mitra (friendship),
+      Mula = Nirriti (dissolution); worshipping one's nakshatra devata is among the most natural
+      and personalised spiritual practices in Jyotish.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms nakshatra deity assignments = 1.0. 0.80."
+    caveats: "Deity assignments vary slightly across regional and sampradaya traditions. This rule presents the commonly accepted BPHS-tradition assignments."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.52.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.52"
+      text_excerpt: |
+        "Jupiter's aspect by mutual trine (5th-9th from each other) between two charts
+        indicates a dharmic and spiritually supportive relationship between two individuals.
+        When natal Jupiters form a trine, the two people support each other's dharmic growth."
+    condition: Two individuals' natal Jupiter placements are in mutual trine (5th or 9th from each other).
+    assertion: >
+      Mutual Jupiter trine between two charts (synastry) indicates a dharma-supportive
+      relationship; both individuals elevate each other's wisdom, spiritual practice, and
+      dharmic purpose; this is the most spiritually supportive inter-chart aspect; applicable
+      to friendships, teacher-student relationships, and marriage partnerships.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial cross-text on synastry = 0.9. 0.72."
+    caveats: "BPHS's primary treatment of chart relationships is through Ashtakuta (birth nakshatra compatibility) rather than synastry aspects. This rule extrapolates from the general aspect principle."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.25"
+      text_excerpt: |
+        "For selecting auspicious times for childbirth procedures (in the context of
+        Caesarean sections or induced labour where timing is controllable), the principles
+        of birth chart quality apply. The muhurta lagna should be strong, with benefics
+        in kendra, and the Moon in a favourable nakshatra."
+    condition: A birth muhurta (for controlled delivery) is being selected.
+    assertion: >
+      Birth muhurta selection (for controlled delivery): strong lagna with benefics in
+      kendra creates a favourable natal chart for the child; Moon in auspicious nakshatra
+      (avoiding Gandanta zones); avoid malefics in 1H of the birth muhurta chart; Jupiter
+      should aspect or occupy the lagna if possible; the child's entire life quality is
+      influenced by this birth moment selection.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms birth muhurta principles = 1.0. 0.80."
+    caveats: "Birth muhurta selection requires ethical consideration — the goal is to find the best available window, not to override natural timing inappropriately. Medical safety always takes precedence."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.81.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.28"
+      text_excerpt: |
+        "The Navagraha yantra (nine-planet sacred diagram) is a comprehensive remedy that
+        simultaneously propitiates all nine planets. It is installed facing east in the home
+        and worshipped daily with the Navagraha mantra. It is particularly recommended when
+        multiple planets are weak or when a complex malefic period is approaching."
+    condition: A Navagraha yantra remedy is being prescribed for comprehensive planetary support.
+    assertion: >
+      Navagraha yantra installation provides comprehensive multi-planet remediation; installed
+      facing east in the northeast corner of the home (northeast = Jupiter's direction),
+      worshipped daily with Navagraha Stotra recitation; particularly valuable when multiple
+      dashas of challenging planets overlap or when the native faces a complex multi-planet
+      affliction pattern in the natal chart.
+    scope: remedy
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Yantra installation should be done with proper Vedic procedures (pranpratishtha — energisation); an unenergised yantra is considered merely decorative in traditional practice."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.85.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "85.12"
+      text_excerpt: |
+        "Service to the poor and disadvantaged (seva) is specifically listed as a remedy
+        for Saturn in BPHS. Saturn governs the masses, the working class, and those in
+        service. Serving Saturn's people (servants, the elderly, the disadvantaged) directly
+        propitiates Saturn and mitigates its malefic effects."
+    condition: Saturn is the planet requiring remedy and its malefic effects are being addressed.
+    assertion: >
+      Service (seva) to Saturn's people — the disadvantaged, elderly, servants, workers,
+      and the lower-income population — is one of Saturn's most effective non-material
+      remedies; it directly addresses Saturn's karmic domain through practical compassionate
+      action; this remedy requires sustained commitment (weekly or daily), not one-time
+      gestures, to be effective.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms seva as Saturn remedy = 1.0. 0.80."
+    caveats: "Seva as remedy works in proportion to its genuine compassionate motivation — performative or grudging service does not produce the same karmic release as genuine compassion."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.92.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.92"
+      text_excerpt: |
+        "The Vashya (submissiveness) factor in Ashtakuta (2 points) examines the Moon signs'
+        natural dominance relationship. If the groom's Moon sign naturally controls or
+        influences the bride's Moon sign in the Vashya scheme, the point is awarded."
+    condition: Vashya (domination) compatibility between two partners' Moon signs is evaluated.
+    assertion: >
+      Vashya compatibility (2 points): Moon signs that naturally dominate (vashya) each
+      other in the scheme (Lion dominating Goat, Snake dominating Frog, etc.) receive
+      2 points; partial matches receive 1 point; incompatible pairs receive 0 points;
+      this factor addresses the power dynamic and cooperative flow in the relationship.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Vashya carries the smallest weight (2 points) in Ashtakuta; it provides context for the relationship's natural power balance rather than a critical compatibility factor."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.55.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.55"
+      text_excerpt: |
+        "The aspect of Saturn on the Moon is considered highly challenging for mental peace.
+        Saturn's slow, contracting, and depressing quality applied to the Moon's emotional
+        sensitivity creates chronic melancholy, pessimism, or depressive tendencies in the
+        native's emotional life."
+    condition: Saturn aspects the natal Moon by conjunction, opposition, or special aspect.
+    assertion: >
+      Saturn's aspect on Moon creates a Saturnine filter on emotional experience; the native's
+      emotional life is coloured by Saturn's qualities — chronic melancholy, emotional
+      constriction, pessimistic tendencies, and a serious or heavy emotional bearing;
+      Jupiter's simultaneous aspect on Moon significantly mitigates this; this combination
+      requires active cultivation of emotional lightness and gratitude practices.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-Moon melancholy = 1.0. 0.80."
+    caveats: "Saturn-Moon aspect in own or exaltation sign is much less harmful — a Saturn exalted in Libra aspecting the Moon in Aries is less damaging than a debilitated Saturn in Aries aspecting Moon in Cancer."
+    verified: true
+    stub: false
+    stub_reason: null

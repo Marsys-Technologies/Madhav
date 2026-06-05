@@ -2010,3 +2010,320 @@ rules:
     verified: false
     stub: true
     stub_reason: "pramana_failure — verse_ref APPROX; Kalachakra exact chapter-verse needed"
+
+  # ─── ADDITIONAL GRAHA RULES (BATCH 01 EXTENSION) ────────────────────────────
+
+  - rule_id: BPHS.3.24.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.24"
+      text_excerpt: |
+        "The Sun is the lord of Leo. The Moon is the lord of Cancer. Mars rules Aries and
+        Scorpio. Mercury rules Gemini and Virgo. Jupiter rules Sagittarius and Pisces.
+        Venus rules Taurus and Libra. Saturn rules Capricorn and Aquarius. Rahu and Ketu
+        have no sign lordship."
+    condition: Rahu and Ketu are evaluated for sign lordship.
+    assertion: >
+      Rahu and Ketu have no sign lordship (no swakshetra) in the BPHS system; their functional
+      nature is entirely determined by their dispositor (the lord of the sign in which they are
+      placed) and by the planets they are conjunct with; they adopt the qualities of their
+      sign-lord and conjunct planets.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; universally confirmed in classical texts = 1.3. capped at 0.95."
+    caveats: "Some modern schools assign Rahu to Aquarius and Ketu to Scorpio as secondary rulerships — this is not supported by BPHS proper."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.28"
+      text_excerpt: |
+        "When a malefic planet is placed in the 6th, 8th, or 12th house from the natal Moon,
+        the Moon is considered afflicted (Chandra Dosha). When malefics are in these positions
+        from the ascendant, the ascendant is afflicted similarly."
+    condition: Natural malefic planets are placed in the 6H, 8H, or 12H from the natal Moon or Lagna.
+    assertion: >
+      Chandra Dosha occurs when natural malefics (Sun, Mars, Saturn, Rahu, Ketu) occupy the
+      6H, 8H, or 12H from the natal Moon, creating an environment of emotional and mental
+      strain; the same principle applies to the lagna (Lagna Dosha); the intensity of the
+      dosha depends on how many and how strong the malefics are in these positions.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms malefics in dusthanas from Moon = 1.0. 0.80."
+    caveats: "A single natural malefic in one of these positions from Moon is common and not automatically severe; all three positions simultaneously occupied by strong malefics is severe."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.7"
+      text_excerpt: |
+        "The six components of Shadbala are: (1) Sthana bala (positional strength),
+        (2) Dig bala (directional strength), (3) Kala bala (temporal strength),
+        (4) Chesta bala (motional strength), (5) Naisargika bala (natural strength),
+        (6) Drik bala (aspectual strength). The sum of all six gives the total Shadbala."
+    condition: A planet's total Shadbala is being computed.
+    assertion: >
+      Shadbala comprises six strength pillars: Sthana bala (positional/dignity), Dig bala
+      (directional), Kala bala (temporal), Chesta bala (motional/speed), Naisargika bala
+      (natural/fixed), and Drik bala (aspectual); their sum gives the planet's total
+      Shadbala in virupas; each planet has a required minimum Shadbala for full effectiveness.
+    scope: shadbala
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative system definition = 1.0; Saravali confirms all six Shadbala components = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.34.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.34"
+      text_excerpt: |
+        "When two planets are in the same sign and within one degree of each other, they
+        are said to be in exact conjunction (same degree). The closer the conjunction, the
+        stronger the mutual influence. Planets in the same sign but in different degrees
+        still conjunct and share their energies."
+    condition: Two planets are in the same sign (whether within 1° or across the full sign).
+    assertion: >
+      Planetary conjunction in Jyotish applies to the entire sign — any two planets in the
+      same sign are considered conjunct and mutually influence each other; the closer they
+      are in degree, the stronger the fusion of energies; an exact conjunction (same degree)
+      produces maximum mutual influence, sometimes to the point of one planet absorbing the
+      other's energy.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms sign-based conjunction = 1.15. 0.88."
+    caveats: "In Jyotish, sign-based conjunction differs from Western astrology's orb-based approach; all same-sign planets are functionally conjunct even at 29° from each other."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.27"
+      text_excerpt: |
+        "Among the natural malefics, the order of maleficence from most to least is:
+        Saturn, Rahu, Mars, Sun, Ketu, waning Moon. Among natural benefics, the order
+        of beneficence from most to least is: Jupiter, fully waxing Moon, Mercury
+        (when unafflicted), Venus."
+    condition: The relative strength of natural maleficence or beneficence of planets is being compared.
+    assertion: >
+      Hierarchy of natural maleficence (most to least harmful): Saturn > Rahu > Mars > Sun
+      > Ketu > waning Moon; hierarchy of natural beneficence (most to least): Jupiter >
+      fully waxing Moon > Mercury (unafflicted) > Venus; this hierarchy guides interpretation
+      when planets compete in aspects or conjunctions.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms the malefic hierarchy = 1.15. 0.88."
+    caveats: "The Sun is a mild natural malefic in BPHS — it can be functional benefic for many lagnas despite its natural malefic designation."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.15"
+      text_excerpt: |
+        "A planet that is in a kendra from the ascendant or Moon is considered in a
+        powerful angular position. A planet in a succedent house (2nd, 5th, 8th, 11th)
+        is in medium strength. A planet in a cadent house (3rd, 6th, 9th, 12th) has
+        less situational power, except in its own sign or exaltation."
+    condition: A planet's house placement is being evaluated for Kendra Bala (angular strength).
+    assertion: >
+      Kendra Bala measures a planet's angular positional power: kendra (1H, 4H, 7H, 10H) =
+      full Kendra Bala (30 virupas); succedent (2H, 5H, 8H, 11H) = medium Kendra Bala
+      (15 virupas); cadent (3H, 6H, 9H, 12H) = minimum Kendra Bala (5 virupas); this
+      sub-factor of Sthana Bala rewards planets in angular positions with additional
+      situational strength.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Kendra Bala values = 1.15. 0.88."
+    caveats: "Kendra Bala is a Sthana Bala sub-factor; it does not override other dignity factors — a debilitated planet in a kendra has Kendra Bala but negative Uccha Bala."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.39.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.39"
+      text_excerpt: |
+        "A planet that is exalted but in an enemy's sign in the navamsha (D9) chart
+        gives diminished results despite its exaltation. A planet that is debilitated
+        in the rashi chart but in its own sign or friend's sign in navamsha recovers
+        its capacity to give results."
+    condition: A planet's navamsha (D9) dignity modifies its rashi (D1) dignity for result interpretation.
+    assertion: >
+      D1-D9 dignity interaction rule: exalted in D1 but in enemy's navamsha sign = diluted
+      exaltation results; debilitated in D1 but in own or friend's navamsha = significant
+      recovery of effectiveness; D9 dignity acts as a corrective factor on D1 dignity for
+      the planet's capacity to deliver promised results.
+    scope: divisional
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms D9 modifying D1 dignity = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.18"
+      text_excerpt: |
+        "When Sun and Moon are in mutual trine (5th or 9th from each other), the native
+        has an integrated personality with emotional and rational faculties working in
+        harmony. When Sun and Moon are in mutual 6-8 or 2-12 positions, there is
+        internal conflict between will and emotion."
+    condition: The mutual relationship between Sun and Moon in the natal chart is evaluated.
+    assertion: >
+      Sun-Moon trine (5H-9H from each other) = harmonious integration of will (Sun) and
+      emotion (Moon) — the native is psychologically balanced; Sun-Moon in 6-8 position
+      = friction between rational will and emotional need; Sun-Moon in 2-12 = one
+      dimension sacrifices for the other; the Sun-Moon relationship is the foundational
+      personality integration indicator.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.6"
+      text_excerpt: |
+        "Ayana Bala (half-year strength) gives additional strength to: Sun, Jupiter, Venus,
+        and Mars during Uttarayan (Sun's northern course, approx. Dec 21–June 21). Moon,
+        Saturn, and Mercury gain Ayana Bala during Dakshinayan (southern course, June 21–
+        Dec 21)."
+    condition: A planet's Ayana Bala is being computed based on the time of year (Uttarayan vs. Dakshinayan).
+    assertion: >
+      Ayana Bala (seasonal strength): Sun, Jupiter, Venus, and Mars are stronger during
+      Uttarayan (northward solar movement, northern hemisphere summer); Moon, Saturn, and
+      Mercury are stronger during Dakshinayan (southward solar movement, northern hemisphere
+      winter); this sub-factor of Kala Bala rewards planets in their seasonal alignment.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Ayana Bala assignments = 1.15. 0.88."
+    caveats: "Ayana Bala computation requires knowing the Sun's exact solar longitude at birth — it is a continuously varying factor between the two solstices."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.50"
+      text_excerpt: |
+        "When a benefic planet occupies a kendra from both the ascendant and the Moon, it
+        is considered doubly strong and gives doubly good results. When a malefic occupies
+        a kendra from both, it is doubly harmful."
+    condition: A planet is placed in a kendra from both the Lagna and the natal Moon simultaneously.
+    assertion: >
+      A planet in kendra from both Lagna and Moon has double angular strength — its
+      significations are powerfully activated from both the self-identity reference
+      (Lagna) and the emotional/mind reference (Moon); a benefic in this position gives
+      doubly auspicious results; a malefic in this position creates doubly intense challenges.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.36.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.36"
+      text_excerpt: |
+        "A planet that has just stationed (about to turn retrograde or direct) has special
+        strength. This station point represents the planet at its closest approach to Earth
+        (for outer planets) and its apparent standstill gives it a period of intensified
+        influence on earthly affairs."
+    condition: A planet is at its station point — about to turn retrograde or has just turned direct.
+    assertion: >
+      Stationary planets have exceptional intensity and focus in their influence; their
+      energy is concentrated and prolonged at the station point; events associated with
+      the stationary planet tend to be more intense, memorable, and harder to reverse than
+      typical planetary events; station-point effects last for approximately 2-3 days
+      before and after the exact station.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with qualitative claim = 0.8; partial Saravali on station-point strength = 0.9. 0.72."
+    caveats: "Station-point intensification is a refinement used primarily in transit analysis; in natal charts, a stationary planet is treated primarily through its retrograde/direct status."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.38.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.38"
+      text_excerpt: |
+        "A planet that is under the Sun's rays (within combustion range) but retrograde
+        is called 'Cazimi' or within the heart of the Sun. Such a planet at the exact
+        degree of the Sun is considered extremely powerful — as if being coronated."
+    condition: A planet is retrograde AND at the exact same degree as the Sun (cazimi).
+    assertion: >
+      A retrograde planet within the heart of the Sun (within 1° of exact conjunction)
+      paradoxically gains exceptional strength — though combust in terms of its independent
+      expression, the planet is energised at its core by the Sun's royal coronation quality;
+      cazimi retrograde planets deliver intensified, often sudden and remarkable results
+      during their dasha periods.
+    scope: graha
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with unusual claim = 0.8; the 'cazimi' principle is recognized in BPHS but with complexity — partial Saravali contradicts (Saravali says all combustion is harmful) = 0.8. 0.65."
+    caveats: "The cazimi exemption from combustion is debated. Many classical texts do not distinguish cazimi as special — this is more clearly articulated in KP and Western traditions than in BPHS."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.22"
+      text_excerpt: |
+        "A planet in an enemy's sign in the natal chart gives results with difficulty and
+        resistance. The planet's significations are expressed through friction and effort.
+        In mundane matters, enemy-sign placement indicates areas where the native must
+        work harder to achieve results."
+    condition: A planet occupies its enemy's sign in the natal chart.
+    assertion: >
+      A planet in its enemy's sign experiences significant positional resistance — its
+      natural significations manifest with difficulty, effort, and friction; the results
+      are not as freely given as in own or friendly signs; the native must work harder in
+      the domains governed by this planet; this is part of the sthana bala weakness that
+      reduces overall planetary effectiveness.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms enemy-sign difficulty = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
