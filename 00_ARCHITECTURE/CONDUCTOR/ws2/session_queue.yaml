@@ -18,7 +18,10 @@ parallel_assets_per_layer: true
 sessions:
   - id: l0-brahmagyan
     layer: brahmagyan
-    status: pending
+    status: passed
+    closed_at: 2026-06-05
+    assets_passed: [brahmagyan.reference, brahmagyan.ontology, brahmagyan.almanac, brahmagyan.texts, brahmagyan.ephemeris, brahmagyan.text_index, brahmagyan.remedy_corpus]
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/l0-brahmagyan-pass.md
     assets:
       - brahmagyan.ephemeris
       - brahmagyan.reference
@@ -40,7 +43,7 @@ sessions:
 
   - id: l1-ganita
     layer: ganita
-    status: pending
+    status: in_flight
     assets:
       - ganita.engine
       - ganita.positions
