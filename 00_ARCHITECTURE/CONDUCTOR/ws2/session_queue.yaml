@@ -118,7 +118,21 @@ sessions:
 
   - id: l3-kala
     layer: kala
-    status: pending
+    status: passed
+    closed_at: 2026-06-05
+    assets_passed: [kala.timeline, kala.convergence, kala.obstruction, kala.snapshot, kala.temporal]
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/l3-kala-pass.md
+    commits:
+      - 0c5aef51  # kala.timeline (l3_timeline.py) — 893 rows, 7/7 gate
+      - ff04401f  # kala.convergence (l3_convergence.py) — 23 windows, 7/7 gate
+      - d038e457  # kala.obstruction (l3_obstruction.py) — 17 entries, 8/8 gate
+      - 8cbd2b90  # kala.snapshot (l3_snapshot.py) — 1 snapshot, 8/8 gate
+      - aa44095c  # kala.temporal (retrieval/kala_temporal.ts) — 22 tests
+    volume_floors_met:
+      - "kala.timeline: 893/500"
+      - "kala.convergence: 23/20"
+      - "kala.obstruction: 17/10"
+      - "kala.snapshot: 1/1"
     assets:
       - kala.timeline
       - kala.convergence
