@@ -484,3 +484,99 @@ class TestAnchorStructureCompleteness:
             # ISO format
             date.fromisoformat(window["start"])
             date.fromisoformat(window["end"])
+
+
+# ── §7 — C2-002 regression: strip_lel_citations ──────────────────────────────
+
+class TestStripLelCitations:
+    """
+    Regression tests for C2-002: the `notes` field in public API responses
+    must not contain raw 'per LEL' citation text.
+
+    strip_lel_citations() is applied at the l4_anchors serialization site
+    before notes are emitted in query_phala_anchors() responses.
+    """
+
+    def _get_strip_fn(self):
+        from brahmagyan.phala.l4_anchors import strip_lel_citations
+        return strip_lel_citations
+
+    def test_removes_per_lel_with_trailing_dot(self):
+        """'per LEL event 2007-03-14.' is stripped."""
+        strip = self._get_strip_fn()
+        result = strip("good note per LEL event 2007-03-14. rest")
+        assert "per LEL" not in result
+        assert "LEL" not in result
+
+    def test_removes_per_lel_at_end_of_string(self):
+        """'per LEL' at end of string (no trailing dot) is stripped."""
+        strip = self._get_strip_fn()
+        result = strip("contains per LEL event xyz")
+        assert "per LEL" not in result
+
+    def test_removes_per_lel_case_insensitive(self):
+        """Case-insensitive: 'per lel', 'per LEL', 'per Lel' all stripped."""
+        strip = self._get_strip_fn()
+        for variant in ("per lel event.", "per LEL event.", "per Lel event."):
+            result = strip(f"prefix {variant} suffix")
+            assert "per lel" not in result.lower(), (
+                f"LEL citation not stripped from: {repr(result)}"
+            )
+
+    def test_empty_string_returns_empty(self):
+        strip = self._get_strip_fn()
+        assert strip("") == ""
+
+    def test_none_passthrough(self):
+        """None-like empty values are returned unchanged."""
+        strip = self._get_strip_fn()
+        # strip_lel_citations returns empty string for falsy input
+        result = strip("")
+        assert result == ""
+
+    def test_no_lel_text_unchanged(self):
+        """Text without 'per LEL' is returned unchanged (modulo whitespace)."""
+        strip = self._get_strip_fn()
+        clean = "3-signal basis → 0.65. Moderate confidence."
+        result = strip(clean)
+        assert result == clean
+
+    def test_native_relationship_anchor_note_is_clean(self):
+        """
+        Regression for the actual C2-002 offending note in l4_anchors.py.
+
+        The anchor ANC.REL.2026.01 note contains:
+            'MD. Native already experiencing separation strain per LEL. 4-signal basis...'
+
+        After stripping, 'per LEL' must not appear.
+        """
+        strip = self._get_strip_fn()
+        offending = (
+            "Sade Sati Setting Phase + Mercury-Saturn AD = heaviest relational load of this "
+            "MD. Native already experiencing separation strain per LEL. 4-signal basis → 0.76. "
+            "Saturn as AD lord during Sade Sati creates a double-malefic compound for Moon-ruled "
+            "areas (emotions, mother, public relationships)."
+        )
+        result = strip(offending)
+        assert "per LEL" not in result
+        assert "LEL" not in result
+        # Ensure the rest of the note is substantially preserved
+        assert "Saturn" in result
+        assert "double-malefic" in result
+
+    def test_query_phala_anchors_notes_have_no_lel(self):
+        """
+        Integration regression: query_phala_anchors() response notes must
+        never contain 'per LEL' patterns for any anchor in the full catalog.
+        """
+        from brahmagyan.phala.l4_anchors import query_phala_anchors, NATIVE_CHART_ID
+        result = query_phala_anchors(
+            chart_id=NATIVE_CHART_ID,
+            date_range={"start": "2026-01-01", "end": "2040-12-31"},
+        )
+        assert result["ok"] is True
+        for anchor in result["anchors"]:
+            notes = anchor.get("notes", "")
+            assert "per LEL" not in notes.lower(), (
+                f"Anchor {anchor['anchor_id']} notes contain 'per LEL': {repr(notes)}"
+            )

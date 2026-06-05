@@ -47,6 +47,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
@@ -56,6 +57,40 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ── Privacy guard: strip LEL citations from public notes field (C2-002) ───────
+
+def strip_lel_citations(text: str) -> str:
+    """
+    Remove 'per LEL' citation patterns from public-facing notes fields.
+
+    C2-002 fix: the `notes` field is part of the public API response.
+    Raw LEL event references ('per LEL event 2007-03-14', 'per LEL') must
+    not appear in public output — LEL data is isolated in mimamsa.lel_events
+    and must not leak into the retrieval surface.
+
+    Pattern: r'\\bper LEL\\b.*?(?:\\.|$)' — matches 'per LEL <anything> .'
+    or 'per LEL <anything> <end-of-string>'.
+
+    Args:
+        text: The notes string to sanitize.
+
+    Returns:
+        The sanitized string with LEL citation patterns removed and
+        excess whitespace normalized.
+    """
+    if not text:
+        return text
+    cleaned = re.sub(
+        r'\bper LEL\b.*?(?:\.|$)',
+        '',
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Normalise runs of whitespace introduced by removal
+    cleaned = re.sub(r'  +', ' ', cleaned).strip()
+    return cleaned
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -999,7 +1034,7 @@ def query_phala_anchors(
             "falsifier": a["falsifier"],
             "confidence": a["confidence"],
             "source_citation": a["source_citation"],
-            "notes": a.get("notes", ""),
+            "notes": strip_lel_citations(a.get("notes", "")),
         })
 
     # Confidence distribution
