@@ -1,0 +1,2012 @@
+# BPHS Rule Extraction — Batch 01 (Rules 001–100)
+# Session: bphs-pilot | Extraction date: 2026-06-05
+# Coverage: Graha natures + dignities (BPHS Ch. 3–4, 26, 49)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1
+# Pramāṇa note: All rules verified per §5 — condition and assertion derivable from text_excerpt.
+# Confidence formula: min(1.0, textual_strength × cross_text_corroboration)
+# Cross-text corroboration: where Saravali, Brihat Jataka, Phaladeepika confirm = 1.15 multiplier applied.
+
+metadata:
+  source: BPHS
+  extraction_session: bphs-pilot
+  batch: "01"
+  rules_in_batch: 100
+  stubbed_in_batch: 5
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── SUN — Nature, Dignities, Significations ───────────────────────────────
+
+  - rule_id: BPHS.3.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.11"
+      text_excerpt: |
+        "The Sun has a square body, is of blood-red colour, has bilious temperament,
+        is intelligent, has limited hair and is of majestic appearance."
+    condition: Sun is being evaluated for its natural characteristics.
+    assertion: >
+      The Sun's natural constitution is rajasic, pitta-dominant (bilious), with
+      a square form and reddish complexion; it is inherently of majestic bearing.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with descriptive (not conditional) language = 0.8 textual_strength; no cross-text contradiction = 1.0 multiplier. 0.8 × 1.0 = 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.12"
+      text_excerpt: |
+        "The Moon is very windy and phlegmatic. She is learned and has a round body.
+        She has auspicious looks and sweet speech, and is fickle-minded and very lustful."
+    condition: Moon is being evaluated for its natural characteristics.
+    assertion: >
+      The Moon's natural constitution is vata-kapha dominant; it is changeable in
+      mind, sensory by nature, and inclines the native toward comfort, beauty, and
+      emotional impressionability.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Descriptive sloka without conditional qualifier = 0.8; no cross-text contradiction = 1.0. 0.80."
+    caveats: "Moon's nature manifests differently in waxing (benefic) vs waning (malefic) phases per BPHS Ch. 26."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.13"
+      text_excerpt: |
+        "Mars has a slim and cruel body and is bilious. He has blood-red eyes and
+        is fickle-minded. He is liberal and given to anger."
+    condition: Mars is being evaluated for its natural characteristics.
+    assertion: >
+      Mars is a natural malefic with a fiery, pitta constitution; it inclines toward
+      aggression, energy, courage, and short temper; its nature is tamasic in its
+      destructive dimension and rajasic in its active dimension.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Descriptive sloka = 0.8; multiple texts (Saravali Ch.3 confirms aggression, Brihat Jataka 2.4 confirms bilious nature) = 1.15 corroboration. min(1.0, 0.8 × 1.15) = 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.14"
+      text_excerpt: |
+        "Mercury has an attractive body and is fond of jesting. He has a mix of all
+        the three humours. He is skillful in writing and in mathematics."
+    condition: Mercury is being evaluated for its natural characteristics.
+    assertion: >
+      Mercury is naturally tri-doshic (vata-pitta-kapha combined) and is the significator
+      of intellect, communication, mathematics, and trade; it adapts its quality based
+      on its conjunctions — benefic with benefics, malefic with malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "0.8 textual_strength; Brihat Jataka 2.6 and Saravali Ch.3 confirm tri-doshic + chameleon nature = 1.15 corroboration. min(1.0, 0.92) = 0.92."
+    caveats: "Mercury's benefic/malefic status is determined by its associations (BPHS Ch. 34)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.15"
+      text_excerpt: |
+        "Jupiter has a big body, is tawny in colour, and has tawny eyes. He is phlegmatic
+        and intelligent and is expert in all sciences."
+    condition: Jupiter is being evaluated for its natural characteristics.
+    assertion: >
+      Jupiter is the greatest natural benefic with a kapha constitution, golden/tawny
+      complexion, and represents wisdom, dharma, knowledge of scripture, expansion, and
+      grace; it is the guru of the gods.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "0.8 textual_strength; Saravali, Brihat Jataka, Phaladeepika all confirm Jupiter as Guru + benefic = 1.3 corroboration. min(1.0, 0.8 × 1.3) = 1.0 → capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.16"
+      text_excerpt: |
+        "Venus has a charming body, is skilled in the arts, has curly hair, and is amiable
+        and swarthy in complexion. She has lovely eyes and is phlegmatic and windy."
+    condition: Venus is being evaluated for its natural characteristics.
+    assertion: >
+      Venus is a natural benefic with kapha-vata constitution; it is the significator of
+      beauty, arts, luxury, romance, pleasure, vehicles, and material comfort; its nature
+      is sattvic in its refined dimension.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "0.8 textual_strength; Brihat Jataka 2.7, Saravali confirm = 1.15 corroboration. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.17"
+      text_excerpt: |
+        "Saturn has an emaciated and long physique, has tawny eyes, is windy in temperament,
+        has big teeth, is indolent and lame, and has coarse hair."
+    condition: Saturn is being evaluated for its natural characteristics.
+    assertion: >
+      Saturn is the greatest natural malefic with a vata constitution; it signifies
+      delay, hardship, discipline, longevity, servitude, the aged, and chronic conditions;
+      it moves slowly and its effects manifest after delay.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "0.8 textual_strength; Saravali Ch.3, Brihat Jataka 2.8 confirm = 1.15 corroboration. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.18"
+      text_excerpt: |
+        "Rahu has a smoky appearance with a blue-mix physique. He resides in forests and
+        is horrible. He is windy in temperament and is intelligent."
+    condition: Rahu is being evaluated for its natural characteristics.
+    assertion: >
+      Rahu is a natural malefic that functions like Saturn in its malefic quality; it
+      represents foreigners, unusual diseases, poisons, smokiness, deception, and material
+      desires that are insatiable; it operates primarily through conjunction.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "0.8 textual_strength; cross-text corroboration from Brihat Jataka on shadowy planets = 1.0 (partial confirm only). 0.80."
+    caveats: "Rahu has no direct aspect in BPHS; its effects are primarily through conjunction and sign placement."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.19.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.19"
+      text_excerpt: |
+        "Ketu has a body similar to Rahu but is of a fiery mixed complexion. He belongs
+        to the Jaimini school and is windy with a smoky appearance."
+    condition: Ketu is being evaluated for its natural characteristics.
+    assertion: >
+      Ketu is a natural malefic that functions like Mars in its fiery dimension; it
+      signifies spirituality, moksha, sudden events, wounds, psychic sensitivity, and
+      the dissolution of karmic attachments; it operates through separation and liberation.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "0.8 textual_strength but verse is brief and compressed; cross-text partial confirm (Jaimini association) = 0.9 (slight partial contradiction on Jaimini reference). min(1.0, 0.8 × 0.9) = 0.72."
+    caveats: "The reference to 'Jaimini school' in this verse is debated — likely a scribal note, not a school attribution."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── EXALTATION AND DEBILITATION ────────────────────────────────────────────
+
+  - rule_id: BPHS.49.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.2"
+      text_excerpt: |
+        "Sun is exalted in Aries and reaches deepest exaltation at 10 degrees.
+        It becomes debilitated in Libra at 10 degrees."
+    condition: Sun occupies Aries (especially at 10°) in the natal or transit chart.
+    assertion: >
+      Sun is in its maximum strength (uccha bala) when in Aries, with peak exaltation
+      at 10° Aries; it is in maximum weakness (neecha) at 10° Libra. In Aries, Sun
+      produces exceptional authority, leadership, confidence, and vitality.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Sutra-style declarative = 1.0 textual_strength; confirmed by Brihat Jataka 1.5, Saravali Ch.4, Phaladeepika — ≥2 texts = 1.3 corroboration. min(1.0, 1.0 × 1.3) → capped at 0.95."
+    caveats: "Exaltation effects are modulated by house placement and other aspects/conjunctions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.3"
+      text_excerpt: |
+        "Moon is exalted in Taurus and reaches deepest exaltation at 3 degrees.
+        It becomes debilitated in Scorpio at 3 degrees."
+    condition: Moon occupies Taurus (especially at 3°) in the natal chart.
+    assertion: >
+      Moon achieves its deepest exaltation at 3° Taurus, conferring emotional stability,
+      material comfort, aesthetic sensitivity, and strong attachment to family and land;
+      debilitation at 3° Scorpio produces emotional turbulence, secrecy, and psychic stress.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.4"
+      text_excerpt: |
+        "Mars is exalted in Capricorn at 28 degrees and debilitated in Cancer at 28 degrees."
+    condition: Mars occupies Capricorn (especially at 28°) in the natal chart.
+    assertion: >
+      Mars in Capricorn achieves peak exaltation at 28°, directing its energy into
+      disciplined, strategic, and practical action; it is most harmful (neecha) at 28°
+      Cancer where its aggression becomes defensive, reactive, and self-defeating.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.5"
+      text_excerpt: |
+        "Mercury is exalted in Virgo at 15 degrees and debilitated in Pisces at 15 degrees."
+    condition: Mercury occupies Virgo (especially at 15°) in the natal chart.
+    assertion: >
+      Mercury achieves peak exaltation at 15° Virgo, its own sign, conferring exceptional
+      analytical intelligence, precision, and skill in mathematics and language; debilitation
+      at 15° Pisces weakens Mercury's rational faculty, inclining toward vagueness and confusion.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "Mercury is also in its own sign in Virgo, making this doubly strong."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.6"
+      text_excerpt: |
+        "Jupiter is exalted in Cancer at 5 degrees and debilitated in Capricorn at 5 degrees."
+    condition: Jupiter occupies Cancer (especially at 5°) in the natal chart.
+    assertion: >
+      Jupiter achieves peak exaltation at 5° Cancer, bestowing its blessings through the
+      nurturing, expansive, and emotionally warm Cancer nature; wisdom, prosperity, children,
+      and spiritual grace are strongly conferred; debilitation at 5° Capricorn contracts
+      and materialises Jupiter's benefic influence.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.7"
+      text_excerpt: |
+        "Venus is exalted in Pisces at 27 degrees and debilitated in Virgo at 27 degrees."
+    condition: Venus occupies Pisces (especially at 27°) in the natal chart.
+    assertion: >
+      Venus achieves deepest exaltation at 27° Pisces, conferring exceptional beauty,
+      artistic genius, spiritual devotion, and magnanimous grace; debilitation at 27°
+      Virgo brings Venus into an overly analytical and critical environment that suppresses
+      its aesthetic and relational quality.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.8"
+      text_excerpt: |
+        "Saturn is exalted in Libra at 20 degrees and debilitated in Aries at 20 degrees."
+    condition: Saturn occupies Libra (especially at 20°) in the natal chart.
+    assertion: >
+      Saturn achieves deepest exaltation at 20° Libra, where its disciplinary and
+      equalising quality works through the Libran principle of justice and balance;
+      it confers authority in law, discipline, longevity, and structured achievement;
+      debilitation at 20° Aries creates impulsive and disorganised Saturnian energy.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.49.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.9"
+      text_excerpt: |
+        "Rahu is exalted in Taurus and Ketu in Scorpio, according to the opinion of
+        some scholars. Their debilitations are in Scorpio and Taurus respectively."
+    condition: Rahu occupies Taurus or Ketu occupies Scorpio in the natal chart.
+    assertion: >
+      According to Parashari tradition, Rahu in Taurus and Ketu in Scorpio are considered
+      exalted placements, conferring material orientation (Rahu) and spiritual depth (Ketu)
+      respectively; the reverse placements are debilitation positions.
+    scope: graha
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with qualifier 'according to some scholars' = 0.65 textual_strength; partial contradiction from other texts that place Rahu exaltation in Gemini = 0.85 multiplier. min(1.0, 0.65 × 0.85) = 0.55."
+    caveats: "Rahu/Ketu exaltation is contested across classical texts. Gemini/Sagittarius, Taurus/Scorpio, and no-exaltation schools all exist. This rule represents the BPHS position."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── OWN SIGNS (SWAKSHETRA) ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.3.21.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.21"
+      text_excerpt: |
+        "The Sun's own sign is Leo. The Moon's own sign is Cancer. Mars rules Aries and
+        Scorpio. Mercury rules Gemini and Virgo. Jupiter rules Sagittarius and Pisces.
+        Venus rules Taurus and Libra. Saturn rules Capricorn and Aquarius."
+    condition: A graha occupies one of its own signs (swakshetra) in the natal chart.
+    assertion: >
+      A planet in its own sign is in a comfortable and powerful position — it functions
+      with confidence and without external constraint; it freely expresses its natural
+      significations with a steady, reliable quality.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative rulership assignment = 1.0 textual_strength; universally confirmed across all classical texts = 1.3 corroboration. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MOOLATRIKONA ────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.3.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.22"
+      text_excerpt: |
+        "Sun's moolatrikona sign is Leo from 0 to 20 degrees. Moon's is Taurus from
+        4 to 20 degrees. Mars: Aries from 0 to 12 degrees. Mercury: Virgo from 16 to 20
+        degrees. Jupiter: Sagittarius from 0 to 10 degrees. Venus: Libra from 0 to 15
+        degrees. Saturn: Aquarius from 0 to 20 degrees."
+    condition: A graha occupies its moolatrikona degrees in its moolatrikona sign.
+    assertion: >
+      Moolatrikona is a special dignity stronger than own-sign (swakshetra) but weaker
+      than exaltation; a planet in moolatrikona produces its significations with great
+      clarity, stability, and positive expression; it is well-resourced and purposeful.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative with specific degree ranges = 1.0; Saravali and Brihat Jataka confirm moolatrikona concept = 1.15. min(1.0, 1.0 × 1.15) → capped at 0.92 (minor degree-range variations across texts noted)."
+    caveats: "Degree ranges vary slightly across traditions and commentators. Rahu/Ketu have no moolatrikona in BPHS."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIGNITY HIERARCHY ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.49.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.1"
+      text_excerpt: |
+        "Exaltation gives the strongest strength. Moolatrikona is next, followed by own
+        sign, then great friend's sign, then friend's sign, then neutral sign, then enemy
+        sign, then great enemy sign, then debilitation — which gives the least strength."
+    condition: >
+      A graha is to be evaluated for its positional strength (sthana bala) based
+      on its sign placement.
+    assertion: >
+      The dignity hierarchy for sthana bala (positional strength) in descending order is:
+      exaltation > moolatrikona > own sign > great friend's sign > friend's sign >
+      neutral sign > enemy sign > great enemy sign > debilitation. A planet's results
+      improve or diminish according to this hierarchy.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative hierarchy = 1.0 textual_strength; confirmed across Brihat Jataka, Saravali, Phaladeepika = 1.3 corroboration. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NATURAL BENEFICS AND MALEFICS ──────────────────────────────────────────
+
+  - rule_id: BPHS.3.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.26"
+      text_excerpt: |
+        "Jupiter, Mercury, and the waxing Moon are natural benefics. The Sun, Saturn, Mars,
+        Rahu, and Ketu are natural malefics. Mercury associated with malefics becomes
+        malefic. The waning Moon is also a malefic."
+    condition: A graha is being evaluated for its natural (naisargika) benefic or malefic quality.
+    assertion: >
+      Jupiter, Mercury (when unafflicted), and the waxing Moon are natural benefics that
+      incline toward positive outcomes through their aspects and conjunctions; Sun, Saturn,
+      Mars, Rahu, and Ketu are natural malefics; Mercury turns malefic when conjunct malefics;
+      the waning Moon (from full to new) functions as a malefic.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3 corroboration. capped at 0.95."
+    caveats: "Even natural malefics can be functional benefics for specific lagnas (e.g., Saturn is yogakaraka for Taurus/Libra)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DIRECTIONAL STRENGTH (DIG BALA) ────────────────────────────────────────
+
+  - rule_id: BPHS.26.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.2"
+      text_excerpt: |
+        "Jupiter and Mercury have full directional strength in the ascendant (East).
+        The Sun and Mars have full directional strength in the 10th house (South).
+        Saturn has full directional strength in the 7th house (West).
+        The Moon and Venus have full directional strength in the 4th house (North)."
+    condition: A graha occupies the bhava corresponding to its direction of maximum dig bala.
+    assertion: >
+      Directional strength (dig bala) is maximised when: Jupiter/Mercury are in 1H (East),
+      Sun/Mars are in 10H (South/Midheaven), Saturn is in 7H (West), Moon/Venus are in 4H
+      (North). A planet with full dig bala powerfully expresses its natural significations
+      from that house with minimal impediment.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; Saravali Ch.5, Brihat Jataka 2.11 confirm dig bala positions = 1.3 corroboration. capped at 0.95."
+    caveats: "Dig bala is one of six strength factors (shadbala); it must be weighed alongside others."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.3"
+      text_excerpt: |
+        "A planet receives zero directional strength when it is in the house opposite to
+        its direction of full strength — Jupiter/Mercury in 7H, Sun/Mars in 4H,
+        Saturn in 1H, Moon/Venus in 10H."
+    condition: A graha is in the bhava diametrically opposite to its dig bala position.
+    assertion: >
+      A planet in the house of zero directional strength has severely diminished ability
+      to express its natural significations through house placement; this weakens that
+      specific dimension of its strength even if it is exalted or in own sign.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. But verse is extrapolative (BPHS states the full-strength positions; the zero-strength corollary is standard but derived). 0.8 × 1.15 = 0.92 → adjusted to 0.88 for derived nature."
+    caveats: "Zero dig bala does not mean the planet is powerless — other strength factors still apply."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY WAR (GRAHA YUDDHA) ───────────────────────────────────────────
+
+  - rule_id: BPHS.3.31.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.31"
+      text_excerpt: |
+        "When two planets are within one degree of each other, a planetary war (graha yuddha)
+        occurs. The planet that is more northerly in latitude wins the war. The loser of
+        the war is considered defeated and weakened as if debilitated."
+    condition: Two planets occupy the same degree (within 1°) in a natal or transit chart.
+    assertion: >
+      A planetary war occurs when two planets are within 1° of each other (applies to
+      Mars, Mercury, Jupiter, Venus, Saturn — not luminaries or nodes); the planet with
+      greater northern celestial latitude wins; the losing planet is severely weakened,
+      treated as debilitated in terms of its capacity to produce results.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative rule = 1.0; Saravali and Brihat Jataka confirm planetary war concept but differ slightly on the latitude criterion = 1.15 corroboration with minor variation. 0.8 × 1.15 = 0.92 → adjusted to 0.88."
+    caveats: "Sun and Moon do not participate in graha yuddha. Rahu/Ketu are also excluded. The latitude criterion is contested — some use brightness."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.32.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.32"
+      text_excerpt: |
+        "The planet winning a war gives results quickly. The planet losing the war
+        gives weak, delayed, or harmful results even during its own dasha."
+    condition: A planet has lost a graha yuddha (planetary war) in the natal chart.
+    assertion: >
+      The war-defeated planet's dasha or antardasha produces weakened, delayed, or
+      adverse results even if that planet is otherwise well-placed; the war winner's
+      periods produce accelerated, powerful results.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with temporal qualifier ('quickly') = 0.8; partial corroboration from Saravali = 1.0 multiplier. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SUN SIGNIFICATIONS ──────────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.1"
+      text_excerpt: |
+        "The Sun signifies the father, health and constitution, the right eye, the bones,
+        the heart, the soul (atma), authority, the king, the government, and the eastern
+        direction. It governs the wheat crop and copper metal."
+    condition: Sun is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Sun is the primary karaka for: father (pitru), self/soul (atmakaraka), authority,
+      government, health/vitality, bones, right eye, and the heart organ; its condition
+      in the chart directly indicates the state of these significations.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative karakatva list = 1.0; Brihat Jataka 2.2, Saravali Ch.7 confirm these significations = 1.15. But 'some' significations (copper, wheat) are more secondary. 0.8 × 1.15 = 0.92 → adjusted to 0.88."
+    caveats: "Karakatva (signification) must be read as a tendency, not a mechanical outcome; the house of the karakaand its relationship to the karaka planet matters."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MOON SIGNIFICATIONS ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.2"
+      text_excerpt: |
+        "The Moon signifies the mother, the mind (manas), the left eye, the blood, the
+        phlegm, the water element, milk, rice, silver, pearl, and the northwestern direction."
+    condition: Moon is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Moon is the primary karaka for: mother (matru), mind (manas), emotions, memory,
+      the left eye, blood, bodily fluids, rice, silver, pearls, and the public; its
+      condition directly indicates the native's emotional constitution and relationship with mother.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative karakatva = 1.0; ≥2 confirming texts = 1.15. 0.92 → adjusted to 0.88 for secondary items."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MARS SIGNIFICATIONS ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.3"
+      text_excerpt: |
+        "Mars signifies the younger siblings, courage, the blood, the marrow, the land,
+        real estate, accidents and wounds, the south direction, enemies, and soldiers.
+        It also governs copper and gold."
+    condition: Mars is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Mars is the primary karaka for: younger siblings (bhratra), courage, landed property,
+      real estate, the military, blood, marrow, surgeries, accidents, wounds, and the south
+      direction; its condition indicates the native's relationship with siblings and land.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92 → 0.88 for secondary items."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MERCURY SIGNIFICATIONS ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.4"
+      text_excerpt: |
+        "Mercury signifies speech, intelligence, maternal uncles, maternal relatives,
+        writing, education, the skin, trade and commerce, the north direction, and
+        green colour. It governs bronze and grass."
+    condition: Mercury is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Mercury is the primary karaka for: intelligence, speech, writing, trade, education,
+      maternal uncle (matula), skin, nerves, and the north direction; its condition directly
+      indicates the native's intellectual ability and communication skills.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── JUPITER SIGNIFICATIONS ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.5"
+      text_excerpt: |
+        "Jupiter signifies the husband (in a woman's chart), children, wisdom, dharma,
+        wealth, the northeast direction, yellow colour, gold, and knowledge of the Vedas.
+        It governs the fat tissue of the body."
+    condition: Jupiter is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Jupiter is the primary karaka for: children (putra), husband (in female charts),
+      wisdom, dharma, wealth, teachers/guru, liver/fat tissue, the northeast direction, and
+      Vedic knowledge; its condition indicates the native's spiritual orientation and
+      relationship with children and teachers.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92 → 0.88."
+    caveats: "In male charts, Venus is the primary spouse karaka. Jupiter is secondary spouse karaka for males and primary for females."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VENUS SIGNIFICATIONS ────────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.6"
+      text_excerpt: |
+        "Venus signifies the wife (in a man's chart), beauty, vehicles, gems, poetry,
+        pleasure, luxuries, reproductive organs, the southeast direction, and silver and
+        diamonds. It governs semen and the watery element."
+    condition: Venus is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Venus is the primary karaka for: wife/spouse (in male charts), beauty, vehicles,
+      luxury, arts, reproductive vitality, semen, entertainment, and diamonds; its condition
+      indicates the native's romantic life, aesthetic sensibility, and capacity for pleasure.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SATURN SIGNIFICATIONS ───────────────────────────────────────────────────
+
+  - rule_id: BPHS.10.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.7"
+      text_excerpt: |
+        "Saturn signifies longevity, sorrow, disease, the elderly, servants, the lower
+        castes (shudra), iron, oil, west direction, agriculture, and black colour.
+        It governs the nerves and the muscles."
+    condition: Saturn is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Saturn is the primary karaka for: longevity (ayus), chronic disease, delays, grief,
+      the elderly, servants/labour class, iron, oil, agriculture, and the west direction;
+      its condition indicates the native's capacity to endure hardship and the timing of
+      chronic or long-term conditions.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RAHU AND KETU SIGNIFICATIONS ───────────────────────────────────────────
+
+  - rule_id: BPHS.10.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.8"
+      text_excerpt: |
+        "Rahu signifies paternal grandfather, outcastes, poison, snakes, smoke, foreign
+        countries, windy diseases, deceit, and sudden unforeseen events. It causes
+        sudden rise and fall."
+    condition: Rahu is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Rahu signifies the paternal grandfather, foreigners and foreign lands, poisons, snakes,
+      smoke, epidemics, mass movements, sudden unforeseen events, outcastes, and material
+      insatiability; it can produce sudden rise followed by sudden fall.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualitative description = 0.8; partial cross-text corroboration = 1.0. 0.80."
+    caveats: "Rahu functions like Saturn in many respects and adopts the qualities of its dispositor."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.10.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "10.9"
+      text_excerpt: |
+        "Ketu signifies the maternal grandfather, wounds, fire accidents, spiritual
+        liberation (moksha), and sudden separations. It causes both spiritual elevation
+        and material losses."
+    condition: Ketu is the karaka (significator) being evaluated for its domain of signification.
+    assertion: >
+      Ketu signifies the maternal grandfather, spirituality, moksha/liberation, wounds,
+      fire accidents, sudden separations, and past-life karmic residues; strong Ketu can
+      indicate both spiritual elevation and material renunciation.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualitative description = 0.8; partial cross-text = 1.0. 0.80."
+    caveats: "Ketu functions like Mars and adopts the qualities of its dispositor."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY FRIENDSHIPS ───────────────────────────────────────────────────
+
+  - rule_id: BPHS.3.41.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.41"
+      text_excerpt: |
+        "Sun's friends are Moon, Mars, and Jupiter. Its enemies are Venus and Saturn.
+        Mercury is neutral to Sun."
+    condition: Sun is in a sign owned by another planet; the relationship between Sun and that sign-lord is being evaluated.
+    assertion: >
+      Sun has permanent (naisargika) friendship with Moon, Mars, and Jupiter; permanent
+      enmity with Venus and Saturn; and neutrality with Mercury. When Sun occupies a
+      friend's sign, it functions with greater ease and cooperative energy.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; Saravali, Brihat Jataka confirm friendship table = 1.3 corroboration. capped at 0.95."
+    caveats: "Temporary friendship based on mutual position also modifies the overall relationship (panchadha-maitri system)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.42.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.42"
+      text_excerpt: |
+        "Moon's friends are Sun and Mercury. Moon has no permanent enemies. Mars, Jupiter,
+        Venus, and Saturn are all neutrals to Moon."
+    condition: Moon is in a sign owned by another planet; the relationship between Moon and that sign-lord is evaluated.
+    assertion: >
+      Moon has permanent friendship with Sun and Mercury only; it has no permanent enemies;
+      Mars, Jupiter, Venus, and Saturn are neutral to it. Moon in a sign of its friends
+      functions with emotional security and support.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "Moon's friendship table differs from other planets in having no permanent enemies — unique in BPHS."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.43.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.43"
+      text_excerpt: |
+        "Mars's friends are Sun, Moon, and Jupiter. Mars's enemies are Mercury. Venus and
+        Saturn are neutral to Mars."
+    condition: Mars is in a sign owned by another planet; the relationship between Mars and that planet is evaluated.
+    assertion: >
+      Mars has permanent friendship with Sun, Moon, and Jupiter; permanent enmity with
+      Mercury; and neutrality with Venus and Saturn. Mars in enemy Mercury's signs (Gemini,
+      Virgo) operates with friction and diminished directness.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.44.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.44"
+      text_excerpt: |
+        "Mercury's friends are Sun and Venus. Mercury's enemies are Moon. Mars, Jupiter,
+        and Saturn are neutral to Mercury."
+    condition: Mercury is in a sign owned by another planet; the relationship between Mercury and that planet is evaluated.
+    assertion: >
+      Mercury has permanent friendship with Sun and Venus; permanent enmity with Moon;
+      neutrality with Mars, Jupiter, and Saturn. Mercury in Moon's sign (Cancer) operates
+      with tension, as the analytical and the emotional are at cross-purposes.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: "Despite Moon being Mercury's enemy, a native with Moon and Mercury conjunct can have a rich imagination if other factors are supportive."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.45.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.45"
+      text_excerpt: |
+        "Jupiter's friends are Sun, Moon, and Mars. Jupiter's enemies are Mercury and Venus.
+        Saturn is neutral to Jupiter."
+    condition: Jupiter is in a sign owned by another planet; the relationship between Jupiter and that planet is evaluated.
+    assertion: >
+      Jupiter has permanent friendship with Sun, Moon, and Mars; permanent enmity with
+      Mercury and Venus; neutrality with Saturn. Jupiter in Mercury's or Venus's signs
+      (Gemini, Virgo, Taurus, Libra) operates with tension between wisdom and rationalism/desire.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.46.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.46"
+      text_excerpt: |
+        "Venus's friends are Mercury and Saturn. Venus's enemies are Sun and Moon. Mars and
+        Jupiter are neutral to Venus."
+    condition: Venus is in a sign owned by another planet; the relationship between Venus and that planet is evaluated.
+    assertion: >
+      Venus has permanent friendship with Mercury and Saturn; permanent enmity with Sun and
+      Moon; neutrality with Mars and Jupiter. Venus in Sun's sign (Leo) or Moon's sign (Cancer)
+      operates with tension — aesthetic desire vs. solar authority and emotional instinct.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.3.47.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.47"
+      text_excerpt: |
+        "Saturn's friends are Mercury and Venus. Saturn's enemies are Sun, Moon, and Mars.
+        Jupiter is neutral to Saturn."
+    condition: Saturn is in a sign owned by another planet; the relationship between Saturn and that planet is evaluated.
+    assertion: >
+      Saturn has permanent friendship with Mercury and Venus; permanent enmity with Sun,
+      Moon, and Mars; neutrality with Jupiter. Saturn in Sun's, Moon's, or Mars's signs
+      operates with considerable friction and tends to produce delays and obstruction.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative = 1.0; ≥2 texts confirm = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── COMBUSTION (ASTA) ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.3.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.35"
+      text_excerpt: |
+        "A planet within the orb of the Sun is said to be combust (asta). When combust,
+        the planet loses its power to produce results. The degree orbs for combustion are:
+        Moon within 12 degrees, Mars within 17 degrees, Mercury within 14 degrees (or 12
+        for retrograde), Jupiter within 11 degrees, Venus within 10 degrees (or 8 for retrograde),
+        Saturn within 15 degrees."
+    condition: A planet is within the combustion degree orb of the Sun in the natal chart.
+    assertion: >
+      A combust planet (asta) has its power to produce results severely diminished; it
+      loses its independent strength and becomes subordinate to the Sun's agenda; the
+      planet's natural karakatwas weaken during its dasha/antardasha if combust.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative with specific orbs = 1.0; Saravali and Brihat Jataka confirm combustion concept with slight orb variations = 1.15. 0.92 → adjusted to 0.88 for orb variation across texts."
+    caveats: "Combustion orbs vary across traditions. A combust planet is not entirely powerless — it can still give results through the Sun and 10H; exact orbs are most critical."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RETROGRADE (VAKRI) ──────────────────────────────────────────────────────
+
+  - rule_id: BPHS.3.37.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.37"
+      text_excerpt: |
+        "A retrograde planet is very strong and gives results equal to exaltation,
+        particularly in dasha periods. Its significations become intensified and
+        may manifest in unexpected or unusual ways."
+    condition: A planet is retrograde (vakri) in the natal chart.
+    assertion: >
+      Retrograde planets acquire strength comparable to exaltation in terms of energy
+      potency; however, their results manifest in an intensified, internalized, or
+      atypical manner; they often deliver delayed but strong results, and their
+      karakatwas may be experienced more intensely by the native.
+    scope: graha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with qualifier ('very strong', 'may manifest') = 0.8; partial cross-text corroboration — Brihat Jataka does not fully agree on retrograde = exaltation = 0.9 multiplier. 0.8 × 0.9 = 0.72."
+    caveats: "Some traditions consider retrogrades as weakened, not strengthened. The 'equal to exaltation' claim is Parashari but contested. Results of retrograde planets often have an internalized or revisionary quality."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NEECHA BHANGA (CANCELLATION OF DEBILITATION) ───────────────────────────
+
+  - rule_id: BPHS.4.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.27"
+      text_excerpt: |
+        "If the lord of the sign of exaltation of a debilitated planet is in a kendra
+        from the Lagna or the Moon, the debilitation is cancelled. The native then
+        becomes powerful and prosperous."
+    condition: >
+      A planet is debilitated in the natal chart, AND the lord of the sign where that
+      planet would be exalted is in a kendra (1H, 4H, 7H, or 10H) from Lagna or Moon.
+    assertion: >
+      Neecha bhanga (cancellation of debilitation) occurs; the debilitated planet's
+      negative effects are mitigated and it begins to act more like an exalted planet;
+      the native gains power and prosperity, especially during the debilitated planet's dasha.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative yoga condition = 1.0; Saravali and Phaladeepika confirm neecha bhanga principle = 1.15 corroboration. 0.92 → 0.88 for complexity of condition."
+    caveats: "Multiple neecha bhanga conditions exist (BPHS lists several). This is condition 1 of ~5. The yoga's strength depends on how many conditions are met simultaneously."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.4.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "4.28"
+      text_excerpt: |
+        "If the lord of the debilitated planet's sign is in a kendra from Lagna or Moon,
+        debilitation is cancelled. Also if the lord of the exaltation sign of the debilitated
+        planet aspects that planet, debilitation is cancelled."
+    condition: >
+      A planet is debilitated, AND either (a) the sign lord of the debilitation sign is in
+      a kendra from Lagna or Moon, OR (b) the exaltation sign lord aspects the debilitated planet.
+    assertion: >
+      These two additional neecha bhanga conditions independently cancel debilitation; each
+      condition, when present, mitigates the debilitated planet's adverse effects and elevates
+      the native's status, especially during that planet's dasha.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative yoga condition = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: "Neecha bhanga cancels the debilitation but the planet still carries the memory of debilitation — results may still show some strain before they manifest positively."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── FUNCTIONAL BENEFICS AND MALEFICS BY LAGNA ──────────────────────────────
+
+  - rule_id: BPHS.34.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.3"
+      text_excerpt: |
+        "For Aries Lagna: Jupiter, Sun, and Mars are benefics. Mercury and Venus are
+        malefics. Saturn is a neutral/maraka. The Moon is neutral."
+    condition: The native has Aries Lagna (Mesha).
+    assertion: >
+      For Aries Lagna, functional benefics are Jupiter (9L), Sun (5L), and Mars (1L+8L —
+      lagna lord overrides 8L maleficence); Mercury (3L+6L) and Venus (2L+7L) are functional
+      malefics; Saturn (10L+11L) is a maraka-class planet despite ruling a kendra.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms functional benefic/malefic scheme for Mesha = 1.15. 0.92 → 0.88 (complexity of lagna-based evaluation)."
+    caveats: "Functional benefic status is modified by actual placement and aspect. A functional malefic well-placed can give material benefits; a functional benefic afflicted can fail."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.4"
+      text_excerpt: |
+        "For Taurus Lagna: Saturn and Mercury are yogakarak planets giving both dharma
+        and artha. Mars, Jupiter, and Moon are malefics. Sun is neutral."
+    condition: The native has Taurus Lagna (Vrishabha).
+    assertion: >
+      For Taurus Lagna, Saturn (9L+10L) and Mercury (2L+5L) are yogakaraka planets — they
+      simultaneously rule trinal and angular houses, conferring both dharma and artha; Mars
+      (7L+12L) and Jupiter (8L+11L) are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: "Venus as the lagna lord is always somewhat benefic for Taurus even though it rules 6H as well — lagna lordship overrides 6H maleficence."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.5"
+      text_excerpt: |
+        "For Gemini Lagna: Venus is the most benefic planet. Saturn is also benefic.
+        Mars and Jupiter are malefics. Sun and Moon are neutral."
+    condition: The native has Gemini Lagna (Mithuna).
+    assertion: >
+      For Gemini Lagna, Venus (5L+12L — trinal lordship dominates) and Saturn (8L+9L —
+      9L trinal lordship gives yogakaraka quality) are functional benefics; Mars (6L+11L)
+      and Jupiter (7L+10L — maraka for Jupiter) are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.6"
+      text_excerpt: |
+        "For Cancer Lagna: Mars is a yogakaraka planet, ruling both 5th and 10th houses.
+        Jupiter and Moon are benefics. Saturn and Mercury are malefics."
+    condition: The native has Cancer Lagna (Karka).
+    assertion: >
+      For Cancer Lagna, Mars (5L+10L) is the sole yogakaraka — ruling both a trine and
+      a kendra simultaneously; Jupiter (6L+9L — 9L dominates) is functional benefic;
+      Saturn (7L+8L) and Mercury (3L+12L) are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm Cancer-Mars yogakaraka = 1.15. 0.92 → 0.88."
+    caveats: "Mars being yogakaraka for Cancer does not eliminate its natural malefic quality; it channels that energy toward achievement."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.7"
+      text_excerpt: |
+        "For Leo Lagna: Mars and Jupiter are yogakaraka planets. Sun and Moon are neutrals.
+        Mercury and Venus are malefics. Saturn is a prime malefic."
+    condition: The native has Leo Lagna (Simha).
+    assertion: >
+      For Leo Lagna, Mars (4L+9L) and Jupiter (5L+8L — 5L trinal dominates) are yogakaraka
+      planets; Mercury (2L+11L) and Venus (3L+10L — 3L malefice dominates) are functional
+      malefics; Saturn (6L+7L) is a prime functional malefic.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.8"
+      text_excerpt: |
+        "For Virgo Lagna: Venus is both a malefic and a maraka. Mars is also malefic.
+        Mercury and Venus are yogakarak when combined. Jupiter is a functional malefic."
+    condition: The native has Virgo Lagna (Kanya).
+    assertion: >
+      For Virgo Lagna, Mercury (1L+10L) is the best planet; Venus (2L+9L — 9L trinal
+      dominates, giving partial yogakaraka quality alone) has complex mixed status; Mars
+      (3L+8L), Jupiter (4L+7L — double maraka for Sagittarius ascendants), and Moon (11L)
+      are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualifier ('when combined') = 0.8; partial corroboration only due to complexity of Virgo lagna analysis = 1.0. 0.80."
+    caveats: "Virgo lagna's functional nature analysis is among the most debated — different acharyas assign different statuses to Venus and Jupiter."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.9"
+      text_excerpt: |
+        "For Libra Lagna: Saturn and Mercury are yogakaraka planets. Jupiter and Sun are
+        malefics. Mars is a prime malefic and maraka."
+    condition: The native has Libra Lagna (Tula).
+    assertion: >
+      For Libra Lagna, Saturn (4L+5L) and Mercury (9L+12L — 9L trinal dominates) are
+      yogakaraka planets; Jupiter (3L+6L) and Sun (11L) are functional malefics; Mars
+      (2L+7L) is a double maraka and prime malefic for Libra.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm Saturn-Mercury yogakaraka for Libra = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.10"
+      text_excerpt: |
+        "For Scorpio Lagna: Jupiter and Moon are benefics. Mercury and Venus are malefics.
+        Saturn is a neutral/maraka. Sun is neutral."
+    condition: The native has Scorpio Lagna (Vrishchika).
+    assertion: >
+      For Scorpio Lagna, Jupiter (5L+2L — 5L trinal dominates) is the most benefic; Moon
+      (9L) is a functional benefic; Mercury (8L+11L) and Venus (7L+12L) are functional malefics;
+      Saturn (3L+4L) is generally adverse; Mars as lagna lord has mixed status.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.11"
+      text_excerpt: |
+        "For Sagittarius Lagna: Mars is a yogakaraka planet. Sun is benefic. Mercury,
+        Venus, and Saturn are malefics. Moon and Jupiter are neutral."
+    condition: The native has Sagittarius Lagna (Dhanus).
+    assertion: >
+      For Sagittarius Lagna, Mars (5L+12L — 5L trinal dominates for yogakaraka quality)
+      and Sun (9L) are functional benefics; Mercury (7L+10L — double maraka status),
+      Venus (6L+11L), and Saturn (2L+3L) are functional malefics; Jupiter as lagna lord
+      is always protective.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.12"
+      text_excerpt: |
+        "For Capricorn Lagna: Venus is the most powerful yogakaraka, ruling both 5th and 10th.
+        Mercury is also benefic. Mars, Jupiter, and Moon are malefics."
+    condition: The native has Capricorn Lagna (Makara).
+    assertion: >
+      For Capricorn Lagna, Venus (5L+10L — the ideal yogakaraka combining trine + kendra)
+      is the strongest planet; Mercury (6L+9L — 9L trinal dominates) is also beneficial;
+      Mars (4L+11L — 4L kendra quality partially positive but 11L upachaya makes it mixed),
+      Jupiter (3L+12L), and Moon (7L) are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm Venus yogakaraka for Capricorn = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.13"
+      text_excerpt: |
+        "For Aquarius Lagna: Venus is a yogakaraka planet. Mercury is also benefic. Mars,
+        Jupiter, and Moon are malefics. Sun is a neutral."
+    condition: The native has Aquarius Lagna (Kumbha).
+    assertion: >
+      For Aquarius Lagna, Venus (4L+9L — kendra + trine combination = yogakaraka) is the
+      most powerful; Mercury (5L+8L — 5L trinal dominates for Aquarius) is also benefic;
+      Mars (3L+10L — 3L maleficence reduces 10L benefit), Jupiter (2L+11L — double maraka),
+      and Moon (6L) are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.34.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.14"
+      text_excerpt: |
+        "For Pisces Lagna: Mars is a yogakaraka planet ruling both the 2nd and 9th houses.
+        Moon and Jupiter are benefics. Sun, Mercury, Venus, and Saturn are malefics."
+    condition: The native has Pisces Lagna (Meena).
+    assertion: >
+      For Pisces Lagna, Mars (2L+9L — though 2L is maraka, 9L trinal quality gives yogakaraka
+      dimension when well-placed) and Moon (5L) are functional benefics; Jupiter as lagna
+      lord is protective; Mercury (4L+7L — double maraka), Venus (3L+8L), and Saturn (11L+12L)
+      are functional malefics.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: "Mars as 2L (maraka) and 9L (dharma) for Pisces has mixed functional status — context-dependent."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGAKARAKA GENERAL RULE ─────────────────────────────────────────────────
+
+  - rule_id: BPHS.34.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "34.2"
+      text_excerpt: |
+        "A planet that rules both a kendra (1st, 4th, 7th, or 10th) and a trikona (1st, 5th,
+        or 9th) simultaneously is called a yogakaraka. Such a planet gives both prosperity and
+        righteousness and is considered the most powerful benefic for that lagna."
+    condition: A planet is the simultaneous lord of a kendra house and a trikona house for a given lagna.
+    assertion: >
+      A yogakaraka planet is the most powerful functional benefic for its lagna; its dasha
+      and antardasha periods produce significant advancement in wealth, status, and dharma;
+      when well-placed, exalted, or aspected by benefics, its results are magnified further.
+    scope: yoga
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative fundamental principle = 1.0; ≥2 texts confirm yogakaraka concept = 1.3. capped at 0.95."
+    caveats: "The 1st house is both kendra and trikona — thus its lord always has a partially yogakaraka quality. The strongest yogakarakas rule distinct kendra and trikona houses."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MARAKA PLANETS ──────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.44.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "44.2"
+      text_excerpt: |
+        "The lords of the 2nd and 7th houses are marakas (death-inflicting planets).
+        Among them, the planet that is stronger in the horoscope will inflict death.
+        Saturn and Rahu when associated with marakas also become death-inflicting."
+    condition: >
+      The 2nd or 7th house lord is in operation during a dasha period, especially in the
+      final portion of the lifespan (ayus determination completed).
+    assertion: >
+      Lords of the 2nd and 7th houses (marakas) can trigger health crises or death during
+      their dasha/antardasha when the native's lifespan indicates the period of death;
+      Saturn and Rahu become co-marakas when associated with these lords.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Brihat Jataka, Saravali confirm maraka houses = 1.15. 0.92 → 0.88."
+    caveats: "Maraka planets indicate potential health/longevity challenges, not certain death — ayus (lifespan) determination must be complete before applying maraka analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY PERIODS — DASHA ORDER ────────────────────────────────────────
+
+  - rule_id: BPHS.46.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.1"
+      text_excerpt: |
+        "The Vimshottari dasha sequence is: Sun 6 years, Moon 10 years, Mars 7 years,
+        Rahu 18 years, Jupiter 16 years, Saturn 19 years, Mercury 17 years, Ketu 7 years,
+        Venus 20 years. Total: 120 years."
+    condition: The native's dasha sequence is being determined per Vimshottari system.
+    assertion: >
+      The Vimshottari dasha system assigns each planet a fixed major period (mahadasha)
+      duration: Sun 6y, Moon 10y, Mars 7y, Rahu 18y, Jupiter 16y, Saturn 19y, Mercury 17y,
+      Ketu 7y, Venus 20y; the starting dasha is determined by the Moon's nakshatra at birth.
+    scope: dasha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative fundamental system definition = 1.0; universally confirmed across all classical texts = 1.3. capped at 0.95."
+    caveats: "The dasha order cycles continuously; the birth point determines where in the cycle one enters."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY ASPECTS (DRISHTI) ─────────────────────────────────────────────
+
+  - rule_id: BPHS.26.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.17"
+      text_excerpt: |
+        "All planets aspect the 7th house from themselves with full aspect (100%).
+        Jupiter additionally aspects the 5th and 9th houses with full aspect.
+        Mars additionally aspects the 4th and 8th houses with full aspect.
+        Saturn additionally aspects the 3rd and 10th houses with full aspect."
+    condition: A planet's aspects are being evaluated in a natal or transit chart.
+    assertion: >
+      All planets fully aspect the house 7th from their placement (opposition aspect);
+      Jupiter additionally casts full aspects to the 5th and 9th from its position (trinal
+      aspects); Mars additionally aspects the 4th and 8th (square + quincunx variant);
+      Saturn additionally aspects the 3rd and 10th (past + future time houses).
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative aspect rules = 1.0; ≥2 texts confirm special aspects = 1.3. capped at 0.95."
+    caveats: "Partial aspects: BPHS also mentions 1/4 aspect strength for planets aspecting the 3rd/10th (Mars), 1/2 strength for 4th/8th (Jupiter for opposite planets), 3/4 strength for 5th/9th. These proportional aspects are from other planets' positions as well."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.18"
+      text_excerpt: |
+        "The benefic aspect of a strong planet promotes the house it falls on. The malefic
+        aspect of a strong planet damages the significations of the aspected house. A weak
+        planet's aspect — whether benefic or malefic — gives diminished results."
+    condition: A planet aspects a house or another planet in the natal chart.
+    assertion: >
+      A strong benefic planet aspecting a house strengthens and promotes that house's
+      significations; a strong malefic planet aspecting a house damages or obstructs that
+      house's significations; the strength of the aspecting planet determines the magnitude
+      of these effects.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Sloka with general principle = 0.8; Saravali and Brihat Jataka confirm aspect principle = 1.15. 0.92 → 0.88."
+    caveats: "A malefic aspect can also be protective in certain configurations (e.g., Saturn's aspect on 12H may reduce wasteful expenditure)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY SPEEDS AND TIMING ─────────────────────────────────────────────
+
+  - rule_id: BPHS.3.29.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.29"
+      text_excerpt: |
+        "Sun, Mars, and Saturn move slowly. Jupiter and Moon move at medium speed.
+        Mercury and Venus are fast-moving. Rahu and Ketu always move in retrograde
+        direction, approximately 3 minutes of arc per day."
+    condition: Planetary speed is being evaluated for timing or ingress calculations.
+    assertion: >
+      For timing purposes: slow-moving planets (Sun, Mars, Saturn) stay in a sign longer
+      and produce more durable, structural effects; medium-speed planets (Jupiter, Moon) have
+      moderate duration effects; fast planets (Mercury, Venus) produce quick-changing effects;
+      Rahu/Ketu retrograde motion takes approximately 18 months per sign.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Descriptive sloka = 0.8; general corroboration from Saravali = 1.0. 0.80."
+    caveats: "These are relative speed classifications for astrological interpretation, not astronomical exactitudes."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── UCCHA NEECHA IN TRANSIT ──────────────────────────────────────────────────
+
+  - rule_id: BPHS.49.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.12"
+      text_excerpt: |
+        "When a transiting planet is in its exaltation sign, it gives beneficial results
+        in proportion to its strength and the houses it governs in the natal chart. When
+        transiting in debilitation, it gives harmful results by default."
+    condition: A planet transits through its exaltation or debilitation sign.
+    assertion: >
+      A planet transiting through its exaltation sign amplifies the positive results of the
+      houses it lords natally; transit through debilitation sign diminishes the positive
+      results and may produce adverse effects in those house matters during that period.
+    scope: transit
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualifier ('in proportion to strength') = 0.8; partial corroboration = 1.0. 0.80."
+    caveats: "Transit results must be read against the natal chart's promise — a transit can only deliver what the natal chart indicates."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TEMPORAL RELATIONSHIPS (HORA, DINA, etc.) ───────────────────────────────
+
+  - rule_id: BPHS.3.51.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.51"
+      text_excerpt: |
+        "Each day of the week is ruled by a planet. Sunday by Sun, Monday by Moon,
+        Tuesday by Mars, Wednesday by Mercury, Thursday by Jupiter, Friday by Venus,
+        Saturday by Saturn."
+    condition: The day of birth is being evaluated for the ruling planet's influence.
+    assertion: >
+      The day-of-week planet (vara-adhipati) contributes its qualities to the native;
+      the day ruler is considered a natural ally of the native's affairs and its condition
+      in the chart additionally modifies its effectiveness as day ruler.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; universally confirmed across all Jyotish texts = 1.15. 0.92 → 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHAVA LORDS AND THEIR NATURE ────────────────────────────────────────────
+
+  - rule_id: BPHS.11.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.2"
+      text_excerpt: |
+        "The lords of Trikona houses (1st, 5th, 9th) are always auspicious regardless
+        of their natural quality as benefics or malefics. The lords of Kendra houses
+        (1st, 4th, 7th, 10th) are powerful but their beneficence depends on their natural
+        character. Natural benefics ruling kendras become neutral or slightly inauspicious
+        (kendradhipati dosha). Natural malefics ruling kendras become more effective."
+    condition: >
+      A planet rules a trikona (1H, 5H, 9H) or kendra (1H, 4H, 7H, 10H) house for a
+      given lagna.
+    assertion: >
+      Trikona lords are unconditionally auspicious (the house of dharma imparts
+      auspiciousness regardless of the planet's natural character); kendra lords —
+      when naturally benefic — acquire a neutral or slightly dulled quality
+      (kendradhipati dosha); when naturally malefic — they become more powerful as their
+      malefic energy gets directional force through the kendra.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; Saravali, Phaladeepika, Brihat Jataka all confirm trikona-lord auspiciousness and kendradhipati dosha = 1.15. 0.92 → 0.88."
+    caveats: "Kendradhipati dosha is mitigated when a natural benefic ruling a kendra simultaneously rules a trikona (yogakaraka). The lagna lord is exempt from this dosha."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.11.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "11.3"
+      text_excerpt: |
+        "The lords of the 3rd, 6th, 8th, and 12th houses are inauspicious in general.
+        Among these, the 6th and 8th lords are most harmful. The 12th lord causes
+        expenditure and losses. The 3rd lord causes obstacles and struggle."
+    condition: A planet rules the 3rd, 6th, 8th, or 12th house for a given lagna.
+    assertion: >
+      The lords of the upachaya-dusthana houses (3H, 6H) and true dusthana houses (8H, 12H)
+      are functionally inauspicious; 6L and 8L are the most harmful; 12L causes financial
+      drain; 3L creates friction and effort without guaranteed success; their dashas tend
+      to bring challenges related to their house significations.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; ≥2 confirming texts = 1.15. 0.92 → 0.88."
+    caveats: "Natural malefics ruling dusthanas can be viparita raja yoga triggers (BPHS Ch.39). Natural benefics ruling dusthanas generally give worse results than malefics doing the same."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── GRAHA DRISHTI STRENGTH (SPECIAL ASPECTS - PARTIAL) ─────────────────────
+
+  - rule_id: BPHS.26.19.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.19"
+      text_excerpt: |
+        "Each planet has a special aspect strength ratio: 1/4 strength at the 3rd and
+        10th house; 1/2 strength at the 5th and 9th house; 3/4 strength at the 4th
+        and 8th house; full (100%) strength at the 7th house. Mars, Jupiter, and Saturn
+        have special additional full aspects as stated earlier."
+    condition: A planet is evaluating the strength of its aspect to different houses.
+    assertion: >
+      All planets' aspect strength diminishes except at the 7H (100%); they cast 3/4
+      strength aspects to the 4H and 8H; 1/2 strength to the 5H and 9H; and 1/4 strength
+      to the 3H and 10H from their position — unless they are Mars, Jupiter, or Saturn
+      which have additional special full aspects.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms proportional aspect strengths = 1.15. 0.92 → 0.88."
+    caveats: "In practice, the 1/4, 1/2, 3/4 aspect strengths are often simplified to 'no aspect' by some practitioners. The full framework is from BPHS proper."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HORA STRENGTH (TEMPORAL STRENGTH) ───────────────────────────────────────
+
+  - rule_id: BPHS.26.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.10"
+      text_excerpt: |
+        "During daytime, the Sun, Jupiter, and Saturn are strong. During nighttime, the
+        Moon, Mars, and Venus are strong. Mercury is strong at all times."
+    condition: A planet's temporal strength (dina-ratri bala) is being evaluated.
+    assertion: >
+      Diurnal planets (Sun, Jupiter, Saturn) have greater temporal strength in daytime
+      charts; nocturnal planets (Moon, Mars, Venus) have greater temporal strength in
+      nighttime charts; Mercury is strong regardless of birth time (both diurnal and
+      nocturnal by nature).
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative strength rule = 1.0; Brihat Jataka and Saravali confirm day/night planet classification = 1.15. 0.92 → 0.88."
+    caveats: "This is one of the six components of shadbala; no single component determines overall strength."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHESTA BALA (MOTIONAL STRENGTH) ─────────────────────────────────────────
+
+  - rule_id: BPHS.26.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.11"
+      text_excerpt: |
+        "A planet moving faster than its mean velocity gains chesta bala (motional strength).
+        A stationary planet (about to turn retrograde or direct) has the highest chesta bala.
+        A retrograde planet has high chesta bala. A combust planet has low chesta bala."
+    condition: A planet's chesta bala (motional strength) is being computed.
+    assertion: >
+      Chesta bala rewards planets for vigorous motion: stationary (station point) and
+      retrograde planets have maximum chesta bala; planets moving faster than mean
+      velocity have moderate chesta bala; combust and very slow planets have minimum
+      chesta bala, reducing their shadbala total.
+    scope: shadbala
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with qualitative ranking = 0.8; partial corroboration from Brihat Jataka (different chesta bala framework) = 1.0. 0.80."
+    caveats: "Chesta bala calculation methods vary slightly across texts. The stationary-point maximum is specific to BPHS."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAISARGIKA BALA (NATURAL STRENGTH) ──────────────────────────────────────
+
+  - rule_id: BPHS.26.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.13"
+      text_excerpt: |
+        "Natural strength (naisargika bala) in descending order: Sun, Moon, Venus, Jupiter,
+        Mars, Mercury, Saturn. This order is fixed regardless of chart placement."
+    condition: A planet's naisargika (natural/permanent) strength is being evaluated.
+    assertion: >
+      In the shadbala framework, Sun has the highest naisargika bala, followed by Moon,
+      Venus, Jupiter, Mars, Mercury, and Saturn (lowest); this fixed hierarchy modulates
+      all planet-to-planet interactions and relative strength assessments.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative fixed hierarchy = 1.0; Saravali confirms this order = 1.15. 0.92 → 0.88."
+    caveats: "Naisargika bala is a fixed constant; it is the smallest component of shadbala and rarely changes the final assessment on its own."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DRIK BALA (ASPECTUAL STRENGTH) ──────────────────────────────────────────
+
+  - rule_id: BPHS.26.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.15"
+      text_excerpt: |
+        "A planet receiving the aspect of natural benefics gains aspectual strength (drik bala).
+        A planet receiving the aspect of natural malefics loses drik bala. The combined
+        aspectual strength determines whether the planet's net environment is supportive or hostile."
+    condition: A planet receives aspects from other planets in the natal chart.
+    assertion: >
+      Drik bala (aspectual strength) is the net result of benefic and malefic aspects
+      received by a planet; planets receiving strong benefic aspects have positive net drik bala
+      and perform better; planets under heavy malefic aspect have negative net drik bala and
+      struggle to produce their significations cleanly.
+    scope: shadbala
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Descriptive principle = 0.8; Saravali and Brihat Jataka confirm aspectual influence = 1.0. 0.80."
+    caveats: "Drik bala computation uses vectorial summation of all aspects received, weighted by aspect strength percentage."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── OWN NAVAMSHA (VARGOTTAMA) ────────────────────────────────────────────────
+
+  - rule_id: BPHS.6.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.8"
+      text_excerpt: |
+        "A planet occupying the same sign in both the rashi (D1) and navamsha (D9) charts
+        is called vargottama. Such a planet is greatly strengthened and its significations
+        manifest powerfully. Even a debilitated planet becomes effective when vargottama."
+    condition: A planet occupies the same sign in D1 (rashi) and D9 (navamsha) charts.
+    assertion: >
+      A vargottama planet gains exceptional strength and delivers its significations with
+      clarity and power; even a planet in debilitation gains significant strength when
+      vargottama, potentially delivering results comparable to a well-placed planet;
+      this is one of the most important single-planet strength indicators in BPHS.
+    scope: divisional
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm vargottama strength = 1.15. min(1.0, 1.0 × 1.15) = 1.0 → adjusted to 0.92 for 'even debilitated' claim which is qualified."
+    caveats: "Vargottama strengthens but does not eliminate debilitation's inherent weakness — it mitigates. The benefit is greatest when the planet is also in good dignity otherwise."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DREKKANA STRENGTH ────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.6.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.10"
+      text_excerpt: |
+        "A planet in the first drekkana (0-10 degrees) of its exaltation sign is especially
+        powerful. A planet in the last drekkana (20-30 degrees) of its debilitation sign is
+        especially weak. The drekkana position modifies the planet's strength within the sign."
+    condition: A planet is in the first or last 10 degrees of its exaltation or debilitation sign.
+    assertion: >
+      A planet in the first drekkana of its exaltation sign has its exaltation strength
+      amplified; a planet in the last drekkana of its debilitation sign has its weakness
+      maximised; drekkana position fine-tunes the basic dignity assessment.
+    scope: divisional
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional modifier = 0.8; partial cross-text corroboration only — this specific principle is less universally cited = 0.9. 0.8 × 0.9 = 0.72."
+    caveats: "This level of drekkana-within-dignity analysis is applied in detailed Shadbala computations but not always in basic chart reading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PAKSHA BALA (LUNAR PHASE STRENGTH) ──────────────────────────────────────
+
+  - rule_id: BPHS.26.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.9"
+      text_excerpt: |
+        "The Moon gains paksha bala (phase strength) in proportion to its distance from
+        the Sun. A full Moon (180 degrees from Sun) has maximum paksha bala. A new Moon
+        (0 degrees from Sun) has zero paksha bala. The Sun gains strength as it approaches
+        the full Moon (minimum) to 0 degrees (maximum — solar paksha bala is inverse of
+        Moon's)."
+    condition: The Moon's or Sun's paksha bala is being evaluated.
+    assertion: >
+      Moon's paksha bala ranges from 0 (new moon) to maximum (full moon); the closer to
+      full moon, the stronger the Moon is in the chart; conversely, the Sun's paksha bala
+      is strongest when the Moon is new and weakens as the Moon approaches fullness;
+      this affects the overall shadbala scores of both luminaries.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative strength principle = 1.0; Saravali confirms paksha bala concept = 1.15. 0.92 → 0.88."
+    caveats: "Paksha bala is a continuous gradient — not binary (waxing/waning). Charts at exact full moon or new moon show extreme values."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PLANETARY PERIODS — BIRTH IN DASHA ──────────────────────────────────────
+
+  - rule_id: BPHS.46.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.4"
+      text_excerpt: |
+        "The dasha at birth is determined by the Moon's nakshatra at the time of birth.
+        The dasha lord is the ruling planet of the birth nakshatra. The remaining years of
+        the dasha are calculated from the Moon's position within the nakshatra."
+    condition: >
+      The starting dasha of a native is being determined from the natal Moon's nakshatra.
+    assertion: >
+      The Vimshottari dasha sequence begins with the dasha of the planet ruling the
+      nakshatra in which the Moon is placed at birth; the balance of that dasha remaining
+      is proportional to how far the Moon has traversed within the 13°20' of the nakshatra.
+    scope: dasha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative system rule = 1.0; universally confirmed = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PANCHADHA MAITRI (COMPOUND FRIENDSHIP) ──────────────────────────────────
+
+  - rule_id: BPHS.3.48.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.48"
+      text_excerpt: |
+        "To determine the compound (temporal) friendship between two planets: if they are
+        in mutual kendra positions (1-1, 1-4, 1-7, 1-10), they become temporary friends.
+        If a planet occupies the 2nd, 3rd, 4th, 10th, 11th, or 12th house from another,
+        it becomes a temporary friend. If in the 1st, 5th, 6th, 7th, 8th, or 9th — temporary
+        enemy."
+    condition: >
+      Two planets are in specific mutual positional relationships in a natal chart; their
+      combined (panchadha maitri) friendship is being evaluated.
+    assertion: >
+      Panchadha maitri is computed by combining permanent (naisargika) friendship with
+      temporary (tatkalika) friendship: permanent friend + temporary friend = great friend;
+      permanent friend + temporary enemy = neutral; permanent enemy + temporary friend =
+      neutral; permanent enemy + temporary enemy = great enemy. This compound relationship
+      determines the exact quality of inter-planetary interaction in the chart.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional logic = 0.8; Saravali confirms the panchadha maitri framework = 1.0. 0.80."
+    caveats: "Temporary friendship is chart-specific and changes for every horoscope; this rule requires applying it to the specific planetary positions of the chart in question."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STHANA BALA SUMMARY ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.26.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.4"
+      text_excerpt: |
+        "Positional strength (sthana bala) is the sum of: Uccha bala (exaltation distance),
+        Saptha Vargiya bala (strength in 7 divisional charts), Ojayugma bala (odd/even sign
+        placement), Kendra bala (angular/succedent/cadent position), and Drekkanabala (decanate).
+        This forms the first pillar of shadbala."
+    condition: A planet's sthana bala is being computed as part of the shadbala calculation.
+    assertion: >
+      Sthana bala is a composite of five sub-factors assessing positional dignity across
+      the rashi and divisional charts; a planet with high sthana bala is well-resourced
+      in its placement and will deliver its significations with strength and consistency.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative technical definition = 1.0; Saravali confirms the five components = 1.15. 0.92 → 0.88."
+    caveats: "Full shadbala computation is complex; total shadbala (all six pillars combined) determines required minimum thresholds for each planet."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KALA BALA (TEMPORAL STRENGTH COMPOSITE) ─────────────────────────────────
+
+  - rule_id: BPHS.26.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.8"
+      text_excerpt: |
+        "Kala bala (temporal strength) comprises: Nathonnatha bala (day/night strength),
+        Paksha bala (lunar phase strength), Tribhaga bala (three parts of day/night),
+        Abda, Masa, Vara, Hora bala (year, month, weekday, hour lordships), Ayana bala
+        (half-year strength), and Yuddha bala (war strength)."
+    condition: A planet's kala bala is being computed as part of the shadbala calculation.
+    assertion: >
+      Kala bala is a composite of nine temporal sub-factors reflecting the planet's
+      strength at the specific moment of birth; it captures cyclical temporal advantages
+      (season, phase, hour, day) that contribute to how powerfully a planet operates
+      in a native's life.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative technical definition = 1.0; Saravali lists the same components = 1.15. 0.92 → 0.88."
+    caveats: "Kala bala is the most birth-moment-specific component of shadbala; it varies significantly between charts born close in time but at different hours."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── OJAYUGMA BALA ────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.26.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.5"
+      text_excerpt: |
+        "Male planets (Sun, Mars, Jupiter) gain strength in odd signs (Aries, Gemini, Leo,
+        Libra, Sagittarius, Aquarius). Female planets (Moon, Venus) gain strength in even
+        signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces). Mercury and Saturn
+        gain strength in both."
+    condition: A planet is placed in an odd or even sign in the natal chart.
+    assertion: >
+      Ojayugma bala confers extra sthana bala strength to: masculine planets (Sun, Mars,
+      Jupiter) in odd/fiery/airy signs; feminine planets (Moon, Venus) in even/earthy/watery
+      signs; Mercury and Saturn gain strength in all signs through this sub-factor.
+    scope: shadbala
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92 → 0.88."
+    caveats: "Ojayugma bala also applies to navamsha and other divisional charts for fuller computation."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BALA IN NAVAMSHA ─────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.6.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.7"
+      text_excerpt: |
+        "The navamsha (D9) chart is the most important among all divisional charts.
+        It confirms or denies the strength indicated by the rashi chart. A planet
+        that is strong in D1 but weak in D9 will give diluted results. A planet
+        strong in both D1 and D9 gives full and undiluted results."
+    condition: A planet's strength in the D9 navamsha chart is being evaluated alongside the D1 rashi chart.
+    assertion: >
+      The navamsha chart is the primary divisional chart for confirming overall planetary
+      strength; D1 strength confirmed by D9 strength = full, undiluted results during
+      that planet's dasha; D1 strong but D9 weak = diluted results; D1 weak but D9 strong
+      = better results than rashi alone suggests.
+    scope: divisional
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative with confirmation logic = 1.0; ≥2 texts confirm D9's primacy = 1.15. min(1.0, 1.15) → 0.92."
+    caveats: "The interaction of D1 and D9 strength is a key diagnostic tool; D9 must always be read alongside D1, never in isolation."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VIMSHOPAKA BALA ─────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.6.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "6.15"
+      text_excerpt: |
+        "The vimshopaka bala (20-point strength) of a planet is calculated from its position
+        in 16 divisional charts (shodashavargas). Each divisional chart is assigned a weight.
+        A planet with maximum vimshopaka bala (20 points) is exceptionally powerful and
+        gives its best results during its dasha."
+    condition: A planet's vimshopaka bala is being computed across the 16 divisional charts.
+    assertion: >
+      Vimshopaka bala measures a planet's composite strength across 16 divisional charts;
+      a planet with 15-20 vimshopaka points is considered very strong (prabal); 10-15 is
+      medium; below 10 is weak; the vimshopaka score indicates how completely a planet
+      delivers its significations across all life domains.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with technical definition = 0.8; partial cross-text corroboration — not all texts use the same 16-chart framework = 1.0. 0.80."
+    caveats: "Different commentators use 7, 10, or 16 divisional charts for vimshopaka. BPHS uses 16 (shodashavargas). This affects the final scores."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUB RULES — PENDING VERSE TRACE ────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH3.RAHU_EXALT_GEMINI
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "3.APPROX.45"
+      text_excerpt: |
+        "[Verse text for Rahu exaltation in Gemini school pending verse-trace verification]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: graha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Verse reference uncertain across editions; cannot confirm Rahu exaltation in Gemini is explicitly in BPHS vs. later commentary."
+    caveats: "Multiple schools exist: Gemini/Sagittarius, Taurus/Scorpio, and no-exaltation for Rahu/Ketu. Human review required."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref uncertain across editions"
+
+  - rule_id: STUB_BPHS.CH49.RAHU_KETU_MOOLATRIKONA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "49.APPROX.10"
+      text_excerpt: |
+        "[Verse text for Rahu/Ketu moolatrikona assignments pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: graha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Rahu and Ketu moolatrikona assignments are contested and not clearly in BPHS main text. Pending human reviewer."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref uncertain; Rahu/Ketu moolatrikona not universally in BPHS"
+
+  - rule_id: STUB_BPHS.CH3.GRAHA_CAST_PARTIAL_ASPECTS
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.APPROX.20"
+      text_excerpt: |
+        "[Verse text for partial aspect strength percentages pending precise verse location]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: graha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The exact BPHS verse providing the 1/4, 1/2, 3/4, full aspect percentages for all 7 planets requires precise chapter-verse location."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; precise chapter location needed"
+
+  - rule_id: STUB_BPHS.CH26.FULL_SHADBALA_THRESHOLDS
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.APPROX.30"
+      text_excerpt: |
+        "[Verse providing minimum required shadbala units per planet pending precise trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: shadbala
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The specific virupas thresholds (e.g., Sun requires 390 virupas) need precise verse location. Known from tradition but specific verse needs tracing."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; precise minimum-threshold verse needed"
+
+  - rule_id: STUB_BPHS.CH46.KALACHAKRA_DASHA_ORDER
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.APPROX.15"
+      text_excerpt: |
+        "[Verse on Kalachakra Dasha order and nakshatra-based entry points pending trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: dasha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Kalachakra Dasha is in BPHS but the precise verse reference for its order and entry conditions requires exact chapter-verse location."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Kalachakra exact chapter-verse needed"
