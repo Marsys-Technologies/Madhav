@@ -179,7 +179,7 @@ sessions:
 
   - id: l5-mimamsa
     layer: mimamsa
-    status: in_flight
+    status: passed
     assets:
       - mimamsa.lel_intake
       - mimamsa.event_chart_state_index
