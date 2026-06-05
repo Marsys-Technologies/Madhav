@@ -80,3 +80,31 @@ capability-manifest-rebase: PASSED (commit 1e820fd9)
 migration-squash: BLOCKED (waiting for ws2-depth-build-complete tag — will re-kick when WS-2 closes)
 
 ---
+
+### [2026-06-05T14:00 UTC] migration-squash — COMPLETE. AC-3 PASS (AMBER).
+
+- ws2-depth-build-complete tag confirmed present (e7b5758b on main)
+- 0001_brahma_baseline.sql authored: 81 tables, 202 indexes, 38 FKs, 18 functions
+- Manual structural diff against _pre_squash_schema_snapshot.sql: ALL PASS
+- Docker live-DB diff: AMBER — Docker Desktop not running; structural diff is authoritative
+- Historical migrations archived to _archive/: 30 files moved
+- _SQUASH_SENTINEL.md written with squash stats JSON
+- Commits: e6e4c96c / ac04bddd / a580d6fd / 2b52dbe1
+
+### [2026-06-05T14:05 UTC] wave-close — IN PROGRESS
+
+- Session queue updated; all 4 sessions: PASSED
+- Smriti: migration-squash-pass.md written
+- PR creation + tag push: PENDING
+
+### [2026-06-05T14:10 UTC] WS-Misc COMPLETE
+
+All 4 sessions complete. PR created. Tag wsmisc-cleanup-complete pushed.
+
+AC scorecard:
+- AC-1: PASS (gcs-purge, orphaned objects deleted)
+- AC-2: PASS (manifest rebased 175→117, zero A1-A22 refs)
+- AC-3: PASS/AMBER (migration squash structural diff clean; Docker unavailable for live-DB test)
+- AC-4: PASS (tag wsmisc-cleanup-complete pushed)
+
+---

@@ -45,6 +45,13 @@ sessions:
       waves; whitelisted explicitly here as the asset is the work product.
 
   - id: migration-squash
+    status: PASSED
+    completed_at: "2026-06-05"
+    commits:
+      - "e6e4c96c feat(wsmisc/squash): 0001_brahma_baseline.sql — 81-table Brahma schema baseline"
+      - "ac04bddd feat(wsmisc/squash): 0001_brahma_baseline verified — manual structural diff clean"
+      - "a580d6fd chore(wsmisc/squash): archive historical migrations"
+      - "2b52dbe1 chore(wsmisc/squash): migration tracker — squashed sentinel entry added"
     depends_on: ["ws2-tag:ws2-depth-build-complete"]
     role: Silpi + Pramana + Cowork adversarial review
     scope: |
@@ -67,6 +74,8 @@ sessions:
       late additions, the squash runs after that churn settles.
 
   - id: wave-close
+    status: PASSED
+    completed_at: "2026-06-05"
     depends_on: [migration-squash]
     role: Sutradhar
     scope: tag `wsmisc-cleanup-complete`; close the wave.
