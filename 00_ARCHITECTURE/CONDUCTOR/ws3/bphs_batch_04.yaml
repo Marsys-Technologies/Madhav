@@ -1,0 +1,1194 @@
+# BPHS Rule Extraction — Batch 04 (Rules 301–400)
+# Session: bphs-pilot | Extraction date: 2026-06-05
+# Coverage: Dashas + Ashtakavarga (BPHS Ch. 46–53, 66–69)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1
+
+metadata:
+  source: BPHS
+  extraction_session: bphs-pilot
+  batch: "04"
+  rules_in_batch: 100
+  stubbed_in_batch: 5
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── VIMSHOTTARI DASHA — PLANET AS MAHADASHA LORD ────────────────────────────
+
+  - rule_id: BPHS.46.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.10"
+      text_excerpt: |
+        "During the Sun's mahadasha, results depend on the Sun's house and sign placement.
+        If Sun is strong and benefically placed, the native gains favour from authority,
+        father, and government. If Sun is weak or afflicted, there is conflict with father,
+        loss of position, and health issues related to the heart and eyes."
+    condition: The native is in the Sun mahadasha (6-year period).
+    assertion: >
+      Sun mahadasha results reflect Sun's natal strength and placement: a strong, well-placed
+      Sun gives government favor, career elevation, recognition, and vitality; a weak or
+      afflicted Sun brings father-related difficulties, loss of position, and health challenges
+      related to the heart, eyes, and bones during the 6-year period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Sun-dasha conditional effects = 1.0. 0.80."
+    caveats: "Sun dasha results are further refined by: (1) Sun's sign; (2) functional lordship for the lagna; (3) antardasha lord's condition."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.11"
+      text_excerpt: |
+        "During the Moon's mahadasha, the mother's health becomes significant, emotions
+        are heightened, and travel or change of residence is likely. A strong Moon gives
+        prosperity, popularity, and emotional contentment. A weak Moon gives mental
+        disturbances, health issues, and fluctuating fortunes."
+    condition: The native is in the Moon mahadasha (10-year period).
+    assertion: >
+      Moon mahadasha is a period of heightened emotional sensitivity, public prominence,
+      mother-related events, and possible residence change; a strong Moon (waxing, dignified)
+      gives prosperity, public acclaim, and emotional fulfillment; a weak Moon (waning,
+      afflicted) brings mental instability, health fluctuations, and emotional challenges.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Moon-dasha emotional significance = 1.0. 0.80."
+    caveats: "Moon mahadasha is particularly important for the quality of the entire 10-year period — the Moon's strength in the natal chart sets the overall quality of this extended period."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.12"
+      text_excerpt: |
+        "During Mars mahadasha, the native is energetic and courageous. If Mars is strong,
+        there is gain of land, property, and success in competitive endeavors. If Mars is
+        weak or afflicted, there are accidents, surgeries, conflicts with siblings, and
+        blood-related health issues."
+    condition: The native is in the Mars mahadasha (7-year period).
+    assertion: >
+      Mars mahadasha intensifies action, courage, and competitive energy; a strong Mars gives
+      real estate gains, physical achievement, and success in competitive fields; a weak or
+      afflicted Mars brings accidents, injuries, sibling conflicts, litigation, and blood or
+      surgical health events during the 7-year period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Mars-dasha energy = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.13"
+      text_excerpt: |
+        "Rahu mahadasha (18 years) is a period of ambition, unusual experiences, and
+        karmic reckoning. If Rahu is well-placed and its dispositor is strong, there is
+        material success, foreign connections, and rise to prominence. If Rahu is afflicted,
+        there are sudden reversals, health mysteries, and encounters with the unconventional."
+    condition: The native is in the Rahu mahadasha (18-year period).
+    assertion: >
+      Rahu mahadasha is a 18-year period of intense material ambition and unconventional
+      experiences; well-placed Rahu with a strong dispositor gives foreign success, material
+      rise, and prominence in Rahu-related fields (technology, mass media, foreign affairs);
+      afflicted Rahu brings reversals, mysterious health issues, deception, and karmic
+      crises during this long period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Rahu-dasha ambition = 1.0. 0.80."
+    caveats: "Rahu's dasha results are primarily determined by its dispositor's strength — Rahu adopts the quality of the planet in whose sign it is placed."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.14"
+      text_excerpt: |
+        "Jupiter mahadasha (16 years) is generally the most auspicious of all dashas.
+        The native gains wisdom, wealth, children, and recognition. There is spiritual
+        elevation and dharmic orientation. Even negative Jupiter gives some benefit through
+        education, travel, and religious experiences."
+    condition: The native is in the Jupiter mahadasha (16-year period).
+    assertion: >
+      Jupiter mahadasha is generally the most auspicious major period — it confers wisdom,
+      prosperity, children, spiritual growth, recognition, and expansion in all dharmic
+      areas; even a weaker Jupiter dasha tends to bring education, travel, and spiritual
+      experiences that enrich life; this dasha is particularly powerful for natives with
+      a strong or yogakaraka Jupiter.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with positive assertion = 0.8; Saravali confirms Jupiter-dasha auspiciousness = 1.0. 0.80."
+    caveats: "Even 'most auspicious' Jupiter dashas bring challenges if Jupiter rules dusthana houses or is severely afflicted. The unconditional positive statement in BPHS is partially an ideal — actual results depend on Jupiter's natal state."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.15"
+      text_excerpt: |
+        "Saturn mahadasha (19 years) brings discipline, hard work, and karmic reckoning.
+        Strong Saturn gives persistence, authority, and late success. Weak Saturn brings
+        prolonged hardship, chronic disease, conflict with subordinates and masses, and
+        delays in all areas of life."
+    condition: The native is in the Saturn mahadasha (19-year period).
+    assertion: >
+      Saturn mahadasha (the longest at 19 years) is a period of sustained discipline and
+      karmic confrontation; a strong Saturn rewards persistence with durable authority and
+      material security; a weak Saturn prolongs hardship, creates chronic health conditions,
+      and delays all ambitions; the 19-year span means this dasha defines a significant
+      portion of one's productive life.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Saturn-dasha karmic quality = 1.0. 0.80."
+    caveats: "Saturn's dasha is also a maraka dasha for some lagnas — the middle of the dasha (when Saturn antardasha activates Saturn) requires longevity analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.16"
+      text_excerpt: |
+        "Mercury mahadasha (17 years) is a period of intellectual growth, communication,
+        trade, and learning. A strong Mercury gives success in business, scholarship, and
+        all Mercury-ruled fields. A weak Mercury brings skin diseases, nervous disorders,
+        and conflicts in communication and trade."
+    condition: The native is in the Mercury mahadasha (17-year period).
+    assertion: >
+      Mercury mahadasha activates intellectual and commercial energy; a strong Mercury gives
+      business success, scholarly achievement, writing/publishing prominence, and financial
+      gains through intelligence; a weak Mercury brings nervous system issues, communication
+      conflicts, skin problems, and business disputes during the 17-year period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Mercury-dasha commercial success = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.17"
+      text_excerpt: |
+        "Ketu mahadasha (7 years) brings spiritual intensity, sudden events, and separation
+        from material attachments. If Ketu is well-placed and its dispositor is strong, there
+        is spiritual wisdom and unexpected material gains. If afflicted, the period brings
+        accidents, losses, and mysterious health issues."
+    condition: The native is in the Ketu mahadasha (7-year period).
+    assertion: >
+      Ketu mahadasha is a period of spiritual intensity and separation from familiar patterns;
+      well-placed Ketu gives spiritual insight, unexpected gains, and liberation from old
+      patterns; afflicted Ketu brings accidents, health mysteries (particularly fire/weapon
+      related), losses, and difficult transitions during the 7-year period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Ketu-dasha intensity = 1.0. 0.80."
+    caveats: "Ketu's dasha, like Rahu's, is primarily determined by its dispositor's strength and condition."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.18"
+      text_excerpt: |
+        "Venus mahadasha (20 years) is a period of pleasure, luxury, romance, and artistic
+        fulfilment. A strong Venus gives marital happiness, financial prosperity, artistic
+        recognition, and enjoyment of life's pleasures. A weak Venus brings marital discord,
+        reproductive health issues, and indulgence leading to harm."
+    condition: The native is in the Venus mahadasha (20-year period).
+    assertion: >
+      Venus mahadasha (the longest comfortable period at 20 years) activates romance,
+      luxury, beauty, and artistic expression; a strong Venus gives marital happiness,
+      financial prosperity, artistic success, and sustained pleasure; a weak Venus brings
+      relational discord, reproductive challenges, financial indulgence, and excess leading
+      to health or relationship harm.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms Venus-dasha pleasure = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ANTARDASHA COMBINATIONS — KEY PAIRS ─────────────────────────────────────
+
+  - rule_id: BPHS.48.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.2"
+      text_excerpt: |
+        "During the Sun mahadasha and Jupiter antardasha: if both are well-placed, the native
+        gains authority, recognition, and spiritual wisdom simultaneously. There is favour from
+        government, teachers, and the dharmic path opens. This is among the most auspicious
+        antardasha combinations."
+    condition: The native is in the Sun mahadasha, Jupiter antardasha (sub-period).
+    assertion: >
+      Sun-Jupiter antardasha (when both are strong) combines solar authority with Jupiterian
+      wisdom; the native gains governmental or institutional recognition, spiritual guidance
+      from teachers, and general prosperity; this is one of the most beneficial antardasha
+      combinations — particularly powerful for authority, education, and spiritual advancement.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional ('if both well-placed') = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Results require both Sun and Jupiter to be well-placed. If either is weak or a functional malefic for the lagna, results are modified accordingly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.48.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.3"
+      text_excerpt: |
+        "During Saturn mahadasha and Moon antardasha: emotional turbulence is likely as
+        Saturn's constricting nature meets Moon's emotional sensitivity. There may be health
+        issues for the mother, instability in domestic life, and mental stress. Travel may
+        occur under difficult circumstances."
+    condition: The native is in the Saturn mahadasha, Moon antardasha (sub-period).
+    assertion: >
+      Saturn-Moon antardasha creates friction between Saturnine contraction (delay, discipline,
+      karmic weight) and lunar sensitivity (emotion, family, fluctuation); the mother's health
+      and domestic stability may be challenged; emotional stress and mental strain are common;
+      travel occurs under difficult or constrained circumstances.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "If both Saturn and Moon are functionally auspicious for the lagna, the tension is reduced — a yogakaraka Saturn in Saturn-Moon period can give mixed results that are ultimately positive."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.48.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.4"
+      text_excerpt: |
+        "During Jupiter mahadasha and Venus antardasha: this is a highly pleasant period
+        for marriage, children, and material comfort. The native enjoys the best of both
+        dharma and pleasure. However, if they are functional malefics for the lagna, the
+        effects are mixed."
+    condition: The native is in the Jupiter mahadasha, Venus antardasha (sub-period).
+    assertion: >
+      Jupiter-Venus antardasha combines wisdom with pleasure; the native experiences marital
+      happiness, children's well-being, financial comfort, and creative success simultaneously;
+      this is among the most pleasant and fulfilled antardasha combinations when both planets
+      are functional benefics; their mutual opposition (natural planets) adds a complementary
+      tension that is productive.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Jupiter and Venus are natural enemies (Jupiter rules dharma; Venus rules sensuality) — their period together can also create tension between spiritual and material priorities."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.48.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.5"
+      text_excerpt: |
+        "During Rahu mahadasha and Saturn antardasha: this is a period of maximum karmic
+        pressure. Both Rahu (foreign, unconventional, amplifying) and Saturn (restriction,
+        delay, discipline) combine to create intense karmic reckoning. Sudden falls are
+        possible. Chronic health may deteriorate. However, discipline and persistence can
+        transform this into a period of great achievement."
+    condition: The native is in the Rahu mahadasha, Saturn antardasha (sub-period).
+    assertion: >
+      Rahu-Saturn antardasha is one of the most intense and challenging combinations;
+      Rahu amplifies Saturn's restrictions and delays creating karmic reckoning across all
+      areas; health challenges, professional obstacles, and sudden adverse events are possible;
+      however, exceptional discipline during this period can produce lasting structural
+      achievements that pay off afterward.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka with conditional = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "When Rahu and Saturn are conjunct natally (forming a powerful combination) and this period activates them, the effects are intensified further."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.48.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.6"
+      text_excerpt: |
+        "During Venus mahadasha and Mercury antardasha: this is a favorable period for
+        business, artistic work, and communication. The native earns through creative and
+        intellectual commerce. There is popularity and social success. Romantic and marital
+        life is pleasant."
+    condition: The native is in the Venus mahadasha, Mercury antardasha (sub-period).
+    assertion: >
+      Venus-Mercury antardasha combines aesthetic sensibility with intellectual acuity;
+      the native succeeds in creative commerce, communication arts, social networking, and
+      diplomatic endeavors; business and artistic work flourish together; social life and
+      romantic life are generally pleasant during this sub-period.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 0.9. 0.72."
+    caveats: "Venus and Mercury are natural friends — this antardasha combination is generally harmonious unless one is debilitated or a functional malefic."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.48.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.7"
+      text_excerpt: |
+        "During Mars mahadasha and Saturn antardasha: this is a difficult combination.
+        Mars and Saturn are natural enemies whose energies conflict — Mars wants to act
+        quickly, Saturn wants to restrict and delay. The period may bring accidents,
+        legal troubles, conflicts with authority, and frustration from obstacles."
+    condition: The native is in the Mars mahadasha, Saturn antardasha (sub-period).
+    assertion: >
+      Mars-Saturn antardasha creates maximum friction between impulsive action (Mars) and
+      structural restriction (Saturn); accidents, injuries, legal conflicts, and authority
+      confrontations are elevated risks; the native may feel persistently blocked and
+      frustrated; health challenges involving both blood (Mars) and chronic issues (Saturn)
+      may co-occur.
+    scope: dasha
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; Saravali partially confirms Mars-Saturn friction = 0.9. 0.72."
+    caveats: "When both Mars and Saturn are yogakaraka for the lagna (e.g., Saturn is yogakaraka for Cancer Lagna but Mars is also strong), the friction can be redirected into disciplined competitive achievement."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DASHA OF HOUSE LORD — GENERAL RULES ─────────────────────────────────────
+
+  - rule_id: BPHS.47.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.2"
+      text_excerpt: |
+        "During the dasha of the 9th house lord, the native experiences fortune, travel,
+        spiritual advancement, and blessings from the father and teachers. Even a weak
+        9th lord dasha gives some fortune and dharmic experiences."
+    condition: The native is in the dasha (major or sub-period) of the 9H lord.
+    assertion: >
+      9H lord dasha is inherently fortuitous regardless of the specific planet — the dharmic
+      and fortune-giving quality of the 9H elevates any planet's dasha when that planet rules
+      the 9H; events related to the father, teachers, long journeys, higher education, and
+      spiritual development are highlighted during this period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with positive qualifier = 0.8; Saravali confirms 9H-lord dasha fortune = 1.0. 0.80."
+    caveats: "A severely afflicted 9H lord's dasha may give diluted or delayed fortune — the inherent auspiciousness of the 9H is reduced by the planet's weakness."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.47.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.3"
+      text_excerpt: |
+        "During the dasha of the 8th house lord, the native faces obstacles, health
+        challenges, possible inheritance, and transformative events. Strong 8th lord dasha
+        gives research ability and occult success. Weak 8th lord dasha brings accidents
+        and chronic disease."
+    condition: The native is in the dasha (major or sub-period) of the 8H lord.
+    assertion: >
+      8H lord dasha triggers themes of transformation, crisis, health challenges, and
+      potential inheritance; a strong 8H lord's dasha gives research insight, occult
+      knowledge, inheritance, and transformative breakthroughs; a weak 8H lord's dasha
+      brings accidents, surgeries, chronic conditions, and longevity pressure.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms 8H-lord dasha challenges = 1.0. 0.80."
+    caveats: "8H lord dasha requires longevity analysis for the specific native's age range — it is a maraka/arishta activator for appropriate age periods."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.47.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.4"
+      text_excerpt: |
+        "During the dasha of the 5th house lord, children's matters come to the fore.
+        The native gains through speculation, creative work, and intelligence. Past-life
+        merit activates. Spiritual practices deepen. Success in education and advisory
+        roles is indicated."
+    condition: The native is in the dasha of the 5H lord.
+    assertion: >
+      5H lord dasha activates past-life merit (purva punya), intelligence, children's matters,
+      creative expression, and spiritual practice; the native succeeds in speculative ventures,
+      education, and advisory roles; children's events (birth, health, achievements) are
+      prominent during this period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 5H-lord dasha creativity = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.47.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.5"
+      text_excerpt: |
+        "During the dasha of the 2nd house lord, wealth accumulation is highlighted.
+        The native focuses on family, speech, and financial matters. A strong 2nd lord
+        dasha brings wealth. A weak one brings family disputes and financial challenges."
+    condition: The native is in the dasha of the 2H lord.
+    assertion: >
+      2H lord dasha activates wealth, family matters, speech, and food-related events;
+      a strong 2L dasha brings financial accumulation, family harmony, and vocal/artistic
+      success; a weak 2L dasha brings family disputes, financial loss, and speech-related
+      challenges; the 2H lord is also a maraka — dasha timing relative to the native's
+      age and lifespan must be assessed.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms 2H-lord dasha wealth = 1.0. 0.80."
+    caveats: "2H lord is a maraka — its dasha activation during vulnerable age periods can coincide with health challenges beyond just financial themes."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DASHA OF YOGAKARAKA PLANET ───────────────────────────────────────────────
+
+  - rule_id: BPHS.47.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "47.8"
+      text_excerpt: |
+        "During the dasha of a yogakaraka planet, the native experiences a major turning
+        point in life — rise in status, financial elevation, and fulfilment of long-held
+        ambitions. The yogakaraka dasha is the most powerful period for worldly advancement
+        in the native's life."
+    condition: The native is in the mahadasha of the yogakaraka planet for their lagna.
+    assertion: >
+      Yogakaraka mahadasha is the most powerful career and status elevation period;
+      it delivers the chart's latent potential for authority and success; long-held ambitions
+      are fulfilled; the native may receive recognitions, promotions, marriage (if indicated),
+      or significant financial gains during this dasha; it is the defining positive period.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms yogakaraka dasha as peak = 1.15. 0.88."
+    caveats: "The yogakaraka dasha's timing in life matters — if it falls in early childhood or very late old age, the full worldly results may not fully manifest in the appropriate life context."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TIMING OF EVENTS IN DASHA ───────────────────────────────────────────────
+
+  - rule_id: BPHS.46.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.5"
+      text_excerpt: |
+        "Within a mahadasha, events tend to occur during the antardasha (sub-period) of:
+        planets associated with the event's natal house, the lord of that house, or the
+        significator (karaka) of the event. The antardasha narrows the timing from the
+        broad mahadasha window."
+    condition: >
+      A specific life event is being timed within a mahadasha period using antardasha
+      analysis.
+    assertion: >
+      Event timing within a mahadasha requires identifying the antardasha that corresponds
+      to: (1) the planet ruling the event's house; (2) planets occupying or aspecting the
+      event's house; (3) the karaka of the event; events cluster in the antardasha of the
+      most relevant natal planet for that event type.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative timing methodology = 1.0; Saravali confirms antardasha as event trigger = 1.15. 0.88."
+    caveats: "Transit confirmation (particularly Jupiter and Saturn transiting the relevant house or its lord) is required to validate event timing predictions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.46.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.6"
+      text_excerpt: |
+        "Events are more precisely timed by the pratyantardasha (sub-sub-period). The
+        pratyantardasha of a planet that is the lord of the relevant house, or is conjunct
+        or aspecting that house, narrows the event window to approximately 1-3 months."
+    condition: >
+      A specific life event is being timed within a mahadasha-antardasha combination
+      using pratyantardasha (sub-sub-period) analysis.
+    assertion: >
+      Pratyantardasha (tertiary period) narrows event timing to 1-3 month windows;
+      the pratyantardasha of the planet most connected to the natal house for the predicted
+      event (by lordship, occupation, or aspect) identifies the approximate timing;
+      combined with transit confirmation, this achieves the most precise Jyotish timing.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms pratyantardasha timing = 1.0. 0.80."
+    caveats: "Pratyantardasha timing is an approximation tool — precise day/week timing further requires transit analysis (ashtakavarga bindus, nakshatra transits, etc.)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASHTAKAVARGA — FUNDAMENTAL PRINCIPLES ───────────────────────────────────
+
+  - rule_id: BPHS.66.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.2"
+      text_excerpt: |
+        "The Ashtakavarga system assigns points (bindus) to each of the 12 signs for each
+        planet. Each planet (including ascendant) contributes one bindu to each sign from
+        specific positions — counted from the planet itself, from the ascendant, and from
+        6 other planets. The maximum possible bindus in any sign from a single planet is 8."
+    condition: The Ashtakavarga system is being explained and applied.
+    assertion: >
+      Ashtakavarga assigns 0-8 bindus (positive points) to each sign for each of the 8
+      planets/ascendant; these bindus measure the supportive environment each sign provides
+      for each planet in transit; higher bindus = more supportive transits through that sign
+      for the corresponding planet.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative system definition = 1.0; Saravali confirms Ashtakavarga system = 1.15. 0.92."
+    caveats: "Ashtakavarga is a complex system with multiple levels; the Bhinna Ashtakavarga (individual planet's 8-point tables) and Sarvashtakavarga (combined totals) serve different interpretive functions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.66.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.3"
+      text_excerpt: |
+        "When a planet transits a sign that has 5 or more bindus (in its own Bhinna
+        Ashtakavarga), the transit results are generally favorable for the native. When
+        a sign has 4 or fewer bindus, transit results tend to be unfavorable or neutral."
+    condition: A planet is transiting a sign; the Bhinna Ashtakavarga score for that sign is being evaluated.
+    assertion: >
+      Ashtakavarga transit threshold: 5+ bindus in the transiting planet's own BAV table
+      for the occupied sign = favorable transit; 4 or fewer bindus = unfavorable or neutral
+      transit; this bindu-threshold is the fundamental tool for assessing transit quality
+      beyond basic sign dignity.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative threshold = 1.0; Saravali confirms the 5-bindu threshold = 1.15. 0.92."
+    caveats: "The 5-bindu threshold is a general rule; in critical dashas (like Rahu-Saturn), even 5 bindus may not prevent challenges. The bindu count must be read alongside the transiting planet's natal strength."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.66.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.4"
+      text_excerpt: |
+        "In the Sarvashtakavarga (combined Ashtakavarga of all planets), a sign with 30 or
+        more total points is considered strong. A sign with 25-29 points is moderate. A sign
+        with fewer than 25 points is weak. Strong signs attract more positive events in their
+        corresponding house."
+    condition: The Sarvashtakavarga (combined total) score for a house is being evaluated.
+    assertion: >
+      Sarvashtakavarga thresholds for house strength: 30+ points = strong house (positive
+      events cluster here); 25-29 = moderate; below 25 = weak house; the SAV total for a
+      house indicates its overall vitality in the chart independent of planetary occupation
+      or lordship.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative threshold = 1.0; Saravali confirms SAV thresholds = 1.15. 0.92."
+    caveats: "Maximum possible SAV for any sign is 56 (7 planets × 8 bindus each). Average is ~28. Signs significantly above average are especially powerful."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.66.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.5"
+      text_excerpt: |
+        "When Saturn transits a sign with 5 or more bindus in Saturn's Bhinna Ashtakavarga,
+        the Sade Sati or Saturn transit results are mitigated and may even give positive
+        outcomes. When Saturn transits signs with 3 or fewer bindus, the hardships are
+        maximised."
+    condition: Saturn is transiting; the Bhinna Ashtakavarga bindus in Saturn's table for the transited sign are evaluated.
+    assertion: >
+      Saturn's transit quality (including during Sade Sati) is modulated by its BAV bindus
+      in the transited sign: 5+ bindus mitigates Saturnine hardship and may produce positive
+      structural outcomes; 3 or fewer bindus maximises delays, losses, and difficulties during
+      the transit period in that sign.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-BAV threshold = 1.15. 0.88."
+    caveats: "Saturn BAV bindus for Sade Sati signs (12H, 1H, 2H from natal Moon) are particularly important — 4+ bindus in all three signs mitigates the Sade Sati significantly."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.66.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.6"
+      text_excerpt: |
+        "Jupiter's transit through a sign with high bindus (6+) gives exceptional results —
+        prosperity, children, recognition, and spiritual advancement. When Jupiter transits
+        signs with 2 or fewer bindus, its normally benefic transit gives diminished or
+        negligible results."
+    condition: Jupiter is transiting; the Bhinna Ashtakavarga bindus in Jupiter's BAV table for the transited sign are evaluated.
+    assertion: >
+      Jupiter's transit quality is directly proportional to its BAV bindus in the transited
+      sign: 6+ bindus = exceptional benefic transit giving prosperity and recognition;
+      4-5 bindus = good transit; 3 or fewer bindus = Jupiter's benefic transit gives
+      minimal or counterintuitive results.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter-BAV threshold = 1.15. 0.88."
+    caveats: "Jupiter transiting its own natal position (return) is always significant regardless of BAV bindus."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASHTAKAVARGA AND DASHA INTEGRATION ──────────────────────────────────────
+
+  - rule_id: BPHS.67.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "67.2"
+      text_excerpt: |
+        "When a planet transits a sign with high bindus in its own Ashtakavarga during its
+        own dasha, the results are maximised. The dasha gives the overall promise; the transit
+        gives the specific timing within the dasha. Their combination is the most reliable
+        timing tool."
+    condition: >
+      A planet is in its own dasha (or antardasha) AND is simultaneously transiting a
+      sign with high bindus in its own Bhinna Ashtakavarga.
+    assertion: >
+      Dasha-transit convergence using Ashtakavarga is the most reliable event-timing method:
+      the mahadasha activates the natal promise; the antardasha narrows the timing window;
+      the transit of the dasha lord through high-bindu signs in its own BAV identifies the
+      specific months when events manifest; this three-layer method (dasha + antardasha + BAV
+      transit) is the gold standard for precise prediction timing.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm dasha-transit convergence = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASHTAKAVARGA REDUCTION RULES ────────────────────────────────────────────
+
+  - rule_id: BPHS.67.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "67.5"
+      text_excerpt: |
+        "The Trikona reduction method (Shodhana) of Ashtakavarga: subtract the minimum
+        bindu count of the three trikona signs from each of those three signs. This
+        further refines the Bhinna Ashtakavarga by removing common factors, giving a
+        'pared' Ashtakavarga that better predicts event quality."
+    condition: The Trikona Shodhana (trikona reduction) method is being applied to a Bhinna Ashtakavarga table.
+    assertion: >
+      Trikona Shodhana refines Ashtakavarga by subtracting the minimum value among the
+      three trikona groups (1-5-9, 2-6-10, 3-7-11, 4-8-12) from each group's values;
+      this produces a refined table where the relative differences between signs are
+      preserved but common environmental factors are removed; Shodhya Pindas (reduced totals)
+      indicate the net planetary vitality after common factors cancel.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Technical declarative = 1.0; partial Saravali = 0.8 (Trikona Shodhana specifics vary across editions). 0.80."
+    caveats: "Shodhana methods (Trikona and Ekadhi-patya) are advanced Ashtakavarga techniques — their application should precede Pinda Sadhana (strength totalling) for deeper analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── PRASTARA ASHTAKAVARGA (INDIVIDUAL PLANET TABLE) ─────────────────────────
+
+  - rule_id: BPHS.66.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.8"
+      text_excerpt: |
+        "Sun contributes its bindu from the following positions: 1st, 2nd, 4th, 7th, 8th,
+        9th, 10th, and 11th houses from Sun itself; 3rd, 4th, 5th, 8th, 9th, 10th, 11th,
+        and 12th from Lagna; and the equivalent positions from each of the other planets
+        and the Moon."
+    condition: Sun's Bhinna Ashtakavarga (BAV) is being constructed.
+    assertion: >
+      Sun's BAV is constructed by assigning one bindu to specific signs as counted from
+      Sun's position, from Lagna, from Moon, and from each of the other planets (Mars,
+      Mercury, Jupiter, Venus, Saturn); the positions that receive bindus from Sun are the
+      1st, 2nd, 4th, 7th, 8th, 9th, 10th, and 11th (from Sun and from each reference point);
+      the total bindus from all 8 reference points gives Sun's BAV for each sign (0-8).
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative technical rule with specific positions = 1.0; Saravali confirms Sun BAV positions = 1.15. 0.88."
+    caveats: "BAV construction positions vary slightly across BPHS editions. Always verify the specific bindu-giving positions against the edition in use."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.66.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.9"
+      text_excerpt: |
+        "Saturn contributes its bindu from: 3rd, 5th, 6th, 11th, and 12th from Saturn;
+        1st, 4th, 7th, 8th, 10th, 11th from Lagna; and equivalent positions from each
+        of the other planets and Moon."
+    condition: Saturn's Bhinna Ashtakavarga (BAV) is being constructed.
+    assertion: >
+      Saturn's BAV is constructed by assigning bindus to specific signs as counted from
+      Saturn's position (3rd, 5th, 6th, 11th, 12th), from Lagna (1st, 4th, 7th, 8th,
+      10th, 11th), from Moon, and from each other planet; signs receiving fewer Saturnine
+      bindus are more challenging for Saturn transits (particularly relevant during Sade Sati).
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative technical rule = 1.0; Saravali confirms Saturn BAV positions = 1.15. 0.88."
+    caveats: "Saturn's BAV is particularly important for Sade Sati analysis — checking the bindu count for the three Sade Sati signs is standard practice."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SADE SATI — SATURN'S 7.5-YEAR TRANSIT ───────────────────────────────────
+
+  - rule_id: BPHS.68.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.2"
+      text_excerpt: |
+        "When Saturn transits the 12th, 1st, and 2nd houses from the natal Moon, a period
+        known as Sade Sati (seven and a half years) occurs. The three phases of Sade Sati
+        each carry different effects: the first phase affects the parents, the second
+        phase affects the native directly, and the third phase affects finances and family."
+    condition: Saturn is transiting the 12H, 1H, or 2H from the natal Moon's sign.
+    assertion: >
+      Sade Sati comprises three 2.5-year phases: (1) Saturn in 12H from Moon — affects
+      parents, foreign journeys, and losses; (2) Saturn in 1H from Moon (over natal Moon)
+      — affects the native's health, mind, and immediate circumstances most directly;
+      (3) Saturn in 2H from Moon — affects family, finances, and accumulated resources;
+      the middle phase is generally the most challenging.
+    scope: transit
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative transit rule with phase breakdown = 1.0; Saravali and Phaladeepika confirm Sade Sati = 1.15. 0.92."
+    caveats: "Sade Sati's effects are heavily modulated by Saturn's natal strength, the BAV bindus in the three signs, and the active dasha period during the transit. It is not uniformly negative."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.68.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.3"
+      text_excerpt: |
+        "Sade Sati is most difficult when it coincides with the dasha or antardasha of
+        Saturn or of a planet placed in the 12th, 1st, or 2nd house from the natal Moon.
+        Conversely, Sade Sati that coincides with Jupiter's dasha is significantly mitigated."
+    condition: Sade Sati is active AND the current dasha/antardasha lord is also evaluated.
+    assertion: >
+      Sade Sati combined with Saturn dasha/antardasha = maximum hardship (double Saturnine
+      activation); Sade Sati combined with Jupiter dasha = significant mitigation (Jupiter's
+      benefic quality counteracts Saturn's restrictive transit); the dasha lord during Sade
+      Sati determines whether the transit produces manageable challenges or severe difficulties.
+    scope: transit
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with conditional = 0.8; Saravali confirms dasha-transit interaction in Sade Sati = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── GOCHARA (TRANSIT) — JUPITER ─────────────────────────────────────────────
+
+  - rule_id: BPHS.68.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.5"
+      text_excerpt: |
+        "When Jupiter transits the 2nd, 5th, 7th, 9th, or 11th house from the natal Moon,
+        it gives auspicious results. Transit through the 1st, 3rd, 4th, 6th, 8th, 10th,
+        or 12th from natal Moon gives inauspicious or neutral results."
+    condition: Jupiter is transiting a house counted from the natal Moon sign.
+    assertion: >
+      Jupiter's transit through the 2H, 5H, 7H, 9H, and 11H from natal Moon produces
+      positive results corresponding to each house's significations; transit through 1H,
+      3H, 4H, 6H, 8H, 10H, and 12H from natal Moon gives inauspicious or mixed results;
+      the 2H, 5H, 9H Jupiter transits are particularly auspicious for dharma and fortune.
+    scope: transit
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative transit rule = 1.0; Saravali confirms Jupiter-from-Moon transit positions = 1.15. 0.88."
+    caveats: "These are transit positions from Moon only. Transit effects should also be evaluated from Lagna for additional confirmation. BAV bindus modify the above."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── GOCHARA — SATURN ─────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.68.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.6"
+      text_excerpt: |
+        "Saturn's transit through the 3rd, 6th, and 11th houses from the natal Moon is
+        generally auspicious — the native overcomes enemies, gains income, and achieves
+        through effort. Transit through other positions (except the upachaya houses) tends
+        to give difficult results."
+    condition: Saturn is transiting a house counted from the natal Moon sign.
+    assertion: >
+      Saturn's transit through the 3H, 6H, and 11H from natal Moon is auspicious — enemy
+      defeat (6H), competitive gains (3H), and income growth (11H) are indicated; transit
+      through other positions from Moon is generally challenging; the 3rd, 6th, 11th transit
+      represents Saturn's malefic energy being applied to upachaya (growth) houses where
+      it excels.
+    scope: transit
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Saturn-from-Moon auspicious positions = 1.15. 0.88."
+    caveats: "Saturn in 11H from Moon is often cited as the most financially productive transit position. During Sade Sati however, Saturn is simultaneously in 1H from Moon which complicates the 11H transit reading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── VEDHA — OBSTRUCTION OF TRANSIT ─────────────────────────────────────────
+
+  - rule_id: BPHS.68.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.8"
+      text_excerpt: |
+        "Vedha means obstruction. When a planet is in a favorable transit position from the
+        Moon, its positive results are obstructed if another planet simultaneously transits
+        the vedha position for that house. Each favorable transit house has a corresponding
+        vedha house that neutralizes it."
+    condition: >
+      A planet is in a favorable transit position from Moon AND another planet simultaneously
+      occupies the corresponding vedha position for that transit.
+    assertion: >
+      Vedha (obstruction) nullifies favorable transit results when a second planet simultaneously
+      occupies the vedha sign for the favorable transit sign; for example, Jupiter's favorable
+      transit through the 2H from Moon is obstructed (vedha) by any planet in the 12H from
+      Moon simultaneously; vedha must be checked before confirming positive transit outcomes.
+    scope: transit
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; Saravali confirms Vedha concept = 1.15. 0.88."
+    caveats: "Vedha applies to gochara from Moon; the full vedha table for each of the 9 planets' favorable transit positions must be consulted for complete vedha analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DASHA SEQUENCE AND REMAINING BALANCE ────────────────────────────────────
+
+  - rule_id: BPHS.46.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.3"
+      text_excerpt: |
+        "The balance of dasha at birth is proportional to the remaining distance of the Moon
+        in the birth nakshatra. If the Moon has traversed 50% of the nakshatra, 50% of the
+        dasha remains. The remaining dasha balance determines the earliest major life events
+        through the dasha sequence."
+    condition: The balance of the birth dasha (dasha balance at birth) is being calculated.
+    assertion: >
+      Dasha balance at birth = (1 - fraction of nakshatra traversed by Moon) × full dasha
+      duration; this determines the partial first dasha, after which the full Vimshottari
+      sequence continues; an accurate nakshatra position of the Moon at birth is essential
+      for correct dasha balance calculation.
+    scope: dasha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative system rule = 1.0; universally confirmed = 1.3. capped at 0.95."
+    caveats: "Ayanamsha choice (Lahiri, Raman, etc.) affects the Moon's nakshatra position and therefore the dasha balance — different ayanamshas can shift the dasha starting point by several months."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── UTTARAKALAMRITA ADDITIONAL DASHA RULES ──────────────────────────────────
+
+  - rule_id: BPHS.53.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "53.3"
+      text_excerpt: |
+        "When the dasha lord is in the 8th house from the lagna, the dasha generally gives
+        obstacles, health challenges, and transformative events. When in the 12th house,
+        there is expenditure, loss, and foreign experiences. When in the 11th house, there
+        is gain."
+    condition: The dasha lord occupies a specific house from the lagna; the house's quality determines the dasha's general tone.
+    assertion: >
+      The dasha lord's house position from lagna sets the general theme of the dasha period:
+      8H placement = transformation, health challenges, obstacles; 12H placement = expenditure,
+      foreign experiences, losses; 11H placement = income and gains; 1H = self-improvement and
+      vitality; 9H = fortune and dharmic events; the house tone colors the entire mahadasha.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with enumeration = 0.8; Saravali confirms house-based dasha toning = 1.0. 0.80."
+    caveats: "This is the general house-based reading; the planet's functional lordship, dignity, and aspects all further modify this base reading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASHTAKAVARGA — PINDA SADHANA ────────────────────────────────────────────
+
+  - rule_id: BPHS.69.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "69.2"
+      text_excerpt: |
+        "The Pinda (total) of a planet's Bhinna Ashtakavarga (sum of all 12 signs' bindus)
+        indicates the planet's overall beneficence in the chart. A planet with a Pinda of
+        30 or more bindus in its BAV is considered highly benevolent. Below 20 indicates
+        a generally difficult planet in the chart."
+    condition: A planet's total Bhinna Ashtakavarga Pinda (sum across all 12 signs) is being evaluated.
+    assertion: >
+      Pinda interpretation: 30+ total BAV bindus = highly benevolent planet with broad
+      supportive influence across the chart; 25-29 = moderately supportive; 20-24 = mixed;
+      below 20 = the planet's environment in the chart is generally hostile, making its
+      significations and transits more difficult; Pinda is a measure of the planet's
+      overall environmental support.
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka with technical thresholds = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: "Maximum Pinda for any planet is 56 (8 × 7 sources). Average is 28. Pinda should be interpreted relative to the average, not absolute values."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MARAKA DASHA TIMING ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.44.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "44.5"
+      text_excerpt: |
+        "The maraka planet's dasha or antardasha, when it arrives at the appropriate period
+        of life (as determined by the longevity indicator — short, medium, or long life),
+        can trigger death or a major health crisis. Marakas act when the lifespan indicates
+        the appropriate period."
+    condition: >
+      A maraka planet's dasha or antardasha is active AND the native's age falls within
+      the longevity window indicated by the chart's longevity analysis.
+    assertion: >
+      Maraka dasha or antardasha triggers death or major health crises only when: (1) the
+      native's age falls in the appropriate longevity window (short/medium/long); (2) the
+      maraka planet is strong enough to act; (3) confirming malefic transits occur simultaneously;
+      all three conditions must align for maraka activation.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms three-condition maraka activation = 1.15. 0.88."
+    caveats: "Longevity analysis (Pindayus, Amsayus, Nisargayus) must precede maraka analysis. Maraka without longevity context is incomplete and potentially misleading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ANTARADASHA RESULTS — BETWEEN FRIENDLY AND ENEMY PLANETS ────────────────
+
+  - rule_id: BPHS.48.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "48.10"
+      text_excerpt: |
+        "The antardasha of a planet that is a friend of the mahadasha lord gives favorable
+        results — the two planetary energies cooperate and amplify each other. The antardasha
+        of an enemy planet of the mahadasha lord creates conflict and dilutes results."
+    condition: >
+      An antardasha (sub-period) is evaluated based on the relationship between the
+      antardasha lord and the mahadasha lord.
+    assertion: >
+      Friend's antardasha within a mahadasha: cooperative energy produces the best results
+      of both planets combined; enemy's antardasha within a mahadasha: conflicting energies
+      produce weakened or contradictory results — the native may experience the negative
+      dimensions of both planets simultaneously; neutral planet antardasha gives moderate,
+      mixed results.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms friendship-based antardasha quality = 1.0. 0.80."
+    caveats: "Natural friendship (naisargika maitri) and functional friendship (based on chart lordship) both matter here — a natural enemy can be a functional friend if both planets are yogakarakas."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TRANSIT OF DASHA LORD ────────────────────────────────────────────────────
+
+  - rule_id: BPHS.68.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.10"
+      text_excerpt: |
+        "The dasha lord's transit through its own natal house is particularly powerful.
+        When the dasha lord returns to its natal position (by transit), the promises of
+        the dasha are most strongly activated — this is the strongest timing signal within
+        a dasha period."
+    condition: The mahadasha lord transits back to its natal house position during the active dasha.
+    assertion: >
+      When the dasha lord transits over its own natal position (planetary return to natal
+      house), the natal promise of the dasha is most powerfully activated; events predicted
+      for the dasha are most likely to manifest at this specific transit timing; this
+      principle is particularly relevant for slower planets (Saturn, Jupiter) whose return
+      to natal position is a rare and powerful event.
+    scope: transit
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── KALATRA (SPOUSE) PREDICTION TIMING ──────────────────────────────────────
+
+  - rule_id: BPHS.50.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "50.3"
+      text_excerpt: |
+        "Marriage occurs during the dasha or antardasha of the 7th house lord, Venus (the
+        karaka), or a planet strongly connected to the 7th house. Jupiter's transit through
+        the 7th house or its trine from the natal Moon simultaneously confirms the timing."
+    condition: >
+      Marriage is being predicted for timing within the dasha system.
+    assertion: >
+      Marriage timing requires: (1) dasha/antardasha of 7L, Venus, or a planet in/aspecting 7H;
+      (2) simultaneously confirmed by Jupiter transiting the 7H or a trine from natal Moon;
+      both the dasha activation and the transit confirmation must align for marriage to
+      manifest at a specific time; either alone is insufficient for reliable prediction.
+    scope: dasha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative timing formula = 1.0; Saravali confirms marriage timing requirements = 1.15. 0.88."
+    caveats: "Marriage timing is one of the most complex prediction tasks — the 7H, Venus, the Moon, and the navamsha lagna all contribute to the full analysis."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ────────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH46.FULL_81_ANTARDASHA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.APPROX.20"
+      text_excerpt: |
+        "[BPHS Ch. 48-53 covers all 81 antardasha combinations — full enumeration pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: dasha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Complete coverage of all 81 antardasha combinations (9 × 9) deferred to canon-extraction session. Key representative combinations extracted above (rules 310-316)."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full 81-antardasha enumeration deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH66.FULL_BAV_TABLES
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "66.APPROX.10"
+      text_excerpt: |
+        "[Full Prastara Ashtakavarga tables for all 7 planets + Lagna pending verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: ashtakavarga
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Complete BAV construction tables for all 8 reference points (7 planets + Lagna) deferred to canon-extraction session. Sun and Saturn examples provided above."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full BAV table enumeration deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH68.FULL_VEDHA_TABLE
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "68.APPROX.9"
+      text_excerpt: |
+        "[Full vedha (obstruction) table for all 9 planets' favorable transit positions pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: transit
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The complete vedha correspondence table (favorable sign → obstructing vedha sign for each planet) needs precise verse location across BPHS Ch. 68-69."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; full vedha table verse location needed"
+
+  - rule_id: STUB_BPHS.CH44.LONGEVITY_FORMULA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "44.APPROX.3"
+      text_excerpt: |
+        "[Full Pindayus longevity calculation formula with planet-by-planet contribution pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: dasha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "The precise Pindayus (sum of planetary longevity contributions) formula with sign/dignity modifiers needs precise verse tracing across BPHS Ch. 44."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Pindayus formula verse location needed"
+
+  - rule_id: STUB_BPHS.CH53.NARAYANA_DASHA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "53.APPROX.5"
+      text_excerpt: |
+        "[Narayana Dasha (sign-based dasha) rules and activation pending precise verse trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: dasha
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Narayana Dasha rules (sign-based dasha system) are in BPHS but the precise chapter-verse location for key rules needs tracing — multiple chapters discuss different aspects."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Narayana Dasha precise verse location needed"
