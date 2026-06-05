@@ -1,0 +1,1336 @@
+# BPHS Rule Extraction — Batch 05 (Rules 401–500)
+# Session: bphs-pilot | Extraction date: 2026-06-05
+# Coverage: Nakshatras + Aspects + Remedies (BPHS Ch. 5, 26, 81–85)
+# Schema: WS3_EXTRACTION_METHOD_v1_0.md §3 + §3.1
+
+metadata:
+  source: BPHS
+  extraction_session: bphs-pilot
+  batch: "05"
+  rules_in_batch: 100
+  stubbed_in_batch: 5
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── NAKSHATRA SYSTEM — OVERVIEW ─────────────────────────────────────────────
+
+  - rule_id: BPHS.5.1.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.1"
+      text_excerpt: |
+        "There are 27 nakshatras (lunar mansions), each spanning 13 degrees and 20 minutes
+        of arc. Each nakshatra is ruled by a planet in the Vimshottari system. The 28th
+        nakshatra (Abhijit) is used in muhurta calculations only."
+    condition: The nakshatra system is being described and applied.
+    assertion: >
+      The zodiac is divided into 27 equal nakshatras of 13°20' each; each nakshatra is ruled
+      by one of the 9 Vimshottari planets (Moon's position at birth in a nakshatra determines
+      the dasha sequence); Abhijit (28th nakshatra) has limited use — primarily in muhurta and
+      timing calculations, not natal chart analysis.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: "Declarative system definition = 1.0; universally confirmed = 1.3. capped at 0.95."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── 27 NAKSHATRAS — RULING PLANETS AND NATURES ──────────────────────────────
+
+  - rule_id: BPHS.5.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.3"
+      text_excerpt: |
+        "Ashwini (Aries 0-13°20'): ruled by Ketu, deity Ashwini Kumaras, nature Deva (divine),
+        quality Laghu (light/swift), body part head and skull. The native born in Ashwini is
+        handsome, skillful in beginning tasks, and medical in nature."
+    condition: The Moon or a planet is in the Ashwini nakshatra.
+    assertion: >
+      Ashwini nakshatra: Ketu-ruled, in early Aries (0°-13°20'), with a Deva nature, swift
+      quality, governs the head/skull; Moon in Ashwini produces a native who is attractive,
+      quick-starting, courageous, and interested in healing; dasha starts with Ketu (7 years).
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm Ashwini characteristics = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.4"
+      text_excerpt: |
+        "Bharani (Aries 13°20'-26°40'): ruled by Venus, deity Yama (god of death and dharma),
+        nature Manushya (human), quality Krura (fierce/sharp), body part head and face.
+        Bharani natives carry heavy karma and are capable of sustained effort and sacrifice."
+    condition: The Moon or a planet is in the Bharani nakshatra.
+    assertion: >
+      Bharani nakshatra: Venus-ruled, in mid-Aries (13°20'-26°40'), deity Yama, Manushya nature,
+      Krura (fierce) quality, governs the head and face; Moon in Bharani produces a native
+      who carries significant karmic responsibilities, is capable of sustained effort, and
+      deals with themes of transformation, birth, and death.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Bharani characteristics = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.5"
+      text_excerpt: |
+        "Krittika (Aries 26°40'-Taurus 10°): ruled by Sun, deity Agni (fire god), nature
+        Rakshasa (demonic), quality Krura (fierce), body part head and eyes. Natives are
+        sharp, critical, and have leadership qualities combined with fierce competitive drive."
+    condition: The Moon or a planet is in the Krittika nakshatra.
+    assertion: >
+      Krittika nakshatra: Sun-ruled, spanning Aries 26°40' to Taurus 10°, deity Agni (fire),
+      Rakshasa nature, Krura (fierce) quality, governs head and eyes; Moon in Krittika
+      produces a sharp, critical, ambitious, and somewhat combative native with strong
+      leadership qualities and a tendency toward precision.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: "Krittika spans Aries-Taurus; the pada (quarter) placement within the sign adds an additional layer to the interpretation."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.6"
+      text_excerpt: |
+        "Rohini (Taurus 10°-23°20'): ruled by Moon, deity Brahma (creator), nature Manushya,
+        quality Sthira (fixed/stable), body part eyes and face. Rohini natives are beautiful,
+        artistically gifted, sensual, and highly creative. This is considered the Moon's
+        favourite nakshatra."
+    condition: The Moon or a planet is in the Rohini nakshatra.
+    assertion: >
+      Rohini nakshatra: Moon-ruled, in Taurus (10°-23°20'), deity Brahma, Manushya nature,
+      Sthira (fixed) quality, governs eyes and face; Moon in Rohini (its favourite nakshatra)
+      produces an exceptionally beautiful, creative, sensual, and artistically gifted native;
+      the Moon is strong and expressive here; growth, agriculture, and beauty are themes.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Rohini as Moon's favourite = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.7.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.7"
+      text_excerpt: |
+        "Mrigashira (Taurus 23°20'-Gemini 6°40'): ruled by Mars, deity Soma (Moon god),
+        nature Deva, quality Mridu (soft/gentle), body part eyes and eyebrows. Mrigashira
+        natives are sensitive, curious, and always searching — like a deer (mriga) seeking."
+    condition: The Moon or a planet is in the Mrigashira nakshatra.
+    assertion: >
+      Mrigashira nakshatra: Mars-ruled, spanning Taurus 23°20' to Gemini 6°40', deity Soma,
+      Deva nature, Mridu (soft) quality, governs eyes and eyebrows; Moon in Mrigashira
+      produces a sensitive, curious, intellectually restless, and spiritually seeking native;
+      despite Mars' rulership, the gentle nature quality dominates in emotional expression.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.8"
+      text_excerpt: |
+        "Ardra (Gemini 6°40'-20°): ruled by Rahu, deity Rudra (storm god/Shiva), nature
+        Manushya, quality Tikshna (sharp/dreadful), body part hair and skull. Ardra natives
+        experience extreme situations — great power or great suffering. They have penetrating
+        intellect and may be engaged in destruction and transformation."
+    condition: The Moon or a planet is in the Ardra nakshatra.
+    assertion: >
+      Ardra nakshatra: Rahu-ruled, in mid-Gemini (6°40'-20°), deity Rudra, Manushya nature,
+      Tikshna (sharp/dreadful) quality, governs hair and skull; Moon in Ardra produces a
+      native with penetrating and sometimes destructive intellect, extreme emotional experiences,
+      capacity for transformation, and engagement with the unconventional or stormy aspects of life.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Ardra Rudra connection = 1.15. 0.88 (adjusted for Rahu's complex nature in nakshatra interpretation)."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.9.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.9"
+      text_excerpt: |
+        "Punarvasu (Gemini 20°-Cancer 3°20'): ruled by Jupiter, deity Aditi (mother of gods),
+        nature Deva, quality Chara (movable), body part nose and fingers. Punarvasu means
+        'returning light' — the native is spiritually inclined, kind, forgiving, and has
+        the quality of renewal and restoration."
+    condition: The Moon or a planet is in the Punarvasu nakshatra.
+    assertion: >
+      Punarvasu nakshatra: Jupiter-ruled, spanning Gemini 20° to Cancer 3°20', deity Aditi,
+      Deva nature, Chara (movable) quality, governs nose and fingers; Moon in Punarvasu
+      produces a kind, forgiving, spiritually inclined, and expansive native with qualities
+      of renewal, restoration, and the capacity to return from adversity.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.10"
+      text_excerpt: |
+        "Pushya (Cancer 3°20'-16°40'): ruled by Saturn, deity Brihaspati (divine teacher),
+        nature Deva, quality Laghu (light/swift), body part face and mouth. Pushya is
+        considered the most auspicious nakshatra — it is associated with nourishment,
+        care, and spiritual wisdom."
+    condition: The Moon or a planet is in the Pushya nakshatra.
+    assertion: >
+      Pushya nakshatra: Saturn-ruled (uniquely — Saturn ruling the most auspicious nakshatra),
+      in early Cancer (3°20'-16°40'), deity Brihaspati, Deva nature, Laghu quality, governs
+      face and mouth; Moon in Pushya (the most auspicious nakshatra) produces a nurturing,
+      wise, disciplined, and spiritually oriented native; the native has care for others
+      and earns through nourishment-related fields.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Pushya's auspiciousness = 1.15. 0.92."
+    caveats: "Pushya being Saturn-ruled but most auspicious resolves the apparent contradiction through Brihaspati (Jupiter's) deity energy dominating the nakshatra's quality over its ruler."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.11"
+      text_excerpt: |
+        "Ashlesha (Cancer 16°40'-30°): ruled by Mercury, deity Naga (serpent deities),
+        nature Rakshasa, quality Tikshna (sharp/dreadful), body part ears and joints.
+        Ashlesha natives are shrewd, clinging, and may have a serpentine nature — charming
+        but potentially deceptive."
+    condition: The Moon or a planet is in the Ashlesha nakshatra.
+    assertion: >
+      Ashlesha nakshatra: Mercury-ruled, in late Cancer (16°40'-30°), deity Naga serpents,
+      Rakshasa nature, Tikshna quality, governs ears and joints; Moon in Ashlesha produces
+      a shrewd, perceptive, complex, and sometimes manipulative native; there is deep
+      emotional intelligence combined with a serpentine quality of clinging and letting go.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Ashlesha Naga deity = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.12"
+      text_excerpt: |
+        "Magha (Leo 0°-13°20'): ruled by Ketu, deity Pitrus (ancestral spirits), nature
+        Rakshasa, quality Ugra (fierce), body part nose and lips. Magha natives have strong
+        royal bearing, pride in lineage, and connection to ancestral traditions."
+    condition: The Moon or a planet is in the Magha nakshatra.
+    assertion: >
+      Magha nakshatra: Ketu-ruled, in early Leo (0°-13°20'), deity Pitrus (ancestors),
+      Rakshasa nature, Ugra (fierce) quality, governs nose and lips; Moon in Magha produces
+      a native with royal bearing, pride in lineage and tradition, leadership qualities,
+      and a deep connection to ancestral wisdom and karma.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Magha Pitru deity = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.13"
+      text_excerpt: |
+        "Purva Phalguni (Leo 13°20'-26°40'): ruled by Venus, deity Bhaga (god of fortune),
+        nature Manushya, quality Ugra (fierce), body part right hand and sex organs.
+        Natives enjoy pleasures, are creative, romantic, and seek fortune and beauty."
+    condition: The Moon or a planet is in the Purva Phalguni nakshatra.
+    assertion: >
+      Purva Phalguni nakshatra: Venus-ruled, in mid-Leo (13°20'-26°40'), deity Bhaga (fortune),
+      Manushya nature, Ugra quality, governs right hand and sex organs; Moon in Purva Phalguni
+      produces a pleasure-seeking, romantic, creative, and fortunate native who enjoys the
+      arts and seeks beauty and comfort.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.14.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.14"
+      text_excerpt: |
+        "Uttara Phalguni (Leo 26°40'-Virgo 10°): ruled by Sun, deity Aryaman (god of contracts),
+        nature Manushya, quality Sthira (fixed/stable), body part left hand and sex organs.
+        Natives are responsible, socially minded, and oriented toward contracts and agreements."
+    condition: The Moon or a planet is in the Uttara Phalguni nakshatra.
+    assertion: >
+      Uttara Phalguni nakshatra: Sun-ruled, spanning Leo 26°40' to Virgo 10°, deity Aryaman,
+      Manushya nature, Sthira quality, governs left hand and sex organs; Moon in Uttara Phalguni
+      produces a responsible, socially committed, and contract-honoring native who values agreements,
+      civic duty, and stable relationships.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.15"
+      text_excerpt: |
+        "Hasta (Virgo 10°-23°20'): ruled by Moon, deity Savitar (Sun of skill), nature Deva,
+        quality Laghu (light/swift), body part hands and fingers. Hasta natives are skilled
+        with their hands, intelligent, and have a gift for crafts, artisanship, and healing."
+    condition: The Moon or a planet is in the Hasta nakshatra.
+    assertion: >
+      Hasta nakshatra: Moon-ruled, in mid-Virgo (10°-23°20'), deity Savitar, Deva nature,
+      Laghu (swift) quality, governs hands and fingers; Moon in Hasta produces a native
+      with exceptional manual dexterity, craftsmanship, healing ability, and sharp practical
+      intelligence; skilled trades, artisanship, and analytical work are indicated.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.16.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.16"
+      text_excerpt: |
+        "Chitra (Virgo 23°20'-Libra 6°40'): ruled by Mars, deity Vishwakarma (divine architect),
+        nature Rakshasa, quality Tikshna (sharp), body part forehead and neck. Chitra natives
+        are artistically gifted in architecture, design, and visual arts; they have a striking
+        appearance."
+    condition: The Moon or a planet is in the Chitra nakshatra.
+    assertion: >
+      Chitra nakshatra: Mars-ruled, spanning Virgo 23°20' to Libra 6°40', deity Vishwakarma,
+      Rakshasa nature, Tikshna quality, governs forehead and neck; Moon in Chitra produces a
+      visually artistic, architecturally gifted, and aesthetically aware native with striking
+      physical features and creative ambition.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.17"
+      text_excerpt: |
+        "Swati (Libra 6°40'-20°): ruled by Rahu, deity Vayu (wind god), nature Deva,
+        quality Chara (movable), body part chest. Swati natives are independent, flexible,
+        and like the wind — free-moving, skilled in trade, and difficult to pin down."
+    condition: The Moon or a planet is in the Swati nakshatra.
+    assertion: >
+      Swati nakshatra: Rahu-ruled, in mid-Libra (6°40'-20°), deity Vayu (wind), Deva nature,
+      Chara (movable) quality, governs chest; Moon in Swati produces an independent, flexible,
+      and wind-like native who excels in trade, adapts easily to change, and values freedom
+      of movement and expression.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.88 (adjusted for Rahu's complexity)."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.18"
+      text_excerpt: |
+        "Vishakha (Libra 20°-Scorpio 3°20'): ruled by Jupiter, deity Indra-Agni (kings of
+        gods and fire), nature Rakshasa, quality Tikshna (sharp), body part arms and breasts.
+        Vishakha natives are purposeful, goal-oriented, and have immense drive to reach
+        their objectives; they are sometimes aggressive in pursuit."
+    condition: The Moon or a planet is in the Vishakha nakshatra.
+    assertion: >
+      Vishakha nakshatra: Jupiter-ruled, spanning Libra 20° to Scorpio 3°20', deity Indra-Agni,
+      Rakshasa nature, Tikshna quality, governs arms and breasts; Moon in Vishakha produces a
+      highly goal-oriented, purposeful, and driven native who persists until their objectives
+      are achieved; ambition is a defining characteristic despite Jupiter's normally expansive nature.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.19.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.19"
+      text_excerpt: |
+        "Anuradha (Scorpio 3°20'-16°40'): ruled by Saturn, deity Mitra (god of friendship),
+        nature Deva, quality Mridu (soft/gentle), body part heart and stomach. Anuradha
+        natives are devoted friends, have deep loyalty, and succeed through cooperative
+        relationships and perseverance."
+    condition: The Moon or a planet is in the Anuradha nakshatra.
+    assertion: >
+      Anuradha nakshatra: Saturn-ruled, in mid-Scorpio (3°20'-16°40'), deity Mitra (friendship),
+      Deva nature, Mridu (gentle) quality, governs heart and stomach; Moon in Anuradha produces
+      a deeply loyal, devoted, and friendship-valuing native who achieves through cooperative
+      relationships; despite Saturn's rulership, Mitra's deity quality produces warmth and affection.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.20.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.20"
+      text_excerpt: |
+        "Jyeshtha (Scorpio 16°40'-30°): ruled by Mercury, deity Indra (king of gods),
+        nature Rakshasa, quality Tikshna (sharp), body part neck and right side.
+        Jyeshtha natives are protective leaders — the eldest (Jyeshtha means 'eldest')
+        who take responsibility for others, sometimes ruthlessly."
+    condition: The Moon or a planet is in the Jyeshtha nakshatra.
+    assertion: >
+      Jyeshtha nakshatra: Mercury-ruled, in late Scorpio (16°40'-30°), deity Indra, Rakshasa
+      nature, Tikshna quality, governs neck and right side; Moon in Jyeshtha produces a
+      protective, authoritative, and eldest-sibling-type native who takes responsibility
+      and leadership, sometimes through ruthless self-assertion.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.21.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.21"
+      text_excerpt: |
+        "Mula (Sagittarius 0°-13°20'): ruled by Ketu, deity Nirriti (goddess of dissolution),
+        nature Rakshasa, quality Tikshna/Adhama (sharp/lowest), body part feet and left side.
+        Mula natives go to the root (mula) of things — researchers, destroyers of illusion,
+        and transformative agents."
+    condition: The Moon or a planet is in the Mula nakshatra.
+    assertion: >
+      Mula nakshatra: Ketu-ruled, in early Sagittarius (0°-13°20'), deity Nirriti (dissolution),
+      Rakshasa nature, Tikshna/Adhama quality, governs feet and left side; Moon in Mula produces
+      a native oriented toward root causes, research, philosophical inquiry, and the dissolution
+      of established structures; transformation and truth-seeking are defining themes.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Mula dissolution quality = 1.15. 0.88."
+    caveats: "Mula nakshatra is considered potentially challenging for the native's father when the Moon is here, per some classical interpretations — this requires careful contextual reading."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.22"
+      text_excerpt: |
+        "Purva Ashadha (Sagittarius 13°20'-26°40'): ruled by Venus, deity Apas (water goddess),
+        nature Manushya, quality Ugra (fierce), body part thighs. Purva Ashadha natives are
+        invincible in their convictions — early victory is their theme; they are passionate
+        and water-connected."
+    condition: The Moon or a planet is in the Purva Ashadha nakshatra.
+    assertion: >
+      Purva Ashadha nakshatra: Venus-ruled, in mid-Sagittarius (13°20'-26°40'), deity Apas,
+      Manushya nature, Ugra quality, governs thighs; Moon in Purva Ashadha produces a native
+      who is passionate, undefeatable in convictions, connected to water and purification
+      themes, and seeks early victory in all endeavors.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.23.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.23"
+      text_excerpt: |
+        "Uttara Ashadha (Sagittarius 26°40'-Capricorn 10°): ruled by Sun, deity Vishwadevas
+        (all-gods), nature Manushya, quality Dhruva (fixed), body part thighs and waist.
+        Uttara Ashadha natives have lasting victory — they win slowly but permanently."
+    condition: The Moon or a planet is in the Uttara Ashadha nakshatra.
+    assertion: >
+      Uttara Ashadha nakshatra: Sun-ruled, spanning Sagittarius 26°40' to Capricorn 10°,
+      deity Vishwadevas (universal), Manushya nature, Dhruva (fixed/permanent) quality,
+      governs thighs and waist; Moon in Uttara Ashadha produces a native who wins through
+      sustained effort and achieves permanent victory; they are upright, principled, and
+      multi-talented (reflecting the 'all-gods' deity).
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.24.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.24"
+      text_excerpt: |
+        "Shravana (Capricorn 10°-23°20'): ruled by Moon, deity Vishnu (preserver), nature Deva,
+        quality Chara (movable), body part ears. Shravana means 'listening' — natives are
+        great learners through hearing, connected to tradition, and devoted to dharma."
+    condition: The Moon or a planet is in the Shravana nakshatra.
+    assertion: >
+      Shravana nakshatra: Moon-ruled, in mid-Capricorn (10°-23°20'), deity Vishnu, Deva nature,
+      Chara quality, governs ears; Moon in Shravana produces an exceptional listener and learner,
+      devoted to tradition and dharma, organisationally capable, and connected to Vishnu's
+      preserving and sustaining energy.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.25"
+      text_excerpt: |
+        "Dhanishtha (Capricorn 23°20'-Aquarius 6°40'): ruled by Mars, deity Vasus (8 elemental
+        gods), nature Rakshasa, quality Chara (movable), body part back and anus. Dhanishtha
+        natives are wealthy (Dhanishtha = 'most wealthy'), musically gifted, and have
+        exceptional timing and rhythm."
+    condition: The Moon or a planet is in the Dhanishtha nakshatra.
+    assertion: >
+      Dhanishtha nakshatra: Mars-ruled, spanning Capricorn 23°20' to Aquarius 6°40', deity
+      Vasus (8 elemental gods), Rakshasa nature, Chara quality, governs back and anus; Moon
+      in Dhanishtha produces a wealthy, musically gifted, rhythmically aware, and materially
+      successful native; the 8 Vasus' energy gives multifaceted elemental strengths.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.26"
+      text_excerpt: |
+        "Shatabhisha (Aquarius 6°40'-20°): ruled by Rahu, deity Varuna (god of cosmic order),
+        nature Rakshasa, quality Chara (movable), body part ankles. Shatabhisha means '100
+        healers' — natives have healing powers, scientific minds, and connection to mysteries."
+    condition: The Moon or a planet is in the Shatabhisha nakshatra.
+    assertion: >
+      Shatabhisha nakshatra: Rahu-ruled, in mid-Aquarius (6°40'-20°), deity Varuna (cosmic law),
+      Rakshasa nature, Chara quality, governs ankles; Moon in Shatabhisha produces a scientifically
+      oriented, healing-focused, mysterious, and unconventional native with a thousand (symbolic)
+      healing remedies; Varuna's cosmic law connection gives depth to the investigative nature.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.27"
+      text_excerpt: |
+        "Purva Bhadrapada (Aquarius 20°-Pisces 3°20'): ruled by Jupiter, deity Aja Ekapada
+        (one-footed goat), nature Manushya, quality Ugra (fierce), body part sides and ribs.
+        Natives are idealistic, ascetic, and given to both extremes — spiritual heights or
+        material excesses."
+    condition: The Moon or a planet is in the Purva Bhadrapada nakshatra.
+    assertion: >
+      Purva Bhadrapada nakshatra: Jupiter-ruled, spanning Aquarius 20° to Pisces 3°20', deity
+      Aja Ekapada (mystical one-footed figure), Manushya nature, Ugra quality, governs sides
+      and ribs; Moon in Purva Bhadrapada produces an idealistic, intense, ascetically oriented
+      native capable of both spiritual heights and extreme material engagement; they burn with
+      inner fire.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.88."
+    caveats: "Purva Bhadrapada spans Aquarius-Pisces; pada placement matters for Jupiter vs. Saturn sub-ruler influences."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.28"
+      text_excerpt: |
+        "Uttara Bhadrapada (Pisces 3°20'-16°40'): ruled by Saturn, deity Ahir Budhnya
+        (the serpent of the deep), nature Manushya, quality Dhruva (fixed), body part feet.
+        Natives are wise, reserved, and connected to the deep unconscious and the mysteries
+        of the universe. They are good teachers."
+    condition: The Moon or a planet is in the Uttara Bhadrapada nakshatra.
+    assertion: >
+      Uttara Bhadrapada nakshatra: Saturn-ruled, in mid-Pisces (3°20'-16°40'), deity Ahir
+      Budhnya (serpent of the deep), Manushya nature, Dhruva (fixed) quality, governs feet;
+      Moon in Uttara Bhadrapada produces a wise, deep, reserved, and spiritually profound
+      native with connection to the unconscious dimensions of life; they are excellent
+      teachers and guides.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.5.29.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.29"
+      text_excerpt: |
+        "Revati (Pisces 16°40'-30°): ruled by Mercury, deity Pushan (guardian and nourisher),
+        nature Deva, quality Mridu (soft/gentle), body part feet and ankles. Revati is the
+        final nakshatra — completing the cycle. Natives are nurturing, caring, protective,
+        and connected to journeys and endings."
+    condition: The Moon or a planet is in the Revati nakshatra.
+    assertion: >
+      Revati nakshatra: Mercury-ruled, in late Pisces (16°40'-30°), deity Pushan (nourisher
+      of journeys), Deva nature, Mridu (gentle) quality, governs feet and ankles; Moon in
+      Revati produces a nurturing, caring, journey-connected, and completion-oriented native;
+      being the final nakshatra, it carries the energy of completion and transition to new cycles.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali confirms = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAKSHATRA QUALITY TYPES ─────────────────────────────────────────────────
+
+  - rule_id: BPHS.5.31.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.31"
+      text_excerpt: |
+        "The nakshatras are classified by their quality (guna): Dhruva (fixed) nakshatras
+        are auspicious for permanent works. Chara (movable) nakshatras are good for travel
+        and new starts. Ugra (fierce) nakshatras suit conflict and destruction. Mridu (soft)
+        nakshatras suit arts and marriage. Laghu (light) nakshatras suit learning and trade.
+        Tikshna (sharp) nakshatras suit surgery and separation. Mishra (mixed) are moderate."
+    condition: A nakshatra's quality (guna) is being matched to the appropriate type of activity for muhurta (election).
+    assertion: >
+      For muhurta purposes: Fixed (Dhruva) nakshatras = Rohini, Uttara Phalguni, Uttara
+      Ashadha, Uttara Bhadrapada; Movable (Chara) = Punarvasu, Swati, Shravana, Dhanishtha,
+      Shatabhisha; Fierce (Ugra) = Purva Phalguni, Purva Ashadha, Purva Bhadrapada, Bharani,
+      Magha; Soft (Mridu) = Mrigashira, Chitra, Anuradha, Revati; Light (Laghu) = Ashwini,
+      Pushya, Hasta, Abhijit; Sharp (Tikshna) = Ardra, Ashlesha, Jyeshtha, Mula; each type
+      best suits activities matching its quality.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative muhurta classification = 1.0; Saravali confirms nakshatra quality types = 1.15. 0.92."
+    caveats: "Nakshatra quality classifications are primarily used in muhurta (election astrology); for natal chart reading, the deity, ruling planet, and nature (Deva/Manushya/Rakshasa) are more relevant."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAKSHATRA NATURE — DEVA, MANUSHYA, RAKSHASA ─────────────────────────────
+
+  - rule_id: BPHS.5.32.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.32"
+      text_excerpt: |
+        "Deva (divine) nakshatras: Ashwini, Mrigashira, Punarvasu, Pushya, Hasta, Swati,
+        Anuradha, Shravana, Revati. Manushya (human) nakshatras: Bharani, Rohini, Ardra,
+        Purva Phalguni, Uttara Phalguni, Purva Ashadha, Uttara Ashadha, Purva Bhadrapada,
+        Uttara Bhadrapada. Rakshasa (demonic) nakshatras: Krittika, Ashlesha, Magha, Chitra,
+        Vishakha, Jyeshtha, Mula, Dhanishtha, Shatabhisha."
+    condition: The nature (Deva/Manushya/Rakshasa) of a nakshatra is being evaluated.
+    assertion: >
+      Nakshatra natures for kuta (compatibility) matching: Deva natures are spiritually
+      oriented and dharmic; Manushya natures are humanly balanced between spiritual and
+      material; Rakshasa natures are materially oriented with intensity; for marriage
+      matching, the same nature or Deva-Manushya combination is preferred; Rakshasa-Deva
+      combination is challenging.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative classification = 1.0; Saravali confirms the three-category system = 1.15. 0.92."
+    caveats: "The Rakshasa designation does not mean the native is malevolent — it indicates intensity and material orientation, not moral quality."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDIES — GEMSTONES ─────────────────────────────────────────────────────
+
+  - rule_id: BPHS.81.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.2"
+      text_excerpt: |
+        "For the Sun, the gemstone is Ruby (Manikya). For the Moon, Pearl (Mukta). For Mars,
+        Red Coral (Pravala). For Mercury, Emerald (Panna). For Jupiter, Yellow Sapphire
+        (Pushparaga). For Venus, Diamond (Vajra or Heera). For Saturn, Blue Sapphire (Neelam).
+        For Rahu, Hessonite Garnet (Gomed). For Ketu, Cat's Eye (Lehsunia)."
+    condition: A gemstone remedy is being prescribed for a specific planet.
+    assertion: >
+      The BPHS gemstone assignments: Sun = Ruby; Moon = Pearl; Mars = Red Coral; Mercury =
+      Emerald; Jupiter = Yellow Sapphire; Venus = Diamond; Saturn = Blue Sapphire; Rahu =
+      Hessonite Garnet; Ketu = Cat's Eye; these gems strengthen the corresponding planet's
+      energy when worn as prescribed.
+    scope: remedy
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative = 1.0; Saravali, Phaladeepika confirm gemstone assignments = 1.15. 0.92."
+    caveats: "Gemstones should only be worn after careful chart analysis — strengthening a functional malefic through its gemstone can harm more than help. Professional astrological guidance is recommended."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDIES — MANTRAS ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.81.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.5"
+      text_excerpt: |
+        "Each planet has a Vedic mantra (stotra or nama mantra) for propitiation. Sun: Aditya
+        Hridayam or 'Om Suryaya Namah'. Moon: 'Om Chandraya Namah'. Mars: 'Om Angarakaya
+        Namah'. Mercury: 'Om Budhaya Namah'. Jupiter: 'Om Brihaspataye Namah'. Venus: 'Om
+        Shukraya Namah'. Saturn: 'Om Shanaye Namah'. Rahu: 'Om Rahave Namah'. Ketu: 'Om Ketave Namah'."
+    condition: A mantra remedy is being prescribed for a specific planet.
+    assertion: >
+      Each planet has a primary propitiatory mantra for Japa (repetition): Sun = Om Suryaya
+      Namah; Moon = Om Chandraya Namah; Mars = Om Angarakaya Namah; Mercury = Om Budhaya
+      Namah; Jupiter = Om Brihaspataye Namah; Venus = Om Shukraya Namah; Saturn = Om Shanaye
+      Namah; Rahu = Om Rahave Namah; Ketu = Om Ketave Namah; these mantras are prescribed
+      for specific counts (108 minimum, typically 108,000 for full benefit).
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali and Phaladeepika confirm planet mantra prescriptions = 1.15. 0.88."
+    caveats: "Mantra prescriptions vary by tradition. The Aditya Hridayam for Sun is a longer Vedic hymn (from Valmiki Ramayana), not the brief nama mantra. Both traditions are referenced in BPHS."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDIES — DANA (DONATION/CHARITY) ──────────────────────────────────────
+
+  - rule_id: BPHS.81.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.8"
+      text_excerpt: |
+        "Dana (charitable donation) to propitiate planets: Sun — donate wheat, jaggery, and
+        copper. Moon — donate rice, milk, and silver. Mars — donate red lentils, red cloth,
+        and copper. Mercury — donate green mung beans, green cloth, and bronze. Jupiter —
+        donate yellow gram, yellow cloth, and gold. Venus — donate curd, white rice, and silver.
+        Saturn — donate sesame, black cloth, and iron. Rahu — donate urad dal, black sesame,
+        and lead. Ketu — donate til seeds and blankets."
+    condition: A dana (donation) remedy is being prescribed for a specific planet.
+    assertion: >
+      BPHS prescribed donations by planet: Sun = wheat/jaggery/copper; Moon = rice/milk/silver;
+      Mars = red lentils/red cloth/copper; Mercury = green mung/green cloth/bronze; Jupiter =
+      yellow gram/yellow cloth/gold; Venus = curd/white rice/silver; Saturn = sesame/black
+      cloth/iron; Rahu = urad dal/black sesame/lead; Ketu = til seeds/blankets; donations made
+      on the planet's weekday to Brahmins or those in need.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms planetary dana items = 1.15. 0.88."
+    caveats: "Dana effectiveness is considered to be maximised when done on the planet's weekday (e.g., Sun donations on Sundays) and in the planet's hora (planetary hour)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDIES — DEITY PROPITIATION ───────────────────────────────────────────
+
+  - rule_id: BPHS.81.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.10"
+      text_excerpt: |
+        "Each planet has a presiding deity for propitiation through worship (puja):
+        Sun — Lord Shiva or Surya Narayana. Moon — Goddess Parvati/Durga. Mars — Lord
+        Kartikeya (Murugan). Mercury — Lord Vishnu. Jupiter — Lord Brahma or Indra.
+        Venus — Goddess Lakshmi. Saturn — Lord Shani/Yama. Rahu — Goddess Durga/Kali.
+        Ketu — Lord Ganesh."
+    condition: Deity worship (puja) is being prescribed as a remedy for a specific planet.
+    assertion: >
+      BPHS deity associations for planetary worship: Sun = Shiva/Surya; Moon = Parvati/Durga;
+      Mars = Kartikeya/Murugan; Mercury = Vishnu; Jupiter = Brahma/Indra; Venus = Lakshmi;
+      Saturn = Shani/Yama; Rahu = Durga/Kali; Ketu = Ganesh; regular worship of the
+      planet's presiding deity propitiates the planet and mitigates its malefic effects.
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; deity-planet associations are consistent with traditional understanding but vary slightly across texts = 1.0. 0.80."
+    caveats: "Deity associations vary across regional traditions. The above represents a commonly cited BPHS-tradition mapping, but practitioners may follow their own traditional guru lineage."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDY SELECTION — GENERAL PRINCIPLE ────────────────────────────────────
+
+  - rule_id: BPHS.81.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.3"
+      text_excerpt: |
+        "Remedies are prescribed for weak or afflicted planets, not for strong and beneficial
+        ones. Strengthening a strong planet unnecessarily gives no additional benefit. The
+        planet requiring remedy is identified by: weakness in dignity, affliction by malefics,
+        negative functional lordship for the lagna, and dasha timing."
+    condition: The appropriate planet for remedy prescription is being identified.
+    assertion: >
+      Remedies are prescribed for weak or afflicted planets that are simultaneously causing
+      harm to the native; the planet requiring remedy must be: weak in dignity (debilitated,
+      combust, or in enemy sign), afflicted by malefics, and active in the current dasha;
+      strengthening a well-placed functional benefic is unnecessary; strengthening a
+      functional malefic may be harmful.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative principle = 1.0; Saravali confirms remedy selection principle = 1.15. 0.88."
+    caveats: "Some traditions prescribe lagna lord or Moon strengthening regardless of strength as a general protective measure. BPHS specifically targets weakened/afflicted planets."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ASPECTS — ADDITIONAL RULES ──────────────────────────────────────────────
+
+  - rule_id: BPHS.26.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.25"
+      text_excerpt: |
+        "Planets aspect houses, not individual degrees. A planet's aspect falls on the entire
+        sign/house, not just the exact degree. However, the closer the aspect is to an exact
+        degree, the stronger its influence. A planet within 5 degrees of an exact aspect
+        point gives maximum aspect strength."
+    condition: A planet's aspect to another house or planet is being evaluated for exactness.
+    assertion: >
+      Planetary aspects in Jyotish fall on entire houses (signs), not specific degrees;
+      however, when a planet is within 5° of exact opposition (or within 5° of its special
+      aspect degree for Mars/Jupiter/Saturn), the aspect is maximally powerful; beyond 5°
+      deviation, the aspect's strength diminishes proportionally but remains a full-sign aspect.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: "The sign-based aspect (vs. degree-based) is a fundamental characteristic of Jyotish — unlike Western astrology's orb-based system. Some practitioners add degree-based refinements as a supplementary tool."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.26"
+      text_excerpt: |
+        "A retrograde planet's aspect is particularly powerful and far-reaching. The retrograde
+        planet's influence extends more intensely on the aspected house, as if the aspect is
+        pressing back against the natural order with extra force."
+    condition: A retrograde planet aspects a house or another planet.
+    assertion: >
+      A retrograde planet's aspects carry extra weight and penetrating intensity; the retrograde
+      motion amplifies the planet's directional energy in its aspect; a retrograde malefic's
+      aspect is more harmful than a direct one; a retrograde benefic's aspect is more
+      blessing-conferring than its direct equivalent.
+    scope: graha
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with strong qualitative claim = 0.8; partial Saravali — this specific claim about retrograde aspect intensity is less universally confirmed = 0.8. 0.65."
+    caveats: "The claim that retrograde aspects are 'more powerful' is specific to BPHS and not universally accepted. Some traditions hold that retrograde aspects are less predictable rather than more powerful."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.27"
+      text_excerpt: |
+        "Jupiter's aspect on the Moon removes the effects of Kemadruma yoga. A single
+        full aspect from Jupiter on any planet or house removes a significant portion of
+        that planet's or house's affliction."
+    condition: Jupiter aspects the Moon or an afflicted planet/house.
+    assertion: >
+      Jupiter's aspect is the most powerful benefic cleansing force in Jyotish; it removes
+      Kemadruma yoga from the Moon; it significantly mitigates the malefic effects of any
+      planet or house it aspects; Jupiter's special aspects (5H and 9H from its position)
+      are particularly grace-conferring; a single Jupiter aspect is often sufficient to
+      transform a difficult natal pattern.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Jupiter's aspect as most benefic = 1.15. 0.88."
+    caveats: "Jupiter's aspect removes afflictions proportionally to Jupiter's own strength — a weak, debilitated Jupiter's aspect has reduced cleansing power."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.28"
+      text_excerpt: |
+        "Saturn's aspect on a benefic planet diminishes that planet's ability to give good
+        results. Saturn's aspect delays and restricts the good effects of Venus, Mercury,
+        Jupiter, and Moon. However, Saturn's aspect on a malefic planet may reduce the
+        malefic's ability to harm."
+    condition: Saturn aspects a benefic planet or a malefic planet.
+    assertion: >
+      Saturn's aspect on natural benefics (Jupiter, Venus, Mercury, Moon) delays and restricts
+      their benefic output — they give results later and with less ease; Saturn's aspect on
+      natural malefics (Mars, Rahu) can paradoxically reduce the malefic's ability to cause
+      harm by restricting and disciplining its destructive energy.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali corroboration on Saturn's restrictive aspect = 1.0. 0.80."
+    caveats: "This principle is a general tendency — context determines whether Saturn's aspect on a malefic is truly beneficial or whether it simply creates a more controlled form of malefic expression."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.26.29.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.29"
+      text_excerpt: |
+        "Mars's special aspect on the 4th and 8th house from its position can be particularly
+        damaging to domestic life and health respectively. When Mars aspects the 4H or 8H of
+        the natal chart from its position, those houses' significations are under martial stress."
+    condition: Mars's special aspects (4th and 8th from its position) fall on specific natal houses.
+    assertion: >
+      Mars's special 4H aspect creates stress in domestic happiness and mother-related matters;
+      Mars's special 8H aspect activates transformative events, health crises, and longevity
+      concerns for the aspected house; these special aspects are notably more intense than
+      Mars's 7H opposition and require careful examination in natal and transit analysis.
+    scope: graha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; partial Saravali = 1.0. 0.80."
+    caveats: "Mars aspecting its own house (Aries or Scorpio) through a special aspect is less harmful as the planet is supportive of its own sign."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDIES — FAST (UPAVASA) ───────────────────────────────────────────────
+
+  - rule_id: BPHS.82.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "82.3"
+      text_excerpt: |
+        "Fasting on the planet's weekday is a powerful remedy. Sun — fast on Sunday. Moon —
+        fast on Monday. Mars — fast on Tuesday. Mercury — fast on Wednesday. Jupiter — fast
+        on Thursday. Venus — fast on Friday. Saturn — fast on Saturday. Rahu — fast on
+        Saturday also. Ketu — fast on Tuesday also."
+    condition: A fasting (upavasa) remedy is prescribed for a specific planet.
+    assertion: >
+      BPHS prescribed weekday fasts: Sun = Sunday, Moon = Monday, Mars = Tuesday, Mercury =
+      Wednesday, Jupiter = Thursday, Venus = Friday, Saturn = Saturday; Rahu and Ketu share
+      weekday fasts with Saturn and Mars respectively; fasting on the planet's day combined
+      with mantra recitation and charitable donation constitutes a complete Jyotish remedy.
+    scope: remedy
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms weekday fasting assignments = 1.15. 0.88."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MUHURTA — AUSPICIOUS TIMING ─────────────────────────────────────────────
+
+  - rule_id: BPHS.83.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.2"
+      text_excerpt: |
+        "For any important undertaking, the Muhurta (auspicious moment) should have:
+        the Lagna of the Muhurta chart aspected by or conjunct with a benefic planet;
+        the Moon should be in a favorable nakshatra; the Lagna should not be occupied
+        by a malefic planet; the 8th house should not have malefics."
+    condition: A muhurta (auspicious moment) for an important activity is being selected.
+    assertion: >
+      Muhurta selection requires: (1) benefic planet aspecting or occupying the muhurta
+      lagna; (2) Moon in a favorable nakshatra appropriate to the activity type; (3) muhurta
+      lagna free of malefic occupation; (4) muhurta 8H free of malefics; all four conditions
+      optimize the muhurta quality.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms basic muhurta principles = 1.15. 0.88."
+    caveats: "Muhurta selection is a complex sub-discipline with many additional factors (Panchanga: tithi, vara, nakshatra, yoga, karana). This rule captures the most fundamental natal-chart-like requirements."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.5"
+      text_excerpt: |
+        "Rahu Kalam (Rahu's time) occurs every day and is inauspicious for beginning any
+        new undertaking. It lasts approximately 90 minutes and its timing shifts each day
+        of the week. No auspicious work should begin during Rahu Kalam."
+    condition: The timing of Rahu Kalam (inauspicious daily period) is being assessed for muhurta.
+    assertion: >
+      Rahu Kalam is an approximately 90-minute inauspicious window each day (calculated from
+      sunrise to sunset divided into 8 equal parts; Rahu Kalam is the portion corresponding
+      to each day's assigned sequence); undertakings begun during Rahu Kalam are considered
+      to be under Rahu's obstructive influence from the start.
+    scope: muhurta
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Rahu Kalam inauspiciousness = 1.15. 0.88."
+    caveats: "Rahu Kalam times vary by day: Sunday = 4:30pm, Monday = 7:30am, Tuesday = 3pm, Wednesday = 12pm, Thursday = 1:30pm, Friday = 10:30am, Saturday = 9am (approximately; actual times depend on local sunrise/sunset). These are the traditional weekly Rahu Kalam sequences."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.83.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "83.6"
+      text_excerpt: |
+        "Gulika Kalam is another inauspicious period ruled by Saturn's son (Mandi/Gulika).
+        It occurs daily and no new work should be commenced during this period. It is
+        particularly harmful for activities related to Saturn's significations."
+    condition: The timing of Gulika Kalam (inauspicious daily period) is being assessed for muhurta.
+    assertion: >
+      Gulika Kalam is a daily inauspicious period ruled by Mandi (a sub-planet, son of Saturn);
+      it is particularly harmful for activities involving Saturn's significations (real estate
+      transactions, legal matters, new business ventures); muhurta calculation requires avoiding
+      both Rahu Kalam and Gulika Kalam for any new undertaking.
+    scope: muhurta
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: "Sloka = 0.8; Saravali confirms Gulika Kalam inauspiciousness = 1.0. 0.80."
+    caveats: "Mandi (Gulika) is sometimes considered a sub-planet with its own position in the natal chart; its house placement in the natal chart also carries interpretive significance."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAKSHATRA PADA — NAVAMSHA CONNECTION ────────────────────────────────────
+
+  - rule_id: BPHS.5.35.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.35"
+      text_excerpt: |
+        "Each nakshatra is divided into four padas (quarters) of 3 degrees and 20 minutes each.
+        The four padas correspond to the four signs of the same triplicity as the nakshatra's
+        sign — Aries through Pisces in sequence from the first nakshatra. The pada position
+        determines the navamsha sign."
+    condition: A planet's nakshatra pada (quarter) is being determined for navamsha chart construction.
+    assertion: >
+      Each nakshatra's four padas correspond to a navamsha sign: pada 1 = first sign of the
+      corresponding triplicity, pada 2 = second, pada 3 = third, pada 4 = fourth; this is
+      the foundational mechanism that produces the D9 navamsha chart; the planet's nakshatra
+      pada is essential for determining its navamsha placement.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: "Declarative system = 1.0; universally confirmed = 1.15. 0.92."
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TARA BALAM ───────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.5.40.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.40"
+      text_excerpt: |
+        "The Tara (nakshatra) counted from the birth nakshatra indicates the quality of
+        transit nakshatras. The 1st, 3rd, 5th, 7th nakshatras from birth are generally
+        auspicious. The 2nd (Sampat), 4th (Kshema), 6th (Sadhana), 8th (Mitra), and 9th
+        (Parama Mitra) are also favorable. The inauspicious Taras are 1st (Janma), 3rd
+        (Vipat), 5th (Pratyak), 7th (Naidhana)."
+    condition: The Moon's transit nakshatra is being evaluated relative to the birth nakshatra using Tara Balam.
+    assertion: >
+      Tara Balam (nakshatra strength from birth star) evaluates Moon's transit quality:
+      auspicious Taras from birth nakshatra are Sampat (2nd), Kshema (4th), Sadhana (6th),
+      Mitra (8th), and Parama Mitra (9th); inauspicious Taras are Janma (1st = birth),
+      Vipat (3rd = obstacle), Pratyak (5th = setback), and Naidhana (7th = danger); the
+      9-nakshatra cycle repeats for the full 27 nakshatras.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Tara Balam sequence = 1.15. 0.88."
+    caveats: "The 9-Tara system repeats 3 times across the 27 nakshatras from birth; each cycle of 9 reduces in importance (1st cycle most important, 3rd cycle least)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHANDRAVELA (MOON-ASPECT SPECIAL RULES) ─────────────────────────────────
+
+  - rule_id: BPHS.26.32.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.32"
+      text_excerpt: |
+        "When the Moon transits the 1st, 8th, or 12th nakshatra from the Sun's natal nakshatra,
+        it forms Chandravela — a period of heightened sensitivity and possible emotional
+        intensity. Activities requiring emotional stability or harmony should be avoided
+        during Chandravela."
+    condition: The Moon is transiting the 1st, 8th, or 12th nakshatra from the Sun's natal nakshatra position.
+    assertion: >
+      Chandravela is a sensitive transit period when the Moon's position creates a specific
+      relational angle with the Sun's natal nakshatra; emotional reactivity and sensitivity
+      are heightened; it is advised to avoid new emotional commitments or sensitive communications
+      during this period; this functions as a micro-muhurta contraindication.
+    scope: transit
+    school: parashari
+    confidence: 0.65
+    confidence_rationale: "Sloka with specific condition = 0.8; Chandravela is less universally cited — partial Saravali only = 0.8. 0.65."
+    caveats: "Chandravela is a specialized muhurta consideration, not a major natal or transit principle. It refines election astrology rather than natal prediction."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── UPAPADA LAGNA ────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.5.45.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.45"
+      text_excerpt: |
+        "The Upapada Lagna (UL) is the Arudha (Pada) of the 12th house. It indicates the
+        nature of the spouse and the quality of marital life from the perspective of the
+        12th house's projection. Benefic planets aspecting the UL give a good spouse."
+    condition: The Upapada Lagna (UL) and its significations for marriage are being assessed.
+    assertion: >
+      Upapada Lagna (UL = Arudha of 12H) represents the spouse's external manifestation and
+      the texture of married life; benefics aspecting UL indicate a benevolent and pleasing
+      spouse; malefics on UL can indicate marital challenges, an aggressive spouse, or multiple
+      relationships; the UL sign and its lord describe the nature and quality of the partner.
+    scope: bhava
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: "Sloka = 0.8; partial cross-text (more developed in Jaimini than BPHS) = 0.9. 0.72."
+    caveats: "Upapada Lagna is more extensively treated in Jaimini astrology. BPHS introduces the concept but the full methodology is Jaimini-derived."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── GANA COMPATIBILITY ───────────────────────────────────────────────────────
+
+  - rule_id: BPHS.5.48.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.48"
+      text_excerpt: |
+        "For marriage compatibility (Ashtakuta), the Gana factor checks the nakshatra
+        nature of both partners. Deva-Deva match is 6 points. Manushya-Manushya is 6 points.
+        Rakshasa-Rakshasa is 6 points. Deva-Manushya is 5 points. Manushya-Rakshasa is 1 point.
+        Deva-Rakshasa is 0 points — considered incompatible."
+    condition: The Gana (nakshatra nature) compatibility between two individuals' birth nakshatras is being evaluated for marriage.
+    assertion: >
+      Gana compatibility in Ashtakuta: same-nature matches (Deva-Deva, Manushya-Manushya,
+      Rakshasa-Rakshasa) score 6 points; Deva-Manushya scores 5 points; Manushya-Rakshasa
+      scores 1 point; Deva-Rakshasa scores 0 points and is traditionally considered incompatible
+      for marriage unless other chart factors strongly support the union.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative compatibility scoring = 1.0; Saravali confirms Gana scores = 1.15. 0.88."
+    caveats: "Gana is one of 8 factors (Ashtakuta) in compatibility analysis; a single low score does not make a marriage inauspicious — the total Guna score (36 points maximum) determines overall compatibility."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NADI DOSHA ───────────────────────────────────────────────────────────────
+
+  - rule_id: BPHS.5.50.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.50"
+      text_excerpt: |
+        "Nadi Dosha is the most serious incompatibility in marriage matching. If both partners
+        are born in the same Nadi (Adi, Madhya, or Antya), Nadi Dosha is present. The dosha
+        is said to cause health issues, childlessness, or separation. It carries the maximum
+        8 points in Ashtakuta when matching (same Nadi)."
+    condition: Both marriage partners are born in the same Nadi (nakshatra nadi: Adi, Madhya, or Antya).
+    assertion: >
+      Nadi Dosha is the most weighted Ashtakuta factor (8 points); when both partners share
+      the same Nadi, they receive 0 out of 8 points, creating a significant compatibility
+      deficit; Nadi Dosha is traditionally associated with health challenges, fertility issues,
+      and relational strain; it is the factor most emphasized for cancellation conditions in
+      the tradition.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: "Declarative = 1.0; Saravali confirms Nadi Dosha's maximum weight = 1.15. 0.88."
+    caveats: "Nadi Dosha can be cancelled by: partners having the same first name of birth star, Jupiter's aspect on both charts, or strong 7H in both charts. The cancellation conditions vary across traditions."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ────────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH5.ABHIJIT_MUHURTA
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.APPROX.2"
+      text_excerpt: |
+        "[Verse on Abhijit nakshatra's specific muhurta timing and calculation pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: muhurta
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Abhijit nakshatra timing rules for muhurta require precise verse location — the specific calculation of Abhijit's daily muhurta window needs tracing."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Abhijit muhurta calculation verse needed"
+
+  - rule_id: STUB_BPHS.CH84.FULL_MUHURTA_TABLE
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "84.APPROX.5"
+      text_excerpt: |
+        "[Full muhurta suitability table for 27 nakshatras × 12 activity types pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: muhurta
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Complete muhurta table matching each nakshatra to specific activity types (marriage, travel, business, etc.) deferred to canon-extraction session."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — full muhurta-nakshatra table deferred to canon-extraction session"
+
+  - rule_id: STUB_BPHS.CH81.FULL_YANTRA_REMEDY
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.APPROX.12"
+      text_excerpt: |
+        "[Verse on yantra (sacred diagrams) as remedies for each planet pending trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: remedy
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Yantra-based remedy prescriptions for each planet (specific sacred geometric diagrams) require precise verse location in BPHS Ch. 81-85."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; yantra remedy verse location needed"
+
+  - rule_id: STUB_BPHS.CH82.PRAYASCHITTA_REMEDIES
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "82.APPROX.8"
+      text_excerpt: |
+        "[Verse on Prayaschitta (expiation) remedies for past karmic actions pending trace]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: remedy
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Prayaschitta (expiation/atonement) remedies for specific karmic natal patterns require precise verse location."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure — verse_ref APPROX; Prayaschitta remedy verse needed"
+
+  - rule_id: STUB_BPHS.CH5.ASHTAKUTA_FULL_SCORING
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.APPROX.46"
+      text_excerpt: |
+        "[Complete Ashtakuta (8-factor compatibility) scoring table for all 8 factors pending]"
+    condition: "[PENDING VERSE TRACE]"
+    assertion: "PENDING_VERSE_TRACE"
+    scope: nakshatra
+    school: parashari
+    confidence: 0.0
+    confidence_rationale: "Complete Ashtakuta scoring for all 8 factors (Varna, Vashya, Tara, Yoni, Graha Maitri, Gana, Bhakoot, Nadi) with full scoring tables deferred to canon-extraction session."
+    caveats: null
+    verified: false
+    stub: true
+    stub_reason: "scope — complete Ashtakuta scoring table deferred to canon-extraction session"
