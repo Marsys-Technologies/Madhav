@@ -148,7 +148,22 @@ sessions:
 
   - id: l4-phala
     layer: phala
-    status: pending
+    status: passed
+    closed_at: 2026-06-05
+    assets_passed: [phala.anchors, phala.mitigation, phala.rectification, phala.muhurta, phala.outlook]
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/l4-phala-pass.md
+    commits:
+      - 377ebb96  # l4_anchors.py — 25 anchors 2026-2040 + query_phala_anchors
+      - de608518  # l4_mitigation.py — 17 mitigation entries (9 obstruction IDs)
+      - 62860a6d  # l4_rectification.py — LEL train/test split framework
+      - 7564977f  # l4_muhurta.py — 6 action types + query_muhurta
+      - cd7c196b  # l4_outlook.py — composite phala_outlook tool
+    volume_floors_met:
+      - "phala.anchors: 25/20"
+      - "phala.mitigation: 17/10"
+      - "phala.rectification: 1/1 (framework)"
+      - "phala.muhurta: 6 action types, 3 windows each"
+      - "phala.outlook: composite (all L4 integrated)"
     assets:
       - phala.anchors
       - phala.mitigation
@@ -164,7 +179,7 @@ sessions:
 
   - id: l5-mimamsa
     layer: mimamsa
-    status: pending
+    status: in_flight
     assets:
       - mimamsa.lel_intake
       - mimamsa.event_chart_state_index
