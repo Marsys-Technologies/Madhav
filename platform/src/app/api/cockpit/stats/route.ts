@@ -42,14 +42,15 @@ async function fetchAssetStats(
     await client.query('BEGIN')
     await client.query("SET LOCAL statement_timeout = '2s'")
 
-    // Substitute chart_id param for per_chart scoped assets
-    const params = asset.scope === 'per_chart' && chartId ? [chartId] : []
-    const countResult = await client.query<{ count: string }>(asset.count_sql, params)
+    // Substitute chart_id param for per_chart scoped assets (count only)
+    const countParams = asset.scope === 'per_chart' && chartId ? [chartId] : []
+    const countResult = await client.query<{ count: string }>(asset.count_sql, countParams)
     const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
     let size_bytes: number | null = null
     if (asset.size_sql) {
-      const sizeResult = await client.query<{ size: string }>(asset.size_sql, params)
+      // size_sql is always pg_total_relation_size('tablename') — never binds $1
+      const sizeResult = await client.query<{ size: string }>(asset.size_sql, [])
       const raw = sizeResult.rows[0]?.size
       size_bytes = raw != null ? parseInt(raw, 10) : null
     }
