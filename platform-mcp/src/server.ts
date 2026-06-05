@@ -29,6 +29,7 @@ import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
 import { registerHolisticBundleTool } from './tools/bo_2-8.js'
 import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
 import { registerHolisticBundleRetrievalTool } from './tools/retrieval/holistic_bundle.js'
+import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_temporal.js'
 
 const app = express()
 app.use(express.json())
@@ -64,6 +65,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
   registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (l2-bodha-scaffold)
+  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (l3-kala)
   // L4 Phala tools
   registerPhalaEventAnchorsTool(server)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
