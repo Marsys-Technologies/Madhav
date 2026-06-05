@@ -15,7 +15,7 @@ governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIV
 
 ---
 
-### [2026-06-05] Conductor initialized
+### [2026-06-05T01:15 UTC] Conductor initialized
 
 - Worktree: /Users/Dev/Vibe-Coding/Apps/MadhavMisc on branch feature/wsmisc-cleanup at ccc66c77
 - Queue committed; smriti dir created
@@ -23,5 +23,32 @@ governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIV
 - Sessions gcs-purge and capability-manifest-rebase: STARTING (no WS-2 dependency)
 - Session migration-squash: BLOCKED on tag ws2-depth-build-complete (polling)
 - Session wave-close: BLOCKED on migration-squash
+
+### [2026-06-05T01:35 UTC] gcs-purge — COMPLETE. AC-1 PASS.
+
+- Commit: f835cb50
+- madhav-marsys-build-artifacts: does not exist (legacy name, was never created or already deleted)
+- madhav-astrology-chart-documents: 19 orphaned objects deleted (chart-id 362f9f17... not in charts table)
+- madhav-astrology-chat-attachments: already empty
+- madhav-marsys-sources: all L-layer assets KEEP (L1/L2_5/L3/L8/L9 prefixes), no legacy prefixes found
+- Zero UNCLASSIFIED prefixes; auto-proceeded per rules
+- AC-1: PASS
+
+### [2026-06-05T02:20 UTC] capability-manifest-rebase — COMPLETE. AC-2 PASS.
+
+- Commit: 1e820fd9
+- Rebased CAPABILITY_MANIFEST.json from 175 entries (M5-era L6/L8/L9) to 117 entries (Brahma L0-L5)
+- Layer mapping: L8→L0 Brahmagyan (classical), L9→L0 Brahmagyan (multi-school), L6→L5 Mimamsa
+- 27 Brahma DB tables catalogued (ganita_*, bodha_*, kala_*, phala_*, mimamsa_*)
+- Zero A1-A22 codename references in manifest
+- drift_detector: 412 findings, all pre-existing from teardown state (not rebase-caused)
+- Cowork adversarial review: PASS_WITH_NOTES (smriti/cowork_manifest_review.md)
+- AC-2: PASS
+
+### [2026-06-05T02:25 UTC] migration-squash — WAITING
+
+- Poll check: ws2-depth-build-complete tag not yet present
+- Blocking session migration-squash; wave-close also blocked
+- Will continue polling
 
 ---
