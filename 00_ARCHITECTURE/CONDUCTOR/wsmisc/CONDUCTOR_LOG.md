@@ -72,3 +72,11 @@ governing_brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIV
 **Next action:** Continue polling. When ws2-depth-build-complete appears, run _squash_tool.sh immediately.
 
 ---
+
+## WSMisc partial complete — 2026-06-05T12:00 UTC
+
+gcs-purge: PASSED (commit f835cb50)
+capability-manifest-rebase: PASSED (commit 1e820fd9)
+migration-squash: BLOCKED (waiting for ws2-depth-build-complete tag — will re-kick when WS-2 closes)
+
+---
