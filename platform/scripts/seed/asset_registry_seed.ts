@@ -720,9 +720,9 @@ const ASSETS: AssetDef[] = [
     count_sql: 'SELECT count(*) FROM life_events',
     size_sql: "SELECT pg_total_relation_size('life_events')",
     target_floor: null,
-    expected_volume_formula: null,  // Set dynamically below from FILE_COUNT
+    expected_volume_formula: "FILE_COUNT('01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md', 'EVT')",
     expected_volume_inputs: null,
-    volume_explanation: 'Deterministic given the source-of-truth file; re-runs must match exactly — divergence = ingest bug',
+    volume_explanation: 'Deterministic given the source-of-truth file. Re-runs MUST match the file count exactly; divergence is a bug.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
@@ -939,10 +939,11 @@ async function main(): Promise<void> {
   validateFormulas(ASSETS, COEFFICIENTS)
   checkNoCycles(ASSETS)
 
-  // Evaluate FILE_COUNT for LEL
+  // Evaluate FILE_COUNT for LEL to populate expected_volume_inputs (audit trail).
+  // The formula string FILE_COUNT('...', 'EVT') is preserved in expected_volume_formula — never replaced with the literal count.
   const lelCount = evalFileCount('01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md', 'EVT')
   const lelAsset = ASSETS.find(a => a.asset_id === 'mimamsa.jivanaghatana')!
-  lelAsset.expected_volume_formula = String(lelCount)
+  // Do NOT overwrite expected_volume_formula — it must stay as the FILE_COUNT expression.
   lelAsset.expected_volume_inputs = { file_count: lelCount, source_file: '01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md' }
   console.log(`FILE_COUNT(LEL, EVT) = ${lelCount}\n`)
 
