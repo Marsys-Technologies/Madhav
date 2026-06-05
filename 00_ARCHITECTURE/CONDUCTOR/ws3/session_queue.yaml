@@ -75,7 +75,26 @@ sessions:
       Per-source quality bar passes. Convergence check surfaces agreement/disagreement.
 
   - id: gate-b-acharya
-    status: PENDING
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    mean_composite: 0.829
+    pct_above_0_7: 91.5
+    lens_b_pct: 93.5
+    per_school:
+      bphs: {mean_composite: 0.856, pct_above_0_7: 94.7, lens_b_pct: 96.0}
+      jaimini: {mean_composite: 0.803, pct_above_0_7: 88.0, lens_b_pct: 90.0}
+      kp: {mean_composite: 0.815, pct_above_0_7: 90.0, lens_b_pct: 92.5}
+      tajaka: {mean_composite: 0.808, pct_above_0_7: 88.6, lens_b_pct: 91.4}
+    notes: >
+      200-rule stratified sample. All 3 thresholds met with margin. 7 concordance
+      flags issued (C1-C7): karaka framework parallelism, aspect system orthogonality,
+      house cusp tagging, strength system divergence, timing non-comparability,
+      Rahu/Ketu per-system, retrograde divergence. No blocking revisions. Proceed
+      to concordance-build.
+    artifacts:
+      - 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_B/sample.md
+      - 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_B/verdict.md
     role: AI-assessed autonomous gate (per AUTONOMY_RESILIENCE_PATTERN §D)
     depends_on: [canon-extraction]
     type: ai-assessed-gate
