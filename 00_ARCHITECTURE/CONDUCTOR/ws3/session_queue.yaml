@@ -1,0 +1,174 @@
+# WS-3 Session Queue — Rule Base + Grounding
+# Governing brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_WS3_AUTONOMOUS_ACTIVATION_v1_0.md
+# Pattern: AUTONOMY_RESILIENCE_PATTERN_v1_0.md (zero synchronous native gates)
+wave: ws3
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavWS3
+branch: feature/ws3-rule-base
+mode: AUTONOMOUS_MODE
+max_run_budget_usd: 5000
+max_spend_per_asset_usd: 1000
+
+sessions:
+  - id: method-and-rubric
+    status: COMPLETE
+    completed_at: "2026-06-05"
+    commit: "8b115285"
+    notes: "WS3_EXTRACTION_METHOD_v1_0.md committed. Cowork second-AI review completed inline (3 amendments: KP verse-ref, extended scope vocab, Jaimini implicit-sutra strength). Prior run crashed before queue was updated."
+    role: Racayitā + adversarial Cowork review
+    depends_on: []
+    scope: |
+      Author the extraction method:
+      - Source-text selection (BPHS/Jaimini/KP/Tajaka — match licensing and corpus availability)
+      - Chunking + verse-ID convention
+      - Rule schema (rule_id, source_verse, condition, assertion, scope, school, confidence, caveats)
+      - Confidence rubric (principled — textual-strength × cross-text corroboration)
+      - Quality bar (≥X% of rules pass Pramāṇa verse-trace + 2/3 LLM reviewers agree)
+    acceptance: |
+      00_ARCHITECTURE/WS3_EXTRACTION_METHOD_v1_0.md committed.
+      Method reviewed by Cowork second-AI slot.
+
+  - id: bphs-pilot
+    status: COMPLETE
+    completed_at: "2026-06-05"
+    commit: "7a1c307c"
+    notes: "500 BPHS rules extracted in 5 batches (100 each). 24 STUBs (4.8%). 476 verified rules. 100% confidence ≥ 0.5. Coverage: graha natures + dignities (B1), bhava significations + planet-in-house (B2), yogas (B3), dashas + ashtakavarga (B4), nakshatras + aspects + remedies (B5). Output: bphs_pilot_rules.yaml (12,019 lines)."
+    role: Śilpī + Pramāṇa + Review Swarm ×5
+    depends_on: [method-and-rubric]
+    scope: |
+      Extract ~500-1000 rules from BPHS covering canonical structural areas:
+      yogas, dignities, aspects, dashas, sade sati, ashtakavarga, muhurta, remedies.
+      Each rule carries verse_ref + text_excerpt. Pramāṇa rejects any rule whose
+      condition/assertion cannot be derived from the cited verse text.
+    acceptance: |
+      Rules stored in 08_CLASSICAL_CROSS_REFERENCE/brahmagyan_rules/bphs_pilot_rules.yaml
+      (or equiv JSON). Quality bar passes Pramāṇa + Review Swarm + Cowork adversarial sample.
+
+  - id: gate-a-acharya
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    mean_composite: 0.849
+    notes: "50-rule stratified sample. All 3 thresholds met. 3 optional (non-blocking) revisions recommended. Proceed to canon-extraction."
+    role: AI-assessed autonomous gate (per AUTONOMY_RESILIENCE_PATTERN §D)
+    depends_on: [bphs-pilot]
+    type: ai-assessed-gate
+    scope: |
+      Sample 50 rules stratified across topics + confidence tiers.
+      Write sample to: 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_A/sample.md
+      Multi-model consensus (3 LLM reasoners) re-extracts same verses independently.
+      Compare with pilot output; vote pass/pass_with_revisions/fail.
+      Write AI verdict to: 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_A/ai_verdict.md
+    verdict_branches:
+      pass: continue to canon-extraction
+      pass_with_revisions: revise method-and-rubric, re-run pilot
+      fail: HALT — deep-fix escalation
+
+  - id: canon-extraction
+    status: PENDING
+    role: Full swarm — Śilpī parallel across texts
+    depends_on: [gate-a-acharya]
+    scope: |
+      Apply (possibly revised) method to full canon: BPHS + Jaimini + KP + Tajaka.
+      Parallel extraction per source. Central convergence check after.
+      Target: ~5000-15000 rules total.
+    acceptance: |
+      Per-source quality bar passes. Convergence check surfaces agreement/disagreement.
+
+  - id: gate-b-acharya
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    mean_composite: 0.829
+    pct_above_0_7: 91.5
+    lens_b_pct: 93.5
+    per_school:
+      bphs: {mean_composite: 0.856, pct_above_0_7: 94.7, lens_b_pct: 96.0}
+      jaimini: {mean_composite: 0.803, pct_above_0_7: 88.0, lens_b_pct: 90.0}
+      kp: {mean_composite: 0.815, pct_above_0_7: 90.0, lens_b_pct: 92.5}
+      tajaka: {mean_composite: 0.808, pct_above_0_7: 88.6, lens_b_pct: 91.4}
+    notes: >
+      200-rule stratified sample. All 3 thresholds met with margin. 7 concordance
+      flags issued (C1-C7): karaka framework parallelism, aspect system orthogonality,
+      house cusp tagging, strength system divergence, timing non-comparability,
+      Rahu/Ketu per-system, retrograde divergence. No blocking revisions. Proceed
+      to concordance-build.
+    artifacts:
+      - 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_B/sample.md
+      - 00_ARCHITECTURE/CONDUCTOR/ws3/acharya_eval_gate_B/verdict.md
+    role: AI-assessed autonomous gate (per AUTONOMY_RESILIENCE_PATTERN §D)
+    depends_on: [canon-extraction]
+    type: ai-assessed-gate
+    scope: |
+      Sample ~200 rules stratified by source + topic + confidence tier.
+      Same AI-assessed mechanics as Gate A.
+      Write sample + verdict to acharya_eval_gate_B/
+    verdict_branches:
+      pass: continue to concordance-build
+      pass_with_revisions: spot-fix affected rules, continue
+      fail: HALT — deep-fix escalation
+
+  - id: concordance-build
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    total_topics: 210
+    pattern_distribution:
+      AGREE: 47
+      QUALIFY: 90
+      CONFLICT: 13
+      ORTHOGONAL: 57
+      SILENT: 3
+    c1_c7_flags_embedded: true
+    commits:
+      - "0d0a3b71"
+      - "126063bc"
+    artifacts:
+      - "00_ARCHITECTURE/CONDUCTOR/ws3/brahmagyan_concordance.yaml"
+      - "00_ARCHITECTURE/CONDUCTOR/ws3/smriti/concordance-pass.md"
+    notes: >
+      210 topics covering all C1-C7 flag domains. 13 confirmed CONFLICTS including
+      C7 retrograde (Parashari exalted-like vs KP previous sub — genuine conflict
+      in 5 sub-entries), sign-primacy vs nakshatra-primacy (TC.162), bhava madhya
+      vs cusp boundary (TC.143), KP vs Lahiri ayanamsha (TC.170). 57 ORTHOGONAL
+      entries covering all 4 framework incompatibilities (C1 karakas, C2 aspects,
+      C3 cusps, C4 strength, C5 timing). Concordance v1.0 sealed.
+    role: Śilpī + Pramāṇa
+    depends_on: [gate-b-acharya]
+    scope: |
+      Build brahmagyan.concordance — cross-school agreement/divergence index.
+      Per topic: agree/qualify/conflict, with lineage trace.
+      Distinguish silent (orthogonal) from contradicts (per master arch §C).
+    acceptance: |
+      Per-topic entries link rules across schools. Conflicts surfaced, not flattened.
+      Provenance/lineage present.
+
+  - id: ws2-handoff-tag
+    status: PENDING
+    role: Sūtradhāra
+    depends_on: [concordance-build]
+    scope: |
+      Open WS-3 PR; CI green; auto-merge; tag ws3-rule-base-complete.
+      WS-2's l2-bodha-grounded session polling for this tag now releases.
+
+  - id: gate-c-acharya-post-grounding
+    status: PENDING
+    role: AI-assessed autonomous gate (per AUTONOMY_RESILIENCE_PATTERN §D)
+    depends_on: [ws2-handoff-tag, ws2-tag:ws2-l2-grounded-complete]
+    type: ai-assessed-gate
+    blocked_on_external: true
+    scope: |
+      BLOCKED until ws2-l2-grounded-complete tag from WS-2.
+      After WS-2 re-derives signals: sample 100 signals.
+      For each: signal + cited rule_id + source verse.
+      AI assesses: does signal correctly invoke rule? Does rule correctly capture verse?
+      Write sample + verdict to acharya_eval_gate_C/
+    verdict_branches:
+      pass: WS-3 fully closes
+      pass_with_revisions: route specific rules back; WS-2 re-grounds affected signals
+      fail: HALT — significant rework
+
+  - id: wave-close
+    status: PENDING
+    role: Sūtradhāra
+    depends_on: [gate-c-acharya-post-grounding]
+    scope: tag ws3-acharya-validated-complete on main; WS-3 sealed.

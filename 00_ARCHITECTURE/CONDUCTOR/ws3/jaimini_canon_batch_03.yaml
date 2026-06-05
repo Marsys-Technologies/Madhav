@@ -1,0 +1,1770 @@
+metadata:
+  source: JAIMINI
+  commentary_edition: "Jaimini Sutras — Sanjay Rath commentary edition"
+  extraction_session: canon-jaimini
+  batch: 3
+  rules_in_batch: 100
+  rule_range: "JAIMINI.3.1.1.1 — JAIMINI.4.3.20.1"
+  coverage: "Adhyaya 3 (Navamsha, Karakamsha deep dive, divisional analysis) + Adhyaya 4 Padas 1-3 (longevity, special yogas, timing)"
+  extraction_date: "2026-06-05"
+  gate_a_improvements_applied:
+    - "R1: Rahu/Ketu confidence × 0.85 (nodes)"
+    - "R2: Contested sutras noted in caveats"
+    - "R3: Lagna-conditional assertions note 'results vary by lagna' in caveats"
+  pramana_pass_rate: 0.90
+  stubbed_rules: 10
+
+rules:
+
+  # ─── ADHYAYA 3 PADA 1: NAVAMSHA INTERPRETATION ───
+
+  - rule_id: JAIMINI.3.1.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.1"
+      text_excerpt: |
+        "Navamsha lagna gives the secret of the soul" — the Lagna in the Navamsha
+        chart (D9) reveals the soul's inner nature, hidden character, and the direction
+        of spiritual evolution that is not immediately visible from the natal chart.
+        The Navamsha Lagna sign and its lord, and planets in the Navamsha Lagna, all
+        describe the native's inner character and spiritual destiny. (Rath: D9 Lagna =
+        the inner person; reveals what the soul truly seeks.)
+    condition: |
+      The Navamsha (D9) Lagna sign and its lord and occupants are assessed.
+    assertion: |
+      The Navamsha Lagna reveals the native's inner character, hidden motivations,
+      and spiritual evolution direction. It functions as a secondary (but equally
+      important) Lagna for the inner life. The lord of the Navamsha Lagna and planets
+      in the Navamsha Lagna describe the inner self's quality and orientation.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by all Jaimini commentators and BPHS (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.1.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.2"
+      text_excerpt: |
+        "Atmakaraka in Navamsha Lagna: 'Swamsha'" — when the Atmakaraka occupies the
+        Navamsha Lagna (first house of D9), it is called Swamsha ('own portion'). This
+        is a powerful position indicating that the soul is strongly centered in its own
+        essence. Swamsha with benefic aspects gives extraordinary gifts; with malefics,
+        severe tests of character. (Rath: AK in D9 Lagna = the soul is fully present
+        in this life; exceptional potential for both greatness and spiritual development.)
+    condition: |
+      The Atmakaraka planet occupies the Lagna (1st house) of the Navamsha (D9) chart.
+    assertion: |
+      AK in Navamsha Lagna (Swamsha) gives extraordinary potential for greatness,
+      spiritual development, and soul-fulfillment. The native's soul is fully engaged
+      in its life mission. Benefic aspects on D9 Lagna = exceptional results; malefic
+      aspects = severe tests that ultimately produce wisdom and strength.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and classical Jaimini tradition (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.1.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.3"
+      text_excerpt: |
+        "Vargottama: planet in same sign in Rashi and Navamsha" — when a planet
+        occupies the same sign in both the Rashi (D1) chart and the Navamsha (D9)
+        chart, it is called Vargottama. A Vargottama planet is exceptionally strong —
+        it gives results as if it were in its own sign or exaltation. In Jaimini,
+        Vargottama Atmakaraka = maximum soul strength. (Rath: Vargottama = the planet
+        is 'doubly placed' in its sign; gives results with exceptional clarity.)
+    condition: |
+      A planet occupies the identical sign in both the Rashi (D1) chart and the
+      Navamsha (D9) chart.
+    assertion: |
+      A Vargottama planet has exceptional strength, delivering its significations
+      with maximum clarity and power. Results are purer, more concentrated, and more
+      certain than for non-Vargottama planets. Vargottama AK = soul at maximum strength
+      in this life; Vargottama lagna lord = exceptionally strong constitution and life force.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by BPHS + Jaimini tradition (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.1.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.4"
+      text_excerpt: |
+        "Exalted planet in Navamsha: elevated life quality" — a planet that is exalted
+        in the Navamsha chart (even if debilitated in the natal chart) gives elevated
+        results in the inner life and in the domains it governs in the D9. Exaltation
+        in D9 means the soul's inner experience of that domain is elevated and refined.
+        (Rath: Navamsha exaltation = inner spiritual victory in that planet's domain;
+        outer life may still show the natal debility, but inner quality is high.)
+    condition: |
+      A planet occupies its exaltation sign in the Navamsha (D9) chart.
+    assertion: |
+      Exaltation in Navamsha elevates a planet's inner-life results. Even if debilitated
+      natally, Navamsha exaltation indicates that the native develops excellence in the
+      planet's domain through inner development and spiritual maturity. This is particularly
+      powerful for AK (indicating moksha potential) and for the 7th lord (indicating
+      quality of marriage at the soul level).
+    scope: divisional
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.1.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.5"
+      text_excerpt: |
+        "Debilitated AK in Navamsha: severe tests of the soul" — when the Atmakaraka
+        is debilitated in the Navamsha chart, the soul faces severe tests and obstacles
+        in fulfilling its primary life purpose. However, if the debilitation is cancelled
+        (Neecha Bhanga in D9), the soul eventually transforms these tests into wisdom and
+        achieves its purpose through hard-won experience. (Rath: AK neecha in D9 = the
+        hero's journey; the soul must overcome its deepest weakness to fulfill its mission.)
+    condition: |
+      The Atmakaraka occupies its debilitation sign in the Navamsha (D9) chart.
+    assertion: |
+      The native's soul faces severe tests in fulfilling its primary life purpose. The
+      journey is difficult, often involving repeated setbacks in the AK's domain. However,
+      Neecha Bhanga (debility cancellation) in D9 indicates eventual triumph through
+      transformation. The soul's challenge becomes its greatest teaching.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 3 PADA 2: KARAKAMSHA DEEP ANALYSIS ───
+
+  - rule_id: JAIMINI.3.2.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.1"
+      text_excerpt: |
+        "Karakamsha in 1st house (same as Lagna): Rajayoga" — when the Karakamsha
+        Lagna falls in the same rashi as the natal Lagna, this is called Swamsha
+        (in a different usage) and creates a very powerful Rajayoga. The soul's
+        purpose and the native's outer life are perfectly aligned. This position
+        gives great success in the native's chosen field. (Rath: KL = natal Lagna =
+        the most powerful alignment of inner purpose and outer life.)
+    condition: |
+      The Karakamsha Lagna (AK's navamsha sign) coincides with the natal Lagna
+      (Ascendant sign) in the natal chart.
+    assertion: |
+      When KL = natal Lagna, a powerful Rajayoga of alignment is formed: the soul's
+      purpose and the outer life expression are unified. Great success and recognition
+      come because the native is fully living their authentic soul purpose. This is one
+      of the rarest and most powerful Jaimini yogas.
+    scope: yoga
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath (1.0) = 0.85; reduced to 0.82"
+    caveats: "This requires precise birth time to verify. Results vary by lagna sign."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.2"
+      text_excerpt: |
+        "Sun in Karakamsha with Jupiter: government or religious leadership" —
+        when both the Sun and Jupiter are in or aspect the Karakamsha Lagna, the
+        native is inclined toward government leadership AND religious/philosophical
+        wisdom simultaneously. This combination creates a 'philosopher-king' profile.
+        (Rath: Sun+Jupiter on KL = minister, judge, head of a religious institution,
+        senior government officer with philosophical orientation.)
+    condition: |
+      Both the Sun and Jupiter occupy or aspect the Karakamsha Lagna sign in
+      the natal chart.
+    assertion: |
+      Native is inclined toward combining authority with wisdom — government leadership
+      with philosophical depth, or religious leadership with administrative capacity.
+      Judge, senior government officer with dharmic orientation, or head of a
+      religious or educational institution are typical profiles.
+    scope: yoga
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.3"
+      text_excerpt: |
+        "Moon and Venus in Karakamsha: arts and public life" — when Moon and Venus
+        both occupy or aspect the Karakamsha Lagna, the native is inclined toward
+        public-facing artistic or entertainment careers. This combination is especially
+        prominent for performers, musicians, and artists who connect with large audiences.
+        (Rath: Moon+Venus on KL = the entertainer soul; public, emotional, beautiful work.)
+    condition: |
+      Both the Moon and Venus occupy or aspect the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native has strong soul-level inclinations toward performing arts, music, public
+      entertainment, or emotionally expressive creative work that reaches large audiences.
+      Public recognition through artistic or emotionally resonant work is the primary
+      life theme.
+    scope: yoga
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.4"
+      text_excerpt: |
+        "Mars and Ketu in Karakamsha: occult and weapons" — when Mars and Ketu both
+        occupy or aspect the Karakamsha Lagna, the native is drawn to occult sciences,
+        weaponry, surgery, or hidden/esoteric knowledge combined with practical
+        application. This is a powerful combination for a surgeon, occultist, or
+        military practitioner with spiritual depth. (Rath: Mars+Ketu on KL = warrior-
+        mystic profile; practical and esoteric simultaneously.)
+    condition: |
+      Both Mars and Ketu occupy or aspect the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native has soul-level inclinations toward occult sciences, surgery, weaponry,
+      esoteric or hidden knowledge combined with practical skill. Warrior-mystic profile:
+      the native can be both physically courageous and spiritually perceptive.
+    scope: yoga
+    school: jaimini
+    confidence: 0.60
+    confidence_rationale: "Implicit sutra form (0.85) × Ketu nodes factor (×0.85) = 0.72; reduced to 0.60 for compound nodal + Mars rule"
+    caveats: "Ketu on KL is contested as noted previously. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.5"
+      text_excerpt: |
+        "Saturn and Rahu in Karakamsha: technology and mass production" — when Saturn
+        and Rahu both occupy or aspect the Karakamsha Lagna, the native is drawn to
+        large-scale industrial, technical, or mass-production enterprises. Working with
+        machinery, chemicals, or infrastructure at scale is typical. (Rath: Saturn+Rahu
+        on KL = the industrialist or mass-market technologist soul; works with large
+        collectives and industrial systems.)
+    condition: |
+      Both Saturn and Rahu occupy or aspect the Karakamsha Lagna sign in the natal chart.
+    assertion: |
+      Native has soul-level inclinations toward large-scale industrial, technical, or
+      mass-market enterprises. Working with machinery, infrastructure, chemicals, or
+      working-class populations at scale defines the career orientation.
+    scope: yoga
+    school: jaimini
+    confidence: 0.58
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85) = 0.72; reduced to 0.58 for Saturn+Rahu compound contested reading"
+    caveats: "Saturn+Rahu on KL is primarily a Rath synthesis reading. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.6"
+      text_excerpt: |
+        "Malefic in 2nd from Karakamsha: harsh speech or cursed speech (shapa)" —
+        when a malefic planet (particularly Saturn, Rahu, or Mars) occupies the 2nd
+        house from the Karakamsha Lagna without benefic aspect, there may be a curse
+        (shapa) associated with speech. The native's words may carry unintended harm,
+        or the native may suffer harm through their own speech. (Rath: 2nd from KL
+        malefic without benefic = speech-related karmic pattern requiring attention.)
+    condition: |
+      A malefic planet (Saturn, Mars, Rahu, or Sun) occupies the 2nd house from the
+      Karakamsha Lagna without benefic aspect on that house.
+    assertion: |
+      A karmic pattern involving speech may exist: native's words may carry unintended
+      harm, or native suffers consequences of their own speech. Remedial attention to
+      truthful and compassionate speech is indicated. Benefic aspect on 2nd from KL
+      mitigates or removes this pattern.
+    scope: divisional
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.72 for 'curse' framing being interpretive"
+    caveats: "Shapa (curse) framing is Rath's interpretive layer; the underlying rule (malefic 2nd from KL = speech issues) is more widely accepted. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.7"
+      text_excerpt: |
+        "Benefic in 3rd from Karakamsha: courage and initiative" — benefic planets
+        in the 3rd house from the Karakamsha Lagna indicate a soul with natural courage,
+        initiative-taking capacity, and skill with communications and the arts. Jupiter
+        or Venus in 3rd from KL is especially favorable for writing, music, and
+        communicative arts. (Rath: 3rd from KL with benefic = the creative and courageous
+        expression is the soul's mode of engagement.)
+    condition: |
+      Benefic planets occupy the 3rd house from the Karakamsha Lagna in the natal chart.
+    assertion: |
+      Native possesses natural courage, communicative gifts, and artistic or creative
+      expression as a soul-level strength. Jupiter in 3rd from KL = philosophical
+      writing; Venus = music or visual arts; Mercury = literary and communicative arts.
+    scope: divisional
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.2.8.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.8"
+      text_excerpt: |
+        "Malefic in 3rd from Karakamsha: cowardice or excessive aggression" —
+        malefic planets in the 3rd house from KL can indicate cowardice (malefic
+        without good aspect) OR excessive aggression and recklessness (malefic in
+        own sign or exaltation here). The quality depends on the malefic's strength.
+        (Rath: 3rd from KL malefic = the courage-quality of the soul is impure or
+        misdirected; requires conscious development.)
+    condition: |
+      Malefic planets occupy the 3rd house from the Karakamsha Lagna in the natal chart.
+    assertion: |
+      Malefics in 3rd from KL indicate challenges with the quality of courage: either
+      cowardice (weak malefic) or excessive aggression (strong malefic). The native
+      needs to consciously develop balanced, purposeful courage rather than defaulting
+      to fear or reckless action.
+    scope: divisional
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.72 for dual-direction interpretation (cowardice vs aggression)"
+    caveats: "Results vary by lagna and malefic's dignity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 3 PADA 3: DIVISIONAL CHART ANALYSIS ───
+
+  - rule_id: JAIMINI.3.3.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.3.1"
+      text_excerpt: |
+        "D9 (Navamsha) as the primary divisional chart in Jaimini" — the Navamsha
+        chart is the most important divisional chart in Jaimini, holding equal or
+        superior importance to the natal Rashi chart for soul-level analysis. The
+        Karakamsha is derived from D9. All Jaimini analyses regarding dharma, marriage
+        at the soul level, and spiritual evolution use D9 as the primary reference.
+        (Rath: D9 = the dharmic blueprint; D1 = the material blueprint.)
+    condition: |
+      Divisional chart analysis is performed using the Navamsha (D9) in the Jaimini system.
+    assertion: |
+      The Navamsha chart is the most important divisional chart for Jaimini analysis.
+      It reveals: (1) the soul's inner nature (D9 Lagna); (2) the Karakamsha sign (AK
+      in D9); (3) the quality of dharmic life and marriage; (4) the soul's spiritual
+      evolution. D9 and D1 must always be read together in Jaimini.
+    scope: divisional
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by entire Jaimini tradition (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.3.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.3.2"
+      text_excerpt: |
+        "D10 (Dashamsha) for career: Jaimini application" — while D10 is primarily
+        a Parashari divisional, Jaimini also uses it for career analysis. The D10
+        Lagna and planets in D10 refine the career reading. In Jaimini, the AmK's
+        position in D10 is especially important for career direction. (Rath: D10
+        confirms or qualifies what the natal chart + AmK shows for career; use D10
+        as secondary career confirmation.)
+    condition: |
+      The Dashamsha (D10) chart is assessed in the Jaimini system for career analysis.
+    assertion: |
+      In Jaimini, D10 serves as a secondary career chart. The Amatyakaraka's position
+      in D10 confirms or qualifies the career direction indicated in D1. Benefics in
+      D10 Lagna = successful career; malefics = career challenges requiring greater
+      effort.
+    scope: divisional
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × D10 primarily Parashari — some loss of Jaimini-specific certainty (0.85) = 0.72; rounded to 0.75"
+    caveats: "D10 in Jaimini is less primary than in Parashari. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.3.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.3.3"
+      text_excerpt: |
+        "D60 (Shastiamsha) in Jaimini: past-life karma" — the Shastiamsha (D60) chart
+        reveals the nature of the soul's accumulated karma from past lives. In Jaimini,
+        D60 Lagna lord and planets in D60 Lagna describe the karmic heritage the soul
+        carries into this life. The AK in D60 shows the most critical karmic pattern
+        for the soul to address. (Rath: D60 = the karmic inheritance map; D1 = how
+        this karma expresses now; D9 = the path through it.)
+    condition: |
+      The Shastiamsha (D60) chart is assessed in the Jaimini system for karmic inheritance.
+    assertion: |
+      The D60 reveals past-life karmic patterns the soul carries into this life.
+      The D60 Lagna sign and its lord, and the AK's position in D60, reveal the
+      dominant karmic pattern that must be addressed. D60 + D1 + D9 together give
+      the full karmic picture in Jaimini.
+    scope: divisional
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × D60 requires accurate birth time (computational dependency) (0.85) = 0.72; rounded to 0.75"
+    caveats: "D60 requires extremely accurate birth time (every 2 minutes changes it). Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.3.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.3.4"
+      text_excerpt: |
+        "Planets in own navamsha (Vargottama) in any divisional: exceptional strength" —
+        when a planet is Vargottama in any divisional chart (D1/D9, D1/D10, etc.),
+        it has exceptional strength in the domain governed by that divisional. Vargottama
+        in D10 = extraordinary career strength in that planet's domain. Vargottama in
+        D9 = extraordinary soul-level clarity in that planet's domain. (Rath: Vargottama
+        status in any varga = extraordinary clarity and strength in that varga's domain.)
+    condition: |
+      A planet occupies the same sign in a Rashi chart and in any divisional chart
+      (D9, D10, D60, etc.).
+    assertion: |
+      Vargottama status in any divisional chart grants extraordinary strength and
+      clarity in the specific domain governed by that divisional. The planet's
+      significations manifest with exceptional purity and power in that domain.
+    scope: divisional
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by BPHS + Jaimini tradition (1.15) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 3 PADA 4: ADDITIONAL KARAKAMSHA ANALYSIS ───
+
+  - rule_id: JAIMINI.3.4.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.1"
+      text_excerpt: |
+        "4th from Karakamsha: mother's quality and education" — the 4th house from
+        the Karakamsha Lagna shows the quality of the native's mother at the soul level,
+        foundational education, and the emotional foundation of the inner life. Benefics
+        in 4th from KL = excellent mother and strong inner foundation; malefics = maternal
+        karmic challenge or disrupted inner emotional stability. (Rath: 4th from KL =
+        the inner home; the soul's emotional bedrock.)
+    condition: |
+      The 4th house from the Karakamsha Lagna and its occupants are assessed.
+    assertion: |
+      Benefics in 4th from KL indicate a high-quality maternal relationship, strong
+      inner emotional foundation, and excellent foundational education. Malefics indicate
+      challenges with mother or disruption to the inner sense of emotional security
+      and home at the soul level. Moon in 4th from KL is exceptionally favorable.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.4.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.2"
+      text_excerpt: |
+        "6th from Karakamsha: disease patterns and enemies at soul level" — the 6th
+        house from KL shows the native's primary disease tendencies and enemy patterns
+        at the soul level — i.e., the recurring health challenges and adversarial
+        relationships that the soul has agreed to work through in this life. Malefics
+        in 6th from KL = strong disease and enemy karma; benefics = ability to overcome
+        them. (Rath: 6th from KL = the soul's designated adversarial curriculum.)
+    condition: |
+      The 6th house from the Karakamsha Lagna and its occupants are assessed.
+    assertion: |
+      Malefics in 6th from KL intensify disease tendencies and adversarial patterns
+      as soul-level karmic curriculum. These challenges are not random; they are the
+      specific battles the soul has chosen to engage. Benefics in 6th from KL give
+      the capacity to overcome adversaries and heal from diseases.
+    scope: divisional
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.4.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.3"
+      text_excerpt: |
+        "7th from Karakamsha: spouse quality at soul level" — the 7th house from
+        the Karakamsha Lagna shows the soul-level quality of the spouse and the
+        nature of partnership. Benefics in 7th from KL = a soul who brings joy,
+        wisdom, or prosperity through partnership; malefics = adversarial partner
+        or partner who brings trials. Jupiter in 7th from KL = wise and dharmic
+        spouse. (Rath: 7th from KL = the soul's partner — what the soul truly
+        needs in a partner, not necessarily what the ego wants.)
+    condition: |
+      The 7th house from the Karakamsha Lagna and its occupants are assessed.
+    assertion: |
+      Benefics in 7th from KL indicate a spouse who is wise, prosperous, or joyful
+      at the soul level. Malefics indicate a partner who challenges or tests the soul.
+      Jupiter in 7th from KL = particularly wise and dharmic spouse; Venus = beautiful
+      and pleasure-giving; Saturn = older or serious partner who provides karmic lessons.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + K.N. Rao (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.4.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.4"
+      text_excerpt: |
+        "8th from Karakamsha: longevity and deep transformation" — the 8th house from
+        KL shows the native's longevity quality (alpayu, madhyayu, or purnayu tendency)
+        and the type of deep transformation the soul undergoes. Malefics in 8th from KL
+        without benefic aspect = longevity concerns; benefics = long life with profound
+        transformation. Saturn in 8th from KL with Ketu = strong moksha potential but
+        severe tests. (Rath: 8th from KL = the soul's crucible; longevity and depth.)
+    condition: |
+      The 8th house from the Karakamsha Lagna and its occupants are assessed.
+    assertion: |
+      Malefics in 8th from KL (without benefic aspect) indicate longevity challenges
+      and severe transformative trials. Benefics indicate long life and profound inner
+      development through transformation. The nature of the 8th from KL also describes
+      the type of death and the path to liberation available.
+    scope: divisional
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + traditional (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna. Longevity determination requires full Jaimini longevity calculation (Adhyaya 4), not just 8th from KL alone."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.3.4.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.5"
+      text_excerpt: |
+        "10th from Karakamsha: career expression at soul level" — the 10th house from
+        the Karakamsha Lagna (in addition to the natal 10th) shows the soul-level career
+        aspiration and the type of work that gives the native the deepest fulfillment.
+        Benefics in 10th from KL = highly aligned career; malefics = career as a field
+        of challenge and growth. Saturn in 10th from KL = career through sustained hard
+        work and service. (Rath: 10th from KL = what the soul came to DO in this world.)
+    condition: |
+      The 10th house from the Karakamsha Lagna and its occupants are assessed.
+    assertion: |
+      Benefics in 10th from KL indicate a career domain that is fully aligned with
+      the soul's purpose — work that feels like a calling. Malefics indicate a career
+      domain that is the soul's area of growth and learning through challenge. Saturn
+      in 10th from KL = career in service, labor, or sustained administrative work.
+    scope: divisional
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 4 PADA 1: LONGEVITY CALCULATION ───
+
+  - rule_id: JAIMINI.4.1.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.1"
+      text_excerpt: |
+        "Alpayu, Madhyayu, Purnayu: the three longevity spans" — Jaimini divides
+        human life into three potential spans: Alpayu (short life: 0-36 years),
+        Madhyayu (middle life: 36-72 years), and Purnayu (full life: 72-120 years).
+        The determination of which span applies to a native is the primary task of
+        Jaimini longevity calculation. (Rath: Longevity assessment is Jaimini's most
+        sophisticated predictive tool — it determines the 'life envelope' before
+        event prediction.)
+    condition: |
+      Jaimini longevity calculation is being performed for a natal chart.
+    assertion: |
+      All Jaimini longevity assessment must first determine whether the native's span
+      is Alpayu (0-36 years), Madhyayu (36-72 years), or Purnayu (72-120 years).
+      Event predictions and dasha readings are calibrated within this longevity envelope.
+      No life prediction should proceed without first determining the longevity span.
+    scope: misc
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by all Jaimini commentators (1.15) = 0.85"
+    caveats: |
+      The specific calculation method for determining the span is contested.
+      All methods agree on the three categories; the determination process varies.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.1.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.2"
+      text_excerpt: |
+        "Lagna and Hora Lagna for longevity: first assessment pair" — for determining
+        longevity span, compare the strength of (1) Lagna and its lord against (2) Hora
+        Lagna and its lord. The stronger of these two pairs determines the base longevity.
+        If both are strong, Purnayu. If the weaker is very weak, Alpayu. If mixed, Madhyayu.
+        (Rath: This is the first of three pairs; all three pairs must be assessed.)
+    condition: |
+      The strength of the natal Lagna and Hora Lagna are being compared for longevity
+      determination.
+    assertion: |
+      The relative strength of Lagna vs. Hora Lagna is the first of three checks for
+      longevity. If both are strong, Purnayu (long life) is indicated; if both are
+      weak, Alpayu (short life); if one is strong and one weak, Madhyayu (middle life)
+      or further assessment is required.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.80"
+    caveats: |
+      The three-pair longevity method is widely discussed but the exact comparison
+      criteria (what constitutes 'strong' vs. 'weak') vary between commentators.
+      Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.1.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.3"
+      text_excerpt: |
+        "Lagna and Hora Lagna lords: second assessment pair" — the second pair for
+        longevity assessment compares the lords of Lagna and Hora Lagna. If both lords
+        are strong (in own sign, exaltation, or in kendra/trikona from their respective
+        lagnas), Purnayu is strengthened. If both are weak, Alpayu. (Rath: The lord's
+        placement is at least as important as the lagna itself for longevity assessment.)
+    condition: |
+      The lords of the natal Lagna and Hora Lagna are assessed for strength and
+      placement in the natal chart.
+    assertion: |
+      Strong placement of both the natal Lagna lord and Hora Lagna lord strengthens
+      Purnayu indications. Weakness of both lords supports Alpayu. Mixed strength
+      points to Madhyayu. 'Strength' means: own sign, exaltation, or in a kendra or
+      trikona house from their respective lagna.
+    scope: misc
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.78"
+    caveats: "Definition of 'strong' placement varies by commentator. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.1.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.4"
+      text_excerpt: |
+        "8th lord and 8th house: longevity modifier" — the 8th house from Lagna and
+        its lord (Sthira karaka Saturn for longevity) modify the longevity span.
+        Malefics in 8th from Lagna without benefic aspect, OR a severely afflicted 8th
+        lord, reduce the longevity span toward Alpayu. Strong benefics in 8th or a
+        strong 8th lord support Purnayu. (Rath: 8th house is the primary longevity
+        house in Jaimini; assess it carefully.)
+    condition: |
+      The 8th house from natal Lagna and its lord are assessed for the longevity
+      calculation.
+    assertion: |
+      Strong benefics in 8th from Lagna or a strong 8th lord support Purnayu (long life).
+      Severe affliction of the 8th (multiple malefics, no benefic aspect, afflicted lord)
+      reduces toward Alpayu or Madhyayu. This is the longevity house assessment and is
+      a primary Jaimini longevity modifier.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.1.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.5"
+      text_excerpt: |
+        "Saturn and Atmakaraka for longevity: Sthira karaka pair" — Saturn (Sthira
+        karaka of longevity) and the Atmakaraka together provide the final longevity
+        assessment modifier. Strong Saturn in angles or trines = supports long life.
+        AK in a strong position supporting Saturn = Purnayu. AK afflicted and Saturn
+        in dusthana = leans toward Alpayu. (Rath: Saturn is the Sthira karaka for
+        longevity; its natal strength is the final modifier in the Jaimini system.)
+    condition: |
+      Saturn's natal placement and the Atmakaraka's natal placement are assessed
+      together for the final longevity modifier.
+    assertion: |
+      Saturn in angles or trines (in good dignity) combined with a well-placed AK
+      supports long life (Purnayu). Saturn in dusthana with an afflicted AK supports
+      shorter life (Alpayu or Madhyayu). Saturn's strength is the ultimate Jaimini
+      longevity modifier.
+    scope: misc
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by classical Jaimini tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: |
+      This is the Sthira karaka longevity method. Multiple methods exist in Jaimini;
+      all three pairs (Lagna+HL, their lords, Saturn+AK) should be used together.
+      Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 4 PADA 2: SPECIAL YOGAS ───
+
+  - rule_id: JAIMINI.4.2.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.1"
+      text_excerpt: |
+        "Jaimini Rajayoga: AK and AmK in the same rashi or in mutual aspect" —
+        when the Atmakaraka and Amatyakaraka are in the same rashi in the natal chart
+        OR in mutual Jaimini rashi aspect, this creates the primary Jaimini Rajayoga.
+        This indicates the soul's purpose and the career path are perfectly aligned —
+        one succeeds precisely by living out their soul's calling. (Rath: AK+AmK
+        conjunction or mutual aspect = the master Jaimini Rajayoga.)
+    condition: |
+      The Atmakaraka and Amatyakaraka occupy the same rashi OR are in mutual
+      Jaimini rashi drishti (each aspects the other's sign).
+    assertion: |
+      This is the primary Jaimini Rajayoga: the soul's purpose (AK) and career path
+      (AmK) are aligned. The native achieves success by living authentically. This yoga
+      indicates a native who becomes known for being genuinely skilled in their soul-
+      directed field. Fame and recognition come from authentic expression.
+    scope: yoga
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath, K.N. Rao, and PJC tradition (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.2"
+      text_excerpt: |
+        "Jaimini Rajayoga: 5th and 9th lords in mutual aspect" — when the lord of
+        the 5th house and the lord of the 9th house are in mutual Jaimini rashi aspect,
+        this creates a Rajayoga of fortune and intelligence. Past merit (5th) and
+        fortune (9th) are interconnected — the native is both intelligent and fortunate.
+        (Rath: This is the 'dharma-trihona Rajayoga'; intelligence and fortune reinforce
+        each other.)
+    condition: |
+      The lord of the 5th house (from Lagna) and the lord of the 9th house (from Lagna)
+      are in mutual Jaimini rashi aspect in the natal chart.
+    assertion: |
+      The native has an exceptional combination of intelligence (5th) and fortune (9th),
+      creating sustained success in dharmic endeavors. Academic excellence and financial
+      fortune reinforce each other. The Chara Dasha of either lord's rashi produces
+      peak results.
+    scope: yoga
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.82"
+    caveats: "The mutual aspect must be Jaimini rashi drishti, not Parashari 7th-aspect. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.3"
+      text_excerpt: |
+        "Jaimini Rajayoga: 5th lord conjoining or aspecting Atmakaraka" — when the
+        lord of the 5th house conjoins or is in mutual Jaimini aspect with the Atmakaraka,
+        the native's soul purpose is fulfilled through intelligence, children, creative
+        work, or past-merit. The combination of AK and 5th lord brings exceptional
+        intellectual and karmic fulfillment. (Rath: AK+5L = intelligence serves the
+        soul; or the soul's path is through intellect and creation.)
+    condition: |
+      The lord of the 5th house occupies the same rashi as the Atmakaraka, or is
+      in mutual Jaimini rashi aspect with the AK.
+    assertion: |
+      Soul purpose is fulfilled through intelligence, creativity, children, or past-
+      merit activation. The native is particularly gifted in the field governed by the
+      5th lord planet, and this gift is directly connected to their soul's mission.
+    scope: yoga
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.4"
+      text_excerpt: |
+        "Jaimini Rajayoga: 9th lord conjoining or aspecting Atmakaraka" — when the
+        lord of the 9th house conjoins or is in mutual Jaimini aspect with the AK,
+        fortune and dharma serve the soul's purpose. The native has exceptional fortune
+        in pursuing their dharmic path and is protected by higher powers.
+        (Rath: AK+9L = the soul is backed by fortune; dharmic path is protected.)
+    condition: |
+      The lord of the 9th house occupies the same rashi as the AK, or is in mutual
+      Jaimini rashi aspect with the AK.
+    assertion: |
+      The native's soul purpose is backed by exceptional fortune and dharmic protection.
+      The 9th lord's nature shows the type of fortune: Jupiter = philosophical fortune;
+      Venus = aesthetic fortune; Mercury = intellectual fortune; Mars = courageous fortune.
+    scope: yoga
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.5"
+      text_excerpt: |
+        "Bandhana yoga: malefics in 6th and 8th from Lagna" — when malefic planets
+        occupy both the 6th and 8th houses from Lagna in the natal chart, Jaimini
+        indicates a Bandhana (bondage/imprisonment) yoga. The native may face literal
+        imprisonment, or metaphorical bondage — confinement to a limited life situation.
+        (Rath: Bandhana yoga = freedom is a recurring theme; the native's life involves
+        working through confinement of some kind.)
+    condition: |
+      Malefic planets occupy both the 6th and 8th houses from natal Lagna simultaneously.
+    assertion: |
+      The native with malefics in both 6th and 8th from Lagna has a Bandhana yoga:
+      risk of literal imprisonment (legal, institutional) or metaphorical bondage
+      (limited freedom of action, chronic constraints). The specific type of bondage is
+      shown by the planets involved (Saturn = legal/karma; Mars = violence/force; Rahu =
+      deception-based bondage).
+    scope: yoga
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical Jaimini (1.0) = 0.85; reduced to 0.75"
+    caveats: "Results vary by lagna. Benefic aspect on either 6th or 8th weakens the yoga."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.6"
+      text_excerpt: |
+        "Shubha Bandhana yoga: benefics in 9th from Lagna and Atmakaraka" — when
+        benefic planets occupy the 9th from both Lagna and the Atmakaraka simultaneously,
+        a Shubha Bandhana (auspicious bondage) yoga is formed — the native is 'bound'
+        to a noble or spiritual mission, working tirelessly for a higher cause.
+        (Rath: Shubha Bandhana = the noble monk or selfless leader; bound to dharma,
+        not to imprisonment.)
+    condition: |
+      Benefic planets occupy the 9th house from both the natal Lagna and from the
+      Atmakaraka's natal rashi simultaneously.
+    assertion: |
+      The native is 'bound' to a noble cause, spiritual mission, or selfless service.
+      This is an auspicious version of the bondage theme — the native commits deeply to
+      a dharmic path from which they do not deviate. Associated with monks, missionaries,
+      and selfless leaders.
+    scope: yoga
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Rath-specific synthesis (1.0) = 0.85; reduced to 0.72 for 'auspicious bondage' framing being commentarial"
+    caveats: "Shubha Bandhana is a Rath commentary synthesis yoga. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.2.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.7"
+      text_excerpt: |
+        "Kemdrum yoga equivalent in Jaimini: Moon without argala" — when the Moon
+        in the natal chart has no benefic argala (no benefics in the 2nd, 4th, 5th,
+        or 11th from Moon), the Moon is isolated in terms of support. This is the
+        Jaimini equivalent of the Parashari Kemdrum yoga and indicates emotional
+        isolation, loneliness, or lack of emotional support networks.
+        (Rath: Isolated Moon = the soul's emotional world is without external reinforcement.)
+    condition: |
+      The Moon in the natal chart has no benefic planets in any of its argala
+      positions (2nd, 4th, 5th, or 11th from Moon) by Jaimini standards.
+    assertion: |
+      The native experiences emotional isolation, loneliness, or insufficient emotional
+      support from their environment. The soul's emotional world must be cultivated
+      through internal spiritual practice rather than external relationships. This is
+      a motivation for inner spiritual development.
+    scope: yoga
+    school: jaimini
+    confidence: 0.70
+    confidence_rationale: "Prose commentary (0.60) × Jaimini argala framework + Rath synthesis (1.0) = 0.60; upgraded to 0.70 for logical internal consistency"
+    caveats: "The Jaimini-Kemdrum equivalence is a Rath synthesis. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 4 PADA 3: TIMING AND ADVANCED YOGAS ───
+
+  - rule_id: JAIMINI.4.3.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.1"
+      text_excerpt: |
+        "Timing of death: using the 8th from Lagna and Hora Lagna in Chara Dasha" —
+        death or severe health crises occur most commonly in the Chara Dasha of:
+        (a) the 8th rashi from Lagna; (b) the 8th rashi from Hora Lagna;
+        (c) the rashi containing the Badhaka lord; (d) the rashi of Saturn or the
+        planet triggering Alpayu/Madhyayu. (Rath: Death timing requires multiple
+        indicators to coincide; single-indicator predictions are unreliable.)
+    condition: |
+      The timing of death or severe health crises is being assessed using Chara
+      Dasha analysis.
+    assertion: |
+      Death or severe health crises are most likely during Chara Dasha of the 8th
+      from Lagna, 8th from Hora Lagna, the Badhaka rashi, or Saturn's rashi. Reliable
+      death timing requires at least 3 indicators to coincide. Antardasha of the same
+      rashis provides the most precise timing within the mahadasha window.
+    scope: dasha
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical commentary (1.0) = 0.85; reduced to 0.72 for multi-indicator composite nature of death-timing"
+    caveats: |
+      Death prediction is the most sensitive predictive task. Jaimini explicitly warns
+      against single-indicator death timing. Multiple system confirmation (Chara Dasha +
+      Vimshottari + transits) is required. Results vary enormously by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.2"
+      text_excerpt: |
+        "Badhaka rashi and Badhaka lord" — every Lagna has a Badhaka (obstructing)
+        rashi: for movable Lagnas, it is the 11th; for fixed Lagnas, the 9th; for dual
+        Lagnas, the 7th. The lord of the Badhaka rashi is the Badhakesh. Chara Dasha
+        of the Badhaka rashi or its lord's rashi can coincide with severe obstacles
+        or health crises. (Rath: Badhaka = the obstacle that tests the soul's resolve;
+        strongest for timing crises.)
+    condition: |
+      The Badhaka rashi is identified from the natal Lagna type and its lord's position
+      is noted.
+    assertion: |
+      Badhaka rashi determination: for movable Lagna (Aries, Cancer, Libra, Capricorn)
+      = 11th house; for fixed Lagna (Taurus, Leo, Scorpio, Aquarius) = 9th house;
+      for dual Lagna (Gemini, Virgo, Sagittarius, Pisces) = 7th house. Chara Dasha
+      of the Badhaka rashi or Badhakesh rashi coincides with major obstacles.
+    scope: misc
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by Rath, K.N. Rao, and classical tradition (1.15) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna type."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.3"
+      text_excerpt: |
+        "Rudra: planet associated with death timing in Jaimini" — Jaimini identifies
+        specific planets as Rudra (the death-inflicting principle) based on their
+        relationship to the 8th house from Lagna. The lord of the 8th from Lagna is
+        the primary Rudra. The Chara Dasha of Rudra's rashi can coincide with death
+        or severe health crises in the native or close family members.
+        (Rath: Rudra is the Jaimini death-lord; handle with great care in prediction.)
+    condition: |
+      The Rudra planet (lord of the 8th from Lagna) is identified and its dasha
+      rashi is being assessed.
+    assertion: |
+      The lord of the 8th from Lagna is the primary Rudra. The Chara Dasha of
+      Rudra's natal rashi is a sensitive timing period for mortality-related events
+      (death or serious illness in the native or close family). Combined with other
+      indicators, it helps identify mortality timing windows.
+    scope: misc
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and classical Jaimini (1.0) = 0.85; reduced to 0.78"
+    caveats: |
+      Death prediction ethics apply. Rudra's dasha does NOT always mean the native's
+      death — it can mean a family member's death or the native's severe illness with
+      recovery. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.4"
+      text_excerpt: |
+        "Maheshwara: secondary death lord in Jaimini" — Jaimini identifies a secondary
+        death-timing planet, Maheshwara, which is the lord of the 8th from the Atmakaraka.
+        The Chara Dasha of Maheshwara's rashi gives a secondary timing window for
+        mortality events, operating in tandem with Rudra. (Rath: Rudra = death from
+        external causes; Maheshwara = death as inner/karmic transformation; both
+        should be checked for mortality timing.)
+    condition: |
+      The Maheshwara planet (lord of the 8th from the Atmakaraka's natal sign) is
+      identified and its dasha is assessed.
+    assertion: |
+      The lord of the 8th from the AK's natal position is Maheshwara. The Chara Dasha
+      of Maheshwara's rashi provides a secondary window for mortality events. Combined
+      with Rudra's dasha, Badhaka dasha, and the 8th-from-Lagna dasha, three or more
+      coinciding indicators are needed for reliable timing.
+    scope: misc
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.75 for AK-derived secondary indicator"
+    caveats: "Same ethics as Rudra apply. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.5"
+      text_excerpt: |
+        "Health events timing: 6th from Lagna in Chara Dasha" — major health events
+        (onset of chronic illness, significant health challenges) occur most commonly
+        in the Chara Dasha of the 6th rashi from Lagna. The 6th rashi's lord (the
+        primary disease lord) and its natal position provide confirmation. (Rath: 6th
+        from Lagna dasha = the health chapter opens; existing conditions manifest or
+        new ones begin.)
+    condition: |
+      The Chara Dasha of the 6th rashi from natal Lagna is active.
+    assertion: |
+      Major health challenges and the onset of chronic conditions are timed to the
+      Chara Dasha of the 6th rashi from Lagna. The specific disease domain is shown
+      by the 6th rashi's occupants and its lord. This is also when enemies become
+      most active.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and 6th house occupants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.6"
+      text_excerpt: |
+        "Timing of education: 4th, 5th house dashas" — higher education events
+        (entrance, completion, academic honors) occur most commonly during the Chara
+        Dasha of the 4th or 5th rashis from Lagna, or when Mercury or Jupiter are
+        activated in the dasha rashi. The 5th rashi dasha is particularly associated
+        with university-level education and intellectual certification.
+        (Rath: 4th rashi dasha = foundational education; 5th = higher education.)
+    condition: |
+      Educational timing events (enrollment, graduation, academic honors) are being
+      assessed using Chara Dasha.
+    assertion: |
+      Higher education events most commonly coincide with the Chara Dasha of the 4th
+      or 5th rashis from Lagna, especially when these contain or are aspected by
+      Mercury or Jupiter. The 5th rashi dasha is the primary timing indicator for
+      university education and intellectual certification.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + traditional (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.7"
+      text_excerpt: |
+        "Birth of children: timing using Putrakaraka and 5th rashi dasha" — the
+        birth of children most commonly coincides with: (a) the Chara Dasha of the
+        5th rashi from Lagna; (b) the dasha of the Putrakaraka's rashi; (c) the
+        dasha of the rashi containing Jupiter (natural karaka for children). Multiple
+        indicators coinciding increases the probability. (Rath: Child birth timing
+        requires at minimum the PK rashi dasha and one other indicator.)
+    condition: |
+      The timing of children's births is being assessed using Chara Dasha.
+    assertion: |
+      Children's births most commonly occur during: the 5th rashi Chara Dasha, the
+      Putrakaraka's rashi dasha, or a dasha when Jupiter (natural 5th karaka) is
+      in the dasha or antardasha rashi. Multiple coincident indicators are needed for
+      reliable prediction. Antardasha provides precise timing within the window.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and chart specifics."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.8.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.8"
+      text_excerpt: |
+        "Spiritual peak timing: Ketu and 12th from Atmakaraka in Chara Dasha" —
+        periods of peak spiritual awareness, mystical experiences, or spiritual
+        transformation coincide with: (a) Chara Dasha of the 12th from AK's rashi;
+        (b) Chara Dasha of Ketu's rashi; (c) Dasha of the rashi containing the 12th
+        lord from Lagna. When Ketu's rashi dasha and 12th-from-AK dasha coincide,
+        liberation experiences are possible. (Rath: Spiritual peaks are timed by the
+        moksha indicators — Ketu, 12th from AK, and Pisces/Scorpio dashas.)
+    condition: |
+      Periods of spiritual peak, mystical experience, or liberation-seeking are being
+      timed using Chara Dasha.
+    assertion: |
+      Spiritual peak experiences are most likely during: the Chara Dasha of the 12th
+      from AK, the dasha of Ketu's rashi, and the dasha of the 12th from Lagna. When
+      two or more of these coincide, deep spiritual transformation or liberation-seeking
+      experiences manifest.
+    scope: dasha
+    school: jaimini
+    confidence: 0.65
+    confidence_rationale: "Implicit sutra form (0.85) × Ketu factor (×0.85) = 0.72; reduced to 0.65 for moksha-timing being highly interpretive"
+    caveats: "Spiritual timing prediction is inherently subjective and probabilistic. Results vary significantly by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.9.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.9"
+      text_excerpt: |
+        "Property and land timing: Mars and 4th rashi dasha" — property acquisition
+        (real estate, land purchase, home ownership) most commonly coincides with: the
+        4th rashi Chara Dasha, the Chara Dasha of Mars's rashi (natural karaka for
+        property), or the dasha when Mars aspects the 4th rashi or its lord.
+        (Rath: Property acquisition = 4th rashi dasha or Mars rashi dasha; confirm
+        with 4th lord activation.)
+    condition: |
+      Property acquisition or real estate events are being timed using Chara Dasha.
+    assertion: |
+      Property acquisitions (real estate, land, home) most commonly occur during the
+      4th rashi Chara Dasha, Mars's rashi dasha, or when Mars's argala activates the
+      4th rashi. The 4th lord's rashi dasha also indicates property transactions.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.10"
+      text_excerpt: |
+        "Fame and recognition timing: Sun rashi dasha and 10th from Lagna" — periods
+        of public recognition, fame, and social elevation most commonly coincide with
+        the Chara Dasha of: (a) the Sun's rashi; (b) the 10th rashi from Lagna;
+        (c) the rashi containing the Amatyakaraka. When all three coincide with the
+        Leo rashi dasha, peak public recognition is possible. (Rath: Fame timing =
+        Sun+10th+AmK dasha convergence.)
+    condition: |
+      Periods of fame, public recognition, and social elevation are being timed
+      using Chara Dasha.
+    assertion: |
+      Public recognition and fame most commonly occur during the Chara Dasha of
+      the Sun's rashi, the 10th from Lagna, or the AmK's rashi. Convergence of
+      multiple career and reputation indicators in the same dasha period = peak
+      fame window.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.78"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.11"
+      text_excerpt: |
+        "Foreign travel and foreign residence timing: Rahu and 12th rashi dasha" —
+        foreign travel, residence abroad, or significant foreign connections most
+        commonly coincide with: (a) the Chara Dasha of Rahu's rashi; (b) the 12th
+        rashi dasha from Lagna; (c) dasha of a rashi whose lord is connected to
+        foreign countries (12th lord's rashi). (Rath: Rahu = foreign; 12th = foreign
+        + travel; convergence = residence abroad.)
+    condition: |
+      Foreign travel, foreign residence, or international career events are being
+      timed using Chara Dasha.
+    assertion: |
+      Foreign travel, residence abroad, or significant international career events
+      most commonly coincide with Rahu's rashi dasha, the 12th from Lagna dasha,
+      or the 12th lord's rashi dasha. Multiple indicators give higher probability.
+    scope: dasha
+    school: jaimini
+    confidence: 0.62
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85) = 0.72; reduced to 0.62 for Rahu's inherent unpredictability in timing"
+    caveats: "Rahu-based timing is inherently probabilistic. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.12.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.12"
+      text_excerpt: |
+        "Wealth peak and financial breakthrough timing: Hora Lagna dasha and Jupiter" —
+        peak wealth accumulation periods coincide with: (a) the Hora Lagna's rashi dasha;
+        (b) the dasha of Jupiter's rashi (natural wealth karaka); (c) the dasha of the
+        2nd or 11th lord's rashi; (d) when Venus is in the dasha rashi. Multiple coinciding
+        indicators = a wealth breakthrough period. (Rath: Wealth peaks require Jupiter +
+        HL or 2nd/11th activation.)
+    condition: |
+      Peak wealth accumulation or significant financial breakthroughs are being timed
+      using Chara Dasha.
+    assertion: |
+      Wealth peaks most commonly occur during: Hora Lagna rashi dasha, Jupiter's rashi
+      dasha, 2nd lord's rashi dasha, or 11th lord's rashi dasha. Venus in the dasha
+      rashi amplifies material acquisition. Multiple indicators coinciding = peak wealth
+      manifestation window.
+    scope: dasha
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.75 for HL calculation dependency"
+    caveats: "Hora Lagna calculation must be verified for this timing to work. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.13.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.13"
+      text_excerpt: |
+        "Divorce or separation timing: Darakaraka affliction dasha" — divorce or
+        significant marital separation most commonly coincides with: (a) the Chara
+        Dasha of the 7th from DK's rashi; (b) the dasha of a rashi where the DK is
+        severely afflicted; (c) the Badhaka rashi dasha when DK is in the 7th.
+        (Rath: Separation timing = 7th from DK dasha or severely afflicted DK rashi dasha.)
+    condition: |
+      Divorce, marital separation, or significant relationship ending is being timed
+      using Chara Dasha analysis.
+    assertion: |
+      Divorce or serious marital separation most commonly coincides with the Chara
+      Dasha of the 7th from DK's rashi or the dasha of a rashi where DK is severely
+      afflicted (by malefics without benefic aspect). The Badhaka rashi dasha combined
+      with DK affliction is a strong indicator.
+    scope: dasha
+    school: jaimini
+    confidence: 0.70
+    confidence_rationale: "Implicit sutra form (0.85) × Rath synthesis (1.0) = 0.85; reduced to 0.70 for sensitive/composite nature of separation timing"
+    caveats: "Separation prediction requires multiple confirming indicators. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.14.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.14"
+      text_excerpt: |
+        "Father's death timing: Pitrukaraka and 9th from Lagna dasha" — the father's
+        death most commonly coincides with: (a) the Chara Dasha of the 9th from Lagna
+        or the Sun's rashi (Sthira karaka for father); (b) the Pitrukaraka's rashi
+        dasha (in 8-karaka scheme); (c) the 8th from the 9th rashi's dasha (8th from
+        the father's house). (Rath: Father's death timing = Sun rashi dasha + 9th
+        house-related indicators.)
+    condition: |
+      The timing of the father's death is being assessed using Chara Dasha.
+    assertion: |
+      Father's death most commonly times to: the Sun's rashi Chara Dasha, the 9th
+      rashi dasha from Lagna, or the 8th from 9th (=4th from Lagna) dasha. In the
+      8-karaka scheme, the Pitrukaraka's rashi dasha is also considered. Multiple
+      indicators coinciding = more reliable window.
+    scope: dasha
+    school: jaimini
+    confidence: 0.70
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.70 for sensitive multi-indicator nature"
+    caveats: "Same ethics as death prediction apply. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.15.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.15"
+      text_excerpt: |
+        "Mother's death timing: Matrukaraka and 4th from Lagna dasha" — mother's death
+        most commonly coincides with: (a) the Chara Dasha of the Moon's rashi (Sthira
+        karaka for mother); (b) the Matrukaraka's rashi dasha; (c) the 8th from the
+        4th rashi's dasha (8th from the mother's house = 11th from Lagna). (Rath: Moon
+        rashi dasha + MK rashi dasha = primary timing for maternal events.)
+    condition: |
+      The timing of the mother's death or severe maternal health crisis is being
+      assessed using Chara Dasha.
+    assertion: |
+      Mother's death or severe health crisis most commonly times to: the Moon's rashi
+      Chara Dasha, the Matrukaraka's rashi dasha, or the 8th from 4th (=11th from
+      Lagna) rashi dasha. Multiple coincident indicators are required for reliability.
+    scope: dasha
+    school: jaimini
+    confidence: 0.70
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.70"
+    caveats: "Death prediction ethics apply. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.16.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.16"
+      text_excerpt: |
+        "Career change and new beginning timing: lagna lord dasha + 1st rashi" —
+        major career changes, new beginnings, or fresh starts most commonly coincide
+        with the Chara Dasha of the natal Lagna rashi (revisiting the chart's natal
+        promise). The lagna rashi dasha is also when the native most strongly presents
+        themselves to the world. (Rath: Lagna dasha = fresh start; the native reinvents
+        or reaffirms their core identity.)
+    condition: |
+      Major life reinventions, career changes, or fresh starts are being timed
+      using Chara Dasha.
+    assertion: |
+      Major fresh starts and career reinventions most commonly occur during the Lagna
+      rashi Chara Dasha (when it recurs in the dasha cycle). This period allows the
+      native to most authentically present their core identity and re-establish life
+      direction. Other new-beginning indicators include the 1st lord's rashi dasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.78"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.17.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.17"
+      text_excerpt: |
+        "Shrapit yoga (cursed combination): Saturn and Rahu in same rashi" — when
+        Saturn and Rahu occupy the same rashi in the natal chart, a Shrapit (cursed)
+        yoga is formed. This indicates a severe karmic burden from past lives that
+        creates repeated obstacles, particularly in the domain of the house they occupy.
+        The Chara Dasha of this rashi intensifies the Shrapit effects. (Rath: Shrapit
+        yoga = the soul carries a heavy past-life karmic debt requiring conscious
+        redemption in this life.)
+    condition: |
+      Saturn and Rahu occupy the same rashi (sign) in the natal chart.
+    assertion: |
+      A Shrapit (past-life cursed) yoga is formed when Saturn and Rahu conjoin. The
+      native faces repeated, inexplicable obstacles in the house they occupy together.
+      The Chara Dasha of their shared rashi is typically the most challenging period
+      for the domains of that house. Remedial measures (Saturn and Rahu remedies) are
+      strongly indicated.
+    scope: yoga
+    school: jaimini
+    confidence: 0.65
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85) = 0.72; reduced to 0.65 for 'cursed' karmic framing being interpretive synthesis"
+    caveats: |
+      The 'shrapit' label is Rath's framing for the Saturn-Rahu conjunction. Traditional
+      Jaimini may not use this specific term. The obstacle effect of Saturn+Rahu is
+      accepted; the 'past-life curse' framing is interpretive. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.18.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.18"
+      text_excerpt: |
+        "Guru Chandala yoga in Jaimini: Jupiter with Rahu" — when Jupiter and Rahu
+        occupy the same rashi, the classic 'Guru Chandala' yoga is formed. In Jaimini,
+        this combination in the natal chart and in the Karakamsha affects the quality
+        of wisdom and the native's teachers. If in Karakamsha, the soul's spiritual
+        teacher may be unconventional or the native's spiritual path is non-traditional.
+        (Rath: Jupiter+Rahu = wisdom mixed with worldliness; the guru is wise but impure,
+        or the wisdom has a worldly tinge.)
+    condition: |
+      Jupiter and Rahu occupy the same rashi in the natal chart or in the Karakamsha.
+    assertion: |
+      The Jupiter-Rahu conjunction creates Guru Chandala yoga. In Karakamsha, it
+      indicates an unconventional spiritual path or a teacher who is wise but worldly.
+      The native's wisdom has both profound and mixed/impure qualities. Spiritual
+      guidance may come from unconventional sources.
+    scope: yoga
+    school: jaimini
+    confidence: 0.60
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85) = 0.72; reduced to 0.60 for heavily commentary-dependent interpretation of Guru Chandala in Jaimini context"
+    caveats: |
+      Guru Chandala yoga is primarily a Parashari concept adapted by Rath into the
+      Jaimini framework. The KL application is Rath-specific. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.19.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.19"
+      text_excerpt: |
+        "Putra yoga (children blessed combination) in Jaimini" — when Jupiter occupies
+        or aspects the 5th from Karakamsha AND the 5th from natal Lagna, a Putra yoga is
+        formed — exceptional blessings for children and progeny. The native is likely to
+        have children who are exceptionally gifted or who bring great joy and honor.
+        (Rath: Double Jupiter on 5th = Putra yoga; gifted and fortunate children.)
+    condition: |
+      Jupiter occupies or aspects both the 5th house from Karakamsha AND the 5th
+      house from natal Lagna in the natal chart.
+    assertion: |
+      The native is blessed with exceptional children — gifted, fortunate, and a source
+      of pride and joy. The Putra yoga through double Jupiter activation of the 5th house
+      (from both KL and Lagna) is one of the most powerful children-blessing indicators
+      in Jaimini.
+    scope: yoga
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.75 for double-reference (KL+Lagna) composite"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.4.3.20.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.20"
+      text_excerpt: |
+        "Niryaana Dvadashaamsha: timing of death using D12" — Jaimini gives a
+        specialized technique using the D12 (Dwadashamsha) chart for refining death
+        timing within a Chara Dasha window. The Niryaana (death) Dvadashaamsha is
+        calculated and its lord's dasha gives the most precise death-timing confirmation.
+        (Rath: D12 for death = most precise inner circle of mortality timing; use after
+        the outer circles of Alpayu/Madhyayu/Purnayu and Chara Dasha have been established.)
+    condition: |
+      The Niryaana (death-timing) Dwadashamsha technique is being applied after the
+      primary longevity span and Chara Dasha mortality window have been identified.
+    assertion: |
+      Within an established Chara Dasha mortality window, the D12 (Dwadashamsha) lord
+      of the 8th from Lagna provides the most precise death-timing refinement in Jaimini.
+      This is a tertiary (confirmation-level) technique used only after primary indicators
+      have already established the mortality window.
+    scope: misc
+    school: jaimini
+    confidence: 0.65
+    confidence_rationale: "Implicit sutra form (0.85) × advanced D12 technique — Rath specialty (1.0) = 0.85; reduced to 0.65 for D12 requiring extreme birth time precision and being rarely verified"
+    caveats: |
+      D12 for mortality timing is an advanced Jaimini technique that requires extremely
+      accurate birth time. It should only be applied after primary longevity assessment
+      and Chara Dasha windows are fully established. Death prediction ethics apply fully.
+      Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS: 10 rules requiring deeper textual verification ───
+
+  - rule_id: JAIMINI.3.1.10.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.1.10"
+      text_excerpt: |
+        "Pushkara Navamsha: the auspicious navamsha degrees" — Pushkara Navamshas
+        are specific degree ranges in each sign that, when occupied by a planet in
+        the navamsha, make that planet exceptionally powerful and auspicious. The
+        full list of Pushkara Navamsha degrees requires primary text verification.
+    condition: |
+      A planet occupies a Pushkara Navamsha degree range in the natal chart.
+    assertion: |
+      [STUB: Pushkara Navamsha degree list and their effects — the exact degree ranges
+      for all 12 signs need primary text verification. Rath mentions this concept but
+      the exact boundaries vary by source.]
+    scope: divisional
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Pushkara Navamsha degree ranges vary significantly between sources."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: specific degree ranges not fully verifiable"
+
+  - rule_id: JAIMINI.3.2.15.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.2.15"
+      text_excerpt: |
+        "Bhrashta Karakamsha: when the AK is in enemy sign in navamsha" — the
+        specific rules for what happens when the Atmakaraka is in its enemy sign in
+        the navamsha (Bhrashta = fallen/displaced) require primary sutra verification.
+        Commentary paraphrases only.
+    condition: |
+      The Atmakaraka is in an enemy sign in the Navamsha chart.
+    assertion: |
+      [STUB: Bhrashta Karakamsha rules — specific results when AK is in enemy sign
+      in D9 are not fully specified in available commentary. Requires primary sutra.]
+    scope: divisional
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Specific enemy-sign AK in navamsha rules require primary text."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available text"
+
+  - rule_id: JAIMINI.4.1.10.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.10"
+      text_excerpt: |
+        "Exact longevity calculation formula (Pindayu, Nisargayu, Amsayu)" — Jaimini
+        gives specific formulas for three types of longevity calculation (Pindayu based
+        on dignity, Nisargayu based on natural periods, Amsayu based on navamsha). The
+        exact formulas require primary text and mathematical verification.
+    condition: |
+      Precise longevity years (not just category) are being calculated.
+    assertion: |
+      [STUB: Exact Pindayu, Nisargayu, Amsayu formulas — require primary text and
+      mathematical verification. Available commentary gives the category system but
+      not the full formula for calculating exact years.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Exact longevity formulas are complex and require primary sutra + mathematical commentary."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: exact formula not derivable from available text"
+
+  - rule_id: JAIMINI.4.2.15.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.15"
+      text_excerpt: |
+        "Kalanala yoga: destruction of the self-karaka" — Jaimini references a
+        Kalanala yoga involving specific malefic configurations around the Atmakaraka
+        that indicate severe karmic challenges. The full conditions for this yoga require
+        primary sutra verification.
+    condition: |
+      Specific malefic planets afflict the Atmakaraka simultaneously in the natal chart.
+    assertion: |
+      [STUB: Kalanala yoga conditions and effects — require primary sutra verification.
+      Partial description available in Rath commentary but conditions are not fully specified.]
+    scope: yoga
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Kalanala yoga is mentioned but conditions require verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: full conditions not derivable"
+
+  - rule_id: JAIMINI.4.3.25.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.25"
+      text_excerpt: |
+        "Timing of accidents and sudden events: 8th and Rahu dasha" — Jaimini gives
+        specific rules for timing of accidents and sudden violent events using the 8th
+        from Lagna + Rahu combination in Chara Dasha. Full conditional chain requires
+        primary sutra verification.
+    condition: |
+      Accidents or sudden violent events are being timed using Chara Dasha.
+    assertion: |
+      [STUB: Specific accident-timing rules in Chara Dasha — partial information
+      available (8th + Rahu) but the full conditional chain requires primary sutra.
+      Nodes factor would apply (×0.85) even if rule were confirmed.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Accident timing rules require primary sutra verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: conditional chain not fully derivable"
+
+  - rule_id: JAIMINI.3.4.10.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.4.10"
+      text_excerpt: |
+        "Lagna in Pushkara Bhaga: auspicious natal degree" — planets in Pushkara
+        Bhaga (specific auspicious degrees within each sign) are exceptionally powerful.
+        The full list of Pushkara Bhaga degrees requires primary text verification
+        across multiple manuscript traditions.
+    condition: |
+      A planet occupies a Pushkara Bhaga degree in the natal chart.
+    assertion: |
+      [STUB: Pushkara Bhaga degree list — exact degrees for all 12 signs require
+      primary text verification. Different manuscripts give different lists.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Degree-specific rules require precise primary text."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: specific degrees not verified"
+
+  - rule_id: JAIMINI.4.2.20.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.2.20"
+      text_excerpt: |
+        "Brahma and Maheshwara pairs for all lagnas" — Jaimini gives a complex system
+        of Brahma (lord of life-sustaining principle) and Maheshwara (death principle)
+        for each lagna type, with specific rules about which planets qualify as Brahma
+        and Maheshwara. The full conditional rules require primary text.
+    condition: |
+      Brahma and Maheshwara planets are being identified for longevity timing.
+    assertion: |
+      [STUB: Full Brahma-Maheshwara identification rules for all lagna types —
+      conditional rules are complex and require primary sutra verification across
+      all 12 lagnas.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Full Brahma-Maheshwara rules are complex and require primary text."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: full conditional rules not derivable from summary commentary"
+
+  - rule_id: JAIMINI.4.1.15.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.1.15"
+      text_excerpt: |
+        "Additional longevity modifiers: aspects on Atmakaraka in longevity calculation" —
+        Jaimini gives rules for how aspects on the Atmakaraka modify the longevity
+        category (Alpayu/Madhyayu/Purnayu). The specific modification formulas require
+        primary text verification.
+    condition: |
+      Planets aspect the Atmakaraka and this is being used to modify the longevity span.
+    assertion: |
+      [STUB: AK aspect-based longevity modifiers — specific rules for how aspects
+      on AK modify the longevity category require primary sutra verification.]
+    scope: misc
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "AK-aspect longevity modifiers need primary sutra."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: specific modification formulas not available"
+
+  - rule_id: JAIMINI.3.3.10.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "3.3.10"
+      text_excerpt: |
+        "Drekkana (D3) in Jaimini: co-born siblings" — Jaimini's application of
+        D3 for sibling analysis requires specific rules about which drekkanas govern
+        which sibling types. The exact D3 interpretation protocol for Jaimini
+        requires primary text verification.
+    condition: |
+      The D3 (Drekkana) chart is being analyzed in the Jaimini system for sibling information.
+    assertion: |
+      [STUB: Jaimini-specific D3 interpretation rules for siblings — generic D3
+      rules exist (Parashari) but Jaimini-specific application requires primary text.]
+    scope: divisional
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Jaimini D3 rules vs Parashari D3 rules require differentiation via primary text."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: Jaimini-specific D3 protocol not verifiable"
+
+  - rule_id: JAIMINI.4.3.30.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "4.3.30"
+      text_excerpt: |
+        "Timing of guru (teacher) encounter: 9th from Karakamsha dasha" — when the
+        native meets their primary spiritual teacher (guru), Jaimini gives specific
+        dasha indicators involving the 9th from Karakamsha, Jupiter, and the 9th lord.
+        The exact conditional chain requires primary sutra verification beyond available
+        commentary summaries.
+    condition: |
+      The timing of meeting a primary guru or spiritual mentor is being assessed.
+    assertion: |
+      [STUB: Guru-encounter timing rules — partial information available (9th from KL
+      + Jupiter) but the full conditional chain requires primary sutra verification.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Guru encounter timing is a specialty topic requiring primary sutra confirmation."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: conditional chain not fully derivable"

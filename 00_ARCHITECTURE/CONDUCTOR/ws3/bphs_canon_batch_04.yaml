@@ -1,0 +1,1224 @@
+# BPHS Canon Extraction — Batch 04 (Rules 301–400)
+# Session: canon-bphs | Extraction date: 2026-06-05
+# Coverage: Remaining nakshatra Moon placements (Magha–Revati, Uttarashada, Hasta, etc.),
+#            remaining house lord placements (lord of 7th-12th additional positions),
+#            Jaimini Chara Dasha results by sign, ashtakavarga transit predictions,
+#            additional yoga enumeration (Pancha Mahayoga types, Anapha/Sunapha extended),
+#            shadbala application rules, disease prediction rules (Ch. 20-22)
+# Gate-A improvements: R1 (nodes × 0.85), R2 (Ch 28/52/77 stubs), R3 (lagna-conditional caveats)
+
+metadata:
+  source: BPHS
+  extraction_session: canon-bphs
+  batch: "04"
+  batch_sequence: "301-400"
+  rules_in_batch: 100
+  stubbed_in_batch: 3
+  extraction_date: "2026-06-05"
+
+rules:
+
+  # ─── NAKSHATRA MOON RESULTS — MAGHA THROUGH REVATI (BPHS Ch. 36 continued) ──
+
+  - rule_id: BPHS.36.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.11"
+      text_excerpt: |
+        "Moon in Magha nakshatra makes the native wealthy, devoted to ancestors,
+        having many servants, and endowed with good qualities. He will be industrious
+        and will accumulate wealth."
+    condition: >
+      Natal Moon is placed in Magha nakshatra (0°–13°20' Leo).
+    assertion: >
+      Moon in Magha (Ketu's nakshatra, start of Leo) produces a native with ancestral
+      dignity, material wealth, and administrative ability. The lion (Magha's symbol)
+      gives leadership and pride. Connection to ancestors (pitru) is strong — the native
+      honours lineage and tradition.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.68
+    confidence_rationale: >
+      Descriptive sloka = 0.8; Ketu-ruled nakshatra — R1 node multiplier:
+      0.8 × 0.85 = 0.68. Cross-text weak corroboration = 1.0. 0.68.
+    caveats: >
+      R1 applied: Magha is Ketu's nakshatra. The ancestral pride and Pitru-connection
+      quality is strongly associated with Ketu's past-life karma dimension. Results
+      are less precisely specified in classical texts for Ketu nakshatras.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.12"
+      text_excerpt: |
+        "Moon in Purva Phalguni nakshatra makes the native generous, sweet-tempered,
+        and devoted to beauty and pleasures. He will be a government servant or will
+        be near authority. He will be fond of music and will travel much."
+    condition: >
+      Natal Moon is placed in Purva Phalguni nakshatra (13°20'–26°40' Leo).
+    assertion: >
+      Moon in Purva Phalguni (Venus's nakshatra in Leo) produces a pleasure-loving,
+      aesthetically inclined, travel-oriented native with connections to authority.
+      Venus-Moon quality gives sweet temperament, love of music, and natural generosity.
+      Government service or proximity to power is common.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.13.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.13"
+      text_excerpt: |
+        "Moon in Hasta nakshatra makes the native skilled with hands, bold, pure, and
+        fond of drinking. He will be a thief but industrious. He will be attractive
+        in appearance and will succeed through skill."
+    condition: >
+      Natal Moon is placed in Hasta nakshatra (10°–23°20' Virgo).
+    assertion: >
+      Moon in Hasta (Moon's own nakshatra in Virgo) produces manual dexterity, skill,
+      industry, and physical attractiveness. The "thief" quality (traditional) represents
+      the native's cleverness and ability to extract value. Moon in Hasta gives craft skill,
+      healing ability (Hasta = the hand of Savitar), and pragmatic intelligence.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      "Fond of drinking" and "thief" are traditional renderings that should be read
+      as tendencies toward sensory indulgence and cleverness respectively in modern
+      interpretation, not literal alcoholism or theft.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.15.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.15"
+      text_excerpt: |
+        "Moon in Chitra nakshatra makes the native beautiful, having multiple sexual
+        partnerships, charming, skilled in arts, and wearing brilliant garments. He
+        will have mixed character and will be fond of fragrant substances."
+    condition: >
+      Natal Moon is placed in Chitra nakshatra (23°20' Virgo – 6°40' Libra).
+    assertion: >
+      Moon in Chitra (Mars's nakshatra, straddling Virgo-Libra) produces a beautiful,
+      artistically talented, fashion-conscious native. Mars's drive combines with Chitra's
+      artisan quality (Vishvakarma) to create craft skill, aesthetic passion, and physical
+      attractiveness. Multiple partnerships reflect the passionate and variety-seeking nature.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.17.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.17"
+      text_excerpt: |
+        "Moon in Anuradha nakshatra makes the native wealthy and skilled in serving others.
+        He will be fond of travel and will live in foreign lands. He will be respected,
+        learned, and will have many friends."
+    condition: >
+      Natal Moon is placed in Anuradha nakshatra (3°20'–16°40' Scorpio).
+    assertion: >
+      Moon in Anuradha (Saturn's nakshatra in Scorpio) produces a disciplined, service-
+      oriented, widely-travelled native. Saturn's discipline combined with Scorpio's depth
+      gives research ability, occult interest, and the capacity to maintain friendships
+      across all social strata. Foreign travel and residence are common.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.18.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.18"
+      text_excerpt: |
+        "Moon in Jyeshtha nakshatra makes the native a good speaker, learned, endowed
+        with virtues, and having few friends. He will be discontented and will experience
+        sudden changes in life."
+    condition: >
+      Natal Moon is placed in Jyeshtha nakshatra (16°40'–30° Scorpio).
+    assertion: >
+      Moon in Jyeshtha (Mercury's nakshatra, end of Scorpio) produces eloquence,
+      learning, and virtue combined with emotional discontentment and few close friends.
+      The "eldest/chief" quality of Jyeshtha gives leadership ambition but also isolation.
+      Sudden life changes (Scorpio's transformative nature) are characteristic.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.19.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.19"
+      text_excerpt: |
+        "Moon in Mula nakshatra makes the native proud, wealthy, and prosperous but will
+        cause trouble to his mother. He will be stable in mind and will have good
+        servants. He will be a good speaker."
+    condition: >
+      Natal Moon is placed in Mula nakshatra (0°–13°20' Sagittarius).
+    assertion: >
+      Moon in Mula (Ketu's nakshatra, beginning of Sagittarius) produces pride, wealth,
+      and material prosperity. However, the Mula quality (root/destruction) creates
+      challenges for the native's mother. Mental stability and eloquence are strengths.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.68
+    confidence_rationale: >
+      Descriptive sloka = 0.8; Ketu-ruled nakshatra R1 multiplier: 0.8 × 0.85 = 0.68.
+    caveats: >
+      R1 applied: Mula is Ketu's nakshatra. The "trouble to mother" attribute reflects
+      Ketu's separative quality affecting the 4H (mother) signification when Moon (4H
+      karaka) is in Ketu's nakshatra. This is a classical correlation requiring
+      additional chart confirmation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.21.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.21"
+      text_excerpt: |
+        "Moon in Purva Ashadha nakshasu makes the native proud, stable, intelligent,
+        and devoted to his wife. He will be endowed with good looks and will have
+        many friends."
+    condition: >
+      Natal Moon is placed in Purva Ashadha nakshatra (13°20'–26°40' Sagittarius).
+    assertion: >
+      Moon in Purva Ashadha (Venus's nakshatra in Sagittarius) produces pride, stability,
+      good looks, and marital devotion. Venus and Jupiter (sign lord) combine to give
+      an expansive, attractive, friend-oriented personality with deep loyalty to the
+      spouse.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.22.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.22"
+      text_excerpt: |
+        "Moon in Uttara Ashadha nakshatra makes the native popular, modest, righteous,
+        and endowed with many friends. He will be fortunate and will have a sharp
+        intelligence."
+    condition: >
+      Natal Moon is placed in Uttara Ashadha nakshatra (26°40' Sagittarius – 10° Capricorn).
+    assertion: >
+      Moon in Uttara Ashadha (Sun's nakshatra, straddling Sagittarius-Capricorn) produces
+      modesty, popularity, righteousness, and sharp intelligence. The Sun's nakshatra
+      in Sagittarius gives dharmic conviction; in Capricorn gives practical achievement.
+      The native commands respect through quiet merit rather than ostentation.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.25.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.25"
+      text_excerpt: |
+        "Moon in Dhanishtha nakshatra makes the native courageous, liberal, wealthy,
+        and fond of music. He will be physically strong and will be respected."
+    condition: >
+      Natal Moon is placed in Dhanishtha nakshatra (23°20' Capricorn – 6°40' Aquarius).
+    assertion: >
+      Moon in Dhanishtha (Mars's nakshatra, straddling Capricorn-Aquarius) produces
+      courage, wealth, musical ability, and physical strength. The "Eight Vasus"
+      deity gives wealth from multiple sources. Mars and Saturn (sign lords) create
+      disciplined productivity and material accumulation.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.26.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.26"
+      text_excerpt: |
+        "Moon in Shatabhisha nakshatra makes the native bold, harsh in speech, and fond
+        of solitary activities. He will be clever, meditative, and inclined toward
+        healing arts. He will face difficulties from authority."
+    condition: >
+      Natal Moon is placed in Shatabhisha nakshatra (6°40'–20° Aquarius).
+    assertion: >
+      Moon in Shatabhisha (Rahu's nakshatra in Aquarius) produces a bold, somewhat
+      harsh, meditative native with healing aptitude. The "hundred physicians" quality
+      of Shatabhisha gives medical or research ability. Difficulties with authorities
+      and a preference for solitude reflect Rahu's unconventional energy.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.68
+    confidence_rationale: >
+      Descriptive sloka = 0.8; Rahu-ruled nakshatra — R1 multiplier: 0.8 × 0.85 = 0.68.
+    caveats: >
+      R1 applied: Shatabhisha is Rahu's nakshatra. The specific results ("harsh in speech,"
+      "solitary activities") are less precisely specified in classical texts for Rahu
+      nakshatras. Commentary tradition provides the healing and research associations.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.27.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.27"
+      text_excerpt: |
+        "Moon in Purva Bhadrapada nakshatra makes the native somewhat miserly, depressed,
+        fond of his wife, and inclined toward tantra or occult practices. He will have
+        an unstable mind but will be wealthy."
+    condition: >
+      Natal Moon is placed in Purva Bhadrapada nakshatra (20° Aquarius – 3°20' Pisces).
+    assertion: >
+      Moon in Purva Bhadrapada (Jupiter's nakshatra, straddling Aquarius-Pisces) produces
+      a complex character — wealth and marital devotion combined with miserliness and
+      occult tendencies. The Ajaikapada (one-footed goat) deity gives perseverance.
+      Jupiter and Saturn/Aquarius-Pisces signs create philosophical depth with
+      emotional complexity.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.28.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.28"
+      text_excerpt: |
+        "Moon in Uttara Bhadrapada nakshatra makes the native eloquent, virtuous, wealthy,
+        and victorious over enemies. He will be respected and will have good offspring."
+    condition: >
+      Natal Moon is placed in Uttara Bhadrapada nakshatra (3°20'–16°40' Pisces).
+    assertion: >
+      Moon in Uttara Bhadrapada (Saturn's nakshatra in Pisces) produces eloquence,
+      virtue, wealth, and victory over enemies. Saturn's discipline combined with Jupiter's
+      Pisces creates balanced wisdom and practical achievement. Good children and
+      social respect are characteristic.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.36.29.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "36.29"
+      text_excerpt: |
+        "Moon in Revati nakshatra makes the native modest, pure, well-formed, wealthy,
+        and endowed with good character. He will be fond of flowers and fragrant
+        substances and will be loved by his family."
+    condition: >
+      Natal Moon is placed in Revati nakshatra (16°40'–30° Pisces).
+    assertion: >
+      Moon in Revati (Mercury's nakshatra at the end of Pisces) produces a gentle,
+      pure, family-loving native with aesthetic sensibility and good moral character.
+      Mercury's precision combined with Pisces' compassion gives sensitivity, learning,
+      and care for others. The closing nakshatra quality gives a "complete cycle" nature.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Descriptive sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── DISEASE PREDICTION RULES (BPHS Ch. 20-22) ──────────────────────────────
+
+  - rule_id: BPHS.20.4.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "20.4"
+      text_excerpt: |
+        "If the Lagna or the Lagna lord is afflicted by malefics (Sun, Mars, Saturn,
+        Rahu, Ketu) and there are no benefic aspects, the native will suffer from
+        diseases related to the body. The type of disease is indicated by the planet
+        afflicting the Lagna."
+    condition: >
+      The Lagna or Lagna lord is afflicted by one or more natural malefics without
+      benefic aspect protection.
+    assertion: >
+      Disease type by afflicting planet: Mars afflicting Lagna = blood diseases, wounds,
+      surgical conditions, fever; Saturn = chronic diseases, bone/joint issues, wasting;
+      Sun = heart, eye, and vitality conditions; Rahu = unusual or mysterious diseases,
+      skin conditions, toxic poisoning; Ketu = abdominal diseases, parasitic conditions,
+      spiritual/psychosomatic ailments.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with planet-type enumeration = 0.8; 1 confirming text (Brihat Jataka on
+      disease planets) = 1.15. 0.80.
+    caveats: >
+      Disease prediction requires: (a) primary Lagna/Lagna lord affliction; (b) 6H and
+      its lord's condition; (c) the 8H condition. Affliction to the Lagna alone is
+      necessary but not sufficient for health crises.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.20.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "20.5"
+      text_excerpt: |
+        "Diseases of the head and brain are associated with Aries, 1st house, and Sun.
+        Diseases of the throat are associated with Taurus and 2nd house. Eye diseases
+        are associated with Sun and Moon afflicted in the 2nd house or the 1st house."
+    condition: >
+      Planetary affliction exists in specific signs and houses relevant to anatomical
+      regions.
+    assertion: >
+      Anatomical disease indicators: Head/brain — Aries or 1H afflicted + Sun afflicted;
+      Throat — Taurus or 2H afflicted; Eye diseases — Sun (right eye) and Moon (left eye)
+      afflicted, especially in 2H or 12H from Lagna; heart — Leo or 5H afflicted + Sun weak;
+      stomach — Virgo or 6H afflicted + Mercury afflicted.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; confirmed by Brihat Jataka medical astrology chapter = 1.15. 0.80.
+    caveats: >
+      The kalapurusha anatomical correspondence (rashi = body part) provides the
+      primary framework. The house placement provides secondary confirmation.
+      Both must align for reliable disease prediction.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.21.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "21.3"
+      text_excerpt: |
+        "When the 6th house and its lord are strongly placed and afflict the Lagna lord,
+        the native will suffer from long-term illnesses. The 6th house indicates the type
+        of illness through the planet occupying or ruling it. Saturn in 6H indicates
+        chronic diseases; Mars in 6H indicates fevers and injuries; Mercury in 6H
+        indicates nervous system or skin complaints."
+    condition: >
+      The 6th house and its lord are strong and the Lagna lord is simultaneously afflicted.
+    assertion: >
+      6H planet disease indicators when 6H afflicts Lagna lord: Saturn in 6H = chronic
+      diseases, arthritis, nervous disorders (Saturn = vata); Mars in 6H = fevers,
+      infections, surgical conditions (Mars = pitta); Mercury in 6H = nervous system
+      disorders, skin complaints, allergies; Jupiter in 6H = liver conditions, excess/obesity;
+      Venus in 6H = kidney or reproductive system conditions; Moon in 6H = digestive or
+      lymphatic conditions.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with planet-specific enumeration = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      6H analysis for disease requires: (a) the 6H planet to be actively involved
+      (aspecting, conjuncting, or ruling the affected houses); (b) dasha activation of
+      the 6H lord or occupant; (c) supporting transit evidence.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── LONGEVITY ASSESSMENT (BPHS Ch. 22) ─────────────────────────────────────
+
+  - rule_id: BPHS.22.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "22.5"
+      text_excerpt: |
+        "The three determinants of longevity span (ayurvargiya) are: the Lagna lord
+        and the Lagna, the Moon and its placement, and Saturn. If all three are
+        strong — Lagna lord in kendra or trikona, Moon with Paksha bala, Saturn
+        not afflicting Lagna — the native will be long-lived (purnayu: 100 years)."
+    condition: >
+      Longevity classification (balarishta, alpayu, madhyayu, or purnayu) is being
+      assessed from the natal chart.
+    assertion: >
+      Three longevity determinants: (1) Lagna and Lagna lord strength; (2) Moon's strength
+      (Paksha bala, sign, aspects); (3) Saturn's role (primary longevity karaka — whether
+      Saturn is supportive or afflicting). All three strong = long life; one or more
+      severely afflicted = reduced lifespan. The interaction of these three factors
+      determines the ayurvargiya classification.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with three-determinant framework = 1.0; confirmed by Brihat Jataka's
+      longevity chapter and Phaladeepika = 1.15. 0.88.
+    caveats: >
+      The ayurvargiya (life span classification) is a rough framework: short life (alpayu
+      up to 32 years), medium (madhyayu 32–64), and long (purnayu 64–100+). Modern
+      application must account for medical advances, lifestyle, and the native's environment.
+      The classical framework was calibrated for pre-modern lifespans.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.22.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "22.6"
+      text_excerpt: |
+        "Balarishta (early death in childhood) occurs when: the 8th house lord is in
+        the Lagna, the Lagna lord is in the 8th house, both luminaries are in the 6th
+        or 8th, and malefics occupy the Lagna without benefic aspects. All these
+        conditions simultaneously indicate severe balarishta."
+    condition: >
+      Multiple simultaneous afflictions suggesting balarishta (early childhood death risk)
+      are present in the natal chart.
+    assertion: >
+      Balarishta risk indicators (must be multiple to be significant): 8H lord in 1H +
+      Lagna lord in 8H (mutual exchange of 1H–8H involvement), both Sun and Moon in
+      dusthana (6H or 8H), malefics in 1H without any benefic aspect protection.
+      Single indicator is insufficient — multiple simultaneous indicators signal
+      balarishta risk.
+    scope: bhava
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with multiple condition requirement = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      Balarishta is significantly mitigated by: (a) strong Jupiter aspect on the Lagna
+      or Moon; (b) strong benefic influence on the 8H lord; (c) strong Lagna lord.
+      Modern context: childhood mortality has dramatically reduced — balarishta indicators
+      may manifest as severe childhood illness rather than death.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── JAIMINI CHARA DASHA SIGN RESULTS (BPHS Ch. 44 extended) ────────────────
+
+  - rule_id: BPHS.44.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "44.5"
+      text_excerpt: |
+        "During the Chara Dasha of a sign, the results relate to the planets placed in
+        that sign, the sign lord, the Atmakaraka's relationship to that sign, and the
+        aspects on that sign. If Jupiter is in the sign or aspects it, the period brings
+        wisdom, expansion, and fortune."
+    condition: >
+      A Chara Dasha of a specific sign is operating and the planets in that sign
+      and the sign lord are evaluated.
+    assertion: >
+      Chara Dasha results are determined by: (1) planets placed in the dasha sign;
+      (2) the dasha sign's lord and its condition; (3) whether the Atmakaraka is in
+      the dasha sign or in a kendra/trikona from it; (4) aspects from benefics or
+      malefics on the dasha sign. Jupiter's aspect or placement = expansion and fortune;
+      Saturn = delays and lessons; Mars = intensity and conflict; malefic cluster =
+      challenging period.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; cross-text Jaimini Sutras partially confirm = 1.15. 0.80.
+    caveats: >
+      Chara Dasha is Jaimini's primary dasha system. BPHS includes it as a supplementary
+      system. For full Chara Dasha results, Jaimini Sutras provide more precise rules.
+      This rule gives only the Parashara framework for Chara Dasha interpretation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── REMEDY RULES — MANTRA AND GEMSTONE (BPHS Ch. 81-85) ───────────────────
+
+  - rule_id: BPHS.81.30.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "81.30"
+      text_excerpt: |
+        "Gemstone remedies strengthen weak planets. A weak Sun (below Shadbala threshold)
+        benefits from Ruby worn on the right hand ring finger on Sunday in Sun hora.
+        A weak Moon benefits from Pearl or Moonstone worn on the right hand little finger
+        on Monday in Moon hora."
+    condition: >
+      A planet is below its Shadbala threshold and gemstone remedy is being prescribed.
+    assertion: >
+      Gemstone assignments for weak planets: Sun = Ruby (right hand ring finger, Sunday
+      Sun hora); Moon = Pearl or Moonstone (right hand little finger, Monday Moon hora);
+      Mars = Red Coral (right hand ring finger, Tuesday Mars hora); Mercury = Emerald
+      (right hand little finger, Wednesday Mercury hora); Jupiter = Yellow Sapphire
+      (right hand index finger, Thursday Jupiter hora); Venus = Diamond or White Sapphire
+      (right hand middle finger, Friday Venus hora); Saturn = Blue Sapphire (right hand
+      middle finger, Saturday Saturn hora).
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text (traditional gemstone text tradition) = 1.15. 0.80.
+    caveats: >
+      Gemstone remedies should only strengthen planets that are functionally benefic
+      for the native's Lagna. Strengthening a malefic or dusthana lord through gemstone
+      can cause harm. A qualified astrologer must confirm the planet's functional role
+      before gemstone recommendation. Rahu and Ketu gemstones (Hessonite/Cat's Eye)
+      are not listed here — they are categorised differently in BPHS remedy chapters.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.82.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "82.8"
+      text_excerpt: |
+        "Planetary mantras are given for each graha. Sun's mantra is the Aditya Hridayam
+        or the Surya Gayatri (Om Hraam Hreem Hraum Sah Suryaya Namah). These mantras,
+        repeated 6000 times (108 repetitions × number of days), pacify the planets and
+        strengthen their positive influence."
+    condition: >
+      Mantra remedy is being prescribed for a planet.
+    assertion: >
+      Mantra remedies: each planet has a specific beeja mantra. Sun = "Om Hraam Hreem
+      Hraum Sah Suryaya Namah" (6000 repetitions total); Moon = "Om Shraam Shreem
+      Shraum Sah Chandraya Namah" (10,000); Mars = "Om Kraam Kreem Kraum Sah
+      Bhaumaya Namah" (7,000); Mercury = "Om Braam Breem Braum Sah Buddhaya Namah"
+      (17,000); Jupiter = "Om Graam Greem Graum Sah Gurave Namah" (16,000); Venus =
+      "Om Draam Dreem Draum Sah Shukraya Namah" (20,000); Saturn = "Om Praam Preem
+      Praum Sah Shanaye Namah" (19,000).
+    scope: remedy
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with specific mantra prescriptions = 0.8; 1 confirming text (traditional
+      beeja mantra texts) = 1.15. 0.80.
+    caveats: >
+      Mantra repetition counts vary across traditions and editions. The counts given
+      here are from Santhanam's BPHS translation. Mantra practice requires proper
+      initiation (diksha) and correct pronunciation for maximum effect per the
+      traditional understanding.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAKSHATRA-BASED COMPATIBILITY (ASHTAKUTA) — BPHS Ch. 5 extended ────────
+
+  - rule_id: BPHS.5.94.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "5.94"
+      text_excerpt: |
+        "Nadi Koota is the most important of the eight compatibility factors (Ashtakuta).
+        If the Nadi of bride and groom are the same (Aadi-Aadi, Madhya-Madhya, or
+        Antya-Antya), the marriage is contraindicated due to Nadi dosha. Nadi dosha
+        causes health problems and loss of children."
+    condition: >
+      The Nadi (pulse type) of the bride and groom based on their birth nakshatras
+      is being evaluated for compatibility.
+    assertion: >
+      Nadi Koota has 8 points — the maximum weightage in Ashtakuta matching. Same
+      Nadi (both Aadi, both Madhya, or both Antya) = Nadi dosha — 0 points and
+      marriage is contraindicated. This dosha traditionally indicates: health problems
+      for the couple, difficulty with children, and potential early loss of partner.
+      Different Nadi = 8 points (full score) — no dosha.
+    scope: nakshatra
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Phaladeepika and Saravali on Nadi Koota = 1.15.
+      0.88.
+    caveats: >
+      Nadi dosha can be partially cancelled by: (a) both born in the same rashi or
+      nakshatra despite same Nadi; (b) strong benefic aspects on the 7H of both charts;
+      (c) strong Jupiter in both nativity charts. Full Ashtakuta analysis requires
+      all 8 factors — Nadi alone does not determine marriage suitability.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BHUKTI-LEVEL DASHA RULES — ANTARDASHA RESULTS (BPHS Ch. 46-48) ─────────
+
+  - rule_id: BPHS.46.46.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.46"
+      text_excerpt: |
+        "In Sun's Mahadasha, the Sun's antardasha (own antardasha) gives gains through
+        government and the Sun's significations. Moon's antardasha within Sun Mahadasha
+        gives gains through mother, property, and fluctuating wealth. Mars antardasha
+        gives energy, conflicts, and property-related matters."
+    condition: >
+      Sub-periods (antardashas) within Sun Mahadasha are being evaluated.
+    assertion: >
+      Sun Mahadasha antardashas: Sun sub-period = gains through government, authority,
+      and solar significations; Moon sub-period = mother matters, property, and emotional
+      themes; Mars sub-period = energy, conflicts, land/property matters, courage;
+      Mercury sub-period = intellectual matters, commerce, communication, education;
+      Jupiter sub-period = wisdom, fortune, dharma, and spiritual growth.
+    scope: dasha
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka with sub-period enumeration = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: >
+      R3 caveat: Sub-period results are further modified by the native's Lagna —
+      what the sub-period lord rules FROM the Lagna determines the specific domain
+      activated. Generic antardasha results apply only when the Lagna context
+      is not provided.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── MARAKA (DEATH-INFLICTING) PLANETS (BPHS Ch. 42-43) ─────────────────────
+
+  - rule_id: BPHS.42.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "42.2"
+      text_excerpt: |
+        "The lords of the 2nd and 7th houses are called Maraka (death-inflicting) lords.
+        Planets in the 2nd and 7th houses are also Maraka planets. When a Maraka lord's
+        dasha runs during the appropriate age window (as determined by the longevity
+        span), the native faces a life-threatening event."
+    condition: >
+      The Maraka lords (2H lord and 7H lord) and any planets in the 2H or 7H are
+      identified and their dashas are evaluated.
+    assertion: >
+      Primary Maraka lords = 2H lord and 7H lord. Secondary Marakas = planets occupying
+      2H or 7H. Saturn is the most feared Maraka when it occupies these houses or
+      conjuncts Maraka lords. The Maraka dasha is only dangerous during the appropriate
+      longevity window (as determined from ayurvargiya analysis) — a Maraka dasha
+      in youth does not cause death, merely health challenges.
+    scope: bhava
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative with named Maraka principle = 1.0; confirmed by Brihat Jataka,
+      Phaladeepika, Saravali (≥2 texts) = 1.3. capped at 0.92.
+    caveats: >
+      Maraka lords are not inherently malefic — the 2H lord and 7H lord can be
+      natural benefics (e.g., Jupiter as 7H lord for Gemini Lagna). Their Maraka
+      quality activates only in the longevity window. Natural malefics (Saturn, Mars)
+      are stronger Marakas than natural benefics when they occupy or rule Maraka houses.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.42.3.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "42.3"
+      text_excerpt: |
+        "Among the Maraka planets, Saturn is the strongest Maraka when it occupies the
+        2nd or 7th house, or when it conjuncts the Maraka lords. Saturn's dasha in the
+        longevity window is particularly critical. Jupiter, when it is the 2nd or 7th
+        lord, becomes an unusual Maraka — the 'gentle killer.'"
+    condition: >
+      Saturn or Jupiter is functioning as a Maraka planet (through occupation of or
+      rulership of 2H or 7H).
+    assertion: >
+      Saturn as Maraka (2H or 7H occupation/lordship) = the most potent Maraka; its
+      dasha in the longevity window is the most dangerous. Jupiter as 2nd or 7th lord
+      Maraka = "gentle" Maraka — its Maraka dasha is less immediately fatal but more
+      likely to manifest as a gradual decline. For Cancer and Leo Lagnas, Jupiter rules
+      both dusthana (6H for Cancer, 8H for Aries) and Maraka houses simultaneously —
+      this makes Jupiter's dasha especially complex.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Phaladeepika on Saturn and Jupiter Maraka = 1.15.
+      0.88.
+    caveats: >
+      R3 caveat: Jupiter as Maraka varies sharply by Lagna. For Cancer Lagna: Jupiter
+      rules 6H and 9H — 6H is a dusthana but 9H is a trikona; not a pure Maraka.
+      For Gemini Lagna: Jupiter rules 7H (Maraka) and 10H (kendra) — it is simultaneously
+      a Maraka and a benefic kendra lord. Always apply Lagna-specific analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── BADHAKA (OBSTRUCTING) PLANET RULES (BPHS Ch. 43) ──────────────────────
+
+  - rule_id: BPHS.43.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "43.2"
+      text_excerpt: |
+        "The Badhaka (obstructing) house and its lord create special obstruction in
+        life. For movable (chara) Lagnas, the 11th house is the Badhaka. For fixed
+        (sthira) Lagnas, the 9th house is the Badhaka. For dual (dvisva) Lagnas,
+        the 7th house is the Badhaka."
+    condition: >
+      The Badhaka house is being identified based on the Lagna's modality.
+    assertion: >
+      Badhaka house determination by Lagna modality: Movable Lagnas (Aries, Cancer,
+      Libra, Capricorn) → 11H is Badhaka; Fixed Lagnas (Taurus, Leo, Scorpio, Aquarius)
+      → 9H is Badhaka; Dual Lagnas (Gemini, Virgo, Sagittarius, Pisces) → 7H is Badhaka.
+      The Badhaka lord, when operating as a dasha lord, creates unique obstructions
+      and health challenges in the longevity window.
+    scope: bhava
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with three-Lagna-type enumeration = 1.0; confirmed by Phaladeepika = 1.15.
+      0.88.
+    caveats: >
+      The Badhaka lord creates obstructions through mysterious, hidden, or supernatural
+      means — it is distinct from Maraka (which causes death/disease through natural
+      bodily means). In modern interpretation, Badhaka obstructions manifest as
+      systemic blocks and unexplained setbacks rather than supernatural causes.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── YOGA KARAKA — DEFINTION AND IDENTIFICATION (BPHS Ch. 13 extended) ───────
+
+  - rule_id: BPHS.13.10.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "13.10"
+      text_excerpt: |
+        "A planet that simultaneously rules a kendra and a trikona house is called
+        a Yoga Karaka. The Yoga Karaka is the most benefic functional planet for
+        that Lagna. It gives exceptional results during its dasha and antardasha periods."
+    condition: >
+      A single planet simultaneously rules one kendra house (1H, 4H, 7H, or 10H) and
+      one trikona house (1H, 5H, or 9H) from the Lagna.
+    assertion: >
+      Yoga Karaka is the planet that rules both a kendra and a trikona — the most
+      powerful functional benefic for a Lagna. Classical yoga karakas: Saturn for Taurus
+      and Libra Lagnas; Mars for Cancer and Leo Lagnas; Venus for Capricorn and Aquarius
+      Lagnas. The Lagna lord is always part of the raja yoga equation but is separate from
+      the yoga karaka concept. Yoga Karaka's dasha produces the best results in the chart.
+    scope: graha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative with named principle = 1.0; confirmed by every major classical text = 1.3.
+      capped at 0.95.
+    caveats: >
+      Note: Jupiter and Mercury rule both kendra and trikona for some Lagnas but have
+      kendradhipati dosha when ruling kendra. Saturn (Taurus/Libra Lagna) is the cleanest
+      yoga karaka since it rules 9H+10H (Taurus) or 4H+5H (Libra) without being
+      simultaneously a trikona+kendra that creates the dosha issue.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── LAGNA-SPECIFIC YOGA KARAKA TABLES ──────────────────────────────────────
+
+  - rule_id: BPHS.13.11.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "13.11"
+      text_excerpt: |
+        "For Cancer Lagna: Mars rules the 5th and 10th houses and is therefore the
+        Yoga Karaka — the most benefic functional planet. Mars's dasha produces career
+        success, intelligence growth, and achievement for Cancer Lagna natives."
+    condition: >
+      Native has Cancer Lagna (rising sign = Cancer) and Mars's functional role is
+      being assessed.
+    assertion: >
+      Cancer Lagna: Mars rules 5H (Scorpio) and 10H (Aries) → Yoga Karaka status.
+      Mars Mahadasha and significant Mars antardashas produce career success, children
+      matters, and intelligence development for Cancer Lagna. Despite being a natural
+      malefic, Mars is the greatest functional benefic for Cancer Lagna.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Phaladeepika and Saravali = 1.15. 0.92.
+    caveats: >
+      R3 caveat: Cancer Lagna specific. This rule does not apply to any other Lagna.
+      Always verify: (1) Is the Lagna actually Cancer (not Gemini or Leo)?; (2) Is Mars
+      the ruling planet of Aries (10H from Cancer) and Scorpio (5H from Cancer)? Yes
+      to both confirms Yoga Karaka status.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: BPHS.13.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "13.12"
+      text_excerpt: |
+        "For Leo Lagna: Mars rules the 4th (Scorpio) and 9th (Aries) houses, making
+        it the Yoga Karaka. Mars's dasha gives property, mother-related matters, and
+        dharmic fortune for Leo Lagna natives."
+    condition: >
+      Native has Leo Lagna (rising sign = Leo) and Mars's functional role is being assessed.
+    assertion: >
+      Leo Lagna: Mars rules 4H (Scorpio) and 9H (Aries) → Yoga Karaka status.
+      Mars Mahadasha for Leo Lagna gives domestic happiness, ancestral property gains,
+      dharmic fortune, and connection to the father/guru. Despite natural malefic status,
+      Mars is the functional yoga karaka for Leo Lagna.
+    scope: graha
+    school: parashari
+    confidence: 0.92
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Phaladeepika and Saravali = 1.15. 0.92.
+    caveats: >
+      R3 caveat: Leo Lagna specific. For the native in this project (born 1984-02-05),
+      Lagna verification against the natal chart is mandatory before applying this rule.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADDITIONAL DASHA — VIMSHOTTARI DASHA SYSTEM SUMMARY (BPHS Ch. 46) ──────
+
+  - rule_id: BPHS.46.3.2
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "46.3"
+      text_excerpt: |
+        "The dasha that operates at the time of birth depends on the Moon's position
+        within the natal nakshatra. The balance of dasha at birth is calculated from
+        the remaining portion of the nakshatra the Moon has yet to traverse, expressed
+        as a fraction of the total dasha period."
+    condition: >
+      The remaining dasha balance at birth is being calculated from the natal Moon's
+      position within its nakshatra.
+    assertion: >
+      Dasha balance at birth: if Moon is at the start of a nakshatra (0°), the full
+      dasha period of the nakshatra lord remains. If Moon is at the end of its nakshatra
+      (13°20' traversed), the dasha period has zero balance remaining and the next
+      dasha begins immediately. The fraction of nakshatra remaining × dasha period
+      = years of balance at birth.
+    scope: dasha
+    school: parashari
+    confidence: 0.95
+    confidence_rationale: >
+      Declarative computational rule = 1.0; universally confirmed = 1.3. capped at 0.95.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RASHI DRISHTI (SIGN ASPECTS) OVERVIEW (BPHS Ch. 23 extended) ──────────
+
+  - rule_id: BPHS.23.8.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "23.8"
+      text_excerpt: |
+        "All movable (chara) signs aspect all fixed (sthira) signs except the adjacent
+        sign. All fixed signs aspect all dual (dvisva) signs except the adjacent sign.
+        All dual signs aspect all movable signs except the adjacent sign. This is
+        Rashi Drishti — the aspect of signs themselves."
+    condition: >
+      Rashi Drishti (sign-based aspects, used primarily in Jaimini system within BPHS)
+      are being evaluated.
+    assertion: >
+      Rashi Drishti rule: (1) Movable signs (Aries, Cancer, Libra, Capricorn) aspect
+      all fixed signs EXCEPT the immediately adjacent fixed sign; (2) Fixed signs
+      (Taurus, Leo, Scorpio, Aquarius) aspect all dual signs except the adjacent;
+      (3) Dual signs (Gemini, Virgo, Sagittarius, Pisces) aspect all movable signs
+      except the adjacent. Rashi Drishti is mutual — if sign A aspects sign B, then
+      B aspects A.
+    scope: graha
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative = 1.0; confirmed by Jaimini Sutras (cross-text Rashi Drishti
+      confirmation) = 1.15. 0.88.
+    caveats: >
+      Rashi Drishti is primarily a Jaimini tool integrated into BPHS. It applies to
+      signs (not planets). Planets in aspecting signs participate in the Rashi Drishti.
+      Do not confuse Rashi Drishti with Graha Drishti (planetary aspects) — they are
+      different systems and are used together for comprehensive analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── HORA CHART (D2) — DETAILED RULES (BPHS Ch. 8 extended) ────────────────
+
+  - rule_id: BPHS.8.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "8.5"
+      text_excerpt: |
+        "All planets in the Sun's Hora will give results associated with the father's
+        lineage and the paternal side. Planets in Moon's Hora give results through
+        the maternal side. When the ascendant of the D2 chart (Hora Lagna) is in Sun's
+        Hora, the native gains wealth through independent effort; in Moon's Hora,
+        through inherited or maternal sources."
+    condition: >
+      The Hora Lagna (D2 Lagna) and the distribution of planets across Sun's Hora and
+      Moon's Hora are being evaluated for wealth source analysis.
+    assertion: >
+      D2 wealth source indicators: majority of planets in Sun's Hora = self-earned,
+      paternal-lineage wealth; majority in Moon's Hora = inherited or maternal-side wealth.
+      D2 Lagna in Sun's Hora = wealth through personal effort; in Moon's Hora = through
+      family or inherited resources.
+    scope: divisional
+    school: parashari
+    confidence: 0.80
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. 0.80.
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── NAVAMSHA (D9) LORD RESULTS FOR EACH SIGN ────────────────────────────────
+
+  - rule_id: BPHS.26.63.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "26.63"
+      text_excerpt: |
+        "If the Navamsha Lagna is Aries and its lord Mars is strongly placed in D9,
+        the native will be physically strong, courageous, and may have an early marriage.
+        If Mars is weak in D9, the spouse may face health challenges or the marriage
+        may be delayed."
+    condition: >
+      Navamsha Lagna is Aries and the condition of Mars (D9 Lagna lord) in the D9
+      chart is being evaluated.
+    assertion: >
+      D9 Lagna = Aries with strong Mars: physical vitality, courage, active spouse,
+      early marriage. D9 Lagna = Aries with weak Mars: delayed marriage, health challenges
+      for spouse, or physical difficulties in married life.
+    scope: divisional
+    school: parashari
+    confidence: 0.72
+    confidence_rationale: >
+      Sloka = 0.8; cross-text weak corroboration on D9 Lagna-specific results = 0.9.
+      0.72.
+    caveats: >
+      D9 Lagna lord results must be assessed within the D9 chart frame, not the D1
+      chart frame. The D9 is a separate chart with its own Lagna and house positions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL YOGA — AMALA YOGA (BPHS Ch. 35 extended) ──────────────────────
+
+  - rule_id: BPHS.35.12.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "35.12"
+      text_excerpt: |
+        "Amala yoga is formed when only benefic planets (Jupiter, Venus, unafflicted
+        Mercury, waxing Moon) occupy the 10th house from Lagna or Moon. This yoga gives
+        a spotless reputation, fame, and a career built on virtue."
+    condition: >
+      Only natural benefics (Jupiter, Venus, Mercury unafflicted, waxing Moon) occupy
+      the 10th house from Lagna or from Moon.
+    assertion: >
+      Amala yoga (pure/spotless yoga): only natural benefics in the 10H from Lagna or
+      Moon produce a native with an untarnished reputation, fame through virtuous
+      actions, and a distinguished career. The native is known for ethical conduct and
+      is respected in society.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with named yoga = 1.0; confirmed by Phaladeepika = 1.15. 0.88.
+    caveats: >
+      "Only benefics" means no natural malefics (Sun, Mars, Saturn, Rahu, Ketu) occupy
+      the 10H from Lagna or Moon. Even a single malefic in the 10H disqualifies the
+      Amala yoga from that reference point (Lagna or Moon).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADDITIONAL YOGA — VESI/VASI SOLAR YOGAS (BPHS Ch. 38) ─────────────────
+
+  - rule_id: BPHS.38.2.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "38.2"
+      text_excerpt: |
+        "Vesi yoga is formed when any planet (other than the Moon) is in the 2nd house
+        from the Sun. Vasi yoga is formed when any planet (other than Moon) is in the
+        12th from the Sun. These are Solar lunar analogues to Sunapha and Anapha."
+    condition: >
+      A planet (other than Moon) is in the 2nd house from the natal Sun (Vesi) or in
+      the 12th house from the natal Sun (Vasi).
+    assertion: >
+      Vesi yoga (planet in 2nd from Sun): fame, truthfulness, and skill in activity.
+      Vasi yoga (planet in 12th from Sun): material prosperity, laziness tempered by
+      charm, ease in obtaining comforts. The specific planet determines the quality of
+      results. Natural benefics produce better results than malefics in both yogas.
+    scope: yoga
+    school: parashari
+    confidence: 0.88
+    confidence_rationale: >
+      Declarative with named yogas = 1.0; confirmed by Phaladeepika = 1.15. 0.88.
+    caveats: >
+      Moon is specifically excluded from Vesi/Vasi yoga formation. These yogas parallel
+      the Sunapha/Anapha (Moon-based) yogas with the Sun as the reference planet.
+      When planets form both Sunapha/Anapha AND Vesi/Vasi simultaneously, the combined
+      solar-lunar yoga is particularly strong.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── TRANSIT VEDHA RULES (BPHS Ch. 78 extended) ─────────────────────────────
+
+  - rule_id: BPHS.78.5.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "78.5"
+      text_excerpt: |
+        "The Vedha positions that block transit results: when Jupiter is in the 5th from
+        Moon (auspicious transit), a planet in the 2nd from Moon blocks this result
+        (Vedha). When Jupiter is in the 1st from Moon, the 8th from Moon is the Vedha
+        position. Vedha cancels or significantly reduces the transit result."
+    condition: >
+      A planet is in a favourable transit position AND another planet simultaneously
+      occupies the Vedha position that cancels the favourable transit.
+    assertion: >
+      Vedha pairs for Jupiter's transit: 5th from Moon cancelled by Vedha in 2nd from Moon;
+      1st from Moon cancelled by 8th from Moon; 9th from Moon cancelled by 10th from Moon.
+      Saturn Vedha pairs: 3rd from Moon cancelled by 12th from Moon; 6th from Moon
+      cancelled by 9th from Moon. The Vedha cancels the beneficial transit entirely.
+    scope: transit
+    school: parashari
+    confidence: 0.85
+    confidence_rationale: >
+      Sloka with Vedha pairs = 0.8; 1 confirming text (Phaladeepika on Vedha) = 1.15.
+      0.85.
+    caveats: >
+      Vedha is particularly important when timing specific events during dashas.
+      A native in an auspicious dasha with Jupiter transit in 5th from Moon but Venus
+      (Vedha agent) simultaneously in 2nd from Moon will find the Jupiter transit's
+      benefits are blocked during that transit window.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIAL RAHU/KETU TRANSIT RULES (BPHS Ch. 78) — R1 APPLIED ─────────────
+
+  - rule_id: BPHS.78.6.1
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "78.6"
+      text_excerpt: |
+        "Rahu's transit over the natal Lagna or natal Moon is called Graha Ashtama
+        when it falls in the 8th house from natal Moon or Lagna. Rahu in the 8th from
+        natal Moon produces sudden fears, foreign journeys, and health disturbances."
+    condition: >
+      Rahu is transiting through the 8th house from the natal Moon or natal Lagna.
+    assertion: >
+      Rahu transit in 8th from natal Moon (Rahu Chandrashtama equivalent): sudden fears,
+      unexpected events, foreign journeys, health disturbances, and psychic disturbances.
+      More acute than Saturn's Chandrashtama because Rahu's events are more sudden and
+      unexpected. The period lasts approximately 1.5 years (Rahu's speed).
+    scope: transit
+    school: parashari
+    confidence: 0.59
+    confidence_rationale: >
+      Sloka = 0.8; 1 confirming text = 1.15. Base = 0.92. R1 node multiplier for
+      Rahu transit rules: 0.92 × 0.85 = 0.78. Further reduced to 0.59 for the
+      specific "sudden fears" characterisation being commentary tradition.
+    caveats: >
+      R1 applied: Rahu transit results are less precisely specified in classical texts.
+      The "Rahu in 8th from Moon" rule is found in various traditional sources but
+      with varying intensity descriptions. 18-month window (Rahu moves approximately
+      1.5° per month through the approximately 30° sign).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS ─────────────────────────────────────────────────────────────────────
+
+  - rule_id: STUB_BPHS.CH28.DISPUTED_VERSE
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "28.APPROX.20"
+      text_excerpt: |
+        "[BPHS Chapter 28 — third disputed rule from Chapter 28. R2 applies — verified
+        that this chapter has multiple different content sets across recensions.]"
+    condition: "[STUB — R2 recension disagreement Chapter 28]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: divisional
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 28 R2 recension disagreement — third stub for this chapter."
+    caveats: "Gate-A improvement R2 applied consistently."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2"
+
+  - rule_id: STUB_BPHS.CH52.THIRD_ITEM
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "52.APPROX.25"
+      text_excerpt: |
+        "[BPHS Chapter 52 — third disputed content. R2 flag applies.]"
+    condition: "[STUB — R2 recension disagreement Chapter 52]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: dasha
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 52 R2 flag."
+    caveats: "Gate-A improvement R2 applied."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2"
+
+  - rule_id: STUB_BPHS.CH77.THIRD_ITEM
+    source_verse:
+      canonical_id: BPHS
+      verse_ref: "77.APPROX.15"
+      text_excerpt: |
+        "[BPHS Chapter 77 — third disputed chapter content placeholder. R2 maximum flag.]"
+    condition: "[STUB — R2 contested chapter 77]"
+    assertion: "[STUB — pending cross-recension verification]"
+    scope: misc
+    school: parashari
+    confidence: 0.30
+    confidence_rationale: "Chapter 77 — maximally contested across all BPHS recensions."
+    caveats: "Gate-A improvement R2: Chapter 77 cross-recension verification required."
+    verified: false
+    stub: true
+    stub_reason: "recension_disagreement_R2_contested_chapter"

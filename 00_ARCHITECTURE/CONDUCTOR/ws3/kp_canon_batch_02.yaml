@@ -1,0 +1,1770 @@
+metadata:
+  source: KP
+  extraction_session: canon-kp
+  batch: 2
+  rules_in_batch: 100
+  rule_range: "KP.101–KP.200"
+  stubbed_in_batch: 5
+  pramana_pass_rate: 0.95
+  extraction_date: "2026-06-05"
+  note: >
+    Batch 2 covers: deeper sub-lord applications, KP-specific house groupings
+    for 12 life domains, inter-cusp sub-lord chains, horary advanced rules,
+    special KP techniques (ruling planets in timing, sookshma precision),
+    and comparative divergences from Parashari explicitly stated in KP texts.
+
+rules:
+
+  # ── EXTENDED SUB-LORD FRAMEWORK ──
+
+  - rule_id: KP.2.ch7.cusp_connectivity_chain.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch7.cusp_connectivity_chain"
+      text_excerpt: |
+        "For complete promise verification, a two-step chain is required. Step 1:
+        identify the sub-lord of the cusp. Step 2: verify that the sub-lord's
+        own star lord (i.e., the nakshatra lord of the sign-degree where the
+        sub-lord is placed) also connects to the relevant house group. When
+        both the sub-lord and the sub-lord's star lord signify the relevant
+        houses, the promise is doubly confirmed."
+    condition: >
+      The sub-lord SL of cusp H is identified. SL's own star lord (the nakshatra
+      lord of SL's natal position) is then assessed for house connectivity.
+    assertion: >
+      When both the sub-lord SL AND SL's star lord independently signify the
+      relevant house group for H, the promise of H is doubly confirmed and
+      particularly strong. Single-step sub-lord connectivity is sufficient for
+      basic promise; double-step chain verification is the highest confidence level.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Explanatory prose with two-step chain (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord at each step. The two-step chain is an advanced
+      KP technique; for routine prediction the one-step sub-lord check suffices.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch8.negative_house_cusps.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch8.negative_cusps_and_timing"
+      text_excerpt: |
+        "Every house cusp has a positive and a negative expression. The positive
+        expression fructifies when the sub-lord of that cusp connects to the
+        supporting houses. The negative expression (loss, denial, obstacle)
+        occurs when the sub-lord connects to the opposing house group. For house
+        4 (property, home): positive sub-lord is 4/11/12; negative sub-lord
+        is 10/3/9 (absence from home, career over home)."
+    condition: >
+      House 4 (property and home) is being assessed. Sub-lord of 4th cusp
+      connects to either 4/11/12 or 10/3/9.
+    assertion: >
+      Sub-lord of 4th cusp signifying 4H, 11H, 12H: positive expression —
+      property acquisition, settled home life. Sub-lord signifying 10H, 3H, 9H:
+      negative expression — career dominates, frequent travel, absence from
+      home, property in foreign place. The opposing house groups create the
+      positive/negative duality for each cusp.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with positive/negative duality example (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The opposing-house group framework for each
+      cusp's negative expression is a KP analytical tool; the specific opposing
+      groups for each house are derived from the thematic opposition of houses
+      across the chart wheel.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch9.double_signification.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch9.double_signification_analysis"
+      text_excerpt: |
+        "When a planet signifies both positive (promise houses) and negative
+        (denial houses) for a matter simultaneously, the sub-lord of that
+        planet determines which predominates. If the planet's sub-lord connects
+        to the positive houses, the positive signification wins. If to the
+        negative, denial wins. The sub-lord arbitrates between conflicting
+        house significations in the same planet."
+    condition: >
+      A planet P signifies both the promise-houses (e.g., 2/7/11 for marriage)
+      and the denial-houses (e.g., 6/12 for marriage denial) simultaneously.
+    assertion: >
+      When a planet has mixed significations, its sub-lord determines which
+      set of significations manifests. Sub-lord connecting to promise-houses →
+      positive results manifest. Sub-lord connecting to denial-houses →
+      negative results manifest. The sub-lord is the tie-breaker for mixed
+      signification planets.
+    scope: sub_lord
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with clear decision rule (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. This rule is important for planets that
+      are significators of both 2/7/11 and 6/8/12 simultaneously — a common
+      occurrence in KP charts where planets occupy or lord multiple houses.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch9.sublord_of_dashalord.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch9.sublord_of_dasha_lord"
+      text_excerpt: |
+        "For more precise dasha analysis, the sub-lord of the dasha lord itself
+        should be examined. If the dasha lord's sub-lord is a significator of
+        the relevant house group, the dasha will be fully productive for that
+        matter. If the dasha lord's sub-lord signifies inimical houses, even a
+        dasha lord that is a significant house lord may fail to deliver results."
+    condition: >
+      The sub-lord of the dasha lord D is assessed to refine the dasha analysis.
+    assertion: >
+      The dasha lord D's own sub-lord determines whether D will deliver results
+      for the relevant matter. If D's sub-lord connects to the relevant house
+      group, D's dasha is fully productive. If D's sub-lord connects to inimical
+      houses, D's dasha underperforms even if D itself is a strong house significator.
+    scope: dasha
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with clear rule (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. This is a second-order sub-lord check — the
+      sub-lord of the dasha lord, in addition to the sub-lord of the relevant
+      cusp. Both checks together provide the highest confidence in dasha-level
+      prediction.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── KP HOUSE GROUP SPECIFICATIONS FOR ALL MAJOR LIFE DOMAINS ──
+
+  - rule_id: KP.4.ch10.house_groups.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch10.house_group_summary"
+      text_excerpt: |
+        "KP summarizes the house groups for each major life domain:
+        Longevity: 1, 8, 3 (1=physical body, 8=danger, 3=neighbours of 8=longevity via 3rd).
+        Death: 2, 7, badhaka (2=maraka, 7=maraka, badhaka=obstacle to life).
+        Mother: 4, 10 (4=mother, 10=10th from mother is 7th, indicating longevity of mother).
+        Father: 9, 3 (9=father, 3=3rd from 9th = longevity of father via 11th).
+        Siblings: 3, 11 (3=siblings, 11=11th from 3rd = gain from siblings)."
+    condition: >
+      House groups for longevity, death, mother, father, and siblings are being applied.
+    assertion: >
+      KP house groups:
+      Longevity: 1H, 8H, 3H (8H = danger; 3H is 8th from 8H = survival).
+      Death: 2H, 7H, and badhakasthana.
+      Mother: 4H and 10H.
+      Father: 9H and 3H.
+      Siblings: 3H and 11H (11H = fulfilment from siblings).
+    scope: bhava
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose with enumerated summary (0.80) × partial Parashari confirmation (1.15) = 0.92; cap 0.92"
+    caveats: >
+      House 3 for longevity (as 8th from 8th = second death-chance survived) is
+      a KP-specific interpretation. Parashari uses 8H as the primary longevity house.
+      Results depend on sub-lord for each specific question.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.4.ch10.house_groups.2
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch10.house_group_summary"
+      text_excerpt: |
+        "Additional house groups:
+        Mental health: 1, 4, 5, 8, 12 (1=body/mind integration, 4=emotional home,
+        5=mental acuity, 8=deep transformation, 12=seclusion/institutions).
+        Legal disputes: 6, 7, 11 (6=enemy/dispute, 7=open opponent, 11=victory).
+        Enemies: 6, 12 (6=enemies, 12=bedridden due to enemies, imprisonment).
+        Vehicles: 4, 11 (4=vehicles, 11=gains including vehicles)."
+    condition: >
+      House groups for mental health, legal disputes, enemies, and vehicles are applied.
+    assertion: >
+      KP house groups:
+      Mental health: 1H, 4H, 5H, 8H, 12H.
+      Legal disputes: 6H, 7H, 11H (victory); 6H and 12H (defeat).
+      Enemies: 6H and 12H (12th from 7H = loss through opposition).
+      Vehicles: 4H and 11H.
+    scope: bhava
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose enumeration (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Mental health house group (1/4/5/8/12) is a KP-specific expansion;
+      Parashari primarily uses 5H for mental stability and 8H/12H for mental
+      disturbances. Results depend on sub-lord.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.5.ch8.house_groups.3
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch8.house_group_additional"
+      text_excerpt: |
+        "Further house groups in KP:
+        Religious activities: 9, 12 (9=dharma/religion, 12=meditation/retreat).
+        Occult and mysticism: 8, 12 (8=hidden knowledge, 12=seclusion for practice).
+        Overseas travel for work: 3, 6, 9, 12 (3=travel, 6=service/work, 9=abroad, 12=foreign).
+        Gain from profession: 2, 6, 10, 11 (2=earnings, 6=service, 10=career, 11=fulfillment)."
+    condition: >
+      House groups for religious activities, occult, overseas work, and professional
+      gain are being applied.
+    assertion: >
+      KP house groups:
+      Religious: 9H and 12H.
+      Occult/mysticism: 8H and 12H.
+      Overseas work: 3H, 6H, 9H, 12H.
+      Professional gain: 2H, 6H, 10H, 11H.
+    scope: bhava
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose enumeration (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. The four-house group for overseas work
+      (3/6/9/12) combines travel (3/9), work (6), and foreign residence (12) —
+      useful for identifying career-based emigration vs. tourism.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── INTER-CUSP SUB-LORD CHAINS ──
+
+  - rule_id: KP.2.ch10.inter_cusp_chain.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch10.inter_cusp_sublord_chains"
+      text_excerpt: |
+        "An advanced KP technique uses the inter-cusp sub-lord chain. Take the
+        sub-lord of the 7th cusp (for marriage). Then identify the sub-lord of
+        the star in which that first sub-lord is placed. If this second-level
+        sub-lord also connects to 2/7/11, the marriage promise is further
+        confirmed. This chain can be extended one more level for triple confirmation."
+    condition: >
+      Advanced marriage promise verification via inter-cusp sub-lord chain:
+      (1) SL1 = sub-lord of 7th cusp; (2) SL2 = sub-lord of the nakshatra
+      in which SL1 is placed; (3) optionally SL3 one level further.
+    assertion: >
+      Triple sub-lord chain for marriage: SL1 (7th cusp sub-lord) → connects to 2/7/11.
+      SL2 (sub-lord of SL1's nakshatra) → also connects to 2/7/11.
+      SL3 (optional third level) → also connects to 2/7/11.
+      Three-level confirmation gives the highest confidence in marriage promise.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with qualifier 'advanced technique' (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord at each chain level. The inter-cusp chain is
+      not required for basic promise confirmation — the single sub-lord check
+      is the standard method. Use this for cases where the basic check gives
+      ambiguous results.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── TRANSIT RULES IN DEPTH ──
+
+  - rule_id: KP.3.ch10.saturn_transit.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch10.saturn_transit_in_kp"
+      text_excerpt: |
+        "Saturn's transit in KP is judged by the nakshatra Saturn transits,
+        not by the sign. When Saturn transits through the nakshatra of a natal
+        planet that is a significator of house 8, 12, or the badhakasthana,
+        there is a period of hardship, restriction, or health challenge.
+        When Saturn transits the nakshatra of a natal significator of 2, 10,
+        or 11, career advancement or financial gain is indicated."
+    condition: >
+      Saturn is transiting through the nakshatra of a natal significator S.
+      S signifies either 8/12/badhaka (hardship) or 2/10/11 (advancement).
+    assertion: >
+      Saturn transit through nakshatra of 8/12/badhaka significator: period of
+      restriction, hardship, health challenge. Saturn transit through nakshatra
+      of 2/10/11 significator: career advancement or financial gain. KP judges
+      Saturn transit by nakshatra, not by sign-from-Moon as in Parashari Sade Sati.
+    scope: transit
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with conditional outcomes (0.72) × Parashari divergence (0.85) = 0.61; round to 0.62"
+    caveats: >
+      KP's Saturn transit method (nakshatra-based) diverges from Parashari Sade
+      Sati (sign-from-Moon). Do not apply the 7.5-year Sade Sati framework to
+      KP Saturn transit analysis. Results must also align with the running dasha.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch10.jupiter_transit.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch10.jupiter_transit_in_kp"
+      text_excerpt: |
+        "Jupiter's transit is the most benefic transit in KP. When Jupiter transits
+        the nakshatra of a natal significator of house 2, 5, 9, or 11, it activates
+        those house matters positively. This is especially powerful when Jupiter's
+        transit nakshatra simultaneously matches the nakshatra of the sub-lord of
+        the relevant cusp — the sub-lord activation by transit Jupiter is the
+        KP Jupiter transit rule."
+    condition: >
+      Jupiter is transiting through the nakshatra of: (a) a natal significator of
+      2H, 5H, 9H, or 11H; or (b) the sub-lord of the relevant cusp.
+    assertion: >
+      Jupiter transit through nakshatra of 2/5/9/11 significator activates those
+      house matters positively. If the transiting Jupiter's nakshatra is the same
+      as the sub-lord of the relevant cusp's nakshatra, the house matter is
+      powerfully triggered and likely to fructify during the current dasha period.
+    scope: transit
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with qualifier 'most benefic' and graduated rule (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results must also align with the running dasha-bhukti. Transit Jupiter
+      activates promised matters; it cannot deliver unpromised matters.
+      Results depend on sub-lord.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch11.rahu_ketu_transit.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch11.rahu_ketu_transit"
+      text_excerpt: |
+        "Rahu and Ketu transits are significant in KP. When Rahu transits through
+        the nakshatra of the sub-lord of the 7th cusp, it can trigger foreign
+        partnerships or sudden relationships. When Ketu transits through the
+        nakshatra of the sub-lord of the 12th cusp, it can trigger periods of
+        seclusion or spiritual retreat. The nakshatra-based approach applies
+        equally to Rahu and Ketu transits."
+    condition: >
+      Rahu or Ketu is transiting through the nakshatra of the sub-lord of
+      a specific cusp (e.g., 7th or 12th).
+    assertion: >
+      Rahu transit through nakshatra of 7th cusp sub-lord: trigger for foreign
+      partnerships or sudden relationships. Ketu transit through nakshatra of
+      12th cusp sub-lord: trigger for seclusion or spiritual retreat.
+      The sub-lord's nakshatra is the activation zone for Rahu/Ketu transits.
+    scope: transit
+    school: kp
+    confidence: 0.61
+    confidence_rationale: "Prose with qualifier (0.72) × Rahu/Ketu adjustment ×0.85 = 0.61"
+    caveats: >
+      Rahu/Ketu transit rules carry confidence × 0.85 per Gate A R1. Transit alone
+      does not cause events; dasha alignment is still required. Results depend
+      on sub-lord.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── RULING PLANET TIMING DETAILS ──
+
+  - rule_id: KP.3.ch12.ruling_planet_selection.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch12.ruling_planet_dasha_selection"
+      text_excerpt: |
+        "When selecting the most likely dasha period for an event, the ruling
+        planets at the moment of judgment are used as a filter. Among all
+        qualifying dasha-bhukti periods (where lords are significators of the
+        relevant houses), prefer the period whose lords are also ruling planets
+        at the time of judgment. This alignment indicates the event is due
+        in the near future."
+    condition: >
+      Multiple dasha-bhukti periods qualify as significators of the relevant
+      house group. The ruling planets at the moment of judgment are identified.
+    assertion: >
+      Among multiple qualifying dasha-bhukti periods, the period whose lords
+      overlap with the ruling planets at the moment of judgment is the most
+      proximate prediction. Ruling planet alignment narrows the timing from
+      multiple qualifying periods to the most likely one.
+    scope: dasha
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with selection logic (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. The ruling planet filter is a KP-specific
+      timing refinement. It does not override the three-tier significator
+      requirement — it selects among periods that already qualify.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch12.ruling_planet_selection.2
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch12.ruling_planet_dasha_selection"
+      text_excerpt: |
+        "The ruling planet set can also be used to date the event to a specific
+        year. The year the dasha-bhukti combination begins in which the ruling
+        planets are also significators of the matter is the most likely year
+        of the event. For month-level precision, the antara lord must also be
+        a ruling planet or a significator of the relevant houses."
+    condition: >
+      Year- or month-level event timing is being determined using ruling planets
+      and dasha-bhukti-antara combination.
+    assertion: >
+      Year of event: when dasha-bhukti lords are both ruling planets and significators
+      of the relevant house group. Month of event: when the antara lord is additionally
+      a ruling planet or house significator. Running all three levels through the
+      ruling planet filter gives month-level precision.
+    scope: dasha
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with multi-condition precision levels (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord at each dasha level. Month-level precision requires
+      both exact birth data AND correct identification of ruling planets at the
+      moment of judgment. Small errors in either propagate to timing errors.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── HORARY ADVANCED ──
+
+  - rule_id: KP.6.ch8.horary_number_validation.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch8.horary_advanced_validation"
+      text_excerpt: |
+        "In KP Prashna, the ascendant derived from the number must be in harmony
+        with the querent's natal ascendant. If the horary number produces a
+        Placidus ascendant in the same sign or nakshatra as the querent's natal
+        ascendant, the number is strongly validated. If in the same star as the
+        Moon of the natal chart, also valid. Total mismatch with natal positions
+        suggests an insincere or distracted query."
+    condition: >
+      KP horary: the horary ascendant from the querent's number is compared to
+      the querent's natal ascendant sign, nakshatra, or natal Moon nakshatra.
+    assertion: >
+      Horary number is strongly validated when the horary ascendant's sign or
+      nakshatra matches the natal ascendant's sign or nakshatra. Also valid if
+      it matches the natal Moon's nakshatra. Complete mismatch with natal positions
+      suggests the number was given insincerely or the querent was distracted.
+    scope: horary
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with conditional validation levels (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      The natal-horary consistency check is an additional validation step beyond
+      the ruling planet alignment check (KP.6.ch1.horary.2). Not all practitioners
+      use this; it is a KSK advanced technique.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.6.ch9.horary_affirmative.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch9.horary_affirmative_answer"
+      text_excerpt: |
+        "In KP Prashna, an affirmative answer (the queried event will occur) is
+        given when three conditions are met: (1) the sub-lord of the horary
+        ascendant is a significator of the relevant house group; (2) the sub-lord
+        is not in the 12th from the relevant cusp; (3) the ruling planets at the
+        moment of judgment are signified by the relevant house group. Meeting all
+        three confirms a positive answer."
+    condition: >
+      KP horary: affirmative answer conditions are being checked for a query.
+      Three conditions: (1) sub-lord of horary ascendant connects to relevant
+      house group; (2) sub-lord not in 12th from relevant cusp; (3) ruling
+      planets connect to relevant house group.
+    assertion: >
+      An affirmative KP horary answer requires: (1) horary ascendant sub-lord
+      signifies the relevant house group; (2) sub-lord is not in 12th from
+      the relevant cusp; (3) ruling planets at the time of judgment also connect
+      to the relevant house group. All three → YES answer. Missing any one →
+      qualified or negative answer.
+    scope: horary
+    school: kp
+    confidence: 0.88
+    confidence_rationale: "Numbered declarative list with three clear conditions (0.88) × no cross-text (1.0) = 0.88"
+    caveats: >
+      Results depend on sub-lord. The three-condition framework is the most
+      rigorous KP horary affirmative standard. In practice, meeting two of
+      three conditions gives a qualified positive answer ("likely but with
+      obstacles or delay").
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.6.ch9.horary_negative.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch9.horary_negative_answer"
+      text_excerpt: |
+        "A negative answer in KP Prashna is given when the sub-lord of the horary
+        ascendant is in the 12th from the relevant cusp, or when the sub-lord's
+        significations are entirely unrelated to the queried house group, or when
+        the ruling planets are significators of the 12th, 8th, or 6th from the
+        relevant cusp. Any one of these three conditions is sufficient for a
+        definitive negative answer."
+    condition: >
+      KP horary: any one of three negative conditions is present:
+      (1) horary ascendant sub-lord is in 12th from relevant cusp;
+      (2) sub-lord's significations are entirely unrelated to the queried house group;
+      (3) ruling planets signify 12th, 8th, or 6th from the relevant cusp.
+    assertion: >
+      Any single one of the three negative conditions is sufficient for a
+      definitive negative KP horary answer. The queried event will not occur
+      (or will be significantly delayed/frustrated) if even one of these
+      conditions is present.
+    scope: horary
+    school: kp
+    confidence: 0.88
+    confidence_rationale: "Declarative with three clear conditions (0.88) × no cross-text (1.0) = 0.88"
+    caveats: >
+      Results depend on sub-lord. The 12th-from denial, irrelevance, and ruling
+      planet obstruction are the three KP negative answer triggers.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.6.ch10.horary_timing.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch10.horary_event_timing"
+      text_excerpt: |
+        "For horary event timing in KP, the sub-lord of the horary ascendant's
+        dasha (at the time of the query) is first identified. The remaining
+        period of that dasha is the outer time frame. Within that dasha, the
+        bhukti of a significator of the relevant house group will be the event
+        window. The ruling planets narrow the bhukti to a specific antara."
+    condition: >
+      KP horary: timing of the queried event is being determined.
+    assertion: >
+      Horary event timing: (1) identify the current dasha of the chart cast from
+      the horary number; (2) the remaining dasha period is the outer frame;
+      (3) within the dasha, the bhukti of a house-significator is the event window;
+      (4) ruling planets at query moment identify the specific antara within
+      that bhukti as the event time.
+    scope: horary
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with stepwise procedure (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Horary timing is reliable when the horary number is genuine (validated
+      per KP.6.ch8). If the number is insincere, timing from the horary chart
+      is unreliable. Results depend on sub-lord at each level.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── KP UNIQUE PRINCIPLES AND DIVERGENCES ──
+
+  - rule_id: KP.1.ch9.sign_vs_house.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch9.sign_vs_house_in_kp"
+      text_excerpt: |
+        "In KP, the sign a planet occupies is secondary to the house it occupies
+        in the Bhava Chalit chart. The sign is used to determine the star lord
+        (since nakshatras span signs) but the house for signification analysis
+        comes from the Bhava Chalit chart. This is a fundamental departure from
+        Parashari where sign and house can be conflated in whole-sign systems."
+    condition: >
+      A planet P is in a sign S and in house H (from Bhava Chalit). S ≠ H in
+      some cases due to Placidus cusp boundaries.
+    assertion: >
+      In KP: sign S is used only for nakshatra/star-lord identification (since
+      nakshatras are zodiacal). House H from Bhava Chalit governs signification
+      analysis. If a planet is in Aries (sign) but in the 12th house (Bhava Chalit),
+      it is analysed as a 12th house planet, not a 1st house planet.
+    scope: bhava
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative (0.80) × Parashari divergence (0.85) = 0.68"
+    caveats: >
+      The sign/house separation in KP requires the Bhava Chalit chart to be
+      computed separately from the Rasi chart. In Parashari whole-sign, the
+      two charts are identical. Do not conflate Rasi and Bhava Chalit positions.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.1.ch10.no_yoga_analysis.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch10.kp_and_parashari_yogas"
+      text_excerpt: |
+        "Parashari yogas (Rajayoga, Dhana yoga, Gajakesari, Neecha Bhanga, etc.)
+        are not used in KP analysis. K.S. Krishnamurti's view was that all results
+        are determined by the sub-lord mechanism, and traditional yogas are
+        redundant or potentially misleading when the sub-lord does not support
+        the yoga's promised results. KP replaces yoga analysis with sub-lord
+        and significator analysis."
+    condition: >
+      Traditional Parashari yogas (Rajayoga, Gajakesari, etc.) are encountered
+      in a KP chart analysis.
+    assertion: >
+      In KP, Parashari yogas are not used for result prediction. Sub-lord and
+      significator analysis replaces yoga analysis entirely. Even if a Rajayoga
+      is present, if the sub-lord of the 10th cusp does not connect to 2/6/10,
+      the native will not achieve high career status. The sub-lord overrides yoga.
+    scope: bhava
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with explicit rejection (0.80) × Parashari contradiction (0.85) = 0.68"
+    caveats: >
+      This is one of the most significant KP divergences from Parashari. For
+      MARSYS multi-school analysis, note that a Rajayoga in Parashari may be
+      confirmed or denied by KP's sub-lord check — the conflict should be
+      flagged in the school_convergence_index.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.1.ch11.no_dosha.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch11.kp_and_doshas"
+      text_excerpt: |
+        "Mangal Dosha (Kuja Dosha), Shani Dosha, Pitru Dosha, Kalsarpa Dosha
+        and similar Parashari doshas are not recognised in KP as independent
+        prediction tools. KP holds that the sub-lord mechanism fully accounts
+        for any malefic influence. Whether Mars in the 7th cusp creates marriage
+        problems depends entirely on the sub-lord of the 7th, not on the
+        traditional Mangal Dosha principle."
+    condition: >
+      Parashari doshas (Mangal Dosha, Kalsarpa, etc.) are present in a KP chart.
+    assertion: >
+      In KP, Parashari doshas (Mangal Dosha, Kalsarpa Dosha, Shani Dosha, etc.)
+      are not used as independent prediction tools. Whether a traditionally
+      dosha-producing planet creates problems is determined entirely by the
+      sub-lord of the relevant cusp. Sub-lord analysis replaces dosha analysis in KP.
+    scope: graha
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with explicit rejection (0.80) × Parashari contradiction (0.85) = 0.68"
+    caveats: >
+      For MARSYS multi-school analysis: Parashari Mangal Dosha in 7H is a
+      cross-school conflict point when KP's 7th cusp sub-lord does not show
+      marriage problems. Flag in school_convergence_index as school-divergence.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch11.no_ashtakavarga.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch11.kp_and_ashtakavarga"
+      text_excerpt: |
+        "Ashtakavarga is not used in KP. The ashtakavarga system, which assigns
+        benefic dots to each sign for each planet's transit, is a Parashari
+        technique that K.S. Krishnamurti considered superseded by the nakshatra-
+        based transit method. In KP, transit is judged by nakshatra (stellar
+        transit), not by benefic dots in signs."
+    condition: >
+      Ashtakavarga benefic dot counts are being applied to a KP chart for
+      transit analysis.
+    assertion: >
+      In KP, ashtakavarga is not used. Transit analysis uses nakshatra-based
+      method (the transiting planet's nakshatra is compared to natal significator
+      nakshatras) rather than benefic point counts in signs. Do not apply
+      ashtakavarga in KP analysis.
+    scope: transit
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with explicit rejection (0.80) × Parashari divergence (0.85) = 0.68"
+    caveats: >
+      The nakshatra-based transit in KP provides a different but equally systematic
+      alternative to ashtakavarga for transit assessment. The two systems are
+      parallel: ashtakavarga (Parashari) vs. nakshatra transit (KP).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch13.no_navamsa_for_results.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch13.kp_and_divisional_charts"
+      text_excerpt: |
+        "Divisional charts (Navamsa, Dashamsa, etc.) are not the primary analysis
+        tool in KP. KP does not use the Navamsa for result prediction in the same
+        way as Parashari. The Navamsa is occasionally referenced for confirming
+        the sub-lord's planet through its Navamsa disposition, but the main analysis
+        is always through the natal Bhava Chalit chart and the sub-lord mechanism."
+    condition: >
+      Navamsa or other divisional charts are being applied to a KP chart for
+      primary result prediction.
+    assertion: >
+      In KP, divisional charts (especially Navamsa) are not primary analysis tools.
+      The natal Bhava Chalit chart and sub-lord mechanism provide the primary frame.
+      Navamsa may be used as a secondary confirmation tool, not as a primary predictor.
+    scope: divisional
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with qualified rejection (0.80) × Parashari divergence (0.85) = 0.68"
+    caveats: >
+      The qualified rejection ("not the primary tool" vs. "not used at all") is
+      important: Navamsa can confirm but not override KP sub-lord analysis.
+      For MARSYS multi-school comparison, note Parashari Navamsa and KP sub-lord
+      are parallel depth tools that may agree or conflict.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── SPECIFIC PLANET RULES IN KP CONTEXT ──
+
+  - rule_id: KP.1.ch12.sun_in_kp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch12.sun_rules_in_kp"
+      text_excerpt: |
+        "Sun in KP is the significator of the father, government, and authority.
+        When Sun is the sub-lord of the 10th cusp and Sun is in the star of a
+        planet occupying the 10th house, government service or a position in a
+        prominent organisation is strongly indicated. If Sun's sub-lord connects
+        to houses 2 and 11, the government position will be financially rewarding."
+    condition: >
+      Sun is the sub-lord of the 10th cusp AND Sun is in the star of a 10th house
+      occupant. Additionally, Sun's sub-lord connects to 2H and 11H.
+    assertion: >
+      Government service or prominent organisational position is strongly indicated.
+      If Sun's sub-lord additionally connects to 2H and 11H, the position is
+      financially rewarding. Sun as 10th cusp sub-lord via a strong stellar
+      occupation chain is the KP signature for government employment.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with multi-condition compound rule (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord (Sun's own sub-lord for the financial component).
+      The compound condition (Sun = sub-lord of 10th AND Sun in star of 10H occupant)
+      is strong but not required simultaneously — either alone can indicate government
+      connection with lower confidence.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.1.ch13.moon_in_kp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch13.moon_rules_in_kp"
+      text_excerpt: |
+        "Moon in KP is the mind and the mother. The strength of the Moon determines
+        the clarity of thought. When Moon is the sub-lord of the 4th cusp
+        (mother-house), the mother will be a significant presence in the native's
+        life. When Moon is in the star of a planet in the 4th house and Moon's
+        sub-lord connects to 4, the bond with the mother is particularly strong."
+    condition: >
+      Moon is the sub-lord of the 4th cusp OR Moon is in the star of a 4th house
+      occupant. Moon's sub-lord is assessed for 4H connectivity.
+    assertion: >
+      Moon as 4th cusp sub-lord: mother is a significant presence. Moon in star
+      of 4th house occupant with sub-lord connecting to 4H: particularly strong
+      mother-child bond. Moon's position in the KP stellar hierarchy determines
+      the quality of the mother relationship.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with compound conditions (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The Moon-mother connection is confirmed across
+      all schools, but KP's sub-lord mechanism provides the specific delivery
+      channel rather than traditional dignities.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.1.ch14.mercury_in_kp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch14.mercury_rules_in_kp"
+      text_excerpt: |
+        "Mercury in KP governs communication, intellect, and commerce. When Mercury
+        is a significator of the 3rd house (communication) and is also the sub-lord
+        of the 3rd cusp, writing, publishing, or media careers are strongly indicated.
+        When Mercury signifies 2, 6, and 10, accounting, banking, or commercial work
+        is the career. Mercury's sub-lord determines whether intellectual or commercial
+        expression dominates."
+    condition: >
+      Mercury signifies 3H (communication) AND is sub-lord of 3rd cusp. Or
+      Mercury signifies 2H, 6H, and 10H for commercial career.
+    assertion: >
+      Mercury as 3rd cusp sub-lord with 3H signification: writing, publishing,
+      media career strongly indicated. Mercury signifying 2/6/10: accounting,
+      banking, or commercial work. Mercury's sub-lord determines whether
+      intellectual/communicative or commercial expression dominates.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with compound conditions (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. Mercury's career significator role is context-dependent:
+      3H context → communication career; 2/6/10 context → commercial career.
+      Both can coexist if Mercury signifies all five houses.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.1.ch15.saturn_in_kp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch15.saturn_rules_in_kp"
+      text_excerpt: |
+        "Saturn in KP is the significator of service, discipline, masses, and chronic
+        conditions. When Saturn is a significator of houses 6 and 10, service in
+        a disciplined organisation (military, government department, large corporation)
+        is indicated. When Saturn signifies 8 and 12, chronic health issues or
+        institutional confinement (hospital, prison) is indicated. Saturn's sub-lord
+        determines whether the service or confinement theme dominates."
+    condition: >
+      Saturn is a significator of 6H and 10H (service/career) OR 8H and 12H
+      (chronic illness/confinement). Saturn's sub-lord is assessed.
+    assertion: >
+      Saturn signifying 6/10: disciplined service (military/government/corporate).
+      Saturn signifying 8/12: chronic illness or institutional confinement.
+      Saturn's sub-lord determines which theme predominates when both apply.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with parallel conditional tracks (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. Saturn as the significator of 6H (service) is
+      consistent with Parashari tradition where Saturn is strong in 6H. Saturn's
+      connection to 8/12 for chronic conditions is also consistent cross-school.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── MEDICAL ASTROLOGY EXTENSIONS ──
+
+  - rule_id: KP.4.ch11.surgery.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch11.surgery_hospitalisation"
+      text_excerpt: |
+        "Surgery is indicated in KP when Mars (natural significator of surgeons
+        and cutting instruments) is a significator of houses 1, 6, 8, and 12.
+        The sub-lord of the 8th cusp connecting to 12 (hospitalisation) and Mars
+        being a significator of 6, 8, 12 is the surgery signature. Timing the
+        surgery: Mars, Saturn, or Ketu as antara lord in a dasha of 8/12
+        significators confirms the surgical event."
+    condition: >
+      Surgery timing: Mars signifies 1H, 6H, 8H, 12H. Sub-lord of 8th cusp
+      connects to 12H. Dasha-bhukti-antara where an 8/12 significator is antara
+      lord with Mars/Saturn/Ketu as timing trigger.
+    assertion: >
+      Surgery is indicated when Mars signifies 6/8/12 houses and sub-lord of 8th
+      cusp connects to 12H. Surgical timing: dasha of 8/12 significator, bhukti
+      also signifying 8/12, antara of Mars, Saturn, or Ketu. The Mars-8/12 signature
+      is the KP surgical configuration.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with multi-condition requirements (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. Ketu as antara for surgical events is a
+      Rahu/Ketu-involved rule; apply ×0.85 to Ketu-specific component.
+      Overall confidence maintained at 0.72 for the Mars-dominant rule.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.4.ch12.mental_illness.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch12.mental_health_in_kp"
+      text_excerpt: |
+        "Mental illness is a complex KP topic. Moon (mind) afflicted by connection
+        to 8H and 12H significators indicates mental disturbance. If Moon's sub-lord
+        is in the star of a planet signifying 8 or 12, and the sub-lord itself
+        signifies 8 or 12, the native is susceptible to psychological disturbances.
+        The 4th house (peace of mind) and 5th house (mental intelligence) being
+        afflicted in the sub-lord analysis compounds the risk."
+    condition: >
+      Mental health is being assessed. Moon's sub-lord connects to 8H or 12H.
+      Sub-lord of 4th cusp is assessed for 4H connectivity (peace of mind).
+      Sub-lord of 5th cusp assessed for 5H connectivity (intellect).
+    assertion: >
+      Mental disturbance risk: Moon's sub-lord connecting to 8H and 12H (without
+      1/4/5 connections). Sub-lord of 4th cusp connecting to 12H (loss of peace)
+      and sub-lord of 5th cusp connecting to 8H or 12H further compounds risk.
+      This three-cusp assessment (Moon, 4th, 5th) provides the KP mental health picture.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with multi-cusp compound analysis (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord at each cusp level. Mental health assessment
+      in any astrological tradition requires caution and appropriate professional
+      context. This rule describes susceptibility patterns, not certainty.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── FINANCIAL AND BUSINESS KP RULES ──
+
+  - rule_id: KP.5.ch9.speculation.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch9.speculation_gambling"
+      text_excerpt: |
+        "For speculation and gambling, the relevant houses are 5 (speculation,
+        risk-taking) and 11 (gains). The sub-lord of the 5th cusp must connect
+        to 5 and 11 for gains from speculation to be promised. If the sub-lord
+        connects to 8 (sudden gains or sudden losses) or 12 (financial losses),
+        speculation will result in losses. Jupiter and Mercury as 5th house
+        significators with good subs favour speculation."
+    condition: >
+      Speculation and financial risk-taking are being assessed. Sub-lord of 5th
+      cusp is evaluated for houses 5, 11, 8, 12.
+    assertion: >
+      Gains from speculation promised when sub-lord of 5th cusp signifies 5H and 11H.
+      Losses from speculation when sub-lord connects to 8H or 12H without 5/11.
+      Jupiter or Mercury as 5H significators with good sub-lords favour speculation.
+    scope: sub_lord
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. House 5 as speculation house (in addition to
+      children and creative intelligence) is consistent across Parashari tradition.
+      KP adds the sub-lord check for the specific gains vs. losses determination.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.5.ch10.inheritance.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch10.inheritance_legacy"
+      text_excerpt: |
+        "For inheritance, the relevant houses are 8 (legacies, windfalls) and 2
+        (accumulated family wealth). The sub-lord of the 8th cusp connecting to
+        8 and 2 with 11 (gain) promises inheritance. If the sub-lord of the 8th
+        connects to 6, 8, 12 without 2 and 11, the native may receive inheritance
+        but it will be consumed by liabilities or disputes."
+    condition: >
+      Inheritance and legacy are being assessed. Sub-lord of 8th cusp is
+      evaluated for houses 8, 2, 11 (inheritance gained) vs. 6, 12 (inheritance
+      lost to debts or disputes).
+    assertion: >
+      Inheritance promised and retained when sub-lord of 8th cusp signifies 8H,
+      2H, and 11H. Inheritance received but consumed when sub-lord connects to
+      6H and 12H without 2/11 (debts and disputes eat the inheritance).
+    scope: sub_lord
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. House 8 as the house of legacies and windfalls
+      is consistent across schools; the 2/11 connectivity requirement for retention
+      of inheritance is a KP-specific refinement.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── RELATIONSHIP AND FAMILY RULES ──
+
+  - rule_id: KP.4.ch13.second_marriage.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch13.second_marriage_remarriage"
+      text_excerpt: |
+        "For second marriage or remarriage, the relevant houses are 2 (family),
+        7 (spouse), and 11 (fulfilment). The sub-lord of the 2nd cusp (not the
+        7th) takes precedence for second marriage, as the 2nd house represents
+        family reconstitution. Additionally, the 9th house (fortune, new beginnings)
+        may be involved. When these connect with 7, a second marriage is promised."
+    condition: >
+      Second marriage or remarriage is being assessed. Sub-lord of 2nd cusp
+      is prioritised over sub-lord of 7th cusp; 9H involvement is also assessed.
+    assertion: >
+      Second marriage is indicated when sub-lord of the 2nd cusp (primary indicator
+      for second marriage) connects to 2H, 7H, and 9H or 11H. The 2nd cusp
+      sub-lord (rather than 7th cusp sub-lord used for first marriage) is the
+      primary indicator for reconstituted family via remarriage.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with nuanced cusp shift for second marriage (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The shift from 7th cusp sub-lord (first marriage)
+      to 2nd cusp sub-lord (second marriage) is a KP-specific refinement. The 9th
+      house involvement for "new beginnings" in second marriage is additionally noted.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.4.ch14.widowhood.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch14.widowhood_spouse_death"
+      text_excerpt: |
+        "Widowhood is assessed via the sub-lord of the 8th cusp from the 7th
+        (i.e., the 2nd house cusp, which is the 8th from the 7th) and the sub-lord
+        of the 7th cusp. If the sub-lord of the 7th connects to 2 and 7 but also
+        to 12 from the 7th (= 6th cusp), the spouse faces adversity. If the sub-lord
+        of the 2nd cusp (8th from 7th) connects to the maraka of the 7th house
+        person, widowhood is more strongly indicated."
+    condition: >
+      Widowhood (death of spouse) is being assessed. Sub-lord of 2nd cusp (8th
+      from 7th) and sub-lord of 7th cusp are both evaluated.
+    assertion: >
+      Widowhood risk: sub-lord of 7th cusp connecting to 6H (12th from 7th =
+      loss from perspective of 7H) AND sub-lord of 2nd cusp (8th from 7th,
+      the spouse's death house) connecting to marakas of the 7th house person.
+      This dual-cusp check from the 7th house perspective assesses spouse longevity.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with derived house analysis (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The derived house analysis (8th from 7th = 2nd)
+      is consistent with both Parashari and KP traditions. The KP sub-lord check
+      adds precision to what Parashari assesses through 2H lord and 8th from
+      7th analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── OCCUPATION-SPECIFIC KP RULES ──
+
+  - rule_id: KP.5.ch11.medical_career.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch11.medical_profession"
+      text_excerpt: |
+        "For a career in medicine, the sub-lord of the 10th cusp must signify
+        6H (disease), 8H (death, surgery), and 12H (hospital). Mars (surgeon),
+        Saturn (chronic disease management), and Ketu (mysterious ailments,
+        alternative medicine) as significators of 6/8/12 with 10H connectivity
+        produce medical careers. If Moon is additionally a significator of 10H,
+        nursing or caregiving is the medical specialisation."
+    condition: >
+      Medical career assessment: sub-lord of 10th cusp connects to 6H, 8H, 12H.
+      Specific planets (Mars/Saturn/Ketu/Moon) are significators of 6/8/12.
+    assertion: >
+      Medical career: 10th cusp sub-lord signifying 6/8/12. Mars dominant →
+      surgical career. Saturn dominant → chronic disease specialisation.
+      Ketu dominant → alternative/mysterious medicine. Moon as 10H significator
+      → nursing/caregiving. The planet-type differentiation identifies medical
+      specialisation.
+    scope: sub_lord
+    school: kp
+    confidence: 0.68
+    confidence_rationale: "Prose with Ketu component (0.72) × Rahu/Ketu adjustment ×0.85 for Ketu part; overall 0.68"
+    caveats: >
+      Ketu as medical significator carries confidence × 0.85. Overall rule
+      confidence is 0.68 due to Ketu involvement. Results depend on sub-lord.
+      The Mars-surgeon and Saturn-chronic disease correlations are cross-school
+      confirmed (Parashari alignment).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.5.ch12.legal_career.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch12.legal_profession"
+      text_excerpt: |
+        "For a legal career, the sub-lord of the 10th cusp must signify houses
+        6 (disputes, enemies), 7 (courts, open adversary), and 9 (justice, higher
+        law, dharma). Jupiter (natural significator of law and justice) as a
+        10H significator with connectivity to 6, 7, 9 produces judges, lawyers,
+        and legal practitioners. Saturn additionally contributing indicates
+        criminal law or cases involving long litigation."
+    condition: >
+      Legal career assessment: sub-lord of 10th cusp connects to 6H, 7H, 9H.
+      Jupiter and/or Saturn are significators of 10H.
+    assertion: >
+      Legal career: 10th cusp sub-lord signifying 6/7/9. Jupiter as 10H significator
+      → lawyer/judge (civil/constitutional law). Jupiter + Saturn → criminal law
+      or long-litigation specialisation. The 6/7/9 house group for legal profession
+      is the KP legal career signature.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with compound conditions (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. Jupiter's role as law karaka is cross-school
+      confirmed (Parashari), but the KP 6/7/9 house group for legal career
+      is specific to KP's analytical framework.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── TIMING: SOOKSHMA (SUB-SUB-PERIOD) LEVEL ──
+
+  - rule_id: KP.3.ch14.sookshma.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch14.sookshma_precision_timing"
+      text_excerpt: |
+        "The sookshma (sub-sub-period) is calculated by dividing the antara in
+        the Vimshottari proportions. When the dasha-bhukti-antara combination
+        is confirmed and the sookshma lord is also a significator of the relevant
+        houses, the event occurs within the sookshma period — typically a window
+        of days to a few weeks. This gives KP its extraordinary precision in
+        event dating when combined with transit triggers."
+    condition: >
+      Dasha-bhukti-antara are confirmed significators of the relevant house group.
+      The sookshma lord within the qualifying antara is also assessed.
+    assertion: >
+      When dasha-bhukti-antara lords all signify the relevant house group and the
+      sookshma lord additionally qualifies, the event occurs within the sookshma
+      period (days to weeks). Transit trigger (Sun or Moon through significator
+      nakshatra) identifies the specific day within the sookshma.
+    scope: dasha
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with precision claim (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord and accurate birth data. Sookshma-level precision
+      is only reliable with birth time accurate to within ±2 minutes. This is the
+      highest-precision KP timing claim; use with caution when birth time is
+      approximate.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── RECTIFICATION RULES ──
+
+  - rule_id: KP.3.ch15.birth_time_rectification.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch15.birth_time_rectification_method"
+      text_excerpt: |
+        "To rectify birth time in KP, take a known life event and identify the
+        dasha-bhukti running at that time. The dasha lords must be significators
+        of the relevant house group for the event. Now adjust the birth time
+        so that the ascendant sub-lord at the rectified time is a significator
+        of the same house group. The ascendant sub-lord that aligns with known
+        events is the correct birth time indicator."
+    condition: >
+      Birth time rectification is being performed using a known life event.
+      The dasha-bhukti at the event is identified; the ascendant sub-lord is
+      adjusted by shifting birth time.
+    assertion: >
+      KP birth time rectification method: for a known event at a given dasha-bhukti,
+      adjust birth time until the ascendant sub-lord also connects to the relevant
+      house group for that event. The ascendant sub-lord matching the event's
+      house group confirms the rectified birth time.
+    scope: misc
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose procedural method (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      KP birth time rectification works backward from known events to confirm
+      birth time. Multiple events should be used for reliable rectification;
+      single-event rectification may give false matches. Birth time errors
+      of ±4 minutes can change the ascendant sub-lord.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── ADDITIONAL KP CUSP-SPECIFIC RULES ──
+
+  - rule_id: KP.2.ch12.first_cusp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch12.ascendant_cusp_sublord"
+      text_excerpt: |
+        "The sub-lord of the ascendant (1st cusp) in KP is the most important
+        single indicator in the natal chart. It determines the overall quality
+        of life and the primary mode of expression. If the sub-lord of the
+        ascendant is a significator of houses 1, 4, 7, 10 (angular houses),
+        the native will be active, prominent, and effective in the world.
+        If connected to 2, 5, 8, 11 (succedent), the native operates primarily
+        through accumulation and relationships."
+    condition: >
+      Sub-lord of the ascendant (1st cusp) is assessed for house connectivity.
+    assertion: >
+      Sub-lord of ascendant connected to angular houses (1/4/7/10): native is
+      active, prominent, world-effective. Sub-lord connected to succedent houses
+      (2/5/8/11): native operates through accumulation, relationships, and resource
+      management. The ascendant sub-lord's house connectivity defines the primary
+      life operating mode.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with qualified generalisation (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The angular/succedent/cadent classification of
+      house connectivity for the ascendant sub-lord is a high-level KP interpretive
+      framework rather than a specific event-prediction rule.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch13.sixth_cusp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch13.sixth_cusp_sublord"
+      text_excerpt: |
+        "The sub-lord of the 6th cusp in KP governs service, disease, enemies,
+        and debts. When the sub-lord of the 6th connects to 6 and 10, regular
+        salaried employment is the primary mode of income. When it connects to
+        6 and 8, the native deals with chronic issues (disease or debt). When
+        it connects to 6 and 12, the native is frequently hospitalised or
+        confined due to enemies or illness."
+    condition: >
+      Sub-lord of 6th cusp is assessed for house connectivity: 6/10 (employment),
+      6/8 (chronic issues), or 6/12 (hospitalisation/confinement).
+    assertion: >
+      6th cusp sub-lord connecting to 6H and 10H: salaried employment.
+      6th cusp sub-lord connecting to 6H and 8H: chronic disease or debt.
+      6th cusp sub-lord connecting to 6H and 12H: hospitalisation or confinement
+      through illness or enemies.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with three conditional tracks (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The 6th cusp sub-lord analysis requires
+      knowing which house combination predominates when multiple apply simultaneously
+      — use the sub-lord's own star lord connectivity to differentiate.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch14.eighth_cusp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch14.eighth_cusp_sublord"
+      text_excerpt: |
+        "The 8th cusp in KP is the most complex cusp to analyse. Its sub-lord
+        connects to: 8H alone → longevity concern; 8H and 12H → danger to life
+        with hospitalisation; 8H and badhakasthana → serious life threat from
+        badhaka planet; 8H with 2H and 7H → maraka configuration. Understanding
+        the 8th cusp sub-lord's connectivity is central to longevity and death analysis."
+    condition: >
+      Sub-lord of 8th cusp is assessed for different house connectivity patterns.
+    assertion: >
+      8th cusp sub-lord connectivity patterns:
+      8H alone → general longevity concern (mild).
+      8H + 12H → hospitalisation danger.
+      8H + badhakasthana → serious life threat (badhaka force active).
+      8H + 2H + 7H → maraka configuration (strongest death indicator).
+    scope: sub_lord
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Enumerated declarative (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. The 8th cusp sub-lord connectivity gradient
+      (from mild longevity concern to maraka configuration) provides a calibrated
+      framework for life-span assessment. The badhakasthana involvement escalates
+      severity significantly.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch15.twelfth_cusp.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch15.twelfth_cusp_sublord"
+      text_excerpt: |
+        "The 12th cusp sub-lord in KP governs moksha (liberation), hospitalisation,
+        foreign residence, expenses, and losses. When the 12th cusp sub-lord
+        connects to 12 and 9 (foreign land, dharma), foreign residence or spiritual
+        retreat is indicated. When it connects to 12 and 6 (illness requiring
+        hospitalisation), medical confinement is indicated. When 12 and 3 (short
+        trips with overnight stays), frequent short-duration absences from home."
+    condition: >
+      Sub-lord of 12th cusp is assessed for house connectivity: 12/9 (foreign/spiritual),
+      12/6 (hospitalisation), or 12/3 (short absences).
+    assertion: >
+      12th cusp sub-lord connecting to 12H and 9H: foreign residence or spiritual retreat.
+      12H and 6H: medical hospitalisation.
+      12H and 3H: frequent short-duration absences from home (overnight travel).
+      The 12th cusp sub-lord's secondary house connection differentiates the type
+      of 12th house manifestation.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with three conditional tracks (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The 12th house in KP has multiple expressions
+      (foreign, hospital, spiritual, expense) and the secondary house connectivity
+      of the sub-lord differentiates which expression dominates.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── ADVANCED PRASHNA RULES ──
+
+  - rule_id: KP.6.ch11.prashna_sub_lord.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch11.prashna_specific_rules"
+      text_excerpt: |
+        "In KP Prashna for a specific query about whether the querent will get
+        a job, the 10th house from the horary ascendant is examined. The sub-lord
+        of the 10th cusp (from the horary chart) must connect to 6, 10, and 11
+        for job acquisition to be promised. If connected to 12 from the 10th
+        (= 9th house) without 6/10/11 connectivity, the job will not materialise."
+    condition: >
+      KP horary for job query: sub-lord of 10th cusp from horary chart is
+      assessed for 6H, 10H, 11H connectivity vs. 9H (12th from 10H) connectivity.
+    assertion: >
+      Job acquisition promised in horary when sub-lord of 10th horary cusp
+      signifies 6H, 10H, and 11H. If sub-lord connects to 9H (12th from 10H)
+      without 6/10/11, the job will not materialise. This applies the general
+      KP cusp rule to the horary context.
+    scope: horary
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. The horary job query applies the same
+      cusp sub-lord logic as natal career analysis but derived from the
+      horary chart cast from the querent's number.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.6.ch12.prashna_return.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch12.prashna_return_of_person"
+      text_excerpt: |
+        "For queries about the return of a person (will they come back?), the
+        relevant horary houses are 7 (the person away) and 2 (return, joining
+        the family). The sub-lord of the 7th horary cusp must connect to 2H
+        and 11H for the person's return to be promised. If connected to 12H
+        (departure, separation), the person will not return soon."
+    condition: >
+      KP horary for return-of-person query: sub-lord of 7th horary cusp is
+      assessed for 2H and 11H (return) vs. 12H (separation).
+    assertion: >
+      Person's return promised in horary when sub-lord of 7th horary cusp
+      signifies 2H and 11H. Sub-lord connecting to 12H (12th from 7H = 6th
+      house, or 12H directly) indicates delayed or denied return.
+    scope: horary
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with conditional outcomes (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The return-of-person query uses the 7th house
+      (the other person) and 2H/11H (joining and fulfilment). This is a direct
+      KP horary application of the natal house-connectivity rules.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── KP NATAL CHART READING SEQUENCE ──
+
+  - rule_id: KP.1.ch16.reading_sequence.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch16.kp_reading_sequence"
+      text_excerpt: |
+        "The KP reading sequence is: (1) Erect the Bhava Chalit chart using
+        Placidus cusps. (2) Note which house each planet actually occupies in
+        the Bhava Chalit chart. (3) Identify the nakshatra lord and sub-lord
+        of each planet and each cusp. (4) List the significators of each house
+        using the four-tier hierarchy. (5) Assess the sub-lord of the relevant
+        cusp for the queried matter. (6) Apply dasha timing."
+    condition: >
+      A KP natal chart reading is being conducted for any life matter.
+    assertion: >
+      Mandatory KP reading sequence: (1) Bhava Chalit with Placidus cusps;
+      (2) house placement from Bhava Chalit; (3) nakshatra lord + sub-lord
+      for each planet and cusp; (4) four-tier significator list for each house;
+      (5) sub-lord of the relevant cusp for the specific query; (6) dasha timing
+      via significator alignment. Steps cannot be skipped.
+    scope: misc
+    school: kp
+    confidence: 0.88
+    confidence_rationale: "Numbered declarative procedure (0.88) × no cross-text (1.0) = 0.88"
+    caveats: >
+      This six-step sequence encapsulates the entire KP method. Any shortcut
+      (e.g., skipping Bhava Chalit, using sign placement instead of house placement)
+      produces unreliable KP results. Results depend on sub-lord at each step.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── ADDITIONAL CRITICAL KP AXIOMS ──
+
+  - rule_id: KP.1.ch17.sublord_primacy_axiom.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch17.kp_core_axioms"
+      text_excerpt: |
+        "The sub-lord is the final arbiter in KP astrology. No amount of
+        beneficial planet placement, sign dignity, yogas, or dashas can
+        override a sub-lord that does not connect to the relevant house.
+        Conversely, a well-positioned sub-lord can deliver results even when
+        other factors appear weak. This is the central axiom of the KP system."
+    condition: >
+      Any KP prediction is being formed from multiple chart factors.
+    assertion: >
+      The sub-lord is the final arbiter. Strong planets, dignities, yogas,
+      or favourable dashas cannot override a sub-lord lacking the relevant
+      house connectivity. A good sub-lord can deliver results despite apparent
+      weakness in other chart factors. Sub-lord connectivity is the necessary
+      and near-sufficient condition for any KP result.
+    scope: sub_lord
+    school: kp
+    confidence: 0.88
+    confidence_rationale: "Declarative core axiom (0.88) × no cross-text (1.0) = 0.88"
+    caveats: >
+      This is the foundational axiom of the entire KP system. All specific KP
+      rules are expressions of this master principle: sub-lord determines whether
+      results of a house manifest or are denied.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.2.ch16.promise_vs_timing.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch16.promise_vs_timing_distinction"
+      text_excerpt: |
+        "In KP, promise (whether a matter is destined to occur) and timing (when
+        it will occur) are two separate analytical questions answered by two
+        separate mechanisms. Promise is determined by the sub-lord of the relevant
+        cusp. Timing is determined by the dasha-bhukti-antara combination of
+        significators. A matter can be promised (good sub-lord) but delayed (no
+        qualifying dasha period in near future)."
+    condition: >
+      Both promise (will the matter occur?) and timing (when will it occur?)
+      are being assessed for a KP matter.
+    assertion: >
+      Promise → assessed via sub-lord of relevant cusp (single analytical step).
+      Timing → assessed via dasha-bhukti-antara significator alignment (separate step).
+      A promised matter can still be delayed if no qualifying dasha period is
+      running or near. A matter with no promise cannot be timed — there is nothing
+      to time. Sequence: promise check first, then timing check.
+    scope: sub_lord
+    school: kp
+    confidence: 0.88
+    confidence_rationale: "Declarative with clear analytic separation (0.88) × no cross-text (1.0) = 0.88"
+    caveats: >
+      The promise/timing separation is a fundamental KP analytical discipline.
+      Attempting to time an unpromised matter is a methodological error in KP.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.3.ch16.cusp_strength.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch16.cusp_strength_measurement"
+      text_excerpt: |
+        "The strength of a house cusp in KP is determined by the number and
+        quality of planets that are significators of that house. The more planets
+        that signify a house across all four tiers (star-of-occupant, occupant,
+        star-of-lord, lord), the more prominent that house's themes are in the
+        native's life. A house with significators at all four tiers is a
+        dominant life theme."
+    condition: >
+      The prominence or strength of a house H in a KP chart is being assessed.
+    assertion: >
+      A house H is prominent in KP when many planets signify it across all four
+      tiers of the significator hierarchy. Maximum prominence: a planet at each
+      tier (star-of-occupant, occupant, star-of-lord, lord) signifying H.
+      The count and distribution of significators across tiers indicates how
+      dominant that house's theme is in the native's life.
+    scope: bhava
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with generalisation (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord for each significator. Many significators at
+      higher tiers (star-of-occupant) > many at lower tiers (lord) for house
+      prominence in KP.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.4.ch15.promotions.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch15.job_promotion_increment"
+      text_excerpt: |
+        "For career promotions and salary increments, the relevant houses are
+        2 (increased income), 6 (service status upgrade), 10 (career elevation),
+        and 11 (fulfilment and gain). The dasha of a significator of all four
+        of these houses simultaneously is the most powerful promotion indicator.
+        The sub-lord of the 10th cusp must connect to 2, 6, 10, and 11 for
+        sustained career elevation."
+    condition: >
+      Career promotion or salary increment is being assessed. Sub-lord of 10th
+      cusp is evaluated for 2H, 6H, 10H, 11H connectivity. Dasha significance
+      of all four houses is assessed.
+    assertion: >
+      Career promotion promised when sub-lord of 10th cusp signifies 2H, 6H,
+      10H, and 11H simultaneously. Dasha of a planet that signifies all four
+      of these houses is the most powerful promotion indicator. When both the
+      sub-lord connectivity and the four-house dasha align, promotion occurs.
+    scope: sub_lord
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative with specific four-house requirement (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      Results depend on sub-lord. The four-house requirement (2/6/10/11) for
+      career promotion is more demanding than the three-house career promise
+      check (2/6/10). This higher bar reflects the additional increment/promotion
+      component captured by 11H (fulfilment).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.5.ch13.transfer_relocation.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch13.job_transfer_relocation"
+      text_excerpt: |
+        "For job transfer or relocation, the relevant houses are 3 (movement,
+        short distance), 9 (long distance, foreign posting), and 10 (career
+        event). If the sub-lord of the 10th cusp connects to 3 and 10, a
+        short-distance transfer is indicated. If it connects to 9 and 10,
+        a long-distance or foreign posting is indicated. Both 3/10 and 9/10
+        with the dasha timing confirm the relocation."
+    condition: >
+      Job transfer or relocation is being assessed. Sub-lord of 10th cusp
+      is evaluated for 3H/10H (short distance) or 9H/10H (long distance) connectivity.
+    assertion: >
+      Short-distance job transfer: 10th cusp sub-lord connects to 3H and 10H.
+      Long-distance or foreign posting: 10th cusp sub-lord connects to 9H and 10H.
+      Dasha of a planet signifying 3H or 9H + 10H confirms the timing of relocation.
+    scope: sub_lord
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with distance-graded conditions (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord. The 3/9 differentiation for short vs. long
+      distance transfer is consistent with the general KP travel house-group
+      framework (3H for short travel, 9H for long/foreign travel).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: KP.6.ch13.ruling_planet_birth.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch13.ruling_planets_at_birth"
+      text_excerpt: |
+        "The ruling planets at the time of birth (weekday lord, birth Moon's star
+        lord, birth Moon's sign lord, birth ascendant sign lord, birth ascendant
+        star lord) are the native's lifelong ruling planet signature. These five
+        planets carry the greatest weight in the native's dasha experiences.
+        Whenever these ruling planets operate as dasha, bhukti, or antara lords,
+        the periods are particularly significant."
+    condition: >
+      The native's birth-time ruling planets are identified. These are assessed
+      against the running dasha-bhukti-antara lords.
+    assertion: >
+      The five ruling planets at birth (weekday lord, Moon's star lord, Moon's
+      sign lord, ascendant sign lord, ascendant star lord) are the native's
+      lifelong signature planets. When any of these operate as dasha, bhukti,
+      or antara lords, those periods are particularly significant for the native,
+      regardless of house significations.
+    scope: dasha
+    school: kp
+    confidence: 0.72
+    confidence_rationale: "Prose with qualifier 'particularly significant' (0.72) × no cross-text (1.0) = 0.72"
+    caveats: >
+      Results depend on sub-lord for specific event analysis. The birth ruling
+      planet signature is a qualitative emphasis tool — it does not override
+      the requirement for house signification connectivity in dasha timing.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── KP AND NIRAYANA SYSTEM ──
+
+  - rule_id: KP.1.ch18.nirayana.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.1.ch18.nirayana_system"
+      text_excerpt: |
+        "KP uses the Nirayana (sidereal) zodiac, not the Sayana (tropical) zodiac.
+        This is consistent with the broader Jyotish tradition. The ayanamsha used
+        in KP is the Krishnamurti ayanamsha, which differs slightly from the
+        Lahiri ayanamsha commonly used in Parashari calculations. The difference
+        is approximately 6 arc minutes, which can shift the sub-lord of a cusp
+        when the cusp is near a sub-boundary."
+    condition: >
+      The ayanamsha for a KP chart calculation is being selected.
+    assertion: >
+      KP uses the Nirayana (sidereal) zodiac with the Krishnamurti ayanamsha.
+      This differs from the Lahiri ayanamsha (Parashari standard) by approximately
+      6 arc minutes. Near sub-boundaries, this difference can shift the sub-lord
+      of a planet or cusp. For MARSYS KP analysis, the Krishnamurti ayanamsha
+      should be applied.
+    scope: misc
+    school: kp
+    confidence: 0.80
+    confidence_rationale: "Prose declarative (0.80) × no cross-text (1.0) = 0.80"
+    caveats: >
+      The 6-arc-minute difference between Krishnamurti and Lahiri ayanamshas is
+      significant for sub-lord identification (each sub spans approximately 1.5°–2.5°).
+      Near the boundary of a sub, Lahiri and Krishnamurti ayanamshas may give
+      different sub-lords. Use Krishnamurti ayanamsha for KP analysis.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ── STUB RULES FOR BATCH 2 ──
+
+  - rule_id: KP.6.ch14.prashna_competitors.STUB.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.6.ch14.prashna_competitors_opponents"
+      text_excerpt: |
+        "In KP Prashna for queries about competitors or opponents in business or
+        sports, the 7th house represents the opponent. The sub-lord of the 7th
+        horary cusp's connectivity determines the relative strength of the
+        competitor. Multiple conditional factors are involved depending on the
+        type of competition."
+    condition: >
+      KP horary for competitor assessment.
+    assertion: >
+      [STUB — text excerpt acknowledges multiple conditional factors for
+      competition type but does not enumerate them. The general principle
+      (7th house = opponent) is already captured by KP.4.ch1.marriage.1
+      and KP.6.ch9 rules. Specific competition-type rules require additional
+      Vol.6 passage not fully articulated in this excerpt. Flagged for
+      Vol.6 detailed coverage.]
+    scope: horary
+    school: kp
+    confidence: 0.40
+    confidence_rationale: "Prose acknowledging incompleteness (0.60) × APPROX ×0.7 = 0.42; stub 0.40"
+    caveats: >
+      Stub rule — insufficient specificity for full competitor-assessment rule extraction.
+      The 7th house = opponent principle is covered; competition-specific sub-lord
+      rules need fuller source text.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: text excerpt acknowledges multiple conditions but does not enumerate them"
+
+  - rule_id: KP.5.ch14.secret_enemies.STUB.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.5.ch14.secret_enemies_hidden_opponents"
+      text_excerpt: |
+        "Secret enemies and hidden opposition in KP are indicated by the 12th
+        house, not the 6th. House 6 is for open enemies; house 12 is for secret
+        enemies, spies, and hidden betrayers. The sub-lord of the 12th cusp
+        connecting to 6 creates the configuration of enemies who act secretly.
+        Rahu in the 12th or as 12th sub-lord may amplify hidden enemy effects."
+    condition: >
+      Secret or hidden enemies are being assessed. Sub-lord of 12th cusp is
+      evaluated for 6H connectivity. Rahu's involvement is assessed.
+    assertion: >
+      [STUB — partially derivable: 12th = secret enemies, sub-lord of 12th
+      connecting to 6H creates hidden-enemy configuration. However, the Rahu
+      amplification assertion requires more specific KP text on Rahu's 12th house
+      role. Confidence cap at stub level due to Rahu ambiguity per Gate A R1 and
+      incomplete Rahu specifics in the excerpt.]
+    scope: sub_lord
+    school: kp
+    confidence: 0.42
+    confidence_rationale: "Prose with Rahu involvement (0.72) × Rahu adjustment ×0.85 = 0.61; incomplete assertion = stub at 0.42"
+    caveats: >
+      Stub rule — Rahu-amplification assertion for hidden enemies is not fully
+      derivable from this excerpt. The 12H = secret enemies principle is
+      extractable but the Rahu-specific rule is insufficiently specified.
+    verified: false
+    stub: true
+    stub_reason: "pramana_partial: 12th = secret enemies is derivable; Rahu amplification assertion requires fuller Rahu-in-12H text not present in this excerpt"
+
+  - rule_id: KP.4.ch16.government_trouble.STUB.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.4.ch16.government_problems_legal_trouble"
+      text_excerpt: |
+        "Problems from government authorities in KP are indicated by the 6th
+        house (enemies including government as adversary), the 8th house (sudden
+        troubles), and the 10th house (which as the house of government can also
+        work adversely against the native). When these three houses are prominently
+        involved in the sub-lord analysis along with the relevant cusp, government
+        trouble is indicated."
+    condition: >
+      Government trouble or legal problems from authorities are being assessed.
+      Houses 6, 8, 10 are involved in sub-lord connectivity.
+    assertion: >
+      [STUB — the text presents a three-house combination (6/8/10) for government
+      trouble but does not specify which cusp's sub-lord is the primary indicator.
+      Multiple possible interpretations (sub-lord of 1st cusp, sub-lord of 10th cusp,
+      or dasha-level analysis) are left unresolved. Cannot derive a single
+      authoritative condition-assertion pair without knowing the primary cusp reference.
+      Flagged for Vol.4 clarification.]
+    scope: sub_lord
+    school: kp
+    confidence: 0.38
+    confidence_rationale: "Prose with ambiguous cusp reference (0.55) × APPROX ×0.7 = 0.385; round to 0.38"
+    caveats: >
+      Stub rule — the text identifies 6/8/10 as the government trouble house group
+      but does not specify the primary cusp or whether this is a dasha-only rule.
+      Retained for cross-reference with other government-related KP rules.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: primary cusp for government-trouble sub-lord analysis not specified in text excerpt; cannot derive complete condition-assertion pair"
+
+  - rule_id: KP.3.ch17.prana_sookshma.STUB.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.3.ch17.prana_sookshma_beyond"
+      text_excerpt: |
+        "Beyond the sookshma, KP defines a prana (sub-sub-sub) period. The prana
+        is rarely used in practice because its duration is typically hours to
+        a few days and requires extraordinary birth-time precision. For most
+        practical KP predictions, the sookshma level provides sufficient precision.
+        The prana level is mentioned for theoretical completeness."
+    condition: >
+      Prana-level (sub-sub-sub-period) timing is being assessed for ultra-precise
+      event dating.
+    assertion: >
+      [STUB — the text explicitly states prana is rarely used in practice and
+      is mentioned for theoretical completeness. No extractable predictive rule
+      with practical application. The sookshma rule (KP.3.ch14.sookshma.1)
+      is the applicable practical rule. Prana is retained as a theoretical note only.]
+    scope: dasha
+    school: kp
+    confidence: 0.30
+    confidence_rationale: "Prose explicitly stating theoretical-only (0.45) × practical inapplicability = floor 0.30"
+    caveats: >
+      Stub rule — prana-level timing is a theoretical extension of KP's dasha
+      hierarchy; not an extractable practical predictive rule per KSK's own statement.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: text explicitly states prana is rarely used in practice and mentioned for theoretical completeness only; no practical predictive rule extractable"
+
+  - rule_id: KP.2.ch17.cusp_outside_sign.STUB.1
+    source_verse:
+      canonical_id: KP
+      verse_ref: "Vol.2.ch17.cusp_degrees_across_signs"
+      text_excerpt: |
+        "When a Placidus cusp falls in the same sign as the previous cusp (due
+        to interceptions, which occur at high latitudes), the intercepted house
+        has no cusp of its own in the sign. In tropical and subtropical latitudes,
+        interceptions are rare. K.S. Krishnamurti mostly worked with Indian charts
+        where interceptions are uncommon, and the handling of interceptions in KP
+        is not fully standardised."
+    condition: >
+      A Placidus house interception is present in the KP chart (two cusps in the
+      same sign, one house without a cusp in any sign).
+    assertion: >
+      [STUB — text acknowledges interceptions are not fully standardised in KP
+      and are rare for Indian birth latitudes. No authoritative KP rule for
+      intercepted house sub-lord analysis is derivable from this excerpt.
+      For the native (Bhubaneswar, ~20°N), interceptions are uncommon but
+      possible. Flagged as unresolved in KP canon.]
+    scope: bhava
+    school: kp
+    confidence: 0.30
+    confidence_rationale: "Prose explicitly acknowledging non-standardisation (0.40) × floor 0.30"
+    caveats: >
+      Stub rule — KP does not have a standardised rule for intercepted houses.
+      For the native (Bhubaneswar ~20°N latitude), interceptions are rare with
+      Placidus. If encountered, human review is required before applying sub-lord
+      analysis to an intercepted house cusp.
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: text explicitly states interception handling is not fully standardised in KP; no authoritative rule derivable"

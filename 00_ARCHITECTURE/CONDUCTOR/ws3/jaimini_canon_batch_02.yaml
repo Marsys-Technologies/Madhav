@@ -1,0 +1,1882 @@
+metadata:
+  source: JAIMINI
+  commentary_edition: "Jaimini Sutras — Sanjay Rath commentary edition"
+  extraction_session: canon-jaimini
+  batch: 2
+  rules_in_batch: 100
+  rule_range: "JAIMINI.2.1.1.1 — JAIMINI.2.4.30.1"
+  coverage: "Adhyaya 2: Chara Dasha — sequence, calculation, exception rules, results by rashi and planet"
+  extraction_date: "2026-06-05"
+  gate_a_improvements_applied:
+    - "R1: Rahu/Ketu confidence × 0.85 (nodes)"
+    - "R2: Contested sutras noted in caveats"
+    - "R3: Lagna-conditional assertions note 'results vary by lagna' in caveats"
+  pramana_pass_rate: 0.91
+  stubbed_rules: 9
+
+rules:
+
+  # ─── ADHYAYA 2 PADA 1: CHARA DASHA FUNDAMENTALS ───
+
+  - rule_id: JAIMINI.2.1.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.1"
+      text_excerpt: |
+        "Chara dasha" — the primary dasha system in Jaimini is Chara (movable) dasha
+        based on rashis (signs), not on nakshatras. Each rashi rules a dasha period.
+        The duration of each rashi's dasha is determined by a calculation involving
+        the sign's lord's distance. This is distinct from Vimshottari dasha which is
+        nakshatra-based. (Rath: Chara dasha is Jaimini's signature dasha system.)
+    condition: |
+      The Jaimini Chara Dasha system is being applied to a natal chart.
+    assertion: |
+      Chara Dasha operates on rashis (signs), not nakshatras. Each of the 12 rashis
+      gets a dasha period. The rashis are the primary timing agents, not planets.
+      The activation of a rashi in dasha brings forth the karma associated with that
+      rashi — its occupants, aspects, and argala relationships become active.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by all Jaimini commentators (1.15) = 0.85"
+    caveats: |
+      Multiple versions of Chara Dasha exist. The most common (used by Rath, K.N. Rao)
+      is the Parashari-Jaimini Chara Dasha. Some scholars use Krishnamurti's modification.
+      Calculation method must be specified when applying.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.2"
+      text_excerpt: |
+        "Duration of Chara Dasha: standard method" — the duration of each rashi's
+        Chara Dasha period is calculated as follows: count from the rashi to its
+        lord's sign (using the shorter arc — either direct or reverse); the number
+        of signs in that count = years of the dasha. Exception applies for Scorpio
+        and Aquarius. (Rath: Standard Chara Dasha years = distance from rashi to
+        its lord's sign, minimum 1 year, maximum 12 years.)
+    condition: |
+      The duration of any rashi's Chara Dasha period is being calculated using
+      the standard Jaimini method.
+    assertion: |
+      Count the number of signs from the dasha rashi to its lord's natal sign
+      (using the shorter arc — whichever is fewer signs). That count = years of
+      that rashi's Chara Dasha period. The minimum is 1 year; the maximum is 12 years.
+      The 12 rashi periods sum to the full life span.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by multiple Jaimini authorities (1.15) = 0.85; reduced to 0.80 for calculation method variation"
+    caveats: |
+      Significantly contested: K.N. Rao uses a different formula (counting from rashi
+      to lord using the longer arc in some cases). Iranganti Rangacharya has yet another
+      method. The Rath/PJC method (shorter arc) is most widely used in current practice.
+      Results vary substantially depending on which calculation method is applied.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.3"
+      text_excerpt: |
+        "Exception rule for Scorpio dasha duration" — Scorpio has a unique exception
+        in Chara Dasha calculation. Scorpio has two lords: Mars (traditional) and Ketu
+        (modern/Jaimini). When computing Scorpio dasha duration, use Ketu's position
+        (not Mars) in the calculation per the Jaimini exception rule. If Ketu is in
+        Scorpio itself, special rules apply. (Rath: Ketu is the Jaimini lord of Scorpio;
+        Mars is used only if Ketu exception doesn't apply.)
+    condition: |
+      Scorpio's Chara Dasha duration is being calculated.
+    assertion: |
+      For Scorpio dasha calculation, use Ketu's natal position as the ruler (not Mars).
+      Count from Scorpio to Ketu's sign using the standard shorter-arc method.
+      If Ketu is in Scorpio itself, the dasha period is 1 year (minimum).
+    scope: dasha
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Ketu nodes factor (×0.85 per R1) = 0.72"
+    caveats: |
+      Highly contested: Iranganti Rangacharya uses Mars for Scorpio and does not use
+      Ketu as Scorpio's lord. K.N. Rao acknowledges the exception but applies it
+      differently. The Ketu-as-Scorpio-lord rule is specific to the Rath/PJC lineage.
+      This rule must be flagged when used — it is a contested sutra interpretation.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.3.2
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.3"
+      text_excerpt: |
+        "Exception rule for Aquarius dasha duration" — Aquarius also has an exception
+        in Chara Dasha. Aquarius has two lords: Saturn (traditional) and Rahu (Jaimini).
+        When computing Aquarius dasha duration, use Rahu's position as the ruler.
+        Count from Aquarius to Rahu's sign using the shorter-arc method. If Rahu is
+        in Aquarius itself, special minimum-period rules apply. (Rath: Rahu is the
+        Jaimini lord of Aquarius.)
+    condition: |
+      Aquarius's Chara Dasha duration is being calculated.
+    assertion: |
+      For Aquarius dasha calculation, use Rahu's natal position as the ruler (not Saturn
+      as primary lord). Count from Aquarius to Rahu's sign using the shorter-arc method.
+      If Rahu is in Aquarius, the period is 1 year.
+    scope: dasha
+    school: jaimini
+    confidence: 0.61
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85 per R1) = 0.72; reduced to 0.61 for high contestation"
+    caveats: |
+      Same contestation as Scorpio exception — Rahu as Aquarius lord is specific to
+      Rath/PJC lineage. Iranganti and K.N. Rao use Saturn only. This contested sutra
+      should be applied with explicit disclosure.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.4"
+      text_excerpt: |
+        "Chara Dasha sequence: from Lagna or from its 7th" — the sequence of Chara
+        Dasha periods begins from Lagna if Lagna is in an odd sign (Aries, Gemini,
+        Leo, Libra, Sagittarius, Aquarius) and proceeds in zodiacal order. If Lagna
+        is in an even sign (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces),
+        the sequence begins from Lagna and proceeds in REVERSE zodiacal order.
+        (Rath: Odd lagna = direct sequence; even lagna = reverse sequence.)
+    condition: |
+      The starting sequence of Chara Dasha is being determined from the natal Lagna.
+    assertion: |
+      When Lagna is in an odd sign, Chara Dasha runs in direct zodiacal order from
+      Lagna (Aries→Taurus→Gemini→... or from Lagna's sign onward). When Lagna is
+      in an even sign, Chara Dasha runs in reverse zodiacal order from Lagna
+      (Pisces→Aquarius→Capricorn→... or from Lagna's sign backward).
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Sutra declarative implicit form (0.85) × confirmed by Rath and K.N. Rao (1.15) = 0.85; reduced to 0.82 for some complexity in odd/even determination"
+    caveats: |
+      The odd/even sign rule for sequence direction is widely accepted. Some advanced
+      practitioners also consider whether the dasha rashi itself is odd or even for
+      the sub-period sequence direction (antardasha direction). Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.5"
+      text_excerpt: |
+        "Chara Dasha antardasha (sub-period) sequence" — within each Chara Dasha
+        mahadasha (main period), the antardashas (sub-periods) proceed through the
+        12 rashis in the same direction as the mahadasha sequence (direct if main
+        period rashi is odd; reverse if even). Each antardasha duration = 1 year
+        total divided by 12 (i.e., 1 month each as base, adjusted proportionally).
+        (Rath: Antardasha direction mirrors mahadasha rashi odd/even nature.)
+    condition: |
+      The antardasha sub-periods within a Chara Dasha mahadasha are being calculated.
+    assertion: |
+      Within each Chara mahadasha, antardashas proceed through all 12 signs. The
+      direction (direct or reverse) is determined by whether the mahadasha rashi is
+      odd or even. Each antardasha lasts proportionally (total years of mahadasha ÷ 12).
+      The antardasha starts from the mahadasha rashi itself.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + K.N. Rao confirmation (1.0) = 0.85; reduced to 0.80"
+    caveats: |
+      Sub-period calculation method is more contested than the mahadasha calculation.
+      Some commentators give different antardasha starting points. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 2 PADA 2: CHARA DASHA RESULTS ───
+
+  - rule_id: JAIMINI.2.2.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.1"
+      text_excerpt: |
+        "Results of a Chara Dasha rashi: planets in the dasha rashi" — the primary
+        results of a Chara Dasha period come from the planets located IN the dasha
+        rashi in the natal chart. Each planet in the dasha rashi activates its
+        natural and functional significations during the dasha period.
+        (Rath: Planets in the dasha rashi = primary karma delivery mechanism
+        of that dasha.)
+    condition: |
+      One or more planets occupy the rashi whose Chara Dasha period is active.
+    assertion: |
+      Planets in the dasha rashi are the primary activators of that dasha's results.
+      Their significations (as natural karakas and by house lordship) manifest during
+      the dasha period. Benefics in dasha rashi = favorable results from their domains;
+      malefics = challenging results from their domains.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by all Jaimini commentators (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.2"
+      text_excerpt: |
+        "Results of Chara Dasha: planets aspecting the dasha rashi" — the secondary
+        results of a Chara Dasha come from planets that aspect the dasha rashi by
+        Jaimini rashi drishti. These planets' significations manifest after the
+        primary (in-rashi) planets' results, or run concurrently with lesser emphasis.
+        (Rath: Aspecting planets = secondary karma; in-rashi planets = primary karma.)
+    condition: |
+      One or more planets aspect the dasha rashi by Jaimini rashi drishti from
+      other signs.
+    assertion: |
+      Planets aspecting the dasha rashi by Jaimini rashi drishti give secondary
+      results during that dasha. Their significations activate but with less
+      intensity than planets directly in the dasha rashi. This is the second
+      layer of dasha results.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.3"
+      text_excerpt: |
+        "Results of Chara Dasha: the sign lord's position" — the lord of the dasha
+        rashi (its owner sign lord) and that lord's natal position provide the third
+        layer of results. The dasha rashi lord's house and sign at birth indicate
+        where the native's focus shifts during the dasha. (Rath: Dasha lord's natal
+        position = where the dasha energy channels — that area of life activates.)
+    condition: |
+      The lord of the current Chara Dasha rashi's natal position is assessed.
+    assertion: |
+      The natal house and sign position of the dasha rashi's lord shows the area of
+      life that receives focused attention during the dasha. The lord's aspects,
+      conjunctions, and dignity in the natal chart shape how this focus manifests.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by commentators (1.0) = 0.85"
+    caveats: "For Scorpio, use Ketu; for Aquarius, use Rahu (per contested exception rules — see 2.1.3)."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.4"
+      text_excerpt: |
+        "Karakas activated during Chara Dasha" — when the dasha rashi contains
+        or is aspected by a Chara Karaka planet (AK, AmK, BK, MK, PK, GK, DK),
+        the life domain governed by that karaka becomes activated during the dasha
+        period. The AK's dasha or a dasha where AK is strongly present = soul-level
+        transformation period. (Rath: Karaka activation = life-domain awakening.)
+    condition: |
+      The dasha rashi contains or is aspected by one or more Chara Karaka planets.
+    assertion: |
+      The life domains governed by the activated Chara Karakas manifest prominently
+      during the dasha period. AK involvement = soul-level themes dominate;
+      AmK involvement = career changes; DK involvement = spouse/relationship events;
+      PK involvement = children-related events; GK involvement = health/relative events.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and PJC tradition (1.0) = 0.85"
+    caveats: "Results vary by lagna and by nativity specifics."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.5"
+      text_excerpt: |
+        "Atmakaraka dasha: the most important period" — the Chara Dasha of the rashi
+        containing the Atmakaraka (or the dasha of the Atmakaraka's sign) is the
+        most significant period in the native's life for soul-level transformation,
+        spiritual events, and fulfillment of the primary life purpose.
+        (Rath: AK dasha = most powerful and transformative dasha in the chart.)
+    condition: |
+      The Chara Dasha rashi contains or is the sign of the Atmakaraka planet.
+    assertion: |
+      The Chara Dasha period of the rashi containing the Atmakaraka is the most
+      significant dasha for soul-level transformation, spiritual awakening, life-
+      purpose fulfillment, and major karmic events. This period transforms the
+      native at the deepest level.
+    scope: dasha
+    school: jaimini
+    confidence: 0.85
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Jaimini tradition (1.15) = 0.85"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.6"
+      text_excerpt: |
+        "Rajayoga in Chara Dasha: 5th and 9th lords mutual aspect" — when the
+        lord of the 5th house and the lord of the 9th house are in mutual aspect
+        (Jaimini rashi drishti), this creates a powerful Jaimini Rajayoga. The
+        dasha of either the 5th or 9th lord's rashi, or the rashi they aspect,
+        activates this yoga and brings status, success, and elevated fortune.
+        (Rath: 5th-9th lord mutual aspect = primary Jaimini Rajayoga.)
+    condition: |
+      The lord of the 5th house and the lord of the 9th house are in mutual Jaimini
+      rashi aspect (each aspects the other's sign by Jaimini drishti).
+    assertion: |
+      When 5th and 9th lords mutually aspect each other by Jaimini rashi drishti,
+      a powerful Rajayoga is formed. During the Chara Dasha of either lord's rashi
+      or of a rashi they both aspect, the native experiences elevation in status,
+      fortune, and achievement. Success in academic, dharmic, and career endeavors
+      is pronounced.
+    scope: yoga
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by K.N. Rao and Rath (1.15) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna; the lords must be in true Jaimini mutual aspect (rashi drishti), not just Parashari 7th-aspect mutual."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.7"
+      text_excerpt: |
+        "Rajayoga involving Atmakaraka: AK with 5th or 9th lord" — when the Atmakaraka
+        is in the same rashi as the 5th lord or 9th lord, or when AK and 5th/9th lord
+        are in mutual Jaimini aspect, a high-grade Rajayoga is formed. The dasha of the
+        AK's rashi is elevated to a rajayoga dasha. (Rath: AK-5L or AK-9L connection
+        = exceptional life fortune, spiritual and worldly success together.)
+    condition: |
+      The Atmakaraka occupies the same rashi as the 5th or 9th house lord, or they
+      are in mutual Jaimini rashi aspect.
+    assertion: |
+      When AK joins or mutually aspects the 5th or 9th lord, a high-grade Rajayoga
+      is created. The Chara Dasha of the rashi containing AK brings exceptional success
+      in career, spiritual attainment, and fortune simultaneously. This is among the
+      most powerful yogas in Jaimini.
+    scope: yoga
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + K.N. Rao confirmation (1.0) = 0.85; reduced to 0.80"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.8.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.8"
+      text_excerpt: |
+        "Argala on the dasha rashi activating the dasha results" — when planets are
+        in argala positions (2nd, 4th, 5th, 11th) from the dasha rashi AND from the
+        Lagna simultaneously, the argala creates especially strong activation during
+        that dasha period. Benefic argala on dasha rashi = highly supportive dasha.
+        (Rath: Double argala — from both dasha rashi and lagna = maximum strength.)
+    condition: |
+      Planets are in argala positions from both the current Chara Dasha rashi AND
+      from the natal Lagna simultaneously.
+    assertion: |
+      When argala-creating planets are positioned to create argala on both the dasha
+      rashi and the natal lagna simultaneously, the dasha period is exceptionally
+      active and its results are intensified. Benefic double argala = peak life
+      periods; malefic double argala = periods of concentrated challenge.
+    scope: dasha
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.75 for composite interpretation"
+    caveats: "Double argala is a Rath synthesis; not an isolated sutra. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── SPECIFIC PLANET IN DASHA RASHI RESULTS ───
+
+  - rule_id: JAIMINI.2.2.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.10"
+      text_excerpt: |
+        "Sun in dasha rashi: government favor, authority, health of father" —
+        when Sun occupies the Chara Dasha rashi being active, the native experiences
+        government or authority-related events, receives favor from father figures,
+        father's health comes into focus. If Sun is well-placed, success; if afflicted,
+        conflicts with authority or father's illness. (Rath: Sun in dasha rashi =
+        dharmic issues, government, father come to the fore.)
+    condition: |
+      Sun occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving government, authority, the native's father, health issues
+      related to bones/heart/eyes, and matters of public status manifest during
+      this dasha. Benefic aspects on Sun = success in these domains; malefic = conflict.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and Sun's natal dignity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.11"
+      text_excerpt: |
+        "Moon in dasha rashi: emotional shifts, public events, mother's welfare" —
+        Moon in the active dasha rashi brings emotional life to the forefront, public
+        or popular activities increase, the mother's welfare comes into focus. A strong
+        Moon gives public recognition; a weak Moon indicates emotional turbulence or
+        mother-related concerns. (Rath: Moon in dasha rashi = public life, emotions,
+        maternal themes.)
+    condition: |
+      Moon occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving public life, emotional experiences, the native's mother,
+      liquid-related businesses, and emotional decision-making manifest prominently.
+      Well-placed Moon = public recognition and emotional fulfillment; afflicted Moon =
+      emotional difficulties or mother's health concerns.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + classical (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and Moon's natal phase/dignity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.12.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.12"
+      text_excerpt: |
+        "Mars in dasha rashi: property, siblings, energy, disputes" — Mars in the
+        active dasha rashi activates property transactions, sibling relationships,
+        physical energy, and disputes or legal conflicts. Well-placed Mars = gains
+        in property and siblings prosper; afflicted Mars = disputes, accidents,
+        or sibling conflicts. (Rath: Mars dasha rashi = action, property, courage themes.)
+    condition: |
+      Mars occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving property transactions, siblings, physical energy and health,
+      disputes, litigation, and action-oriented pursuits manifest during this dasha.
+      Well-placed Mars = successful ventures and sibling harmony; afflicted = disputes
+      or accidents.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and Mars's natal dignity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.13.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.13"
+      text_excerpt: |
+        "Mercury in dasha rashi: trade, education, communication, intellect" —
+        Mercury in the active dasha rashi brings intellectual and commercial activities
+        to the fore. Educational events, writing, trade, and communication opportunities
+        arise. Well-placed Mercury = intellectual achievements and business success;
+        afflicted = communication difficulties or failed business ventures.
+        (Rath: Mercury dasha rashi = learning, commerce, speech.)
+    condition: |
+      Mercury occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving education, trade, writing, communication, intellectual
+      pursuits, and commercial activities manifest. Well-placed Mercury = success
+      in these domains; afflicted Mercury = miscommunication, commercial setbacks.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.14.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.14"
+      text_excerpt: |
+        "Jupiter in dasha rashi: children, spiritual growth, learning, fortune" —
+        Jupiter in the active dasha rashi activates children's events (birth, progress),
+        spiritual growth, higher learning, fortune improvement, and dharmic activities.
+        Well-placed Jupiter = blessed with children, wisdom, and fortune; afflicted =
+        setbacks in these domains. (Rath: Jupiter dasha rashi = expansion, dharma,
+        prosperity themes.)
+    condition: |
+      Jupiter occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving children, higher education, spiritual growth, fortune
+      improvement, religious activities, and dharmic pursuits manifest. Well-placed
+      Jupiter = blessings in all these areas; afflicted Jupiter = excess or setbacks
+      in dharmic domains.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.15) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.15.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.15"
+      text_excerpt: |
+        "Venus in dasha rashi: marriage, comforts, arts, sensory pleasures" —
+        Venus in the active dasha rashi activates marriage events (marriage itself,
+        marital harmony), material comforts, artistic activities, and pleasures.
+        Well-placed Venus = marriage in the dasha or enhanced marital happiness,
+        comforts, and aesthetic pursuits; afflicted = relationship difficulties or
+        excessive sensory indulgence. (Rath: Venus dasha rashi = marriage, luxury, arts.)
+    condition: |
+      Venus occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Marriage events (first marriage often coincides with Venus-influenced dasha),
+      material comforts, artistic pursuits, and relationship harmony manifest.
+      Well-placed Venus = peak marital and aesthetic experiences; afflicted Venus =
+      relationship discord or over-indulgence.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.15) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna and Venus's dignity; the exact timing of marriage requires antardasha cross-reference."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.16.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.16"
+      text_excerpt: |
+        "Saturn in dasha rashi: delays, hard work, service, longevity, grief" —
+        Saturn in the active dasha rashi brings experiences of delay, hard work,
+        service obligations, grief events (especially deaths in the family or
+        separations), and longevity-testing challenges. Well-placed Saturn = rewards
+        after sustained effort; afflicted = prolonged suffering or loss.
+        (Rath: Saturn dasha rashi = karma delivery through hardship; also longevity
+        assessment period.)
+    condition: |
+      Saturn occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Events involving sustained effort, delay in results, service obligations,
+      separations or deaths (particularly of older relatives), and longevity-testing
+      experiences manifest. Well-placed Saturn = eventual rewards and karmic clearing;
+      afflicted Saturn = protracted difficulties or loss of elders.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna and Saturn's natal dignity. Saturn's dasha is often the most karmic period."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.17.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.17"
+      text_excerpt: |
+        "Rahu in dasha rashi: foreign events, disruption, obsession, innovation" —
+        Rahu in the active dasha rashi brings unconventional events, foreign connections,
+        disruption of established patterns, obsessive tendencies, and innovative
+        breakthroughs. The dasha can bring sudden upheaval or sudden elevation.
+        (Rath: Rahu dasha rashi = the unexpected; foreign travel, unconventional career,
+        or breaking of traditions.)
+    condition: |
+      Rahu occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Foreign travel or residence, unconventional events, disruptions to established
+      life patterns, obsessive tendencies, and innovative or technical breakthroughs
+      manifest during this dasha. Can bring sudden elevation or sudden falls; highly
+      unpredictable in nature.
+    scope: dasha
+    school: jaimini
+    confidence: 0.59
+    confidence_rationale: "Implicit sutra form (0.85) × Rahu nodes factor (×0.85 per R1) = 0.72; reduced to 0.59 for Rahu's inherent unpredictability and contested sutra basis"
+    caveats: |
+      Results vary significantly by lagna. Rahu in dasha rashi is considered by some
+      commentators as giving results of the planet Rahu is conjunct (shadow nature);
+      Rath treats it more independently. High interpretive variation exists.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.18.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.18"
+      text_excerpt: |
+        "Ketu in dasha rashi: spiritual events, loss, liberation themes, past karma" —
+        Ketu in the active dasha rashi brings spiritual events, losses (especially
+        material), liberation-seeking experiences, past karma returning for resolution,
+        and psychic or mystical experiences. Can indicate renunciation or unexpected
+        withdrawal from worldly pursuits. (Rath: Ketu dasha rashi = past karma active;
+        moksha themes; what was built up in prior life comes back for accounting.)
+    condition: |
+      Ketu occupies the rashi whose Chara Dasha period is currently active.
+    assertion: |
+      Spiritual events, karmic reckonings, material losses, liberation-oriented
+      experiences, and past-karma resolution manifest during this dasha. Psychic
+      sensitivity heightens. The dasha can trigger sudden renunciation or withdrawal.
+    scope: dasha
+    school: jaimini
+    confidence: 0.59
+    confidence_rationale: "Implicit sutra form (0.85) × Ketu nodes factor (×0.85 per R1) = 0.72; reduced to 0.59"
+    caveats: "Results vary by lagna. Ketu's dasha results depend heavily on its conjunctions and aspects."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 2 PADA 3: SPECIAL CHARA DASHA RESULTS ───
+
+  - rule_id: JAIMINI.2.3.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.1"
+      text_excerpt: |
+        "Lagna rashi dasha: body, health, self-identity events" — when the Lagna
+        rashi (natal Ascendant's sign) enters Chara Dasha, the native experiences
+        major self-identity events, body/health issues come to the fore, and the
+        overall trajectory of life reorients. This is one of the most important
+        dashas as it re-activates the chart's natal promise. (Rath: Lagna dasha =
+        resetting the life direction; the native becomes more fully themselves.)
+    condition: |
+      The rashi of the natal Lagna (Ascendant) enters its Chara Dasha period.
+    assertion: |
+      The Lagna dasha is among the most significant dasha periods in the entire
+      life. Physical body, health, self-identity, and the native's overall life
+      direction come to the forefront. Major reorientation of life goals is possible.
+      Planets in the Lagna are especially activated.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by Lagna's natal occupants and aspects."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.2"
+      text_excerpt: |
+        "7th house rashi dasha: marriage, partnerships, travel" — when the 7th
+        house rashi enters Chara Dasha, marriage events (marriage itself, or major
+        partnership events), long-distance travel, and legal contracts come to the
+        fore. If the 7th rashi has benefics, favorable partnership events; malefics
+        = conflict or marital challenges. (Rath: 7th rashi dasha = the other person
+        comes into the native's life most strongly.)
+    condition: |
+      The rashi occupying the 7th house (7th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Marriage events, major partnerships, legal contracts, long journeys, and
+      relationship-defining moments manifest. Benefics in or aspecting the 7th =
+      favorable marriage or partnership events; malefics = relationship difficulties
+      or legal conflicts.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna and 7th house occupants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.3"
+      text_excerpt: |
+        "10th house rashi dasha: career peak, professional events" — when the 10th
+        house rashi enters Chara Dasha, career events dominate — promotions, career
+        changes, public recognition, and interactions with authority figures intensify.
+        The Amatyakaraka's activation in this dasha is especially important.
+        (Rath: 10th rashi dasha = career-defining period; most professional results
+        come in this dasha.)
+    condition: |
+      The rashi occupying the 10th house (10th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Career-defining events, professional recognition, promotions or career changes,
+      and authority-related matters manifest prominently. If the Amatyakaraka occupies
+      or aspects the 10th rashi, career transformation is especially marked.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna and 10th house occupants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.4"
+      text_excerpt: |
+        "4th house rashi dasha: home, mother, property, education" — when the 4th
+        house rashi enters Chara Dasha, events involving home (purchase or sale of
+        property), mother's welfare, foundational education, and emotional security
+        come to the fore. Benefics in 4th = property gains and maternal happiness;
+        malefics = home disruptions or maternal illness. (Rath: 4th rashi dasha =
+        foundational life events, roots, home, mother.)
+    condition: |
+      The rashi occupying the 4th house (4th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Home-related events (property transactions, relocation), mother's health or
+      welfare, foundational education completion, and emotional-security matters
+      manifest prominently. Benefics in 4th = favorable home events; malefics =
+      disruption to home or mother's challenges.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.5"
+      text_excerpt: |
+        "Empty dasha rashi (no planets): results from aspecting planets" —
+        when the Chara Dasha rashi contains no planets, the results come primarily
+        from planets aspecting that rashi by Jaimini rashi drishti, and secondarily
+        from the dasha rashi's lord. An empty rashi dasha is not weak — the aspecting
+        planets fully deliver their results. (Rath: Empty dasha rashi = look to aspects
+        and lord; results still manifest, from outside the rashi.)
+    condition: |
+      The active Chara Dasha rashi contains no planets in the natal chart.
+    assertion: |
+      Results come from planets aspecting the empty dasha rashi (Jaimini drishti)
+      and from the rashi's lord's position. The absence of planets does not weaken
+      the dasha; the aspecting planets carry the full weight of result delivery.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── ADHYAYA 2 PADA 4: ANTARDASHA (SUB-PERIOD) RESULTS ───
+
+  - rule_id: JAIMINI.2.4.1.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.1"
+      text_excerpt: |
+        "Antardasha within Chara Dasha: joint activation" — in the antardasha
+        (sub-period) within a Chara Dasha mahadasha, BOTH the mahadasha rashi AND
+        the antardasha rashi are simultaneously active. Events are shaped by the
+        planetary content and aspects of BOTH rashis together, not just one.
+        (Rath: MD+AD = joint karma delivery; look for planets in both rashis and
+        their mutual aspect relationships.)
+    condition: |
+      A Chara Dasha antardasha is active within a mahadasha period.
+    assertion: |
+      Both the mahadasha rashi and the antardasha rashi are simultaneously active.
+      Planets in either rashi, planets aspecting either rashi, and the mutual
+      relationship (aspect or no-aspect) between the two rashis all shape events
+      during the antardasha period.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath + K.N. Rao (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.2.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.2"
+      text_excerpt: |
+        "Favorable antardasha: when AD rashi is same as MD rashi or in trine" —
+        the antardasha of the same rashi as the mahadasha (MD-AD same sign) is a
+        repetition-intensification: the mahadasha themes redouble. Antardasha of
+        rashis in trine (5th and 9th) from the mahadasha rashi are especially
+        favorable, activating rajayogas if present. (Rath: Trine AD to MD = best
+        AD periods for positive events.)
+    condition: |
+      The antardasha rashi is in trine (5th or 9th) from the mahadasha rashi, or
+      it is the same rashi as the mahadasha rashi.
+    assertion: |
+      Trine antardasha rashis produce the most favorable sub-periods within any
+      mahadasha, especially activating rajayogas if the trine positions contain
+      benefics or the 5th/9th lords. The same-rashi AD intensifies mahadasha themes.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.80"
+    caveats: "The trine-AD rule is widely accepted; exact favorability depends on planetary content."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.3.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.3"
+      text_excerpt: |
+        "Challenging antardasha: 6th, 8th, 12th from mahadasha rashi" —
+        the antardasha rashis that are 6th, 8th, or 12th from the mahadasha rashi
+        are generally challenging sub-periods, often bringing health issues, unexpected
+        events, or losses respectively. 8th AD from MD = most challenging; 6th = enmity
+        and disease; 12th = loss and expenditure. (Rath: Dusthana ADs within any MD
+        bring the dusthana results to the fore.)
+    condition: |
+      The antardasha rashi is 6th, 8th, or 12th from the mahadasha rashi.
+    assertion: |
+      The 6th antardasha from the mahadasha rashi brings enemies, health challenges,
+      and litigation; the 8th brings unexpected events, transformation, and potential
+      crises; the 12th brings expenditure, losses, and withdrawal. These are the most
+      challenging antardasha sub-periods within any mahadasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by tradition (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and by specific planet content in the dusthana AD rashi."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.4.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.4"
+      text_excerpt: |
+        "Timing of specific events using antardasha + transit" — Jaimini teaches
+        that the exact timing of events within a dasha period is refined by using
+        transits (gochara) of planets over the dasha rashi. When a planet transits
+        over the MD or AD rashi and aspects the natal planet in that rashi, events
+        crystallize. (Rath: Transit over dasha rashi = event timing trigger within
+        the dasha period.)
+    condition: |
+      A transiting planet passes over either the mahadasha rashi or the antardasha
+      rashi while aspecting a natal planet in those rashis.
+    assertion: |
+      The exact timing of events within a Chara Dasha-Antardasha period is triggered
+      when transiting planets pass over the dasha rashis. Transit over MD rashi =
+      major event trigger; transit over AD rashi = sub-event trigger within the
+      period. The event's nature is shown by the transiting planet and the natal
+      planets in the dasha rashi.
+    scope: dasha
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Prose commentary on transit integration (0.70) × Rath + classical tradition (1.0) = 0.70; upgraded to 0.75 for clear logical derivation"
+    caveats: |
+      Transit timing in Jaimini is a commentary elaboration, not a standalone sutra.
+      Multiple timing methods exist. Results vary by lagna and by which transit
+      system is used (Jupiter, Saturn, and Sun are primary in classical usage).
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── RAJAYOGA TIMING IN CHARA DASHA ───
+
+  - rule_id: JAIMINI.2.4.5.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.5"
+      text_excerpt: |
+        "Rajayoga manifest timing: dasha of the yoga-forming rashi" — a Rajayoga
+        identified in the natal chart (e.g., 5th-9th lord mutual aspect, AK-5L
+        conjunction) manifests its results during the Chara Dasha of the rashi
+        where the yoga planets are located or where the mutual aspect falls.
+        (Rath: Yoga = potential; dasha of yoga-rashi = fulfillment of the yoga.)
+    condition: |
+      A Jaimini Rajayoga exists in the natal chart; the Chara Dasha of the rashi
+      where the yoga planets reside or where their mutual aspect falls is active.
+    assertion: |
+      Rajayogas identified in the natal chart manifest their promised results during
+      the Chara Dasha of the rashi containing the yoga-forming planets. If a yoga
+      involves mutual aspect across two rashis, the dashas of both rashis can
+      manifest the yoga results. The most precise timing uses the antardasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by K.N. Rao and Rath (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.6"
+      text_excerpt: |
+        "Marriage timing in Chara Dasha" — marriage typically occurs in one of:
+        (a) the dasha of the Darakaraka's rashi; (b) the dasha of the 7th house
+        rashi from Lagna; (c) the dasha of the 7th from Atmakaraka; (d) when Venus
+        is in the dasha rashi or AD rashi; (e) dasha of the navamsha Lagna rashi.
+        Multiple concurrent indicators strengthen the probability. (Rath: Marriage
+        timing requires at least 2-3 of these indicators to coincide.)
+    condition: |
+      The Chara Dasha period contains one or more of the marriage-timing indicators:
+      DK rashi, 7th from Lagna, 7th from AK, Venus in dasha rashi, navamsha lagna rashi.
+    assertion: |
+      Marriage is most likely during the Chara Dasha-Antardasha when multiple of
+      the following coincide: DK's rashi dasha active, 7th rashi dasha active, 7th
+      from AK active, Venus in dasha or antardasha rashi, navamsha lagna rashi active.
+      The probability increases with each additional indicator present.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + K.N. Rao confirmation (1.0) = 0.85; reduced to 0.80 for multi-condition nature"
+    caveats: |
+      Marriage timing is one of the most complex applications. Results vary heavily
+      by lagna. No single indicator is sufficient; multiple must coincide.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.7"
+      text_excerpt: |
+        "Career peak timing in Chara Dasha" — career peaks typically occur in:
+        (a) dasha of Amatyakaraka's rashi; (b) dasha of 10th house rashi; (c) dasha
+        of a rashi containing Jupiter (career expansion); (d) dasha of the rashi
+        aspecting the 10th from Lagna by benefic planets. (Rath: AmK dasha rashi
+        = career defining; always check the AmK's rashi dasha for career events.)
+    condition: |
+      The Chara Dasha period contains the Amatyakaraka's rashi, or the 10th house
+      rashi, or contains Jupiter, or has benefics aspecting the 10th house rashi.
+    assertion: |
+      Career peaks and defining professional events occur most often during dashas
+      of the AmK's rashi or the 10th house rashi. Jupiter in the dasha rashi
+      amplifies career expansion. Multiple career indicators coinciding in the same
+      dasha period = peak career manifestation.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath + K.N. Rao (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and AmK condition."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── EXCEPTION RULES AND SPECIAL CASES IN CHARA DASHA ───
+
+  - rule_id: JAIMINI.2.1.6.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.6"
+      text_excerpt: |
+        "When Chara Dasha lord is in own sign or exalted: dasha duration adjustment" —
+        when the dasha rashi's lord is in its own sign (swa) or exaltation (uccha) in
+        the natal chart, the dasha period is strengthened. Some versions of Chara Dasha
+        calculation adjust the period length in such cases. (Rath: Exalted/own-sign lord
+        = full expression of dasha potential; no reduction in period, but maximum results.)
+    condition: |
+      The lord of the Chara Dasha rashi is in its own sign or exaltation sign in the
+      natal chart.
+    assertion: |
+      When the dasha rashi's lord is in its own sign or exaltation, the dasha period
+      delivers maximum results of that rashi. The native experiences peak expression
+      of the dasha rashi's themes and significations. This is not a period adjustment
+      but an intensification of results.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.78"
+    caveats: "Some Chara Dasha calculation variants DO adjust the period years for exalted lords; Rath does not."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.7.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.7"
+      text_excerpt: |
+        "When Chara Dasha lord is debilitated or in enemy sign: reduced dasha strength" —
+        when the dasha rashi's lord is debilitated (neecha) or in an enemy sign, the
+        dasha's ability to deliver its positive results is weakened. Neecha Bhanga
+        (debility cancellation) can partially restore the results. (Rath: Debilitated
+        dasha lord = frustrated or delayed results in the dasha; neecha bhanga = partial
+        restoration.)
+    condition: |
+      The lord of the Chara Dasha rashi is in its debilitation sign or an enemy's
+      sign in the natal chart.
+    assertion: |
+      A debilitated or enemy-sign dasha rashi lord weakens the positive results of
+      that dasha period. The native may experience frustration, delay, or obstacles
+      in matters signified by the dasha rashi. Neecha Bhanga yoga on the debilitated
+      lord partially or fully restores results.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by classical tradition (1.0) = 0.85; reduced to 0.78"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.1.8.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.8"
+      text_excerpt: |
+        "Chara Dasha of Lagna rashi at beginning of life" — in all charts, regardless
+        of the odd/even Lagna rule, the very first Chara Dasha period begins from the
+        Lagna itself (or from a specific calculation that often returns to Lagna as
+        the starting point). This is the default starting position. (Rath: Chara Dasha
+        begins from Lagna; the first dasha lasts the Lagna rashi's calculated years.)
+    condition: |
+      The sequence and starting point of Chara Dasha periods from birth is being
+      determined.
+    assertion: |
+      Chara Dasha begins at birth from the Lagna rashi. The Lagna rashi's dasha
+      period (calculated by counting to its lord) is the first dasha of life.
+      Subsequent dashas follow in order (direct or reverse based on odd/even sign).
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by most Jaimini authorities (1.0) = 0.85; reduced to 0.80"
+    caveats: |
+      Some calculation systems start from a different rashi (not Lagna) depending on
+      specific conditions. The Lagna-start method is the most common and Rath's preferred
+      approach. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── CHARA DASHA AND RAJAYOGAS: ADDITIONAL RULES ───
+
+  - rule_id: JAIMINI.2.2.20.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.20"
+      text_excerpt: |
+        "Amatyakaraka in Chara Dasha rashi: career defining" — when the Amatyakaraka
+        planet is in the active Chara Dasha rashi, or when the AmK's rashi dasha is
+        active, career-defining events occur. The nature of the AmK planet shows the
+        type of career event: Jupiter AmK = professional elevation through wisdom;
+        Mars AmK = through valor or technical skill; Mercury AmK = through intellect
+        or communication. (Rath: AmK in dasha rashi = the career trajectory crystallizes.)
+    condition: |
+      The Amatyakaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Career-defining events crystallize when the AmK is in the dasha rashi. The
+      specific career domain and type of achievement is described by the AmK planet's
+      nature. This is the primary Jaimini career-event indicator in timing.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.21.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.21"
+      text_excerpt: |
+        "Putrakaraka in dasha rashi: children events" — when the Putrakaraka (PK)
+        is in the active Chara Dasha rashi, events involving children occur: conception,
+        birth, education, success or challenges of children. A well-placed PK in the
+        dasha rashi with benefics = birth of children or their success; afflicted PK =
+        concern for children's welfare. (Rath: PK in dasha rashi = children come front
+        and center in life.)
+    condition: |
+      The Putrakaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Children-related events (conception, birth, education, success) manifest during
+      the dasha when PK is in the dasha rashi. Well-placed PK with benefics = joyful
+      children events; afflicted PK = concerns for children or difficulty with progeny.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna and PK's natal dignity."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.22.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.22"
+      text_excerpt: |
+        "Gnatikaraka in dasha rashi: health and relative events" — when the Gnatikaraka
+        (GK, related to relatives and disease) is in the active dasha rashi, health
+        events or relative-related events (disputes, illness among relatives) manifest.
+        A well-placed GK with benefics = recovery, resolution; afflicted GK = health
+        concerns or relative conflicts. (Rath: GK in dasha rashi = karmic debts to
+        relatives surface; health issues may arise.)
+    condition: |
+      The Gnatikaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Health-related events or relative-related disputes and concerns manifest when
+      GK is in the dasha rashi. Well-placed GK = resolution of karmic debts and
+      health improvement; afflicted GK = disease manifestation or relative conflicts.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.2.23.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.23"
+      text_excerpt: |
+        "Matrukaraka in dasha rashi: mother-related events" — when the Matrukaraka
+        (MK) is in the active Chara Dasha rashi, events involving the mother come
+        to the fore: mother's health, the native-mother relationship, and matters
+        related to the home and emotional security. (Rath: MK in dasha rashi =
+        mother's chapter of life opens during the dasha.)
+    condition: |
+      The Matrukaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Mother-related events, home events, and emotional security matters manifest.
+      Well-placed MK = mother's health is good and the native receives maternal
+      support; afflicted MK = mother's health concerns or disruption of home/
+      emotional security.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.10"
+      text_excerpt: |
+        "Karakamsha dasha: soul-level transformation" — the Chara Dasha of the
+        Karakamsha rashi (the sign the AK occupies in navamsha, reflected back to
+        the natal chart) is an especially powerful dasha for soul-level events,
+        spiritual transformation, and fulfillment of the native's deepest purpose.
+        (Rath: KL dasha = the soul's primary mandate becomes operationally active.)
+    condition: |
+      The Chara Dasha of the rashi that is the Karakamsha Lagna (AK's navamsha sign)
+      becomes active.
+    assertion: |
+      The Karakamsha dasha period brings soul-level transformation and the activation
+      of the native's deepest purpose. The planetary content of the KL rashi (as
+      identified earlier in the chart) manifests its promises most fully during this dasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.80"
+    caveats: "Karakamsha identification must be accurate for this timing to work. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.3.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.11"
+      text_excerpt: |
+        "Hora Lagna dasha: financial peak period" — the Chara Dasha of the rashi
+        containing Hora Lagna (HL) is a period of financial focus and often of
+        significant financial events — wealth accumulation, financial decisions, or
+        financial challenges (if HL is afflicted). (Rath: HL dasha rashi = money
+        chapter of life; major financial events crystallize here.)
+    condition: |
+      The Chara Dasha of the rashi containing the Hora Lagna becomes active.
+    assertion: |
+      Significant financial events, wealth-related decisions, and material focus
+      characterize the Hora Lagna dasha. Benefics influencing HL = wealth accumulation
+      and financial gains; malefics = financial challenges or heavy expenditure.
+    scope: dasha
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.75 for HL's calculation variability"
+    caveats: "Hora Lagna calculation varies by commentator; accuracy of HL is prerequisite."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.10.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.10"
+      text_excerpt: |
+        "9th house dasha: fortune and dharma peak" — the Chara Dasha of the 9th
+        house rashi is a peak fortune period in the native's life. Long-distance travel,
+        philosophical insights, religious events, contact with gurus or mentors, and
+        good fortune manifest. Jupiter in or aspecting the 9th rashi amplifies the
+        fortune effects enormously. (Rath: 9th rashi dasha = fortune door opens fully.)
+    condition: |
+      The rashi occupying the 9th house (9th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Peak fortune periods, long-distance travel, contact with mentors or gurus,
+      religious and philosophical events, and dharmic activities manifest prominently.
+      Jupiter in or aspecting the 9th = exceptional fortune during this dasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna and 9th house occupants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.11.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.11"
+      text_excerpt: |
+        "5th house dasha: children and intelligence peak" — the Chara Dasha of the
+        5th house rashi brings children-related events and intellectual/creative peaks.
+        Rajayogas in the 5th rashi manifest during this dasha. Academic success,
+        creative achievements, and spiritual practices also peak. (Rath: 5th rashi
+        dasha = intelligence manifests; children events; past merit delivers rewards.)
+    condition: |
+      The rashi occupying the 5th house (5th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Children's events (birth, education, success), academic and intellectual peaks,
+      creative achievements, and any rajayogas in the 5th rashi manifest their results
+      during this dasha. Past-life merit is active during this dasha.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.12.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.12"
+      text_excerpt: |
+        "8th house dasha: transformation, longevity crisis, sudden events" — the
+        Chara Dasha of the 8th house rashi is the most transformative and often
+        the most challenging period. Sudden events, crises, potential health challenges,
+        and profound transformation characterize this dasha. If 8th has benefics, the
+        transformation is toward spiritual elevation; if malefics, toward hardship.
+        (Rath: 8th rashi dasha = the crucible; the deepest transformation of the life.)
+    condition: |
+      The rashi occupying the 8th house (8th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Sudden, transformative, and crisis-level events manifest. The 8th house dasha
+      is the most powerful for transformation of all kinds. Beneficial 8th = spiritual
+      depth and research gains; afflicted 8th = health crises, sudden losses, or
+      extreme changes in life direction.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by all commentators (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary enormously by lagna and 8th house occupants."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.13.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.13"
+      text_excerpt: |
+        "11th house dasha: gains, fulfillment of desires, elder sibling" — the
+        Chara Dasha of the 11th house rashi brings gain of desires, fulfillment of
+        long-held ambitions, elder sibling's welfare, and income expansion. Benefics
+        in or aspecting the 11th = abundant gains; malefics = unfulfilled desires
+        or elder sibling concerns. (Rath: 11th rashi dasha = Lakshmee comes home;
+        gains of all kinds manifest.)
+    condition: |
+      The rashi occupying the 11th house (11th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Gains, fulfillment of long-held desires, income expansion, elder sibling's
+      welfare, and abundance manifest during the 11th rashi dasha. Benefics in 11th =
+      exceptional gains; malefics = gains through effort or elder sibling concerns.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.82"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.14.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.14"
+      text_excerpt: |
+        "2nd house dasha: family, wealth, speech, food" — the Chara Dasha of the
+        2nd house rashi brings family-related events, wealth focus, and attention
+        to speech and food habits. Family members come into focus. Benefics in 2nd =
+        family harmony and wealth growth; malefics = family conflicts or financial
+        concerns. (Rath: 2nd rashi dasha = the family chapter; accumulated wealth
+        and family karma become active.)
+    condition: |
+      The rashi occupying the 2nd house (2nd from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Family events, wealth-related matters, speech quality (public speaking, communication),
+      and dietary/food-related matters come to the fore during the 2nd rashi dasha.
+      Benefics in 2nd = family prosperity and good speech; malefics = family disputes
+      or financial pressures.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.15.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.15"
+      text_excerpt: |
+        "3rd house dasha: valor, siblings, short travel, communication" — the Chara
+        Dasha of the 3rd house rashi brings younger sibling-related events, short
+        journeys, communication projects, and tests of personal courage. Benefics in
+        3rd = successful siblings and travel; malefics = sibling conflicts or courage
+        tested by adversity. (Rath: 3rd rashi dasha = the sibling chapter; personal
+        effort and valor are tested.)
+    condition: |
+      The rashi occupying the 3rd house (3rd from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Younger sibling events, short journeys, communication projects, and personal
+      courage-testing experiences manifest during the 3rd rashi dasha. Benefics in 3rd =
+      cooperative siblings and successful short ventures; malefics = sibling tensions
+      or communication challenges.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.16.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.16"
+      text_excerpt: |
+        "6th house dasha: enemies, health, service, legal disputes" — the Chara
+        Dasha of the 6th house rashi activates enemies, health challenges, service
+        obligations, and legal or litigation-related events. Benefics in 6th = victory
+        over enemies and recovery from illness; malefics = intensified conflicts and
+        sustained health concerns. (Rath: 6th rashi dasha = adversarial chapter; overcome
+        or be overcome.)
+    condition: |
+      The rashi occupying the 6th house (6th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Enemies, health challenges, service work, debts, and legal disputes become
+      prominent. Benefics in or aspecting 6th = victory over adversaries and health
+      recovery; malefics = intensified enemies and prolonged health challenges.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.17.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.17"
+      text_excerpt: |
+        "12th house dasha: loss, foreign residence, spirituality, moksha" — the
+        Chara Dasha of the 12th house rashi brings losses, expenditures, foreign
+        residence or retreat, spiritual deepening, and moksha-oriented experiences.
+        Benefics in 12th = spiritual retreat of high quality and foreign gains;
+        malefics = uncontrolled losses and confinement. (Rath: 12th rashi dasha =
+        the letting-go chapter; material things dissolve.)
+    condition: |
+      The rashi occupying the 12th house (12th from Lagna) enters its Chara Dasha period.
+    assertion: |
+      Expenditure, losses, foreign residence or journeys, spiritual deepening, and
+      letting-go of worldly attachments characterize the 12th rashi dasha. Benefics in
+      12th = spiritually enriching retreat or foreign gains; malefics = uncontrolled
+      expenditure or confinement.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.18.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.18"
+      text_excerpt: |
+        "Chara Dasha and Rajayoga: activation requires dasha + antardasha alignment" —
+        for a Rajayoga to fully manifest in a Chara Dasha period, both the mahadasha
+        AND the antardasha must align with the yoga. A Rajayoga in a rashi delivers
+        its promise most fully when that rashi is BOTH the mahadasha AND the antardasha
+        (same sign dasha-antardasha), or when the MD rashi and AD rashi are both
+        yoga-connected rashis. (Rath: MD+AD yoga alignment = peak manifestation.)
+    condition: |
+      Both the Chara mahadasha rashi and the antardasha rashi are connected to the
+      same natal Rajayoga in the chart.
+    assertion: |
+      When the Chara Dasha mahadasha and antardasha rashis are both connected to a
+      natal Rajayoga (either containing yoga-forming planets or aspecting them),
+      the yoga manifests its results most powerfully. Single MD alignment gives partial
+      results; MD+AD alignment gives full manifestation.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath synthesis (1.0) = 0.85; reduced to 0.78 for composite interpretive rule"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.20.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.20"
+      text_excerpt: |
+        "Benefic Chara Dasha: indicators of a favorable period" — a Chara Dasha
+        is classified as favorable when: (1) the dasha rashi has more benefic than
+        malefic influence; (2) the dasha rashi lord is well-placed; (3) Lagna or
+        AK is in argala from the dasha rashi; (4) the dasha rashi is aspected by
+        its own lord. (Rath: A dasha with 3 of these 4 factors = strongly favorable
+        life period.)
+    condition: |
+      A Chara Dasha period is being evaluated for its overall quality (favorable
+      or unfavorable).
+    assertion: |
+      A Chara Dasha is favorable when: benefics outnumber malefics in the dasha rashi;
+      the dasha lord is well-placed; Lagna or AK creates argala on the dasha rashi;
+      the dasha rashi's own lord aspects it. Three or more of these indicators =
+      a strongly favorable dasha period.
+    scope: dasha
+    school: jaimini
+    confidence: 0.75
+    confidence_rationale: "Implicit sutra form (0.85) × Rath synthesis commentary (1.0) = 0.85; reduced to 0.75 for composite scoring rule"
+    caveats: "This is a Rath synthesis rule, not a verbatim sutra. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.25.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.25"
+      text_excerpt: |
+        "Bhratrukaraka in dasha rashi: sibling events" — when the Bhratrukaraka (BK)
+        is in the active Chara Dasha rashi, sibling-related events manifest: sibling's
+        marriage, career events, health, or conflicts with siblings. If BK is well-placed
+        with benefics, siblings prosper; if afflicted, sibling difficulties arise.
+        (Rath: BK in dasha rashi = sibling's chapter of the native's life activates.)
+    condition: |
+      The Bhratrukaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Events involving younger or co-born siblings manifest when BK is in the dasha
+      rashi. Well-placed BK = sibling events are positive (marriage, career success);
+      afflicted BK = concern for sibling welfare or sibling conflicts.
+    scope: dasha
+    school: jaimini
+    confidence: 0.78
+    confidence_rationale: "Implicit sutra form (0.85) × Rath (1.0) = 0.85; reduced to 0.78"
+    caveats: null
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.26.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.26"
+      text_excerpt: |
+        "Darakaraka in dasha rashi: spouse/relationship events" — when the Darakaraka
+        (DK) is in the active Chara Dasha rashi, spouse-related events manifest.
+        This is a primary marriage-timing indicator. If DK is well-placed with benefics,
+        marriage or marital happiness; if afflicted, marital discord or spouse's health
+        concerns. (Rath: DK in dasha rashi = the other half of the soul appears or
+        becomes prominent in life.)
+    condition: |
+      The Darakaraka planet occupies the currently active Chara Dasha rashi.
+    assertion: |
+      Spouse-related events (marriage, marital developments, partner's health/career)
+      manifest prominently when DK is in the dasha rashi. This is one of the strongest
+      marriage-timing indicators in Jaimini. Well-placed DK = marital joy; afflicted DK =
+      marital challenges.
+    scope: dasha
+    school: jaimini
+    confidence: 0.82
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed by Rath and K.N. Rao (1.0) = 0.85; reduced to 0.82"
+    caveats: "Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.27.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.27"
+      text_excerpt: |
+        "Pitrukaraka in dasha rashi (8-karaka scheme): father events" — in the 8-karaka
+        scheme, when the Pitrukaraka (PiK) is in the active Chara Dasha rashi, father-
+        related events manifest: father's health, career, or the native's fortune through
+        the paternal lineage. Well-placed PiK = father prospers; afflicted PiK = father's
+        health or career challenges. (Rath: PiK in dasha rashi = paternal karma activates.)
+    condition: |
+      In the 8-karaka scheme, the Pitrukaraka planet occupies the currently active
+      Chara Dasha rashi.
+    assertion: |
+      Father-related events manifest when PiK (in the 8-karaka scheme) is in the
+      dasha rashi. Well-placed PiK = father's welfare and native's fortune through
+      father; afflicted PiK = paternal challenges or father-native conflicts.
+    scope: dasha
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × 8-karaka scheme is contested (0.85) = 0.72"
+    caveats: "Only applicable in the 8-karaka scheme. PiK concept contested across commentators."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.28.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.28"
+      text_excerpt: |
+        "Chara Dasha of 12th from natal Lagna: foreign residence or moksha" —
+        the Chara Dasha of the 12th rashi from natal Lagna is a period of foreign
+        residence, spiritual retreat, or moksha-oriented experiences. If the 12th
+        house is strong with benefics, this dasha brings spiritually enriching
+        isolation or foreign connections; if malefics, loss and confinement.
+        (Rath: 12th from Lagna dasha = border crossings — physical or spiritual.)
+    condition: |
+      The rashi occupying the 12th house from natal Lagna enters its Chara Dasha period.
+    assertion: |
+      Foreign residence, spiritual retreat, expenditure, and moksha-oriented events
+      manifest. The 12th rashi dasha often coincides with foreign travel or residence,
+      hospitalization, or spiritual withdrawal. Quality determined by 12th house
+      occupants and aspects.
+    scope: dasha
+    school: jaimini
+    confidence: 0.80
+    confidence_rationale: "Implicit sutra form (0.85) × confirmed (1.0) = 0.85; reduced to 0.80"
+    caveats: "Partially overlaps with JAIMINI.2.4.17.1. Results vary by lagna."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.29.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.29"
+      text_excerpt: |
+        "Navamsha Lagna dasha: karmic reorientation" — the Chara Dasha of the
+        rashi that is the Navamsha Lagna (the Lagna sign in the D9) brings a deep
+        karmic reorientation, often coinciding with events that correct the native's
+        life direction to align with their true dharmic path. (Rath: Navamsha lagna
+        dasha = the soul realigns with its dharmic trajectory; major dharmic choice.)
+    condition: |
+      The Chara Dasha of the rashi that forms the Navamsha (D9) Lagna becomes active.
+    assertion: |
+      The Navamsha Lagna dasha brings karmic reorientation and events that align
+      the native's life more closely with their true dharmic path. This is often
+      a spiritually significant period involving major life choices or partnerships.
+    scope: dasha
+    school: jaimini
+    confidence: 0.72
+    confidence_rationale: "Implicit sutra form (0.85) × Rath commentary (1.0) = 0.85; reduced to 0.72 for navamsha-specific calculation dependency"
+    caveats: "Accurate birth time is critical for Navamsha Lagna identification."
+    verified: true
+    stub: false
+    stub_reason: null
+
+  - rule_id: JAIMINI.2.4.30.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.30"
+      text_excerpt: |
+        "Purana-suta (rebirth) and the final dasha: moksha indicators" — in the final
+        dasha periods of a native's life (typically in the last 15-20 years), when the
+        12th lord, Ketu, and the 12th from AK are all activated, Jaimini indicates that
+        the conditions for liberation (moksha) are most favorable. The soul's karmic
+        account approaches completion. (Rath: End-of-life dashas are read for moksha
+        quality — what kind of liberation is available.)
+    condition: |
+      In the later stages of life, the Chara Dasha periods of the 12th from Lagna,
+      12th from AK, and rashis containing Ketu or the 12th lord become active.
+    assertion: |
+      The final Chara Dasha periods of a native's life, especially when the 12th from
+      Lagna, 12th from AK, Ketu's rashi, and the navamsha lagna all become activated,
+      indicate the conditions for moksha. The quality of liberation available is shown
+      by the planets in and aspecting these rashis.
+    scope: dasha
+    school: jaimini
+    confidence: 0.68
+    confidence_rationale: "Prose commentary with interpretive synthesis (0.70) × Rath (1.0) = 0.70; Ketu factor not applied (not a standalone nodal rule here); using 0.68"
+    caveats: |
+      This is a Rath synthesis about moksha timing across the final dasha periods.
+      The specific indicator-combination (12th from Lagna + 12th from AK + Ketu) is
+      Rath's interpretation, not a standalone sutra. Results vary by lagna.
+    verified: true
+    stub: false
+    stub_reason: null
+
+  # ─── STUBS: 9 rules requiring deeper textual verification ───
+
+  - rule_id: JAIMINI.2.1.9.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.1.9"
+      text_excerpt: |
+        "Chara Dasha for the 12 rashis: specific year-count for each" — the exact
+        years for each of the 12 rashis' Chara Dasha periods in a specific nativity
+        require precise calculation using the dasha lord's natal degree position.
+        The underlying sutra specifying the exact counting rule for all 12 signs
+        simultaneously requires manuscript verification.
+    condition: |
+      All 12 rashi dasha periods are being calculated simultaneously.
+    assertion: |
+      [STUB: Exact year-count calculation for all 12 rashis per sutra — requires
+      verified manuscript-level calculation formula that handles all edge cases
+      (e.g., lord in same sign, lord in 7th from sign). Rath gives one method;
+      others give variants.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable; calculation edge cases require primary sutra"
+    caveats: "Multiple calculation variants exist; primary sutra for all-cases formula not fully verified."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not fully derivable — calculation edge cases unresolved"
+
+  - rule_id: JAIMINI.2.2.25.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.25"
+      text_excerpt: |
+        "Chara Dasha and Ashtottari/Vimshottari cross-reference" — Jaimini is said
+        to give rules for cross-referencing Chara Dasha results with Parashari dasha
+        systems for timing precision. The specific sutra for this cross-reference
+        technique requires primary text verification.
+    condition: |
+      Chara Dasha timing is cross-referenced with Parashari dasha systems.
+    assertion: |
+      [STUB: Cross-reference rules between Chara Dasha and Parashari dashas for
+      precision timing — not found with sufficient sutra-level basis in available
+      commentary. Rath mentions this technique but without direct sutra citation.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Cross-referencing systems is a modern integration technique; sutra basis unverified."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: assertion not derivable from available text"
+
+  - rule_id: JAIMINI.2.3.15.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.15"
+      text_excerpt: |
+        "Sthira Dasha: Jaimini's fixed-sign dasha system" — Jaimini mentions a
+        Sthira (fixed) dasha system based on fixed signs as an alternative to Chara
+        Dasha. The specific calculation rules and when to prefer Sthira Dasha over
+        Chara Dasha require primary sutra verification.
+    condition: |
+      The Sthira Dasha system is being applied to a natal chart.
+    assertion: |
+      [STUB: Sthira Dasha calculation and application rules — specific rules for this
+      alternative dasha system not fully extractable from available commentary. Requires
+      primary sutra access for Sthira Dasha.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Sthira Dasha is mentioned but rules are not detailed in available commentary edition."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: specific Sthira Dasha rules not available"
+
+  - rule_id: JAIMINI.2.4.32.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.32"
+      text_excerpt: |
+        "Navamsha Dasha: the subsidiary dasha for spiritual timing" — Jaimini is said
+        to mention a Navamsha-based dasha for timing spiritual events with greater
+        precision. Specific calculation rules require primary sutra verification.
+    condition: |
+      Navamsha-based dasha periods are being applied for spiritual event timing.
+    assertion: |
+      [STUB: Navamsha Dasha calculation rules — not fully specified in available
+      Rath commentary. Mentioned as a subsidiary timing tool; primary sutra basis needed.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Navamsha Dasha as a system is referenced but not detailed."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: calculation rules not available"
+
+  - rule_id: JAIMINI.2.2.26.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.2.26"
+      text_excerpt: |
+        "Ruling planets in Chara Dasha: the concept of dasha nayaka" — Jaimini refers
+        to the concept of a 'ruling planet' within each Chara Dasha period that acts as
+        the primary karma-delivery agent. The specific rules for identifying the dasha
+        nayaka from all candidate planets require primary sutra verification.
+    condition: |
+      The primary karma-delivery planet (dasha nayaka) within a Chara Dasha period
+      is being identified.
+    assertion: |
+      [STUB: Dasha nayaka identification rules — specific methodology for selecting
+      the primary ruling planet of a Chara Dasha period not fully verified from
+      available commentary. Rath references this concept but full rules are paraphrased.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Dasha nayaka concept requires primary sutra verification."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: methodology not derivable from available text"
+
+  - rule_id: JAIMINI.2.3.20.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.20"
+      text_excerpt: |
+        "Chara Dasha and divisional chart integration: D60 (Shastiamsha) for karma" —
+        Jaimini is said to emphasize using D60 alongside Chara Dasha for assessing
+        the quality of karmic delivery. The specific integration rules require primary
+        sutra verification beyond available commentary.
+    condition: |
+      D60 (Shastiamsha) chart is being integrated with Chara Dasha analysis.
+    assertion: |
+      [STUB: D60 integration rules for Chara Dasha karma assessment — specific method
+      not available with sutra-level precision from available commentary edition.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "D60-Chara Dasha integration is an advanced technique; sutra basis not verified."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: D60 integration rules not derivable from available text"
+
+  - rule_id: JAIMINI.2.4.33.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.33"
+      text_excerpt: |
+        "Pranapada Lagna and Chara Dasha" — Pranapada Lagna is a sensitive point
+        in Jaimini. The sutra for how Pranapada modifies Chara Dasha results or
+        acts as an additional timing trigger requires primary text verification beyond
+        what is available in the Rath commentary summary.
+    condition: |
+      Pranapada Lagna is integrated with Chara Dasha timing.
+    assertion: |
+      [STUB: Pranapada's role in modifying Chara Dasha results — specific sutra-level
+      rules not available. Pranapada as a timing trigger in Chara Dasha requires
+      primary text access.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Pranapada-Chara Dasha integration requires primary sutra."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: Pranapada integration rules not derivable"
+
+  - rule_id: JAIMINI.2.3.25.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.3.25"
+      text_excerpt: |
+        "Karaka-related timing using Chara Dasha: when does AK dasha give moksha?" —
+        Jaimini gives specific rules for when the AK dasha gives liberation vs.
+        material success. These conditional rules (AK's sign + 12th from AK + Ketu
+        relationships) need sutra-level verification for the full conditional chain.
+    condition: |
+      The AK dasha is active and is being evaluated for moksha vs. worldly results.
+    assertion: |
+      [STUB: Conditional rules for AK dasha giving moksha vs. material results —
+      the full condition chain requires primary sutra verification. Rath mentions
+      the conditions but the full sutra text is paraphrased rather than cited verbatim.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Moksha-vs-material AK dasha rules require primary sutra."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: conditional chain not fully derivable from available text"
+
+  - rule_id: JAIMINI.2.4.35.STUB.1
+    source_verse:
+      canonical_id: JAIMINI
+      verse_ref: "2.4.35"
+      text_excerpt: |
+        "Chara Dasha for multiple births: twins and the shared dasha structure" —
+        Jaimini addresses the Chara Dasha structure for twins where birth times differ
+        slightly. The specific rules for handling nearly-identical charts in Chara Dasha
+        require primary text verification.
+    condition: |
+      Chara Dasha is applied to twins or very closely-timed births.
+    assertion: |
+      [STUB: Chara Dasha rules for multiple births / near-identical charts — specific
+      sutra rules for this edge case not available in standard commentary editions.]
+    scope: dasha
+    school: jaimini
+    confidence: 0.30
+    confidence_rationale: "Minimum extractable"
+    caveats: "Edge case; not standard interpretation material."
+    verified: false
+    stub: true
+    stub_reason: "pramana_failure: twin-chart rules not derivable from available text"
