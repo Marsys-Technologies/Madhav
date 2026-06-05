@@ -12,12 +12,14 @@ import path from 'path';
 
 // In Next.js API routes, process.cwd() resolves to the `platform/` directory.
 // Go up one level to reach the repo root.
-const CONFLICT_PATCHES_DIR = path.join(
-  process.cwd(),
-  '..',
-  '00_ARCHITECTURE',
-  'CONFLICT_PATCHES',
-);
+//
+// NOTE: intentionally a lazy getter (function) rather than a module-level constant.
+// A module-level `path.join(process.cwd(), '..')` causes Turbopack to create a
+// DirAssetReference for the parent directory, which contains python-sidecar/venv/
+// with a broken symlink (→ python3.13) that triggers a fatal Turbopack panic.
+function getConflictPatchesDir(): string {
+  return path.join(process.cwd(), '..', '00_ARCHITECTURE', 'CONFLICT_PATCHES');
+}
 
 export interface PatchSummary {
   filename: string;
@@ -82,7 +84,7 @@ function parseYaml(content: string, filename: string, fallbackStatus: string): P
 }
 
 function listAndParseYamls(subdir: string, fallbackStatus: string): PatchSummary[] {
-  const dirPath = path.join(CONFLICT_PATCHES_DIR, subdir);
+  const dirPath = path.join(getConflictPatchesDir(), subdir);
   let files: string[] = [];
   try {
     files = fs
