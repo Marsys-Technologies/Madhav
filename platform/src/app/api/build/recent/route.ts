@@ -111,7 +111,7 @@ export async function GET(_request: Request): Promise<Response> {
     ? `AND NOT EXISTS (
          SELECT 1 FROM notification_views nv
          WHERE nv.build_id = b.build_id
-           AND nv.user_uid = $${isSuperAdmin ? '1' : '2'}
+           AND nv.user_id = $${isSuperAdmin ? '1' : '2'}
        )`
     : ''
 
