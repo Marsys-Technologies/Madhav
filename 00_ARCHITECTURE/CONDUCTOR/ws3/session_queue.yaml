@@ -108,7 +108,30 @@ sessions:
       fail: HALT — deep-fix escalation
 
   - id: concordance-build
-    status: PENDING
+    status: passed
+    completed_at: "2026-06-05"
+    verdict: PASS
+    total_topics: 210
+    pattern_distribution:
+      AGREE: 47
+      QUALIFY: 90
+      CONFLICT: 13
+      ORTHOGONAL: 57
+      SILENT: 3
+    c1_c7_flags_embedded: true
+    commits:
+      - "0d0a3b71"
+      - "126063bc"
+    artifacts:
+      - "00_ARCHITECTURE/CONDUCTOR/ws3/brahmagyan_concordance.yaml"
+      - "00_ARCHITECTURE/CONDUCTOR/ws3/smriti/concordance-pass.md"
+    notes: >
+      210 topics covering all C1-C7 flag domains. 13 confirmed CONFLICTS including
+      C7 retrograde (Parashari exalted-like vs KP previous sub — genuine conflict
+      in 5 sub-entries), sign-primacy vs nakshatra-primacy (TC.162), bhava madhya
+      vs cusp boundary (TC.143), KP vs Lahiri ayanamsha (TC.170). 57 ORTHOGONAL
+      entries covering all 4 framework incompatibilities (C1 karakas, C2 aspects,
+      C3 cusps, C4 strength, C5 timing). Concordance v1.0 sealed.
     role: Śilpī + Pramāṇa
     depends_on: [gate-b-acharya]
     scope: |
