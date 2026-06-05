@@ -37,6 +37,7 @@ export function CockpitShell({ chartId }: { chartId: string }) {
   const [build, setBuild] = useState<ActiveBuild | null>(null)
   const [layers, setLayers] = useState<Layer[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
+  const [sidecarHealthy, setSidecarHealthy] = useState<boolean>(false)
 
   const poll = useCallback(async () => {
     const res = await fetch('/api/build/active').catch(() => null)
@@ -53,15 +54,24 @@ export function CockpitShell({ chartId }: { chartId: string }) {
     setLayers(data.layers ?? [])
   }, [chartId])
 
+  const checkSidecar = useCallback(async () => {
+    const res = await fetch('/api/sidecar/health').catch(() => null)
+    if (!res?.ok) { setSidecarHealthy(false); return }
+    const data = (await res.json()) as { healthy: boolean }
+    setSidecarHealthy(data.healthy === true)
+  }, [])
+
   useEffect(() => {
     void poll()
     void fetchLayers()
+    void checkSidecar()
     const id = setInterval(() => {
       void poll()
       void fetchLayers()
     }, 10_000)
-    return () => clearInterval(id)
-  }, [poll, fetchLayers])
+    const sidecarId = setInterval(() => void checkSidecar(), 30_000)
+    return () => { clearInterval(id); clearInterval(sidecarId) }
+  }, [poll, fetchLayers, checkSidecar])
 
   function handleBuildStart(buildId?: string) {
     if (buildId) {
@@ -92,7 +102,7 @@ export function CockpitShell({ chartId }: { chartId: string }) {
         qps={0}
         activeWriters={0}
         queueDepth={0}
-        sidecarHealthy={false}
+        sidecarHealthy={sidecarHealthy}
         buildId={build?.build_id ?? ''}
       />
 
