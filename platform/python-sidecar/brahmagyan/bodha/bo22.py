@@ -603,6 +603,208 @@ def query_cgm_subgraph(
     }
 
 
+# ── Ayanamsha-context re-derivation (Stream E, e4) ───────────────────────────
+
+# Graha name → signal ID prefix (matches CGM node IDs in CANONICAL_EDGES)
+_GRAHA_TO_SIGNAL: dict[str, str] = {
+    "Sun":     "PLN.SUN",
+    "Moon":    "PLN.MOON",
+    "Mars":    "PLN.MARS",
+    "Mercury": "PLN.MERCURY",
+    "Jupiter": "PLN.JUPITER",
+    "Venus":   "PLN.VENUS",
+    "Saturn":  "PLN.SATURN",
+    "Rahu":    "PLN.RAHU",
+    "Ketu":    "PLN.KETU",
+}
+
+# Threshold: if two ayanamshas place a planet this many degrees from a sign or
+# nakshatra boundary, the edge is flagged as potentially ayanamsha_dependent.
+BOUNDARY_PROXIMITY_DEG: float = 0.30  # ~18 arc-minutes
+
+# Sign boundaries: every 30.0°; Nakshatra boundaries: every 13.333°
+SIGN_BOUNDARY_INTERVAL = 30.0
+NAKSHATRA_BOUNDARY_INTERVAL = 360.0 / 27  # ~13.333°
+
+
+def _distance_to_nearest_boundary(lon: float, interval: float) -> float:
+    """Return the minimum angular distance from lon to the nearest multiple of interval."""
+    remainder = lon % interval
+    return min(remainder, interval - remainder)
+
+
+def detect_ayanamsha_dependent_edges(
+    chart_id: str,
+    *,
+    ayanamsha_pair: tuple[str, str] = ("lahiri", "kp"),
+    boundary_threshold_deg: float = BOUNDARY_PROXIMITY_DEG,
+) -> dict[str, Any]:
+    """
+    Detect bodha_graph edges whose involved planets fall near sign/nakshatra
+    boundaries under at least one of the two ayanamshas in the pair.
+
+    When a planet is near a boundary, different ayanamsha offsets may place it
+    in different signs or nakshatras, changing the edge's semantic meaning
+    (sign-lord changes → 'modulate' target changes; nakshatra-lord changes →
+    'amplify' target changes). These edges are tagged AYANAMSHA_DEPENDENT.
+
+    Args:
+        chart_id:             UUID of the chart.
+        ayanamsha_pair:       Pair of ayanamsha keys to compare (default lahiri+kp).
+        boundary_threshold_deg: Minimum distance from boundary to flag (default 0.30°).
+
+    Returns:
+        {
+          "chart_id": str,
+          "ayanamsha_pair": [str, str],
+          "boundary_threshold_deg": float,
+          "ayanamsha_dependent_edges": [
+            {
+              "edge_id": str,
+              "from_signal_id": str,
+              "to_signal_id": str,
+              "planet": str,
+              "distance_to_boundary_deg": float,
+              "boundary_type": "sign" | "nakshatra",
+              "ayanamsha_context": str,
+              "sidereal_longitude": float,
+            }
+          ],
+          "total_edges_scanned": int,
+          "dependent_count": int,
+          "provenance_envelope": dict,
+        }
+    """
+    aya_a, aya_b = ayanamsha_pair
+
+    # Step 1: Fetch current edges for the chart (all ayanamshas)
+    try:
+        with _get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT edge_id, from_signal_id, to_signal_id, edge_type, ayanamsha_id
+                FROM bodha_graph
+                WHERE chart_id = %s
+                ORDER BY edge_id
+                """,
+                (chart_id,),
+            ).fetchall()
+    except Exception as exc:
+        logger.error("[bo22] detect_ayanamsha_dependent_edges DB read failed: %s", exc)
+        return {
+            "chart_id": chart_id,
+            "error": str(exc),
+            "ayanamsha_dependent_edges": [],
+        }
+
+    # Step 2: Fetch ganita_positions for both ayanamshas
+    positions_by_aya: dict[str, dict[str, dict]] = {}
+    try:
+        with _get_conn() as conn:
+            pos_rows = conn.execute(
+                """
+                SELECT ayanamsha_id, planet, sidereal_longitude
+                FROM ganita_positions
+                WHERE chart_id = %s AND ayanamsha_id = ANY(%s)
+                ORDER BY ayanamsha_id, planet
+                """,
+                (chart_id, list(ayanamsha_pair)),
+            ).fetchall()
+        for pr in pos_rows:
+            aya_id, planet, sid_lon = pr[0], pr[1], pr[2]
+            positions_by_aya.setdefault(aya_id, {})[planet] = {
+                "sidereal_longitude": float(sid_lon),
+            }
+    except Exception as exc:
+        logger.warning(
+            "[bo22] ganita_positions not available, skipping boundary check: %s", exc
+        )
+        positions_by_aya = {}
+
+    # Step 3: Identify signal IDs that map to grahas near boundaries
+    dependent_entries: list[dict[str, Any]] = []
+
+    # Build reverse map: signal_id → graha name
+    _SIGNAL_TO_GRAHA = {v: k for k, v in _GRAHA_TO_SIGNAL.items()}
+
+    scanned = 0
+    for row in rows:
+        edge_id, from_sig, to_sig, edge_type, aya_id = row
+        scanned += 1
+
+        # Check both from_signal_id and to_signal_id
+        for sig_id in (from_sig, to_sig):
+            graha = _SIGNAL_TO_GRAHA.get(sig_id)
+            if graha is None:
+                continue  # Not a planet signal (e.g. HSE.* or SGN.*)
+
+            # Check across both ayanamshas
+            for check_aya in (aya_a, aya_b):
+                pos = positions_by_aya.get(check_aya, {}).get(graha)
+                if pos is None:
+                    continue  # Position not available for this ayanamsha
+
+                sid_lon = pos["sidereal_longitude"]
+
+                # Check sign boundary proximity
+                sign_dist = _distance_to_nearest_boundary(sid_lon, SIGN_BOUNDARY_INTERVAL)
+                if sign_dist <= boundary_threshold_deg:
+                    dependent_entries.append({
+                        "edge_id":                   edge_id,
+                        "from_signal_id":            from_sig,
+                        "to_signal_id":              to_sig,
+                        "planet":                    graha,
+                        "distance_to_boundary_deg":  round(sign_dist, 4),
+                        "boundary_type":             "sign",
+                        "ayanamsha_context":         check_aya,
+                        "sidereal_longitude":        round(sid_lon, 6),
+                    })
+
+                # Check nakshatra boundary proximity
+                nak_dist = _distance_to_nearest_boundary(sid_lon, NAKSHATRA_BOUNDARY_INTERVAL)
+                if nak_dist <= boundary_threshold_deg:
+                    dependent_entries.append({
+                        "edge_id":                   edge_id,
+                        "from_signal_id":            from_sig,
+                        "to_signal_id":              to_sig,
+                        "planet":                    graha,
+                        "distance_to_boundary_deg":  round(nak_dist, 4),
+                        "boundary_type":             "nakshatra",
+                        "ayanamsha_context":         check_aya,
+                        "sidereal_longitude":        round(sid_lon, 6),
+                    })
+
+    # Deduplicate by (edge_id, planet, boundary_type, ayanamsha_context)
+    seen: set[tuple] = set()
+    deduped: list[dict] = []
+    for entry in dependent_entries:
+        key = (entry["edge_id"], entry["planet"],
+               entry["boundary_type"], entry["ayanamsha_context"])
+        if key not in seen:
+            seen.add(key)
+            deduped.append(entry)
+
+    logger.info(
+        "[bo22] detect_ayanamsha_dependent_edges: chart=%s scanned=%d dependent=%d",
+        chart_id, scanned, len(deduped),
+    )
+
+    return {
+        "chart_id":                    chart_id,
+        "ayanamsha_pair":              list(ayanamsha_pair),
+        "boundary_threshold_deg":      boundary_threshold_deg,
+        "ayanamsha_dependent_edges":   deduped,
+        "total_edges_scanned":         scanned,
+        "dependent_count":             len(deduped),
+        "provenance_envelope": {
+            "source":      "bodha.graph + ganita_positions",
+            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "chart_id":    chart_id,
+            "method":      "boundary_proximity",
+        },
+    }
+
+
 # ── Acceptance gate ───────────────────────────────────────────────────────────
 
 
