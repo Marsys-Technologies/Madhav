@@ -226,20 +226,31 @@ sessions:
 
   - id: l3-l4-reverify
     layer: reverify
-    status: blocked_ws3
+    status: passed
+    closed_at: 2026-06-05
+    smriti: 00_ARCHITECTURE/CONDUCTOR/ws2/smriti/l3-l4-reverify-pass.md
+    commits:
+      - 82a5c825  # l3_l4_reverification_report.py — 23/23 STILL_VALID, 25/25 unchanged
     scope: re-verify L3/L4 outputs that inherited from ungrounded signals
     acceptance: temporal fabric + anchors still pass their gates against grounded signals.
     depends_on: [l2-bodha-grounded]
-    ws3_blocked: true
+    ws3_blocked: false
+    results:
+      l3_windows_still_valid: 23
+      l3_windows_revised: 0
+      l4_anchors_unchanged: 25
+      l4_anchors_changed_gt_0_05: 0
+      l4_anchors_changed_gt_0_10: 0
+      overall_verdict: PASS
 
   - id: red-team-is8b
     layer: red_team
-    status: blocked_ws3
+    status: pending
     role: adversarial swarm (Pramana + external red-team agent)
     scope: per master arch §IS.8(b) — full-instrument red team on grounded, full-depth instrument
     acceptance: no class-1 findings; class-2 findings have remediation plan committed.
     depends_on: [l3-l4-reverify, l5-mimamsa]
-    ws3_blocked: true
+    ws3_blocked: false
 
   - id: wave-close
     layer: close
