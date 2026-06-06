@@ -4,6 +4,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useActiveRun } from '@/hooks/useActiveRun'
+import { useCockpitSSE } from '@/hooks/useCockpitSSE'
+import type { CockpitEvent } from '@/hooks/useCockpitSSE'
 import { LayerPanel } from './LayerPanel'
 import { LiveDependencyGraph } from './LiveDependencyGraph'
 import type { AssetWithState } from './LiveDependencyGraph'
@@ -27,6 +29,29 @@ export function DataAssetsView({ chartId }: Props) {
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
   const layerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  // Live SSE overlay: patches from the orchestrator overwrite stats for DAG rendering
+  const [sseOverlay, setSseOverlay] = useState<Map<string, Partial<AssetWithState>>>(new Map())
+
+  const handleSSEEvent = useCallback((e: CockpitEvent) => {
+    if (e.type === 'asset.state_change') {
+      setSseOverlay(prev => {
+        const next = new Map(prev)
+        next.set(e.asset_id, { ...prev.get(e.asset_id), state: e.to_state })
+        return next
+      })
+    } else if (e.type === 'asset.progress') {
+      setSseOverlay(prev => {
+        const next = new Map(prev)
+        next.set(e.asset_id, { ...prev.get(e.asset_id), actual_rows: e.rows_written })
+        return next
+      })
+    } else if (e.type === 'run.state_change') {
+      refreshRun()
+    }
+  }, [refreshRun])
+
+  useCockpitSSE(chartId, handleSSEEvent)
 
   const handleNodeClick = useCallback((assetId: string) => {
     const asset = assets.find(a => a.asset_id === assetId)
@@ -87,14 +112,15 @@ export function DataAssetsView({ chartId }: Props) {
     ),
   ]
 
-  // Merge assets + stats into AssetWithState for LiveDependencyGraph
+  // Merge assets + stats + SSE overlay into AssetWithState for LiveDependencyGraph
   const assetsWithState: AssetWithState[] = assets.map(a => {
     const s = stats.get(a.asset_id)
+    const overlay = sseOverlay.get(a.asset_id)
     return {
       ...a,
-      state: s?.state ?? null,
+      state: overlay?.state ?? s?.state ?? null,
       last_built_at: s?.last_built_at ?? null,
-      actual_rows: s?.actual_rows ?? null,
+      actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
     }
   })
 
