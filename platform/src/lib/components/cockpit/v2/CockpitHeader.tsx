@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatDate } from '@/lib/utils/date'
 
 interface Props {
   chartId: string
@@ -96,7 +97,7 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
               marginTop: '2px',
             }}
           >
-            {birthDate ?? '—'} · {birthPlace ?? '—'}{' '}
+            {formatDate(birthDate) || '—'} · {birthPlace ?? '—'}{' '}
             <span
               style={{
                 fontFamily: 'var(--mono-stack)',

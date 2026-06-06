@@ -18,8 +18,9 @@ export function AppShellBreadcrumb({
   mobileNav?: ReactNode
 }) {
   const pathname = usePathname()
-  // Consume chat has its own header — breadcrumb is redundant there
+  // Consume and cockpit build have their own headers — breadcrumb is redundant there
   if (pathname.includes('/consume')) return null
+  if (pathname.includes('/build')) return null
   if (segments.length === 0) return null
 
   return (
