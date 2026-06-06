@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface Props {
   chartId: string
@@ -28,7 +29,10 @@ export function CascadeBanner({ chartId, assetId, downstreamStaleIds, onDismiss,
         }),
       })
       const body = await r.json()
-      if (r.ok) onRunStarted(body.data.run_id)
+      if (!r.ok) throw new Error(body.error ?? `Cascade failed (${r.status})`)
+      onRunStarted(body.data.run_id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start cascade rebuild')
     } finally {
       setLoading(false)
     }

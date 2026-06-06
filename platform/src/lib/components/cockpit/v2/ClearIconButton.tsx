@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { ClearConfirmModal } from './ClearConfirmModal'
 
 interface ClearPreview {
@@ -38,8 +39,8 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
       const body = await r.json()
       if (!r.ok) throw new Error(body.error ?? 'Preview failed')
       setPreview(body.preview)
-    } catch {
-      // silently fail on preview; Phase 12 will add toast
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load clear preview')
     } finally {
       setLoading(false)
     }

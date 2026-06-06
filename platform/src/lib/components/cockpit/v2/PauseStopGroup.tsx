@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface Props {
   runId: string
@@ -16,11 +17,17 @@ export function PauseStopGroup({ runId, isPaused, onStateChange }: Props) {
   const request = async (action: 'pause' | 'resume' | 'stop') => {
     setLoading(action)
     try {
-      await fetch(`/api/cockpit/runs/${runId}/${action}`, {
+      const r = await fetch(`/api/cockpit/runs/${runId}/${action}`, {
         method: 'POST',
         credentials: 'include',
       })
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}))
+        throw new Error(body.error ?? `${action} failed (${r.status})`)
+      }
       onStateChange?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to ${action} run`)
     } finally {
       setLoading(null)
       setConfirmStop(false)
