@@ -70,17 +70,10 @@ function setupHappyPath(uid = 'user-uid-001') {
     if (/information_schema\.columns/.test(sql)) {
       return Promise.resolve({ rows: [{ exists: false }] })
     }
-    // chart INSERT
+    // chart INSERT — returns id (PK); no chart_id column on charts table
     if (/INSERT INTO charts/.test(sql)) {
       return Promise.resolve({
-        rows: [
-          {
-            id: 'row-uuid-001',
-            chart_id: 'chart-uuid-001',
-            client_id: uid,
-            owner_id: uid,
-          },
-        ],
+        rows: [{ id: 'row-uuid-001', client_id: uid, owner_id: uid }],
       })
     }
     // pyramid_layers INSERT
@@ -259,6 +252,8 @@ describe('POST /api/clients/create — happy path', () => {
     }
     expect(typeof body.chart_id).toBe('string')
     expect(body.chart_id).toBeTruthy()
+    // chart_id must be the row's `id` (PK), not an absent chart_id column
+    expect(body.chart_id).toBe('row-uuid-001')
     expect(body.redirect_url).toBe(`/clients/${body.chart_id}/build`)
   })
 
@@ -401,9 +396,9 @@ describe('POST /api/clients/create — natural-key dedupe', () => {
     const uid = 'user-uid-newtime'
     mockGetServerUser.mockResolvedValue({ uid })
 
-    const insertedChartId = 'chart-new-time'
+    const insertedChartId = 'row-new'
     const insertSpy = vi.fn().mockResolvedValue({
-      rows: [{ id: 'row-new', chart_id: insertedChartId, client_id: uid, owner_id: uid }],
+      rows: [{ id: insertedChartId, client_id: uid, owner_id: uid }],
     })
 
     mockQuery.mockImplementation((sql: string) => {

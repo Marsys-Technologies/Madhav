@@ -1,23 +1,24 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Autocomplete, useJsApiLoader } from '@react-google-maps/api'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { derivePreferredName } from './form_schema'
+import { derivePreferredName, parseBirthDateDisplay } from './form_schema'
+import { formatDate } from '@/lib/utils/date'
 import { isGoogleMapsKeyConfigured, type PlacesResult } from './usePlacesAutocomplete'
 import { cn } from '@/lib/utils'
 
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
 
 export const AYANAMSHA_OPTIONS = [
-  { id: 'lahiri',           label: 'Lahiri',            sub: 'Chitrapaksha' },
-  { id: 'true_chitra',      label: 'True Chitra',       sub: 'Revati paksha' },
-  { id: 'kp',               label: 'KP',                sub: 'Krishnamurti' },
-  { id: 'raman',            label: 'Raman',             sub: 'B.V. Raman' },
-  { id: 'surya_siddhanta',  label: 'Surya Siddhanta',   sub: 'Classical drik' },
+  { id: 'lahiri',          label: 'Lahiri',      sub: 'Chitrapaksha'  },
+  { id: 'true_chitra',     label: 'True Chitra', sub: 'Revati paksha' },
+  { id: 'kp',              label: 'KP',          sub: 'Krishnamurti'  },
+  { id: 'raman',           label: 'Raman',       sub: 'B.V. Raman'    },
+  { id: 'surya_siddhanta', label: 'Surya Sidd.', sub: 'Classical drik'},
 ] as const
 
 export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']
@@ -25,37 +26,38 @@ export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']
 // ─── Timezones ────────────────────────────────────────────────────────────────
 
 export const TIMEZONES = [
-  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata (UTC+5:30)',   offset: 5.5 },
-  { value: 'UTC',                 label: 'UTC (UTC+0)',               offset: 0 },
-  { value: 'Asia/Colombo',        label: 'Asia/Colombo (UTC+5:30)',   offset: 5.5 },
-  { value: 'Asia/Kathmandu',      label: 'Asia/Kathmandu (UTC+5:45)', offset: 5.75 },
-  { value: 'Asia/Dhaka',          label: 'Asia/Dhaka (UTC+6)',        offset: 6 },
-  { value: 'Asia/Dubai',          label: 'Asia/Dubai (UTC+4)',        offset: 4 },
-  { value: 'Asia/Singapore',      label: 'Asia/Singapore (UTC+8)',    offset: 8 },
-  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo (UTC+9)',        offset: 9 },
-  { value: 'America/New_York',    label: 'America/New_York (UTC-5)',  offset: -5 },
-  { value: 'America/Chicago',     label: 'America/Chicago (UTC-6)',   offset: -6 },
-  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-8)', offset: -8 },
-  { value: 'Europe/London',       label: 'Europe/London (UTC+0)',     offset: 0 },
-  { value: 'Europe/Berlin',       label: 'Europe/Berlin (UTC+1)',     offset: 1 },
-  { value: 'Australia/Sydney',    label: 'Australia/Sydney (UTC+10)', offset: 10 },
+  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata (UTC+5:30)',     offset: 5.5  },
+  { value: 'UTC',                 label: 'UTC (UTC+0)',                  offset: 0    },
+  { value: 'Asia/Colombo',        label: 'Asia/Colombo (UTC+5:30)',     offset: 5.5  },
+  { value: 'Asia/Kathmandu',      label: 'Asia/Kathmandu (UTC+5:45)',   offset: 5.75 },
+  { value: 'Asia/Dhaka',          label: 'Asia/Dhaka (UTC+6)',          offset: 6    },
+  { value: 'Asia/Dubai',          label: 'Asia/Dubai (UTC+4)',          offset: 4    },
+  { value: 'Asia/Singapore',      label: 'Asia/Singapore (UTC+8)',      offset: 8    },
+  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo (UTC+9)',          offset: 9    },
+  { value: 'America/New_York',    label: 'America/New_York (UTC-5)',    offset: -5   },
+  { value: 'America/Chicago',     label: 'America/Chicago (UTC-6)',     offset: -6   },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-8)', offset: -8  },
+  { value: 'Europe/London',       label: 'Europe/London (UTC+0)',       offset: 0    },
+  { value: 'Europe/Berlin',       label: 'Europe/Berlin (UTC+1)',       offset: 1    },
+  { value: 'Australia/Sydney',    label: 'Australia/Sydney (UTC+10)',   offset: 10   },
 ] as const
 
-// ─── Single form state ────────────────────────────────────────────────────────
+// ─── State types ──────────────────────────────────────────────────────────────
 
 interface FormState {
   full_name: string
   preferred_name: string
   gender: 'M' | 'F' | 'O' | 'unknown' | ''
-  birth_date: string          // YYYY-MM-DD from <input type="date">
-  birth_time: string          // HH:MM from <input type="time">
+  birth_date: string         // YYYY-MM-DD (API wire format)
+  birth_date_display: string // dd-MMM-yyyy (user-facing)
+  birth_time: string
   birth_place: string
-  latitude: string            // string for controlled input; parseFloat on submit
+  latitude: string
   longitude: string
-  timezone_id: string         // IANA, e.g. Asia/Kolkata
-  tz_offset: string           // derived from timezone_id; user-editable override
+  timezone_id: string
+  tz_offset: string
   ayanamshas: AyanamshaId[]
-  places_resolved: boolean    // true when Places autocomplete succeeded
+  places_resolved: boolean
 }
 
 interface FormErrors {
@@ -79,8 +81,20 @@ function todayIso(): string {
 
 function offsetFromTimezoneId(tzId: string): string {
   const found = TIMEZONES.find((t) => t.value === tzId)
-  if (!found) return ''
-  return String(found.offset)
+  return found ? String(found.offset) : ''
+}
+
+function timezoneFromOffset(
+  offsetMinutes: number | null,
+): { timezone_id: string; tz_offset: string } {
+  if (offsetMinutes == null) return { timezone_id: 'Asia/Kolkata', tz_offset: '5.5' }
+  const offsetHours = offsetMinutes / 60
+  const exact = TIMEZONES.find((tz) => tz.offset === offsetHours)
+  if (exact) return { timezone_id: exact.value, tz_offset: String(exact.offset) }
+  const nearest = TIMEZONES.reduce((a, b) =>
+    Math.abs(a.offset - offsetHours) < Math.abs(b.offset - offsetHours) ? a : b,
+  )
+  return { timezone_id: nearest.value, tz_offset: String(offsetHours) }
 }
 
 function validate(form: FormState): FormErrors {
@@ -92,68 +106,55 @@ function validate(form: FormState): FormErrors {
     errors.full_name = 'Full name must be 200 characters or fewer.'
   }
 
-  if (!form.gender) {
-    errors.gender = 'Please select a gender.'
-  }
+  if (!form.gender) errors.gender = 'Please select a gender.'
 
   if (!form.birth_date) {
-    errors.birth_date = 'Birth date is required.'
+    errors.birth_date = form.birth_date_display
+      ? 'Enter date as DD-MMM-YYYY, e.g. 05-Feb-1984.'
+      : 'Birth date is required.'
   } else if (form.birth_date < '1900-01-01') {
     errors.birth_date = 'Birth date must be on or after 1900-01-01.'
   } else if (form.birth_date > todayIso()) {
     errors.birth_date = 'Birth date cannot be in the future.'
   }
 
-  if (!form.birth_time) {
-    errors.birth_time = 'Birth time is required.'
-  }
-
-  if (!form.birth_place.trim()) {
-    errors.birth_place = 'Birth place is required.'
-  }
+  if (!form.birth_time) errors.birth_time = 'Birth time is required.'
+  if (!form.birth_place.trim()) errors.birth_place = 'Birth place is required.'
 
   const lat = parseFloat(form.latitude)
-  if (form.latitude === '') {
-    errors.latitude = 'Latitude is required.'
-  } else if (isNaN(lat) || lat < -90 || lat > 90) {
+  if (form.latitude === '') errors.latitude = 'Latitude is required.'
+  else if (isNaN(lat) || lat < -90 || lat > 90)
     errors.latitude = 'Latitude must be between -90 and 90.'
-  }
 
   const lng = parseFloat(form.longitude)
-  if (form.longitude === '') {
-    errors.longitude = 'Longitude is required.'
-  } else if (isNaN(lng) || lng < -180 || lng > 180) {
+  if (form.longitude === '') errors.longitude = 'Longitude is required.'
+  else if (isNaN(lng) || lng < -180 || lng > 180)
     errors.longitude = 'Longitude must be between -180 and 180.'
-  }
 
   const tz = parseFloat(form.tz_offset)
-  if (form.tz_offset === '') {
-    errors.tz_offset = 'Timezone offset is required.'
-  } else if (isNaN(tz) || tz < -14 || tz > 14) {
+  if (form.tz_offset === '') errors.tz_offset = 'Timezone offset is required.'
+  else if (isNaN(tz) || tz < -14 || tz > 14)
     errors.tz_offset = 'Timezone offset must be between -14 and 14.'
-  }
 
-  if (form.ayanamshas.length === 0) {
+  if (form.ayanamshas.length === 0)
     errors.ayanamshas = 'At least one ayanamsha must be selected.'
-  }
 
   return errors
 }
 
-// ─── Places API ───────────────────────────────────────────────────────────────
+// ─── Shared native-input class ────────────────────────────────────────────────
 
-const GMAPS_LIBS: ('places')[] = ['places']
-
-function timezoneFromOffset(offsetMinutes: number | null): { timezone_id: string; tz_offset: string } {
-  if (offsetMinutes == null) return { timezone_id: 'Asia/Kolkata', tz_offset: '5.5' }
-  const offsetHours = offsetMinutes / 60
-  const exact = TIMEZONES.find((tz) => tz.offset === offsetHours)
-  if (exact) return { timezone_id: exact.value, tz_offset: String(exact.offset) }
-  const nearest = TIMEZONES.reduce((a, b) =>
-    Math.abs(a.offset - offsetHours) < Math.abs(b.offset - offsetHours) ? a : b,
+function nativeInputCls(hasError?: boolean): string {
+  return cn(
+    'w-full h-9 rounded-md border bg-background px-3 py-1 text-sm',
+    'focus:outline-none focus:ring-1 focus:ring-ring',
+    hasError ? 'border-destructive' : 'border-input',
   )
-  return { timezone_id: nearest.value, tz_offset: String(offsetHours) }
 }
+
+// ─── Places autocomplete wrapper ──────────────────────────────────────────────
+
+const GMAPS_LIBS: 'places'[] = ['places']
 
 function PlacesAutocompleteInput({
   value,
@@ -166,7 +167,7 @@ function PlacesAutocompleteInput({
   hasError: boolean
   onTextChange: (v: string) => void
   onBlur: () => void
-  onPlaceResolved: (result: PlacesResult) => void
+  onPlaceResolved: (r: PlacesResult) => void
 }) {
   const { isLoaded } = useJsApiLoader({
     id: 'gmaps-places',
@@ -194,7 +195,7 @@ function PlacesAutocompleteInput({
       value={value}
       aria-required="true"
       aria-invalid={hasError}
-      className={inputCls(hasError)}
+      className={cn(hasError && 'border-destructive')}
       onChange={(e) => onTextChange(e.target.value)}
       onBlur={onBlur}
     />
@@ -213,100 +214,18 @@ function PlacesAutocompleteInput({
   )
 }
 
-// ─── Subcomponents ────────────────────────────────────────────────────────────
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      style={{
-        fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-        fontStyle: 'italic',
-        fontSize: 18,
-        color: 'var(--gold-primary, #d4a648)',
-        fontWeight: 500,
-      }}
-    >
-      {children}
-    </h3>
-  )
-}
-
-function MicroLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      style={{
-        fontFamily: 'var(--font-sans, Inter, sans-serif)',
-        fontSize: 10,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase' as const,
-        color: 'var(--text-tertiary, #5d5b54)',
-      }}
-    >
-      {children}
-    </span>
-  )
-}
-
-function FieldError({ msg }: { msg?: string }) {
-  if (!msg) return null
-  return (
-    <p role="alert" style={{ fontSize: 12, color: '#c0392b', marginTop: 2 }}>
-      {msg}
-    </p>
-  )
-}
-
-function inputCls(hasError?: boolean): string {
-  return cn(
-    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
-    hasError ? 'border-red-500' : 'border-[#1f1c17]',
-  )
-}
-
-function selectCls(hasError?: boolean): string {
-  return cn(
-    'w-full rounded-md border bg-[#08070a] px-3 py-2 text-sm text-[#f5f0e8] outline-none focus:ring-1 focus:ring-[#d4a648]',
-    hasError ? 'border-red-500' : 'border-[#1f1c17]',
-  )
-}
-
-// ─── Section container ────────────────────────────────────────────────────────
-
-function Section({
-  testId,
-  title,
-  children,
-}: {
-  testId: string
-  title: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      data-testid={testId}
-      style={{
-        background: 'var(--obsidian-panel, #0a0908)',
-        border: '1px solid var(--obsidian-border, #1f1c17)',
-        borderRadius: 12,
-        padding: 20,
-      }}
-    >
-      <div style={{ marginBottom: 16 }}>{title}</div>
-      <div style={{ display: 'grid', gap: 16 }}>{children}</div>
-    </div>
-  )
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function NewClientForm() {
   const router = useRouter()
+  const googleMapsConfigured = isGoogleMapsKeyConfigured()
 
   const [form, setForm] = useState<FormState>({
     full_name: '',
     preferred_name: '',
     gender: '',
     birth_date: '',
+    birth_date_display: '',
     birth_time: '',
     birth_place: '',
     latitude: '',
@@ -318,8 +237,8 @@ export function NewClientForm() {
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
-  const [loading, setLoading] = useState(false)
-  const [manualOpen, setManualOpen] = useState(true)
+  const [submitting, setSubmitting] = useState<'save' | 'build' | null>(null)
+  const [manualOpen, setManualOpen] = useState(!googleMapsConfigured)
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -343,22 +262,35 @@ export function NewClientForm() {
   }
 
   function handleBirthPlaceBlur() {
-    if (form.birth_place.trim() && !form.places_resolved) {
-      setManualOpen(true)
+    if (form.birth_place.trim() && !form.places_resolved) setManualOpen(true)
+  }
+
+  function handleDateDisplayChange(raw: string) {
+    const parsed = parseBirthDateDisplay(raw)
+    setForm((prev) => ({ ...prev, birth_date_display: raw, birth_date: parsed ?? '' }))
+    if (parsed) setErrors((prev) => ({ ...prev, birth_date: undefined }))
+  }
+
+  function handleDateBlur() {
+    if (form.birth_date_display && !form.birth_date) {
+      setErrors((prev) => ({
+        ...prev,
+        birth_date: 'Enter date as DD-MMM-YYYY, e.g. 05-Feb-1984.',
+      }))
+    } else if (form.birth_date) {
+      setForm((prev) => ({ ...prev, birth_date_display: formatDate(prev.birth_date) }))
     }
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function submit(action: 'save' | 'build') {
     const validationErrors = validate(form)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
-
-    setLoading(true)
+    setSubmitting(action)
     setErrors({})
 
     try {
@@ -382,27 +314,16 @@ export function NewClientForm() {
 
       const data = await res.json()
 
-      if (res.status === 409 || (res.ok && data.idempotent)) {
-        router.push(`/dashboard?chart_created=${data.chart_id}`)
-        return
-      }
-
       if (res.status === 422) {
         const fieldMap: Record<string, keyof FormErrors> = {
-          lat: 'latitude',
-          lon: 'longitude',
-          tz_offset: 'tz_offset',
-          name: 'full_name',
-          birth_date: 'birth_date',
-          birth_time: 'birth_time',
-          birth_place: 'birth_place',
-          gender: 'gender',
-          ayanamshas: 'ayanamshas',
+          lat: 'latitude', lon: 'longitude', tz_offset: 'tz_offset',
+          name: 'full_name', birth_date: 'birth_date', birth_time: 'birth_time',
+          birth_place: 'birth_place', gender: 'gender', ayanamshas: 'ayanamshas',
         }
         const newErrors: FormErrors = {}
-        for (const err of data.errors ?? []) {
-          const uiKey = fieldMap[err.field] ?? ('api' as keyof FormErrors)
-          newErrors[uiKey] = err.message
+        for (const err of (data.errors ?? []) as { field: string; message: string }[]) {
+          const key = (fieldMap[err.field] ?? 'api') as keyof FormErrors
+          newErrors[key] = err.message
         }
         setErrors(newErrors)
         return
@@ -419,207 +340,180 @@ export function NewClientForm() {
         return
       }
 
-      router.push(`/dashboard?chart_created=${data.chart_id}`)
+      if (action === 'build') {
+        router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
+      } else {
+        router.push(`/dashboard?chart_created=${data.chart_id}`)
+      }
     } catch {
       setErrors({ api: 'Network error — please check your connection and try again.' })
     } finally {
-      setLoading(false)
+      setSubmitting(null)
     }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
 
+  const isInFlight = submitting !== null
   const nodeCount = form.ayanamshas.length * 28
 
   return (
-    <div
-      className="min-h-screen px-4 py-10"
-      style={{ background: 'var(--obsidian-bg, #08070a)', color: 'var(--text-primary, #e8e6df)' }}
-    >
-      <div className="mx-auto max-w-2xl">
+    <div className="h-screen overflow-hidden flex flex-col bg-background text-foreground">
 
-        {/* ── Header bar ──────────────────────────────────────────── */}
-        <div data-testid="form-header" className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              style={{
-                fontFamily: 'var(--font-serif, serif)',
-                fontSize: 22,
-                color: 'var(--gold-primary, #d4a648)',
-                lineHeight: 1,
-              }}
+      {/* ── Top bar ────────────────────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center justify-between px-6 h-10 border-b border-border">
+        <Link
+          href="/dashboard"
+          aria-label="Back to dashboard"
+          className="bt-body text-muted-foreground hover:underline"
+        >
+          ← Back to dashboard
+        </Link>
+        <span className="bt-label bt-label-upper text-muted-foreground">Charts · New</span>
+      </div>
+
+      {/* ── Title ──────────────────────────────────────────────────────── */}
+      <div data-testid="form-title" className="shrink-0 text-center py-3">
+        <h1 className="bt-display text-[#fce29a]">
+          <span className="opacity-55 text-[#d4af37] font-serif mr-1" aria-hidden="true">॥</span>
+          Nava Jātaka
+          <span className="opacity-55 text-[#d4af37] font-serif ml-1" aria-hidden="true">॥</span>
+        </h1>
+        <p className="bt-body text-muted-foreground mt-0.5">New Chart</p>
+      </div>
+
+      {/* ── Two-column form ─────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 px-6 flex flex-col gap-2 overflow-hidden">
+        <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+
+          {/* Left: Identity + Compute ────────────────────────────────── */}
+          <div className="flex flex-col gap-3 min-h-0">
+
+            {/* Vyakti · Identity */}
+            <div
+              data-testid="section-identity"
+              className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2.5"
             >
-              ॥
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-                fontSize: 18,
-                color: 'var(--gold-primary, #d4a648)',
-                fontWeight: 500,
-                letterSpacing: '0.04em',
-              }}
-            >
-              MARSYS
-            </span>
-            <MicroLabel>Jyotish Instrument</MicroLabel>
-          </div>
-          <div className="flex items-center gap-3">
-            <span
-              style={{
-                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                fontSize: 10,
-                color: 'var(--text-tertiary, #5d5b54)',
-                letterSpacing: '0.08em',
-              }}
-            >
-              Charts · New
-            </span>
-          </div>
-        </div>
+              <h3 className="bt-heading text-brand-gold-cream">Vyakti · Identity</h3>
 
-        {/* ── Hero ──────────────────────────────────────────────────── */}
-        <div className="mb-8">
-          <h1
-            data-testid="form-title"
-            style={{
-              fontFamily: 'var(--font-cormorant, "Cormorant Garamond", serif)',
-              fontStyle: 'italic',
-              fontSize: 36,
-              color: 'var(--gold-primary, #d4a648)',
-              lineHeight: 1.15,
-              marginBottom: 8,
-            }}
-          >
-            Naya Yantra
-          </h1>
-          <p
-            style={{
-              fontFamily: 'var(--font-sans, Inter, sans-serif)',
-              fontSize: 13,
-              color: 'var(--text-secondary, #888373)',
-            }}
-          >
-            Enter the birth details below to instantiate a new Jyotish instrument. Fields marked * are required.
-          </p>
-        </div>
-
-        {/* ── Form ─────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'grid', gap: 16 }}>
-
-          {/* ══ Section 1: Vyakti · Identity ════════════════════════ */}
-          <Section
-            testId="section-identity"
-            title={<SectionTitle>Vyakti · Identity</SectionTitle>}
-          >
-            {/* Row 1: Full name */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="full_name" className="text-[#c8bfb0] text-sm">
-                Full name *
-              </Label>
-              <Input
-                id="full_name"
-                type="text"
-                placeholder="e.g. Abhisek Mohanty"
-                value={form.full_name}
-                maxLength={200}
-                aria-required="true"
-                aria-label="Full name"
-                aria-invalid={!!errors.full_name}
-                className={inputCls(!!errors.full_name)}
-                onChange={(e) => setField('full_name', e.target.value)}
-              />
-              <FieldError msg={errors.full_name} />
-            </div>
-
-            {/* Row 2: Preferred name + Gender */}
-            <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 200px' }}>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="preferred_name" className="text-[#c8bfb0] text-sm">
-                  Preferred name
-                </Label>
+                <Label htmlFor="full_name" className="bt-label bt-label-upper">Full name *</Label>
                 <Input
-                  id="preferred_name"
+                  id="full_name"
                   type="text"
-                  placeholder="Defaults to first word of full name"
-                  value={form.preferred_name}
-                  maxLength={100}
-                  className={inputCls()}
-                  onChange={(e) => setField('preferred_name', e.target.value)}
+                  placeholder="e.g. Abhisek Mohanty"
+                  value={form.full_name}
+                  maxLength={200}
+                  aria-required="true"
+                  aria-label="Full name"
+                  aria-invalid={!!errors.full_name}
+                  className={cn(errors.full_name && 'border-destructive')}
+                  onChange={(e) => setField('full_name', e.target.value)}
                 />
+                {errors.full_name && (
+                  <p role="alert" className="bt-label text-destructive">{errors.full_name}</p>
+                )}
               </div>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="gender" className="text-[#c8bfb0] text-sm">
-                  Gender *
-                </Label>
-                <select
-                  id="gender"
-                  value={form.gender}
-                  aria-invalid={!!errors.gender}
-                  className={selectCls(!!errors.gender)}
-                  onChange={(e) => setField('gender', e.target.value as FormState['gender'])}
-                >
-                  <option value="">— select —</option>
-                  <option value="unknown">Prefer not to say</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                  <option value="O">Other</option>
-                </select>
-                <FieldError msg={errors.gender} />
+              <div className="grid gap-2.5" style={{ gridTemplateColumns: '1fr 152px' }}>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="preferred_name" className="bt-label bt-label-upper">
+                    Preferred name
+                  </Label>
+                  <Input
+                    id="preferred_name"
+                    type="text"
+                    placeholder="First word of full name"
+                    value={form.preferred_name}
+                    maxLength={100}
+                    onChange={(e) => setField('preferred_name', e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="gender" className="bt-label bt-label-upper">Gender *</Label>
+                  <select
+                    id="gender"
+                    value={form.gender}
+                    aria-invalid={!!errors.gender}
+                    className={nativeInputCls(!!errors.gender)}
+                    onChange={(e) =>
+                      setField('gender', e.target.value as FormState['gender'])
+                    }
+                  >
+                    <option value="">— select —</option>
+                    <option value="unknown">Prefer not to say</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                  </select>
+                  {errors.gender && (
+                    <p role="alert" className="bt-label text-destructive">{errors.gender}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </Section>
 
-          {/* ══ Section 2: Janma Sthana · Birth coordinates ══════════ */}
-          <Section
-            testId="section-birth"
-            title={<SectionTitle>Janma Sthana · Birth coordinates</SectionTitle>}
+            {/* Gaṇana · Compute */}
+            <div
+              data-testid="section-compute"
+              className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2"
+            >
+              <h3 className="bt-heading text-brand-gold-cream">Gaṇana · Compute</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {AYANAMSHA_OPTIONS.map((opt) => {
+                  const checked = form.ayanamshas.includes(opt.id)
+                  return (
+                    <label
+                      key={opt.id}
+                      className={cn(
+                        'flex flex-col gap-0.5 cursor-pointer rounded-lg border px-2.5 py-2 min-w-[96px]',
+                        'transition-colors duration-150',
+                        checked
+                          ? 'border-brand-gold bg-brand-gold/[0.06]'
+                          : 'border-border hover:border-brand-gold/40',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={checked}
+                        aria-label={opt.label}
+                        onChange={() => toggleAyanamsha(opt.id)}
+                      />
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          checked ? 'text-brand-gold' : 'text-foreground/80',
+                        )}
+                      >
+                        {opt.label}
+                      </span>
+                      <span className={cn('bt-label', checked ? 'text-brand-gold/60' : '')}>
+                        {opt.sub}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+              {errors.ayanamshas && (
+                <p role="alert" className="bt-label text-destructive">{errors.ayanamshas}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Birth ────────────────────────────────────────────── */}
+          <div
+            data-testid="section-birth"
+            className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2.5"
           >
-            {/* Row 1: Date + Time */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_date" className="text-[#c8bfb0] text-sm">
-                  Date *
-                </Label>
-                <input
-                  id="birth_date"
-                  type="date"
-                  value={form.birth_date}
-                  min="1900-01-01"
-                  max={todayIso()}
-                  aria-required="true"
-                  aria-invalid={!!errors.birth_date}
-                  className={inputCls(!!errors.birth_date)}
-                  onChange={(e) => setField('birth_date', e.target.value)}
-                />
-                <FieldError msg={errors.birth_date} />
-              </div>
+            <h3 className="bt-heading text-brand-gold-cream">Janma Sthāna · Birth</h3>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_time" className="text-[#c8bfb0] text-sm">
-                  Time (24 h) *
-                </Label>
-                <input
-                  id="birth_time"
-                  type="time"
-                  value={form.birth_time}
-                  aria-required="true"
-                  aria-invalid={!!errors.birth_time}
-                  className={inputCls(!!errors.birth_time)}
-                  onChange={(e) => setField('birth_time', e.target.value)}
-                />
-                <FieldError msg={errors.birth_time} />
-              </div>
-            </div>
-
-            {/* Row 2: Birth place */}
+            {/* Birth place */}
             <div className="flex flex-col gap-1">
-              <Label htmlFor="birth_place" className="text-[#c8bfb0] text-sm">
+              <Label htmlFor="birth_place" className="bt-label bt-label-upper">
                 Birth place *
               </Label>
-              {isGoogleMapsKeyConfigured() ? (
+              {googleMapsConfigured ? (
                 <PlacesAutocompleteInput
                   value={form.birth_place}
                   hasError={!!errors.birth_place}
@@ -656,63 +550,95 @@ export function NewClientForm() {
                   value={form.birth_place}
                   aria-required="true"
                   aria-invalid={!!errors.birth_place}
-                  className={inputCls(!!errors.birth_place)}
+                  className={cn(errors.birth_place && 'border-destructive')}
                   onChange={(e) => {
                     setField('birth_place', e.target.value)
-                    if (!e.target.value.trim()) {
+                    if (!e.target.value.trim())
                       setForm((prev) => ({ ...prev, places_resolved: false }))
-                    }
                   }}
                   onBlur={handleBirthPlaceBlur}
                 />
               )}
-              <FieldError msg={errors.birth_place} />
+              {errors.birth_place && (
+                <p role="alert" className="bt-label text-destructive">{errors.birth_place}</p>
+              )}
+              {form.places_resolved && (
+                <div
+                  data-testid="places-resolved-indicator"
+                  className="bt-label flex items-center gap-1.5"
+                  style={{ color: 'var(--status-success)' }}
+                >
+                  <span>✓</span>
+                  <span>
+                    {form.latitude}, {form.longitude} · {form.timezone_id} · UTC
+                    {parseFloat(form.tz_offset) >= 0 ? '+' : ''}{form.tz_offset}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Row 3: Resolved indicator */}
-            {form.places_resolved && (
-              <div
-                data-testid="places-resolved-indicator"
-                style={{ fontSize: 12, color: '#27ae60', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <span>✓</span>
-                <span>
-                  {form.latitude}, {form.longitude} · {form.timezone_id} · UTC
-                  {parseFloat(form.tz_offset) >= 0 ? '+' : ''}{form.tz_offset}
-                </span>
+            {/* Date + Time */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="birth_date" className="bt-label bt-label-upper">Date *</Label>
+                <Input
+                  id="birth_date"
+                  type="text"
+                  placeholder="05-Feb-1984"
+                  value={form.birth_date_display}
+                  aria-required="true"
+                  aria-label="Birth date in DD-MMM-YYYY format"
+                  aria-invalid={!!errors.birth_date}
+                  className={cn(errors.birth_date && 'border-destructive')}
+                  onChange={(e) => handleDateDisplayChange(e.target.value)}
+                  onBlur={handleDateBlur}
+                />
+                {errors.birth_date && (
+                  <p role="alert" className="bt-label text-destructive">{errors.birth_date}</p>
+                )}
               </div>
-            )}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="birth_time" className="bt-label bt-label-upper">
+                  Time (24 h) *
+                </Label>
+                <input
+                  id="birth_time"
+                  type="time"
+                  value={form.birth_time}
+                  aria-required="true"
+                  aria-invalid={!!errors.birth_time}
+                  className={nativeInputCls(!!errors.birth_time)}
+                  onChange={(e) => setField('birth_time', e.target.value)}
+                />
+                {errors.birth_time && (
+                  <p role="alert" className="bt-label text-destructive">{errors.birth_time}</p>
+                )}
+              </div>
+            </div>
 
-            {/* Row 4: Manual override accordion */}
+            {/* Manual coords accordion */}
             <div
               data-testid="manual-override-accordion"
-              style={{ borderRadius: 8, border: '1px solid #1f1c17', overflow: 'hidden' }}
+              className="rounded-lg border border-border overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() => setManualOpen((v) => !v)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 16px',
-                  fontSize: 12,
-                  color: '#8a8070',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                className="w-full flex items-center justify-between px-3 py-2 bt-label text-muted-foreground hover:text-foreground transition-colors"
               >
-                <span>Manual override · latitude / longitude / timezone</span>
-                <span style={{ fontSize: 10 }}>{manualOpen ? '▲' : '▼'}</span>
+                <span>
+                  {form.places_resolved
+                    ? 'Override coordinates'
+                    : 'Manual coordinates · lat / lng / timezone'}
+                </span>
+                <span className="text-[10px]">{manualOpen ? '▲' : '▼'}</span>
               </button>
 
               {manualOpen && (
-                <div style={{ padding: '0 16px 16px', display: 'grid', gap: 12 }}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="latitude" className="text-[#c8bfb0] text-sm">
+                <div className="px-3 pb-3 flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <Label htmlFor="latitude" className="bt-label bt-label-upper">
                         Latitude *
                       </Label>
                       <input
@@ -725,14 +651,15 @@ export function NewClientForm() {
                         value={form.latitude}
                         aria-required="true"
                         aria-invalid={!!errors.latitude}
-                        className={inputCls(!!errors.latitude)}
+                        className={nativeInputCls(!!errors.latitude)}
                         onChange={(e) => setField('latitude', e.target.value)}
                       />
-                      <FieldError msg={errors.latitude} />
+                      {errors.latitude && (
+                        <p role="alert" className="bt-label text-destructive">{errors.latitude}</p>
+                      )}
                     </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="longitude" className="text-[#c8bfb0] text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      <Label htmlFor="longitude" className="bt-label bt-label-upper">
                         Longitude *
                       </Label>
                       <input
@@ -745,176 +672,129 @@ export function NewClientForm() {
                         value={form.longitude}
                         aria-required="true"
                         aria-invalid={!!errors.longitude}
-                        className={inputCls(!!errors.longitude)}
+                        className={nativeInputCls(!!errors.longitude)}
                         onChange={(e) => setField('longitude', e.target.value)}
                       />
-                      <FieldError msg={errors.longitude} />
+                      {errors.longitude && (
+                        <p role="alert" className="bt-label text-destructive">{errors.longitude}</p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <Label htmlFor="timezone_id" className="text-[#c8bfb0] text-sm">
-                      Timezone
-                    </Label>
-                    <select
-                      id="timezone_id"
-                      value={form.timezone_id}
-                      className={selectCls()}
-                      onChange={(e) => handleTimezoneChange(e.target.value)}
-                    >
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <Label htmlFor="tz_offset" className="text-[#c8bfb0] text-sm">
-                      UTC offset *
-                    </Label>
-                    <input
-                      id="tz_offset"
-                      type="number"
-                      step="0.25"
-                      min={-14}
-                      max={14}
-                      placeholder="5.5"
-                      value={form.tz_offset}
-                      aria-required="true"
-                      aria-invalid={!!errors.tz_offset}
-                      className={inputCls(!!errors.tz_offset)}
-                      onChange={(e) => setField('tz_offset', e.target.value)}
-                    />
-                    <FieldError msg={errors.tz_offset} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <Label htmlFor="timezone_id" className="bt-label bt-label-upper">
+                        Timezone
+                      </Label>
+                      <select
+                        id="timezone_id"
+                        value={form.timezone_id}
+                        className={nativeInputCls()}
+                        onChange={(e) => handleTimezoneChange(e.target.value)}
+                      >
+                        {TIMEZONES.map((tz) => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <Label htmlFor="tz_offset" className="bt-label bt-label-upper">
+                        UTC offset *
+                      </Label>
+                      <input
+                        id="tz_offset"
+                        type="number"
+                        step="0.25"
+                        min={-14}
+                        max={14}
+                        placeholder="5.5"
+                        value={form.tz_offset}
+                        aria-required="true"
+                        aria-invalid={!!errors.tz_offset}
+                        className={nativeInputCls(!!errors.tz_offset)}
+                        onChange={(e) => setField('tz_offset', e.target.value)}
+                      />
+                      {errors.tz_offset && (
+                        <p role="alert" className="bt-label text-destructive">{errors.tz_offset}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-          </Section>
-
-          {/* ══ Section 3: Ganana · Compute ══════════════════════════ */}
-          <Section
-            testId="section-compute"
-            title={<SectionTitle>Ganana · Compute</SectionTitle>}
-          >
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {AYANAMSHA_OPTIONS.map((opt) => {
-                const checked = form.ayanamshas.includes(opt.id)
-                return (
-                  <label
-                    key={opt.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      cursor: 'pointer',
-                      borderRadius: 8,
-                      border: `1px solid ${checked ? '#d4a648' : '#1f1c17'}`,
-                      padding: '10px 14px',
-                      background: checked ? 'rgba(212,166,72,0.06)' : 'transparent',
-                      minWidth: 120,
-                      transition: 'border-color 0.15s',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      style={{ display: 'none' }}
-                      checked={checked}
-                      aria-label={opt.label}
-                      onChange={() => toggleAyanamsha(opt.id)}
-                    />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: checked ? '#d4a648' : '#c8bfb0',
-                      }}
-                    >
-                      {opt.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: checked ? 'rgba(212,166,72,0.6)' : '#5d5b54',
-                        fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                        letterSpacing: '0.04em',
-                      }}
-                    >
-                      {opt.sub}
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-            <FieldError msg={errors.ayanamshas} />
-          </Section>
-
-          {/* ── API error ─────────────────────────────────────────── */}
-          {errors.api && (
-            <div
-              role="alert"
-              style={{
-                borderRadius: 8,
-                border: '1px solid rgba(156,58,42,0.4)',
-                background: 'rgba(156,58,42,0.1)',
-                padding: '12px 16px',
-                fontSize: 13,
-                color: '#c0392b',
-              }}
-            >
-              {errors.api}
-            </div>
-          )}
-
-          {/* ── Footer ───────────────────────────────────────────── */}
-          <div
-            data-testid="form-footer"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16 }}
-          >
-            <span
-              data-testid="footer-microcopy"
-              style={{
-                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                fontSize: 11,
-                color: 'var(--text-tertiary, #5d5b54)',
-              }}
-            >
-              {form.ayanamshas.length} ayanamshas × 28 assets = {nodeCount} nodes will be built
-            </span>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => router.back()}
-                style={{
-                  color: 'var(--text-secondary, #888373)',
-                  fontFamily: 'var(--font-sans, Inter, sans-serif)',
-                  fontSize: 13,
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                style={{
-                  background: 'var(--gold-primary, #d4a648)',
-                  color: 'var(--obsidian-bg, #08070a)',
-                  fontFamily: 'var(--font-sans, Inter, sans-serif)',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  padding: '0 24px',
-                  opacity: loading ? 0.5 : 1,
-                }}
-              >
-                {loading ? 'Creating…' : 'Create chart'}
-              </Button>
-            </div>
           </div>
+        </div>
 
-        </form>
+        {/* ── API error ──────────────────────────────────────────────────── */}
+        {errors.api && (
+          <div
+            role="alert"
+            className="shrink-0 rounded-lg border px-4 py-2.5 bt-body"
+            style={{
+              borderColor: 'color-mix(in oklch, var(--status-halt) 40%, transparent)',
+              background: 'var(--status-halt-bg)',
+              color: 'var(--status-halt)',
+            }}
+          >
+            {errors.api}
+          </div>
+        )}
+      </div>
+
+      {/* ── Footer: microcopy + 3 buttons ──────────────────────────────── */}
+      <div
+        data-testid="form-footer"
+        className="shrink-0 border-t border-border px-6 h-14 flex items-center justify-between"
+      >
+        <span data-testid="footer-microcopy" className="bt-mono bt-label text-muted-foreground">
+          {form.ayanamshas.length} ayanamshas × 28 assets = {nodeCount} nodes
+        </span>
+
+        <div className="flex items-center gap-2">
+          {/* Cancel */}
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => router.push('/dashboard')}
+            className="bt-body text-muted-foreground hover:text-foreground px-4 h-9 rounded-md transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          {/* Save chart — gold hairline outline */}
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => submit('save')}
+            aria-busy={submitting === 'save'}
+            className={cn(
+              'bt-body h-9 rounded-md border px-4 transition-colors',
+              isInFlight && submitting !== 'save'
+                ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+                : 'border-brand-gold/50 text-brand-gold hover:bg-brand-gold/[0.05]',
+              submitting === 'save' && 'opacity-70',
+            )}
+          >
+            {submitting === 'save' ? 'Saving…' : 'Save chart'}
+          </button>
+
+          {/* Build chart — primary brand-cta */}
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => submit('build')}
+            aria-busy={submitting === 'build'}
+            className={cn(
+              'brand-cta h-9 rounded-lg px-5 text-sm',
+              isInFlight && submitting !== 'build' && 'opacity-40 cursor-not-allowed',
+              submitting === 'build' && 'opacity-70',
+            )}
+          >
+            {submitting === 'build' ? 'Building…' : 'Build chart'}
+          </button>
+        </div>
       </div>
     </div>
   )

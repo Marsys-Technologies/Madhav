@@ -403,9 +403,9 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── Response ───────────────────────────────────────────────────────────────
   return NextResponse.json({
-    chart_id: chart.chart_id as string,
+    chart_id: chart.id as string,
     client_id: chart.client_id as string,
-    redirect_url: `/clients/${chart.chart_id as string}/build`,
+    redirect_url: `/clients/${chart.id as string}/build`,
     ayanamshas,
   })
 }
