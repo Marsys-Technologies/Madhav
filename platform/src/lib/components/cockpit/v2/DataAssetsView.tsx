@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useActiveRun } from '@/hooks/useActiveRun'
@@ -21,9 +21,11 @@ const LAYER_ORDER = [
 
 interface Props {
   chartId: string
+  /** Called whenever the merged asset+state list changes — used by CockpitShell to drive the header label */
+  onAssetsReady?: (assets: AssetWithState[]) => void
 }
 
-export function DataAssetsView({ chartId }: Props) {
+export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
   const { stats } = useAssetStats({ chartId })
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
@@ -63,6 +65,28 @@ export function DataAssetsView({ chartId }: Props) {
     // Clear highlight after 1.5s
     setTimeout(() => setFocusedAssetId(null), 1500)
   }, [assets])
+
+  // Merge assets + stats + SSE overlay — computed before early returns so the
+  // useEffect below can be called unconditionally (Rules of Hooks).
+  const assetsWithState: AssetWithState[] = assets.map(a => {
+    const s = stats.get(a.asset_id)
+    const overlay = sseOverlay.get(a.asset_id)
+    return {
+      ...a,
+      state: overlay?.state ?? s?.state ?? 'dormant',
+      last_built_at: s?.last_built_at ?? null,
+      actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
+    }
+  })
+
+  // Notify parent (CockpitShell) whenever the merged state list changes.
+  // Must be above early returns — hooks must be called unconditionally.
+  useEffect(() => {
+    if (assetsWithState.length > 0) {
+      onAssetsReady?.(assetsWithState)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetsWithState.map(a => a.state).join(','), assetsWithState.length])
 
   if (isLoading && assets.length === 0) {
     return (
@@ -111,18 +135,6 @@ export function DataAssetsView({ chartId }: Props) {
       (l) => !LAYER_ORDER.includes(l as (typeof LAYER_ORDER)[number])
     ),
   ]
-
-  // Merge assets + stats + SSE overlay into AssetWithState for LiveDependencyGraph
-  const assetsWithState: AssetWithState[] = assets.map(a => {
-    const s = stats.get(a.asset_id)
-    const overlay = sseOverlay.get(a.asset_id)
-    return {
-      ...a,
-      state: overlay?.state ?? s?.state ?? 'dormant',
-      last_built_at: s?.last_built_at ?? null,
-      actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
-    }
-  })
 
   // Auto-expand layers that have an active run in scope
   const activeRunPlan: string[] = activeRun?.plan ?? []
