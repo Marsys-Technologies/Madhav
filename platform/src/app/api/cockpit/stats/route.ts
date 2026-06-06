@@ -67,8 +67,8 @@ async function fetchAssetStats(
     await client.query('BEGIN')
     await client.query("SET LOCAL statement_timeout = '2s'")
 
-    // Substitute chart_id param for per_chart scoped assets (count only)
-    const countParams = asset.scope === 'per_chart' && chartId ? [chartId] : []
+    // Pass chartId whenever count_sql references $1, regardless of scope field
+    const countParams = /\$1/.test(asset.count_sql) && chartId ? [chartId] : []
     const countResult = await client.query<{ count: string }>(asset.count_sql, countParams)
     const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
