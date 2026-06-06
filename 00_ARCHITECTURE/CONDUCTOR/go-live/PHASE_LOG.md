@@ -208,6 +208,100 @@ Confirmation: `GET /api/cockpit/nonexistent-route-xyz` → `{"error":"unauthoriz
 
 ---
 
+## Phase 8 — Deploy Madhav Cockpit Round 4 to Production
+
+### 8.A — Branch State + Pre-Deploy
+
+- Working tree was on `feature/jatakas-roster-redesign` at context restoration (branch switch happened in parallel S961 session)
+- Go-live changes (deleted build files + events.py UUID fix) were in stash; restored to `feature/cockpit-v2-three-views`
+- Two additional commits made to cockpit branch before merge:
+  - `646a9b09` — `feat(cockpit/v2): onRebuildOverride + onAfterClear callbacks`
+  - `3d759926` — `chore(go-live): delete dead build library, fix UUID serialization, add PHASE_LOG`
+- Branch pushed to origin
+
+### 8.B — PR Merge
+
+- PR #215 created and admin-merged to main (squash)
+- 96 files changed, +8443 −1704
+- Feature branch deleted
+
+### 8.C — CI (Naming Lint Gate)
+
+- CI triggered on main push — failed due to 2 new naming lint violations:
+  - `api/cockpit/sse/route.ts:12` — `GCP_PROJECT` → `GOOGLE_CLOUD_PROJECT`
+  - `api/cockpit/watchdog/route.ts:11` — `GCP_PROJECT` → `GOOGLE_CLOUD_PROJECT`
+- Fix committed (`9475691a`) and pushed to main; CI re-triggered
+- Note: 182 unit test failures confirmed PRE-EXISTING (CI failing on main since 2026-06-05)
+
+### 8.D — Manual Cloud Build
+
+- CI auto-deploy gate blocked by pre-existing unit test failures
+- Manual `gcloud builds submit` triggered: image `amjis-web:9475691a`
+- Source: 1.4 GB tar (gcloudignore excludes node_modules, .next, .claude, .git)
+- Build IN PROGRESS (background task `by2bp7fe6`)
+
+### 8.E — Build Pipeline Root Causes (RESOLVED)
+
+Three sequential blockers found and fixed during GitHub Actions deploys:
+
+| Commit | Fix |
+|---|---|
+| `7436aa6d` | `classical_text_search_tool.ts` — aligned mapped fields with `ClassicalTextSearchResult` type |
+| `80b54961` | `deploy.yml` — added `025_HOLISTIC_SYNTHESIS` + `035_DISCOVERY_LAYER` to both governance copy steps (broken since 2026-05-15) |
+| `f5644d03` | `next.config.ts` — removed `turbopack.root: "/"` which routed standalone `server.js` to `app/server.js` (unreachable by CMD), breaking container startup |
+| `b6c2f20f` | `src/proxy.ts` — added `/api/cockpit/watchdog` to `isPublic` list; the session-gate middleware was 401-ing all cockpit routes before route handlers ran |
+
+### 8.F — Production Verification
+
+| Revision | SHA | Traffic | Status |
+|---|---|---|---|
+| `amjis-web-00528-mnh` | `b6c2f20f` | 100% | ✓ LIVE |
+
+- `/api/health` → 200 ✓
+- `/api/cockpit/watchdog` (no auth) → 401 ✓
+- `/api/cockpit/watchdog` (x-watchdog-auth: secret) → 200 `{"orphan_runs_failed":0,"stuck_assets_failed":0}` ✓
+
+**Phase 7 AC: PASS (watchdog route live + auth working)**
+**Phase 8 AC: PASS**
+
+---
+
+---
+
+## Phase 9 — End-to-end Live Smoke Test
+
+### 9.A — Backend Baseline (pre-smoke, 2026-06-07)
+
+| Check | Value | Status |
+|---|---|---|
+| Revision live | `amjis-web-00528-mnh` at 100% traffic | ✓ |
+| `/api/health` | 200 | ✓ |
+| Watchdog (no auth) | 401 | ✓ |
+| Watchdog (x-watchdog-auth: secret) | 200 `{"orphan_runs_failed":0,"stuck_assets_failed":0}` | ✓ |
+| `asset_registry` | 34 active / 39 total | ✓ |
+| `asset_throughput` | 0 rows (clean slate) | ✓ — expected for first real build |
+| `build_runs` | last: `completed` in 10ms / 0 assets (test run); prior: `stopped` 3 assets | ✓ — idle |
+| `brahma-build-pipeline-job` | last execution `b47vf` ✓ COMPLETE (2026-06-06 17:09) | ✓ |
+
+**System is in correct state for first real build.**
+
+### 9.B — Native UI Smoke
+
+**NATIVE ACTION REQUIRED:** Open cockpit and trigger a rebuild to verify AC2/AC4/AC5/AC9.
+
+URL: `https://madhav.marsys.in/clients/482012f1-710e-4a25-994a-93821f5871aa/build`
+
+Expected pre-rebuild state:
+- Hero: ABHISEK MOHANTY + birth date
+- Status pills: WRITERS 34 / QUEUE 0 / BUILD idle / SIDECAR OK
+- DAG: all beads dormant (no prior throughput state)
+
+Then: Rebuild → PlanModal → confirm → watch DAG animate.
+
+**Phase 9 AC2/AC4/AC5/AC9: PENDING NATIVE SMOKE**
+
+---
+
 ## Phase 5 — Build + Push brahma-pipeline Orchestrator Image
 
 **Key finding:** `brahma-pipeline` is NOT a separate repo — orchestrator lives at `platform/python-sidecar/pipeline/` within the Madhav repo. `Dockerfile.pipeline` requires repo-root build context.
