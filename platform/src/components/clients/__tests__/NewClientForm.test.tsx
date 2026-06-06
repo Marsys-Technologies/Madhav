@@ -38,9 +38,9 @@ function fillValidForm() {
   fireEvent.change(screen.getByLabelText(/gender/i), {
     target: { value: 'M' },
   })
-  // Use /date \*/i to avoid matching birth_date error messages
+  // Date field uses dd-MMM-yyyy display format
   fireEvent.change(screen.getByLabelText(/^date/i), {
-    target: { value: '1984-02-05' },
+    target: { value: '05-Feb-1984' },
   })
   // "Time (24 h)" — use precise pattern to avoid matching "Timezone"
   fireEvent.change(screen.getByLabelText(/time \(24/i), {
@@ -66,12 +66,12 @@ function fillValidForm() {
 
 describe('NewClientForm', () => {
 
-  // ── Test 1: three sections ──────────────────────────────────────────────────
-  it('renders three sections: Vyakti, Janma Sthana, Ganana', () => {
+  // ── Test 1: form title, ayanamsha section, footer are present ─────────────
+  it('renders title, ayanamsha section, and footer microcopy', () => {
     render(<NewClientForm />)
-    expect(screen.getByTestId('section-identity').textContent).toContain('Vyakti')
-    expect(screen.getByTestId('section-birth').textContent).toContain('Janma Sthana')
-    expect(screen.getByTestId('section-compute').textContent).toContain('Ganana')
+    expect(screen.getByTestId('form-title').textContent).toContain('Nava Jātaka')
+    expect(screen.getByTestId('section-compute')).toBeTruthy()
+    expect(screen.getByTestId('footer-microcopy').textContent).toContain('ayanamshas')
   })
 
   // ── Test 2: exactly ONE full name input ────────────────────────────────────
@@ -87,7 +87,7 @@ describe('NewClientForm', () => {
     render(<NewClientForm />)
     fillValidForm()
 
-    fireEvent.click(screen.getByRole('button', { name: /compute chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
 
@@ -135,7 +135,7 @@ describe('NewClientForm', () => {
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.8245' } })
     fireEvent.change(screen.getByLabelText(/utc offset/i), { target: { value: '5.5' } })
 
-    fireEvent.click(screen.getByRole('button', { name: /compute chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
@@ -156,7 +156,7 @@ describe('NewClientForm', () => {
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.8245' } })
     fireEvent.change(screen.getByLabelText(/utc offset/i), { target: { value: '5.5' } })
 
-    fireEvent.click(screen.getByRole('button', { name: /compute chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
@@ -216,7 +216,7 @@ describe('NewClientForm', () => {
     render(<NewClientForm />)
     fillValidForm()
 
-    fireEvent.click(screen.getByRole('button', { name: /compute chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/clients/chart-123/build'))
   })
@@ -239,7 +239,7 @@ describe('NewClientForm', () => {
     render(<NewClientForm />)
     fillValidForm()
 
-    fireEvent.click(screen.getByRole('button', { name: /compute chart/i }))
+    fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => {
       const alerts = screen.getAllByRole('alert')
