@@ -53,13 +53,15 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         transition: 'background 0.4s ease, box-shadow 0.4s ease',
       }}
     >
-      {/* Asset name — two-line */}
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '13px', color: 'var(--on-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {asset.english_name}
-        </div>
-        <div style={{ fontSize: '10px', fontFamily: 'var(--mono-stack)', color: 'var(--on-dark-faint)', marginTop: '1px' }}>
-          {asset.asset_id}
+      {/* Asset name — bilingual two-line: Sanskrit gold above, English white below */}
+      <div style={{ minWidth: 0 }} title={asset.asset_id}>
+        <div className="flex flex-col">
+          <div className="text-[15px] leading-tight font-serif text-[#C4942A]">
+            {asset.sanskrit_name}
+          </div>
+          <div className="text-[12px] leading-tight text-white/80 mt-0.5">
+            {asset.english_name}
+          </div>
         </div>
       </div>
 

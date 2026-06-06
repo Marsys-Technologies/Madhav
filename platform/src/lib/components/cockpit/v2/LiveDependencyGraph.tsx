@@ -7,7 +7,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | null
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated'
 
 interface AssetWithState extends AssetRow {
   state: AssetState
@@ -95,12 +95,12 @@ function classifyEdge(fromLayer: string, toLayer: string): EdgeTier {
 // ── State → visual ────────────────────────────────────────────────────────────
 
 function stateOpacity(state: AssetState): number {
-  if (state === 'dormant' || state == null) return 0.7
+  if (state === 'dormant' || state === 'not_migrated') return 0.7
   return 1.0
 }
 
 function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): number {
-  if (fromState === 'dormant' || toState === 'dormant' || fromState == null || toState == null) return 0
+  if (fromState === 'dormant' || toState === 'dormant' || fromState === 'not_migrated' || toState === 'not_migrated') return 0
   if (fromState === 'building' || toState === 'building') return 0.4
   if (fromState === 'stale' || toState === 'stale') return 0.3
   return 1.0
@@ -327,7 +327,7 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const style = EDGE_STYLES[e.tier]
           const fromState = e.fromId === 'ROOT' ? 'lit' : stateMap.get(e.fromId)
           const toState = stateMap.get(e.toId)
-          const mult = edgeOpacityMultiplier(fromState ?? null, toState ?? null)
+          const mult = edgeOpacityMultiplier(fromState ?? 'dormant', toState ?? 'dormant')
           const finalOpacity = edgeOpacity(e.fromId, e.toId, mult)
           if (finalOpacity < 0.01) return null
           return (
@@ -351,7 +351,7 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const state = a.state
           const opacity = stateOpacity(state) * nodeOpacity(a.asset_id)
 
-          const isDormant = state === 'dormant' || state == null
+          const isDormant = state === 'dormant' || state === 'not_migrated'
           const isBuilding = state === 'building'
           const isLit = state === 'lit'
           const isStale = state === 'stale'

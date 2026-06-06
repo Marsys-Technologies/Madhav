@@ -118,7 +118,7 @@ export function DataAssetsView({ chartId }: Props) {
     const overlay = sseOverlay.get(a.asset_id)
     return {
       ...a,
-      state: overlay?.state ?? s?.state ?? null,
+      state: overlay?.state ?? s?.state ?? 'dormant',
       last_built_at: s?.last_built_at ?? null,
       actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
     }
