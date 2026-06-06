@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
-import { BuildActionButton } from './BuildActionButton'
 import { ClearIconButton } from './ClearIconButton'
+import { PlanModal } from './PlanModal'
 import { formatDate } from '@/lib/utils/date'
+import { RefreshCw } from 'lucide-react'
 
 const STATE_CHIP: Record<string, { label: string; bg: string; color: string; border: string }> = {
   dormant:  { label: 'NOT BUILT', bg: 'transparent',               color: 'var(--on-dark-faint)', border: 'var(--black-line)' },
@@ -24,7 +26,14 @@ interface Props {
   onRunStarted: () => void
 }
 
+function derivePrimaryLabel(dormant: boolean, stale: boolean): string {
+  if (dormant) return 'Build'
+  if (stale) return 'Update'
+  return 'Rebuild'
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, onRunStarted }: Props) {
+  const [showPlanModal, setShowPlanModal] = useState(false)
   const isActive = asset.is_active
   const hasError = stat?.error != null && stat.error !== 'missing_table'
 
@@ -42,7 +51,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '40% 15% 15% 20% 10%',
+        gridTemplateColumns: '44% 12% 14% 18% 12%',
         gap: '8px',
         alignItems: 'center',
         padding: '8px 12px',
@@ -101,25 +110,18 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         {stat?.last_built_at ? formatDate(stat.last_built_at) : '—'}
       </div>
 
-      {/* Actions: build button + clear */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }}>
+      {/* Actions cell — right edge */}
+      <div className="flex items-center justify-end gap-1.5">
         {isActive && (
           <>
-            <BuildActionButton
-              chartId={chartId}
-              scope="asset"
-              scopeTarget={asset.asset_id}
-              size="sm"
-              stats={{
-                total: 1,
-                dormant: derivedState === 'dormant' ? 1 : 0,
-                stale: derivedState === 'stale' ? 1 : 0,
-                active_run_id: activeRunId,
-                is_paused: activeRunPaused,
-              }}
-              onRunStarted={onRunStarted}
-              onRunStateChange={onRunStarted}
-            />
+            <button
+              title={activeRunId ? 'Run in progress…' : derivePrimaryLabel(derivedState === 'dormant', derivedState === 'stale')}
+              onClick={() => { if (!activeRunId) setShowPlanModal(true) }}
+              disabled={!!activeRunId}
+              className="w-[22px] h-[22px] flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={13} />
+            </button>
             <ClearIconButton
               chartId={chartId}
               scope="asset"
@@ -130,6 +132,21 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
           </>
         )}
       </div>
+
+      {showPlanModal && (
+        <PlanModal
+          chartId={chartId}
+          scope="asset"
+          scopeTarget={asset.asset_id}
+          action={derivedState === 'dormant' ? 'build' : derivedState === 'stale' ? 'update' : 'rebuild'}
+          label={derivePrimaryLabel(derivedState === 'dormant', derivedState === 'stale')}
+          onClose={() => setShowPlanModal(false)}
+          onRunStarted={(_runId) => {
+            setShowPlanModal(false)
+            onRunStarted?.()
+          }}
+        />
+      )}
     </div>
   )
 }

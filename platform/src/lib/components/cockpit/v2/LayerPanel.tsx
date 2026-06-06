@@ -176,7 +176,7 @@ export function LayerPanel({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '40% 15% 15% 20% 10%',
+              gridTemplateColumns: '44% 12% 14% 18% 12%',
               gap: '8px',
               padding: '6px 12px',
               fontSize: '11px',
@@ -188,7 +188,7 @@ export function LayerPanel({
             }}
           >
             <div>Asset</div>
-            <div style={{ textAlign: 'right' }}>Rows</div>
+            <div style={{ textAlign: 'right' }}>Volume</div>
             <div>State</div>
             <div>Last built</div>
             <div style={{ textAlign: 'right' }}>Actions</div>
