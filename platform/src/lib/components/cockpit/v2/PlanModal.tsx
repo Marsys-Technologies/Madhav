@@ -2,11 +2,19 @@
 
 import { useState } from 'react'
 import type { BuildAction, BuildScope } from '@/lib/build/plan'
+import { MiniDAG } from './MiniDAG'
 
 interface PlanData {
   plan: string[]
   includes_upstream_count: number
   estimated_seconds: number | null
+}
+
+interface AssetNode {
+  asset_id: string
+  sanskrit_name: string
+  english_name: string
+  depends_on?: string[] | null
 }
 
 interface Props {
@@ -17,9 +25,10 @@ interface Props {
   label: string
   onClose: () => void
   onRunStarted: (runId: string) => void
+  assets?: AssetNode[]
 }
 
-export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose, onRunStarted }: Props) {
+export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose, onRunStarted, assets }: Props) {
   const [planData, setPlanData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState<'plan' | 'run' | null>('plan')
   const [error, setError] = useState<string | null>(null)
@@ -139,6 +148,23 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                 </div>
               ))}
             </div>
+
+            {/* MiniDAG — shown for multi-asset rebuild/update plans when assets data is available */}
+            {planData.plan.length > 1 && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{
+                  fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',
+                  color: 'var(--on-dark-faint)', marginBottom: '8px',
+                }}>
+                  Rebuild closure
+                </div>
+                <MiniDAG
+                  targetAssetId={scopeTarget}
+                  planAssetIds={planData.plan}
+                  assets={assets}
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 onClick={onClose}

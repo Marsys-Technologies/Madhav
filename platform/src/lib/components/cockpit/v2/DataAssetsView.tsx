@@ -163,6 +163,7 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
               <LayerPanel
                 layer={layer}
                 assets={layerAssets}
+                allAssets={assets}
                 stats={stats}
                 defaultExpanded={isLayerExpanded(layer)}
                 forceExpand={focusedInLayer}

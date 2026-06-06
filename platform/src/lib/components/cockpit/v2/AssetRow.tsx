@@ -16,6 +16,7 @@ interface Props {
   activeRunId: string | null
   activeRunPaused: boolean
   highlighted?: boolean
+  allAssets?: AssetRowType[]
   onRunStarted: () => void
 }
 
@@ -25,7 +26,7 @@ function derivePrimaryLabel(dormant: boolean, stale: boolean): string {
   return 'Rebuild'
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, onRunStarted }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, onRunStarted }: Props) {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const isActive = asset.is_active
   const hasError = stat?.error != null && stat.error !== 'missing_table'
@@ -116,6 +117,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
           scopeTarget={asset.asset_id}
           action={derivedState === 'dormant' ? 'build' : derivedState === 'stale' ? 'update' : 'rebuild'}
           label={derivePrimaryLabel(derivedState === 'dormant', derivedState === 'stale')}
+          assets={allAssets}
           onClose={() => setShowPlanModal(false)}
           onRunStarted={(_runId) => {
             setShowPlanModal(false)

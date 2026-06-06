@@ -29,6 +29,7 @@ const LAYER_NAMES: Record<string, { sa: string; en: string }> = {
 interface Props {
   layer: string
   assets: AssetRow[]
+  allAssets?: AssetRow[]
   stats: Map<string, AssetStats>
   defaultExpanded?: boolean
   forceExpand?: boolean
@@ -41,6 +42,7 @@ interface Props {
 export function LayerPanel({
   layer,
   assets,
+  allAssets,
   stats,
   defaultExpanded = false,
   forceExpand,
@@ -207,6 +209,7 @@ export function LayerPanel({
                 activeRunId={assetRunActive ? activeRun!.id : null}
                 activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
                 highlighted={focusedAssetId === asset.asset_id}
+                allAssets={allAssets}
                 onRunStarted={onRunStarted}
               />
             )
