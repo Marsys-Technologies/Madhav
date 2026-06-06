@@ -23,6 +23,8 @@ interface Props {
   preview: ClearPreview
   onClose: () => void
   onSuccess: () => void
+  /** Called after a successful clear, before onSuccess+onClose. Used for rebuild chaining. */
+  onAfterClear?: () => Promise<void>
 }
 
 const SCOPE_LABELS: Record<string, { title: (t?: string | null) => string; confirmLabel: string }> = {
@@ -60,7 +62,7 @@ const modal: React.CSSProperties = {
   fontFamily: 'var(--ui-stack)',
 }
 
-export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClose, onSuccess }: Props) {
+export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClose, onSuccess, onAfterClear }: Props) {
   const [typed, setTyped] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +95,7 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
       })
       const body = await r.json()
       if (!r.ok) throw new Error(body.error ?? 'Clear failed')
+      if (onAfterClear) await onAfterClear()
       onSuccess()
       onClose()
     } catch (e) {

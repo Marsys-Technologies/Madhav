@@ -21,6 +21,8 @@ interface Props {
   size?: 'sm' | 'md'
   onRunStarted?: (runId: string) => void
   onRunStateChange?: () => void
+  /** When provided and action === 'rebuild', called instead of opening PlanModal */
+  onRebuildOverride?: () => void
 }
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
@@ -37,6 +39,7 @@ export function BuildActionButton({
   size = 'md',
   onRunStarted,
   onRunStateChange,
+  onRebuildOverride,
 }: Props) {
   const [showModal, setShowModal] = useState(false)
 
@@ -62,12 +65,20 @@ export function BuildActionButton({
         }
       : {}
 
+  const handleClick = () => {
+    if (action === 'rebuild' && onRebuildOverride) {
+      onRebuildOverride()
+    } else {
+      setShowModal(true)
+    }
+  }
+
   return (
     <>
       <button
         className="marsys-btn-primary"
         style={btnStyle}
-        onClick={() => setShowModal(true)}
+        onClick={handleClick}
       >
         {label}
       </button>
