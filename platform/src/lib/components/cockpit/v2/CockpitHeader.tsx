@@ -1,18 +1,44 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { BuildActionButton } from './BuildActionButton'
+
+function deriveGlobalLabel(assets: { state: string }[]): 'Build' | 'Update' | 'Rebuild' {
+  const total = assets.length
+  if (total === 0) return 'Build'
+  const dormant = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
+  const stale = assets.filter(a => a.state === 'stale').length
+  if (dormant === total) return 'Build'
+  if (stale > 0) return 'Update'
+  return 'Rebuild'
+}
 
 interface Props {
   chartId: string
   chartName?: string | null
   birthDate?: string | null
   birthPlace?: string | null
+  assets?: { state: string }[]
+  proMode?: boolean
+  onProModeToggle?: () => void
+  onGlobalClear?: () => void
+  onGlobalRebuild?: () => void
 }
 
-export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Props) {
+export function CockpitHeader({
+  chartId,
+  chartName,
+  birthDate,
+  birthPlace,
+  assets = [],
+  proMode = false,
+  onProModeToggle,
+  onGlobalClear,
+  onGlobalRebuild,
+}: Props) {
   const [sidecarHealthy, setSidecarHealthy] = useState<boolean | null>(null)
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
 
@@ -39,6 +65,10 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
 
   const globalRunId = activeRun?.id ?? null
   const globalRunPaused = activeRun?.state === 'paused'
+
+  const globalLabel = deriveGlobalLabel(assets)
+  const dormantCount = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
+  const staleCount = assets.filter(a => a.state === 'stale').length
 
   return (
     <div
@@ -92,38 +122,51 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
         </div>
         {/* Right: Pro view pill + Build CTA (SIDECAR status lives in telemetry strip below) */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span
+          <button
+            onClick={onProModeToggle}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
               padding: '3px 10px',
               borderRadius: '12px',
-              background: 'rgba(168,124,42,0.15)',
-              border: '1px solid var(--gold-engrave)',
-              color: 'var(--gold-bright)',
+              background: proMode ? 'rgba(168,124,42,0.28)' : 'rgba(168,124,42,0.10)',
+              border: `1px solid ${proMode ? 'var(--gold-engrave)' : 'rgba(168,124,42,0.35)'}`,
+              color: proMode ? 'var(--gold-bright)' : 'var(--on-dark-faint)',
               fontSize: '10px',
               fontFamily: 'var(--ui-stack)',
               fontWeight: 600,
               letterSpacing: '0.05em',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
             ◆ Pro view
-          </span>
+          </button>
           <BuildActionButton
             chartId={chartId}
             scope="global"
             scopeTarget={null}
             stats={{
-              total: 1,
-              dormant: globalRunId ? 0 : 1,
-              stale: 0,
+              total: assets.length || 1,
+              dormant: dormantCount,
+              stale: staleCount,
               active_run_id: globalRunId,
               is_paused: globalRunPaused,
             }}
             onRunStarted={refreshRun}
             onRunStateChange={refreshRun}
+            onRebuildOverride={globalLabel === 'Rebuild' ? onGlobalRebuild : undefined}
           />
+          {!globalRunId && (
+            <button
+              title="Clear instrument"
+              onClick={() => onGlobalClear?.()}
+              className="w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors ml-1"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
         </div>
       </div>
       {/* Telemetry strip */}

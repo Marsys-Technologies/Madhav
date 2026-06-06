@@ -5,6 +5,7 @@ type Tab = 'data' | 'workflow' | 'agents'
 interface Props {
   activeTab: Tab
   onTabChange: (tab: Tab) => void
+  proMode?: boolean
 }
 
 // Inline SVG components — 16×16 viewBox on 24px grid, currentColor
@@ -77,7 +78,11 @@ const TABS: { id: Tab; label: string; Icon: () => React.ReactElement }[] = [
   { id: 'agents',   label: 'Agents',      Icon: IconAgents },
 ]
 
-export function TabBar({ activeTab, onTabChange }: Props) {
+export function TabBar({ activeTab, onTabChange, proMode = false }: Props) {
+  const visibleTabs = proMode
+    ? TABS
+    : TABS.filter(t => t.id === 'data')
+
   return (
     <div
       style={{
@@ -88,7 +93,7 @@ export function TabBar({ activeTab, onTabChange }: Props) {
         paddingBottom: '0',
       }}
     >
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const isActive = activeTab === tab.id
         return (
           <button
