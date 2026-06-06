@@ -72,7 +72,7 @@ function IconAgents() {
 }
 
 const TABS: { id: Tab; label: string; Icon: () => React.ReactElement }[] = [
-  { id: 'data',     label: 'Data Assets', Icon: IconDatabase },
+  { id: 'data',     label: 'Data assets', Icon: IconDatabase },
   { id: 'workflow', label: 'Workflow',    Icon: IconWorkflow },
   { id: 'agents',   label: 'Agents',      Icon: IconAgents },
 ]
