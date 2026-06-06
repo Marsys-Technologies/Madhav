@@ -20,10 +20,11 @@ interface Props {
   chartId: string
   activeRunId: string | null
   activeRunPaused: boolean
+  highlighted?: boolean
   onRunStarted: () => void
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, onRunStarted }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, onRunStarted }: Props) {
   const isActive = asset.is_active
   const hasError = stat?.error != null && stat.error !== 'missing_table'
 
@@ -47,6 +48,9 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, o
         padding: '8px 12px',
         borderBottom: '1px solid rgba(255,255,255,0.04)',
         fontFamily: 'var(--ui-stack)',
+        background: highlighted ? 'rgba(236,197,106,0.08)' : 'transparent',
+        boxShadow: highlighted ? 'inset 0 0 0 1px rgba(236,197,106,0.25)' : 'none',
+        transition: 'background 0.4s ease, box-shadow 0.4s ease',
       }}
     >
       {/* Asset name — two-line */}

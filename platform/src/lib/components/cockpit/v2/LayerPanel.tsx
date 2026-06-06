@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
@@ -31,6 +31,8 @@ interface Props {
   assets: AssetRow[]
   stats: Map<string, AssetStats>
   defaultExpanded?: boolean
+  forceExpand?: boolean
+  focusedAssetId?: string | null
   chartId: string
   activeRun: ActiveRun | null
   onRunStarted: () => void
@@ -41,11 +43,17 @@ export function LayerPanel({
   assets,
   stats,
   defaultExpanded = false,
+  forceExpand,
+  focusedAssetId,
   chartId,
   activeRun,
   onRunStarted,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+
+  useEffect(() => {
+    if (forceExpand) setExpanded(true)
+  }, [forceExpand])
 
   const layerNames = LAYER_NAMES[layer] ?? { sa: layer, en: layer }
 
@@ -199,6 +207,7 @@ export function LayerPanel({
                 chartId={chartId}
                 activeRunId={assetRunActive ? activeRun!.id : null}
                 activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
+                highlighted={focusedAssetId === asset.asset_id}
                 onRunStarted={onRunStarted}
               />
             )

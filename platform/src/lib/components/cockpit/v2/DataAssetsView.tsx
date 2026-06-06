@@ -1,10 +1,12 @@
 'use client'
 
+import { useCallback, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { LayerPanel } from './LayerPanel'
-import { DAGPlaceholder } from './DAGPlaceholder'
+import { LiveDependencyGraph } from './LiveDependencyGraph'
+import type { AssetWithState } from './LiveDependencyGraph'
 
 const LAYER_ORDER = [
   'brahmagyan',
@@ -23,6 +25,19 @@ export function DataAssetsView({ chartId }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
   const { stats } = useAssetStats({ chartId })
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+  const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
+  const layerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  const handleNodeClick = useCallback((assetId: string) => {
+    const asset = assets.find(a => a.asset_id === assetId)
+    if (!asset) return
+    setFocusedAssetId(assetId)
+    // Scroll the LayerPanel into view
+    const el = layerRefs.current.get(asset.layer)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // Clear highlight after 1.5s
+    setTimeout(() => setFocusedAssetId(null), 1500)
+  }, [assets])
 
   if (isLoading && assets.length === 0) {
     return (
@@ -72,6 +87,17 @@ export function DataAssetsView({ chartId }: Props) {
     ),
   ]
 
+  // Merge assets + stats into AssetWithState for LiveDependencyGraph
+  const assetsWithState: AssetWithState[] = assets.map(a => {
+    const s = stats.get(a.asset_id)
+    return {
+      ...a,
+      state: s?.state ?? null,
+      last_built_at: s?.last_built_at ?? null,
+      actual_rows: s?.actual_rows ?? null,
+    }
+  })
+
   // Auto-expand layers that have an active run in scope
   const activeRunPlan: string[] = activeRun?.plan ?? []
   function isLayerExpanded(layer: string): boolean {
@@ -87,24 +113,35 @@ export function DataAssetsView({ chartId }: Props) {
       <div style={{ flex: '0 0 60%', minWidth: 0 }}>
         {orderedLayers.map((layer) => {
           const layerAssets = byLayer.get(layer) ?? []
+          const focusedInLayer = focusedAssetId != null && layerAssets.some(a => a.asset_id === focusedAssetId)
           return (
-            <LayerPanel
+            <div
               key={layer}
-              layer={layer}
-              assets={layerAssets}
-              stats={stats}
-              defaultExpanded={isLayerExpanded(layer)}
-              chartId={chartId}
-              activeRun={activeRun}
-              onRunStarted={refreshRun}
-            />
+              ref={el => { if (el) layerRefs.current.set(layer, el) }}
+            >
+              <LayerPanel
+                layer={layer}
+                assets={layerAssets}
+                stats={stats}
+                defaultExpanded={isLayerExpanded(layer)}
+                forceExpand={focusedInLayer}
+                focusedAssetId={focusedAssetId}
+                chartId={chartId}
+                activeRun={activeRun}
+                onRunStarted={refreshRun}
+              />
+            </div>
           )
         })}
       </div>
 
-      {/* 40% — DAG (Phase 10 replaces placeholder) */}
+      {/* 40% — Live dependency graph */}
       <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '24px' }}>
-        <DAGPlaceholder />
+        <LiveDependencyGraph
+          assets={assetsWithState}
+          activeRun={activeRun}
+          onNodeClick={handleNodeClick}
+        />
       </div>
     </div>
   )
