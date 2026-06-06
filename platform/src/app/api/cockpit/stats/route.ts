@@ -10,6 +10,9 @@ export interface AssetStats {
   size_bytes: number | null
   last_updated: string
   error: string | null
+  // From asset_throughput (null when no chart_id supplied or no row yet)
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | null
+  last_built_at: string | null
 }
 
 interface RegistryAsset {
@@ -33,6 +36,8 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: 'missing_table',
+      state: null,
+      last_built_at: null,
     }
   }
 
@@ -63,6 +68,8 @@ async function fetchAssetStats(
       size_bytes,
       last_updated: now,
       error: null,
+      state: null,        // merged from throughput in GET handler
+      last_built_at: null,
     }
   } catch (err) {
     try { await client.query('ROLLBACK') } catch {}
@@ -75,6 +82,8 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
+      state: null,
+      last_built_at: null,
     }
   } finally {
     client.release()
@@ -95,18 +104,35 @@ export async function GET(req: NextRequest) {
 
     const assets = registryResult.rows
 
+    // Batch-fetch throughput state+last_built_at for this chart
+    const throughputMap = new Map<string, { state: string; last_built_at: string | null }>()
+    if (chartId) {
+      const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null }>(
+        `SELECT asset_id, state, last_built_at FROM asset_throughput WHERE chart_id = $1`,
+        [chartId]
+      )
+      for (const r of tpRows) throughputMap.set(r.asset_id, r)
+    }
+
     const settled = await Promise.allSettled(
       assets.map((asset) => fetchAssetStats(asset, chartId))
     )
 
     const assetStats: AssetStats[] = settled.map((result, i) => {
-      if (result.status === 'fulfilled') return result.value
+      const tp = throughputMap.get(assets[i].asset_id)
+      const base = result.status === 'fulfilled'
+        ? result.value
+        : {
+            asset_id: assets[i].asset_id,
+            actual_rows: null,
+            size_bytes: null,
+            last_updated: new Date().toISOString(),
+            error: (result.reason as Error)?.message ?? 'unknown',
+          }
       return {
-        asset_id: assets[i].asset_id,
-        actual_rows: null,
-        size_bytes: null,
-        last_updated: new Date().toISOString(),
-        error: (result.reason as Error)?.message ?? 'unknown',
+        ...base,
+        state: (tp?.state as AssetStats['state']) ?? null,
+        last_built_at: tp?.last_built_at ?? null,
       }
     })
 
