@@ -50,7 +50,7 @@ export function CockpitShell({ chartId }: Props) {
   const openGlobalClearModal = useCallback(async (isRebuild = false) => {
     setClearLoading(true)
     try {
-      const r = await fetch('/api/cockpit/clear/preview', {
+      const r = await fetch('/api/cockpit/clear', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ export function CockpitShell({ chartId }: Props) {
       const body = await r.json()
       if (!r.ok) throw new Error(body.error ?? 'Failed to fetch clear preview')
       setRebuildMode(isRebuild)
-      setClearPreview(body.data)
+      setClearPreview(body.preview)
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
