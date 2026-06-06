@@ -5,7 +5,7 @@ import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 
 export const metadata: Metadata = {
-  title: 'Roster — MARSYS-JIS',
+  title: 'Jātakas — MARSYS-JIS',
 }
 
 export default async function DashboardLayout({
@@ -22,7 +22,7 @@ export default async function DashboardLayout({
       <AppShell
         user={ctx.user}
         profile={ctx.profile}
-        breadcrumb={[{ label: 'Roster', current: true }]}
+        breadcrumb={[]}
       >
         {children}
       </AppShell>

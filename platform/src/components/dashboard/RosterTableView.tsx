@@ -116,19 +116,19 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
           {sorted.map((c) => (
             <tr key={c.id} className="hover:bg-[rgba(212,175,55,0.04)] transition-colors">
               <td className="px-3 py-2">
-                <p className="text-[#fce29a] font-medium">{c.name}</p>
+                <p className="bt-heading text-[#fce29a]">{c.name}</p>
               </td>
               <td className="px-3 py-2">
-                <p className="text-[rgba(212,175,55,0.6)]">{c.birth_date}</p>
-                <p className="text-[rgba(212,175,55,0.38)]">{c.birth_place}</p>
+                <p className="bt-label text-[rgba(212,175,55,0.6)]">{c.birth_date}</p>
+                <p className="bt-label text-[rgba(212,175,55,0.38)]">{c.birth_place}</p>
               </td>
-              <td className="px-3 py-2 text-[rgba(212,175,55,0.38)] italic">
+              <td className="px-3 py-2 bt-label text-[rgba(212,175,55,0.38)] italic">
                 —
               </td>
-              <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#d4af37] font-semibold">
+              <td className="whitespace-nowrap px-3 py-2 tabular-nums font-[var(--font-mono)] text-[#d4af37]">
                 {c.pyramidPercent}%
               </td>
-              <td className="whitespace-nowrap px-3 py-2 text-[rgba(212,175,55,0.42)]">
+              <td className="whitespace-nowrap px-3 py-2 bt-label text-[rgba(212,175,55,0.42)]">
                 {relativeTime(c.lastLayerActivity)}
               </td>
               <td className="px-3 py-2">

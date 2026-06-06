@@ -24,7 +24,12 @@ const { mockQuery, mockGetServerUser, mockRedirect } = vi.hoisted(() => ({
 
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
-vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
+vi.mock('next/navigation', () => ({
+  redirect: mockRedirect,
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/dashboard',
+}))
 
 vi.mock('@/lib/roster/stats', () => ({
   fetchConsumedTodayCount: vi.fn(async () => 0),
@@ -78,6 +83,10 @@ function setLayers(rows: unknown[] = []) {
   mockQuery.mockImplementationOnce(async () => ({ rows }))
 }
 
+function setBuilds(rows: unknown[] = []) {
+  mockQuery.mockImplementationOnce(async () => ({ rows }))
+}
+
 beforeEach(() => {
   mockQuery.mockReset()
   mockGetServerUser.mockReset()
@@ -100,6 +109,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
       { id: 'chart-c' },
     ])
     setLayers([])
+    setBuilds([])
 
     const jsx = await DashboardPage()
     const { getAllByTestId } = render(jsx)
@@ -117,6 +127,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     setProfile('guest')
     setCharts([{ id: 'owned-1' }, { id: 'granted-1' }])
     setLayers([])
+    setBuilds([])
 
     const jsx = await DashboardPage()
     const { getAllByTestId } = render(jsx)
@@ -135,6 +146,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     setProfile('guest')
     setCharts([{ id: 'only-one' }])
     setLayers([])
+    setBuilds([])
 
     const jsx = await DashboardPage()
     expect(mockRedirect).not.toHaveBeenCalled()
@@ -160,6 +172,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     setProfile('client')
     setCharts([{ id: 'c1' }])
     setLayers([])
+    setBuilds([])
 
     await DashboardPage()
     const chartFetchCall = mockQuery.mock.calls[1]
@@ -176,6 +189,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     const jsx = await DashboardPage()
     const { container } = render(jsx)
     expect(container.querySelector('[data-testid="new-client-link"]')).not.toBeNull()
+
   })
 
   it('guest does NOT see "New Client" CTA', async () => {
@@ -183,6 +197,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     setProfile('guest')
     setCharts([{ id: 'x' }])
     setLayers([])
+    setBuilds([])
 
     const jsx = await DashboardPage()
     const { container } = render(jsx)
@@ -199,6 +214,7 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     const { container } = render(jsx)
     const root = container.querySelector('[data-testid="dashboard-root"]')
     expect(root?.getAttribute('data-role')).toBe('guest')
+
   })
 })
 

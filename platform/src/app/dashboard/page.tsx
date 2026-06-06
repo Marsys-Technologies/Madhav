@@ -1,7 +1,6 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { ClientRoster } from '@/components/dashboard/ClientRoster'
-import BuildsInProgressCard from '@/components/dashboard/BuildsInProgressCard'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -120,8 +119,6 @@ export default async function DashboardPage() {
 
   for (const chart of charts) {
     const rows = layersResult.rows.filter((r) => r.chart_id === chart.id)
-    const complete = rows.filter((r) => r.status === 'complete').length
-    pyramidPercents.set(chart.id, Math.round((complete / 6) * 100))
 
     const timestamps = rows.map((r) => r.updated_at).filter(Boolean)
     if (timestamps.length > 0) {
@@ -133,15 +130,25 @@ export default async function DashboardPage() {
       inActiveBuildSet.add(chart.id)
     }
 
-    // Build layer pips in Brahma layer order.
+    // Build layer pips using the "best" matching row per Brahma layer.
+    // Both legacy L-prefix keys (L1:facts) and orchestrator keys (build:positions)
+    // are covered by PYRAMID_TO_BRAHMA — multiple sublayers may map to the same
+    // Brahma layer; pick the most-complete one.
     const pips: import('@/lib/roster/types').LayerPip[] = BRAHMA_LAYER_ORDER.map((brahmaLayer) => {
-      const row = rows.find((r) => PYRAMID_TO_BRAHMA[`${r.layer}:${r.sublayer}`] === brahmaLayer)
-      if (!row) return { layer: brahmaLayer, state: 'dim' as const }
-      if (row.status === 'complete') return { layer: brahmaLayer, state: 'lit' as const }
-      if (row.status === 'in_progress') return { layer: brahmaLayer, state: 'building' as const }
+      const matching = rows.filter((r) => PYRAMID_TO_BRAHMA[`${r.layer}:${r.sublayer}`] === brahmaLayer)
+      const best = matching.find((r) => r.status === 'complete')
+        ?? matching.find((r) => r.status === 'in_progress')
+        ?? matching[0]
+      if (!best) return { layer: brahmaLayer, state: 'dim' as const }
+      if (best.status === 'complete') return { layer: brahmaLayer, state: 'lit' as const }
+      if (best.status === 'in_progress') return { layer: brahmaLayer, state: 'building' as const }
       return { layer: brahmaLayer, state: 'dim' as const }
     })
     layerPipsMap.set(chart.id, pips)
+
+    // pyramidPercent = lit Brahma layers / total Brahma layers — consistent with pips.
+    const litCount = pips.filter((p) => p.state === 'lit').length
+    pyramidPercents.set(chart.id, Math.round((litCount / BRAHMA_LAYER_ORDER.length) * 100))
   }
 
   const consumedToday = await fetchConsumedTodayCount(chartIds)
@@ -177,24 +184,19 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="bt-display text-[#fce29a]">
             <span className="opacity-55 text-[#d4af37] font-serif mr-1">॥</span>
-            Roster
+            Jātakas
             <span className="opacity-55 text-[#d4af37] font-serif ml-1">॥</span>
           </h1>
           {role === 'super_admin' && (
-            <Link href="/clients/new" className="brand-cta inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm" data-testid="new-client-link">
+            <Link href="/clients/new" aria-label="Nava Jātaka (new chart)" className="brand-cta inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm" data-testid="new-client-link">
               <span className="text-base leading-none">+</span>
-              New Client
+              Nava Jātaka
             </Link>
           )}
         </div>
         <Suspense>
           <ClientRoster charts={chartsWithMeta} stats={stats} />
         </Suspense>
-        {role === 'super_admin' && (
-          <div className="mt-6">
-            <BuildsInProgressCard />
-          </div>
-        )}
       </div>
     </div>
   )
