@@ -27,6 +27,6 @@ COPY 035_DISCOVERY_LAYER/cgm_contradicts_edges_manifest_v1_0.json 035_DISCOVERY_
 ENV PYTHONPATH=/app/platform/python-sidecar
 ENV PYTHONUNBUFFERED=1
 
-# Brahma pipeline entrypoint — replaces deleted pipeline.build_chart
-ENTRYPOINT ["python", "-m", "pipeline.brahma_pipeline"]
+# Brahma orchestrator — accepts --run-id, drives build_runs plan
+ENTRYPOINT ["python", "-m", "pipeline.orchestrator.main"]
 CMD ["--help"]

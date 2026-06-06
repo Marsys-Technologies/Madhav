@@ -105,11 +105,23 @@ export async function invokeBuildJob(
       '--chart-id', args.chartId,
     ],
     envOverrides: {
-      // The pipeline writes build_events rows; this is the SQL connection it uses.
-      // The base Job already has DB env baked; we re-stamp build_id for tracer logs.
       MARSYS_BUILD_ID: args.buildId,
       MARSYS_BUILD_CHART_ID: args.chartId,
       MARSYS_BUILD_AYANAMSHA_ROLE: args.ayanamshaRole,
     },
+  })
+}
+
+/** New orchestrator: invoke with --run-id only. */
+export async function invokeRunJob(
+  runId: string,
+  opts: { env?: JobInvokerEnv; transport?: JobTransport } = {},
+): Promise<JobInvocationResult> {
+  const env = opts.env ?? readJobInvokerEnv()
+  const transport = opts.transport ?? (await defaultTransport())
+  return transport.runJob({
+    jobName: jobPath(env),
+    containerArgs: ['--run-id', runId],
+    envOverrides: { MARSYS_RUN_ID: runId },
   })
 }

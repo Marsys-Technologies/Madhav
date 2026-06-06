@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { invokeRunJob } from '@/lib/build/jobInvoker'
 
 async function requireSuperAdmin() {
   const user = await getServerUser()
@@ -46,10 +47,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No assets to build for this scope/action combination' }, { status: 422 })
   }
 
-  // Create build_run
+  // Create build_run in 'planned' state — orchestrator transitions to 'running'
   const runResult = await query<{ id: string }>(
     `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
-     VALUES ($1, $2, $3, $4, 'running', $5, $6)
+     VALUES ($1, $2, $3, $4, 'planned', $5, $6)
      RETURNING id`,
     [chart_id, scope, scope_target, action, JSON.stringify(plan), user.uid]
   )
@@ -65,6 +66,13 @@ export async function POST(req: NextRequest) {
     )
   )
   await Promise.all(assetInserts)
+
+  // Invoke Cloud Run Job — non-blocking; failure is non-fatal (watchdog will reap if needed)
+  try {
+    await invokeRunJob(runId)
+  } catch (err) {
+    console.warn('[api/cockpit/runs] invokeRunJob failed (non-fatal):', (err as Error).message)
+  }
 
   return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length } }, { status: 201 })
 }
