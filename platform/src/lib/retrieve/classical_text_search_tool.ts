@@ -37,16 +37,14 @@ export const tool: RetrievalTool = {
       content: JSON.stringify({
         chunk_id: r.chunk_id,
         text_key: r.text_key,
-        title: r.title,
-        author: r.author,
-        tradition: r.tradition,
         chapter: r.chapter,
         verse_range: r.verse_range,
-        content: r.content,
+        text: r.text,
         confidence_baseline: r.confidence_baseline,
-        similarity: r.similarity,
+        tier: r.tier,
+        school: r.school,
       }),
-      confidence: r.similarity,
+      confidence: r.confidence_baseline,
     }))
 
     const resultJson = JSON.stringify(results)
