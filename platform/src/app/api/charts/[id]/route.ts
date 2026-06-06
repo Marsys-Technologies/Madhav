@@ -73,22 +73,9 @@ export async function DELETE(
     await query('DELETE FROM conversations WHERE chart_id = $1', [chartId])
     await query('DELETE FROM conversation_branches WHERE chart_id = $1', [chartId])
 
-    // Build orchestrator data
-    await query('DELETE FROM build_events WHERE build_id IN (SELECT build_id FROM builds WHERE chart_id = $1)', [chartId])
-    await query('DELETE FROM build_steps WHERE build_id IN (SELECT build_id FROM builds WHERE chart_id = $1)', [chartId])
-    await query(
-      `DELETE FROM notification_views WHERE build_id IN (
-         SELECT build_id FROM builds WHERE chart_id = $1
-       )`,
-      [chartId],
-    )
-    await query(
-      `DELETE FROM build_notifications WHERE build_id IN (
-         SELECT build_id FROM builds WHERE chart_id = $1
-       )`,
-      [chartId],
-    )
-    await query('DELETE FROM builds WHERE chart_id = $1', [chartId])
+    // Build orchestrator data (new schema — build_run_assets cascade from build_runs)
+    await query('DELETE FROM asset_throughput WHERE chart_id = $1', [chartId])
+    await query('DELETE FROM build_runs WHERE chart_id = $1', [chartId])
 
     // Pyramid + chart
     await query('DELETE FROM pyramid_layers WHERE chart_id = $1', [chartId])

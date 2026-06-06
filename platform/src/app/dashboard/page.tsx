@@ -70,7 +70,7 @@ export default async function DashboardPage() {
       )
     : { rows: [] }
 
-  // Active builds — latest per chart (queued/running/cancelling only).
+  // Active runs — latest per chart (planned/running/paused only).
   const buildsResult = chartIds.length > 0
     ? await query<{
         build_id: string
@@ -82,17 +82,21 @@ export default async function DashboardPage() {
         error_summary: string | null
       }>(
         `SELECT DISTINCT ON (chart_id)
-           build_id, chart_id, status,
+           id AS build_id, chart_id, state AS status,
            COALESCE(
-             (SELECT COUNT(*)::float / NULLIF(COUNT(*) FILTER (WHERE TRUE), 0) * 100
-              FROM build_steps WHERE build_steps.build_id = builds.build_id),
+             (SELECT ROUND(
+               COUNT(*) FILTER (WHERE bra.state = 'complete')::numeric
+               / NULLIF(COUNT(*), 0) * 100
+             ) FROM build_run_assets bra WHERE bra.run_id = build_runs.id),
              0
            )::int AS progress_pct,
-           ayanamshas, started_at, error_summary
-         FROM builds
+           ARRAY[]::text[] AS ayanamshas,
+           started_at,
+           NULL::text AS error_summary
+         FROM build_runs
          WHERE chart_id = ANY($1::uuid[])
-           AND status IN ('queued', 'running', 'cancelling')
-         ORDER BY chart_id, queued_at DESC`,
+           AND state IN ('planned', 'running', 'paused')
+         ORDER BY chart_id, created_at DESC`,
         [chartIds]
       )
     : { rows: [] }

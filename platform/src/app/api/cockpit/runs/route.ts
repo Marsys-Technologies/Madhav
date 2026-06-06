@@ -28,6 +28,18 @@ export async function POST(req: NextRequest) {
     action: BuildAction
   }
 
+  // 409 gate — block if an active run already exists for this chart
+  const activeCheck = await query<{ id: string }>(
+    `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
+    [chart_id]
+  )
+  if (activeCheck.rows.length > 0) {
+    return NextResponse.json(
+      { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE', existing_run_id: activeCheck.rows[0].id },
+      { status: 409 }
+    )
+  }
+
   // Resolve the plan
   const [registryResult, throughputResult] = await Promise.all([
     query<RegistryEntry>(
