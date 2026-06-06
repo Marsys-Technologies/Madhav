@@ -85,6 +85,32 @@ function transitiveDownstream(
   return Array.from(downstream)
 }
 
+/** All transitive downstream dependents of the given asset IDs (not including seeds). */
+export function computeDownstreamClosure(seeds: AssetId[], registry: RegistryEntry[]): Set<AssetId> {
+  return new Set(transitiveDownstream(seeds, registry))
+}
+
+/** All transitive upstream dependencies of the given asset IDs (not including seeds). */
+export function computeUpstreamClosure(seeds: AssetId[], registry: RegistryEntry[]): Set<AssetId> {
+  const seedSet = new Set(seeds)
+  const upstream = new Set<AssetId>()
+  const regMap = new Map(registry.map(r => [r.asset_id, r]))
+
+  const visit = (id: AssetId) => {
+    const entry = regMap.get(id)
+    if (!entry) return
+    for (const dep of entry.depends_on) {
+      if (!seedSet.has(dep) && !upstream.has(dep)) {
+        upstream.add(dep)
+        visit(dep)
+      }
+    }
+  }
+
+  for (const id of seeds) visit(id)
+  return upstream
+}
+
 export function resolveBuildPlan({
   scope,
   scope_target,
