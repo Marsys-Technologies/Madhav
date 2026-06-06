@@ -66,10 +66,10 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       {/* Asset name — bilingual two-line: Sanskrit gold above, English white below */}
       <div style={{ minWidth: 0 }} title={asset.asset_id}>
         <div className="flex flex-col">
-          <div className="text-[15px] leading-tight font-serif text-[#C4942A]">
+          <div className="text-[16px] leading-tight font-serif text-[#C4942A]">
             {asset.sanskrit_name}
           </div>
-          <div className="text-[12px] leading-tight text-white/80 mt-0.5">
+          <div className="text-[13px] leading-tight text-white/85 mt-0.5">
             {asset.english_name}
           </div>
         </div>
