@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ConnectionHealthPill } from './ConnectionHealthPill'
 
 interface Props {
   chartId: string
@@ -84,9 +83,8 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
             </span>
           </div>
         </div>
-        {/* Right: sidecar status + Pro view pill + Build CTA */}
+        {/* Right: Pro view pill + Build CTA (SIDECAR status lives in telemetry strip below) */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <ConnectionHealthPill healthy={sidecarHealthy} />
           <span
             style={{
               display: 'inline-flex',
