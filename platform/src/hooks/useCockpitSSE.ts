@@ -15,6 +15,11 @@ export type CockpitEvent =
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
+// In dev, cap reconnects to prevent an infinite retry storm when the SSE route
+// fails (e.g. no GCP creds). In prod, allow unlimited reconnects.
+const MAX_RECONNECT_ATTEMPTS = process.env.NODE_ENV === 'development' ? 5 : Infinity
+const MIN_RECONNECT_INTERVAL_MS = 1000
+
 export function useCockpitSSE(
   chartId: string,
   onEvent: (e: CockpitEvent) => void
@@ -27,6 +32,8 @@ export function useCockpitSSE(
     let retryDelay = 1000     // start at 1s
     let aborted = false
     let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null
+    let attemptCount = 0
+    let lastAttemptAt = 0
 
     function resetHeartbeat() {
       if (heartbeatTimeout) clearTimeout(heartbeatTimeout)
@@ -38,10 +45,26 @@ export function useCockpitSSE(
 
     function connect() {
       if (aborted) return
+
+      if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
+        console.warn('[useCockpitSSE] max reconnect attempts reached; giving up')
+        return
+      }
+
+      const sinceLastAttempt = Date.now() - lastAttemptAt
+      if (sinceLastAttempt < MIN_RECONNECT_INTERVAL_MS) {
+        setTimeout(connect, MIN_RECONNECT_INTERVAL_MS - sinceLastAttempt)
+        return
+      }
+
+      attemptCount += 1
+      lastAttemptAt = Date.now()
+
       es = new EventSource(`/api/cockpit/sse?chart_id=${encodeURIComponent(chartId)}`, { withCredentials: true })
 
       es.addEventListener('hello', () => {
-        retryDelay = 1000  // reset on successful connect
+        attemptCount = 0   // reset on successful connection
+        retryDelay = 1000
         resetHeartbeat()
       })
 
