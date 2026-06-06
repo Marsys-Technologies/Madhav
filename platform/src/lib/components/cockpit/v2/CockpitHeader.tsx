@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date'
 import { useActiveRun } from '@/hooks/useActiveRun'
+import { useCockpitStatus } from '@/hooks/useCockpitStatus'
 import { BuildActionButton } from './BuildActionButton'
 
 function deriveGlobalLabel(assets: { state: string }[]): 'Build' | 'Update' | 'Rebuild' {
@@ -60,8 +61,8 @@ export function CockpitHeader({
     return () => clearInterval(t)
   }, [])
 
-  const sidecarLabel =
-    sidecarHealthy === null ? '…' : sidecarHealthy ? 'OK' : 'DOWN'
+  const sidecarLabel = sidecarHealthy === null ? '…' : sidecarHealthy ? 'OK' : 'DOWN'
+  const cockpitStatus = useCockpitStatus()
 
   const globalRunId = activeRun?.id ?? null
   const globalRunPaused = activeRun?.state === 'paused'
@@ -169,7 +170,7 @@ export function CockpitHeader({
           )}
         </div>
       </div>
-      {/* Telemetry strip */}
+      {/* Telemetry strip — WRITERS / QUEUE / BUILD / SIDECAR (QPS + SPEND dropped: no data source) */}
       <div
         style={{
           marginTop: '12px',
@@ -181,28 +182,23 @@ export function CockpitHeader({
           flexWrap: 'wrap',
         }}
       >
-        {(
-          [
-            ['WRITERS', '—'],
-            ['QUEUE', '—'],
-            ['QPS', '—'],
-            ['BUILD', '—'],
-            ['SIDECAR', sidecarLabel],
-            ['SPEND', '—'],
-          ] as [string, string][]
-        ).map(([k, v]) => (
+        {([
+          ['WRITERS', cockpitStatus.writers ?? '…'],
+          ['QUEUE',   cockpitStatus.queue   ?? '…'],
+          ['BUILD',   cockpitStatus.build   ?? '…'],
+          ['SIDECAR', sidecarLabel],
+        ] as [string, string][]).map(([k, v]) => (
           <span key={k}>
-            <span
-              style={{
-                color: 'var(--on-dark-faint)',
-                textTransform: 'uppercase',
-                fontSize: '9.5px',
-                letterSpacing: '0.08em',
-              }}
-            >
+            <span style={{ textTransform: 'uppercase', fontSize: '9.5px', letterSpacing: '0.08em' }}>
               {k}
             </span>{' '}
-            <span style={{ color: 'var(--on-dark)' }}>{v}</span>
+            <span style={{
+              color: k === 'BUILD' && v === 'running' ? '#60a5fa'
+                   : k === 'SIDECAR' && v === 'DOWN'  ? 'var(--marsys-error, #e05252)'
+                   : 'var(--on-dark)',
+            }}>
+              {v}
+            </span>
           </span>
         ))}
       </div>
