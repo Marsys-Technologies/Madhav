@@ -4,14 +4,32 @@ import { query } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
 
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated'
+
+function deriveState(
+  asset: { is_active?: boolean; target_floor?: number | null },
+  actualRows: number | null,
+  error: string | null,
+  throughputState: string | null
+): AssetState {
+  if (asset.is_active === false) return 'not_migrated'
+  if (error) return 'error'
+  if (throughputState === 'building') return 'building'
+  if (throughputState === 'stale') return 'stale'
+  if (actualRows === null || actualRows === 0) return 'dormant'
+  if (asset.target_floor && actualRows < asset.target_floor) return 'building'
+  return 'lit'
+}
+
 export interface AssetStats {
   asset_id: string
   actual_rows: number | null
+  volume: number | null          // alias for actual_rows (canonical name)
   size_bytes: number | null
   last_updated: string
   error: string | null
-  // From asset_throughput (null when no chart_id supplied or no row yet)
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | null
+  // Derived server-side; never null
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated'
   last_built_at: string | null
 }
 
@@ -21,6 +39,7 @@ interface RegistryAsset {
   size_sql: string | null
   scope: string
   is_active: boolean
+  target_floor: number | null
 }
 
 async function fetchAssetStats(
@@ -33,10 +52,11 @@ async function fetchAssetStats(
     return {
       asset_id: asset.asset_id,
       actual_rows: null,
+      volume: null,
       size_bytes: null,
       last_updated: now,
       error: 'missing_table',
-      state: null,
+      state: 'error' as const,
       last_built_at: null,
     }
   }
@@ -65,10 +85,11 @@ async function fetchAssetStats(
     return {
       asset_id: asset.asset_id,
       actual_rows,
+      volume: actual_rows,
       size_bytes,
       last_updated: now,
       error: null,
-      state: null,        // merged from throughput in GET handler
+      state: 'dormant' as const,  // placeholder; GET handler overwrites via deriveState
       last_built_at: null,
     }
   } catch (err) {
@@ -79,10 +100,11 @@ async function fetchAssetStats(
     return {
       asset_id: asset.asset_id,
       actual_rows: null,
+      volume: null,
       size_bytes: null,
       last_updated: now,
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
-      state: null,
+      state: 'error' as const,    // placeholder; GET handler overwrites via deriveState
       last_built_at: null,
     }
   } finally {
@@ -96,7 +118,7 @@ export async function GET(req: NextRequest) {
   try {
     // Load active assets that have count_sql
     const registryResult = await query<RegistryAsset>(`
-      SELECT asset_id, count_sql, size_sql, scope, is_active
+      SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor
       FROM asset_registry
       WHERE is_active = true
       ORDER BY asset_id
@@ -119,19 +141,26 @@ export async function GET(req: NextRequest) {
     )
 
     const assetStats: AssetStats[] = settled.map((result, i) => {
-      const tp = throughputMap.get(assets[i].asset_id)
+      const asset = assets[i]
+      const tp = throughputMap.get(asset.asset_id)
       const base = result.status === 'fulfilled'
         ? result.value
         : {
-            asset_id: assets[i].asset_id,
+            asset_id: asset.asset_id,
             actual_rows: null,
+            volume: null,
             size_bytes: null,
             last_updated: new Date().toISOString(),
             error: (result.reason as Error)?.message ?? 'unknown',
+            state: deriveState(asset, null, (result.reason as Error)?.message ?? 'unknown', tp?.state ?? null),
+            last_built_at: tp?.last_built_at ?? null,
           }
+      const actual_rows = (base as AssetStats).actual_rows
+      const error = (base as AssetStats).error
       return {
         ...base,
-        state: (tp?.state as AssetStats['state']) ?? null,
+        volume: actual_rows,
+        state: deriveState(asset, actual_rows, error, tp?.state ?? null),
         last_built_at: tp?.last_built_at ?? null,
       }
     })
