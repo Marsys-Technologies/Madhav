@@ -30,7 +30,7 @@ export function DataAssetsView({ chartId }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
   const { stats } = useAssetStats({ chartId })
 
-  if (isLoading) {
+  if (isLoading && assets.length === 0) {
     return (
       <div
         style={{

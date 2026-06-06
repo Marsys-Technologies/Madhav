@@ -18,22 +18,31 @@ export function useChartContext(chartId: string): ChartContext {
 
   useEffect(() => {
     const controller = new AbortController()
+    let cancelled = false
     ;(async () => {
       try {
         const r = await fetch(`/api/charts/${chartId}`, {
           credentials: 'include',
           signal: controller.signal,
         })
-        if (!r.ok || controller.signal.aborted) return
+        if (cancelled) return
+        if (!r.ok) return
         const body = await r.json()
+        if (cancelled) return
         setChartName(body.subject_name ?? null)
         setBirthDate(body.birth_date ?? null)
         setBirthPlace(body.birth_place ?? null)
-      } catch {
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return
+        if (cancelled) return
+        console.error('[useChartContext] error:', e)
         // Non-fatal: header just shows the chartId fallback
       }
     })()
-    return () => controller.abort()
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [chartId])
 
   return {
