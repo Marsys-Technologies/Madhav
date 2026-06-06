@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { relativeTime } from '@/lib/build/format'
+import { formatDate } from '@/lib/utils/date'
 import type { ChartWithMeta } from '@/lib/roster/types'
 
 type SortKey = 'name' | 'buildPct' | 'activity'
@@ -119,7 +119,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
                 <p className="bt-heading text-[#fce29a]">{c.name}</p>
               </td>
               <td className="px-3 py-2">
-                <p className="bt-label text-[rgba(212,175,55,0.6)]">{c.birth_date}</p>
+                <p className="bt-label text-[rgba(212,175,55,0.6)]">{formatDate(c.birth_date)}</p>
                 <p className="bt-label text-[rgba(212,175,55,0.38)]">{c.birth_place}</p>
               </td>
               <td className="px-3 py-2 bt-label text-[rgba(212,175,55,0.38)] italic">
@@ -129,23 +129,23 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
                 {c.pyramidPercent}%
               </td>
               <td className="whitespace-nowrap px-3 py-2 bt-label text-[rgba(212,175,55,0.42)]">
-                {relativeTime(c.lastLayerActivity)}
+                {formatDate(c.lastLayerActivity)}
               </td>
               <td className="px-3 py-2">
                 <div className="flex gap-1.5">
                   <Link
                     href={`/clients/${c.id}/build`}
                     className={cn(GHOST_BTN)}
-                    aria-label={`Build — ${c.name}`}
+                    aria-label={`Nirmāṇa (build) — ${c.name}`}
                   >
-                    Build
+                    Nirmāṇa
                   </Link>
                   <Link
                     href={`/clients/${c.id}/consume`}
                     className={cn(GHOST_BTN)}
-                    aria-label={`Consume — ${c.name}`}
+                    aria-label={`Vimarśa (analyze) — ${c.name}`}
                   >
-                    Consume
+                    Vimarśa
                   </Link>
                 </div>
               </td>
