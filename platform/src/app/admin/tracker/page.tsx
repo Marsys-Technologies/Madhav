@@ -49,23 +49,23 @@ async function fetchActiveBuilds(): Promise<BuildRow[]> {
   try {
     const { rows } = await query<BuildRow>(
       `SELECT
-         b.build_id,
+         b.id AS build_id,
          b.chart_id,
-         c.name AS chart_name,
-         b.status,
-         b.queued_at,
+         c.subject_name AS chart_name,
+         b.state AS status,
+         b.created_at AS queued_at,
          b.started_at,
-         b.finished_at,
-         b.ayanamsha_id AS ayanamsha_ids,
-         b.engine_version,
-         COUNT(CASE WHEN bs.status = 'complete' THEN 1 END)::int AS steps_complete,
-         COUNT(bs.build_step_id)::int AS steps_total
-       FROM builds b
-       LEFT JOIN charts c ON c.chart_id = b.chart_id
-       LEFT JOIN build_steps bs ON bs.build_id = b.build_id
-      WHERE b.status IN ('queued', 'running', 'cancelling')
-      GROUP BY b.build_id, c.name
-      ORDER BY b.queued_at DESC
+         b.ended_at AS finished_at,
+         NULL::text AS ayanamsha_ids,
+         NULL::text AS engine_version,
+         COUNT(bra.asset_id) FILTER (WHERE bra.state = 'complete')::int AS steps_complete,
+         COUNT(bra.asset_id)::int AS steps_total
+       FROM build_runs b
+       LEFT JOIN charts c ON c.id = b.chart_id
+       LEFT JOIN build_run_assets bra ON bra.run_id = b.id
+      WHERE b.state IN ('planned', 'running', 'paused')
+      GROUP BY b.id, c.subject_name
+      ORDER BY b.created_at DESC
       LIMIT 20`,
       [],
     )
@@ -79,24 +79,24 @@ async function fetchRecentBuilds(): Promise<BuildRow[]> {
   try {
     const { rows } = await query<BuildRow>(
       `SELECT
-         b.build_id,
+         b.id AS build_id,
          b.chart_id,
-         c.name AS chart_name,
-         b.status,
-         b.queued_at,
+         c.subject_name AS chart_name,
+         b.state AS status,
+         b.created_at AS queued_at,
          b.started_at,
-         b.finished_at,
-         b.ayanamsha_id AS ayanamsha_ids,
-         b.engine_version,
-         COUNT(CASE WHEN bs.status = 'complete' THEN 1 END)::int AS steps_complete,
-         COUNT(bs.build_step_id)::int AS steps_total
-       FROM builds b
-       LEFT JOIN charts c ON c.chart_id = b.chart_id
-       LEFT JOIN build_steps bs ON bs.build_id = b.build_id
-      WHERE b.status IN ('complete', 'failed', 'cancelled')
-        AND b.finished_at >= NOW() - INTERVAL '24 hours'
-      GROUP BY b.build_id, c.name
-      ORDER BY b.finished_at DESC
+         b.ended_at AS finished_at,
+         NULL::text AS ayanamsha_ids,
+         NULL::text AS engine_version,
+         COUNT(bra.asset_id) FILTER (WHERE bra.state = 'complete')::int AS steps_complete,
+         COUNT(bra.asset_id)::int AS steps_total
+       FROM build_runs b
+       LEFT JOIN charts c ON c.id = b.chart_id
+       LEFT JOIN build_run_assets bra ON bra.run_id = b.id
+      WHERE b.state IN ('completed', 'failed', 'stopped')
+        AND b.ended_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY b.id, c.subject_name
+      ORDER BY b.ended_at DESC
       LIMIT 30`,
       [],
     )
@@ -107,25 +107,8 @@ async function fetchRecentBuilds(): Promise<BuildRow[]> {
 }
 
 async function fetchAyanamshaMatrix(): Promise<AyanamshaMatrixRow[]> {
-  try {
-    const { rows } = await query<AyanamshaMatrixRow>(
-      `SELECT DISTINCT ON (b.chart_id, b.ayanamsha_id)
-         b.chart_id,
-         c.name AS chart_name,
-         b.ayanamsha_id,
-         b.status,
-         b.finished_at
-       FROM builds b
-       LEFT JOIN charts c ON c.chart_id = b.chart_id
-      WHERE b.status IN ('complete', 'running', 'queued', 'failed')
-      ORDER BY b.chart_id, b.ayanamsha_id, b.finished_at DESC NULLS LAST
-      LIMIT 200`,
-      [],
-    )
-    return rows
-  } catch {
-    return []
-  }
+  // Ayanamsha-per-build tracking removed with decommissioning of `builds` table.
+  return []
 }
 
 // ── Components ────────────────────────────────────────────────────────────────

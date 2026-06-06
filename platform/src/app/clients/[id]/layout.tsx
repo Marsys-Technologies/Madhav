@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import { ChartSwitcher } from '@/components/nav/ChartSwitcher'
+import { ConditionalChartSwitcherBar } from '@/components/nav/ConditionalChartSwitcherBar'
 
 export async function generateMetadata({
   params,
@@ -69,13 +69,10 @@ export default async function ClientLayout({
         ]}
       >
         <div data-testid="chart-page-frame" data-permission={access.permission} data-chart-id={id}>
-          <div className="border-b border-[rgba(212,175,55,0.14)] px-4 py-2 flex items-center justify-between">
-            <ChartSwitcher
-              currentChartId={id}
-              charts={switcherCharts}
-            />
-            {/* Tier/depth selectors intentionally absent — 3.tier_excision is a concurrent unit. */}
-          </div>
+          <ConditionalChartSwitcherBar
+            currentChartId={id}
+            charts={switcherCharts}
+          />
           {children}
         </div>
       </AppShell>

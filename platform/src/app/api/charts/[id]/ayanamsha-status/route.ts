@@ -152,28 +152,10 @@ export async function GET(
   for (const ayanamshaId of CANONICAL_ORDER) {
     const containsExpr = JSON.stringify([ayanamshaId])
 
-    const buildResult = await query<BuildRow>(
-      `SELECT
-         b.build_id,
-         b.status,
-         b.finished_at,
-         b.failed_at,
-         b.engine_version,
-         b.ayanamshas,
-         COUNT(DISTINCT bs.step_id) FILTER (WHERE bs.status = 'complete') AS steps_complete,
-         COUNT(DISTINCT bs.step_id)                                         AS steps_total
-       FROM builds b
-       LEFT JOIN build_steps bs
-         ON bs.build_id = b.build_id
-            AND bs.ayanamsha_id = $2
-       WHERE b.chart_id = $1
-         AND b.ayanamshas @> $3::jsonb
-       GROUP BY b.build_id, b.status, b.finished_at, b.failed_at,
-                b.engine_version, b.ayanamshas, b.queued_at
-       ORDER BY b.queued_at DESC
-       LIMIT 1`,
-      [chartId, ayanamshaId, containsExpr],
-    )
+    // Ayanamsha-specific build tracking was removed when the `builds` table was
+    // decommissioned. Return empty to surface 'not_built' for all ayanamshas.
+    const buildResult: { rows: BuildRow[] } = { rows: [] }
+    void [chartId, ayanamshaId, containsExpr] // suppress unused-var lint
 
     if (buildResult.rows.length === 0) {
       // No build has ever included this ayanamsha

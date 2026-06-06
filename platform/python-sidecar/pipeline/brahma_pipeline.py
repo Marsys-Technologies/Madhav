@@ -55,42 +55,16 @@ def _conn():
 # ── Build state helpers ───────────────────────────────────────────────────────
 
 def _mark_build_running(build_id: str, chart_id: str) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """UPDATE builds SET status='running', started_at=NOW()
-                   WHERE build_id=%s""",
-                [build_id],
-            )
-            conn.commit()
-    except Exception as exc:
-        logger.warning("[brahma_pipeline] mark_running failed: %s", exc)
+    # Legacy `builds` table decommissioned — state now tracked in build_runs via orchestrator.
+    logger.info("[brahma_pipeline] (legacy stub) mark_running build_id=%s", build_id)
 
 
 def _mark_build_complete(build_id: str) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """UPDATE builds SET status='complete', completed_at=NOW()
-                   WHERE build_id=%s""",
-                [build_id],
-            )
-            conn.commit()
-    except Exception as exc:
-        logger.warning("[brahma_pipeline] mark_complete failed: %s", exc)
+    logger.info("[brahma_pipeline] (legacy stub) mark_complete build_id=%s", build_id)
 
 
 def _mark_build_failed(build_id: str, error: str) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """UPDATE builds SET status='failed', failed_at=NOW(), error_summary=%s
-                   WHERE build_id=%s""",
-                [error[:500], build_id],
-            )
-            conn.commit()
-    except Exception as exc:
-        logger.warning("[brahma_pipeline] mark_failed failed: %s", exc)
+    logger.info("[brahma_pipeline] (legacy stub) mark_failed build_id=%s error=%s", build_id, error[:200])
 
 
 def _fetch_chart(chart_id: str) -> dict:

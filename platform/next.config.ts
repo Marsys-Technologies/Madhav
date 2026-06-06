@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     "@google-cloud/tasks",
     "@google-cloud/run",
+    "@google-cloud/pubsub",
   ],
   // Include GCP proto/data files that Next.js file tracing misses in standalone mode.
   outputFileTracingIncludes: {
@@ -16,6 +17,14 @@ const nextConfig: NextConfig = {
       "./node_modules/google-gax/**",
       "./node_modules/@grpc/**",
       "./node_modules/grpc-js/**",
+    ],
+    "/api/cockpit/sse": [
+      "./node_modules/@google-cloud/pubsub/**",
+      "./node_modules/google-gax/**",
+      "./node_modules/@grpc/**",
+    ],
+    "/api/cockpit/watchdog": [
+      "./node_modules/@google-cloud/pubsub/**",
     ],
   },
   // Set Turbopack root to the filesystem root so that symlinks in

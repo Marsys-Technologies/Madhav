@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getServerUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id: chartId } = await params
+
+  const result = await query<{
+    subject_name: string
+    birth_date: string
+    birth_time: string
+    birth_place: string
+  }>(
+    'SELECT subject_name, birth_date::text, birth_time::text, birth_place FROM charts WHERE id = $1',
+    [chartId],
+  )
+
+  const row = result.rows[0] ?? null
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json({
+    subject_name: row.subject_name,
+    birth_date: row.birth_date,
+    birth_time: row.birth_time,
+    birth_place: row.birth_place,
+  })
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -43,22 +73,9 @@ export async function DELETE(
     await query('DELETE FROM conversations WHERE chart_id = $1', [chartId])
     await query('DELETE FROM conversation_branches WHERE chart_id = $1', [chartId])
 
-    // Build orchestrator data
-    await query('DELETE FROM build_events WHERE build_id IN (SELECT build_id FROM builds WHERE chart_id = $1)', [chartId])
-    await query('DELETE FROM build_steps WHERE build_id IN (SELECT build_id FROM builds WHERE chart_id = $1)', [chartId])
-    await query(
-      `DELETE FROM notification_views WHERE build_id IN (
-         SELECT build_id FROM builds WHERE chart_id = $1
-       )`,
-      [chartId],
-    )
-    await query(
-      `DELETE FROM build_notifications WHERE build_id IN (
-         SELECT build_id FROM builds WHERE chart_id = $1
-       )`,
-      [chartId],
-    )
-    await query('DELETE FROM builds WHERE chart_id = $1', [chartId])
+    // Build orchestrator data (new schema — build_run_assets cascade from build_runs)
+    await query('DELETE FROM asset_throughput WHERE chart_id = $1', [chartId])
+    await query('DELETE FROM build_runs WHERE chart_id = $1', [chartId])
 
     // Pyramid + chart
     await query('DELETE FROM pyramid_layers WHERE chart_id = $1', [chartId])

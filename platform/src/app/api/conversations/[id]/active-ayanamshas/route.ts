@@ -158,17 +158,9 @@ export async function GET(
     // ── Fetch chart build ayanamshas (cross-reference) ──────────────────────────
     let chartBuildAyanamshas: string[] | null = null
 
+    // Ayanamsha-per-build tracking removed with decommissioning of `builds` table.
     if (conv.chart_id) {
-      const buildResult = await query<BuildRow>(
-        `SELECT ayanamshas
-           FROM builds
-          WHERE chart_id = $1
-            AND status   = 'complete'
-          ORDER BY completed_at DESC NULLS LAST
-          LIMIT 1`,
-        [conv.chart_id],
-      )
-      chartBuildAyanamshas = buildResult.rows[0]?.ayanamshas ?? null
+      chartBuildAyanamshas = null
     }
 
     // ── Response ────────────────────────────────────────────────────────────────
