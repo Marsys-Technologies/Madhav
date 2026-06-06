@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
@@ -97,6 +98,19 @@ function classifyEdge(fromLayer: string, toLayer: string): EdgeTier {
 function stateOpacity(state: AssetState): number {
   if (state === 'dormant' || state === 'not_migrated') return 0.7
   return 1.0
+}
+
+function fillFor(state: AssetState): string {
+  if (state === 'dormant' || state === 'not_migrated') return 'none'
+  return 'url(#nodeBead)'
+}
+
+function strokeFor(state: AssetState): string {
+  if (state === 'dormant' || state === 'not_migrated') return 'rgba(122,86,24,0.5)'
+  if (state === 'stale')    return 'rgba(164,122,40,0.5)'
+  if (state === 'building') return '#C4A268'
+  if (state === 'lit')      return '#D4A648'
+  return '#ECC56A'
 }
 
 function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): number {
@@ -280,8 +294,23 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
         </defs>
 
         {/* Particle dust */}
-        {particles.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={p.r} fill="#A47A28" opacity={0.35} />
+        {particles.map((p, idx) => (
+          <motion.circle
+            key={`p-${idx}`}
+            r={p.r}
+            fill="#A47A28"
+            initial={{ cx: p.x, cy: p.y, opacity: 0.35 }}
+            animate={{
+              cx: [p.x, p.x + 6 + (idx % 3) * 2, p.x - 4, p.x],
+              cy: [p.y, p.y - 5, p.y + 3, p.y],
+              opacity: [0.35, 0.52, 0.38, 0.35],
+            }}
+            transition={{
+              duration: 15 + (idx % 10) * 1.5,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
         ))}
 
         {/* Background depth polygons */}
@@ -290,16 +319,20 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           for (let i = 0; i < Math.min(litNodes.length - 2, 20); i++) {
             triplets.push([litNodes[i].asset_id, litNodes[i + 1].asset_id, litNodes[(i + 2) % litNodes.length].asset_id])
           }
-          return triplets.map(([a, b, c], i) => {
+          return triplets.map(([a, b, c], polyIdx) => {
             const pa = posMap.get(a); const pb = posMap.get(b); const pc = posMap.get(c)
             if (!pa || !pb || !pc) return null
+            const baseOpacity = polyOpacity
             return (
-              <polygon
-                key={i}
+              <motion.polygon
+                key={`poly-${polyIdx}`}
                 points={`${pa.cx},${pa.cy} ${pb.cx},${pb.cy} ${pc.cx},${pc.cy}`}
-                fill={`rgba(70,55,32,${polyOpacity})`}
+                fill={`rgba(70,55,32,1)`}
                 stroke={`rgba(140,110,60,0.18)`}
                 strokeWidth={0.5}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [baseOpacity, baseOpacity * 1.4, baseOpacity] }}
+                transition={{ duration: 8 + polyIdx * 2, repeat: Infinity, ease: 'easeInOut' }}
               />
             )
           })
@@ -331,20 +364,22 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const finalOpacity = edgeOpacity(e.fromId, e.toId, mult)
           if (finalOpacity < 0.01) return null
           return (
-            <line
+            <motion.line
               key={i}
               x1={from.cx} y1={from.cy}
               x2={to.cx} y2={to.cy}
               stroke={style.stroke}
               strokeWidth={style.width}
               strokeDasharray={style.dasharray}
-              opacity={finalOpacity}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: finalOpacity }}
+              transition={{ duration: 0.8, ease: 'easeInOut', delay: i * 0.05 }}
             />
           )
         })}
 
         {/* Nodes */}
-        {assets.map(a => {
+        {assets.map((a, nodeIndex) => {
           const pos = posMap.get(a.asset_id)
           if (!pos) return null
           const r = NODE_RADIUS[a.layer] ?? 6
@@ -355,13 +390,7 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const isBuilding = state === 'building'
           const isLit = state === 'lit'
           const isStale = state === 'stale'
-
-          const fill = isDormant ? 'none' : 'url(#nodeBead)'
-          const rimColor = isDormant ? 'rgba(122,86,24,0.5)'
-            : isStale ? 'rgba(164,122,40,0.5)'
-            : isBuilding ? '#C4A268'
-            : isLit ? '#D4A648'
-            : '#ECC56A'
+          const isActive = isLit || isBuilding
 
           const glowFilter = isDormant ? undefined
             : isBuilding ? 'url(#glowS)'
@@ -378,15 +407,37 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
               onClick={() => onNodeClick(a.asset_id)}
               filter={glowFilter}
             >
-              <circle
-                cx={pos.cx}
-                cy={pos.cy}
-                r={r}
-                fill={fill}
-                stroke={rimColor}
-                strokeWidth={isDormant ? 0.8 : 1.1}
-                fillOpacity={isStale ? 0.4 : 1}
-              />
+              {isActive ? (
+                <motion.circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={r}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{
+                    opacity: [stateOpacity(state), stateOpacity(state) * 0.88, stateOpacity(state)],
+                    scale: [1, 1.08, 1],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: nodeIndex * 0.15 }}
+                  fill={fillFor(state)}
+                  stroke={strokeFor(state)}
+                  strokeWidth={1.5}
+                  style={{ transformOrigin: `${pos.cx}px ${pos.cy}px` }}
+                  fillOpacity={isStale ? 0.4 : 1}
+                />
+              ) : (
+                <motion.circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={r}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: stateOpacity(state) }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  fill={fillFor(state)}
+                  stroke={strokeFor(state)}
+                  strokeWidth={1.5}
+                  fillOpacity={isStale ? 0.4 : 1}
+                />
+              )}
               {/* Inner highlight for lit/building state */}
               {(isLit || isBuilding) && (
                 <circle
