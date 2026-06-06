@@ -29,15 +29,23 @@ beforeEach(() => {
   })
 })
 
+// ── Helper: select gender via the custom combobox ─────────────────────────────
+
+function selectGender(value: 'M' | 'F' | 'O' | 'unknown') {
+  const labelMap = { M: /^male$/i, F: /^female$/i, O: /^other$/i, unknown: /prefer not/i }
+  // Open the custom dropdown
+  fireEvent.click(screen.getByRole('combobox', { name: /gender/i }))
+  // Pick the option
+  fireEvent.mouseDown(screen.getByRole('option', { name: labelMap[value] }))
+}
+
 // ── Helper: fill a valid form ──────────────────────────────────────────────────
 
 function fillValidForm() {
   fireEvent.change(screen.getByLabelText(/full name/i), {
     target: { value: 'Abhisek Mohanty' },
   })
-  fireEvent.change(screen.getByLabelText(/gender/i), {
-    target: { value: 'M' },
-  })
+  selectGender('M')
   // Date field uses dd-MMM-yyyy display format
   fireEvent.change(screen.getByLabelText(/^date/i), {
     target: { value: '05-Feb-1984' },
@@ -66,12 +74,15 @@ function fillValidForm() {
 
 describe('NewClientForm', () => {
 
-  // ── Test 1: form title, ayanamsha section, footer are present ─────────────
-  it('renders title, ayanamsha section, and footer microcopy', () => {
+  // ── Test 1: form title, ayanamsha section, and footer buttons present ──────
+  it('renders title, ayanamsha section, and three footer buttons', () => {
     render(<NewClientForm />)
     expect(screen.getByTestId('form-title').textContent).toContain('Nava Jātaka')
     expect(screen.getByTestId('section-compute')).toBeTruthy()
-    expect(screen.getByTestId('footer-microcopy').textContent).toContain('ayanamshas')
+    // R3.3: footer has 3 buttons, no microcopy testid
+    expect(screen.getByRole('button', { name: /build chart/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /save chart/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeTruthy()
   })
 
   // ── Test 2: exactly ONE full name input ────────────────────────────────────
@@ -96,7 +107,6 @@ describe('NewClientForm', () => {
     expect(opts.method).toBe('POST')
 
     const body = JSON.parse(opts.body as string)
-    // Must use exact API field names
     expect(body).toHaveProperty('name', 'Abhisek Mohanty')
     expect(body).toHaveProperty('birth_date', '1984-02-05')
     expect(body).toHaveProperty('birth_time', '10:43')
@@ -127,8 +137,8 @@ describe('NewClientForm', () => {
   it('shows full_name error and does not POST when full_name is empty', async () => {
     render(<NewClientForm />)
     // fill everything except full_name
-    fireEvent.change(screen.getByLabelText(/gender/i), { target: { value: 'M' } })
-    fireEvent.change(screen.getByLabelText(/^date/i), { target: { value: '1984-02-05' } })
+    selectGender('M')
+    fireEvent.change(screen.getByLabelText(/^date/i), { target: { value: '05-Feb-1984' } })
     fireEvent.change(screen.getByLabelText(/time \(24/i), { target: { value: '10:43' } })
     fireEvent.change(screen.getByLabelText(/birth place/i), { target: { value: 'Bhubaneswar' } })
     fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.2961' } })
@@ -149,13 +159,14 @@ describe('NewClientForm', () => {
   it('shows gender error when gender is not selected', async () => {
     render(<NewClientForm />)
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Test User' } })
-    fireEvent.change(screen.getByLabelText(/^date/i), { target: { value: '1984-02-05' } })
+    fireEvent.change(screen.getByLabelText(/^date/i), { target: { value: '05-Feb-1984' } })
     fireEvent.change(screen.getByLabelText(/time \(24/i), { target: { value: '10:43' } })
     fireEvent.change(screen.getByLabelText(/birth place/i), { target: { value: 'Bhubaneswar' } })
     fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.2961' } })
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.8245' } })
     fireEvent.change(screen.getByLabelText(/utc offset/i), { target: { value: '5.5' } })
 
+    // Do NOT select gender — leave it empty
     fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
     await waitFor(() => {
@@ -166,35 +177,37 @@ describe('NewClientForm', () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  // ── Test 6: gender option values are M, F, O, unknown ──────────────────────
-  it('gender <option> values are M, F, O, unknown (not male/female)', () => {
-    const { container } = render(<NewClientForm />)
-    const select = container.querySelector('select#gender') as HTMLSelectElement
-    expect(select).toBeTruthy()
-    const values = Array.from(select.options).map((o) => o.value)
-    expect(values).toContain('M')
-    expect(values).toContain('F')
-    expect(values).toContain('O')
-    expect(values).toContain('unknown')
-    expect(values).not.toContain('male')
-    expect(values).not.toContain('female')
-    expect(values).not.toContain('other')
-    expect(values).not.toContain('not-specified')
+  // ── Test 6: custom gender dropdown renders the correct options ─────────────
+  // R3.6: gender is now a custom listbox (no native <select>).
+  it('gender custom dropdown exposes M, F, O, unknown options', () => {
+    render(<NewClientForm />)
+    // Open the combobox
+    fireEvent.click(screen.getByRole('combobox', { name: /gender/i }))
+    // All four value-bearing options must be present
+    expect(screen.getByRole('option', { name: /^male$/i })).toBeTruthy()
+    expect(screen.getByRole('option', { name: /^female$/i })).toBeTruthy()
+    expect(screen.getByRole('option', { name: /^other$/i })).toBeTruthy()
+    expect(screen.getByRole('option', { name: /prefer not/i })).toBeTruthy()
+    // Selecting 'Male' closes the dropdown and updates the displayed value
+    fireEvent.mouseDown(screen.getByRole('option', { name: /^male$/i }))
+    expect(screen.getByRole('combobox', { name: /gender/i }).textContent).toContain('Male')
   })
 
-  // ── Test 7: ayanamsha toggle updates footer counter ────────────────────────
-  it('toggling an ayanamsha checkbox updates the footer node count', () => {
+  // ── Test 7: toggling an ayanamsha checkbox changes the selection ───────────
+  // R3.3: footer-microcopy is removed; verify the checkbox state itself.
+  it('toggling an ayanamsha checkbox changes the checked state', () => {
     render(<NewClientForm />)
-    const counter = screen.getByTestId('footer-microcopy')
+    // Default: Lahiri is checked
+    const lahiriCheckbox = screen.getByLabelText('Lahiri') as HTMLInputElement
+    expect(lahiriCheckbox.checked).toBe(true)
 
-    // Default: all 5 selected → 5 × 28 = 140
-    expect(counter.textContent).toContain('5 ayanamshas × 28 assets = 140 nodes')
-
-    // Uncheck one (Lahiri)
-    const lahiriCheckbox = screen.getByLabelText('Lahiri')
+    // Uncheck Lahiri
     fireEvent.click(lahiriCheckbox.closest('label')!)
+    expect(lahiriCheckbox.checked).toBe(false)
 
-    expect(counter.textContent).toContain('4 ayanamshas × 28 assets = 112 nodes')
+    // Re-check
+    fireEvent.click(lahiriCheckbox.closest('label')!)
+    expect(lahiriCheckbox.checked).toBe(true)
   })
 
   // ── Test 8: Places miss → manual override accordion auto-expands ───────────

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useJsApiLoader } from '@react-google-maps/api'
+import { ChevronLeft, CalendarDays } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { derivePreferredName, parseBirthDateDisplay } from './form_schema'
@@ -154,26 +155,142 @@ function darkInputCls(hasError?: boolean): string {
   )
 }
 
-// ─── Select wrapper — adds custom ▼ arrow after appearance-none ───────────────
+// ─── Shared well style objects (R2.5) ─────────────────────────────────────────
 
-function SelectWrapper({ children }: { children: React.ReactNode }) {
+const wellStyle = {
+  background: 'var(--brand-charcoal-deep)',
+  color: 'var(--brand-gold-cream)',
+  borderColor: 'var(--brand-gold-hairline)',
+}
+
+const wellStyleError = {
+  background: 'var(--brand-charcoal-deep)',
+  color: 'var(--brand-gold-cream)',
+}
+
+// ─── CSS for gmp-placeautocomplete theming (R3.5) ─────────────────────────────
+// Custom properties cascade through shadow DOM boundaries; injected as a <style>
+// to reach both the input and the prediction-list popup reliably.
+const PLACES_WIDGET_CSS = `
+gmp-placeautocomplete {
+  --gmpx-color-surface: oklch(0.08 0.006 75);
+  --gmpx-color-on-surface: oklch(0.92 0.075 88);
+  --gmpx-color-on-surface-variant: oklch(0.58 0.025 80);
+  --gmpx-color-primary: oklch(0.78 0.13 80);
+  --gmpx-color-outline: oklch(0.78 0.13 80 / 0.35);
+  --gmpx-font-family-base: var(--font-sans, sans-serif);
+  --gmpx-font-size-base: 0.875rem;
+}
+`
+
+// ─── Custom gender dropdown (R3.6) ───────────────────────────────────────────
+// Native <select> option lists render in OS chrome which ignores our CSS.
+// A custom listbox gives complete visual control.
+
+const GENDER_OPTIONS: { value: 'M' | 'F' | 'O' | 'unknown' | ''; label: string }[] = [
+  { value: '',        label: '— select —' },
+  { value: 'unknown', label: 'Prefer not to say' },
+  { value: 'M',       label: 'Male' },
+  { value: 'F',       label: 'Female' },
+  { value: 'O',       label: 'Other' },
+]
+
+type GenderValue = 'M' | 'F' | 'O' | 'unknown' | ''
+
+function GenderSelect({
+  value,
+  hasError,
+  onChange,
+}: {
+  value: GenderValue
+  hasError: boolean
+  onChange: (v: GenderValue) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = GENDER_OPTIONS.find((o) => o.value === value)
+
   return (
-    <div className="relative">
-      {children}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-gold/50 text-[10px]"
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Gender"
+        id="gender"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'w-full h-9 rounded-md border px-3 py-1 text-sm text-left flex items-center justify-between',
+          'transition-colors duration-150 focus:outline-none focus:ring-1',
+          hasError ? 'border-destructive focus:ring-destructive' : 'focus:ring-brand-gold',
+        )}
+        style={{
+          ...wellStyle,
+          borderColor: hasError ? undefined : 'var(--brand-gold-hairline)',
+          color: value ? 'var(--brand-gold-cream)' : 'oklch(0.58 0.025 80)',
+        }}
       >
-        ▼
-      </span>
+        <span>{selected?.label ?? '— select —'}</span>
+        <span aria-hidden="true" className="text-[9px] ml-1" style={{ color: 'oklch(0.50 0.015 75)' }}>▼</span>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Gender options"
+          className="absolute z-50 w-full mt-0.5 rounded-md border py-0.5 shadow-lg"
+          style={{
+            background: 'var(--brand-charcoal)',
+            borderColor: 'var(--brand-gold-hairline)',
+          }}
+        >
+          {GENDER_OPTIONS.map((opt) => (
+            <li
+              key={opt.value || '__empty'}
+              role="option"
+              aria-selected={value === opt.value}
+              className="px-3 py-1.5 text-sm cursor-pointer transition-colors duration-100"
+              style={{
+                color: value === opt.value ? 'var(--brand-gold)' : 'var(--brand-gold-cream)',
+                background: value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'oklch(0.78 0.13 80 / 0.08)'
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background = value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent'
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(opt.value as GenderValue)
+                setOpen(false)
+              }}
+            >
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
 
-// ─── PlaceAutocompleteElement (W9) ────────────────────────────────────────────
-// Replaces google.maps.places.Autocomplete (dead for post-2025-03-01 keys).
-// Uses importLibrary('places') to obtain PlaceAutocompleteElement, the current
-// API Google directs new customers to.
+// ─── PlaceAutocompleteElement (W9 + R3.4 + R3.5) ─────────────────────────────
+// R3.4: overflow-hidden MUST NOT be on the container — the shadow-DOM prediction
+// popup would be clipped. The container uses position:relative with no overflow
+// constraint so the popup can escape.
 
 function PlacesAutocompleteNew({
   hasError,
@@ -190,7 +307,6 @@ function PlacesAutocompleteNew({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Load core Maps JS API — no libraries needed; importLibrary handles places.
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'gmaps-places',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
@@ -203,7 +319,6 @@ function PlacesAutocompleteNew({
   useEffect(() => {
     const container = containerRef.current
     if (!isLoaded || !container) return
-    // Guard against double-mount (strict mode / dep array changes).
     if (container.querySelector('gmp-placeautocomplete')) return
 
     let cancelled = false
@@ -221,8 +336,8 @@ function PlacesAutocompleteNew({
         })
         el.style.width = '100%'
 
-        // CSS custom properties cascade through shadow DOM to theme the widget.
-        el.style.setProperty('--gmpx-color-surface',            'oklch(0.05 0.005 70)')
+        // Theme tokens (R3.5) — cascade into shadow DOM via inline custom properties
+        el.style.setProperty('--gmpx-color-surface',            'oklch(0.08 0.006 75)')
         el.style.setProperty('--gmpx-color-on-surface',         'oklch(0.92 0.075 88)')
         el.style.setProperty('--gmpx-color-on-surface-variant', 'oklch(0.58 0.025 80)')
         el.style.setProperty('--gmpx-color-primary',            'oklch(0.78 0.13 80)')
@@ -230,13 +345,11 @@ function PlacesAutocompleteNew({
         el.style.setProperty('--gmpx-font-family-base',         'var(--font-sans, sans-serif)')
         el.style.setProperty('--gmpx-font-size-base',           '0.875rem')
 
-        // Sync typed text back so birth_place field tracks the user's input.
         el.addEventListener('input', () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onTextChange((el as any).value ?? '')
         })
 
-        // On selection, fetch fields and resolve lat/lng/timezone.
         el.addEventListener('gmp-placeselect', async (event: Event) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const place = (event as any).place
@@ -267,7 +380,6 @@ function PlacesAutocompleteNew({
     return () => { cancelled = true }
   }, [isLoaded, onPlaceResolved, onTextChange, onLoadError])
 
-  // Stable loading placeholder — same height as real input, brand-styled.
   if (!isLoaded && !loadError) {
     return (
       <input
@@ -276,7 +388,7 @@ function PlacesAutocompleteNew({
         aria-label="Birth place loading"
         className={darkInputCls(hasError)}
         style={{
-          background: 'var(--brand-charcoal-deep)',
+          ...wellStyle,
           color: 'oklch(0.58 0.025 80)',
           borderColor: hasError ? undefined : 'var(--brand-gold-hairline)',
         }}
@@ -284,18 +396,18 @@ function PlacesAutocompleteNew({
     )
   }
 
-  // React onBlur (focusout) catches events bubbling from the shadow DOM
-  // so we don't need a manual addEventListener on the web component element.
+  // R3.4: No overflow-hidden — popup must not be clipped.
   return (
     <div
       ref={containerRef}
       onBlur={onBlur}
       className={cn(
-        'w-full rounded-md overflow-hidden min-h-[36px]',
+        'w-full rounded-md min-h-[36px]',
         hasError
           ? 'ring-1 ring-destructive border border-destructive'
           : 'border border-[var(--brand-gold-hairline)]',
       )}
+      style={{ position: 'relative' }}
     />
   )
 }
@@ -305,6 +417,7 @@ function PlacesAutocompleteNew({
 export function NewClientForm() {
   const router = useRouter()
   const googleMapsConfigured = isGoogleMapsKeyConfigured()
+  const hiddenDateRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<FormState>({
     full_name: '',
@@ -324,7 +437,6 @@ export function NewClientForm() {
 
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState<'save' | 'build' | null>(null)
-  // R2.2: collapsed by default; auto-expands when key absent or Places fails.
   const [manualOpen, setManualOpen] = useState(!googleMapsConfigured)
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -347,10 +459,7 @@ export function NewClientForm() {
     setErrors((prev) => ({ ...prev, ayanamshas: undefined }))
   }
 
-  // Stable callbacks for PlacesAutocompleteNew (useEffect deps must be stable).
-
   const handleBirthPlaceBlur = useCallback(() => {
-    // Functional update reads current state without stale closure.
     setForm((prev) => {
       if (prev.birth_place.trim() && !prev.places_resolved) setManualOpen(true)
       return prev
@@ -404,6 +513,23 @@ export function NewClientForm() {
       }))
     } else if (form.birth_date) {
       setForm((prev) => ({ ...prev, birth_date_display: formatDate(prev.birth_date) }))
+    }
+  }
+
+  // R3.7: hidden native date input → calendar popup → reformats to dd-MMM-yyyy
+  function handleHiddenDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const iso = e.target.value
+    if (!iso) return
+    setForm((prev) => ({ ...prev, birth_date: iso, birth_date_display: formatDate(iso) }))
+    setErrors((prev) => ({ ...prev, birth_date: undefined }))
+  }
+
+  function openCalendar(e: React.MouseEvent) {
+    e.preventDefault()
+    try {
+      hiddenDateRef.current?.showPicker()
+    } catch {
+      hiddenDateRef.current?.click()
     }
   }
 
@@ -480,55 +606,49 @@ export function NewClientForm() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   const isInFlight = submitting !== null
-  const nodeCount = form.ayanamshas.length * 28
-
-  // Dark-well style shared across inputs and selects (R2.5).
-  const wellStyle = {
-    background: 'var(--brand-charcoal-deep)',
-    color: 'var(--brand-gold-cream)',
-    borderColor: 'var(--brand-gold-hairline)',
-  }
-  const wellStyleError = {
-    background: 'var(--brand-charcoal-deep)',
-    color: 'var(--brand-gold-cream)',
-  }
 
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 py-6"
       style={{
-        // R2.5: page canvas = near-black brand-ink
         background: 'var(--brand-ink)',
-        // Re-point muted-foreground to a warm readable grey on near-black.
         '--muted-foreground': 'oklch(0.58 0.025 80)',
       } as React.CSSProperties}
     >
-      {/* ── Back link ──────────────────────────────────────────────────── */}
-      <div className="w-full max-w-[540px] mb-2">
+      {/* R3.5: global style for gmp-placeautocomplete theming */}
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: PLACES_WIDGET_CSS }} />
+
+      {/* ── R3.1: Icon-only back link on the same line as the title ─────── */}
+      {/* position:relative container lets the icon be absolute-left while
+          the title stays centered in the full row width.                   */}
+      <div
+        data-testid="form-title"
+        className="relative flex items-center justify-center w-full max-w-[720px] mb-5"
+      >
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="bt-body text-muted-foreground hover:underline"
+          className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-150"
+          style={{ color: 'oklch(0.58 0.025 80)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--brand-gold)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'oklch(0.58 0.025 80)' }}
         >
-          ← Back to dashboard
+          <ChevronLeft size={20} strokeWidth={1.5} />
         </Link>
-      </div>
 
-      {/* ── Title ──────────────────────────────────────────────────────── */}
-      <div data-testid="form-title" className="text-center mb-4">
+        {/* Subtitle removed per R3.1 — title alone carries it */}
         <h1 className="bt-display text-brand-gold-cream">
           <span className="opacity-55 text-brand-gold font-serif mr-1" aria-hidden="true">॥</span>
           Nava Jātaka
           <span className="opacity-55 text-brand-gold font-serif ml-1" aria-hidden="true">॥</span>
         </h1>
-        <p className="bt-body text-muted-foreground mt-0.5">New Chart</p>
       </div>
 
-      {/* ── Centered card (R2.1) ───────────────────────────────────────── */}
+      {/* ── Card — wider at 680px for single-line ayanamshas (R3.2) ─────── */}
       <div
-        className="w-full max-w-[540px] rounded-xl flex flex-col gap-4 p-6"
+        className="w-full max-w-[680px] rounded-xl flex flex-col gap-4 p-6"
         style={{
-          // R2.5: card = brand-charcoal, gold-hairline border
           background: 'var(--brand-charcoal)',
           border: '1px solid var(--brand-gold-hairline)',
         }}
@@ -574,31 +694,16 @@ export function NewClientForm() {
               onChange={(e) => setField('preferred_name', e.target.value)}
             />
           </div>
+          {/* R3.6: fully themed custom listbox — no OS chrome */}
           <div className="flex flex-col gap-1">
-            <Label htmlFor="gender" className="bt-label bt-label-upper text-brand-gold/70">
+            <span className="bt-label bt-label-upper text-brand-gold/70">
               Gender *
-            </Label>
-            {/* R2.4: brand-styled select with dark well + custom arrow */}
-            <SelectWrapper>
-              <select
-                id="gender"
-                value={form.gender}
-                aria-invalid={!!errors.gender}
-                className={cn(darkInputCls(!!errors.gender), 'appearance-none pr-7 cursor-pointer')}
-                style={
-                  errors.gender
-                    ? wellStyleError
-                    : { ...wellStyle, color: form.gender ? 'var(--brand-gold-cream)' : 'oklch(0.58 0.025 80)' }
-                }
-                onChange={(e) => setField('gender', e.target.value as FormState['gender'])}
-              >
-                <option value="" style={{ background: 'var(--brand-charcoal)' }}>— select —</option>
-                <option value="unknown" style={{ background: 'var(--brand-charcoal)' }}>Prefer not to say</option>
-                <option value="M" style={{ background: 'var(--brand-charcoal)' }}>Male</option>
-                <option value="F" style={{ background: 'var(--brand-charcoal)' }}>Female</option>
-                <option value="O" style={{ background: 'var(--brand-charcoal)' }}>Other</option>
-              </select>
-            </SelectWrapper>
+            </span>
+            <GenderSelect
+              value={form.gender}
+              hasError={!!errors.gender}
+              onChange={(v) => setField('gender', v)}
+            />
             {errors.gender && (
               <p role="alert" className="bt-label text-destructive">{errors.gender}</p>
             )}
@@ -641,7 +746,6 @@ export function NewClientForm() {
             <p role="alert" className="bt-label text-destructive">{errors.birth_place}</p>
           )}
 
-          {/* R2.2 — resolved place chip: compact green badge, replaces raw coords */}
           {form.places_resolved && (
             <div
               data-testid="places-resolved-indicator"
@@ -664,27 +768,65 @@ export function NewClientForm() {
 
         {/* Date + Time ────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">
+          {/* R3.7: dd-MMM-yyyy text field + calendar icon → hidden date picker */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="birth_date" className="bt-label bt-label-upper text-brand-gold/70">
               Date *
             </Label>
-            <Input
-              id="birth_date"
-              type="text"
-              placeholder="05-Feb-1984"
-              value={form.birth_date_display}
-              aria-required="true"
-              aria-label="Birth date in DD-MMM-YYYY format"
-              aria-invalid={!!errors.birth_date}
-              className={cn(darkInputCls(!!errors.birth_date), 'placeholder:text-brand-gold/25')}
-              style={errors.birth_date ? wellStyleError : wellStyle}
-              onChange={(e) => handleDateDisplayChange(e.target.value)}
-              onBlur={handleDateBlur}
-            />
+            <div className="relative flex items-center">
+              <Input
+                id="birth_date"
+                type="text"
+                placeholder="05-Feb-1984"
+                value={form.birth_date_display}
+                aria-required="true"
+                aria-label="Birth date in DD-MMM-YYYY format"
+                aria-invalid={!!errors.birth_date}
+                className={cn(
+                  darkInputCls(!!errors.birth_date),
+                  'pr-8 placeholder:text-brand-gold/25',
+                )}
+                style={errors.birth_date ? wellStyleError : wellStyle}
+                onChange={(e) => handleDateDisplayChange(e.target.value)}
+                onBlur={handleDateBlur}
+              />
+              <button
+                type="button"
+                aria-label="Open date picker"
+                onClick={openCalendar}
+                className="absolute right-2 flex items-center justify-center transition-colors duration-150"
+                style={{ color: 'oklch(0.58 0.025 80)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--brand-gold)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'oklch(0.58 0.025 80)' }}
+              >
+                <CalendarDays size={14} strokeWidth={1.5} />
+              </button>
+              {/* Hidden date input: triggers the browser's native calendar (R3.7) */}
+              <input
+                ref={hiddenDateRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden="true"
+                value={form.birth_date}
+                min="1900-01-01"
+                max={todayIso()}
+                onChange={handleHiddenDateChange}
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: 'none',
+                  colorScheme: 'dark',
+                }}
+              />
+            </div>
             {errors.birth_date && (
               <p role="alert" className="bt-label text-destructive">{errors.birth_date}</p>
             )}
           </div>
+
+          {/* R3.8: Time — dark well + colorScheme:dark for native chrome */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="birth_time" className="bt-label bt-label-upper text-brand-gold/70">
               Time (24 h) *
@@ -709,7 +851,7 @@ export function NewClientForm() {
           </div>
         </div>
 
-        {/* Manual coordinates (R2.2 — collapsed by default) ─────────── */}
+        {/* Manual coordinates (collapsed by default) ──────────────────── */}
         <div data-testid="manual-override-accordion">
           <button
             type="button"
@@ -774,7 +916,7 @@ export function NewClientForm() {
                   <Label htmlFor="timezone_id" className="bt-label bt-label-upper text-brand-gold/70">
                     Timezone
                   </Label>
-                  <SelectWrapper>
+                  <div className="relative">
                     <select
                       id="timezone_id"
                       value={form.timezone_id}
@@ -789,7 +931,12 @@ export function NewClientForm() {
                         </option>
                       ))}
                     </select>
-                  </SelectWrapper>
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]"
+                      style={{ color: 'oklch(0.50 0.015 75)' }}
+                    >▼</span>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <Label htmlFor="tz_offset" className="bt-label bt-label-upper text-brand-gold/70">
@@ -818,18 +965,18 @@ export function NewClientForm() {
           )}
         </div>
 
-        {/* Ayanamsha chips (R2.4 — dot indicator, unambiguous toggle) ── */}
+        {/* R3.2: Ayanamsha checkboxes — single flex-nowrap row ─────────── */}
         <div className="flex flex-col gap-2" data-testid="section-compute">
           <span className="bt-label bt-label-upper text-brand-gold/70">Ayanamsha systems</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap gap-2">
             {AYANAMSHA_OPTIONS.map((opt) => {
               const checked = form.ayanamshas.includes(opt.id)
               return (
                 <label
                   key={opt.id}
                   className={cn(
-                    'flex items-center gap-2 cursor-pointer rounded-lg border px-2.5 py-2 min-w-[100px]',
-                    'transition-all duration-150',
+                    'flex items-center gap-2 cursor-pointer rounded-lg border px-2.5 py-2 flex-1',
+                    'transition-all duration-150 min-w-0',
                   )}
                   style={{
                     background: checked ? 'oklch(0.78 0.13 80 / 0.12)' : 'transparent',
@@ -843,7 +990,6 @@ export function NewClientForm() {
                     aria-label={opt.label}
                     onChange={() => toggleAyanamsha(opt.id)}
                   />
-                  {/* Filled dot = selected; hollow ring = unselected */}
                   <span
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150"
                     style={{
@@ -851,19 +997,21 @@ export function NewClientForm() {
                       border: checked ? 'none' : '1px solid oklch(0.50 0.020 75)',
                     }}
                   />
-                  <span className="flex flex-col gap-0.5">
+                  <span className="flex flex-col gap-0.5 min-w-0">
                     <span
-                      className="text-sm font-medium leading-none"
-                      style={{ color: checked ? 'var(--brand-gold)' : 'oklch(0.72 0.025 80)' }}
+                      className="font-medium leading-none truncate"
+                      style={{
+                        fontSize: '11px',
+                        color: checked ? 'var(--brand-gold)' : 'oklch(0.72 0.025 80)',
+                      }}
                     >
                       {opt.label}
                     </span>
                     <span
-                      className="bt-label leading-none"
+                      className="leading-none truncate"
                       style={{
-                        color: checked
-                          ? 'oklch(0.78 0.13 80 / 0.60)'
-                          : 'oklch(0.50 0.015 75)',
+                        fontSize: '9px',
+                        color: checked ? 'oklch(0.78 0.13 80 / 0.60)' : 'oklch(0.50 0.015 75)',
                       }}
                     >
                       {opt.sub}
@@ -893,66 +1041,53 @@ export function NewClientForm() {
           </div>
         )}
 
-        {/* Footer: microcopy + Cancel / Save / Build (R2.1) ──────────── */}
+        {/* R3.3: Footer — 3 buttons only; microcopy removed ──────────── */}
         <div
           data-testid="form-footer"
-          className="flex items-center justify-between gap-3 pt-3"
+          className="flex items-center justify-end gap-2 pt-3"
           style={{ borderTop: '1px solid var(--brand-gold-hairline)' }}
         >
-          {/* AC16: microcopy is never clipped — shrink-0 + min-w-0 ensure it wraps */}
-          <span
-            data-testid="footer-microcopy"
-            className="bt-mono bt-label text-muted-foreground shrink min-w-0"
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => router.push('/dashboard')}
+            className="bt-body text-muted-foreground hover:text-brand-gold-cream px-3 h-8 rounded-md transition-colors disabled:opacity-50"
           >
-            {form.ayanamshas.length} ayanamshas × 28 assets = {nodeCount} nodes
-          </span>
+            Cancel
+          </button>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Cancel */}
-            <button
-              type="button"
-              disabled={isInFlight}
-              onClick={() => router.push('/dashboard')}
-              className="bt-body text-muted-foreground hover:text-brand-gold-cream px-3 h-8 rounded-md transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => submit('save')}
+            aria-busy={submitting === 'save'}
+            className={cn(
+              'bt-body h-8 rounded-md border px-3 transition-colors',
+              isInFlight && submitting !== 'save' && 'opacity-40 cursor-not-allowed',
+              submitting === 'save' && 'opacity-70',
+            )}
+            style={{
+              borderColor: 'var(--brand-gold)',
+              color: 'var(--brand-gold)',
+              background: 'transparent',
+            }}
+          >
+            {submitting === 'save' ? 'Saving…' : 'Save chart'}
+          </button>
 
-            {/* Save chart — gold hairline outline */}
-            <button
-              type="button"
-              disabled={isInFlight}
-              onClick={() => submit('save')}
-              aria-busy={submitting === 'save'}
-              className={cn(
-                'bt-body h-8 rounded-md border px-3 transition-colors',
-                isInFlight && submitting !== 'save' && 'opacity-40 cursor-not-allowed',
-                submitting === 'save' && 'opacity-70',
-              )}
-              style={{
-                borderColor: 'var(--brand-gold)',
-                color: 'var(--brand-gold)',
-                background: 'transparent',
-              }}
-            >
-              {submitting === 'save' ? 'Saving…' : 'Save chart'}
-            </button>
-
-            {/* Build chart — primary brand-cta */}
-            <button
-              type="button"
-              disabled={isInFlight}
-              onClick={() => submit('build')}
-              aria-busy={submitting === 'build'}
-              className={cn(
-                'brand-cta h-8 rounded-lg px-4 text-sm',
-                isInFlight && submitting !== 'build' && 'opacity-40 cursor-not-allowed',
-                submitting === 'build' && 'opacity-70',
-              )}
-            >
-              {submitting === 'build' ? 'Building…' : 'Build chart'}
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={isInFlight}
+            onClick={() => submit('build')}
+            aria-busy={submitting === 'build'}
+            className={cn(
+              'brand-cta h-8 rounded-lg px-4 text-sm',
+              isInFlight && submitting !== 'build' && 'opacity-40 cursor-not-allowed',
+              submitting === 'build' && 'opacity-70',
+            )}
+          >
+            {submitting === 'build' ? 'Building…' : 'Build chart'}
+          </button>
         </div>
       </div>
     </div>
