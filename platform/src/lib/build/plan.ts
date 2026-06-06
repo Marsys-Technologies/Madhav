@@ -133,12 +133,20 @@ export function resolveBuildPlan({
       const t = throughput.get(id)
       return !t || t.state === 'dormant'
     })
-    // Transitively include anything downstream of stale that is also dormant
-    const downstream = transitiveDownstream(stale, registry)
-    candidates = Array.from(new Set([...stale, ...dormant, ...downstream]))
-      .filter(id => scopeAssets.includes(id))
+    // For asset-scoped update: include transitive downstream regardless of scope boundary.
+    // For layer/global scopes: only downstream within scope.
+    const downstreamAll = transitiveDownstream(stale, registry)
+    const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
+    candidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
   } else if (action === 'rebuild') {
-    candidates = [...scopeAssets]
+    // Asset-scoped rebuild: target + its full transitive downstream (90/10 semantic).
+    // Layer/global scopes: all assets in scope.
+    if (scope === 'asset' && scope_target) {
+      const downstream = transitiveDownstream([scope_target], registry)
+      candidates = [scope_target, ...downstream]
+    } else {
+      candidates = [...scopeAssets]
+    }
   } else {
     // cascade: only downstream-stale from any stale seed
     const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
