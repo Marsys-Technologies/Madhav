@@ -58,10 +58,13 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   const handleNodeClick = useCallback((assetId: string) => {
     const asset = assets.find(a => a.asset_id === assetId)
     if (!asset) return
+    console.log('[DAG] node click:', assetId)
     setFocusedAssetId(assetId)
-    // Scroll the LayerPanel into view
-    const el = layerRefs.current.get(asset.layer)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // Wait 80ms for forceExpand to open the layer, then scroll to the specific row
+    setTimeout(() => {
+      const row = document.querySelector(`[data-asset-id="${assetId}"]`)
+      row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 80)
     // Clear highlight after 1.5s
     setTimeout(() => setFocusedAssetId(null), 1500)
   }, [assets])

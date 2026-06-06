@@ -176,7 +176,7 @@ export function LayerPanel({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '44% 12% 14% 18% 12%',
+              gridTemplateColumns: '42% 12% 14% 18% 14%',
               gap: '8px',
               padding: '6px 12px',
               fontSize: '11px',

@@ -49,9 +49,10 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
 
   return (
     <div
+      data-asset-id={asset.asset_id}
       style={{
         display: 'grid',
-        gridTemplateColumns: '44% 12% 14% 18% 12%',
+        gridTemplateColumns: '42% 12% 14% 18% 14%',
         gap: '8px',
         alignItems: 'center',
         padding: '8px 12px',
