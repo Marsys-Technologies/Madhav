@@ -9,12 +9,12 @@ async function isSuperAdmin(uid: string): Promise<boolean> {
 
 export const dynamic = 'force-dynamic'
 
-const GCP_PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
+const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 const PUBSUB_TOPIC = process.env.PUBSUB_TOPIC ?? 'cockpit-events'
 
 /** Whether Pub/Sub is available (topic env set and not explicitly disabled). */
 function pubsubEnabled(): boolean {
-  return !process.env.PUBSUB_DISABLED && !!process.env.GCP_PROJECT
+  return !process.env.PUBSUB_DISABLED && !!process.env.GOOGLE_CLOUD_PROJECT
 }
 
 export async function GET(req: NextRequest) {
@@ -44,7 +44,7 @@ async function pubsubStream(
 ): Promise<Response> {
   // Dynamic import keeps the bundle clean when pubsub is disabled.
   const { PubSub } = await import('@google-cloud/pubsub')
-  const client = new PubSub({ projectId: GCP_PROJECT })
+  const client = new PubSub({ projectId: GOOGLE_CLOUD_PROJECT })
 
   // Unique ephemeral subscription per request (hostname + timestamp + random suffix)
   const hostname = process.env.HOSTNAME ?? 'local'
@@ -112,7 +112,7 @@ async function pubsubStream(
 
 /**
  * Fallback: in-memory heartbeat-only stream used in local dev when
- * PUBSUB_DISABLED is set or GCP_PROJECT is absent.
+ * PUBSUB_DISABLED is set or GOOGLE_CLOUD_PROJECT is absent.
  * The cockpit polls /api/cockpit/runs/active for state updates in this mode.
  */
 function pollingStream(

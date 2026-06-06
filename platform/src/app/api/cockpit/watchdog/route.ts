@@ -8,10 +8,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 
 async function publishEvent(event: Record<string, unknown>): Promise<void> {
-  if (process.env.PUBSUB_DISABLED || !process.env.GCP_PROJECT) return
+  if (process.env.PUBSUB_DISABLED || !process.env.GOOGLE_CLOUD_PROJECT) return
   try {
     const { PubSub } = await import('@google-cloud/pubsub')
-    const client = new PubSub({ projectId: process.env.GCP_PROJECT })
+    const client = new PubSub({ projectId: process.env.GOOGLE_CLOUD_PROJECT })
     const topic = client.topic(process.env.PUBSUB_TOPIC ?? 'cockpit-events')
     await topic.publishMessage({
       data: Buffer.from(JSON.stringify(event)),
