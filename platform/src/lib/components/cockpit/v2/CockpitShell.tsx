@@ -18,6 +18,8 @@ export function CockpitShell({ chartId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('data')
   const { chartName, birthDate, birthPlace } = useChartContext(chartId)
 
+  console.log('[Shell] render — chartName=', chartName, 'birthDate=', birthDate)
+
   return (
     <div
       className="marsys-cockpit"
