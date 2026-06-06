@@ -8,35 +8,25 @@ import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
 
 const LAYER_COLOR: Record<string, string> = {
-  brahmagyan: 'var(--gold-core)',
-  ganita: 'var(--jewel-sapphire)',
-  bodha: 'var(--jewel-emerald)',
-  kala: 'var(--jewel-teal)',
-  phala: 'var(--jewel-amethyst)',
-  mimamsa: 'var(--gold-engrave)',
+  brahmagyan: 'var(--gold-high)',
+  ganita: '#6B9FD4',
+  bodha: '#5BAF7A',
+  kala: '#4AAFAF',
+  phala: '#9B7FD4',
+  mimamsa: 'var(--on-dark-mut)',
 }
 
-const LAYER_CODENAME: Record<string, string> = {
-  brahmagyan: 'L0',
-  ganita: 'L1',
-  bodha: 'L2',
-  kala: 'L3',
-  phala: 'L4',
-  mimamsa: 'L5',
-}
-
-const LAYER_ENGLISH: Record<string, string> = {
-  brahmagyan: 'Foundation',
-  ganita: 'Chart facts',
-  bodha: 'Chart intelligence',
-  kala: 'Temporal',
-  phala: 'Prediction',
-  mimamsa: 'Learning',
+const LAYER_NAMES: Record<string, { sa: string; en: string }> = {
+  brahmagyan: { sa: 'Brahma Jñāna', en: 'Foundation' },
+  ganita:     { sa: 'Gaṇita',       en: 'Chart facts' },
+  bodha:      { sa: 'Bodha',        en: 'Chart intelligence' },
+  kala:       { sa: 'Kāla',         en: 'Temporal' },
+  phala:      { sa: 'Phala',        en: 'Prediction' },
+  mimamsa:    { sa: 'Mīmāṃsā',      en: 'Learning' },
 }
 
 interface Props {
   layer: string
-  sanskritName: string
   assets: AssetRow[]
   stats: Map<string, AssetStats>
   defaultExpanded?: boolean
@@ -47,7 +37,6 @@ interface Props {
 
 export function LayerPanel({
   layer,
-  sanskritName,
   assets,
   stats,
   defaultExpanded = false,
@@ -57,7 +46,7 @@ export function LayerPanel({
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
-  const layerLabel = layer.charAt(0).toUpperCase() + layer.slice(1)
+  const layerNames = LAYER_NAMES[layer] ?? { sa: layer, en: layer }
 
   const totalRows = assets.reduce((sum, asset) => {
     const s = stats.get(asset.asset_id)
@@ -107,39 +96,29 @@ export function LayerPanel({
           {expanded ? '▼' : '▶'}
         </span>
 
-        {/* Name column — two-line layout */}
+        {/* Name column — bilingual two-line: Sanskrit (22px gold) above, English (14px) below */}
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: '22px',
+              lineHeight: 1.1,
+              fontWeight: 400,
+              color: 'var(--gold-high)',
+            }}
+          >
+            {layerNames.sa}
+          </div>
           <div
             style={{
               fontFamily: 'var(--ui-stack)',
               fontSize: '14px',
-              fontWeight: 500,
-              color: 'var(--on-dark)',
+              lineHeight: 1.2,
+              color: 'rgba(255,255,255,0.90)',
+              marginTop: '2px',
             }}
           >
-            {LAYER_ENGLISH[layer] ?? layerLabel}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '1px' }}>
-            <span
-              style={{
-                fontFamily: 'var(--display-stack)',
-                fontSize: '11px',
-                fontStyle: 'italic',
-                color: 'var(--on-dark-faint)',
-              }}
-            >
-              {sanskritName}
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--mono-stack)',
-                fontSize: '10px',
-                color: 'var(--on-dark-faint)',
-                marginLeft: '6px',
-              }}
-            >
-              · {LAYER_CODENAME[layer] ?? ''}
-            </span>
+            {layerNames.en}
           </div>
         </div>
 
@@ -177,6 +156,27 @@ export function LayerPanel({
       {/* Body */}
       {expanded && (
         <div style={{ background: 'var(--black)' }}>
+          {/* Column headers */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '40% 15% 15% 20% 10%',
+              gap: '8px',
+              padding: '6px 12px',
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--on-dark-faint)',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              fontFamily: 'var(--ui-stack)',
+            }}
+          >
+            <div>Asset</div>
+            <div style={{ textAlign: 'right' }}>Rows</div>
+            <div>State</div>
+            <div>Last built</div>
+            <div style={{ textAlign: 'right' }}>Actions</div>
+          </div>
           {assets.map((asset) => {
             const assetRunActive = activeRun != null && (
               activeRun.scope === 'global' ||

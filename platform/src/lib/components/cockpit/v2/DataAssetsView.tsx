@@ -4,6 +4,7 @@ import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { LayerPanel } from './LayerPanel'
+import { DAGPlaceholder } from './DAGPlaceholder'
 
 const LAYER_ORDER = [
   'brahmagyan',
@@ -13,15 +14,6 @@ const LAYER_ORDER = [
   'phala',
   'mimamsa',
 ] as const
-
-const LAYER_SANSKRIT: Record<string, string> = {
-  brahmagyan: 'Brahmagyan',
-  ganita: 'Gaṇita',
-  bodha: 'Bodha',
-  kala: 'Kāla',
-  phala: 'Phala',
-  mimamsa: 'Mīmāṃsā',
-}
 
 interface Props {
   chartId: string
@@ -80,24 +72,40 @@ export function DataAssetsView({ chartId }: Props) {
     ),
   ]
 
+  // Auto-expand layers that have an active run in scope
+  const activeRunPlan: string[] = activeRun?.plan ?? []
+  function isLayerExpanded(layer: string): boolean {
+    if (!activeRun) return false
+    if (activeRun.scope === 'layer' && activeRun.scope_target === layer) return true
+    if (activeRun.scope === 'global' && activeRunPlan.some(id => id.startsWith(layer + '.'))) return true
+    return false
+  }
+
   return (
-    <div style={{ padding: '8px 0' }}>
-      {orderedLayers.map((layer) => {
-        const layerAssets = byLayer.get(layer) ?? []
-        return (
-          <LayerPanel
-            key={layer}
-            layer={layer}
-            sanskritName={LAYER_SANSKRIT[layer] ?? layer}
-            assets={layerAssets}
-            stats={stats}
-            defaultExpanded={layer === 'bodha'}
-            chartId={chartId}
-            activeRun={activeRun}
-            onRunStarted={refreshRun}
-          />
-        )
-      })}
+    <div style={{ display: 'flex', gap: '24px', padding: '8px 0', alignItems: 'flex-start' }}>
+      {/* 60% — layer panels */}
+      <div style={{ flex: '0 0 60%', minWidth: 0 }}>
+        {orderedLayers.map((layer) => {
+          const layerAssets = byLayer.get(layer) ?? []
+          return (
+            <LayerPanel
+              key={layer}
+              layer={layer}
+              assets={layerAssets}
+              stats={stats}
+              defaultExpanded={isLayerExpanded(layer)}
+              chartId={chartId}
+              activeRun={activeRun}
+              onRunStarted={refreshRun}
+            />
+          )
+        })}
+      </div>
+
+      {/* 40% — DAG (Phase 10 replaces placeholder) */}
+      <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '24px' }}>
+        <DAGPlaceholder />
+      </div>
     </div>
   )
 }
