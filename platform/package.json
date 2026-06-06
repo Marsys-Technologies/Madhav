@@ -42,7 +42,6 @@
     "chat-v2:perf": "playwright test tests/e2e/chat-v2/perf --config=tests/e2e/chat-v2/playwright.config.ts"
   },
   "dependencies": {
-    "@react-google-maps/api": "^2.20.8",
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/deepseek": "^2.0.29",
     "@ai-sdk/google": "^3.0.64",
@@ -54,9 +53,11 @@
     "@base-ui/react": "^1.4.0",
     "@google-cloud/bigquery": "^7.9.4",
     "@google-cloud/cloud-sql-connector": "^1.10.0",
+    "@google-cloud/pubsub": "^5.3.1",
     "@google-cloud/run": "^3.2.0",
     "@google-cloud/storage": "^7.19.0",
     "@google-cloud/tasks": "^5.5.2",
+    "@react-google-maps/api": "^2.20.8",
     "@tanstack/react-query": "^5.99.0",
     "ai": "^6.0.168",
     "ajv": "^8.20.0",
