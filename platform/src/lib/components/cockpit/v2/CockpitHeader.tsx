@@ -11,6 +11,7 @@ interface Props {
 
 export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Props) {
   const [sidecarHealthy, setSidecarHealthy] = useState<boolean | null>(null)
+  const [buildStatus, setBuildStatus] = useState<'idle' | 'building' | 'error'>('idle')
 
   useEffect(() => {
     const check = async () => {
@@ -32,6 +33,30 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
 
   const sidecarLabel =
     sidecarHealthy === null ? '…' : sidecarHealthy ? 'OK' : 'DOWN'
+
+  const handleBuild = async () => {
+    if (buildStatus === 'building') return
+    setBuildStatus('building')
+    try {
+      const r = await fetch('/api/build/start', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chart_id: chartId }),
+      })
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: 'unknown' }))
+        console.error('[CockpitHeader] build start error:', err)
+        setBuildStatus('error')
+        setTimeout(() => setBuildStatus('idle'), 3000)
+      }
+      // Success: stay in 'building' — a future poll will update status
+    } catch (e) {
+      console.error('[CockpitHeader] build start fetch error:', e)
+      setBuildStatus('error')
+      setTimeout(() => setBuildStatus('idle'), 3000)
+    }
+  }
 
   return (
     <div
@@ -103,8 +128,17 @@ export function CockpitHeader({ chartId, chartName, birthDate, birthPlace }: Pro
           >
             ◆ Pro view
           </span>
-          <button className="marsys-btn-primary" disabled>
-            Build
+          <button
+            className="marsys-btn-primary"
+            onClick={handleBuild}
+            disabled={buildStatus === 'building'}
+            style={{ opacity: buildStatus === 'building' ? 0.7 : 1 }}
+          >
+            {buildStatus === 'building'
+              ? 'Building…'
+              : buildStatus === 'error'
+                ? 'Error — retry?'
+                : 'Build'}
           </button>
         </div>
       </div>
