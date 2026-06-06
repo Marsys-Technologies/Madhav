@@ -44,6 +44,8 @@ jobs:
           cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
           cp 00_ARCHITECTURE/PLANNER_PROMPT_v*.md platform/00_ARCHITECTURE/
           cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
+          cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
+          cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
 
       - name: Build web image (no push)
         uses: docker/build-push-action@v6
@@ -138,6 +140,8 @@ jobs:
           cp 00_ARCHITECTURE/manifest_overrides.yaml platform/00_ARCHITECTURE/manifest_overrides.yaml
           cp 00_ARCHITECTURE/PLANNER_PROMPT_v*.md platform/00_ARCHITECTURE/
           cp -r 01_FACTS_LAYER platform/01_FACTS_LAYER
+          cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
+          cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
