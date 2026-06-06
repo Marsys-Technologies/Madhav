@@ -155,8 +155,7 @@ export function LayerPanel({
             <span style={{ fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
               {totalRows.toLocaleString()} rows
             </span>
-            )
-          })
+          )}
           <BuildActionButton
             chartId={chartId}
             scope="layer"
