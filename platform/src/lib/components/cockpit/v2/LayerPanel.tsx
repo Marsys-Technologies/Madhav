@@ -14,6 +14,24 @@ const LAYER_COLOR: Record<string, string> = {
   mimamsa: 'var(--gold-engrave)',
 }
 
+const LAYER_CODENAME: Record<string, string> = {
+  brahmagyan: 'L0',
+  ganita: 'L1',
+  bodha: 'L2',
+  kala: 'L3',
+  phala: 'L4',
+  mimamsa: 'L5',
+}
+
+const LAYER_ENGLISH: Record<string, string> = {
+  brahmagyan: 'Foundation',
+  ganita: 'Calculation',
+  bodha: 'Synthesis',
+  kala: 'Timeline',
+  phala: 'Fruition',
+  mimamsa: 'Reflection',
+}
+
 interface Props {
   layer: string
   sanskritName: string
@@ -32,6 +50,11 @@ export function LayerPanel({
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   const layerLabel = layer.charAt(0).toUpperCase() + layer.slice(1)
+
+  const totalRows = assets.reduce((sum, asset) => {
+    const s = stats.get(asset.asset_id)
+    return sum + (s?.actual_rows ?? 0)
+  }, 0)
 
   return (
     <div
@@ -55,40 +78,70 @@ export function LayerPanel({
           borderLeft: `3px solid ${LAYER_COLOR[layer] ?? 'var(--black-line)'}`,
         }}
       >
-        <span style={{ color: 'var(--on-dark-mut)', fontSize: '12px' }}>
+        {/* Chevron */}
+        <span style={{ color: 'var(--on-dark-mut)', fontSize: '12px', flexShrink: 0 }}>
           {expanded ? '▼' : '▶'}
         </span>
-        <span
-          style={{
-            fontFamily: 'var(--ui-stack)',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: 'var(--on-dark)',
-          }}
-        >
-          {layerLabel}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--display-stack)',
-            fontSize: '12px',
-            fontStyle: 'italic',
-            color: 'var(--on-dark-faint)',
-            marginLeft: '4px',
-          }}
-        >
-          {sanskritName}
-        </span>
-        <span
-          style={{
-            marginLeft: 'auto',
-            fontSize: '11px',
-            color: 'var(--on-dark-faint)',
-            fontFamily: 'var(--mono-stack)',
-          }}
-        >
-          {assets.length} assets
-        </span>
+
+        {/* Name column — two-line layout */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: 'var(--ui-stack)',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: 'var(--on-dark)',
+            }}
+          >
+            {LAYER_ENGLISH[layer] ?? layerLabel}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '1px' }}>
+            <span
+              style={{
+                fontFamily: 'var(--display-stack)',
+                fontSize: '11px',
+                fontStyle: 'italic',
+                color: 'var(--on-dark-faint)',
+              }}
+            >
+              {sanskritName}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--mono-stack)',
+                fontSize: '10px',
+                color: 'var(--on-dark-faint)',
+                marginLeft: '6px',
+              }}
+            >
+              · {LAYER_CODENAME[layer] ?? ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: asset count + total rows */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+          <span
+            style={{
+              fontFamily: 'var(--mono-stack)',
+              fontSize: '11px',
+              color: 'var(--on-dark-faint)',
+            }}
+          >
+            {assets.length} assets
+          </span>
+          {totalRows > 0 && (
+            <span
+              style={{
+                fontFamily: 'var(--mono-stack)',
+                fontSize: '11px',
+                color: 'var(--on-dark-mut)',
+              }}
+            >
+              {totalRows.toLocaleString()} rows
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Body */}
