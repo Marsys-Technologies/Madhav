@@ -101,13 +101,13 @@ export function AssetRow({ asset, stat }: Props) {
           <span
             className="marsys-chip"
             style={{
-              background: 'rgba(124,114,91,0.15)',
+              background: 'rgba(124,114,91,0.10)',
               color: 'var(--on-dark-faint)',
               borderColor: 'var(--black-line)',
               fontSize: '9px',
             }}
           >
-            INACTIVE
+            NOT MIGRATED
           </span>
         ) : hasError ? (
           <span
