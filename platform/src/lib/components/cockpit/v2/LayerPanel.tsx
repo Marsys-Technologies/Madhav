@@ -25,11 +25,11 @@ const LAYER_CODENAME: Record<string, string> = {
 
 const LAYER_ENGLISH: Record<string, string> = {
   brahmagyan: 'Foundation',
-  ganita: 'Calculation',
-  bodha: 'Synthesis',
-  kala: 'Timeline',
-  phala: 'Fruition',
-  mimamsa: 'Reflection',
+  ganita: 'Chart facts',
+  bodha: 'Chart intelligence',
+  kala: 'Temporal',
+  phala: 'Prediction',
+  mimamsa: 'Learning',
 }
 
 interface Props {
