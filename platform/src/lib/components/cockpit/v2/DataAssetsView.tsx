@@ -2,6 +2,7 @@
 
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
+import { useActiveRun } from '@/hooks/useActiveRun'
 import { LayerPanel } from './LayerPanel'
 
 const LAYER_ORDER = [
@@ -29,6 +30,7 @@ interface Props {
 export function DataAssetsView({ chartId }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
   const { stats } = useAssetStats({ chartId })
+  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
 
   if (isLoading && assets.length === 0) {
     return (
@@ -90,6 +92,9 @@ export function DataAssetsView({ chartId }: Props) {
             assets={layerAssets}
             stats={stats}
             defaultExpanded={layer === 'bodha'}
+            chartId={chartId}
+            activeRun={activeRun}
+            onRunStarted={refreshRun}
           />
         )
       })}

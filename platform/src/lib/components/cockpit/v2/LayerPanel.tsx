@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
+import type { ActiveRun } from '@/hooks/useActiveRun'
 import { AssetRow as AssetRowComponent } from './AssetRow'
+import { BuildActionButton } from './BuildActionButton'
 
 const LAYER_COLOR: Record<string, string> = {
   brahmagyan: 'var(--gold-core)',
@@ -38,6 +40,9 @@ interface Props {
   assets: AssetRow[]
   stats: Map<string, AssetStats>
   defaultExpanded?: boolean
+  chartId: string
+  activeRun: ActiveRun | null
+  onRunStarted: () => void
 }
 
 export function LayerPanel({
@@ -46,6 +51,9 @@ export function LayerPanel({
   assets,
   stats,
   defaultExpanded = false,
+  chartId,
+  activeRun,
+  onRunStarted,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
@@ -55,6 +63,22 @@ export function LayerPanel({
     const s = stats.get(asset.asset_id)
     return sum + (s?.actual_rows ?? 0)
   }, 0)
+
+  // Derive scope stats for BuildActionButton
+  const activeAssets = assets.filter(a => a.is_active)
+  const dormantCount = activeAssets.filter(a => {
+    const s = stats.get(a.asset_id)
+    return !s?.actual_rows && !s?.error
+  }).length
+  const staleCount = 0 // populated by throughput state in Phase 9
+
+  // Active run overlaps this layer if scope is global or scope_target matches this layer
+  const layerRunActive = activeRun != null && (
+    activeRun.scope === 'global' ||
+    (activeRun.scope === 'layer' && activeRun.scope_target === layer)
+  )
+  const layerRunId = layerRunActive ? activeRun!.id : null
+  const layerRunPaused = layerRunActive && activeRun!.state === 'paused'
 
   return (
     <div
@@ -119,41 +143,59 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Right: asset count + total rows */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          <span
-            style={{
-              fontFamily: 'var(--mono-stack)',
-              fontSize: '11px',
-              color: 'var(--on-dark-faint)',
-            }}
-          >
+        {/* Right: asset count + rows + build button */}
+        <div
+          style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <span style={{ fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-faint)' }}>
             {assets.length} assets
           </span>
           {totalRows > 0 && (
-            <span
-              style={{
-                fontFamily: 'var(--mono-stack)',
-                fontSize: '11px',
-                color: 'var(--on-dark-mut)',
-              }}
-            >
+            <span style={{ fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
               {totalRows.toLocaleString()} rows
             </span>
-          )}
+            )
+          })
+          <BuildActionButton
+            chartId={chartId}
+            scope="layer"
+            scopeTarget={layer}
+            size="sm"
+            stats={{
+              total: activeAssets.length,
+              dormant: dormantCount,
+              stale: staleCount,
+              active_run_id: layerRunId,
+              is_paused: layerRunPaused,
+            }}
+            onRunStarted={onRunStarted}
+            onRunStateChange={onRunStarted}
+          />
         </div>
       </div>
 
       {/* Body */}
       {expanded && (
         <div style={{ background: 'var(--black)' }}>
-          {assets.map((asset) => (
-            <AssetRowComponent
-              key={asset.asset_id}
-              asset={asset}
-              stat={stats.get(asset.asset_id) ?? null}
-            />
-          ))}
+          {assets.map((asset) => {
+            const assetRunActive = activeRun != null && (
+              activeRun.scope === 'global' ||
+              (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
+              (activeRun.scope === 'asset' && activeRun.scope_target === asset.asset_id)
+            )
+            return (
+              <AssetRowComponent
+                key={asset.asset_id}
+                asset={asset}
+                stat={stats.get(asset.asset_id) ?? null}
+                chartId={chartId}
+                activeRunId={assetRunActive ? activeRun!.id : null}
+                activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
+                onRunStarted={onRunStarted}
+              />
+            )
+          })}
         </div>
       )}
     </div>

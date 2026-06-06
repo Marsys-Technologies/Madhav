@@ -2,15 +2,21 @@
 
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
+import { BuildActionButton } from './BuildActionButton'
 
 interface Props {
   asset: AssetRowType
   stat: AssetStats | null
+  chartId: string
+  activeRunId: string | null
+  activeRunPaused: boolean
+  onRunStarted: () => void
 }
 
-export function AssetRow({ asset, stat }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, onRunStarted }: Props) {
   const hasError = stat?.error != null
   const isActive = asset.is_active
+  const isDormant = isActive && !stat?.actual_rows && !hasError
 
   const dotColor = !isActive
     ? 'var(--black-line)'
@@ -95,8 +101,8 @@ export function AssetRow({ asset, stat }: Props) {
         )}
       </div>
 
-      {/* Status pill */}
-      <div>
+      {/* Status pill + build button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
         {!isActive ? (
           <span
             className="marsys-chip"
@@ -110,29 +116,57 @@ export function AssetRow({ asset, stat }: Props) {
             NOT MIGRATED
           </span>
         ) : hasError ? (
-          <span
-            className="marsys-chip"
-            style={{
-              background: 'rgba(181,71,76,0.15)',
-              color: 'var(--marsys-error)',
-              borderColor: 'var(--marsys-error)',
-              fontSize: '9px',
-            }}
-          >
-            {(stat!.error ?? 'ERROR').toUpperCase()}
-          </span>
+          <>
+            <span
+              className="marsys-chip"
+              style={{
+                background: 'rgba(181,71,76,0.15)',
+                color: 'var(--marsys-error)',
+                borderColor: 'var(--marsys-error)',
+                fontSize: '9px',
+              }}
+            >
+              {(stat!.error ?? 'ERROR').toUpperCase()}
+            </span>
+            <BuildActionButton
+              chartId={chartId}
+              scope="asset"
+              scopeTarget={asset.asset_id}
+              size="sm"
+              stats={{ total: 1, dormant: 0, stale: 0, active_run_id: activeRunId, is_paused: activeRunPaused }}
+              onRunStarted={onRunStarted}
+              onRunStateChange={onRunStarted}
+            />
+          </>
         ) : (
-          <span
-            className="marsys-chip"
-            style={{
-              background: 'rgba(62,124,75,0.15)',
-              color: 'var(--marsys-success)',
-              borderColor: 'var(--marsys-success)',
-              fontSize: '9px',
-            }}
-          >
-            LIVE
-          </span>
+          <>
+            <span
+              className="marsys-chip"
+              style={{
+                background: isDormant ? 'transparent' : 'rgba(62,124,75,0.15)',
+                color: isDormant ? 'var(--on-dark-faint)' : 'var(--marsys-success)',
+                borderColor: isDormant ? 'var(--black-line)' : 'var(--marsys-success)',
+                fontSize: '9px',
+              }}
+            >
+              {isDormant ? 'NOT BUILT' : 'LIVE'}
+            </span>
+            <BuildActionButton
+              chartId={chartId}
+              scope="asset"
+              scopeTarget={asset.asset_id}
+              size="sm"
+              stats={{
+                total: 1,
+                dormant: isDormant ? 1 : 0,
+                stale: 0,
+                active_run_id: activeRunId,
+                is_paused: activeRunPaused,
+              }}
+              onRunStarted={onRunStarted}
+              onRunStateChange={onRunStarted}
+            />
+          </>
         )}
       </div>
     </div>
