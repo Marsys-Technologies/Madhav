@@ -1021,3 +1021,23 @@ body {
   color: var(--muted-foreground);
   font-style: italic;
 }
+
+/* ── Cockpit DAG — CSS-driven infinite animations ──────────────────────────
+   These replace Framer Motion infinite loops for breathing nodes + polygon
+   pulses. GPU-composited: browser handles animation, not JS rAF loops.
+   transform-box + transform-origin must be set inline on SVG elements.    */
+@keyframes beadBreathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.08); }
+}
+.bead-breathe {
+  animation: beadBreathe 3s ease-in-out infinite;
+}
+
+@keyframes polyPulse {
+  0%, 100% { opacity: var(--base-op, 0.05); }
+  50%       { opacity: calc(var(--base-op, 0.05) * 1.4); }
+}
+.poly-pulse {
+  animation: polyPulse 8s ease-in-out infinite;
+}

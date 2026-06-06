@@ -6,9 +6,21 @@ import { useAssetStats } from '@/hooks/useAssetStats'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { useCockpitSSE } from '@/hooks/useCockpitSSE'
 import type { CockpitEvent } from '@/hooks/useCockpitSSE'
+import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
-import { LiveDependencyGraph } from './LiveDependencyGraph'
 import type { AssetWithState } from './LiveDependencyGraph'
+
+const LiveDependencyGraph = dynamic(
+  () => import('./LiveDependencyGraph').then(m => m.LiveDependencyGraph),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center text-white/40 text-sm">
+        Loading dependency graph…
+      </div>
+    ),
+  }
+)
 
 const LAYER_ORDER = [
   'brahmagyan',

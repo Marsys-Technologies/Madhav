@@ -324,15 +324,19 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
             if (!pa || !pb || !pc) return null
             const baseOpacity = polyOpacity
             return (
-              <motion.polygon
+              <polygon
                 key={`poly-${polyIdx}`}
                 points={`${pa.cx},${pa.cy} ${pb.cx},${pb.cy} ${pc.cx},${pc.cy}`}
                 fill={`rgba(70,55,32,1)`}
                 stroke={`rgba(140,110,60,0.18)`}
                 strokeWidth={0.5}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [baseOpacity, baseOpacity * 1.4, baseOpacity] }}
-                transition={{ duration: 8 + polyIdx * 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="poly-pulse"
+                style={
+                  {
+                    '--base-op': baseOpacity,
+                    animationDuration: `${8 + polyIdx * 2}s`,
+                  } as React.CSSProperties
+                }
               />
             )
           })
@@ -408,21 +412,21 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
               filter={glowFilter}
             >
               {isActive ? (
-                <motion.circle
+                <circle
                   cx={pos.cx}
                   cy={pos.cy}
                   r={r}
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{
-                    opacity: [stateOpacity(state), stateOpacity(state) * 0.88, stateOpacity(state)],
-                    scale: [1, 1.08, 1],
-                  }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: nodeIndex * 0.15 }}
                   fill={fillFor(state)}
                   stroke={strokeFor(state)}
                   strokeWidth={1.5}
-                  style={{ transformOrigin: `${pos.cx}px ${pos.cy}px` }}
                   fillOpacity={isStale ? 0.4 : 1}
+                  opacity={stateOpacity(state)}
+                  className="bead-breathe"
+                  style={{
+                    transformBox: 'fill-box',
+                    transformOrigin: 'center',
+                    animationDelay: `${nodeIndex * 0.15}s`,
+                  }}
                 />
               ) : (
                 <motion.circle
