@@ -4,11 +4,19 @@ from __future__ import annotations
 import json
 import os
 import sys
+import uuid
+
+
+class _Encoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        return super().default(o)
 
 
 def emit_event(event: dict) -> None:
     if os.environ.get("PUBSUB_DISABLED") or not os.environ.get("PUBSUB_TOPIC"):
-        print(f"[event] {json.dumps(event)}", flush=True)
+        print(f"[event] {json.dumps(event, cls=_Encoder)}", flush=True)
         return
     _pubsub_publish(event)
 
@@ -23,7 +31,7 @@ def _pubsub_publish(event: dict) -> None:
 
         publisher = pubsub_v1.PublisherClient()
         topic_path = publisher.topic_path(project, topic_id)
-        data = json.dumps(event).encode("utf-8")
+        data = json.dumps(event, cls=_Encoder).encode("utf-8")
         attrs = {
             "chart_id": str(event.get("chart_id", "")),
             "type": event["type"],
