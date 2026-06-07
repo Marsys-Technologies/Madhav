@@ -1,6 +1,6 @@
 streams:
   A: { status: review, tag: c8d62c697392f265ead496fe1e2ab047886b89bf, attempts: 1 }
-  B: { status: blocked_on_A, tag: null, attempts: 0 }
+  B: { status: review, tag: 5ebd680f8806a378e99ea4a4503071034f0b7983, attempts: 1 }
   C: { status: blocked_on_A, tag: null, attempts: 0 }
   D: { status: blocked_on_C_midway, tag: null, attempts: 0 }
   E: { status: review, tag: 4e814bea67f9b6a4e869217238963653ccf973be, attempts: 1 }
@@ -18,3 +18,4 @@ brahma_pipeline_path: platform/python-sidecar
 # Vimarśaka-A attempt 1 completed 2026-06-07T05:38+05:30 — REJECT_WITH_FEEDBACK (12/15 PASS); rework items: audience_tier kill-list, canonical_id schema (SAT vs Saturn), /api/retrieval/L0 route
 # Stream G completed 2026-06-07T05:55+05:30 — pyjhora_adapter + /api/pyhora + 3 capabilities + migration 174; smoke PASS; status set to review
 # Stream E completed 2026-06-07 — Pañcāṅga service + 6 L1 Ganita capabilities; AC1-AC2-AC4 PASS (13/15 tests green, 2 skipped DB); tier-2 autonomy override logged to smriti; status set to review
+# Stream B completed 2026-06-07 — ephemeris_daily 825,084 rows (1900-2150 × 9 bodies); JPL spot check 0.29 arcsec PASS; 6 L0 capabilities + sidecar routes; tier-2 autonomy override (proceed despite vimarsaka_a=reject); status set to review; SHA 5ebd680f
