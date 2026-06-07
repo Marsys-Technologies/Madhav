@@ -105,10 +105,13 @@ export function CockpitShell({ chartId }: Props) {
       className="marsys-cockpit"
       style={{
         background: 'var(--black)',
-        minHeight: '100vh',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
         color: 'var(--on-dark)',
         padding: '16px',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       <CockpitHeader
@@ -124,7 +127,9 @@ export function CockpitShell({ chartId }: Props) {
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
       {activeTab === 'data' && (
-        <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} />
+        </div>
       )}
       {activeTab === 'workflow' && proMode && <WorkflowView chartId={chartId} />}
       {activeTab === 'agents' && proMode && <AgentsView chartId={chartId} />}

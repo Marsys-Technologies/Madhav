@@ -161,9 +161,9 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: '24px', padding: '8px 0', alignItems: 'flex-start' }}>
-      {/* 60% — layer panels */}
-      <div style={{ flex: '0 0 60%', minWidth: 0 }}>
+    <div style={{ display: 'flex', gap: '24px', height: '100%', overflow: 'hidden' }}>
+      {/* 60% — layer panels: independently scrolls */}
+      <div style={{ flex: '0 0 60%', minWidth: 0, height: '100%', overflowY: 'auto', padding: '8px 0' }}>
         {orderedLayers.map((layer) => {
           const layerAssets = byLayer.get(layer) ?? []
           const focusedInLayer = focusedAssetId != null && layerAssets.some(a => a.asset_id === focusedAssetId)
@@ -189,8 +189,8 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
         })}
       </div>
 
-      {/* 40% — Live dependency graph */}
-      <div style={{ flex: '0 0 40%', minWidth: 0, position: 'sticky', top: '24px' }}>
+      {/* 40% — Live dependency graph: anchored, does not scroll with left pane */}
+      <div style={{ flex: '0 0 40%', minWidth: 0, height: '100%', overflow: 'hidden' }}>
         <LiveDependencyGraph
           assets={assetsWithState}
           activeRun={activeRun}
