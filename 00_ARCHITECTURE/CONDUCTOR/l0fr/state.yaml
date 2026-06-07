@@ -1,7 +1,7 @@
 streams:
   A: { status: review, tag: c8d62c697392f265ead496fe1e2ab047886b89bf, attempts: 1 }
   B: { status: review, tag: 5ebd680f8806a378e99ea4a4503071034f0b7983, attempts: 1 }
-  C: { status: blocked_on_A, tag: null, attempts: 0 }
+  C: { status: midway_review, tag: 665931e103dfa825a267a1db2327c4626b534e0a, attempts: 1 }
   D: { status: blocked_on_C_midway, tag: null, attempts: 0 }
   E: { status: review, tag: 4e814bea67f9b6a4e869217238963653ccf973be, attempts: 1 }
   F: { status: review, tag: 233b27ca008c5ec742c4eeac51a3754dbd3a8746, attempts: 1 }
@@ -20,3 +20,4 @@ brahma_pipeline_path: platform/python-sidecar
 # Stream E completed 2026-06-07 — Pañcāṅga service + 6 L1 Ganita capabilities; AC1-AC2-AC4 PASS (13/15 tests green, 2 skipped DB); tier-2 autonomy override logged to smriti; status set to review
 # Stream B completed 2026-06-07 — ephemeris_daily 825,084 rows (1900-2150 × 9 bodies); JPL spot check 0.29 arcsec PASS; 6 L0 capabilities + sidecar routes; tier-2 autonomy override (proceed despite vimarsaka_a=reject); status set to review; SHA 5ebd680f
 # Stream F completed 2026-06-07T06:25+05:30 — 200 rows brahma_remedy_corpus (10 categories); 7 capabilities portal+MCP; all 5 ACs PASS; tier-2 autonomy override (blocked_on_A overridden per brief §2 independence clause); status set to review; SHA 233b27ca
+# Stream C Phase 1 completed 2026-06-07T06:38+05:30 — 2643 chunks (BPHS 1723 + JP 741 + PD 179); 100% embedded; smoke PASS; status set to midway_review; SHA 665931e1
