@@ -3,6 +3,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
+import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 
 interface RegistryRow extends RegistryEntry {
   scope: string
@@ -10,16 +11,21 @@ interface RegistryRow extends RegistryEntry {
   count_sql: string | null
 }
 
-async function requireSuperAdmin() {
+async function requireUser() {
   const user = await getServerUser()
   if (!user) return null
-  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
-  if (rows[0]?.role !== 'super_admin') return null
   return user
 }
 
+async function getUserRole(uid: string): Promise<string> {
+  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [uid])
+  return rows[0]?.role ?? 'client'
+}
+
+const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
+
 export async function POST(req: NextRequest) {
-  const user = await requireSuperAdmin()
+  const user = await requireUser()
   if (!user) return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
@@ -40,6 +46,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'scope_target required for layer scope', code: 'BAD_REQUEST' }, { status: 400 })
   }
 
+  const role = await getUserRole(user.uid)
+  const isSuperAdmin = role === 'super_admin'
+  const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
+
+  // Authorization: non-super-admin cannot clear L0 layer or global assets
+  if (!isSuperAdmin) {
+    if (scope === 'layer' && scope_target === 'brahmagyan') {
+      return NextResponse.json({ error: 'Only super_admin can clear L0 Brahmagyan layer', code: 'FORBIDDEN_L0' }, { status: 403 })
+    }
+    if (scope === 'asset') {
+      // Check if the target asset is global — need registry to know; do a quick lookup
+      const { rows: assetRows } = await query<{ scope: string }>(
+        'SELECT scope FROM asset_registry WHERE asset_id=$1',
+        [scope_target]
+      )
+      if (assetRows[0]?.scope === 'global') {
+        return NextResponse.json({ error: 'Only super_admin can clear global assets', code: 'FORBIDDEN_L0' }, { status: 403 })
+      }
+    }
+  }
+
   // Load registry
   const { rows: registry } = await query<RegistryRow>(
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
@@ -47,17 +74,17 @@ export async function POST(req: NextRequest) {
      FROM asset_registry ORDER BY layer, sort_order`
   )
 
-  // Determine scope assets (only per_chart assets can be cleared per chart)
-  let scopeAssets: RegistryRow[]
-  if (scope === 'global') {
-    scopeAssets = registry.filter(r => r.scope === 'per_chart')
-  } else if (scope === 'layer') {
-    scopeAssets = registry.filter(r => r.layer === scope_target && r.scope === 'per_chart')
-  } else {
-    scopeAssets = registry.filter(r => r.asset_id === scope_target && r.scope === 'per_chart')
-  }
+  // Determine scope assets — respect role-based allowed scopes
+  const scopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
 
   const clearableAssets = scopeAssets.filter(r => r.target_table && r.count_sql)
+
+  // Validate table names before use
+  for (const asset of clearableAssets) {
+    if (asset.target_table && !TABLE_NAME_RE.test(asset.target_table)) {
+      return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
+    }
+  }
 
   // Count rows for each clearable asset
   interface TableCount { table: string; rows: number }
@@ -69,7 +96,9 @@ export async function POST(req: NextRequest) {
     if (!asset.target_table || !asset.count_sql || seen.has(asset.target_table)) continue
     seen.add(asset.target_table)
     try {
-      const { rows: cnt } = await query<{ count: string }>(asset.count_sql, [chart_id])
+      // Global assets have no $1 parameter in count_sql; per_chart assets do
+      const params = asset.scope === 'per_chart' ? [chart_id] : []
+      const { rows: cnt } = await query<{ count: string }>(asset.count_sql, params)
       tableCounts.push({ table: asset.target_table, rows: parseInt(cnt[0]?.count ?? '0', 10) })
     } catch {
       tableCounts.push({ table: asset.target_table, rows: 0 })
@@ -97,8 +126,8 @@ export async function POST(req: NextRequest) {
     preview_hash,
   }
 
-  // Global scope: add typed confirmation requirement
-  if (scope === 'global') {
+  // Global scope OR L0 layer-scope: require typed confirmation
+  if (scope === 'global' || (scope === 'layer' && scope_target === 'brahmagyan')) {
     const { rows: charts } = await query<{ subject_name: string | null; name: string }>(
       'SELECT subject_name, name FROM charts WHERE id=$1',
       [chart_id]

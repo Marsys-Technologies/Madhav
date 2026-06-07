@@ -3,6 +3,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
+import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 
 interface RegistryRow extends RegistryEntry {
   scope: string
@@ -10,16 +11,21 @@ interface RegistryRow extends RegistryEntry {
   count_sql: string | null
 }
 
-async function requireSuperAdmin() {
+async function requireUser() {
   const user = await getServerUser()
   if (!user) return null
-  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
-  if (rows[0]?.role !== 'super_admin') return null
   return user
 }
 
+async function getUserRole(uid: string): Promise<string> {
+  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [uid])
+  return rows[0]?.role ?? 'client'
+}
+
+const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
+
 export async function POST(req: NextRequest) {
-  const user = await requireSuperAdmin()
+  const user = await requireUser()
   if (!user) return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
@@ -35,6 +41,26 @@ export async function POST(req: NextRequest) {
     typed_confirmation?: string
   }
 
+  const role = await getUserRole(user.uid)
+  const isSuperAdmin = role === 'super_admin'
+  const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
+
+  // Authorization: non-super-admin cannot clear L0 layer or global assets
+  if (!isSuperAdmin) {
+    if (scope === 'layer' && scope_target === 'brahmagyan') {
+      return NextResponse.json({ error: 'Only super_admin can clear L0 Brahmagyan layer', code: 'FORBIDDEN_L0' }, { status: 403 })
+    }
+    if (scope === 'asset') {
+      const { rows: assetRows } = await query<{ scope: string }>(
+        'SELECT scope FROM asset_registry WHERE asset_id=$1',
+        [scope_target]
+      )
+      if (assetRows[0]?.scope === 'global') {
+        return NextResponse.json({ error: 'Only super_admin can clear global assets', code: 'FORBIDDEN_L0' }, { status: 403 })
+      }
+    }
+  }
+
   // Load registry
   const { rows: registry } = await query<RegistryRow>(
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
@@ -43,14 +69,7 @@ export async function POST(req: NextRequest) {
   )
 
   // Re-derive scope assets (same logic as preview)
-  let scopeAssets: RegistryRow[]
-  if (scope === 'global') {
-    scopeAssets = registry.filter(r => r.scope === 'per_chart')
-  } else if (scope === 'layer') {
-    scopeAssets = registry.filter(r => r.layer === scope_target && r.scope === 'per_chart')
-  } else {
-    scopeAssets = registry.filter(r => r.asset_id === scope_target && r.scope === 'per_chart')
-  }
+  const scopeAssets = filterScopeAssets(registry, scope, scope_target, allowedScopes) as RegistryRow[]
 
   const affectedAssetIds = scopeAssets.map(r => r.asset_id)
 
@@ -64,8 +83,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Preview hash mismatch — fetch a fresh preview', code: 'HASH_MISMATCH' }, { status: 409 })
   }
 
-  // Global scope: verify typed confirmation
-  if (scope === 'global') {
+  // Global scope OR L0 layer-scope: verify typed confirmation
+  if (scope === 'global' || (scope === 'layer' && scope_target === 'brahmagyan')) {
     const { rows: charts } = await query<{ subject_name: string | null; name: string }>(
       'SELECT subject_name, name FROM charts WHERE id=$1',
       [chart_id]
@@ -83,14 +102,29 @@ export async function POST(req: NextRequest) {
 
   // Execute: delete data + reset throughput + mark downstream stale
   const clearableAssets = scopeAssets.filter(r => r.target_table)
+
+  // Validate table names before interpolation (defense-in-depth)
+  for (const asset of clearableAssets) {
+    if (asset.target_table && !TABLE_NAME_RE.test(asset.target_table)) {
+      return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
+    }
+  }
+
   // Delete in reverse topo order (downstream-first for FK safety)
   const reversedAssets = [...clearableAssets].reverse()
-
   const seen = new Set<string>()
+
   for (const asset of reversedAssets) {
     if (!asset.target_table || seen.has(asset.target_table)) continue
     seen.add(asset.target_table)
-    await query(`DELETE FROM ${asset.target_table} WHERE chart_id = $1`, [chart_id])
+
+    if (asset.scope === 'global') {
+      // Global tables: full-table DELETE (no chart_id column); supports transactional rollback
+      await query(`DELETE FROM ${asset.target_table}`, [])
+    } else {
+      // per_chart tables: scoped DELETE
+      await query(`DELETE FROM ${asset.target_table} WHERE chart_id = $1`, [chart_id])
+    }
   }
 
   // Reset asset_throughput for scope assets
