@@ -7,6 +7,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
 import { ClearIconButton } from './ClearIconButton'
+import { RefreshIconButton } from './RefreshIconButton'
 import { useUserRole } from '@/hooks/useUserRole'
 
 const LAYER_COLOR: Record<string, string> = {
@@ -161,6 +162,15 @@ export function LayerPanel({
             onRunStarted={onRunStarted}
             onRunStateChange={onRunStarted}
           />
+          {(isSuperAdmin || layer !== 'brahmagyan') && (
+            <RefreshIconButton
+              chartId={chartId}
+              scope="layer"
+              scopeTarget={layer}
+              size={28}
+              onRefreshed={onRunStarted}
+            />
+          )}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
             <ClearIconButton
               chartId={chartId}

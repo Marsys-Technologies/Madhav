@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import { ClearIconButton } from './ClearIconButton'
+import { RefreshIconButton } from './RefreshIconButton'
 import { PlanModal } from './PlanModal'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
 import { RefreshCw } from 'lucide-react'
@@ -101,6 +102,15 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
             >
               <RefreshCw size={13} />
             </button>
+            {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
+              <RefreshIconButton
+                chartId={chartId}
+                scope="asset"
+                scopeTarget={asset.asset_id}
+                size={22}
+                onRefreshed={onRunStarted}
+              />
+            )}
             {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
               <ClearIconButton
                 chartId={chartId}
