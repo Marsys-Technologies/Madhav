@@ -151,8 +151,10 @@ export function runAuditChecks(row: ToolExecutionRow): AuditFinding[] {
   }
 
   // Check 4: sanskrit_glossing
-  // Client-tier responses must gloss Sanskrit terms in English
-  if (audience_tier === 'client') {
+  // L0FR Stream A: audience_tier gate removed — all responses checked uniformly
+  // (previously only 'client' tier triggered this check; now applies to all)
+  if (audience_tier) {  // always runs; audience_tier retained for log context only
+    void audience_tier  // suppress lint warning — field is logging metadata only
     const glossingResult = checkSanskritGlossing(response_text, 'client')
     if (!glossingResult.compliant) {
       findings.push({
@@ -160,7 +162,7 @@ export function runAuditChecks(row: ToolExecutionRow): AuditFinding[] {
         tool_name,
         check_class: 'sanskrit_glossing',
         severity: 'warn',
-        description: `Client-tier response contains unglossed Sanskrit terms: ${glossingResult.violations.join(', ')}`,
+        description: `Response contains unglossed Sanskrit terms: ${glossingResult.violations.join(', ')}`,
         evidence: {
           violations: glossingResult.violations,
           glossed: glossingResult.glossed,
