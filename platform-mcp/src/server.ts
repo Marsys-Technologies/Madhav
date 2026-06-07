@@ -21,6 +21,11 @@ import express from 'express'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
+// L0FR Stream A: OAuth 2.0 endpoints for ChatGPT MCP
+import { handleAuthorize } from './oauth/authorize.js'
+import { handleToken } from './oauth/token.js'
+import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
+import { validateAccessToken } from './oauth/token_store.js'
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
 import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
@@ -36,11 +41,28 @@ import {
   registerQueryDashaPeriodsTool,
   registerQuerySpecialLagnasTool,
 } from './tools/retrieval/pyhora_natal.js'
+// L0FR Stream A: L0 Brahmagyan pattern-validation capabilities
+import { registerL0BrahmagyanTools } from './tools/l0_brahmagyan.js'
 
 const app = express()
 app.use(express.json())
 
-// ── MCP endpoint ──────────────────────────────────────────────────────────────
+// ── OAuth 2.0 endpoints (L0FR Stream A) ──────────────────────────────────────
+// Per MCP authorization spec + ChatGPT connector requirements
+
+app.post('/mcp/oauth/authorize', (req, res) => void handleAuthorize(req, res))
+app.post('/mcp/oauth/token', (req, res) => void handleToken(req, res))
+app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
+  // Redirect to token endpoint with grant_type=refresh_token
+  req.body.grant_type = 'refresh_token'
+  await handleToken(req, res)
+})
+
+// OAuth discovery metadata
+app.get('/mcp/.well-known/oauth-authorization-server', handleOAuthDiscovery)
+app.get('/mcp/.well-known/openid-configuration', handleOpenIDConfiguration)
+
+// ── MCP endpoint (with OAuth token support) ───────────────────────────────────
 
 /**
  * POST /mcp — main MCP protocol endpoint (Streamable HTTP transport).
@@ -54,7 +76,20 @@ app.post('/mcp', async (req: Request, res: Response) => {
   const fromUrlParam = !headerAuth && !!queryKey
   const authHeader = headerAuth ?? (queryKey ? `Bearer ${queryKey}` : undefined)
 
-  const principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
+  let principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
+
+  // L0FR: also accept OAuth access tokens (for ChatGPT integration)
+  if (!principal && authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length)
+    const oauthRecord = validateAccessToken(token)
+    if (oauthRecord) {
+      // Map OAuth principal to MCP Principal shape
+      principal = {
+        user_uid: oauthRecord.uid,
+        key_id: 'oauth:' + token.slice(0, 8),
+      } as Principal
+    }
+  }
 
   if (!principal) {
     res.status(401).json({ error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
@@ -68,10 +103,14 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
+  // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
+  registerL0BrahmagyanTools(server)
+
   // L1 Gaṇita — PyJHora natal computation tools (Stream G / BRAHMA-G-1)
   registerComputeNatalPositionsTool(server)    // graha_sthana: 9 planets + Lagna
   registerQueryDashaPeriodsTool(server)        // Vimshottari mahadasha chain
   registerQuerySpecialLagnasTool(server)       // Lagna + upagrahas (Gulika, Maandi, etc.)
+
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
   registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (l2-bodha-scaffold)

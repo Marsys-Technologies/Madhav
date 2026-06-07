@@ -1,0 +1,7 @@
+[
+  "marsys://tool/L0/resolve_entity",
+  "marsys://tool/L0/list_entities",
+  "marsys://resource/asset-registry/all",
+  "marsys://resource/asset-registry/L0",
+  "marsys://prompt/intent-classify"
+]

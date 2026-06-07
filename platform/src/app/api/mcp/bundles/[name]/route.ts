@@ -31,13 +31,14 @@ function validateInternalToken(req: NextRequest): boolean {
 
 function extractPrincipal(req: NextRequest): {
   user_uid: string
-  audience_tier: string
+  audience_tier: string  // @deprecated L0FR: field retained for logging only; not used for access control
   key_id: string
 } | null {
   const user_uid = req.headers.get('X-MCP-User')
-  const audience_tier = req.headers.get('X-MCP-Audience-Tier')
   const key_id = req.headers.get('X-MCP-Key-Id')
-  if (!user_uid || !audience_tier || !key_id) return null
+  // L0FR Stream A: audience_tier no longer gates access; retained for logging only
+  const audience_tier = req.headers.get('X-MCP-Audience-Tier') ?? 'default'
+  if (!user_uid || !key_id) return null
   return { user_uid, audience_tier, key_id }
 }
 

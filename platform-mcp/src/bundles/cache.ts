@@ -103,7 +103,8 @@ export async function cacheLookup(cacheKey: string): Promise<CacheLookupResult> 
 export async function cacheStore(params: {
   cacheKey: string
   bundleName: string
-  audienceTier: string
+  /** @deprecated L0FR Stream A: audience_tier removed; field kept for API compat but not used for access control */
+  audienceTier?: string
   chartId: string
   envelope: unknown
 }): Promise<void> {
@@ -117,7 +118,7 @@ export async function cacheStore(params: {
       body: JSON.stringify({
         cache_key: params.cacheKey,
         bundle_name: params.bundleName,
-        audience_tier: params.audienceTier,
+        // L0FR Stream A: audience_tier excised from access-control path; field omitted
         chart_id: params.chartId,
         envelope_json: params.envelope,
       }),
