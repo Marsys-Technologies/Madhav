@@ -8,7 +8,7 @@
  */
 
 import type { Request, Response } from 'express'
-import type { OAuthAuthorizationRequest } from '../../src/lib/mcp/oauth/types'
+import type { OAuthAuthorizationRequest } from './types.js'
 
 const FIREBASE_AUTH_URL = process.env['FIREBASE_AUTH_URL'] ??
   'https://madhav.marsys.in/__/auth/handler'

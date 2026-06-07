@@ -8,9 +8,9 @@
  */
 
 import type { Request, Response } from 'express'
-import type { OAuthTokenRequest, OAuthTokenResponse } from '../../src/lib/mcp/oauth/types'
-import { issueTokens } from './token_store'
-import { consumeAuthCode } from './authorize'
+import type { OAuthTokenRequest, OAuthTokenResponse } from './types.js'
+import { issueTokens } from './token_store.js'
+import { consumeAuthCode } from './authorize.js'
 
 // Client registry (replace with DB in production — table: mcp_oauth_clients)
 interface ClientRecord {
@@ -111,7 +111,7 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const { refreshAccessToken } = await import('./token_store')
+    const { refreshAccessToken } = await import('./token_store.js')
     const newTokens = refreshAccessToken(params.refresh_token)
     if (!newTokens) {
       res.status(400).json({ error: 'invalid_grant', error_description: 'refresh_token expired or invalid' })

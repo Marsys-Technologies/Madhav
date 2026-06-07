@@ -11,7 +11,7 @@
  */
 
 import type { Request, Response } from 'express'
-import type { OAuthDiscoveryMetadata } from '../../src/lib/mcp/oauth/types'
+import type { OAuthDiscoveryMetadata } from './types.js'
 
 const BASE_URL = (process.env['MCP_BASE_URL'] ?? 'https://madhav.marsys.in/mcp').replace(/\/$/, '')
 
