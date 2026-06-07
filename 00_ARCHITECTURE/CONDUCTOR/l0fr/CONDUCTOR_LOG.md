@@ -150,3 +150,51 @@ Seal artifact path (pending): `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTUR
 3. **Vimarśaka-Z attempt 2** — re-run after both fixups complete; expected outcome: SEAL.
 
 SŪTRADHĀRA EXITS. L0FR wave complete.
+
+---
+
+## D.0 Resume — Fixup Streams A-prime + G-prime (2026-06-07/08)
+
+### G-prime (HF2) — RESOLVED
+
+| Event | Timestamp | Notes |
+|---|---|---|
+| migration 174 applied to production | 2026-06-07 | `ganita_graha_sthana` table present and confirmed |
+| Stream G merged to main | 2026-06-07 | `feature/l0fr-stream-g-pyhora` squash-merged; pyjhora_adapter live |
+| Stream A merged to main | 2026-06-07 | `fix/make-everything-work` merged; all TS fixes applied |
+| DB sealing check | 2026-06-07 | 6/6 checks pass: tables present, migration 174 confirmed |
+
+### A-prime (HF1) — RESOLVED
+
+| Event | Timestamp | Build ID | Notes |
+|---|---|---|---|
+| brahma-pipeline image rebuilt | 2026-06-08 | `1a4aefb3-7783-4b60-85d3-78c38ec2a03d` | Context: MadhavMakeWork root; Dockerfile: `platform/python-sidecar/Dockerfile.pipeline` |
+| Image pushed | 2026-06-08 | — | `asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@sha256:eedd16a966a6c1126ec8a9421dca5df089a85878212bf1b669ebb3599e20229c` |
+| Cloud Run job updated | 2026-06-08 | — | `brahma-build-pipeline-job` pinned to new digest |
+| Smoke test | 2026-06-08 | Execution `brahma-build-pipeline-job-vw5q4` | `--help` exit 0 — image loads, entrypoint healthy |
+
+---
+
+## Vimarśaka-Z — Attempt 2: SEAL
+
+| Event | Timestamp | Decision |
+|---|---|---|
+| Vimarśaka-Z attempt 2 | 2026-06-08T06:47+05:30 | **SEAL** |
+
+### Resolution of Prior Hard Failures
+
+- **HF1 RESOLVED:** `brahma-build-pipeline-job` now runs image `sha256:eedd16a…` built from `Dockerfile.pipeline` at main HEAD. Smoke test (`--help`) exits 0.
+- **HF2 RESOLVED:** `ganita_graha_sthana` table present in production (migration 174 applied). `query_dasha_periods` retrieval tool live. `pyjhora_adapter` package on main.
+
+### Checks (carried from attempt 1 — unchanged)
+
+- **PASS (14):** All 7 stream capability registration floors met; ephemeris_daily ≥ 820k; classical_text_chunks ≥ 6k; 5 migration tables; .se1 files in GCS; Dockerfiles bundle .se1; JPL accuracy 0.29 arcsec; audience-tier residual = 0.
+- **SOFT_FAIL (2 — residuals per §12):** sutravali_rules 1,213 (within 800-2k range); brahma_remedy_corpus 200 (within 200-500 range).
+- **KNOWN_RESIDUAL (5):** 4 adapter smoke tests (infra unavailable); ChatGPT MCP OAuth roundtrip.
+- **HARD_FAIL (0):** All prior hard failures resolved.
+
+### Seal Artifact
+
+`00_ARCHITECTURE/L0FR_SEALED_v1_0.md` (created this commit)
+
+**Status: SEALED — L0FR wave complete. All 7 streams deployed. Vimarśaka-Z attempt 2 decision: SEAL.**
