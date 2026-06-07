@@ -9,6 +9,33 @@
  *   runParityCheck() // throws on mismatch
  */
 
+// ── L0 Brahmagyan asset registry (12 assets post Phase α) ────────────────────
+// Phase α (2026-06-08): 8 original + 4 new (bg_yogas, bg_dasha_systems,
+// bg_doshas, bg_compendium_index). Per design §3 of L0_BRAHMAGYAN_HOLISTIC_DESIGN.
+export const L0_BRAHMAGYAN_ASSETS = [
+  'bg_ephemeris',
+  'bg_reference',
+  'bg_texts',
+  'bg_ontology',
+  'bg_text_index',
+  'bg_rules',
+  'bg_remedies',
+  'bg_concordance',
+  'bg_yogas',
+  'bg_dasha_systems',
+  'bg_doshas',
+  'bg_compendium_index',
+] as const
+
+export type L0BrahmagyanAsset = (typeof L0_BRAHMAGYAN_ASSETS)[number]
+
+// FK integrity assertions (run against prod periodically; non-blocking):
+//   - every brahma_yoga_catalog.canonical_id appears in brahma_ontology (entity_class='yoga')
+//   - every brahma_dosha_catalog.canonical_id appears in brahma_ontology (entity_class='dosha')
+//   - every brahma_dasha_systems.canonical_id appears in brahma_ontology (entity_class='dasha_system')
+//   - every brahma_compendium_index.text_id resolves in classical_texts
+//   - every brahma_compendium_index.topic_id resolves in reference_topic_tags
+
 import { listCapabilityUris } from './index'
 import type { ParityCheckResult, CapabilityUri } from './types'
 
