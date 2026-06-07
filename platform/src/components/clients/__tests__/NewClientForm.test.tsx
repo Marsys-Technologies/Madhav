@@ -224,6 +224,25 @@ describe('NewClientForm', () => {
     expect(accordion.querySelector('input#latitude')).toBeTruthy()
   })
 
+  // ── Test 8b: R3.9 — manual override uses a checkbox, not a button ──────────
+  it('R3.9: manual override control is a checkbox; toggling it shows/hides lat/lng fields', () => {
+    render(<NewClientForm />)
+    const accordion = screen.getByTestId('manual-override-accordion')
+
+    // In test env (no Maps key) the checkbox is checked (manualOpen=true) by default.
+    const checkbox = accordion.querySelector('input[type="checkbox"]') as HTMLInputElement
+    expect(checkbox).toBeTruthy()
+    expect(checkbox.checked).toBe(true)          // no-key fallback: open by default
+
+    // Uncheck → lat/lng fields should disappear
+    fireEvent.click(checkbox.closest('label')!)
+    expect(accordion.querySelector('input#latitude')).toBeNull()
+
+    // Re-check → lat/lng fields reappear
+    fireEvent.click(checkbox.closest('label')!)
+    expect(accordion.querySelector('input#latitude')).toBeTruthy()
+  })
+
   // ── Test 9: successful POST → router.push with redirect_url ───────────────
   it('redirects to redirect_url on successful POST', async () => {
     render(<NewClientForm />)

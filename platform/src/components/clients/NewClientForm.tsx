@@ -851,16 +851,33 @@ export function NewClientForm() {
           </div>
         </div>
 
-        {/* Manual coordinates (collapsed by default) ──────────────────── */}
+        {/* R3.9: Manual override — checkbox-gated ────────────────────── */}
         <div data-testid="manual-override-accordion">
-          <button
-            type="button"
-            onClick={() => setManualOpen((v) => !v)}
-            className="bt-label text-muted-foreground hover:text-brand-gold/70 transition-colors flex items-center gap-1.5"
-          >
-            <span aria-hidden="true" className="text-[9px]">{manualOpen ? '▲' : '▼'}</span>
-            {form.places_resolved ? 'Override coordinates' : 'Enter coordinates manually'}
-          </button>
+          <label className="flex items-center gap-2 cursor-pointer group w-fit">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={manualOpen}
+              aria-label="Manual coordinate override"
+              onChange={(e) => setManualOpen(e.target.checked)}
+            />
+            {/* Themed checkbox visual */}
+            <span
+              aria-hidden="true"
+              className="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-150"
+              style={{
+                background: manualOpen ? 'oklch(0.78 0.13 80 / 0.14)' : 'transparent',
+                borderColor: manualOpen ? 'var(--brand-gold)' : 'oklch(0.50 0.020 75)',
+              }}
+            >
+              {manualOpen && (
+                <span style={{ color: 'var(--brand-gold)', fontSize: '9px', lineHeight: 1, fontWeight: 700 }}>✓</span>
+              )}
+            </span>
+            <span className="bt-label text-muted-foreground group-hover:text-brand-gold/70 transition-colors">
+              Manual override
+            </span>
+          </label>
 
           {manualOpen && (
             <div className="mt-3 flex flex-col gap-3">
