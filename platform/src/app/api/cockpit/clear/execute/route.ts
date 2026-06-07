@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
+import { query, getPool } from '@/lib/db/client'
 import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
@@ -112,45 +112,80 @@ export async function POST(req: NextRequest) {
 
   // Delete in reverse topo order (downstream-first for FK safety)
   const reversedAssets = [...clearableAssets].reverse()
-  const seen = new Set<string>()
 
-  for (const asset of reversedAssets) {
-    if (!asset.target_table || seen.has(asset.target_table)) continue
-    seen.add(asset.target_table)
+  let cleared_table_count = 0
+  let cleared_rows_total = 0
+  const failed_tables: { table: string; error: string }[] = []
 
-    if (asset.scope === 'global') {
-      // Global tables: full-table DELETE (no chart_id column); supports transactional rollback
-      await query(`DELETE FROM ${asset.target_table}`, [])
-    } else {
-      // per_chart tables: scoped DELETE
-      await query(`DELETE FROM ${asset.target_table} WHERE chart_id = $1`, [chart_id])
+  const pool = await getPool()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    const seen = new Set<string>()
+    for (const asset of reversedAssets) {
+      if (!asset.target_table || seen.has(asset.target_table)) continue
+      seen.add(asset.target_table)
+
+      try {
+        const sql = asset.scope === 'global'
+          ? `DELETE FROM ${asset.target_table}`
+          : `DELETE FROM ${asset.target_table} WHERE chart_id = $1`
+        const params = asset.scope === 'global' ? [] : [chart_id]
+        const result = await client.query(sql, params)
+        cleared_table_count++
+        cleared_rows_total += result.rowCount ?? 0
+      } catch (err) {
+        failed_tables.push({
+          table: asset.target_table,
+          error: ((err as Error).message ?? 'unknown').substring(0, 200),
+        })
+      }
     }
-  }
 
-  // Reset asset_throughput for scope assets
-  if (affectedAssetIds.length > 0) {
-    await query(
-      `UPDATE asset_throughput
-       SET state='dormant', last_built_at=NULL,
-           built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
-           last_error=NULL
-       WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
-      [chart_id, affectedAssetIds]
-    )
-  }
+    // Reset asset_throughput for scope assets
+    if (affectedAssetIds.length > 0) {
+      await client.query(
+        `UPDATE asset_throughput
+         SET state='dormant', last_built_at=NULL,
+             built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
+             last_error=NULL
+         WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
+        [chart_id, affectedAssetIds]
+      )
+    }
 
-  // Mark downstream as stale (only those currently lit/building/error — dormant stays dormant)
-  if (downstreamAssets.length > 0) {
-    await query(
-      `UPDATE asset_throughput
-       SET state='stale'
-       WHERE chart_id=$1 AND asset_id = ANY($2::text[])
-         AND state IN ('lit','building','error')`,
-      [chart_id, downstreamAssets]
-    )
+    // Mark downstream as stale (only those currently lit/building/error — dormant stays dormant)
+    if (downstreamAssets.length > 0) {
+      await client.query(
+        `UPDATE asset_throughput
+         SET state='stale'
+         WHERE chart_id=$1 AND asset_id = ANY($2::text[])
+           AND state IN ('lit','building','error')`,
+        [chart_id, downstreamAssets]
+      )
+    }
+
+    await client.query('COMMIT')
+  } catch (outerErr) {
+    await client.query('ROLLBACK').catch(() => null)
+    console.error('[/api/cockpit/clear/execute] transaction failed:', outerErr)
+    return NextResponse.json({
+      error: 'Clear transaction failed; rolled back. ' + ((outerErr as Error).message ?? 'unknown').substring(0, 200),
+      code: 'TRANSACTION_FAILED',
+      details: { failed_tables },
+    }, { status: 500 })
+  } finally {
+    client.release()
   }
 
   return NextResponse.json({
-    cleared: { assets: affectedAssetIds.length, downstream_stale: downstreamAssets.length },
+    cleared: {
+      assets: affectedAssetIds.length,
+      tables: cleared_table_count,
+      rows: cleared_rows_total,
+      downstream_stale: downstreamAssets.length,
+    },
+    ...(failed_tables.length > 0 ? { failed_tables } : {}),
   })
 }

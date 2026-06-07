@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/date'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { useCockpitStatus } from '@/hooks/useCockpitStatus'
 import { BuildActionButton } from './BuildActionButton'
+import { RefreshIconButton } from './RefreshIconButton'
 
 function deriveGlobalLabel(assets: { state: string }[]): 'Build' | 'Update' | 'Rebuild' {
   const total = assets.length
@@ -27,6 +29,7 @@ interface Props {
   onProModeToggle?: () => void
   onGlobalClear?: () => void
   onGlobalRebuild?: () => void
+  onRefreshed?: () => void
 }
 
 export function CockpitHeader({
@@ -39,6 +42,7 @@ export function CockpitHeader({
   onProModeToggle,
   onGlobalClear,
   onGlobalRebuild,
+  onRefreshed,
 }: Props) {
   const [sidecarHealthy, setSidecarHealthy] = useState<boolean | null>(null)
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
@@ -115,9 +119,16 @@ export function CockpitHeader({
                 fontFamily: 'var(--mono-stack)',
                 fontSize: '11px',
                 color: 'var(--on-dark-faint)',
+                cursor: 'pointer',
+              }}
+              title={`Click to copy: ${chartId}`}
+              onClick={() => {
+                navigator.clipboard?.writeText(chartId)
+                  .then(() => toast.success('Chart ID copied'))
+                  .catch(() => null)
               }}
             >
-              {chartId.slice(0, 8)}…
+              {chartId.slice(0, 14)}…
             </span>
           </div>
         </div>
@@ -158,6 +169,12 @@ export function CockpitHeader({
             onRunStarted={refreshRun}
             onRunStateChange={refreshRun}
             onRebuildOverride={globalLabel === 'Rebuild' ? onGlobalRebuild : undefined}
+          />
+          <RefreshIconButton
+            chartId={chartId}
+            scope="global"
+            size={28}
+            onRefreshed={onRefreshed}
           />
           {!globalRunId && (
             <button

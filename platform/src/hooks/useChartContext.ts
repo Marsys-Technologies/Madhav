@@ -11,10 +11,16 @@ interface ChartContext {
   lifeSpanYears: number
 }
 
-export function useChartContext(chartId: string): ChartContext {
-  const [chartName, setChartName] = useState<string | null>(null)
-  const [birthDate, setBirthDate] = useState<string | null>(null)
-  const [birthPlace, setBirthPlace] = useState<string | null>(null)
+interface InitialChartMeta {
+  subject_name: string | null
+  birth_date: string | null
+  birth_place: string | null
+}
+
+export function useChartContext(chartId: string, initialMeta?: InitialChartMeta | null): ChartContext {
+  const [chartName, setChartName] = useState<string | null>(initialMeta?.subject_name ?? null)
+  const [birthDate, setBirthDate] = useState<string | null>(initialMeta?.birth_date ?? null)
+  const [birthPlace, setBirthPlace] = useState<string | null>(initialMeta?.birth_place ?? null)
 
   useEffect(() => {
     console.log('[CC] effect start, chartId=', chartId)

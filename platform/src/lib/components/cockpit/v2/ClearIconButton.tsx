@@ -5,12 +5,13 @@ import { toast } from 'sonner'
 import { ClearConfirmModal } from './ClearConfirmModal'
 
 interface ClearPreview {
-  tables: { table: string; rows: number }[]
+  tables: { table: string; rows: number; error?: string }[]
   total_rows: number
   affected_assets: string[]
   downstream_stale_assets: string[]
   preview_hash: string
   requires_typed_confirmation?: string
+  layer_summary?: { layer: string; rows: number; asset_count: number }[]
 }
 
 interface Props {
@@ -36,9 +37,15 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null }),
       })
-      const body = await r.json()
-      if (!r.ok) throw new Error(body.error ?? 'Preview failed')
-      setPreview(body.preview)
+      const txt = await r.text()
+      let body: Record<string, unknown>
+      try {
+        body = JSON.parse(txt)
+      } catch {
+        throw new Error(`Server error (${r.status}): ${txt.substring(0, 200) || 'no response body'}`)
+      }
+      if (!r.ok) throw new Error((body.error as string | undefined) ?? 'Preview failed')
+      setPreview(body.preview as ClearPreview)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load clear preview')
     } finally {

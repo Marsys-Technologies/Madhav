@@ -163,7 +163,7 @@ const ASSETS: AssetDef[] = [
     english_description: 'Five reference tables: planets, nakshatras, signs, aspects, vargas — classical constants',
     storage_type: 'postgres_table',
     target_table: 'reference_nakshatras',
-    count_sql: "(SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_nakshatras) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) AS count",
+    count_sql: "SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_nakshatras) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) AS count",
     size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
     target_floor: null,
     expected_volume_formula: null,
