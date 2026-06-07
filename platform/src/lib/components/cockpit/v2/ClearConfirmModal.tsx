@@ -69,8 +69,10 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
 
   const config = SCOPE_LABELS[scope]
   const isGlobal = scope === 'global'
+  const isL0Layer = scope === 'layer' && scopeTarget === 'brahmagyan'
+  const requiresTypedConfirmation = isGlobal || isL0Layer
   const confirmTarget = preview.requires_typed_confirmation ?? ''
-  const typedMatch = !isGlobal || typed === confirmTarget
+  const typedMatch = !requiresTypedConfirmation || typed === confirmTarget
 
   // Limit table display (show top 5, collapse rest)
   const SHOW = 5
@@ -90,7 +92,7 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           scope,
           scope_target: scopeTarget ?? null,
           preview_hash: preview.preview_hash,
-          ...(isGlobal ? { typed_confirmation: typed } : {}),
+          ...(requiresTypedConfirmation ? { typed_confirmation: typed } : {}),
         }),
       })
       const body = await r.json()
@@ -149,13 +151,14 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
         )}
 
         {/* Warning */}
-        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: isGlobal ? '16px' : '20px' }}>
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: requiresTypedConfirmation ? '16px' : '20px' }}>
           This cannot be undone.
           {isGlobal && ' The entire instrument will need to be rebuilt from L0.'}
+          {isL0Layer && ' All L0 Brahmagyan foundation data will be erased and must be rebuilt.'}
         </div>
 
-        {/* Typed confirmation for global */}
-        {isGlobal && (
+        {/* Typed confirmation for global or L0 layer scope */}
+        {requiresTypedConfirmation && (
           <div style={{ marginBottom: '20px' }}>
             <div style={{ fontSize: '12px', color: 'var(--on-dark-mut)', marginBottom: '6px' }}>
               To confirm, type the chart subject name exactly:

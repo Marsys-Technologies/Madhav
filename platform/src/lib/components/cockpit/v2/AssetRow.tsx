@@ -8,6 +8,7 @@ import { PlanModal } from './PlanModal'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
 import { RefreshCw } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
+import { useUserRole } from '@/hooks/useUserRole'
 
 interface Props {
   asset: AssetRowType
@@ -28,6 +29,7 @@ function derivePrimaryLabel(dormant: boolean, stale: boolean): string {
 
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, onRunStarted }: Props) {
   const [showPlanModal, setShowPlanModal] = useState(false)
+  const { isSuperAdmin } = useUserRole()
   const isActive = asset.is_active
   const hasError = stat?.error != null && stat.error !== 'missing_table'
 
@@ -99,13 +101,15 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
             >
               <RefreshCw size={13} />
             </button>
-            <ClearIconButton
-              chartId={chartId}
-              scope="asset"
-              scopeTarget={asset.asset_id}
-              size={22}
-              onSuccess={onRunStarted}
-            />
+            {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
+              <ClearIconButton
+                chartId={chartId}
+                scope="asset"
+                scopeTarget={asset.asset_id}
+                size={22}
+                onSuccess={onRunStarted}
+              />
+            )}
           </>
         )}
       </div>

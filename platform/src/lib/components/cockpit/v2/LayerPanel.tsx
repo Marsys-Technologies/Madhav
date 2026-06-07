@@ -7,6 +7,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
 import { ClearIconButton } from './ClearIconButton'
+import { useUserRole } from '@/hooks/useUserRole'
 
 const LAYER_COLOR: Record<string, string> = {
   brahmagyan: 'var(--gold-high)',
@@ -52,6 +53,7 @@ export function LayerPanel({
   onRunStarted,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const { isSuperAdmin } = useUserRole()
 
   useEffect(() => {
     if (forceExpand) setExpanded(true)
@@ -159,13 +161,15 @@ export function LayerPanel({
             onRunStarted={onRunStarted}
             onRunStateChange={onRunStarted}
           />
-          <ClearIconButton
-            chartId={chartId}
-            scope="layer"
-            scopeTarget={layer}
-            size={28}
-            onSuccess={onRunStarted}
-          />
+          {(isSuperAdmin || layer !== 'brahmagyan') && (
+            <ClearIconButton
+              chartId={chartId}
+              scope="layer"
+              scopeTarget={layer}
+              size={28}
+              onSuccess={onRunStarted}
+            />
+          )}
         </div>
       </div>
 
