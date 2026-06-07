@@ -5,7 +5,7 @@
  * Distinct from the server entrypoint (dist/server.js).
  *
  * WS-0 (2026-06-04): Rebased from legacy chart_facts/msr_signals/data_source_expected
- * to Brahma 6-layer tables (ganita_N, bodha_N, kala_N, phala_N, mimamsa_N).
+ * to Brahma 6-layer tables (ganita_*, bodha_*, kala_*, phala_*, mimamsa_*).
  * data_source_expected and mcp_audit_findings tables dropped — findings now log to stdout.
  *
  * Requires: DATABASE_URL environment variable (Cloud SQL or direct postgres URL).
