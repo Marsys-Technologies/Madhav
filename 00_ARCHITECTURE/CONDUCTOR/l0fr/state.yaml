@@ -3,7 +3,7 @@ streams:
   B: { status: blocked_on_A, tag: null, attempts: 0 }
   C: { status: blocked_on_A, tag: null, attempts: 0 }
   D: { status: blocked_on_C_midway, tag: null, attempts: 0 }
-  E: { status: blocked_on_A, tag: null, attempts: 0 }
+  E: { status: review, tag: 4e814bea67f9b6a4e869217238963653ccf973be, attempts: 1 }
   F: { status: blocked_on_A, tag: null, attempts: 0 }
   G: { status: review, tag: c5ddf69b, attempts: 1 }
 gates:
@@ -17,3 +17,4 @@ brahma_pipeline_path: platform/python-sidecar
 # Stream A completed 2026-06-07T05:30+05:30 — status set to review pending Vimarśaka-A
 # Vimarśaka-A attempt 1 completed 2026-06-07T05:38+05:30 — REJECT_WITH_FEEDBACK (12/15 PASS); rework items: audience_tier kill-list, canonical_id schema (SAT vs Saturn), /api/retrieval/L0 route
 # Stream G completed 2026-06-07T05:55+05:30 — pyjhora_adapter + /api/pyhora + 3 capabilities + migration 174; smoke PASS; status set to review
+# Stream E completed 2026-06-07 — Pañcāṅga service + 6 L1 Ganita capabilities; AC1-AC2-AC4 PASS (13/15 tests green, 2 skipped DB); tier-2 autonomy override logged to smriti; status set to review
