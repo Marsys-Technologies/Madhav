@@ -116,23 +116,6 @@ jobs:
           fi
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
 
-      # ── A-S8: Terraform apply (cloud_scheduler + build-reaper SA + IAM) ──────
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform init (cloud_scheduler)
-        continue-on-error: true
-        run: |
-          cd infra/cloud_scheduler && terraform init -backend-config="bucket=madhav-astrology-tf-state" \
-            || echo "WARN: terraform init failed — SA may lack storage.objects.list on madhav-astrology-tf-state; grant roles/storage.objectAdmin to the GHA SA and re-run"
-
-      - name: Terraform apply (cloud_scheduler)
-        continue-on-error: true
-        run: |
-          cd infra/cloud_scheduler && terraform apply -auto-approve \
-            || echo "WARN: terraform apply failed — skipping; apply manually or grant SA permissions first"
-      # ── /A-S8: terraform ──────────────────────────────────────────────────────
-
       - name: Copy governance files into platform build context
         run: |
           mkdir -p platform/00_ARCHITECTURE
