@@ -20,6 +20,8 @@ export interface PlacesResult {
   lat: number
   lng: number
   utcOffsetMinutes: number | null
+  timezone_id?: string   // from Google Time Zone API (R5.2)
+  tz_offset?: string     // from Google Time Zone API (R5.2)
 }
 
 export interface UsePlacesAutocompleteReturn {

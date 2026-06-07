@@ -76,9 +76,7 @@ function fillValidForm() {
   fireEvent.change(screen.getByLabelText(/^longitude/i), {
     target: { value: '85.8245' },
   })
-  fireEvent.change(screen.getByLabelText(/utc offset/i), {
-    target: { value: '5.5' },
-  })
+  // tz_offset and timezone_id are derived silently (R5.2) — no UI field to fill
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -156,7 +154,6 @@ describe('NewClientForm', () => {
     fireEvent.change(screen.getByLabelText(/birth place/i), { target: { value: 'Bhubaneswar' } })
     fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.2961' } })
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.8245' } })
-    fireEvent.change(screen.getByLabelText(/utc offset/i), { target: { value: '5.5' } })
 
     fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
@@ -177,7 +174,6 @@ describe('NewClientForm', () => {
     fireEvent.change(screen.getByLabelText(/birth place/i), { target: { value: 'Bhubaneswar' } })
     fireEvent.change(screen.getByLabelText(/^latitude/i), { target: { value: '20.2961' } })
     fireEvent.change(screen.getByLabelText(/^longitude/i), { target: { value: '85.8245' } })
-    fireEvent.change(screen.getByLabelText(/utc offset/i), { target: { value: '5.5' } })
 
     // Do NOT select gender — leave it empty
     fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
@@ -223,17 +219,23 @@ describe('NewClientForm', () => {
     expect(lahiriCheckbox.checked).toBe(true)
   })
 
-  // ── Test 8: Places miss → manual override accordion auto-expands ───────────
-  it('manual override accordion auto-expands when birth_place is typed but places_resolved is false', () => {
+  // ── Test 8: Lat/lng fields always in DOM (R5.4 — blur no longer toggles override) ──
+  // R5.3 removed the blur handler that used to call setManualOpen(true). Lat/lng are
+  // always rendered (R4.3/R5.4), so clicking elsewhere on the page never shows/hides them.
+  it('lat/lng fields are always in the DOM; clicking elsewhere does not toggle override', () => {
     render(<NewClientForm />)
     const accordion = screen.getByTestId('manual-override-accordion')
 
-    // Type in birth_place and blur — without Places resolving
+    // lat/lng always present — no trigger needed
+    expect(accordion.querySelector('input#latitude')).toBeTruthy()
+    expect(accordion.querySelector('input#longitude')).toBeTruthy()
+
+    // Typing in birth_place and blurring must NOT toggle manualOpen
     const birthPlaceInput = screen.getByLabelText(/birth place/i)
     fireEvent.change(birthPlaceInput, { target: { value: 'Somewhere Unknown' } })
     fireEvent.blur(birthPlaceInput)
 
-    // The accordion content should be open (latitude input visible)
+    // lat/lng still there (were never hidden, blur did not do anything extra)
     expect(accordion.querySelector('input#latitude')).toBeTruthy()
   })
 
@@ -261,15 +263,13 @@ describe('NewClientForm', () => {
     expect((accordion.querySelector('input#latitude') as HTMLInputElement).readOnly).toBe(false)
   })
 
-  // ── Test 9b: R4.1 — fetchFields is called on place selection and populates state ─
-  // Mocks the PlaceAutocompleteElement DOM element and dispatches gmp-select to
-  // verify that fetchFields is awaited and lat/lng are written to form state.
-  // _jsApiLoader is set to isLoaded=true; vi.stubGlobal provides the google object.
-  it('R4.1: gmp-select triggers fetchFields and writes lat/lng to form state', async () => {
-    // Signal the module-level mock that the SDK is ready
+  // ── Test 9b: R5.1 — gmp-select with placePrediction.toPlace() populates lat/lng ──
+  // R5.1 fix: PlaceAutocompleteElement fires gmp-select with event.placePrediction
+  // (not event.place). The handler calls pp.toPlace() then place.fetchFields().
+  // R5.2: Time Zone API is also called after fetchFields; mocked via fetch.
+  it('R5.1: gmp-select(placePrediction) triggers fetchFields and writes lat/lng to form state', async () => {
     _jsApiLoader.isLoaded = true
 
-    // Capture the element appended by PlacesAutocompleteNew so we can dispatch events
     let capturedEl: HTMLElement | null = null
 
     const mockFetchFields = vi.fn().mockResolvedValue({})
@@ -279,9 +279,9 @@ describe('NewClientForm', () => {
       displayName: 'Bhubaneswar',
       fetchFields: mockFetchFields,
     }
+    // R5.1: event carries placePrediction with a toPlace() method
+    const mockPlacePrediction = { toPlace: vi.fn().mockReturnValue(mockPlace) }
 
-    // vi.stubGlobal is NOT hoisted — safe to call inside a test.
-    // PlaceAutocompleteElement returns a real <div> so container.appendChild works in JSDOM.
     vi.stubGlobal('google', {
       maps: {
         importLibrary: vi.fn().mockImplementation(async (lib: string) => {
@@ -298,43 +298,52 @@ describe('NewClientForm', () => {
       },
     })
 
-    // Set key so isGoogleMapsKeyConfigured()=true → form mounts PlacesAutocompleteNew
+    // R5.2: mock fetch to return a TZ API response for the timezone URL; else chart API response
+    mockFetch.mockImplementation(async (url: unknown) => {
+      if (typeof url === 'string' && url.includes('maps.googleapis.com/maps/api/timezone')) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({ status: 'OK', timeZoneId: 'Asia/Kolkata', rawOffset: 19800, dstOffset: 0 }),
+        }
+      }
+      return {
+        ok: true, status: 200,
+        json: async () => ({ chart_id: 'chart-123', redirect_url: '/clients/chart-123/build' }),
+      }
+    })
+
     const origKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'test-key-r4'
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'test-key-r5'
 
     render(<NewClientForm />)
 
-    // Wait for useEffect async IIFE to create and append the element
     await waitFor(() => expect(capturedEl).not.toBeNull(), { timeout: 2000 })
 
-    // Dispatch gmp-select (newer event name) with a mock Place
+    // Dispatch gmp-select with placePrediction (R5.1 API shape)
     await act(async () => {
-      const event = Object.assign(new Event('gmp-select'), { place: mockPlace })
+      const event = Object.assign(new Event('gmp-select'), { placePrediction: mockPlacePrediction })
       capturedEl!.dispatchEvent(event)
-      await new Promise((r) => setTimeout(r, 30))
+      await new Promise((r) => setTimeout(r, 50))
     })
 
-    // fetchFields must have been called (not the dead legacy getPlace() path)
+    // placePrediction.toPlace() was called
+    expect(mockPlacePrediction.toPlace).toHaveBeenCalled()
+    // fetchFields was called with the correct fields (no addressComponents in R5)
     expect(mockFetchFields).toHaveBeenCalledWith({
-      fields: ['location', 'displayName', 'formattedAddress', 'addressComponents'],
+      fields: ['location', 'displayName', 'formattedAddress'],
     })
 
     // lat/lng state is populated — DOM value must be the real number, not placeholder
     await waitFor(() => {
-      const lat = screen.getByLabelText(/^latitude/i) as HTMLInputElement
-      expect(lat.value).toBe('20.2961')
-      const lng = screen.getByLabelText(/^longitude/i) as HTMLInputElement
-      expect(lng.value).toBe('85.8245')
+      expect((screen.getByLabelText(/^latitude/i) as HTMLInputElement).value).toBe('20.2961')
+      expect((screen.getByLabelText(/^longitude/i) as HTMLInputElement).value).toBe('85.8245')
     })
 
-    // Cleanup — delete the key so subsequent tests get googleMapsConfigured=false
     if (origKey === undefined) {
       delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     } else {
       process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = origKey
     }
-    // Don't call vi.unstubAllGlobals() — it would also remove the fetch stub.
-    // Manually clear the google global instead.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (globalThis as any).google
   })

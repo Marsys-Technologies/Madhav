@@ -132,11 +132,6 @@ function validate(form: FormState): FormErrors {
   else if (isNaN(lng) || lng < -180 || lng > 180)
     errors.longitude = 'Longitude must be between -180 and 180.'
 
-  const tz = parseFloat(form.tz_offset)
-  if (form.tz_offset === '') errors.tz_offset = 'Timezone offset is required.'
-  else if (isNaN(tz) || tz < -14 || tz > 14)
-    errors.tz_offset = 'Timezone offset must be between -14 and 14.'
-
   if (form.ayanamshas.length === 0)
     errors.ayanamshas = 'At least one ayanamsha must be selected.'
 
@@ -303,13 +298,11 @@ function GenderSelect({
 function PlacesAutocompleteNew({
   hasError,
   onTextChange,
-  onBlur,
   onPlaceResolved,
   onLoadError,
 }: {
   hasError: boolean
   onTextChange: (v: string) => void
-  onBlur: () => void
   onPlaceResolved: (r: PlacesResult) => void
   onLoadError: () => void
 }) {
@@ -359,33 +352,56 @@ function PlacesAutocompleteNew({
           onTextChange((el as any).value ?? '')
         })
 
-        // R4.1: Support both event names — 'gmp-select' (newer Maps JS API) and
-        // 'gmp-placeselect' (older builds). Both carry a Place on event.place.
-        // Fields: do NOT include utcOffsetMinutes — it caused fetchFields to fail
-        // on some key configs. Timezone is derived via timezoneFromOffset fallback.
+        // R5.1: PlaceAutocompleteElement fires 'gmp-select' with event.placePrediction
+        // (a PlacePrediction object). Call .toPlace() then .fetchFields() — this is the
+        // call that issues the Place Details network request and populates location.
+        // R5.2: After getting lat/lng, derive timezone via Google Time Zone API (falls back
+        // to timezoneFromOffset on 403 or any error, so submit is never blocked).
         const handlePlaceSelect = async (event: Event) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const place = (event as any).place ?? (event as any).detail?.place
-          if (!place) return
+          const pp = (event as any).placePrediction
+          if (!pp) return
           try {
-            await place.fetchFields({
-              fields: ['location', 'displayName', 'formattedAddress', 'addressComponents'],
-            })
+            const place = pp.toPlace()
+            await place.fetchFields({ fields: ['location', 'displayName', 'formattedAddress'] })
             const loc = place.location
             if (!loc) { onLoadError(); return }
+            const lat = loc.lat()
+            const lng = loc.lng()
+
+            // R5.2: Google Time Zone API — derive IANA tz + offset; fall back on any error
+            let timezone_id = 'Asia/Kolkata'
+            let tz_offset = '5.5'
+            try {
+              const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+              const ts = Math.floor(Date.now() / 1000)
+              const tzRes = await fetch(
+                `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${apiKey}`,
+              )
+              const tzData = await tzRes.json()
+              if (tzData.status === 'OK') {
+                const offsetHours = (tzData.rawOffset + tzData.dstOffset) / 3600
+                timezone_id = tzData.timeZoneId
+                tz_offset = String(offsetHours)
+              }
+            } catch {
+              // TZ API unavailable (not enabled or 403) — keep defaults
+            }
+
             onPlaceResolved({
               description: place.formattedAddress ?? place.displayName ?? '',
-              lat: loc.lat(),
-              lng: loc.lng(),
-              utcOffsetMinutes: null,  // not fetched; timezoneFromOffset defaults to Asia/Kolkata
+              lat,
+              lng,
+              utcOffsetMinutes: null,
+              timezone_id,
+              tz_offset,
             })
           } catch {
             onLoadError()
           }
         }
 
-        el.addEventListener('gmp-select',      handlePlaceSelect)
-        el.addEventListener('gmp-placeselect', handlePlaceSelect)
+        el.addEventListener('gmp-select', handlePlaceSelect)
 
         container.appendChild(el)
       } catch {
@@ -413,10 +429,11 @@ function PlacesAutocompleteNew({
   }
 
   // R3.4: No overflow-hidden — popup must not be clipped.
+  // R5.3: No onBlur — the shadow-DOM popup closing fires blur, which was incorrectly
+  // toggling manualOpen. Override scopes to its checkbox only.
   return (
     <div
       ref={containerRef}
-      onBlur={onBlur}
       className={cn(
         'w-full rounded-md min-h-[36px]',
         hasError
@@ -460,11 +477,6 @@ export function NewClientForm() {
     setErrors((prev) => ({ ...prev, [key]: undefined }))
   }
 
-  function handleTimezoneChange(tzId: string) {
-    setForm((prev) => ({ ...prev, timezone_id: tzId, tz_offset: offsetFromTimezoneId(tzId) }))
-    setErrors((prev) => ({ ...prev, tz_offset: undefined }))
-  }
-
   function toggleAyanamsha(id: AyanamshaId) {
     setForm((prev) => {
       const next = prev.ayanamshas.includes(id)
@@ -474,13 +486,6 @@ export function NewClientForm() {
     })
     setErrors((prev) => ({ ...prev, ayanamshas: undefined }))
   }
-
-  const handleBirthPlaceBlur = useCallback(() => {
-    setForm((prev) => {
-      if (prev.birth_place.trim() && !prev.places_resolved) setManualOpen(true)
-      return prev
-    })
-  }, [])
 
   const handleBirthPlaceTextChange = useCallback((v: string) => {
     setForm((prev) => ({
@@ -492,7 +497,10 @@ export function NewClientForm() {
   }, [])
 
   const handlePlaceResolved = useCallback((result: PlacesResult) => {
-    const tz = timezoneFromOffset(result.utcOffsetMinutes)
+    // Use Time Zone API result if available (R5.2); otherwise fall back to offset-based lookup
+    const tz = (result.timezone_id && result.tz_offset)
+      ? { timezone_id: result.timezone_id, tz_offset: result.tz_offset }
+      : timezoneFromOffset(result.utcOffsetMinutes)
     setForm((prev) => ({
       ...prev,
       birth_place: result.description,
@@ -735,7 +743,6 @@ export function NewClientForm() {
             <PlacesAutocompleteNew
               hasError={!!errors.birth_place}
               onTextChange={handleBirthPlaceTextChange}
-              onBlur={handleBirthPlaceBlur}
               onPlaceResolved={handlePlaceResolved}
               onLoadError={handlePlacesLoadError}
             />
@@ -752,9 +759,6 @@ export function NewClientForm() {
               onChange={(e) => {
                 setField('birth_place', e.target.value)
                 if (!e.target.value.trim()) setForm((prev) => ({ ...prev, places_resolved: false }))
-              }}
-              onBlur={() => {
-                if (form.birth_place.trim() && !form.places_resolved) setManualOpen(true)
               }}
             />
           )}
@@ -933,60 +937,6 @@ export function NewClientForm() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-0.5">
-                <Label htmlFor="timezone_id" className="bt-label bt-label-upper text-brand-gold/70">
-                  Timezone
-                </Label>
-                <div className="relative">
-                  <select
-                    id="timezone_id"
-                    value={form.timezone_id}
-                    disabled={!manualOpen}
-                    className={cn(darkInputCls(), 'appearance-none pr-7', manualOpen ? 'cursor-pointer' : 'cursor-not-allowed')}
-                    style={manualOpen ? wellStyle : readOnlyWellStyle}
-                    onChange={manualOpen ? (e) => handleTimezoneChange(e.target.value) : undefined}
-                  >
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz.value} value={tz.value}
-                        style={{ background: 'var(--brand-charcoal)' }}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]"
-                    style={{ color: 'oklch(0.50 0.015 75)' }}
-                  >▼</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <Label htmlFor="tz_offset" className="bt-label bt-label-upper text-brand-gold/70">
-                  UTC offset *
-                </Label>
-                <input
-                  id="tz_offset"
-                  type="number"
-                  step="0.25"
-                  min={-14}
-                  max={14}
-                  placeholder="5.5"
-                  value={form.tz_offset}
-                  readOnly={!manualOpen}
-                  tabIndex={manualOpen ? 0 : -1}
-                  aria-required="true"
-                  aria-readonly={!manualOpen}
-                  aria-invalid={!!errors.tz_offset}
-                  className={cn(darkInputCls(!!errors.tz_offset), !manualOpen && 'cursor-not-allowed')}
-                  style={errors.tz_offset ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
-                  onChange={manualOpen ? (e) => setField('tz_offset', e.target.value) : undefined}
-                />
-                {errors.tz_offset && (
-                  <p role="alert" className="bt-label text-destructive">{errors.tz_offset}</p>
-                )}
-              </div>
-            </div>
           </div>
         </div>
 
