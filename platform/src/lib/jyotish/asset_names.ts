@@ -23,14 +23,14 @@ export interface AssetEntry {
 
 export const ASSET_NAMES = {
   // ── L0 Brahmagyan — Global Foundation ────────────────────────────────────
-  bg_ephemeris:    { sanskrit: 'Kālapañcāṅga',  english: 'Ephemeris',        subtitle: 'Swiss Ephemeris DE441 — raw astronomical positions', layer: 'L0' },
-  bg_reference:    { sanskrit: 'Sāraṇī',         english: 'Reference Library', subtitle: 'Dignities, bounds, chakra grids, nakshatra attrs',   layer: 'L0' },
-  bg_texts:        { sanskrit: 'Śāstrapāṭha',    english: 'Classical Texts',   subtitle: 'BPHS, Jaimini Sutram, KP Reader, Tajaka',           layer: 'L0' },
-  bg_ontology:     { sanskrit: 'Nāmasaṃgraha',   english: 'Ontology',          subtitle: 'Controlled vocabulary — canonical entity IDs',      layer: 'L0' },
-  bg_text_index:   { sanskrit: 'Śabdakośa',      english: 'Text Index',         subtitle: 'Hybrid retrieval — vector + lexical + rerank',     layer: 'L0' },
-  bg_rules:        { sanskrit: 'Sūtravālī',      english: 'Rule Base',          subtitle: 'Extracted classical rules, verse-traceable',       layer: 'L0' },
-  bg_almanac:      { sanskrit: 'Pañcāṅga',       english: 'Daily Almanac',      subtitle: 'Location-parameterised panchang + day windows',   layer: 'L0' },
-  bg_concordance:  { sanskrit: 'Samanvaya',      english: 'Concordance',        subtitle: 'Cross-school agreement/divergence index',          layer: 'L0' },
+  bg_ephemeris:    { sanskrit: 'Graha Sphuṭa',   english: 'Ephemeris',          subtitle: 'Swiss Ephemeris DE441 — raw astronomical positions', layer: 'L0' },
+  bg_reference:    { sanskrit: 'Sāraṇī',         english: 'Reference Library',  subtitle: 'Planets, nakshatras, signs, aspects, vargas — classical constants', layer: 'L0' },
+  bg_texts:        { sanskrit: 'Śāstrapāṭha',    english: 'Classical Texts',    subtitle: 'BPHS, Jaimini Sutram, KP Reader, Tajaka — verse chunks',           layer: 'L0' },
+  bg_ontology:     { sanskrit: 'Nāmasaṃgraha',   english: 'Ontology',           subtitle: 'Canonical entity vocabulary + synonyms — resolve_entity source',   layer: 'L0' },
+  bg_text_index:   { sanskrit: 'Śabdakośa',      english: 'Text Index',         subtitle: 'Hybrid retrieval — vector + lexical + rerank',                     layer: 'L0' },
+  bg_rules:        { sanskrit: 'Sūtravālī',      english: 'Rule Base',          subtitle: 'Extracted classical rules, verse-traceable',                       layer: 'L0' },
+  bg_remedies:     { sanskrit: 'Upāya-kośa',     english: 'Remedy Corpus',      subtitle: 'Mantras, gemstones, charity, vrata, yantras, puja, tantric, ayurvedic', layer: 'L0' },
+  bg_concordance:  { sanskrit: 'Samanvaya',      english: 'Concordance',        subtitle: 'Cross-school agreement/divergence index — DORMANT placeholder',    layer: 'L0' },
 
   // ── L1 Gaṇita — Chart Facts ───────────────────────────────────────────────
   ga_engine:       { sanskrit: 'Gaṇanā',         english: 'Engine',            subtitle: 'PyJHora chart computation — all ayanamshas',        layer: 'L1' },
