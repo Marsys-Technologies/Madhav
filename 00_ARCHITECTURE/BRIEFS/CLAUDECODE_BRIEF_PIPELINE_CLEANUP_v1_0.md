@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF_PIPELINE_CLEANUP_v1_0.md
 version: "1.0"
-status: READY_FOR_EXECUTION
+status: COMPLETE
 produced_during: PIPELINE_AUDIT_2026-06-07
 role: Executable brief for Claude Code (Antigravity IDE) to fix the deployment-pipeline findings in PIPELINE_AUDIT_v1_0.md.
 executor: Claude Code in Google Antigravity IDE (NOT the CLI)

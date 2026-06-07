@@ -1,6 +1,6 @@
 ---
 artifact: OPERATOR_ACTIONS_PENDING.md
-version: "1.2"
+version: "1.3"
 status: LIVING
 produced_during: DOC_CLEANUP_2026-05-31
 role: Single source of truth for all operator actions requiring human execution (GCP console, production DB, GitHub settings).
@@ -8,11 +8,12 @@ changelog:
   - v1.0 (2026-05-31, CI-cleanup): Initial file — smoke gate secrets provisioning only.
   - v1.1 (2026-05-31, DOC_CLEANUP): Consolidated all pending operator actions from MULTI_AYANAMSHA_BUILD_CLOSE §6, MCPT_CLOSE, PLATFORM_MODERNIZATION_CLOSE, and CI-cleanup session.
   - v1.2 (2026-06-01, PYJHORA-POSTMERGE-DEPLOY-B): A.1 chart build marked DONE; A.2 migrations 121/122/124 UNBLOCKED; A.3 build-trigger 401 HIGH item added; A.4 forensic render HIGH item added; A.5 jh-parity residue MEDIUM item added.
+  - v1.3 (2026-06-08, pipeline-audit-closeout): Added HIGH item for iac-apply.yml GCS state bucket IAM (GATE 2 infra-blocked finding). Noted PA-01 flags baked and GATE 1 passed.
 ---
 
 # Operator Actions Pending
 
-Last updated: 2026-06-01
+Last updated: 2026-06-08
 Single source of truth for all operator actions that require human execution
 (GCP console, production DB, GitHub settings). Updated at each session close.
 
@@ -80,6 +81,51 @@ pytest platform/tests/integration/test_multi_tenant_smoke.py --db-url=$DB_URL
 
 **ACC5** (concurrent smoke — Cloud environment only):
 Run concurrent smoke test manually in Cloud environment per the artifact's §4.
+
+---
+
+## HIGH — iac-apply.yml: GCS state bucket IAM not provisioned (GATE 2 infra-block)
+
+The new dispatch-only `iac-apply.yml` workflow (merged 2026-06-08, commit `7c8d6621`) runs
+`terraform plan`/`apply` against the `cloud_scheduler` Terraform module. On first run
+(workflow run `27104108901`), Terraform failed at backend init:
+
+```
+Error 403: github-actions@madhav-astrology.iam.gserviceaccount.com does not have
+storage.objects.list access to the Google Cloud Storage bucket.
+Permission 'storage.objects.list' denied on resource
+'//storage.googleapis.com/projects/_/buckets/madhav-astrology-tf-state'
+```
+
+**Required action (GCP console or gcloud):**
+
+```bash
+# Option 1: Grant objectAdmin on the TF state bucket to the GHA SA
+gcloud storage buckets add-iam-policy-binding gs://madhav-astrology-tf-state \
+  --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
+  --role="roles/storage.objectAdmin"
+
+# Option 2 (narrower): Grant only the required operations
+gcloud storage buckets add-iam-policy-binding gs://madhav-astrology-tf-state \
+  --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+gcloud storage buckets add-iam-policy-binding gs://madhav-astrology-tf-state \
+  --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
+  --role="roles/storage.objectCreator"
+```
+
+If the bucket does not exist yet, create it first:
+```bash
+gcloud storage buckets create gs://madhav-astrology-tf-state \
+  --project=madhav-astrology --location=asia-south1
+```
+
+After granting access, re-run GATE 2:
+```bash
+gh workflow run iac-apply.yml -f module=cloud_scheduler -f action=plan --ref main
+```
+Inspect the plan output. If ANY destroy/replace → do not apply; investigate before
+proceeding. If plan shows only add/update → GATE 2 is clear to apply.
 
 ---
 
@@ -218,3 +264,4 @@ Until provisioned, the chat-v2-smoke workflow exits 0 vacuously (no protection).
 - **2026-05-23**: R9 migrations 110/111/112 applied; R9 flags flipped (PROJECTS, SEMANTIC_SEARCH, TOOL_FLOW).
 - **2026-05-26**: GISMCP sidecar deployed (amjis-mcp-00017-6nl). MARSYS_REPO_ROOT=/app set on amjis-web.
 - **2026-05-31**: schema_validator CI gate hardened (continue-on-error removed). SESSION_LOG entries repaired.
+- **2026-06-08**: Pipeline Audit PA-01/04/05/06/07/08 completed (PRs #217 + #218). GATE 1 PASSED — all 5 NEXT_PUBLIC flags (`R9_PROJECTS`, `R9_SEMANTIC_SEARCH`, `R9_TOOL_FLOW`, `R11B_LOOK_AND_FEEL`, `R11V2_MULTI_PROVIDER_PARITY`) baked in revision `amjis-web-00536-6hg`. Terraform decoupled from auto-deploy (PA-06). GATE 2 infra-blocked (see HIGH section above).
