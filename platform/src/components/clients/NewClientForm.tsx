@@ -131,11 +131,6 @@ function validate(form: FormState): FormErrors {
   else if (isNaN(lng) || lng < -180 || lng > 180)
     errors.longitude = 'Longitude must be between -180 and 180.'
 
-  const tz = parseFloat(form.tz_offset)
-  if (form.tz_offset === '') errors.tz_offset = 'Timezone offset is required.'
-  else if (isNaN(tz) || tz < -14 || tz > 14)
-    errors.tz_offset = 'Timezone offset must be between -14 and 14.'
-
   if (form.ayanamshas.length === 0)
     errors.ayanamshas = 'At least one ayanamsha must be selected.'
 
@@ -156,17 +151,57 @@ function nativeInputCls(hasError?: boolean): string {
 
 const GMAPS_LIBS: 'places'[] = ['places']
 
-function PlacesAutocompleteInput({
+const wellStyleError = {
+  background: 'var(--brand-charcoal-deep)',
+  color: 'var(--brand-gold-cream)',
+}
+
+// R4.3: read-only coord fields (always visible; muted to indicate non-editable)
+const readOnlyWellStyle = {
+  background: 'var(--brand-ink)',
+  color: 'oklch(0.45 0.015 75)',
+  borderColor: 'oklch(0.78 0.13 80 / 0.12)',
+  cursor: 'not-allowed',
+}
+
+// ─── CSS for gmp-placeautocomplete theming (R3.5 / R4.4) ─────────────────────
+// R4.4: surface = brand-ink (the page canvas) so the field blends with the page,
+// not the card. oklch(0.04 0.005 70) is the computed value of --brand-ink.
+const PLACES_WIDGET_CSS = `
+gmp-placeautocomplete {
+  --gmpx-color-surface: oklch(0.04 0.005 70);
+  --gmpx-color-on-surface: oklch(0.92 0.075 88);
+  --gmpx-color-on-surface-variant: oklch(0.58 0.025 80);
+  --gmpx-color-primary: oklch(0.78 0.13 80);
+  --gmpx-color-outline: oklch(0.78 0.13 80 / 0.35);
+  --gmpx-font-family-base: var(--font-sans, sans-serif);
+  --gmpx-font-size-base: 0.875rem;
+}
+`
+
+// ─── Custom gender dropdown (R3.6) ───────────────────────────────────────────
+// Native <select> option lists render in OS chrome which ignores our CSS.
+// A custom listbox gives complete visual control.
+
+const GENDER_OPTIONS: { value: 'M' | 'F' | 'O' | 'unknown' | ''; label: string }[] = [
+  { value: '',        label: '— select —' },
+  { value: 'unknown', label: 'Prefer not to say' },
+  { value: 'M',       label: 'Male' },
+  { value: 'F',       label: 'Female' },
+  { value: 'O',       label: 'Other' },
+]
+
+type GenderValue = 'M' | 'F' | 'O' | 'unknown' | ''
+
+function GenderSelect({
   value,
   hasError,
   onTextChange,
-  onBlur,
   onPlaceResolved,
 }: {
   value: string
   hasError: boolean
   onTextChange: (v: string) => void
-  onBlur: () => void
   onPlaceResolved: (r: PlacesResult) => void
 }) {
   const { isLoaded } = useJsApiLoader({
@@ -176,28 +211,134 @@ function PlacesAutocompleteInput({
   })
   const acRef = useRef<google.maps.places.Autocomplete | null>(null)
 
-  function onPlaceChanged() {
-    const place = acRef.current?.getPlace()
-    if (!place?.geometry?.location) return
-    onPlaceResolved({
-      description: place.formatted_address ?? place.name ?? '',
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-      utcOffsetMinutes: place.utc_offset_minutes ?? null,
-    })
+  useEffect(() => {
+    if (loadError) onLoadError()
+  }, [loadError, onLoadError])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!isLoaded || !container) return
+    if (container.querySelector('gmp-placeautocomplete')) return
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lib = await (window.google.maps as any).importLibrary('places')
+        if (cancelled || !container) return
+        if (container.querySelector('gmp-placeautocomplete')) return
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const el: HTMLElement = new (lib as any).PlaceAutocompleteElement({
+          requestedLanguage: 'en',
+        })
+        el.style.width = '100%'
+
+        // Theme tokens (R3.5 / R4.4) — cascade into shadow DOM via inline custom properties
+        // R4.4: surface = brand-ink so field blends with the page canvas.
+        el.style.setProperty('--gmpx-color-surface',            'oklch(0.04 0.005 70)')
+        el.style.setProperty('--gmpx-color-on-surface',         'oklch(0.92 0.075 88)')
+        el.style.setProperty('--gmpx-color-on-surface-variant', 'oklch(0.58 0.025 80)')
+        el.style.setProperty('--gmpx-color-primary',            'oklch(0.78 0.13 80)')
+        el.style.setProperty('--gmpx-color-outline',            'oklch(0.78 0.13 80 / 0.35)')
+        el.style.setProperty('--gmpx-font-family-base',         'var(--font-sans, sans-serif)')
+        el.style.setProperty('--gmpx-font-size-base',           '0.875rem')
+
+        el.addEventListener('input', () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onTextChange((el as any).value ?? '')
+        })
+
+        // R5.1: PlaceAutocompleteElement fires 'gmp-select' with event.placePrediction
+        // (a PlacePrediction object). Call .toPlace() then .fetchFields() — this is the
+        // call that issues the Place Details network request and populates location.
+        // R5.2: After getting lat/lng, derive timezone via Google Time Zone API (falls back
+        // to timezoneFromOffset on 403 or any error, so submit is never blocked).
+        const handlePlaceSelect = async (event: Event) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pp = (event as any).placePrediction
+          if (!pp) return
+          try {
+            const place = pp.toPlace()
+            await place.fetchFields({ fields: ['location', 'displayName', 'formattedAddress'] })
+            const loc = place.location
+            if (!loc) { onLoadError(); return }
+            const lat = loc.lat()
+            const lng = loc.lng()
+
+            // R5.2: Google Time Zone API — derive IANA tz + offset; fall back on any error
+            let timezone_id = 'Asia/Kolkata'
+            let tz_offset = '5.5'
+            try {
+              const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+              const ts = Math.floor(Date.now() / 1000)
+              const tzRes = await fetch(
+                `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${apiKey}`,
+              )
+              const tzData = await tzRes.json()
+              if (tzData.status === 'OK') {
+                const offsetHours = (tzData.rawOffset + tzData.dstOffset) / 3600
+                timezone_id = tzData.timeZoneId
+                tz_offset = String(offsetHours)
+              }
+            } catch {
+              // TZ API unavailable (not enabled or 403) — keep defaults
+            }
+
+            onPlaceResolved({
+              description: place.formattedAddress ?? place.displayName ?? '',
+              lat,
+              lng,
+              utcOffsetMinutes: null,
+              timezone_id,
+              tz_offset,
+            })
+          } catch {
+            onLoadError()
+          }
+        }
+
+        el.addEventListener('gmp-select', handlePlaceSelect)
+
+        container.appendChild(el)
+      } catch {
+        if (!cancelled) onLoadError()
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [isLoaded, onPlaceResolved, onTextChange, onLoadError])
+
+  if (!isLoaded && !loadError) {
+    return (
+      <input
+        disabled
+        placeholder="Loading…"
+        aria-label="Birth place loading"
+        className={darkInputCls(hasError)}
+        style={{
+          ...wellStyle,
+          color: 'oklch(0.58 0.025 80)',
+          borderColor: hasError ? undefined : 'var(--brand-gold-hairline)',
+        }}
+      />
+    )
   }
 
-  const inputEl = (
-    <Input
-      id="birth_place"
-      type="text"
-      placeholder="e.g. Bhubaneswar, Odisha, India"
-      value={value}
-      aria-required="true"
-      aria-invalid={hasError}
-      className={cn(hasError && 'border-destructive')}
-      onChange={(e) => onTextChange(e.target.value)}
-      onBlur={onBlur}
+  // R3.4: No overflow-hidden — popup must not be clipped.
+  // R5.3: No onBlur — the shadow-DOM popup closing fires blur, which was incorrectly
+  // toggling manualOpen. Override scopes to its checkbox only.
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'w-full rounded-md min-h-[36px]',
+        hasError
+          ? 'ring-1 ring-destructive border border-destructive'
+          : 'border border-[var(--brand-gold-hairline)]',
+      )}
+      style={{ position: 'relative' }}
     />
   )
 
@@ -245,12 +386,6 @@ export function NewClientForm() {
     setErrors((prev) => ({ ...prev, [key]: undefined }))
   }
 
-  function handleTimezoneChange(tzId: string) {
-    const offset = offsetFromTimezoneId(tzId)
-    setForm((prev) => ({ ...prev, timezone_id: tzId, tz_offset: offset }))
-    setErrors((prev) => ({ ...prev, tz_offset: undefined }))
-  }
-
   function toggleAyanamsha(id: AyanamshaId) {
     setForm((prev) => {
       const next = prev.ayanamshas.includes(id)
@@ -261,9 +396,41 @@ export function NewClientForm() {
     setErrors((prev) => ({ ...prev, ayanamshas: undefined }))
   }
 
-  function handleBirthPlaceBlur() {
-    if (form.birth_place.trim() && !form.places_resolved) setManualOpen(true)
-  }
+  const handleBirthPlaceTextChange = useCallback((v: string) => {
+    setForm((prev) => ({
+      ...prev,
+      birth_place: v,
+      places_resolved: v.trim() ? prev.places_resolved : false,
+    }))
+    setErrors((prev) => ({ ...prev, birth_place: undefined }))
+  }, [])
+
+  const handlePlaceResolved = useCallback((result: PlacesResult) => {
+    // Use Time Zone API result if available (R5.2); otherwise fall back to offset-based lookup
+    const tz = (result.timezone_id && result.tz_offset)
+      ? { timezone_id: result.timezone_id, tz_offset: result.tz_offset }
+      : timezoneFromOffset(result.utcOffsetMinutes)
+    setForm((prev) => ({
+      ...prev,
+      birth_place: result.description,
+      latitude: String(result.lat),
+      longitude: String(result.lng),
+      timezone_id: tz.timezone_id,
+      tz_offset: tz.tz_offset,
+      places_resolved: true,
+    }))
+    setManualOpen(false)
+    setErrors((prev) => ({
+      ...prev,
+      birth_place: undefined,
+      latitude: undefined,
+      longitude: undefined,
+    }))
+  }, [])
+
+  const handlePlacesLoadError = useCallback(() => {
+    setManualOpen(true)
+  }, [])
 
   function handleDateDisplayChange(raw: string) {
     const parsed = parseBirthDateDisplay(raw)
@@ -389,12 +556,40 @@ export function NewClientForm() {
           {/* Left: Identity + Compute ────────────────────────────────── */}
           <div className="flex flex-col gap-3 min-h-0">
 
-            {/* Vyakti · Identity */}
-            <div
-              data-testid="section-identity"
-              className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2.5"
-            >
-              <h3 className="bt-heading text-brand-gold-cream">Vyakti · Identity</h3>
+        {/* Birth place ────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="birth_place" className="bt-label bt-label-upper text-brand-gold/70">
+            Birth place *
+          </Label>
+          {googleMapsConfigured ? (
+            <PlacesAutocompleteNew
+              hasError={!!errors.birth_place}
+              onTextChange={handleBirthPlaceTextChange}
+              onPlaceResolved={handlePlaceResolved}
+              onLoadError={handlePlacesLoadError}
+            />
+          ) : (
+            <Input
+              id="birth_place"
+              type="text"
+              placeholder="e.g. Bhubaneswar, Odisha, India"
+              value={form.birth_place}
+              aria-required="true"
+              aria-invalid={!!errors.birth_place}
+              className={cn(darkInputCls(!!errors.birth_place), 'placeholder:text-brand-gold/25')}
+              style={errors.birth_place ? wellStyleError : wellStyle}
+              onChange={(e) => {
+                setField('birth_place', e.target.value)
+                if (!e.target.value.trim()) setForm((prev) => ({ ...prev, places_resolved: false }))
+              }}
+            />
+          )}
+          {errors.birth_place && (
+            <p role="alert" className="bt-label text-destructive">{errors.birth_place}</p>
+          )}
+
+          {/* R4.3: resolved state is visible in the always-shown coord fields below */}
+        </div>
 
               <div className="flex flex-col gap-1">
                 <Label htmlFor="full_name" className="bt-label bt-label-upper">Full name *</Label>
@@ -681,49 +876,147 @@ export function NewClientForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col gap-0.5">
-                      <Label htmlFor="timezone_id" className="bt-label bt-label-upper">
-                        Timezone
-                      </Label>
-                      <select
-                        id="timezone_id"
-                        value={form.timezone_id}
-                        className={nativeInputCls()}
-                        onChange={(e) => handleTimezoneChange(e.target.value)}
-                      >
-                        {TIMEZONES.map((tz) => (
-                          <option key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <Label htmlFor="tz_offset" className="bt-label bt-label-upper">
-                        UTC offset *
-                      </Label>
-                      <input
-                        id="tz_offset"
-                        type="number"
-                        step="0.25"
-                        min={-14}
-                        max={14}
-                        placeholder="5.5"
-                        value={form.tz_offset}
-                        aria-required="true"
-                        aria-invalid={!!errors.tz_offset}
-                        className={nativeInputCls(!!errors.tz_offset)}
-                        onChange={(e) => setField('tz_offset', e.target.value)}
-                      />
-                      {errors.tz_offset && (
-                        <p role="alert" className="bt-label text-destructive">{errors.tz_offset}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+        {/* R4.3: Coordinates — always visible; read-only until "Manual override" ── */}
+        <div data-testid="manual-override-accordion">
+          {/* Manual override checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer group w-fit">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={manualOpen}
+              aria-label="Manual coordinate override"
+              onChange={(e) => setManualOpen(e.target.checked)}
+            />
+            <span
+              aria-hidden="true"
+              className="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-150"
+              style={{
+                background: manualOpen ? 'oklch(0.78 0.13 80 / 0.14)' : 'transparent',
+                borderColor: manualOpen ? 'var(--brand-gold)' : 'oklch(0.50 0.020 75)',
+              }}
+            >
+              {manualOpen && (
+                <span style={{ color: 'var(--brand-gold)', fontSize: '9px', lineHeight: 1, fontWeight: 700 }}>✓</span>
               )}
+            </span>
+            <span className="bt-label text-muted-foreground group-hover:text-brand-gold/70 transition-colors">
+              Manual override
+            </span>
+          </label>
+
+          {/* Coord fields — always rendered; editable only when override is checked */}
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="latitude" className="bt-label bt-label-upper text-brand-gold/70">
+                  Latitude *
+                </Label>
+                <input
+                  id="latitude"
+                  type="number"
+                  step="0.0001"
+                  min={-90}
+                  max={90}
+                  placeholder="20.2961"
+                  value={form.latitude}
+                  readOnly={!manualOpen}
+                  tabIndex={manualOpen ? 0 : -1}
+                  aria-required="true"
+                  aria-readonly={!manualOpen}
+                  aria-invalid={!!errors.latitude}
+                  className={cn(darkInputCls(!!errors.latitude), !manualOpen && 'cursor-not-allowed')}
+                  style={errors.latitude ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
+                  onChange={manualOpen ? (e) => setField('latitude', e.target.value) : undefined}
+                />
+                {errors.latitude && (
+                  <p role="alert" className="bt-label text-destructive">{errors.latitude}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="longitude" className="bt-label bt-label-upper text-brand-gold/70">
+                  Longitude *
+                </Label>
+                <input
+                  id="longitude"
+                  type="number"
+                  step="0.0001"
+                  min={-180}
+                  max={180}
+                  placeholder="85.8245"
+                  value={form.longitude}
+                  readOnly={!manualOpen}
+                  tabIndex={manualOpen ? 0 : -1}
+                  aria-required="true"
+                  aria-readonly={!manualOpen}
+                  aria-invalid={!!errors.longitude}
+                  className={cn(darkInputCls(!!errors.longitude), !manualOpen && 'cursor-not-allowed')}
+                  style={errors.longitude ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
+                  onChange={manualOpen ? (e) => setField('longitude', e.target.value) : undefined}
+                />
+                {errors.longitude && (
+                  <p role="alert" className="bt-label text-destructive">{errors.longitude}</p>
+                )}
+              </div>
             </div>
+
+          </div>
+        </div>
+
+        {/* R3.2: Ayanamsha checkboxes — single flex-nowrap row ─────────── */}
+        <div className="flex flex-col gap-2" data-testid="section-compute">
+          <span className="bt-label bt-label-upper text-brand-gold/70">Ayanamsha systems</span>
+          <div className="flex flex-nowrap gap-2">
+            {AYANAMSHA_OPTIONS.map((opt) => {
+              const checked = form.ayanamshas.includes(opt.id)
+              return (
+                <label
+                  key={opt.id}
+                  className={cn(
+                    'flex items-center gap-2 cursor-pointer rounded-lg border px-2.5 py-2 flex-1',
+                    'transition-all duration-150 min-w-0',
+                  )}
+                  style={{
+                    background: checked ? 'oklch(0.78 0.13 80 / 0.12)' : 'transparent',
+                    borderColor: checked ? 'var(--brand-gold)' : 'var(--brand-gold-hairline)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={checked}
+                    aria-label={opt.label}
+                    onChange={() => toggleAyanamsha(opt.id)}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150"
+                    style={{
+                      background: checked ? 'var(--brand-gold)' : 'transparent',
+                      border: checked ? 'none' : '1px solid oklch(0.50 0.020 75)',
+                    }}
+                  />
+                  <span className="flex flex-col gap-0.5 min-w-0">
+                    <span
+                      className="font-medium leading-none truncate"
+                      style={{
+                        fontSize: '11px',
+                        color: checked ? 'var(--brand-gold)' : 'oklch(0.72 0.025 80)',
+                      }}
+                    >
+                      {opt.label}
+                    </span>
+                    <span
+                      className="leading-none truncate"
+                      style={{
+                        fontSize: '9px',
+                        color: checked ? 'oklch(0.78 0.13 80 / 0.60)' : 'oklch(0.50 0.015 75)',
+                      }}
+                    >
+                      {opt.sub}
+                    </span>
+                  </span>
+                </label>
+              )
+            })}
           </div>
         </div>
 
