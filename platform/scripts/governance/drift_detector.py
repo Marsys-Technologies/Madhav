@@ -278,6 +278,12 @@ def check_ca_filesystem_fingerprints(repo_root: pathlib.Path, ca) -> List[Findin
         path_rel = row.get("path")
         if not path_rel:
             continue
+        # Skip files pending L0 rebuild — acknowledged as forthcoming in
+        # _FUTURE_ARTIFACTS. Computing a fingerprint on an absent-but-expected
+        # file produces a false CRITICAL; honour the same allowlist used by
+        # check_phantom_references().
+        if pathlib.Path(path_rel).name in _FUTURE_ARTIFACTS:
+            continue
         path_abs = repo_root / path_rel
         if path_abs.is_dir():
             findings.append(Finding(
@@ -492,6 +498,16 @@ _FUTURE_ARTIFACTS = {
     "bootstrap_panchanga.py",               # panchang bootstrap script — pending L1 rebuild
     "tool_health.ts",                       # MCP ops tool — pending L2 rebuild
     "data_coverage.ts",                     # MCP ops tool — pending L2 rebuild
+    # L0FR legacy-purge (WS-0C, 2026-06-05) removed these files; forward-
+    # referenced in CLAUDE.md §E and FILE_REGISTRY_v1_14. Pending L0 rebuild.
+    "msr_grounding.integration.test.ts",    # MSR grounding integration test — pending L0 rebuild
+    "rag_router.py",                        # RAG router — pending L0 rebuild
+    # python-sidecar/rag/ module files deleted in WS-0C; referenced in FILE_REGISTRY_v1_14.
+    # Generic basenames (schemas.py, router.py) exist in local .venv packages — excluded from
+    # _build_basename_cache skip_dirs previously, causing local hits that CI (no .venv) lacks.
+    # Pending L0 rebuild of the rag module.
+    "schemas.py",                           # rag schemas module — pending L0 rebuild
+    "router.py",                            # rag router module — pending L0 rebuild
 }
 
 # Regex for template/example path placeholders (vX_Y, vN_N, etc.)
@@ -507,7 +523,10 @@ def _build_basename_cache(repo_root: pathlib.Path) -> Dict[str, List[pathlib.Pat
         return _BASENAME_CACHE
     cache: Dict[str, List[pathlib.Path]] = {}
     # Walk the repo, skipping heavy node_modules + .git + hidden caches.
-    skip_dirs = {"node_modules", ".git", "__pycache__", ".next", ".turbo", ".claude"}
+    # venv/.venv excluded: local Python virtualenvs contain package files (router.py,
+    # schemas.py, etc.) with generic basenames that would silently satisfy governance
+    # phantom-reference checks — producing local hits that CI (no venv) cannot replicate.
+    skip_dirs = {"node_modules", ".git", "__pycache__", ".next", ".turbo", ".claude", "venv", ".venv"}
     for p in repo_root.rglob("*"):
         if p.is_file():
             if any(part in skip_dirs for part in p.parts):
