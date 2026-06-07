@@ -26,3 +26,4 @@ platform/python-sidecar/venv/
 **/*.pyc
 infra/.terraform/
 infra/**/.terraform/
+.claude/

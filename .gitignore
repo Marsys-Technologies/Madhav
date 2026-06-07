@@ -82,3 +82,6 @@ tools/program-tracker/
 
 # JH parity scratch — [[no-jh-parity-anywhere]]
 platform/python-sidecar/tests/test_pyjhora_adapter/_scratch/
+
+# Antigravity IDE briefing pastes — ephemeral working documents, not canonical artifacts
+ANTIGRAVITY_PASTE_*.md

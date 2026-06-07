@@ -5,6 +5,9 @@ pipeline.orchestrator.main — CLI entrypoint
 Invoked by Cloud Run Job `brahma-build-pipeline-job` with:
   --run-id <build_runs.id UUID>
 
+  OR for L0FR global build (L0FR Stream A step 8-9):
+  --global-build  [--run-id <optional uuid>]
+
 Exit codes:
   0  run completed, stopped, or paused cleanly
   2  run not found
@@ -27,8 +30,32 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Brahma build pipeline orchestrator")
-    parser.add_argument("--run-id", required=True, help="UUID of the build_runs row to execute")
+    parser.add_argument("--run-id", required=False, help="UUID of the build_runs row to execute")
+    parser.add_argument(
+        "--global-build",
+        action="store_true",
+        default=False,
+        help=(
+            "L0FR global build mode: acquire pg_advisory_lock(hashtext('global')), "
+            "walk asset_registry rows where scope='global', run their writers, release lock. "
+            "Used for L0 brahmagyan foundation data builds that are chart-independent."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.global_build:
+        from .global_runner import execute_global_build
+        try:
+            execute_global_build(run_id=args.run_id)
+        except SystemExit:
+            raise
+        except Exception as exc:
+            logger.error("[orchestrator] global-build fatal: %s", exc, exc_info=True)
+            sys.exit(1)
+        return
+
+    if not args.run_id:
+        parser.error("--run-id is required unless --global-build is set")
 
     from .runner import execute_run
 
