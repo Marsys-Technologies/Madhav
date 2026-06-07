@@ -23,7 +23,7 @@ test.describe('AppShell — authenticated routes', () => {
     await page.goto('/dashboard')
     const nav = page.getByRole('navigation', { name: 'Primary navigation' })
     await expect(nav).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Roster' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Jātakas' })).toBeVisible()
   })
 
   test('dashboard breadcrumb shows Roster', async ({ page }) => {
