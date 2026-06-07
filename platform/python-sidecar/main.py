@@ -69,6 +69,11 @@ app.include_router(prashna_router.router, prefix="/api/compute/prashna", depende
 # Brahmagyan L0 Wave-2 — Daily Almanac (BG-0-8) [BRAHMA-BG-0-8]
 app.include_router(almanac_router.router, prefix="/api/brahmagyan/almanac", dependencies=[Depends(verify_api_key)])
 
+# BRAHMA L0FR Stream B — Ephemeris query endpoints (planet_position, transit, aspects, retrograde_periods,
+#   all_bodies_range, native_lifetime_meta); data source: ephemeris_daily (1900-2150, 9 bodies).
+from brahmagyan.ephemeris_routes import router as ephemeris_brahmagyan_router
+app.include_router(ephemeris_brahmagyan_router, prefix="/brahmagyan/ephemeris", dependencies=[Depends(verify_api_key)])
+
 
 @app.get("/health")
 def health():

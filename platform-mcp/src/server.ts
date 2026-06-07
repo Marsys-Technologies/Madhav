@@ -43,6 +43,8 @@ import {
 } from './tools/retrieval/pyhora_natal.js'
 // L0FR Stream A: L0 Brahmagyan pattern-validation capabilities
 import { registerL0BrahmagyanTools } from './tools/l0_brahmagyan.js'
+// L0FR Stream B: L0 Ephemeris capabilities (ephemeris_daily 1900-2150)
+import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 
 const app = express()
 app.use(express.json())
@@ -105,6 +107,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
   registerL0BrahmagyanTools(server)
+  // L0 Ephemeris tools (L0FR Stream B — ephemeris_daily 1900-2150)
+  registerEphemerisTools(server)
 
   // L1 Gaṇita — PyJHora natal computation tools (Stream G / BRAHMA-G-1)
   registerComputeNatalPositionsTool(server)    // graha_sthana: 9 planets + Lagna

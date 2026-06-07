@@ -1,7 +1,12 @@
 /**
- * Layer L0_brahmagyan — Wave 3 R2: register all L0 retrieval capabilities
- * Existing: asset_registry resources + entity tools
- * Added: 4 corpus query tools (yoga/dosha/remedy/classical texts)
+ * retrieval/registry/layers/L0_brahmagyan/index.ts
+ *
+ * Registers all L0 Brahmagyan capabilities with the central registry.
+ * Call registerL0Capabilities() at app startup (or import this module).
+ *
+ * L0FR Stream A — 5 foundation capabilities (resolve_entity, list_entities, asset_registry_all/l0, intent_classify)
+ * L0FR Stream B — 6 ephemeris capabilities (planet_position, planet_transit, aspects_at_time, retrograde_periods, ephemeris_cache_year/native-lifetime)
+ * Wave 3 R2 — 4 corpus query tools (yoga/dosha/remedy/classical texts)
  */
 import { registerCapability } from '../../index'
 
@@ -14,13 +19,67 @@ import { queryYogaCatalogCapability } from './query_yoga_catalog'
 import { queryDoshaCatalogCapability} from './query_dosha_catalog'
 import { queryRemedyCorpusCapability} from './query_remedy_corpus'
 import { queryClassicalTextsCapability } from './query_classical_texts'
+// Stream B: ephemeris capabilities
+import { queryPlanetPositionCapability } from './query_planet_position'
+import { queryPlanetTransitCapability } from './query_planet_transit'
+import { queryAspectsAtTimeCapability } from './query_aspects_at_time'
+import { queryRetrogradePeriodsCapability } from './query_retrograde_periods'
+import { ephemerisCacheYearCapability } from './ephemeris_cache_year'
+import { ephemerisCacheNativeLifetimeCapability } from './ephemeris_cache_native_lifetime'
 
-registerCapability(assetRegistryL0Capability)
-registerCapability(assetRegistryAllCapability)
-registerCapability(listEntitiesCapability)
-registerCapability(resolveEntityCapability)
-registerCapability(intentClassifyCapability)
-registerCapability(queryYogaCatalogCapability)
-registerCapability(queryDoshaCatalogCapability)
-registerCapability(queryRemedyCorpusCapability)
-registerCapability(queryClassicalTextsCapability)
+export const L0_CAPABILITIES = [
+  // Stream A: foundation + ontology
+  resolveEntityCapability,
+  listEntitiesCapability,
+  assetRegistryAllCapability,
+  assetRegistryL0Capability,
+  intentClassifyCapability,
+  // Wave 3 R2: corpus query tools
+  queryYogaCatalogCapability,
+  queryDoshaCatalogCapability,
+  queryRemedyCorpusCapability,
+  queryClassicalTextsCapability,
+  // Stream B: ephemeris (1900-2150, 9 bodies, pyswisseph DE441)
+  queryPlanetPositionCapability,
+  queryPlanetTransitCapability,
+  queryAspectsAtTimeCapability,
+  queryRetrogradePeriodsCapability,
+  ephemerisCacheYearCapability,
+  ephemerisCacheNativeLifetimeCapability,
+] as const
+
+export function registerL0Capabilities(): void {
+  for (const cap of L0_CAPABILITIES) {
+    try {
+      registerCapability(cap)
+    } catch (e) {
+      // Ignore duplicate registration (idempotent)
+      if (e instanceof Error && e.message.includes('Duplicate URI')) {
+        // already registered — safe to skip
+      } else {
+        throw e
+      }
+    }
+  }
+}
+
+// Auto-register on import (safe — registry/index.ts does NOT import this file)
+registerL0Capabilities()
+
+export {
+  resolveEntityCapability,
+  listEntitiesCapability,
+  assetRegistryAllCapability,
+  assetRegistryL0Capability,
+  intentClassifyCapability,
+  queryYogaCatalogCapability,
+  queryDoshaCatalogCapability,
+  queryRemedyCorpusCapability,
+  queryClassicalTextsCapability,
+  queryPlanetPositionCapability,
+  queryPlanetTransitCapability,
+  queryAspectsAtTimeCapability,
+  queryRetrogradePeriodsCapability,
+  ephemerisCacheYearCapability,
+  ephemerisCacheNativeLifetimeCapability,
+}
