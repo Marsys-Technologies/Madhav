@@ -34,17 +34,17 @@ export function buildBundle(results: PrefetchResult[]): BulkContextBundle {
   let totalBytes = 0
 
   for (const result of results) {
-    if (result.error || result.data === null) continue
+    if (result.content === null || result.content === undefined) continue
 
-    const serialized = typeof result.data === 'string'
-      ? result.data
-      : JSON.stringify(result.data, null, 2)
+    const serialized = typeof result.content === 'string'
+      ? result.content
+      : JSON.stringify(result.content, null, 2)
 
     const sizeBytes = new TextEncoder().encode(serialized).length
     const clipped = sizeBytes > SECTION_MAX_KB * 1024
 
     const content = clipped
-      ? clipResult(result.data, { max_kb: SECTION_MAX_KB, strategy: 'truncate_end' })
+      ? clipResult(result.content, { max_kb: SECTION_MAX_KB, strategy: 'truncate_end' })
       : serialized
 
     const contentBytes = new TextEncoder().encode(content).length

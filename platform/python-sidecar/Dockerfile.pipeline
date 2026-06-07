@@ -24,10 +24,6 @@ ENV SWE_EPHE_PATH=/app/ephe
 COPY platform/python-sidecar/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Mirror the dev layout: rag/ lives at platform/python-sidecar/rag/ so that
-# validators using Path(__file__).parent^5 resolve to WORKDIR (/app = repo_root).
-# This allows the p5/p2 validators to find their source files at runtime.
-COPY platform/python-sidecar/rag/ ./platform/python-sidecar/rag/
 COPY platform/python-sidecar/pipeline/ ./platform/python-sidecar/pipeline/
 # Brahma layer writers (L0-L5)
 COPY platform/python-sidecar/brahmagyan/ ./platform/python-sidecar/brahmagyan/

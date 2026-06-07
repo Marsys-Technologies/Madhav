@@ -8,8 +8,8 @@
  */
 
 import { listCapabilities } from '../../registry'
-import type { Capability, CapabilityContext } from '../../registry/types'
-import { prefetchForIntent, type PrefetchResult } from '../bulk_context/prefetcher'
+import type { CapabilityContext } from '../../registry/types'
+import { buildPrefetchPlan, executePrefetch, type PrefetchResult } from '../bulk_context/prefetcher'
 import { buildBundle, formatBundleForPrompt } from '../bulk_context/bundler'
 import { classifyIntent } from '../bulk_context/intent_classifier'
 
@@ -48,7 +48,8 @@ export async function prepareHybridContext(
   const intent = await classifyIntent(query)
 
   // Step 2: pre-fetch
-  const prefetched = await prefetchForIntent(intent.primary_intent, ctx)
+  const plan = buildPrefetchPlan([intent.primary_intent])
+  const prefetched = await executePrefetch(plan, ctx)
 
   // Always-prefetch additions
   if (opts?.always_prefetch) {
@@ -63,9 +64,9 @@ export async function prepareHybridContext(
         if (cap.primitive_type === 'resource') data = await cap.loader(ctx)
         else if (cap.primitive_type === 'tool') data = await cap.handler({}, ctx)
         else continue
-        prefetched.push({ uri, data, latency_ms: Date.now() - start })
+        prefetched.push({ uri, content: data, tokens_estimate: 0 })
       } catch (err) {
-        prefetched.push({ uri, data: null, latency_ms: 0, error: String(err) })
+        void err  // skip failed always_prefetch entries — null content filtered in buildBundle
       }
     }
   }

@@ -141,52 +141,52 @@ def _build_writer_registry() -> dict:
     """
     registry: dict = {}
 
-    # brahmagyan.sarani — reference library (Stream A seeds minimal ontology)
+    # bg_reference — reference library (Stream A seeds minimal ontology)
     try:
         from pipeline.orchestrator.writers.brahmagyan_sarani import write_sarani
-        registry["brahmagyan.sarani"] = write_sarani
+        registry["bg_reference"] = write_sarani
     except ImportError:
         pass
 
-    # brahmagyan.samanvaya — concordance / brahma_ontology (seeded by Stream A)
+    # bg_concordance — concordance / brahma_ontology (seeded by Stream A)
     try:
         from pipeline.orchestrator.writers.brahmagyan_samanvaya import write_samanvaya
-        registry["brahmagyan.samanvaya"] = write_samanvaya
+        registry["bg_concordance"] = write_samanvaya
     except ImportError:
         pass
 
-    # brahmagyan.kalapancanga — ephemeris (Stream B)
+    # bg_ephemeris — ephemeris (Stream B)
     try:
         from pipeline.orchestrator.writers.brahmagyan_kalapancanga import write_kalapancanga
-        registry["brahmagyan.kalapancanga"] = write_kalapancanga
+        registry["bg_ephemeris"] = write_kalapancanga
     except ImportError:
         pass
 
-    # brahmagyan.shastra — classical text chunks (Stream C)
+    # bg_texts — classical text chunks (Stream C)
     try:
         from pipeline.orchestrator.writers.brahmagyan_shastra import write_shastra
-        registry["brahmagyan.shastra"] = write_shastra
+        registry["bg_texts"] = write_shastra
     except ImportError:
         pass
 
-    # brahmagyan.text_index — vector embeddings (Stream C)
+    # bg_text_index — vector embeddings (Stream C)
     try:
         from pipeline.orchestrator.writers.brahmagyan_text_index import write_text_index
-        registry["brahmagyan.text_index"] = write_text_index
+        registry["bg_text_index"] = write_text_index
     except ImportError:
         pass
 
-    # brahmagyan.sutravali — rules corpus (Stream D)
+    # bg_rules — rules corpus (Stream D)
     try:
         from pipeline.orchestrator.writers.brahmagyan_sutravali import write_sutravali
-        registry["brahmagyan.sutravali"] = write_sutravali
+        registry["bg_rules"] = write_sutravali
     except ImportError:
         pass
 
-    # brahmagyan.upaya_kosha — remedy corpus (Stream F)
+    # bg_remedies — remedy corpus (Stream F)
     try:
         from pipeline.orchestrator.writers.brahmagyan_upaya_kosha import write_upaya_kosha
-        registry["brahmagyan.upaya_kosha"] = write_upaya_kosha
+        registry["bg_remedies"] = write_upaya_kosha
     except ImportError:
         pass
 
