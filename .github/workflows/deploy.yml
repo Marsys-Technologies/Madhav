@@ -71,6 +71,11 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
 
   deploy-web:
     name: Build & Deploy Web
@@ -103,7 +108,7 @@ jobs:
           node-version: '20'
 
       - name: Install migration runner deps
-        run: cd platform && npm install --ignore-scripts --no-fund tsx pg 2>/dev/null || true
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
       - name: Run database migrations
         env:
@@ -170,6 +175,11 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
@@ -220,7 +230,7 @@ jobs:
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
-            MCP_INTERNAL_TOKEN=mcp-internal-token:latest
+            MCP_INTERNAL_TOKEN=mcp-internal-token:1
 
       - name: Post-deploy smoke
         continue-on-error: true
