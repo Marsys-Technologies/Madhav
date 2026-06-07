@@ -55,7 +55,7 @@ describe('runAuditChecks — direct heuristic tests', () => {
     expect(findings.some(f => f.check_class === 'sanskrit_glossing')).toBe(true)
   })
 
-  it('does NOT flag sanskrit_glossing for super_admin tier', () => {
+  it('flags sanskrit_glossing for super_admin tier (L0FR: tier gate removed — all tiers checked uniformly)', () => {
     const row: ToolExecutionRow = {
       id: 'test-4',
       trace_id: 'trace-004',
@@ -65,7 +65,7 @@ describe('runAuditChecks — direct heuristic tests', () => {
       status: 'ok',
     }
     const findings = runAuditChecks(row)
-    expect(findings.some(f => f.check_class === 'sanskrit_glossing')).toBe(false)
+    expect(findings.some(f => f.check_class === 'sanskrit_glossing')).toBe(true)
   })
 
   it('flags forward_looking_logged for response with forward-looking language', () => {
@@ -108,7 +108,7 @@ describe('runAuditChecks — direct heuristic tests', () => {
     const findings = runAuditChecks(row)
     // citation_presence should not fire (has SIG.MSR)
     expect(findings.some(f => f.check_class === 'citation_presence')).toBe(false)
-    // sanskrit_glossing should not fire (super_admin)
+    // sanskrit_glossing should not fire (no Sanskrit terms in response text)
     expect(findings.some(f => f.check_class === 'sanskrit_glossing')).toBe(false)
   })
 })

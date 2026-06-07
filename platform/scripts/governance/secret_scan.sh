@@ -102,11 +102,12 @@ run_scan() {
       # Tolerate env-indirection forms even if they happened to match.
       # Strip the "file:line:" prefix to look at the matched text only.
       local body="${line#*:*:}"
-      if [[ "${body}" =~ (process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|:latest($|[^a-zA-Z0-9])|:[0-9]+($|[^a-zA-Z0-9])) ]]; then
+      if [[ "${body}" =~ (process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|\{[A-Z_]+\}|:latest($|[^a-zA-Z0-9])|:[0-9]+($|[^a-zA-Z0-9])) ]]; then
         # Cloud-Run-style "DB_PASSWORD=amjis-db-password:latest" — tolerated.
         # Also tolerate explicit version pins "DB_PASSWORD=amjis-db-password:2" —
         # these are GCP Secret Manager version references, not literal credentials.
-        # Likewise env reads. The :latest/:N match anchors on a non-alphanumeric
+        # Likewise env reads and Python f-string placeholders ({VAR} without $).
+        # The :latest/:N match anchors on a non-alphanumeric
         # boundary so it works in flowing prose ("...:latest`" or ":2 ").
         continue
       fi
@@ -155,7 +156,7 @@ self_test() {
     for pat in "${PATTERNS[@]}"; do
       if grep -EI -q "${pat}" "${f}" 2>/dev/null; then
         # Apply the same env-indirection tolerance as run_scan
-        if grep -EI "${pat}" "${f}" 2>/dev/null | grep -Ev '(process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|:latest$|:latest[[:space:]]|:[0-9]+$|:[0-9]+[[:space:]])' >/dev/null 2>&1; then
+        if grep -EI "${pat}" "${f}" 2>/dev/null | grep -Ev '(process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|\{[A-Z_]+\}|:latest$|:latest[[:space:]]|:[0-9]+$|:[0-9]+[[:space:]])' >/dev/null 2>&1; then
           hits=$((hits + 1))
           break
         fi
@@ -176,7 +177,7 @@ self_test() {
       local tripped=0
       local pat
       for pat in "${PATTERNS[@]}"; do
-        if grep -EI "${pat}" "${f}" 2>/dev/null | grep -Ev '(process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|:latest$|:latest[[:space:]]|:[0-9]+$|:[0-9]+[[:space:]])' >/dev/null 2>&1; then
+        if grep -EI "${pat}" "${f}" 2>/dev/null | grep -Ev '(process\.env|os\.environ|getenv|secrets\.|\$\{[A-Z_]+\}|\{[A-Z_]+\}|:latest$|:latest[[:space:]]|:[0-9]+$|:[0-9]+[[:space:]])' >/dev/null 2>&1; then
           tripped=1
           break
         fi
