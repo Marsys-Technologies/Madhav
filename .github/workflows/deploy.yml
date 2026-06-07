@@ -108,7 +108,7 @@ jobs:
           node-version: '20'
 
       - name: Install migration runner deps
-        run: cd platform && npm install --ignore-scripts --no-fund tsx pg 2>/dev/null || true
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
       - name: Run database migrations
         env:
