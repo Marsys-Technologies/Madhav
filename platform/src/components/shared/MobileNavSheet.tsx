@@ -3,26 +3,47 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut as firebaseSignOut } from 'firebase/auth'
-import { MenuIcon } from 'lucide-react'
+import { MenuIcon, LayoutGrid, Gauge, FileSearch, Bot, ChartColumn, Settings2, type LucideIcon } from 'lucide-react'
 import { auth } from '@/lib/firebase/client'
 import { Sigil } from '@/components/brand/Sigil'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import type React from 'react'
 
 interface MobileNavSheetProps {
   user: { uid: string; email?: string; name?: string }
   profile: { role: 'super_admin' | 'admin' | 'client'; status?: string }
 }
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Roster',    roles: ['super_admin', 'admin', 'client'] as const },
-  { href: '/panchang',  label: 'Panchang',  roles: ['super_admin', 'admin', 'client'] as const },
-  { href: '/cockpit',   label: 'Cockpit',   roles: ['super_admin'] as const },
-  { href: '/audit',     label: 'Audit',     roles: ['super_admin'] as const },
-  { href: '/aiops',     label: 'AIOps',     roles: ['super_admin'] as const },
-  { href: '/performance', label: 'Performance', roles: ['super_admin'] as const },
-  { href: '/admin',     label: 'Admin',     roles: ['super_admin', 'admin'] as const },
-] satisfies { href: string; label: string; roles: readonly string[] }[]
+// Lunar crescent SVG icon for Panchang — matches AppShellRail
+function MoonCrescentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.9-.1-1.35A7 7 0 0 1 12 3z" />
+    </svg>
+  )
+}
+
+const NAV_ITEMS: {
+  href: string
+  label: string
+  icon: LucideIcon | React.ComponentType<{ className?: string }>
+  roles: readonly string[]
+}[] = [
+  { href: '/dashboard', label: 'Jātakas',    icon: LayoutGrid,  roles: ['super_admin', 'admin', 'client'] },
+  { href: '/panchang',  label: 'Panchang',   icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'client'] },
+  { href: '/cockpit',   label: 'Cockpit',    icon: Gauge,       roles: ['super_admin'] },
+  { href: '/audit',     label: 'Audit',      icon: FileSearch,  roles: ['super_admin'] },
+  { href: '/aiops',     label: 'AIOps',      icon: Bot,         roles: ['super_admin'] },
+  { href: '/performance', label: 'Performance', icon: ChartColumn, roles: ['super_admin'] },
+  { href: '/admin',     label: 'Admin',      icon: Settings2,   roles: ['super_admin', 'admin'] },
+]
 
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const pathname = usePathname()
@@ -49,19 +70,28 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
       >
         <MenuIcon className="size-5" aria-hidden="true" />
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 bg-sidebar p-0">
+      <SheetContent
+        side="left"
+        className="w-64 p-0"
+        style={{
+          background: 'linear-gradient(180deg, rgba(6,6,8,0.72), rgba(2,2,4,0.60))',
+          backdropFilter: 'blur(10px) saturate(125%)',
+          WebkitBackdropFilter: 'blur(10px) saturate(125%)',
+          borderRight: '1px solid rgba(212,175,55,0.14)',
+        }}
+      >
         <nav
           aria-label="Primary navigation"
           className="flex h-full flex-col items-start gap-1 px-3 py-4"
         >
           <Link
             href="/dashboard"
-            aria-label="MARSYS-JIS — go to Roster"
+            aria-label="MARSYS-JIS — go to Jātakas"
             className="mb-4 ml-1 text-[var(--brand-gold)] transition-[filter] hover:drop-shadow-[0_0_6px_var(--brand-gold)]"
           >
             <Sigil size={28} />
           </Link>
-          {visibleItems.map(({ href, label }) => {
+          {visibleItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === '/dashboard'
                 ? pathname === '/dashboard' || pathname === '/'
@@ -71,26 +101,27 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex h-10 w-full items-center rounded px-3 text-sm font-medium transition-colors',
+                  'flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
                   isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-[rgba(212,175,55,0.14)] text-[var(--brand-gold)] shadow-[inset_0_0_0_1px_rgba(212,175,55,0.28),inset_0_0_24px_rgba(212,175,55,0.08)]'
+                    : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
                 )}
               >
-                {label}
+                <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+                <span className="truncate">{label}</span>
               </Link>
             )
           })}
           <div className="mt-auto flex w-full items-center gap-3 px-3 py-2">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-muted text-xs font-medium text-foreground">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.06)] text-xs font-medium text-[var(--brand-gold)]">
               {userInitial}
             </span>
-            <span className="flex-1 truncate text-xs text-muted-foreground">
+            <span className="flex-1 truncate text-xs text-[rgba(212,175,55,0.55)]">
               {user.email ?? user.name}
             </span>
             <button
               onClick={handleSignOut}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs text-[rgba(212,175,55,0.45)] hover:text-[var(--brand-gold)]"
             >
               Sign out
             </button>

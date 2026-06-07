@@ -21,6 +21,35 @@ vi.mock('@/components/brand/Sigil', () => ({
   Sigil: () => <svg data-testid="sigil" />,
 }))
 
+// Stub framer-motion — cache inside factory so React sees stable component identity
+// across renders; avoids proxy returning a new reference on every access.
+vi.mock('framer-motion', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react') as typeof import('react')
+  const cache: Record<string, unknown> = {}
+  const makeMotion = (tag: string) => {
+    if (!cache[tag]) {
+      cache[tag] = React.forwardRef(
+        function Motion(
+          { children, animate, initial, exit, transition, whileHover, layoutId, ...rest }:
+            Record<string, unknown>,
+          ref: unknown
+        ) {
+          void animate; void initial; void exit; void transition; void whileHover; void layoutId
+          return React.createElement(tag as string, { ...(rest as object), ref }, children as React.ReactNode)
+        }
+      )
+    }
+    return cache[tag]
+  }
+  return {
+    motion: new Proxy({}, { get: (_t, tag: string) => makeMotion(tag) }),
+    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+    useReducedMotion: () => false,
+  }
+})
+
 // Stub DropdownMenu primitives (Radix) — not needed for shell structure tests.
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -73,11 +102,11 @@ describe('AppShell', () => {
     expect(queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull()
   })
 
-  it('shows Roster nav link for all roles', () => {
+  it('shows Jātakas nav link for all roles', () => {
     const { getByRole } = render(
       <AppShell user={BASE_USER} profile={{ role: 'client' }} />
     )
-    expect(getByRole('link', { name: 'Roster' })).toBeTruthy()
+    expect(getByRole('link', { name: 'Jātakas' })).toBeTruthy()
   })
 
   it('shows Cockpit link for super_admin', () => {
@@ -107,7 +136,7 @@ describe('AppShell', () => {
     const { getByRole } = render(
       <AppShell user={BASE_USER} profile={BASE_PROFILE} />
     )
-    expect(getByRole('link', { name: 'Roster' })).toBeTruthy()
+    expect(getByRole('link', { name: 'Jātakas' })).toBeTruthy()
     expect(getByRole('link', { name: 'Cockpit' })).toBeTruthy()
     expect(getByRole('link', { name: 'Audit' })).toBeTruthy()
   })
@@ -118,7 +147,7 @@ describe('AppShell', () => {
     )
     const nav = getByRole('navigation', { name: 'Primary navigation' })
     fireEvent.mouseEnter(nav)
-    expect(getByText('Roster')).toBeTruthy()
+    expect(getByText('Jātakas')).toBeTruthy()
     expect(getByText('Cockpit')).toBeTruthy()
   })
 
@@ -128,9 +157,9 @@ describe('AppShell', () => {
     )
     const nav = getByRole('navigation', { name: 'Primary navigation' })
     fireEvent.mouseEnter(nav)
-    expect(getByText('Roster')).toBeTruthy()  // confirm labels appeared
+    expect(getByText('Jātakas')).toBeTruthy()  // confirm labels appeared
     fireEvent.mouseLeave(nav)
-    expect(queryByText('Roster')).toBeNull()
+    expect(queryByText('Jātakas')).toBeNull()
   })
 
   it('shows full Performance label when expanded', () => {
