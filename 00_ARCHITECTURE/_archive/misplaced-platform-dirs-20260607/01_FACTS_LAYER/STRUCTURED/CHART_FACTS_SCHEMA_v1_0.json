@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CHART_FACTS_SCHEMA_v1_0",
+  "title": "MARSYS-JIS Chart Facts Extraction Schema",
+  "description": "JSON Schema for CHART_FACTS_EXTRACTION_v1_0.yaml — structured projection of FORENSIC_ASTROLOGICAL_DATA_v8_0.md for the chart_facts Postgres table. v1.1 (2026-05-10, VARGA-ETL-FULL-S1-CPA): expanded category enum to the union of categories produced by the (now-deprecated) markdown extractor plus the new YAML-side §6.4/§11.6/§16/§21 rows. The YAML is the canonical ETL surface; the markdown extractor is frozen.",
+  "version": "1.1",
+  "type": "object",
+  "required": ["schema_version", "source", "extracted_at", "extracted_by", "facts"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "source": {"type": "string"},
+    "extracted_at": {"type": "string", "format": "date"},
+    "extracted_by": {"type": "string"},
+    "cross_check_finding": {"type": "string"},
+    "v1_1_changelog": {"type": "string"},
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fact_id", "category", "divisional_chart", "source_section"],
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "description": "Stable unique ID. Namespaces: MET. PLN. HSE. CSP. KP. DSH. LAG. SAH. ARD. NVT. PCG. YGA. SBL. MCS.",
+            "pattern": "^[A-Z0-9]+\\.[A-Z0-9_.]+$"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "birth_metadata", "planet", "house", "cusp",
+              "kp_cusp", "kp_planet", "kp_significator",
+              "dasha_vimshottari", "dasha_yogini", "dasha_chara",
+              "special_lagna", "saham", "arudha", "navatara", "panchang",
+              "yoga", "strength", "mercury_convergence",
+              "shadbala", "bhava_bala", "ishta_kashta", "strength_extra",
+              "ashtakavarga_bav", "ashtakavarga_sav", "ashtakavarga_pinda",
+              "kakshya_zone", "avastha", "upagraha", "sensitive_point",
+              "mrityu_bhaga", "arudha_occupancy", "aspect", "chalit_shift",
+              "chandra_placement", "deity_assignment", "varshphal",
+              "longevity_indicator", "transit"
+            ]
+          },
+          "divisional_chart": {
+            "type": "string",
+            "description": "Varga or system. Standard: D1, D2, D3, D4, D7, D9, D10, D12, D16, D20, D24, D30, D40, D45, D60. Special: KP, VIMSHOTTARI, YOGINI, CHARA, BIRTH.",
+            "pattern": "^(D[0-9]+|KP|VIMSHOTTARI|YOGINI|CHARA|BIRTH)$"
+          },
+          "value_text": {
+            "type": ["string", "null"],
+            "description": "String value (e.g., sign name, planet name, dasha lord)."
+          },
+          "value_number": {
+            "type": ["number", "null"],
+            "description": "Numeric value (e.g., longitude in decimal degrees, bala in virupas)."
+          },
+          "value_json": {
+            "type": ["object", "null"],
+            "description": "Structured composite value. Schema varies by category — see per-category notes below."
+          },
+          "source_section": {
+            "type": "string",
+            "description": "Section reference in FORENSIC_ASTROLOGICAL_DATA_v8_0.md (e.g., '§2.1 row 1')."
+          },
+          "extraction_method": {
+            "type": "string",
+            "enum": ["direct_read", "regex+llm", "computed"],
+            "description": "How this fact was extracted. direct_read = read directly from table; computed = derived from other facts."
+          },
+          "notes": {
+            "type": ["string", "null"],
+            "description": "Optional note: known engine divergence, correction from prior version, etc."
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "planet_position_json": {
+      "description": "value_json shape for category=planet",
+      "type": "object",
+      "properties": {
+        "sign": {"type": "string"},
+        "degree": {"type": "integer", "minimum": 0, "maximum": 29},
+        "minute": {"type": "integer", "minimum": 0, "maximum": 59},
+        "second": {"type": "integer", "minimum": 0, "maximum": 59},
+        "abs_lon_deg": {"type": "number"},
+        "house_rashi": {"type": "integer", "minimum": 1, "maximum": 12},
+        "house_chalit": {"type": ["integer", "null"], "minimum": 1, "maximum": 12},
+        "nakshatra": {"type": "string"},
+        "nakshatra_pada": {"type": "integer", "minimum": 1, "maximum": 4},
+        "is_retrograde": {"type": "boolean"}
+      }
+    },
+    "kp_cusp_json": {
+      "description": "value_json shape for category=kp_cusp",
+      "type": "object",
+      "properties": {
+        "sign": {"type": "string"},
+        "degree": {"type": "integer"},
+        "minute": {"type": "integer"},
+        "second": {"type": "integer"},
+        "star_lord": {"type": "string"},
+        "sub_lord": {"type": "string"},
+        "sub_sub_lord": {"type": "string"}
+      }
+    },
+    "dasha_vimshottari_json": {
+      "description": "value_json shape for category=dasha_vimshottari",
+      "type": "object",
+      "properties": {
+        "md_lord": {"type": "string"},
+        "ad_lord": {"type": "string"},
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"}
+      }
+    },
+    "dasha_chara_json": {
+      "description": "value_json shape for category=dasha_chara",
+      "type": "object",
+      "properties": {
+        "md_sign": {"type": "string"},
+        "ad_sign": {"type": "string"},
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"}
+      }
+    },
+    "saham_json": {
+      "description": "value_json shape for category=saham",
+      "type": "object",
+      "properties": {
+        "longitude": {"type": "string"},
+        "sign": {"type": "string"},
+        "house": {"type": "integer"},
+        "nakshatra": {"type": "string"},
+        "meaning": {"type": "string"}
+      }
+    }
+  }
+}

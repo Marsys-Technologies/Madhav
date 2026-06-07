@@ -1,0 +1,69 @@
+{
+  "schema_version": "0.1",
+  "produced_at": "2026-04-30",
+  "produced_by_session": "M2_B4_PATTERN_EXPANSION",
+  "note": "Index of all L3 discovery layer registers. Updated at session close.",
+  "entries": [
+    {
+      "register_id": "CLUSTER_ATLAS",
+      "current_version": "CLUSTER_ATLAS_v1_1",
+      "current_path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_1.json",
+      "status": "CURRENT",
+      "supersedes": "CLUSTER_ATLAS_v1_0",
+      "n_clusters": 34,
+      "signals_covered": 495,
+      "coverage_percent": 99.2,
+      "updated_by_session": "M2_B3_CLUSTER_RECLUSTER",
+      "updated_at": "2026-04-30T10:52:07+00:00"
+    },
+    {
+      "register_id": "PATTERN_REGISTER",
+      "current_version": "PATTERN_REGISTER_v1_1",
+      "current_path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_1.json",
+      "status": "CURRENT",
+      "supersedes": "PATTERN_REGISTER_v1_0",
+      "previous_versions": ["PATTERN_REGISTER_v1_0"],
+      "n_patterns": 70,
+      "forward_looking_count": 35,
+      "retrodictive_lel_anchored": 20,
+      "domains_covered": ["career", "children", "cross_domain", "finance", "health", "mind", "parents", "relationships", "spiritual", "travel", "wealth"],
+      "updated_by_session": "M2_B4_PATTERN_EXPANSION",
+      "updated_at": "2026-04-30T00:00:00+00:00"
+    },
+    {
+      "register_id": "RESONANCE_REGISTER",
+      "current_version": "RESONANCE_REGISTER_v1_1",
+      "current_path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_1.json",
+      "status": "CURRENT",
+      "supersedes": "RESONANCE_REGISTER_v1_0",
+      "previous_versions": ["RESONANCE_REGISTER_v1_0"],
+      "n_resonances": 26,
+      "forward_looking_count": 10,
+      "domain_pairs_covered": 24,
+      "min_confidence": 0.65,
+      "max_confidence": 0.90,
+      "updated_by_session": "KARN-W5-R3-RES-CON-EXPANSION",
+      "updated_at": "2026-04-30T00:00:00+00:00"
+    },
+    {
+      "register_id": "CONTRADICTION_REGISTER",
+      "current_version": "CONTRADICTION_REGISTER_v1_1",
+      "current_path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_1.json",
+      "status": "CURRENT",
+      "supersedes": "CONTRADICTION_REGISTER_v1_0",
+      "previous_versions": ["CONTRADICTION_REGISTER_v1_0"],
+      "n_contradictions": 27,
+      "class_distribution": {
+        "signal_polarity_conflict": 5,
+        "system_divergence": 5,
+        "temporal_paradox": 5,
+        "frame_conflict": 5,
+        "legacy_classes": 7
+      },
+      "critical_severity_count": 1,
+      "high_severity_count": 9,
+      "updated_by_session": "KARN-W5-R3-RES-CON-EXPANSION",
+      "updated_at": "2026-04-30T00:00:00+00:00"
+    }
+  ]
+}

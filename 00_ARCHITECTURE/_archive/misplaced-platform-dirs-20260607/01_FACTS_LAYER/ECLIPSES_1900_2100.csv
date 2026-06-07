@@ -1,0 +1,914 @@
+date,type,subtype,sidereal_long,sign,deg_in_sign,nakshatra,pada,visible_from_bhubaneswar
+1900-05-28 14:53,Solar,Total+Central,44.3169,Taurus,14.3169,Rohini,2,N
+1900-06-13 03:27,Lunar,Penumbral,239.0771,Scorpio,29.0771,Jyeshtha,4,?
+1900-11-22 07:19,Solar,Annular+Central,217.0820,Scorpio,7.0820,Anuradha,2,N
+1900-12-06 10:26,Lunar,Penumbral,51.2942,Taurus,21.2942,Rohini,4,?
+1901-05-03 18:30,Lunar,Penumbral,200.2146,Libra,20.2146,Vishakha,1,?
+1901-05-18 05:33,Solar,Total+Central,34.0878,Taurus,4.0878,Krittika,3,Y
+1901-10-27 15:15,Lunar,Partial,11.1117,Aries,11.1117,Ashwini,4,?
+1901-11-11 07:28,Solar,Annular+Central,205.7327,Libra,25.7327,Vishakha,2,Y
+1902-04-08 14:04,Solar,Partial+Non-Central,355.3104,Pisces,25.3104,Revati,3,N
+1902-04-22 18:52,Lunar,Total,189.2270,Libra,9.2270,Swati,1,?
+1902-05-07 22:34,Solar,Partial+Non-Central,23.9128,Aries,23.9128,Bharani,4,N
+1902-10-17 06:03,Lunar,Total,0.4544,Aries,0.4544,Ashwini,1,?
+1902-10-31 08:00,Solar,Partial+Non-Central,194.4650,Libra,14.4650,Swati,3,Y
+1903-03-29 01:35,Solar,Annular+Central,344.6902,Pisces,14.6902,Uttara Bhadrapada,4,Y
+1903-04-12 00:12,Lunar,Partial,178.3708,Virgo,28.3708,Chitra,2,?
+1903-09-21 04:39,Solar,Total+Central,154.5063,Virgo,4.5063,Uttara Phalguni,3,N
+1903-10-06 15:17,Lunar,Partial,349.6250,Pisces,19.6250,Revati,1,?
+1904-03-02 03:02,Lunar,Penumbral,138.7479,Leo,18.7479,Purva Phalguni,2,?
+1904-03-17 05:40,Solar,Annular+Central,333.6998,Pisces,3.6998,Uttara Bhadrapada,1,Y
+1904-03-31 12:32,Lunar,Penumbral,167.7387,Virgo,17.7387,Hasta,3,?
+1904-09-09 20:44,Solar,Total+Central,144.1805,Leo,24.1805,Purva Phalguni,4,N
+1904-09-24 17:34,Lunar,Penumbral,338.5822,Pisces,8.5822,Uttara Bhadrapada,2,?
+1905-02-19 19:00,Lunar,Partial,128.0375,Leo,8.0375,Magha,3,?
+1905-03-06 05:12,Solar,Annular+Central,322.4456,Aquarius,22.4456,Purva Bhadrapada,1,N
+1905-08-15 03:40,Lunar,Partial,299.1668,Capricorn,29.1668,Dhanishta,2,?
+1905-08-30 13:07,Solar,Total+Central,133.9292,Leo,13.9292,Purva Phalguni,1,N
+1906-02-09 07:46,Lunar,Total,117.1396,Cancer,27.1396,Ashlesha,4,?
+1906-02-23 07:43,Solar,Partial+Non-Central,311.2544,Aquarius,11.2544,Shatabhisha,2,N
+1906-07-21 13:14,Solar,Partial+Non-Central,95.2897,Cancer,5.2897,Pushya,1,N
+1906-08-04 13:00,Lunar,Total,288.6693,Capricorn,18.6693,Shravana,3,?
+1906-08-20 01:12,Solar,Partial+Non-Central,123.5539,Leo,3.5539,Magha,2,N
+1907-01-14 06:05,Solar,Total+Central,270.3829,Capricorn,0.3829,Uttara Ashadha,2,Y
+1907-01-29 13:37,Lunar,Partial,105.9075,Cancer,15.9075,Pushya,4,?
+1907-07-10 15:24,Solar,Annular+Central,84.6412,Gemini,24.6412,Punarvasu,2,N
+1907-07-25 04:22,Lunar,Partial,278.4459,Capricorn,8.4459,Uttara Ashadha,4,?
+1908-01-03 21:45,Solar,Total+Central,259.5741,Sagittarius,19.5741,Purva Ashadha,2,N
+1908-01-18 13:21,Lunar,Penumbral,94.3869,Cancer,4.3869,Pushya,1,?
+1908-06-14 14:06,Lunar,Penumbral,240.6069,Sagittarius,0.6069,Moola,1,?
+1908-06-28 16:29,Solar,Annular+Central,73.9509,Gemini,13.9509,Ardra,3,N
+1908-07-13 21:33,Lunar,Penumbral,268.3178,Sagittarius,28.3178,Uttara Ashadha,1,?
+1908-12-07 21:54,Lunar,Penumbral,52.9438,Taurus,22.9438,Rohini,4,?
+1908-12-23 11:44,Solar,Annular-Total+Central,248.7007,Sagittarius,8.7007,Moola,3,N
+1909-06-04 01:28,Lunar,Total,230.2258,Scorpio,20.2258,Jyeshtha,2,?
+1909-06-17 23:18,Solar,Annular-Total+Central,63.4832,Gemini,3.4832,Mrigashira,4,N
+1909-11-27 08:54,Lunar,Total,41.9242,Taurus,11.9242,Rohini,1,?
+1909-12-12 19:44,Solar,Partial+Non-Central,237.5808,Scorpio,27.5808,Jyeshtha,4,N
+1910-05-09 05:42,Solar,Total+Central,25.1160,Aries,25.1160,Bharani,4,N
+1910-05-24 05:34,Lunar,Total,219.5271,Scorpio,9.5271,Anuradha,2,?
+1910-11-02 02:08,Solar,Partial+Non-Central,196.1747,Libra,16.1747,Swati,3,N
+1910-11-17 00:20,Lunar,Total,31.1323,Taurus,1.1323,Krittika,2,?
+1911-04-28 22:27,Solar,Total+Central,14.8854,Aries,14.8854,Bharani,1,N
+1911-05-13 05:56,Lunar,Penumbral,208.6404,Libra,28.6404,Vishakha,3,?
+1911-10-22 04:12,Solar,Annular+Central,185.0213,Libra,5.0213,Chitra,4,Y
+1911-11-06 15:36,Lunar,Penumbral,20.3817,Aries,20.3817,Bharani,3,?
+1912-04-01 22:13,Lunar,Partial,169.2739,Virgo,19.2739,Hasta,3,?
+1912-04-17 11:34,Solar,Annular-Total+Central,4.4545,Aries,4.4545,Ashwini,2,N
+1912-09-26 11:44,Lunar,Partial,340.4536,Pisces,10.4536,Uttara Bhadrapada,3,?
+1912-10-10 13:35,Solar,Total+Central,174.2369,Virgo,24.2369,Chitra,1,N
+1913-03-22 11:57,Lunar,Total,158.6388,Virgo,8.6388,Uttara Phalguni,4,?
+1913-04-06 17:32,Solar,Partial+Non-Central,353.6645,Pisces,23.6645,Revati,3,N
+1913-08-31 20:51,Solar,Partial+Non-Central,135.1614,Leo,15.1614,Purva Phalguni,1,N
+1913-09-15 12:48,Lunar,Total,329.4248,Aquarius,29.4248,Purva Bhadrapada,3,?
+1913-09-30 04:45,Solar,Partial+Non-Central,163.7635,Virgo,13.7635,Hasta,2,N
+1914-02-25 00:12,Solar,Annular+Central,312.9038,Aquarius,12.9038,Shatabhisha,2,N
+1914-03-12 04:12,Lunar,Partial,148.0434,Leo,28.0434,Uttara Phalguni,1,?
+1914-08-21 12:34,Solar,Total+Central,124.9255,Leo,4.9255,Magha,2,N
+1914-09-04 13:54,Lunar,Partial,318.4587,Aquarius,18.4587,Shatabhisha,4,?
+1915-01-31 04:57,Lunar,Penumbral,107.7144,Cancer,17.7144,Ashlesha,1,?
+1915-02-14 04:33,Solar,Annular+Central,301.7375,Aquarius,1.7375,Dhanishta,3,N
+1915-03-01 18:19,Lunar,Penumbral,137.3033,Leo,17.3033,Purva Phalguni,2,?
+1915-07-26 12:24,Lunar,Penumbral,279.8714,Capricorn,9.8714,Uttara Ashadha,4,?
+1915-08-10 22:52,Solar,Annular+Central,114.5196,Cancer,24.5196,Ashlesha,3,N
+1915-08-24 21:26,Lunar,Penumbral,307.8111,Aquarius,7.8111,Shatabhisha,1,?
+1916-01-20 08:39,Lunar,Partial,96.3667,Cancer,6.3667,Pushya,1,?
+1916-02-03 16:00,Solar,Total+Central,290.8214,Capricorn,20.8214,Shravana,4,N
+1916-07-15 04:45,Lunar,Partial,269.7072,Sagittarius,29.7072,Uttara Ashadha,1,?
+1916-07-30 02:05,Solar,Annular+Central,103.8650,Cancer,13.8650,Pushya,4,N
+1916-12-24 20:45,Solar,Partial+Non-Central,250.0495,Sagittarius,10.0495,Moola,4,N
+1917-01-08 07:44,Lunar,Total,84.8062,Gemini,24.8062,Punarvasu,2,?
+1917-01-23 07:28,Solar,Partial+Non-Central,280.0463,Capricorn,10.0463,Shravana,1,N
+1917-06-19 13:16,Solar,Partial+Non-Central,64.9457,Gemini,4.9457,Mrigashira,4,N
+1917-07-04 21:38,Lunar,Total,259.5685,Sagittarius,19.5685,Purva Ashadha,2,?
+1917-07-19 02:42,Solar,Partial+Non-Central,93.1346,Cancer,3.1346,Punarvasu,4,N
+1917-12-14 09:26,Solar,Annular+Central,239.1245,Scorpio,29.1245,Jyeshtha,4,N
+1917-12-28 09:46,Lunar,Total,73.3538,Gemini,13.3538,Ardra,3,?
+1918-06-08 22:07,Solar,Total+Central,54.5478,Taurus,24.5478,Mrigashira,1,N
+1918-06-24 10:27,Lunar,Partial,249.2748,Sagittarius,9.2748,Moola,3,?
+1918-12-03 15:21,Solar,Annular+Central,227.9375,Scorpio,17.9375,Jyeshtha,1,N
+1918-12-17 19:05,Lunar,Penumbral,62.2177,Gemini,2.2177,Mrigashira,3,?
+1919-05-15 01:13,Lunar,Penumbral,210.5253,Scorpio,0.5253,Vishakha,4,?
+1919-05-29 13:08,Solar,Total+Central,44.3679,Taurus,14.3679,Rohini,2,N
+1919-11-07 23:44,Lunar,Partial,21.8717,Aries,21.8717,Bharani,3,?
+1919-11-22 15:13,Solar,Annular+Central,216.5340,Scorpio,6.5340,Anuradha,1,N
+1920-05-03 01:50,Lunar,Total,199.6061,Libra,19.6061,Swati,4,?
+1920-05-18 06:14,Solar,Partial+Non-Central,34.2394,Taurus,4.2394,Krittika,3,N
+1920-10-27 14:11,Lunar,Total,11.1342,Aries,11.1342,Ashwini,4,?
+1920-11-10 15:51,Solar,Partial+Non-Central,205.2111,Libra,25.2111,Vishakha,2,N
+1921-04-08 09:14,Solar,Annular+Central,355.2360,Pisces,25.2360,Revati,3,N
+1921-04-22 07:44,Lunar,Total,188.8320,Libra,8.8320,Swati,1,?
+1921-10-01 12:35,Solar,Total+Central,165.0189,Virgo,15.0189,Hasta,2,N
+1921-10-16 22:53,Lunar,Partial,0.2223,Aries,0.2223,Ashwini,1,?
+1922-03-13 11:28,Lunar,Penumbral,149.4823,Leo,29.4823,Uttara Phalguni,1,?
+1922-03-28 13:05,Solar,Annular+Central,344.2996,Pisces,14.2996,Uttara Bhadrapada,4,N
+1922-04-11 20:31,Lunar,Penumbral,178.2789,Virgo,28.2789,Chitra,2,?
+1922-09-21 04:40,Solar,Total+Central,154.6321,Virgo,4.6321,Uttara Phalguni,3,Y
+1922-10-06 00:43,Lunar,Penumbral,349.0935,Pisces,19.0935,Revati,1,?
+1923-03-03 03:31,Lunar,Partial,138.8395,Leo,18.8395,Purva Phalguni,2,?
+1923-03-17 12:44,Solar,Annular+Central,333.1262,Pisces,3.1262,Purva Bhadrapada,4,N
+1923-08-26 10:39,Lunar,Partial,309.4549,Aquarius,9.4549,Shatabhisha,1,?
+1923-09-10 20:47,Solar,Total+Central,144.3097,Leo,24.3097,Purva Phalguni,4,N
+1924-02-20 16:08,Lunar,Total,127.9850,Leo,7.9850,Magha,3,?
+1924-03-05 15:44,Solar,Partial+Non-Central,322.0175,Aquarius,22.0175,Purva Bhadrapada,1,N
+1924-07-31 19:57,Solar,Partial+Non-Central,105.4842,Cancer,15.4842,Pushya,4,N
+1924-08-14 20:20,Lunar,Total,298.9314,Capricorn,28.9314,Dhanishta,2,?
+1924-08-30 08:22,Solar,Partial+Non-Central,133.8619,Leo,13.8619,Purva Phalguni,1,N
+1925-01-24 14:53,Solar,Total+Central,281.3293,Capricorn,11.3293,Shravana,1,N
+1925-02-08 21:42,Lunar,Partial,116.7837,Cancer,26.7837,Ashlesha,4,?
+1925-07-20 21:48,Solar,Annular+Central,94.8010,Cancer,4.8010,Pushya,1,N
+1925-08-04 11:52,Lunar,Partial,288.6820,Capricorn,18.6820,Shravana,3,?
+1926-01-14 06:36,Solar,Total+Central,270.5343,Capricorn,0.5343,Uttara Ashadha,2,Y
+1926-01-28 21:20,Lunar,Penumbral,105.2888,Cancer,15.2888,Pushya,4,?
+1926-06-25 21:24,Lunar,Penumbral,250.8201,Sagittarius,10.8201,Moola,4,?
+1926-07-09 23:05,Solar,Annular+Central,84.1209,Gemini,24.1209,Punarvasu,2,N
+1926-07-25 04:59,Lunar,Penumbral,278.5391,Capricorn,8.5391,Uttara Ashadha,4,?
+1926-12-19 06:19,Lunar,Penumbral,63.8582,Gemini,3.8582,Mrigashira,4,?
+1927-01-03 20:22,Solar,Annular-Total+Central,259.6445,Sagittarius,19.6445,Purva Ashadha,2,N
+1927-06-15 08:24,Lunar,Total,240.4458,Sagittarius,0.4458,Moola,1,?
+1927-06-29 06:23,Solar,Total+Central,73.6796,Gemini,13.6796,Ardra,3,N
+1927-12-08 17:34,Lunar,Total,52.8226,Taurus,22.8226,Rohini,4,?
+1927-12-24 03:59,Solar,Partial+Non-Central,248.4987,Sagittarius,8.4987,Moola,3,N
+1928-05-19 13:23,Solar,Total+Non-Central,35.4450,Taurus,5.4450,Krittika,3,N
+1928-06-03 12:09,Lunar,Total,229.7615,Scorpio,19.7615,Jyeshtha,1,?
+1928-06-17 20:27,Solar,Partial+Non-Central,63.5010,Gemini,3.5010,Mrigashira,4,N
+1928-11-12 09:48,Solar,Partial+Non-Central,206.9171,Libra,26.9171,Vishakha,3,Y
+1928-11-27 09:01,Lunar,Total,41.9900,Taurus,11.9900,Rohini,1,?
+1929-05-09 06:10,Solar,Total+Central,25.2584,Aries,25.2584,Bharani,4,Y
+1929-05-23 12:37,Lunar,Penumbral,218.9128,Scorpio,8.9128,Anuradha,2,?
+1929-11-01 12:04,Solar,Annular+Central,195.7169,Libra,15.7169,Swati,3,N
+1929-11-17 00:02,Lunar,Penumbral,31.1856,Taurus,1.1856,Krittika,2,?
+1930-04-13 05:58,Lunar,Partial,179.7914,Virgo,29.7914,Chitra,2,?
+1930-04-28 19:03,Solar,Annular-Total+Central,14.8678,Aries,14.8678,Bharani,1,N
+1930-10-07 19:06,Lunar,Partial,350.9875,Pisces,20.9875,Revati,2,?
+1930-10-21 21:43,Solar,Total+Central,184.8824,Libra,4.8824,Chitra,4,N
+1931-04-02 20:07,Lunar,Total,169.2442,Virgo,19.2442,Hasta,3,?
+1931-04-18 00:45,Solar,Partial+Non-Central,4.1362,Aries,4.1362,Ashwini,2,N
+1931-09-12 04:40,Solar,Partial+Non-Central,145.5574,Leo,25.5574,Purva Phalguni,4,N
+1931-09-26 19:48,Lunar,Total,339.8732,Pisces,9.8732,Uttara Bhadrapada,2,?
+1931-10-11 12:55,Solar,Partial+Non-Central,174.3410,Virgo,24.3410,Chitra,1,N
+1932-03-07 07:55,Solar,Annular+Central,323.6370,Aquarius,23.6370,Purva Bhadrapada,2,N
+1932-03-22 12:32,Lunar,Partial,158.7196,Virgo,8.7196,Uttara Phalguni,4,?
+1932-08-31 20:03,Solar,Total+Central,135.2532,Leo,15.2532,Purva Phalguni,1,N
+1932-09-14 21:00,Lunar,Partial,328.8468,Aquarius,28.8468,Purva Bhadrapada,3,?
+1933-02-10 13:17,Lunar,Penumbral,118.5930,Cancer,28.5930,Ashlesha,4,?
+1933-02-24 12:46,Solar,Annular+Central,312.5513,Aquarius,12.5513,Shatabhisha,2,N
+1933-03-12 02:32,Lunar,Penumbral,148.0372,Leo,28.0372,Uttara Phalguni,1,?
+1933-08-05 19:45,Lunar,Penumbral,290.0987,Capricorn,20.0987,Shravana,4,?
+1933-08-21 05:48,Solar,Annular+Central,124.7750,Leo,4.7750,Magha,2,Y
+1933-09-04 04:51,Lunar,Penumbral,318.1524,Aquarius,18.1524,Shatabhisha,4,?
+1934-01-30 16:42,Lunar,Partial,107.2689,Cancer,17.2689,Ashlesha,1,?
+1934-02-14 00:38,Solar,Total+Central,301.7009,Aquarius,1.7009,Dhanishta,3,N
+1934-07-26 12:15,Lunar,Partial,279.9266,Capricorn,9.9266,Uttara Ashadha,4,?
+1934-08-10 08:37,Solar,Annular+Central,114.0733,Cancer,24.0733,Ashlesha,3,N
+1935-01-05 05:35,Solar,Partial+Non-Central,261.0075,Sagittarius,21.0075,Purva Ashadha,3,N
+1935-01-19 15:47,Lunar,Total,95.7252,Cancer,5.7252,Pushya,1,?
+1935-02-03 16:15,Solar,Partial+Non-Central,290.9652,Capricorn,20.9652,Shravana,4,N
+1935-06-30 19:59,Solar,Partial+Non-Central,75.1217,Gemini,15.1217,Ardra,3,N
+1935-07-16 04:59,Lunar,Total,269.7744,Sagittarius,29.7744,Uttara Ashadha,1,?
+1935-07-30 09:16,Solar,Partial+Non-Central,103.3193,Cancer,13.3193,Pushya,3,N
+1935-12-25 17:59,Solar,Annular+Central,250.0636,Sagittarius,10.0636,Moola,4,N
+1936-01-08 18:09,Lunar,Total,84.2987,Gemini,24.2987,Punarvasu,2,?
+1936-06-19 05:20,Solar,Total+Central,64.7576,Gemini,4.7576,Mrigashira,4,N
+1936-07-04 17:25,Lunar,Partial,259.4612,Sagittarius,19.4612,Purva Ashadha,2,?
+1936-12-13 23:27,Solar,Annular+Central,238.8306,Scorpio,28.8306,Jyeshtha,4,N
+1936-12-28 03:48,Lunar,Penumbral,73.1672,Gemini,13.1672,Ardra,2,?
+1937-05-25 07:51,Lunar,Penumbral,220.7937,Scorpio,10.7937,Anuradha,3,?
+1937-06-08 20:40,Solar,Total+Central,54.6157,Taurus,24.6157,Mrigashira,1,N
+1937-11-18 08:19,Lunar,Partial,32.6851,Taurus,2.6851,Krittika,2,?
+1937-12-02 23:05,Solar,Annular+Central,227.3794,Scorpio,17.3794,Jyeshtha,1,N
+1938-05-14 08:43,Lunar,Total,209.9313,Libra,29.9313,Vishakha,3,?
+1938-05-29 13:49,Solar,Total+Central,44.5231,Taurus,14.5231,Rohini,2,N
+1938-11-07 22:26,Lunar,Total,21.8799,Aries,21.8799,Bharani,3,?
+1938-11-21 23:52,Solar,Partial+Non-Central,216.0146,Scorpio,6.0146,Anuradha,1,N
+1939-04-19 16:45,Solar,Annular+Central,5.7200,Aries,5.7200,Ashwini,2,N
+1939-05-03 15:11,Lunar,Total,199.2419,Libra,19.2419,Swati,4,?
+1939-10-12 20:40,Solar,Total+Central,175.5974,Virgo,25.5974,Chitra,1,N
+1939-10-28 06:36,Lunar,Partial,10.8793,Aries,10.8793,Ashwini,4,?
+1940-03-23 19:47,Lunar,Penumbral,160.1534,Virgo,10.1534,Hasta,1,?
+1940-04-07 20:20,Solar,Annular+Central,354.8360,Pisces,24.8360,Revati,3,N
+1940-04-22 04:25,Lunar,Penumbral,188.7626,Libra,8.7626,Swati,1,?
+1940-10-01 12:43,Solar,Total+Central,165.1498,Virgo,15.1498,Hasta,2,N
+1940-10-16 08:00,Lunar,Penumbral,359.6715,Pisces,29.6715,Revati,4,?
+1941-03-13 11:55,Lunar,Partial,149.5698,Leo,29.5698,Uttara Phalguni,1,?
+1941-03-27 20:07,Solar,Annular+Central,343.7280,Pisces,13.7280,Uttara Bhadrapada,4,N
+1941-09-05 17:46,Lunar,Partial,319.7983,Aquarius,19.7983,Shatabhisha,4,?
+1941-09-21 04:33,Solar,Total+Central,154.7555,Virgo,4.7555,Uttara Phalguni,3,Y
+1942-03-03 00:21,Lunar,Total,138.7621,Leo,18.7621,Purva Phalguni,2,?
+1942-03-16 23:36,Solar,Partial+Non-Central,332.7020,Pisces,2.7020,Purva Bhadrapada,4,N
+1942-08-12 02:44,Solar,Partial+Non-Central,115.7140,Cancer,25.7140,Ashlesha,3,N
+1942-08-26 03:47,Lunar,Total,309.2465,Aquarius,9.2465,Shatabhisha,1,?
+1942-09-10 15:38,Solar,Partial+Non-Central,144.2357,Leo,24.2357,Purva Phalguni,4,N
+1943-02-04 23:37,Solar,Total+Central,292.2342,Capricorn,22.2342,Shravana,4,N
+1943-02-20 05:38,Lunar,Partial,127.5995,Leo,7.5995,Magha,3,?
+1943-08-01 04:15,Solar,Annular+Central,104.9878,Cancer,14.9878,Pushya,4,N
+1943-08-15 19:28,Lunar,Partial,298.9612,Capricorn,28.9612,Dhanishta,2,?
+1944-01-25 15:26,Solar,Total+Central,281.4781,Capricorn,11.4781,Shravana,1,N
+1944-02-09 05:14,Lunar,Penumbral,116.1557,Cancer,26.1557,Ashlesha,3,?
+1944-07-06 04:39,Lunar,Penumbral,261.0121,Sagittarius,21.0121,Purva Ashadha,3,?
+1944-07-20 05:42,Solar,Annular+Central,94.2862,Cancer,4.2862,Pushya,1,Y
+1944-08-04 12:26,Lunar,Penumbral,288.7700,Capricorn,18.7700,Shravana,3,?
+1944-12-29 14:49,Lunar,Penumbral,74.8017,Gemini,14.8017,Ardra,3,?
+1945-01-14 05:01,Solar,Annular+Central,270.5974,Capricorn,0.5974,Uttara Ashadha,2,N
+1945-06-25 15:13,Lunar,Partial,250.6291,Sagittarius,10.6291,Moola,4,?
+1945-07-09 13:27,Solar,Total+Central,83.8562,Gemini,23.8562,Punarvasu,2,N
+1945-12-19 02:20,Lunar,Total,63.7613,Gemini,3.7613,Mrigashira,4,?
+1946-01-03 12:15,Solar,Partial+Non-Central,259.4371,Sagittarius,19.4371,Purva Ashadha,2,N
+1946-05-30 20:59,Solar,Partial+Non-Central,45.7165,Taurus,15.7165,Rohini,2,N
+1946-06-14 18:38,Lunar,Total,239.9521,Scorpio,29.9521,Jyeshtha,4,?
+1946-06-29 03:51,Solar,Partial+Non-Central,73.6970,Gemini,13.6970,Ardra,3,N
+1946-11-23 17:36,Solar,Partial+Non-Central,217.7256,Scorpio,7.7256,Anuradha,2,N
+1946-12-08 17:48,Lunar,Total,52.8990,Taurus,22.8990,Rohini,4,?
+1947-05-20 13:47,Solar,Total+Central,35.5848,Taurus,5.5848,Krittika,3,N
+1947-06-03 19:15,Lunar,Partial,229.1511,Scorpio,19.1511,Jyeshtha,1,?
+1947-11-12 20:05,Solar,Annular+Central,206.4706,Libra,26.4706,Vishakha,2,N
+1947-11-28 08:34,Lunar,Penumbral,42.0367,Taurus,12.0367,Rohini,1,?
+1948-04-23 13:38,Lunar,Partial,190.2615,Libra,10.2615,Swati,2,?
+1948-05-09 02:25,Solar,Annular-Total+Central,25.2370,Aries,25.2370,Bharani,4,Y
+1948-10-18 02:35,Lunar,Penumbral,1.5792,Aries,1.5792,Ashwini,1,?
+1948-11-01 05:58,Solar,Total+Central,195.5873,Libra,15.5873,Swati,3,N
+1949-04-13 04:10,Lunar,Total,179.7867,Virgo,29.7867,Chitra,2,?
+1949-04-28 07:48,Solar,Partial+Non-Central,14.5443,Aries,14.5443,Bharani,1,N
+1949-10-07 02:56,Lunar,Total,350.3848,Pisces,20.3848,Revati,2,?
+1949-10-21 21:12,Solar,Partial+Non-Central,184.9846,Libra,4.9846,Chitra,4,N
+1950-03-18 15:31,Solar,Annular+Non-Central,334.3100,Pisces,4.3100,Uttara Bhadrapada,1,N
+1950-04-02 20:44,Lunar,Total,169.3307,Virgo,19.3307,Hasta,3,?
+1950-09-12 03:38,Solar,Total+Central,145.6429,Leo,25.6429,Purva Phalguni,4,N
+1950-09-26 04:16,Lunar,Total,339.3049,Pisces,9.3049,Uttara Bhadrapada,2,?
+1951-03-07 20:53,Solar,Annular+Central,323.3021,Aquarius,23.3021,Purva Bhadrapada,1,N
+1951-03-23 10:37,Lunar,Penumbral,158.7027,Virgo,8.7027,Uttara Phalguni,4,?
+1951-08-17 03:14,Lunar,Penumbral,300.3778,Aquarius,0.3778,Dhanishta,3,?
+1951-09-01 12:51,Solar,Annular+Central,135.0917,Leo,15.0917,Purva Phalguni,1,N
+1951-09-15 12:26,Lunar,Penumbral,328.5637,Aquarius,28.5637,Purva Bhadrapada,3,?
+1952-02-11 00:39,Lunar,Partial,118.1292,Cancer,28.1292,Ashlesha,4,?
+1952-02-25 09:11,Solar,Total+Central,312.5271,Aquarius,12.5271,Shatabhisha,2,Y
+1952-08-05 19:47,Lunar,Partial,290.1701,Capricorn,20.1701,Shravana,4,?
+1952-08-20 15:13,Solar,Annular+Central,124.3182,Leo,4.3182,Magha,2,N
+1953-01-29 23:47,Lunar,Total,106.6203,Cancer,16.6203,Pushya,4,?
+1953-02-14 00:58,Solar,Partial+Non-Central,301.8423,Aquarius,1.8423,Dhanishta,3,N
+1953-07-11 02:43,Solar,Partial+Non-Central,85.2914,Gemini,25.2914,Punarvasu,2,N
+1953-07-26 12:20,Lunar,Total,279.9906,Capricorn,9.9906,Uttara Ashadha,4,?
+1953-08-09 15:54,Solar,Partial+Non-Central,113.5318,Cancer,23.5318,Ashlesha,3,N
+1954-01-05 02:31,Solar,Annular+Central,261.0062,Sagittarius,21.0062,Purva Ashadha,3,N
+1954-01-19 02:31,Lunar,Total,95.2273,Cancer,5.2273,Pushya,1,?
+1954-06-30 12:32,Solar,Total+Central,74.9475,Gemini,14.9475,Ardra,3,N
+1954-07-16 00:20,Lunar,Partial,269.6468,Sagittarius,29.6468,Uttara Ashadha,1,?
+1954-12-25 07:36,Solar,Annular+Central,249.7478,Sagittarius,9.7478,Moola,3,N
+1955-01-08 12:32,Lunar,Penumbral,84.1203,Gemini,24.1203,Punarvasu,2,?
+1955-06-05 14:22,Lunar,Penumbral,231.0192,Scorpio,21.0192,Jyeshtha,2,?
+1955-06-20 04:10,Solar,Total+Central,64.8369,Gemini,4.8369,Mrigashira,4,Y
+1955-11-29 16:59,Lunar,Partial,43.5503,Taurus,13.5503,Rohini,2,?
+1955-12-14 07:01,Solar,Annular+Central,238.2627,Scorpio,28.2627,Jyeshtha,4,Y
+1956-05-24 15:31,Lunar,Partial,220.2059,Scorpio,10.2059,Anuradha,3,?
+1956-06-08 21:20,Solar,Total+Central,54.7669,Taurus,24.7669,Mrigashira,1,N
+1956-11-18 06:47,Lunar,Total,32.6883,Taurus,2.6883,Krittika,2,?
+1956-12-02 08:00,Solar,Partial+Non-Central,226.8745,Scorpio,16.8745,Jyeshtha,1,Y
+1957-04-30 00:04,Solar,Annular+Non-Central,16.1226,Aries,16.1226,Bharani,1,N
+1957-05-13 22:30,Lunar,Total,209.5779,Libra,29.5779,Vishakha,3,?
+1957-10-23 04:53,Solar,Total+Non-Central,186.2515,Libra,6.2515,Chitra,4,N
+1957-11-07 14:26,Lunar,Total,21.6104,Aries,21.6104,Bharani,3,?
+1958-04-04 03:59,Lunar,Penumbral,170.7548,Virgo,20.7548,Hasta,4,?
+1958-04-19 03:26,Solar,Annular+Central,5.2986,Aries,5.2986,Ashwini,2,Y
+1958-05-03 12:12,Lunar,Partial,199.1769,Libra,19.1769,Swati,4,?
+1958-10-12 20:54,Solar,Total+Central,175.7394,Virgo,25.7394,Chitra,1,N
+1958-10-27 15:27,Lunar,Penumbral,10.3217,Aries,10.3217,Ashwini,4,?
+1959-03-24 20:11,Lunar,Partial,160.2390,Virgo,10.2390,Hasta,1,?
+1959-04-08 03:23,Solar,Annular+Central,354.2672,Pisces,24.2672,Revati,3,N
+1959-09-17 01:03,Lunar,Penumbral,330.2011,Pisces,0.2011,Purva Bhadrapada,4,?
+1959-10-02 12:26,Solar,Total+Central,165.2660,Virgo,15.2660,Hasta,2,N
+1960-03-13 08:27,Lunar,Total,149.4938,Leo,29.4938,Uttara Phalguni,1,?
+1960-03-27 07:24,Solar,Partial+Non-Central,343.3371,Pisces,13.3371,Uttara Bhadrapada,4,N
+1960-09-05 11:21,Lunar,Total,319.5987,Aquarius,19.5987,Shatabhisha,4,?
+1960-09-20 22:59,Solar,Partial+Non-Central,154.6540,Virgo,4.6540,Uttara Phalguni,3,N
+1961-02-15 08:19,Solar,Total+Central,303.1140,Aquarius,3.1140,Dhanishta,3,N
+1961-03-02 13:28,Lunar,Partial,138.3767,Leo,18.3767,Purva Phalguni,2,?
+1961-08-11 10:46,Solar,Annular+Central,115.1979,Cancer,25.1979,Ashlesha,3,N
+1961-08-26 03:08,Lunar,Partial,309.2765,Aquarius,9.2765,Shatabhisha,1,?
+1962-02-05 00:12,Solar,Total+Central,292.3899,Capricorn,22.3899,Shravana,4,N
+1962-02-19 13:03,Lunar,Penumbral,126.9757,Leo,6.9757,Magha,3,?
+1962-07-17 11:54,Lunar,Penumbral,271.2144,Capricorn,1.2144,Uttara Ashadha,2,?
+1962-07-31 12:24,Solar,Annular+Central,104.4802,Cancer,14.4802,Pushya,4,N
+1962-08-15 19:56,Lunar,Penumbral,299.0434,Capricorn,29.0434,Dhanishta,2,?
+1963-01-09 23:19,Lunar,Penumbral,85.7429,Gemini,25.7429,Punarvasu,2,?
+1963-01-25 13:36,Solar,Annular+Central,281.5266,Capricorn,11.5266,Shravana,1,N
+1963-07-06 22:02,Lunar,Partial,260.8176,Sagittarius,20.8176,Purva Ashadha,3,?
+1963-07-20 20:35,Solar,Total+Central,94.0542,Cancer,4.0542,Pushya,1,N
+1963-12-30 11:06,Lunar,Total,74.7049,Gemini,14.7049,Ardra,3,?
+1964-01-14 20:29,Solar,Partial+Non-Central,270.3608,Capricorn,0.3608,Uttara Ashadha,2,N
+1964-06-10 04:33,Solar,Partial+Non-Central,55.9646,Taurus,25.9646,Mrigashira,1,N
+1964-06-25 01:06,Lunar,Total,250.1333,Sagittarius,10.1333,Moola,4,?
+1964-07-09 11:17,Solar,Partial+Non-Central,83.8986,Gemini,23.8986,Punarvasu,2,N
+1964-12-04 01:31,Solar,Partial+Non-Central,228.5759,Scorpio,18.5759,Jyeshtha,1,N
+1964-12-19 02:37,Lunar,Total,63.8330,Gemini,3.8330,Mrigashira,4,?
+1965-05-30 21:16,Solar,Total+Central,45.8522,Taurus,15.8522,Rohini,2,N
+1965-06-14 01:48,Lunar,Partial,239.3464,Scorpio,29.3464,Jyeshtha,4,?
+1965-11-23 04:14,Solar,Annular+Central,217.2876,Scorpio,7.2876,Anuradha,2,Y
+1965-12-08 17:10,Lunar,Penumbral,52.9340,Taurus,22.9340,Rohini,4,?
+1966-05-04 21:11,Lunar,Penumbral,200.6550,Libra,20.6550,Vishakha,1,?
+1966-05-20 09:38,Solar,Annular+Central,35.5382,Taurus,5.5382,Krittika,3,Y
+1966-10-29 10:12,Lunar,Penumbral,12.2472,Aries,12.2472,Ashwini,4,?
+1966-11-12 14:22,Solar,Total+Central,206.3622,Libra,26.3622,Vishakha,2,N
+1967-04-24 12:06,Lunar,Total,190.2548,Libra,10.2548,Swati,2,?
+1967-05-09 14:42,Solar,Partial+Non-Central,24.8854,Aries,24.8854,Bharani,4,N
+1967-10-18 10:15,Lunar,Total,0.9747,Aries,0.9747,Ashwini,1,?
+1967-11-02 05:38,Solar,Total+Non-Central,195.7042,Libra,15.7042,Swati,3,N
+1968-03-28 22:59,Solar,Partial+Non-Central,344.9135,Pisces,14.9135,Uttara Bhadrapada,4,N
+1968-04-13 04:47,Lunar,Total,179.8697,Virgo,29.8697,Chitra,2,?
+1968-09-22 11:18,Solar,Total+Central,156.0855,Virgo,6.0855,Uttara Phalguni,3,Y
+1968-10-06 11:41,Lunar,Total,349.8251,Pisces,19.8251,Revati,1,?
+1969-03-18 04:54,Solar,Annular+Central,333.9951,Pisces,3.9951,Uttara Bhadrapada,1,N
+1969-04-02 18:32,Lunar,Penumbral,169.3007,Virgo,19.3007,Hasta,3,?
+1969-08-27 10:47,Lunar,Penumbral,310.6914,Aquarius,10.6914,Shatabhisha,2,?
+1969-09-11 19:58,Solar,Annular+Central,145.4566,Leo,25.4566,Purva Phalguni,4,N
+1969-09-25 20:09,Lunar,Penumbral,339.0358,Pisces,9.0358,Uttara Bhadrapada,2,?
+1970-02-21 08:30,Lunar,Partial,128.9454,Leo,8.9454,Magha,3,?
+1970-03-07 17:37,Solar,Total+Central,323.2954,Aquarius,23.2954,Purva Bhadrapada,1,N
+1970-08-17 03:23,Lunar,Partial,300.4484,Aquarius,0.4484,Dhanishta,3,?
+1970-08-31 21:54,Solar,Annular+Central,134.6138,Leo,14.6138,Purva Phalguni,1,N
+1971-02-10 07:44,Lunar,Total,117.4898,Cancer,27.4898,Ashlesha,4,?
+1971-02-25 09:37,Solar,Partial+Non-Central,312.6783,Aquarius,12.6783,Shatabhisha,2,N
+1971-07-22 09:31,Solar,Partial+Non-Central,95.4731,Cancer,5.4731,Pushya,1,N
+1971-08-06 19:43,Lunar,Total,290.2288,Capricorn,20.2288,Shravana,4,?
+1971-08-20 22:38,Solar,Partial+Non-Central,123.7809,Leo,3.7809,Magha,2,N
+1972-01-16 11:02,Solar,Annular+Central,271.9485,Capricorn,1.9485,Uttara Ashadha,2,N
+1972-01-30 10:53,Lunar,Total,106.1426,Cancer,16.1426,Pushya,4,?
+1972-07-10 19:45,Solar,Total+Central,85.1407,Gemini,25.1407,Punarvasu,2,N
+1972-07-26 07:15,Lunar,Partial,279.8463,Capricorn,9.8463,Uttara Ashadha,4,?
+1973-01-04 15:45,Solar,Annular+Central,260.6798,Sagittarius,20.6798,Purva Ashadha,3,N
+1973-01-18 21:17,Lunar,Penumbral,95.0724,Cancer,5.0724,Pushya,1,?
+1973-06-15 20:49,Lunar,Penumbral,241.2108,Sagittarius,1.2108,Moola,1,?
+1973-06-30 11:37,Solar,Total+Central,75.0385,Gemini,15.0385,Ardra,3,N
+1973-07-15 11:38,Lunar,Penumbral,269.2086,Sagittarius,29.2086,Uttara Ashadha,1,?
+1973-12-10 01:44,Lunar,Partial,54.4572,Taurus,24.4572,Mrigashira,1,?
+1973-12-24 15:01,Solar,Annular+Central,249.1725,Sagittarius,9.1725,Moola,3,N
+1974-06-04 22:15,Lunar,Partial,230.4452,Scorpio,20.4452,Jyeshtha,2,?
+1974-06-20 04:47,Solar,Total+Central,64.9897,Gemini,4.9897,Mrigashira,4,N
+1974-11-29 15:13,Lunar,Total,43.5395,Taurus,13.5395,Rohini,2,?
+1974-12-13 16:12,Solar,Partial+Non-Central,237.7625,Scorpio,27.7625,Jyeshtha,4,N
+1975-05-11 07:16,Solar,Partial+Non-Central,26.4756,Aries,26.4756,Bharani,4,N
+1975-05-25 05:47,Lunar,Total,219.8795,Scorpio,9.8795,Anuradha,2,?
+1975-11-03 13:15,Solar,Partial+Non-Central,196.9719,Libra,16.9719,Swati,4,N
+1975-11-18 22:23,Lunar,Total,32.3959,Taurus,2.3959,Krittika,2,?
+1976-04-29 10:23,Solar,Annular+Central,15.6961,Aries,15.6961,Bharani,1,Y
+1976-05-13 19:54,Lunar,Partial,209.5360,Libra,29.5360,Vishakha,3,?
+1976-10-23 05:12,Solar,Total+Central,186.3919,Libra,6.3919,Chitra,4,N
+1976-11-06 23:01,Lunar,Penumbral,21.0313,Aries,21.0313,Bharani,3,?
+1977-04-04 04:18,Lunar,Partial,170.8326,Virgo,20.8326,Hasta,4,?
+1977-04-18 10:30,Solar,Annular+Central,4.7306,Aries,4.7306,Ashwini,2,Y
+1977-09-27 08:29,Lunar,Penumbral,340.6738,Pisces,10.6738,Uttara Bhadrapada,3,?
+1977-10-12 20:26,Solar,Total+Central,175.8498,Virgo,25.8498,Chitra,1,N
+1978-03-24 16:22,Lunar,Total,160.1371,Virgo,10.1371,Hasta,1,?
+1978-04-07 15:03,Solar,Partial+Non-Central,353.8820,Pisces,23.8820,Revati,3,N
+1978-09-16 19:04,Lunar,Total,330.0241,Pisces,0.0241,Purva Bhadrapada,4,?
+1978-10-02 06:27,Solar,Partial+Non-Central,165.1531,Virgo,15.1531,Hasta,2,N
+1979-02-26 16:54,Solar,Total+Central,313.9326,Aquarius,13.9326,Shatabhisha,3,N
+1979-03-13 21:08,Lunar,Partial,149.0803,Leo,29.0803,Uttara Phalguni,1,?
+1979-08-22 17:21,Solar,Annular+Central,125.4481,Leo,5.4481,Magha,2,N
+1979-09-06 10:54,Lunar,Total,319.6435,Aquarius,19.6435,Shatabhisha,4,?
+1980-02-16 08:53,Solar,Total+Central,303.2619,Aquarius,3.2619,Dhanishta,3,Y
+1980-03-01 20:45,Lunar,Penumbral,137.7429,Leo,17.7429,Purva Phalguni,2,?
+1980-07-27 19:08,Lunar,Penumbral,281.4222,Capricorn,11.4222,Shravana,1,?
+1980-08-10 19:11,Solar,Annular+Central,114.6962,Cancer,24.6962,Ashlesha,3,N
+1980-08-26 03:30,Lunar,Penumbral,309.3513,Aquarius,9.3513,Shatabhisha,1,?
+1981-01-20 07:49,Lunar,Penumbral,96.6847,Cancer,6.6847,Pushya,2,?
+1981-02-04 22:08,Solar,Annular+Central,292.4337,Capricorn,22.4337,Shravana,4,N
+1981-07-17 04:46,Lunar,Partial,270.9881,Capricorn,0.9881,Uttara Ashadha,2,?
+1981-07-31 03:45,Solar,Total+Central,104.2538,Cancer,14.2538,Pushya,4,Y
+1982-01-09 19:55,Lunar,Total,85.6675,Gemini,25.6675,Punarvasu,2,?
+1982-01-25 04:41,Solar,Partial+Non-Central,281.2812,Capricorn,11.2812,Shravana,1,N
+1982-06-21 12:03,Solar,Partial+Non-Central,66.1808,Gemini,6.1808,Mrigashira,4,N
+1982-07-06 07:30,Lunar,Total,260.2986,Sagittarius,20.2986,Purva Ashadha,3,?
+1982-07-20 18:43,Solar,Partial+Non-Central,94.1019,Cancer,4.1019,Pushya,1,N
+1982-12-15 09:31,Solar,Partial+Non-Central,239.4654,Scorpio,29.4654,Jyeshtha,4,N
+1982-12-30 11:28,Lunar,Total,74.7874,Gemini,14.7874,Ardra,3,?
+1983-06-11 04:42,Solar,Total+Central,56.0948,Taurus,26.0948,Mrigashira,1,N
+1983-06-25 08:22,Lunar,Partial,249.5321,Sagittarius,9.5321,Moola,3,?
+1983-12-04 12:30,Solar,Annular+Central,228.1542,Scorpio,18.1542,Jyeshtha,1,N
+1983-12-20 01:49,Lunar,Penumbral,63.8650,Gemini,3.8650,Mrigashira,4,?
+1984-05-15 04:40,Lunar,Penumbral,211.0036,Scorpio,1.0036,Vishakha,4,?
+1984-05-30 16:44,Solar,Annular+Central,45.8004,Taurus,15.8004,Rohini,2,N
+1984-06-13 14:25,Lunar,Penumbral,238.9632,Scorpio,28.9632,Jyeshtha,4,?
+1984-11-08 17:55,Lunar,Penumbral,22.9699,Aries,22.9699,Bharani,3,?
+1984-11-22 22:53,Solar,Total+Central,217.1888,Scorpio,7.1888,Anuradha,2,N
+1985-05-04 19:56,Lunar,Total,200.6700,Libra,20.6700,Vishakha,1,?
+1985-05-19 21:28,Solar,Partial+Non-Central,35.1784,Taurus,5.1784,Krittika,3,N
+1985-10-28 17:42,Lunar,Total,11.6289,Aries,11.6289,Ashwini,4,?
+1985-11-12 14:10,Solar,Total+Central,206.4825,Libra,26.4825,Vishakha,2,N
+1986-04-09 06:20,Solar,Partial+Non-Central,355.4466,Pisces,25.4466,Revati,3,N
+1986-04-24 12:42,Lunar,Total,190.3421,Libra,10.3421,Swati,2,?
+1986-10-03 19:05,Solar,Annular-Total+Central,166.6027,Virgo,16.6027,Hasta,2,N
+1986-10-17 19:17,Lunar,Total,0.4216,Aries,0.4216,Ashwini,1,?
+1987-03-29 12:48,Solar,Annular-Total+Central,344.6218,Pisces,14.6218,Uttara Bhadrapada,4,N
+1987-04-14 02:18,Lunar,Penumbral,179.8338,Virgo,29.8338,Chitra,2,?
+1987-09-23 03:11,Solar,Annular+Central,155.8837,Virgo,5.8837,Uttara Phalguni,3,Y
+1987-10-07 04:01,Lunar,Penumbral,349.5735,Pisces,19.5735,Revati,1,?
+1988-03-03 16:12,Lunar,Penumbral,139.7034,Leo,19.7034,Purva Phalguni,2,?
+1988-03-18 01:58,Solar,Total+Central,334.0001,Pisces,4.0001,Uttara Bhadrapada,1,Y
+1988-08-27 11:04,Lunar,Partial,310.7731,Aquarius,10.7731,Shatabhisha,2,?
+1988-09-11 04:43,Solar,Annular+Central,144.9660,Leo,24.9660,Purva Phalguni,4,Y
+1989-02-20 15:35,Lunar,Total,128.3027,Leo,8.3027,Magha,3,?
+1989-03-07 18:07,Solar,Partial+Non-Central,323.4427,Aquarius,23.4427,Purva Bhadrapada,2,N
+1989-08-17 03:08,Lunar,Total,300.5000,Aquarius,0.5000,Dhanishta,3,?
+1989-08-31 05:30,Solar,Partial+Non-Central,134.0805,Leo,14.0805,Purva Phalguni,1,N
+1990-01-26 19:30,Solar,Annular+Central,282.8693,Capricorn,12.8693,Shravana,1,N
+1990-02-09 19:11,Lunar,Total,117.0178,Cancer,27.0178,Ashlesha,4,?
+1990-07-22 03:02,Solar,Total+Central,95.3425,Cancer,5.3425,Pushya,1,N
+1990-08-06 14:12,Lunar,Partial,290.0718,Capricorn,20.0718,Shravana,4,?
+1991-01-15 23:52,Solar,Annular+Central,271.5998,Capricorn,1.5998,Uttara Ashadha,2,N
+1991-01-30 05:58,Lunar,Penumbral,105.9936,Cancer,15.9936,Pushya,4,?
+1991-06-27 03:14,Lunar,Penumbral,251.3843,Sagittarius,11.3843,Moola,4,?
+1991-07-11 19:06,Solar,Total+Central,85.2397,Gemini,25.2397,Punarvasu,2,N
+1991-07-26 18:07,Lunar,Penumbral,279.3907,Capricorn,9.3907,Uttara Ashadha,4,?
+1991-12-21 10:33,Lunar,Partial,65.3990,Gemini,5.3990,Mrigashira,4,?
+1992-01-04 23:04,Solar,Annular+Central,260.0997,Sagittarius,20.0997,Purva Ashadha,3,N
+1992-06-15 04:56,Lunar,Partial,240.6431,Sagittarius,0.6431,Moola,1,?
+1992-06-30 12:10,Solar,Total+Central,75.1833,Gemini,15.1833,Ardra,3,N
+1992-12-09 23:44,Lunar,Total,54.4410,Taurus,24.4410,Mrigashira,1,?
+1992-12-24 00:30,Solar,Partial+Non-Central,248.6899,Sagittarius,8.6899,Moola,3,N
+1993-05-21 14:19,Solar,Partial+Non-Central,36.7639,Taurus,6.7639,Krittika,4,N
+1993-06-04 13:00,Lunar,Total,230.1281,Scorpio,20.1281,Jyeshtha,2,?
+1993-11-13 21:44,Solar,Partial+Non-Central,207.7601,Libra,27.7601,Vishakha,3,N
+1993-11-29 06:26,Lunar,Total,43.2388,Taurus,13.2388,Rohini,1,?
+1994-05-10 17:11,Solar,Annular+Central,26.0283,Aries,26.0283,Bharani,4,N
+1994-05-25 03:30,Lunar,Partial,219.8411,Scorpio,9.8411,Anuradha,2,?
+1994-11-03 13:39,Solar,Total+Central,197.1186,Libra,17.1186,Swati,4,N
+1994-11-18 06:43,Lunar,Penumbral,31.8085,Taurus,1.8085,Krittika,2,?
+1995-04-15 12:18,Lunar,Partial,181.3700,Libra,1.3700,Chitra,3,?
+1995-04-29 17:32,Solar,Annular+Central,15.1425,Aries,15.1425,Bharani,1,N
+1995-10-08 16:04,Lunar,Penumbral,351.2040,Pisces,21.2040,Revati,2,?
+1995-10-24 04:32,Solar,Total+Central,186.4910,Libra,6.4910,Chitra,4,Y
+1996-04-04 00:09,Lunar,Total,170.7311,Virgo,20.7311,Hasta,4,?
+1996-04-17 22:37,Solar,Partial+Non-Central,4.3799,Aries,4.3799,Ashwini,2,N
+1996-09-27 02:54,Lunar,Total,340.5031,Pisces,10.5031,Uttara Bhadrapada,3,?
+1996-10-12 14:01,Solar,Partial+Non-Central,175.7084,Virgo,25.7084,Chitra,1,N
+1997-03-09 01:23,Solar,Total+Central,324.6991,Aquarius,24.6991,Purva Bhadrapada,2,Y
+1997-03-24 04:39,Lunar,Partial,159.7230,Virgo,9.7230,Uttara Phalguni,4,?
+1997-09-02 00:03,Solar,Partial+Non-Central,135.7455,Leo,15.7455,Purva Phalguni,1,N
+1997-09-16 18:46,Lunar,Total,330.0677,Pisces,0.0677,Purva Bhadrapada,4,?
+1998-02-26 17:28,Solar,Total+Central,314.0828,Aquarius,14.0828,Shatabhisha,3,N
+1998-03-13 04:20,Lunar,Penumbral,148.4498,Leo,28.4498,Uttara Phalguni,1,?
+1998-08-08 02:24,Lunar,Penumbral,291.6662,Capricorn,21.6662,Shravana,4,?
+1998-08-22 02:06,Solar,Annular+Central,124.9640,Leo,4.9640,Magha,2,Y
+1998-09-06 11:10,Lunar,Penumbral,319.7199,Aquarius,19.7199,Shatabhisha,4,?
+1999-01-31 16:17,Lunar,Penumbral,107.5907,Cancer,17.5907,Ashlesha,1,?
+1999-02-16 06:33,Solar,Annular+Central,303.2879,Aquarius,3.2879,Dhanishta,3,N
+1999-07-28 11:33,Lunar,Partial,281.1912,Capricorn,11.1912,Shravana,1,?
+1999-08-11 11:03,Solar,Total+Central,114.5013,Cancer,24.5013,Ashlesha,3,Y
+2000-01-21 04:43,Lunar,Total,96.6136,Cancer,6.6136,Pushya,1,?
+2000-02-05 12:49,Solar,Partial+Non-Central,292.1659,Capricorn,22.1659,Shravana,4,N
+2000-07-01 19:32,Solar,Partial+Non-Central,76.3839,Gemini,16.3839,Ardra,3,N
+2000-07-16 13:55,Lunar,Total,270.4660,Capricorn,0.4660,Uttara Ashadha,2,?
+2000-07-31 02:13,Solar,Partial+Non-Central,104.3229,Cancer,14.3229,Pushya,4,N
+2000-12-25 17:34,Solar,Partial+Non-Central,250.3780,Sagittarius,10.3780,Moola,4,N
+2001-01-09 20:20,Lunar,Total,85.7451,Gemini,25.7451,Punarvasu,2,?
+2001-06-21 12:03,Solar,Total+Central,66.3035,Gemini,6.3035,Mrigashira,4,N
+2001-07-05 14:55,Lunar,Partial,259.7023,Sagittarius,19.7023,Purva Ashadha,2,?
+2001-12-14 20:51,Solar,Annular+Central,239.0575,Scorpio,29.0575,Jyeshtha,4,N
+2001-12-30 10:29,Lunar,Penumbral,74.8092,Gemini,14.8092,Ardra,3,?
+2002-05-26 12:03,Lunar,Penumbral,221.2924,Scorpio,11.2924,Anuradha,3,?
+2002-06-10 23:44,Solar,Annular+Central,56.0176,Taurus,26.0176,Mrigashira,1,N
+2002-06-24 21:26,Lunar,Penumbral,249.1608,Sagittarius,9.1608,Moola,3,?
+2002-11-20 01:46,Lunar,Penumbral,33.7633,Taurus,3.7633,Krittika,3,?
+2002-12-04 07:31,Solar,Total+Central,228.0727,Scorpio,18.0727,Jyeshtha,1,N
+2003-05-16 03:40,Lunar,Total,211.0250,Scorpio,1.0250,Vishakha,4,?
+2003-05-31 04:08,Solar,Annular+Central,45.4222,Taurus,15.4222,Rohini,2,N
+2003-11-09 01:18,Lunar,Total,22.3485,Aries,22.3485,Bharani,3,?
+2003-11-23 22:49,Solar,Total+Central,217.3183,Scorpio,7.3183,Anuradha,2,N
+2004-04-19 13:34,Solar,Partial+Non-Central,5.9124,Aries,5.9124,Ashwini,2,N
+2004-05-04 20:30,Lunar,Total,200.7507,Libra,20.7507,Vishakha,1,?
+2004-10-14 02:59,Solar,Partial+Non-Central,177.1864,Virgo,27.1864,Chitra,2,N
+2004-10-28 03:04,Lunar,Total,11.0879,Aries,11.0879,Ashwini,4,?
+2005-04-08 20:35,Solar,Annular-Total+Central,355.1724,Pisces,25.1724,Revati,3,N
+2005-04-24 09:54,Lunar,Penumbral,190.2878,Libra,10.2878,Swati,2,?
+2005-10-03 10:31,Solar,Annular+Central,166.3782,Virgo,16.3782,Hasta,2,Y
+2005-10-17 12:03,Lunar,Partial,0.1858,Aries,0.1858,Ashwini,1,?
+2006-03-14 23:47,Lunar,Penumbral,150.4016,Virgo,0.4016,Uttara Phalguni,2,?
+2006-03-29 10:11,Solar,Total+Central,344.6374,Pisces,14.6374,Uttara Bhadrapada,4,N
+2006-09-07 18:51,Lunar,Partial,321.1492,Aquarius,21.1492,Purva Bhadrapada,1,?
+2006-09-22 11:40,Solar,Annular+Central,155.3804,Virgo,5.3804,Uttara Phalguni,3,N
+2007-03-03 23:20,Lunar,Total,139.0688,Leo,19.0688,Purva Phalguni,2,?
+2007-03-19 02:31,Solar,Partial+Non-Central,334.1519,Pisces,4.1519,Uttara Bhadrapada,1,Y
+2007-08-28 10:37,Lunar,Total,310.8160,Aquarius,10.8160,Shatabhisha,2,?
+2007-09-11 12:31,Solar,Partial+Non-Central,144.4358,Leo,24.4358,Purva Phalguni,4,N
+2008-02-07 03:55,Solar,Annular+Central,293.7699,Capricorn,23.7699,Dhanishta,1,N
+2008-02-21 03:26,Lunar,Total,127.8616,Leo,7.8616,Magha,3,?
+2008-08-01 10:21,Solar,Total+Central,105.5555,Cancer,15.5555,Pushya,4,Y
+2008-08-16 21:10,Lunar,Partial,300.3192,Aquarius,0.3192,Dhanishta,3,?
+2009-01-26 07:58,Solar,Annular+Central,282.5121,Capricorn,12.5121,Shravana,1,Y
+2009-02-09 14:38,Lunar,Penumbral,116.8931,Cancer,26.8931,Ashlesha,4,?
+2009-07-07 09:38,Lunar,Penumbral,261.5492,Sagittarius,21.5492,Purva Ashadha,3,?
+2009-07-22 02:35,Solar,Total+Central,95.4475,Cancer,5.4475,Pushya,1,Y
+2009-08-06 00:39,Lunar,Penumbral,289.5939,Capricorn,19.5939,Shravana,3,?
+2009-12-31 19:22,Lunar,Partial,76.3504,Gemini,16.3504,Ardra,3,?
+2010-01-15 07:06,Solar,Annular+Central,271.0178,Capricorn,1.0178,Uttara Ashadha,2,Y
+2010-06-26 11:38,Lunar,Partial,250.8313,Sagittarius,10.8313,Moola,4,?
+2010-07-11 19:33,Solar,Total+Central,85.3835,Gemini,25.3835,Punarvasu,2,N
+2010-12-21 08:16,Lunar,Total,65.3647,Gemini,5.3647,Mrigashira,4,?
+2011-01-04 08:50,Solar,Partial+Non-Central,259.6218,Sagittarius,19.6218,Purva Ashadha,2,N
+2011-06-01 21:16,Solar,Partial+Non-Central,47.0191,Taurus,17.0191,Rohini,3,N
+2011-06-15 20:12,Lunar,Total,240.3600,Sagittarius,0.3600,Moola,1,?
+2011-07-01 08:38,Solar,Partial+Non-Central,75.1736,Gemini,15.1736,Ardra,3,N
+2011-11-25 06:20,Solar,Partial+Non-Central,218.5934,Scorpio,8.5934,Anuradha,2,N
+2011-12-10 14:31,Lunar,Total,54.1113,Taurus,24.1113,Mrigashira,1,?
+2012-05-20 23:52,Solar,Annular+Central,36.3115,Taurus,6.3115,Krittika,3,N
+2012-06-04 11:03,Lunar,Partial,230.1107,Scorpio,20.1107,Jyeshtha,2,?
+2012-11-13 22:11,Solar,Total+Central,207.9042,Libra,27.9042,Vishakha,3,N
+2012-11-28 14:32,Lunar,Penumbral,42.6341,Taurus,12.6341,Rohini,1,?
+2013-04-25 20:07,Lunar,Partial,191.8217,Libra,11.8217,Swati,2,?
+2013-05-10 00:25,Solar,Annular+Central,25.4750,Aries,25.4750,Bharani,4,N
+2013-05-25 04:10,Lunar,Penumbral,219.9318,Scorpio,9.9318,Anuradha,2,?
+2013-10-18 23:50,Lunar,Penumbral,1.8142,Aries,1.8142,Ashwini,1,?
+2013-11-03 12:46,Solar,Annular-Total+Central,197.2088,Libra,17.2088,Swati,4,N
+2014-04-15 07:45,Lunar,Total,181.2384,Libra,1.2384,Chitra,3,?
+2014-04-29 06:03,Solar,Annular+Non-Central,14.7965,Aries,14.7965,Bharani,1,N
+2014-10-08 10:54,Lunar,Total,351.0598,Pisces,21.0598,Revati,2,?
+2014-10-23 21:44,Solar,Partial+Non-Central,186.3412,Libra,6.3412,Chitra,4,N
+2015-03-20 09:45,Solar,Total+Central,335.3913,Pisces,5.3913,Uttara Bhadrapada,1,N
+2015-04-04 12:00,Lunar,Total,170.2877,Virgo,20.2877,Hasta,4,?
+2015-09-13 06:54,Solar,Partial+Non-Central,146.1047,Leo,26.1047,Purva Phalguni,4,N
+2015-09-28 02:47,Lunar,Total,340.5608,Pisces,10.5608,Uttara Bhadrapada,3,?
+2016-03-09 01:57,Solar,Total+Central,324.8474,Aquarius,24.8474,Purva Bhadrapada,2,Y
+2016-03-23 11:47,Lunar,Penumbral,159.0917,Virgo,9.0917,Uttara Phalguni,4,?
+2016-09-01 09:06,Solar,Annular+Central,135.2668,Leo,15.2668,Purva Phalguni,1,N
+2016-09-16 18:54,Lunar,Penumbral,330.1347,Pisces,0.1347,Purva Bhadrapada,4,?
+2017-02-11 00:43,Lunar,Penumbral,118.4776,Cancer,28.4776,Ashlesha,4,?
+2017-02-26 14:53,Solar,Annular+Central,314.1035,Aquarius,14.1035,Shatabhisha,3,N
+2017-08-07 18:20,Lunar,Partial,291.4051,Capricorn,21.4051,Shravana,4,?
+2017-08-21 18:25,Solar,Total+Central,124.7782,Leo,4.7782,Magha,2,N
+2018-01-31 13:29,Lunar,Total,107.5432,Cancer,17.5432,Ashlesha,1,?
+2018-02-15 20:51,Solar,Partial+Non-Central,303.0135,Aquarius,3.0135,Dhanishta,3,N
+2018-07-13 03:01,Solar,Partial+Non-Central,86.5837,Gemini,26.5837,Punarvasu,2,N
+2018-07-27 20:21,Lunar,Total,280.6466,Capricorn,10.6466,Shravana,1,?
+2018-08-11 09:46,Solar,Partial+Non-Central,114.5739,Cancer,24.5739,Ashlesha,3,N
+2019-01-06 01:41,Solar,Partial+Non-Central,261.3081,Sagittarius,21.3081,Purva Ashadha,3,N
+2019-01-21 05:12,Lunar,Total,96.7005,Cancer,6.7005,Pushya,2,?
+2019-07-02 19:22,Solar,Total+Central,76.5055,Gemini,16.5055,Ardra,3,N
+2019-07-16 21:30,Lunar,Partial,269.8798,Sagittarius,29.8798,Uttara Ashadha,1,?
+2019-12-26 05:17,Solar,Annular+Central,249.9860,Sagittarius,9.9860,Moola,3,Y
+2020-01-10 19:10,Lunar,Penumbral,85.7619,Gemini,25.7619,Punarvasu,2,?
+2020-06-05 19:24,Lunar,Penumbral,231.5549,Scorpio,21.5549,Jyeshtha,2,?
+2020-06-21 06:40,Solar,Annular+Central,66.2173,Gemini,6.2173,Mrigashira,4,Y
+2020-07-05 04:29,Lunar,Penumbral,259.3548,Sagittarius,19.3548,Purva Ashadha,2,?
+2020-11-30 09:42,Lunar,Penumbral,44.6005,Taurus,14.6005,Rohini,2,?
+2020-12-14 16:13,Solar,Total+Central,238.9902,Scorpio,28.9902,Jyeshtha,4,N
+2021-05-26 11:18,Lunar,Total,221.3292,Scorpio,11.3292,Anuradha,3,?
+2021-06-10 10:41,Solar,Annular+Central,55.6259,Taurus,25.6259,Mrigashira,1,N
+2021-11-19 09:02,Lunar,Partial,33.1280,Taurus,3.1280,Krittika,2,?
+2021-12-04 07:33,Solar,Total+Central,228.2016,Scorpio,18.2016,Jyeshtha,1,N
+2022-04-30 20:41,Solar,Partial+Non-Central,16.3173,Aries,16.3173,Bharani,1,N
+2022-05-16 04:11,Lunar,Total,211.1077,Scorpio,1.1077,Vishakha,4,?
+2022-10-25 11:00,Solar,Partial+Non-Central,187.8375,Libra,7.8375,Swati,1,Y
+2022-11-08 10:59,Lunar,Total,21.8159,Aries,21.8159,Bharani,3,?
+2023-04-20 04:16,Solar,Annular-Total+Central,5.6597,Aries,5.6597,Ashwini,2,N
+2023-05-05 17:22,Lunar,Penumbral,200.6865,Libra,20.6865,Vishakha,1,?
+2023-10-14 17:59,Solar,Annular+Central,176.9421,Virgo,26.9421,Chitra,2,N
+2023-10-28 20:14,Lunar,Partial,10.8651,Aries,10.8651,Ashwini,4,?
+2024-03-25 07:12,Lunar,Penumbral,161.0297,Virgo,11.0297,Hasta,1,?
+2024-04-08 18:17,Solar,Total+Central,355.2034,Pisces,25.2034,Revati,3,N
+2024-09-18 02:44,Lunar,Partial,331.5810,Pisces,1.5810,Purva Bhadrapada,4,?
+2024-10-02 18:45,Solar,Annular+Central,165.8583,Virgo,15.8583,Hasta,2,N
+2025-03-14 06:58,Lunar,Total,149.7674,Leo,29.7674,Uttara Phalguni,1,?
+2025-03-29 10:47,Solar,Partial+Non-Central,344.7845,Pisces,14.7845,Uttara Bhadrapada,4,N
+2025-09-07 18:11,Lunar,Total,321.1872,Aquarius,21.1872,Purva Bhadrapada,1,?
+2025-09-21 19:42,Solar,Partial+Non-Central,154.8602,Virgo,4.8602,Uttara Phalguni,3,N
+2026-02-17 12:11,Solar,Annular+Central,304.6123,Aquarius,4.6123,Dhanishta,4,N
+2026-03-03 11:33,Lunar,Total,138.6346,Leo,18.6346,Purva Phalguni,2,?
+2026-08-12 17:45,Solar,Total+Central,115.8075,Cancer,25.8075,Ashlesha,3,N
+2026-08-28 04:12,Lunar,Partial,310.6204,Aquarius,10.6204,Shatabhisha,2,?
+2027-02-06 15:59,Solar,Annular+Central,293.3905,Capricorn,23.3905,Dhanishta,1,N
+2027-02-20 23:12,Lunar,Penumbral,127.7432,Leo,7.7432,Magha,3,?
+2027-07-18 16:03,Lunar,Penumbral,271.7153,Capricorn,1.7153,Uttara Ashadha,2,?
+2027-08-02 10:06,Solar,Total+Central,105.6719,Cancer,15.6719,Pushya,4,Y
+2027-08-17 07:13,Lunar,Penumbral,299.8275,Capricorn,29.8275,Dhanishta,2,?
+2028-01-12 04:13,Lunar,Partial,87.3101,Gemini,27.3101,Punarvasu,3,?
+2028-01-26 15:07,Solar,Annular+Central,281.9268,Capricorn,11.9268,Shravana,1,N
+2028-07-06 18:19,Lunar,Partial,261.0033,Sagittarius,21.0033,Purva Ashadha,3,?
+2028-07-22 02:55,Solar,Total+Central,95.5811,Cancer,5.5811,Pushya,1,N
+2028-12-31 16:52,Lunar,Total,76.3141,Gemini,16.3141,Ardra,3,?
+2029-01-14 17:12,Solar,Partial+Non-Central,270.5632,Capricorn,0.5632,Uttara Ashadha,2,N
+2029-06-12 04:04,Solar,Partial+Non-Central,57.2215,Taurus,27.2215,Mrigashira,2,N
+2029-06-26 03:22,Lunar,Total,250.5556,Sagittarius,10.5556,Moola,4,?
+2029-07-11 15:36,Solar,Partial+Non-Central,85.3446,Gemini,25.3446,Punarvasu,2,N
+2029-12-05 15:02,Solar,Partial+Non-Central,229.4855,Scorpio,19.4855,Jyeshtha,1,N
+2029-12-20 22:42,Lunar,Total,65.0257,Gemini,5.0257,Mrigashira,4,?
+2030-06-01 06:28,Solar,Annular+Central,46.5501,Taurus,16.5501,Rohini,2,N
+2030-06-15 18:33,Lunar,Partial,240.3503,Sagittarius,0.3503,Moola,1,?
+2030-11-25 06:50,Solar,Total+Central,218.7447,Scorpio,8.7447,Anuradha,2,N
+2030-12-09 22:27,Lunar,Penumbral,53.5016,Taurus,23.5016,Mrigashira,1,?
+2031-05-07 03:50,Lunar,Penumbral,202.2275,Libra,22.2275,Vishakha,1,?
+2031-05-21 07:14,Solar,Annular+Central,35.7722,Taurus,5.7722,Krittika,3,Y
+2031-06-05 11:44,Lunar,Penumbral,230.2066,Scorpio,20.2066,Jyeshtha,2,?
+2031-10-30 07:45,Lunar,Penumbral,12.4884,Aries,12.4884,Ashwini,4,?
+2031-11-14 21:06,Solar,Annular-Total+Central,207.9841,Libra,27.9841,Vishakha,3,N
+2032-04-25 15:13,Lunar,Total,191.6923,Libra,11.6923,Swati,2,?
+2032-05-09 13:25,Solar,Annular+Central,25.1654,Aries,25.1654,Bharani,4,N
+2032-10-18 19:02,Lunar,Total,1.6762,Aries,1.6762,Ashwini,1,?
+2032-11-03 05:32,Solar,Partial+Non-Central,197.0322,Libra,17.0322,Swati,4,N
+2033-03-30 18:01,Solar,Total+Central,346.0258,Pisces,16.0258,Uttara Bhadrapada,4,N
+2033-04-14 19:12,Lunar,Total,180.7923,Libra,0.7923,Chitra,3,?
+2033-09-23 13:53,Solar,Partial+Non-Central,156.5284,Virgo,6.5284,Uttara Phalguni,3,N
+2033-10-08 10:55,Lunar,Total,351.1218,Pisces,21.1218,Revati,2,?
+2034-03-20 10:17,Solar,Total+Central,335.5404,Pisces,5.5404,Uttara Bhadrapada,1,Y
+2034-04-03 19:05,Lunar,Penumbral,169.6614,Virgo,19.6614,Hasta,3,?
+2034-09-12 16:18,Solar,Annular+Central,145.6427,Leo,25.6427,Purva Phalguni,4,N
+2034-09-28 02:46,Lunar,Partial,340.6263,Pisces,10.6263,Uttara Bhadrapada,3,?
+2035-02-22 09:04,Lunar,Penumbral,129.3114,Leo,9.3114,Magha,3,?
+2035-03-09 23:04,Solar,Annular+Central,324.8539,Aquarius,24.8539,Purva Bhadrapada,2,N
+2035-08-19 01:11,Lunar,Partial,301.6613,Aquarius,1.6613,Dhanishta,3,?
+2035-09-02 01:55,Solar,Total+Central,135.1091,Leo,15.1091,Purva Phalguni,1,Y
+2036-02-11 22:11,Lunar,Total,118.4313,Cancer,28.4313,Ashlesha,4,?
+2036-02-27 04:45,Solar,Partial+Non-Central,313.8045,Aquarius,13.8045,Shatabhisha,3,N
+2036-07-23 10:30,Solar,Partial+Non-Central,96.7948,Cancer,6.7948,Pushya,2,N
+2036-08-07 02:51,Lunar,Total,290.8538,Capricorn,20.8538,Shravana,4,?
+2036-08-21 17:24,Solar,Partial+Non-Central,124.8659,Leo,4.8659,Magha,2,N
+2037-01-16 09:47,Solar,Partial+Non-Central,272.2298,Capricorn,2.2298,Uttara Ashadha,2,N
+2037-01-31 14:00,Lunar,Total,107.6255,Cancer,17.6255,Ashlesha,1,?
+2037-07-13 02:39,Solar,Total+Central,86.6932,Gemini,26.6932,Punarvasu,3,N
+2037-07-27 04:08,Lunar,Partial,280.0642,Capricorn,10.0642,Shravana,1,?
+2038-01-05 13:45,Solar,Annular+Central,260.9272,Sagittarius,20.9272,Purva Ashadha,3,N
+2038-01-21 03:48,Lunar,Penumbral,96.7012,Cancer,6.7012,Pushya,2,?
+2038-06-17 02:43,Lunar,Penumbral,241.7796,Sagittarius,1.7796,Moola,1,?
+2038-07-02 13:31,Solar,Annular+Central,76.3965,Gemini,16.3965,Ardra,3,N
+2038-07-16 11:34,Lunar,Penumbral,269.5490,Sagittarius,29.5490,Uttara Ashadha,1,?
+2038-12-11 17:43,Lunar,Penumbral,55.4788,Taurus,25.4788,Mrigashira,1,?
+2038-12-26 00:59,Solar,Total+Central,249.9310,Sagittarius,9.9310,Moola,3,N
+2039-06-06 18:53,Lunar,Partial,231.5937,Scorpio,21.5937,Jyeshtha,2,?
+2039-06-21 17:11,Solar,Annular+Central,65.8046,Gemini,5.8046,Mrigashira,4,N
+2039-11-30 16:55,Lunar,Partial,43.9650,Taurus,13.9650,Rohini,2,?
+2039-12-15 16:22,Solar,Total+Central,239.1287,Scorpio,29.1287,Jyeshtha,4,N
+2040-05-11 03:41,Solar,Partial+Non-Central,26.6541,Aries,26.6541,Bharani,4,N
+2040-05-26 11:45,Lunar,Total,221.4033,Scorpio,11.4033,Anuradha,3,?
+2040-11-04 19:07,Solar,Partial+Non-Central,198.5552,Libra,18.5552,Swati,4,N
+2040-11-18 19:03,Lunar,Total,32.6090,Taurus,2.6090,Krittika,2,?
+2041-04-30 11:51,Solar,Total+Central,16.0787,Aries,16.0787,Bharani,1,N
+2041-05-16 00:41,Lunar,Partial,211.0200,Scorpio,1.0200,Vishakha,4,?
+2041-10-25 01:35,Solar,Annular+Central,187.5775,Libra,7.5775,Swati,1,N
+2041-11-08 04:33,Lunar,Partial,21.6148,Aries,21.6148,Bharani,3,?
+2042-04-05 14:29,Lunar,Penumbral,171.5890,Virgo,21.5890,Hasta,4,?
+2042-04-20 02:16,Solar,Total+Central,5.7014,Aries,5.7014,Ashwini,2,Y
+2042-09-29 10:44,Lunar,Penumbral,342.0810,Pisces,12.0810,Uttara Bhadrapada,3,?
+2042-10-14 01:59,Solar,Annular+Central,176.4101,Virgo,26.4101,Chitra,1,Y
+2043-03-25 14:30,Lunar,Total,160.4135,Virgo,10.4135,Hasta,1,?
+2043-04-09 18:56,Solar,Total+Non-Central,355.3621,Pisces,25.3621,Revati,3,N
+2043-09-19 01:50,Lunar,Total,331.6058,Pisces,1.6058,Purva Bhadrapada,4,?
+2043-10-03 03:00,Solar,Annular+Non-Central,165.3389,Virgo,15.3389,Hasta,2,N
+2044-02-28 20:23,Solar,Annular+Central,315.4181,Aquarius,15.4181,Shatabhisha,3,N
+2044-03-13 19:37,Lunar,Total,149.3652,Leo,29.3652,Uttara Phalguni,1,?
+2044-08-23 01:15,Solar,Total+Central,126.0939,Leo,6.0939,Magha,2,N
+2044-09-07 11:19,Lunar,Total,320.9643,Aquarius,20.9643,Purva Bhadrapada,1,?
+2045-02-16 23:54,Solar,Annular+Central,304.2286,Aquarius,4.2286,Dhanishta,4,N
+2045-03-03 07:42,Lunar,Penumbral,138.5417,Leo,18.5417,Purva Phalguni,2,?
+2045-08-12 17:41,Solar,Total+Central,115.9264,Cancer,25.9264,Ashlesha,3,N
+2045-08-27 13:53,Lunar,Penumbral,310.1056,Aquarius,10.1056,Shatabhisha,2,?
+2046-01-22 13:01,Lunar,Partial,98.2536,Cancer,8.2536,Pushya,2,?
+2046-02-05 23:05,Solar,Annular+Central,292.8015,Capricorn,22.8015,Shravana,4,N
+2046-07-18 01:04,Lunar,Partial,271.1921,Capricorn,1.1921,Uttara Ashadha,2,?
+2046-08-02 10:19,Solar,Total+Central,105.8100,Cancer,15.8100,Pushya,4,N
+2047-01-12 01:25,Lunar,Total,87.2508,Gemini,27.2508,Punarvasu,3,?
+2047-01-26 01:32,Solar,Partial+Non-Central,281.4750,Capricorn,11.4750,Shravana,1,N
+2047-06-23 10:51,Solar,Partial+Non-Central,67.4159,Gemini,7.4159,Ardra,1,N
+2047-07-07 10:34,Lunar,Total,260.7611,Sagittarius,20.7611,Purva Ashadha,3,?
+2047-07-22 22:34,Solar,Partial+Non-Central,95.5396,Cancer,5.5396,Pushya,1,N
+2047-12-16 23:49,Solar,Partial+Non-Central,240.4064,Sagittarius,0.4064,Moola,1,N
+2048-01-01 06:52,Lunar,Total,75.9494,Gemini,15.9494,Ardra,3,?
+2048-06-11 12:57,Solar,Annular+Central,56.7472,Taurus,26.7472,Mrigashira,2,N
+2048-06-26 02:01,Lunar,Partial,250.5640,Sagittarius,10.5640,Moola,4,?
+2048-12-05 15:34,Solar,Total+Central,229.6322,Scorpio,19.6322,Jyeshtha,1,N
+2048-12-20 06:26,Lunar,Penumbral,64.4009,Gemini,4.4009,Mrigashira,4,?
+2049-05-17 11:25,Lunar,Penumbral,212.5642,Scorpio,2.5642,Vishakha,4,?
+2049-05-31 13:58,Solar,Annular+Central,46.0121,Taurus,16.0121,Rohini,2,N
+2049-06-15 19:13,Lunar,Penumbral,240.4386,Sagittarius,0.4386,Moola,1,?
+2049-11-09 15:50,Lunar,Penumbral,23.2368,Aries,23.2368,Bharani,3,?
+2049-11-25 05:32,Solar,Annular-Total+Central,218.8211,Scorpio,8.8211,Anuradha,2,Y
+2050-05-06 22:30,Lunar,Total,202.0684,Libra,22.0684,Vishakha,1,?
+2050-05-20 20:41,Solar,Annular-Total+Central,35.4695,Taurus,5.4695,Krittika,3,N
+2050-10-30 03:20,Lunar,Total,12.3743,Aries,12.3743,Ashwini,4,?
+2050-11-14 13:29,Solar,Partial+Non-Central,207.7976,Libra,27.7976,Vishakha,3,N
+2051-04-11 02:09,Solar,Partial+Non-Central,356.5868,Pisces,26.5868,Revati,3,Y
+2051-04-26 02:15,Lunar,Total,191.2260,Libra,11.2260,Swati,2,?
+2051-10-04 21:01,Solar,Partial+Non-Central,167.0151,Virgo,17.0151,Hasta,3,N
+2051-10-19 19:10,Lunar,Total,1.7482,Aries,1.7482,Ashwini,1,?
+2052-03-30 18:30,Solar,Total+Central,346.1716,Pisces,16.1716,Uttara Bhadrapada,4,N
+2052-04-14 02:16,Lunar,Penumbral,180.1673,Libra,0.1673,Chitra,3,?
+2052-09-22 23:37,Solar,Annular+Central,156.0734,Virgo,6.0734,Uttara Phalguni,3,N
+2052-10-08 10:44,Lunar,Partial,351.1788,Pisces,21.1788,Revati,2,?
+2053-03-04 17:20,Lunar,Penumbral,140.0937,Leo,20.0937,Purva Phalguni,3,?
+2053-03-20 07:07,Solar,Annular+Central,335.5376,Pisces,5.5376,Uttara Bhadrapada,1,N
+2053-08-29 08:04,Lunar,Penumbral,311.9530,Aquarius,11.9530,Shatabhisha,2,?
+2053-09-12 09:32,Solar,Total+Central,145.4922,Leo,25.4922,Purva Phalguni,4,Y
+2054-02-22 06:50,Lunar,Total,129.2824,Leo,9.2824,Magha,3,?
+2054-03-09 12:32,Solar,Partial+Non-Central,324.5432,Aquarius,24.5432,Purva Bhadrapada,2,N
+2054-08-03 18:02,Solar,Partial+Non-Central,107.0267,Cancer,17.0267,Ashlesha,1,N
+2054-08-18 09:25,Lunar,Total,301.0954,Aquarius,1.0954,Dhanishta,3,?
+2054-09-02 01:08,Solar,Partial+Non-Central,135.2048,Leo,15.2048,Purva Phalguni,1,N
+2055-01-27 17:52,Solar,Partial+Non-Central,283.1371,Capricorn,13.1371,Shravana,1,N
+2055-02-11 22:45,Lunar,Total,118.5203,Cancer,28.5203,Ashlesha,4,?
+2055-07-24 09:56,Solar,Total+Central,96.8986,Cancer,6.8986,Pushya,2,N
+2055-08-07 10:52,Lunar,Partial,290.2796,Capricorn,20.2796,Shravana,4,?
+2056-01-16 22:15,Solar,Annular+Central,271.8710,Capricorn,1.8710,Uttara Ashadha,2,N
+2056-02-01 12:24,Lunar,Penumbral,107.6258,Cancer,17.6258,Ashlesha,1,?
+2056-06-27 10:01,Lunar,Penumbral,251.9867,Sagittarius,11.9867,Moola,4,?
+2056-07-12 20:20,Solar,Annular+Central,86.5690,Gemini,26.5690,Punarvasu,2,N
+2056-07-26 18:42,Lunar,Penumbral,279.7517,Capricorn,9.7517,Uttara Ashadha,4,?
+2056-12-22 01:47,Lunar,Penumbral,66.3855,Gemini,6.3855,Mrigashira,4,?
+2057-01-05 09:46,Solar,Total+Central,260.8864,Sagittarius,20.8864,Purva Ashadha,3,N
+2057-06-17 02:25,Lunar,Partial,241.8316,Sagittarius,1.8316,Moola,1,?
+2057-07-01 23:38,Solar,Annular+Central,75.9703,Gemini,15.9703,Ardra,3,N
+2057-12-11 00:52,Lunar,Partial,54.8363,Taurus,24.8363,Mrigashira,1,?
+2057-12-26 01:13,Solar,Total+Central,250.0710,Sagittarius,10.0710,Moola,4,N
+2058-05-22 10:38,Solar,Partial+Non-Central,36.9458,Taurus,6.9458,Krittika,4,N
+2058-06-06 19:14,Lunar,Total,231.6685,Scorpio,21.6685,Jyeshtha,2,?
+2058-06-21 00:18,Solar,Partial+Non-Central,65.2603,Gemini,5.2603,Mrigashira,4,N
+2058-11-16 03:21,Solar,Partial+Non-Central,209.3352,Libra,29.3352,Vishakha,3,N
+2058-11-30 03:14,Lunar,Total,43.4521,Taurus,13.4521,Rohini,2,?
+2059-05-11 19:20,Solar,Total+Central,26.4464,Aries,26.4464,Bharani,4,N
+2059-05-27 07:54,Lunar,Partial,221.3132,Scorpio,11.3132,Anuradha,3,?
+2059-11-05 09:16,Solar,Annular+Central,198.2707,Libra,18.2707,Swati,4,Y
+2059-11-19 13:00,Lunar,Partial,32.4154,Taurus,2.4154,Krittika,2,?
+2060-04-15 21:35,Lunar,Penumbral,182.0791,Libra,2.0791,Chitra,3,?
+2060-04-30 10:08,Solar,Total+Central,16.1350,Aries,16.1350,Bharani,1,Y
+2060-10-09 18:52,Lunar,Penumbral,352.6486,Pisces,22.6486,Revati,2,?
+2060-10-24 09:22,Solar,Annular+Central,187.0314,Libra,7.0314,Swati,1,N
+2060-11-08 04:02,Lunar,Penumbral,21.6621,Aries,21.6621,Bharani,3,?
+2061-04-04 21:52,Lunar,Total,170.9722,Virgo,20.9722,Hasta,4,?
+2061-04-20 02:55,Solar,Total+Central,5.8507,Aries,5.8507,Ashwini,2,Y
+2061-09-29 09:36,Lunar,Total,342.0988,Pisces,12.0988,Uttara Bhadrapada,3,?
+2061-10-13 10:30,Solar,Annular+Central,175.9007,Virgo,25.9007,Chitra,1,N
+2062-03-11 04:24,Solar,Partial+Non-Central,326.1493,Aquarius,26.1493,Purva Bhadrapada,2,N
+2062-03-25 03:32,Lunar,Total,160.0154,Virgo,10.0154,Hasta,1,?
+2062-09-03 08:53,Solar,Partial+Non-Central,136.4371,Leo,16.4371,Purva Phalguni,1,Y
+2062-09-18 18:32,Lunar,Total,331.3742,Pisces,1.3742,Purva Bhadrapada,4,?
+2063-02-28 07:42,Solar,Annular+Central,315.0087,Aquarius,15.0087,Shatabhisha,3,Y
+2063-03-14 16:04,Lunar,Partial,149.2740,Leo,29.2740,Uttara Phalguni,1,?
+2063-08-24 01:20,Solar,Total+Central,126.2231,Leo,6.2231,Magha,2,Y
+2063-09-07 20:39,Lunar,Penumbral,320.4372,Aquarius,20.4372,Purva Bhadrapada,1,?
+2064-02-02 21:47,Lunar,Partial,109.1822,Cancer,19.1822,Ashlesha,1,?
+2064-02-17 06:59,Solar,Annular+Central,303.6447,Aquarius,3.6447,Dhanishta,4,Y
+2064-07-28 07:51,Lunar,Partial,281.3788,Capricorn,11.3788,Shravana,1,?
+2064-08-12 17:44,Solar,Total+Central,116.0520,Cancer,26.0520,Ashlesha,3,N
+2065-01-22 09:57,Lunar,Total,98.1930,Cancer,8.1930,Pushya,2,?
+2065-02-05 09:51,Solar,Partial+Non-Central,292.3758,Capricorn,22.3758,Shravana,4,N
+2065-07-03 17:32,Solar,Partial+Non-Central,77.5839,Gemini,17.5839,Ardra,4,N
+2065-07-17 17:47,Lunar,Total,270.9578,Capricorn,0.9578,Uttara Ashadha,2,?
+2065-08-02 05:32,Solar,Partial+Non-Central,105.7414,Cancer,15.7414,Pushya,4,N
+2065-12-27 08:38,Solar,Partial+Non-Central,251.3563,Sagittarius,11.3563,Moola,4,N
+2066-01-11 15:03,Lunar,Total,86.8810,Gemini,26.8810,Punarvasu,3,?
+2066-06-22 19:24,Solar,Annular+Central,66.9250,Gemini,6.9250,Ardra,1,N
+2066-07-07 09:29,Lunar,Partial,260.7748,Sagittarius,20.7748,Purva Ashadha,3,?
+2066-12-17 00:22,Solar,Total+Central,240.5612,Sagittarius,0.5612,Moola,1,N
+2066-12-31 14:28,Lunar,Penumbral,75.3251,Gemini,15.3251,Ardra,3,?
+2067-05-28 18:54,Lunar,Penumbral,222.8664,Scorpio,12.8664,Anuradha,3,?
+2067-06-11 20:41,Solar,Annular+Central,56.2298,Taurus,26.2298,Mrigashira,1,N
+2067-06-27 02:39,Lunar,Penumbral,250.6596,Sagittarius,10.6596,Moola,4,?
+2067-11-21 00:03,Lunar,Penumbral,34.0345,Taurus,4.0345,Krittika,3,?
+2067-12-06 14:02,Solar,Annular-Total+Central,229.6968,Scorpio,19.6968,Jyeshtha,1,N
+2068-05-17 05:40,Lunar,Partial,212.4013,Scorpio,2.4013,Vishakha,4,?
+2068-05-31 03:55,Solar,Total+Central,45.7403,Taurus,15.7403,Rohini,2,N
+2068-11-09 11:45,Lunar,Total,23.1299,Aries,23.1299,Bharani,3,?
+2068-11-24 21:31,Solar,Partial+Non-Central,218.6119,Scorpio,8.6119,Anuradha,2,N
+2069-04-21 10:09,Solar,Partial+Non-Central,7.0783,Aries,7.0783,Ashwini,3,N
+2069-05-06 09:08,Lunar,Total,201.5948,Libra,21.5948,Vishakha,1,?
+2069-05-20 17:52,Solar,Partial+Non-Central,35.4852,Taurus,5.4852,Krittika,3,N
+2069-10-15 04:18,Solar,Partial+Non-Central,177.5759,Virgo,27.5759,Chitra,2,N
+2069-10-30 03:33,Lunar,Total,12.4457,Aries,12.4457,Ashwini,4,?
+2070-04-11 02:34,Solar,Total+Central,356.7293,Pisces,26.7293,Revati,4,Y
+2070-04-25 09:19,Lunar,Penumbral,190.6058,Libra,10.6058,Swati,2,?
+2070-10-04 07:07,Solar,Annular+Central,166.5754,Virgo,16.5754,Hasta,2,N
+2070-10-19 18:49,Lunar,Partial,1.7991,Aries,1.7991,Ashwini,1,?
+2071-03-16 01:29,Lunar,Penumbral,150.8083,Virgo,0.8083,Uttara Phalguni,2,?
+2071-03-31 14:59,Solar,Annular+Central,346.1496,Pisces,16.1496,Uttara Bhadrapada,4,N
+2071-09-09 15:04,Lunar,Penumbral,322.3050,Aquarius,22.3050,Purva Bhadrapada,1,?
+2071-09-23 17:19,Solar,Total+Central,155.9434,Virgo,5.9434,Uttara Phalguni,3,N
+2072-03-04 15:21,Lunar,Total,140.0722,Leo,20.0722,Purva Phalguni,3,?
+2072-03-19 20:09,Solar,Partial+Non-Central,335.2091,Pisces,5.2091,Uttara Bhadrapada,1,N
+2072-08-28 16:04,Lunar,Total,311.3766,Aquarius,11.3766,Shatabhisha,2,?
+2072-09-12 08:58,Solar,Total+Central,145.5965,Leo,25.5965,Purva Phalguni,4,Y
+2073-02-07 01:54,Solar,Partial+Non-Central,294.0122,Capricorn,24.0122,Dhanishta,1,N
+2073-02-22 07:23,Lunar,Total,129.3639,Leo,9.3639,Magha,3,?
+2073-08-03 17:14,Solar,Total+Central,107.1190,Cancer,17.1190,Ashlesha,1,N
+2073-08-17 17:41,Lunar,Total,300.5297,Aquarius,0.5297,Dhanishta,3,?
+2074-01-27 06:42,Solar,Annular+Central,282.7901,Capricorn,12.7901,Shravana,1,Y
+2074-02-11 20:54,Lunar,Penumbral,118.5027,Cancer,28.5027,Ashlesha,4,?
+2074-07-08 17:20,Lunar,Penumbral,262.1860,Sagittarius,22.1860,Purva Ashadha,3,?
+2074-07-24 03:09,Solar,Annular+Central,96.7519,Cancer,6.7519,Pushya,2,Y
+2074-08-07 01:54,Lunar,Penumbral,289.9845,Capricorn,19.9845,Shravana,3,?
+2075-01-02 09:53,Lunar,Penumbral,77.3133,Gemini,17.3133,Ardra,4,?
+2075-01-16 18:34,Solar,Total+Central,271.8429,Capricorn,1.8429,Uttara Ashadha,2,N
+2075-06-28 09:54,Lunar,Partial,252.0453,Sagittarius,12.0453,Moola,4,?
+2075-07-13 06:04,Solar,Annular+Central,86.1262,Gemini,26.1262,Punarvasu,2,N
+2075-12-22 08:54,Lunar,Partial,65.7437,Gemini,5.7437,Mrigashira,4,?
+2076-01-06 10:06,Solar,Total+Central,261.0331,Sagittarius,21.0331,Purva Ashadha,3,N
+2076-06-01 17:30,Solar,Partial+Non-Central,47.1885,Taurus,17.1885,Rohini,3,N
+2076-06-17 02:38,Lunar,Total,241.8946,Sagittarius,1.8946,Moola,1,?
+2076-07-01 06:49,Solar,Partial+Non-Central,75.4213,Gemini,15.4213,Ardra,3,N
+2076-11-26 11:41,Solar,Partial+Non-Central,220.1734,Scorpio,10.1734,Anuradha,3,N
+2076-12-10 11:33,Lunar,Total,54.3445,Taurus,24.3445,Mrigashira,1,?
+2077-05-22 02:44,Solar,Total+Central,36.7504,Taurus,6.7504,Krittika,4,N
+2077-06-06 14:58,Lunar,Partial,231.5521,Scorpio,21.5521,Jyeshtha,2,?
+2077-11-15 17:06,Solar,Annular+Central,209.0346,Libra,29.0346,Vishakha,3,N
+2077-11-29 21:34,Lunar,Partial,43.2780,Taurus,13.2780,Rohini,1,?
+2078-04-27 04:34,Lunar,Penumbral,192.5081,Libra,12.5081,Swati,2,?
+2078-05-11 17:55,Solar,Total+Central,26.5145,Aries,26.5145,Bharani,4,N
+2078-10-21 03:06,Lunar,Penumbral,3.2801,Aries,3.2801,Ashwini,1,?
+2078-11-04 16:54,Solar,Annular+Central,197.7150,Libra,17.7150,Swati,4,N
+2078-11-19 12:38,Lunar,Penumbral,32.4705,Taurus,2.4705,Krittika,2,?
+2079-04-16 05:09,Lunar,Partial,181.4811,Libra,1.4811,Chitra,3,?
+2079-05-01 10:48,Solar,Total+Central,16.2934,Aries,16.2934,Bharani,1,N
+2079-10-10 17:29,Lunar,Total,352.6517,Pisces,22.6517,Revati,2,?
+2079-10-24 18:09,Solar,Annular+Central,186.5243,Libra,6.5243,Chitra,4,N
+2080-03-21 12:18,Solar,Partial+Non-Central,336.8275,Pisces,6.8275,Uttara Bhadrapada,2,N
+2080-04-04 11:22,Lunar,Total,170.6110,Virgo,20.6110,Hasta,4,?
+2080-09-13 16:36,Solar,Partial+Non-Central,146.8286,Leo,26.8286,Uttara Phalguni,1,N
+2080-09-29 01:51,Lunar,Total,341.8387,Pisces,11.8387,Uttara Bhadrapada,3,?
+2081-03-10 15:22,Solar,Annular+Central,325.7354,Aquarius,25.7354,Purva Bhadrapada,2,N
+2081-03-25 00:20,Lunar,Partial,159.9472,Virgo,9.9472,Uttara Phalguni,4,?
+2081-09-03 09:06,Solar,Total+Central,136.5738,Leo,16.5738,Purva Phalguni,1,Y
+2081-09-18 03:34,Lunar,Penumbral,330.8329,Pisces,0.8329,Purva Bhadrapada,4,?
+2082-02-13 06:27,Lunar,Partial,120.0620,Leo,0.0620,Magha,1,?
+2082-02-27 14:45,Solar,Annular+Central,314.4255,Aquarius,14.4255,Shatabhisha,3,N
+2082-08-08 14:45,Lunar,Penumbral,291.6102,Capricorn,21.6102,Shravana,4,?
+2082-08-24 01:14,Solar,Total+Central,126.3511,Leo,6.3511,Magha,2,Y
+2083-02-02 18:25,Lunar,Total,109.1003,Cancer,19.1003,Ashlesha,1,?
+2083-02-16 18:05,Solar,Partial+Non-Central,303.2274,Aquarius,3.2274,Dhanishta,3,N
+2083-07-15 00:12,Solar,Partial+Non-Central,87.7585,Gemini,27.7585,Punarvasu,3,N
+2083-07-29 01:04,Lunar,Total,281.1771,Capricorn,11.1771,Shravana,1,?
+2083-08-13 12:33,Solar,Partial+Non-Central,115.9780,Cancer,25.9780,Ashlesha,3,N
+2084-01-07 17:28,Solar,Partial+Non-Central,262.3106,Sagittarius,22.3106,Purva Ashadha,3,N
+2084-01-22 23:11,Lunar,Total,97.7975,Cancer,7.7975,Pushya,2,?
+2084-07-03 01:48,Solar,Annular+Central,77.0858,Gemini,17.0858,Ardra,4,N
+2084-07-17 16:57,Lunar,Partial,270.9852,Capricorn,0.9852,Uttara Ashadha,2,?
+2084-12-27 09:12,Solar,Total+Central,251.5096,Sagittarius,11.5096,Moola,4,N
+2085-01-10 22:31,Lunar,Penumbral,86.2480,Gemini,26.2480,Punarvasu,2,?
+2085-06-08 02:16,Lunar,Penumbral,233.1100,Scorpio,23.1100,Jyeshtha,2,?
+2085-06-22 03:19,Solar,Annular+Central,66.4066,Gemini,6.4066,Mrigashira,4,Y
+2085-07-07 10:03,Lunar,Penumbral,260.8582,Sagittarius,20.8582,Purva Ashadha,3,?
+2085-12-01 08:24,Lunar,Penumbral,44.8941,Taurus,14.8941,Rohini,2,?
+2085-12-16 22:36,Solar,Annular+Central,240.6148,Sagittarius,0.6148,Moola,1,N
+2086-05-28 12:42,Lunar,Partial,222.6763,Scorpio,12.6763,Anuradha,3,?
+2086-06-11 11:05,Solar,Total+Central,55.9700,Taurus,25.9700,Mrigashira,1,N
+2086-11-20 20:18,Lunar,Partial,33.9468,Taurus,3.9468,Krittika,3,?
+2086-12-06 05:37,Solar,Partial+Non-Central,229.4734,Scorpio,19.4734,Jyeshtha,1,Y
+2087-05-02 18:03,Solar,Partial+Non-Central,17.5048,Aries,17.5048,Bharani,2,N
+2087-05-17 15:53,Lunar,Total,211.9069,Scorpio,1.9069,Vishakha,4,?
+2087-06-01 01:25,Solar,Partial+Non-Central,45.7641,Taurus,15.7641,Rohini,2,N
+2087-10-26 11:45,Solar,Partial+Non-Central,188.2058,Libra,8.2058,Swati,1,N
+2087-11-10 12:04,Lunar,Total,23.2081,Aries,23.2081,Bharani,3,?
+2088-04-21 10:30,Solar,Total+Central,7.2166,Aries,7.2166,Ashwini,3,Y
+2088-05-05 16:15,Lunar,Partial,200.9769,Libra,20.9769,Vishakha,1,?
+2088-10-14 14:46,Solar,Annular+Central,177.1437,Virgo,27.1437,Chitra,2,N
+2088-10-30 03:01,Lunar,Partial,12.4870,Aries,12.4870,Ashwini,4,?
+2089-03-26 09:32,Lunar,Penumbral,161.4644,Virgo,11.4644,Hasta,1,?
+2089-04-10 22:43,Solar,Annular+Central,356.6947,Pisces,26.6947,Revati,4,N
+2089-09-19 22:09,Lunar,Penumbral,332.7136,Pisces,2.7136,Purva Bhadrapada,4,?
+2089-10-04 01:13,Solar,Total+Central,166.4620,Virgo,16.4620,Hasta,2,Y
+2090-03-15 23:47,Lunar,Total,150.8036,Virgo,0.8036,Uttara Phalguni,2,?
+2090-03-31 03:36,Solar,Partial+Non-Central,345.8094,Pisces,15.8094,Uttara Bhadrapada,4,N
+2090-09-08 22:51,Lunar,Total,321.7160,Aquarius,21.7160,Purva Bhadrapada,1,?
+2090-09-23 16:55,Solar,Total+Central,156.0548,Virgo,6.0548,Uttara Phalguni,3,N
+2091-02-18 09:53,Solar,Partial+Non-Central,304.8560,Aquarius,4.8560,Dhanishta,4,N
+2091-03-05 15:56,Lunar,Total,140.1647,Leo,20.1647,Purva Phalguni,3,?
+2091-08-15 00:33,Solar,Total+Central,117.3674,Cancer,27.3674,Ashlesha,4,N
+2091-08-29 00:36,Lunar,Total,310.8188,Aquarius,10.8188,Shatabhisha,2,?
+2092-02-07 15:08,Solar,Annular+Central,293.6900,Capricorn,23.6900,Dhanishta,1,N
+2092-02-23 05:19,Lunar,Penumbral,129.3460,Leo,9.3460,Magha,3,?
+2092-07-19 00:40,Lunar,Penumbral,272.3914,Capricorn,2.3914,Uttara Ashadha,2,?
+2092-08-03 09:58,Solar,Annular+Central,106.9527,Cancer,16.9527,Ashlesha,1,N
+2092-08-17 09:12,Lunar,Penumbral,300.2493,Aquarius,0.2493,Dhanishta,3,?
+2093-01-12 17:58,Lunar,Penumbral,88.2370,Gemini,28.2370,Punarvasu,3,?
+2093-01-27 03:20,Solar,Total+Central,282.7782,Capricorn,12.7782,Shravana,1,N
+2093-07-08 17:22,Lunar,Partial,262.2534,Sagittarius,22.2534,Purva Ashadha,3,?
+2093-07-23 12:30,Solar,Annular+Central,96.2935,Cancer,6.2935,Pushya,1,N
+2094-01-01 16:58,Lunar,Partial,76.6619,Gemini,16.6619,Ardra,3,?
+2094-01-16 18:57,Solar,Total+Central,271.9841,Capricorn,1.9841,Uttara Ashadha,2,N
+2094-06-13 00:20,Solar,Partial+Non-Central,57.4088,Taurus,27.4088,Mrigashira,2,N
+2094-06-28 10:00,Lunar,Total,252.1143,Sagittarius,12.1143,Moola,4,?
+2094-07-12 13:23,Solar,Partial+Non-Central,85.5943,Gemini,25.5943,Punarvasu,2,N
+2094-12-07 20:04,Solar,Partial+Non-Central,231.0449,Scorpio,21.0449,Jyeshtha,2,N
+2094-12-21 19:54,Lunar,Total,65.2541,Gemini,5.2541,Mrigashira,4,?
+2095-06-02 10:06,Solar,Total+Central,47.0219,Taurus,17.0219,Rohini,3,N
+2095-06-17 21:58,Lunar,Partial,241.7729,Sagittarius,1.7729,Moola,1,?
+2095-11-27 01:01,Solar,Annular+Central,219.8478,Scorpio,9.8478,Anuradha,2,N
+2095-12-11 06:13,Lunar,Partial,54.1771,Taurus,24.1771,Mrigashira,1,?
+2096-05-07 11:23,Lunar,Penumbral,202.8644,Libra,22.8644,Vishakha,1,?
+2096-05-22 01:35,Solar,Total+Central,36.8304,Taurus,6.8304,Krittika,4,Y
+2096-06-06 02:42,Lunar,Penumbral,231.1300,Scorpio,21.1300,Jyeshtha,2,?
+2096-10-31 11:28,Lunar,Penumbral,13.9840,Aries,13.9840,Bharani,1,?
+2096-11-15 00:34,Solar,Annular+Central,208.4673,Libra,28.4673,Vishakha,3,N
+2096-11-29 21:20,Lunar,Penumbral,43.3363,Taurus,13.3363,Rohini,2,?
+2097-04-26 12:16,Lunar,Partial,191.9082,Libra,11.9082,Swati,2,?
+2097-05-11 18:33,Solar,Total+Central,26.6593,Aries,26.6593,Bharani,4,N
+2097-10-21 01:29,Lunar,Total,3.2837,Aries,3.2837,Ashwini,1,?
+2097-11-04 01:59,Solar,Annular+Central,197.2273,Libra,17.2273,Swati,4,N
+2098-04-01 20:00,Solar,Partial+Non-Central,347.4190,Pisces,17.4190,Revati,1,N
+2098-04-15 19:03,Lunar,Total,181.1230,Libra,1.1230,Chitra,3,?
+2098-09-25 00:29,Solar,Partial+Non-Central,157.2961,Virgo,7.2961,Uttara Phalguni,4,N
+2098-10-10 09:18,Lunar,Total,352.3831,Pisces,22.3831,Revati,2,?
+2098-10-24 10:34,Solar,Partial+Non-Central,186.3446,Libra,6.3446,Chitra,4,N
+2099-03-21 22:52,Solar,Annular+Central,336.3961,Pisces,6.3961,Uttara Bhadrapada,1,N
+2099-04-05 08:29,Lunar,Partial,170.5517,Virgo,20.5517,Hasta,4,?
+2099-09-14 16:56,Solar,Total+Central,146.9721,Leo,26.9721,Uttara Phalguni,1,N
+2099-09-29 10:35,Lunar,Penumbral,341.2846,Pisces,11.2846,Uttara Bhadrapada,3,?
+2100-02-24 15:03,Lunar,Penumbral,130.9066,Leo,10.9066,Magha,4,?
+2100-03-10 22:26,Solar,Annular+Central,325.1589,Aquarius,25.1589,Purva Bhadrapada,2,N
+2100-08-19 21:43,Lunar,Penumbral,301.8631,Aquarius,1.8631,Dhanishta,3,?
+2100-09-04 08:47,Solar,Total+Central,136.6851,Leo,16.6851,Purva Phalguni,2,N

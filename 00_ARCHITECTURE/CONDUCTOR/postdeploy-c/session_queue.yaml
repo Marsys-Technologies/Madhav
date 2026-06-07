@@ -1,0 +1,22 @@
+# Stream C — Empty-DB Migration Squash Test
+# AUTO-DEFERS if Docker unavailable (Docker is unavailable on this runner)
+stream: postdeploy-c
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPostC
+branch: feature/postdeploy-c-migration-test
+wave_close_tag: postdeploy-c-deferred-docker
+budget_cap_usd: 100
+
+sessions:
+  - id: c1-docker-check-and-defer
+    status: pending
+    depends_on: []
+    scope: >
+      Check Docker availability. If unavailable (as detected in preflight),
+      write smriti/DOCKER_UNAVAILABLE.md deferral entry and exit cleanly.
+      Tag postdeploy-c-deferred-docker to mark stream complete per brief §3.
+    acceptance:
+      - smriti/DOCKER_UNAVAILABLE.md written
+      - tag postdeploy-c-deferred-docker created and pushed
+    must_not_touch:
+      - platform/**
+      - 00_ARCHITECTURE/**

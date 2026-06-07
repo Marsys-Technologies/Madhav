@@ -1,0 +1,68 @@
+{
+  "edges": [
+    {
+      "edge_id": "CGM_CONTRADICTS_001",
+      "source_node_id": "SIG.MSR.226",
+      "target_node_id": "KARAKA.DUAL_SYSTEM_DIVERGENCE",
+      "edge_type": "CONTRADICTS",
+      "conflict_type": "rahu_as_pk",
+      "source_batch": "B4_contradicts_batchC",
+      "hypothesis_id": "810e21c3b443",
+      "claude_pass1_artifact": "035_DISCOVERY_LAYER/PROMPTS/claude/responses/2026-04-26_B4_contradicts_pass1_batchC.md",
+      "gemini_pass2_artifact": "035_DISCOVERY_LAYER/PROMPTS/gemini/responses/2026-04-26_B4_contradicts_batchC_raw.md",
+      "claude_severity_prior": "HIGH",
+      "gemini_confidence": "HIGH",
+      "accepted_at": "2026-04-26T17:34:03.568769+00:00",
+      "accepted_by_session": "Madhav_M2A_Exec_8",
+      "steelman_reconciliation_excerpt": "8-karaka is likely correct here because the Rahu-as-PK signature specifically maps to the observed L1 fact (twins). Establish 8-karaka as authoritative for D7/progeny."
+    },
+    {
+      "edge_id": "CGM_CONTRADICTS_002",
+      "source_node_id": "SIG.MSR.320",
+      "target_node_id": "KARAKA.DUAL_SYSTEM_DIVERGENCE",
+      "edge_type": "CONTRADICTS",
+      "conflict_type": "rahu_as_pk",
+      "source_batch": "B4_contradicts_batchC",
+      "hypothesis_id": "fac56a0f64a1",
+      "claude_pass1_artifact": "035_DISCOVERY_LAYER/PROMPTS/claude/responses/2026-04-26_B4_contradicts_pass1_batchC.md",
+      "gemini_pass2_artifact": "035_DISCOVERY_LAYER/PROMPTS/gemini/responses/2026-04-26_B4_contradicts_batchC_raw.md",
+      "claude_severity_prior": "HIGH",
+      "gemini_confidence": "HIGH",
+      "accepted_at": "2026-04-26T17:34:03.568769+00:00",
+      "accepted_by_session": "Madhav_M2A_Exec_8",
+      "steelman_reconciliation_excerpt": "This is a genuine contradiction in karaka assignment. The system must definitively lock either 7-karaka or 8-karaka for the entire chart to prevent conflicting PK assignments."
+    },
+    {
+      "edge_id": "CGM_CONTRADICTS_003",
+      "source_node_id": "SIG.MSR.321",
+      "target_node_id": "KARAKA.DUAL_SYSTEM_DIVERGENCE",
+      "edge_type": "CONTRADICTS",
+      "conflict_type": "rahu_as_pk",
+      "source_batch": "B4_contradicts_batchC",
+      "hypothesis_id": "0f1acb0b8189",
+      "claude_pass1_artifact": "035_DISCOVERY_LAYER/PROMPTS/claude/responses/2026-04-26_B4_contradicts_pass1_batchC.md",
+      "gemini_pass2_artifact": "035_DISCOVERY_LAYER/PROMPTS/gemini/responses/2026-04-26_B4_contradicts_batchC_raw.md",
+      "claude_severity_prior": "HIGH",
+      "gemini_confidence": "HIGH",
+      "accepted_at": "2026-04-26T17:34:03.568769+00:00",
+      "accepted_by_session": "Madhav_M2A_Exec_8",
+      "steelman_reconciliation_excerpt": "A strict karaka list must be generated and strictly enforced. If 8-karaka is used for Rahu, Jupiter must remain GK."
+    },
+    {
+      "edge_id": "CGM_CONTRADICTS_004",
+      "source_node_id": "SIG.MSR.432",
+      "target_node_id": "KARAKA.DUAL_SYSTEM_DIVERGENCE",
+      "edge_type": "CONTRADICTS",
+      "conflict_type": "rahu_as_pk",
+      "source_batch": "B4_contradicts_batchC",
+      "hypothesis_id": "e5d900ab8b1e",
+      "claude_pass1_artifact": "035_DISCOVERY_LAYER/PROMPTS/claude/responses/2026-04-26_B4_contradicts_pass1_batchC.md",
+      "gemini_pass2_artifact": "035_DISCOVERY_LAYER/PROMPTS/gemini/responses/2026-04-26_B4_contradicts_batchC_raw.md",
+      "claude_severity_prior": "HIGH",
+      "gemini_confidence": "HIGH",
+      "accepted_at": "2026-04-26T17:34:03.568769+00:00",
+      "accepted_by_session": "Madhav_M2A_Exec_8",
+      "steelman_reconciliation_excerpt": "The yoga's existence depends on the 8-karaka system. The text likely intends the 8-karaka system to validate the observed Raja Yoga effect."
+    }
+  ]
+}

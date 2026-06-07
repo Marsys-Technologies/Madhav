@@ -1,0 +1,960 @@
+{
+  "schema": "06_LEARNING_LAYER/SCHEMAS/pattern_schema_v0_1.json",
+  "version": "1.0",
+  "produced_by_session": "Madhav_M2A_Exec_9",
+  "produced_at": "2026-04-27",
+  "patterns": [
+    {
+      "pattern_id": "PAT.001",
+      "claim_text": "The convergence of the highest career signal and highest adversity signal under Saturn AK forces an unprecedented structural manifestation of career peak rather than collapse.",
+      "mechanism": "Saturn acts as both Atmakaraka and Amatyakaraka. The simultaneous activation of Mercury's eight-system operational peak with Sade Sati's structural pressure (Saturn transit Pisces activating D27 Lagna) creates a pressure cooker where karmic adversity is sublimated into relentless professional output via the exalted Mars-Saturn 7H conjunction.",
+      "domain": "career",
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.396",
+        "SIG.MSR.015",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [
+        "Standard astrology dictates Sade Sati descent overlapping with an Avayogi-associated period should cause career breakdown, not peak."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "Saturn AK's inherent delays and frustrations during Sade Sati will ultimately suffocate the Mercury MD operational peak, resulting in burnout.",
+        "The activation of Pisces (D1 12H) during the Sade Sati peak will force isolation or foreign retreat, actively dismantling the career built during the Mercury MD."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.9,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "The native experiences a structural collapse of career or sustained, involuntary unemployment without commensurate high-level replacement during the Saturn transit of Pisces."
+        ]
+      },
+      "ledger_event_ids": [
+        "24672f3b2b63",
+        "543d3c801495"
+      ],
+      "prediction_ledger_ref": "PRED.001",
+      "created_at": "2026-04-26T19:05:38.635284+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.002",
+      "claim_text": "Professional output is an architectural compulsion of the soul rather than a choice, driven by Mercury's dual role as operational planet and Karakamsa occupant.",
+      "mechanism": "Mercury is structurally dominant across eight systems and occupies the D9 Karakamsa, linking the soul's deep purpose directly to the active career engine. Supported by AL in 10H Capricorn and D60 Saturn at Lagna, the chart mandates that the native's career acts as the primary vehicle for fulfilling deep-seated spiritual discipline and karmic obligations.",
+      "domain": "cross_domain",
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.348",
+        "SIG.MSR.397",
+        "SIG.MSR.042"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "Mercury in D9 Karakamsa suggests a purely intellectual or communicative spiritual path, detached from the heavy material demands of AL in 10H.",
+        "D60 Saturn at Lagna enforces a karmic rigidity that actively conflicts with Mercury's versatile operational nature, causing a split between soul purpose and daily work."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "24672f3b2b63",
+        "43977fca872a"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:05:38.637361+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.003",
+      "claim_text": "The same exalted structural tension that fuels career success acts as a systemic constraint on the window for children, demanding a deliberate reprioritization.",
+      "mechanism": "Mars acts as both Putrakaraka and Avayogi, locked in a fierce Hidden Raja Yoga with exalted Saturn in the 7H. This intense outward-facing energy fuels career (CDLM.D1.D5) but actively consumes the resources required for 5th house matters. The career-building machinery structurally defers the progeny window until specific dasha timings unlock it.",
+      "domain": "children",
+      "signals_referenced": [
+        "SIG.MSR.164",
+        "SIG.MSR.083",
+        "SIG.MSR.255",
+        "SIG.MSR.015"
+      ],
+      "counter_cases": [
+        "Exalted Saturn should stabilize the 7H and by extension aspect the 9H and Lagna, which theoretically supports overall life stability including progeny."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "Mars PK in the 7H indicates that children will come exclusively through partnership or marriage, without directly competing with career energy.",
+        "The Avayogi status of Mars completely denies the fruit of the 5th house regardless of career success or dasha timing."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.75,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "24672f3b2b63",
+        "b646800472c6"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:05:38.639328+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.004",
+      "claim_text": "Routine communication and public expression carry inherent calamitous risks that must be actively converted into dharmic offerings or foreign gains.",
+      "mechanism": "Gulika resides in the 3H, creating zones of unpredictable toxicity in daily expression. This must be managed through the Mercury-Saturn-Ketu karma-clearing sequence. By operating at the 11H-12H interface (foreign gains and moksha, e.g., the Singapore context), the volatile communicative energy is safely grounded in structured, long-distance environments rather than blowing up local networks.",
+      "domain": "mind",
+      "signals_referenced": [
+        "SIG.MSR.228",
+        "SIG.MSR.194",
+        "SIG.MSR.216"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "Gulika in the 3H simply makes the native a harsh and chaotic communicator, permanently damaging relationships with peers and siblings.",
+        "The foreign gains (11H-12H interface) operate entirely independently of the 3H communication risks, providing an escape rather than a transmutation."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.7,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "24672f3b2b63",
+        "5dff0f66ce7e"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:05:38.641251+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.005",
+      "claim_text": "Saturn's triple-layer activation — transit adversity, divisional chart strength peak, and past-karma thread — converges in a single window, structurally demanding resolution of karmic debt under maximum operational output.",
+      "mechanism": "Three independent chart layers simultaneously activate Saturn in the 2025–2028 window: D1 Sade Sati (transit through Pisces = adversity layer), D27 Lagna in Pisces (strength chart Lagna = peak vitality layer), and D60 Saturn at Lagna (past-karma primary thread = karmic pressure layer). No single layer alone is sufficient to explain the intensity; the convergence creates a structural forcing function where the native cannot postpone karmic resolution — the operational capacity (Mercury MD) is simultaneously at its highest, making this the highest-leverage window in the lifetime for clearing Saturn's karmic ledger.",
+      "domain": "cross_domain",
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.041",
+        "SIG.MSR.042",
+        "SIG.MSR.396"
+      ],
+      "counter_cases": [
+        "Classical astrology treats Sade Sati, divisional chart strength, and D60 karmic indicators as independent systems that should be read separately — their convergence in the same window may be coincidental rather than structurally entangled."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "The D27 Lagna activation during Sade Sati merely means the native has the physical and psychological resilience to survive the adversity — the karmic clearing is incidental, not architectural.",
+        "D60 Saturn at Lagna establishes a lifetime-constant karmic baseline, not a time-indexed activation — interpreting it as converging with the transit is an overreach of the divisional system."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.88,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "The native experiences no meaningful resolution of long-standing karmic or structural life themes during the Saturn-Pisces transit, and the period passes as ordinary adversity without visible personal transformation or breakthrough."
+        ]
+      },
+      "ledger_event_ids": [
+        "5f6564a308cf",
+        "0b4ca00b970e"
+      ],
+      "prediction_ledger_ref": "PRED.004",
+      "created_at": "2026-04-26T19:18:02.603116+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "8c1f2df65522"
+    },
+    {
+      "pattern_id": "PAT.006",
+      "claim_text": "Mars functions as a simultaneous architectural creator and architectural destroyer across three domains — career, children, and wealth — making it the most structurally volatile planet in the chart despite its exaltation.",
+      "mechanism": "Mars occupies three conflicting karaka roles simultaneously: (1) Raja Yoga co-creator with Saturn in 7H (career booster), (2) Putrakaraka in a house that is also Avayogi-designated (children inhibitor), and (3) natural ruler of Aries Lagna whose 7H Libra sign connects to the Arudha Lagna's 10H Capricorn via Saturn's AmK governance. The same planetary energy that structures career architecture systematically exhausts the resources required for children domain activation and diverts wealth-building energy toward ambition rather than preservation. Mars cannot satisfy all three roles simultaneously — one domain always subsidizes the others.",
+      "domain": "cross_domain",
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.164",
+        "SIG.MSR.083",
+        "SIG.MSR.397"
+      ],
+      "counter_cases": [
+        "Exalted Mars in the 7H Libra is generally considered auspicious across domains — an exalted planet's multi-domain influence should be uniformly positive, not destructive in some domains."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "Mars as Avayogi applies only to fortune-reduction in mundane matters and does not affect domain-level architectural competition — the career and children effects are independent of each other.",
+        "Jupiter's presence in the 9H Sagittarius provides sufficient dharmic expansion to counterbalance Mars Avayogi's fortune-reduction, neutralizing the destructive element of the triple function."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.82,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "5f6564a308cf",
+        "80f08ad04b98"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:18:02.605318+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "94d311e7ba14"
+    },
+    {
+      "pattern_id": "PAT.007",
+      "claim_text": "The Mercury MD → Saturn MD transition in 2027 is architecturally pre-staged by the Sade Sati peak, creating a four-year bridge rehearsal period that reduces transition discontinuity.",
+      "mechanism": "The Sade Sati peak (Saturn in Pisces 2025–2028) begins two years before the Saturn MD opens (~2027) and extends five years into it. Saturn is therefore simultaneously the MD planet-in-waiting and the active transit adversity source. The native's operational system (Mercury MD) is being gradually overwritten by Saturn's energy before the formal MD handover — themes of restriction, consolidation, discipline, and karmic reckoning begin manifesting under Mercury MD governance, which would otherwise be uncharacteristic of Mercury MD. This pre-staging reduces the discontinuity shock of the MD transition and means the native enters Saturn MD already adapted to Saturn themes.",
+      "domain": "career",
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.042",
+        "SIG.MSR.396",
+        "SIG.MSR.413"
+      ],
+      "counter_cases": [
+        "Dasha transitions are discrete events; the incoming MD planet's energy does not leak into the final sub-periods of the outgoing MD in classical Vimshottari theory."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "The Sade Sati overlap with Mercury MD end simply adds adversity to an otherwise productive period — it does not constitute Saturn MD pre-staging but rather a final stress test before the transition.",
+        "The D60 Saturn at Lagna makes the entire lifetime Saturn-inflected by default; there is no meaningful distinction between 'pre-staged Saturn MD' and the native's baseline karmic constant."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.8,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2029-12-31",
+        "falsifier_conditions": [
+          "The native's professional and personal character in 2025–2027 remains entirely Mercury-typical (communication-driven, versatile, commercially optimized) with no visible Saturn-typical consolidation, restriction, or karmic reckoning themes entering."
+        ]
+      },
+      "ledger_event_ids": [
+        "5f6564a308cf",
+        "da9343266c2b"
+      ],
+      "prediction_ledger_ref": "PRED.002",
+      "created_at": "2026-04-26T19:18:02.608035+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "6ab214d8ab78"
+    },
+    {
+      "pattern_id": "PAT.008",
+      "claim_text": "Saturn anchors the native's identity at two levels — as AL lord (direct: Arudha Lagna = Capricorn, Capricorn lord = Saturn) and as dispositor of Mercury, lord of the D9 Karakamsa — creating a Saturn-Mercury identity axis across the Capricorn-Gemini spine. Material public recognition (AL) and soul-purpose fulfillment (Karakamsa) cannot diverge without Saturn or Mercury breaking sign-relationship: spiritual evolution and material recognition advance or regress together, never independently.",
+      "mechanism": "Two-step architecture, not parallel governance. STEP 1 (direct, L1-clean): Arudha Lagna = Capricorn 10H (FORENSIC §17, derivation: Lagna Aries → lord Mars in 7th Libra; 10th from Libra = Capricorn). Capricorn lord = Saturn. Therefore Saturn governs the AL surface directly. STEP 2 (one-step-removed, via dispositorship): Atmakaraka = Moon (highest D1 longitude 27°02′); Moon's D9 sign = Gemini; therefore Karakamsa = Gemini, ruled by Mercury (not Saturn). Mercury occupies Capricorn 10H Vargottama (D1 Capricorn = D9 Capricorn), where Saturn is the sign lord — so Saturn DISPOSITS Mercury, and Mercury rules the D9 Karakamsa. The Saturn-Mercury identity axis runs across the Capricorn-Gemini spine: Saturn → (disposits) → Mercury → (rules) → Karakamsa. This is the actual mechanism behind the identity lock, not direct Saturn-governance of both surfaces. Saturn transit activation (D1 Sade Sati 2025–2028 + D60 Lagna past-karma) during Mercury MD (2010–2027) reaches both dimensions through this single architectural axis: AL via direct rulership, Karakamsa via Saturn-disciplines-Mercury-Vargottama. [EXTERNAL_COMPUTATION_REQUIRED: Jagannatha Hora export of native chart (1984-02-05, 10:43 IST, Bhubaneswar) D9 (Navamsa) to verify (a) Moon D9 placement = Gemini (confirming Karakamsa = Gemini = Mercury-ruled), and (b) Mercury D1 placement = Capricorn (confirming Vargottama dispositorship). Verification anchors the two-step axis; AL half is already L1-clean from FORENSIC §17 + classical Capricorn-Saturn rulership and does not require external verification.]",
+      "domain": "spiritual",
+      "signals_referenced": [
+        "SIG.MSR.348",
+        "SIG.MSR.397",
+        "SIG.MSR.042",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [
+        "Many spiritual traditions hold that material achievement and spiritual progress are antithetical — Karakamsa advancement should ideally involve renunciation of AL-driven material recognition."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "The Saturn-Mercury link between Karakamsa and AL is a governance artifact, not a causal lock — the native can choose to develop spiritually without material ambition by deliberately separating Mercury MD activities from public output.",
+        "D9 Karakamsa analysis applies to the 64th navamsha and other micro-period configurations, not to the MD-level lifetime arc — the architectural lock operates only within specific sub-period windows, not as a permanent structural feature."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.87,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "106934ae1fa9",
+        "de6fbd92cc42"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:18:29.847912+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "resolved_pending_ecr",
+      "re_validation_event_id": "285487cb9dcc",
+      "status": "needs_verification",
+      "resolution_session": "M3-W1-A4-DIS009-DISPOSITION",
+      "resolution_note": "DIS.009 disposed via R3 (RE-GROUND) at M3-A close 2026-05-01. Mechanism rewritten to make the two-step architecture explicit: Saturn directly governs the AL (L1-clean), and Saturn disposits Mercury in Capricorn 10H Vargottama where Mercury rules the D9 Karakamsa (Gemini, since Karakamsa = Moon-D9-sign = Gemini). The original 'Saturn governs both the D9 Karakamsa and D1 AL' phrasing was literally false against L1 (Karakamsa lord = Mercury, not Saturn). The Saturn-Mercury Capricorn-Gemini identity axis is the corrected mechanism. AL half is L1-clean and active; D9 Karakamsa half carries [EXTERNAL_COMPUTATION_REQUIRED] per CLAUDE.md §I B.10 pending Jagannatha Hora D9 export per ED.1 (M3-B-class verification window). Status set to needs_verification until JH export confirms (a) Moon D9 = Gemini and (b) Mercury D1 = Capricorn."
+    },
+    {
+      "pattern_id": "PAT.009",
+      "claim_text": "The Mercury-governed communication channel is the chart's highest-leverage and highest-risk domain simultaneously: it is the primary career engine (SIG.MSR.413) and the primary calamity conduit (Gulika 3H), making the native's professional longevity contingent on communication discipline.",
+      "mechanism": "Mercury is the primary operational planet across eight career systems (SIG.MSR.413) and simultaneously rules the 3H of communication and courage. Gulika in Gemini 3H places a calamity-significator directly in Mercury's domain house. The Mercury-Saturn-Ketu karma-clearing sequence (SIG.MSR.194) requires structured communication output as the vehicle for karmic resolution. In the Singapore foreign context (11H-12H interface), this communication channel is directed outward, reducing local network damage risk. The pattern: maximum professional leverage and maximum professional risk flow through the same channel — one structural decision (communication discipline vs. unchecked expression) determines whether the channel amplifies career or detonates it.",
+      "domain": "career",
+      "signals_referenced": [
+        "SIG.MSR.228",
+        "SIG.MSR.194",
+        "SIG.MSR.216",
+        "SIG.MSR.413"
+      ],
+      "counter_cases": [
+        "Gulika's calamitous influence in the 3H primarily affects siblings and short journeys, not professional communication output — interpreting it as a career risk may overextend the karakaship."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "The 3H Gulika creates calamity specifically in short-communication media (social media, informal channels) but leaves long-form structured communication (writing, formal presentations) unaffected.",
+        "Mercury's exaltation-equivalent strength across eight systems fully neutralizes Gulika's 3H calamity potential — the career engine is too robust to be derailed by Gulika's local house placement."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "106934ae1fa9",
+        "5c9bb1dee84a"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:18:29.850153+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "3fb9fa012495"
+    },
+    {
+      "pattern_id": "PAT.010",
+      "claim_text": "The D27 strength-chart Lagna in Pisces — natal 12H — architecturally encodes that the native's maximum vitality and impact manifest in foreign, renunciative, or moksha-oriented contexts rather than in the first-house domestic sphere.",
+      "mechanism": "The D27 (Saptavimshamsha) chart governs vitality and inherent strength. When the D27 Lagna falls in Pisces — which is simultaneously the D1 12H (moksha/foreign/hidden) — the native's peak vitality expression is encoded in the 12H domain. This is not the typical strength-chart profile (where D27 Lagna falling on a kendra strengthens the native in assertive, worldly domains). Combined with the Mercury Karakamsa (soul purpose = intellectual-communicative in spiritual register) and the Saturn transit of Pisces activating this very D27 Lagna in 2025–2028, the chart states that the maximum vitality window and the maximum moksha-orientation window are the same window.",
+      "domain": "spiritual",
+      "signals_referenced": [
+        "SIG.MSR.041",
+        "SIG.MSR.348",
+        "SIG.MSR.015",
+        "SIG.MSR.194"
+      ],
+      "counter_cases": [
+        "D27 Lagna in the natal 12H could equally indicate a lifetime of hidden strength that is never fully expressed publicly — the interpretation of 'foreign contexts maximize vitality' may be too specific."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "D27 Lagna in Pisces simply reflects the strength of 12H-associated activities (sleep, meditation, retreat) as restorative practices — it does not imply that the native's primary vitality arc is foreign or renunciative.",
+        "The Hidden Raja Yoga (SIG.MSR.015) in the 7H produces enough outward-facing, partnership-domain vitality to override the D27 12H Lagna's inward-orientation — the chart may ultimately be more worldly than the D27 Lagna suggests."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.78,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "106934ae1fa9",
+        "4dcdff9881c4"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T19:18:29.852304+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "d6ebd768a6c1"
+    },
+    {
+      "pattern_id": "PAT.011",
+      "claim_text": "Ketu in the 8H Scorpio creates an inheritance-moksha gateway that activates progressively with each dasha transition, culminating in the Ketu MD (2038+) when the chart's moksha architecture becomes the primary operational framework.",
+      "mechanism": "Ketu in 8H Scorpio (its own sign, reinforcing depth and dissolution themes) governs sudden transformation, hidden inheritance, and moksha. The Mercury-Saturn-Ketu sequence (SIG.MSR.194) establishes Ketu as the terminal point of the karma-clearing chain: Mercury MD (action) → Saturn MD (consolidation + karmic reckoning) → Ketu MD (dissolution and moksha). The Singapore 11H-12H interface (SIG.MSR.216) already prefigures the 12H moksha theme in the native's current geography. The D27 Lagna in Pisces (natal 12H moksha) reinforces the trajectory. Each successive dasha window moves the operational center of gravity from material (Mercury) through karmic (Saturn) to transcendent (Ketu).",
+      "domain": "spiritual",
+      "signals_referenced": [
+        "SIG.MSR.194",
+        "SIG.MSR.216",
+        "SIG.MSR.041",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [
+        "Ketu in 8H Scorpio can equally manifest as chronic disruption and unpredictable losses throughout life, not as a progressive moksha gateway — interpreting it as architecturally 'activating progressively' requires dasha-specific confirmation."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "The Ketu MD at age 54+ (2038+) is too far in the future to be structurally pre-figured by the current Mercury MD — dasha sequences are self-contained, not progressively loading toward a terminal point.",
+        "Mars Avayogi's fortune-reducing influence competes with Ketu's moksha function in the 8H domain — the net result is stagnation rather than progressive moksha activation."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.76,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2027-01-01",
+        "verification_window_end": "2038-12-31",
+        "falsifier_conditions": [
+          "The native's Saturn MD (2027-2046) shows no progressive deepening of moksha-oriented or renunciative themes and operates purely as a material-consolidation period with no spiritual architecture activation."
+        ]
+      },
+      "ledger_event_ids": [
+        "106934ae1fa9",
+        "c391bbeccdd5"
+      ],
+      "prediction_ledger_ref": "PRED.003",
+      "created_at": "2026-04-26T19:18:29.855439+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "claude_self",
+      "re_validation_status": "gemini_confirmed",
+      "re_validation_event_id": "c9216fca8cbd"
+    },
+    {
+      "pattern_id": "PAT.012",
+      "claim_text": "Saturn's dual role as wealth-output driver and Sade Sati pressure engine forces wealth accumulation to peak under structural adversity.",
+      "mechanism": "AL in 10H Capricorn links wealth directly to career output governed by Saturn (AmK). Concurrently, the Saturn-Pisces triple activation creates a severe 2025-2028 pressure window. The exalted Saturn in 7H structurally entwines this adversity with the very mechanism generating wealth, meaning maximum financial yield occurs paradoxically during maximum restriction.",
+      "domain": "wealth",
+      "signals_referenced": [
+        "SIG.MSR.397",
+        "SIG.MSR.040",
+        "SIG.MSR.015"
+      ],
+      "counter_cases": [
+        "Individuals where AmK and Sade Sati planet are decoupled experience wealth peaks and adversity cycles in separate, non-interfering phases."
+      ],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Saturn as AmK requires extreme austerity in wealth generation, but the wealth itself remains stable.",
+        "8-karaka reading: If Venus is AmK, wealth generation is decoupled from the Saturn-driven Sade Sati adversity, easing the paradox."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "Wealth accumulation halts or collapses entirely during the Saturn-Pisces transit rather than peaking."
+        ]
+      },
+      "ledger_event_ids": [
+        "5a8ac2b64ac5",
+        "31ecae60919b"
+      ],
+      "prediction_ledger_ref": "PRED.005",
+      "created_at": "2026-04-26T22:01:24.586942+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.013",
+      "claim_text": "Vitality depletion and recuperation cycles are mapped structurally to hidden 12H transitions under Sade Sati pressure.",
+      "mechanism": "Gulika in 3H Gemini casts a shadow over vitality and courage. When the Saturn-Pisces triple activation (12H) occurs concurrently with peak Sade Sati, the combined mechanism forces the native to expend vitality (12H) to sustain the peak achievement (Sade Sati paradox), leading to sudden recuperation demands.",
+      "domain": "health",
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.228",
+        "SIG.MSR.396"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Gulika in 3H primarily impacts siblings and communication rather than physical health and vitality.",
+        "8-karaka reading: The 12H transit of Saturn serves primarily as a spiritual isolation window rather than a physical health drain."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.75,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "No significant periods of forced recuperation or vitality loss occur during the peak Sade Sati phase."
+        ]
+      },
+      "ledger_event_ids": [
+        "5a8ac2b64ac5",
+        "a59c6b269268"
+      ],
+      "prediction_ledger_ref": "PRED.006",
+      "created_at": "2026-04-26T22:01:24.590759+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.014",
+      "claim_text": "7H karaka overload and past-karma weight structurally delay and complicate relationship initiation and visibility.",
+      "mechanism": "The Mars+Saturn 7H conjunction places competing forces (PK vs AK/AmK) in the partnership house. The D60 Saturn at Lagna imposes heavy past-karma on these 7H dynamics. Furthermore, D27 Lagna in 12H Pisces suppresses the visible expression of partnership, making relationships slow to form and hidden in their true strength.",
+      "domain": "relationships",
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.042",
+        "SIG.MSR.041"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Exalted Saturn in 7H stabilizes relationships through duty, overcoming the delays caused by Mars.",
+        "8-karaka reading: Venus as a separate karaka maintains relationship flow despite the 7H tension, preventing severe structural suppression."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.8,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "5a8ac2b64ac5",
+        "fbed86a433cf"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T22:01:24.593840+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.015",
+      "claim_text": "Mercury MD acts as the primary analytical engine converting 10H career output into visible wealth accumulation.",
+      "mechanism": "Mercury's Eight-System Convergence establishes it as the primary operational planet. Positioned in the 10H Capricorn (governing commerce/analytics) alongside the Arudha Lagna (AL), Mercury's MD (2010-2027) forces analytical career excellence to manifest as visible, public wealth accumulation during this specific 17-year window.",
+      "domain": "wealth",
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.397"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Mercury MD builds reputation and analytical skill but requires Saturn's later period to solidify actual wealth.",
+        "8-karaka reading: The AL in 10H provides public visibility, but true wealth generation is governed by the 2H/11H lords rather than Mercury."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.9,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "5a8ac2b64ac5",
+        "f4b49d7e8f6a"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T22:01:24.596777+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.016",
+      "claim_text": "Saturn AK transmits parental-lineage karma while the 12H Pisces activation dictates geographical separation from parents.",
+      "mechanism": "D60 Saturn at Lagna explicitly encodes the soul's past-karma primary thread, specifically carrying ancestral lineage weights. Saturn's exaltation in 7H structurally maps authority/parental figures to partnership tests. The Saturn-Pisces triple activation occurs in the 12H (foreign lands/isolation), establishing a clear mechanism for physical separation from parental figures while karmic lineage pressure intensifies.",
+      "domain": "parents",
+      "signals_referenced": [
+        "SIG.MSR.042",
+        "SIG.MSR.015",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Saturn as AK delays the benefits of the parental relationship but does not guarantee geographical separation.",
+        "8-karaka reading: If the Sun is strong, geographical distance may be temporary rather than a permanent structural karmic marker."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.7,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "No physical separation or significant distance from parents occurs during the Saturn-Pisces 12H transit window."
+        ]
+      },
+      "ledger_event_ids": [
+        "e196283857f1",
+        "cbccfe59e767"
+      ],
+      "prediction_ledger_ref": "PRED.007",
+      "created_at": "2026-04-26T22:30:09.889669+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.017",
+      "claim_text": "Avayogi PK status and 7H karaka tension create structural delays and complications in the timeline of progeny.",
+      "mechanism": "Mars serves as both PK (children significator) and Avayogi (fortune-reducer). Its placement in 7H Libra with exalted Saturn creates intense karaka friction, overlaying the children domain with past-karma density (D60 Saturn at Lagna). This structural entanglement means the realization of progeny is intrinsically tied to overcoming Saturnine delays and karmic debt repayment.",
+      "domain": "children",
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.042"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Saturn in 7H delays partnership, but once established, progeny follows naturally without independent complications.",
+        "8-karaka reading: Jupiter as natural karaka for children can override the delays indicated by Mars PK if positively placed."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "e196283857f1",
+        "d17d34276e4d"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T22:30:09.892675+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.018",
+      "claim_text": "12H Pisces serves as the primary gateway for foreign travel, activated most intensely during the Sade Sati peak adversity window.",
+      "mechanism": "D27 Lagna residing in 12H Pisces establishes the native's strength-chart foundation in the house of foreign lands and isolation. The Saturn-Pisces triple activation hits this very house. Coupled with the Sade Sati paradox, the mechanism guarantees that peak career achievements (involving travel or foreign connections) will be inextricably linked to intense adversity and pressure rather than ease.",
+      "domain": "travel",
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.041",
+        "SIG.MSR.396"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: 12H travel is primarily for spiritual retreat, with career travel governed by 9H or 10H dynamics independently.",
+        "8-karaka reading: The 12H activation provides international opportunities but without the severe adversity implied by the Sade Sati paradox."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.88,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "Foreign travel during this period is experienced as easy, relaxing, and detached from career pressure or adversity."
+        ]
+      },
+      "ledger_event_ids": [
+        "e196283857f1",
+        "fb3cc99f5e0f"
+      ],
+      "prediction_ledger_ref": "PRED.008",
+      "created_at": "2026-04-26T22:30:09.895991+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.019",
+      "claim_text": "Mercury's analytical precision as the mind's operating system is shadowed by 3H Gulika's calamity influence on communication courage.",
+      "mechanism": "The Mercury Eight-System Convergence defines the native's primary operational mode as highly analytical and precise (Mercury in 10H). However, Gulika's placement in Gemini (Mercury's sign) in the 3H forces this intellectual capability to confront a persistent shadow over communication courage. The D60 Saturn at Lagna ensures this tension is managed through extreme, karmic cognitive discipline.",
+      "domain": "mind",
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.228",
+        "SIG.MSR.042"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Mercury 10H provides purely objective analytical skills, largely immune to the emotional/courage shadow of 3H Gulika.",
+        "8-karaka reading: The 3H Gulika primarily disrupts sibling relations and short journeys rather than intrinsic cognitive courage."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.8,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "e196283857f1",
+        "8a1f0143afdc"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T22:30:09.898887+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.020",
+      "claim_text": "D60 and D27 alignment in moksha signifies that the 12H Pisces activation serves as a catalytic window for spiritual crystallization rather than mere loss.",
+      "mechanism": "D60 Saturn at Lagna establishes spiritual discipline (Shani) as the primary karmic thread. D27 Lagna in 12H Pisces confirms that the native's deepest structural strength resides in the moksha house. When the Saturn-Pisces triple activation occurs (2025-2028), the pressure on the 12H does not merely cause isolation or loss, but acts as the mandated catalytic mechanism to forge this underlying spiritual capacity into conscious realization.",
+      "domain": "spiritual",
+      "signals_referenced": [
+        "SIG.MSR.042",
+        "SIG.MSR.041",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: The 12H transit of Saturn simply causes physical isolation and financial expenditure, with spiritual benefits being secondary.",
+        "8-karaka reading: D27 strength provides resilience during the 12H transit but does not mandate a profound spiritual awakening."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.9,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "The native experiences the 12H transit purely as material loss and isolation without any significant spiritual crystallization."
+        ]
+      },
+      "ledger_event_ids": [
+        "5ae5eff1232c",
+        "f0d7328606ca"
+      ],
+      "prediction_ledger_ref": "PRED.009",
+      "created_at": "2026-04-26T22:30:29.366851+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.021",
+      "claim_text": "Mercury's analytical precision under Saturn's constraint produces paradoxical cognitive output peaks during periods of high mental pressure.",
+      "mechanism": "The Mercury Eight-System Convergence defines a highly precise, analytical operating system. The Sade Sati paradox establishes that peak achievements occur under Saturnian adversity. Thus, the mind is designed to function optimally not in ease, but under sustained pressure. The Saturn-Pisces 12H transit introduces intense mental introspection pressure, which acts as the fuel for Mercury's highest quality output.",
+      "domain": "mind",
+      "signals_referenced": [
+        "SIG.MSR.396",
+        "SIG.MSR.413",
+        "SIG.MSR.040"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: Mental pressure from Saturn degrades analytical capacity, and achievements happen despite this degradation, not because of it.",
+        "8-karaka reading: The 12H transit of Saturn causes mental confusion rather than enhanced introspective precision."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "Analytical capacity and cognitive output quality decline significantly under the pressure of the 12H transit."
+        ]
+      },
+      "ledger_event_ids": [
+        "5ae5eff1232c",
+        "75b589a2d8ed"
+      ],
+      "prediction_ledger_ref": "PRED.010",
+      "created_at": "2026-04-26T22:30:29.370927+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    },
+    {
+      "pattern_id": "PAT.022",
+      "claim_text": "The Hidden Raja Yoga functions as a karmic instrument where Sade Sati adversity initiates the AK Saturn's spiritual mandate.",
+      "mechanism": "The Mars+Saturn 7H conjunction (Hidden Raja Yoga) is not merely for material success; because Saturn is the AK (Atmakaraka), every public action carries profound soul-weight. The D60 Saturn at Lagna frames the entire life around karmic repayment. Consequently, the Sade Sati adversity window acts as the structural initiation phase where the Raja Yoga's material power is transmuted into fulfilling Saturn's ultimate spiritual mandate.",
+      "domain": "spiritual",
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.396",
+        "SIG.MSR.042"
+      ],
+      "counter_cases": [],
+      "classical_basis": "derivative — emergent pattern",
+      "alternatives": [
+        "7-karaka reading: The Raja Yoga is purely a career/material indicator, and the spiritual mandate is managed separately by 9H/12H influences.",
+        "8-karaka reading: If Venus is AmK, the karmic entanglement of the Raja Yoga with the soul's spiritual mandate is significantly lessened."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.88,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "5ae5eff1232c",
+        "d306f13a684f"
+      ],
+      "prediction_ledger_ref": null,
+      "created_at": "2026-04-26T22:30:29.373706+00:00",
+      "created_by_session": "Madhav_M2A_Exec_9",
+      "pass_1_actor": "gemini",
+      "re_validation_status": "not_required",
+      "re_validation_event_id": null
+    }
+  ],
+  "status": "SUPERSEDED",
+  "successor": "PATTERN_REGISTER_v1_1",
+  "superseded_at": "2026-04-30T00:00:00+00:00"
+}

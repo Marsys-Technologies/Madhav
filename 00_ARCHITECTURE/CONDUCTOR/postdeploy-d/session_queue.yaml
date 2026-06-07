@@ -1,0 +1,46 @@
+# Stream D — Governance Hygiene (8 drift findings)
+stream: postdeploy-d
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPostD
+branch: feature/postdeploy-d-governance-hygiene
+wave_close_tag: postdeploy-d-governance-clean
+budget_cap_usd: 400
+
+sessions:
+  - id: d1-enumerate-findings
+    status: pending
+    depends_on: []
+    scope: >
+      Run drift_detector.py in MadhavPostD worktree. Capture all HIGH severity
+      findings (fingerprint_mismatch + phantom_reference). Write findings to
+      smriti/drift_findings_initial.txt.
+    acceptance:
+      - drift_detector.py runs without crash
+      - HIGH findings enumerated and saved to smriti file
+
+  - id: d2-disposition
+    status: pending
+    depends_on: [d1-enumerate-findings]
+    scope: >
+      For each HIGH finding: fingerprint_mismatch → re-hash source file and
+      update manifest's stored fingerprint. phantom_reference → check git history;
+      if stale reference, remove from manifest; if file should exist, restore or
+      note in smriti.
+      Use autonomous disposition classifier (AUTONOMY_RESILIENCE_PATTERN §B.2):
+      UPDATE_FINGERPRINT / REMOVE_PHANTOM / RESTORE_FILE.
+      Log each decision to smriti/disposition_log.md with 2-line rationale.
+    acceptance:
+      - All 8 findings have a disposition logged
+      - Manifest updated accordingly
+
+  - id: d3-reverify
+    status: pending
+    depends_on: [d2-disposition]
+    scope: >
+      Re-run drift_detector.py. Count HIGH findings. Target: 0.
+      If > 0, apply additional dispositions.
+    acceptance:
+      - drift_detector.py HIGH count == 0
+    must_not_touch:
+      - platform/**
+      - 01_FACTS_LAYER/**
+      - 025_HOLISTIC_SYNTHESIS/**

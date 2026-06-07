@@ -1,0 +1,56 @@
+# Stream A — L0 Production Activation
+# Internal dependency: A.1 → (A.2 ∥ A.3) → A.4
+stream: postdeploy-a
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPostA
+branch: feature/postdeploy-a-l0-activation
+wave_close_tag: postdeploy-a-l0-activated
+budget_cap_usd: 500
+
+sessions:
+  - id: a1-apply-migrations
+    status: pending
+    depends_on: []
+    scope: >
+      Source ws2_l0_ephemeris.sql and ws2_l0_remedy_corpus.sql from
+      MadhavWS2 worktree (platform/migrations/). Copy to platform/migrations/
+      in MadhavPostA. Apply both to prod DB via PROD_DB_URL proxy (5433).
+      Verify tables ephemeris_daily and brahmagyan_remedy_corpus exist post-apply.
+    acceptance:
+      - Both migrations apply clean with ON_ERROR_STOP=1
+      - \dt ephemeris_daily brahmagyan_remedy_corpus shows both tables
+    must_not_touch:
+      - platform/python-sidecar/**
+      - 00_ARCHITECTURE/**
+
+  - id: a2-ephemeris-build
+    status: pending
+    depends_on: [a1-apply-migrations]
+    scope: >
+      Invoke ephemeris build job. If brahmagyan-ephemeris-build Cloud Run Job
+      does not exist, log Tier-2 decision to smriti and attempt direct Python
+      execution via platform/python-sidecar/brahmagyan/build_ephemeris.py
+      for a reduced sample range (1984-01-01 to 1984-12-31) to verify the
+      write path works. Full 1980-2060 range requires Cloud Run Job creation
+      (log as infrastructure gap in smriti/CLOUDRUN_JOB_GAP.md).
+    acceptance:
+      - Either Cloud Run Job runs clean OR sample range rows inserted into ephemeris_daily
+      - Infrastructure gap logged to smriti if jobs missing
+
+  - id: a3-remedy-seed
+    status: pending
+    depends_on: [a1-apply-migrations]
+    scope: >
+      Run remedy corpus seed. If brahmagyan-remedy-seed Cloud Run Job missing,
+      attempt direct Python execution via platform/python-sidecar/brahmagyan/seed_remedy.py
+      or equivalent. Log Tier-2 disposition to smriti.
+    acceptance:
+      - brahmagyan_remedy_corpus row count > 0
+      - OR infrastructure gap logged cleanly
+
+  - id: a4-verify-rag-chunks
+    status: pending
+    depends_on: [a2-ephemeris-build, a3-remedy-seed]
+    scope: >
+      Verify rag_chunks total. SELECT count(*) FROM rag_chunks; must return >= 4589.
+    acceptance:
+      - rag_chunks count >= 4589

@@ -1,0 +1,842 @@
+{
+  "schema": "contradiction_register_v1",
+  "version": "1.1",
+  "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION",
+  "produced_at": "2026-04-30",
+  "supersedes": "CONTRADICTION_REGISTER_v1_0",
+  "contradictions": [
+    {
+      "contradiction_id": "CON.001",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.107 asserts Saturn 7H exaltation delays committed partnership; SIG.MSR.122 asserts Saturn 7H exaltation produces strong, disciplined partnership — the same planetary position produces opposite relational outcomes.",
+      "mechanism": "Both signals invoke Saturn's 7H exaltation as their structural anchor. SIG.MSR.107 reads the exaltation through the lens of Saturn's natural karakatva for delay and restriction, concluding that marriage is postponed. SIG.MSR.122 reads the same exaltation as conferring depth and permanence to committed relationships, concluding that Saturn's strength actually supports long-term partnership. These are mechanically opposed: delay vs. depth implies fundamentally different guidance about when and whether to commit.",
+      "domains_implicated": [
+        "relationships",
+        "career"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.107",
+        "SIG.MSR.122"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: Libra 7H, 22°27′04″ Vishakha — Exalted (AK)",
+        "FORENSIC_v8_0 §Mars: Libra 7H, 18°31′38″ Swati — Co-occupant of 7H"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Qualify both signals by dasha period — Saturn dasha activates strength (SIG.MSR.122); non-Saturn periods activate delay (SIG.MSR.107).",
+        "Option B: Retain both with explicit note that they represent different interpretive schools (Parashari delay vs. Jaimini strength-emphasis) and flag for native's consultation.",
+        "Option C: Flag SIG.MSR.107 as L1-grounded and SIG.MSR.122 as L2 derivative needing explicit derivation chain."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The signal polarity conflict is genuine and material. Saturn's 7H exaltation is interpreted through two structurally opposed lenses (karakatva restriction vs. exaltation strength), producing directly contradictory relational predictions. Self-audit confirms: these cannot both be maximally true for the same chart position without explicit reconciliation via dasha-period qualification or interpretive school declaration. HIGH severity confirmed — this will produce opposite guidance in consultation.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "9b183c36baf2"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.513752+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.002",
+      "contradiction_class": "karaka_ambiguity",
+      "hypothesis_text": "Saturn as simultaneous AK (soul-dharma) and AmK (vocational) produces structurally incompatible predictions: AK activation during Saturn dasha should push toward renunciation and inward spiritual turn, while AmK activation should push toward career expansion and external recognition.",
+      "mechanism": "The dual-karaka confluence means that during Saturn's mahadasha/antardasha, both the AK engine (soul-purpose revision, potentially world-renunciation or deep introspection) and the AmK engine (career acceleration, status recognition, vocational authority) fire simultaneously from the same planet. Multiple MSR signals engage Saturn as career indicator (AmK function); others engage it as soul-dharma indicator (AK function). When a signal says 'Saturn dasha brings career recognition' it uses AmK logic; when another says 'Saturn dasha brings spiritual withdrawal' it uses AK logic — these cannot both be maximally true in the same time window without acknowledgment of the tension.",
+      "domains_implicated": [
+        "career",
+        "spiritual",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.012",
+        "SIG.MSR.363"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: Libra 7H, 22°27′04″ Vishakha — AK + AmK (dual-karaka)",
+        "PHASE_B_PLAN §B.5 karaka_ambiguity scan"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Require all Saturn-dasha signals to declare which karaka function they invoke (AK or AmK) and add a corpus-wide annotation pass.",
+        "Option B: Model as a sequencing within the period — early Saturn dasha activates AmK (career), late Saturn dasha activates AK (spiritual reorientation) — requires dasha sub-period precision.",
+        "Option C: Accept both as co-active with different domains of expression (career-external vs. spiritual-internal), requiring explicit framing in any consultation output."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The AK/AmK dual-karaka ambiguity is structurally real and insufficiently addressed in the corpus. Saturn as both soul-dharma (AK) and vocational (AmK) karaka creates a genuine two-voice problem during Saturn periods. The corpus contains signals invoking both functions without declaring which governs. This is a HIGH-severity corpus integrity issue requiring a systematic annotation pass. Confirmed per karaka_ambiguity class definition.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "37b3358c3fc6"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.515319+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.003",
+      "contradiction_class": "domain_cross_claim",
+      "hypothesis_text": "SIG.MSR.288 (Mars PK indicates biological children are delayed or limited) and SIG.MSR.303 (Mars Lagna lord's vitality confers strong first-child timing) make incompatible predictions about the native's progeny timing.",
+      "mechanism": "SIG.MSR.288 grounds its claim in Mars's Avayogi status (fortune-reducer) overlaid on its PK role, concluding that Mars as the children-karaka is compromised and progeny are likely delayed or require special dasha activation. SIG.MSR.303 grounds its claim in Mars's Lagna-lord function (vitality + first-breath signification) which traditionally signals readiness for first-child expression. The conflict is not just interpretive — one predicts delay, the other predicts organic timing — and no signal explicitly reconciles the Avayogi suppression with the Lagna-lord momentum.",
+      "domains_implicated": [
+        "children",
+        "health"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.288",
+        "SIG.MSR.303"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mars: Libra 7H, 18°31′38″ Swati — PK (Putrakaraka) + Avayogi + Lagna Lord"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Introduce an explicit hierarchy: Avayogi status suppresses the PK function during non-Mars periods, while Mars dasha/antardasha reactivates it — reconciling both signals as period-specific.",
+        "Option B: Flag SIG.MSR.303 for re-derivation — it may conflate Lagna-lord vitality (health domain) with progeny timing (children domain), a domain cross-bleed violation."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The Mars PK-Avayogi vs. Mars Lagna-lord conflict is confirmed as a genuine domain_cross_claim. The signals invoke the same planet (Mars) in the same chart position but derive incompatible progeny-timing predictions by selecting different karaka roles. No signal in the corpus explicitly models the suppression hierarchy (Avayogi status overriding PK function during non-Mars periods vs. Mars-dasha reactivation). HIGH severity — produces directly opposed guidance about when to expect first child.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "d8259fce633a"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.516857+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.004",
+      "contradiction_class": "p6_uvc_conflict",
+      "hypothesis_text": "SIG.MSR.055 claims Rahu 2H drives wealth accumulation through unconventional channels; CDLM records a cross-domain link between 2H Rahu and 8H Ketu that modulates 2H gains through sudden losses — these two representations are in structural tension.",
+      "mechanism": "SIG.MSR.055 uses Rahu's 2H placement as a unidirectional wealth-accumulation signal (desire → acquisition). The CDLM's 2H-8H Rahu-Ketu axis captures a bidirectional modulation: Rahu amplifies 2H accumulation while Ketu simultaneously depletes through 8H sudden events. The signal captures only the amplification vector without the depletion counter-vector that the CDLM cell records. A corpus that contains SIG.MSR.055 (unidirectional) and the CDLM entry (bidirectional) is internally inconsistent — reading SIG.MSR.055 alone would give the native an incomplete and potentially misleading picture of their wealth dynamics.",
+      "domains_implicated": [
+        "wealth"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.055",
+        "SIG.MSR.082"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Rahu: Taurus 2H",
+        "FORENSIC_v8_0 §Ketu: Scorpio 8H",
+        "CDLM v1.2 — 2H/8H nodal axis cell"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Add a qualifying clause to SIG.MSR.055 referencing the Ketu 8H counter-vector explicitly.",
+        "Option B: Create a cross-reference signal that explicitly models the net wealth dynamic across both nodes."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The Rahu 2H unidirectional-vs-CDLM bidirectional conflict is confirmed at MED severity. SIG.MSR.055's unidirectional wealth-accumulation framing conflicts with the CDLM cell's bidirectional Rahu-Ketu axis modulation. A corpus user reading SIG.MSR.055 without the CDLM context receives incomplete and potentially misleading wealth guidance. The p6_uvc_conflict class is correctly applied. Resolution via qualifying clause is recommended before this signal is used in consultation.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "557a1eb15eef"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.518510+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.005",
+      "contradiction_class": "timing_conflict",
+      "hypothesis_text": "SIG.MSR.241 predicts peak intellectual output during Mercury dasha; SIG.MSR.267 predicts peak intellectual output during Moon dasha (Yogi activation). These predictions cannot both be 'peak' — one must be the actual career-intellectual apex.",
+      "mechanism": "Both signals invoke 'peak' framing for the same life domain (intellectual/communication output) but anchor to different planetary periods: Mercury (Vargottama, 10H) for SIG.MSR.241 and Moon (Yogi, 11H) for SIG.MSR.267. If both are correct, the native experiences two separate peaks — but neither signal qualifies the claim relative to the other. This is a timing conflict that would produce confused guidance: 'when is the best time to launch your intellectual work?' has two incompatible answers from the same corpus.",
+      "domains_implicated": [
+        "career",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.241",
+        "SIG.MSR.267"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mercury: Capricorn 10H, Vargottama",
+        "FORENSIC_v8_0 §Moon: Aquarius 11H, Yogi planet"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Qualify SIG.MSR.241 as 'peak self-expression via analytical output' and SIG.MSR.267 as 'peak social-network-amplified reach' — distinguishing quality vs. audience.",
+        "Option B: Establish a hierarchy: Mercury dasha (Vargottama + 10H) is primary peak; Moon antardasha within Mercury is secondary amplification."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The dual-'peak' timing conflict between Mercury and Moon dashas for intellectual output is confirmed. Both signals use 'peak' framing for the same life domain without mutual qualification. This creates a timing_conflict that cannot be self-resolved by reading the signals together — the corpus must declare either a hierarchy or a domain-subdivision (quality vs. reach) to produce consistent guidance. MED severity confirmed.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "e856fb3b0874"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.520204+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.006",
+      "contradiction_class": "p1_layer_bleed",
+      "hypothesis_text": "SIG.MSR.322 states 'Sun in 10H produces public leadership role' — this is an L2 interpretation stated without a derivation chain to the L1 Sun position (Capricorn 10H, Shravana, 21°57′35″). The claim may be sound but is stated as L1 fact.",
+      "mechanism": "The signal text for SIG.MSR.322 uses declarative assertion language ('produces') without explicitly citing the L1 position and the classical rule that translates Sun-in-10H into 'leadership role.' Per B.1 (Facts/Interpretation separation), an interpretation must cite the L1 fact + the classical derivation rule that produces it. Without the explicit chain, the signal is an L2 claim masquerading as an L1 datum, which is a p1_layer_bleed violation that corrupts the derivation ledger's auditability.",
+      "domains_implicated": [
+        "career",
+        "parents"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.322",
+        "SIG.MSR.338"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Sun: Capricorn 10H, 21°57′35″ Shravana",
+        "PROJECT_ARCHITECTURE §B.1 — Facts/Interpretation separation"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Add explicit derivation chain to SIG.MSR.322: L1 (Sun 10H Capricorn) + classical rule (BPHS Chapter X) → L2 claim (leadership role).",
+        "Option B: Mark SIG.MSR.322 as [DERIVATION_CHAIN_PENDING] and queue for next session cleanup."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The p1_layer_bleed violation in SIG.MSR.322 is confirmed. The signal uses declarative assertion language without an explicit derivation chain from L1 position (Sun 10H Capricorn) through classical rule to the L2 claim (leadership role). This is a genuine audit trail failure per B.1 principle. MED severity confirmed — it does not produce incorrect guidance but corrupts the derivation ledger's auditability, which is a system-integrity violation per GOVERNANCE_INTEGRITY_PROTOCOL.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "b0fc89fa9d07"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.523314+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.007",
+      "contradiction_class": "domain_cross_claim",
+      "hypothesis_text": "SIG.MSR.414 (Moon Yogi 11H brings fortune through group networks) and SIG.MSR.436 (Moon Yogi 11H brings fortune through solitary philosophical work) are incompatible: the same planetary placement cannot simultaneously signal group-based and solitary-work fortune vectors.",
+      "mechanism": "Both signals ground their claim in Moon's Yogi designation and 11H placement, but diverge on the mode of fortune delivery. SIG.MSR.414 reads Aquarius 11H as group-network fortune (Aquarius = universal, communal). SIG.MSR.436 reads Purva Bhadrapada nakshatra (Jupiter-ruled, fiery, associated with ascetic disciplines) as solitary philosophical fortune. These two vectors are not just different emphases — they prescribe materially different behavioral strategies to the native (network vs. withdrawal). A corpus that contains both without hierarchy creates contradictory guidance.",
+      "domains_implicated": [
+        "wealth",
+        "career",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.414",
+        "SIG.MSR.436"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Moon: Aquarius 11H, 27°02′48″ Purva Bhadrapada — Yogi"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Establish that Aquarius sign governs the mode (group network) while Purva Bhadrapada nakshatra governs the style of contribution (philosophical depth) — both true but at different levels of description.",
+        "Option B: Qualify SIG.MSR.436 as applying during Ketu antardasha (co-ruler of Purva Bhadrapada nakshatra chain) specifically."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The domain_cross_claim between SIG.MSR.414 (group-network fortune) and SIG.MSR.436 (solitary-philosophical fortune) is confirmed. Both signals use Moon Yogi 11H as structural anchor but prescribe incompatible behavioral strategies (network vs. withdrawal). The Aquarius sign vs. Purva Bhadrapada nakshatra distinction provides a resolution path but this reconciliation is absent from the corpus. The conflict produces contradictory guidance for the native about how to activate their Yogi fortune. MED severity confirmed.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "402880d2b31d"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.525022+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.008",
+      "contradiction_class": "classical_basis_conflict",
+      "hypothesis_text": "SIG.MSR.462 cites BPHS's Parashari rule for Jupiter-Venus conjunction producing wealth yoga; SIG.MSR.469 cites the Jaimini KarakaAmsha rule which does not recognize Jupiter-Venus conjunction as a wealth yoga in D9 — these classical bases are incompatible for this chart's specific combination.",
+      "mechanism": "The Jupiter-Venus conjunction in Sagittarius 9H is assessed differently under Parashari and Jaimini frameworks. Under Parashari (BPHS): Jupiter + Venus in a kendra or trikona from Lagna or Moon produces a Dhana yoga, and 9H qualifies under both Lagna and Moon counts. Under Jaimini KarakaAmsha: the same conjunction must be evaluated in the D9 chart's AK house, not the D1 9H, and Jupiter-Venus conjunction in D9 carries different significations. SIG.MSR.462 uses Parashari framing; SIG.MSR.469 uses Jaimini framing. The corpus does not declare which framework governs this specific claim, producing a classical_basis_conflict that affects how any consultation interprets the 9H conjunction's wealth implications.",
+      "domains_implicated": [
+        "wealth",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.462",
+        "SIG.MSR.469"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Jupiter: Sagittarius 9H, 09°48′28″ Moola",
+        "FORENSIC_v8_0 §Venus: Sagittarius 9H, 19°10′12″ Purva Ashadha"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Tag each signal with its governing framework (parashari|jaimini) and require all consultation outputs to declare which framework governs their reading.",
+        "Option B: Accept both frameworks as valid and require the native to select the preferred lineage for actionable guidance."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The classical_basis_conflict between Parashari and Jaimini readings of the Jupiter-Venus 9H conjunction is confirmed. The two frameworks make structurally different claims about whether this conjunction produces a wealth yoga in this chart's specific configuration. The corpus does not declare governing framework, creating an audit trail gap. Any consultation that reads these signals without framework declaration will produce framework-dependent outputs that appear as conflicting. MED severity confirmed. Framework tagging is the correct resolution.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "c6d9c6db8836"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.526637+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.009",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.001 (Sasha Mahapurusha Yoga — Saturn exalted in 7H Kendra = maximum authority, greatness) and SIG.MSR.168 (Dual Malefic 7th Drishti to Lagna — Saturn+Mars full aspects on Lagna = maximum malefic grip on native's identity) both proceed from the same Saturn 7H placement. The yoga predicts authority and eminence; the dual-malefic aspect predicts identity-level constraint and difficulty. Same planet, same position, same aspect mechanism — two diametrically opposite interpretive outcomes.",
+      "mechanism": "Sasha Mahapurusha activates because Saturn is exalted in a Kendra (7H). Its 7th aspect on Lagna (1H) is a full drishti, the same aspect vector that triggers the 'dual malefic on Lagna' reading (Saturn + Mars both make 7th drishti on Aries 1H). The yoga reads the aspect as: 'authority planet blesses the Lagna with its excellence.' The malefic reading reads the same aspect as: 'maximum constraint on identity.' Resolution cannot be achieved by ignoring one reading.",
+      "domains_implicated": [
+        "career",
+        "mind",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.001",
+        "SIG.MSR.168"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: Libra 7H, 22°27' exalted",
+        "FORENSIC_v8_0 §aspects: Saturn 7th drishti to 1H full"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Context-gating: Sasha Mahapurusha delivers in Saturn MD periods and Saturn-strong transits; dual-malefic identity-grip governs natal baseline (constant). Both are simultaneously true at different temporal layers.",
+        "Option B: Domain-partitioning: Mahapurusha yoga delivers in career/public domain; malefic grip on Lagna delivers in personal identity and health domain. Same Saturn, different domain outputs."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.010",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.016 (Mercury six-factor operational dominance — primary career instrument with eight-system convergence) and SIG.MSR.087 (Mercury 6L in 10H — disease lord in career house with Viparita consideration) both arise from Mercury's 10H placement. The operational dominance reading predicts Mercury as the chart's supreme career engine; the 6L reading means the same Mercury is simultaneously activating the disease pathway. Deploying Mercury maximally and activating health risk maximally are structurally the same event.",
+      "mechanism": "Mercury is 6L (Virgo = Mercury-ruled, 6H for Aries Lagna) and is in 10H Capricorn. The 6L-in-10H placement has two interpretive layers: (a) Viparita consideration — disease lord in Kendra may produce career gains through overcoming obstacles; (b) literal 6L activation — any strong Mercury deployment fires the 6L disease pathway. SIG.MSR.016's convergence (8 systems) makes Mercury's career function extremely strong, which simultaneously strengthens its 6L activation.",
+      "domains_implicated": [
+        "career",
+        "health"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.016",
+        "SIG.MSR.087"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mercury: Capricorn 10H, 00°50'",
+        "FORENSIC_v8_0: Mercury = 6L for Aries Lagna"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Viparita dominance: 6L in Kendra (10H) = Viparita consideration neutralizes the disease pathway; Mercury's career strength does not trigger health directly. The 6L effect is transformed into career advantage through overcoming disease-related obstacles.",
+        "Option B: Dual activation: Both effects are simultaneously true — career intensity AND health risk proportionally activate together; the native must manage cognitive output as a health variable."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.011",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.017 (Jupiter 9L own-sign in 9H — dharmic abundance, Lakshmi Yoga support, expansion) and SIG.MSR.157 (Saturn+Mars 3rd/4th drishti on Sagittarius 9H Jupiter-Venus — joint pressure on dharma house) present contradictory characterizations of the 9H condition. Jupiter is at maximum dignity in 9H (own sign, 9L), suggesting 9H is the chart's most protected domain. But the same 9H receives dual malefic pressure from Saturn (3rd drishti) and Mars (4th drishti) — the native's dharma house is both maximally dignified AND under malefic aspect pressure.",
+      "mechanism": "Jupiter at 3°25' Sagittarius 9H in own sign = peak dharmic quality for a natal planet. Saturn in 7H makes its 3rd aspect (45v, partial) to 9H. Mars in 7H makes its 4th aspect (45v, partial) to 9H. SIG.MSR.157 specifically names this as 'joint pressure on Sagittarius 9H' — suggesting the aspects are meaningful despite being partial.",
+      "domains_implicated": [
+        "spiritual",
+        "parents",
+        "wealth"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.017",
+        "SIG.MSR.157"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Jupiter: 3°25' Sagittarius 9H own-sign",
+        "FORENSIC_v8_0 §aspects: Saturn 3rd drishti to 9H; Mars 4th drishti to 9H"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Dignity priority: Jupiter's own-sign placement in 9H overrides partial (45v) malefic aspects from 7H. Yoga strength is not diminished by partial aspects from enemies in a different house.",
+        "Option B: Mixed outcome: Jupiter's dharma quality is high, but Lakshmi Yoga and parental dharma may face periodic pressure during Saturn and Mars activations (transits, dashas). The malefic aspects are dormant but activatable."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.012",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.005 (Moon-AK Chalit-12H Foreign Income Architecture — CVG.03 benefic convergence) and SIG.MSR.229 (Mandi in Cancer 4H — malefic shadow on home domain, mother, mental peace) arise from Moon's complex house architecture. Moon AK as foreign-income benefactor (12H Chalit) pulls the soul's highest aspiration toward foreign and externally-expansive contexts. Mandi in 4H simultaneously casts a malefic shadow on the home-base and inner sanctuary. The same Moon-AK that enables foreign income destabilizes the home domain.",
+      "mechanism": "Moon in 11H Rashi (Aquarius) but 12H Chalit = Moon's bhava is 12H (foreign). Moon as AK = soul's highest desire is foreign-domain activation (CVG.03). Mandi is in Cancer 4H — Mandi is independent of Moon's position but co-activates in the same chart. The contradiction: Moon AK's foreign-income architecture (12H) requires the native to be absent from home or engaged in foreign contexts, while the 4H Mandi's malefic shadow makes the home/anchor domain challenging regardless of presence or absence.",
+      "domains_implicated": [
+        "travel",
+        "wealth",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.005",
+        "SIG.MSR.229"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Moon: Aquarius 11H Rashi, Chalit-12H",
+        "FORENSIC_v8_0 §Mandi: Cancer 4H, 14°13' Pushya"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Domain separation: CVG.03 foreign income is operative in the world-domain; Mandi 4H is operative in the inner-sanctuary domain. Both true simultaneously — external success coexists with domestic/inner challenges.",
+        "Option B: Temporal alternation: Foreign periods (Moon AK 12H activation) deliver income but home domain suffers; periods of domestic focus activate the Mandi shadow. The native cycles between world-engagement and home-challenge."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.013",
+      "contradiction_class": "system_divergence",
+      "hypothesis_text": "Parashari interpretation of Saturn's position (Saturn exalted 7H as AmK = career through relational discipline, authority delivered through structural constraint in partnerships) and Jaimini Chara Dasha (Scorpio MD from ~Feb 2026 activates Ketu exalted 8H and Mars 7H as primary carriers = deep transformation, karmic dissolution, research into hidden matters) produce divergent primary narratives for the same 2026–2030 window. The same planetary-house complex carries a Parashari 'career peak' narrative and a Jaimini 'karmic dissolution/transformation' narrative simultaneously.",
+      "mechanism": "Parashari: Saturn as AmK in current AD (2024-12-12 → 2027-08-21) → career excellence through Saturn's structural discipline. Jaimini Chara Dasha: Scorpio MD governs through Ketu (8H, exalted) as the primary Chara activated planet. Scorpio MD's quality is Martian/Ketu = transformation, 8H themes, hidden power, research. The same period that Parashari reads as 'career + relational authority' Jaimini reads as 'karmic transformation + hidden-domain activation.' These are different primary narratives for the same life period.",
+      "domains_implicated": [
+        "career",
+        "spiritual",
+        "relationships"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.020",
+        "SIG.MSR.267"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: 7H Libra exalted, Mars 7H Libra conjunct",
+        "FORENSIC_v8_0 §Chara Dasha sequence"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Layer separation: Vimshottari governs conditional timing (dasha as operating system for career/health/relationship events). Chara Dasha governs dharmic/soul-level themes (what the soul is processing). Both true simultaneously at different layers.",
+        "Option B: Dominant system selection: For natal event prediction, use Vimshottari as primary. For soul-direction guidance, use Chara Dasha. Advise client on the appropriate frame for each query type."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.014",
+      "contradiction_class": "system_divergence",
+      "hypothesis_text": "D9 Navamsha: Saturn in Aries D9 = debilitation (Neecha Bhanga Raja Yoga — SIG.MSR.003). D1 Rashi: Saturn exalted in Libra (Sasha Mahapurusha — SIG.MSR.001). Two divisional charts give structurally opposite dignity assessments for Saturn: D1 exaltation (peak dignity) vs. D9 debilitation (lowest dignity, though cancelled by NBRY). The practitioner must choose which dignity governs Saturn's timing deliveries.",
+      "mechanism": "In D1, Saturn at 22°27' Libra = exaltation (UCcha Bala 59.18/60). In D9, Saturn in Aries = debilitation. NBRY cancellation applies (SIG.MSR.003 confirms). The question: does Saturn's D9 debilitation (even NBRY-cancelled) modulate its D1 exaltation, or does D1 take complete precedence? Saturn is the chart's most significant planet (AK, AmK, Sasha MPY), making its dignity ambiguity between D1 and D9 consequential for nearly every domain.",
+      "domains_implicated": [
+        "career",
+        "relationships",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.003",
+        "SIG.MSR.001"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: 22°27' Libra D1 exalted",
+        "FORENSIC_v8_0 §Saturn D9: Aries — debilitated (NBRY active)"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: D1 primacy: For conditional (Phala) predictions, D1 dignity is the primary determinant. D9 adds color but does not override D1 exaltation. Saturn delivers exaltation-quality results with NBRY providing additional protection.",
+        "Option B: Temporal layering: D1 exaltation governs Saturn's transit-level and MD/AD-level deliveries. D9 debilitation (with NBRY) modulates marriage and dharmic-soul quality specifically. Different aspects of Saturn's function are governed by different chart layers."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.015",
+      "contradiction_class": "system_divergence",
+      "hypothesis_text": "Parashari assigns Venus as 2L+7L (Taurus 2H + Libra 7H) for Aries Lagna, emphasizing partnership/wealth roles. Jaimini Chara Karaka assigns Venus as MK (Matrikaraka — mother-signifier, planet at 7th-highest degree). For Venus MD (2034–2054), Parashari predicts partnership/wealth activation; Jaimini predicts mother/nurturing-domain activation. The same planet carries 'relational partner' (Parashari) vs. 'maternal origin' (Jaimini) as its primary frame.",
+      "mechanism": "For Aries Lagna Parashari: Venus rules 2H and 7H. Placement in 9H makes Venus 2L+7L in 9H → dharmic-wealth-partnership complex. Jaimini Chara Karaka: Venus as MK = mother-signifier. The same Venus in 9H that Parashari reads as 'partnership lord in dharma house' Jaimini reads as 'mother's dharmic influence' (MK in 9H = mother encountered through dharmic/foreign contexts). Predicting Venus period results diverges by system.",
+      "domains_implicated": [
+        "relationships",
+        "parents",
+        "wealth"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.082",
+        "SIG.MSR.189"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Venus: 19°10' Sagittarius 9H",
+        "FORENSIC_v8_0 §Chara Karaka sequence: Venus as MK"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: System-layer specialization: Parashari governs conditional (Phala) domain predictions for marriage and wealth. Jaimini Chara Karaka governs soul-quality (MK = what the native embodies from mother) — a character/inner-quality reading, not a life-event prediction.",
+        "Option B: Synthesis: Venus MK (mother) in 9H (dharma house) = the native's maternal quality is integrated into the dharmic-partnership domain. The mother's values appear in the native's partnerships — not a contradiction but a layered reading where both are active simultaneously."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.016",
+      "contradiction_class": "system_divergence",
+      "hypothesis_text": "Vimshottari dasha: Jupiter MD (1984–1991) = childhood dharma-prosperity period (Jupiter as 9L own-sign, strongest natal planet for dharma). Jaimini Chara Dasha: Cancer MD = mother/home-protection period for the same childhood era. The two dasha systems cover the same formative years with divergent primary narratives: Jupiter-dharma-expansion (Vimshottari) vs. Cancer-mother-home-security (Jaimini).",
+      "mechanism": "Vimshottari Jupiter MD runs from birth (1984-02-05) to 1991-02-05. Jupiter as 9L in own-sign Sagittarius = the strongest possible dharma-prosperity MD. But a child aged 0–7 cannot access Jupiter's dharma/wealth/career deliverables. Jaimini Chara Dasha Cancer MD (if it corresponds to this era) emphasizes the mother-home protective function, which IS developmentally accessible for a 0–7 year old. The two systems not only diverge in narrative but in developmentally relevant accuracy.",
+      "domains_implicated": [
+        "career",
+        "parents",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.017",
+        "SIG.MSR.163"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Vimshottari: Jupiter MD birth–1991",
+        "FORENSIC_v8_0 §Chara Dasha sequence from Purva Bhadrapada Moon"
+      ],
+      "claude_severity_prior": "low",
+      "verification_note": "Chara Dasha dates for the native's childhood (1984–1991) require FORENSIC §14 date verification before using this contradiction in predictions. If Jaimini Cancer MD does not overlap with 1984–1991, the contradiction dissolves.",
+      "resolution_options": [
+        "Option A: Developmental framing: Vimshottari Jupiter MD governs the karmic inheritance from the Jupiter MD period (seeds planted in childhood that activate later). Jaimini Cancer MD governs the lived experience (mother-home protection as the actual experience). Both simultaneously true at different levels.",
+        "Option B: Retrodict and validate: Cross-reference LEL events for 1984–1991 against both narratives. Whichever system's narrative LEL events more closely match governs this period's primary interpretation."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.017",
+      "contradiction_class": "system_divergence",
+      "hypothesis_text": "Moon's house classification produces a three-way system divergence: Parashari Rashi = 11H (gains/networks, AK in gains house → soul aspires toward social wealth); Parashari Chalit = 12H (foreign/liberation, CVG.03 foreign income); KP sub-lord analysis = ambiguous cusp between 11H and 12H (sub-lord chain may introduce 6H or 8H nodes). Three systems classify the same Moon into three different house positions with materially different predictions for Moon-AD/MD sub-periods.",
+      "mechanism": "Moon at 22°37' Aquarius = 11H Rashi position. Chalit drift = 12H (CVG.03, SIG.MSR.005). KP: the sub-lord of the 11H/12H cusp governs which bhava Moon delivers — Moon near the cusp boundary creates classification ambiguity. The same Moon is simultaneously the 'gains activator' (Rashi/Parashari), the 'foreign income architect' (Chalit), and an uncertain cusp owner (KP). Predictions about Moon AK's life delivery will diverge systematically across these three frames.",
+      "domains_implicated": [
+        "wealth",
+        "travel",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.004",
+        "SIG.MSR.005"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Moon: 22°37' Aquarius — Rashi 11H",
+        "FORENSIC_v8_0 §Chalit: Moon in 12H boundary"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Rashi for natal quality; Chalit for bhava results: Moon's AK soul-quality is assessed from Rashi 11H placement (character and aspiration). Moon's bhava results (where it delivers) are assessed from Chalit 12H. KP sub-lord chain governs precise event timing within a Chalit-12H framework.",
+        "Option B: KP primary for timing: Accept Chalit-12H as Moon's correct bhava position (consistent with KP approach). Moon AK as 'foreign income' (not 'gains/networks') is the primary reading, with 11H gains as a secondary rashi-level qualifier."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.018",
+      "contradiction_class": "temporal_paradox",
+      "hypothesis_text": "Mercury MD (2010–2027) is the activation window for all major yogas in the chart (SIG.MSR.132: 'All Major Yogas Become Active During Mercury MD'). These yogas — Sasha Mahapurusha, Saraswati, Lakshmi, Akhanda Samrajya — were formed at birth in 1984. The temporal paradox: yoga formation and yoga activation are separated by ~26 years. The native carried complete yoga potential from birth but these yogas were structurally unavailable for delivery until Mercury MD began.",
+      "mechanism": "SIG.MSR.132 explicitly states yoga activation depends on MD timing — yogas activate in their constituting planet's MD. Mercury is 8-system convergence lord (SIG.MSR.016) and the 'carrier' for other yogas through aspect and association. The 26-year gap between birth (1984) and Mercury MD (2010) spans Saturn MD (1991–2010) — a 19-year delay period. Saturn as the chart's structurally dominant planet (AK, AmK, Sasha MPY) was actively transiting during its MD, yet did NOT deliver the major yogas; Mercury MD delivered them instead.",
+      "domains_implicated": [
+        "career",
+        "wealth",
+        "mind",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.132",
+        "SIG.MSR.255"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Vimshottari: Mercury MD 2010-08-21 to 2027-08-21"
+      ],
+      "claude_severity_prior": "low",
+      "resolution_options": [
+        "Option A: MD-activation doctrine: Classical Jyotish holds that yogas deliver in the MD of their constituting planet. Mercury is the primary yoga-carrying MD lord; Saturn's MD was structurally preparatory (building the foundation), not yoga-delivery. Sequential design, not paradox.",
+        "Option B: Distinguish yoga types: Sasha Mahapurusha (Saturn) SHOULD have activated in Saturn MD. If Sasha underdelivered in Saturn MD, that is a genuine predictive anomaly. Retrodictive LEL check required for 1991–2010."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.019",
+      "contradiction_class": "temporal_paradox",
+      "hypothesis_text": "Jupiter MD (1984–1991) gave Jupiter's full 7-year dasha period when Jupiter is the chart's most auspicious natal planet (9L own-sign, Lakshmi Yoga host, Saraswati Yoga component). But Jupiter MD occurred entirely during childhood (ages 0–7). The chart's most dharma-rich MD was spent during a developmental phase when career, relationships, wealth, and spiritual choices were entirely inaccessible. The sequence systematically inverts the relationship between dasha richness and developmental agency.",
+      "mechanism": "Moon in Purva Bhadrapada (Jupiter-ruled nakshatra) initiates Vimshottari with Jupiter MD. Jupiter as 9L own-sign is the chart's highest benefic. Its MD during childhood is 'wasted' in the sense that no adult deliveries can occur. Saturn MD (1991–2010) then governed the teenage-to-young-adult formation phase — the period of actual first adult choices — with Saturn's delay-and-discipline energy. The sequence: richest MD first (unused), harshest MD second (during adult formation).",
+      "domains_implicated": [
+        "career",
+        "wealth",
+        "spiritual",
+        "parents"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.017",
+        "SIG.MSR.132"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Vimshottari: Jupiter MD birth–1991; Moon in Purva Bhadrapada = Jupiter-ruled = Jupiter MD at birth"
+      ],
+      "claude_severity_prior": "low",
+      "resolution_options": [
+        "Option A: Karma-seeding doctrine: Jupiter MD seeds the soul's dharmic orientation in the formative developmental period. The quality experienced in childhood (parental dharma, early education environment) reflects Jupiter's 9L quality even if material deliverables are inaccessible. Not wasted — spiritually and developmentally foundational.",
+        "Option B: Retrodict and accept: Jupiter MD (childhood) effects should appear in early developmental milestones, early family dharmic quality, and the mother's influence (Jupiter MK by Jaimini). LEL should be examined for 1984–1991 formative event quality."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.020",
+      "contradiction_class": "temporal_paradox",
+      "hypothesis_text": "Ketu MD (2027–2034) is the moksha/detachment period, structurally following Mercury MD (2010–2027) which was the most productive career period. The temporal paradox: maximum worldly achievement (Mercury MD peak career output, ages 26–43) is followed immediately by maximum karmic detachment pressure (Ketu MD, ages 43–50) with no gradual transition — only a 0.50° quincunx bridge (SIG.MSR.036) between the handover planets. The sequence abruptly inverts the native's life orientation at its professional peak.",
+      "mechanism": "SIG.MSR.036 names the Ketu-Mercury 0.50° quincunx as the 'MD-Handover Bridge 2027' — the tightest inter-chart aspect governs the dasha transition. Mercury (career peak) and Ketu (moksha) are in quincunx = 150° = a tension aspect. The handover from Mercury MD to Ketu MD is structurally discordant — career momentum is interrupted at its peak by a detachment signifier with no planetary buffer.",
+      "domains_implicated": [
+        "career",
+        "spiritual",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.150",
+        "SIG.MSR.036"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Vimshottari: Mercury MD ends 2027-08-21, Ketu MD begins",
+        "FORENSIC_v8_0 §Ketu: Scorpio 8H 22°23'"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Transition framing: Mercury MD legacy (2010–2027) provides the stable platform FROM WHICH Ketu MD's detachment operates. Ketu does not cancel Mercury's career structure but transforms it — detachment from outcome, not from activity. The native continues career activity but releases attachment to result.",
+        "Option B: Sharp pivot: The 2027 transition marks a genuine life-direction pivot. Career activities from 2027 should be restructured toward legacy/knowledge transmission (Ketu = knowledge without attachment) rather than active accumulation."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.021",
+      "contradiction_class": "temporal_paradox",
+      "hypothesis_text": "Saturn AD (within Ketu MD) delivers Saturn's sub-period energy — AmK career-vocation, structural authority, professional ambition — inside Ketu's primary MD period of detachment and moksha activation (SIG.MSR.150). The sub-period's Saturn energy directly contradicts the main-period's Ketu detachment instruction: 'time to build and achieve' (Saturn AD) vs. 'time to release and detach' (Ketu MD). Dasha layers produce opposing instructions for the same window.",
+      "mechanism": "Ketu MD (2027–2034) sub-periods follow the planet sequence. Saturn AD within Ketu MD falls approximately 2030–2031. Saturn as AmK carries career-vocation energy; Ketu MD carries moksha-detachment energy. The combined dasha instruction is internally paradoxical — the sub-period activates precisely the career energy that the main period is dissolving.",
+      "domains_implicated": [
+        "career",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.150",
+        "SIG.MSR.020"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Vimshottari: sub-period sequence within Ketu MD"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Nested integration: Saturn AD within Ketu MD = career action under detachment governance. Professional activity continues during Saturn AD but with Ketu MD's philosophical framing: execute Saturn's career tasks without attachment to outcome. The AD modifies activity type; the MD modifies attitude.",
+        "Option B: Conflict acknowledged: Saturn AD (2030–2031) is the one period within Ketu MD where career aspirations resurface strongly. Predictions should flag this as a temporary career re-engagement window that may conflict with the native's Ketu-MD detachment orientation."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.022",
+      "contradiction_class": "temporal_paradox",
+      "hypothesis_text": "The Jupiter-Saturn Dhana-Raja Yoga (SIG.MSR.107 — 9L Jupiter + 10L Saturn, BPHS's 'strongest Raja Yoga') predicts maximum career-dharma authority and wealth delivery. Classical doctrine holds that this yoga should activate in Jupiter's or Saturn's own MD. But Jupiter MD (1984–1991) was childhood; Saturn MD (1991–2010) is framed as a foundational-delay period; actual delivery occurred in Mercury MD (2010–2027) — a third planet's period not constituting the yoga. The chart's most classical Raja Yoga delivered through the 'wrong' planet's dasha.",
+      "mechanism": "SIG.MSR.107 identifies the 9L-10L Raja Yoga between Jupiter and Saturn. Classical doctrine: Raja Yogas activate in the MD of either constituting planet or their lords. Mercury is not constituting the Jupiter-Saturn Raja Yoga but is the overall yoga-carrier (SIG.MSR.132). This either means: (a) Mercury's chart-wide convergence supersedes the Jupiter-Saturn yoga's own activation doctrine; or (b) the Jupiter-Saturn Raja Yoga DID activate in Saturn MD (1991–2010) but was not recognized as such.",
+      "domains_implicated": [
+        "career",
+        "wealth",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.107",
+        "SIG.MSR.132"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Jupiter: 9H own-sign; §Saturn: 7H exalted",
+        "FORENSIC_v8_0 §Vimshottari dasha sequence"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Mercury as synergistic activator: Jupiter-Saturn Raja Yoga was seeded in their respective MDs and fully bloomed in Mercury MD when Mercury's multi-system convergence provided the operating platform. The yoga requires a delivery vehicle; Mercury MD was that vehicle.",
+        "Option B: Saturn MD retrodiction: Examine LEL 1991–2010 carefully. If Raja Yoga elements (career authority, notable professional recognition, wealth step-up) are present in Saturn MD, the temporal paradox dissolves — it did activate, just less visibly than Mercury MD."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.023",
+      "contradiction_class": "frame_conflict",
+      "hypothesis_text": "Saturn's delay/restriction mechanism in the relationships domain (7H occupant) reads as the primary relationship challenge — structural delay in committed partnership, marriage obstacles. The same Saturn delay/discipline mechanism in the career domain (10L+AmK) reads as the primary career asset — the discipline that builds authority, AmK as vocational soul-purpose, Sasha Mahapurusha as career eminence engine. Identical mechanism (Saturn structural delay) produces opposite valences: obstruction in relationships, virtue in career.",
+      "mechanism": "Saturn in 7H Libra exalted: from the relationships domain, Saturn delays, controls, and structures partnership. From the career domain, the same Saturn is 10L and AmK with Sasha Mahapurusha — career success comes through discipline, patience, and structural authority. Same planet, same position, same natal placement — two opposite interpretive valences based on domain frame.",
+      "domains_implicated": [
+        "relationships",
+        "career"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.001",
+        "SIG.MSR.020"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: 7H Libra exalted",
+        "FORENSIC_v8_0: Saturn = 10L, AmK for Aries Lagna"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Domain-partitioned valence: Accept that Saturn operates with opposite valences in relationships and career domains simultaneously. The native's soul-path requires Saturn as career-builder AND relationship-structurer (not destroyer — structure ≠ ease). Communicate both simultaneously.",
+        "Option B: Saturn's 7H primary function is career: Saturn in 7H is primarily a career/authority planet (AmK, 10L) that resides in the relationship house. Its career function is primary; its relationship function is secondary (house occupant). This clarifies that Saturn's 7H presence is 'career energy in the relationship house' not 'relationship energy governed by Saturn.'"
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.024",
+      "contradiction_class": "frame_conflict",
+      "hypothesis_text": "Ketu 8H exaltation (SIG.MSR.055) = peak spiritual indicator: exalted Ketu in 8H = maximum moksha/liberation potential, deepest access to hidden knowledge, strongest karmic purification capacity. Same Ketu 8H in the karmic-delivery frame: Ketu's dispositor Mars is in 7H Libra in enemy sign (SIG.MSR.092 — 'Ketu's Dispositor Mars in Enemy Sign — Weakened Karmic-Resolver'). Exalted Ketu's potential is structurally compromised by its dispositor's weakness — the liberation vehicle lacks the fuel delivery system.",
+      "mechanism": "Ketu at 22°23' Scorpio = exaltation (classical school). Scorpio is ruled by Mars. Mars at 18°31' Libra = enemy sign (Mars weakened in Libra; Venus rules Libra, natural enemy of Mars). Ketu's delivery mechanism flows through its dispositor's quality. Mars weakened in enemy sign means Ketu cannot deliver its liberation potential at full strength. In spiritual frame: Ketu exalted = liberation path open. In karmic-delivery frame: Ketu's results are muted because dispositor Mars is compromised.",
+      "domains_implicated": [
+        "spiritual",
+        "health"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.055",
+        "SIG.MSR.092"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Ketu: 22°23' Scorpio 8H",
+        "FORENSIC_v8_0 §Mars: 18°31' Libra 7H (enemy sign)"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Exaltation overrides dispositor weakness: Ketu's own exaltation dignity is the primary determinant. Mars's dispositor role is secondary — Ketu still delivers at high quality. NBRY-style argument: exaltation cancels some of the dispositor weakness.",
+        "Option B: Dispositor-gated delivery: Ketu's liberation potential IS present but requires deliberate cultivation (Mars energy channeled through spiritual practice — yoga, martial arts, tapas) to overcome the enemy-sign dampening. Ketu MD predictions should include conditions for effective delivery."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.025",
+      "contradiction_class": "frame_conflict",
+      "hypothesis_text": "Mercury as career-engine (10H, 8-system convergence, MD lord — SIG.MSR.016) and Mercury as health-risk activator (6L for Aries Lagna — SIG.MSR.087) share the same planetary trigger. Career output maximization and health challenge activation are structurally the same event from different domain frames. 'High career performance' (career domain frame) = '6L activation' (health domain frame). Working harder is, in this chart, simultaneously getting sicker. This is the most mechanistically tight frame conflict in the register: no intervening variable separates career-intensification from health-risk.",
+      "mechanism": "Mercury is 6L (Virgo = Mercury-ruled, 6H for Aries Lagna) and in 10H Capricorn as MD lord (2010–2027). Every unit of Mercury deployment simultaneously activates the 6L disease pathway. Career domain frame: 'deploy Mercury maximally — career flourishes.' Health domain frame: 'Mercury deployment proportionally activates disease.' Two domains produce directly opposite practical recommendations: push harder (career) vs. monitor health (health).",
+      "domains_implicated": [
+        "career",
+        "health"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.016",
+        "SIG.MSR.087"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mercury: 00°50' Capricorn 10H",
+        "FORENSIC_v8_0: Mercury = 6L for Aries Lagna"
+      ],
+      "claude_severity_prior": "critical",
+      "cross_ref": "CON.010 (signal_polarity_conflict) involves same signals; see also for polarity reading",
+      "resolution_options": [
+        "Option A: Viparita integration: 6L in 10H Kendra activates Viparita Raj Yoga — disease events that accelerate career outcomes. The health challenges within Mercury MD ARE the career-building mechanism (overcoming adversity builds authority). Not opposition but mechanical coupling where health challenges are career inputs.",
+        "Option B: Threshold management: Mercury 6L in 10H means the disease pathway activates AT THRESHOLD — sustained peak performance beyond a threshold triggers the 6L. Below threshold, Viparita protects. Above threshold, disease activates. Recommend monitoring-with-action: career intensification is fine up to Saturn-defined structural limits; beyond that, health must be proactively managed."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.026",
+      "contradiction_class": "frame_conflict",
+      "hypothesis_text": "Mars as 1L (Lagna lord) in the identity/self domain reads as the native's identity-assertion engine: Mars rules the self, drives personal initiative, and Lagnesh in 7H means the native's identity is expressed through relationships. Mars as Avayogi in the career domain (SIG.MSR.134) makes Mars the chart's primary career obstruction: the Avayogi planet counteracts Jupiter/Saturn's yoga delivery in career. Same Mars: identity-engine in personal frame, career-obstruction in career frame. The native's drive and assertion (Mars Lagnesh) is simultaneously his professional liability.",
+      "mechanism": "Mars is 1L for Aries Lagna. Mars in 7H Libra = Lagnesh in 7H (identity expressed through partnerships). As Avayogi: Mars's Lagnesh function (identity assertion, drive, ambition) is the very force that disrupts Jupiter-Saturn yoga delivery in career contexts — the assertive energy that defines the native's personality interferes with the patient, structured career architecture that Saturn/Jupiter build.",
+      "domains_implicated": [
+        "career",
+        "relationships",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.134",
+        "SIG.MSR.076"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mars: 18°31' Libra 7H",
+        "FORENSIC_v8_0: Mars = 1L for Aries Lagna; Mars = Avayogi"
+      ],
+      "claude_severity_prior": "high",
+      "resolution_options": [
+        "Option A: Domain segregation: Mars as 1L serves the identity/relationships domain (drive, assertion, personal initiation). Mars as Avayogi is a warning flag ONLY in career-yoga contexts. Keep Mars OUT of career assertiveness; use Mars FOR relationship and personal initiative.",
+        "Option B: Manage the Avayogi: Classical tradition recommends avoiding propitiating or amplifying the Avayogi's energy. Mars/Aries actions in career (aggressive deadlines, confrontational negotiations) should be minimized during career-yoga activation windows. Mars-identity energy can flourish in relationships where it operates as Lagnesh."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    },
+    {
+      "contradiction_id": "CON.027",
+      "contradiction_class": "frame_conflict",
+      "hypothesis_text": "Rahu in 2H Taurus Rohini amplifies wealth-accumulation potential (wealth domain — SIG.MSR.010: 'wealth through unconventional channels, amplified by Rohini's material magnetism') vs. Rahu in 2H creating family-speech instability and disrupting inner-circle dynamics (relationships/family domain — SIG.MSR.161: nodal axis severance in the 2H-8H axis). The 2H Rahu serves wealth generation while simultaneously destabilizing the family-foundation that makes stable relationships possible.",
+      "mechanism": "Rahu in 2H Taurus: 2H is the house of family, accumulated wealth, speech, and inner-circle bonds. Rahu's presence amplifies 2H's material-acquisition dimension (Rohini nakshatra = material fertility, Venus-ruled) while disrupting 2H's relational-stability dimension (family cohesion, truthful speech, stable inner circle). Rahu's 7th drishti to 8H Ketu (SIG.MSR.161: 'Nodal Axis Severance') creates a 2H-8H axis tension: wealth accumulation (2H) is perpetually drawn toward 8H transformation/severance.",
+      "domains_implicated": [
+        "wealth",
+        "relationships",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.010",
+        "SIG.MSR.161",
+        "SIG.MSR.393"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Rahu: 14°14' Taurus 2H Rohini",
+        "FORENSIC_v8_0 §aspects: Rahu 7th drishti to 8H Ketu"
+      ],
+      "claude_severity_prior": "medium",
+      "resolution_options": [
+        "Option A: Dual-layer awareness: Accept that Rahu 2H wealth-generation and 2H family-disruption are structurally coupled. Predict both simultaneously: periods of Rahu activation will bring wealth AND family speech/inner-circle challenges. Neither cancels the other.",
+        "Option B: Rahu Rohini contextualization: Rohini (Moon-ruled, Taurus) has a maternal, cultivating quality that moderates Rahu's disruption. Rahu filtered through Venus's 9H (dispositor Venus in 9H dharmic context) means the wealth channel is more dharmic than purely Rahu-chaotic. Disruption is present but moderated by Venus's dharmic filtering."
+      ],
+      "validator_results": {
+        "pass_1_accepted": true,
+        "pass_2_accepted": true
+      },
+      "created_at": "2026-04-30",
+      "produced_by_session": "KARN-W5-R3-RES-CON-EXPANSION"
+    }
+  ]
+}

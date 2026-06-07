@@ -73,3 +73,80 @@ All deferred to post-deploy operator verification; underlying data verified corr
 
 ### Smriti
 `00_ARCHITECTURE/CONDUCTOR/l0fr/smriti/vimarsaka_z_attempt_1.md`
+
+---
+
+## [2026-06-07T09:55:00Z] SŪTRADHĀRA CLOSE
+
+All 7 streams + 3 Vimarśakas complete.
+
+**Vimarśaka-Z decision:** DELTA_DEPLOY
+
+```json
+{
+  "decision": "DELTA_DEPLOY",
+  "checks_passed": 14,
+  "checks_failed": 2,
+  "checks_soft_failed": 2,
+  "checks_known_residual": 5,
+  "seal_artifact": null,
+  "tag": null,
+  "smriti_artifact": "/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/CONDUCTOR/l0fr/smriti/vimarsaka_z_attempt_1.md",
+  "hard_failures": [
+    "HF1: brahma-build-pipeline-job Cloud Run image predates L0FR Stream A — container exits with 'unrecognized arguments: --global-build' (deployed SHA d38bd68a from 2026-06-04; local code has --global-build + global_runner.py but not deployed)",
+    "HF2: migration 174 (ganita_graha_sthana table) not applied to production DB; Stream G pyjhora_adapter not merged to main — per-chart L1 build cannot execute"
+  ],
+  "soft_failures": [
+    "SF1: sutravali_rules 1,213 < spec floor 3,000 — within master plan §12 documented range (~800-2,000 with deterministic-first Python); treated as residual",
+    "SF2: brahma_remedy_corpus 200 < spec floor 500 — within master plan §12 documented range (~200-500); native ratified 2026-06-07; treated as residual"
+  ],
+  "known_residuals": [
+    "KR1-4: 4-adapter smoke tests (agentic_loop, bulk_context, openai_function_calling, hybrid) require running Next.js+sidecar — infrastructure unavailable; underlying ephemeris data verified correct (Sun 1984-02-05 = 292.02° sidereal, expected ~291.99°, delta 0.03°)",
+    "KR5: ChatGPT MCP OAuth roundtrip — OAuth code authored on stream A branch (authorize.ts, token.ts, discovery.ts, token_store.ts) but MCP server not redeployed with L0FR changes"
+  ],
+  "checks_passed_detail": [
+    "All 7 stream capability registration floors met: A=5, B=6, C=5, D=4, E=5, F=7, G=3",
+    "ephemeris_daily 825,084 >= 820,000",
+    "classical_text_chunks 8,432 >= 6,000",
+    "5 migration tables present (sutravali_rules, sutravali_review, chart_panchanga_cache, classical_texts_source, remedy_review_queue)",
+    "10 .se1 files in GCS (>= 8 threshold)",
+    "Dockerfiles bundle .se1 via curl + ENV SWE_EPHE_PATH",
+    "JPL accuracy: 0.29 arcsec < 2 arcsec threshold",
+    "Audience tier residual in L0 retrieval stack: 0 access-control gates"
+  ],
+  "fixup_scope": {
+    "HF1": "Rebuild brahma-build-pipeline-job Docker image from stream A branch (or main after merge) — --global-build flag + global_runner.py present in local code; rebuild image and redeploy job. Local test confirms framework runs: 0 failed, 13 deferred (expected pre-merge).",
+    "HF2": "Apply platform/migrations/174_ganita_graha_sthana.sql to production DB; merge feature/l0fr-stream-g-pyhora to main; rebuild + redeploy python-sidecar with pyjhora_adapter."
+  },
+  "next_action": "Spawn fixup streams A-prime (pipeline image rebuild) and G-prime (migration 174 + Stream G merge). After both complete → Vimarśaka-Z attempt 2.",
+  "commit": "88dadad1",
+  "pushed_to": "origin/feature/new-client-form-reskin"
+}
+```
+
+### Budget Summary
+
+| Stream | Spent (USD) | Cap (USD) |
+|---|---|---|
+| A | $0.00 | $500 |
+| B | $0.00 | $150 |
+| C | $0.63 | $200 |
+| D | $0.00 | $50 |
+| E | $0.00 | $250 |
+| F | $0.00 | $50 |
+| G | $0.00 | $150 |
+| **Total** | **$0.63** | **$1,350** |
+
+### Seal Artifact
+
+**Status: NOT SEALED** (DELTA_DEPLOY — 2 hard failures remain open; seal deferred to Vimarśaka-Z attempt 2 after fixup streams A-prime + G-prime close).
+
+Seal artifact path (pending): `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/L0FR_SEALED_v1_0.md`
+
+### Next Actions
+
+1. **Fixup A-prime** — merge all L0FR stream branches to main; rebuild + redeploy brahma-build-pipeline-job Docker image with `--global-build` flag + `global_runner.py`.
+2. **Fixup G-prime** — apply `platform/migrations/174_ganita_graha_sthana.sql` to production DB; merge `feature/l0fr-stream-g-pyhora` to main; rebuild + redeploy python-sidecar with pyjhora_adapter.
+3. **Vimarśaka-Z attempt 2** — re-run after both fixups complete; expected outcome: SEAL.
+
+SŪTRADHĀRA EXITS. L0FR wave complete.

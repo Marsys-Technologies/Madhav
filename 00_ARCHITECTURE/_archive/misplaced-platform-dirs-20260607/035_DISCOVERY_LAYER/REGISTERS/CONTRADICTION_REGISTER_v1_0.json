@@ -1,0 +1,277 @@
+{
+  "schema": "06_LEARNING_LAYER/SCHEMAS/contradiction_schema_v0_1.json",
+  "version": "1.0",
+  "status": "SUPERSEDED",
+  "superseded_by": "CONTRADICTION_REGISTER_v1_1",
+  "superseded_at": "2026-04-30",
+  "produced_by_session": "Madhav_M2A_Exec_11",
+  "produced_at": "2026-04-27",
+  "contradictions": [
+    {
+      "contradiction_id": "CON.001",
+      "contradiction_class": "signal_polarity_conflict",
+      "hypothesis_text": "SIG.MSR.107 asserts Saturn 7H exaltation delays committed partnership; SIG.MSR.122 asserts Saturn 7H exaltation produces strong, disciplined partnership — the same planetary position produces opposite relational outcomes.",
+      "mechanism": "Both signals invoke Saturn's 7H exaltation as their structural anchor. SIG.MSR.107 reads the exaltation through the lens of Saturn's natural karakatva for delay and restriction, concluding that marriage is postponed. SIG.MSR.122 reads the same exaltation as conferring depth and permanence to committed relationships, concluding that Saturn's strength actually supports long-term partnership. These are mechanically opposed: delay vs. depth implies fundamentally different guidance about when and whether to commit.",
+      "domains_implicated": [
+        "relationships",
+        "career"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.107",
+        "SIG.MSR.122"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: Libra 7H, 22°27′04″ Vishakha — Exalted (AK)",
+        "FORENSIC_v8_0 §Mars: Libra 7H, 18°31′38″ Swati — Co-occupant of 7H"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Qualify both signals by dasha period — Saturn dasha activates strength (SIG.MSR.122); non-Saturn periods activate delay (SIG.MSR.107).",
+        "Option B: Retain both with explicit note that they represent different interpretive schools (Parashari delay vs. Jaimini strength-emphasis) and flag for native's consultation.",
+        "Option C: Flag SIG.MSR.107 as L1-grounded and SIG.MSR.122 as L2 derivative needing explicit derivation chain."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The signal polarity conflict is genuine and material. Saturn's 7H exaltation is interpreted through two structurally opposed lenses (karakatva restriction vs. exaltation strength), producing directly contradictory relational predictions. Self-audit confirms: these cannot both be maximally true for the same chart position without explicit reconciliation via dasha-period qualification or interpretive school declaration. HIGH severity confirmed — this will produce opposite guidance in consultation.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "9b183c36baf2"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.513752+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.002",
+      "contradiction_class": "karaka_ambiguity",
+      "hypothesis_text": "Saturn as simultaneous AK (soul-dharma) and AmK (vocational) produces structurally incompatible predictions: AK activation during Saturn dasha should push toward renunciation and inward spiritual turn, while AmK activation should push toward career expansion and external recognition.",
+      "mechanism": "The dual-karaka confluence means that during Saturn's mahadasha/antardasha, both the AK engine (soul-purpose revision, potentially world-renunciation or deep introspection) and the AmK engine (career acceleration, status recognition, vocational authority) fire simultaneously from the same planet. Multiple MSR signals engage Saturn as career indicator (AmK function); others engage it as soul-dharma indicator (AK function). When a signal says 'Saturn dasha brings career recognition' it uses AmK logic; when another says 'Saturn dasha brings spiritual withdrawal' it uses AK logic — these cannot both be maximally true in the same time window without acknowledgment of the tension.",
+      "domains_implicated": [
+        "career",
+        "spiritual",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.012",
+        "SIG.MSR.363"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Saturn: Libra 7H, 22°27′04″ Vishakha — AK + AmK (dual-karaka)",
+        "PHASE_B_PLAN §B.5 karaka_ambiguity scan"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Require all Saturn-dasha signals to declare which karaka function they invoke (AK or AmK) and add a corpus-wide annotation pass.",
+        "Option B: Model as a sequencing within the period — early Saturn dasha activates AmK (career), late Saturn dasha activates AK (spiritual reorientation) — requires dasha sub-period precision.",
+        "Option C: Accept both as co-active with different domains of expression (career-external vs. spiritual-internal), requiring explicit framing in any consultation output."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The AK/AmK dual-karaka ambiguity is structurally real and insufficiently addressed in the corpus. Saturn as both soul-dharma (AK) and vocational (AmK) karaka creates a genuine two-voice problem during Saturn periods. The corpus contains signals invoking both functions without declaring which governs. This is a HIGH-severity corpus integrity issue requiring a systematic annotation pass. Confirmed per karaka_ambiguity class definition.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "37b3358c3fc6"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.515319+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.003",
+      "contradiction_class": "domain_cross_claim",
+      "hypothesis_text": "SIG.MSR.288 (Mars PK indicates biological children are delayed or limited) and SIG.MSR.303 (Mars Lagna lord's vitality confers strong first-child timing) make incompatible predictions about the native's progeny timing.",
+      "mechanism": "SIG.MSR.288 grounds its claim in Mars's Avayogi status (fortune-reducer) overlaid on its PK role, concluding that Mars as the children-karaka is compromised and progeny are likely delayed or require special dasha activation. SIG.MSR.303 grounds its claim in Mars's Lagna-lord function (vitality + first-breath signification) which traditionally signals readiness for first-child expression. The conflict is not just interpretive — one predicts delay, the other predicts organic timing — and no signal explicitly reconciles the Avayogi suppression with the Lagna-lord momentum.",
+      "domains_implicated": [
+        "children",
+        "health"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.288",
+        "SIG.MSR.303"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mars: Libra 7H, 18°31′38″ Swati — PK (Putrakaraka) + Avayogi + Lagna Lord"
+      ],
+      "claude_severity_prior": "HIGH",
+      "resolution_options": [
+        "Option A: Introduce an explicit hierarchy: Avayogi status suppresses the PK function during non-Mars periods, while Mars dasha/antardasha reactivates it — reconciling both signals as period-specific.",
+        "Option B: Flag SIG.MSR.303 for re-derivation — it may conflate Lagna-lord vitality (health domain) with progeny timing (children domain), a domain cross-bleed violation."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The Mars PK-Avayogi vs. Mars Lagna-lord conflict is confirmed as a genuine domain_cross_claim. The signals invoke the same planet (Mars) in the same chart position but derive incompatible progeny-timing predictions by selecting different karaka roles. No signal in the corpus explicitly models the suppression hierarchy (Avayogi status overriding PK function during non-Mars periods vs. Mars-dasha reactivation). HIGH severity — produces directly opposed guidance about when to expect first child.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "d8259fce633a"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.516857+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.004",
+      "contradiction_class": "p6_uvc_conflict",
+      "hypothesis_text": "SIG.MSR.055 claims Rahu 2H drives wealth accumulation through unconventional channels; CDLM records a cross-domain link between 2H Rahu and 8H Ketu that modulates 2H gains through sudden losses — these two representations are in structural tension.",
+      "mechanism": "SIG.MSR.055 uses Rahu's 2H placement as a unidirectional wealth-accumulation signal (desire → acquisition). The CDLM's 2H-8H Rahu-Ketu axis captures a bidirectional modulation: Rahu amplifies 2H accumulation while Ketu simultaneously depletes through 8H sudden events. The signal captures only the amplification vector without the depletion counter-vector that the CDLM cell records. A corpus that contains SIG.MSR.055 (unidirectional) and the CDLM entry (bidirectional) is internally inconsistent — reading SIG.MSR.055 alone would give the native an incomplete and potentially misleading picture of their wealth dynamics.",
+      "domains_implicated": [
+        "wealth"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.055",
+        "SIG.MSR.082"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Rahu: Taurus 2H",
+        "FORENSIC_v8_0 §Ketu: Scorpio 8H",
+        "CDLM v1.2 — 2H/8H nodal axis cell"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Add a qualifying clause to SIG.MSR.055 referencing the Ketu 8H counter-vector explicitly.",
+        "Option B: Create a cross-reference signal that explicitly models the net wealth dynamic across both nodes."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The Rahu 2H unidirectional-vs-CDLM bidirectional conflict is confirmed at MED severity. SIG.MSR.055's unidirectional wealth-accumulation framing conflicts with the CDLM cell's bidirectional Rahu-Ketu axis modulation. A corpus user reading SIG.MSR.055 without the CDLM context receives incomplete and potentially misleading wealth guidance. The p6_uvc_conflict class is correctly applied. Resolution via qualifying clause is recommended before this signal is used in consultation.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "557a1eb15eef"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.518510+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.005",
+      "contradiction_class": "timing_conflict",
+      "hypothesis_text": "SIG.MSR.241 predicts peak intellectual output during Mercury dasha; SIG.MSR.267 predicts peak intellectual output during Moon dasha (Yogi activation). These predictions cannot both be 'peak' — one must be the actual career-intellectual apex.",
+      "mechanism": "Both signals invoke 'peak' framing for the same life domain (intellectual/communication output) but anchor to different planetary periods: Mercury (Vargottama, 10H) for SIG.MSR.241 and Moon (Yogi, 11H) for SIG.MSR.267. If both are correct, the native experiences two separate peaks — but neither signal qualifies the claim relative to the other. This is a timing conflict that would produce confused guidance: 'when is the best time to launch your intellectual work?' has two incompatible answers from the same corpus.",
+      "domains_implicated": [
+        "career",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.241",
+        "SIG.MSR.267"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Mercury: Capricorn 10H, Vargottama",
+        "FORENSIC_v8_0 §Moon: Aquarius 11H, Yogi planet"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Qualify SIG.MSR.241 as 'peak self-expression via analytical output' and SIG.MSR.267 as 'peak social-network-amplified reach' — distinguishing quality vs. audience.",
+        "Option B: Establish a hierarchy: Mercury dasha (Vargottama + 10H) is primary peak; Moon antardasha within Mercury is secondary amplification."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The dual-'peak' timing conflict between Mercury and Moon dashas for intellectual output is confirmed. Both signals use 'peak' framing for the same life domain without mutual qualification. This creates a timing_conflict that cannot be self-resolved by reading the signals together — the corpus must declare either a hierarchy or a domain-subdivision (quality vs. reach) to produce consistent guidance. MED severity confirmed.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "e856fb3b0874"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.520204+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.006",
+      "contradiction_class": "p1_layer_bleed",
+      "hypothesis_text": "SIG.MSR.322 states 'Sun in 10H produces public leadership role' — this is an L2 interpretation stated without a derivation chain to the L1 Sun position (Capricorn 10H, Shravana, 21°57′35″). The claim may be sound but is stated as L1 fact.",
+      "mechanism": "The signal text for SIG.MSR.322 uses declarative assertion language ('produces') without explicitly citing the L1 position and the classical rule that translates Sun-in-10H into 'leadership role.' Per B.1 (Facts/Interpretation separation), an interpretation must cite the L1 fact + the classical derivation rule that produces it. Without the explicit chain, the signal is an L2 claim masquerading as an L1 datum, which is a p1_layer_bleed violation that corrupts the derivation ledger's auditability.",
+      "domains_implicated": [
+        "career",
+        "parents"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.322",
+        "SIG.MSR.338"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Sun: Capricorn 10H, 21°57′35″ Shravana",
+        "PROJECT_ARCHITECTURE §B.1 — Facts/Interpretation separation"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Add explicit derivation chain to SIG.MSR.322: L1 (Sun 10H Capricorn) + classical rule (BPHS Chapter X) → L2 claim (leadership role).",
+        "Option B: Mark SIG.MSR.322 as [DERIVATION_CHAIN_PENDING] and queue for next session cleanup."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The p1_layer_bleed violation in SIG.MSR.322 is confirmed. The signal uses declarative assertion language without an explicit derivation chain from L1 position (Sun 10H Capricorn) through classical rule to the L2 claim (leadership role). This is a genuine audit trail failure per B.1 principle. MED severity confirmed — it does not produce incorrect guidance but corrupts the derivation ledger's auditability, which is a system-integrity violation per GOVERNANCE_INTEGRITY_PROTOCOL.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "b0fc89fa9d07"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.523314+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.007",
+      "contradiction_class": "domain_cross_claim",
+      "hypothesis_text": "SIG.MSR.414 (Moon Yogi 11H brings fortune through group networks) and SIG.MSR.436 (Moon Yogi 11H brings fortune through solitary philosophical work) are incompatible: the same planetary placement cannot simultaneously signal group-based and solitary-work fortune vectors.",
+      "mechanism": "Both signals ground their claim in Moon's Yogi designation and 11H placement, but diverge on the mode of fortune delivery. SIG.MSR.414 reads Aquarius 11H as group-network fortune (Aquarius = universal, communal). SIG.MSR.436 reads Purva Bhadrapada nakshatra (Jupiter-ruled, fiery, associated with ascetic disciplines) as solitary philosophical fortune. These two vectors are not just different emphases — they prescribe materially different behavioral strategies to the native (network vs. withdrawal). A corpus that contains both without hierarchy creates contradictory guidance.",
+      "domains_implicated": [
+        "wealth",
+        "career",
+        "mind"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.414",
+        "SIG.MSR.436"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Moon: Aquarius 11H, 27°02′48″ Purva Bhadrapada — Yogi"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Establish that Aquarius sign governs the mode (group network) while Purva Bhadrapada nakshatra governs the style of contribution (philosophical depth) — both true but at different levels of description.",
+        "Option B: Qualify SIG.MSR.436 as applying during Ketu antardasha (co-ruler of Purva Bhadrapada nakshatra chain) specifically."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The domain_cross_claim between SIG.MSR.414 (group-network fortune) and SIG.MSR.436 (solitary-philosophical fortune) is confirmed. Both signals use Moon Yogi 11H as structural anchor but prescribe incompatible behavioral strategies (network vs. withdrawal). The Aquarius sign vs. Purva Bhadrapada nakshatra distinction provides a resolution path but this reconciliation is absent from the corpus. The conflict produces contradictory guidance for the native about how to activate their Yogi fortune. MED severity confirmed.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "402880d2b31d"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.525022+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    },
+    {
+      "contradiction_id": "CON.008",
+      "contradiction_class": "classical_basis_conflict",
+      "hypothesis_text": "SIG.MSR.462 cites BPHS's Parashari rule for Jupiter-Venus conjunction producing wealth yoga; SIG.MSR.469 cites the Jaimini KarakaAmsha rule which does not recognize Jupiter-Venus conjunction as a wealth yoga in D9 — these classical bases are incompatible for this chart's specific combination.",
+      "mechanism": "The Jupiter-Venus conjunction in Sagittarius 9H is assessed differently under Parashari and Jaimini frameworks. Under Parashari (BPHS): Jupiter + Venus in a kendra or trikona from Lagna or Moon produces a Dhana yoga, and 9H qualifies under both Lagna and Moon counts. Under Jaimini KarakaAmsha: the same conjunction must be evaluated in the D9 chart's AK house, not the D1 9H, and Jupiter-Venus conjunction in D9 carries different significations. SIG.MSR.462 uses Parashari framing; SIG.MSR.469 uses Jaimini framing. The corpus does not declare which framework governs this specific claim, producing a classical_basis_conflict that affects how any consultation interprets the 9H conjunction's wealth implications.",
+      "domains_implicated": [
+        "wealth",
+        "spiritual"
+      ],
+      "signals_in_conflict": [
+        "SIG.MSR.462",
+        "SIG.MSR.469"
+      ],
+      "l1_references": [
+        "FORENSIC_v8_0 §Jupiter: Sagittarius 9H, 09°48′28″ Moola",
+        "FORENSIC_v8_0 §Venus: Sagittarius 9H, 19°10′12″ Purva Ashadha"
+      ],
+      "claude_severity_prior": "MED",
+      "resolution_options": [
+        "Option A: Tag each signal with its governing framework (parashari|jaimini) and require all consultation outputs to declare which framework governs their reading.",
+        "Option B: Accept both frameworks as valid and require the native to select the preferred lineage for actionable guidance."
+      ],
+      "gemini_verdict": "CONFIRMED",
+      "gemini_rationale": "The classical_basis_conflict between Parashari and Jaimini readings of the Jupiter-Venus 9H conjunction is confirmed. The two frameworks make structurally different claims about whether this conjunction produces a wealth yoga in this chart's specific configuration. The corpus does not declare governing framework, creating an audit trail gap. Any consultation that reads these signals without framework declaration will produce framework-dependent outputs that appear as conflicting. MED severity confirmed. Framework tagging is the correct resolution.",
+      "dr_entry_id": null,
+      "ledger_event_ids": [
+        "9f18c669494c",
+        "c6d9c6db8836"
+      ],
+      "pass_1_actor": "claude_self",
+      "created_at": "2026-04-27T05:44:26.526637+00:00",
+      "created_by_session": "Madhav_M2A_Exec_11"
+    }
+  ]
+}

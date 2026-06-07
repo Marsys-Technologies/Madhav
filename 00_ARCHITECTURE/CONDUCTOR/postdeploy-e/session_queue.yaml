@@ -1,0 +1,72 @@
+# Stream E — V1.3 Multi-School Architecture (sub-wave, 6 sessions)
+stream: postdeploy-e
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPostE
+branch: feature/postdeploy-e-multi-school
+wave_close_tag: postdeploy-e-multi-school-v1-3
+budget_cap_usd: 800
+
+sessions:
+  - id: e1-schema-design
+    status: pending
+    depends_on: []
+    scope: >
+      Design dual-ayanamsha schema. Prefer discriminator column approach:
+      ganita_positions with composite PK (chart_id + body + date + ayanamsha).
+      Document decision in 00_ARCHITECTURE/V1_3_MULTI_SCHOOL_SCHEMA.md.
+      Include table DDL, index strategy, migration approach, and rationale.
+    acceptance:
+      - 00_ARCHITECTURE/V1_3_MULTI_SCHOOL_SCHEMA.md committed
+
+  - id: e2-migration
+    status: pending
+    depends_on: [e1-schema-design]
+    scope: >
+      Author migration file that converts ganita_positions to dual-ayanamsha shape.
+      Existing rows get ayanamsha='lahiri' as default.
+      Apply migration in worktree test environment.
+    acceptance:
+      - Migration applies clean
+      - Existing data preserved with default ayanamsha='lahiri'
+
+  - id: e3-writer-changes
+    status: pending
+    depends_on: [e2-migration]
+    scope: >
+      Update ganita.positions writer to emit rows for both Lahiri AND KP
+      ayanamshas per chart-build. Ephemeris tropical positions are invariant;
+      only the sidereal projection differs.
+    acceptance:
+      - A fresh chart-build produces 2x position row count (one per ayanamsha)
+      - Unit tests pass
+
+  - id: e4-l2-rederivation
+    status: pending
+    depends_on: [e3-writer-changes]
+    scope: >
+      Update bodha.signals derivation to consume ayanamsha-aware positions.
+      Each signal carries ayanamsha_context field ('lahiri' or 'kp').
+      Re-derive existing signals for native chart against both ayanamshas.
+    acceptance:
+      - Signals double in count for test chart
+      - ayanamsha_context populated on all signals
+
+  - id: e5-concordance-c3
+    status: pending
+    depends_on: [e4-l2-rederivation]
+    scope: >
+      Resolve C3 concordance flag from WS-3 (KP-vs-Lahiri orthogonality).
+      Update mimamsa.concordance writer to flag rules whose conclusion changes
+      across ayanamshas as AYANAMSHA_DEPENDENT (separate concordance class).
+      C3 flag moves from ORTHOGONAL to RESOLVED.
+    acceptance:
+      - New concordance class AYANAMSHA_DEPENDENT implemented
+      - C3 flag resolved in concordance index
+
+  - id: e-wave-close
+    status: pending
+    depends_on: [e5-concordance-c3]
+    scope: >
+      PR + CI + merge + tag postdeploy-e-multi-school-v1-3.
+    acceptance:
+      - PR merged to main
+      - tag postdeploy-e-multi-school-v1-3 created and pushed

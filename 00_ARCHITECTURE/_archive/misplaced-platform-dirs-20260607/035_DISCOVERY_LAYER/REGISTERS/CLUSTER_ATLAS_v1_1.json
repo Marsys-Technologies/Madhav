@@ -1,0 +1,1327 @@
+{
+  "schema_version": "1.0",
+  "register_id": "CLUSTER_ATLAS_v1_1",
+  "supersedes": "CLUSTER_ATLAS_v1_0",
+  "created_at": "2026-04-30T10:52:07+00:00",
+  "created_by_session": "M2_B3_CLUSTER_RECLUSTER",
+  "msr_source_version": "MSR_v3_0",
+  "total_signals_in_msr": 499,
+  "total_signals_clustered": 495,
+  "coverage_percent": 99.2,
+  "n_clusters": 34,
+  "pass_1_actor": "gemini-web-2026-04-30",
+  "pass_2_actor": "claude-cowork-2026-04-30",
+  "clusters": [
+    {
+      "cluster_id": "CLUS.001",
+      "cluster_label": "Saturn Dual-Karaka Career Authority",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.001",
+        "SIG.MSR.020",
+        "SIG.MSR.037",
+        "SIG.MSR.038",
+        "SIG.MSR.053",
+        "SIG.MSR.058",
+        "SIG.MSR.062",
+        "SIG.MSR.067",
+        "SIG.MSR.071",
+        "SIG.MSR.079",
+        "SIG.MSR.080",
+        "SIG.MSR.090",
+        "SIG.MSR.094",
+        "SIG.MSR.114",
+        "SIG.MSR.127",
+        "SIG.MSR.289",
+        "SIG.MSR.389",
+        "SIG.MSR.390",
+        "SIG.MSR.405",
+        "SIG.MSR.438"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 20,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.93,
+      "significance": 0.91,
+      "annotation": "Saturn's rare occupation of both Atmakaraka (AK) and Amatyakaraka (AmK) in a single planet concentrates soul-level drive and vocational authority in one planetary body, making these signals semantically proximate. The Sasha Mahapurusha Yoga (Saturn exalted in Libra 7H Kendra) amplifies the career-authority theme by providing classical certification of Saturn's strength. Signals cluster here because they share a common structural mechanism: Saturn exaltation at 22\u00b027' Libra (Shadbala rank 2) \u00d7 dual-karaka status \u00d7 Kendra occupancy \u00d7 AmK vocational designation all reinforce a career-authority narrative with no competing planetary source to dilute it. The absence of a separate AmK means career signals in this chart cannot originate from an independent vocational planet, forcing the embedding neighborhood of all career-authority signals toward Saturn's coordinate space.",
+      "ledger_event_ids": [
+        "EVT.CLUS.001"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.002",
+      "cluster_label": "Sun 10H Career-Density Stellium",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "parents",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.014",
+        "SIG.MSR.034",
+        "SIG.MSR.047",
+        "SIG.MSR.061",
+        "SIG.MSR.063",
+        "SIG.MSR.070",
+        "SIG.MSR.105",
+        "SIG.MSR.154"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 8,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.87,
+      "significance": 0.83,
+      "annotation": "Sun's placement in Capricorn 10H with Mercury and the Arudha Lagna creates a career-density convergence that makes these signals semantically adjacent: all describe the 10H as the chart's most-aspected, most-loaded house with three layers of career symbolism (occupying planets Sun+Mercury, Arudha Lagna, and the 10H as Saturn's house of exaltation sign). Shravana nakshatra (Moon-ruled) gives Sun a listening-tradition quality that pulls in paternal and lineage signals, since in Parashari tradition the 10H simultaneously represents career, paternal authority, and social status. The Budh-Aditya yoga (Sun-Mercury conjunction) and its projection of 7th Drishti to 4H further links career-domain signals to home/parent domains, explaining why parent-domain signals appear in this cluster's sub-domain orbit.",
+      "ledger_event_ids": [
+        "EVT.CLUS.002"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.003",
+      "cluster_label": "Mercury Vargottama Operational Spine",
+      "dominant_domain": "mind",
+      "sub_domains": [
+        "career",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.009",
+        "SIG.MSR.016",
+        "SIG.MSR.035",
+        "SIG.MSR.050",
+        "SIG.MSR.056",
+        "SIG.MSR.064",
+        "SIG.MSR.085",
+        "SIG.MSR.087",
+        "SIG.MSR.096",
+        "SIG.MSR.388",
+        "SIG.MSR.413"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.95,
+      "significance": 0.93,
+      "annotation": "Mercury's Vargottama status \u2014 occupying Uttara Ashadha Capricorn 10H in both D1 and D9 \u2014 creates a structural continuity across divisional charts that makes Mercury-spine signals uniquely coherent. CVG.01 (Six-Factor Mercury Convergence) formalizes why these signals co-cluster: Mercury is simultaneously Vargottama, Mahadasha lord, Yogi planet, DaraKaraka, 3L and 6L \u2014 six independent significations pointing toward the same planetary body. This convergence is the empirical reason that Mercury-MD periods in this chart show 10\u00d7 the life-event density of other Mahadasha periods (SIG.MSR.044). Signals in this cluster share Mercury's Uttara Ashadha Capricorn coordinate as their semantic anchor: they describe intelligence, communication, analytical precision, and career performance all filtered through Capricorn's disciplined structure and Saturn's lordship.",
+      "ledger_event_ids": [
+        "EVT.CLUS.003"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.004",
+      "cluster_label": "Saraswati-Budhaditya Intelligence Yoga Stack",
+      "dominant_domain": "mind",
+      "sub_domains": [
+        "career",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.007",
+        "SIG.MSR.011",
+        "SIG.MSR.097",
+        "SIG.MSR.101",
+        "SIG.MSR.120",
+        "SIG.MSR.128",
+        "SIG.MSR.130",
+        "SIG.MSR.142",
+        "SIG.MSR.147",
+        "SIG.MSR.148",
+        "SIG.MSR.426"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.88,
+      "significance": 0.85,
+      "annotation": "Saraswati Yoga (Jupiter + Venus + Mercury all in Kendra or Trikona from Lagna) and Budh-Aditya Yoga (Sun-Mercury conjunction in 10H) form the nucleus of this intelligence-yoga cluster. Signals co-locate here because they describe a single underlying structural truth: three out of the nine planets in this chart are mutual members of an intelligence-domain yoga stack, an unusual concentration that explains why mind-domain signals appear at higher density than a typical chart. Bhadra Yoga (Mercury in Kendra in friendly sign) and Anapha Yoga (Sun-Mercury in 12th from Moon) reinforce the same theme from different classical frameworks. The common embedding anchor is Capricorn 10H as the house of intellectual output directed toward public performance and authority.",
+      "ledger_event_ids": [
+        "EVT.CLUS.004"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.005",
+      "cluster_label": "Raja Yoga Authority Combinations",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.107",
+        "SIG.MSR.108",
+        "SIG.MSR.109",
+        "SIG.MSR.110",
+        "SIG.MSR.121",
+        "SIG.MSR.122",
+        "SIG.MSR.123",
+        "SIG.MSR.137",
+        "SIG.MSR.138",
+        "SIG.MSR.139",
+        "SIG.MSR.140",
+        "SIG.MSR.141",
+        "SIG.MSR.145",
+        "SIG.MSR.146",
+        "SIG.MSR.421",
+        "SIG.MSR.422",
+        "SIG.MSR.423",
+        "SIG.MSR.425",
+        "SIG.MSR.427",
+        "SIG.MSR.431"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 20,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.86,
+      "significance": 0.84,
+      "annotation": "This cluster aggregates all classical Raja Yoga formations \u2014 1L+10L conjunction (Mars+Saturn in 7H), 5L+9L relationship (Sun+Jupiter, Trikona-Trikona), 9L+10L relationship (Jupiter+Saturn, Dharma-Karma axis), Kahala Yoga, Akhanda Samrajya Yoga, Uchcha Graha Yoga (three exalted planets simultaneously), and Parivartana yogas. These signals cluster together because they all assert elevated institutional authority as the chart's structural baseline: multiple yoga pathways converge on the same conclusion. The Parivartana (mutual exchange) between Saturn 10L and Venus 7L creates a structural loop between career and relationship domains, explaining why career signals in this cluster carry relationship sub-domain markers. Yoga Karaka status for Saturn (ruling a Kendra and Trikona from Aries Lagna) provides the formal certification underlying all authority claims.",
+      "ledger_event_ids": [
+        "EVT.CLUS.005"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.006",
+      "cluster_label": "Rahu 2H Wealth Drive",
+      "dominant_domain": "wealth",
+      "sub_domains": [
+        "travel",
+        "family"
+      ],
+      "signal_ids": [
+        "SIG.MSR.010",
+        "SIG.MSR.054",
+        "SIG.MSR.129",
+        "SIG.MSR.393",
+        "SIG.MSR.401"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 5,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.81,
+      "significance": 0.75,
+      "annotation": "Rahu's placement in Taurus 2H in Rohini nakshatra (Moon-ruled, Brahma deity, associated with material generativity) creates an insatiable wealth-accumulation drive that anchors this cluster. These signals co-locate because they share Rahu's 2H coordinate as the structural origin of unconventional, first-generation wealth accumulation: Rahu in Taurus amplifies Taurean desire for material security while adding a foreign, unconventional, or technology-mediated channel for its expression. The nodal exaltation (Rahu exalted in Taurus by classical count) and Rohini's creative-generative mythology further reinforce the material ambition theme. Venus as 2L from Aries Lagna occupies the 9H (fortune house), routing wealth accumulation through dharmic channels and linking these signals to travel and foreign dimension sub-domains.",
+      "ledger_event_ids": [
+        "EVT.CLUS.006"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.007",
+      "cluster_label": "Jupiter-Venus Dharma-Lakshmi Engine",
+      "dominant_domain": "wealth",
+      "sub_domains": [
+        "spirit",
+        "children"
+      ],
+      "signal_ids": [
+        "SIG.MSR.008",
+        "SIG.MSR.021",
+        "SIG.MSR.051",
+        "SIG.MSR.060",
+        "SIG.MSR.069",
+        "SIG.MSR.073",
+        "SIG.MSR.074",
+        "SIG.MSR.078",
+        "SIG.MSR.081",
+        "SIG.MSR.082",
+        "SIG.MSR.089",
+        "SIG.MSR.091",
+        "SIG.MSR.093",
+        "SIG.MSR.153"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 14,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.89,
+      "significance": 0.86,
+      "annotation": "Jupiter and Venus conjunct in Sagittarius 9H (Jupiter's own sign, Moola + Purva Ashadha nakshatras) constitute a Lakshmi Yoga nucleus: two natural wealth significators placed in the Bhagya Sthana (house of fortune). Signals cluster here because they share the 9H Jupiter-Venus coordinate as their structural origin: prosperity through dharma, higher knowledge, and philosophical wealth-creation rather than direct professional effort. Jupiter's self-dispositorship in Sagittarius (9L in 9H) creates a self-sustaining dharma engine, and Jupiter's Vimsopaka rank 1 (highest cross-divisional aggregate strength) means Jupiter's wealth and children significations reinforce each other across chart layers. The children sub-domain emerges naturally because Jupiter is the classical Putrakaraka (children significator) and 5L-9L relationship between Sun and Jupiter creates a dharma-children wealth linkage.",
+      "ledger_event_ids": [
+        "EVT.CLUS.007"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.008",
+      "cluster_label": "Dhana Yoga Wealth Combinations",
+      "dominant_domain": "wealth",
+      "sub_domains": [
+        "career",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.098",
+        "SIG.MSR.099",
+        "SIG.MSR.100",
+        "SIG.MSR.102",
+        "SIG.MSR.103",
+        "SIG.MSR.104",
+        "SIG.MSR.144"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 7,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.82,
+      "significance": 0.78,
+      "annotation": "This cluster houses all classical Dhana Yoga formations that do not belong to the Jupiter-Venus Dharma-Lakshmi nucleus: 2L+11L relationship (Venus+Saturn), 5L Sun in 10H Kendra (intelligence-career wealth), Vasumati Yoga (natural benefics in Upachaya), and the auxiliary Venus-based yogas (Vesi, Vasi, Ubhayachari). These signals cluster together because they describe multiple parallel structural routes to wealth accumulation in this chart \u2014 through intelligence (5L Sun in 10H), through partnership (2L Venus), through gains networks (11L Saturn), and through benefic placement. The Ubhayachari Yoga (planets on both sides of Sun \u2014 Jupiter+Venus in 12th and Moon in 2nd) creates a distinctive solar wealth-signifier that appears in this embedding neighborhood because of its structural relationship to Sun's 10H placement.",
+      "ledger_event_ids": [
+        "EVT.CLUS.008"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.009",
+      "cluster_label": "Ketu 8H Moksha-Occult Mastery",
+      "dominant_domain": "spirit",
+      "sub_domains": [
+        "health",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.055",
+        "SIG.MSR.092",
+        "SIG.MSR.116",
+        "SIG.MSR.126",
+        "SIG.MSR.150",
+        "SIG.MSR.261",
+        "SIG.MSR.263",
+        "SIG.MSR.269",
+        "SIG.MSR.469",
+        "SIG.MSR.470",
+        "SIG.MSR.473"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.83,
+      "significance": 0.79,
+      "annotation": "Ketu in Scorpio 8H in Jyeshtha nakshatra (Mercury-ruled, elder-chief archetype) is the primary structural anchor for moksha and past-life mastery signals. Ketu naturalizes the 8H themes of hidden knowledge, occult research, sudden transformation, and liberation \u2014 Ketu in Scorpio deepens this by adding Scorpio's investigative, penetrating quality to Ketu's past-life dissolution energy. The Vipreet Lakshmi Yoga (Jupiter 12L in 9H own-sign) creates a structural link between Ketu's 8H and the 12H moksha domain: the 12L placed in a trikona converts the 12H from a house of loss into a house of liberation. Ketu MD timing signals cluster here because Ketu's 7-year period (2027-2034) represents the primary moksha-activation window in the native's adulthood, concentrating withdrawal and spiritual intensification themes in the same semantic neighborhood.",
+      "ledger_event_ids": [
+        "EVT.CLUS.009"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.010",
+      "cluster_label": "Moon AK Soul-Network Fortune",
+      "dominant_domain": "spirit",
+      "sub_domains": [
+        "wealth",
+        "travel"
+      ],
+      "signal_ids": [
+        "SIG.MSR.048",
+        "SIG.MSR.171",
+        "SIG.MSR.396",
+        "SIG.MSR.406",
+        "SIG.MSR.409"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 5,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.84,
+      "significance": 0.8,
+      "annotation": "Moon as Atmakaraka (highest-degree planet = soul significator in Jaimini) placed in Aquarius 11H in Purva Bhadrapada nakshatra defines this cluster's semantic center. These signals co-locate because they all describe the soul's primary orientation: Moon-AK in 11H directs the soul's mission through gains, networks, social aspirations, and collective contribution rather than individual effort. The Yogi planet designation (Moon as the chart's auspicious sensitive-point planet) reinforces the fortune-through-group theme. Moon's D9 placement in Gemini 12H (Karakamsa) creates the soul-in-moksha-house paradox that is the chart's central spiritual tension. Signals about isolation (Moon-AK receives zero Parashari graha drishti) and social architecture (Purva Bhadrapada's fierce-pyre + Jupiter-lord quality) cluster here because they share the Aquarius-Moon-AK coordinate as their origin.",
+      "ledger_event_ids": [
+        "EVT.CLUS.010"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.011",
+      "cluster_label": "12H Foreign-Moksha Architecture",
+      "dominant_domain": "travel",
+      "sub_domains": [
+        "spirit",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.005",
+        "SIG.MSR.006",
+        "SIG.MSR.018",
+        "SIG.MSR.027",
+        "SIG.MSR.059",
+        "SIG.MSR.068",
+        "SIG.MSR.077",
+        "SIG.MSR.084",
+        "SIG.MSR.095",
+        "SIG.MSR.136",
+        "SIG.MSR.209"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.79,
+      "significance": 0.74,
+      "annotation": "The 12H (Pisces) in this chart carries an unusual structural concentration: both Jupiter (as 12L placed in 9H own-sign \u2014 a beneficial Vipreet configuration) and Moon-AK (via Chalit drift to 12H) bring fortune-rulers into the moksha house. This cluster's signals share the 12H-foreign-moksha coordinate: Moon-AK Chalit-12 creates a foreign income architecture (soul significator in the house of foreign residence), and the D9 12H Gemini stellium (Moon+Jupiter+Rahu) amplifies the same theme at the Navamsa level by placing three planets in the moksha house of the partnership chart. Together, these signals describe a structural predisposition toward income from foreign sources, spiritual activity in foreign locations, and moksha-orientation as an ongoing life-architecture rather than a future aspiration.",
+      "ledger_event_ids": [
+        "EVT.CLUS.011"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.012",
+      "cluster_label": "Mars-Saturn 7H Iron Forge Partnership Paradox",
+      "dominant_domain": "relationships",
+      "sub_domains": [
+        "career",
+        "health"
+      ],
+      "signal_ids": [
+        "SIG.MSR.015",
+        "SIG.MSR.106",
+        "SIG.MSR.133",
+        "SIG.MSR.149",
+        "SIG.MSR.152",
+        "SIG.MSR.173",
+        "SIG.MSR.176",
+        "SIG.MSR.181",
+        "SIG.MSR.195",
+        "SIG.MSR.222",
+        "SIG.MSR.238",
+        "SIG.MSR.243",
+        "SIG.MSR.251",
+        "SIG.MSR.254",
+        "SIG.MSR.343",
+        "SIG.MSR.411"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 16,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.87,
+      "significance": 0.83,
+      "annotation": "Mars (Lagna lord, Putrakaraka, Avayogi) and Saturn (AK, AmK, Yoga Karaka, exalted) co-occupying Libra 7H creates the chart's primary structural paradox: the house of committed partnership simultaneously holds the soul-level karaka demanding longevity (Saturn) and the fortune-reducing Avayogi (Mars) introducing friction and separation. These signals cluster together because they describe the unified behavioral outcomes of this dual-occupancy: delayed relationships, authority in partnerships, relational turbulence from competing drives, and the Vipreet Raja Yoga (8L Mars in 7H) that transmutes partnership stress into eventual authority. The aspect grid this conjunction generates \u2014 Saturn's 3rd/7th/10th drishti + Mars's 4th/7th/8th drishti from 7H \u2014 creates the most aspected sector of the chart at 7H, making partnership-cluster signals semantically dense.",
+      "ledger_event_ids": [
+        "EVT.CLUS.012"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.013",
+      "cluster_label": "Venus Relationships & Aesthetic Dignity",
+      "dominant_domain": "relationships",
+      "sub_domains": [
+        "wealth",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.012",
+        "SIG.MSR.052",
+        "SIG.MSR.057",
+        "SIG.MSR.403",
+        "SIG.MSR.412"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 5,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.78,
+      "significance": 0.74,
+      "annotation": "Venus carries the weakest Shadbala aggregate (rank 7 of 9) in this chart despite its dignified placement in Sagittarius 9H (friend's sign) and its Vargottama-canceled debilitation in Virgo D9. This paradox \u2014 Venus dignified yet weakest by aggregate \u2014 anchors the relationship cluster: signals about partnership quality, aesthetic sensibility, and relational dynamics all carry the Venus-weakness imprint. The 7L (partnership lord) in 9H creates a specific relational pattern: partnerships arrive through dharmic channels and intellectual connections rather than direct social meeting. Venus in Purva Ashadha nakshatra (its own nakshatra \u2014 self-referencing Lakshmi principle) gives aesthetic and philosophical quality to relational expression. The NBRY (Neecha Bhanga Raja Yoga) for Venus in D9 means the partnership weakness is canceled but the cancellation mechanism requires strength from Mercury, creating a Mercury-Venus interdependence in relationship outcomes.",
+      "ledger_event_ids": [
+        "EVT.CLUS.013"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.014",
+      "cluster_label": "Jaimini Karaka Hierarchy System",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.004",
+        "SIG.MSR.031",
+        "SIG.MSR.317",
+        "SIG.MSR.318",
+        "SIG.MSR.319",
+        "SIG.MSR.321",
+        "SIG.MSR.322",
+        "SIG.MSR.323",
+        "SIG.MSR.324",
+        "SIG.MSR.325",
+        "SIG.MSR.326",
+        "SIG.MSR.327",
+        "SIG.MSR.328",
+        "SIG.MSR.329",
+        "SIG.MSR.330",
+        "SIG.MSR.336",
+        "SIG.MSR.337",
+        "SIG.MSR.338",
+        "SIG.MSR.339",
+        "SIG.MSR.340",
+        "SIG.MSR.341",
+        "SIG.MSR.342",
+        "SIG.MSR.344",
+        "SIG.MSR.346",
+        "SIG.MSR.347",
+        "SIG.MSR.348",
+        "SIG.MSR.350",
+        "SIG.MSR.402"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 28,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.91,
+      "significance": 0.88,
+      "annotation": "The Jaimini karaka hierarchy for this chart concentrates unusual authority in Saturn (AK+AmK dual designation) and creates diagnostic complexity in the Putrakaraka (PK = Mars, Avayogi). These signals cluster together because they all operate within the Jaimini paradigm's distinct analytical framework: Atmakaraka governs soul mission, Amatyakaraka governs vocational expression, Putrakaraka governs children, Darakaraka governs spouse quality. The dual-AK/AmK Saturn designation is the cluster's structural anomaly \u2014 it means a single planet governs both the soul-mission and career-performance axes, making Jaimini analysis of this chart more structurally concentrated than a chart with distinct AK and AmK. Signals about the 7-karaka vs 8-karaka system divergence, Rahu's role as potential Pitrukaraka, and the Karakamsa (D9 AK placement) all cluster here because they share the Jaimini analytical grammar.",
+      "ledger_event_ids": [
+        "EVT.CLUS.014"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.015",
+      "cluster_label": "Planet Nakshatra Signatures",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.088",
+        "SIG.MSR.183",
+        "SIG.MSR.184",
+        "SIG.MSR.185",
+        "SIG.MSR.186",
+        "SIG.MSR.187",
+        "SIG.MSR.188",
+        "SIG.MSR.189",
+        "SIG.MSR.190",
+        "SIG.MSR.191",
+        "SIG.MSR.192",
+        "SIG.MSR.202",
+        "SIG.MSR.203",
+        "SIG.MSR.204",
+        "SIG.MSR.205",
+        "SIG.MSR.444",
+        "SIG.MSR.445",
+        "SIG.MSR.446",
+        "SIG.MSR.447",
+        "SIG.MSR.448",
+        "SIG.MSR.449",
+        "SIG.MSR.450",
+        "SIG.MSR.451",
+        "SIG.MSR.452",
+        "SIG.MSR.454",
+        "SIG.MSR.455"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 26,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.88,
+      "significance": 0.85,
+      "annotation": "Each planet in this chart occupies a nakshatra that reinforces or complicates its sign placement in diagnostically significant ways. This cluster houses the individual planet-nakshatra signature signals: Lagna in Ashwini Pada 4 (Ketu-ruled healing archetype), Moon in Purva Bhadrapada Pada 3 (Jupiter-ruled fierce-pyre soul), Sun in Shravana Pada 4 (Moon-ruled listening-sovereign), Mercury in Uttara Ashadha Pada 2 (Sun-ruled invincible-vow communicator), Mars in Swati Pada 4 (Rahu-ruled independent-sword), Jupiter in Moola Pada 3 (Ketu-ruled root-galactic-center Guru), Venus in Purva Ashadha Pada 2 (Venus-lord self-referencing), Saturn in Vishakha Pada 1 (Jupiter-lord branching-ambition in exaltation), Rahu in Rohini Pada 3 (Moon-lord lush-generativity in exaltation), Ketu in Jyeshtha Pada 1 (Mercury-lord elder-chief in exaltation). Each signal grounds an abstract planetary quality in a specific mythological and astronomical coordinate.",
+      "ledger_event_ids": [
+        "EVT.CLUS.015"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.016",
+      "cluster_label": "Aspect Grid & Virupa Architecture",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "health",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.023",
+        "SIG.MSR.036",
+        "SIG.MSR.155",
+        "SIG.MSR.156",
+        "SIG.MSR.157",
+        "SIG.MSR.158",
+        "SIG.MSR.159",
+        "SIG.MSR.160",
+        "SIG.MSR.161",
+        "SIG.MSR.162",
+        "SIG.MSR.163",
+        "SIG.MSR.164",
+        "SIG.MSR.165",
+        "SIG.MSR.166",
+        "SIG.MSR.167",
+        "SIG.MSR.168",
+        "SIG.MSR.169",
+        "SIG.MSR.178",
+        "SIG.MSR.179",
+        "SIG.MSR.180"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 20,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.86,
+      "significance": 0.82,
+      "annotation": "The aspect grid in this chart is defined by two structural dominances: (1) the 7H Mars+Saturn conjunction projecting five-house aspect coverage (Saturn 3rd/7th/10th + Mars 4th/7th/8th from 7H) and (2) the Lagna receiving the highest virupa weight of any point in the chart (165 total virupas: 120 malefic from Mars+Saturn + 45 benefic from Jupiter). These signals cluster because they all describe the architectural consequence of this aspect pattern: the native's self-identity (Lagna) is under maximum malefic pressure tempered by Jupiter's grace, the career house (10H) receives Mars's 4th Drishti (60v) energizing it from the partnership house, and the 4H (home/mother) is the most-aspected empty house. The virupa summaries and individual aspect signals share the mathematical foundation of the graha drishti system as their common grammar.",
+      "ledger_event_ids": [
+        "EVT.CLUS.016"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.017",
+      "cluster_label": "Divisional Chart Portfolio D3-D60",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.041",
+        "SIG.MSR.042",
+        "SIG.MSR.043",
+        "SIG.MSR.213",
+        "SIG.MSR.214",
+        "SIG.MSR.215",
+        "SIG.MSR.216",
+        "SIG.MSR.217",
+        "SIG.MSR.218",
+        "SIG.MSR.219",
+        "SIG.MSR.220",
+        "SIG.MSR.221",
+        "SIG.MSR.485",
+        "SIG.MSR.486",
+        "SIG.MSR.489",
+        "SIG.MSR.490",
+        "SIG.MSR.491"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 17,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.82,
+      "significance": 0.77,
+      "annotation": "Beyond the D9 Navamsa (its own cluster), multiple divisional charts reinforce the D1 analysis in domain-specific ways. D10 (career chart): Saturn at Taurus 10H midheaven, Sun+Mars in Aries D10 9H (both strong), Mercury own-sign in Virgo D10 2H \u2014 all three career-chart indicators confirm the D1 career themes. D3 (vitality chart): Mars exalted in Capricorn D3 reinforces physical constitution. D7 (progeny): Jupiter own-sign in Sagittarius D7 confirms children prosperity (addressed in CLUS.021). D27 (strength chart): D27 Lagna Pisces = D1 12H Pisces (strength-chart opens with moksha house). D60 (past-karma chart): Saturn at D60 Lagna, Ketu in D60 8H Capricorn. These signals cluster because they share the divisional-chart methodology as their analytical grammar: each validates a D1 theme from a specific domain-specialized chart.",
+      "ledger_event_ids": [
+        "EVT.CLUS.017"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.018",
+      "cluster_label": "D9 Navamsa Pattern Register",
+      "dominant_domain": "relationships",
+      "sub_domains": [
+        "spirit",
+        "career"
+      ],
+      "signal_ids": [
+        "SIG.MSR.002",
+        "SIG.MSR.003",
+        "SIG.MSR.208",
+        "SIG.MSR.210",
+        "SIG.MSR.211",
+        "SIG.MSR.212",
+        "SIG.MSR.223",
+        "SIG.MSR.224",
+        "SIG.MSR.225",
+        "SIG.MSR.428",
+        "SIG.MSR.429",
+        "SIG.MSR.430",
+        "SIG.MSR.432",
+        "SIG.MSR.433",
+        "SIG.MSR.434",
+        "SIG.MSR.435",
+        "SIG.MSR.436",
+        "SIG.MSR.481",
+        "SIG.MSR.482",
+        "SIG.MSR.483",
+        "SIG.MSR.484",
+        "SIG.MSR.492"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 22,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.85,
+      "significance": 0.81,
+      "annotation": "The D9 Navamsa (1/9 harmonic division chart) is the primary marriage and soul chart in Jyotish. This chart's D9 carries three diagnostically unusual features: (1) Mercury Vargottama (Capricorn D1 = Capricorn D9 \u2014 maximum cross-chart stability), (2) Venus debilitated in Virgo D9 but canceled by NBRY (Mercury Vargottama as dispositor of debilitated Venus), and (3) a 12H Gemini stellium (Moon+Jupiter+Rahu) in the moksha house of the Navamsa, signaling soul-dispersion toward foreign/dharmic domain. These signals cluster because they share the D9 analytical layer as their origin, and D9 is the single most-consulted divisional chart for relationship and spiritual assessment \u2014 it carries higher interpretive weight than other divisionals, creating denser signal coverage.",
+      "ledger_event_ids": [
+        "EVT.CLUS.018"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.019",
+      "cluster_label": "Arudha Pada Lagna System",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.228",
+        "SIG.MSR.229",
+        "SIG.MSR.230",
+        "SIG.MSR.231",
+        "SIG.MSR.232",
+        "SIG.MSR.233",
+        "SIG.MSR.234",
+        "SIG.MSR.235",
+        "SIG.MSR.236",
+        "SIG.MSR.237",
+        "SIG.MSR.239",
+        "SIG.MSR.240",
+        "SIG.MSR.241",
+        "SIG.MSR.244",
+        "SIG.MSR.247",
+        "SIG.MSR.248",
+        "SIG.MSR.249",
+        "SIG.MSR.250"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 18,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.83,
+      "significance": 0.79,
+      "annotation": "The Arudha Padas (AL = Arudha Lagna, A2-A12 = Bhava Arudhas) represent the external image of each house \u2014 what others perceive rather than what actually exists. In this chart, the Arudha Lagna (AL) falls in Capricorn 10H (same as the physical Sun and Mercury placement), creating a rare Arudha-planet overlap that amplifies the public career image. The UL (Upapada Lagna, marriage Arudha) and key relationship Arudhas (A7, A11) carry relationship and social network image diagnostics. Signals in this cluster use the Arudha system's specific grammar: image rather than reality, social perception rather than internal experience. They form a coherent semantic cluster because they all translate natal house themes into their external-perception equivalents, adding a social-reputation layer to the chart's structural analysis.",
+      "ledger_event_ids": [
+        "EVT.CLUS.019"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.020",
+      "cluster_label": "Health Constitution & Sade Sati Transit",
+      "dominant_domain": "health",
+      "sub_domains": [
+        "mind",
+        "career"
+      ],
+      "signal_ids": [
+        "SIG.MSR.013",
+        "SIG.MSR.040",
+        "SIG.MSR.049",
+        "SIG.MSR.065",
+        "SIG.MSR.072",
+        "SIG.MSR.076",
+        "SIG.MSR.086",
+        "SIG.MSR.134",
+        "SIG.MSR.170",
+        "SIG.MSR.292",
+        "SIG.MSR.293",
+        "SIG.MSR.294",
+        "SIG.MSR.295",
+        "SIG.MSR.297",
+        "SIG.MSR.299",
+        "SIG.MSR.302",
+        "SIG.MSR.476"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 17,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.8,
+      "significance": 0.76,
+      "annotation": "The health constitution of this chart is structured by two competing forces: the Aries Lagna and its lord Mars (Ashwini nakshatra rising \u2014 the healing healer archetype, Ketu-ruled) conferring rapid recovery, and the Lagnesh Mars's 7H exile in enemy sign (Libra) creating a constitution that channels vitality outward rather than maintaining it internally. Sade Sati Cycle 2 (Saturn transiting Pisces, 12th from natal Moon in Aquarius, 2025-2028) represents the current health and psychological stress phase. Signals in this cluster share the Martian-Lagna + Sade Sati health grammar: they describe physical constitution, vitality dynamics, chronic stress patterns, and the psychological dimension of the Sade Sati transition from Mercury MD to Ketu MD.",
+      "ledger_event_ids": [
+        "EVT.CLUS.020"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.021",
+      "cluster_label": "Children & Progeny Cluster",
+      "dominant_domain": "children",
+      "sub_domains": [
+        "relationships",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.066",
+        "SIG.MSR.083",
+        "SIG.MSR.226",
+        "SIG.MSR.276",
+        "SIG.MSR.283",
+        "SIG.MSR.320",
+        "SIG.MSR.398",
+        "SIG.MSR.424",
+        "SIG.MSR.440",
+        "SIG.MSR.488"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 10,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.78,
+      "significance": 0.71,
+      "annotation": "The children domain in this chart is defined by a structural contradiction: Mars is simultaneously Putrakaraka (children significator in Jaimini) and Avayogi (fortune-reducer) placed in 7H (relationship house) rather than in a progeny house. This means children-domain signals are structurally bound to relationship-domain signals through Mars's dual role, explaining their sub-domain overlap. Bhava Bala rank 1 for the 5H (strongest house by aggregate strength) creates an optimistic structural foundation for children despite the PK-Avayogi paradox. The D7 Saptamsha confirms children prosperity (Jupiter own-sign in D7), and Jupiter's retrodictive transit to Aquarius 11H in 2021-2022 coincided with the twin daughters' birth \u2014 empirical validation of the 5H+Jupiter transit mechanism. Signals cluster because they share the 5H-Mars-PK coordinate as their diagnostic origin.",
+      "ledger_event_ids": [
+        "EVT.CLUS.021"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.022",
+      "cluster_label": "Parents & Lineage Cluster",
+      "dominant_domain": "parents",
+      "sub_domains": [
+        "career",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.227",
+        "SIG.MSR.246",
+        "SIG.MSR.260",
+        "SIG.MSR.277",
+        "SIG.MSR.288",
+        "SIG.MSR.487"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 6,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.76,
+      "significance": 0.7,
+      "annotation": "The parents domain is structured through two houses: 10H (Sun, traditional father-house in Parashari, also Pitrukaraka Sun in 10H) and 4H (Moon as 4L, mother's house, currently empty and most-aspected-empty-house in the chart). The D12 Dvadashamsha confirms the parental lineage register, and the Pitri Saham (father sensitive-point) falling in Capricorn 10H creates a structural identity between career and paternal authority \u2014 career success is partly a fulfillment of paternal legacy. Father's death transit markers (Saturn in Sagittarius 9H 2017-2020, five eclipses within six months of the event) cluster here as retrodictive validation of the 9H as the operating theater for father-domain activations (9H as 12H from 10H = dissolution of career house = father's exit).",
+      "ledger_event_ids": [
+        "EVT.CLUS.022"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.023",
+      "cluster_label": "Special Lagnas & Sahama Sensitive Points",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.252",
+        "SIG.MSR.253",
+        "SIG.MSR.291",
+        "SIG.MSR.300",
+        "SIG.MSR.301",
+        "SIG.MSR.404",
+        "SIG.MSR.456",
+        "SIG.MSR.457",
+        "SIG.MSR.458",
+        "SIG.MSR.459",
+        "SIG.MSR.462",
+        "SIG.MSR.463",
+        "SIG.MSR.465",
+        "SIG.MSR.466",
+        "SIG.MSR.468",
+        "SIG.MSR.493",
+        "SIG.MSR.494"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 17,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.8,
+      "significance": 0.75,
+      "annotation": "Beyond the Arudha Pada system (CLUS.019), the chart carries a set of special Lagnas and Sahama (Arabic Parts) that add precision to domain-specific analyses. Hora Lagna (wealth timing indicator), Ghati Lagna (power and authority lagna), Varnada Lagna (personality and career lagna), Pranapada (vital breath point), and the Sahama series (Pitri, Roga, Mahatmya, Vivaha, etc.) form this cluster's content. A diagnostic convergence: Ghati Lagna and Varnada Lagna both fall in Scorpio 8H \u2014 power and authority are rooted in the chart's transformation-and-occult house, creating a distinctive 'power through depth' rather than 'power through display' profile. Roga Saham (disease point) and Mahatmya Saham (greatness point) both falling in Libra 7H reveals the same Iron-Forge house as both the disease-risk and greatness-achievement coordinate.",
+      "ledger_event_ids": [
+        "EVT.CLUS.023"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.024",
+      "cluster_label": "Vimshottari Dasha Timing Activations",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.044",
+        "SIG.MSR.045",
+        "SIG.MSR.132",
+        "SIG.MSR.135",
+        "SIG.MSR.151",
+        "SIG.MSR.255",
+        "SIG.MSR.256",
+        "SIG.MSR.257",
+        "SIG.MSR.258",
+        "SIG.MSR.259",
+        "SIG.MSR.262",
+        "SIG.MSR.264",
+        "SIG.MSR.265",
+        "SIG.MSR.266",
+        "SIG.MSR.267",
+        "SIG.MSR.268",
+        "SIG.MSR.270",
+        "SIG.MSR.471",
+        "SIG.MSR.472",
+        "SIG.MSR.474",
+        "SIG.MSR.475"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 21,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.89,
+      "significance": 0.86,
+      "annotation": "Vimshottari dasha timing signals describe when and how specific planetary periods activate natal chart potentials. Mercury MD (2010-2027) is the empirically dominant dasha period in this chart: 10\u00d7 event density compared to other MDs (SIG.MSR.044). Signals cluster here because they all operate within the Vimshottari timing framework \u2014 each antardasha (AD) activates its lord's significations within the Mahadasha's field. The 100% AD-lord domain-match pattern (SIG.MSR.045) demonstrates that every Mercury MD sub-period activates its lord's domain thematically, validating the dasha system against lived reality. Ketu MD incoming signals (2027-2034) form a distinct sub-cluster because they describe a qualitative shift from Mercury's operational-analytical phase to Ketu's withdrawal-moksha phase.",
+      "ledger_event_ids": [
+        "EVT.CLUS.024"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.025",
+      "cluster_label": "Transit Activation Register",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "health",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.039",
+        "SIG.MSR.046",
+        "SIG.MSR.271",
+        "SIG.MSR.272",
+        "SIG.MSR.273",
+        "SIG.MSR.274",
+        "SIG.MSR.275",
+        "SIG.MSR.278",
+        "SIG.MSR.279",
+        "SIG.MSR.280",
+        "SIG.MSR.281",
+        "SIG.MSR.282",
+        "SIG.MSR.284",
+        "SIG.MSR.285",
+        "SIG.MSR.286",
+        "SIG.MSR.287",
+        "SIG.MSR.290",
+        "SIG.MSR.477",
+        "SIG.MSR.478",
+        "SIG.MSR.479",
+        "SIG.MSR.480",
+        "SIG.MSR.496"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 22,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.82,
+      "significance": 0.78,
+      "annotation": "Transit signals describe how current and future planetary movements activate the natal chart's latent structures. Key transit markers in this corpus: Mars-Capricorn transit as a retrodictive career-launch trigger (empirically confirmed), Saturn-Pisces triple-activation 2025-2028 (transit + Kakshya + Sade Sati simultaneously), Jupiter's transits to the 5H (children timing), Saturn Return 2041-2044 (lifetime apex at age 57-60). These signals cluster because they share the transit methodology's grammar: they describe how moving planets trigger natal sensitive points, natal yogas, and house activations at specific calendar times. The distinction from dasha signals (CLUS.024) is temporal resolution: transits operate on month-to-year timescales rather than the multi-year dasha arcs.",
+      "ledger_event_ids": [
+        "EVT.CLUS.025"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.026",
+      "cluster_label": "Panchang Muhurta Timing Cluster",
+      "dominant_domain": "spirit",
+      "sub_domains": [
+        "career",
+        "mind"
+      ],
+      "signal_ids": [
+        "SIG.MSR.351",
+        "SIG.MSR.352",
+        "SIG.MSR.353",
+        "SIG.MSR.354",
+        "SIG.MSR.355",
+        "SIG.MSR.356",
+        "SIG.MSR.357",
+        "SIG.MSR.358",
+        "SIG.MSR.359",
+        "SIG.MSR.360",
+        "SIG.MSR.361",
+        "SIG.MSR.362",
+        "SIG.MSR.363",
+        "SIG.MSR.364",
+        "SIG.MSR.365",
+        "SIG.MSR.366",
+        "SIG.MSR.367",
+        "SIG.MSR.368",
+        "SIG.MSR.369",
+        "SIG.MSR.370",
+        "SIG.MSR.371",
+        "SIG.MSR.372",
+        "SIG.MSR.373",
+        "SIG.MSR.374",
+        "SIG.MSR.375",
+        "SIG.MSR.437",
+        "SIG.MSR.442"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 27,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.8,
+      "significance": 0.74,
+      "annotation": "Panchang (five-limb almanac: Tithi, Vara, Nakshatra, Yoga, Karana) signals describe how the native's birth moment was inscribed within the five time-measurement systems of Jyotish. Sunday birth (Sun Vara), Ashwini nakshatra (Ketu-ruled), Shukla Paksha Tithi, Bhadra Yoga, and their mutual interactions define the chart's panchang signature. These signals form a coherent cluster because they all describe the time-quality of the birth moment rather than the space-quality (planetary placements): they answer the question 'what time-field did this consciousness enter?' rather than 'where were the planets?'. The Panchang's deity profile (Vishnu/Shravana + Brahma/Rohini + Vishvadevas/UA + Nirriti/Moola) creates a creator-preserver-dissolver trinity present simultaneously in a single birth chart \u2014 a diagnostically rare configuration.",
+      "ledger_event_ids": [
+        "EVT.CLUS.026"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.027",
+      "cluster_label": "Tajika Annual Chart Pattern Register",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.376",
+        "SIG.MSR.377",
+        "SIG.MSR.378",
+        "SIG.MSR.379",
+        "SIG.MSR.380",
+        "SIG.MSR.381",
+        "SIG.MSR.382",
+        "SIG.MSR.383",
+        "SIG.MSR.384",
+        "SIG.MSR.385",
+        "SIG.MSR.386",
+        "SIG.MSR.387",
+        "SIG.MSR.391"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 13,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.78,
+      "significance": 0.72,
+      "annotation": "Tajika (Persian-Arabic derived annual chart system) provides year-by-year snapshots of the natal chart's operative themes through the Varsha Kundali (Solar Return chart). Tajika's five primary Ithasala (applying conjunction) and Ishrafa (separating conjunction) patterns, the Sahams (annual sensitive points), and the Mutha (annual lord) create a domain-specific annual forecast layer that sits above the Vimshottari dasha system. These signals cluster together because they share the Tajika analytical grammar: they operate on annual time resolution (birthday-to-birthday), use Arabic Part derivatives rather than Sanskrit bhava analysis, and describe year-specific themes rather than natal permanence. The Tajika patterns in this corpus are particularly diagnostic for career inflection years.",
+      "ledger_event_ids": [
+        "EVT.CLUS.027"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.028",
+      "cluster_label": "Contradiction & Internal Tension Register",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "health"
+      ],
+      "signal_ids": [
+        "SIG.MSR.024",
+        "SIG.MSR.025",
+        "SIG.MSR.026",
+        "SIG.MSR.028",
+        "SIG.MSR.029",
+        "SIG.MSR.030",
+        "SIG.MSR.032",
+        "SIG.MSR.033",
+        "SIG.MSR.182",
+        "SIG.MSR.298",
+        "SIG.MSR.439"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.92,
+      "significance": 0.88,
+      "annotation": "Contradiction signals document discovered inconsistencies between different calculation systems or between classical rules and empirical evidence. This is one of the most structurally valuable cluster types: contradictions are where the instrument's calibration becomes visible. Examples: Saturn Ishta/Kashta Phala Resolution (Saturn IS the most beneficial planet despite standard malefic classification), 7H Bhavabala rank 12 vs SAV rank 1 (paradox: strongest sign in weakest house), 12H Bhavabala rank 1 vs SAV rank 12 (self-powered moksha architecture contradicts conventional loss-house reading), Moon Rashi-11H vs Chalit-12H drift (soul-significator house classification ambiguity). These signals cluster because they share the contradiction-audit methodology: each documents a tension, applies a resolution framework, and reaches a revised conclusion \u2014 they are the instrument's quality-control layer.",
+      "ledger_event_ids": [
+        "EVT.CLUS.028"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.029",
+      "cluster_label": "Yoga Absence & Near-Miss Register",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.111",
+        "SIG.MSR.112",
+        "SIG.MSR.113",
+        "SIG.MSR.115",
+        "SIG.MSR.117",
+        "SIG.MSR.118",
+        "SIG.MSR.119",
+        "SIG.MSR.124",
+        "SIG.MSR.125",
+        "SIG.MSR.143"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 10,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.88,
+      "significance": 0.83,
+      "annotation": "Absent yoga signals are diagnostically valuable because they define the chart's negative space \u2014 the powerful formations that almost but don't form, whose absence shapes the chart's character as much as what is present. Kala Sarpa Yoga ABSENT (planets on both sides of nodal axis) removes a significant constraint. Gajakesari ABSENT natally (Jupiter in 11H from Moon, not a Kendra) but present during specific Jupiter transits. Ruchaka ABSENT (Mars in enemy sign rather than own/exalted Kendra). Malavya ABSENT (Venus not in own/exalted Kendra). Hamsa ABSENT (Jupiter in Trikona not Kendra). The near-misses (Amala Yoga near-miss with Ketu in 10th from Moon; Parvatayoga near-miss) and yoga denials (Kendradhipati Dosha for Moon as 4L, Mars Avayogi reducing Lagnesh strength) complete this cluster: they document the structural boundaries of the chart's yoga architecture.",
+      "ledger_event_ids": [
+        "EVT.CLUS.029"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.030",
+      "cluster_label": "Convergence Core Signals \u2014 CVG Series",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "wealth",
+        "spirit"
+      ],
+      "signal_ids": [
+        "SIG.MSR.017",
+        "SIG.MSR.019",
+        "SIG.MSR.022",
+        "SIG.MSR.075",
+        "SIG.MSR.131",
+        "SIG.MSR.206",
+        "SIG.MSR.242",
+        "SIG.MSR.245",
+        "SIG.MSR.296"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 9,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.91,
+      "significance": 0.89,
+      "annotation": "The CVG convergence series (CVG.01-CVG.08) represents the highest-order synthesis layer in the MSR: each CVG signal formally documents a multi-factor convergence where 3+ independent analytical systems simultaneously confirm the same chart conclusion. CVG.01 (Six-Factor Mercury Convergence), CVG.02 (Jupiter 9L-Own Dharma-Wealth Chain), CVG.03 (Moon AK Foreign-Income Chain), CVG.04 (10H Career-Density Convergence), CVG.05 (Saturn 7H Exalted + Shadbala + MPY + AD Lord + Yogini), CVG.06 (Jupiter 9H Own-Sign + Lakshmi + 9L + MPY Near-Miss), CVG.07 (Gemini 3H Nexus multi-point), CVG.08 (Aries-Libra Axis Triple-Aspect) \u2014 each CVG synthesizes signals from multiple clusters into a single high-confidence claim. These signals cluster here because they are the corpus's primary multi-system validation nodes: wherever multiple analytical systems agree, a CVG is created.",
+      "ledger_event_ids": [
+        "EVT.CLUS.030"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.031",
+      "cluster_label": "Jaimini Rashi Drishti & Chara Dasha",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "relationships"
+      ],
+      "signal_ids": [
+        "SIG.MSR.172",
+        "SIG.MSR.174",
+        "SIG.MSR.175",
+        "SIG.MSR.177",
+        "SIG.MSR.331",
+        "SIG.MSR.332",
+        "SIG.MSR.333",
+        "SIG.MSR.334",
+        "SIG.MSR.335",
+        "SIG.MSR.345",
+        "SIG.MSR.349"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 11,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.85,
+      "significance": 0.81,
+      "annotation": "Jaimini's Rashi Drishti (sign-based aspects, different from Parashari graha drishti) and Chara Dasha (moveable sign-based timing system) form their own analytical sub-system distinct from the karaka hierarchy (CLUS.014). Rashi Drishti in this chart produces a notable pattern: the Taurus 2H (Rahu, Fixed sign) aspects both Libra 7H and Capricorn 10H simultaneously \u2014 Rahu quadruple-aspects Sun, Mercury, Mars, and Saturn at once, creating a wealth-to-career Jaimini linkage that has no Parashari equivalent. Chara Dasha's current Scorpio MD (2025-2026) activates Ketu's 8H exaltation position, creating a temporal signature that overlaps with Sade Sati \u2014 a double-pressure window diagnostically visible only through the Jaimini timing system.",
+      "ledger_event_ids": [
+        "EVT.CLUS.031"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.032",
+      "cluster_label": "Nakshatra Lord Chains & Tara Bala",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "health"
+      ],
+      "signal_ids": [
+        "SIG.MSR.193",
+        "SIG.MSR.194",
+        "SIG.MSR.196",
+        "SIG.MSR.197",
+        "SIG.MSR.198",
+        "SIG.MSR.199",
+        "SIG.MSR.200",
+        "SIG.MSR.201",
+        "SIG.MSR.453"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 9,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.84,
+      "significance": 0.79,
+      "annotation": "Beyond individual planet-nakshatra signatures (CLUS.015), this cluster houses the relational nakshatra structures: lord-chain loops, Tara Bala diagnostics, and the nakshatra convergence summary. The Jupiter-Ketu-Mercury nakshatra lord loop (Moola\u2192Ketu\u2192Jyeshtha\u2192Mercury\u2192Uttara Ashadha\u2192Sun\u2192Shravana\u2192Moon\u2192Purva Bhadrapada\u2192Jupiter) creates a closed karmic chain that binds five planets into a single causal sequence \u2014 diagnostically this means any activation in the loop propagates through the entire chain. Tara Bala diagnostics assess which natal nakshatras are auspicious vs dangerous from the Moon's Purva Bhadrapada perspective: Rahu's Rohini occupies the Naidhana (7th = danger) Tara, a structural risk marker for Rahu-related health or wealth disruption. The three Ketu-lord nakshatras (Moola+Ashwini+Magha) make Ketu the hidden nakshatra hub \u2014 more nakshatra real estate than any other planet's lord.",
+      "ledger_event_ids": [
+        "EVT.CLUS.032"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.033",
+      "cluster_label": "KP Krishnamurti Significator Cluster",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "mind",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.303",
+        "SIG.MSR.304",
+        "SIG.MSR.305",
+        "SIG.MSR.306",
+        "SIG.MSR.307",
+        "SIG.MSR.308",
+        "SIG.MSR.309",
+        "SIG.MSR.310",
+        "SIG.MSR.311",
+        "SIG.MSR.312",
+        "SIG.MSR.313",
+        "SIG.MSR.314",
+        "SIG.MSR.315",
+        "SIG.MSR.316"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 14,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.79,
+      "significance": 0.73,
+      "annotation": "The Krishnamurti Paddhati (KP) system provides house-significator analysis through a nakshatra sub-lord hierarchy that sits orthogonally to both Parashari and Jaimini frameworks. In this chart, KP Cusp 11 sub=Mercury (Yogi planet in 11H KP sub) and KP Cusp 10 analysis confirm the career and gains themes from a KP-specific vantage. These signals cluster together because they share the KP analytical grammar: they describe the same chart through the lens of cusp-significator chains (Star Lord \u2192 Sub Lord \u2192 Sub-Sub Lord), which allocates house significations at finer temporal resolution than the Vimshottari dasha system. The KP layer adds a precise timing mechanism (KP Ruling Planets at event time) that cross-validates retrodictive events at day-level accuracy compared to the month-level accuracy of Vimshottari.",
+      "ledger_event_ids": [
+        "EVT.CLUS.033"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    },
+    {
+      "cluster_id": "CLUS.034",
+      "cluster_label": "Meta-Convergence & Statistical Register",
+      "dominant_domain": "career",
+      "sub_domains": [
+        "spirit",
+        "wealth"
+      ],
+      "signal_ids": [
+        "SIG.MSR.392",
+        "SIG.MSR.394",
+        "SIG.MSR.395",
+        "SIG.MSR.397",
+        "SIG.MSR.399",
+        "SIG.MSR.400",
+        "SIG.MSR.407",
+        "SIG.MSR.408",
+        "SIG.MSR.410",
+        "SIG.MSR.414",
+        "SIG.MSR.415",
+        "SIG.MSR.416",
+        "SIG.MSR.417",
+        "SIG.MSR.418",
+        "SIG.MSR.419",
+        "SIG.MSR.420",
+        "SIG.MSR.441",
+        "SIG.MSR.443",
+        "SIG.MSR.460",
+        "SIG.MSR.461",
+        "SIG.MSR.464",
+        "SIG.MSR.467",
+        "SIG.MSR.495"
+      ],
+      "chunk_ids": [],
+      "centroid_method": "semantic_thematic",
+      "cluster_size_n": 23,
+      "pass_1_actor": "gemini-web-2026-04-30",
+      "pass_2_actor": "claude-cowork-2026-04-30",
+      "confidence": 0.93,
+      "significance": 0.9,
+      "annotation": "Meta-convergence signals represent the highest-order synthesis layer: they document instances where 4+ independent analytical systems (Parashari + Jaimini + KP + divisional + panchang + transit) all confirm the same conclusion. Examples: Saturn Triple Structural Axis (exalted D1 + AK sign + D10 midheaven \u2014 three structural systems pointing to Saturn career supremacy); Nodal Axis Four-System Lock (Rahu+Ketu exalted across D1, D9, D10, and D27 simultaneously); 10H Quadruple Layer (natal planets + transits + KP + divisional chart confirmations). The Statistics signals (domain coverage matrix, confidence distribution, signal type distribution, completeness certificate) provide the corpus's quantitative self-portrait. These signals cluster here because they are the MSR's self-aware layer \u2014 the signals that describe the register's own structure and coverage.",
+      "ledger_event_ids": [
+        "EVT.CLUS.034"
+      ],
+      "created_at": "2026-04-30T10:52:07+00:00",
+      "created_by_session": "M2_B3_CLUSTER_RECLUSTER"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Stream B — V1.3 LEL Strip (C2-002 fix)
+stream: postdeploy-b
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPostB
+branch: feature/postdeploy-b-lel-strip
+wave_close_tag: postdeploy-b-lel-stripped
+budget_cap_usd: 200
+
+sessions:
+  - id: b1-lel-strip
+    status: pending
+    depends_on: []
+    scope: >
+      Locate phala/anchors notes field in platform/python-sidecar/phala/.
+      Find where "per LEL" citation text is written into the notes field.
+      Author a strip function that removes LEL citation patterns
+      matching r"\bper LEL\b.*?(?:\.|$)" from the notes field.
+      Apply strip to existing phala_anchors rows (SQL UPDATE or Python migration).
+      Add a regression test that asserts no new rows contain LEL citation text.
+      Commit.
+    acceptance:
+      - Zero rows in phala_anchors contain LEL citation text after strip
+      - Regression test added and passing
+      - Rest of notes field content preserved (strip is surgical)
+    must_not_touch:
+      - platform/supabase/migrations/**
+      - 00_ARCHITECTURE/**

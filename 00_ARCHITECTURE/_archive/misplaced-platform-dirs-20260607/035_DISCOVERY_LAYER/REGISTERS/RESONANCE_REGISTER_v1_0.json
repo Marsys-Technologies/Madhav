@@ -1,0 +1,568 @@
+{
+  "schema": "06_LEARNING_LAYER/SCHEMAS/resonance_schema_v0_1.json",
+  "version": "1.0",
+  "status": "SUPERSEDED",
+  "superseded_by": "RESONANCE_REGISTER_v1_1",
+  "superseded_at": "2026-04-30",
+  "produced_by_session": "Madhav_M2A_Exec_10",
+  "produced_at": "2026-04-26",
+  "resonances": [
+    {
+      "resonance_id": "RES.001",
+      "claim_text": "Career dharma and soul dharma are a single structural engine; professional success acts directly as karmic repayment, and spiritual discipline mandates career duty.",
+      "mechanism": "Saturn occupies the rare dual-karaka position of both Atmakaraka (soul purpose) and Amatyakaraka (career). Anchored by the D60 Saturn at Lagna, this means the past-karma weight governs both. Every professional act (AmK) is inherently a karmic act (AK) on the soul ledger, making the two domains inseparable.",
+      "domains_bridged": [
+        "career",
+        "spiritual"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.042"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.career.spiritual"
+      ],
+      "counter_cases": [
+        "If the native entirely abandons career to pursue isolated spiritual asceticism, demonstrating the domains can be decoupled."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "The assignment of AK and AmK to the same planet merely signifies two distinct areas of high activity rather than structural entanglement.",
+        "If Venus is evaluated as AmK under the 8-karaka system, the structural link between career and soul-dharma is fundamentally broken."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.88,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "ce5ad48fdcea",
+        "c3c14e7f08f9"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:30:55.610129+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.002",
+      "claim_text": "Wealth accumulation and spiritual renunciation share the same Saturnine governor, entangling financial success with deep structural moksha capacity.",
+      "mechanism": "AL in 10H Capricorn links wealth to Saturn (AmK) as dharmic output. Concurrently, D27 Lagna in 12H Pisces establishes the strength-chart anchor in moksha. Because Saturn orchestrates both the material output (AL) and the deep past-karma discipline (D60 Lagna), wealth accumulation is never purely material; it structurally funds or triggers spiritual capacity.",
+      "domains_bridged": [
+        "wealth",
+        "spiritual"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.397",
+        "SIG.MSR.042",
+        "SIG.MSR.041"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.wealth.spiritual"
+      ],
+      "counter_cases": [
+        "Wealth generation occurs rapidly through speculation without any Saturnian discipline or spiritual undertones."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Wealth and spiritual capacity are governed by different planetary engines (Mercury/Jupiter) and only coincidentally align during certain dashas.",
+        "The D27 Lagna entirely isolates spiritual capacity from the material realm, negating any resonance with wealth generation."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "ce5ad48fdcea",
+        "63c1aeed71e2"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:30:55.612531+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.003",
+      "claim_text": "Career structure and relationship structure share the same 7H planetary engine, subjecting both to simultaneous pressure and stability cycles.",
+      "mechanism": "The Mars+Saturn exalted conjunction in the 7H (partnership house) places the AmK (career governor) directly into the sphere of relationships. Consequently, relationship formation and career ambition compete and synergize through the same astrological locus. The Saturn-Pisces triple activation pressures this AmK/7H complex, simultaneously straining both domains.",
+      "domains_bridged": [
+        "career",
+        "relationships"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.040"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.career.relationships"
+      ],
+      "counter_cases": [
+        "The native experiences a stable, pressure-free partnership while simultaneously undergoing intense career instability."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Saturn in 7H primarily delays marriage and has minimal impact on career trajectories, which are governed by the 10H.",
+        "The Mars+Saturn conjunction creates sequential rather than simultaneous pressure, affecting relationships first and career later."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.82,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "The Saturn-Pisces transit causes career stress without any corresponding pressure or activation in the domain of relationships."
+        ]
+      },
+      "ledger_event_ids": [
+        "ce5ad48fdcea",
+        "72071fe165f7"
+      ],
+      "prediction_ledger_ref": "PRED.011",
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:30:55.615630+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.004",
+      "claim_text": "Mind and career function as an inseparable Saturn-Mercury compound; analytical precision constitutes the entirety of professional output.",
+      "mechanism": "The Mercury Eight-System Convergence defines the mind as a highly precise operational engine. With Mercury in the 10H Capricorn alongside the Arudha Lagna (AL), the cognitive style is fully conscripted into career visibility. The mechanism ensures that mental processing (Mercury) and professional output (Saturn-ruled 10H) are not distinct domains but a single, integrated function during the 2010-2027 MD.",
+      "domains_bridged": [
+        "career",
+        "mind"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.397"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.career.mind"
+      ],
+      "counter_cases": [
+        "The native experiences a period of intense mental creativity completely disconnected from any professional or career application."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Mercury in the 10H simply indicates a communication-based career, but the native's true internal mind is governed separately by the Moon in Aquarius.",
+        "The AL in Capricorn focuses career on public status, making mental precision secondary to networking and authority."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.9,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "a4fc40d7acf8",
+        "9d132a51f0cd"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:13.591910+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.005",
+      "claim_text": "Spiritual retreat capacity and health recuperation share the same 12H Pisces engine, structurally co-activating illness windows and moksha pursuits.",
+      "mechanism": "The D27 Lagna in 12H Pisces anchors the strength-chart in the house of moksha. The Saturn-Pisces triple activation occurs in this same house. Because the 12H governs both physical hospitalization/recuperation and spiritual isolation, periods of forced health expenditure are mechanistically identical to windows of mandated spiritual retreat. The chart does not differentiate between the two.",
+      "domains_bridged": [
+        "spiritual",
+        "health"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.041"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.spiritual.health"
+      ],
+      "counter_cases": [
+        "Health crises occur without any accompanying spiritual introspection, or spiritual retreats occur during periods of robust physical vitality."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "The 12H Pisces activation primarily signifies foreign travel and financial loss, with health and spiritual effects being minor.",
+        "Health recuperation is governed by the 6H/8H axis, meaning 12H spiritual retreats are fundamentally disconnected from physical illness."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "The Saturn-Pisces transit causes severe health crises without fostering any deep spiritual capacity or retreat."
+        ]
+      },
+      "ledger_event_ids": [
+        "a4fc40d7acf8",
+        "01b5efcd0ce3"
+      ],
+      "prediction_ledger_ref": "PRED.012",
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:13.595249+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.006",
+      "claim_text": "Wealth accumulation and health expenditure are inversely co-activated by Saturn's Sade Sati transit window.",
+      "mechanism": "The Sade Sati paradox ensures peak career achievement (and by extension, AL-driven wealth output in 10H Capricorn) occurs during the adversity window. Simultaneously, the Saturn-Pisces transit hits the 12H, indicating health and vitality expenditure. The structural resonance dictates that the very planetary pressure generating peak financial yield is simultaneously extracting a toll on physical health.",
+      "domains_bridged": [
+        "wealth",
+        "health"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.396",
+        "SIG.MSR.397"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.wealth.health"
+      ],
+      "counter_cases": [
+        "Wealth accumulates rapidly without any corresponding stress, illness, or vitality drain."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Sade Sati adversity affects mental peace rather than physical health, leaving wealth accumulation and bodily vitality largely independent.",
+        "The 12H transit causes financial loss rather than health expenditure, breaking the inverse relationship."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.8,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "Peak wealth generation during the 12H transit is accompanied by peak physical health and vitality."
+        ]
+      },
+      "ledger_event_ids": [
+        "a4fc40d7acf8",
+        "33a1fce7487e"
+      ],
+      "prediction_ledger_ref": "PRED.013",
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:13.598284+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.007",
+      "claim_text": "The mind's analytical precision and its deep spiritual insight are identical mechanisms expressed at different frequencies.",
+      "mechanism": "D60 Saturn at Lagna establishes that past-karma disciplines shape the entire cognitive architecture. The D27 Lagna in 12H Pisces anchors the chart's strength in moksha, proving spiritual insight is the mind's deepest capacity. The Mercury Eight-System Convergence defines the mind as the primary operational planet. Consequently, Mercury's worldly analysis and D27's spiritual introspection are not separate processes but the same karmically-weighted engine applied to different subjects.",
+      "domains_bridged": [
+        "spiritual",
+        "mind"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.042",
+        "SIG.MSR.041",
+        "SIG.MSR.413"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.spiritual.mind"
+      ],
+      "counter_cases": [
+        "The native's analytical mind completely shuts down or becomes useless during periods of spiritual introspection."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Mercury governs pure intellect and commerce, completely detached from the 12H Pisces spiritual depth.",
+        "The D60 Saturn applies discipline to physical actions but does not influence the underlying cognitive processes governed by Mercury."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.88,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "3684d8c323ff",
+        "2647b6ea1464"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:31.485339+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.008",
+      "claim_text": "Partnership readiness and parenthood readiness are structurally gated by the same 7H Mars-Saturn engine; they cannot be resolved independently.",
+      "mechanism": "Mars serves as the PK (children significator), while Saturn sits as an exalted occupant in the 7H (partnership house), conjunct Mars. The D60 Saturn at Lagna weights this entire conjunction with deep past-karma. Because the primary significator for progeny (PK Mars) is entangled with the primary karmic restrictor (Saturn) in the house of marriage (7H), the mechanisms for establishing a stable partnership and producing children are identical and must clear the same karmic hurdle.",
+      "domains_bridged": [
+        "relationships",
+        "children"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.042"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.relationships.children"
+      ],
+      "counter_cases": [
+        "A stable partnership forms easily but progeny is inexplicably delayed, or vice versa, demonstrating independent timelines."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "Mars as PK primarily affects the temperament of the children rather than creating a structural block in the 7H.",
+        "The 7H conjunction delays marriage, but once married, the 5H (children) operates independently under Jupiter's influence."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.85,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "3684d8c323ff",
+        "5ace0d86684a"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:31.488221+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.009",
+      "claim_text": "Pilgrimage-style travel is the structural form that spiritual activation takes, governed by the shared 12H Pisces engine.",
+      "mechanism": "D27 Lagna resides in 12H Pisces, marking the deepest strength-chart anchor in the house of both foreign lands and moksha. The Saturn-Pisces triple activation heavily pressures this exact house. The structural resonance dictates that foreign travel and spiritual realization are not merely coincident; travel (particularly isolation/retreat style) acts as the physical vehicle required for the 12H spiritual activation to manifest.",
+      "domains_bridged": [
+        "travel",
+        "spiritual"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.040",
+        "SIG.MSR.041"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.spiritual.travel"
+      ],
+      "counter_cases": [
+        "Travel occurs purely for commercial or hedonistic reasons with zero spiritual impact, or spiritual realization occurs entirely at home."
+      ],
+      "classical_basis": "derivative — emergent resonance",
+      "alternatives": [
+        "The 12H activation leads to spiritual introspection but severely restricts physical travel due to Saturn's limiting nature.",
+        "Travel is governed by the 9H (long journeys) independently of the 12H moksha activations."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.82,
+      "is_forward_looking": true,
+      "time_indexed_falsifier": {
+        "verification_window_start": "2025-01-01",
+        "verification_window_end": "2028-12-31",
+        "falsifier_conditions": [
+          "No travel occurs during the 12H activation, yet profound spiritual realization is achieved."
+        ]
+      },
+      "ledger_event_ids": [
+        "3684d8c323ff",
+        "0f86eb17586d"
+      ],
+      "prediction_ledger_ref": "PRED.014",
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-26T22:31:31.492231+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.010",
+      "claim_text": "Mars as Avayogi and 8H lord creates a structural lock between career performance intensity and physical depletion — peak professional exertion drains the very vitality reserves that sustain it.",
+      "mechanism": "Mars rules both the Lagna (physical self, vitality engine) and is exalted in 7H as the Putrakaraka-Avayogi conjunction with Saturn AK. In Jaimini, the Avayogi is the fortune-reducer planet — when Mars dominates a dasha or transit window (e.g., Mars antardasha within Mercury MD), the chart's fortune-reduction mechanism fires simultaneously in the career domain (Mars aspecting 10H via full 7H placement) and the health domain (Mars as 8H significator through its dispositor Scorpio's 8H lord role). The 7H Mars-Saturn conjunction in Libra means every period of career pressure triggers a correlated depletion signal in the native's physical constitution — the same energy that builds professional ambition is the one exhausted by it. Gulika in 3H (SIG.MSR.228) amplifies this as a calamity signature: the 3H Gulika creates friction between courageous career action and bodily reserves.",
+      "domains_bridged": [
+        "career",
+        "health"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.228"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.career.health"
+      ],
+      "counter_cases": [
+        "If the native establishes strong Saturn-discipline (regular practice, structured rest, consistent schedule during high-career periods), the Avayogi Mars depletion pattern is partially offset by Saturn AK's steadiness — the resonance weakens but does not disappear entirely.",
+        "During purely contemplative phases (low external career demand), Mars finds expression through physical practice rather than career exertion, breaking the lock."
+      ],
+      "classical_basis": "Jaimini Sutram §3.4 — Avayogi as fortune-reducer; BPHS §24 on 8H lord's role in longevity and chronic conditions.",
+      "alternatives": [
+        "The career-health link is purely scheduling-based, not structural: the native overworks during career peaks and neglects health, but the underlying mechanism is behavioral, not karmic-astrological. Mars's Avayogi status is incidental.",
+        "Mars in 7H primarily governs relationships (7H domain) — the career connection is secondary via Chalit/10H aspect, and the health depletion is a separate Mercury-MD phenomenon unrelated to Mars placement."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.73,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "7acb73bb0975",
+        "a8d788d87983"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-27T05:20:23.870760+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.011",
+      "claim_text": "Mercury's Eight-System convergence as cognitive-operational planet creates a mirrored gate between analytical capacity and wealth accumulation: impairments to Mercury's cognitive channel are simultaneously impairments to the wealth-generation engine.",
+      "mechanism": "SIG.MSR.413 establishes Mercury as the highest-confidence eight-system convergent signal in this chart — it functions simultaneously as natural intelligence karaka, 10H cognitive-career planet, Vargottama (D9 same sign), and primary period lord (Mercury MD 2010–2027). SIG.MSR.397 shows that wealth (AL in 10H Capricorn, Saturn AmK governing AL's sign) operates through dharmic professional output — i.e., the same Mercury channel that produces intellectual clarity produces the wealth output. When Mercury is compromised (combustion during Capricorn transits, Mercury-afflicted sub-periods), both the native's analytical decision-making AND wealth accumulation signals degrade simultaneously. The mind and wealth domains are not just correlated but share the same planetary conduit — they cannot be optimized or degraded independently.",
+      "domains_bridged": [
+        "wealth",
+        "mind"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.413",
+        "SIG.MSR.397"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.wealth.mind"
+      ],
+      "counter_cases": [
+        "Wealth accumulation through non-Mercury channels (inheritance, passive assets, spouse's income) would break this resonance — but the native's AL placement and Saturn AmK suggest primary wealth generation is career-output-based, making the Mercury conduit dominant.",
+        "During Saturn MD (post-2027), the primary conduit shifts to Saturn — the Mercury-based wealth-mind entanglement becomes secondary, and the resonance weakens."
+      ],
+      "classical_basis": "BPHS §8 on Buddhi (intellect) as Mercury's primary domain; Jaimini Sutram on AL as wealth-reputation pointer.",
+      "alternatives": [
+        "Mercury governs mind; Saturn AmK and AL-lord Venus govern wealth. The overlap is timing-coincidental (Mercury MD also happens to be the native's peak earning window) — not a structural lock.",
+        "The mind-wealth correlation is high in most knowledge-economy professionals regardless of chart configuration — this pattern may not be uniquely grounded in THIS chart's planetary configuration."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "HIGH",
+      "significance": 0.78,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "7acb73bb0975",
+        "438abd0f70b1"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-27T05:20:23.873625+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    },
+    {
+      "resonance_id": "RES.012",
+      "claim_text": "Ketu in 8H Scorpio and its dispositor Mars as Lagna lord produce a structural entanglement: periods of geographic displacement and career transition are not sequential life events but simultaneous activations of the same karmic engine.",
+      "mechanism": "Ketu in 8H Scorpio represents sudden separation, hidden transformation, and foreign-residence karma. Its dispositor Mars rules the Lagna (identity/body) and co-rules Scorpio (via traditional lordship). Every time Mars or Ketu is activated by dasha/transit — especially during Mars-antardasha or Ketu-antardasha — the 8H/1H axis fires simultaneously: the native experiences both a career-identity shift (1H Mars: who am I professionally?) AND a geographic displacement impulse (8H Ketu: sudden separation from current context). D7 and D12 charts (foreign-travel divisionals per FORENSIC_v8_0) amplify the Ketu-8H signature. SIG.MSR.041 (D27 Lagna Pisces = D1 12H Pisces) shows that the strength-chart Lagna is the natal Moksha/foreign house — travel and identity transformation are structurally identical in this chart.",
+      "domains_bridged": [
+        "travel",
+        "career"
+      ],
+      "signals_referenced": [
+        "SIG.MSR.015",
+        "SIG.MSR.041"
+      ],
+      "cdlm_cells_referenced": [
+        "CDLM.career.travel"
+      ],
+      "counter_cases": [
+        "Short domestic travel for professional conferences or client visits does not activate the 8H Ketu displacement mechanism — the resonance requires a threshold of genuine geographic uprooting (relocation, emigration, extended foreign stay)."
+      ],
+      "classical_basis": "BPHS §12 on 8H as house of longevity, transformation, and sudden events; Ketu as significator of foreign residence and past-life separation; BPHS §15 on D12 (travel divisional).",
+      "alternatives": [
+        "Career transitions and travel events co-occur simply because this native's profession (SIG.MSR.413 — Mercury-based: technology/communication/consulting) is inherently mobile. The Ketu mechanism is decorative, not causal.",
+        "The 8H Ketu represents spiritual withdrawal, not physical travel. Geographic displacement is governed by 12H lord Jupiter (Pisces is 12H) — the travel-career link runs through Jupiter, not Ketu."
+      ],
+      "validator_results": {
+        "P5": true,
+        "P1": true,
+        "P2": true,
+        "P7": true,
+        "P8": true,
+        "P9": true
+      },
+      "confidence": "MED",
+      "significance": 0.65,
+      "is_forward_looking": false,
+      "time_indexed_falsifier": null,
+      "ledger_event_ids": [
+        "7acb73bb0975",
+        "42b21ee69019"
+      ],
+      "prediction_ledger_ref": null,
+      "pass_1_actor": "gemini",
+      "created_at": "2026-04-27T05:20:23.876164+00:00",
+      "created_by_session": "Madhav_M2A_Exec_10"
+    }
+  ]
+}
