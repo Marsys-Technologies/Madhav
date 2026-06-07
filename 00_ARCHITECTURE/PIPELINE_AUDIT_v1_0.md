@@ -1,8 +1,10 @@
 ---
 artifact: PIPELINE_AUDIT_v1_0.md
-version: "1.0"
+version: "1.1"
 status: CURRENT
 produced_during: PIPELINE_AUDIT_2026-06-07
+changelog:
+  - v1.1 (2026-06-08, pipeline-audit-closeout): Added §CLOSEOUT — PA-01/04/05/06/08 completed; GATE 1 passed; GATE 2 infra-blocked (state bucket IAM). PA-02/PA-03 deferred to L0FR branch. PA-09 deferred (maps-key branch). PA-07 resolved via PA-05 deletion.
 role: Findings report for the full deployment-pipeline audit (CI/CD, Docker, Cloud Run, build orchestrator). Companion fix brief is CLAUDECODE_BRIEF_PIPELINE_CLEANUP_v1_0.md.
 author: Cowork (planning-only; execution handed to Claude Code per cowork_vs_antigravity_split)
 scope_audited:
@@ -280,3 +282,58 @@ exists, `cancel_reason` does not.
 
 Each fix carries its own pre-commit verification; no batched `answer:eval` is implied here
 (that discipline is for retrieval-tool changes, per `project_retrieval_tools_consolidated_eval`).
+
+---
+
+## §CLOSEOUT — Execution record (2026-06-08)
+
+Execution session: Claude Code, 2026-06-07/08.
+Three PRs merged: #219 (CI green-main), #217 (PA-01/04/05/08), #218 (PA-06 IaC decouple).
+
+### Completed findings
+
+| PA | Severity | Status | Commit | Notes |
+|---|---|---|---|---|
+| PA-01 | P0 | **DONE** | `dd0cbebe` (PR #217) | All 5 NEXT_PUBLIC flags baked into deploy.yml build-args (build-check + deploy-web). GATE 1 PASSED — flags confirmed in revision `amjis-web-00536-6hg`. |
+| PA-04 | P1 | **DONE** | `dd0cbebe` (PR #217) | Removed `2>/dev/null \|\| true` from migration toolchain install. |
+| PA-05 | P1/P2 | **DONE** | `dd0cbebe` (PR #217) | `platform-mcp/cloudbuild.yaml` deleted after confirming no active Cloud Build trigger. |
+| PA-07 | P2 | **DONE** | `dd0cbebe` (PR #217) | Resolved by PA-05 deletion — stale `_PLATFORM_URL` went with the file. |
+| PA-08 | P1 | **DONE** | `dd0cbebe` (PR #217) | `mcp-internal-token` pinned to `:1` in both `deploy-web` and `deploy-mcp`. |
+| PA-06 | P1 | **DONE** | `7c8d6621` (PR #218) | Terraform decoupled from auto-deploy hot-path. New `iac-apply.yml` is dispatch-only (module + action inputs). `deploy.yml` now has `pull_request:` build-check trigger. |
+
+### GATE 1 — NEXT_PUBLIC flags in live bundle
+
+**PASSED.** Verification: deploy workflow run `27103733563` built from commit `dd0cbebe`.
+That commit's `deploy.yml` contains all 5 flags (`R9_PROJECTS`, `R9_SEMANTIC_SEARCH`,
+`R9_TOOL_FLOW`, `R11B_LOOK_AND_FEEL`, `R11V2_MULTI_PROVIDER_PARITY`) in both build-arg
+blocks. Serving revision at gate time: `amjis-web-00536-6hg`.
+
+### GATE 2 — IaC cloud_scheduler plan (no destroy/replace)
+
+**INFRASTRUCTURE BLOCKED — not a GATE 2 halt.** Workflow run `27104108901` failed at
+Terraform backend initialization:
+
+```
+Error: Failed to get existing workspaces: querying Cloud Storage failed: googleapi:
+Error 403: github-actions@madhav-astrology.iam.gserviceaccount.com does not have
+storage.objects.list access to the Google Cloud Storage bucket.
+Permission 'storage.objects.list' denied on resource
+'//storage.googleapis.com/projects/_/buckets/madhav-astrology-tf-state'
+```
+
+The SA cannot reach the GCS state bucket — the terraform plan never ran, so no
+destroy/replace output exists to evaluate. GATE 2 trigger condition (any destroy/replace)
+was NOT met. Operator prerequisite: grant `github-actions@madhav-astrology.iam.gserviceaccount.com`
+`roles/storage.objectAdmin` (or at minimum `storage.objects.list` + `storage.objects.get` +
+`storage.objects.create`) on `madhav-astrology-tf-state`. Until that is provisioned,
+`iac-apply.yml` plan runs will always fail at backend init. Tracked in
+`OPERATOR_ACTIONS_PENDING.md §HIGH`.
+
+### Deferred findings
+
+| PA | Status | Reason |
+|---|---|---|
+| PA-02 | **DEFERRED** | L0FR branch (ephemeris fail-closed Dockerfiles). Must land on the L0FR workstream branch, not on a pipeline-cleanup branch. |
+| PA-03 | **DEFERRED** | L0FR branch (Dockerfile.pipeline `SWE_EPHE_PATH` dedup). Same constraint as PA-02. |
+| PA-09 | **DEFERRED** | L0FR branch (relocate L0FR sidecar Dockerfiles off `fix/maps-key-dockerfile-arg`). |
+| PA-10 | **DONE** | Resolved by PA-05 deletion — `cloudbuild.yaml` was the only surface with the deprecated gcr.io tag. |
