@@ -74,6 +74,10 @@ app.include_router(almanac_router.router, prefix="/api/brahmagyan/almanac", depe
 from brahmagyan.ephemeris_routes import router as ephemeris_brahmagyan_router
 app.include_router(ephemeris_brahmagyan_router, prefix="/brahmagyan/ephemeris", dependencies=[Depends(verify_api_key)])
 
+# BRAHMA L0 Stream D — Sūtravali pattern extraction capabilities (SQL-only, ZERO LLM)
+from routers import sutravali as sutravali_router
+app.include_router(sutravali_router.router, prefix="/api/brahma", dependencies=[Depends(verify_api_key)])
+
 
 @app.get("/health")
 def health():

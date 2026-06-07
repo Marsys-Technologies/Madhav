@@ -23,6 +23,7 @@ import { registerSchoolConventions } from './school_conventions.js'
 import { registerChartBundleResource } from './chart_bundle_resource.js'
 import { registerMultiAyanamshaResource } from './multi_ayanamsha_resource.js'
 import { registerClassicalTextsResource } from './classical_texts_resource.js'
+import { registerSutravaliResources } from './sutravali_resource.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -72,4 +73,11 @@ export function registerResources(server: McpServer): void {
   //    Dynamic resource template marsys://classical-texts/{text_key}.
   //    brahmagyan.texts delta build 2026-06-03
   registerClassicalTextsResource(server)
+
+  // 9. sutravali rules by planet + by house
+  //    Dynamic resource templates:
+  //      marsys://resource/sutravali/all-by-planet/{planet}
+  //      marsys://resource/sutravali/all-by-house/{n}
+  //    BRAHMA L0 Stream D (2026-06-07)
+  registerSutravaliResources(server)
 }

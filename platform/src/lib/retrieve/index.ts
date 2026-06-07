@@ -201,6 +201,9 @@ const CLASSICAL_TOOLS: RetrievalTool[] = [
   },
 ]
 
+// BRAHMA L0 Stream D — Sūtravali pattern extraction tools (SQL-only, ZERO LLM)
+import { SUTRAVALI_RETRIEVAL_TOOLS } from './sutravali_tools'
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 export const RETRIEVAL_TOOLS: RetrievalTool[] = [
@@ -210,6 +213,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   querySpecialLagnas,
   // Classical text retrieval (Stream C)
   ...CLASSICAL_TOOLS,
+  // Sūtravali pattern extraction (Stream D)
+  ...SUTRAVALI_RETRIEVAL_TOOLS,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {
