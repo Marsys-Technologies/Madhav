@@ -30,6 +30,12 @@ import { registerHolisticBundleTool } from './tools/bo_2-8.js'
 import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
 import { registerHolisticBundleRetrievalTool } from './tools/retrieval/holistic_bundle.js'
 import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_temporal.js'
+// Stream G — L1 Gaṇita PyJHora capabilities (BRAHMA-G-1)
+import {
+  registerComputeNatalPositionsTool,
+  registerQueryDashaPeriodsTool,
+  registerQuerySpecialLagnasTool,
+} from './tools/retrieval/pyhora_natal.js'
 
 const app = express()
 app.use(express.json())
@@ -62,6 +68,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
+  // L1 Gaṇita — PyJHora natal computation tools (Stream G / BRAHMA-G-1)
+  registerComputeNatalPositionsTool(server)    // graha_sthana: 9 planets + Lagna
+  registerQueryDashaPeriodsTool(server)        // Vimshottari mahadasha chain
+  registerQuerySpecialLagnasTool(server)       // Lagna + upagrahas (Gulika, Maandi, etc.)
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
   registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (l2-bodha-scaffold)
@@ -105,13 +115,14 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ── Health check ──────────────────────────────────────────────────────────────
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 1 })
+  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 13,
+    stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'] })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────
 
 const port = parseInt(process.env['MCP_PORT'] ?? '8080', 10)
 app.listen(port, () => {
-  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (1 tool: mitigation_map)`)
+  console.log(`[mcp:server] MARSYS-JIS MCP server listening on :${port} (Stream G: +3 PyJHora tools)`)
   console.log(`[mcp:server] Platform URL: ${process.env['PLATFORM_URL'] ?? 'http://localhost:3000'}`)
 })
