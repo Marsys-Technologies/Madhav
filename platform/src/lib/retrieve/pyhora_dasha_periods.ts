@@ -72,11 +72,8 @@ export const tool: RetrievalTool = {
 
     // Extract dasha chain from pyhora response
     const dashaData = (data.vimshottari_dasha ?? {}) as Record<string, unknown>
-    const mahadasha_sequence = Array.isArray(dashaData.mahadasha_sequence)
-      ? dashaData.mahadasha_sequence
-      : Array.isArray((dashaData as Record<string, unknown>).mahadashas)
-        ? (dashaData as Record<string, unknown>).mahadashas
-        : []
+    const _mds = dashaData.mahadasha_sequence ?? (dashaData as Record<string, unknown>).mahadashas
+    const mahadasha_sequence: unknown[] = Array.isArray(_mds) ? (_mds as unknown[]) : []
 
     const results: ToolBundleResult[] = (mahadasha_sequence as Record<string, unknown>[]).map(
       (md) => ({

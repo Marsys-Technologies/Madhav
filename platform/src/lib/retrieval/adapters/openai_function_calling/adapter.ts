@@ -8,7 +8,7 @@
  */
 
 import { listCapabilities } from '../../registry'
-import type { ToolCapability, CapabilityContext } from '../../registry/types'
+import type { CapabilityDescriptor, CapabilityContext } from '../../registry/types'
 
 // ── OpenAI function schema types ──────────────────────────────────────────────
 
@@ -55,16 +55,24 @@ function functionNameToUri(name: string): string {
 }
 
 /**
- * Convert a Marsys ToolCapability to OpenAI function definition.
+ * Convert a Marsys CapabilityDescriptor to OpenAI function definition.
  */
-export function toOpenAIFunction(cap: ToolCapability): OpenAIFunction {
+export function toOpenAIFunction(cap: CapabilityDescriptor): OpenAIFunction {
+  const properties: Record<string, { type: string; description?: string; enum?: string[] }> = {}
+  for (const [key, schema] of Object.entries(cap.input_schema ?? {})) {
+    properties[key] = {
+      type: schema.type,
+      description: schema.description,
+      enum: schema.enum as string[] | undefined,
+    }
+  }
   return {
     name: uriToFunctionName(cap.uri),
     description: cap.description,
     parameters: {
       type: 'object',
-      properties: cap.input_schema.properties,
-      required: cap.input_schema.required ?? [],
+      properties,
+      required: cap.required_inputs ?? [],
     },
   }
 }
@@ -73,8 +81,7 @@ export function toOpenAIFunction(cap: ToolCapability): OpenAIFunction {
  * Export all registered tool capabilities as OpenAI function definitions.
  */
 export function getAllOpenAIFunctions(): OpenAIFunction[] {
-  return (listCapabilities({ primitive_type: 'tool' }) as ToolCapability[])
-    .map(toOpenAIFunction)
+  return listCapabilities({ type: 'tool' }).map(toOpenAIFunction)
 }
 
 // ── Parallel tool call executor ───────────────────────────────────────────────
@@ -93,7 +100,7 @@ export async function executeToolCalls(
     const uri = functionNameToUri(tc.function.name)
     const cap = getCapability(uri)
 
-    if (!cap || cap.primitive_type !== 'tool') {
+    if (!cap || cap.type !== 'tool') {
       return {
         tool_call_id: tc.id,
         role: 'tool',
@@ -103,7 +110,7 @@ export async function executeToolCalls(
 
     try {
       const args = JSON.parse(tc.function.arguments) as Record<string, unknown>
-      const result = await (cap as ToolCapability).handler(args, ctx)
+      const result = await cap.handler(args, ctx)
       return {
         tool_call_id: tc.id,
         role: 'tool',

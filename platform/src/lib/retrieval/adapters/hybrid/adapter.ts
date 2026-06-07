@@ -58,15 +58,13 @@ export async function prepareHybridContext(
       if (prefetched.some(p => p.uri === uri)) continue
       const cap = getCapability(uri)
       if (!cap) continue
-      const start = Date.now()
       try {
-        let data: unknown
-        if (cap.primitive_type === 'resource') data = await cap.loader(ctx)
-        else if (cap.primitive_type === 'tool') data = await cap.handler({}, ctx)
-        else continue
-        prefetched.push({ uri, content: data, tokens_estimate: 0 })
-      } catch (err) {
-        void err  // skip failed always_prefetch entries — null content filtered in buildBundle
+        const result = await cap.handler({}, ctx)
+        if (!result.is_error) {
+          prefetched.push({ uri, content: result.content, tokens_estimate: 0 })
+        }
+      } catch {
+        // skip failed always_prefetch entries — null content filtered in buildBundle
       }
     }
   }
@@ -78,11 +76,11 @@ export async function prepareHybridContext(
   const prefetchedUris = new Set(prefetched.map(p => p.uri))
   const maxTools = opts?.max_tools ?? 20
 
-  const remainingTools = listCapabilities({ primitive_type: 'tool' })
+  const remainingTools = listCapabilities({ type: 'tool' })
     .filter(c => !prefetchedUris.has(c.uri))
     .sort((a, b) =>
-      (b.llm_hints.agentic?.cost_class === 'cheap' ? 2 : 0) -
-      (a.llm_hints.agentic?.cost_class === 'cheap' ? 2 : 0)
+      (b.llm_hints?.agentic?.cost_class === 'cheap' ? 2 : 0) -
+      (a.llm_hints?.agentic?.cost_class === 'cheap' ? 2 : 0)
     )
     .slice(0, maxTools)
     .map(c => ({
