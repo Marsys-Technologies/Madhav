@@ -42,7 +42,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       data-asset-id={asset.asset_id}
       style={{
         display: 'grid',
-        gridTemplateColumns: '44% 30% 12% 14%',
+        gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
         gap: '8px',
         alignItems: 'center',
         padding: '8px 12px',

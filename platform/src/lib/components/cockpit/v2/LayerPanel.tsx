@@ -133,19 +133,17 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Right: asset count + rows + build button */}
+        {/* Right: asset count + rows (fixed-width cells) + build button */}
         <div
-          style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
         >
-          <span style={{ fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-faint)' }}>
+          <span style={{ width: '66px', textAlign: 'right', fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-faint)' }}>
             {assets.length} assets
           </span>
-          {totalRows > 0 && (
-            <span style={{ fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
-              {totalRows.toLocaleString()} rows
-            </span>
-          )}
+          <span style={{ width: '82px', textAlign: 'right', fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
+            {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
+          </span>
           <BuildActionButton
             chartId={chartId}
             scope="layer"
@@ -178,7 +176,7 @@ export function LayerPanel({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '44% 30% 12% 14%',
+              gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
               gap: '8px',
               padding: '6px 12px',
               fontSize: '11px',

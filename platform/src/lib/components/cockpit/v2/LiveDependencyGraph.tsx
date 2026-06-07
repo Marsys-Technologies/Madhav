@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
@@ -15,6 +15,15 @@ interface AssetWithState extends AssetRow {
   last_built_at: string | null
   actual_rows: number | null
 }
+
+// ── Antique-gold palette (art constants — intentional literal values) ──────────
+
+const GOLD_NODE_LIGHT = '#E8C878'
+const GOLD_NODE_MID   = '#C49A3E'
+const GOLD_NODE_DARK  = '#6B4E18'
+const GOLD_ROOT_LIGHT = '#F4D98A'
+const GOLD_ROOT_MID   = '#D4A648'
+const GOLD_ROOT_DARK  = '#5C3F12'
 
 // ── Layer → orbit ring (ratio of SVG dimensions) ──────────────────────────────
 
@@ -47,17 +56,18 @@ function hash(s: string): number {
   return Math.abs(h)
 }
 
-// ── Node position ─────────────────────────────────────────────────────────────
+// ── Node position (with optional orbital offset for build-time rotation) ──────
 
 function nodePosition(
   asset: AssetWithState,
   siblings: AssetWithState[],
   W: number,
-  H: number
+  H: number,
+  orbitOffset: number = 0
 ): { cx: number; cy: number } {
   const orbit = ORBITS[asset.layer] ?? { rx: 0.45, ry: 0.40 }
   const idx = siblings.findIndex(a => a.asset_id === asset.asset_id)
-  const baseAngle = (idx / siblings.length) * 360
+  const baseAngle = (idx / siblings.length) * 360 + orbitOffset
   const jitter = asset.layer === 'mimamsa' ? 0 : (hash(asset.asset_id) % 11) - 5
   const angle = ((baseAngle + jitter) * Math.PI) / 180
   const cx = W / 2 + W * orbit.rx * Math.sin(angle)
@@ -76,10 +86,10 @@ interface EdgeSpec {
 }
 
 const EDGE_STYLES: Record<EdgeTier, { stroke: string; width: number; dasharray?: string }> = {
-  rootSpoke:  { stroke: 'rgba(236,197,106,0.55)', width: 1.3 },
-  direct:     { stroke: 'rgba(232,200,120,0.42)', width: 0.85 },
-  crossWeave: { stroke: 'rgba(212,180,108,0.36)', width: 0.75 },
-  skip:       { stroke: 'rgba(232,200,120,0.28)', width: 0.6, dasharray: '2,2' },
+  rootSpoke:  { stroke: 'rgba(236,197,106,0.45)', width: 1.1 },
+  direct:     { stroke: 'rgba(196,154,62,0.35)',  width: 0.7 },
+  crossWeave: { stroke: 'rgba(180,140,96,0.28)',  width: 0.6 },
+  skip:       { stroke: 'rgba(196,154,62,0.22)',  width: 0.5, dasharray: '2,2' },
 }
 
 function classifyEdge(fromLayer: string, toLayer: string): EdgeTier {
@@ -106,17 +116,17 @@ function fillFor(state: AssetState): string {
 }
 
 function strokeFor(state: AssetState): string {
-  if (state === 'dormant' || state === 'not_migrated') return 'rgba(122,86,24,0.5)'
-  if (state === 'stale')    return 'rgba(164,122,40,0.5)'
-  if (state === 'building') return '#C4A268'
-  if (state === 'lit')      return '#D4A648'
-  return '#ECC56A'
+  if (state === 'dormant' || state === 'not_migrated') return 'rgba(107,78,24,0.5)'
+  if (state === 'stale')    return 'rgba(140,104,36,0.55)'
+  if (state === 'building') return GOLD_NODE_MID
+  if (state === 'lit')      return GOLD_ROOT_MID
+  return GOLD_NODE_LIGHT
 }
 
 function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): number {
   if (fromState === 'dormant' || toState === 'dormant' || fromState === 'not_migrated' || toState === 'not_migrated') return 0
-  if (fromState === 'building' || toState === 'building') return 0.4
-  if (fromState === 'stale' || toState === 'stale') return 0.3
+  if (fromState === 'building' || toState === 'building') return 0.45
+  if (fromState === 'stale' || toState === 'stale') return 0.32
   return 1.0
 }
 
@@ -132,20 +142,47 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dims, setDims] = useState({ W: 400, H: 520 })
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const prefersReducedMotion = useReducedMotion()
 
-  // Responsive sizing
+  // Orbital rotation state for active builds
+  const orbitAngleRef = useRef(0)
+  const [orbitAngle, setOrbitAngle] = useState(0)
+  const isActiveRun = activeRun != null
+  const ORBIT_DEG_PER_SEC = 3 // full revolution ~2 min
+
+  // Responsive sizing — track height when container has fixed height (R5 pane)
   useEffect(() => {
     if (!containerRef.current) return
     const ro = new ResizeObserver(entries => {
       const entry = entries[0]
       if (entry) {
         const W = entry.contentRect.width
-        setDims({ W, H: Math.round(W * 1.25) })
+        const measuredH = entry.contentRect.height
+        const H = measuredH > 100 ? measuredH : Math.round(W * 1.25)
+        setDims({ W, H })
       }
     })
     ro.observe(containerRef.current)
     return () => ro.disconnect()
   }, [])
+
+  // Slow orbital drift when a build is active; paused otherwise and for reduced-motion
+  useEffect(() => {
+    if (!isActiveRun || prefersReducedMotion) return
+    let rafId: number
+    let lastTime: number | null = null
+    const tick = (time: number) => {
+      if (lastTime !== null) {
+        const delta = time - lastTime
+        orbitAngleRef.current = (orbitAngleRef.current + ORBIT_DEG_PER_SEC * delta / 1000) % 360
+        setOrbitAngle(orbitAngleRef.current)
+      }
+      lastTime = time
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [isActiveRun, prefersReducedMotion])
 
   const { W, H } = dims
 
@@ -157,21 +194,20 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
       arr.push(a)
       m.set(a.layer, arr)
     }
-    // Sort siblings alphabetically for stable ordering
     for (const [, arr] of m) arr.sort((x, y) => x.asset_id.localeCompare(y.asset_id))
     return m
   }, [assets])
 
-  // Compute positions (deterministic)
+  // Compute positions (deterministic; reacts to orbitAngle during active builds)
   const posMap = useMemo(() => {
     const m = new Map<string, { cx: number; cy: number }>()
     m.set('ROOT', { cx: W / 2, cy: H * 0.55 })
     for (const a of assets) {
       const siblings = siblingsByLayer.get(a.layer) ?? []
-      m.set(a.asset_id, nodePosition(a, siblings, W, H))
+      m.set(a.asset_id, nodePosition(a, siblings, W, H, orbitAngle))
     }
     return m
-  }, [assets, siblingsByLayer, W, H])
+  }, [assets, siblingsByLayer, W, H, orbitAngle])
 
   // Compute edges
   const edges = useMemo<EdgeSpec[]>(() => {
@@ -190,14 +226,16 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
     return result
   }, [assets])
 
+  // Building asset IDs for targeted animation
+  const buildingIds = useMemo(() =>
+    new Set(assets.filter(a => a.state === 'building').map(a => a.asset_id)),
+  [assets])
+
   // Hover closures
   const { upstreamSet, downstreamSet } = useMemo(() => {
     if (!hoveredId) return { upstreamSet: new Set<string>(), downstreamSet: new Set<string>() }
-
     const upstreamSet = new Set<string>()
     const downstreamSet = new Set<string>()
-
-    // Upstream walk
     const visitUp = (id: string) => {
       const a = assets.find(x => x.asset_id === id)
       if (!a) return
@@ -206,8 +244,6 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
       }
     }
     visitUp(hoveredId)
-
-    // Downstream walk
     const visitDown = (id: string) => {
       for (const a of assets) {
         if ((a.depends_on ?? []).includes(id) && !downstreamSet.has(a.asset_id)) {
@@ -217,11 +253,10 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
       }
     }
     visitDown(hoveredId)
-
     return { upstreamSet, downstreamSet }
   }, [hoveredId, assets])
 
-  // Deterministic particle dust (seeded by asset count)
+  // Deterministic particle dust
   const particles = useMemo(() => {
     const count = 30
     return Array.from({ length: count }, (_, i) => ({
@@ -231,7 +266,7 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
     }))
   }, [W, H])
 
-  // Background polygons (connect lit node triplets)
+  // Background polygons (connect lit/building node triplets)
   const litNodes = assets.filter(a => a.state === 'lit' || a.state === 'building')
   const polyOpacity = Math.min(0.10, (litNodes.length / Math.max(assets.length, 1)) * 0.10)
 
@@ -256,7 +291,16 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        // Depth vignette — darker at edges for a sense of field depth
+        background: 'radial-gradient(ellipse at 50% 55%, transparent 35%, rgba(4,3,1,0.50) 100%)',
+      }}
+    >
       <svg
         width={W}
         height={H}
@@ -264,46 +308,46 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
         style={{ display: 'block', overflow: 'visible' }}
       >
         <defs>
+          {/* Darker antique-gold sphere gradient — burnished orb, top-left light source */}
           <radialGradient id="nodeBead" cx="35%" cy="30%" r="75%">
-            <stop offset="0%"   stopColor="#FFFBE8" />
-            <stop offset="55%"  stopColor="#EFE0BC" />
-            <stop offset="100%" stopColor="#A47A28" />
+            <stop offset="0%"   stopColor={GOLD_NODE_LIGHT} />
+            <stop offset="40%"  stopColor={GOLD_NODE_MID} />
+            <stop offset="100%" stopColor={GOLD_NODE_DARK} />
           </radialGradient>
+          {/* ROOT — slightly brighter than node beads */}
           <radialGradient id="rootBead" cx="32%" cy="28%" r="85%">
-            <stop offset="0%"   stopColor="#FFFFFF" />
-            <stop offset="25%"  stopColor="#FFF8E0" />
-            <stop offset="65%"  stopColor="#ECC56A" />
-            <stop offset="100%" stopColor="#7A5618" />
+            <stop offset="0%"   stopColor={GOLD_ROOT_LIGHT} />
+            <stop offset="45%"  stopColor={GOLD_ROOT_MID} />
+            <stop offset="100%" stopColor={GOLD_ROOT_DARK} />
           </radialGradient>
-          <filter id="glowS" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="glowM" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="glowL" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="glowRoot" x="-150%" y="-150%" width="400%" height="400%">
-            <feGaussianBlur stdDeviation="9" result="blur" />
+          {/* Soft atmosphere disc — radial gold → transparent, rendered behind each sphere */}
+          <radialGradient id="atmosphereGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor={GOLD_NODE_MID} stopOpacity="0.14" />
+            <stop offset="100%" stopColor={GOLD_NODE_MID} stopOpacity="0" />
+          </radialGradient>
+          {/* ROOT atmosphere — slightly brighter presence */}
+          <radialGradient id="atmosphereRoot" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor={GOLD_ROOT_MID} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={GOLD_ROOT_MID} stopOpacity="0" />
+          </radialGradient>
+          {/* Contained glow — only used on building state; small blur so sphere stays legible */}
+          <filter id="glowBuilding" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="1.8" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
-        {/* Particle dust */}
+        {/* Particle dust — low opacity ambient field */}
         {particles.map((p, idx) => (
           <motion.circle
             key={`p-${idx}`}
             r={p.r}
-            fill="#A47A28"
-            initial={{ cx: p.x, cy: p.y, opacity: 0.35 }}
+            fill={GOLD_NODE_DARK}
+            initial={{ cx: p.x, cy: p.y, opacity: 0.28 }}
             animate={{
               cx: [p.x, p.x + 6 + (idx % 3) * 2, p.x - 4, p.x],
               cy: [p.y, p.y - 5, p.y + 3, p.y],
-              opacity: [0.35, 0.52, 0.38, 0.35],
+              opacity: [0.28, 0.42, 0.30, 0.28],
             }}
             transition={{
               duration: 15 + (idx % 10) * 1.5,
@@ -322,18 +366,17 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           return triplets.map(([a, b, c], polyIdx) => {
             const pa = posMap.get(a); const pb = posMap.get(b); const pc = posMap.get(c)
             if (!pa || !pb || !pc) return null
-            const baseOpacity = polyOpacity
             return (
               <polygon
                 key={`poly-${polyIdx}`}
                 points={`${pa.cx},${pa.cy} ${pb.cx},${pb.cy} ${pc.cx},${pc.cy}`}
-                fill={`rgba(70,55,32,1)`}
-                stroke={`rgba(140,110,60,0.18)`}
+                fill="rgba(65,50,28,1)"
+                stroke="rgba(130,100,50,0.14)"
                 strokeWidth={0.5}
                 className="poly-pulse"
                 style={
                   {
-                    '--base-op': baseOpacity,
+                    '--base-op': polyOpacity,
                     animationDuration: `${8 + polyIdx * 2}s`,
                   } as React.CSSProperties
                 }
@@ -342,7 +385,7 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           })
         })()}
 
-        {/* Orbital ellipses */}
+        {/* Orbital ellipses — thin + faint */}
         {Object.entries(ORBITS).map(([, orb]) => (
           <ellipse
             key={`orb-${orb.rx}`}
@@ -351,12 +394,12 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
             rx={W * orb.rx}
             ry={H * orb.ry}
             fill="none"
-            stroke="rgba(236,197,106,0.07)"
+            stroke="rgba(196,154,62,0.06)"
             strokeWidth={0.6}
           />
         ))}
 
-        {/* Edges (rendered behind nodes) */}
+        {/* Edges — rendered behind nodes */}
         {edges.map((e, i) => {
           const from = posMap.get(e.fromId)
           const to = posMap.get(e.toId)
@@ -367,6 +410,32 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const mult = edgeOpacityMultiplier(fromState ?? 'dormant', toState ?? 'dormant')
           const finalOpacity = edgeOpacity(e.fromId, e.toId, mult)
           if (finalOpacity < 0.01) return null
+
+          // Flowing "data transfer" shimmer on edges connected to actively building nodes
+          const isFlowing = !prefersReducedMotion && isActiveRun &&
+            (buildingIds.has(e.fromId) || buildingIds.has(e.toId))
+
+          if (isFlowing) {
+            return (
+              <motion.line
+                key={i}
+                x1={from.cx} y1={from.cy}
+                x2={to.cx} y2={to.cy}
+                stroke={GOLD_NODE_MID}
+                strokeWidth={style.width * 1.6}
+                strokeDasharray="4 3"
+                animate={{
+                  opacity: finalOpacity * 1.4,
+                  strokeDashoffset: [0, -7],
+                }}
+                transition={{
+                  opacity: { duration: 0.8, ease: 'easeInOut' },
+                  strokeDashoffset: { duration: 1.1, repeat: Infinity, ease: 'linear' },
+                }}
+              />
+            )
+          }
+
           return (
             <motion.line
               key={i}
@@ -394,12 +463,9 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const isBuilding = state === 'building'
           const isLit = state === 'lit'
           const isStale = state === 'stale'
-          const isActive = isLit || isBuilding
 
-          const glowFilter = isDormant ? undefined
-            : isBuilding ? 'url(#glowS)'
-            : isStale ? undefined
-            : 'url(#glowM)'
+          // Pulse only when actually building and run is active
+          const shouldPulse = !prefersReducedMotion && isBuilding && isActiveRun
 
           return (
             <g
@@ -409,9 +475,37 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
               onMouseEnter={() => setHoveredId(a.asset_id)}
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => onNodeClick(a.asset_id)}
-              filter={glowFilter}
+              filter={isBuilding ? 'url(#glowBuilding)' : undefined}
             >
-              {isActive ? (
+              {/* Soft atmosphere disc — behind sphere, gentle gold presence */}
+              {!isDormant && (
+                <circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={r * 2.6}
+                  fill="url(#atmosphereGrad)"
+                />
+              )}
+
+              {/* Main sphere */}
+              {shouldPulse ? (
+                <motion.circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={r}
+                  fill={fillFor(state)}
+                  stroke={strokeFor(state)}
+                  strokeWidth={1.5}
+                  animate={{ scale: [1, 1.13, 1], opacity: [1, 0.82, 1] }}
+                  transition={{
+                    duration: 2.2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: nodeIndex * 0.18,
+                  }}
+                  style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                />
+              ) : (isLit || isBuilding) ? (
                 <circle
                   cx={pos.cx}
                   cy={pos.cy}
@@ -442,16 +536,18 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
                   fillOpacity={isStale ? 0.4 : 1}
                 />
               )}
-              {/* Inner highlight for lit/building state */}
+
+              {/* Specular highlight — smaller + softer for legible 3D read */}
               {(isLit || isBuilding) && (
                 <circle
                   cx={pos.cx - r * 0.28}
                   cy={pos.cy - r * 0.28}
-                  r={r * 0.28}
-                  fill="rgba(255,255,255,0.65)"
+                  r={r * 0.20}
+                  fill="rgba(255,255,255,0.52)"
                 />
               )}
-              {/* Invisible larger hit target */}
+
+              {/* Invisible enlarged hit target */}
               <circle cx={pos.cx} cy={pos.cy} r={r + 4} fill="transparent" />
             </g>
           )
@@ -461,26 +557,19 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
         {(() => {
           const pos = posMap.get('ROOT')
           if (!pos) return null
+          const r = NODE_RADIUS.ROOT
           return (
-            <g filter="url(#glowRoot)">
-              <circle cx={pos.cx} cy={pos.cy} r={NODE_RADIUS.ROOT} fill="url(#rootBead)" stroke="#ECC56A" strokeWidth={1.5} />
-              <circle cx={pos.cx - 5} cy={pos.cy - 5} r={5} fill="rgba(255,255,255,0.80)" />
+            <g>
+              {/* Root atmosphere disc */}
+              <circle cx={pos.cx} cy={pos.cy} r={r * 2.8} fill="url(#atmosphereRoot)" />
+              <circle cx={pos.cx} cy={pos.cy} r={r} fill="url(#rootBead)" stroke={GOLD_ROOT_MID} strokeWidth={1.5} />
+              {/* Specular highlight */}
+              <circle cx={pos.cx - 5} cy={pos.cy - 5} r={4} fill="rgba(255,255,255,0.70)" />
             </g>
           )
         })()}
 
-        {/* Layer legend — top-left */}
-        {W >= 300 && LAYER_ORDER.map((l, i) => {
-          const orb = ORBITS[l]
-          return (
-            <g key={l} transform={`translate(12, ${16 + i * 16})`}>
-              <ellipse cx={8} cy={5} rx={6} ry={3} fill="none" stroke="rgba(236,197,106,0.30)" strokeWidth={0.7} />
-              <text x={18} y={9} fontFamily="var(--ui-stack)" fontSize={9} fill="rgba(255,255,255,0.40)">
-                {l} · rx{Math.round(orb.rx * 100)}
-              </text>
-            </g>
-          )
-        })}
+        {/* Layer legend REMOVED per R3.1 */}
 
         {/* Hover tooltip */}
         {hoveredId && (() => {
@@ -491,9 +580,9 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const ty = Math.max(pos.cy - 20, 10)
           return (
             <g>
-              <rect x={tx - 4} y={ty - 12} width={128} height={30} rx={4} fill="rgba(20,16,8,0.88)" stroke="rgba(236,197,106,0.3)" strokeWidth={0.8} />
-              <text x={tx} y={ty} fontFamily="var(--ui-stack)" fontSize={10} fill="#ECC56A">{asset.english_name}</text>
-              <text x={tx} y={ty + 11} fontFamily="var(--mono-stack)" fontSize={8.5} fill="rgba(255,255,255,0.50)">{asset.asset_id}</text>
+              <rect x={tx - 4} y={ty - 12} width={128} height={30} rx={4} fill="rgba(18,14,6,0.90)" stroke="rgba(196,154,62,0.30)" strokeWidth={0.8} />
+              <text x={tx} y={ty} fontFamily="var(--ui-stack)" fontSize={10} fill={GOLD_NODE_LIGHT}>{asset.english_name}</text>
+              <text x={tx} y={ty + 11} fontFamily="var(--mono-stack)" fontSize={8.5} fill="rgba(255,255,255,0.48)">{asset.asset_id}</text>
             </g>
           )
         })()}
