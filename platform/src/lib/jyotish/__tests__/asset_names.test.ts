@@ -25,7 +25,7 @@ describe('ASSET_NAMES', () => {
   it('contains all 8 L0 Brahmagyan global foundation assets', () => {
     const l0Keys: AssetKey[] = [
       'bg_ephemeris', 'bg_reference', 'bg_texts', 'bg_ontology',
-      'bg_text_index', 'bg_rules', 'bg_almanac', 'bg_concordance',
+      'bg_text_index', 'bg_rules', 'bg_remedies', 'bg_concordance',
     ]
     for (const k of l0Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L0')
