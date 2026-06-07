@@ -1640,6 +1640,174 @@
       "interface_version": "1.0",
       "rebase_note": "Architecture decision: L1 ga_structural = exhaustive enumeration engine; L2 MSR = population-level enrichment. Purges predicate-firing model from MSR. Governing for L2 Bodha build.",
       "fingerprint": "f6b363aca2792714499137438878851d3f238198534e65a19006560bb66ecbb2"
+    },
+    {
+      "canonical_id": "L0FR_CAPABILITY_READ_CLASSICAL_TEXT",
+      "tool_name": "read_classical_text",
+      "retrieval_tool": "read_classical_text",
+      "path": "platform/src/lib/tools/classical_text_search.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "channel": "both",
+      "expose_to_chat": true,
+      "representations": [
+        "tool"
+      ],
+      "interface_version": "1.0",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "schools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "rebase_note": "L0FR Stream C \u2014 classical text semantic search"
+    },
+    {
+      "canonical_id": "L0FR_CAPABILITY_READ_CHAPTER",
+      "tool_name": "read_chapter",
+      "retrieval_tool": "read_chapter",
+      "path": "platform/src/lib/tools/classical_text_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "channel": "both",
+      "expose_to_chat": true,
+      "representations": [
+        "tool"
+      ],
+      "interface_version": "1.0",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "text_id": {
+            "type": "string",
+            "description": "Classical text identifier"
+          },
+          "chapter": {
+            "type": "integer",
+            "description": "Chapter number"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text_id",
+          "chapter"
+        ]
+      },
+      "rebase_note": "L0FR Stream C \u2014 fetch full chapter from classical text"
+    },
+    {
+      "canonical_id": "L0FR_CAPABILITY_LIST_CLASSICAL_TEXTS",
+      "tool_name": "list_classical_texts",
+      "retrieval_tool": "list_classical_texts",
+      "path": "platform/src/lib/tools/classical_text_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "channel": "both",
+      "expose_to_chat": true,
+      "representations": [
+        "tool"
+      ],
+      "interface_version": "1.0",
+      "query_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "rebase_note": "L0FR Stream C \u2014 list all ingested classical texts"
+    },
+    {
+      "canonical_id": "L0FR_CAPABILITY_FIND_VERSES_ABOUT",
+      "tool_name": "find_verses_about",
+      "retrieval_tool": "find_verses_about",
+      "path": "platform/src/lib/tools/classical_text_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "channel": "both",
+      "expose_to_chat": true,
+      "representations": [
+        "tool"
+      ],
+      "interface_version": "1.0",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic to search for"
+          },
+          "text_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "top_k": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "rebase_note": "L0FR Stream C \u2014 topic-based verse discovery across classical corpus"
+    },
+    {
+      "canonical_id": "L0FR_CAPABILITY_SEARCH_CLASSICAL_TEXTS",
+      "tool_name": "search_classical_texts",
+      "retrieval_tool": "search_classical_texts",
+      "path": "platform/src/lib/tools/classical_text_search.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "channel": "both",
+      "expose_to_chat": true,
+      "representations": [
+        "tool"
+      ],
+      "interface_version": "1.0",
+      "query_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query text"
+          },
+          "top_k": {
+            "type": "integer"
+          },
+          "schools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "rebase_note": "L0FR Stream C \u2014 alias for read_classical_text with FTS+vector combined"
     }
   ],
   "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3"
