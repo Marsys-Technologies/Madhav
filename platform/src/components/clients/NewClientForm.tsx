@@ -168,12 +168,20 @@ const wellStyleError = {
   color: 'var(--brand-gold-cream)',
 }
 
-// ─── CSS for gmp-placeautocomplete theming (R3.5) ─────────────────────────────
-// Custom properties cascade through shadow DOM boundaries; injected as a <style>
-// to reach both the input and the prediction-list popup reliably.
+// R4.3: read-only coord fields (always visible; muted to indicate non-editable)
+const readOnlyWellStyle = {
+  background: 'var(--brand-ink)',
+  color: 'oklch(0.45 0.015 75)',
+  borderColor: 'oklch(0.78 0.13 80 / 0.12)',
+  cursor: 'not-allowed',
+}
+
+// ─── CSS for gmp-placeautocomplete theming (R3.5 / R4.4) ─────────────────────
+// R4.4: surface = brand-ink (the page canvas) so the field blends with the page,
+// not the card. oklch(0.04 0.005 70) is the computed value of --brand-ink.
 const PLACES_WIDGET_CSS = `
 gmp-placeautocomplete {
-  --gmpx-color-surface: oklch(0.08 0.006 75);
+  --gmpx-color-surface: oklch(0.04 0.005 70);
   --gmpx-color-on-surface: oklch(0.92 0.075 88);
   --gmpx-color-on-surface-variant: oklch(0.58 0.025 80);
   --gmpx-color-primary: oklch(0.78 0.13 80);
@@ -336,8 +344,9 @@ function PlacesAutocompleteNew({
         })
         el.style.width = '100%'
 
-        // Theme tokens (R3.5) — cascade into shadow DOM via inline custom properties
-        el.style.setProperty('--gmpx-color-surface',            'oklch(0.08 0.006 75)')
+        // Theme tokens (R3.5 / R4.4) — cascade into shadow DOM via inline custom properties
+        // R4.4: surface = brand-ink so field blends with the page canvas.
+        el.style.setProperty('--gmpx-color-surface',            'oklch(0.04 0.005 70)')
         el.style.setProperty('--gmpx-color-on-surface',         'oklch(0.92 0.075 88)')
         el.style.setProperty('--gmpx-color-on-surface-variant', 'oklch(0.58 0.025 80)')
         el.style.setProperty('--gmpx-color-primary',            'oklch(0.78 0.13 80)')
@@ -350,13 +359,17 @@ function PlacesAutocompleteNew({
           onTextChange((el as any).value ?? '')
         })
 
-        el.addEventListener('gmp-placeselect', async (event: Event) => {
+        // R4.1: Support both event names — 'gmp-select' (newer Maps JS API) and
+        // 'gmp-placeselect' (older builds). Both carry a Place on event.place.
+        // Fields: do NOT include utcOffsetMinutes — it caused fetchFields to fail
+        // on some key configs. Timezone is derived via timezoneFromOffset fallback.
+        const handlePlaceSelect = async (event: Event) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const place = (event as any).place
+          const place = (event as any).place ?? (event as any).detail?.place
           if (!place) return
           try {
             await place.fetchFields({
-              fields: ['location', 'formattedAddress', 'displayName', 'utcOffsetMinutes'],
+              fields: ['location', 'displayName', 'formattedAddress', 'addressComponents'],
             })
             const loc = place.location
             if (!loc) { onLoadError(); return }
@@ -364,12 +377,15 @@ function PlacesAutocompleteNew({
               description: place.formattedAddress ?? place.displayName ?? '',
               lat: loc.lat(),
               lng: loc.lng(),
-              utcOffsetMinutes: place.utcOffsetMinutes ?? null,
+              utcOffsetMinutes: null,  // not fetched; timezoneFromOffset defaults to Asia/Kolkata
             })
           } catch {
             onLoadError()
           }
-        })
+        }
+
+        el.addEventListener('gmp-select',      handlePlaceSelect)
+        el.addEventListener('gmp-placeselect', handlePlaceSelect)
 
         container.appendChild(el)
       } catch {
@@ -746,24 +762,7 @@ export function NewClientForm() {
             <p role="alert" className="bt-label text-destructive">{errors.birth_place}</p>
           )}
 
-          {form.places_resolved && (
-            <div
-              data-testid="places-resolved-indicator"
-              className="bt-label flex items-center gap-1.5 px-2 py-1 rounded-md mt-0.5"
-              style={{
-                color: 'var(--status-success)',
-                background: 'rgba(46,167,94,0.08)',
-                border: '1px solid rgba(46,167,94,0.25)',
-              }}
-            >
-              <span aria-hidden="true">✓</span>
-              <span>
-                {parseFloat(form.latitude).toFixed(4)}, {parseFloat(form.longitude).toFixed(4)}
-                {' · '}{form.timezone_id}
-                {' · UTC'}{parseFloat(form.tz_offset) >= 0 ? '+' : ''}{form.tz_offset}
-              </span>
-            </div>
-          )}
+          {/* R4.3: resolved state is visible in the always-shown coord fields below */}
         </div>
 
         {/* Date + Time ────────────────────────────────────────────────── */}
@@ -851,8 +850,9 @@ export function NewClientForm() {
           </div>
         </div>
 
-        {/* R3.9: Manual override — checkbox-gated ────────────────────── */}
+        {/* R4.3: Coordinates — always visible; read-only until "Manual override" ── */}
         <div data-testid="manual-override-accordion">
+          {/* Manual override checkbox */}
           <label className="flex items-center gap-2 cursor-pointer group w-fit">
             <input
               type="checkbox"
@@ -861,7 +861,6 @@ export function NewClientForm() {
               aria-label="Manual coordinate override"
               onChange={(e) => setManualOpen(e.target.checked)}
             />
-            {/* Themed checkbox visual */}
             <span
               aria-hidden="true"
               className="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-150"
@@ -879,107 +878,116 @@ export function NewClientForm() {
             </span>
           </label>
 
-          {manualOpen && (
-            <div className="mt-3 flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <Label htmlFor="latitude" className="bt-label bt-label-upper text-brand-gold/70">
-                    Latitude *
-                  </Label>
-                  <input
-                    id="latitude"
-                    type="number"
-                    step="0.0001"
-                    min={-90}
-                    max={90}
-                    placeholder="20.2961"
-                    value={form.latitude}
-                    aria-required="true"
-                    aria-invalid={!!errors.latitude}
-                    className={darkInputCls(!!errors.latitude)}
-                    style={errors.latitude ? wellStyleError : wellStyle}
-                    onChange={(e) => setField('latitude', e.target.value)}
-                  />
-                  {errors.latitude && (
-                    <p role="alert" className="bt-label text-destructive">{errors.latitude}</p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <Label htmlFor="longitude" className="bt-label bt-label-upper text-brand-gold/70">
-                    Longitude *
-                  </Label>
-                  <input
-                    id="longitude"
-                    type="number"
-                    step="0.0001"
-                    min={-180}
-                    max={180}
-                    placeholder="85.8245"
-                    value={form.longitude}
-                    aria-required="true"
-                    aria-invalid={!!errors.longitude}
-                    className={darkInputCls(!!errors.longitude)}
-                    style={errors.longitude ? wellStyleError : wellStyle}
-                    onChange={(e) => setField('longitude', e.target.value)}
-                  />
-                  {errors.longitude && (
-                    <p role="alert" className="bt-label text-destructive">{errors.longitude}</p>
-                  )}
-                </div>
+          {/* Coord fields — always rendered; editable only when override is checked */}
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="latitude" className="bt-label bt-label-upper text-brand-gold/70">
+                  Latitude *
+                </Label>
+                <input
+                  id="latitude"
+                  type="number"
+                  step="0.0001"
+                  min={-90}
+                  max={90}
+                  placeholder="20.2961"
+                  value={form.latitude}
+                  readOnly={!manualOpen}
+                  tabIndex={manualOpen ? 0 : -1}
+                  aria-required="true"
+                  aria-readonly={!manualOpen}
+                  aria-invalid={!!errors.latitude}
+                  className={cn(darkInputCls(!!errors.latitude), !manualOpen && 'cursor-not-allowed')}
+                  style={errors.latitude ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
+                  onChange={manualOpen ? (e) => setField('latitude', e.target.value) : undefined}
+                />
+                {errors.latitude && (
+                  <p role="alert" className="bt-label text-destructive">{errors.latitude}</p>
+                )}
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <Label htmlFor="timezone_id" className="bt-label bt-label-upper text-brand-gold/70">
-                    Timezone
-                  </Label>
-                  <div className="relative">
-                    <select
-                      id="timezone_id"
-                      value={form.timezone_id}
-                      className={cn(darkInputCls(), 'appearance-none pr-7 cursor-pointer')}
-                      style={wellStyle}
-                      onChange={(e) => handleTimezoneChange(e.target.value)}
-                    >
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz.value} value={tz.value}
-                          style={{ background: 'var(--brand-charcoal)' }}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]"
-                      style={{ color: 'oklch(0.50 0.015 75)' }}
-                    >▼</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <Label htmlFor="tz_offset" className="bt-label bt-label-upper text-brand-gold/70">
-                    UTC offset *
-                  </Label>
-                  <input
-                    id="tz_offset"
-                    type="number"
-                    step="0.25"
-                    min={-14}
-                    max={14}
-                    placeholder="5.5"
-                    value={form.tz_offset}
-                    aria-required="true"
-                    aria-invalid={!!errors.tz_offset}
-                    className={darkInputCls(!!errors.tz_offset)}
-                    style={errors.tz_offset ? wellStyleError : wellStyle}
-                    onChange={(e) => setField('tz_offset', e.target.value)}
-                  />
-                  {errors.tz_offset && (
-                    <p role="alert" className="bt-label text-destructive">{errors.tz_offset}</p>
-                  )}
-                </div>
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="longitude" className="bt-label bt-label-upper text-brand-gold/70">
+                  Longitude *
+                </Label>
+                <input
+                  id="longitude"
+                  type="number"
+                  step="0.0001"
+                  min={-180}
+                  max={180}
+                  placeholder="85.8245"
+                  value={form.longitude}
+                  readOnly={!manualOpen}
+                  tabIndex={manualOpen ? 0 : -1}
+                  aria-required="true"
+                  aria-readonly={!manualOpen}
+                  aria-invalid={!!errors.longitude}
+                  className={cn(darkInputCls(!!errors.longitude), !manualOpen && 'cursor-not-allowed')}
+                  style={errors.longitude ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
+                  onChange={manualOpen ? (e) => setField('longitude', e.target.value) : undefined}
+                />
+                {errors.longitude && (
+                  <p role="alert" className="bt-label text-destructive">{errors.longitude}</p>
+                )}
               </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="timezone_id" className="bt-label bt-label-upper text-brand-gold/70">
+                  Timezone
+                </Label>
+                <div className="relative">
+                  <select
+                    id="timezone_id"
+                    value={form.timezone_id}
+                    disabled={!manualOpen}
+                    className={cn(darkInputCls(), 'appearance-none pr-7', manualOpen ? 'cursor-pointer' : 'cursor-not-allowed')}
+                    style={manualOpen ? wellStyle : readOnlyWellStyle}
+                    onChange={manualOpen ? (e) => handleTimezoneChange(e.target.value) : undefined}
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}
+                        style={{ background: 'var(--brand-charcoal)' }}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]"
+                    style={{ color: 'oklch(0.50 0.015 75)' }}
+                  >▼</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="tz_offset" className="bt-label bt-label-upper text-brand-gold/70">
+                  UTC offset *
+                </Label>
+                <input
+                  id="tz_offset"
+                  type="number"
+                  step="0.25"
+                  min={-14}
+                  max={14}
+                  placeholder="5.5"
+                  value={form.tz_offset}
+                  readOnly={!manualOpen}
+                  tabIndex={manualOpen ? 0 : -1}
+                  aria-required="true"
+                  aria-readonly={!manualOpen}
+                  aria-invalid={!!errors.tz_offset}
+                  className={cn(darkInputCls(!!errors.tz_offset), !manualOpen && 'cursor-not-allowed')}
+                  style={errors.tz_offset ? wellStyleError : manualOpen ? wellStyle : readOnlyWellStyle}
+                  onChange={manualOpen ? (e) => setField('tz_offset', e.target.value) : undefined}
+                />
+                {errors.tz_offset && (
+                  <p role="alert" className="bt-label text-destructive">{errors.tz_offset}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* R3.2: Ayanamsha checkboxes — single flex-nowrap row ─────────── */}

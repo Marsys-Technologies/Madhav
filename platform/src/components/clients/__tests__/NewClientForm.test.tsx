@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { NewClientForm } from '../NewClientForm'
 
 // ── Router mock ───────────────────────────────────────────────────────────────
@@ -15,6 +15,16 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
 }))
 
+// ── @react-google-maps/api mock ───────────────────────────────────────────────
+// Top-level vi.mock (hoisted). Behaviour is controlled by a mutable object so
+// individual tests can set isLoaded=true without re-hoisting a new factory.
+
+const _jsApiLoader = { isLoaded: false, loadError: undefined as Error | undefined }
+
+vi.mock('@react-google-maps/api', () => ({
+  useJsApiLoader: () => ({ isLoaded: _jsApiLoader.isLoaded, loadError: _jsApiLoader.loadError }),
+}))
+
 // ── fetch mock ────────────────────────────────────────────────────────────────
 
 const mockFetch = vi.fn()
@@ -22,6 +32,9 @@ vi.stubGlobal('fetch', mockFetch)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Reset Places loader state — keeps existing tests unaffected (no key → plain input shown)
+  _jsApiLoader.isLoaded = false
+  _jsApiLoader.loadError = undefined
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
@@ -224,23 +237,106 @@ describe('NewClientForm', () => {
     expect(accordion.querySelector('input#latitude')).toBeTruthy()
   })
 
-  // ── Test 8b: R3.9 — manual override uses a checkbox, not a button ──────────
-  it('R3.9: manual override control is a checkbox; toggling it shows/hides lat/lng fields', () => {
+  // ── Test 8b: R4.3 — lat/lng ALWAYS visible; checkbox controls editability ────
+  it('R4.3: lat/lng fields are always in the DOM; checkbox toggles readOnly state', () => {
     render(<NewClientForm />)
     const accordion = screen.getByTestId('manual-override-accordion')
 
     // In test env (no Maps key) the checkbox is checked (manualOpen=true) by default.
     const checkbox = accordion.querySelector('input[type="checkbox"]') as HTMLInputElement
     expect(checkbox).toBeTruthy()
-    expect(checkbox.checked).toBe(true)          // no-key fallback: open by default
+    expect(checkbox.checked).toBe(true)           // no-key fallback: editable by default
 
-    // Uncheck → lat/lng fields should disappear
-    fireEvent.click(checkbox.closest('label')!)
-    expect(accordion.querySelector('input#latitude')).toBeNull()
+    const latInput = screen.getByLabelText(/^latitude/i) as HTMLInputElement
+    expect(latInput).toBeTruthy()                 // always present in DOM
+    expect(latInput.readOnly).toBe(false)         // editable when checked
 
-    // Re-check → lat/lng fields reappear
+    // Uncheck → fields become read-only but stay in DOM
     fireEvent.click(checkbox.closest('label')!)
-    expect(accordion.querySelector('input#latitude')).toBeTruthy()
+    expect(accordion.querySelector('input#latitude')).toBeTruthy()  // still present
+    expect((accordion.querySelector('input#latitude') as HTMLInputElement).readOnly).toBe(true)
+
+    // Re-check → editable again
+    fireEvent.click(checkbox.closest('label')!)
+    expect((accordion.querySelector('input#latitude') as HTMLInputElement).readOnly).toBe(false)
+  })
+
+  // ── Test 9b: R4.1 — fetchFields is called on place selection and populates state ─
+  // Mocks the PlaceAutocompleteElement DOM element and dispatches gmp-select to
+  // verify that fetchFields is awaited and lat/lng are written to form state.
+  // _jsApiLoader is set to isLoaded=true; vi.stubGlobal provides the google object.
+  it('R4.1: gmp-select triggers fetchFields and writes lat/lng to form state', async () => {
+    // Signal the module-level mock that the SDK is ready
+    _jsApiLoader.isLoaded = true
+
+    // Capture the element appended by PlacesAutocompleteNew so we can dispatch events
+    let capturedEl: HTMLElement | null = null
+
+    const mockFetchFields = vi.fn().mockResolvedValue({})
+    const mockPlace = {
+      location: { lat: () => 20.2961, lng: () => 85.8245 },
+      formattedAddress: 'Bhubaneswar, Odisha, India',
+      displayName: 'Bhubaneswar',
+      fetchFields: mockFetchFields,
+    }
+
+    // vi.stubGlobal is NOT hoisted — safe to call inside a test.
+    // PlaceAutocompleteElement returns a real <div> so container.appendChild works in JSDOM.
+    vi.stubGlobal('google', {
+      maps: {
+        importLibrary: vi.fn().mockImplementation(async (lib: string) => {
+          if (lib !== 'places') return {}
+          return {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            PlaceAutocompleteElement: function PlaceAutocompleteElement(_opts: any) {
+              const el = document.createElement('div')
+              capturedEl = el
+              return el
+            },
+          }
+        }),
+      },
+    })
+
+    // Set key so isGoogleMapsKeyConfigured()=true → form mounts PlacesAutocompleteNew
+    const origKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'test-key-r4'
+
+    render(<NewClientForm />)
+
+    // Wait for useEffect async IIFE to create and append the element
+    await waitFor(() => expect(capturedEl).not.toBeNull(), { timeout: 2000 })
+
+    // Dispatch gmp-select (newer event name) with a mock Place
+    await act(async () => {
+      const event = Object.assign(new Event('gmp-select'), { place: mockPlace })
+      capturedEl!.dispatchEvent(event)
+      await new Promise((r) => setTimeout(r, 30))
+    })
+
+    // fetchFields must have been called (not the dead legacy getPlace() path)
+    expect(mockFetchFields).toHaveBeenCalledWith({
+      fields: ['location', 'displayName', 'formattedAddress', 'addressComponents'],
+    })
+
+    // lat/lng state is populated — DOM value must be the real number, not placeholder
+    await waitFor(() => {
+      const lat = screen.getByLabelText(/^latitude/i) as HTMLInputElement
+      expect(lat.value).toBe('20.2961')
+      const lng = screen.getByLabelText(/^longitude/i) as HTMLInputElement
+      expect(lng.value).toBe('85.8245')
+    })
+
+    // Cleanup — delete the key so subsequent tests get googleMapsConfigured=false
+    if (origKey === undefined) {
+      delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    } else {
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = origKey
+    }
+    // Don't call vi.unstubAllGlobals() — it would also remove the fetch stub.
+    // Manually clear the google global instead.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (globalThis as any).google
   })
 
   // ── Test 9: successful POST → router.push with redirect_url ───────────────
