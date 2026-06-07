@@ -71,6 +71,11 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
 
   deploy-web:
     name: Build & Deploy Web
@@ -170,6 +175,11 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R10_VALIDATOR_GATES=true
             NEXT_PUBLIC_MARSYS_FLAG_R10_EDIT_WHILE_STREAMING=false
             NEXT_PUBLIC_MARSYS_FLAG_R11C_TOOL_CARDS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_PROJECTS=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_SEMANTIC_SEARCH=true
+            NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
+            NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
