@@ -141,12 +141,39 @@ def _l0_check(build_id: str, chart_id: str) -> bool:
 # ── L1: Gaṇita ───────────────────────────────────────────────────────────────
 
 def _l1_ganita(build_id: str, chart: dict) -> dict:
-    """Run L1 Gaṇita for the chart: positions + Vimshottari dashas."""
+    """
+    Run L1 Gaṇita for the chart: positions + Vimshottari dashas.
+
+    Engine priority (Stream G — BRAHMA-G-1):
+    1. PyJHora (pyjhora_adapter) — primary engine (native decision)
+    2. pyswisseph direct (brahmagyan.ganita.engine) — fallback
+
+    Also writes ganita.graha_sthana via graha_sthana_writer.
+    """
     from brahmagyan.ganita.engine import run_ganita
 
     birth_iso = f"{chart['birth_date']}T{chart['birth_time']}"
+    chart_id = chart["id"]
+
+    # ── PyJHora graha_sthana (Stream G primary) ────────────────────────────────
+    pyhora_result: dict = {}
+    try:
+        from brahmagyan.ganita.graha_sthana_writer import run_graha_sthana
+        pyhora_result = run_graha_sthana(
+            chart_id=chart_id,
+            build_id=build_id,
+            birth_datetime_ist=birth_iso,
+            birth_lat=chart["birth_lat"],
+            birth_lon=chart["birth_lon"],
+            ayanamsha="lahiri",
+        )
+        logger.info("[L1] graha_sthana (PyJHora): %d rows written", pyhora_result.get("rows_written", 0))
+    except Exception as exc:
+        logger.warning("[L1] graha_sthana PyJHora failed (non-fatal, pyswisseph fallback): %s", exc)
+
+    # ── pyswisseph positions + dashas (existing engine) ────────────────────────
     result = run_ganita(
-        chart_id=chart["id"],
+        chart_id=chart_id,
         build_id=build_id,
         birth_datetime_ist=birth_iso,
         birth_lat=chart["birth_lat"],
@@ -155,6 +182,10 @@ def _l1_ganita(build_id: str, chart: dict) -> dict:
     )
     logger.info("[L1] Gaṇita complete: %d positions, %d dasha rows",
                 result["positions_count"], result["dashas_count"])
+
+    # Merge pyhora_result into the main result for build reporting
+    result["pyhora_graha_sthana_rows"] = pyhora_result.get("rows_written", 0)
+    result["pyhora_engine"] = pyhora_result.get("engine", "unavailable")
     return result
 
 
