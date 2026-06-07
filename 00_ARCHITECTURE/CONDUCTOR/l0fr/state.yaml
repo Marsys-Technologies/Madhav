@@ -9,7 +9,7 @@ streams:
 gates:
   vimarsaka_a: { status: reject, attempts: 1, checks_passed: 12, checks_failed: 3, failures: [audience_tier_residual_246, mcp_resolve_entity_canonical_id_SAT_vs_Saturn, consume_chat_resolve_entity_401_plus_no_route] }
   vimarsaka_c: { status: midway_pass, attempts: 1, pass_rate_pct: 96.80, checks_passed: 242, checks_total: 250 }
-  vimarsaka_z: { status: pending, attempts: 0 }
+  vimarsaka_z: { status: delta_deploy, attempts: 1, checks_passed: 14, checks_failed_hard: 2, checks_failed_soft: 2, known_residuals: 5, decision: DELTA_DEPLOY, failures_hard: [global_build_image_predates_l0fr, migration_174_not_applied], failures_soft: [sutravali_rules_1213_lt_3000, brahma_remedy_corpus_200_lt_500], smriti: vimarsaka_z_attempt_1.md }
 budget_spent_usd: { A: 0, B: 0, C: 0.63, D: 0, E: 0, F: 0, G: 0, total: 0.63 }
 budget_caps_usd: { A: 500, B: 150, C: 200, D: 50, E: 250, F: 50, G: 150, total: 1350, tier3_per_stream: 5000, tier3_total: 10000 }
 # v1.0 → deterministic-first revision 2026-06-07: C/D/F caps reduced (LLM use eliminated per memory feedback_deterministic_first_for_data_build); total wave 2250 → 1350
@@ -22,3 +22,4 @@ brahma_pipeline_path: platform/python-sidecar
 # Stream F completed 2026-06-07T06:25+05:30 — 200 rows brahma_remedy_corpus (10 categories); 7 capabilities portal+MCP; all 5 ACs PASS; tier-2 autonomy override (blocked_on_A overridden per brief §2 independence clause); status set to review; SHA 233b27ca
 # Stream C Phase 1 completed 2026-06-07T06:38+05:30 — 2643 chunks (BPHS 1723 + JP 741 + PD 179); 100% embedded; smoke PASS; status set to midway_review; SHA 665931e1
 # Stream C Phase 2 completed 2026-06-07T09:30+05:30 — 8432 total chunks (11 texts); 100% embedded; 5 capabilities in all 3 channels; parity_check PASS; smoke PASS; status set to review; SHA 44431225
+# Vimarśaka-Z attempt 1 completed 2026-06-07T09:45+05:30 — DELTA_DEPLOY; 14 PASS / 2 SOFT_FAIL / 5 KNOWN_RESIDUAL / 2 HARD_FAIL; HF1=global_build_image_predates_l0fr; HF2=migration_174_not_applied; smriti: vimarsaka_z_attempt_1.md; next: fixup stream A-prime (rebuild pipeline image) + fixup stream G-prime (apply migration 174 + merge stream G)
