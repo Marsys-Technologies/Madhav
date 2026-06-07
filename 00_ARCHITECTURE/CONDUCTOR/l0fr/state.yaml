@@ -4,7 +4,7 @@ streams:
   C: { status: blocked_on_A, tag: null, attempts: 0 }
   D: { status: blocked_on_C_midway, tag: null, attempts: 0 }
   E: { status: review, tag: 4e814bea67f9b6a4e869217238963653ccf973be, attempts: 1 }
-  F: { status: blocked_on_A, tag: null, attempts: 0 }
+  F: { status: review, tag: 233b27ca008c5ec742c4eeac51a3754dbd3a8746, attempts: 1 }
   G: { status: review, tag: c5ddf69b, attempts: 1 }
 gates:
   vimarsaka_a: { status: reject, attempts: 1, checks_passed: 12, checks_failed: 3, failures: [audience_tier_residual_246, mcp_resolve_entity_canonical_id_SAT_vs_Saturn, consume_chat_resolve_entity_401_plus_no_route] }
@@ -19,3 +19,4 @@ brahma_pipeline_path: platform/python-sidecar
 # Stream G completed 2026-06-07T05:55+05:30 — pyjhora_adapter + /api/pyhora + 3 capabilities + migration 174; smoke PASS; status set to review
 # Stream E completed 2026-06-07 — Pañcāṅga service + 6 L1 Ganita capabilities; AC1-AC2-AC4 PASS (13/15 tests green, 2 skipped DB); tier-2 autonomy override logged to smriti; status set to review
 # Stream B completed 2026-06-07 — ephemeris_daily 825,084 rows (1900-2150 × 9 bodies); JPL spot check 0.29 arcsec PASS; 6 L0 capabilities + sidecar routes; tier-2 autonomy override (proceed despite vimarsaka_a=reject); status set to review; SHA 5ebd680f
+# Stream F completed 2026-06-07T06:25+05:30 — 200 rows brahma_remedy_corpus (10 categories); 7 capabilities portal+MCP; all 5 ACs PASS; tier-2 autonomy override (blocked_on_A overridden per brief §2 independence clause); status set to review; SHA 233b27ca
