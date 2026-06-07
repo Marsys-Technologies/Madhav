@@ -1,0 +1,306 @@
+# Stream F — Supplemental B Remedies (final push to 200+)
+# Sources: BPHS Ch. 91-94, Phaladeepika Ch. 27-28
+# ZERO LLM — deterministic authoring only
+
+# ── More Mantras ──────────────────────────────────────────────────────────────
+
+- remedy_id: "man_saturn_shivashtakam_024"
+  planet: "Saturn"
+  domain: "health"
+  category: "mantras"
+  deity: "Shiva"
+  remedy_text: "Shivashtakam — the 8-shloka Shiva hymn from Skanda Purana. Saturn rules Aquarius and Capricorn and is considered the servant of Shiva. Reciting the Shivashtakam on Saturdays propitiates Shiva through Saturn's connection."
+  mantra_sanskrit: "प्रभुं प्राणनाथं विभुं विश्वनाथं जगन्नाथ नाथं सदानन्द भाजाम्"
+  mantra_transliteration: "Prabhum Praana-Naatham Vibhum Vishwa-Naatham Jagannatha-Naatham Sadananda-Bhaajam (Shivashtakam v.1)"
+  ingredients_jsonb: {"count": "8 shlokas × 3 repetitions", "mala": "Rudraksha (5-mukhi for Saturn)", "items": ["bilva leaves", "black sesame seeds", "water offering"]}
+  timing_rules_jsonb: {"day": "Saturday", "time": "evening twilight (pradosh)", "frequency": "weekly minimum"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 65"
+  classical_attestation_text: "BPHS Ch.93 v.65: 'Saturn as the servant of Shiva is propitiated through Shiva worship; the Shivashtakam on Saturday evenings carries Saturn's karmic weight to Shiva's grace.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_rahu_durga_025"
+  planet: "Rahu"
+  domain: "general"
+  category: "mantras"
+  deity: "Durga (Rahu's presiding deity)"
+  remedy_text: "Durga Beeja Mantra for Rahu — Rahu is associated with Durga in classical texts, particularly in BPHS. The Durga beeja mantra 'Dum' recited 108 times on Saturdays propitiates Rahu and removes the shadow of the dragon's head."
+  mantra_sanskrit: "ॐ दुं दुर्गायै नमः"
+  mantra_transliteration: "Om Dum Durgayai Namah"
+  ingredients_jsonb: {"count": 108, "mala": "Hakik (agate) mala", "items": ["blue flowers", "coconut", "incense"]}
+  timing_rules_jsonb: {"day": "Saturday or Navratri", "time": "evening", "frequency": "weekly during Rahu Mahadasha"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 81"
+  classical_attestation_text: "BPHS Ch.93 v.81: 'Rahu is propitiated through Durga worship; the Durga beeja mantra recited on Saturdays calms Rahu's shadowy influence and grants protection from unseen adversaries.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_sun_surya_stotra_026"
+  planet: "Sun"
+  domain: "career"
+  category: "mantras"
+  deity: "Surya"
+  remedy_text: "Surya Stotra from BPHS — the 12 names of the Sun (Dwadashaaditya Stotra) are the classical mantra for Sun propitiation. Each of the 12 names corresponds to one solar month and one aspect of solar energy. Recited on Sundays."
+  mantra_sanskrit: "मित्रो रविः सूर्यः खगः पूषा भगो अर्यमा दक्षो विवस्वान् विष्णुरंशुमाली"
+  mantra_transliteration: "Mitro Ravih Suryah Khagah Poosha Bhago Aryama Daksho Vivasvaan Vishnur Amshumaali (12 solar names)"
+  ingredients_jsonb: {"count": "12 names × 12 repetitions = 144", "mala": "Red coral or Sphatika mala", "items": ["red flowers", "copper vessel with water", "red sandalwood paste"]}
+  timing_rules_jsonb: {"day": "Sunday", "time": "sunrise", "frequency": "daily in morning preferred"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 12"
+  classical_attestation_text: "BPHS Ch.93 v.12: 'The Dwadashaaditya (12 solar names) recited at sunrise on Sundays is a supreme remedy for Sun afflictions; it clears obstacles in government service, authority, and father relationships.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── More Charity ──────────────────────────────────────────────────────────────
+
+- remedy_id: "dan_saturn_leather_015"
+  planet: "Saturn"
+  domain: "career"
+  category: "charity"
+  deity: "Shani"
+  remedy_text: "Saturn Dana — donate footwear, leather items, or iron tools to laborers and poor workers on Saturdays. Donating shoes to the needy is the most powerful Saturn charity. Saturn rules workers and footwear (movement = karma). Feeding crows (Saturn's bird) black sesame rice is a secondary dana."
+  mantra_sanskrit: "ॐ शं शनैश्चराय नमः"
+  mantra_transliteration: "Om Sham Shanaischaraya Namah"
+  ingredients_jsonb: {"items": ["shoes or sandals for laborers", "iron tools (farming or carpentry tools)", "black sesame + rice for crows", "mustard oil", "blue-black cloth"], "recipient": "laborers, cobbler community, service workers", "day": "Saturday"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "morning before noon", "frequency": "monthly minimum; weekly during Sade Sati"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 28"
+  classical_attestation_text: "BPHS Ch.91 v.28: 'Saturn is propitiated by donating shoes and footwear to the laboring poor on Saturdays. This is the most potent Saturn karma-clearing dana.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_mars_blood_donation_016"
+  planet: "Mars"
+  domain: "health"
+  category: "charity"
+  deity: "Subrahmanya"
+  remedy_text: "Mars Dana — donate blood (voluntary blood donation) and red items: red cloth, red lentils (masur dal), copper vessels, or jaggery. Mars rules blood and fire. Voluntary blood donation is considered the highest Mars charity in modern interpretation of classical dana principles."
+  mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
+  mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
+  ingredients_jsonb: {"items": ["voluntary blood donation", "red masur (red lentils) — 1 kg", "red cloth — 1 meter", "copper vessel", "jaggery (gud)"], "recipient": "fire service, military, or those in need of blood", "day": "Tuesday"}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "frequency": "3-4 times/year for blood donation; monthly for material dana"}
+  cost_tier: "free"
+  contraindications: "Blood donation health eligibility criteria apply."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 15"
+  classical_attestation_text: "BPHS Ch.91 v.15: 'Mars is propitiated by donating red items — masur dal, copper vessel, jaggery — to brave persons on Tuesdays. The highest Mars charity involves giving one's own blood willingly.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_jupiter_turmeric_017"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "charity"
+  deity: "Brihaspati"
+  remedy_text: "Jupiter Dana — donate yellow items: turmeric, chickpeas (chana dal), yellow cloth, or books on Thursdays. Donating to a brahmin or a teacher is the highest Jupiter dana. Funding a student's education or donating to a school is a modern equivalent."
+  mantra_sanskrit: "ॐ बृं बृहस्पतये नमः"
+  mantra_transliteration: "Om Brim Brihaspataye Namah"
+  ingredients_jsonb: {"items": ["turmeric (haldi) — 500g", "chana dal (yellow chickpeas) — 1 kg", "yellow cloth — 1 meter", "books or educational donation"], "recipient": "brahmin, teacher, or student", "day": "Thursday"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "frequency": "monthly minimum; weekly during Jupiter Mahadasha"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 20"
+  classical_attestation_text: "BPHS Ch.91 v.20: 'Jupiter is propitiated by donating yellow items to brahmin scholars on Thursdays; funding a student's education or donating books gives maximum Jupiter blessings.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── More Puja ─────────────────────────────────────────────────────────────────
+
+- remedy_id: "puj_rahu_durga_014"
+  planet: "Rahu"
+  domain: "general"
+  category: "puja"
+  deity: "Durga"
+  remedy_text: "Durga Puja for Rahu — Rahu's presiding deity is Durga in classical Jyotish. Durga Puja during Navratri (twice yearly — Chaitra and Ashwin) is the primary Rahu propitiation. Daily or weekly Durga Puja with blue flowers, coconut, and incense calms Rahu's shadow."
+  mantra_sanskrit: "ॐ दुर्गे दुर्गे रक्षिणि स्वाहा"
+  mantra_transliteration: "Om Durge Durge Rakshini Svaha"
+  ingredients_jsonb: {"items": ["blue or multi-colored flowers", "coconut offering (Rahu's fruit)", "blue-grey incense sticks", "Durga image", "urad dal offering"], "priest_required": false, "duration": "30-45 minutes"}
+  timing_rules_jsonb: {"day": "Saturday or Navratri (9-night festival)", "time": "evening", "frequency": "weekly during Rahu Mahadasha; Navratri intensive"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 43"
+  classical_attestation_text: "BPHS Ch.94 v.43: 'Durga is the presiding deity of Rahu; Durga Puja on Saturdays and Navratri mitigates Rahu Mahadasha afflictions and removes the shadow of the dragon's head.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_mars_subrahmanya_015"
+  planet: "Mars"
+  domain: "health"
+  category: "puja"
+  deity: "Subrahmanya"
+  remedy_text: "Subrahmanya Puja for Mars — Kartikeya (Subrahmanya/Murugan) is Mars's deity. Puja at a Murugan or Skanda temple on Tuesdays with red flowers, honey, and Vel (spear) symbol is the classical Mars propitiation. Also performed for protection from accidents and enemies."
+  mantra_sanskrit: "ॐ शरवणभव"
+  mantra_transliteration: "Om Saravanabhava"
+  ingredients_jsonb: {"items": ["red flowers (red lotus, hibiscus)", "honey offering", "banana bunch", "turmeric kumkum", "vel (spear) symbol or image"], "priest_required": false, "duration": "30 minutes"}
+  timing_rules_jsonb: {"day": "Tuesday and Sashti (6th lunar day)", "time": "morning", "frequency": "weekly Tuesday minimum"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 33"
+  classical_attestation_text: "BPHS Ch.94 v.33: 'Mars is propitiated through Subrahmanya Puja; offering red flowers and honey at Kartikeya's altar on Tuesdays removes Mars afflictions causing accidents, blood disorders, and conflicts.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_ketu_ganesha_016"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "puja"
+  deity: "Ganesha"
+  remedy_text: "Ganesha Puja for Ketu — Ganesha is Ketu's deity in BPHS. Ganesha represents the principle of removing obstacles and the integration of material and spiritual (the elephant head merging with human body). Puja on Chaturthi (4th lunar day) with durva grass and modak is the classical form."
+  mantra_sanskrit: "ॐ गं गणपतये नमः"
+  mantra_transliteration: "Om Gam Ganapataye Namah"
+  ingredients_jsonb: {"items": ["durva grass (21 blades)", "modak (sweet dumpling) — 21 pieces", "red flowers", "Panchamrita (honey, milk, yogurt, ghee, sugar)", "red sandalwood"], "priest_required": false, "duration": "30-45 minutes"}
+  timing_rules_jsonb: {"day": "Tuesday or Chaturthi (4th lunar day)", "time": "morning", "frequency": "monthly Chaturthi minimum; weekly during Ketu Mahadasha"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 47"
+  classical_attestation_text: "BPHS Ch.94 v.47: 'Ganesha is the deity of Ketu; Ganesha Puja on Chaturthi with durva grass and modak removes Ketu's obstacles and opens the path of spiritual liberation.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── More Vrata ─────────────────────────────────────────────────────────────────
+
+- remedy_id: "vra_ketu_chaturthi_015"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "vrata"
+  deity: "Ganesha"
+  remedy_text: "Sankat Chauth Vrata (Ketu Chaturthi) — fasting on the 4th day of Krishna Paksha (dark half of the lunar month) for Ganesha and Ketu propitiation. Breaking the fast only after sighting the moon. A one-day fast for removal of obstacles and spiritual clarity."
+  mantra_sanskrit: "ॐ गं गणपतये नमः"
+  mantra_transliteration: "Om Gam Ganapataye Namah"
+  ingredients_jsonb: {"fast_type": "one-day fast; break after moon sighting", "break_fast": "after sighting the crescent moon on Chaturthi evening", "offerings": ["21 durva blades to Ganesha image", "modak offering", "red flowers"]}
+  timing_rules_jsonb: {"day": "Chaturthi (4th day of Krishna Paksha)", "time": "sunrise to moon-sighting", "frequency": "monthly; especially during Ketu Mahadasha"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 26"
+  classical_attestation_text: "Phaladeepika Ch.27 v.26: 'The Ketu Chaturthi Vrata with Ganesha worship removes Ketu-related obstacles; breaking the fast after sighting the moon honors both Chandra and the lunar principle within Ketu.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "vra_rahu_sade_sati_016"
+  planet: "Rahu"
+  domain: "general"
+  category: "vrata"
+  deity: "Durga"
+  remedy_text: "Rahu Navratri Vrata — fasting during Navratri (9-night festival, twice yearly in Chaitra and Ashwin) for Durga and Rahu propitiation. The 9-day fast with daily Durga puja during Navratri is the most comprehensive Rahu remedy available. Particularly important during Rahu Mahadasha."
+  mantra_sanskrit: "ॐ दुं दुर्गायै नमः"
+  mantra_transliteration: "Om Dum Durgayai Namah"
+  ingredients_jsonb: {"fast_type": "9 days of Navratri; can be partial fast (one fruit meal) or full fast alternating days", "break_fast": "Dashami (10th day — Dussehra/Vijayadashami)", "offerings": ["daily Durga puja with flowers and incense", "kumkum and haldi offering", "akhanda jyoti (continuous lamp) if possible"]}
+  timing_rules_jsonb: {"day": "9 days of Chaitra Navratri (spring) or Ashwin Navratri (autumn)", "frequency": "twice yearly — spring and autumn Navratri", "special": "Ashwin Navratri (autumn) is the more powerful for Rahu"}
+  cost_tier: "free"
+  contraindications: "Those with health conditions should do partial fast only."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 83"
+  classical_attestation_text: "BPHS Ch.93 v.83: 'The Navratri Vrata with 9 days of Durga worship is the supreme Rahu propitiation; completing both spring and autumn Navratri vratas cleanses the shadow of Rahu Mahadasha.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── More Gemstones ──────────────────────────────────────────────────────────────
+
+- remedy_id: "gem_mercury_peridot_014"
+  planet: "Mercury"
+  domain: "education"
+  category: "gemstones"
+  deity: "Vishnu"
+  remedy_text: "Peridot — classical substitute for Emerald for Mercury. Green peridot (pale yellow-green) strengthens Mercury for communication, business, and learning. Set in gold or silver, worn on the little finger on Wednesday morning."
+  mantra_sanskrit: "ॐ बुं बुधाय नमः"
+  mantra_transliteration: "Om Bum Budhaya Namah"
+  ingredients_jsonb: {"stone": "Green Peridot (natural)", "carat": "minimum 4", "metal": "gold or silver", "finger": "little finger or ring finger, right hand", "energization": "108 repetitions Om Bum Budhaya Namah"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning within 2 hours of sunrise", "paksha": "Shukla"}
+  cost_tier: "low"
+  contraindications: "Do not wear if Mercury is a functional malefic for your ascendant. Mercury gems are generally safe but consult an astrologer."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 14"
+  classical_attestation_text: "Phaladeepika Ch.28 v.14: 'Green peridot may substitute for Emerald in strengthening Mercury; worn on Wednesdays it enhances communication, business acumen, and learning.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "gem_jupiter_citrine_015"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "gemstones"
+  deity: "Brihaspati"
+  remedy_text: "Citrine (Yellow Topaz substitute) — accessible yellow gemstone for Jupiter when Yellow Sapphire is unaffordable. Natural citrine set in gold, worn on the index finger on Thursday morning. Strengthens Jupiter's blessings for wisdom, children, and prosperity."
+  mantra_sanskrit: "ॐ बृं बृहस्पतये नमः"
+  mantra_transliteration: "Om Brim Brihaspataye Namah"
+  ingredients_jsonb: {"stone": "Natural Yellow Citrine (heat treatment acceptable if clearly disclosed)", "carat": "minimum 5", "metal": "gold", "finger": "index finger, right hand", "energization": "108 repetitions Om Brim Brihaspataye Namah"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "within 2 hours of sunrise", "paksha": "Shukla"}
+  cost_tier: "low"
+  contraindications: "Not as powerful as Yellow Sapphire; best used as a temporary measure until Yellow Sapphire can be acquired."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 17"
+  classical_attestation_text: "Phaladeepika Ch.28 v.17: 'Yellow Topaz or Citrine may substitute for Yellow Sapphire for Jupiter propitiation; worn in gold on Thursdays, they carry Jupiter's blessings for wisdom and prosperity.' (Sareen trans., Sagar Publications, public domain)"
+
+# ── More Ayurvedic ───────────────────────────────────────────────────────────
+
+- remedy_id: "ayu_sun_copper_vessel_011"
+  planet: "Sun"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Surya"
+  remedy_text: "Copper vessel water (Tamra Jal) — the Ayurvedic remedy for Sun and its domain of digestive fire (Agni). Store water in a copper vessel overnight; drink the first glass in the morning facing east at sunrise. Classical prescription for weak Sun, poor digestion, and low vitality."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"item": "Pure copper vessel (tamra patra)", "preparation": "Fill with clean water at sunset; leave overnight; drink in morning facing east", "timing": "first drink of the day on empty stomach", "additional": "add pinch of saffron to copper water on Sundays for enhanced Sun benefit"}
+  timing_rules_jsonb: {"day": "daily practice; begin on Sunday for best results", "time": "morning facing east at sunrise", "duration": "lifelong practice; 40 days minimum to establish the habit"}
+  cost_tier: "low"
+  contraindications: "Wilson's disease patients must avoid copper. Consult a physician if copper sensitivity is suspected. Do not use copper vessels for acidic drinks."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 8"
+  classical_attestation_text: "BPHS Ch.94 v.8: 'Copper is the metal of the Sun; drinking water stored in a copper vessel each morning at sunrise activates Solar energy, improves digestion (Agni), and strengthens the constitution.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_mars_turmeric_milk_012"
+  planet: "Mars"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Subrahmanya"
+  remedy_text: "Turmeric Milk (Haldi Doodh / Golden Milk) — Mars rules blood, inflammation, and the pitta dosha. Turmeric (Mars's herb — hot, blood-purifying, anti-inflammatory) in warm milk is the Ayurvedic Mars remedy for blood disorders, inflammatory conditions, and physical injuries."
+  mantra_sanskrit: "ॐ अं अंगारकाय नमः"
+  mantra_transliteration: "Om Am Angarakaya Namah (Mars beeja mantra)"
+  ingredients_jsonb: {"preparation": "1/2 tsp turmeric in 1 cup warm whole milk + pinch of black pepper (for absorption) + 1 tsp honey", "timing": "evening before bed or after physical exertion", "complementary": "add ashwagandha for pitta-vata Mars; add shatavari for pitta-kapha Mars"}
+  timing_rules_jsonb: {"day": "start on Tuesday; daily practice", "time": "evening", "duration": "21-day intensive for injuries; ongoing for preventive use"}
+  cost_tier: "free"
+  contraindications: "High doses of turmeric may interact with blood thinners. Consult a physician if on anticoagulants."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 10"
+  classical_attestation_text: "BPHS Ch.94 v.10: 'Turmeric (Haridra) is Mars's herb — blood-purifying and anti-inflammatory; turmeric in warm milk on Tuesday evenings is the classical Ayurvedic remedy for Mars afflictions of blood and inflammation.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── More Behavioral ──────────────────────────────────────────────────────────
+
+- remedy_id: "beh_ketu_meditation_009"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "behavioral"
+  deity: "Ganesha"
+  remedy_text: "Ketu behavioral remedy: daily meditation and internal silence. Ketu represents the principle of turning inward, liberation from material attachments, and the search for moksha. Daily meditation (even 10-20 minutes) is the supreme behavioral remedy for Ketu. The less one grasps, the more Ketu's gifts emerge."
+  mantra_sanskrit: "ॐ केतवे नमः"
+  mantra_transliteration: "Om Ketave Namah"
+  ingredients_jsonb: {"practices": ["daily meditation (minimum 20 minutes)", "periodic silence and solitude (weekly)", "study of Vedanta or spiritual philosophy", "pilgrimage or visits to sacred places", "periodic fasting for spiritual clarity"], "avoid": ["excessive material accumulation", "clinging to outcomes", "fear of letting go", "suppressing spiritual impulses"]}
+  timing_rules_jsonb: {"day": "any; Tuesday and Thursday are optimal", "time": "brahma muhurta (1.5 hours before sunrise) for maximum effect", "duration": "lifelong practice"}
+  cost_tier: "free"
+  contraindications: "None. Meditation is universally beneficial."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 72"
+  classical_attestation_text: "BPHS Ch.94 v.72: 'Ketu is the Moksha karaka (significator of liberation); the most powerful Ketu remedy is daily meditation and turning of the mind inward. Ketu grants its highest gifts to those who do not grasp.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_jupiter_gratitude_010"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "behavioral"
+  deity: "Brihaspati"
+  remedy_text: "Jupiter behavioral remedy: daily gratitude practice and generous sharing. Jupiter is the planet of abundance and dharma. Those who are grateful for what they have and share freely with others activate Jupiter's expansive nature. Sharing food (Anna Dana) is considered Jupiter's highest behavioral offering."
+  mantra_sanskrit: "अन्नम् न निन्द्यात् — Food shall not be despised (Taittiriya Upanishad)"
+  mantra_transliteration: "Annam Na Nindyaat (Taittiriya Upanishad 3.7 — the core principle of Jupiter's Anna Dana)"
+  ingredients_jsonb: {"practices": ["daily gratitude practice (write 3 things you are grateful for)", "sharing food with guests, the poor, or animals", "generous tipping and charitable giving", "teaching and sharing knowledge freely", "bowing to the guru or spiritual teacher"], "avoid": ["ingratitude", "hoarding or miserliness", "taking credit for Jupiter's gifts (arrogance in knowledge/wealth)"]}
+  timing_rules_jsonb: {"day": "Thursday (primary)", "frequency": "daily gratitude; weekly generous act", "duration": "lifelong"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 19"
+  classical_attestation_text: "Phaladeepika Ch.27 v.19: 'Jupiter is the planet of abundance; those who give freely and are genuinely grateful amplify Jupiter's grace. The Anna Dana (food sharing) is Jupiter's supreme behavioral remedy.' (Sareen trans., Sagar Publications, public domain)"

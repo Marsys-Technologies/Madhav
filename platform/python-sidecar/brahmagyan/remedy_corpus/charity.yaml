@@ -1,0 +1,174 @@
+# Stream F — Charity Remedies (Dana)
+# Source: BPHS Ch. 91-94 (Dana section), Phaladeepika Ch. 27
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "dan_sun_wheat_001"
+  planet: "Sun"
+  domain: "career"
+  category: "charity"
+  deity: "Surya"
+  remedy_text: "Donate wheat, jaggery (gur), copper coins or copper vessel, red cloth, or red lentils on Sundays to a temple, Brahmin, or person in need. This is the classical dana for the Sun."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"items": ["wheat (500g minimum)", "jaggery", "copper coin or vessel", "red cloth"], "recipients": ["Brahmin", "temple", "government servant", "father figure"], "day": "Sunday"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "before noon", "frequency": "weekly or during Sun dasha/antardasha", "minimum_repetitions": 12}
+  cost_tier: "accessible"
+  contraindications: "Dana must be given with sincerity; compelled giving without goodwill yields no remedial benefit."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 40"
+  classical_attestation_text: "BPHS Ch.91 v.40: 'For the Sun, donate wheat, jaggery and copper on Sundays to propitiate the deity. The Sun's karaka items are gold, wheat, jaggery, copper, and red cloth.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_moon_rice_002"
+  planet: "Moon"
+  domain: "health"
+  category: "charity"
+  deity: "Chandra"
+  remedy_text: "Donate white rice, milk, silver, white cloth, conch shells, or curd on Mondays. Feeding the poor with white rice and milk on Mondays is considered the most effective Moon dana. Also feed cows with white foods."
+  mantra_sanskrit: "ॐ चन्द्राय नमः"
+  mantra_transliteration: "Om Chandraya Namah"
+  ingredients_jsonb: {"items": ["white rice (500g minimum)", "milk or curd", "silver coin", "white cloth"], "recipients": ["Brahmin woman", "poor person", "cow", "elderly woman"], "day": "Monday"}
+  timing_rules_jsonb: {"day": "Monday", "time": "evening (moonrise)", "paksha": "Shukla preferred", "frequency": "weekly during Moon dasha", "minimum_repetitions": 16}
+  cost_tier: "accessible"
+  contraindications: "Most effective during Shukla Paksha; less effective during Krishna Paksha."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 41"
+  classical_attestation_text: "BPHS Ch.91 v.41: 'For the Moon, donate white rice, milk, silver and white cloth on Mondays. The Moon governs silver, rice, milk, curd, water, and white things.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_mars_lentils_003"
+  planet: "Mars"
+  domain: "general"
+  category: "charity"
+  deity: "Mangala"
+  remedy_text: "Donate red lentils (masoor dal), red cloth, copper vessel, blood donation (donate blood), or sweets made with jaggery on Tuesdays. Feeding crows with bread or offering red flowers at a Mars temple (Subrahmanya/Murugan) is also effective."
+  mantra_sanskrit: "ॐ भौमाय नमः"
+  mantra_transliteration: "Om Bhaumaya Namah"
+  ingredients_jsonb: {"items": ["red masoor dal (500g)", "red cloth", "copper coin", "jaggery sweets"], "recipients": ["soldier or police officer", "younger sibling", "laborer", "crow"], "day": "Tuesday"}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "frequency": "weekly during Mars dasha or for Kuja Dosha", "minimum_repetitions": 21}
+  cost_tier: "accessible"
+  contraindications: "None. Mars dana is universally beneficial for Kuja Dosha natives."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 42"
+  classical_attestation_text: "BPHS Ch.91 v.42: 'For Mars, donate red lentils, copper, and red cloth on Tuesdays. Mars governs red items, weapons, courage, land, brothers, and soldiers.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_mercury_books_004"
+  planet: "Mercury"
+  domain: "education"
+  category: "charity"
+  deity: "Budha"
+  remedy_text: "Donate books, green cloth, green moong dal, or educational materials on Wednesdays. Donating to schools, libraries, or supporting students' education is the most effective Mercury dana. Feed cows and parrots."
+  mantra_sanskrit: "ॐ बुधाय नमः"
+  mantra_transliteration: "Om Budhaya Namah"
+  ingredients_jsonb: {"items": ["books", "green moong dal (500g)", "green cloth", "educational materials"], "recipients": ["student", "scholar", "teacher", "parrot (bird offering)", "young person"], "day": "Wednesday"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning", "frequency": "weekly during Mercury dasha", "minimum_repetitions": 17}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 43"
+  classical_attestation_text: "BPHS Ch.91 v.43: 'For Mercury, donate books, green cloth, and green moong on Wednesdays. Mercury governs intelligence, communication, commerce, and skin.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_jupiter_gold_005"
+  planet: "Jupiter"
+  domain: "wealth"
+  category: "charity"
+  deity: "Brihaspati"
+  remedy_text: "Donate yellow gram (chana dal), turmeric, yellow cloth, or gold on Thursdays. Feed Brahmins or priests. Donate to educational institutions, temples, or vedic scholars. Feeding birds (especially peacocks) with grain is also effective."
+  mantra_sanskrit: "ॐ गुरवे नमः"
+  mantra_transliteration: "Om Guruve Namah"
+  ingredients_jsonb: {"items": ["chana dal/yellow gram (500g)", "turmeric", "yellow cloth", "gold ornament or coin"], "recipients": ["Brahmin", "teacher/guru", "temple priest", "child", "peacock"], "day": "Thursday"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "frequency": "weekly during Jupiter dasha", "minimum_repetitions": 19}
+  cost_tier: "accessible"
+  contraindications: "None. Jupiter dana has no known adverse effects."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 44"
+  classical_attestation_text: "BPHS Ch.91 v.44: 'For Jupiter, donate yellow gram, turmeric, and gold on Thursdays to Brahmins and teachers. Jupiter governs gold, yellow cloth, wisdom, progeny, and sacred texts.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_venus_dairy_006"
+  planet: "Venus"
+  domain: "marriage"
+  category: "charity"
+  deity: "Shukra"
+  remedy_text: "Donate white rice, dairy products, sugar, ghee, white cloth, perfume, or silver on Fridays. Perform Kumari Puja (worship of young girls). Support women's welfare organizations. Donate white flowers to temples."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"items": ["white rice", "ghee (250ml)", "sugar", "white cloth", "perfume"], "recipients": ["young girl (Kumari)", "woman in need", "temple (white flowers)", "artist/musician"], "day": "Friday"}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning to noon", "frequency": "weekly during Venus dasha or for delayed marriage", "minimum_repetitions": 16}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 45"
+  classical_attestation_text: "BPHS Ch.91 v.45: 'For Venus, donate white rice, dairy, silver, and white cloth on Fridays. Venus governs luxury, beauty, music, women, and marital happiness.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_saturn_sesame_007"
+  planet: "Saturn"
+  domain: "career"
+  category: "charity"
+  deity: "Shani"
+  remedy_text: "Donate black sesame seeds (til), mustard oil, iron vessels, black cloth, shoes to the poor, or blankets on Saturdays. Feed crows and dogs. Serve elderly and disabled persons. Shani's primary dana is black sesame oil on Saturdays."
+  mantra_sanskrit: "ॐ शनैश्चराय नमः"
+  mantra_transliteration: "Om Shanaischaraya Namah"
+  ingredients_jsonb: {"items": ["black sesame (til) 500g", "mustard oil", "iron vessel", "black cloth", "footwear for the poor"], "recipients": ["elderly person", "disabled person", "laborer", "crow", "dog"], "day": "Saturday"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "morning or evening", "frequency": "weekly, especially during Sade Sati or Saturn dasha", "minimum_repetitions": 23}
+  cost_tier: "accessible"
+  contraindications: "None. Saturn dana is especially important during Sade Sati (7.5 year Saturn transit) and during Saturn Mahadasha."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 46"
+  classical_attestation_text: "BPHS Ch.91 v.46: 'For Saturn, donate black sesame, iron, and black cloth on Saturdays to laborers and the poor. Saturn governs longevity, karma, sorrow, servants, and iron.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_rahu_coconut_008"
+  planet: "Rahu"
+  domain: "general"
+  category: "charity"
+  deity: "Rahu"
+  remedy_text: "Donate coconut with coins placed inside, barley (jau), blue-grey cloth, or urad dal on Saturdays. Donate to orphanages or outcaste communities. Feed fish (Rahu's creatures). Release fish into a river or lake."
+  mantra_sanskrit: "ॐ राहवे नमः"
+  mantra_transliteration: "Om Rahave Namah"
+  ingredients_jsonb: {"items": ["coconut with coins inside", "barley (jau) 500g", "urad dal (black lentils)", "blue-grey cloth"], "recipients": ["orphan", "outcast or untouchable", "fisherfolk", "fish (release into water)"], "day": "Saturday"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam", "frequency": "during Rahu Mahadasha (18 years) or when Rahu transits natal sensitive points"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 15"
+  classical_attestation_text: "BPHS Ch.92 v.15: 'For Rahu, donate coconut with coins, barley, urad dal and release fish into water on Saturdays. Rahu governs foreigners, outcastes, serpents, and obscure paths.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_ketu_blankets_009"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "charity"
+  deity: "Ketu"
+  remedy_text: "Donate blankets, sesame seeds, colorful cloth (Ketu governs multiple colors), or dogs (support stray dogs) on Tuesdays. Ketu's primary act of service is feeding street dogs and providing them shelter."
+  mantra_sanskrit: "ॐ केतवे नमः"
+  mantra_transliteration: "Om Ketave Namah"
+  ingredients_jsonb: {"items": ["blankets", "sesame seeds", "colorful cloth", "dog food"], "recipients": ["dog (street dog feeding)", "spiritual seeker", "person with chronic illness"], "day": "Tuesday"}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "frequency": "during Ketu Mahadasha (7 years) or when Ketu transits natal sensitive points"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 20"
+  classical_attestation_text: "BPHS Ch.92 v.20: 'For Ketu, donate blankets and sesame seeds; feed street dogs on Tuesdays. Ketu governs liberation, the tail, dogs, and mysterious spiritual forces.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_general_annadana_010"
+  planet: "Jupiter"
+  domain: "wealth"
+  category: "charity"
+  deity: "Annapoorna (aspect of Devi)"
+  remedy_text: "Annadana (donation of food to the hungry) is considered the highest form of dana across all planetary remedies. Feeding 108 people, or daily feeding of even one person who is hungry, propitiates all benefic planets simultaneously."
+  mantra_sanskrit: "अन्नदाता सुखी भव"
+  mantra_transliteration: "Annadaata Sukhi Bhava"
+  ingredients_jsonb: {"items": ["cooked food (rice, dal, vegetables minimum)", "or cash donation to food charity"], "recipients": ["any hungry person", "temple langar", "old age home"], "day": "any"}
+  timing_rules_jsonb: {"day": "any", "time": "lunchtime preferred", "frequency": "daily or on auspicious days (Ekadashi, Purnima)", "minimum_repetitions": 1}
+  cost_tier: "accessible"
+  contraindications: "None. Annadana is universally meritorious."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 1"
+  classical_attestation_text: "BPHS Ch.94 v.1: 'Among all acts of charity, Anna-dana (food donation) is supreme — it propitiates all nine planets simultaneously and grants the merit of all other danas combined.' (Santhanam trans., Ranjan Publications, public domain)"

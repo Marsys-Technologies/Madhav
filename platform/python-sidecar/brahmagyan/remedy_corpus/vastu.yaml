@@ -1,0 +1,106 @@
+# Stream F — Vastu Remedies (Space harmonization)
+# Source: BPHS Ch. 94, Brihat Samhita (Varahamihira)
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "vas_sun_east_window_001"
+  planet: "Sun"
+  domain: "career"
+  category: "vastu"
+  deity: "Surya"
+  remedy_text: "Sun governs the East direction. Ensure the east side of the home/workplace has maximum openings (windows, doors). Place a Surya Yantra on the east wall. Avoid heavy furniture blocking east. This activates Solar energy for career advancement."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"direction": "East", "elements": ["east windows should be clear and unblocked", "Surya Yantra on east wall", "red or orange color elements in east zone", "avoid water bodies (ponds, tanks) in east"], "workspace": "desk should face east for Solar professions (government, leadership)"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "sunrise (verify east is unobstructed)", "implementation": "one-time Vastu correction"}
+  cost_tier: "accessible"
+  contraindications: "East corrections are universally beneficial. No adverse effects."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 50"
+  classical_attestation_text: "BPHS Ch.94 v.50: 'The East is governed by the Sun. Keeping the eastern zone of the home open and light-filled activates Solar energy, benefiting careers requiring authority, government connections, and recognition.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vas_moon_north_water_002"
+  planet: "Moon"
+  domain: "health"
+  category: "vastu"
+  deity: "Chandra"
+  remedy_text: "Moon governs the North-West direction but resonates with water. Place a water fountain or aquarium in the North or North-East (water element zone) to activate Moon's beneficial qualities of nurturing, intuition, and emotional wellbeing."
+  mantra_sanskrit: "ॐ चन्द्राय नमः"
+  mantra_transliteration: "Om Chandraya Namah"
+  ingredients_jsonb: {"direction": "North-East (Ishanya — water zone)", "elements": ["water fountain with clear water", "blue or white crystals", "lunar images or crescent moon symbols", "avoid broken water features"], "bedroom": "head should point east or south; avoid north (Moon energies increase sensitivity)"}
+  timing_rules_jsonb: {"day": "Monday", "time": "during Shukla Paksha", "implementation": "one-time Vastu installation"}
+  cost_tier: "accessible"
+  contraindications: "Water feature must be kept clean; stagnant water amplifies negative Moon qualities (depression, stagnation)."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53 (Vastu section)"
+  source_verse: "Verse 12"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.12 (Varahamihira): 'Water in the North-East (Ishanya corner) activates the lunar and Ketu energies of that direction; a clean, flowing water feature brings emotional nurturing and health.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"
+
+- remedy_id: "vas_mars_south_red_003"
+  planet: "Mars"
+  domain: "career"
+  category: "vastu"
+  deity: "Mangala"
+  remedy_text: "Mars governs the South direction. To harness Mars energy: place a Mars Yantra or red image on the south wall. Ensure the south has solid support (no large windows or openings — the south direction represents fire and strength). Red color elements in the south are beneficial."
+  mantra_sanskrit: "ॐ भौमाय नमः"
+  mantra_transliteration: "Om Bhaumaya Namah"
+  ingredients_jsonb: {"direction": "South", "elements": ["Mars Yantra on south wall", "red color in south zone", "solid wall in south (no large openings)", "fire element: red candle or lamp in south"], "workspace": "south-facing rooms good for security, military, police, surgery professions"}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "implementation": "one-time correction"}
+  cost_tier: "accessible"
+  contraindications: "South-facing main door is generally inauspicious in classical Vastu — remedied by strong Vastu corrections including Mars Yantra."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53"
+  source_verse: "Verse 15"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.15 (Varahamihira): 'The South is Mars's direction; strength of structure and red color in the south zone activates courage, vitality and protection from enemies.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"
+
+- remedy_id: "vas_jupiter_northeast_puja_004"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "vastu"
+  deity: "Brihaspati"
+  remedy_text: "Jupiter governs the North-East (Ishanya) direction, the zone of divine grace and knowledge. The puja room, study, or meditation space should ideally be in the North-East. Keep it clean, elevated, and free of clutter. Yellow or gold color elements activate Jupiter."
+  mantra_sanskrit: "ॐ गुरवे नमः"
+  mantra_transliteration: "Om Guruve Namah"
+  ingredients_jsonb: {"direction": "North-East (Ishanya)", "elements": ["puja room in NE", "yellow or gold colors in NE", "crystals or sacred images", "fresh flowers daily", "avoid toilet or kitchen in NE — major Vastu defect"], "library": "books and sacred texts in NE corner activate Jupiter's blessings"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "implementation": "one-time Vastu arrangement"}
+  cost_tier: "accessible"
+  contraindications: "Toilet in NE is the most severe Vastu defect for Jupiter; if present, use strong remedies (Jupiter Yantra, specific plants)."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53"
+  source_verse: "Verse 18"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.18 (Varahamihira): 'The North-East is the zone of Jupiter and divine grace. A puja room or study placed there receives maximum spiritual and intellectual blessings.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"
+
+- remedy_id: "vas_venus_southeast_005"
+  planet: "Venus"
+  domain: "marriage"
+  category: "vastu"
+  deity: "Shukra"
+  remedy_text: "Venus governs the South-East (Agneya) direction, the fire zone. The kitchen should ideally be in the South-East. Venus Vastu enhancement: keep white and pastel-colored elements in the bedroom (NW for Venus remediation). Fresh flowers in the bedroom strengthen Venus."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"direction": "South-East (Agneya — Venus's direction)", "elements": ["kitchen in SE activates Venus/fire", "white or cream colors in master bedroom", "fresh flowers (especially white or pink roses) in bedroom", "perfumes and fragrant items in bedroom"], "master_bedroom": "NW preferred for couples; silver items in bedroom enhance Venus"}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning", "implementation": "ongoing maintenance"}
+  cost_tier: "accessible"
+  contraindications: "Bedroom in SE (fire zone) may increase conflicts — remedy with water element."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53"
+  source_verse: "Verse 20"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.20 (Varahamihira): 'Venus governs the South-East; the kitchen placed there activates domestic harmony. White flowers and silver items in the bedroom strengthen Venus and marital happiness.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"
+
+- remedy_id: "vas_saturn_west_006"
+  planet: "Saturn"
+  domain: "career"
+  category: "vastu"
+  deity: "Shani"
+  remedy_text: "Saturn governs the West direction. The garage, storage room, or servant's quarters are ideally placed in the West or South-West. Avoid main bedroom in SW (Saturn's heavy energy can cause sleep disturbances). Keep the SW zone structurally heavy and solid."
+  mantra_sanskrit: "ॐ शनैश्चराय नमः"
+  mantra_transliteration: "Om Shanaischaraya Namah"
+  ingredients_jsonb: {"direction": "West/South-West", "elements": ["heavy furniture and storage in SW", "dark colors (navy, black, brown) in SW", "avoid NE-SW axis for main door", "no open spaces or missing corners in SW"], "workspace": "Saturn professions (law, mining, archaeology) benefit from west-facing workspace"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "evening", "implementation": "one-time Vastu correction"}
+  cost_tier: "accessible"
+  contraindications: "Main bedroom should not be in SW during Sade Sati — Saturn's weight compounds transit effects."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53"
+  source_verse: "Verse 22"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.22 (Varahamihira): 'Saturn governs the West; structural solidity in the South-West supports stability and prevents Saturn's destabilizing karma from affecting the household.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"

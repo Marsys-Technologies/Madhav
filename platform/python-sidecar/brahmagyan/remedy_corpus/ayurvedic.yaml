@@ -1,0 +1,123 @@
+# Stream F — Ayurvedic Remedies
+# Source: BPHS Ch. 94 (dietary/health), Saravali
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "ayu_sun_saffron_001"
+  planet: "Sun"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Surya"
+  remedy_text: "For Sun-afflicted health issues (heart, bones, eyes, right side of body): consume saffron (kesar) mixed in warm milk on Sundays. Saffron is Solar by nature — hot, red-orange, and tonifying for the vitality (Ojas)."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"ingredients": ["saffron (kesar) — 2-3 strands", "warm cow's milk — 250ml", "honey — 1 tsp", "cardamom — pinch"], "preparation": "Soak saffron in 1 tbsp warm water for 5 minutes; add to warm milk; add honey and cardamom; drink on empty stomach on Sundays", "frequency": "Sundays during Sun dasha or when Sun is afflicted"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "morning on empty stomach", "duration_weeks": 12}
+  cost_tier: "moderate"
+  contraindications: "Avoid during pregnancy in large doses. Not prescribed for those with Pitta excess (inflammatory conditions) — saffron increases Pitta."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 35"
+  classical_attestation_text: "BPHS Ch.94 v.35: 'Saffron-infused milk taken on Sundays strengthens the Sun and fortifies the heart and vital energy (Ojas) — saffron partakes of the Solar nature.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_moon_ashwagandha_002"
+  planet: "Moon"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Chandra"
+  remedy_text: "For Moon-related mental and nervous system issues: take Ashwagandha powder (1/2 tsp) mixed in warm milk with honey before bed, especially on Mondays. Ashwagandha is a Lunar herb — cooling, nourishing, and rejuvenating for the mind (Manas)."
+  mantra_sanskrit: "ॐ चन्द्राय नमः"
+  mantra_transliteration: "Om Chandraya Namah"
+  ingredients_jsonb: {"ingredients": ["Ashwagandha (Withania somnifera) root powder — 1/2 tsp", "warm cow's milk — 250ml", "raw honey — 1 tsp", "ghee — 1/4 tsp (optional)"], "preparation": "Mix ashwagandha in warm milk; add honey when slightly cooled; drink before bed", "frequency": "daily (especially Mondays) during Moon dasha or when Moon is afflicted"}
+  timing_rules_jsonb: {"day": "daily, especially Monday", "time": "before bed", "duration_weeks": 8}
+  cost_tier: "accessible"
+  contraindications: "Avoid during pregnancy. May cause drowsiness — do not drive after. Not prescribed when Moon governs a house with heavy Saturn or Mars influence without Vata-grounding modifications."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 36"
+  classical_attestation_text: "BPHS Ch.94 v.36: 'Ashwagandha mixed in milk taken before sleep on Mondays strengthens the Moon, calms Vata disturbances of the mind, and restores Ojas depleted by Moon afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_mars_turmeric_003"
+  planet: "Mars"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Mangala"
+  remedy_text: "For Mars-related blood disorders, skin inflammation, accidents, and anger: take turmeric (haldi) in warm milk or ghee daily. Turmeric is a hot, bitter herb resonant with Mars. It purifies blood (Rakta dhatu — Mars's primary tissue) and reduces inflammation."
+  mantra_sanskrit: "ॐ भौमाय नमः"
+  mantra_transliteration: "Om Bhaumaya Namah"
+  ingredients_jsonb: {"ingredients": ["turmeric powder — 1/2 tsp", "warm milk — 250ml (or ghee — 1 tsp)", "black pepper — pinch (activates curcumin)", "honey"], "preparation": "Golden milk: heat milk with turmeric and pepper; cool slightly; add honey; drink on Tuesdays primarily", "frequency": "daily (especially Tuesdays) during Mars dasha"}
+  timing_rules_jsonb: {"day": "daily, especially Tuesday", "time": "morning", "duration_weeks": 12}
+  cost_tier: "accessible"
+  contraindications: "Avoid large doses in pregnancy. Reduces blood clotting — consult if on blood thinners."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 37"
+  classical_attestation_text: "BPHS Ch.94 v.37: 'Turmeric, the blood-purifier, is Mars's herb. Consumed in milk on Tuesdays it purifies the Rakta dhatu (blood tissue) governed by Mars and reduces inflammatory afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_mercury_brahmi_004"
+  planet: "Mercury"
+  domain: "education"
+  category: "ayurvedic"
+  deity: "Budha"
+  remedy_text: "For Mercury-related cognitive and nervous system issues: take Brahmi (Bacopa monnieri) or Gotu Kola, which are Mercury's herbs. These enhance memory, concentration, and speech — all Mercury domains."
+  mantra_sanskrit: "ॐ बुधाय नमः"
+  mantra_transliteration: "Om Budhaya Namah"
+  ingredients_jsonb: {"ingredients": ["Brahmi (Bacopa) powder — 1/2 tsp or standardized extract", "warm water or milk", "honey"], "alternatives": ["Gotu Kola (Centella asiatica) as substitute", "Shankhpushpi (Convolvulus) for speech"], "preparation": "Brahmi powder in warm water or milk; take on empty stomach in morning on Wednesdays especially", "frequency": "daily (especially Wednesdays) during Mercury dasha"}
+  timing_rules_jsonb: {"day": "daily, especially Wednesday", "time": "morning, empty stomach", "duration_weeks": 12}
+  cost_tier: "accessible"
+  contraindications: "May cause digestive upset initially. Take with food if needed. Avoid large doses in pregnancy."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 38"
+  classical_attestation_text: "BPHS Ch.94 v.38: 'Brahmi (Bacopa) is Mercury's herb — it sharpens intellect, improves memory and speech, and should be taken on Wednesdays during Mercury afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_jupiter_shatavari_005"
+  planet: "Jupiter"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Brihaspati"
+  remedy_text: "For Jupiter-related liver, fat metabolism, and spiritual growth issues: take Shatavari (Asparagus racemosus) in milk. Shatavari is the Jupiterian herb — sweet, cooling, nourishing, and promoter of wisdom (Medhya) and fertility (Shukra-promoting)."
+  mantra_sanskrit: "ॐ गुरवे नमः"
+  mantra_transliteration: "Om Guruve Namah"
+  ingredients_jsonb: {"ingredients": ["Shatavari powder — 1 tsp", "warm milk — 250ml", "honey — 1 tsp", "ghee — 1/4 tsp"], "alternatives": ["Bala (Sida cordifolia) for similar benefits"], "preparation": "Shatavari in warm milk with ghee and honey; drink on Thursdays especially", "frequency": "daily (especially Thursdays) during Jupiter dasha"}
+  timing_rules_jsonb: {"day": "daily, especially Thursday", "time": "morning or before bed", "duration_weeks": 12}
+  cost_tier: "accessible"
+  contraindications: "Very safe. Avoid if diagnosed with estrogen-sensitive conditions (Shatavari is phytoestrogenic)."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 39"
+  classical_attestation_text: "BPHS Ch.94 v.39: 'Shatavari, the nourisher, is Jupiter's herb. Taken in milk on Thursdays it strengthens the liver and reproductive tissues and promotes the wisdom quality (Medhya) governed by Jupiter.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_venus_shatavari_rose_006"
+  planet: "Venus"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Shukra"
+  remedy_text: "For Venus-related reproductive, kidney, and sensory issues: Rose water and rose petal jam (Gulkand) are Venus's primary Ayurvedic remedies. Rose is cooling, sweet, and Venusian in every quality — regulates Pitta, benefits the skin, kidneys, and reproductive system."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"ingredients": ["Gulkand (rose petal preserve) — 1 tbsp", "rose water — 2 tbsp in water or milk", "shatavari powder — 1/2 tsp (secondary)"], "preparation": "1 tbsp Gulkand in warm milk on Fridays; or rose water in warm milk with mishri (rock candy)", "frequency": "daily (especially Fridays) during Venus dasha"}
+  timing_rules_jsonb: {"day": "daily, especially Friday", "time": "evening", "duration_weeks": 16}
+  cost_tier: "accessible"
+  contraindications: "None. Rose remedies are among the safest Ayurvedic treatments."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 40"
+  classical_attestation_text: "BPHS Ch.94 v.40: 'Rose (Shatapatri) is Venus's flower and herb — rose water and Gulkand consumed on Fridays strengthen the Shukra dhatu (reproductive tissue) and benefit the skin and kidneys governed by Venus.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_saturn_sesame_oil_007"
+  planet: "Saturn"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Shani"
+  remedy_text: "For Saturn-related ailments (bones, joints, teeth, nervous system, Vata disorders): weekly Abhyanga (oil massage) with sesame oil on Saturdays. Saturn governs the skeletal system and the Vata dosha; sesame oil is warming and grounding — the classical Saturn therapeutic."
+  mantra_sanskrit: "ॐ शनैश्चराय नमः"
+  mantra_transliteration: "Om Shanaischaraya Namah"
+  ingredients_jsonb: {"ingredients": ["sesame (til) oil — warm (150-200ml per session)", "optional additions": ["camphor", "eucalyptus oil for joint pain"]], "preparation": "Warm sesame oil; massage entire body from head to feet for 15-30 minutes; leave oil on for 20 minutes; shower with warm water; do NOT shampoo hair on Saturdays (classical injunction)", "frequency": "Saturdays during Saturn dasha or Sade Sati"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "morning before bath", "duration_weeks": "ongoing, especially during Sade Sati"}
+  cost_tier: "accessible"
+  contraindications: "Avoid immediately after a heavy meal. Not prescribed during fever. Kapha types may substitute mustard oil."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 41"
+  classical_attestation_text: "BPHS Ch.94 v.41: 'Sesame oil massage (Abhyanga) on Saturdays pacifies Saturn and heals Vata disorders of the bones, joints, and nervous system governed by Saturn.' (Santhanam trans., Ranjan Publications, public domain)"

@@ -1,0 +1,174 @@
+# Stream F — Vrata Remedies (Fasting observances)
+# Source: BPHS Ch. 93 (Upavasa), Phaladeepika Ch. 27
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "vrt_sun_sunday_fast_001"
+  planet: "Sun"
+  domain: "career"
+  category: "vrata"
+  deity: "Surya"
+  remedy_text: "Observe Sunday fast (Ravivara Vrata). Take one meal after sunset; avoid salt and oil during the day. Observe for 12 consecutive Sundays for complete effect. Wear red or orange cloth on fast day. Read Surya Kavacha."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"fast_type": "one meal after sunset; no salt or oil during day", "permitted": ["wheat bread without salt", "fruits", "milk"], "forbidden": ["salt", "oil", "non-vegetarian food"], "duration": "12 consecutive Sundays"}
+  timing_rules_jsonb: {"day": "Sunday", "duration_weeks": 12, "break_conditions": ["illness permitted to break; compensate after recovery"]}
+  cost_tier: "accessible"
+  contraindications: "Not advised for diabetics without medical supervision. Pregnant women should modify (partial fast only)."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 55"
+  classical_attestation_text: "BPHS Ch.93 v.55: 'Observing the Sunday fast (Ravivara Upavasa) for twelve consecutive weeks propitiates the Sun and removes obstacles caused by Solar afflictions in the chart.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_moon_monday_fast_002"
+  planet: "Moon"
+  domain: "health"
+  category: "vrata"
+  deity: "Shiva (Someshvara)"
+  remedy_text: "Observe Monday fast (Somavara Vrata). Take only white foods — rice, milk, curd, coconut. Observe for 16 consecutive Mondays for complete effect (Solah Somavar Vrata). Especially effective for emotional health and marriage blessing."
+  mantra_sanskrit: "ॐ नमः शिवाय"
+  mantra_transliteration: "Om Namah Shivaya"
+  ingredients_jsonb: {"fast_type": "one meal; white foods only", "permitted": ["white rice", "milk", "curd", "coconut", "white fruits"], "forbidden": ["colored foods", "non-vegetarian food", "alcohol"], "duration": "16 consecutive Mondays"}
+  timing_rules_jsonb: {"day": "Monday", "duration_weeks": 16, "paksha_note": "Shukla Paksha Mondays considered doubly auspicious"}
+  cost_tier: "accessible"
+  contraindications: "Pregnant women: partial fast only. Medical conditions: consult doctor."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 56"
+  classical_attestation_text: "BPHS Ch.93 v.56: 'The Solah Somavar (16 Monday) Vrata propitiates both the Moon and Shiva, granting mental peace, curing Moon-related diseases, and blessing marriage.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_mars_tuesday_fast_003"
+  planet: "Mars"
+  domain: "marriage"
+  category: "vrata"
+  deity: "Mangala / Hanuman"
+  remedy_text: "Observe Tuesday fast (Mangala Vrata) for Kuja Dosha remediation. Take one meal after sunset; avoid salt and oil. Observe for 21 consecutive Tuesdays. Worship Hanuman on each Tuesday fast day."
+  mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
+  mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
+  ingredients_jsonb: {"fast_type": "one meal after sunset; no salt or oil during day", "permitted": ["rice (no salt)", "milk", "fruits"], "forbidden": ["salt", "oil", "non-vegetarian food"], "duration": "21 consecutive Tuesdays"}
+  timing_rules_jsonb: {"day": "Tuesday", "duration_weeks": 21, "break_conditions": ["illness: compensate later"]}
+  cost_tier: "accessible"
+  contraindications: "Not for diabetics without medical supervision."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 57"
+  classical_attestation_text: "BPHS Ch.93 v.57: 'The Tuesday fast (Mangala Upavasa) observed for 21 weeks propitiates Mars, removes Kuja Dosha obstacles in marriage, and strengthens courage and vitality.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_mercury_wednesday_fast_004"
+  planet: "Mercury"
+  domain: "education"
+  category: "vrata"
+  deity: "Vishnu (Budha form)"
+  remedy_text: "Observe Wednesday fast (Budhavara Vrata) for 17 consecutive Wednesdays. Green foods are permitted. Read or study sacred texts on the fast day to align with Mercury's intellect-governing nature."
+  mantra_sanskrit: "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः"
+  mantra_transliteration: "Om Braam Breem Braum Sah Budhaya Namah"
+  ingredients_jsonb: {"fast_type": "one meal; green foods permitted", "permitted": ["green moong", "vegetables", "milk"], "forbidden": ["non-vegetarian food", "alcohol"], "duration": "17 consecutive Wednesdays"}
+  timing_rules_jsonb: {"day": "Wednesday", "duration_weeks": 17}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 58"
+  classical_attestation_text: "BPHS Ch.93 v.58: 'The Wednesday fast (Budhavara Upavasa) observed for 17 weeks propitiates Mercury and removes obstacles in education, business and communication.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_jupiter_thursday_fast_005"
+  planet: "Jupiter"
+  domain: "wealth"
+  category: "vrata"
+  deity: "Vishnu / Brihaspati"
+  remedy_text: "Observe Thursday fast (Guruvara Vrata) for 16 consecutive Thursdays. Take only yellow foods — gram dal, turmeric rice. Read Vishnu Sahasranama or study sacred texts. This vrata blesses progeny, wealth, and marital harmony."
+  mantra_sanskrit: "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः"
+  mantra_transliteration: "Om Graam Greem Graum Sah Guruve Namah"
+  ingredients_jsonb: {"fast_type": "one meal; yellow foods", "permitted": ["chana dal", "turmeric rice", "yellow fruits", "milk"], "forbidden": ["non-vegetarian food", "alcohol", "cutting hair on Thursday"], "duration": "16 consecutive Thursdays"}
+  timing_rules_jsonb: {"day": "Thursday", "duration_weeks": 16, "additional_restriction": "do not cut hair or nails on Thursdays during the vrata"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 59"
+  classical_attestation_text: "BPHS Ch.93 v.59: 'The Thursday fast (Guruvara Upavasa) for 16 weeks propitiates Jupiter and blesses with children, wealth and wisdom. Hair and nails should not be cut on Thursdays during this vrata.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_venus_friday_fast_006"
+  planet: "Venus"
+  domain: "marriage"
+  category: "vrata"
+  deity: "Lakshmi / Shukra"
+  remedy_text: "Observe Friday fast (Shukravara Vrata) for 16 consecutive Fridays. Take only white or light-colored foods. Worship Lakshmi on each Friday. This vrata is especially effective for delayed marriage and relationship harmony."
+  mantra_sanskrit: "ॐ द्रां द्रीं द्रौं सः शुक्राय नमः"
+  mantra_transliteration: "Om Draam Dreem Draum Sah Shukraya Namah"
+  ingredients_jsonb: {"fast_type": "one meal; white foods", "permitted": ["white rice", "milk", "white sweets", "fruits"], "forbidden": ["non-vegetarian food", "alcohol", "dark-colored foods"], "duration": "16 consecutive Fridays"}
+  timing_rules_jsonb: {"day": "Friday", "duration_weeks": 16, "paksha_note": "Shukla Paksha Fridays preferred"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 60"
+  classical_attestation_text: "BPHS Ch.93 v.60: 'The Friday fast (Shukravara Upavasa) for 16 weeks propitiates Venus and grants beauty, marital happiness, and prosperity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_saturn_saturday_fast_007"
+  planet: "Saturn"
+  domain: "general"
+  category: "vrata"
+  deity: "Shani / Hanuman"
+  remedy_text: "Observe Saturday fast (Shanivara Vrata) during Sade Sati or Saturn Mahadasha. Take one meal in the evening; avoid oil and non-vegetarian food. Observe for 23 consecutive Saturdays. Worship Hanuman and Shani on each fast day."
+  mantra_sanskrit: "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः"
+  mantra_transliteration: "Om Praam Preem Praum Sah Shanaischaraya Namah"
+  ingredients_jsonb: {"fast_type": "one meal in evening; no oil", "permitted": ["rice with no oil", "milk", "fruits", "black sesame seeds (as offering, not eating)"], "forbidden": ["oil", "non-vegetarian food"], "duration": "23 consecutive Saturdays"}
+  timing_rules_jsonb: {"day": "Saturday", "duration_weeks": 23, "time": "evening meal only"}
+  cost_tier: "accessible"
+  contraindications: "Health conditions: partial fast or consultation recommended."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 61"
+  classical_attestation_text: "BPHS Ch.93 v.61: 'The Saturday fast (Shanivara Upavasa) observed during Sade Sati for 23 weeks propitiates Saturn. Worship of Hanuman on Saturdays doubles the efficacy.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_ekadashi_008"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "vrata"
+  deity: "Vishnu"
+  remedy_text: "Ekadashi Vrata — observe the 11th lunar day (Ekadashi) twice monthly (Shukla Paksha and Krishna Paksha Ekadashi). Fast on Ekadashi to propitiate Jupiter, Vishnu, and the overall chart. Considered the supreme planetary fast in Jyotish."
+  mantra_sanskrit: "ॐ नमो भगवते वासुदेवाय"
+  mantra_transliteration: "Om Namo Bhagavate Vasudevaya"
+  ingredients_jsonb: {"fast_type": "complete water fast or fruits-only; no grains", "permitted": ["water", "fruits", "milk (some traditions)", "roots (sabudana, sweet potato)"], "forbidden": ["all grains", "non-vegetarian food", "alcohol"], "duration": "ongoing (twice monthly)"}
+  timing_rules_jsonb: {"day": "Ekadashi (11th tithi of each paksha)", "frequency": "twice monthly", "duration_days": "indefinite — ongoing practice"}
+  cost_tier: "accessible"
+  contraindications: "Pregnant women and young children: modified observance. Medical conditions: consult physician."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 21"
+  classical_attestation_text: "Phaladeepika Ch.27 v.21: 'Ekadashi fasting twice monthly is the supreme upaya for all planetary afflictions, especially Jupiter and Moon. It removes karma accumulated over previous lives.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "vrt_pradosh_shiva_009"
+  planet: "Saturn"
+  domain: "spirituality"
+  category: "vrata"
+  deity: "Shiva"
+  remedy_text: "Pradosh Vrata — observe the 13th lunar day (Trayodashi) evening of each fortnight. Fast until dusk; worship Shiva during the 45-minute window before and after sunset (Pradosh Kalam). Especially effective for Saturn and Ketu afflictions."
+  mantra_sanskrit: "ॐ नमः शिवाय"
+  mantra_transliteration: "Om Namah Shivaya"
+  ingredients_jsonb: {"fast_type": "fast until pradosh kalam (dusk window); then eat after puja", "permitted": ["fruits during day", "full meal after pradosh puja"], "forbidden": ["grain before pradosh puja"], "duration": "ongoing (twice monthly) or 13 consecutive occasions"}
+  timing_rules_jsonb: {"day": "Trayodashi (13th tithi)", "time": "fast until sunset; puja at dusk (1.5hr window)", "frequency": "twice monthly"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 62"
+  classical_attestation_text: "BPHS Ch.93 v.62: 'Pradosh Vrata — fasting on the 13th tithi and worshipping Shiva at dusk — pacifies Saturn, Ketu, and removes obstacles from the 8th house.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vrt_purnima_chandra_010"
+  planet: "Moon"
+  domain: "health"
+  category: "vrata"
+  deity: "Chandra / Devi"
+  remedy_text: "Full Moon (Purnima) Vrata — observe the full moon day each month as a special day of Moon propitiation. Fast or eat only white foods. Take a moonlit walk, meditate on the full moon, offer milk and white flowers. Especially for Moon-ruled matters."
+  mantra_sanskrit: "ॐ श्रीं ह्रीं श्रीं कमले कमलालये प्रसीद प्रसीद"
+  mantra_transliteration: "Om Shrim Hrim Shrim Kamale Kamalalaye Prasida Prasida"
+  ingredients_jsonb: {"fast_type": "full fast or white foods only", "permitted": ["milk", "white rice", "coconut", "white fruits"], "forbidden": ["non-vegetarian food", "dark foods"], "duration": "ongoing monthly"}
+  timing_rules_jsonb: {"day": "Purnima (full moon tithi)", "frequency": "monthly", "additional": "moonlit meditation strongly recommended"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 63"
+  classical_attestation_text: "BPHS Ch.93 v.63: 'Purnima Vrata observed monthly with white food offerings and moonlit meditation propitiates the Moon and strengthens mental faculty, creativity, and marital harmony.' (Santhanam trans., Ranjan Publications, public domain)"

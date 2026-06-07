@@ -203,6 +203,9 @@ const CLASSICAL_TOOLS: RetrievalTool[] = [
 
 // BRAHMA L0 Stream D — Sūtravali pattern extraction tools (SQL-only, ZERO LLM)
 import { SUTRAVALI_RETRIEVAL_TOOLS } from './sutravali_tools'
+// L0FR Stream F — Remedy Corpus retrieval tools
+import { REMEDY_TOOLS } from './remedy_tools'
+export { REMEDY_TOOLS } from './remedy_tools'
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 
@@ -215,6 +218,8 @@ export const RETRIEVAL_TOOLS: RetrievalTool[] = [
   ...CLASSICAL_TOOLS,
   // Sūtravali pattern extraction (Stream D)
   ...SUTRAVALI_RETRIEVAL_TOOLS,
+  // Remedy Corpus retrieval (Stream F)
+  ...REMEDY_TOOLS,
 ]
 
 export function getTool(name: string): RetrievalTool | undefined {

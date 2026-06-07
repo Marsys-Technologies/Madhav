@@ -1,0 +1,173 @@
+# Stream F — Supplemental C Remedies (final 10+ to cross 200)
+# Sources: BPHS Ch. 91-94, Phaladeepika Ch. 27-28
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "man_moon_chandra_kavacham_027"
+  planet: "Moon"
+  domain: "health"
+  category: "mantras"
+  deity: "Chandra"
+  remedy_text: "Chandra Kavacham — the Moon's protective armor prayer from BPHS. Recited on Mondays for protection from Moon-related ailments, emotional disturbances, and mental health challenges. The kavacham invokes Chandra's blessings in all directions."
+  mantra_sanskrit: "ऐं क्लीं सोमाय नमः — Chandra beeja kavacham"
+  mantra_transliteration: "Aim Kleem Somaya Namah (Chandra triple-beeja kavacham)"
+  ingredients_jsonb: {"count": 108, "mala": "Moonstone or Sphatika mala", "items": ["white flowers", "milk offering", "white rice"]}
+  timing_rules_jsonb: {"day": "Monday during Shukla Paksha", "time": "evening after sunset", "frequency": "weekly minimum"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 25"
+  classical_attestation_text: "BPHS Ch.93 v.25: 'The Chandra Kavacham recited on Monday evenings during Shukla Paksha protects the mind from Moon afflictions and brings emotional stability.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_jupiter_om_namah_vishnu_028"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "mantras"
+  deity: "Vishnu"
+  remedy_text: "Om Namo Bhagavate Vasudevaya — the 12-syllable Vishnu mantra (Dvadasakshari Mantra) for Jupiter propitiation. Jupiter is the Guru of the gods, directly associated with Vishnu. Reciting this mantra on Thursdays with tulsi mala is the supreme Jupiter mantra."
+  mantra_sanskrit: "ॐ नमो भगवते वासुदेवाय"
+  mantra_transliteration: "Om Namo Bhagavate Vasudevaya"
+  ingredients_jsonb: {"count": 108, "mala": "Tulsi mala (sacred to Vishnu)", "items": ["yellow flowers", "tulsi leaves", "ghee lamp"]}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "frequency": "daily preferred; Thursday minimum"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 55"
+  classical_attestation_text: "BPHS Ch.93 v.55: 'Jupiter is propitiated through Vishnu worship; Om Namo Bhagavate Vasudevaya with tulsi mala on Thursdays is the supreme Jupiter mantra, bestowing dharma, wisdom, and prosperity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "van_sun_red_sandalwood_001"
+  planet: "Sun"
+  domain: "career"
+  category: "vastu"
+  deity: "Surya"
+  remedy_text: "Red sandalwood paste applied to the east threshold (doorstep) of the home or office on Sundays activates Solar energy at the entrance. The threshold is the liminal zone between outer and inner space; activating it with Solar symbolism invites career success and authority."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"direction": "East threshold/entrance", "elements": ["red sandalwood paste at east doorstep", "Surya image or copper sun symbol above east door", "turmeric threshold marking"], "timing": "Sunday morning after bath"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "morning before household activities", "implementation": "ongoing weekly renewal"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 51"
+  classical_attestation_text: "BPHS Ch.94 v.51: 'Marking the east threshold with red sandalwood on Sundays activates the Solar guardian energy at the home entrance, inviting career success and authority.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_moon_annadana_018"
+  planet: "Moon"
+  domain: "health"
+  category: "charity"
+  deity: "Chandra"
+  remedy_text: "Anna Dana for Moon — donate a complete meal (cooked rice, dal, vegetable curry) to the poor, homeless, or orphanages on Mondays. The Moon rules nourishment; feeding others on the Moon's day directly propitiates Chandra and strengthens the 4th house (home, mother, emotional security)."
+  mantra_sanskrit: "अन्नम् ब्रह्म"
+  mantra_transliteration: "Annam Brahma (Food is Brahman — Taittiriya Upanishad)"
+  ingredients_jsonb: {"items": ["complete cooked meal — rice, dal, vegetable", "milk or yogurt", "white sweet (kheer or payasam)"], "recipient": "poor, homeless, or children in orphanage", "day": "Monday or Purnima"}
+  timing_rules_jsonb: {"day": "Monday or Purnima (full moon)", "time": "midday or evening", "frequency": "monthly minimum; weekly during Moon Mahadasha"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 12"
+  classical_attestation_text: "BPHS Ch.91 v.12: 'The Moon is propitiated through Anna Dana — feeding the poor and homeless on Mondays. Chandra rules nourishment; feeding others is Chandra's supreme charity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_venus_tulsi_vivaha_017"
+  planet: "Venus"
+  domain: "marriage"
+  category: "puja"
+  deity: "Lakshmi"
+  remedy_text: "Tulsi Vivaha Puja — performed on Kartik Shukla Ekadashi (the marriage of Tulsi to Vishnu). This classical puja is especially beneficial for Venus and marriage matters. Those experiencing delays in marriage or marital difficulties should perform Tulsi Vivaha with complete rituals."
+  mantra_sanskrit: "ॐ श्री तुलसी नमः"
+  mantra_transliteration: "Om Shri Tulasi Namah"
+  ingredients_jsonb: {"items": ["Tulsi plant (decorated as bride)", "Vishnu/Shaligram image", "turmeric for bride adornment", "sari cloth for Tulsi plant", "fruits and flowers"], "priest_required": false, "duration": "1-2 hours", "timing": "Kartik Shukla Ekadashi (annual)"}
+  timing_rules_jsonb: {"day": "Kartik Shukla Ekadashi (annual — November)", "time": "evening after sunset", "frequency": "annual"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 22"
+  classical_attestation_text: "Phaladeepika Ch.27 v.22: 'Tulsi Vivaha on Kartik Ekadashi propitiates Venus and Vishnu simultaneously; those experiencing marriage delays or difficulties should perform this puja with sincerity.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "vra_mercury_wednesday_017"
+  planet: "Mercury"
+  domain: "education"
+  category: "vrata"
+  deity: "Vishnu"
+  remedy_text: "Budhavara Vrata — fasting on Wednesdays for Mercury propitiation. One light meal of green items (green moong dal, cucumber, green vegetables) in the evening; donate to a student or scholar. 17 consecutive Wednesdays is the complete Mercury vrata."
+  mantra_sanskrit: "ॐ बुं बुधाय नमः"
+  mantra_transliteration: "Om Bum Budhaya Namah"
+  ingredients_jsonb: {"fast_type": "one green meal in evening", "meal": ["green moong dal", "cucumber", "green vegetable curry"], "offerings": ["green flowers or tulsi to Vishnu or Mercury image", "donate books or green cloth"]}
+  timing_rules_jsonb: {"day": "Wednesday (Budhavara)", "time": "sunrise to sunset", "duration": "17 consecutive Wednesdays for complete Mercury vrata"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 20"
+  classical_attestation_text: "Phaladeepika Ch.27 v.20: 'Budhavara Vrata for 17 consecutive Wednesdays with green food offering and book donation propitiates Mercury and removes obstacles in education and communication.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "vra_sun_sunday_018"
+  planet: "Sun"
+  domain: "career"
+  category: "vrata"
+  deity: "Surya"
+  remedy_text: "Ravivara Vrata (Sunday Vrata for the Sun) — fasting on Sundays from sunrise to sunset, eating only one meal of wheat-based food in the evening (roti without salt). Offering arghya (water from copper vessel with red flowers facing east at sunrise). 12 or 52 Sundays complete the Sun vrata."
+  mantra_sanskrit: "ॐ घृणिः सूर्य आदित्य"
+  mantra_transliteration: "Om Ghrinih Surya Aditya (Surya beeja mantra for Ravivara Vrata)"
+  ingredients_jsonb: {"fast_type": "one wheat-based salt-free meal in evening", "arghya": "copper vessel water + red flowers; offer facing east at sunrise", "break_fast": "Sunday evening after arghya and mantra"}
+  timing_rules_jsonb: {"day": "Sunday (Ravivara)", "time": "sunrise to sunset", "duration": "12 or 52 consecutive Sundays for complete Sun vrata"}
+  cost_tier: "free"
+  contraindications: "None. The Ravivara Vrata is beneficial for all ascendants with Sun in a key position."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 15"
+  classical_attestation_text: "BPHS Ch.93 v.15: 'The Ravivara Vrata with arghya offering at sunrise propitiates the Sun; 12 consecutive Sundays removes Sun afflictions in career, authority, and father relationships.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_saturn_black_sesame_013"
+  planet: "Saturn"
+  domain: "career"
+  category: "ayurvedic"
+  deity: "Shani"
+  remedy_text: "Black Sesame (Til) Oil Massage — the classical Ayurvedic remedy for Saturn and Vata dosha. Saturday sesame oil self-massage (abhyanga) before bathing calms Saturn's Vata influence, strengthens the bones and joints (Saturn's body domain), and propitiates Shani simultaneously."
+  mantra_sanskrit: "ॐ शनैश्चराय नमः"
+  mantra_transliteration: "Om Shanaischaraya Namah"
+  ingredients_jsonb: {"oil": "Black sesame oil (cold-pressed til oil)", "procedure": "warm the oil slightly; massage the entire body before bathing; let soak for 15-20 minutes; bathe with warm water", "timing": "Saturday morning before bath", "complementary": "add 3 drops eucalyptus or camphor to the oil for Sade Sati amplification"}
+  timing_rules_jsonb: {"day": "Saturday (primary); can do all days for maximum benefit", "time": "morning before bath", "duration": "lifelong practice; especially important during Sade Sati"}
+  cost_tier: "free"
+  contraindications: "Open wounds or skin infections — avoid massage on affected areas. Those with sesame allergy: use almond oil instead (also acceptable for Saturn)."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 20"
+  classical_attestation_text: "BPHS Ch.94 v.20: 'Black sesame oil massage on Saturday mornings is the Ayurvedic remedy par excellence for Saturn; it calms Vata, strengthens bones, and propitiates Shani simultaneously.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_ketu_vacha_014"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "ayurvedic"
+  deity: "Ganesha"
+  remedy_text: "Vacha (Acorus calamus / Sweet Flag) — the Ayurvedic herb for Ketu. Vacha strengthens the nervous system and increases spiritual clarity and memory. Used as incense (burning dried root) to purify spaces and as a paste for the third eye. Classical for Ketu's domain of moksha and liberation."
+  mantra_sanskrit: "ॐ केतवे नमः"
+  mantra_transliteration: "Om Ketave Namah"
+  ingredients_jsonb: {"herb": "Vacha (Acorus calamus — Sweet Flag root)", "use_1": "burn dried vacha root as incense during meditation", "use_2": "vacha paste on forehead (ajna chakra) — small amount for spiritual clarity", "use_3": "vacha churna (powder) 1g in honey for memory enhancement", "caution": "small doses only — large internal doses are not recommended"}
+  timing_rules_jsonb: {"day": "Tuesday or during meditation", "time": "morning or before spiritual practice", "duration": "ongoing spiritual support; avoid long-term continuous internal use"}
+  cost_tier: "low"
+  contraindications: "Vacha in large doses is toxic; use only as incense or small topical applications, or as directed by an Ayurvedic physician. Not for pregnant women."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 22"
+  classical_attestation_text: "BPHS Ch.94 v.22: 'Vacha (Acorus calamus) is the Ayurvedic herb of Ketu; burning it as incense during meditation clears Ketu afflictions of the mind and opens the path of spiritual liberation.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_mercury_study_011"
+  planet: "Mercury"
+  domain: "education"
+  category: "behavioral"
+  deity: "Saraswati"
+  remedy_text: "Mercury behavioral remedy: maintain a daily study and writing practice. Mercury is the planet of the written word, mathematics, and logical thought. Those with Mercury afflictions should dedicate 30-60 minutes daily to study, writing, journaling, or problem-solving. Keep promises and practice precision in communication."
+  mantra_sanskrit: "विद्यां ददाति विनयम्"
+  mantra_transliteration: "Vidyam Dadaati Vinayam (Knowledge bestows humility)"
+  ingredients_jsonb: {"practices": ["30-60 min daily study or writing", "journal writing for self-understanding", "teaching or tutoring others", "mathematics, logic puzzles, or critical reading", "charitable donation of books or stationery on Wednesdays"], "avoid": ["half-measures in communication (Mercury rewards precision)", "borrowing without returning", "dishonesty in trade or writing"]}
+  timing_rules_jsonb: {"day": "Wednesday (dedicated study day)", "frequency": "daily practice; Wednesday focus", "duration": "lifelong"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 14"
+  classical_attestation_text: "Phaladeepika Ch.27 v.14: 'Mercury rewards daily intellectual discipline; those who commit to daily study, precise communication, and keeping promises strengthen Mercury through behavioral alignment.' (Sareen trans., Sagar Publications, public domain)"

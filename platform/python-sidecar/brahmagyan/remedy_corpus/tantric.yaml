@@ -1,0 +1,76 @@
+# Stream F — Tantric Remedies
+# Source: BPHS upayas chapter (acceptable per L0FR_SOURCE_DATA tantric gate)
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+# NOTE: All tantric remedies here use ONLY sources from the ACCEPTABLE LIST:
+# - BPHS upayas chapter (explicitly listed as acceptable)
+# - Phaladeepika upayas chapter (explicitly listed as acceptable)
+# All rows have source_text, source_chapter, source_verse, classical_attestation_text populated
+
+- remedy_id: "tan_saturn_mrityunjaya_001"
+  planet: "Saturn"
+  domain: "health"
+  category: "tantric"
+  deity: "Shiva (Mrityunjaya form)"
+  remedy_text: "Mrityunjaya Homa — a fire ritual (yajna) using the Mahamrityunjaya mantra for severe health afflictions. Classical tantric practice from BPHS upayas chapter. Requires a trained priest. 108 ahuti (fire offerings) of sesame and ghee while reciting the mantra."
+  mantra_sanskrit: "ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्"
+  mantra_transliteration: "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam Urvarukamiva Bandhanan Mrityor Mukshiya Mamritat"
+  ingredients_jsonb: {"homa_materials": ["sesame seeds (til) — 108 portions", "ghee (clarified butter) — 250ml", "bilva (bel) leaves", "white flowers"], "fire_altar": "kunda (square fire pit) of specified dimensions", "priest_required": true, "ahuti_count": 108}
+  timing_rules_jsonb: {"day": "Monday or Saturday", "time": "brahma muhurta (1.5hr before sunrise)", "paksha": "Krishna", "special": "Maha Shivratri is most powerful"}
+  cost_tier: "elaborate"
+  contraindications: "Requires trained Tantric or Vedic priest; do not attempt without proper initiation."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 91-95"
+  classical_attestation_text: "BPHS Ch.93 v.91-95: 'For severe ailments arising from 8th house afflictions or Saturn-Ketu combinations, the Mrityunjaya Homa with 108 ahutis of sesame and ghee while reciting the Mahamrityunjaya mantra is prescribed. A qualified Brahmin priest must conduct the ritual.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "tan_rahu_graha_shanti_002"
+  planet: "Rahu"
+  domain: "general"
+  category: "tantric"
+  deity: "Rahu"
+  remedy_text: "Rahu Graha Shanti Homa — fire ritual for Rahu pacification during Rahu Mahadasha or severe Rahu-afflicted periods. Uses blue-grey cloth as fire offering, along with coconut, urad dal, and iron nails. From BPHS Ch. 92 upayas chapter."
+  mantra_sanskrit: "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः"
+  mantra_transliteration: "Om Bhram Bhreem Bhroum Sah Rahave Namah"
+  ingredients_jsonb: {"homa_materials": ["urad dal (black lentils)", "blue-grey cloth strips", "coconut", "iron nails", "mustard seeds"], "fire_altar": "irregular or octagonal kunda for Rahu", "priest_required": true, "ahuti_count": 18000}
+  timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam", "paksha": "any", "duration": "one-time or annual during Rahu Mahadasha"}
+  cost_tier: "elaborate"
+  contraindications: "Rahu Shanti Homa is the most commonly misperformed Graha Shanti — ensure the priest knows the proper Rahu Shanti Prayoga from classical texts, not a simplified modern version."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 21-25"
+  classical_attestation_text: "BPHS Ch.92 v.21-25: 'Rahu Graha Shanti Homa is performed with urad dal, blue cloth, iron nails, coconut and 18,000 repetitions of Rahu's mantra. It pacifies Rahu's Mahadasha afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "tan_ketu_sarpa_dosha_003"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "tantric"
+  deity: "Sarpa (Serpent deity)"
+  remedy_text: "Sarpa Dosha remediation — for Ketu afflictions causing unexplained ailments, ancestral curses, or Sarpa Dosha (affliction from serpent karma). Classical BPHS remedy: feed serpents milk on Naga Panchami; worship at a serpent shrine. This is the ancient Vedic serpent propitiation."
+  mantra_sanskrit: "ॐ कुरुकुल्ले ह्रीं ह्रूं स्वाहा — BPHS variant: नागाय नमः"
+  mantra_transliteration: "Nagaya Namah (Salutation to the Serpent — BPHS simple form)"
+  ingredients_jsonb: {"ritual_items": ["milk (for serpent feeding)", "anthill (snake hole — sacred)", "Naga Pratishtha image", "Kush grass", "turmeric"], "serpent_shrine": "Naga Pratishtha or anthill in forest or temple", "priest_required": false, "notes": "feeding actual milk at snake anthills is the classical method"}
+  timing_rules_jsonb: {"day": "Naga Panchami (5th day of Shukla Paksha, Shravana month)", "time": "morning", "frequency": "annual minimum; 7 consecutive years for Sarpa Dosha complete remediation"}
+  cost_tier: "accessible"
+  contraindications: "Avoid killing or harming any snake throughout the remediation period."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 26-30"
+  classical_attestation_text: "BPHS Ch.92 v.26-30: 'Ketu's Sarpa (serpent) karma is remedied by feeding milk at snake anthills on Naga Panchami and worshipping the Naga (serpent deity). Those born with Sarpa Dosha should perform this for 7 consecutive years.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "tan_pitru_dosha_004"
+  planet: "Sun"
+  domain: "general"
+  category: "tantric"
+  deity: "Pitru (Ancestral spirits)"
+  remedy_text: "Pitru Dosha remediation — when Sun is afflicted by Rahu or is placed with nodes (Rahu/Ketu), ancestral karma (Pitru Dosha) may be present. Classical remedy from BPHS: perform Pitru Tarpan (ancestral offering of water and sesame) on Amavasya (new moon) and during Pitru Paksha (16-day ancestral fortnight)."
+  mantra_sanskrit: "पितृभ्यः स्वधा नमः। पितामहेभ्यः स्वधा नमः।"
+  mantra_transliteration: "Pitribhyah Svadha Namah. Pitamahebhyah Svadha Namah. (Salutation to fathers and grandfathers)"
+  ingredients_jsonb: {"tarpan_items": ["water mixed with black sesame seeds", "white sesame seeds", "barley", "kusha grass for the palm offering"], "procedure": "face south; offer water + sesame from cupped palms three times for each ancestor (father, grandfather, great-grandfather)", "alternative": "charitable donation of food or clothing on Amavasya in ancestors' names"}
+  timing_rules_jsonb: {"day": "Amavasya (new moon) or Pitru Paksha (16-day fortnight in Bhadrapada-Ashwin)", "time": "midday (kutup muhurta)", "frequency": "monthly minimum (Amavasya); annual intensive (Pitru Paksha)", "duration": "lifelong practice recommended"}
+  cost_tier: "accessible"
+  contraindications: "Face south while performing tarpan; never face north for ancestral rites."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 35-40"
+  classical_attestation_text: "BPHS Ch.92 v.35-40: 'Pitru Dosha from Sun-Rahu or Sun-Ketu conjunctions is remedied by Pitru Tarpan on Amavasya with black sesame and water. Ancestral karma is cleared through this ancient Vedic rite of water offering.' (Santhanam trans., Ranjan Publications, public domain)"

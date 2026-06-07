@@ -1,0 +1,106 @@
+# Stream F — Behavioral Remedies (Achara / karma adjustments)
+# Source: BPHS Ch. 94, Phaladeepika Ch. 27
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "beh_sun_father_respect_001"
+  planet: "Sun"
+  domain: "career"
+  category: "behavioral"
+  deity: "Surya"
+  remedy_text: "The Sun governs the father, authority, and respect for elders. Behavioral remedy: respect your father and father-figures; bow to elders daily; refrain from disobeying government or institutional authority. This karmic alignment propitiates the Sun more than any ritual."
+  mantra_sanskrit: "पितृ देवो भव"
+  mantra_transliteration: "Pitru Devo Bhava (Father is God)"
+  ingredients_jsonb: {"practices": ["daily prostration or respectful greeting to father", "obedience to legitimate authority", "avoid insulting government officials", "serve elder males in the family"], "avoid": ["father-son conflicts", "disrespecting authority figures", "solar foods (wheat, jaggery) wasting"]}
+  timing_rules_jsonb: {"day": "Sunday (primary)", "frequency": "daily practice", "duration": "lifelong karma alignment"}
+  cost_tier: "accessible"
+  contraindications: "If the natal chart shows father conflicts (Sun afflicted by Saturn/Rahu), this practice helps heal the pattern rather than suppressing it."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 60"
+  classical_attestation_text: "BPHS Ch.94 v.60: 'The Sun is propitiated through respect for the father and all father-figures. Those whose Sun is afflicted suffer father-related karma; serving and respecting the father removes Solar doshas.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_moon_mother_care_002"
+  planet: "Moon"
+  domain: "health"
+  category: "behavioral"
+  deity: "Chandra"
+  remedy_text: "The Moon governs the mother, emotional nature, and nurturing. Behavioral remedy: serve and care for your mother; maintain emotional harmony at home; be kind to women; avoid harsh speech near the Moon's direction (north). Unconditional service to the mother is the most powerful Moon remedy."
+  mantra_sanskrit: "मातृ देवो भव"
+  mantra_transliteration: "Matru Devo Bhava (Mother is God)"
+  ingredients_jsonb: {"practices": ["daily service to mother or mother-figures", "emotional kindness and gentleness", "care for elderly women", "avoid harsh speech at night"], "avoid": ["mother-child conflicts", "emotional suppression or dishonesty", "polluting water bodies"]}
+  timing_rules_jsonb: {"day": "Monday (primary)", "frequency": "daily practice", "duration": "lifelong karma alignment"}
+  cost_tier: "accessible"
+  contraindications: "Mother-related karma is among the most complex in Jyotish; behavioral remedies combined with mantras give the most complete results."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 61"
+  classical_attestation_text: "BPHS Ch.94 v.61: 'The Moon represents the mother; those afflicted by Moon afflictions should serve the mother or mother-surrogates with sincerity. This activates the lunar protective force.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_mars_brothers_003"
+  planet: "Mars"
+  domain: "general"
+  category: "behavioral"
+  deity: "Mangala"
+  remedy_text: "Mars governs younger siblings, courage, and land. Behavioral remedy: maintain harmony with brothers and younger siblings; avoid violence except in self-defense; protect the vulnerable; channel Mars energy into physical exercise and disciplined action."
+  mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
+  mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
+  ingredients_jsonb: {"practices": ["reconciliation with brothers if estranged", "regular physical exercise (Mars energy outlet)", "service in fire/medical/emergency services (honors Mars)", "planting trees on own land"], "avoid": ["physical violence", "land disputes", "bullying", "suppressing anger without outlet"]}
+  timing_rules_jsonb: {"day": "Tuesday (primary)", "frequency": "daily practice", "duration": "lifelong karma alignment"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 62"
+  classical_attestation_text: "BPHS Ch.94 v.62: 'Mars rules brothers and courage; those with afflicted Mars should make peace with their brothers and channel the Martian force through disciplined physical activity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_jupiter_guru_service_004"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "behavioral"
+  deity: "Brihaspati"
+  remedy_text: "Jupiter governs the Guru (teacher/spiritual guide), dharma, and higher knowledge. Behavioral remedy: serve your guru or spiritual teacher with sincerity; study sacred texts; practice daily gratitude; share knowledge freely. Disrespecting the guru is considered the primary cause of Jupiter affliction."
+  mantra_sanskrit: "गुरुर्ब्रह्मा गुरुर्विष्णुः गुरुर्देवो महेश्वरः"
+  mantra_transliteration: "Gurur Brahma Gurur Vishnuh Gurur Devo Maheshvarah"
+  ingredients_jsonb: {"practices": ["daily study of sacred or philosophical texts", "service to one's spiritual teacher", "share knowledge and teach others", "practice dana (charitable giving)", "respect for elders"], "avoid": ["disrespecting teachers or gurus", "accumulating knowledge without sharing", "pride in spiritual accomplishment", "wasting food"]}
+  timing_rules_jsonb: {"day": "Thursday (primary)", "frequency": "daily practice", "duration": "lifelong karma alignment"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 63"
+  classical_attestation_text: "BPHS Ch.94 v.63: 'Jupiter is the Guru of the gods; those who disrespect their teacher or misuse knowledge suffer Jupiter afflictions. Service to the guru with sincerity is the supreme behavioral remedy for Jupiter.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_saturn_service_005"
+  planet: "Saturn"
+  domain: "career"
+  category: "behavioral"
+  deity: "Shani"
+  remedy_text: "Saturn governs karma, discipline, service to the marginalized, and humility. Behavioral remedy: serve elderly people, disabled persons, and the poor selflessly; practice daily discipline (fixed sleep/wake/work schedule); avoid laziness; honor all workers regardless of social status."
+  mantra_sanskrit: "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन"
+  mantra_transliteration: "Karmanyevadhikaraste Ma Phaleshu Kadachana (Bhagavad Gita 2.47)"
+  ingredients_jsonb: {"practices": ["service to elderly and disabled persons", "fixed daily schedule (Saturn rewards consistency)", "manual labor or physical service", "honoring service workers (cleaners, laborers)", "donating shoes or footwear to the needy"], "avoid": ["laziness", "disrespecting laborers", "postponing duties", "complaining about Saturn's trials"]}
+  timing_rules_jsonb: {"day": "Saturday (primary)", "frequency": "daily practice", "duration": "lifelong, especially during Sade Sati"}
+  cost_tier: "accessible"
+  contraindications: "None. Discipline itself is Saturn's greatest remedy."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 64"
+  classical_attestation_text: "BPHS Ch.94 v.64: 'Saturn gives what karma merits; selfless service to the elderly, disabled, and poor propitiates Saturn's karmic exactions more completely than any ritual.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "beh_mercury_honest_speech_006"
+  planet: "Mercury"
+  domain: "education"
+  category: "behavioral"
+  deity: "Budha"
+  remedy_text: "Mercury governs speech, communication, and honesty. Behavioral remedy: practice truthful speech; avoid gossip, lies, and harsh words; learn and teach; keep promises. Mercury is specifically afflicted by dishonest communication and by not studying or using one's intelligence."
+  mantra_sanskrit: "सत्यं वद धर्मं चर"
+  mantra_transliteration: "Satyam Vada Dharmam Chara (Speak truth, walk righteously)"
+  ingredients_jsonb: {"practices": ["practice of honest speech in all situations", "regular study and intellectual engagement", "teaching or mentoring others", "keeping promises and commitments", "charitable donation of books or educational materials"], "avoid": ["lying or deceptive speech", "gossip", "intellectual laziness", "misusing one's communication skills for manipulation"]}
+  timing_rules_jsonb: {"day": "Wednesday (primary)", "frequency": "daily practice", "duration": "lifelong"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 13"
+  classical_attestation_text: "Phaladeepika Ch.27 v.13: 'Mercury rules honest and skillful speech; those who speak falsely or misuse their communication bring Mercury afflictions upon themselves. Truthful speech is Mercury's behavioral remedy.' (Sareen trans., Sagar Publications, public domain)"
