@@ -5,7 +5,7 @@ streams:
   D: { status: blocked_on_C_midway, tag: null, attempts: 0 }
   E: { status: blocked_on_A, tag: null, attempts: 0 }
   F: { status: blocked_on_A, tag: null, attempts: 0 }
-  G: { status: blocked_on_A, tag: null, attempts: 0 }
+  G: { status: review, tag: c5ddf69b, attempts: 1 }
 gates:
   vimarsaka_a: { status: reject, attempts: 1, checks_passed: 12, checks_failed: 3, failures: [audience_tier_residual_246, mcp_resolve_entity_canonical_id_SAT_vs_Saturn, consume_chat_resolve_entity_401_plus_no_route] }
   vimarsaka_c: { status: pending, attempts: 0 }
@@ -16,3 +16,4 @@ budget_caps_usd: { A: 500, B: 150, C: 200, D: 50, E: 250, F: 50, G: 150, total: 
 brahma_pipeline_path: platform/python-sidecar
 # Stream A completed 2026-06-07T05:30+05:30 — status set to review pending Vimarśaka-A
 # Vimarśaka-A attempt 1 completed 2026-06-07T05:38+05:30 — REJECT_WITH_FEEDBACK (12/15 PASS); rework items: audience_tier kill-list, canonical_id schema (SAT vs Saturn), /api/retrieval/L0 route
+# Stream G completed 2026-06-07T05:55+05:30 — pyjhora_adapter + /api/pyhora + 3 capabilities + migration 174; smoke PASS; status set to review
