@@ -622,6 +622,54 @@ def chunk_brihat_jataka(text: str) -> list[dict]:
     return chunks
 
 
+def chunk_saravali(text: str) -> list[dict]:
+    """
+    Saravali (Kalyana Varma) — English translation by R. Santhanam.
+    Structure: Chapter N + content paragraphs (double-spaced OCR).
+    Uses paragraph-within-chapter chunking (verse pattern unreliable due to OCR).
+    """
+    chunks = []
+
+    # Find all chapter boundaries
+    chap_pat = re.compile(r'Chapter\s+(\d+)', re.IGNORECASE)
+    chap_matches = list(chap_pat.finditer(text))
+    chap_boundaries = [(int(m.group(1)), m.start()) for m in chap_matches]
+    chap_boundaries.sort(key=lambda x: x[1])
+
+    for i, (ch_num, ch_start) in enumerate(chap_boundaries):
+        ch_end = chap_boundaries[i + 1][1] if i + 1 < len(chap_boundaries) else len(text)
+        ch_text = text[ch_start:ch_end]
+
+        # Paragraph-level chunking
+        v = 0
+        for para in re.split(r'\n\s*\n', ch_text):
+            para = para.strip()
+            content_en, content_sa = extract_en_sa(para)
+            if len(content_en) < 60:
+                continue
+            v += 1
+            # Try to detect verse range from paragraph start "1-4. content" or "1. content"
+            verse_match = re.match(r'^(\d+)(?:-(\d+))?,?\s', para)
+            if verse_match:
+                v_start = min(int(verse_match.group(1)), SMALLINT_MAX)
+                v_end = min(int(verse_match.group(2)) if verse_match.group(2) else v_start, SMALLINT_MAX)
+            else:
+                v_start = v_end = v
+            chunks.append(make_chunk(
+                text_id="saravali",
+                chapter=ch_num,
+                verse_start=v_start,
+                verse_end=v_end,
+                content_en=content_en,
+                content_sa=content_sa,
+                tradition_school="parashari",
+                translator="R. Santhanam",
+            ))
+
+    logger.info("[rechunk] saravali: %d chunks from %d chapters", len(chunks), len(chap_boundaries))
+    return chunks
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 def get_db_conn():
@@ -844,6 +892,48 @@ def main():
             print(f"\n[PASS] AC met: {total} total chunks, {embedded_total} embedded")
         else:
             print(f"\n[PARTIAL] {total} total, {embedded_total} embedded (target: ≥6000 total, 100% embedded)")
+
+        # 7. Saravali (English edition — KalyanaVarmasSaravali_201707)
+        logger.info("--- saravali ---")
+        saravali_path = TEXTS_DIR / "saravali/raw/saravali_en_djvu.txt"
+        if saravali_path.exists():
+            text = saravali_path.read_text(errors="replace")
+            chunks = chunk_saravali(text)
+            delete_text_chunks(conn, "saravali")
+            n = insert_chunks(conn, chunks)
+            logger.info("saravali: inserted %d chunks", n)
+            results["saravali"] = n
+            # Embed
+            result = embed_text_id(conn, "saravali")
+            logger.info("Embed saravali: %d embedded, %d failed", result["embedded"], result["failed"])
+        else:
+            logger.warning("saravali English file not found at %s", saravali_path)
+            results["saravali"] = 0
+
+        # Refresh final stats
+        with conn.cursor() as cur:
+            cur.execute("SELECT text_id, COUNT(*) FROM classical_text_chunks GROUP BY text_id ORDER BY text_id")
+            db_counts = {r[0]: r[1] for r in cur.fetchall()}
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM classical_text_chunks WHERE embedding IS NOT NULL")
+            embedded_total = cur.fetchone()[0]
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM classical_text_chunks")
+            total = cur.fetchone()[0]
+
+        logger.info("=== UPDATED FINAL DB STATS (post-saravali) ===")
+        for tid, count in sorted(db_counts.items()):
+            logger.info("  %s: %d chunks", tid, count)
+        logger.info("TOTAL: %d, EMBEDDED: %d", total, embedded_total)
+
+        print("\n=== UPDATED TOTALS (post-saravali) ===")
+        import json as _json2
+        print(_json2.dumps({"db_counts": db_counts, "total_chunks": total, "embedded_count": embedded_total}, indent=2))
+
+        if total >= 6000 and embedded_total >= total * 0.95:
+            print(f"\n[PASS] AC met: {total} total chunks, {embedded_total} embedded")
+        else:
+            print(f"\n[STILL_PARTIAL] {total} total, {embedded_total} embedded (target: ≥6000)")
 
     finally:
         conn.close()
