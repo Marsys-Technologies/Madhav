@@ -79,7 +79,7 @@ describe('brahmagyan.texts smoke — classical corpus', () => {
       limit: 5,
     })
     for (const r of result.results) {
-      expect(r.tradition).toBe('parashari')
+      expect(r.school).toBe('parashari')
     }
   })
 

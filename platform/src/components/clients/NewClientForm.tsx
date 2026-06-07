@@ -1,9 +1,10 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Autocomplete, useJsApiLoader } from '@react-google-maps/api'
+import { useJsApiLoader } from '@react-google-maps/api'
+import { ChevronLeft, CalendarDays } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { derivePreferredName, parseBirthDateDisplay } from './form_schema'
@@ -26,20 +27,20 @@ export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']
 // ─── Timezones ────────────────────────────────────────────────────────────────
 
 export const TIMEZONES = [
-  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata (UTC+5:30)',     offset: 5.5  },
-  { value: 'UTC',                 label: 'UTC (UTC+0)',                  offset: 0    },
-  { value: 'Asia/Colombo',        label: 'Asia/Colombo (UTC+5:30)',     offset: 5.5  },
-  { value: 'Asia/Kathmandu',      label: 'Asia/Kathmandu (UTC+5:45)',   offset: 5.75 },
-  { value: 'Asia/Dhaka',          label: 'Asia/Dhaka (UTC+6)',          offset: 6    },
-  { value: 'Asia/Dubai',          label: 'Asia/Dubai (UTC+4)',          offset: 4    },
-  { value: 'Asia/Singapore',      label: 'Asia/Singapore (UTC+8)',      offset: 8    },
-  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo (UTC+9)',          offset: 9    },
-  { value: 'America/New_York',    label: 'America/New_York (UTC-5)',    offset: -5   },
-  { value: 'America/Chicago',     label: 'America/Chicago (UTC-6)',     offset: -6   },
-  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-8)', offset: -8  },
-  { value: 'Europe/London',       label: 'Europe/London (UTC+0)',       offset: 0    },
-  { value: 'Europe/Berlin',       label: 'Europe/Berlin (UTC+1)',       offset: 1    },
-  { value: 'Australia/Sydney',    label: 'Australia/Sydney (UTC+10)',   offset: 10   },
+  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata (UTC+5:30)',      offset: 5.5  },
+  { value: 'UTC',                 label: 'UTC (UTC+0)',                   offset: 0    },
+  { value: 'Asia/Colombo',        label: 'Asia/Colombo (UTC+5:30)',      offset: 5.5  },
+  { value: 'Asia/Kathmandu',      label: 'Asia/Kathmandu (UTC+5:45)',    offset: 5.75 },
+  { value: 'Asia/Dhaka',          label: 'Asia/Dhaka (UTC+6)',           offset: 6    },
+  { value: 'Asia/Dubai',          label: 'Asia/Dubai (UTC+4)',           offset: 4    },
+  { value: 'Asia/Singapore',      label: 'Asia/Singapore (UTC+8)',       offset: 8    },
+  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo (UTC+9)',           offset: 9    },
+  { value: 'America/New_York',    label: 'America/New_York (UTC-5)',     offset: -5   },
+  { value: 'America/Chicago',     label: 'America/Chicago (UTC-6)',      offset: -6   },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (UTC-8)', offset: -8   },
+  { value: 'Europe/London',       label: 'Europe/London (UTC+0)',        offset: 0    },
+  { value: 'Europe/Berlin',       label: 'Europe/Berlin (UTC+1)',        offset: 1    },
+  { value: 'Australia/Sydney',    label: 'Australia/Sydney (UTC+10)',    offset: 10   },
 ] as const
 
 // ─── State types ──────────────────────────────────────────────────────────────
@@ -48,8 +49,8 @@ interface FormState {
   full_name: string
   preferred_name: string
   gender: 'M' | 'F' | 'O' | 'unknown' | ''
-  birth_date: string         // YYYY-MM-DD (API wire format)
-  birth_date_display: string // dd-MMM-yyyy (user-facing)
+  birth_date: string          // YYYY-MM-DD (API wire format)
+  birth_date_display: string  // dd-MMM-yyyy (user-facing)
   birth_time: string
   birth_place: string
   latitude: string
@@ -137,19 +138,25 @@ function validate(form: FormState): FormErrors {
   return errors
 }
 
-// ─── Shared native-input class ────────────────────────────────────────────────
+// ─── Shared dark-well input class ─────────────────────────────────────────────
 
-function nativeInputCls(hasError?: boolean): string {
+function darkInputCls(hasError?: boolean): string {
   return cn(
-    'w-full h-9 rounded-md border bg-background px-3 py-1 text-sm',
-    'focus:outline-none focus:ring-1 focus:ring-ring',
-    hasError ? 'border-destructive' : 'border-input',
+    'w-full h-9 rounded-md border px-3 py-1 text-sm transition-colors duration-150',
+    'focus:outline-none focus:ring-1',
+    hasError
+      ? 'border-destructive focus:ring-destructive'
+      : 'focus:ring-brand-gold',
   )
 }
 
-// ─── Places autocomplete wrapper ──────────────────────────────────────────────
+// ─── Shared well style objects (R2.5) ─────────────────────────────────────────
 
-const GMAPS_LIBS: 'places'[] = ['places']
+const wellStyle = {
+  background: 'var(--brand-charcoal-deep)',
+  color: 'var(--brand-gold-cream)',
+  borderColor: 'var(--brand-gold-hairline)',
+}
 
 const wellStyleError = {
   background: 'var(--brand-charcoal-deep)',
@@ -196,20 +203,115 @@ type GenderValue = 'M' | 'F' | 'O' | 'unknown' | ''
 function GenderSelect({
   value,
   hasError,
+  onChange,
+}: {
+  value: GenderValue
+  hasError: boolean
+  onChange: (v: GenderValue) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = GENDER_OPTIONS.find((o) => o.value === value)
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Gender"
+        id="gender"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'w-full h-9 rounded-md border px-3 py-1 text-sm text-left flex items-center justify-between',
+          'transition-colors duration-150 focus:outline-none focus:ring-1',
+          hasError ? 'border-destructive focus:ring-destructive' : 'focus:ring-brand-gold',
+        )}
+        style={{
+          ...wellStyle,
+          borderColor: hasError ? undefined : 'var(--brand-gold-hairline)',
+          color: value ? 'var(--brand-gold-cream)' : 'oklch(0.58 0.025 80)',
+        }}
+      >
+        <span>{selected?.label ?? '— select —'}</span>
+        <span aria-hidden="true" className="text-[9px] ml-1" style={{ color: 'oklch(0.50 0.015 75)' }}>▼</span>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Gender options"
+          className="absolute z-50 w-full mt-0.5 rounded-md border py-0.5 shadow-lg"
+          style={{
+            background: 'var(--brand-charcoal)',
+            borderColor: 'var(--brand-gold-hairline)',
+          }}
+        >
+          {GENDER_OPTIONS.map((opt) => (
+            <li
+              key={opt.value || '__empty'}
+              role="option"
+              aria-selected={value === opt.value}
+              className="px-3 py-1.5 text-sm cursor-pointer transition-colors duration-100"
+              style={{
+                color: value === opt.value ? 'var(--brand-gold)' : 'var(--brand-gold-cream)',
+                background: value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'oklch(0.78 0.13 80 / 0.08)'
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background = value === opt.value ? 'oklch(0.78 0.13 80 / 0.10)' : 'transparent'
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(opt.value as GenderValue)
+                setOpen(false)
+              }}
+            >
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ─── PlaceAutocompleteElement (W9 + R3.4 + R3.5) ─────────────────────────────
+// R3.4: overflow-hidden MUST NOT be on the container — the shadow-DOM prediction
+// popup would be clipped. The container uses position:relative with no overflow
+// constraint so the popup can escape.
+
+function PlacesAutocompleteNew({
+  hasError,
   onTextChange,
   onPlaceResolved,
+  onLoadError,
 }: {
-  value: string
   hasError: boolean
   onTextChange: (v: string) => void
   onPlaceResolved: (r: PlacesResult) => void
+  onLoadError: () => void
 }) {
-  const { isLoaded } = useJsApiLoader({
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'gmaps-places',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
-    libraries: GMAPS_LIBS,
   })
-  const acRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   useEffect(() => {
     if (loadError) onLoadError()
@@ -341,18 +443,6 @@ function GenderSelect({
       style={{ position: 'relative' }}
     />
   )
-
-  if (!isLoaded) return inputEl
-
-  return (
-    <Autocomplete
-      onLoad={(ac) => { acRef.current = ac }}
-      onPlaceChanged={onPlaceChanged}
-      options={{ fields: ['geometry', 'formatted_address', 'name', 'utc_offset_minutes'] }}
-    >
-      {inputEl}
-    </Autocomplete>
-  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -360,6 +450,7 @@ function GenderSelect({
 export function NewClientForm() {
   const router = useRouter()
   const googleMapsConfigured = isGoogleMapsKeyConfigured()
+  const hiddenDateRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<FormState>({
     full_name: '',
@@ -449,6 +540,23 @@ export function NewClientForm() {
     }
   }
 
+  // R3.7: hidden native date input → calendar popup → reformats to dd-MMM-yyyy
+  function handleHiddenDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const iso = e.target.value
+    if (!iso) return
+    setForm((prev) => ({ ...prev, birth_date: iso, birth_date_display: formatDate(iso) }))
+    setErrors((prev) => ({ ...prev, birth_date: undefined }))
+  }
+
+  function openCalendar(e: React.MouseEvent) {
+    e.preventDefault()
+    try {
+      hiddenDateRef.current?.showPicker()
+    } catch {
+      hiddenDateRef.current?.click()
+    }
+  }
+
   // ── Submit ───────────────────────────────────────────────────────────────
 
   async function submit(action: 'save' | 'build') {
@@ -522,39 +630,109 @@ export function NewClientForm() {
   // ── Render ───────────────────────────────────────────────────────────────
 
   const isInFlight = submitting !== null
-  const nodeCount = form.ayanamshas.length * 28
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-background text-foreground">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-6"
+      style={{
+        background: 'var(--brand-ink)',
+        '--muted-foreground': 'oklch(0.58 0.025 80)',
+      } as React.CSSProperties}
+    >
+      {/* R3.5: global style for gmp-placeautocomplete theming */}
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: PLACES_WIDGET_CSS }} />
 
-      {/* ── Top bar ────────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex items-center justify-between px-6 h-10 border-b border-border">
+      {/* ── R3.1: Icon-only back link on the same line as the title ─────── */}
+      {/* position:relative container lets the icon be absolute-left while
+          the title stays centered in the full row width.                   */}
+      <div
+        data-testid="form-title"
+        className="relative flex items-center justify-center w-full max-w-[720px] mb-5"
+      >
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
-          className="bt-body text-muted-foreground hover:underline"
+          className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-150"
+          style={{ color: 'oklch(0.58 0.025 80)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--brand-gold)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'oklch(0.58 0.025 80)' }}
         >
-          ← Back to dashboard
+          <ChevronLeft size={20} strokeWidth={1.5} />
         </Link>
-        <span className="bt-label bt-label-upper text-muted-foreground">Charts · New</span>
-      </div>
 
-      {/* ── Title ──────────────────────────────────────────────────────── */}
-      <div data-testid="form-title" className="shrink-0 text-center py-3">
-        <h1 className="bt-display text-[#fce29a]">
-          <span className="opacity-55 text-[#d4af37] font-serif mr-1" aria-hidden="true">॥</span>
+        {/* Subtitle removed per R3.1 — title alone carries it */}
+        <h1 className="bt-display text-brand-gold-cream">
+          <span className="opacity-55 text-brand-gold font-serif mr-1" aria-hidden="true">॥</span>
           Nava Jātaka
-          <span className="opacity-55 text-[#d4af37] font-serif ml-1" aria-hidden="true">॥</span>
+          <span className="opacity-55 text-brand-gold font-serif ml-1" aria-hidden="true">॥</span>
         </h1>
-        <p className="bt-body text-muted-foreground mt-0.5">New Chart</p>
       </div>
 
-      {/* ── Two-column form ─────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 px-6 flex flex-col gap-2 overflow-hidden">
-        <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+      {/* ── Card — wider at 680px for single-line ayanamshas (R3.2) ─────── */}
+      <div
+        className="w-full max-w-[680px] rounded-xl flex flex-col gap-4 p-6"
+        style={{
+          background: 'var(--brand-charcoal)',
+          border: '1px solid var(--brand-gold-hairline)',
+        }}
+      >
 
-          {/* Left: Identity + Compute ────────────────────────────────── */}
-          <div className="flex flex-col gap-3 min-h-0">
+        {/* Full name ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="full_name" className="bt-label bt-label-upper text-brand-gold/70">
+            Full name *
+          </Label>
+          <Input
+            id="full_name"
+            type="text"
+            placeholder="e.g. Abhisek Mohanty"
+            value={form.full_name}
+            maxLength={200}
+            aria-required="true"
+            aria-label="Full name"
+            aria-invalid={!!errors.full_name}
+            className={cn(darkInputCls(!!errors.full_name), 'placeholder:text-brand-gold/25')}
+            style={errors.full_name ? wellStyleError : wellStyle}
+            onChange={(e) => setField('full_name', e.target.value)}
+          />
+          {errors.full_name && (
+            <p role="alert" className="bt-label text-destructive">{errors.full_name}</p>
+          )}
+        </div>
+
+        {/* Preferred name + Gender ────────────────────────────────────── */}
+        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 148px' }}>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="preferred_name" className="bt-label bt-label-upper text-brand-gold/70">
+              Preferred name
+            </Label>
+            <Input
+              id="preferred_name"
+              type="text"
+              placeholder="First word of full name"
+              value={form.preferred_name}
+              maxLength={100}
+              className="placeholder:text-brand-gold/25"
+              style={wellStyle}
+              onChange={(e) => setField('preferred_name', e.target.value)}
+            />
+          </div>
+          {/* R3.6: fully themed custom listbox — no OS chrome */}
+          <div className="flex flex-col gap-1">
+            <span className="bt-label bt-label-upper text-brand-gold/70">
+              Gender *
+            </span>
+            <GenderSelect
+              value={form.gender}
+              hasError={!!errors.gender}
+              onChange={(v) => setField('gender', v)}
+            />
+            {errors.gender && (
+              <p role="alert" className="bt-label text-destructive">{errors.gender}</p>
+            )}
+          </div>
+        </div>
 
         {/* Birth place ────────────────────────────────────────────────── */}
         <div className="flex flex-col gap-1">
@@ -591,290 +769,90 @@ export function NewClientForm() {
           {/* R4.3: resolved state is visible in the always-shown coord fields below */}
         </div>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="full_name" className="bt-label bt-label-upper">Full name *</Label>
-                <Input
-                  id="full_name"
-                  type="text"
-                  placeholder="e.g. Abhisek Mohanty"
-                  value={form.full_name}
-                  maxLength={200}
-                  aria-required="true"
-                  aria-label="Full name"
-                  aria-invalid={!!errors.full_name}
-                  className={cn(errors.full_name && 'border-destructive')}
-                  onChange={(e) => setField('full_name', e.target.value)}
-                />
-                {errors.full_name && (
-                  <p role="alert" className="bt-label text-destructive">{errors.full_name}</p>
+        {/* Date + Time ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* R3.7: dd-MMM-yyyy text field + calendar icon → hidden date picker */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="birth_date" className="bt-label bt-label-upper text-brand-gold/70">
+              Date *
+            </Label>
+            <div className="relative flex items-center">
+              <Input
+                id="birth_date"
+                type="text"
+                placeholder="05-Feb-1984"
+                value={form.birth_date_display}
+                aria-required="true"
+                aria-label="Birth date in DD-MMM-YYYY format"
+                aria-invalid={!!errors.birth_date}
+                className={cn(
+                  darkInputCls(!!errors.birth_date),
+                  'pr-8 placeholder:text-brand-gold/25',
                 )}
-              </div>
-
-              <div className="grid gap-2.5" style={{ gridTemplateColumns: '1fr 152px' }}>
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="preferred_name" className="bt-label bt-label-upper">
-                    Preferred name
-                  </Label>
-                  <Input
-                    id="preferred_name"
-                    type="text"
-                    placeholder="First word of full name"
-                    value={form.preferred_name}
-                    maxLength={100}
-                    onChange={(e) => setField('preferred_name', e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="gender" className="bt-label bt-label-upper">Gender *</Label>
-                  <select
-                    id="gender"
-                    value={form.gender}
-                    aria-invalid={!!errors.gender}
-                    className={nativeInputCls(!!errors.gender)}
-                    onChange={(e) =>
-                      setField('gender', e.target.value as FormState['gender'])
-                    }
-                  >
-                    <option value="">— select —</option>
-                    <option value="unknown">Prefer not to say</option>
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                    <option value="O">Other</option>
-                  </select>
-                  {errors.gender && (
-                    <p role="alert" className="bt-label text-destructive">{errors.gender}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Gaṇana · Compute */}
-            <div
-              data-testid="section-compute"
-              className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2"
-            >
-              <h3 className="bt-heading text-brand-gold-cream">Gaṇana · Compute</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {AYANAMSHA_OPTIONS.map((opt) => {
-                  const checked = form.ayanamshas.includes(opt.id)
-                  return (
-                    <label
-                      key={opt.id}
-                      className={cn(
-                        'flex flex-col gap-0.5 cursor-pointer rounded-lg border px-2.5 py-2 min-w-[96px]',
-                        'transition-colors duration-150',
-                        checked
-                          ? 'border-brand-gold bg-brand-gold/[0.06]'
-                          : 'border-border hover:border-brand-gold/40',
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={checked}
-                        aria-label={opt.label}
-                        onChange={() => toggleAyanamsha(opt.id)}
-                      />
-                      <span
-                        className={cn(
-                          'text-sm font-medium',
-                          checked ? 'text-brand-gold' : 'text-foreground/80',
-                        )}
-                      >
-                        {opt.label}
-                      </span>
-                      <span className={cn('bt-label', checked ? 'text-brand-gold/60' : '')}>
-                        {opt.sub}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-              {errors.ayanamshas && (
-                <p role="alert" className="bt-label text-destructive">{errors.ayanamshas}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Birth ────────────────────────────────────────────── */}
-          <div
-            data-testid="section-birth"
-            className="bg-card rounded-xl border border-border p-3 flex flex-col gap-2.5"
-          >
-            <h3 className="bt-heading text-brand-gold-cream">Janma Sthāna · Birth</h3>
-
-            {/* Birth place */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="birth_place" className="bt-label bt-label-upper">
-                Birth place *
-              </Label>
-              {googleMapsConfigured ? (
-                <PlacesAutocompleteInput
-                  value={form.birth_place}
-                  hasError={!!errors.birth_place}
-                  onTextChange={(v) => {
-                    setField('birth_place', v)
-                    if (!v.trim()) setForm((prev) => ({ ...prev, places_resolved: false }))
-                  }}
-                  onBlur={handleBirthPlaceBlur}
-                  onPlaceResolved={(result) => {
-                    const tz = timezoneFromOffset(result.utcOffsetMinutes)
-                    setForm((prev) => ({
-                      ...prev,
-                      birth_place: result.description,
-                      latitude: String(result.lat),
-                      longitude: String(result.lng),
-                      timezone_id: tz.timezone_id,
-                      tz_offset: tz.tz_offset,
-                      places_resolved: true,
-                    }))
-                    setManualOpen(false)
-                    setErrors((prev) => ({
-                      ...prev,
-                      birth_place: undefined,
-                      latitude: undefined,
-                      longitude: undefined,
-                    }))
-                  }}
-                />
-              ) : (
-                <Input
-                  id="birth_place"
-                  type="text"
-                  placeholder="e.g. Bhubaneswar, Odisha, India"
-                  value={form.birth_place}
-                  aria-required="true"
-                  aria-invalid={!!errors.birth_place}
-                  className={cn(errors.birth_place && 'border-destructive')}
-                  onChange={(e) => {
-                    setField('birth_place', e.target.value)
-                    if (!e.target.value.trim())
-                      setForm((prev) => ({ ...prev, places_resolved: false }))
-                  }}
-                  onBlur={handleBirthPlaceBlur}
-                />
-              )}
-              {errors.birth_place && (
-                <p role="alert" className="bt-label text-destructive">{errors.birth_place}</p>
-              )}
-              {form.places_resolved && (
-                <div
-                  data-testid="places-resolved-indicator"
-                  className="bt-label flex items-center gap-1.5"
-                  style={{ color: 'var(--status-success)' }}
-                >
-                  <span>✓</span>
-                  <span>
-                    {form.latitude}, {form.longitude} · {form.timezone_id} · UTC
-                    {parseFloat(form.tz_offset) >= 0 ? '+' : ''}{form.tz_offset}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Date + Time */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_date" className="bt-label bt-label-upper">Date *</Label>
-                <Input
-                  id="birth_date"
-                  type="text"
-                  placeholder="05-Feb-1984"
-                  value={form.birth_date_display}
-                  aria-required="true"
-                  aria-label="Birth date in DD-MMM-YYYY format"
-                  aria-invalid={!!errors.birth_date}
-                  className={cn(errors.birth_date && 'border-destructive')}
-                  onChange={(e) => handleDateDisplayChange(e.target.value)}
-                  onBlur={handleDateBlur}
-                />
-                {errors.birth_date && (
-                  <p role="alert" className="bt-label text-destructive">{errors.birth_date}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="birth_time" className="bt-label bt-label-upper">
-                  Time (24 h) *
-                </Label>
-                <input
-                  id="birth_time"
-                  type="time"
-                  value={form.birth_time}
-                  aria-required="true"
-                  aria-invalid={!!errors.birth_time}
-                  className={nativeInputCls(!!errors.birth_time)}
-                  onChange={(e) => setField('birth_time', e.target.value)}
-                />
-                {errors.birth_time && (
-                  <p role="alert" className="bt-label text-destructive">{errors.birth_time}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Manual coords accordion */}
-            <div
-              data-testid="manual-override-accordion"
-              className="rounded-lg border border-border overflow-hidden"
-            >
+                style={errors.birth_date ? wellStyleError : wellStyle}
+                onChange={(e) => handleDateDisplayChange(e.target.value)}
+                onBlur={handleDateBlur}
+              />
               <button
                 type="button"
-                onClick={() => setManualOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-3 py-2 bt-label text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open date picker"
+                onClick={openCalendar}
+                className="absolute right-2 flex items-center justify-center transition-colors duration-150"
+                style={{ color: 'oklch(0.58 0.025 80)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--brand-gold)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'oklch(0.58 0.025 80)' }}
               >
-                <span>
-                  {form.places_resolved
-                    ? 'Override coordinates'
-                    : 'Manual coordinates · lat / lng / timezone'}
-                </span>
-                <span className="text-[10px]">{manualOpen ? '▲' : '▼'}</span>
+                <CalendarDays size={14} strokeWidth={1.5} />
               </button>
+              {/* Hidden date input: triggers the browser's native calendar (R3.7) */}
+              <input
+                ref={hiddenDateRef}
+                type="date"
+                tabIndex={-1}
+                aria-hidden="true"
+                value={form.birth_date}
+                min="1900-01-01"
+                max={todayIso()}
+                onChange={handleHiddenDateChange}
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: 'none',
+                  colorScheme: 'dark',
+                }}
+              />
+            </div>
+            {errors.birth_date && (
+              <p role="alert" className="bt-label text-destructive">{errors.birth_date}</p>
+            )}
+          </div>
 
-              {manualOpen && (
-                <div className="px-3 pb-3 flex flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col gap-0.5">
-                      <Label htmlFor="latitude" className="bt-label bt-label-upper">
-                        Latitude *
-                      </Label>
-                      <input
-                        id="latitude"
-                        type="number"
-                        step="0.0001"
-                        min={-90}
-                        max={90}
-                        placeholder="20.2961"
-                        value={form.latitude}
-                        aria-required="true"
-                        aria-invalid={!!errors.latitude}
-                        className={nativeInputCls(!!errors.latitude)}
-                        onChange={(e) => setField('latitude', e.target.value)}
-                      />
-                      {errors.latitude && (
-                        <p role="alert" className="bt-label text-destructive">{errors.latitude}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <Label htmlFor="longitude" className="bt-label bt-label-upper">
-                        Longitude *
-                      </Label>
-                      <input
-                        id="longitude"
-                        type="number"
-                        step="0.0001"
-                        min={-180}
-                        max={180}
-                        placeholder="85.8245"
-                        value={form.longitude}
-                        aria-required="true"
-                        aria-invalid={!!errors.longitude}
-                        className={nativeInputCls(!!errors.longitude)}
-                        onChange={(e) => setField('longitude', e.target.value)}
-                      />
-                      {errors.longitude && (
-                        <p role="alert" className="bt-label text-destructive">{errors.longitude}</p>
-                      )}
-                    </div>
-                  </div>
+          {/* R3.8: Time — dark well + colorScheme:dark for native chrome */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="birth_time" className="bt-label bt-label-upper text-brand-gold/70">
+              Time (24 h) *
+            </Label>
+            <input
+              id="birth_time"
+              type="time"
+              value={form.birth_time}
+              aria-required="true"
+              aria-invalid={!!errors.birth_time}
+              className={darkInputCls(!!errors.birth_time)}
+              style={{
+                ...(errors.birth_time ? wellStyleError : wellStyle),
+                colorScheme: 'dark',
+                color: form.birth_time ? 'var(--brand-gold-cream)' : 'oklch(0.58 0.025 80)',
+              }}
+              onChange={(e) => setField('birth_time', e.target.value)}
+            />
+            {errors.birth_time && (
+              <p role="alert" className="bt-label text-destructive">{errors.birth_time}</p>
+            )}
+          </div>
+        </div>
 
         {/* R4.3: Coordinates — always visible; read-only until "Manual override" ── */}
         <div data-testid="manual-override-accordion">
@@ -1018,15 +996,18 @@ export function NewClientForm() {
               )
             })}
           </div>
+          {errors.ayanamshas && (
+            <p role="alert" className="bt-label text-destructive">{errors.ayanamshas}</p>
+          )}
         </div>
 
-        {/* ── API error ──────────────────────────────────────────────────── */}
+        {/* API error ──────────────────────────────────────────────────── */}
         {errors.api && (
           <div
             role="alert"
-            className="shrink-0 rounded-lg border px-4 py-2.5 bt-body"
+            className="rounded-lg border px-4 py-2.5 bt-body"
             style={{
-              borderColor: 'color-mix(in oklch, var(--status-halt) 40%, transparent)',
+              borderColor: 'rgba(184,56,18,0.40)',
               background: 'var(--status-halt-bg)',
               color: 'var(--status-halt)',
             }}
@@ -1034,53 +1015,48 @@ export function NewClientForm() {
             {errors.api}
           </div>
         )}
-      </div>
 
-      {/* ── Footer: microcopy + 3 buttons ──────────────────────────────── */}
-      <div
-        data-testid="form-footer"
-        className="shrink-0 border-t border-border px-6 h-14 flex items-center justify-between"
-      >
-        <span data-testid="footer-microcopy" className="bt-mono bt-label text-muted-foreground">
-          {form.ayanamshas.length} ayanamshas × 28 assets = {nodeCount} nodes
-        </span>
-
-        <div className="flex items-center gap-2">
-          {/* Cancel */}
+        {/* R3.3: Footer — 3 buttons only; microcopy removed ──────────── */}
+        <div
+          data-testid="form-footer"
+          className="flex items-center justify-end gap-2 pt-3"
+          style={{ borderTop: '1px solid var(--brand-gold-hairline)' }}
+        >
           <button
             type="button"
             disabled={isInFlight}
             onClick={() => router.push('/dashboard')}
-            className="bt-body text-muted-foreground hover:text-foreground px-4 h-9 rounded-md transition-colors disabled:opacity-50"
+            className="bt-body text-muted-foreground hover:text-brand-gold-cream px-3 h-8 rounded-md transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
 
-          {/* Save chart — gold hairline outline */}
           <button
             type="button"
             disabled={isInFlight}
             onClick={() => submit('save')}
             aria-busy={submitting === 'save'}
             className={cn(
-              'bt-body h-9 rounded-md border px-4 transition-colors',
-              isInFlight && submitting !== 'save'
-                ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
-                : 'border-brand-gold/50 text-brand-gold hover:bg-brand-gold/[0.05]',
+              'bt-body h-8 rounded-md border px-3 transition-colors',
+              isInFlight && submitting !== 'save' && 'opacity-40 cursor-not-allowed',
               submitting === 'save' && 'opacity-70',
             )}
+            style={{
+              borderColor: 'var(--brand-gold)',
+              color: 'var(--brand-gold)',
+              background: 'transparent',
+            }}
           >
             {submitting === 'save' ? 'Saving…' : 'Save chart'}
           </button>
 
-          {/* Build chart — primary brand-cta */}
           <button
             type="button"
             disabled={isInFlight}
             onClick={() => submit('build')}
             aria-busy={submitting === 'build'}
             className={cn(
-              'brand-cta h-9 rounded-lg px-5 text-sm',
+              'brand-cta h-8 rounded-lg px-4 text-sm',
               isInFlight && submitting !== 'build' && 'opacity-40 cursor-not-allowed',
               submitting === 'build' && 'opacity-70',
             )}

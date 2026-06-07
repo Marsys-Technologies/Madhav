@@ -109,7 +109,7 @@ describe('buildPlacesHandler — key present', () => {
   })
 
   it('calls onResult with correct lat + lng from place result', () => {
-    const onResult = vi.fn<[PlacesResult], void>()
+    const onResult = vi.fn<(r: PlacesResult) => void>()
     const { onPlaceSelected } = buildPlacesHandler(onResult)
     onPlaceSelected(makePlaceResult())
     expect(onResult).toHaveBeenCalledOnce()
@@ -119,28 +119,28 @@ describe('buildPlacesHandler — key present', () => {
   })
 
   it('passes formatted_address as description', () => {
-    const onResult = vi.fn<[PlacesResult], void>()
+    const onResult = vi.fn<(r: PlacesResult) => void>()
     const { onPlaceSelected } = buildPlacesHandler(onResult)
     onPlaceSelected(makePlaceResult({ formatted_address: 'Bhubaneswar, Odisha, India' }))
     expect(onResult.mock.calls[0][0].description).toBe('Bhubaneswar, Odisha, India')
   })
 
   it('falls back to name when formatted_address is absent', () => {
-    const onResult = vi.fn<[PlacesResult], void>()
+    const onResult = vi.fn<(r: PlacesResult) => void>()
     const { onPlaceSelected } = buildPlacesHandler(onResult)
     onPlaceSelected(makePlaceResult({ formatted_address: undefined, name: 'Bhubaneswar' }))
     expect(onResult.mock.calls[0][0].description).toBe('Bhubaneswar')
   })
 
   it('passes utcOffsetMinutes correctly', () => {
-    const onResult = vi.fn<[PlacesResult], void>()
+    const onResult = vi.fn<(r: PlacesResult) => void>()
     const { onPlaceSelected } = buildPlacesHandler(onResult)
     onPlaceSelected(makePlaceResult({ utc_offset_minutes: 330 }))
     expect(onResult.mock.calls[0][0].utcOffsetMinutes).toBe(330)
   })
 
   it('sets utcOffsetMinutes to null when absent from place result', () => {
-    const onResult = vi.fn<[PlacesResult], void>()
+    const onResult = vi.fn<(r: PlacesResult) => void>()
     const { onPlaceSelected } = buildPlacesHandler(onResult)
     onPlaceSelected(makePlaceResult({ utc_offset_minutes: undefined }))
     expect(onResult.mock.calls[0][0].utcOffsetMinutes).toBeNull()
