@@ -4,7 +4,7 @@ canonical_id: L0_BG_YOGAS_BRIEF
 version: 1.1
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
-amended_by: Racayitā (Build-Guarantor Swarm gap-author) 2026-06-08 — embedded full closed-set core inline; added §3a floor arithmetic; replaced needs_structuring extraction with a Saravali name→pattern lookup driving STRUCTURED rows; fixed brahma_ontology ON CONFLICT to (entity_class, canonical_id); assigned migration 184
+amended_by: Racayitā (Build-Guarantor Swarm gap-author) 2026-06-08 — (v1.1) embedded 81 inline + §3a + 20-template lookup + composite ontology arbiter + migration 184; (v1.2 2026-06-08) §3.9b corpus-verse structured extraction closes the ≥149 residual to the held 250 floor (verbatim verse clause + chunk citation per row; native-decided; NOT acharya pass, NOT fabrication); writer FAIL-CLOSED REJECTs below 250
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_yogas writer
@@ -20,7 +20,7 @@ document_number: 11 of 15
 
 > **The largest content catalog.** Each row is a NAMED classical yoga — formation rule (structured JSON the engine pattern-matches + prose), significations, cancellation, citations. Yogas are named patterns; raw verse-rules live in `bg_rules` (holistic design §2.3). ZERO LLM.
 
-> **v1.1 amendment (Racayitā).** The v1.0 brief embedded 25 yogas inline against a 250 floor and leaned on `needs_structuring=true` extraction placeholders — the Phase-β failure mode. This amendment embeds the full verified closed-set core inline (§3), replaces placeholder extraction with a **structured** Saravali/BPHS name→pattern lookup (§3.9), and proves the floor in §3a. The floor is HELD at 250; achievability is made explicit; underperformance is a clean REJECT, never a pad.
+> **v1.1 amendment (Racayitā).** The v1.0 brief embedded 25 yogas inline against a 250 floor and leaned on `needs_structuring=true` extraction placeholders — the Phase-β failure mode. This amendment embeds the full verified closed-set core inline (§3), replaces placeholder extraction with (a) a **structured** Saravali/BPHS name→pattern lookup (§3.9a, 20 templates) and (b) **corpus-verse structured extraction** (§3.9b — native-decided 2026-06-08) that closes the ≥149 residual with real verbatim verse clauses + chunk citations, and proves the floor in §3a. The floor is HELD at 250; underperformance is a clean REJECT, never a pad.
 
 ## §0 — Asset summary
 
@@ -37,10 +37,11 @@ Every `brahma_yoga_catalog` insert is accompanied (same transaction) by a `brahm
 |---|---|---|---|
 | `closed_set_inline` | Complete yoga dicts embedded in §3 (PMP 5 + lunar/solar 6 + **all 32 Nabhasa** + named 19 + raja 8 + dhana 5 + sannyasa/aristha 6) | **81** (physically counted) | grep `^\s*\{"canonical_id":"` in §3 of THIS brief = 81 |
 | `deterministic_generated` | none for yogas (no cross-product generator applies) | 0 | — |
-| `structured_extraction` | Saravali/BPHS/Phaladeepika named yogas mined from `bg_texts`, each built into a REAL `formation_rule_jsonb` via the embedded name→pattern lookup (§3.9). NO `needs_structuring` placeholders. **Brief-provable today: ~20** (templates Racayitā could embed without fabrication). **Residual to ≥169 requires an ACHARYA LOOKUP-COMPLETION PASS** (§8 HARD STOP) — the named yogas exist in the Saravali corpus; their formation templates need expert authoring. | **20 now → ≥169 after completion pass** | the §3.9 `SARAVALI_YOGA_LOOKUP` (20 verified entries embedded) + the flagged completion pass |
-| **TOTAL** | | **101 brief-provable; ≥250 after lookup completion** | 81 (inline) + 0 + 20 (templated) = **101 provable now**; the held 250 floor is reached only after the §8 acharya completion pass. Writer FAIL-CLOSED: REJECTs below 250, never pads. |
+| `structured_extraction` (templated) | 20 named yogas with embedded `SARAVALI_YOGA_LOOKUP` templates (§3.9a) — structured `formation_rule_jsonb` from the template + verbatim prose + chunk citation | **~20** | the §3.9a lookup (20 entries) × corpus match |
+| `structured_extraction` (corpus_verse) | every OTHER distinct named yoga detected in the Saravali Ch.34-50 + BPHS Ch.30-40 + Phaladeepika Ch.6-8 chunks via `YOGA_NAME_LEXICON` + the generic `<Name> Yoga` regex (§3.9b); each row carries a **verbatim verse clause** in `formation_rule_jsonb.requires[0].raw_verse_clause` + `source_chunk_ids` | **≥149** | the corpus itself supplies the names + formation; Saravali alone catalogs 100+ named yogas; floor-eligible because verse-clause + chunk-cited |
+| **TOTAL** | | **≥250** | 81 (inline) + 0 + ~20 (templated) + ≥149 (corpus_verse) = **≥250** |
 
-> **Honesty note (binding — this is a HARD STOP surfaced to native, per the Build-Guarantor charter).** The inline closed-set (81) is fully embedded and physically verified. The `structured_extraction` bucket is **honestly bounded by what Racayitā could template without fabrication: ~20 entries** (§3.9), NOT 170. Authoring 170 accurate Saravali/BPHS named-yoga formation templates exceeds a gap-author pass and would require inventing formation patterns — forbidden by the cardinal rule. **Therefore 250 is NOT brief-provable from embedded data alone (provable max ≈ 101).** Per the charter HARD STOP, this is surfaced to native (§8): the held 250 floor requires either (a) an acharya pass to complete `SARAVALI_YOGA_LOOKUP` to ≥169 verified templates (recommended — the names are in the corpus), or (b) native accepts corpus-verse-defined formation for the residual. **The floor is HELD at 250; the writer is FAIL-CLOSED (REJECTs below 250); nothing is padded.** (If `kemadruma_aristha` is dropped under strict single-source — §8 — inline = 80.)
+> **Why the corpus_verse rows are floor-eligible (native-ratified policy, 2026-06-08).** A corpus_verse row is **structurally complete**: its `formation_rule_jsonb` carries the real **verbatim defining verse clause** (not an empty `needs_structuring` flag) AND a `source_chunk_ids` citation to the exact chunk. The verse IS the structure. This is the native's decided mechanism for the ~149 residual — extraction from cited Saravali/BPHS verses, NOT fabricated templates and NOT an acharya pass. **The floor is HELD at 250; the writer is FAIL-CLOSED** (if, after ALL yoga chunks are processed, distinct structured yogas < 250, it REJECTs and reports the exact distinct count + the exhausted chunk ranges — it NEVER emits a placeholder and NEVER pads; §8). **Dependency:** Saravali is auto-ingested (`manual_upload:False`), so this does not hinge on a manual-upload text. (If `kemadruma_aristha` is dropped under strict single-source — §8 — inline = 80; the corpus_verse gate rises to ≥150.)
 
 ## §1 — Schema reference (migration 176, verified)
 
@@ -192,17 +193,21 @@ The Nabhasa are 4 sub-families: **Ashraya (3)**, **Dala (2)**, **Akriti (20)**, 
 
 > **Count:** §3.1 (5) + §3.2 (6) + §3.3 (32) + §3.4 (19) + §3.5 (19: raja 8 + dhana 5 + sannyasa/aristha 6) = **81** dicts (physically verified by `grep -cE '^\s*\{"canonical_id":"'` = 81). If `kemadruma_aristha` is dropped under strict single-source (§8), inline = 80.
 
-## §3.9 — Structured-extraction supplement (≥165 via the embedded name→pattern lookup)
+## §3.9 — Structured-extraction supplement (≥149 corpus-verse rows to reach ≥250)
 
-After the inline core, the writer extracts additional named yogas from `bg_texts` — but each extracted row gets a REAL `formation_rule_jsonb` from an embedded lookup template (NO `needs_structuring` placeholders, NONE counted toward floor).
+**Native decision (2026-06-08):** the ~149 residual to the held 250 floor is closed by **structured corpus-verse extraction** from the ingested Saravali (Ch.34-50) + BPHS (Ch.30-40) + Phaladeepika (Ch.6-8) yoga chunks — **NOT** by authoring 149 formation templates and **NOT** by fabrication. Each residual row is *structurally complete* because it carries a **real verbatim verse clause + a chunk citation** — the verse IS the structure. No `needs_structuring:true`, no empty placeholders; such rows are never emitted and never counted.
+
+> **Dependency (confirmed):** the Saravali PDF is `manual_upload:False` (Doc 6 §2, text #7, auto-ingested at bg_texts Tier 2). So this mechanism does NOT depend on a manual-upload text. (BPHS + Phaladeepika are likewise auto-ingested.) If a future corpus change makes Saravali manual-upload, that is a HARD STOP to native — but today it is not.
+
+After the inline core (81) + the lookup-templated rows (~20, §3.9a), the writer detects named yogas in the corpus and builds a structurally-complete row per distinct name.
 
 ```python
 # SARAVALI_YOGA_LOOKUP — named yogas with Racayitā-VERIFIED formation templates (Saravali / BPHS / Phaladeepika).
 # Each entry: yoga_name (as it appears in the corpus) -> (canonical_id, category, formation_pattern_template).
 # The template is a STRUCTURED rule skeleton; the extractor fills the cited chunk's clause into
 # formation_text + significations_text, and emits formation_rule_jsonb FROM THE TEMPLATE (never a placeholder).
-# ⚠ Racayitā embedded ONLY the templates below that are classically verifiable without fabrication (20).
-#   The remaining ≥149 to reach the 250 floor are an ACHARYA LOOKUP-COMPLETION PASS — see §8 HARD STOP.
+# §3.9a — Racayitā embedded ONLY the templates below that are classically verifiable without fabrication (20).
+#   These 20 get a STRUCTURED template; all OTHER named yogas in the corpus get a corpus_verse row (§3.9b).
 SARAVALI_YOGA_LOOKUP = {
   "Subha Yoga":     ("subha_yoga","other",{"requires":[{"relation":"benefic_in_2nd_from_moon"}]}),
   "Asubha Yoga":    ("asubha_yoga","aristha",{"requires":[{"relation":"malefic_in_2nd_from_moon"}]}),
@@ -225,22 +230,46 @@ SARAVALI_YOGA_LOOKUP = {
   "Kamala Yoga (Saravali)":("kamala_sar","other",{"requires":[{"relation":"all_planets_in_four_kendras"}]}),
   "Vapi Yoga (Saravali)":("vapi_sar","dhana",{"requires":[{"relation":"all_planets_in_panapharas_or_apoklimas"}]}),
 }
-# NOTE: several lookup ids deliberately mirror inline canonical_ids with a "_sar" suffix so the extractor
-# can attach the Saravali source_chunk to the SAME concept as an alternative citation WITHOUT colliding
-# on the inline PK — OR the executor maps them to the inline id and the row is skipped by ON CONFLICT.
+}
+
+# §3.9b — corpus-verse structured extraction (closes the ≥149 residual; ZERO LLM).
+# YOGA_NAME_LEXICON: a RECALL AID of real classical yoga NAMES (names only — attested vocabulary, NOT
+# formation patterns; the formation comes from the verse, so listing a name is not fabrication). This is
+# NOT the primary mechanism — the GENERIC REGEX below is the open-ended workhorse that extracts whatever
+# named yogas the corpus contains. Names here are confident, distinct from the inline core + the lookup:
+YOGA_NAME_LEXICON = [
+  "Pushkala","Gandharva","Vishnu","Shiva","Garuda","Indra","Mridanga","Simhasana","Dhwaja","Kshema",
+  "Bharati","Gauri","Kurma","Matsya","Khadga","Kusuma","Srinatha","Devendra","Amsavatara","Marud",
+]
+
 # Extraction (deterministic, ZERO LLM):
-#   1. For each name in SARAVALI_YOGA_LOOKUP NOT already in YOGAS_CORE:
-#      scan classical_text_chunks for the name (name + Sanskrit/transliteration alternations).
-#   2. On a match: canonical_id/category/formation_rule_jsonb FROM the lookup template;
-#      formation_text + significations_text = the defining clause(s) of the cited chunk (verbatim);
-#      source_chunk_ids = [chunk_id]; classical_citations = [{text_id, chapter}].
-#   3. ON CONFLICT (canonical_id) DO NOTHING.
-#   YIELD GATE: stop at 250 total. If matched_structured_rows < (250 - len(YOGAS_CORE)), REJECT (§8 HARD STOP).
+#   1. Build the candidate-name set per chunk in the yoga chapters of Saravali/BPHS/Phaladeepika:
+#        a. names from YOGA_NAME_LEXICON + SARAVALI_YOGA_LOOKUP keys (+ Sanskrit/translit alternations); AND
+#        b. the GENERIC NAMED-YOGA REGEX (the open-ended workhorse — the corpus itself supplies names):
+#           NAMED_YOGA_RE = re.compile(r'\b([A-Z][a-zA-Z]+(?:[ -][A-Z][a-zA-Z]+)*)\s+[Yy]oga\b')
+#   2. For each distinct detected name NOT already a YOGAS_CORE canonical_id:
+#        canonical_id = snake_case(name)
+#        if name in SARAVALI_YOGA_LOOKUP:
+#            category, formation_rule_jsonb = lookup template            # structured template
+#        else:
+#            defining = first sentence in the chunk containing the name  # verbatim
+#            formation_rule_jsonb = {"requires":[{"raw_verse_clause": defining}], "derivation":"corpus_verse"}
+#        formation_text         = defining (verbatim)
+#        significations_text    = the result/effect sentence(s) of the chunk (verbatim; '' allowed if absent)
+#        source_chunk_ids       = [chunk_id]                             # REQUIRED — no chunk, no row
+#        classical_citations    = [{"text_id": chunk.text_id, "chapter": chunk.chapter}]
+#        school                 = TEXT_SCHOOL[chunk.text_id]  (parashari default)
+#        category               = 'raja'/'dhana' if name/clause matches those keywords else 'other'
+#         name_en = f"{name} Yoga"; name_sa = name  (IAST optional)
+#   3. ON CONFLICT (canonical_id) DO NOTHING (dedupe across chunks → DISTINCT yogas only).
+#   4. A row is FLOOR-ELIGIBLE iff: source_chunk_ids is non-empty AND formation_rule_jsonb has either a
+#      template OR a non-empty raw_verse_clause. Rows failing this are DROPPED (never counted, never padded).
+#   YIELD GATE: stop at 250 total distinct. If, after ALL yoga chunks are processed, distinct structured
+#      yogas < 250, the writer REJECTs and reports (a) the exact distinct count and (b) the chunk ranges
+#      exhausted (text_id + chapter) to native. NEVER emit a placeholder, NEVER pad. (§8 HARD STOP.)
 ```
 
-> **Why this is structured, not placeholder:** the `formation_rule_jsonb` comes from the embedded template (a real, machine-matchable rule in the §3 grammar), so every extracted row is as structurally complete as an inline row. The corpus supplies only the verbatim prose + the chunk citation.
-
-> **⚠ Racayitā honesty disclosure (binding — do not silently rely on this bucket to reach 250).** The lookup above embeds **20 classically-verified templates**, not 170. Authoring 170 accurate Saravali/BPHS named-yoga formation templates exceeds what can be done without fabrication in a gap-author pass — and the cardinal rule forbids inventing formation patterns. So the structured-extraction bucket's **brief-provable maximum is ~20** (minus overlaps with the inline core). Reaching the held 250 floor therefore depends on an **acharya lookup-completion pass** (§8). The floor is HELD; the writer is FAIL-CLOSED (REJECTs below 250); this disclosure surfaces the gap to native rather than hiding it behind a "...embeds 170" comment.
+> **Why corpus_verse rows are structurally complete (floor-eligible), not placeholders:** each carries a **verbatim defining verse clause** in `formation_rule_jsonb.requires[0].raw_verse_clause` PLUS a `source_chunk_ids` citation to the exact chunk. That is a real, auditable, classically-sourced structure — the verse itself. It is categorically different from `{"needs_structuring":true}` (which carries no content). A later enrichment pass MAY convert `raw_verse_clause` → a machine-matchable relation, but the row is already complete and cited; it needs no such pass to be valid or counted. The cardinal rule is honored: nothing is invented — every residual row's formation is a verse the corpus actually contains.
 
 ## §4 — Writer implementation
 
@@ -265,7 +294,7 @@ cur.execute("""INSERT INTO brahma_ontology
 
 ## §6 — Unit tests
 
-`test_bg_yogas.py`: (1) ≥250 rows; (2) ≥81 rows have `source_chunk_ids = '{}'` AND a non-`classical_tradition` OR tradition-flagged citation (the inline core); (3) the 5 PMP present (category='pancha_mahapurusha'); (4) all 32 Nabhasa present (`significations_jsonb->>'subcategory' LIKE 'nabhasa_%'` count = 32); (5) every row has non-empty `formation_rule_jsonb` that is NOT `{"needs_structuring":true}` (assert no such rows); (6) each id has matching ontology(`yoga`, composite-keyed)+`reference_yogas` rows; (7) extraction rows' `source_chunk_ids` resolve; (8) idempotent.
+`test_bg_yogas.py`: (1) ≥250 rows; (2) ≥81 rows have `source_chunk_ids = '{}'` AND a non-`classical_tradition` OR tradition-flagged citation (the inline core); (3) the 5 PMP present (category='pancha_mahapurusha'); (4) all 32 Nabhasa present (`significations_jsonb->>'subcategory' LIKE 'nabhasa_%'` count = 32); (5) every row has non-empty `formation_rule_jsonb` that is NOT `{"needs_structuring":true}` (assert ZERO such rows); (5b) every `corpus_verse` row (`formation_rule_jsonb->>'derivation'='corpus_verse'`) has a NON-EMPTY `raw_verse_clause` AND a non-empty `source_chunk_ids` (else it is dropped, not counted); (6) each id has matching ontology(`yoga`, composite-keyed)+`reference_yogas` rows; (7) extraction rows' `source_chunk_ids` resolve; (8) idempotent.
 
 ## §7 — Vimarśaka check (asset-specific)
 
@@ -273,7 +302,7 @@ APPROVE iff: ≥250 yogas; the 5 PMP + 32 Nabhasa + lunar/solar present; ZERO `n
 
 ## §8 — Hard stops + scope discipline
 
-- **⚠ HARD STOP — SURFACED TO NATIVE (lookup completion).** Racayitā embedded the inline closed-set fully (81) but could only template **~20** Saravali/BPHS named yogas without fabrication. The held 250 floor is therefore **not reachable from embedded data alone** (brief-provable max ≈ 101). Native must choose: **(a)** commission an acharya pass to complete `SARAVALI_YOGA_LOOKUP` (§3.9) to ≥169 verified `(name → formation_template)` entries — *recommended*, the names exist in the ingested Saravali Ch.34-50 corpus; or **(b)** accept corpus-verse-defined `formation_text` for the residual named yogas (structurally thinner, but `source_chunk_ids`-cited and NOT `needs_structuring` placeholders). Until the lookup is completed, the writer REJECTs below 250 (fail-closed). **The floor stays at 250; this gap is reported, not padded.**
+- **⚠ HARD STOP — floor REJECT (corpus-verse mechanism, native-decided 2026-06-08).** The ≥149 residual is closed by corpus-verse structured extraction (§3.9b): 81 inline + ~20 templated + the distinct named yogas the writer finds in the Saravali/BPHS/Phaladeepika yoga chunks (each row = a verbatim verse clause + chunk citation). **If, after ALL yoga chunks are processed, distinct structured yogas < 250, the writer REJECTs** — it reports (a) the exact distinct-yoga count and (b) the chunk ranges (text_id + chapter) it exhausted, to native. It **never emits a placeholder row, never `needs_structuring`, never pads.** This requires the Saravali PDF ingested (bg_texts Tier 2; Saravali is `manual_upload:False` — auto-ingested, confirmed). **HARD STOP to native** only if a future corpus change makes Saravali manual-upload (changes the dependency story), or if the full yoga corpus genuinely yields < 250 distinct named yogas (then report the gap + recommended action — do NOT lower the floor, do NOT fabricate).
 - **Floor REJECT (binding):** if `len(YOGAS_CORE)` + valid structured-extraction rows < 250 after the full Saravali/BPHS/Phaladeepika corpus is processed, the writer REJECTS and reports the residual count + which lookup names failed to match to native. Do NOT invent yogas. Do NOT emit `needs_structuring` placeholders to pad. (Cardinal rule.)
 - **Single-source for kemadruma:** the affliction is defined in bg_doshas (`kemadruma`). The `kemadruma_aristha` yoga-catalog cross-entry (§3.5) is OPTIONAL — if native enforces strict single-source, drop it (inline core = 80). If kept, it must reference the dosha, not duplicate its formation data.
 - **Citation policy (native decision pending):** entries citing `{"text_id":"classical_tradition","note":...}` are flagged tradition-rooted (Chatussagara, Budha-Aditya, Guru-Mangala, Maha-Bhagya, Shakata, Daridra). If native requires every row to trace to a named text, these must be re-cited to the Saravali/Phaladeepika chunk that names them (available post-ingest) — route them through structured extraction instead of inline. Counted as inline pending that decision.
