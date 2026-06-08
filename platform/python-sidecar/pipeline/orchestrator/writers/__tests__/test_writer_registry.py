@@ -24,14 +24,16 @@ def _mock_conn_cur():
 # ── Writer registry ───────────────────────────────────────────────────────────
 
 def test_register_and_get_writer():
-    from pipeline.orchestrator.writers import WRITER_REGISTRY, register, get_writer
+    from pipeline.orchestrator.writers import WRITER_REGISTRY, register, get_writer, WriterBase, WriterResult
 
     @register("fixture.asset_a")
-    def _writer(chart_id, conn):
-        return 42
+    class _Writer(WriterBase):
+        asset_id = "fixture.asset_a"
+        def run(self, ctx):
+            return WriterResult(asset_id=self.asset_id, rows_inserted=42)
 
-    assert get_writer("fixture.asset_a") is _writer
-    assert WRITER_REGISTRY["fixture.asset_a"] is _writer
+    assert get_writer("fixture.asset_a") is _Writer
+    assert WRITER_REGISTRY["fixture.asset_a"] is _Writer
 
 
 def test_get_writer_missing_returns_none():
@@ -42,13 +44,15 @@ def test_get_writer_missing_returns_none():
 # ── run_asset — success path ──────────────────────────────────────────────────
 
 def test_run_asset_success_transitions():
-    """Writer returning rows → asset_throughput goes to 'lit'."""
-    from pipeline.orchestrator.writers import WRITER_REGISTRY, register
+    """Writer returning WriterResult(rows_inserted=7) → asset_throughput goes to 'lit'."""
+    from pipeline.orchestrator.writers import register, WriterBase, WriterResult
     from pipeline.orchestrator import asset_runner
 
     @register("fixture.success")
-    def _writer(chart_id, conn):
-        return 7
+    class _Writer(WriterBase):
+        asset_id = "fixture.success"
+        def run(self, ctx):
+            return WriterResult(asset_id=self.asset_id, rows_inserted=7)
 
     conn, cur = _mock_conn_cur()
     cur.fetchall.return_value = []  # no downstream assets
@@ -75,12 +79,14 @@ def test_run_asset_success_transitions():
 
 def test_run_asset_writer_error_marks_error_state():
     """Writer raising → asset goes to 'error'; function returns (doesn't re-raise)."""
-    from pipeline.orchestrator.writers import register
+    from pipeline.orchestrator.writers import register, WriterBase, WriterResult
     from pipeline.orchestrator import asset_runner
 
     @register("fixture.crashing")
-    def _bad_writer(chart_id, conn):
-        raise RuntimeError("intentional crash")
+    class _BadWriter(WriterBase):
+        asset_id = "fixture.crashing"
+        def run(self, ctx):
+            raise RuntimeError("intentional crash")
 
     conn, cur = _mock_conn_cur()
 

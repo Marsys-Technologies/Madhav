@@ -346,19 +346,26 @@ def resolve(term: str) -> dict | None:
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
 
-def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False) -> dict:
+def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
+                  autocommit: bool = True) -> dict:
     """
     Seed brahma_ontology with all entities.
-    Returns {total: int, by_class: dict}.
+    Returns {total: int, inserted: int, skipped: int, by_class: dict}.
+
+    autocommit=True  — legacy behaviour; function commits before returning.
+    autocommit=False — caller owns the transaction; function does NOT commit.
+                       Use this when the caller (e.g. a writer) manages the boundary.
     """
     if dry_run:
         by_class: dict[str, int] = {}
         for e in ENTITIES:
             by_class[e["entity_class"]] = by_class.get(e["entity_class"], 0) + 1
-        return {"total": len(ENTITIES), "by_class": by_class}
+        return {"total": len(ENTITIES), "inserted": len(ENTITIES), "skipped": 0,
+                "by_class": by_class}
 
     now = datetime.now(timezone.utc)
     inserted = 0
+    skipped = 0
 
     with conn.cursor() as cur:
         for e in ENTITIES:
@@ -367,25 +374,28 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False) -> d
                   (entity_class, canonical_id, canonical_name_en, canonical_name_sa,
                    synonyms, description, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (entity_class, canonical_id) DO UPDATE SET
-                  synonyms = EXCLUDED.synonyms,
-                  description = EXCLUDED.description,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (entity_class, canonical_id) DO NOTHING
             """, (
                 e["entity_class"], e["canonical_id"],
                 e["canonical_name_en"], e.get("canonical_name_sa"),
                 e["synonyms"], e.get("description"),
                 e["source_citation"], now,
             ))
-            inserted += 1
+            if cur.rowcount > 0:
+                inserted += 1
+            else:
+                skipped += 1
 
-    conn.commit()
+    if autocommit:
+        conn.commit()
+
     by_class: dict[str, int] = {}
     for e in ENTITIES:
         by_class[e["entity_class"]] = by_class.get(e["entity_class"], 0) + 1
 
-    logger.info("[L0/ontology] brahma_ontology: %d entities upserted", inserted)
-    return {"total": inserted, "by_class": by_class}
+    logger.info("[L0/ontology] brahma_ontology: %d inserted, %d skipped", inserted, skipped)
+    return {"total": inserted + skipped, "inserted": inserted, "skipped": skipped,
+            "by_class": by_class}
 
 
 def check_volume(conn) -> dict:
