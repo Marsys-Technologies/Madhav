@@ -17,7 +17,7 @@ import { parseMsrFile, computeReport, isGrounded } from '@/lib/icr/l1_truth_inde
  *
  * Grounded signals (L1 citations present):
  *   SIG.MSR.001 — references FORENSIC §2.1
- *   SIG.MSR.002 — references FORENSIC_ASTROLOGICAL_DATA_v8_0
+ *   SIG.MSR.002 — references FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
  *   SIG.MSR.003 — references LIFE_EVENT_LOG
  *   SIG.MSR.004 — references LEL (word-bounded)
  *   SIG.MSR.005 — references EVT.2023
@@ -49,7 +49,7 @@ SIG.MSR.002:
   signal_name: "Test Signal B — FORENSIC_ASTROLOGICAL_DATA grounded"
   classical_source: "BPHS Ch.2"
   supporting_rules:
-    - Data pulled from FORENSIC_ASTROLOGICAL_DATA_v8_0 §3.1
+    - Data pulled from FORENSIC v8.0 §3.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
   falsifier: "No canonical source => ungrounded"
   confidence: 0.85
 

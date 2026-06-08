@@ -142,4 +142,4 @@ for the read site.
 - [00_ARCHITECTURE/EVAL/](../../../00_ARCHITECTURE/EVAL/) — committed run results
 - [BRIEFS/CLAUDECODE_BRIEF_M2_F3_EVAL_HARNESS.md](../../../00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_M2_F3_EVAL_HARNESS.md) — authoring brief
 - [025_HOLISTIC_SYNTHESIS/MSR_v3_0.md](../../../025_HOLISTIC_SYNTHESIS/MSR_v3_0.md) — signal reference
-- [01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md](../../../01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md) — fact reference
+- [99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md](../../../99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) — fact reference (FORENSIC v8.0 archived; live source = chart_facts via forensic_render)

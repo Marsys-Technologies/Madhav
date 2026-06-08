@@ -66,9 +66,9 @@ function makeRaw(overrides: Partial<{
     source_section: '§1.1',
     build_id: BUILD_ID,
     provenance: {
-      source_uri: 'gs://madhav-marsys-sources/L1/facts/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
+      source_uri: 'gs://madhav-marsys-sources/99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md',
       source_version: '8.0',
-      source_canonical_id: 'FORENSIC_ASTROLOGICAL_DATA_v8_0',
+      source_canonical_id: 'FORENSIC',
       extracted_at: '2026-05-01T00:00:00Z',
       extraction_method: 'pyjhora_v3',
     },

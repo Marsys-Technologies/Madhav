@@ -59,7 +59,7 @@ Native chart state (current):
   Saturn: Pisces (transit, Sade Sati Setting)
 
 Source: Muhurta Chintamani (classical Muhurta text); BPHS Ch.86;
-        FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1 (transit positions);
+        FORENSIC v8.0 §2.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (transit positions);
         Phase 4C panchanga engine (panchanga_daily table reference);
         l3_convergence.py (dasha quality scores).
 Authors: Silpī (WS-2 l4-phala session)
@@ -95,7 +95,7 @@ MAX_HORIZON_DAYS = 180
 SOURCE_CITATION = (
     "Muhurta Chintamani (classical Muhurta text); "
     "BPHS Ch.86 (Dasha-based Muhurta); "
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1; "
+    "FORENSIC v8.0 §2.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); "
     "Phase 4C panchanga engine (panchanga_daily)"
 )
 

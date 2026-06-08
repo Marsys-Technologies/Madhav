@@ -6,7 +6,7 @@ Dasha × transit alignment timeline for the native's lifetime.
 
 For each active dasha period (from ganita.dashas):
   - Lists which major slow transits (Saturn, Jupiter, Rahu/Ketu) overlap that
-    dasha period based on FORENSIC_ASTROLOGICAL_DATA_v8_0 §2 planet positions
+    dasha period based on FORENSIC v8.0 §2 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) planet positions
     and §5.1 Vimshottari Dasha schedule.
   - Computes alignment_score: how many slow transits reinforce the dasha lord's
     themes (benefic transits to benefic lords, malefic pressure during malefic
@@ -37,7 +37,7 @@ VOLUME_FLOOR = 500  # minimum rows the timeline query must return for gate
 NATIVE_CHART_ID = os.environ.get(
     "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
 )
-SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1"
+SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 
 # Native chart FORENSIC anchors (FORENSIC §2.1, Lahiri ayanamsha):
 #   Lagna = Aries (H1), Moon = Aquarius (H11), Sun = Capricorn (H10)

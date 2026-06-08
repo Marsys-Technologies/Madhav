@@ -16,7 +16,7 @@
 -- ============================================================
 
 -- ---------------------------------------------------------------------------
--- rag_chunks — L1 facts from FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+-- rag_chunks — L1 facts from FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 -- Source has 30 H2 + 79 H3 = 109 section boundaries.
 -- Chunker applies MIN_BODY_TOKENS=20 filter — 7 stub/intro sections fall below threshold.
 -- EXPECTED: 102 rows (not 109 — the 7-row gap is correct extractor behavior, not missing data)

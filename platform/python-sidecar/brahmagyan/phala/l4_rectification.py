@@ -38,7 +38,7 @@ Base chart at 10:43 IST:
   Rectification question: Is the Lagna solidly Aries, or could it be early Taurus?
   The ±30 min window spans approximately 10:13-11:13 IST.
 
-Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §1 (birth data), §2.1 (positions);
+Source: FORENSIC v8.0 §1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (birth data), §2.1 (positions);
         LEL_v1_2.md (57 events, v1.7); l4_anchors.py signal grounding.
 Authors: Silpī (WS-2 l4-phala session)
 Version: 1.0 — 2026-06-05
@@ -76,7 +76,7 @@ TRAIN_TEST_CUTOFF = "2020-01-01"
 
 SOURCE_CITATION = (
     "LEL_v1_2.md (57 events, v1.7); "
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §1 (birth data), §2.1 (planetary positions); "
+    "FORENSIC v8.0 §1 (birth data), §2.1 (planetary positions) (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); "
     "l4_anchors.py (signal grounding)"
 )
 

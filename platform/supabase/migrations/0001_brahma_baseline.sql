@@ -2493,7 +2493,7 @@ COMMENT ON COLUMN public.mimamsa_export_log.gcs_path IS 'Full GCS URI: gs://buck
 -- Name: COLUMN mimamsa_export_log.source_citation; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.mimamsa_export_log.source_citation IS 'NON-NULL provenance chain — must cite L1 canonical artifact: FORENSIC_ASTROLOGICAL_DATA_v8_0.md | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
+COMMENT ON COLUMN public.mimamsa_export_log.source_citation IS 'NON-NULL provenance chain — must cite L1 canonical artifact: chart_facts (FORENSIC v8.0, md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
 
 
 --
@@ -2551,7 +2551,7 @@ COMMENT ON COLUMN public.mimamsa_export_log_staging.gcs_path IS 'Full GCS URI: g
 -- Name: COLUMN mimamsa_export_log_staging.source_citation; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.mimamsa_export_log_staging.source_citation IS 'NON-NULL provenance chain — must cite L1 canonical artifact: FORENSIC_ASTROLOGICAL_DATA_v8_0.md | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
+COMMENT ON COLUMN public.mimamsa_export_log_staging.source_citation IS 'NON-NULL provenance chain — must cite L1 canonical artifact: chart_facts (FORENSIC v8.0, md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
 
 
 --

@@ -111,7 +111,7 @@ export interface MultiSchoolResult {
   convergence: ConvergenceScore
 }
 
-// Abhisek Mohanty's natal chart — canonical L1 data (FORENSIC_ASTROLOGICAL_DATA_v8_0.md)
+// Abhisek Mohanty's natal chart — canonical L1 data (FORENSIC v8.0; chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 export const ABHISEK_CHART: ChartData = {
   chartId: 'abhisek_primary',
   chartType: 'natal',

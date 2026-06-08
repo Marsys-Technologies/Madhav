@@ -5,7 +5,8 @@
  * slices written by the ganita.engine JSONL writer. All reads go through
  * query_chart_facts(); the write path is the Python pipeline writers.
  *
- * Domain coverage maps 1-to-1 to FORENSIC_ASTROLOGICAL_DATA_v8_0.md §0–§27.
+ * Domain coverage maps 1-to-1 to FORENSIC v8.0 §0–§27
+ * (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
  *
  * [BRAHMA-GA-1-8]
  */
@@ -13,9 +14,9 @@
 // ─── Provenance envelope (every fact carries this) ────────────────────────────
 
 export interface FactProvenance {
-  source_uri: string        // e.g. 'gs://madhav-marsys-sources/L1/facts/FORENSIC_ASTROLOGICAL_DATA_v8_0.md'
+  source_uri: string        // e.g. 'gs://madhav-marsys-sources/99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md'
   source_version: string    // e.g. '8.0'
-  source_canonical_id: string  // e.g. 'FORENSIC_ASTROLOGICAL_DATA_v8_0'
+  source_canonical_id: string  // e.g. 'FORENSIC'
   extracted_at: string      // ISO-8601
   extraction_method: string // 'pyjhora_v3' | 'manual_v8' | 'computed'
 }

@@ -30,7 +30,7 @@ Overall readiness score:
   0.85-1.0:  HIGHLY FAVORABLE — rare multi-layer convergence; act decisively
 
 Source: All PH-4-x-V2 assets; l3_convergence.py; l3_obstruction.py;
-        FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §22.
+        FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
 Authors: Silpī (WS-2 l4-phala session)
 Version: 1.0 — 2026-06-05
 BRAHMA-PH-4-5-V2
@@ -62,7 +62,7 @@ DEFAULT_HORIZON_DAYS = 90
 SOURCE_CITATION = (
     "PH-4-1-V2 (phala.anchors); PH-4-2-V2 (phala.mitigation); "
     "PH-4-4-V2 (phala.muhurta); l3_convergence.py; l3_obstruction.py; "
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §22"
+    "FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 )
 
 # ── L3 data inline (convergence + obstruction windows for upcoming 90-180 days) ──
@@ -377,7 +377,7 @@ def phala_outlook(
             ],
             "l3_kala_integrated": True,
             "l2_signal_basis": "MSR SIG.* (via anchor signal_basis fields)",
-            "l1_ground_truth": "FORENSIC_ASTROLOGICAL_DATA_v8_0.md",
+            "l1_ground_truth": "FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)",
         },
 
         "provenance_envelope": {

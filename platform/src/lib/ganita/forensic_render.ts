@@ -2,7 +2,8 @@
  * ganita/forensic_render.ts — FORENSIC v8.0-style Markdown renderer
  *
  * Renders a GanitaFactStore into a Markdown document that covers all domains
- * present in FORENSIC_ASTROLOGICAL_DATA_v8_0.md §0–§27. The render is
+ * present in FORENSIC v8.0 §0–§27 (chart_facts via forensic_render;
+ * md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md). The render is
  * deterministic, section-ordered, and suitable for LLM context injection.
  *
  * Coverage requirement: every §N section in FORENSIC v8.0 has a corresponding
@@ -505,7 +506,8 @@ function renderStubSection(sectionNum: string, title: string, reason: string): s
 
 /**
  * render_forensic_document — Renders the full GanitaFactStore as a Markdown
- * document in the style of FORENSIC_ASTROLOGICAL_DATA_v8_0.md.
+ * document in the style of FORENSIC v8.0 (chart_facts via forensic_render;
+ * md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
  *
  * The render covers all §0–§27 sections from FORENSIC v8.0. Sections without
  * data emit placeholder lines to maintain structural completeness.

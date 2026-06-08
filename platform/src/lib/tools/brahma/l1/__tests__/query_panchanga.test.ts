@@ -26,13 +26,13 @@ import {
 } from '../query_panchanga'
 
 // ── FORENSIC reference row (native 1984-02-05, 10:43 IST, Bhubaneswar) ────────
-// Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §Panchanga
+// Source: FORENSIC v8.0 §Panchanga (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 // Phase 4C FORENSIC spot-check PASS 5/5 (2026-05-21):
 //   tithi=Shukla Tritiya, vara=Ravivara, moon_nakshatra=Purva Bhadrapada,
 //   yoga=Shiva, karana=Garaja
 
 // FORENSIC ground truth for native 1984-02-05 10:43 IST Bhubaneswar
-// Authoritative source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §15 Panchanga DNA
+// Authoritative source: FORENSIC v8.0 §15 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) Panchanga DNA
 // Phase 4C FORENSIC spot-check PASS 5/5 (2026-05-21):
 //   tithi=Shukla Tritiya (3), vara=Ravivara (1=Sunday),
 //   nakshatra=Purva Bhadrapada (index=25, 1-based per PyJHora: 1=Ashwini..27=Revati),

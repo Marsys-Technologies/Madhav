@@ -41,12 +41,12 @@ status: CURRENT
 
 \`\`\`yaml
 canonical_id: FORENSIC
-path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+path: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md
 version: "8.0"
 status: CURRENT
 fingerprint_sha256: abc123
 mirror_obligations:
-  claude_side: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+  claude_side: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md
   gemini_side: null
 last_verified_session: STEP_7
 last_verified_on: 2026-04-24
@@ -152,7 +152,7 @@ function makeSampleManifest(entries: ManifestEntry[]): Manifest {
 
 const FORENSIC_ENTRY: ManifestEntry = {
   canonical_id: 'FORENSIC',
-  path: '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
+  path: '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md',
   version: '8',
   status: 'CURRENT',
   layer: 'L1',
@@ -247,7 +247,7 @@ describe('parseCanonicalArtifacts', () => {
   it('extracts canonical_id, path, version, status for each row', () => {
     const forensic = parsed.artifacts.find(a => a.canonical_id === 'FORENSIC')
     expect(forensic).toBeDefined()
-    expect(forensic!.path).toBe('01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md')
+    expect(forensic!.path).toBe('99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md')
     expect(forensic!.version).toBe('8.0')
     expect(forensic!.status).toBe('CURRENT')
   })
@@ -329,7 +329,7 @@ describe('buildManifestIndex', () => {
 
   it('indexes entries by path', () => {
     const { byPath } = buildManifestIndex([FORENSIC_ENTRY, MSR_ENTRY])
-    expect(byPath.get('01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md')).toBe(FORENSIC_ENTRY)
+    expect(byPath.get('99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md')).toBe(FORENSIC_ENTRY)
     expect(byPath.get('025_HOLISTIC_SYNTHESIS/MSR_v3_0.md')).toBe(MSR_ENTRY)
   })
 })

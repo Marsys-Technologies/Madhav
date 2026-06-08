@@ -6,7 +6,8 @@ describe('mergeOverrides', () => {
   it('applies always_required to FORENSIC', async () => {
     const base: AssetEntry[] = [{
       canonical_id: 'FORENSIC',
-      path: '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
+      path: '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md',
+
       version: '8.0',
       status: 'CURRENT',
       layer: 'L1',

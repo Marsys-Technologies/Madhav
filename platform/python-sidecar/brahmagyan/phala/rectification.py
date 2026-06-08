@@ -29,7 +29,7 @@ Native: Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar
 Chart UUID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
 
 Source data:
-  FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 — Vimshottari dasha sequence
+  FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) — Vimshottari dasha sequence
   LIFE_EVENT_LOG_v1_2.md — 57 LEL events with chart_state_at_event
   Train split: events 1–43 (indices 0..42); Test split: events 44–57 (indices 43..56)
 
@@ -80,7 +80,7 @@ SEARCH_WINDOW_MINUTES = 30
 STEP_MINUTES = 1
 
 SOURCE_CITATION = (
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 Vimshottari dasha sequence; "
+    "FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) Vimshottari dasha sequence; "
     "LIFE_EVENT_LOG_v1_2.md 57 LEL events with chart_state_at_event; "
     "Algorithm: train/test split 43/14 events; Pearson correlation of "
     "dasha alignment score vs candidate offset (±30 min, 1-min steps). "
@@ -90,7 +90,7 @@ SOURCE_CITATION = (
 
 # ── Vimshottari dasha constants ───────────────────────────────────────────────
 #
-# From FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1
+# From FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 # Dasha lord sequence (classical): Ketu Moon Mars Rahu Jupiter Saturn Mercury
 #                                   Ketu Venus Sun Moon Mars ...
 # Full 120-year cycle.
@@ -529,7 +529,7 @@ def run_rectification(
             "source_citation": SOURCE_CITATION,
             "b10_compliance": (
                 "Dasha-level only; no Swiss Ephemeris re-run. "
-                "Planetary positions from FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1."
+                "Planetary positions from FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)."
             ),
             "computed_at": datetime.now(timezone.utc).isoformat(),
         },

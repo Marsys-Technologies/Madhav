@@ -25,7 +25,7 @@ Obstruction registry (from l3_obstruction.py):
 
 Source: BPHS Chapter 16 (Saturn remedies), Chapter 17 (Rahu/Ketu remedies),
         Chapter 86 (Dasha Phala remedies); Srimad Bhagavatam 6.8 (Narayana Kavacham);
-        FORENSIC_ASTROLOGICAL_DATA_v8_0.md §22 (Sade Sati); l3_obstruction.py;
+        FORENSIC v8.0 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (Sade Sati); l3_obstruction.py;
         brahmagyan.l0_remedy_corpus (L0 concordance rules).
 
 Authors: Silpī (WS-2 l4-phala session)
@@ -61,7 +61,7 @@ VALID_MITIGATION_TYPES = frozenset({
 
 BASE_CITATION = (
     "BPHS (Brihat Parashara Hora Shastra) — various chapters; "
-    "l3_obstruction.py; FORENSIC_ASTROLOGICAL_DATA_v8_0.md §22"
+    "l3_obstruction.py; FORENSIC v8.0 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 )
 
 # ── Mitigation catalog: 17 entries ───────────────────────────────────────────
@@ -700,7 +700,7 @@ def query_phala_mitigation(
             "queried_at": datetime.now(tz=timezone.utc).isoformat(),
             "l1_ground_truth": (
                 "BPHS (classical remedy prescriptions); "
-                "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §22 (Sade Sati); "
+                "FORENSIC v8.0 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (Sade Sati); "
                 "l3_obstruction.py (obstruction registry)"
             ),
         },

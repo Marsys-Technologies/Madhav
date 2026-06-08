@@ -27,7 +27,7 @@ const SAMPLE_MANIFEST = {
   fingerprint: 'test-fingerprint-001',
   entry_count: 3,
   entries: [
-    makeAsset({ canonical_id: 'FORENSIC', path: 'L1/FORENSIC_ASTROLOGICAL_DATA_v8_0.md' }),
+    makeAsset({ canonical_id: 'FORENSIC', path: '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md' }),
     makeAsset({ canonical_id: 'CGM', path: 'L2.5/CGM_v9_0.md' }),
     makeAsset({ canonical_id: 'UCN', path: 'L2.5/UCN_v4_0.md' }),
   ],
@@ -36,7 +36,7 @@ const SAMPLE_MANIFEST = {
 const SAMPLE_OVERRIDES_YAML = `
 overrides:
   FORENSIC:
-    path_pattern: "FORENSIC_ASTROLOGICAL_DATA_v8_0"
+    path_pattern: "FORENSIC_DATA_v8_0_SUPPLEMENT"
     preferred_for: [factual, interpretive]
     cost_weight: 1.0
     always_required: true

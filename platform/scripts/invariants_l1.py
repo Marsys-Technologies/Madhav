@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).parent))
 import corpus_common
 
 MSR_V3 = "/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
-FORENSIC_V8 = "/Users/Dev/Vibe-Coding/Apps/Madhav/01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md"
+FORENSIC_V8 = "/Users/Dev/Vibe-Coding/Apps/Madhav/99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md"
 
 def run_l1_verification():
     results = {}

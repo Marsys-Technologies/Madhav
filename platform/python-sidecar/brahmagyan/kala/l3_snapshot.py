@@ -15,7 +15,7 @@ Snapshot includes:
 
 Volume floor: 1 snapshot entry with nested JSON (point-in-time, not a table).
 
-Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §2.1 §22
+Source: FORENSIC v8.0 §5.1 §2.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 BRAHMA-KA-3-4 (distinct from BRAHMA-KA-3-4 kala.temporal composite)
 Tool: kala_snapshot_current — returns today's Kala state
 """
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 NATIVE_CHART_ID = os.environ.get(
     "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
 )
-SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §2.1 §22"
+SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC v8.0 §5.1 §2.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 
 # Default snapshot date (session date per CLAUDECODE_BRIEF_WS2)
 DEFAULT_SNAPSHOT_DATE = date(2026, 6, 5)
@@ -535,7 +535,7 @@ def _build_kala_summary(
 
     summary += (
         f"Kala readiness score: {score}/100 ({_score_band(score)}). "
-        f"Source: FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §22."
+        f"Source: FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)."
     )
 
     return summary.strip()
