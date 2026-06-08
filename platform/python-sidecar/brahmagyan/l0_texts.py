@@ -4,21 +4,31 @@ brahmagyan.l0_texts — BRAHMA WS-2 L0 Brahmagyan: Classical Text Corpus
 
 Manages the classical text corpus: text registry + verse-addressable chunks.
 
-Texts included (public domain / open access):
-  - BPHS (Brihat Parasara Hora Sastra) — public domain
-  - Phaladeepika — public domain
-  - Jataka Parijata — public domain
-  - Uttara Kalamrita — public domain
+13-text corpus (native decision 2026-06-08, prep/l0-corpus-staging):
+  Originals (5):
+    bphs, phaladeepika, jataka_parijata, uttara_kalamrita, bphs_jaimini
+  To-source (7):
+    saravali, brihat_jataka, hora_sara, sarvartha_chintamani,
+    brihat_samhita, muhurta_chintamani [PENDING], lal_kitab [PENDING]
+  Staged (1):
+    yavana_jataka (2 vols, Pingree)
 
-Volume floor: >= 50 verse chunks with verse_ref; all rows have source_citation.
+Dropped from prior 15-text plan: tajaka_neelakanthi, bhrigu_samhita.
+Staged floor: 11 texts with GCS PDFs (muhurta_chintamani + lal_kitab PENDING native decision).
+Full floor: 13 texts after PENDING texts are remediated.
+
+Volume floor: >= 8000 chunks (11 staged texts); all rows have source_citation + provenance_tier.
 
 Acceptance gate:
-  - classical_texts COUNT >= 4 texts
-  - classical_text_chunks COUNT >= 50
-  - text.read('BPHS', 'CH1:V1') resolves
+  - classical_texts COUNT >= 11 staged texts (13 after PENDING remediated)
+  - classical_text_chunks COUNT >= 8000 (staged); 10000 (full 13)
+  - text.read('bphs', 'CH1:V1') resolves
   - all chunks have non-null verse_ref + source_citation
 
-BRAHMA-BG-0-3
+Build contract: clear-and-rebuild from GCS PDFs (DELETE FROM classical_text_chunks before
+rebuild). Same PDF + pinned embedding model = identical chunks (deterministic via content_sha256).
+
+BRAHMA-BG-0-3 | amended 2026-06-08 (prep/l0-corpus-staging): 13-text corpus
 """
 from __future__ import annotations
 
@@ -31,6 +41,7 @@ logger = logging.getLogger(__name__)
 # ── Text registry ─────────────────────────────────────────────────────────────
 
 TEXTS = [
+    # ── 5 originals ───────────────────────────────────────────────────────────
     {
         "text_id": "bphs",
         "title_en": "Brihat Parasara Hora Sastra",
@@ -43,7 +54,12 @@ TEXTS = [
         "license_cleared": True,
         "total_chapters": 97,
         "total_verses": 2094,
-        "source_edition": "Trans. Rishi Kumar Shastri; public domain",
+        "source_edition": "Trans. R. Santhanam, Ranjan Publications, New Delhi (2 vols)",
+        "source_citation": "BPHS — Trans. R. Santhanam, Ranjan Publications (archive.org: BPHSEnglish)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/bphs.pdf",
+        "gcs_path_vol2": "gs://madhav-marsys-sources/L8/classical_texts/source/bphs_vol2.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
     },
     {
         "text_id": "phaladeepika",
@@ -57,7 +73,11 @@ TEXTS = [
         "license_cleared": True,
         "total_chapters": 28,
         "total_verses": 640,
-        "source_edition": "Trans. G.S. Kapoor; public domain",
+        "source_edition": "Trans. V. Subrahmanya Sastri, 2nd Ed. 1950, Aruna Press Bangalore",
+        "source_citation": "Phaladeepika — Trans. V. Subrahmanya Sastri, 2nd Ed. 1950 (archive.org: Phaladeepika2ndEd.1950ByVSubrahmanyaSastri)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/phaladeepika.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
     },
     {
         "text_id": "jataka_parijata",
@@ -71,7 +91,12 @@ TEXTS = [
         "license_cleared": True,
         "total_chapters": 17,
         "total_verses": 1002,
-        "source_edition": "Trans. V. Subramanya Shashtri; public domain",
+        "source_edition": "Trans. V. Subramanya Shashtri, V.B. Soobiah & Sons, Bangalore, 1932-33 (2 vols)",
+        "source_citation": "Jataka Parijata — Trans. V. Subramanya Shashtri, 1932-33 (archive.org: JatakaParijata1932)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/jataka_parijata.pdf",
+        "gcs_path_vol2": "gs://madhav-marsys-sources/L8/classical_texts/source/jataka_parijata_vol2.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
     },
     {
         "text_id": "uttara_kalamrita",
@@ -85,11 +110,18 @@ TEXTS = [
         "license_cleared": True,
         "total_chapters": 6,
         "total_verses": 340,
-        "source_edition": "Trans. P.S. Sastri; public domain",
+        "source_edition": "Trans. Prof. P.S. Sastri, Ranjan Publications, New Delhi (preface K.N. Rao)",
+        "source_citation": "Uttara Kalamrita — Trans. Prof. P.S. Sastri, Ranjan Publications (archive.org: uttkalamrita-kalidas-ps-sastri)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/uttara_kalamrita.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
     },
     {
+        # DB classical_texts has this text as text_id='jaimini_sutram' (legacy MCP schema row).
+        # Canonical text_id is 'bphs_jaimini'. bg_texts writer must upsert a 'bphs_jaimini'
+        # row in classical_texts; do NOT write chunks under 'jaimini_sutram'.
         "text_id": "bphs_jaimini",
-        "title_en": "Jaimini Sutram (in BPHS)",
+        "title_en": "Jaimini Sutras",
         "title_sa": "Jaimini Sutram",
         "author": "Jaimini Rishi",
         "school": "jaimini",
@@ -99,7 +131,172 @@ TEXTS = [
         "license_cleared": True,
         "total_chapters": 4,
         "total_verses": 199,
-        "source_edition": "Trans. P.S. Iyer; public domain",
+        "source_edition": "Trans. B. Suryanarain Rao, 3rd revised ed. 1949 (foreword B.V. Raman)",
+        "source_citation": "Jaimini Sutras — Trans. B. Suryanarain Rao, 1949 (archive.org: Astrology_Books_by_B_Suryanarayana_Row)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/bphs_jaimini.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
+    },
+    # ── 7 to-source (5 staged PASS/MARGINAL; 2 UNSTAGED pending native decision) ──
+    {
+        "text_id": "saravali",
+        "title_en": "Saravali",
+        "title_sa": "Sārāvalī",
+        "author": "Kalyana Varma",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 1,
+        "license": "cc_by_nd_30",
+        "license_cleared": True,
+        "total_chapters": 55,  # chs 1-55 of 58; chs 56-58 absent in this edition
+        "total_verses": None,
+        "source_edition": "Trans. attr. R. Santhanam, compiled SUVRATSUT (CC BY-ND 3.0, 2017); chs 1-55 of 58",
+        "source_citation": "[MEDIUM] Saravali — Trans. attr. R. Santhanam (archive.org: KalyanaVarmasSaravali_201707); chs 56-58 absent",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/saravali.pdf",
+        "provenance_tier": "MEDIUM",
+        "language_available": "en",
+    },
+    {
+        "text_id": "brihat_jataka",
+        "title_en": "Brihat Jataka",
+        "title_sa": "Bṛhat Jātaka",
+        "author": "Varahamihira",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 1,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": 27,
+        "total_verses": None,
+        "source_edition": "Trans. V. Subrahmanya Sastri, 2nd Ed., Bangalore",
+        "source_citation": "Brihat Jataka — Trans. V. Subrahmanya Sastri, 2nd Ed. (archive.org: BrihatJataka2ndEd.ByVSubrahmanyaSastri)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/brihat_jataka.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
+    },
+    {
+        "text_id": "hora_sara",
+        "title_en": "Hora Sara",
+        "title_sa": "Hora Sāra",
+        "author": "Prithuyasas",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 1,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Trans. R. Santhanam",
+        "source_citation": "Hora Sara — Trans. R. Santhanam (archive.org: HoraSaraRSanthanamEng)",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/hora_sara.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
+    },
+    {
+        # PDF is image-only (no embedded text layer). Pipeline must OCR before chunking.
+        # Alternative extraction: DjVu OCR from archive.org (520KB, 48,423 English words clean).
+        "text_id": "sarvartha_chintamani",
+        "title_en": "Sarvartha Chintamani",
+        "title_sa": "Sārvartha Cintāmaṇi",
+        "author": "Venkatesha Daivagya",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 2,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Trans. B. Suryanarayana Row, 1899, Aryan Press, Bellary (1st English ed.)",
+        "source_citation": "Sarvartha Chintamani — Trans. B. Suryanarayana Row, 1899 (archive.org: Astrology_Books_by_B_Suryanarayana_Row); IMAGE-ONLY PDF — OCR required",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/sarvartha_chintamani.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
+        "ocr_required": True,
+    },
+    {
+        "text_id": "brihat_samhita",
+        "title_en": "Brihat Samhita",
+        "title_sa": "Bṛhat Saṃhitā",
+        "author": "Varahamihira",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 2,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Trans. V. Subrahmanya Sastri, 1946, Bangalore (with English OCR layer)",
+        "source_citation": "[MARGINAL] Brihat Samhita — Trans. V. Subrahmanya Sastri, 1946 (archive.org: varahamihira-brihat-samhita-...); OCR ligature artifacts present, prose readable",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/brihat_samhita.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
+    },
+    {
+        # UNSTAGED — no PD English edition found on archive.org.
+        # Remedy A (recommended): purchase Girish Chand Sharma trans., Ranjan Publications (~USD 20).
+        # Remedy B: OCR Hindi commentary (Mahidhara Sharma, Khemraj Press, archive.org).
+        "text_id": "muhurta_chintamani",
+        "title_en": "Muhurta Chintamani",
+        "title_sa": "Muhūrta Cintāmaṇi",
+        "author": "Rama Daivajna",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 3,
+        "license": None,
+        "license_cleared": False,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": None,
+        "source_citation": None,
+        "gcs_path": None,
+        "provenance_tier": None,
+        "language_available": None,
+        "staging_status": "UNSTAGED_PENDING_NATIVE_DECISION",
+        "staging_note": "No PD English edition on archive.org. Remedy A: purchase Girish Chand Sharma trans., Ranjan Publications (~USD 20). Remedy B: OCR Hindi commentary (Mahidhara Sharma, archive.org) for multilingual embedding path.",
+    },
+    {
+        # UNSTAGED — 1952 original is Urdu/Hindi nastaliq image scan; no usable text layer.
+        # English translations are in-copyright.
+        # Remedy A: Google Cloud Vision OCR (urd+hin) on 3-part 1952 archive.org scan.
+        # Remedy B: purchase in-copyright English translation (~USD 20-30, Sagar/Ranjan Publications).
+        "text_id": "lal_kitab",
+        "title_en": "Lal Kitab",
+        "title_sa": None,
+        "author": "Pt. Roop Chand Joshi",
+        "school": "parashari",
+        "tradition": "vedic",
+        "tier": 3,
+        "license": "public_domain",  # 1952 original PD under Indian copyright (>60yr)
+        "license_cleared": False,  # text layer not secured
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "1952 original (3 vols, Urdu/Hindi nastaliq) — image scan only",
+        "source_citation": None,
+        "gcs_path": None,
+        "provenance_tier": None,
+        "language_available": None,
+        "staging_status": "UNSTAGED_PENDING_NATIVE_DECISION",
+        "staging_note": "archive.org LalKitabEdition1952Part1-3 is image-only nastaliq; archive.org OCR is garbled. Remedy A: Google Cloud Vision OCR (urd+hin). Remedy B: purchase in-copyright English translation.",
+    },
+    # ── Staged PDF (2 vols, Pingree) — chunking TBD ───────────────────────────
+    {
+        "text_id": "yavana_jataka",
+        "title_en": "Yavana Jataka",
+        "title_sa": "Yavana Jātaka",
+        "author": "Sphujidhvaja (trans. David Pingree)",
+        "school": "hellenistic",
+        "tradition": "vedic",
+        "tier": 3,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Trans. David Pingree (2 vols), Harvard Oriental Series, 1978",
+        "source_citation": "Yavana Jataka — Trans. David Pingree, Harvard Oriental Series (2 vols), 1978",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/yavana_jataka_vol1.pdf",
+        "gcs_path_vol2": "gs://madhav-marsys-sources/L8/classical_texts/source/yavana_jataka_vol2.pdf",
+        "provenance_tier": "HIGH",
+        "language_available": "en",
     },
 ]
 
@@ -442,9 +639,13 @@ SEED_CHUNKS = [
 
 
 # ── Volume floor ──────────────────────────────────────────────────────────────
+# Staged floor: 11 texts with GCS PDFs (muhurta_chintamani + lal_kitab PENDING).
+# Full floor: 13 texts after PENDING texts are remediated.
 
-VOLUME_FLOOR_TEXTS = 4
-VOLUME_FLOOR_CHUNKS = 50
+VOLUME_FLOOR_TEXTS = 11          # staged texts (GCS PDFs present)
+VOLUME_FLOOR_TEXTS_FULL = 13     # all 13 after PENDING remediation
+VOLUME_FLOOR_CHUNKS = 8_000      # staged 11-text floor
+VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full 13-text floor
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
