@@ -102,20 +102,20 @@ The orchestrator's layer-level "Build" handler reads this DAG, dispatches Tier 0
 | # | Document | Authoring session | Status |
 |---|---|---|---|
 | 1 | `L0_BRAHMAGYAN_BUILD_MASTER_v2_0.md` (this file) | Session 1 | THIS DOC |
-| 2 | `CLAUDECODE_BRIEF_ORCHESTRATOR_FIXES_v1_0.md` | Session 1 | pending |
-| 3 | `CLAUDECODE_BRIEF_BG_EPHEMERIS_v1_0.md` | Session 1 | pending |
-| 4 | `CLAUDECODE_BRIEF_BG_REFERENCE_v1_0.md` | Session 2 | pending |
-| 5 | `CLAUDECODE_BRIEF_BG_ONTOLOGY_v1_0.md` | Session 2 | pending |
-| 6 | `CLAUDECODE_BRIEF_BG_TEXTS_v1_0.md` | Session 4 | pending |
-| 7 | `CLAUDECODE_BRIEF_BG_TEXT_INDEX_v1_0.md` | Session 4 | pending |
-| 8 | `CLAUDECODE_BRIEF_BG_RULES_v1_0.md` | Session 4 | pending |
-| 9 | `CLAUDECODE_BRIEF_BG_REMEDIES_v1_0.md` | Session 4 | pending |
-| 10 | `CLAUDECODE_BRIEF_BG_CONCORDANCE_v1_0.md` | Session 5 | pending |
-| 11 | `CLAUDECODE_BRIEF_BG_YOGAS_v1_0.md` | Session 3 | pending |
-| 12 | `CLAUDECODE_BRIEF_BG_DASHA_SYSTEMS_v1_0.md` | Session 3 | pending |
-| 13 | `CLAUDECODE_BRIEF_BG_DOSHAS_v1_0.md` | Session 3 | pending |
-| 14 | `CLAUDECODE_BRIEF_BG_COMPENDIUM_INDEX_v1_0.md` | Session 5 | pending |
-| 15 | `L0_BRAHMAGYAN_INTEGRATION_AND_REBUILD_PROOF_v1_0.md` | Session 5 | pending |
+| 2 | `CLAUDECODE_BRIEF_ORCHESTRATOR_FIXES_v1_0.md` | Session 1 | **DONE** (native-approved 2026-06-08) |
+| 3 | `CLAUDECODE_BRIEF_BG_EPHEMERIS_v1_0.md` | Session 1 | **DONE** (native-approved 2026-06-08) |
+| 4 | `CLAUDECODE_BRIEF_BG_REFERENCE_v1_0.md` | Session 2 | **DONE** (2026-06-08) |
+| 5 | `CLAUDECODE_BRIEF_BG_ONTOLOGY_v1_0.md` | Session 2 | **DONE** (2026-06-08) |
+| 6 | `CLAUDECODE_BRIEF_BG_TEXTS_v1_0.md` | Session 4 | **DONE** (2026-06-08) |
+| 7 | `CLAUDECODE_BRIEF_BG_TEXT_INDEX_v1_0.md` | Session 4 | **DONE** (2026-06-08) |
+| 8 | `CLAUDECODE_BRIEF_BG_RULES_v1_0.md` | Session 4 | **DONE** (2026-06-08) |
+| 9 | `CLAUDECODE_BRIEF_BG_REMEDIES_v1_0.md` | Session 4 | **DONE** (2026-06-08) |
+| 10 | `CLAUDECODE_BRIEF_BG_CONCORDANCE_v1_0.md` | Session 5 | **DONE** (2026-06-08) |
+| 11 | `CLAUDECODE_BRIEF_BG_YOGAS_v1_0.md` | Session 3 | **DONE** (2026-06-08) |
+| 12 | `CLAUDECODE_BRIEF_BG_DASHA_SYSTEMS_v1_0.md` | Session 3 | **DONE** (2026-06-08) |
+| 13 | `CLAUDECODE_BRIEF_BG_DOSHAS_v1_0.md` | Session 3 | **DONE** (2026-06-08) |
+| 14 | `CLAUDECODE_BRIEF_BG_COMPENDIUM_INDEX_v1_0.md` | Session 5 | **DONE** (2026-06-08) |
+| 15 | `L0_BRAHMAGYAN_INTEGRATION_AND_REBUILD_PROOF_v1_0.md` | Session 5 | **DONE** (2026-06-08) |
 
 **Estimated Cowork session time:** 12-16 hours across 5 sessions.
 
@@ -198,6 +198,8 @@ The embedded content in §3 is the work — it's what guarantees the executor pr
 8. Native verifies post-deploy: cockpit shows all 12 lit; clicks "Clear instrument" to trigger delete-and-rebuild proof; verifies bit-for-bit reconstruction
 
 After step 8 PASSES, L0 Brahmagyan is TRULY sealed. Subsequent L1+ phases build on top of it.
+
+> **Expected transient state during executor implementation.** The executor builds in tier order (orchestrator fixes → Tier 0 → Tier 1 → …). Because the orchestrator-fixes commit (Document 2) lands before most writers, a cockpit visit at any point mid-implementation — and at first visit immediately after the PR merges if writers are still landing — will show not-yet-implemented assets in `error` state ("no writer registered"). This is **expected and benign**: every asset transitions to `lit` once its writer commit lands and the build re-runs. Do not treat transient `error` tiles during rollout as a regression. Vimarśaka-Ω (§5) is the only state that matters for seal: all 12 `lit` at floor.
 
 ## §10 — Hard stops at the campaign level
 
