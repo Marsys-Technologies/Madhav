@@ -55,4 +55,12 @@ Per-brief record of the gap-author amendments that make each brief deterministic
 - `2bb90162` Docs 4/5/6/7/8/10/12/14 (§3a + migrations + arbiter-desc)
 - (this log + Doc 15 note: final commit)
 
-*End of L0 Brief Amendment Log v1.0.*
+## §5 — Resume pass (Task A + Task B, 2026-06-08)
+
+**Task A — Doc 11 yoga residual (v1.2).** Native decided the ~149 residual to floor 250 is closed by **corpus-verse structured extraction** (§3.9b), NOT an acharya pass and NOT fabrication. Each residual row = a verbatim Saravali/BPHS/Phaladeepika verse clause (`formation_rule_jsonb.requires[0].raw_verse_clause`) + `source_chunk_ids` citation — structurally complete, floor-eligible, never a placeholder. §3a now reads 81 inline + ~20 templated + ≥149 corpus_verse = ≥250. Saravali confirmed auto-ingested (`manual_upload:False`). Writer FAIL-CLOSED (REJECT + report if <250 distinct after all yoga chunks). Commit `233f2339`.
+
+**Task B — FULL swarm audit (all 12 asset briefs).** Closed the prior pass's non-uniform-coverage gap: every brief (Docs 3-14) audited by COUNT + CITATION + SCHEMA sub-agents + Sambandha cross-brief. Result + REJECT→fix log in `00_ARCHITECTURE/L0_SWARM_AUDIT_v1_0.md`. 4 REJECTs found and remediated (all re-audited APPROVE): R1 Doc 3 SCHEMA (hardcoded 825,084 → import VOLUME_FLOOR + engine/campaign HARD STOP), R2 Doc 4 COUNT (per-table floor estimates 35/30 → physical 33/19), R3 Doc 9 COUNT (gen yield 72 → real 108), R4 Doc 9 SCHEMA (REMEDY_TYPE_MAP +dietary). Doc 4's glossary 364 / constants 203 / karakas 77 / topic_tags 481 independently counted + PASS (the native's specific concern). Sambandha APPROVE. Commits `637cedac` (remediations) + audit log.
+
+**NEW HARD STOP for native:** Doc 3 ephemeris — live engine `VOLUME_FLOOR=29,200` / 1980-2060 / tropical contradicts campaign `825,084` / 1900-2150 / Lahiri. Surfaced in Doc 3 §0 + L0_SWARM_AUDIT §3.1. Floor held; native must resolve.
+
+*End of L0 Brief Amendment Log v1.0 (resume pass appended 2026-06-08).*
