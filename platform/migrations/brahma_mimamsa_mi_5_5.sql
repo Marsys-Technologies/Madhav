@@ -12,7 +12,7 @@
 --                  (calibration only — never prediction generation)
 --
 -- Source artifacts:
---   chart_facts      — L1 natal facts (FORENSIC_ASTROLOGICAL_DATA_v8_0)
+--   chart_facts      — L1 natal facts (chart_facts table, FORENSIC v8.0 data rendered via forensic_render.ts; md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 --   bodha_signals    — L2 MSR signal states (573 signals, BRAHMA-BO-2-4)
 --   life_events      — L1 LEL calibration intake (LIFE_EVENT_LOG_v1_2.md, v1.7)
 --
@@ -63,7 +63,7 @@ COMMENT ON COLUMN mimamsa_export_log.gcs_path IS
 
 COMMENT ON COLUMN mimamsa_export_log.source_citation IS
     'NON-NULL provenance chain — must cite L1 canonical artifact: '
-    'FORENSIC_ASTROLOGICAL_DATA_v8_0.md | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
+    'chart_facts/forensic_render.ts (FORENSIC v8.0, md archived: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | LIFE_EVENT_LOG_v1_2.md | BRAHMA MI-5-5';
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 

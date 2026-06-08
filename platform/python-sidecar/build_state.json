@@ -59,12 +59,12 @@
   "canonical_artifacts": [
     {
       "canonical_id": "FORENSIC",
-      "path": "01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md",
+      "path": "99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md",
       "version": "8.0",
-      "status": "CURRENT",
+      "status": "ARCHIVED",
       "fingerprint_sha256": "85ca34690780c749eb155134b126dee5dffc9514c7611022385651ae2f2fa101",
-      "last_verified_session": "STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION",
-      "last_verified_on": "2026-04-24",
+      "last_verified_session": "fix/forensic-reference-consistency",
+      "last_verified_on": "2026-06-08",
       "mirror_pair_id": null
     },
     {
