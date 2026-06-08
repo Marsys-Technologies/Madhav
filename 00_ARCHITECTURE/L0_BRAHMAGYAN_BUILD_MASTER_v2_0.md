@@ -54,16 +54,16 @@ These targets are FLOORS. Vimarśaka-Ω fails the entire campaign if any asset i
 |---|---|---|---|---|
 | 1 | `bg_ephemeris` | `ephemeris_daily` | 825,084 rows | Algorithmic (Swiss Ephemeris compute; already populated from L0FR) |
 | 2 | `bg_reference` | 15 typed tables | ~2,000 rows total across 15 tables | Embedded classical data (BPHS + Saravali + Phaladeepika + Taittiriya Aranyaka) |
-| 3 | `bg_texts` | `classical_text_chunks` | ≥14,000 chunks (15 texts) | Source PDFs in GCS |
+| 3 | `bg_texts` | `classical_text_chunks` | 8,193 chunks (13 texts, actual build 2026-06-09; replaces 14,000/15-text projection) | Source PDFs in GCS |
 | 4 | `bg_ontology` | `brahma_ontology` | ≥700 entities across 15 classes | Embedded classical data |
 | 5 | `bg_text_index` | `classical_text_chunks WHERE topic_tag NOT NULL` | ≥400 distinct topic_tags | Deterministic Python keyword-rule classifier |
-| 6 | `bg_rules` | `sutravali_rules` | ≥3,000 rules | Python regex extraction from bg_texts |
+| 6 | `bg_rules` | `sutravali_rules` | ≥1,755 rules (3,000 × 8,193/14,000; old floor projected off 14k chunks) | Python regex extraction from bg_texts |
 | 7 | `bg_remedies` | `brahma_remedy_corpus` | ≥800 remedies | Embedded classical data (BPHS Ch.91-94 + Phaladeepika Ch.27 + Mantra Mahodadhi + Lal Kitab) |
 | 8 | `bg_concordance` | `classical_attributions` | ≥800 chunk-pointer rows | Deterministic Python topic × school matching |
 | 9 | `bg_yogas` | `brahma_yoga_catalog` | ≥250 yogas | Embedded classical data (BPHS Ch.30-35 + Saravali + Phaladeepika + Jaimini) |
 | 10 | `bg_dasha_systems` | `brahma_dasha_systems` | ≥15 dasha systems | Embedded classical data (BPHS Ch.46-50 + Jaimini) |
 | 11 | `bg_doshas` | `brahma_dosha_catalog` | ≥50 doshas | Embedded classical data |
-| 12 | `bg_compendium_index` | `brahma_compendium_index` | ≥3,000 index rows | Deterministic Python aggregation over bg_texts |
+| 12 | `bg_compendium_index` | `brahma_compendium_index` | ≥1,755 index rows (3,000 × 8,193/14,000; Pass B scales with chunk count) | Deterministic Python aggregation over bg_texts |
 
 **Sum target: ~840,000+ rows of source-cited classical content.**
 
