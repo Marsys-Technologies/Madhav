@@ -5,6 +5,13 @@ import { useState } from 'react'
 interface TableCount {
   table: string
   rows: number
+  error?: string
+}
+
+interface LayerSummaryItem {
+  layer: string
+  rows: number
+  asset_count: number
 }
 
 interface ClearPreview {
@@ -14,6 +21,7 @@ interface ClearPreview {
   downstream_stale_assets: string[]
   preview_hash: string
   requires_typed_confirmation?: string
+  layer_summary?: LayerSummaryItem[]
 }
 
 interface Props {
@@ -79,6 +87,16 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
   const visibleTables = preview.tables.slice(0, SHOW)
   const remaining = preview.tables.length - SHOW
 
+  const showLayerSummary = scope === 'global' && Array.isArray(preview.layer_summary) && preview.layer_summary.length > 0
+  const LAYER_LABELS: Record<string, string> = {
+    brahmagyan: 'Brahma Jñāna (L0)',
+    ganita: 'Gaṇita (L1)',
+    bodha: 'Bodha (L2)',
+    kala: 'Kāla (L3)',
+    phala: 'Phala (L4)',
+    mimamsa: 'Mīmāṃsā (L5)',
+  }
+
   async function handleConfirm() {
     setLoading(true)
     setError(null)
@@ -95,8 +113,14 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           ...(requiresTypedConfirmation ? { typed_confirmation: typed } : {}),
         }),
       })
-      const body = await r.json()
-      if (!r.ok) throw new Error(body.error ?? 'Clear failed')
+      const txt = await r.text()
+      let body: Record<string, unknown>
+      try {
+        body = JSON.parse(txt)
+      } catch {
+        throw new Error(`Server error (${r.status}): ${txt.substring(0, 200) || 'no response body'}`)
+      }
+      if (!r.ok) throw new Error((body.error as string | undefined) ?? `Clear failed (${r.status})`)
       if (onAfterClear) await onAfterClear()
       onSuccess()
       onClose()
@@ -115,23 +139,43 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           {config.title(scopeTarget)}
         </div>
 
-        {/* Table breakdown */}
+        {/* Table / layer breakdown */}
         <div style={{ marginBottom: '12px' }}>
-          {visibleTables.map(t => (
-            <div key={t.table} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }}>
-              <span style={{ color: 'var(--on-dark-mut)', fontFamily: 'var(--mono-stack)' }}>{t.table}</span>
-              <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{t.rows.toLocaleString()} rows</span>
-            </div>
-          ))}
-          {remaining > 0 && (
-            <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', paddingTop: '4px' }}>
-              and {remaining} more table{remaining > 1 ? 's' : ''}
-            </div>
+          {showLayerSummary ? (
+            <>
+              {preview.layer_summary!.map(ls => (
+                <div key={ls.layer} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }}>
+                  <span style={{ color: 'var(--on-dark-mut)' }}>
+                    {LAYER_LABELS[ls.layer] ?? ls.layer}{' '}
+                    <span style={{ color: 'var(--on-dark-faint)', fontSize: '11px' }}>({ls.asset_count} assets)</span>
+                  </span>
+                  <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{ls.rows.toLocaleString()} rows</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ color: 'var(--on-dark-mut)' }}>{preview.affected_assets.length} assets total</span>
+                <span style={{ color: 'var(--on-dark)' }}>{preview.total_rows.toLocaleString()} rows</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {visibleTables.map(t => (
+                <div key={t.table} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }}>
+                  <span style={{ color: 'var(--on-dark-mut)', fontFamily: 'var(--mono-stack)' }}>{t.table}</span>
+                  <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{t.rows.toLocaleString()} rows</span>
+                </div>
+              ))}
+              {remaining > 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', paddingTop: '4px' }}>
+                  and {remaining} more table{remaining > 1 ? 's' : ''}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ color: 'var(--on-dark-mut)' }}>{preview.tables.length} tables total</span>
+                <span style={{ color: 'var(--on-dark)' }}>{preview.total_rows.toLocaleString()} rows</span>
+              </div>
+            </>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: '13px', fontWeight: 600 }}>
-            <span style={{ color: 'var(--on-dark-mut)' }}>{preview.tables.length} tables total</span>
-            <span style={{ color: 'var(--on-dark)' }}>{preview.total_rows.toLocaleString()} rows</span>
-          </div>
         </div>
 
         {/* Asset reset note */}

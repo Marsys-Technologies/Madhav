@@ -14,21 +14,29 @@ import type { AssetWithState } from './LiveDependencyGraph'
 type Tab = 'data' | 'workflow' | 'agents'
 
 interface ClearPreview {
-  tables: { table: string; rows: number }[]
+  tables: { table: string; rows: number; error?: string }[]
   total_rows: number
   affected_assets: string[]
   downstream_stale_assets: string[]
   preview_hash: string
   requires_typed_confirmation?: string
+  layer_summary?: { layer: string; rows: number; asset_count: number }[]
+}
+
+interface ChartMeta {
+  subject_name: string | null
+  birth_date: string | null
+  birth_place: string | null
 }
 
 interface Props {
   chartId: string
+  initialChartMeta?: ChartMeta | null
 }
 
-export function CockpitShell({ chartId }: Props) {
+export function CockpitShell({ chartId, initialChartMeta }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('data')
-  const { chartName, birthDate, birthPlace } = useChartContext(chartId)
+  const { chartName, birthDate, birthPlace } = useChartContext(chartId, initialChartMeta)
 
   // Asset state summary — populated by DataAssetsView via onAssetsReady
   const [assetStates, setAssetStates] = useState<{ state: string }[]>([])
@@ -124,6 +132,7 @@ export function CockpitShell({ chartId }: Props) {
         onProModeToggle={() => setProMode(p => !p)}
         onGlobalClear={clearLoading ? undefined : handleGlobalClear}
         onGlobalRebuild={clearLoading ? undefined : handleGlobalRebuild}
+        onRefreshed={() => {}}
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
       {activeTab === 'data' && (
