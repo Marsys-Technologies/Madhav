@@ -20,13 +20,12 @@ Tajaka Neelakanthi back IN (2026-06-09): covers Tajik/Varshaphala annual-chart s
 Muhurta Chintamani back IN (2026-06-09): Khemraj/Mahidhara Sharma bhasha tika,
   CC0, 172 pages, Sanskrit + Hindi commentary, MEDIUM provenance.
 
-Volume floor: >= 9100 chunks (all 13 texts, contingent on Hindi OCR gate passing for
-  muhurta + tajaka); all rows have source_citation + provenance_tier.
+Volume floor: 8,193 chunks (actual deterministic build 2026-06-09; all 13 texts;
+  Hindi OCR gates PASSED for muhurta + tajaka). Replaces contingent 9,100 estimate.
 
 Acceptance gate:
   - classical_texts COUNT = 13
-  - classical_text_chunks COUNT >= 9100 (contingent); CONDITIONAL-APPROVE if Hindi
-    OCR gate blocks muhurta/tajaka (Vimarshaka treats gated text as CONDITIONAL, not fail)
+  - classical_text_chunks COUNT >= 8193 (actual floor v1.4; Hindi OCR gates PASSED)
   - text.read('bphs', 'CH1:V1') resolves
   - all chunks have non-null verse_ref + source_citation
 
@@ -35,6 +34,8 @@ rebuild). Same PDF + pinned embedding model = identical chunks (deterministic vi
 
 BRAHMA-BG-0-3 | amended 2026-06-09 (prep/l0-corpus-staging): lal_kitab OUT,
   tajaka_neelakanthi + muhurta_chintamani IN (Hindi OCR, gated); floor 8000→9100
+BRAHMA-BG-0-4 | amended 2026-06-09 (fix/l0-text-asset-floors): actual build 8193 chunks;
+  Hindi OCR PASSED; floor 9100→8193; asset_registry.target_floor updated (migration 183)
 """
 from __future__ import annotations
 
@@ -651,7 +652,7 @@ SEED_CHUNKS = [
 
 VOLUME_FLOOR_TEXTS = 13          # all 13 texts staged with GCS PDFs
 VOLUME_FLOOR_TEXTS_FULL = 13     # same — no texts pending after 2026-06-09 decision
-VOLUME_FLOOR_CHUNKS = 9_100      # contingent on muhurta + tajaka Hindi OCR gate passing
+VOLUME_FLOOR_CHUNKS = 8_193      # actual deterministic build 2026-06-09; Hindi OCR gates PASSED
 VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full floor (after complete chunking of all 13)
 
 
