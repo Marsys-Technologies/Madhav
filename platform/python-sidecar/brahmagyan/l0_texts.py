@@ -4,31 +4,37 @@ brahmagyan.l0_texts — BRAHMA WS-2 L0 Brahmagyan: Classical Text Corpus
 
 Manages the classical text corpus: text registry + verse-addressable chunks.
 
-13-text corpus (native decision 2026-06-08, prep/l0-corpus-staging):
+13-text corpus (native decision 2026-06-09, prep/l0-corpus-staging):
   Originals (5):
     bphs, phaladeepika, jataka_parijata, uttara_kalamrita, bphs_jaimini
-  To-source (7):
+  Staged (8):
     saravali, brihat_jataka, hora_sara, sarvartha_chintamani,
-    brihat_samhita, muhurta_chintamani [PENDING], lal_kitab [PENDING]
-  Staged (1):
-    yavana_jataka (2 vols, Pingree)
+    brihat_samhita, yavana_jataka (2 vols, Pingree),
+    muhurta_chintamani [Hindi/OCR, AWAITING_NATIVE_DECISION quality gate],
+    tajaka_neelakanthi [Hindi/OCR, AWAITING_NATIVE_DECISION quality gate]
 
-Dropped from prior 15-text plan: tajaka_neelakanthi, bhrigu_samhita.
-Staged floor: 11 texts with GCS PDFs (muhurta_chintamani + lal_kitab PENDING native decision).
-Full floor: 13 texts after PENDING texts are remediated.
+Dropped: lal_kitab (distinct Urdu-Persian system; deferred to bg_remedies ingestion),
+         bhrigu_samhita (no defensible edition).
+Tajaka Neelakanthi back IN (2026-06-09): covers Tajik/Varshaphala annual-chart system;
+  CC0 archive.org scan, Sanskrit + Hindi commentary, MEDIUM provenance.
+Muhurta Chintamani back IN (2026-06-09): Khemraj/Mahidhara Sharma bhasha tika,
+  CC0, 172 pages, Sanskrit + Hindi commentary, MEDIUM provenance.
 
-Volume floor: >= 8000 chunks (11 staged texts); all rows have source_citation + provenance_tier.
+Volume floor: >= 9100 chunks (all 13 texts, contingent on Hindi OCR gate passing for
+  muhurta + tajaka); all rows have source_citation + provenance_tier.
 
 Acceptance gate:
-  - classical_texts COUNT >= 11 staged texts (13 after PENDING remediated)
-  - classical_text_chunks COUNT >= 8000 (staged); 10000 (full 13)
+  - classical_texts COUNT = 13
+  - classical_text_chunks COUNT >= 9100 (contingent); CONDITIONAL-APPROVE if Hindi
+    OCR gate blocks muhurta/tajaka (Vimarshaka treats gated text as CONDITIONAL, not fail)
   - text.read('bphs', 'CH1:V1') resolves
   - all chunks have non-null verse_ref + source_citation
 
 Build contract: clear-and-rebuild from GCS PDFs (DELETE FROM classical_text_chunks before
 rebuild). Same PDF + pinned embedding model = identical chunks (deterministic via content_sha256).
 
-BRAHMA-BG-0-3 | amended 2026-06-08 (prep/l0-corpus-staging): 13-text corpus
+BRAHMA-BG-0-3 | amended 2026-06-09 (prep/l0-corpus-staging): lal_kitab OUT,
+  tajaka_neelakanthi + muhurta_chintamani IN (Hindi OCR, gated); floor 8000→9100
 """
 from __future__ import annotations
 
@@ -137,7 +143,7 @@ TEXTS = [
         "provenance_tier": "HIGH",
         "language_available": "en",
     },
-    # ── 7 to-source (5 staged PASS/MARGINAL; 2 UNSTAGED pending native decision) ──
+    # ── 8 staged (5 PASS/MARGINAL + 2 Hindi/OCR gated + 1 multi-vol) ─────────────
     {
         "text_id": "saravali",
         "title_en": "Saravali",
@@ -232,9 +238,11 @@ TEXTS = [
         "language_available": "en",
     },
     {
-        # UNSTAGED — no PD English edition found on archive.org.
-        # Remedy A (recommended): purchase Girish Chand Sharma trans., Ranjan Publications (~USD 20).
-        # Remedy B: OCR Hindi commentary (Mahidhara Sharma, Khemraj Press, archive.org).
+        # AWAITING_NATIVE_DECISION quality gate at ingest (garbled OCR → flag, never embed junk).
+        # Spot-check confirmed: 172 pages, 78-80% Devanagari on content pages, clean embedded
+        # text layer (7MB _text.pdf). Mahidhara Sharma bhasha tika = Sanskrit text + Hindi commentary.
+        # GCS upload: 2026-06-09, wzIF_muhurta-chintamani-khemraj, CC0.
+        # Lal Kitab DROPPED (2026-06-09): distinct Urdu-Persian system; possible future bg_remedies ingestion.
         "text_id": "muhurta_chintamani",
         "title_en": "Muhurta Chintamani",
         "title_sa": "Muhūrta Cintāmaṇi",
@@ -242,43 +250,40 @@ TEXTS = [
         "school": "parashari",
         "tradition": "vedic",
         "tier": 3,
-        "license": None,
-        "license_cleared": False,
+        "license": "public_domain",
+        "license_cleared": True,
         "total_chapters": None,
         "total_verses": None,
-        "source_edition": None,
-        "source_citation": None,
-        "gcs_path": None,
-        "provenance_tier": None,
-        "language_available": None,
-        "staging_status": "UNSTAGED_PENDING_NATIVE_DECISION",
-        "staging_note": "No PD English edition on archive.org. Remedy A: purchase Girish Chand Sharma trans., Ranjan Publications (~USD 20). Remedy B: OCR Hindi commentary (Mahidhara Sharma, archive.org) for multilingual embedding path.",
+        "source_edition": "Muhurta Chintamani — Mahidhara Sharma bhasha tika, Khemraj Shrikrishnadas Press",
+        "source_citation": "[MEDIUM] Muhurta Chintamani — Mahidhara Sharma bhasha tika, Khemraj Shrikrishnadas Press (archive.org: wzIF_muhurta-chintamani-khemraj, CC0); AWAITING_NATIVE_DECISION: Devanagari multilingual OCR path",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/muhurta_chintamani.pdf",
+        "provenance_tier": "MEDIUM",
+        "language_available": "sa+hi",
     },
     {
-        # UNSTAGED — 1952 original is Urdu/Hindi nastaliq image scan; no usable text layer.
-        # English translations are in-copyright.
-        # Remedy A: Google Cloud Vision OCR (urd+hin) on 3-part 1952 archive.org scan.
-        # Remedy B: purchase in-copyright English translation (~USD 20-30, Sagar/Ranjan Publications).
-        "text_id": "lal_kitab",
-        "title_en": "Lal Kitab",
-        "title_sa": None,
-        "author": "Pt. Roop Chand Joshi",
-        "school": "parashari",
+        # AWAITING_NATIVE_DECISION quality gate at ingest (garbled OCR → flag, never embed junk).
+        # Spot-check confirmed: 288 pages, 77-78% Devanagari on content pages, Sanskrit verses +
+        # Hindi commentary. Re-fetched 2026-06-09 (was deleted earlier in this prep pass).
+        # GCS upload: 2026-06-09, tajika_nilakanthi, CC0 (~125MB _text.pdf).
+        # Covers Tajik/Varshaphala (annual-chart) system — rationale for inclusion.
+        "text_id": "tajaka_neelakanthi",
+        "title_en": "Tajaka Neelakanthi",
+        "title_sa": "Tājika Nīlakaṇṭhī",
+        "author": "Nilakantha",
+        "school": "tajaka",
         "tradition": "vedic",
-        "tier": 3,
-        "license": "public_domain",  # 1952 original PD under Indian copyright (>60yr)
-        "license_cleared": False,  # text layer not secured
+        "tier": 2,
+        "license": "public_domain",
+        "license_cleared": True,
         "total_chapters": None,
         "total_verses": None,
-        "source_edition": "1952 original (3 vols, Urdu/Hindi nastaliq) — image scan only",
-        "source_citation": None,
-        "gcs_path": None,
-        "provenance_tier": None,
-        "language_available": None,
-        "staging_status": "UNSTAGED_PENDING_NATIVE_DECISION",
-        "staging_note": "archive.org LalKitabEdition1952Part1-3 is image-only nastaliq; archive.org OCR is garbled. Remedy A: Google Cloud Vision OCR (urd+hin). Remedy B: purchase in-copyright English translation.",
+        "source_edition": "Tajika-nilakanthi with Hindi Translation, Shrikrishnadas Press",
+        "source_citation": "[MEDIUM] Tajaka Neelakanthi — with Hindi Translation, Shrikrishnadas Press (archive.org: tajika_nilakanthi, CC0); AWAITING_NATIVE_DECISION: Devanagari multilingual OCR path",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/tajaka_neelakanthi.pdf",
+        "provenance_tier": "MEDIUM",
+        "language_available": "sa+hi",
     },
-    # ── Staged PDF (2 vols, Pingree) — chunking TBD ───────────────────────────
+    # ── Staged PDF (2 vols, Pingree) ──────────────────────────────────────────
     {
         "text_id": "yavana_jataka",
         "title_en": "Yavana Jataka",
@@ -639,13 +644,15 @@ SEED_CHUNKS = [
 
 
 # ── Volume floor ──────────────────────────────────────────────────────────────
-# Staged floor: 11 texts with GCS PDFs (muhurta_chintamani + lal_kitab PENDING).
-# Full floor: 13 texts after PENDING texts are remediated.
+# All 13 texts now staged with GCS PDFs (2026-06-09 final corpus decision).
+# muhurta_chintamani + tajaka_neelakanthi count toward floor ONLY if their Hindi OCR
+# quality gate passes at ingest. Vimarshaka treats a gated-out Hindi text as
+# CONDITIONAL, not a hard fail. Floor: 11-staged ~8,000 + muhurta ~700 + tajaka ~400.
 
-VOLUME_FLOOR_TEXTS = 11          # staged texts (GCS PDFs present)
-VOLUME_FLOOR_TEXTS_FULL = 13     # all 13 after PENDING remediation
-VOLUME_FLOOR_CHUNKS = 8_000      # staged 11-text floor
-VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full 13-text floor
+VOLUME_FLOOR_TEXTS = 13          # all 13 texts staged with GCS PDFs
+VOLUME_FLOOR_TEXTS_FULL = 13     # same — no texts pending after 2026-06-09 decision
+VOLUME_FLOOR_CHUNKS = 9_100      # contingent on muhurta + tajaka Hindi OCR gate passing
+VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full floor (after complete chunking of all 13)
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
