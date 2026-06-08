@@ -1,275 +1,286 @@
 ---
 artifact: CLAUDECODE_BRIEF_BG_YOGAS_v1_0
 canonical_id: L0_BG_YOGAS_BRIEF
-version: 1.0
+version: 1.1
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor Swarm gap-author) 2026-06-08 — embedded full closed-set core inline; added §3a floor arithmetic; replaced needs_structuring extraction with a Saravali name→pattern lookup driving STRUCTURED rows; fixed brahma_ontology ON CONFLICT to (entity_class, canonical_id); assigned migration 184
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_yogas writer
 parent_design: 00_ARCHITECTURE/L0_BRAHMAGYAN_HOLISTIC_DESIGN_v1_0.md (v1.1)
 parent_plan: 00_ARCHITECTURE/L0_BRAHMAGYAN_BUILD_MASTER_v2_0.md
-target_floor: 250  # brahma_yoga_catalog rows
-dependencies: [bg_ontology, bg_texts]  # embedded core needs bg_ontology; corpus supplement needs bg_texts — see §0.2
+target_floor: 250  # brahma_yoga_catalog rows — HELD (native decision; never lowered)
+dependencies: [bg_ontology, bg_texts]
 llm_cost: $0
 document_number: 11 of 15
 ---
 
 # bg_yogas — Writer Brief (classical yoga catalog)
 
-> **The largest content catalog.** Each row is a NAMED classical yoga — its formation rule (structured JSON the engine can pattern-match + prose), significations, cancellation conditions, and citations. Yogas are favourable/named patterns; raw verse-rules live in `bg_rules` and cross-reference a yoga via `bg_rules.yoga_canonical_id` (holistic design §2.3). ZERO LLM — the engine pattern-matches `formation_rule_jsonb`; it does not "interpret".
+> **The largest content catalog.** Each row is a NAMED classical yoga — formation rule (structured JSON the engine pattern-matches + prose), significations, cancellation, citations. Yogas are named patterns; raw verse-rules live in `bg_rules` (holistic design §2.3). ZERO LLM.
+
+> **v1.1 amendment (Racayitā).** The v1.0 brief embedded 25 yogas inline against a 250 floor and leaned on `needs_structuring=true` extraction placeholders — the Phase-β failure mode. This amendment embeds the full verified closed-set core inline (§3), replaces placeholder extraction with a **structured** Saravali/BPHS name→pattern lookup (§3.9), and proves the floor in §3a. The floor is HELD at 250; achievability is made explicit; underperformance is a clean REJECT, never a pad.
 
 ## §0 — Asset summary
 
-- **Asset ID:** `bg_yogas`. **Backing:** `brahma_yoga_catalog`. **Scope:** `global`. **Target floor:** **≥250** (design §3.9 says 250-350).
-- **Source category:** embedded classical data (authored canonical core) + deterministic extraction from the ingested Saravali/BPHS/Phaladeepika corpus (the design's named sources).
+- **Asset ID:** `bg_yogas`. **Backing:** `brahma_yoga_catalog`. **Scope:** `global`. **Target floor:** **≥250** (HELD).
+- **Source category:** embedded closed-set classical data + structured corpus extraction via an embedded name→pattern lookup.
 
-### §0.1 — Cross-brief contract (same as Doc 12/13 §0.1)
+### §0.1 — Cross-brief contract (catalog owns its ontology + pointer rows)
 
-Per dosha/dasha pattern: every `brahma_yoga_catalog` insert is accompanied (same transaction) by a `brahma_ontology` row (`entity_class='yoga'`, matching id) and a `reference_yogas` pointer row `(canonical_id, name_en, category)` — both `ON CONFLICT (canonical_id) DO NOTHING`, catalog row first (FK `fk_ref_yoga`). bg_yogas is the sole author of every yoga id's name, doctrine, and index.
+Every `brahma_yoga_catalog` insert is accompanied (same transaction) by a `brahma_ontology` row (`entity_class='yoga'`, matching id) and a `reference_yogas` pointer row `(canonical_id, name_en, category)`. **Ontology insert uses `ON CONFLICT (entity_class, canonical_id) DO NOTHING`** (the live arbiter — confirmed in `l0_ontology.py`), columns `canonical_name_en`/`canonical_name_sa`. Pointer + catalog use `ON CONFLICT (canonical_id) DO NOTHING` (their PK). Catalog row first (FK `fk_ref_yoga`).
 
-### §0.2 — Two-source floor strategy (honest about the 250)
+## §3a — Floor Achievement Arithmetic (the proof the floor is reached)
 
-The ≥250 floor is reached from TWO deterministic, non-fabricating sources:
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `closed_set_inline` | Complete yoga dicts embedded in §3 (PMP 5 + lunar/solar 6 + **all 32 Nabhasa** + named 19 + raja 8 + dhana 5 + sannyasa/aristha 6) | **81** (physically counted) | grep `^\s*\{"canonical_id":"` in §3 of THIS brief = 81 |
+| `deterministic_generated` | none for yogas (no cross-product generator applies) | 0 | — |
+| `structured_extraction` | Saravali/BPHS/Phaladeepika named yogas mined from `bg_texts`, each built into a REAL `formation_rule_jsonb` via the embedded name→pattern lookup (§3.9). NO `needs_structuring` placeholders. **Brief-provable today: ~20** (templates Racayitā could embed without fabrication). **Residual to ≥169 requires an ACHARYA LOOKUP-COMPLETION PASS** (§8 HARD STOP) — the named yogas exist in the Saravali corpus; their formation templates need expert authoring. | **20 now → ≥169 after completion pass** | the §3.9 `SARAVALI_YOGA_LOOKUP` (20 verified entries embedded) + the flagged completion pass |
+| **TOTAL** | | **101 brief-provable; ≥250 after lookup completion** | 81 (inline) + 0 + 20 (templated) = **101 provable now**; the held 250 floor is reached only after the §8 acharya completion pass. Writer FAIL-CLOSED: REJECTs below 250, never pads. |
 
-1. **Authored canonical core (~130 yogas), §3.** The yogas every acharya knows — Pancha Mahapurusha, the lunar/solar yogas, the Nabhasa families, the major Raja/Dhana/Viparita yogas, etc. — embedded inline with full doctrine. This is the Tier-1 pure-embedded pass (depends only on bg_ontology).
-2. **Corpus-extracted named yogas (~120+), §3.9.** Saravali Ch.34-50 alone catalogs ~110 named yogas; BPHS Ch.30-40 and Phaladeepika Ch.6-7 add more. The writer's second pass deterministically extracts NAMED yoga definitions from the ingested `bg_texts` chunks (a yoga-name regex + the chunk that defines it → a catalog row citing that chunk). This depends on bg_texts (Tier 2).
-
-> **Why this is not fabrication:** source 2 extracts real yogas from real ingested texts, each row `source_chunk_ids`-cited to the verse that defines it. It is the design's own §3.9 source. The writer NEVER invents a yoga. If sources 1+2 together fall short of 250, the writer reports the shortfall to native — it does NOT pad.
-
-> **Tiering consequence:** bg_yogas runs in two phases — a Tier-1 embedded phase (immediately after bg_ontology) and a Tier-3 extraction phase (after bg_texts). The orchestrator handles this via `depends_on=['bg_ontology','bg_texts']` so the topo-sort places bg_yogas after bg_texts; the embedded core inserts first, the extraction supplement second, in one writer run. (If native prefers the core lit earlier, split into `bg_yogas` core + a `bg_yogas_extract` follow pass — but the single-writer-two-phase approach keeps one asset/one tile.)
+> **Honesty note (binding — this is a HARD STOP surfaced to native, per the Build-Guarantor charter).** The inline closed-set (81) is fully embedded and physically verified. The `structured_extraction` bucket is **honestly bounded by what Racayitā could template without fabrication: ~20 entries** (§3.9), NOT 170. Authoring 170 accurate Saravali/BPHS named-yoga formation templates exceeds a gap-author pass and would require inventing formation patterns — forbidden by the cardinal rule. **Therefore 250 is NOT brief-provable from embedded data alone (provable max ≈ 101).** Per the charter HARD STOP, this is surfaced to native (§8): the held 250 floor requires either (a) an acharya pass to complete `SARAVALI_YOGA_LOOKUP` to ≥169 verified templates (recommended — the names are in the corpus), or (b) native accepts corpus-verse-defined formation for the residual. **The floor is HELD at 250; the writer is FAIL-CLOSED (REJECTs below 250); nothing is padded.** (If `kemadruma_aristha` is dropped under strict single-source — §8 — inline = 80.)
 
 ## §1 — Schema reference (migration 176, verified)
 
 ```
 brahma_yoga_catalog (
-  canonical_id            TEXT PRIMARY KEY,
-  name_sa                 TEXT NOT NULL,
-  name_en                 TEXT NOT NULL,
-  category                TEXT NOT NULL CHECK (category IN ('raja','dhana','pancha_mahapurusha','aristha','sannyasa','other')),
-  formation_rule_jsonb    JSONB NOT NULL,           -- structured pattern: {requires:[{planet,house|sign|relation}], aspects:[...]}
-  formation_text          TEXT NOT NULL,
-  significations_jsonb    JSONB NOT NULL DEFAULT '{}',
-  significations_text     TEXT NOT NULL,
-  cancellation_conditions JSONB,
-  classical_citations     JSONB,
-  source_chunk_ids        BIGINT[] DEFAULT '{}',
-  school                  TEXT NOT NULL,
-  rare                    BOOLEAN NOT NULL DEFAULT false,
-  computed_strength_formula TEXT,
-  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)
+  canonical_id TEXT PRIMARY KEY, name_sa TEXT NOT NULL, name_en TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('raja','dhana','pancha_mahapurusha','aristha','sannyasa','other')),
+  formation_rule_jsonb JSONB NOT NULL, formation_text TEXT NOT NULL,
+  significations_jsonb JSONB NOT NULL DEFAULT '{}', significations_text TEXT NOT NULL,
+  cancellation_conditions JSONB, classical_citations JSONB,
+  source_chunk_ids BIGINT[] DEFAULT '{}', school TEXT NOT NULL,
+  rare BOOLEAN NOT NULL DEFAULT false, computed_strength_formula TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() )
 ```
-
-> `category` is constrained to 6 values. Yogas that aren't raja/dhana/PMP/aristha/sannyasa go to `'other'` (this includes Nabhasa, lunar, solar, and most named combinations). Store a finer sub-category in `significations_jsonb.subcategory` if wanted.
+Non-raja/dhana/PMP/aristha/sannyasa yogas → `category='other'`; finer label in `significations_jsonb.subcategory`.
 
 ## §2 — Source references
 
-| Yoga family | Source |
+| Family | Source |
 |---|---|
-| Pancha Mahapurusha (5) | BPHS Ch.75 / Saravali Ch.27; Phaladeepika Ch.6 |
-| Lunar yogas (Sunapha/Anapha/Durudhara/Kemadruma) + Chandra-adhi | BPHS Ch.30; Saravali Ch.10 |
-| Solar yogas (Vesi/Vasi/Ubhayachari) | BPHS Ch.30; Saravali Ch.9 |
-| Nabhasa yogas (~32 named families) | BPHS Ch.35; Saravali Ch.34-37; Brihat Jataka Ch.12 |
-| Raja yogas (kendra-trikona, Dharma-Karmadhipati, neecha-bhanga, etc.) | BPHS Ch.36-40; Phaladeepika Ch.7 |
-| Dhana yogas (wealth combinations) | BPHS Ch.41; Phaladeepika Ch.8 |
-| Viparita Raja yogas (Harsha/Sarala/Vimala) | classical tradition; Phaladeepika |
-| Named combination yogas (Gajakesari, Amala, Adhi, Chatussagara, Saraswati, Lakshmi, Kahala, ...) | Saravali; Phaladeepika; Jataka Parijata |
+| Pancha Mahapurusha (5) | BPHS Ch.75; Saravali Ch.27; Phaladeepika Ch.6 |
+| Lunar/Solar (6) | BPHS Ch.30; Saravali Ch.9-10 |
+| Nabhasa (32) | BPHS Ch.35; Saravali Ch.34-37; Brihat Jataka Ch.12 |
+| Named combinations (19) | Saravali; Phaladeepika Ch.6; Jataka Parijata |
+| Raja (8) / Dhana (5) | BPHS Ch.36-41; Phaladeepika Ch.7-8 |
+| Sannyasa/Pravrajya (6) | BPHS Ch.36; Saravali Ch.45 |
+| Structured-extraction supplement | Saravali Ch.34-50; BPHS Ch.36-40; Phaladeepika Ch.6-8 (ingested in bg_texts) |
 
-## §3 — Embedded classical content (authored canonical core, ~130)
+## §3 — Embedded closed-set core (81 yogas, ALL inline as complete dicts)
 
-Author into `platform/python-sidecar/brahmagyan/l0_yogas.py` as `YOGAS_CORE = [...]`. Representative full rows per family shown; the executor authors all named ids in each family with the same field completeness. `formation_rule_jsonb` uses a small structured grammar the L1 pattern-matcher reads.
+Author into `platform/python-sidecar/brahmagyan/l0_yogas.py` as `YOGAS_CORE = [...]`. Every dict below is complete and copy-paste-ready. (Dicts shown compact, one per line; the executor pretty-prints. JSONB fields via `Json(...)`.)
 
 ### §3.1 — Pancha Mahapurusha (5, category=pancha_mahapurusha)
 
 ```python
 YOGAS_CORE = [
-  {"canonical_id":"ruchaka","name_sa":"Rucaka","name_en":"Ruchaka Yoga","category":"pancha_mahapurusha","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"planet":"mars","dignity":["own","exalted"],"house_class":"kendra"}]},
-   "formation_text":"Mars in its own sign (Aries/Scorpio) or exaltation (Capricorn), placed in a kendra from lagna.",
-   "significations_jsonb":{"gives":["courage","command","physical_strength","leadership","martial_success"],"subcategory":"mahapurusha"},
-   "significations_text":"Bold, commanding, athletic, victorious over enemies; a leader/warrior nature.",
-   "cancellation_conditions":{"weakened_if":["Mars combust","Mars aspected by malefics","Mars in dusthana from Moon"]},
-   "classical_citations":[{"text_id":"bphs","chapter":75},{"text_id":"phaladeepika","chapter":6}],"rare":False,
-   "computed_strength_formula":"mars_shadbala × kendra_factor"},
-  {"canonical_id":"bhadra","name_sa":"Bhadra","name_en":"Bhadra Yoga","category":"pancha_mahapurusha","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"planet":"mercury","dignity":["own","exalted"],"house_class":"kendra"}]},
-   "formation_text":"Mercury in own (Gemini/Virgo) or exaltation (Virgo) in a kendra from lagna.",
-   "significations_jsonb":{"gives":["intelligence","eloquence","scholarship","business_acumen"],"subcategory":"mahapurusha"},
-   "significations_text":"Sharp intellect, eloquent, learned, prosperous through wit and trade.",
-   "cancellation_conditions":{"weakened_if":["Mercury combust","malefic aspect"]},
-   "classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"mercury_shadbala × kendra_factor"},
-  {"canonical_id":"hamsa","name_sa":"Haṃsa","name_en":"Hamsa Yoga","category":"pancha_mahapurusha","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"planet":"jupiter","dignity":["own","exalted"],"house_class":"kendra"}]},
-   "formation_text":"Jupiter in own (Sagittarius/Pisces) or exaltation (Cancer) in a kendra from lagna.",
-   "significations_jsonb":{"gives":["wisdom","righteousness","respect","spiritual_inclination"],"subcategory":"mahapurusha"},
-   "significations_text":"Virtuous, wise, respected, dharmic; fine features and noble conduct.",
-   "cancellation_conditions":{"weakened_if":["Jupiter combust","malefic aspect"]},
-   "classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"jupiter_shadbala × kendra_factor"},
-  {"canonical_id":"malavya","name_sa":"Mālavya","name_en":"Malavya Yoga","category":"pancha_mahapurusha","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"planet":"venus","dignity":["own","exalted"],"house_class":"kendra"}]},
-   "formation_text":"Venus in own (Taurus/Libra) or exaltation (Pisces) in a kendra from lagna.",
-   "significations_jsonb":{"gives":["beauty","luxury","artistic_talent","marital_happiness","wealth"],"subcategory":"mahapurusha"},
-   "significations_text":"Charming, refined, comfortable life, artistic gifts, conjugal happiness.",
-   "cancellation_conditions":{"weakened_if":["Venus combust","malefic aspect"]},
-   "classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"venus_shadbala × kendra_factor"},
-  {"canonical_id":"sasa","name_sa":"Śaśa","name_en":"Sasa Yoga","category":"pancha_mahapurusha","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"planet":"saturn","dignity":["own","exalted"],"house_class":"kendra"}]},
-   "formation_text":"Saturn in own (Capricorn/Aquarius) or exaltation (Libra) in a kendra from lagna.",
-   "significations_jsonb":{"gives":["authority","endurance","leadership_of_masses","power"],"subcategory":"mahapurusha"},
-   "significations_text":"Commanding over many, disciplined, powerful through perseverance; can be ruthless.",
-   "cancellation_conditions":{"weakened_if":["Saturn combust","malefic aspect"]},
-   "classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"saturn_shadbala × kendra_factor"},
+ {"canonical_id":"ruchaka","name_sa":"Rucaka","name_en":"Ruchaka Yoga","category":"pancha_mahapurusha","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"mars","dignity":["own","exalted"],"house_class":"kendra"}]},"formation_text":"Mars in own (Aries/Scorpio) or exaltation (Capricorn) in a kendra from lagna.","significations_jsonb":{"gives":["courage","command","strength","leadership"],"subcategory":"mahapurusha"},"significations_text":"Bold, commanding, martial, victorious.","cancellation_conditions":{"weakened_if":["mars combust","malefic aspect"]},"classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"mars_shadbala*kendra_factor"},
+ {"canonical_id":"bhadra","name_sa":"Bhadra","name_en":"Bhadra Yoga","category":"pancha_mahapurusha","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"mercury","dignity":["own","exalted"],"house_class":"kendra"}]},"formation_text":"Mercury in own (Gemini/Virgo) or exaltation (Virgo) in a kendra from lagna.","significations_jsonb":{"gives":["intellect","eloquence","trade"],"subcategory":"mahapurusha"},"significations_text":"Sharp, eloquent, learned, prosperous.","cancellation_conditions":{"weakened_if":["mercury combust","malefic aspect"]},"classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"mercury_shadbala*kendra_factor"},
+ {"canonical_id":"hamsa","name_sa":"Haṃsa","name_en":"Hamsa Yoga","category":"pancha_mahapurusha","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"jupiter","dignity":["own","exalted"],"house_class":"kendra"}]},"formation_text":"Jupiter in own (Sagittarius/Pisces) or exaltation (Cancer) in a kendra from lagna.","significations_jsonb":{"gives":["wisdom","virtue","respect"],"subcategory":"mahapurusha"},"significations_text":"Wise, righteous, respected, dharmic.","cancellation_conditions":{"weakened_if":["jupiter combust","malefic aspect"]},"classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"jupiter_shadbala*kendra_factor"},
+ {"canonical_id":"malavya","name_sa":"Mālavya","name_en":"Malavya Yoga","category":"pancha_mahapurusha","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"venus","dignity":["own","exalted"],"house_class":"kendra"}]},"formation_text":"Venus in own (Taurus/Libra) or exaltation (Pisces) in a kendra from lagna.","significations_jsonb":{"gives":["beauty","luxury","arts","marital_happiness"],"subcategory":"mahapurusha"},"significations_text":"Charming, refined, comfortable, artistic.","cancellation_conditions":{"weakened_if":["venus combust","malefic aspect"]},"classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"venus_shadbala*kendra_factor"},
+ {"canonical_id":"sasa","name_sa":"Śaśa","name_en":"Sasa Yoga","category":"pancha_mahapurusha","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"saturn","dignity":["own","exalted"],"house_class":"kendra"}]},"formation_text":"Saturn in own (Capricorn/Aquarius) or exaltation (Libra) in a kendra from lagna.","significations_jsonb":{"gives":["authority","endurance","mass_leadership"],"subcategory":"mahapurusha"},"significations_text":"Commanding over many, disciplined, powerful.","cancellation_conditions":{"weakened_if":["saturn combust","malefic aspect"]},"classical_citations":[{"text_id":"bphs","chapter":75}],"rare":False,"computed_strength_formula":"saturn_shadbala*kendra_factor"},
 ```
 
-### §3.2 — Lunar & solar yogas (category=other; ~10)
+### §3.2 — Lunar & Solar (6, category=other)
 
 ```python
-  {"canonical_id":"sunapha","name_sa":"Sunaphā","name_en":"Sunapha Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planet (not Sun) in 2nd from Moon"}]},
-   "formation_text":"A planet other than the Sun occupies the 2nd from the Moon.","significations_jsonb":{"gives":["self_earned_wealth","intelligence","reputation"],"subcategory":"chandra_yoga"},
-   "significations_text":"Self-made prosperity, good name, capable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
-  {"canonical_id":"anapha","name_sa":"Anaphā","name_en":"Anapha Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planet (not Sun) in 12th from Moon"}]},
-   "formation_text":"A planet other than the Sun occupies the 12th from the Moon.","significations_jsonb":{"gives":["health","good_character","comforts","renunciation_tendency"],"subcategory":"chandra_yoga"},
-   "significations_text":"Healthy, well-mannered, comfortable; can incline to detachment.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
-  {"canonical_id":"durudhara","name_sa":"Durudharā","name_en":"Durudhara Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planets (not Sun) in both 2nd and 12th from Moon"}]},
-   "formation_text":"Planets other than the Sun occupy BOTH the 2nd and 12th from the Moon.","significations_jsonb":{"gives":["wealth","generosity","comforts","fame"],"subcategory":"chandra_yoga"},
-   "significations_text":"Wealthy, charitable, enjoys vehicles and comforts.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
-  # kemadruma is the AFFLICTION counterpart — defined in bg_doshas; cross-reference, do not duplicate here.
-  {"canonical_id":"vesi","name_sa":"Veśi","name_en":"Vesi Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planet (not Moon) in 2nd from Sun"}]},"formation_text":"A planet other than the Moon in the 2nd from the Sun.","significations_jsonb":{"gives":["balanced_nature","truthfulness","prosperity"],"subcategory":"surya_yoga"},"significations_text":"Just, truthful, comfortable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
-  {"canonical_id":"vasi","name_sa":"Vāsi","name_en":"Vasi Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planet (not Moon) in 12th from Sun"}]},"formation_text":"A planet other than the Moon in the 12th from the Sun.","significations_jsonb":{"gives":["skill","liberality","influence"],"subcategory":"surya_yoga"},"significations_text":"Skilful, generous, influential.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
-  {"canonical_id":"ubhayachari","name_sa":"Ubhayacarī","name_en":"Ubhayachari Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planets (not Moon) in both 2nd and 12th from Sun"}]},"formation_text":"Planets other than the Moon in BOTH the 2nd and 12th from the Sun.","significations_jsonb":{"gives":["fame","wealth","eloquence","royal_favour"],"subcategory":"surya_yoga"},"significations_text":"Famous, well-spoken, prosperous, favoured by authority.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"sunapha","name_sa":"Sunaphā","name_en":"Sunapha Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planet_not_sun_in_2nd_from_moon"}]},"formation_text":"A planet other than the Sun in the 2nd from the Moon.","significations_jsonb":{"gives":["self_earned_wealth","intelligence"],"subcategory":"chandra_yoga"},"significations_text":"Self-made prosperity, capable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"anapha","name_sa":"Anaphā","name_en":"Anapha Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planet_not_sun_in_12th_from_moon"}]},"formation_text":"A planet other than the Sun in the 12th from the Moon.","significations_jsonb":{"gives":["health","good_character","comforts"],"subcategory":"chandra_yoga"},"significations_text":"Healthy, well-mannered, comfortable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"durudhara","name_sa":"Durudharā","name_en":"Durudhara Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planets_not_sun_in_both_2nd_and_12th_from_moon"}]},"formation_text":"Planets other than the Sun in BOTH the 2nd and 12th from the Moon.","significations_jsonb":{"gives":["wealth","generosity","fame"],"subcategory":"chandra_yoga"},"significations_text":"Wealthy, charitable, comfortable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"vesi","name_sa":"Veśi","name_en":"Vesi Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planet_not_moon_in_2nd_from_sun"}]},"formation_text":"A planet other than the Moon in the 2nd from the Sun.","significations_jsonb":{"gives":["balanced_nature","truthfulness"],"subcategory":"surya_yoga"},"significations_text":"Just, truthful, comfortable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"vasi","name_sa":"Vāsi","name_en":"Vasi Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planet_not_moon_in_12th_from_sun"}]},"formation_text":"A planet other than the Moon in the 12th from the Sun.","significations_jsonb":{"gives":["skill","liberality","influence"],"subcategory":"surya_yoga"},"significations_text":"Skilful, generous, influential.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
+ {"canonical_id":"ubhayachari","name_sa":"Ubhayacarī","name_en":"Ubhayachari Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"planets_not_moon_in_both_2nd_and_12th_from_sun"}]},"formation_text":"Planets other than the Moon in BOTH the 2nd and 12th from the Sun.","significations_jsonb":{"gives":["fame","wealth","eloquence"],"subcategory":"surya_yoga"},"significations_text":"Famous, well-spoken, favoured by authority.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False},
 ```
 
-### §3.3 — Major named combination yogas (category=raja/dhana/other; ~25)
+### §3.3 — Nabhasa yogas — ALL 32 (category=other; the complete closed enumeration, BPHS Ch.35)
+
+The Nabhasa are 4 sub-families: **Ashraya (3)**, **Dala (2)**, **Akriti (20)**, **Sankhya (7)**. `formation_rule_jsonb` encodes the planetary-distribution geometry deterministically.
 
 ```python
-  {"canonical_id":"gajakesari","name_sa":"Gajakeśarī","name_en":"Gajakesari Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"Jupiter in a kendra (1/4/7/10) from the Moon"}]},
-   "formation_text":"Jupiter in a kendra from the Moon (or both in mutual kendra), unafflicted.",
-   "significations_jsonb":{"gives":["intelligence","fame","wealth","respect","longevity"],"subcategory":"named"},
-   "significations_text":"Renowned, wise, prosperous, respected like an elephant-lion; resilient reputation.",
-   "cancellation_conditions":{"weakened_if":["Jupiter or Moon debilitated/combust/in dusthana"]},
-   "classical_citations":[{"text_id":"saravali"},{"text_id":"phaladeepika","chapter":6}],"rare":False},
-  {"canonical_id":"amala","name_sa":"Amala","name_en":"Amala Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"a benefic in the 10th from lagna or Moon"}]},
-   "formation_text":"Only a benefic occupies the 10th from lagna (or Moon).","significations_jsonb":{"gives":["lasting_fame","spotless_reputation","prosperity"],"subcategory":"named"},
-   "significations_text":"Spotless reputation, virtuous fame, enduring honour.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika","chapter":6}],"rare":False},
-  {"canonical_id":"adhi_yoga","name_sa":"Adhi Yoga","name_en":"Adhi Yoga","category":"raja","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"benefics in the 6th, 7th and 8th from the Moon"}]},
-   "formation_text":"Benefics (Mercury, Jupiter, Venus) occupy the 6th, 7th and 8th from the Moon.","significations_jsonb":{"gives":["leadership","wealth","health","command","royal_status"],"subcategory":"raja"},
-   "significations_text":"Leader/minister/king, healthy, wealthy, commanding.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":36}],"rare":False},
-  {"canonical_id":"chatussagara","name_sa":"Catuḥsāgara","name_en":"Chatussagara Yoga","category":"raja","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"planets in all four kendras (1/4/7/10)"}]},
-   "formation_text":"All four kendras (1st, 4th, 7th, 10th) are occupied by planets.","significations_jsonb":{"gives":["fame_across_four_oceans","wealth","longevity","authority"],"subcategory":"raja"},
-   "significations_text":"Renown to the four seas, prosperous, long-lived, commanding.","cancellation_conditions":{},"classical_citations":[{"text_id":"classical_tradition"}],"rare":False},
-  {"canonical_id":"saraswati","name_sa":"Sarasvatī","name_en":"Saraswati Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"Jupiter, Venus and Mercury in kendra/trikona/2nd, Jupiter strong"}]},
-   "formation_text":"Mercury, Venus and Jupiter occupy kendras/trikonas/2nd, with Jupiter well-placed.","significations_jsonb":{"gives":["learning","eloquence","arts","fame","wealth"],"subcategory":"named"},
-   "significations_text":"Gifted in arts and letters, eloquent, learned, prosperous.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
-  {"canonical_id":"lakshmi_yoga","name_sa":"Lakṣmī","name_en":"Lakshmi Yoga","category":"dhana","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"9th lord in own/exaltation in kendra/trikona AND strong lagna lord"}]},
-   "formation_text":"Lord of the 9th in own sign or exaltation in a kendra/trikona, with a strong lagna lord.","significations_jsonb":{"gives":["wealth","fortune","beauty","noble_character"],"subcategory":"dhana"},
-   "significations_text":"Fortunate, wealthy, virtuous, blessed by Lakshmi.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
-  {"canonical_id":"kahala","name_sa":"Kāhala","name_en":"Kahala Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"4th and 9th lords in mutual kendra AND lagna lord strong"}]},
-   "formation_text":"Lords of the 4th and 9th in mutual kendras, lagna lord strong.","significations_jsonb":{"gives":["courage","command_of_army","property"],"subcategory":"named"},
-   "significations_text":"Bold, commands forces, holds lands.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
-  # ... author the remaining named combination yogas with the same completeness:
-  #   chandra_mangala (Moon+Mars → wealth/dhana), guru_mangala, budha_aditya (Sun+Mercury → intellect),
-  #   parvata, kalanidhi, kusuma, sankha, bheri, mridanga, srinatha, matsya, kurma, khadga,
-  #   chamara, dhwaja, trilochana, kulavardhana, gauri, vasumati, neecha_bhanga_raja_yoga,
-  #   dharma_karmadhipati (9th+10th lords joined → strongest raja yoga), maha_bhagya, ...
+ # --- Ashraya (3): defined by the modality all planets occupy ---
+ {"canonical_id":"rajju","name_sa":"Rajju","name_en":"Rajju Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":"movable_signs"},"formation_text":"All planets in movable (chara) signs.","significations_jsonb":{"gives":["love_of_travel","restlessness","industry"],"subcategory":"nabhasa_ashraya"},"significations_text":"Fond of travel, wandering, hard-working.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"musala","name_sa":"Musala","name_en":"Musala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":"fixed_signs"},"formation_text":"All planets in fixed (sthira) signs.","significations_jsonb":{"gives":["stability","wealth","honour","stubbornness"],"subcategory":"nabhasa_ashraya"},"significations_text":"Stable, wealthy, honoured, firm of mind.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"nala","name_sa":"Nala","name_en":"Nala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":"dual_signs"},"formation_text":"All planets in dual (dvisvabhava) signs.","significations_jsonb":{"gives":["adaptability","skill","slight_bodily_defect"],"subcategory":"nabhasa_ashraya"},"significations_text":"Adaptable, skilful, resourceful.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ # --- Dala (2): benefics vs malefics in kendras ---
+ {"canonical_id":"mala","name_sa":"Mālā (Srak)","name_en":"Mala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"benefics_in":"three_kendras","malefics_elsewhere":True},"formation_text":"Three kendras occupied by benefics (Srak/garland).","significations_jsonb":{"gives":["comforts","pleasures","wealth"],"subcategory":"nabhasa_dala"},"significations_text":"Enjoys comforts, vehicles, pleasures.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"sarpa","name_sa":"Sarpa","name_en":"Sarpa Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"malefics_in":"three_kendras","benefics_elsewhere":True},"formation_text":"Three kendras occupied by malefics (serpent).","significations_jsonb":{"gives":["hardship","poverty","cruelty"],"subcategory":"nabhasa_dala"},"significations_text":"Struggle, want, harshness.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ # --- Akriti (20): defined by the geometric figure planets form ---
+ {"canonical_id":"gada","name_sa":"Gadā","name_en":"Gada Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":"two_adjacent_kendras"},"formation_text":"All planets in two successive kendras (e.g. 1st & 4th).","significations_jsonb":{"gives":["wealth_through_ritual","skill_in_arms"],"subcategory":"nabhasa_akriti"},"significations_text":"Wealthy, accomplished, devoted to rites.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"sakata_nabhasa","name_sa":"Śakaṭa","name_en":"Sakata Yoga (Nabhasa)","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["1","7"]},"formation_text":"All planets in the 1st and 7th houses.","significations_jsonb":{"gives":["fluctuating_fortune","toil"],"subcategory":"nabhasa_akriti"},"significations_text":"Ups and downs, livelihood by labour.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"vihaga","name_sa":"Vihaga (Pakṣī)","name_en":"Vihaga Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["4","10"]},"formation_text":"All planets in the 4th and 10th houses.","significations_jsonb":{"gives":["wandering","messenger_work","restlessness"],"subcategory":"nabhasa_akriti"},"significations_text":"Roaming, fond of travel, quarrelsome.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"shringataka","name_sa":"Śṛṅgāṭaka","name_en":"Shringataka Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["1","5","9"]},"formation_text":"All planets in the trikonas (1st, 5th, 9th).","significations_jsonb":{"gives":["happiness","love_of_quarrel_then_peace","fortune"],"subcategory":"nabhasa_akriti"},"significations_text":"Fortunate, fond of wife, happy.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"hala","name_sa":"Hala","name_en":"Hala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in_one_of":[["2","6","10"],["3","7","11"],["4","8","12"]]},"formation_text":"All planets in one set of mutual trines NOT including lagna (panaphara, apoklima, or 4-8-12 trine).","significations_jsonb":{"gives":["agriculture","labour","want"],"subcategory":"nabhasa_akriti"},"significations_text":"Lives by tilling, eats by toil.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"vajra","name_sa":"Vajra","name_en":"Vajra Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"benefics_in":["1","7"],"malefics_in":["4","10"]},"formation_text":"Benefics in 1st & 7th, malefics in 4th & 10th (diamond).","significations_jsonb":{"gives":["happy_early_and_late_life","valour"],"subcategory":"nabhasa_akriti"},"significations_text":"Brave, happy at life's start and end.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"yava","name_sa":"Yava","name_en":"Yava Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"malefics_in":["1","7"],"benefics_in":["4","10"]},"formation_text":"Malefics in 1st & 7th, benefics in 4th & 10th (barley-corn).","significations_jsonb":{"gives":["happy_mid_life","charitable","vows"],"subcategory":"nabhasa_akriti"},"significations_text":"Happy in middle life, observant of vows, wealthy.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"kamala","name_sa":"Kamala","name_en":"Kamala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":"four_kendras"},"formation_text":"All planets in the four kendras (1/4/7/10).","significations_jsonb":{"gives":["fame","wealth","long_life","virtue"],"subcategory":"nabhasa_akriti"},"significations_text":"Famous, wealthy, long-lived, of many good deeds.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":True},
+ {"canonical_id":"vapi","name_sa":"Vāpī","name_en":"Vapi Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in_one_of":["four_panaphara","four_apoklima"]},"formation_text":"All planets in the panapharas (2/5/8/11) or the apoklimas (3/6/9/12) — the non-kendras.","significations_jsonb":{"gives":["accumulated_wealth","saving_nature"],"subcategory":"nabhasa_akriti"},"significations_text":"Accumulates and hoards wealth, happy.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"yupa","name_sa":"Yūpa","name_en":"Yupa Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["1","2","3","4"]},"formation_text":"All planets in the first four houses (1-4).","significations_jsonb":{"gives":["spiritual_merit","sacrifices","self_restraint"],"subcategory":"nabhasa_akriti"},"significations_text":"Devoted to sacrifice, married, self-controlled.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"ishu","name_sa":"Iṣu (Śara)","name_en":"Ishu Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["4","5","6","7"]},"formation_text":"All planets in houses 4-7 (arrow).","significations_jsonb":{"gives":["livelihood_by_weapons","keeper_of_prisons"],"subcategory":"nabhasa_akriti"},"significations_text":"Lives by sharp weapons, jailer-like work.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"shakti_nabhasa","name_sa":"Śakti","name_en":"Shakti Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["7","8","9","10"]},"formation_text":"All planets in houses 7-10 (lance).","significations_jsonb":{"gives":["poverty_then_strength","longevity","valour"],"subcategory":"nabhasa_akriti"},"significations_text":"Poor but bold, long-lived, victorious.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"danda","name_sa":"Daṇḍa","name_en":"Danda Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["10","11","12","1"]},"formation_text":"All planets in houses 10-12 and 1 (staff).","significations_jsonb":{"gives":["loss_of_kin","servitude","wandering"],"subcategory":"nabhasa_akriti"},"significations_text":"Separated from family, dependent, roaming.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"nauka","name_sa":"Naukā","name_en":"Nauka Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_seven_planets_in_seven_consecutive_from":"1"},"formation_text":"The seven planets in seven consecutive houses from the lagna (1-7) (boat).","significations_jsonb":{"gives":["wealth_by_water","famous_but_miserly"],"subcategory":"nabhasa_akriti"},"significations_text":"Earns near water, niggardly, renowned.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"koota","name_sa":"Kūṭa","name_en":"Koota Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_seven_planets_in_seven_consecutive_from":"4"},"formation_text":"The seven planets in seven consecutive houses from the 4th (4-10) (mountain-peak).","significations_jsonb":{"gives":["liar","prison_keeper","poverty"],"subcategory":"nabhasa_akriti"},"significations_text":"Untruthful, jailer-like, indigent.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"chatra","name_sa":"Chatra","name_en":"Chatra Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_seven_planets_in_seven_consecutive_from":"7"},"formation_text":"The seven planets in seven consecutive houses from the 7th (7-1) (parasol).","significations_jsonb":{"gives":["kind","helpful","happy_at_both_ends_of_life"],"subcategory":"nabhasa_akriti"},"significations_text":"Compassionate, aids kin, happy early and late.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"chapa","name_sa":"Cāpa (Dhanus)","name_en":"Chapa Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_seven_planets_in_seven_consecutive_from":"10"},"formation_text":"The seven planets in seven consecutive houses from the 10th (10-4) (bow).","significations_jsonb":{"gives":["guarding_treasure","forest_dweller","fortune_mid_life"],"subcategory":"nabhasa_akriti"},"significations_text":"Keeper of wealth, roams forests, happy in middle life.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"ardhachandra","name_sa":"Ardhacandra","name_en":"Ardhachandra Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_seven_planets_in_seven_consecutive_from":"a_panaphara_or_apoklima"},"formation_text":"The seven planets in seven consecutive houses beginning from a non-kendra (half-moon).","significations_jsonb":{"gives":["army_command","royal_favour","strength"],"subcategory":"nabhasa_akriti"},"significations_text":"Leads forces, favoured by rulers, comely.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"chakra","name_sa":"Cakra","name_en":"Chakra Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["1","3","5","7","9","11"]},"formation_text":"All planets in the six odd houses (1,3,5,7,9,11) (wheel).","significations_jsonb":{"gives":["emperor","ruler_of_rulers"],"subcategory":"nabhasa_akriti"},"significations_text":"Sovereign whom kings attend.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":True},
+ {"canonical_id":"samudra","name_sa":"Samudra","name_en":"Samudra Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"all_planets_in":["2","4","6","8","10","12"]},"formation_text":"All planets in the six even houses (2,4,6,8,10,12) (ocean).","significations_jsonb":{"gives":["great_wealth","many_pleasures","steady_mind"],"subcategory":"nabhasa_akriti"},"significations_text":"Very wealthy, enjoys pleasures, firm-minded.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":True},
+ # --- Sankhya (7): defined by the COUNT of distinct signs the 7 planets occupy ---
+ {"canonical_id":"vallaki","name_sa":"Vallakī (Vīṇā)","name_en":"Vallaki Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":7},"formation_text":"The seven planets spread across seven different signs (lute).","significations_jsonb":{"gives":["fond_of_music_dance","happy","skilled"],"subcategory":"nabhasa_sankhya"},"significations_text":"Loves song and dance, accomplished, content.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"dama","name_sa":"Dāma","name_en":"Dama Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":6},"formation_text":"The seven planets occupy six signs (garland-cord).","significations_jsonb":{"gives":["charitable","famous","many_friends"],"subcategory":"nabhasa_sankhya"},"significations_text":"Generous, renowned, benefactor of many.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"pasha","name_sa":"Pāśa","name_en":"Pasha Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":5},"formation_text":"The seven planets occupy five signs (noose).","significations_jsonb":{"gives":["many_servants","entanglements","skill_in_work"],"subcategory":"nabhasa_sankhya"},"significations_text":"Has dependents, bound by ties, capable.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"kedara","name_sa":"Kedāra","name_en":"Kedara Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":4},"formation_text":"The seven planets occupy four signs (field).","significations_jsonb":{"gives":["agriculture","helpful","steady"],"subcategory":"nabhasa_sankhya"},"significations_text":"Tiller of land, useful to many, truthful.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"shoola","name_sa":"Śūla","name_en":"Shoola Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":3},"formation_text":"The seven planets occupy three signs (trident/spike).","significations_jsonb":{"gives":["sharp","valiant","poor"],"subcategory":"nabhasa_sankhya"},"significations_text":"Fierce, brave, but indigent.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"yuga_nabhasa","name_sa":"Yuga","name_en":"Yuga Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":2},"formation_text":"The seven planets occupy two signs (yoke).","significations_jsonb":{"gives":["heretic","poor","abandoned"],"subcategory":"nabhasa_sankhya"},"significations_text":"Outside orthodoxy, poor, friendless.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
+ {"canonical_id":"gola","name_sa":"Gola","name_en":"Gola Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"distinct_signs_occupied":1},"formation_text":"All seven planets in a single sign (ball).","significations_jsonb":{"gives":["poverty","ignorance","strength_of_body"],"subcategory":"nabhasa_sankhya"},"significations_text":"Poor, unlettered, but physically strong.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":True},
 ```
 
-### §3.4 — Nabhasa yogas (~32 named families, category=other)
-
-The Nabhasa yogas are a fixed classical enumeration (BPHS Ch.35 / Saravali Ch.34-37): 3 Ashraya, 2 Dala, 20 Akriti, 7 Sankhya families. Author each named family with its formation pattern:
+### §3.4 — Named combination yogas (19, category=other/raja/dhana)
 
 ```python
-  # Ashraya (3): rajju (all planets in movable signs), musala (all in fixed), nala (all in dual)
-  {"canonical_id":"rajju","name_sa":"Rajju","name_en":"Rajju Yoga","category":"other","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"all_planets_in":"movable_signs"}]},"formation_text":"All planets occupy movable (chara) signs.","significations_jsonb":{"gives":["fondness_for_travel","wandering","industriousness"],"subcategory":"nabhasa_ashraya"},"significations_text":"Loves travel, restless, hard-working.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":35}],"rare":False},
-  # ... musala, nala (Ashraya); gada, sakata, vihaga/pakshi, sringataka, hala, vajra, yava, kamala,
-  #     vapi, yupa, sara/ishu, sakti, danda, nau/nauka, kuta, chatra, chapa/dhanus, ardhachandra,
-  #     chakra, samudra (Akriti, ~20); golaka, yuga, sula, kedara, pasa, dama, vina (Sankhya, 7-by-count).
-  #     Each: formation_rule_jsonb encodes the planetary-distribution geometry; all are BPHS Ch.35 / Saravali.
+ {"canonical_id":"gajakesari","name_sa":"Gajakeśarī","name_en":"Gajakesari Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"jupiter_in_kendra_from_moon"}]},"formation_text":"Jupiter in a kendra (1/4/7/10) from the Moon, unafflicted.","significations_jsonb":{"gives":["intelligence","fame","wealth","respect"],"subcategory":"named"},"significations_text":"Renowned, wise, prosperous, resilient repute.","cancellation_conditions":{"weakened_if":["jupiter_or_moon_debilitated_combust_dusthana"]},"classical_citations":[{"text_id":"saravali"},{"text_id":"phaladeepika","chapter":6}],"rare":False},
+ {"canonical_id":"amala","name_sa":"Amala","name_en":"Amala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"only_benefic_in_10th_from_lagna_or_moon"}]},"formation_text":"Only a benefic occupies the 10th from lagna (or Moon).","significations_jsonb":{"gives":["lasting_fame","spotless_repute"],"subcategory":"named"},"significations_text":"Spotless reputation, enduring honour.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika","chapter":6}],"rare":False},
+ {"canonical_id":"adhi_yoga","name_sa":"Ādhi Yoga","name_en":"Adhi Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"benefics_in_6th_7th_8th_from_moon"}]},"formation_text":"Benefics in the 6th, 7th and 8th from the Moon.","significations_jsonb":{"gives":["leadership","wealth","health","command"],"subcategory":"raja"},"significations_text":"Leader/minister/king, healthy, commanding.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":36}],"rare":False},
+ {"canonical_id":"chatussagara","name_sa":"Catuḥsāgara","name_en":"Chatussagara Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"all_four_kendras_occupied"}]},"formation_text":"All four kendras (1/4/7/10) occupied by planets.","significations_jsonb":{"gives":["fame_to_four_seas","wealth","longevity"],"subcategory":"raja"},"significations_text":"Renown across the four oceans, prosperous, long-lived.","cancellation_conditions":{},"classical_citations":[{"text_id":"classical_tradition","note":"Nabhasa-adjacent named raja yoga; Saravali/Phaladeepika tradition"}],"rare":False},
+ {"canonical_id":"saraswati","name_sa":"Sarasvatī","name_en":"Saraswati Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"mercury_venus_jupiter_in_kendra_trikona_or_2nd"},{"planet":"jupiter","strong":True}]},"formation_text":"Mercury, Venus and Jupiter in kendras/trikonas/2nd, Jupiter well-placed.","significations_jsonb":{"gives":["learning","eloquence","arts","fame"],"subcategory":"named"},"significations_text":"Gifted in letters and arts, eloquent, prosperous.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
+ {"canonical_id":"lakshmi_yoga","name_sa":"Lakṣmī","name_en":"Lakshmi Yoga","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"9th_lord_own_or_exalted_in_kendra_trikona"},{"planet":"lagna_lord","strong":True}]},"formation_text":"9th lord in own/exaltation in a kendra/trikona, with a strong lagna lord.","significations_jsonb":{"gives":["wealth","fortune","beauty","virtue"],"subcategory":"dhana"},"significations_text":"Fortunate, wealthy, virtuous.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"kahala","name_sa":"Kāhala","name_en":"Kahala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"4th_and_9th_lords_in_mutual_kendra"},{"planet":"lagna_lord","strong":True}]},"formation_text":"Lords of the 4th and 9th in mutual kendras, lagna lord strong.","significations_jsonb":{"gives":["courage","command_of_forces","property"],"subcategory":"named"},"significations_text":"Bold, commands forces, holds lands.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
+ {"canonical_id":"chandra_mangala","name_sa":"Candra-Maṅgala","name_en":"Chandra-Mangala Yoga","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"moon_mars_conjunct_or_mutual_aspect"}]},"formation_text":"Moon and Mars conjunct or in mutual aspect.","significations_jsonb":{"gives":["wealth","enterprise","trade"],"subcategory":"dhana"},"significations_text":"Earns through enterprise; sharp in money matters.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"budha_aditya","name_sa":"Budhāditya","name_en":"Budha-Aditya Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"sun_mercury_conjunct"},{"condition":"mercury_not_too_combust"}]},"formation_text":"Sun and Mercury conjunct (Mercury not deeply combust).","significations_jsonb":{"gives":["intelligence","skill","repute"],"subcategory":"named"},"significations_text":"Intelligent, skilful, well-regarded.","cancellation_conditions":{"weakened_if":["mercury_deeply_combust"]},"classical_citations":[{"text_id":"classical_tradition","note":"widely-attested nipuna yoga; Phaladeepika tradition"}],"rare":False},
+ {"canonical_id":"guru_mangala","name_sa":"Guru-Maṅgala","name_en":"Guru-Mangala Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"jupiter_mars_conjunct_or_mutual_aspect"}]},"formation_text":"Jupiter and Mars conjunct or in mutual aspect.","significations_jsonb":{"gives":["energy_with_wisdom","property","drive"],"subcategory":"named"},"significations_text":"Dynamic yet principled; gains through effort.","cancellation_conditions":{},"classical_citations":[{"text_id":"classical_tradition","note":"tradition-rooted graha-combination yoga"}],"rare":False},
+ {"canonical_id":"parvata","name_sa":"Parvata","name_en":"Parvata Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"kendra_and_trikona_lords_as_benefics_in_kendras"},{"condition":"6th_and_8th_empty_or_benefic"}]},"formation_text":"Kendra/trikona lords as benefics in kendras, with the 6th and 8th empty or benefic.","significations_jsonb":{"gives":["fortune","fame","eloquence","wealth"],"subcategory":"raja"},"significations_text":"Eminent, prosperous, learned, charitable.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
+ {"canonical_id":"kalanidhi","name_sa":"Kalānidhi","name_en":"Kalanidhi Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"planet":"jupiter","house":["2","5"]},{"relation":"jupiter_with_or_aspected_by_mercury_and_venus"}]},"formation_text":"Jupiter in the 2nd or 5th, joined or aspected by Mercury and Venus.","significations_jsonb":{"gives":["arts","learning","honour","comfort"],"subcategory":"named"},"significations_text":"Accomplished in arts, honoured, comfortable.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"sankha","name_sa":"Śaṅkha","name_en":"Sankha Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"5th_and_6th_lords_in_mutual_kendra"},{"planet":"lagna_lord","strong":True}]},"formation_text":"Lords of the 5th and 6th in mutual kendras, with a strong lagna lord.","significations_jsonb":{"gives":["long_life","wealth","virtue","land"],"subcategory":"raja"},"significations_text":"Long-lived, wealthy, dharmic, owner of lands.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"bheri","name_sa":"Bherī","name_en":"Bheri Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"venus_lagna_lord_9th_lord_strong_and_related"},{"planet":"jupiter","strong":True}]},"formation_text":"Venus, the lagna lord and the 9th lord strong and related, with Jupiter strong.","significations_jsonb":{"gives":["wealth","health","fame","progeny"],"subcategory":"raja"},"significations_text":"Healthy, wealthy, famous, blessed with family.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"maha_bhagya","name_sa":"Mahābhāgya","name_en":"Maha-Bhagya Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"condition":"day_birth_male_sun_moon_lagna_in_odd_signs"},{"condition_alt":"night_birth_female_sun_moon_lagna_in_even_signs"}]},"formation_text":"Male born by day with Sun, Moon and lagna in odd signs; or female born at night with them in even signs.","significations_jsonb":{"gives":["great_fortune","status","virtue","longevity"],"subcategory":"raja"},"significations_text":"Greatly fortunate, eminent, virtuous, long-lived.","cancellation_conditions":{},"classical_citations":[{"text_id":"classical_tradition","note":"classical mahabhagya rule (gender/day-night conditioned)"}],"rare":False},
+ {"canonical_id":"vasumati","name_sa":"Vasumatī","name_en":"Vasumati Yoga","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"benefics_in_upachayas_3_6_10_11_from_lagna_or_moon"}]},"formation_text":"Benefics occupy the upachaya houses (3/6/10/11) from lagna or the Moon.","significations_jsonb":{"gives":["wealth","self_sufficiency"],"subcategory":"dhana"},"significations_text":"Wealthy and never dependent on others.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
+ {"canonical_id":"chamara","name_sa":"Cāmara","name_en":"Chamara Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"lagna_lord_exalted_in_kendra_aspected_by_jupiter"}],"alt":[{"relation":"two_benefics_in_1_7_9_or_10"}]},"formation_text":"Lagna lord exalted in a kendra aspected by Jupiter (or two benefics in the 1st/7th/9th/10th).","significations_jsonb":{"gives":["royalty","eloquence","long_life","learning"],"subcategory":"raja"},"significations_text":"Royal, eloquent, long-lived, learned.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"trilochana","name_sa":"Trilocana","name_en":"Trilochana Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"sun_moon_mars_in_mutual_trines"}]},"formation_text":"Sun, Moon and Mars in mutual trines (1/5/9 from one another).","significations_jsonb":{"gives":["wealth","longevity","destroyer_of_foes"],"subcategory":"named"},"significations_text":"Wealthy, long-lived, vanquisher of enemies.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali"}],"rare":False},
+ {"canonical_id":"dharma_karmadhipati","name_sa":"Dharma-Karmādhipati","name_en":"Dharma-Karmadhipati Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"9th_and_10th_lords_associate_conjunction_aspect_or_exchange"}]},"formation_text":"Lords of the 9th (dharma) and 10th (karma) associate by conjunction, mutual aspect, or exchange.","significations_jsonb":{"gives":["greatest_raja_yoga","power","fortune","status"],"subcategory":"raja"},"significations_text":"The most powerful raja yoga — high status, fortune, authority.","cancellation_conditions":{"weakened_if":["either_lord_debilitated_combust_without_bhanga"]},"classical_citations":[{"text_id":"bphs","chapter":39}],"rare":False},
 ```
 
-### §3.5 — Raja, Dhana, Viparita-Raja yogas (~50; category=raja/dhana/other)
+### §3.5 — Raja, Dhana, Sannyasa, Balarishta-class (24, category as marked)
 
 ```python
-  {"canonical_id":"kendra_trikona_raja_yoga","name_sa":"Kendra-Trikoṇa Rāja Yoga","name_en":"Kendra-Trikona Raja Yoga","category":"raja","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"association (conjunction/aspect/exchange) of a kendra lord and a trikona lord"}]},
-   "formation_text":"A lord of a kendra (1/4/7/10) and a lord of a trikona (1/5/9) associate by conjunction, mutual aspect, or exchange.",
-   "significations_jsonb":{"gives":["status","power","success","prosperity"],"subcategory":"raja"},
-   "significations_text":"The foundational raja yoga — rise in status, authority, success.","cancellation_conditions":{"weakened_if":["either lord debilitated/combust without bhanga"]},
-   "classical_citations":[{"text_id":"bphs","chapter":39}],"rare":False},
-  {"canonical_id":"vipareeta_harsha","name_sa":"Viparīta Rāja Yoga (Harṣa)","name_en":"Harsha Yoga","category":"raja","school":"parashari",
-   "formation_rule_jsonb":{"requires":[{"relation":"6th lord in 6/8/12"}]},"formation_text":"Lord of the 6th placed in the 6th, 8th or 12th (dusthana exchange).","significations_jsonb":{"gives":["victory_over_enemies","health","sudden_rise"],"subcategory":"viparita_raja"},"significations_text":"Defeats enemies, robust health, unexpected gains.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
-  {"canonical_id":"vipareeta_sarala","name_sa":"Viparīta Rāja Yoga (Sarala)","name_en":"Sarala Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"8th lord in 6/8/12"}]},"formation_text":"Lord of the 8th in the 6th, 8th or 12th.","significations_jsonb":{"gives":["longevity","fearlessness","prosperity"],"subcategory":"viparita_raja"},"significations_text":"Long-lived, fearless, learned, prosperous.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
-  {"canonical_id":"vipareeta_vimala","name_sa":"Viparīta Rāja Yoga (Vimala)","name_en":"Vimala Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"12th lord in 6/8/12"}]},"formation_text":"Lord of the 12th in the 6th, 8th or 12th.","significations_jsonb":{"gives":["frugality","good_conduct","independence","happiness"],"subcategory":"viparita_raja"},"significations_text":"Thrifty, virtuous, independent, content.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
-  {"canonical_id":"dhana_yoga_2_11","name_sa":"Dhana Yoga","name_en":"Dhana Yoga (2nd-11th lords)","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association of 2nd, 5th, 9th and 11th lords"}]},"formation_text":"Association (conjunction/aspect/exchange) among the wealth-giving lords (2,5,9,11).","significations_jsonb":{"gives":["wealth","accumulation","financial_success"],"subcategory":"dhana"},"significations_text":"Accumulates wealth; strength of the combination scales the result.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
-  {"canonical_id":"neecha_bhanga_raja_yoga","name_sa":"Nīcabhaṅga Rāja Yoga","name_en":"Neecha Bhanga Raja Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"debilitated planet whose debilitation is cancelled (dispositor in kendra, exalted-planet swap, etc.)"}]},"formation_text":"A debilitated planet's debility is cancelled (neecha-bhanga) — e.g. its dispositor or the exaltation-lord of its sign is in a kendra from lagna/Moon.","significations_jsonb":{"gives":["rise_from_humble_origin","unexpected_elevation"],"subcategory":"raja"},"significations_text":"Rise from low to high — elevation after initial struggle.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs"}],"rare":False},
-  # ... continue the raja/dhana/viparita families to the §3 core target.
+ # Raja (structural) ---
+ {"canonical_id":"kendra_trikona_raja_yoga","name_sa":"Kendra-Trikoṇa Rāja Yoga","name_en":"Kendra-Trikona Raja Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"kendra_lord_and_trikona_lord_associate"}]},"formation_text":"A kendra lord and a trikona lord associate (conjunction/aspect/exchange).","significations_jsonb":{"gives":["status","power","success"],"subcategory":"raja"},"significations_text":"The foundational raja yoga — rise in status and authority.","cancellation_conditions":{"weakened_if":["either_lord_debilitated_without_bhanga"]},"classical_citations":[{"text_id":"bphs","chapter":39}],"rare":False},
+ {"canonical_id":"neecha_bhanga_raja_yoga","name_sa":"Nīcabhaṅga Rāja Yoga","name_en":"Neecha-Bhanga Raja Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"debilitated_planet_with_cancelled_debility"}],"bhanga_any":["dispositor_in_kendra_from_lagna_or_moon","exaltation_lord_of_sign_in_kendra","debilitated_planet_exalted_in_navamsa","mutual_debilitation_aspect"]},"formation_text":"A debilitated planet whose debility is cancelled (neecha-bhanga).","significations_jsonb":{"gives":["rise_from_humble_origin","elevation_after_struggle"],"subcategory":"raja"},"significations_text":"Rise from low to high after early difficulty.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs"}],"rare":False},
+ {"canonical_id":"vipareeta_harsha","name_sa":"Viparīta (Harṣa)","name_en":"Harsha Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"6th_lord_in_6_8_or_12"}]},"formation_text":"Lord of the 6th in the 6th, 8th or 12th (viparita raja yoga).","significations_jsonb":{"gives":["victory_over_enemies","health","sudden_rise"],"subcategory":"viparita_raja"},"significations_text":"Defeats foes, robust health, unexpected gains.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"vipareeta_sarala","name_sa":"Viparīta (Sarala)","name_en":"Sarala Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"8th_lord_in_6_8_or_12"}]},"formation_text":"Lord of the 8th in the 6th, 8th or 12th.","significations_jsonb":{"gives":["longevity","fearlessness","prosperity"],"subcategory":"viparita_raja"},"significations_text":"Long-lived, fearless, learned, prosperous.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"vipareeta_vimala","name_sa":"Viparīta (Vimala)","name_en":"Vimala Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"12th_lord_in_6_8_or_12"}]},"formation_text":"Lord of the 12th in the 6th, 8th or 12th.","significations_jsonb":{"gives":["frugality","good_conduct","independence"],"subcategory":"viparita_raja"},"significations_text":"Thrifty, virtuous, independent, content.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ {"canonical_id":"raja_yoga_lagna_9th","name_sa":"Lagneśa-Bhāgyeśa Yoga","name_en":"Lagna-9th Lord Raja Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"lagna_lord_and_9th_lord_associate"}]},"formation_text":"The lagna lord and the 9th lord associate (conjunction/aspect/exchange).","significations_jsonb":{"gives":["fortune","status","dharmic_success"],"subcategory":"raja"},"significations_text":"Fortunate and successful through right action.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":40}],"rare":False},
+ {"canonical_id":"parivartana_raja_yoga","name_sa":"Parivartana (Mahā) Yoga","name_en":"Parivartana Raja Yoga","category":"raja","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"mutual_exchange_of_signs_between_two_auspicious_house_lords"}]},"formation_text":"Two auspicious house lords exchange signs (Maha parivartana).","significations_jsonb":{"gives":["mutual_empowerment_of_two_houses"],"subcategory":"raja"},"significations_text":"Strong linkage and empowerment of the two exchanged houses.","cancellation_conditions":{"excluded":["dainya_parivartana_with_6_8_12"]},"classical_citations":[{"text_id":"bphs"}],"rare":False},
+ {"canonical_id":"shubha_kartari","name_sa":"Śubha Kartari","name_en":"Shubha Kartari Yoga","category":"other","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"benefics_in_2nd_and_12th_from_a_house_or_planet"}]},"formation_text":"Benefics flank (in the 2nd and 12th from) a house or planet (auspicious scissors).","significations_jsonb":{"gives":["protection","support","good_results_for_flanked_house"],"subcategory":"named"},"significations_text":"The flanked house/planet is protected and strengthened.","cancellation_conditions":{},"classical_citations":[{"text_id":"phaladeepika"}],"rare":False},
+ # Dhana ---
+ {"canonical_id":"dhana_yoga_2_11","name_sa":"Dhana Yoga (2-11)","name_en":"Dhana Yoga (2nd & 11th lords)","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association_of_2nd_and_11th_lords"}]},"formation_text":"Lords of the 2nd and 11th associate (conjunction/aspect/exchange).","significations_jsonb":{"gives":["wealth","income"],"subcategory":"dhana"},"significations_text":"Accumulates wealth and steady income.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
+ {"canonical_id":"dhana_yoga_5_9","name_sa":"Dhana Yoga (5-9)","name_en":"Dhana Yoga (trikona lords)","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association_of_5th_and_9th_lords"}]},"formation_text":"Lords of the 5th and 9th (trikona wealth lords) associate.","significations_jsonb":{"gives":["fortune_wealth","purva_punya_gains"],"subcategory":"dhana"},"significations_text":"Wealth through fortune and past merit.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
+ {"canonical_id":"dhana_yoga_2_5_9_11","name_sa":"Mahā Dhana Yoga","name_en":"Maha Dhana Yoga","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association_among_2_5_9_11_lords"}]},"formation_text":"Association among the wealth-giving lords (2,5,9,11).","significations_jsonb":{"gives":["great_wealth"],"subcategory":"dhana"},"significations_text":"Substantial accumulated wealth; strength scales the result.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
+ {"canonical_id":"dhana_yoga_lagna_2","name_sa":"Dhana Yoga (1-2)","name_en":"Dhana Yoga (lagna & 2nd lords)","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association_of_lagna_and_2nd_lords"}]},"formation_text":"Lords of the lagna and the 2nd associate.","significations_jsonb":{"gives":["self_earned_wealth"],"subcategory":"dhana"},"significations_text":"Wealth through one's own effort.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
+ {"canonical_id":"dhana_yoga_9_11","name_sa":"Dhana Yoga (9-11)","name_en":"Dhana Yoga (9th & 11th lords)","category":"dhana","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"association_of_9th_and_11th_lords"}]},"formation_text":"Lords of the 9th and 11th associate.","significations_jsonb":{"gives":["fortunate_gains"],"subcategory":"dhana"},"significations_text":"Gains through fortune and patronage.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":41}],"rare":False},
+ # Sannyasa / Pravrajya (renunciation) ---
+ {"canonical_id":"pravrajya_yoga","name_sa":"Pravrajyā Yoga","name_en":"Pravrajya (Sannyasa) Yoga","category":"sannyasa","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"four_or_more_planets_in_one_house"}]},"formation_text":"Four or more planets (excluding nodes) gathered in a single house.","significations_jsonb":{"gives":["renunciation","asceticism"],"subcategory":"sannyasa"},"significations_text":"Strong inclination to renunciation; ascetic path.","cancellation_conditions":{},"classical_citations":[{"text_id":"bphs","chapter":36}],"rare":False},
+ {"canonical_id":"sannyasa_strongest_planet","name_sa":"Sannyāsa (Balādhika)","name_en":"Sannyasa Yoga (by strongest planet)","category":"sannyasa","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"four_plus_planets_in_one_house"},{"determinant":"strongest_of_the_grouped_planets_sets_the_order"}]},"formation_text":"When 4+ planets join in a house, the strongest among them determines the ascetic order/result.","significations_jsonb":{"gives":["specific_ascetic_order_by_strongest_graha"],"subcategory":"sannyasa"},"significations_text":"Type of renunciate path set by the strongest of the grouped planets.","cancellation_conditions":{"weakened_if":["strongest_planet_combust_or_aspected_by_its_dispositor"]},"classical_citations":[{"text_id":"bphs","chapter":36}],"rare":False},
+ {"canonical_id":"sannyasa_saturn","name_sa":"Śani Sannyāsa","name_en":"Saturn Sannyasa Yoga","category":"sannyasa","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"saturn_strongest_in_a_4plus_grouping_or_aspecting_moon_with_ketu"}]},"formation_text":"Saturn the strongest in a renunciation-grouping (or Saturn+Ketu influencing the Moon).","significations_jsonb":{"gives":["austere_detached_renunciation"],"subcategory":"sannyasa"},"significations_text":"Austere, disciplined renunciation.","cancellation_conditions":{},"classical_citations":[{"text_id":"saravali","chapter":45}],"rare":False},
+ {"canonical_id":"shakata_dur_yoga","name_sa":"Dur Yoga (Śakaṭa)","name_en":"Shakata Dur-Yoga","category":"aristha","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"moon_jupiter_in_6_8_from_each_other"},{"exclude":"jupiter_in_kendra_from_lagna"}]},"formation_text":"Moon and Jupiter in 6/8 from each other, Jupiter not in a kendra from lagna.","significations_jsonb":{"gives":["fluctuating_fortune","rise_and_fall"],"subcategory":"aristha"},"significations_text":"Fortune that rises and falls 'like a cart-wheel'.","cancellation_conditions":{"bhanga":["jupiter_in_kendra_from_lagna_or_moon"]},"classical_citations":[{"text_id":"classical_tradition","note":"Shakata is also catalogued as a dosha (bg_doshas); here as the yoga-side aristha entry"}],"rare":False},
+ {"canonical_id":"daridra_yoga","name_sa":"Dāridra Yoga","name_en":"Daridra Yoga","category":"aristha","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"11th_lord_in_dusthana_or_lagna_lord_in_6_8_12"}]},"formation_text":"Lord of gains (11th) in a dusthana, or the lagna lord in the 6th/8th/12th.","significations_jsonb":{"gives":["poverty","blocked_income"],"subcategory":"aristha"},"significations_text":"Financial hardship and obstructed income.","cancellation_conditions":{"bhanga":["dhana_or_raja_yoga_present"]},"classical_citations":[{"text_id":"classical_tradition","note":"classical poverty (daridra) combination"}],"rare":False},
+ {"canonical_id":"kemadruma_aristha","name_sa":"Kemadruma (Yoga-side)","name_en":"Kemadruma Aristha","category":"aristha","school":"parashari","formation_rule_jsonb":{"requires":[{"relation":"no_planet_in_2_or_12_from_moon_and_no_kendra_support"}]},"formation_text":"The Moon unsupported (no planet in 2nd/12th from it and no kendra support).","significations_jsonb":{"gives":["struggle","loneliness","want"],"subcategory":"aristha"},"significations_text":"Hardship and isolation; one of the strongest negating combinations.","cancellation_conditions":{"bhanga":["any_planet_in_kendra_from_moon_or_lagna","benefic_in_2_or_12_from_moon"]},"classical_citations":[{"text_id":"bphs","chapter":30}],"rare":False,"_note":"primary dosha-side definition lives in bg_doshas as 'kemadruma'; this is the yoga-catalog cross-entry. Executor: skip if a single-source rule is enforced — see §8."},
+]
 ```
 
-> **§3 core target:** the families above (PMP 5 + lunar/solar ~6 + named ~25 + Nabhasa ~32 + raja/dhana/viparita ~50 + misc) total **~130 authored yogas**. Author every listed id with full field completeness. The elided ids in each comment are FIXED classical enumerations (Nabhasa families, viparita trio, named yogas) — mechanical transcription, not synthesis.
+> **Count:** §3.1 (5) + §3.2 (6) + §3.3 (32) + §3.4 (19) + §3.5 (19: raja 8 + dhana 5 + sannyasa/aristha 6) = **81** dicts (physically verified by `grep -cE '^\s*\{"canonical_id":"'` = 81). If `kemadruma_aristha` is dropped under strict single-source (§8), inline = 80.
 
-## §3.9 — Corpus-extraction supplement (to reach ≥250)
+## §3.9 — Structured-extraction supplement (≥165 via the embedded name→pattern lookup)
 
-After the embedded core, the writer extracts additional named yogas from the ingested `bg_texts` chunks (Saravali Ch.34-50, BPHS Ch.30-40, Phaladeepika Ch.6-8):
+After the inline core, the writer extracts additional named yogas from `bg_texts` — but each extracted row gets a REAL `formation_rule_jsonb` from an embedded lookup template (NO `needs_structuring` placeholders, NONE counted toward floor).
 
 ```python
-# Deterministic extraction (NO LLM):
-#  1. Build a yoga-name lexicon: scan chunks for "<Name> yoga"/"<Name> Yoga"/"योग" patterns +
-#     a curated allowlist of Saravali yoga names (the chapter is a yoga catalog).
-#  2. For each detected named yoga NOT already in YOGAS_CORE:
-#       - canonical_id = snake_case(name); name_en = "<Name> Yoga"
-#       - formation_text = the sentence(s) of the defining chunk (verbatim)
-#       - significations_text = the result-sentence(s) of the chunk (verbatim)
-#       - formation_rule_jsonb = {"requires":[{"raw":"<defining clause>"}], "needs_structuring":true}
-#         (leave structured matching to a later pass; the row is valid + cited now)
-#       - source_chunk_ids = [chunk_id]; classical_citations = [{text_id, chapter, verse}]
-#       - category = 'other' unless the name maps to raja/dhana
-#  3. ON CONFLICT (canonical_id) DO NOTHING (don't overwrite a richer core row).
-# Stop when total rows ≥ 250 OR the lexicon is exhausted. If exhausted below 250, REPORT to native.
+# SARAVALI_YOGA_LOOKUP — named yogas with Racayitā-VERIFIED formation templates (Saravali / BPHS / Phaladeepika).
+# Each entry: yoga_name (as it appears in the corpus) -> (canonical_id, category, formation_pattern_template).
+# The template is a STRUCTURED rule skeleton; the extractor fills the cited chunk's clause into
+# formation_text + significations_text, and emits formation_rule_jsonb FROM THE TEMPLATE (never a placeholder).
+# ⚠ Racayitā embedded ONLY the templates below that are classically verifiable without fabrication (20).
+#   The remaining ≥149 to reach the 250 floor are an ACHARYA LOOKUP-COMPLETION PASS — see §8 HARD STOP.
+SARAVALI_YOGA_LOOKUP = {
+  "Subha Yoga":     ("subha_yoga","other",{"requires":[{"relation":"benefic_in_2nd_from_moon"}]}),
+  "Asubha Yoga":    ("asubha_yoga","aristha",{"requires":[{"relation":"malefic_in_2nd_from_moon"}]}),
+  "Lagnadhi Yoga":  ("lagnadhi_yoga","raja",{"requires":[{"relation":"benefics_in_6_7_8_from_lagna"}]}),
+  "Hari Yoga":      ("hari_yoga","raja",{"requires":[{"relation":"benefics_in_2_12_8_from_2nd_lord"}]}),
+  "Hara Yoga":      ("hara_yoga","raja",{"requires":[{"relation":"benefics_in_4_9_8_from_7th_lord"}]}),
+  "Brahma Yoga":    ("brahma_yoga","raja",{"requires":[{"relation":"jupiter_venus_mercury_in_kendras_from_lagna_10th_11th_lords"}]}),
+  "Kalpadruma Yoga":("kalpadruma_yoga","raja",{"requires":[{"relation":"lagna_lord_and_its_dispositor_chain_all_in_own_exalt_friendly_kendra_trikona"}]}),
+  "Gajakesari (Saravali)":("gajakesari_sar","other",{"requires":[{"relation":"jupiter_in_kendra_from_moon"}]}),
+  "Chandra Mangala (Saravali)":("chandra_mangala_sar","dhana",{"requires":[{"relation":"moon_mars_conjunct_or_mutual_aspect"}]}),
+  "Sunapha (Saravali)":("sunapha_sar","other",{"requires":[{"relation":"planet_not_sun_in_2nd_from_moon"}]}),
+  "Anapha (Saravali)": ("anapha_sar","other",{"requires":[{"relation":"planet_not_sun_in_12th_from_moon"}]}),
+  "Vesi (Saravali)":   ("vesi_sar","other",{"requires":[{"relation":"planet_not_moon_in_2nd_from_sun"}]}),
+  " Vasi (Saravali)":  ("vasi_sar","other",{"requires":[{"relation":"planet_not_moon_in_12th_from_sun"}]}),
+  "Damini Yoga":    ("damini_yoga","other",{"requires":[{"relation":"planets_in_six_signs_nabhasa_dama"}]}),
+  "Pasa Yoga":      ("pasa_yoga","other",{"requires":[{"relation":"planets_in_five_signs_nabhasa_pasha"}]}),
+  "Kedara Yoga (Saravali)":("kedara_sar","other",{"requires":[{"relation":"planets_in_four_signs_nabhasa_kedara"}]}),
+  "Vajra Yoga (Saravali)":("vajra_sar","other",{"requires":[{"relation":"benefics_in_1_7_malefics_in_4_10"}]}),
+  "Yava Yoga (Saravali)":("yava_sar","other",{"requires":[{"relation":"malefics_in_1_7_benefics_in_4_10"}]}),
+  "Kamala Yoga (Saravali)":("kamala_sar","other",{"requires":[{"relation":"all_planets_in_four_kendras"}]}),
+  "Vapi Yoga (Saravali)":("vapi_sar","dhana",{"requires":[{"relation":"all_planets_in_panapharas_or_apoklimas"}]}),
+}
+# NOTE: several lookup ids deliberately mirror inline canonical_ids with a "_sar" suffix so the extractor
+# can attach the Saravali source_chunk to the SAME concept as an alternative citation WITHOUT colliding
+# on the inline PK — OR the executor maps them to the inline id and the row is skipped by ON CONFLICT.
+# Extraction (deterministic, ZERO LLM):
+#   1. For each name in SARAVALI_YOGA_LOOKUP NOT already in YOGAS_CORE:
+#      scan classical_text_chunks for the name (name + Sanskrit/transliteration alternations).
+#   2. On a match: canonical_id/category/formation_rule_jsonb FROM the lookup template;
+#      formation_text + significations_text = the defining clause(s) of the cited chunk (verbatim);
+#      source_chunk_ids = [chunk_id]; classical_citations = [{text_id, chapter}].
+#   3. ON CONFLICT (canonical_id) DO NOTHING.
+#   YIELD GATE: stop at 250 total. If matched_structured_rows < (250 - len(YOGAS_CORE)), REJECT (§8 HARD STOP).
 ```
 
-> This extracts REAL yogas from REAL ingested verses, each `source_chunk_ids`-cited. `formation_rule_jsonb.needs_structuring=true` flags rows whose pattern-matching JSON a later enrichment pass (or native) refines — but the row is already floor-valid and source-cited. No fabrication.
+> **Why this is structured, not placeholder:** the `formation_rule_jsonb` comes from the embedded template (a real, machine-matchable rule in the §3 grammar), so every extracted row is as structurally complete as an inline row. The corpus supplies only the verbatim prose + the chunk citation.
+
+> **⚠ Racayitā honesty disclosure (binding — do not silently rely on this bucket to reach 250).** The lookup above embeds **20 classically-verified templates**, not 170. Authoring 170 accurate Saravali/BPHS named-yoga formation templates exceeds what can be done without fabrication in a gap-author pass — and the cardinal rule forbids inventing formation patterns. So the structured-extraction bucket's **brief-provable maximum is ~20** (minus overlaps with the inline core). Reaching the held 250 floor therefore depends on an **acharya lookup-completion pass** (§8). The floor is HELD; the writer is FAIL-CLOSED (REJECTs below 250); this disclosure surfaces the gap to native rather than hiding it behind a "...embeds 170" comment.
 
 ## §4 — Writer implementation
 
-`l0_yogas.py` (`YOGAS_CORE` + extraction fn + `seed_yogas(...)`), `pipeline/orchestrator/writers/bg_yogas.py` (`@register('bg_yogas')`). Per yoga (core and extracted): catalog row first, then `brahma_ontology` (`entity_class='yoga'`), then `reference_yogas` pointer — `ON CONFLICT (canonical_id) DO NOTHING`, JSONB via `Json(...)`. The embedded-core phase runs first; the extraction phase runs after (needs `bg_texts` lit — guaranteed by `depends_on`).
+`l0_yogas.py` (`YOGAS_CORE` + `SARAVALI_YOGA_LOOKUP` + extraction fn + `seed_yogas(...)`), `pipeline/orchestrator/writers/bg_yogas.py` (`@register('bg_yogas')`). Per yoga (inline and extracted): catalog row first, then **ontology row with `ON CONFLICT (entity_class, canonical_id) DO NOTHING`** (columns `entity_class, canonical_id, canonical_name_en, canonical_name_sa, synonyms, description, source_citation`), then `reference_yogas` pointer (`ON CONFLICT (canonical_id) DO NOTHING`). JSONB via `Json(...)`. Inline phase first; extraction phase after bg_texts is lit (`depends_on`).
+
+```python
+# Ontology insert per yoga (CORRECTED arbiter):
+cur.execute("""INSERT INTO brahma_ontology
+    (entity_class, canonical_id, canonical_name_en, canonical_name_sa, synonyms, description, source_citation)
+    VALUES ('yoga', %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (entity_class, canonical_id) DO NOTHING""",
+    (y["canonical_id"], y["name_en"], y["name_sa"], _yoga_synonyms(y),
+     y["significations_text"][:150], _yoga_citation(y)))
+```
 
 ## §5 — FK validation logic
 
 - `reference_yogas.canonical_id` FK → `brahma_yoga_catalog`: catalog-first order satisfies it.
-- `brahma_ontology` `entity_class='yoga'` rows authored here (bg_ontology doesn't — Doc 5 §0.1).
-- `source_chunk_ids` (extraction rows) must resolve to `classical_text_chunks` — validate before insert; skip+log any unresolved chunk id.
-- **depends_on:** `UPDATE asset_registry SET depends_on = ARRAY['bg_ontology','bg_texts']::text[] WHERE asset_id='bg_yogas';` (migration 179 set only `['bg_ontology']` — this brief's migration ADDS `bg_texts`).
+- `brahma_ontology` `entity_class='yoga'` rows authored here (bg_ontology doesn't — Doc 5 §0.1), composite arbiter.
+- `source_chunk_ids` (extraction rows) resolve in `classical_text_chunks` — validate before insert; skip+log unresolved.
+- **depends_on (migration 184):** `UPDATE asset_registry SET depends_on = ARRAY['bg_ontology','bg_texts']::text[] WHERE asset_id='bg_yogas';`
 
 ## §6 — Unit tests
 
-`test_bg_yogas.py`: (1) ≥250 rows; (2) the 5 PMP present with category='pancha_mahapurusha'; (3) every row has non-empty `formation_text`, `significations_text`, `classical_citations` OR `source_chunk_ids`; (4) each id has matching ontology(`yoga`)+`reference_yogas` rows; (5) every category ∈ CHECK set; (6) extraction rows' `source_chunk_ids` resolve in `classical_text_chunks`; (7) idempotent.
+`test_bg_yogas.py`: (1) ≥250 rows; (2) ≥81 rows have `source_chunk_ids = '{}'` AND a non-`classical_tradition` OR tradition-flagged citation (the inline core); (3) the 5 PMP present (category='pancha_mahapurusha'); (4) all 32 Nabhasa present (`significations_jsonb->>'subcategory' LIKE 'nabhasa_%'` count = 32); (5) every row has non-empty `formation_rule_jsonb` that is NOT `{"needs_structuring":true}` (assert no such rows); (6) each id has matching ontology(`yoga`, composite-keyed)+`reference_yogas` rows; (7) extraction rows' `source_chunk_ids` resolve; (8) idempotent.
 
-## §7 — Vimarśaka check
+## §7 — Vimarśaka check (asset-specific)
 
-APPROVE iff: ≥250 yogas; the 5 PMP + lunar/solar + Nabhasa families present; every row cited (citation OR chunk-id); ownership trio per id; idempotent. If the writer reports a below-250 shortfall (corpus exhausted), Vimarśaka REJECTS and the shortfall goes to native — the floor is sacred, but it is met by ship-attested, never by padding.
+APPROVE iff: ≥250 yogas; the 5 PMP + 32 Nabhasa + lunar/solar present; ZERO `needs_structuring` rows; every row cited (citation OR chunk-id); ownership trio per id; idempotent. If the writer reports a below-250 shortfall (structured extraction underperformed), Vimarśaka REJECTS and the residual goes to native — floor held, never padded.
 
 ## §8 — Hard stops + scope discipline
 
-- Core + extraction together fall below 250 → STOP, ship what is attested+extracted, REPORT the exact count + which sources were exhausted. Do NOT invent yogas. (Cardinal rule.)
-- Extraction depends on bg_texts being lit → if the topo-sort runs bg_yogas before bg_texts, the embedded core (~130) lights and the extraction phase no-ops with a clear log; fix the `depends_on` so the full run completes. Do NOT fake the extracted rows.
-- Do NOT duplicate kemadruma here (it's the affliction counterpart in bg_doshas).
+- **⚠ HARD STOP — SURFACED TO NATIVE (lookup completion).** Racayitā embedded the inline closed-set fully (81) but could only template **~20** Saravali/BPHS named yogas without fabrication. The held 250 floor is therefore **not reachable from embedded data alone** (brief-provable max ≈ 101). Native must choose: **(a)** commission an acharya pass to complete `SARAVALI_YOGA_LOOKUP` (§3.9) to ≥169 verified `(name → formation_template)` entries — *recommended*, the names exist in the ingested Saravali Ch.34-50 corpus; or **(b)** accept corpus-verse-defined `formation_text` for the residual named yogas (structurally thinner, but `source_chunk_ids`-cited and NOT `needs_structuring` placeholders). Until the lookup is completed, the writer REJECTs below 250 (fail-closed). **The floor stays at 250; this gap is reported, not padded.**
+- **Floor REJECT (binding):** if `len(YOGAS_CORE)` + valid structured-extraction rows < 250 after the full Saravali/BPHS/Phaladeepika corpus is processed, the writer REJECTS and reports the residual count + which lookup names failed to match to native. Do NOT invent yogas. Do NOT emit `needs_structuring` placeholders to pad. (Cardinal rule.)
+- **Single-source for kemadruma:** the affliction is defined in bg_doshas (`kemadruma`). The `kemadruma_aristha` yoga-catalog cross-entry (§3.5) is OPTIONAL — if native enforces strict single-source, drop it (inline core = 80). If kept, it must reference the dosha, not duplicate its formation data.
+- **Citation policy (native decision pending):** entries citing `{"text_id":"classical_tradition","note":...}` are flagged tradition-rooted (Chatussagara, Budha-Aditya, Guru-Mangala, Maha-Bhagya, Shakata, Daridra). If native requires every row to trace to a named text, these must be re-cited to the Saravali/Phaladeepika chunk that names them (available post-ingest) — route them through structured extraction instead of inline. Counted as inline pending that decision.
+- Extraction depends on bg_texts lit; if topo-sort runs bg_yogas before bg_texts, the inline 81 light and extraction no-ops with a clear log + REJECT (can't reach 250). Fix `depends_on`; do NOT fake extracted rows.
 - Do NOT author 'yoga' ontology rows in a separate pass (ride the catalog transaction, §0.1).
-- Out of scope: per-chart yoga detection (L1 `query_yogas_by_chart_pattern`); raw verse-rules (bg_rules).
+- Out of scope: per-chart yoga detection (L1); raw verse-rules (bg_rules).
 
 ---
 
-*End of bg_yogas brief (Document 11 of 15).*
+*End of bg_yogas brief (Document 11 of 15) — v1.1 (Racayitā amendment).*
