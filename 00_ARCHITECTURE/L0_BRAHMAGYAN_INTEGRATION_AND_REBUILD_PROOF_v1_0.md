@@ -4,6 +4,7 @@ canonical_id: L0_INTEGRATION_REBUILD_PROOF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — FLOORS dict confirmed HELD (no floor changed); migration-band 181-191 note added to §4
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — integration, Vimarśaka-Ω, delete-and-rebuild proof
@@ -128,6 +129,8 @@ python platform/scripts/vimarsaka/compare_snapshots.py /tmp/l0_pre.json /tmp/l0_
 **Hard AC:** step 5 PASS for all 12 assets. This is criterion 9 of master plan §5 and the native's "delete and rebuild" requirement.
 
 ## §4 — DAG completeness check (do this BEFORE Ω.7)
+
+> **Migration band (Racayitā amendment, 2026-06-08):** the campaign's migrations are pre-assigned **181–191** — 181 orchestrator (pre-existing), 182 reference, 183 ontology, 184 yogas, 185 dasha_systems, 186 doshas, 187 text_index, 188 rules, 189 remedies, 190 concordance, 191 compendium-dedup. Re-confirm the live ceiling (`ls platform/supabase/migrations/ | grep -E '^[0-9]' | sort -n | tail -1`) before applying; if other concurrent workstreams have consumed 187/188 (eval §3.2 flag), renumber sequentially from the true ceiling and record the mapping. Ω.2 FLOORS are **HELD** — no floor changed in the amendment pass.
 
 Migration 179 set `depends_on` for only 4 assets. The writer briefs each add their edges. Confirm the FULL DAG is in `asset_registry.depends_on`:
 
