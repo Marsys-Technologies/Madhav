@@ -37,6 +37,12 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+try:
+    import swisseph as swe  # type: ignore[import]
+    _SWE_AVAILABLE = True
+except ImportError:
+    _SWE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -71,6 +77,97 @@ DAILY_BODIES: list[dict[str, Any]] = [
     {"name": "Ketu",    "swe_id": -1},  # Calculated as Rahu + 180
 ]
 
+# ── 5-ayanamsha read-time derivation ─────────────────────────────────────────
+#
+# Tropical longitudes are stored once in ephemeris_daily.
+# Sidereal position is derived at query time by subtracting the ayanamsha offset.
+# pyswisseph API: set_sid_mode(SIDM_*) then get_ayanamsa_ut(jd) — single-arg form.
+# Constants verified against pyswisseph==2.10.3.2.
+#
+# SIDM_SURYASIDDHANTA = 21 (SIDM_SURYASIDDHANTA_CITRA not present in this build).
+
+if _SWE_AVAILABLE:
+    AYANAMSHA_MAP: dict[str, int] = {
+        "lahiri":          swe.SIDM_LAHIRI,         # 1
+        "raman":           swe.SIDM_RAMAN,          # 3
+        "kp":              swe.SIDM_KRISHNAMURTI,   # 5
+        "krishnamurti":    swe.SIDM_KRISHNAMURTI,   # 5 (alias)
+        "yukteshwar":      swe.SIDM_YUKTESHWAR,     # 7
+        "surya_siddhanta": swe.SIDM_SURYASIDDHANTA, # 21
+    }
+else:
+    AYANAMSHA_MAP = {}
+
+_DEFAULT_AYANAMSHA = "lahiri"
+
+
+def _tropical_to_jd(d: date) -> float:
+    """Convert a Python date to Julian Day Number (noon UT)."""
+    if not _SWE_AVAILABLE:
+        raise RuntimeError("pyswisseph not available")
+    return swe.julday(d.year, d.month, d.day, 12.0)
+
+
+def derive_sidereal(tropical_lon: float, jd: float, ayanamsha: str) -> dict[str, Any]:
+    """
+    Derive sidereal position from a stored tropical longitude.
+
+    Uses pyswisseph set_sid_mode() + get_ayanamsa_ut() pattern (single-arg form).
+
+    Parameters
+    ----------
+    tropical_lon : float
+        Tropical ecliptic longitude in degrees [0, 360).
+    jd : float
+        Julian Day Number (noon UT) for the date of interest.
+    ayanamsha : str
+        One of the keys in AYANAMSHA_MAP: lahiri, raman, kp, krishnamurti,
+        yukteshwar, surya_siddhanta.
+
+    Returns
+    -------
+    dict with keys:
+        sidereal_longitude  – float, [0, 360)
+        sign_number         – int, 1 (Aries) … 12 (Pisces)
+        degree_in_sign      – float, [0, 30)
+        nakshatra_number    – int, 1 (Ashwini) … 27 (Revati)
+        pada                – int, 1–4
+        ayanamsha_offset    – float, degrees subtracted from tropical
+
+    Raises
+    ------
+    ValueError  for unknown ayanamsha key.
+    RuntimeError if pyswisseph is unavailable.
+    """
+    if not _SWE_AVAILABLE:
+        raise RuntimeError("pyswisseph not available; cannot derive sidereal position")
+
+    sidm_id = AYANAMSHA_MAP.get(ayanamsha)
+    if sidm_id is None:
+        raise ValueError(
+            f"Unknown ayanamsha '{ayanamsha}'. Valid: {list(AYANAMSHA_MAP)}"
+        )
+
+    swe.set_sid_mode(sidm_id)
+    ayanamsha_offset = swe.get_ayanamsa_ut(jd)
+    sidereal_lon = (tropical_lon - ayanamsha_offset) % 360.0
+
+    sign_number    = int(sidereal_lon // 30) + 1              # 1=Aries … 12=Pisces
+    degree_in_sign = sidereal_lon % 30.0
+    nak_size       = 360.0 / 27.0                             # ≈13.3333°
+    nakshatra_number = int(sidereal_lon / nak_size) + 1       # 1=Ashwini … 27=Revati
+    pada = int((sidereal_lon % nak_size) / (nak_size / 4)) + 1  # 1–4
+
+    return {
+        "sidereal_longitude":  round(sidereal_lon, 6),
+        "sign_number":         sign_number,
+        "degree_in_sign":      round(degree_in_sign, 3),
+        "nakshatra_number":    nakshatra_number,
+        "pada":                pada,
+        "ayanamsha_offset":    round(ayanamsha_offset, 6),
+    }
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 def _get_conn():
@@ -87,9 +184,7 @@ def _get_conn():
 
 def _compute_positions_for_date(d: date) -> list[dict[str, Any]]:
     """Compute tropical positions for all DAILY_BODIES for a given date at 12:00 UT."""
-    try:
-        import swisseph as swe  # type: ignore[import]
-    except ImportError:
+    if not _SWE_AVAILABLE:
         logger.warning("pyswisseph not available; using algorithmic fallback")
         return _algorithmic_fallback(d)
 
@@ -400,20 +495,70 @@ def query_ephemeris(
     date_end: date | None = None,
     bodies: list[str] | None = None,
     ayanamsha_id: str = "tropical",
+    ayanamsha: str = _DEFAULT_AYANAMSHA,
     limit: int = 100,
 ) -> dict[str, Any]:
     """
     Retrieve ephemeris rows for the given date range and bodies.
 
-    Returns:
-      {
-        "ok": bool,
-        "rows": [...],
-        "count": int,
-        "ayanamsha_id": str,
-        "source_citation": str,
-        "provenance_envelope": {...},
-      }
+    Tropical longitudes are fetched from ephemeris_daily; sidereal positions
+    are derived at read time using the requested ayanamsha (default: lahiri).
+    Each returned row includes both the stored tropical fields and the derived
+    sidereal fields (sidereal_longitude, sidereal_sign_number, etc.).
+
+    Parameters
+    ----------
+    conn : psycopg2 connection, optional
+        If None, opens a connection from DATABASE_URL.
+    date_start, date_end : date, optional
+        Inclusive date range filter.
+    bodies : list[str], optional
+        Filter to specific body names (e.g. ["Sun", "Moon"]). None = all.
+    ayanamsha_id : str
+        DB column filter (default "tropical" — stores tropical longitudes).
+    ayanamsha : str
+        Ayanamsha for read-time sidereal derivation. One of:
+        lahiri, raman, kp, krishnamurti, yukteshwar, surya_siddhanta.
+        Default: "lahiri".
+    limit : int
+        Maximum rows returned (default 100).
+
+    Returns
+    -------
+    {
+      "ok": bool,
+      "rows": [
+        {
+          -- original DB fields --
+          "date": str (ISO),
+          "body": str,
+          "ayanamsha_id": str,
+          "tropical_longitude": float,
+          "latitude": float,
+          "speed_dps": float,
+          "is_retrograde": bool,
+          "sign_number": int | None,        # stored (may be None if not pre-computed)
+          "degree_in_sign": float | None,   # stored (may be None if not pre-computed)
+          "nakshatra_number": int | None,   # stored (may be None if not pre-computed)
+          "source_citation": str,
+          "computed_at": str (ISO),
+          -- derived sidereal fields --
+          "ayanamsha_requested": str,
+          "sidereal_longitude": float,
+          "sidereal_sign_number": int,
+          "sidereal_degree_in_sign": float,
+          "sidereal_nakshatra_number": int,
+          "sidereal_pada": int,
+          "ayanamsha_offset": float,
+        },
+        ...
+      ],
+      "count": int,
+      "ayanamsha_id": str,
+      "ayanamsha_requested": str,
+      "source_citation": str,
+      "provenance_envelope": {...},
+    }
     """
     close_conn = False
     if conn is None:
@@ -427,11 +572,13 @@ def query_ephemeris(
                 "rows": [],
                 "count": 0,
                 "ayanamsha_id": ayanamsha_id,
+                "ayanamsha_requested": ayanamsha,
                 "source_citation": SOURCE_CITATION,
                 "provenance_envelope": {
                     "source": "brahmagyan.ephemeris",
                     "asset": "BRAHMA-BG-0-6",
                     "ayanamsha_id": ayanamsha_id,
+                    "ayanamsha_requested": ayanamsha,
                     "error": str(exc),
                     "computed_at": datetime.now(timezone.utc).isoformat(),
                 },
@@ -468,7 +615,7 @@ def query_ephemeris(
                 params,
             )
             cols = [c.name for c in cur.description]
-            rows = []
+            raw_rows = []
             for r in cur.fetchall():
                 row = dict(zip(cols, r))
                 # Serialize date + datetime
@@ -476,18 +623,48 @@ def query_ephemeris(
                     row["date"] = row["date"].isoformat()
                 if hasattr(row.get("computed_at"), "isoformat"):
                     row["computed_at"] = row["computed_at"].isoformat()
-                rows.append(row)
+                raw_rows.append(row)
+
+        # Derive sidereal fields at read time
+        rows: list[dict[str, Any]] = []
+        for row in raw_rows:
+            try:
+                # Reconstruct date object from ISO string for JD conversion
+                row_date = date.fromisoformat(row["date"]) if isinstance(row["date"], str) else row["date"]
+                jd = _tropical_to_jd(row_date)
+                sidereal = derive_sidereal(
+                    float(row["tropical_longitude"]), jd, ayanamsha
+                )
+                rows.append({
+                    **row,
+                    "ayanamsha_requested":      ayanamsha,
+                    "sidereal_longitude":       sidereal["sidereal_longitude"],
+                    "sidereal_sign_number":     sidereal["sign_number"],
+                    "sidereal_degree_in_sign":  sidereal["degree_in_sign"],
+                    "sidereal_nakshatra_number": sidereal["nakshatra_number"],
+                    "sidereal_pada":            sidereal["pada"],
+                    "ayanamsha_offset":         sidereal["ayanamsha_offset"],
+                })
+            except Exception as exc:
+                logger.warning(
+                    "[l0_ephemeris] sidereal derivation failed for row %s/%s: %s",
+                    row.get("date"), row.get("body"), exc,
+                )
+                # Return row without sidereal fields rather than drop it entirely
+                rows.append({**row, "ayanamsha_requested": ayanamsha, "sidereal_error": str(exc)})
 
         return {
             "ok": True,
             "rows": rows,
             "count": len(rows),
             "ayanamsha_id": ayanamsha_id,
+            "ayanamsha_requested": ayanamsha,
             "source_citation": SOURCE_CITATION,
             "provenance_envelope": {
                 "source": "brahmagyan.ephemeris",
                 "asset": "BRAHMA-BG-0-6",
                 "ayanamsha_id": ayanamsha_id,
+                "ayanamsha_requested": ayanamsha,
                 "date_range": {
                     "start": date_start.isoformat() if date_start else None,
                     "end": date_end.isoformat() if date_end else None,
