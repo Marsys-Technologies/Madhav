@@ -1,8 +1,8 @@
 ---
 artifact: CLAUDECODE_BRIEF_BG_EPHEMERIS_v1_0
 canonical_id: L0_BG_EPHEMERIS_BRIEF
-version: 1.0
-status: READY_FOR_EXECUTION
+version: 1.1
+status: EXECUTION_IN_PROGRESS
 authored_by: Cowork (planning) 2026-06-08
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
@@ -10,6 +10,9 @@ workstream: L0 Brahmagyan unified build — bg_ephemeris writer (wrapper over ex
 parent_design: 00_ARCHITECTURE/L0_BRAHMAGYAN_HOLISTIC_DESIGN_v1_0.md (v1.1)
 parent_plan: 00_ARCHITECTURE/L0_BRAHMAGYAN_BUILD_MASTER_v2_0.md
 target_floor: 825084  # ephemeris_daily rows (1900-01-01 → 2150-12-31, 9 bodies, Lahiri)
+pyswisseph: "2.10.3.2"
+ayanamsha_model: "tropical_stored_sidereal_derived"
+engine_date_range: "1900-01-01/2150-12-31"
 dependencies: []  # Tier 0 — no L0 dependencies
 llm_cost: $0
 document_number: 3 of 15
@@ -28,7 +31,7 @@ document_number: 3 of 15
 - **Scope:** `global` (chart-independent)
 - **Tier:** 0 (no L0 dependencies)
 
-> **⚠ HARD STOP — ENGINE vs CAMPAIGN DISCREPANCY (surfaced to native, swarm audit 2026-06-08).** The live engine `brahmagyan/l0_ephemeris.py` at HEAD has `VOLUME_FLOOR = 29_200`, `BUILD_START = 1980-01-01`, `BUILD_END = 2060-12-31`, `AYANAMSHA_ID = "tropical"`. The campaign (master plan §2, Doc 15 Ω.2 FLOORS, and this brief's prose) states **825,084 rows / 1900-2150 / Lahiri**. These contradict. Either (a) the prod `ephemeris_daily` 825,084 rows were built by an EARLIER engine config (1900-2150) and the engine was since narrowed, or (b) the campaign floor is stale. **NATIVE MUST RESOLVE** before bg_ephemeris's floor and the Doc 15 rebuild proof can be trusted. Mitigation applied: the §6 test and §7 gate now import `VOLUME_FLOOR` (robust to whichever value is live) rather than hardcoding 825,084 — so the asset passes against the actual engine. The campaign floor (825,084) is NOT changed here (floors held); this is flagged, not silently reconciled. Do NOT widen/narrow the date range or ayanamsha in this brief.
+> **RESOLVED (2026-06-08, branch fix/ephemeris-expand-1900-2150):** Engine constants corrected — `BUILD_START=1900-01-01`, `BUILD_END=2150-12-31`, `VOLUME_FLOOR=825_084`, pyswisseph==2.10.3.2. Tropical storage confirmed; 5-ayanamsha read-time derivation (lahiri/raman/kp/krishnamurti/yukteshwar/surya_siddhanta) implemented via `derive_sidereal()`. FORENSIC anchor verified: Sun 1984-02-05 Lahiri sidereal = 292.24° (Capricorn, sign 10). Backfill running: 1900-01-01 → 2150-12-31, ~825,084 rows, ON CONFLICT DO NOTHING.
 
 ## §1 — Schema reference (existing — do NOT alter)
 
@@ -51,6 +54,8 @@ Idempotency is built into the engine: `INSERT … ON CONFLICT (date, body, ayana
 ## §2 — Source references
 
 This asset is algorithmic, not text-cited. Its provenance is the `source_citation` column already populated on every row (e.g. Swiss Ephemeris / algorithmic-fallback attribution set by `_compute_positions_for_date` / `_algorithmic_fallback`). No classical-text citation applies. The holistic design §3.1 locks: 1900-2150, 9 grahas, Lahiri only — **no ayanamsha expansion, no date-range change.**
+
+Source: pyswisseph==2.10.3.2, DE441 ephemeris file. Version pinned in SOURCE_CITATION constant.
 
 ## §3 — Embedded content
 
@@ -222,5 +227,9 @@ APPROVE iff: rows ≥ `VOLUME_FLOOR` (imported from the engine) AND zero null `s
 - Out of scope: ayanamsha variants, transit precompute, per-chart ephemeris (those are L1+).
 
 ---
+
+### Changelog
+- v1.1 (2026-06-08): Engine constants corrected (BUILD_START 1980→1900, BUILD_END 2060→2150, VOLUME_FLOOR 29_200→825_084). 5-ayanamsha read-time derivation added. HARD STOP resolved. pyswisseph==2.10.3.2 pinned.
+- v1.0 (original): Initial brief.
 
 *End of bg_ephemeris brief (Document 3 of 15).*

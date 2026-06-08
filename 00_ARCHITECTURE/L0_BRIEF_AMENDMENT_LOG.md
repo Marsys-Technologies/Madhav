@@ -1,7 +1,7 @@
 ---
 artifact: L0_BRIEF_AMENDMENT_LOG
 canonical_id: L0_BRIEF_AMENDMENT_LOG
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_by: Racayitā (Build-Guarantor Swarm gap-author) 2026-06-08
 remediates: 00_ARCHITECTURE/L0_BRAHMAGYAN_CAMPAIGN_EVALUATION_REPORT_v1_0.md (§2/§4 findings)
@@ -63,4 +63,6 @@ Per-brief record of the gap-author amendments that make each brief deterministic
 
 **NEW HARD STOP for native:** Doc 3 ephemeris — live engine `VOLUME_FLOOR=29,200` / 1980-2060 / tropical contradicts campaign `825,084` / 1900-2150 / Lahiri. Surfaced in Doc 3 §0 + L0_SWARM_AUDIT §3.1. Floor held; native must resolve.
 
-*End of L0 Brief Amendment Log v1.0 (resume pass appended 2026-06-08).*
+**Task C — Doc 3 ephemeris engine resolution (2026-06-08).** Native resolved the HARD STOP by authorising the full expansion: `BUILD_START=1900-01-01`, `BUILD_END=2150-12-31`, `VOLUME_FLOOR=825_084`, tropical storage + 5-ayanamsha read-time derivation (lahiri/raman/kp/krishnamurti/yukteshwar/surya_siddhanta). Engine fixed on branch `fix/ephemeris-expand-1900-2150`: constants corrected (commit `c83aa607`), `derive_sidereal()` + unit tests added (commit `d8196ea7`, 9/9 pass), FORENSIC anchor: Sun 1984-02-05 Lahiri sidereal 292.24° = Capricorn ✓. Backfill: 825,084 rows, 1900-01-01→2150-12-31, 9 bodies, ON CONFLICT DO NOTHING. pyswisseph==2.10.3.2 pinned in SOURCE_CITATION. HARD STOP §3.1 in L0_SWARM_AUDIT_v1_0.md marked RESOLVED.
+
+*End of L0 Brief Amendment Log v1.1 (Task C appended 2026-06-08).*
