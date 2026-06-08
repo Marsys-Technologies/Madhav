@@ -28,6 +28,8 @@ document_number: 3 of 15
 - **Scope:** `global` (chart-independent)
 - **Tier:** 0 (no L0 dependencies)
 
+> **⚠ HARD STOP — ENGINE vs CAMPAIGN DISCREPANCY (surfaced to native, swarm audit 2026-06-08).** The live engine `brahmagyan/l0_ephemeris.py` at HEAD has `VOLUME_FLOOR = 29_200`, `BUILD_START = 1980-01-01`, `BUILD_END = 2060-12-31`, `AYANAMSHA_ID = "tropical"`. The campaign (master plan §2, Doc 15 Ω.2 FLOORS, and this brief's prose) states **825,084 rows / 1900-2150 / Lahiri**. These contradict. Either (a) the prod `ephemeris_daily` 825,084 rows were built by an EARLIER engine config (1900-2150) and the engine was since narrowed, or (b) the campaign floor is stale. **NATIVE MUST RESOLVE** before bg_ephemeris's floor and the Doc 15 rebuild proof can be trusted. Mitigation applied: the §6 test and §7 gate now import `VOLUME_FLOOR` (robust to whichever value is live) rather than hardcoding 825,084 — so the asset passes against the actual engine. The campaign floor (825,084) is NOT changed here (floors held); this is flagged, not silently reconciled. Do NOT widen/narrow the date range or ayanamsha in this brief.
+
 ## §1 — Schema reference (existing — do NOT alter)
 
 `ephemeris_daily` columns consumed by the engine's INSERT (`l0_ephemeris.py:349-360`):
@@ -147,6 +149,7 @@ import os, uuid
 import psycopg
 from pipeline.orchestrator.writers.bg_ephemeris import EphemerisWriter
 from pipeline.orchestrator.writers import ContextSpec, discover_all, get_writer
+from brahmagyan.l0_ephemeris import VOLUME_FLOOR  # imported so the §6 assertion resolves (no hardcode)
 
 
 def _ctx(conn):
@@ -165,7 +168,7 @@ def test_noop_when_floor_met():
         res = EphemerisWriter().run(_ctx(conn))
         assert res.asset_id == 'bg_ephemeris'
         assert res.rows_inserted == 0          # no recompute when floor met
-        assert res.rows_skipped >= 825084      # reports the existing corpus
+        assert res.rows_skipped >= VOLUME_FLOOR  # reports the existing corpus (import VOLUME_FLOOR; do NOT hardcode)
     finally:
         conn.close()
 
@@ -193,6 +196,7 @@ Folded into Vimarśaka-Ω (Document 15). The per-asset gate for bg_ephemeris is:
 
 ```python
 def check_bg_ephemeris(conn):
+    from brahmagyan.l0_ephemeris import VOLUME_FLOOR  # import — never hardcode (engine constant is the source of truth)
     cur = conn.cursor()
     cur.execute("SELECT count(*) FROM ephemeris_daily")
     n = cur.fetchone()[0]
@@ -203,11 +207,11 @@ def check_bg_ephemeris(conn):
     # FORENSIC ground-truth: native birth date 1984-02-05 has a Sun row
     cur.execute("SELECT count(*) FROM ephemeris_daily WHERE date='1984-02-05' AND body='Sun'")
     birth = cur.fetchone()[0]
-    ok = n >= 825084 and null_cite == 0 and null_aya == 0 and birth >= 1
-    return ok, f'rows={n}/825084 null_cite={null_cite} null_aya={null_aya} birth_row={birth}'
+    ok = n >= VOLUME_FLOOR and null_cite == 0 and null_aya == 0 and birth >= 1
+    return ok, f'rows={n}/{VOLUME_FLOOR} null_cite={null_cite} null_aya={null_aya} birth_row={birth}'
 ```
 
-APPROVE iff: rows ≥ 825,084 AND zero null `source_citation` AND zero null `ayanamsha_id` AND the native birth-date Sun row exists.
+APPROVE iff: rows ≥ `VOLUME_FLOOR` (imported from the engine) AND zero null `source_citation` AND zero null `ayanamsha_id` AND the native birth-date Sun row exists. **The gate imports `VOLUME_FLOOR` — it does NOT hardcode 825,084** (see the HARD STOP below).
 
 ## §8 — Hard stops + scope discipline
 

@@ -57,7 +57,7 @@ brahma_remedy_corpus ( remedy_id (PK), planet, domain, remedy_type, prescription
 
 Author into `l0_remedy_corpus.py` (extend `REMEDIES`). Three deterministic sources sum to ≥800:
 
-### §3.1 — Per-planet correspondence table → matrix generator (deterministic_generated ≈ 200)
+### §3.1 — Per-planet correspondence table → matrix generator (deterministic_generated = 108)
 
 The navagraha beej mantras, gemstones, charity items, colors, days and deities are FIXED classical correspondences. Embed the full 9-planet table below; the matrix is **generated** from it (9 planets × the per-planet cells), not hand-authored cell-by-cell — so the count is provable from the table's domain.
 
@@ -84,22 +84,35 @@ def gen_planet_matrix():
             rows.append({"planet":p,"remedy_type":"charity","scaffold_status":"live","prescription_text":f"Donate {item} on {d['day']} to the needy (for {p}).","charity_action":f"Donate {item} on {d['day']}.","color_associated":d["color"],"source_citation":"BPHS Ch.91-94 (Upaya-adhyaya)","cost_tier":"low"})
         rows.append({"planet":p,"remedy_type":"vrata","scaffold_status":"live","prescription_text":f"Observe a {d['day']} fast dedicated to {d['deity']} (for {p}).","day_of_week":d["day"],"source_citation":"classical tradition","cost_tier":"free"})
         rows.append({"planet":p,"remedy_type":"puja","scaffold_status":"live","prescription_text":f"Worship {d['deity']} on {d['day']} (graha-shanti for {p}).","deity":d["deity"],"day_of_week":d["day"],"source_citation":"classical tradition","cost_tier":"low"})
+        rows.append({"planet":p,"remedy_type":"yantra","scaffold_status":"live","prescription_text":f"Install and energise the {p} yantra; worship it on {d['day']}.","day_of_week":d["day"],"source_citation":"classical tradition","cost_tier":"medium"})
+        rows.append({"planet":p,"remedy_type":"homa","scaffold_status":"live","prescription_text":f"Perform a {d['deity']} / {p} graha-shanti homa with the prescribed samidha on {d['day']}.","deity":d["deity"],"day_of_week":d["day"],"source_citation":"classical tradition","cost_tier":"high"})
+        rows.append({"planet":p,"remedy_type":"behavioral","scaffold_status":"live","prescription_text":f"Adopt {p}-strengthening conduct (serve the significations of {p}; e.g. respect/charity toward its karaka domain).","source_citation":"classical tradition","cost_tier":"free"})
+        rows.append({"planet":p,"remedy_type":"japa","scaffold_status":"live","prescription_text":f"Complete the {p} mantra japa to its mahadasha-count (e.g. {p}-years × 1000) over the prescribed window.","mantra_transliteration":d["beej"],"day_of_week":d["day"],"source_citation":"classical tradition","cost_tier":"free"})
     return rows
-# YIELD: 9 × (1 mantra + 1 gemstone + len(dana)≈4 charity + 1 vrata + 1 puja) ≈ 9 × 8 = ~72... wait:
-#   per planet = 1+1+~4+1+1 = ~8 rows → 9×8 ≈ 72. To reach ~200 the generator ALSO emits, per planet,
-#   the yantra + homa + behavioral cells (3 more) and per-dana cost variants — author these cells in
-#   PLANET_REMEDY_DATA the same way (all standard correspondences). Target gen yield ≈ 200.
+# YIELD (provable from the table domain): per planet = 1 mantra + 1 gemstone + len(dana) charity
+#   + 1 vrata + 1 puja + 1 yantra + 1 homa + 1 behavioral + 1 japa = (8 fixed cells) + len(dana).
+#   dana totals across the 9 planets = 36; fixed cells = 8 × 9 = 72.  ⇒ gen yield = 72 + 36 = 108 rows.
+#   (Honest count: 108, NOT ~200. The yantra/homa/behavioral/japa cells are now REAL emitted rows,
+#    not a deferred comment.) Cost-tier variants are NOT counted (would not be distinct remedy_ids).
 ```
 
-> **Determinism, not fabrication:** the generator emits rows mechanically from the fixed correspondence table; the count is provable from the table's domain (9 planets × cells). The beej mantras, gemstones, dana items, days, deities are the standard navagraha correspondences every textbook agrees on — transcription, not invention. **All generated matrix rows are `scaffold_status='live'`** (they are deterministic, not corpus-swept).
+> **Determinism, not fabrication:** the generator emits **108 rows** mechanically from the fixed correspondence table; the count is provable by running it (9 planets × 8 fixed cells + 36 dana-charity = 108). The beej mantras, gemstones, dana items, days, deities are the standard navagraha correspondences; the yantra/homa/behavioral/japa cells are the standard per-planet remedy categories applied generically (source_citation = classical tradition). **All 108 generated rows are `scaffold_status='live'`** (deterministic, not corpus-swept).
 
 ### §3.1a — remedy_type vocabulary mapping (authored inline — required, §1)
 
 ```python
 # Map legacy l0_remedy_corpus values → the bg_ontology remedy_type class (Doc 5 §3.4). Applied on read+write.
-REMEDY_TYPE_MAP = {"fasting":"vrata", "ritual":"puja", "japa":"japa", "havan":"homa", "yajna":"homa"}
-# Every emitted/existing row's remedy_type is normalised through REMEDY_TYPE_MAP before insert, so it
-# resolves in brahma_ontology(entity_class='remedy_type'). A one-time migration (189) UPDATEs existing rows.
+# COMPLETE map of ALL 7 legacy l0_remedy_corpus values → the bg_ontology remedy_type class (Doc 5 §3.4):
+#   legacy set (measured) = {charity, dietary, fasting, gemstone, mantra, ritual, yantra}.
+REMEDY_TYPE_MAP = {
+    "fasting":"vrata", "ritual":"puja", "dietary":"ayurvedic",   # the 3 that differ from the ontology vocab
+    "havan":"homa", "yajna":"homa",                                # extra aliases
+    # identity (already valid ontology values — included for completeness so .get(x,x) always resolves):
+    "charity":"charity", "gemstone":"gemstone", "mantra":"mantra", "yantra":"yantra", "japa":"japa",
+}
+# normalise EVERY emitted/existing row via REMEDY_TYPE_MAP.get(rt, rt) before insert; assert the result is
+# in the ontology remedy_type class (else the writer raises — no orphan remedy_type). Migration 189 UPDATEs
+# existing rows (esp. the 1 legacy `dietary` row → `ayurvedic`).
 ```
 
 ### §3.2 — Dosha-linked remedies (~100) — cross-link to bg_doshas
@@ -118,10 +131,10 @@ Deterministic extraction (like bg_rules) of remedy statements from `bg_texts` ch
 
 | Bucket | What | Count (live) | Provable from |
 |---|---|---|---|
-| `deterministic_generated` | `gen_planet_matrix()` over the embedded 9-planet `PLANET_REMEDY_DATA` (mantra+gemstone+charity×dana+vrata+puja+yantra+homa+behavioral cells) — ALL `scaffold_status='live'` | **~200** | the embedded table's domain: 9 planets × ~22 cells; provable by running the generator |
+| `deterministic_generated` | `gen_planet_matrix()` over the embedded 9-planet `PLANET_REMEDY_DATA` (mantra+gemstone+charity×dana+vrata+puja+yantra+homa+behavioral+japa cells) — ALL `scaffold_status='live'` | **108** (provable) | 9 planets × 8 fixed cells (72) + 36 dana-charity = 108; provable by running the generator |
 | `closed_set_inline` | dosha-linked remedies (§3.2): one+ remedy per the 50 doshas in Doc 13, `live` | **~100** | 50 doshas × ~2 remedies, authored inline |
-| `structured_extraction` | corpus sweep (§3.3) + Lal Kitab, **auto-promoted to `live` when unambiguous** | **≥500** | sweep over ingested bg_texts (esp. Lal Kitab, Mantra Mahodadhi) with the auto-promote rule |
-| **TOTAL (live)** | | **≥800** | ~200 + ~100 + ≥500 = ≥800 |
+| `structured_extraction` | corpus sweep (§3.3) + Lal Kitab + existing ~200 legacy corpus, **auto-promoted to `live` when unambiguous** | **≥592** | existing ~200 live + sweep over ingested bg_texts (esp. Lal Kitab, Mantra Mahodadhi) with the auto-promote rule |
+| **TOTAL (live)** | | **≥800** | 108 (generated) + ~100 (dosha-linked) + ≥592 (existing-live + auto-promoted sweep) = ≥800 |
 
 > **Hard gate (§8):** if `count(scaffold_status='live') < 800` after generation + dosha-link + auto-promoted sweep, the writer REJECTs and reports the residual + the size of the `review` backlog to native — the floor is HELD and never met by counting `review` rows. **If the corpus is incomplete (manual PDFs absent), this is CONDITIONAL** (rerun after full corpus) rather than a hard fail.
 

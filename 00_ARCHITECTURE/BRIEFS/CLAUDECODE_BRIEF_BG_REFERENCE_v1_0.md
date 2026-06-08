@@ -4,7 +4,7 @@ canonical_id: L0_BG_REFERENCE_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
-amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a Floor Achievement Arithmetic; assigned migration 182 (content embeds — constants generator, glossary ~365, karakas 77, topic_tags generator — were authored in a prior pass)
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a Floor Achievement Arithmetic; assigned migration 182 (content embeds authored in a prior pass: constants generator 203, glossary 364, karakas 77, topic_tags generator 481); (swarm-audit fix 2026-06-08) reconciled two per-table floor ESTIMATES to physical counts — reference_strength_systems 35→33, reference_aspects 30→19 (Racayitā breakdown estimates, NOT held campaign floors; binding own-floor ≥1,225 still passes at 1,269)
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_reference writer (15 typed reference tables)
@@ -38,10 +38,10 @@ document_number: 4 of 15
 | `reference_planets` | bg_reference (existing) | 11 | KEEP existing data |
 | `reference_nakshatras` | bg_reference (existing) | 27 | KEEP |
 | `reference_signs` | bg_reference (existing) | 12 | KEEP |
-| `reference_aspects` | bg_reference (existing) | 30 | KEEP |
+| `reference_aspects` | bg_reference (existing) | 19 | KEEP (existing `_make_aspects()` = 19; expanding to design's 50-100 is optional, not floor-binding) |
 | `reference_vargas` | bg_reference (existing) | 19 | KEEP (16 shodasha + 3 extra already present) |
 | `reference_houses` | bg_reference (NEW) | 12 | §3.1 |
-| `reference_strength_systems` | bg_reference (NEW) | 35 | §3.2 |
+| `reference_strength_systems` | bg_reference (NEW) | 33 | §3.2 (physical = 33: 20 shadbala + 5 ashtakavarga + 3 bhava_bala + 5 other) |
 | `reference_karakas` | bg_reference (NEW) | 70 | §3.3 |
 | `reference_upagrahas` | bg_reference (NEW) | 9 | §3.4 |
 | `reference_constants` | bg_reference (NEW) | 200 | §3.5 |
@@ -172,7 +172,7 @@ HOUSES = [
 ]
 ```
 
-### §3.2 — reference_strength_systems (≥35 rows)
+### §3.2 — reference_strength_systems (33 rows)
 
 Author the six Shadbala sources + their sub-components, the Ashtakavarga system, and Bhava-bala. Full inline list:
 
@@ -1025,8 +1025,8 @@ def test_all_15_tables_meet_floor(db_conn):
     get_writer('bg_reference')().run(ContextSpec('bg_reference', str(uuid.uuid4()), db_conn))
     cur = db_conn.cursor()
     floors = {'reference_planets':11,'reference_nakshatras':27,'reference_signs':12,
-              'reference_aspects':30,'reference_vargas':16,'reference_houses':12,
-              'reference_strength_systems':35,'reference_karakas':70,'reference_upagrahas':9,
+              'reference_aspects':19,'reference_vargas':16,'reference_houses':12,
+              'reference_strength_systems':33,'reference_karakas':70,'reference_upagrahas':9,
               'reference_constants':200,'reference_topic_tags':450,'reference_glossary':350}
     for t, f in floors.items():
         cur.execute(f"SELECT count(*) FROM {t}")
