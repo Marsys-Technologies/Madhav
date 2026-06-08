@@ -9,7 +9,7 @@
  *    primary Parashara source used for L1 chart analysis of this chart)
  * 4. At least one chunk has a non-null embedding vector
  * 5. classical_text_search returns results for a FORENSIC-grounded query:
- *    "Sun in Leo 10th house Parashara" (native Sun is Leo 10H per FORENSIC_ASTROLOGICAL_DATA_v8_0)
+ *    "Sun in Leo 10th house Parashara" (native Sun is Leo 10H per FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md))
  * 6. Verse-ref citation lookup: query containing "BPHS" returns a BPHS-tradition result
  * 7. classical_attributions has >= 1 row (attribution pipeline ran)
  *
@@ -58,7 +58,7 @@ describe('brahmagyan.texts smoke — classical corpus', () => {
   })
 
   itDb('classical_text_search: FORENSIC query returns results (native Sun Leo 10H)', async () => {
-    // Native (1984-02-05): Sun is in Leo, 10th house per FORENSIC_ASTROLOGICAL_DATA_v8_0
+    // Native (1984-02-05): Sun is in Leo, 10th house per FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
     const result = await classical_text_search({
       query: 'Sun exalted Leo tenth house raja yoga Parashara',
       limit: 3,

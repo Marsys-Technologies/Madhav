@@ -143,7 +143,7 @@ REVERIFICATION_REPORT = {
         "grounding_source": "brahmagyan/bodha/l2_grounded_batch_1-6.py (WS-2 l2-bodha-grounded session)",
         "l3_source": "brahmagyan/kala/l3_convergence.py + l3_obstruction.py",
         "l4_source": "brahmagyan/phala/l4_anchors.py",
-        "forensic_anchor": "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §2.1 §22",
+        "forensic_anchor": "FORENSIC v8.0 §5.1 §2.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)",
         "msr_anchor": "MSR_v5_0.md (573 signals; 569 loaded)",
         "session_date": "2026-06-05",
         "layer": "L3 Kāla + L4 Phala reverification",

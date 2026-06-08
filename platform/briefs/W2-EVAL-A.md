@@ -188,7 +188,7 @@ platform/migrations/**
   the existing `checkCitations()` function — wrap it or extend it.
 - The golden test set (EVAL-1) must be grounded in real Jyotish query patterns.
   Do not invent fictitious astrological concepts. Consult
-  `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md` for chart context.
+  `chart_facts` DB table (via `forensic_render.ts`; FORENSIC v8.0 chart data — md archived at `99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md`) for chart context.
 - B.10: Do not fabricate expected_tools values. Each entry's expected_tools
   must be derived from what the tool actually retrieves per its description
   in the codebase and CAPABILITY_MANIFEST.json.

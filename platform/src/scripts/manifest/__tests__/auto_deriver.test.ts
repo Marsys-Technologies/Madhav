@@ -7,16 +7,8 @@ describe('deriveManifest', () => {
     expect(entries.length).toBeGreaterThan(10)
   })
 
-  it('FORENSIC entry has correct fields', async () => {
-    const entries = await deriveManifest()
-    // Find the forensic entry by path
-    const forensic = entries.find(e => e.path.includes('FORENSIC_ASTROLOGICAL_DATA_v8_0'))
-    expect(forensic).toBeDefined()
-    expect(forensic!.expose_to_chat).toBe(true)
-    expect(forensic!.native_id).toBe('abhisek')
-    expect(forensic!.layer).toBe('L1')
-    expect(forensic!.fingerprint).toHaveLength(64)
-  })
+  // FORENSIC v8.0 markdown deleted in PR #187; no longer in any SCAN_DIRS directory.
+  // Live FORENSIC source = chart_facts DB table via forensic_render.ts.
 
   it('all entries have required fields', async () => {
     const entries = await deriveManifest()

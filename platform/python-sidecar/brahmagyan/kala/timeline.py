@@ -71,7 +71,7 @@ SEED_END   = date(2050, 12, 31)
 #
 # Period order and durations per classical Vimshottari system.
 # Canonical boundary dates for Abhisek Mohanty are sourced from
-# FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 (FORENSIC dates are canonical
+# FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (FORENSIC dates are canonical
 # per GAP.09 resolution; JH dates ±7-9 days are NOT used).
 
 VIMSHOTTARI: list[tuple[str, int]] = [

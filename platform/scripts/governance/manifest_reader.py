@@ -23,7 +23,7 @@ OVERRIDES_PATH = "00_ARCHITECTURE/manifest_overrides.yaml"
 # Short-form aliases: CA §1 uses these IDs; manifest derives file-path-based IDs.
 # Mapping: short-form → manifest canonical_id.
 _CA_ALIASES: Dict[str, str] = {
-    "FORENSIC": "FORENSIC_ASTROLOGICAL_DATA_v8_0",
+    # FORENSIC: canonical_id in CAPABILITY_MANIFEST.json is "FORENSIC" (no alias needed)
     "LEL": "LIFE_EVENT_LOG_v1_2",
     "MSR": "MSR_v3_0",
     "UCN": "UCN_v4_0",

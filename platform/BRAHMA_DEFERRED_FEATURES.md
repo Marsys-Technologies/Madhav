@@ -71,7 +71,7 @@ dasha_balance rows to build a `ForensicChart` struct displayed in the client pro
 page (`clients/[id]/page.tsx`), `RasiChartSVG`, `ChartHero`, and `ProfileSideRail`.
 
 **Current state.** The function body returns `buildAbhisekFallback()` immediately
-(hardcoded canonical Abhisek chart from FORENSIC_ASTROLOGICAL_DATA_v8_0.md §4).
+(hardcoded canonical Abhisek chart from chart_facts/forensic_render.ts; FORENSIC v8.0 chart data, §4 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
 Consumers compile and render correctly — they display the native's chart. The stub
 will serve all new clients with an empty-ish chart until WS-2.
 

@@ -23,7 +23,7 @@ const SIGNS = [
   'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
 ]
 
-// Canonical L1 chart for Abhisek Mohanty (FORENSIC_ASTROLOGICAL_DATA_v8_0.md §4)
+// Canonical L1 chart for Abhisek Mohanty (FORENSIC v8.0 §4; chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 // Used as fallback when chart_facts table is not yet ingested for a chart.
 function buildAbhisekFallback(chartId: string): ForensicChart {
   return {

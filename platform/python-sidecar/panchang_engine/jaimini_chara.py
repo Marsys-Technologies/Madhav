@@ -62,7 +62,7 @@ SIGN_LORDS = {
     "Pisces":      "Jupiter",
 }
 
-# Canonical planet longitudes for native Abhisek Mohanty (FORENSIC_ASTROLOGICAL_DATA_v8_0.md).
+# Canonical planet longitudes for native Abhisek Mohanty (FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)).
 # Used as fallback when ephemeris is not available.
 # All values are sidereal (Lahiri ayanamsha), degrees 0–360.
 NATIVE_FALLBACK_LONGITUDES: Dict[str, float] = {

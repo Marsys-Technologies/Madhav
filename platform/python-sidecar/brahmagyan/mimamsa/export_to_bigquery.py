@@ -78,7 +78,7 @@ BQ_DATASET    = os.environ.get("BQ_DATASET",   "brahma_l5_olap")
 
 # Source citation for the export log — references canonical L1/L2 artifacts
 _LOG_SOURCE_CITATION = (
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md (canonical_id FORENSIC) | "
+    "FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | "
     "LIFE_EVENT_LOG_v1_2.md (canonical_id LEL, v1.7) | "
     "chart_facts table (2,717 rows, 27 categories, BRAHMA-MCP-Transformation) | "
     "bodha_signals table (573 MSR signals, BRAHMA-BO-2-4) | "

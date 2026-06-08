@@ -36,7 +36,7 @@ ISOLATION RULE:
 
 Source:  l2_signals_scaffold.py VOLUME_FLOOR=569
          multiplier.py (MI-5-4) — Brier-score engine
-         FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1
+         FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 
 Native:  Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
          chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 SOURCE_CITATION = (
     "l2_signals_scaffold.py (BO-2-1 VOLUME_FLOOR=569); "
     "multiplier.py (MI-5-4 Brier-score engine); "
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1; "
+    "FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); "
     "LIFE_EVENT_LOG_v1_2.md v1.7 §Calibration-outcomes; "
     "Brier (1950) Verification of Forecasts Expressed in Terms of Probability"
 )

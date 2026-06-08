@@ -42,7 +42,7 @@ Build an LLM-operated Jyotish instrument that, for the native (Abhisek Mohanty),
 
 Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India.
 
-Canonical L1 chart data: `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md` (authoritative; `canonical_id: FORENSIC` in CANONICAL_ARTIFACTS §1). No session re-derives the foundational chart; the v6.0 file is retained as archival only.
+Canonical L1 chart data: **`chart_facts` DB table** via `platform/src/lib/ganita/forensic_render.ts` (`canonical_id: FORENSIC`). The v8.0 markdown (`01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md`) was deleted from `01_FACTS_LAYER/` in PR #187 Legacy Teardown; cold benchmark copy at `99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md`. No session re-derives the foundational chart.
 
 ## §C — Mandatory reading (per session)
 
@@ -75,7 +75,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 
 | canonical_id | path | version | status |
 |---|---|---|---|
-| FORENSIC | `01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md` | 8.0 | CURRENT |
+| FORENSIC | `99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md` (cold benchmark; live source = `chart_facts` table via `forensic_render.ts`) | 8.0 | ARCHIVED |
 | LEL | `01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md` | 1.7 | CURRENT |
 | MSR | `025_HOLISTIC_SYNTHESIS/MSR_v5_0.md` | 5.0 (573 signals) | CURRENT |
 | UCN | `025_HOLISTIC_SYNTHESIS/UCN_v4_0.md` | 4.1 | CURRENT |

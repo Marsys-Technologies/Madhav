@@ -31,7 +31,7 @@
 --
 -- Source:
 --   LIFE_EVENT_LOG_v1_2.md (native-disclosed, 57 events v1.7, confidence 0.89)
---   FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 (dasha sequence authority)
+--   chart_facts (rendered via forensic_render.ts; FORENSIC v8.0 chart data, §5.1 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 --
 -- ROLLBACK:
 --   DROP TABLE IF EXISTS event_chart_state_index;
@@ -128,7 +128,7 @@ COMMENT ON TABLE event_chart_state_index IS
 
 COMMENT ON COLUMN event_chart_state_index.dasha_active IS
 'Vimshottari Maha Dasha lord at event date. '
-'Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 via LEL chart_state_at_event.';
+'Source: chart_facts (rendered via forensic_render.ts; FORENSIC v8.0 chart data, §5.1 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) via LEL chart_state_at_event.';
 
 COMMENT ON COLUMN event_chart_state_index.antardasha_active IS
 'Vimshottari Antar Dasha lord at event date. '

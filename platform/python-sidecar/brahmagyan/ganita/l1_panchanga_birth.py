@@ -14,7 +14,7 @@ Also provides:
   - facts_store health check: verifies chart_facts is the primary store
   - forensic_render: reconstruct FORENSIC v8.0 view from chart_facts positions
 
-FORENSIC v8.0 grounding checks (from FORENSIC_ASTROLOGICAL_DATA_v8_0.md):
+FORENSIC v8.0 grounding checks (from FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)):
   - Tithi: expected Shukla Tritiya (3rd lunar day, waxing)
   - Vara: Ravivara (Sunday) ✓ (1984-02-05 confirmed Sunday)
   - Nakshatra: Purva Bhadrapada (Moon) ✓ (structural anchor)
@@ -42,7 +42,7 @@ NATIVE_LON = 85.8245
 PRIMARY_AYANAMSHA = "lahiri"
 SOURCE_CITATION = (
     "BPHS Ch.2 Panchanga + Jyotish tradition; pyswisseph DE441; "
-    "ayanamsha: Lahiri; FORENSIC grounding: FORENSIC_ASTROLOGICAL_DATA_v8_0.md"
+    "ayanamsha: Lahiri; FORENSIC grounding: FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 )
 
 # Tithi names (1-30)

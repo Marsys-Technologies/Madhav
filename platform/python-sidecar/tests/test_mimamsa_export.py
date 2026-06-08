@@ -50,7 +50,7 @@ _CHART_FACTS_ROW = {
     "value_num": 291.96,
     "value_json": None,
     "ayanamsha_id": "lahiri",
-    "source_citation": "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1: Sun in Capricorn (291.96°, Shravana Pada 4)",
+    "source_citation": "FORENSIC v8.0 §2.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md): Sun in Capricorn (291.96°, Shravana Pada 4)",
     "computed_at": datetime.now(timezone.utc).isoformat(),
     "build_id": "test-build-001",
 }
@@ -89,7 +89,7 @@ _LEL_ROW = {
     "confidence": 0.89,
     "source_citation": (
         "LIFE_EVENT_LOG_v1_2.md §3 EVT.1984.02.05.01 | "
-        "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1 (birth chart anchor) | "
+        "FORENSIC v8.0 §2.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (birth chart anchor) | "
         "LEL v1.7 calibration — CALIBRATION ONLY not prediction"
     ),
 }
@@ -597,7 +597,7 @@ class TestWriteExportLog:
             table_name="chart_facts",
             row_count=2717,
             gcs_path="gs://madhav-brahma-olap/chart_facts/20260604T120000Z.parquet",
-            source_citation="FORENSIC_ASTROLOGICAL_DATA_v8_0.md | BRAHMA MI-5-5",
+            source_citation="FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) | BRAHMA MI-5-5",
         )
         mock_cursor.execute.assert_called_once()
         mock_conn.commit.assert_called_once()

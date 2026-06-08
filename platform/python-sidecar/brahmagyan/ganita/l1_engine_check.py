@@ -36,7 +36,7 @@ NATIVE_LAT = 20.2961                         # Bhubaneswar, Odisha, India
 NATIVE_LON = 85.8245
 NATIVE_TZ_OFFSET = 5.5                       # hours ahead of UTC
 
-# FORENSIC-grounded structural anchors (from FORENSIC_ASTROLOGICAL_DATA_v8_0.md)
+# FORENSIC-grounded structural anchors (from FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md))
 EXPECTED_SUN_SIGN = "Capricorn"              # Lahiri: Sun in Makara
 EXPECTED_SUN_SIGN_ID = 10
 EXPECTED_MOON_NAKSHATRA = "Purva Bhadrapada" # Lahiri: Moon in PBP (nak_id=25)

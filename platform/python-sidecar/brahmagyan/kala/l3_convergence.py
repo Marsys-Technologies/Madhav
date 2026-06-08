@@ -19,7 +19,7 @@ Volume floor: ≥ 20 convergence windows across the native's lifetime (1984-2040
   Current production: 12+ windows from convergence.py; l3_convergence expands
   with type-classified windows and covers 1984-2040 explicitly.
 
-Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 (Vimshottari), §2.1 (positions)
+Source: FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (Vimshottari), §2.1 (positions)
 BRAHMA-KA-3-2 / kala.convergence
 """
 from __future__ import annotations
@@ -38,7 +38,7 @@ VOLUME_FLOOR = 20  # minimum convergence windows over full native lifetime
 NATIVE_CHART_ID = os.environ.get(
     "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
 )
-SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1"
+SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 
 # Convergence window merge radius: factors within 90 days form a cluster
 WINDOW_RADIUS_DAYS = 90

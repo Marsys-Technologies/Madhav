@@ -20,7 +20,7 @@ Volume floor: ≥ 10 obstruction entries.
   The native has 2 Sade Sati cycles (1990-98, 2020-28), multiple malefic dashas
   (Saturn MD 1991-2010, Ketu MD 2027-2034), and several combustion periods.
 
-Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §22 Sade Sati, §5.1 Vimshottari, §2.1
+Source: FORENSIC v8.0 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) Sade Sati, §5.1 Vimshottari, §2.1
 BRAHMA-KA-3-3 / kala.obstruction
 """
 from __future__ import annotations
@@ -39,7 +39,7 @@ VOLUME_FLOOR = 10  # minimum obstruction entries
 NATIVE_CHART_ID = os.environ.get(
     "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
 )
-SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §22"
+SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1; FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 
 # ── Native chart FORENSIC anchors ─────────────────────────────────────────────
 # FORENSIC §2.1: Moon = Aquarius (H11 from Lagna=Aries)

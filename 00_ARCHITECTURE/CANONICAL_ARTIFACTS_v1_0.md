@@ -84,19 +84,19 @@ Sorted by layer: L1 → L2.5 → Architecture/Governance (sub-sorted by canonica
 
 ```yaml
 canonical_id: FORENSIC
-path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+path: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md
 version: "8.0"
-status: CURRENT
+status: ARCHIVED
 fingerprint_sha256: 85ca34690780c749eb155134b126dee5dffc9514c7611022385651ae2f2fa101
 mirror_obligations:
-  claude_side: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
+  claude_side: null
   gemini_side: null
-  mirror_mode: claude_only
-  authoritative_side: claude
-  asymmetries: "L1 facts are Claude-resident; Gemini reads them at L4 Discovery Layer but does not author."
-last_verified_session: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
-last_verified_on: 2026-04-24
-notes: "Unified canonical L1 — all planet/house/lagna/saham/dasha data. Supersedes v6.0 and v7.0 supplement."
+  mirror_mode: none
+  authoritative_side: db
+  asymmetries: "v8.0 markdown deleted from 01_FACTS_LAYER/ in PR #187 Legacy Teardown. Live source = chart_facts DB table via platform/src/lib/ganita/forensic_render.ts. Cold benchmark archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md."
+last_verified_session: fix/forensic-reference-consistency
+last_verified_on: 2026-06-08
+notes: "ARCHIVED 2026-06-08. File deleted PR #187. Authoritative registry is CAPABILITY_MANIFEST.json (supersedes this file as of 2026-04-27)."
 ```
 
 Unified canonical L1 — 1,950-line single-source-of-truth for every planet/house/lagna/saham/dasha fact. All L2+ claims cite `v6_ids_consumed` rooted here. FORENSIC fingerprint rotation requires a formal supplement or v9.0 event + FIX_SESSION mirror cascade to MSR/UCN/CDLM/RM/CGM. Not touched in Step 7.

@@ -25,7 +25,7 @@ ISOLATION RULE:
     It must NEVER feed into prediction generation — it is consumed ONLY by calibration.
 
 Source:  LIFE_EVENT_LOG_v1_2.md v1.7 (all chart_state_at_event blocks)
-         FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 (Vimshottari dasha authority)
+         FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (Vimshottari dasha authority)
          l3_convergence.py SIGNAL_ANCHORS (convergence window catalog)
          l3_obstruction.py SADE_SATI_WINDOWS + MALEFIC_CLUSTERS (obstruction catalog)
          l2_signals_scaffold.py VOLUME_FLOOR=569 UNGROUNDED signals
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 SOURCE_CITATION = (
     "LIFE_EVENT_LOG_v1_2.md v1.7; "
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1; "
+    "FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); "
     "l3_convergence.py SIGNAL_ANCHORS; "
     "l3_obstruction.py SADE_SATI_WINDOWS; "
     "l2_signals_scaffold.py"

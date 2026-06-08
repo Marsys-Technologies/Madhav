@@ -48,7 +48,9 @@ function validateServiceToken(req: Request): boolean {
 
 // WS-0 (2026-06-04): removed MSR/UCN/CDLM/CGM/RM — superseded by Brahma L2 Bodha layer
 const SAFE_ASSET_MAP: Record<string, string> = {
-  FORENSIC:             '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md',
+  // v8.0 markdown deleted from 01_FACTS_LAYER/ in PR #187; cold benchmark at archive path below.
+  // Live FORENSIC source is chart_facts DB table via forensic_render.ts — not served as a file.
+  FORENSIC:             '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md',
   LEL:                  '01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md',
   MACRO_PLAN:           '00_ARCHITECTURE/MACRO_PLAN_v2_0.md',
   PROJECT_ARCHITECTURE: '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md',

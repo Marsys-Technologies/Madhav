@@ -47,7 +47,7 @@ from pipeline.writers.panchanga_writer import (
 )
 
 # ── FORENSIC reference data for native (Abhisek Mohanty, 1984-02-05, 10:43 IST) ──
-# Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md; Phase 4C FORENSIC spot-check (2026-05-21)
+# Source: FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); Phase 4C FORENSIC spot-check (2026-05-21)
 # tithi=Shukla Tritiya, vara=Ravivara, moon_nakshatra=Purva Bhadrapada,
 # yoga=Shiva, karana=Garaja
 

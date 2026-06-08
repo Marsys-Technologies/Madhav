@@ -35,7 +35,7 @@ Native chart state (current, 2026-06-05):
   Jupiter:     Exalted Cancer (H4 from Lagna=Aries)
   Score:       49/100 NEUTRAL
 
-Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §22; MSR_v5_0.md; LEL_v1_2.md;
+Source: FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); MSR_v5_0.md; LEL_v1_2.md;
         l3_convergence.py SIGNAL_ANCHORS; l3_obstruction.py SADE_SATI_WINDOWS.
 Authors: Silpī (WS-2 l4-phala session)
 Version: 1.0 — 2026-06-05
@@ -64,7 +64,7 @@ NATIVE_CHART_ID = os.environ.get(
 )
 
 SOURCE_CITATION = (
-    "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 (Vimshottari) §22 (Sade Sati); "
+    "FORENSIC v8.0 §5.1 (Vimshottari) §22 (Sade Sati) (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md); "
     "MSR_v5_0.md SIG.* (573-signal ensemble); "
     "LEL_v1_2.md (57 life events); "
     "l3_convergence.py (23 convergence windows); "
@@ -1033,7 +1033,7 @@ def query_phala_anchors(
             "all_falsifiers_present": all(bool(a.get("falsifier")) for a in filtered),
             "b3_citation_compliant": all(bool(a.get("source_citation")) for a in filtered),
             "queried_at": datetime.now(tz=timezone.utc).isoformat(),
-            "l1_ground_truth": "FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 §22",
+            "l1_ground_truth": "FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)",
         },
     }
 

@@ -19,7 +19,7 @@
 --
 -- Tool: period_snapshot(chart_id, date) via kala_period_snapshot.ts (MCP)
 --
--- FORENSIC source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 Vimshottari Dasha
+-- FORENSIC source: chart_facts (rendered via forensic_render.ts; FORENSIC v8.0 chart data, §5.1 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
 -- Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
 --
 -- ROLLBACK: DROP TABLE IF EXISTS kala_obstruction;

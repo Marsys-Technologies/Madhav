@@ -2,8 +2,8 @@
  * Seed script — chart_facts planet category extension
  *
  * Adds chara-karaka roles, dignity, and house-lordship rows for the 9 grahas.
- * All values sourced exclusively from FORENSIC_ASTROLOGICAL_DATA_v8_0.md
- * (§PLN.* individual graha sections).
+ * All values sourced from FORENSIC v8.0 §PLN.* individual graha sections
+ * (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
  *
  * Idempotent: INSERT ... ON CONFLICT (fact_id) DO NOTHING.
  * Safe to run multiple times — second run changes 0 rows.
@@ -14,7 +14,7 @@
 
 import pg from 'pg'
 
-const SOURCE = '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md §PLN.*'
+const SOURCE = '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md §PLN.* (chart_facts via forensic_render)'
 const BUILD_ID = 'mcp-data-quality-planet-seed-v1'
 
 interface PlanetRow {
@@ -198,7 +198,7 @@ async function seed(): Promise<void> {
 
   const provenance = JSON.stringify({
     source_uri: SOURCE,
-    source_version: 'FORENSIC_ASTROLOGICAL_DATA_v8_0',
+    source_version: 'FORENSIC',
     extraction_method: 'manual_seed_mcp_data_quality_session_b',
     brief: 'CLAUDECODE_BRIEF_MCP_REM_SESSION_B_v1_0',
   })

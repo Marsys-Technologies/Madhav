@@ -13,7 +13,7 @@ Table:        chart_divisionals (chart_id, graha, ayanamsha_id, varga, sign,
                                   source_citation, build_id)
 
 FORENSIC benchmark (Lahiri, native 1984-02-05 10:43 IST Bhubaneswar):
-  Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §2.1, §3.5, §3.6 (authoritative)
+  Source: chart_facts (rendered via forensic_render.ts; FORENSIC v8.0 chart data, §2.1 §3.5 §3.6 — md archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
   D1: Lagna=Aries (12°23′), Sun=Capricorn (21°57′), Moon=Aquarius (27°02′),
       Mars=Libra, Mercury=Capricorn, Jupiter=Sagittarius, Venus=Sagittarius,
       Saturn=Libra (exalted), Rahu=Taurus, Ketu=Scorpio

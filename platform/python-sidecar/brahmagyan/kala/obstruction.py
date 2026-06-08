@@ -30,7 +30,7 @@ Contract (KA-3-3):
 
 FORENSIC grounding:
   Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar, Odisha.
-  Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 Vimshottari Dasha schedule.
+  Source: FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) Vimshottari Dasha schedule.
   Saturn MD: 1991-08-21 → 2010-08-21 (sub-periods DSH.V.006 → DSH.V.014)
   Mercury MD: 2010-08-21 → 2027-08-21 (sub-periods DSH.V.015 → DSH.V.023)
   Adverse MDs (Sani, Rahu, Ketu lords): flagged as 'adverse_dasha'.
@@ -73,7 +73,7 @@ TRANSIT_MALEFICS: frozenset[str] = frozenset({"Saturn", "Rahu", "Ketu"})
 # ── Canonical Vimshottari Dasha schedule (FORENSIC §5.1) ──────────────────────
 # DSH.V.001 through DSH.V.023 — native's chart (birth 1984-02-05)
 # Each row: (row_id, MD_lord, AD_lord, start_date, end_date)
-# source_citation: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 — all dates canonical
+# source_citation: FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) — all dates canonical
 
 VIMSHOTTARI_SCHEDULE: list[tuple[str, str, str, str, str]] = [
     ("DSH.V.001", "Jupiter", "Venus",   "1984-02-05", "1986-03-03"),

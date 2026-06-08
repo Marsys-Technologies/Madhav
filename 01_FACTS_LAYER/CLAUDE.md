@@ -11,7 +11,7 @@ This folder holds L1 Facts — the single source of truth for all chart data, li
 - Review: `verification_artifacts/PHASE_14C/forensic_extraction_review.html`
 
 **Canonical L1 facts:**
-- **`FORENSIC_ASTROLOGICAL_DATA_v8_0.md`** — unified Facts Layer (CURRENT; 32 sections; sole authoritative source for natal chart, KP, all dasha systems, special lagnas, sahams, yogas)
+- ~~`FORENSIC_ASTROLOGICAL_DATA_v8_0.md`~~ — **DELETED** in PR #187 Legacy Teardown. Live source = **`chart_facts` DB table** via `platform/src/lib/ganita/forensic_render.ts`. Cold benchmark archived at `99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md`.
 - **`LIFE_EVENT_LOG_v1_2.md`** — 36 dated life events + Swiss Ephemeris chart states (CURRENT)
 - **`SADE_SATI_CYCLES_ALL.md`** — lifetime Sade Sati cycles pre-birth through Cycle 3 (CURRENT)
 

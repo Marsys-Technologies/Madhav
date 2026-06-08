@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 const REPO_ROOT = resolve(__dirname, '../../../../..')
 
 const FILES_TO_CHECK = [
-  resolve(REPO_ROOT, '01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md'),
+  resolve(REPO_ROOT, '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md'),
   resolve(REPO_ROOT, '025_HOLISTIC_SYNTHESIS/MSR_v5_0.md'),
   resolve(REPO_ROOT, '03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md'),
 ]
