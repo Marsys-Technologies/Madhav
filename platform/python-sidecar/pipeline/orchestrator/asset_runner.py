@@ -15,7 +15,7 @@ import traceback
 import psycopg
 
 from .events import emit_event
-from .writers import get_writer
+from .writers import get_writer, ContextSpec
 
 logger = logging.getLogger(__name__)
 
@@ -156,15 +156,23 @@ def run_asset(
     })
 
     # Resolve writer
-    writer = get_writer(asset_id)
-    if writer is None:
+    writer_cls = get_writer(asset_id)
+    if writer_cls is None:
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
         return
 
     # Execute writer inside savepoint — crash rolls back only its writes
+    # Writer must NOT commit/rollback; caller owns the transaction.
     cur.execute("SAVEPOINT writer_exec")
     try:
-        rows_written = writer(chart_id, conn)
+        ctx = ContextSpec(
+            asset_id=asset_id,
+            build_id=run_id,
+            db_conn=conn,
+            config={'chart_id': chart_id},
+        )
+        result = writer_cls().run(ctx)
+        rows_written = result.rows_inserted + result.rows_updated
     except Exception as exc:
         cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
         err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"

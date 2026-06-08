@@ -387,11 +387,14 @@ VARGAS = [
 
 # ── Writer ────────────────────────────────────────────────────────────────────
 
-def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> dict[str, int]:
+def seed_reference(conn, build_id: str | None = None, dry_run: bool = False, autocommit: bool = True) -> dict[str, int]:
     """
     Seed all five reference tables.
-    Returns dict of table_name -> rows_inserted.
+    Returns dict of table_name -> rows_inserted (actual new rows only; conflicts are skipped).
     If dry_run=True, returns counts without writing to DB.
+
+    autocommit: if False, skip conn.commit() — caller owns the transaction.
+    Writers called from asset_runner must pass autocommit=False.
     """
     if dry_run:
         return {
@@ -417,10 +420,7 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                    mooltrikona_sign, own_signs, natural_benefic,
                    karak_domains, dasha_years, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (planet_id) DO UPDATE SET
-                  canonical_name_en = EXCLUDED.canonical_name_en,
-                  karak_domains = EXCLUDED.karak_domains,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (planet_id) DO NOTHING
             """, (
                 p["planet_id"], p["canonical_name_en"], p["canonical_name_sa"],
                 p.get("exaltation_sign"), p.get("exaltation_degree"),
@@ -429,9 +429,9 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                 p["karak_domains"], p.get("dasha_years"),
                 p["source_citation"], now,
             ))
-            inserted += 1
+            inserted += cur.rowcount
         counts["reference_planets"] = inserted
-        logger.info("[L0/reference] reference_planets: %d rows upserted", inserted)
+        logger.info("[L0/reference] reference_planets: %d rows inserted", inserted)
 
         # -- reference_nakshatras --
         inserted = 0
@@ -444,18 +444,15 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                    deity, nature, guna, start_degree, end_degree,
                    pada_lords, body_part, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (nakshatra_id) DO UPDATE SET
-                  lord = EXCLUDED.lord,
-                  pada_lords = EXCLUDED.pada_lords,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (nakshatra_id) DO NOTHING
             """, (
                 nak_id, name_en, name_sa, lord, deity, nature, guna,
                 start_deg, end_deg, pada_lords, body_part,
                 TAITTIRIYA, now,
             ))
-            inserted += 1
+            inserted += cur.rowcount
         counts["reference_nakshatras"] = inserted
-        logger.info("[L0/reference] reference_nakshatras: %d rows upserted", inserted)
+        logger.info("[L0/reference] reference_nakshatras: %d rows inserted", inserted)
 
         # -- reference_signs --
         inserted = 0
@@ -468,18 +465,15 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                    element, modality, natural_house, is_odd, is_biped,
                    significations, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (sign_id) DO UPDATE SET
-                  lord = EXCLUDED.lord,
-                  significations = EXCLUDED.significations,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (sign_id) DO NOTHING
             """, (
                 sign_id, name_en, name_sa, lord, element, modality,
                 natural_house, is_odd, is_biped, significations,
                 BPHS_CH6, now,
             ))
-            inserted += 1
+            inserted += cur.rowcount
         counts["reference_signs"] = inserted
-        logger.info("[L0/reference] reference_signs: %d rows upserted", inserted)
+        logger.info("[L0/reference] reference_signs: %d rows inserted", inserted)
 
         # -- reference_aspects --
         inserted = 0
@@ -489,18 +483,15 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                   (planet_id, aspect_house, aspect_strength, strength_value,
                    is_special, notes, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (planet_id, aspect_house) DO UPDATE SET
-                  strength_value = EXCLUDED.strength_value,
-                  is_special = EXCLUDED.is_special,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (planet_id, aspect_house) DO NOTHING
             """, (
                 a["planet_id"], a["aspect_house"], a["aspect_strength"],
                 a["strength_value"], a["is_special"], a.get("notes"),
                 a["source_citation"], now,
             ))
-            inserted += 1
+            inserted += cur.rowcount
         counts["reference_aspects"] = inserted
-        logger.info("[L0/reference] reference_aspects: %d rows upserted", inserted)
+        logger.info("[L0/reference] reference_aspects: %d rows inserted", inserted)
 
         # -- reference_vargas --
         inserted = 0
@@ -513,18 +504,17 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False) -> 
                    division_count, primary_signification, secondary_signification,
                    source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (varga_id) DO UPDATE SET
-                  primary_signification = EXCLUDED.primary_signification,
-                  source_citation = EXCLUDED.source_citation
+                ON CONFLICT (varga_id) DO NOTHING
             """, (
                 varga_id, varga_num, name_en, name_sa, division_count,
                 primary_sig, secondary_sig, BPHS_SHODASHA, now,
             ))
-            inserted += 1
+            inserted += cur.rowcount
         counts["reference_vargas"] = inserted
-        logger.info("[L0/reference] reference_vargas: %d rows upserted", inserted)
+        logger.info("[L0/reference] reference_vargas: %d rows inserted", inserted)
 
-    conn.commit()
+    if autocommit:
+        conn.commit()
     return counts
 
 
