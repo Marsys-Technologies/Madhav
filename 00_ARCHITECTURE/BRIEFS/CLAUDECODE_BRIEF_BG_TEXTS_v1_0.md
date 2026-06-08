@@ -1,31 +1,47 @@
 ---
 artifact: CLAUDECODE_BRIEF_BG_TEXTS_v1_0
 canonical_id: L0_BG_TEXTS_BRIEF
-version: 1.1
+version: 1.3
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
-amended_by: Corpus Staging (prep/l0-corpus-staging) 2026-06-08 — 13-text corpus decision, clear-and-rebuild, multi-volume, Devanagari, provenance_tier propagation, floor revision
+amended_by: |
+  v1.1 — Corpus Staging (prep/l0-corpus-staging) 2026-06-08: 13-text corpus decision,
+    clear-and-rebuild, multi-volume, Devanagari, provenance_tier propagation, floor revision
+  v1.2 — skipped (reserved)
+  v1.3 — Native decisions 2026-06-09: lal_kitab DROPPED; tajaka_neelakanthi BACK IN (CC0,
+    sa+hi, 288pp, AWAITING_NATIVE_DECISION OCR gate); muhurta_chintamani IN (Khemraj/Mahidhara
+    Sharma, CC0, sa+hi, 172pp, AWAITING_NATIVE_DECISION OCR gate); bhrigu_samhita STAYS DROPPED;
+    corpus FINAL = 13 texts all staged; floor 9100 (contingent on Hindi OCR gate)
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_texts writer (classical text corpus ingestion)
 parent_design: 00_ARCHITECTURE/L0_BRAHMAGYAN_HOLISTIC_DESIGN_v1_0.md (v1.1)
 parent_plan: 00_ARCHITECTURE/L0_BRAHMAGYAN_BUILD_MASTER_v2_0.md
-target_floor: "8000 (11 staged); 10000 (full 13 texts)"
+target_floor: "9100 (13 staged, contingent on Hindi OCR gate for muhurta + tajaka)"
 dependencies: []  # Tier 2 — needs source PDFs in GCS, not other L0 assets
 llm_cost: "embeddings only (Vertex AI text-multilingual-embedding-002 / text-embedding-004, 768-dim — deterministic transform)"
 document_number: 6 of 15
 ---
 
+## Amendment v1.3 — Final corpus decision: lal_kitab OUT, tajaka + muhurta IN (2026-06-09)
+
+The following 4 changes supersede v1.1 wherever they conflict. Inline sections §0, §2, §3a, §6, §7, §8 updated in-place below.
+
+1. **FINAL corpus = 13 texts, all staged.** lal_kitab DROPPED (distinct Urdu-Persian system; deferred as possible future `bg_remedies` targeted ingestion — not a text corpus text). bhrigu_samhita STAYS DROPPED (no defensible edition). tajaka_neelakanthi BACK IN (native reversal): covers Tajik/Varshaphala annual-chart system; CC0 archive.org scan (`tajika_nilakanthi`), 288 pages, Sanskrit + Hindi commentary, MEDIUM provenance. muhurta_chintamani IN: Khemraj/Mahidhara Sharma bhasha tika, CC0, 172 pages, Sanskrit + Hindi commentary, MEDIUM provenance.
+2. **Both Hindi texts use the same Devanagari multilingual path + AWAITING_NATIVE_DECISION quality gate.** This gate applies to muhurta_chintamani AND tajaka_neelakanthi identically: at ingest, if DjVu/text-layer OCR is coherent Devanagari → embed via `text-multilingual-embedding-002`; if garbled → flag `AWAITING_NATIVE_DECISION` and skip (never embed junk). Spot-checks completed 2026-06-09: muhurta 78-80% Devanagari / 172 pages / clean embedded text layer PASS; tajaka 77-78% Devanagari / 288 pages / Sanskrit + Hindi commentary PASS. Gate is at BUILD, not at staging — both PDFs are staged.
+3. **Floor update.** Staged floor raises to 9,100 chunks (11-text floor ~8,000 + muhurta ~700 + tajaka ~400). Full floor remains 10,000. The 9,100 floor is contingent on both Hindi OCR quality gates passing. Vimarshaka treats a gated-out Hindi text as CONDITIONAL-APPROVE (gap logged), not REJECT.
+4. **Lal Kitab deferred note.** "Lal Kitab remedies = possible future targeted bg_remedies ingestion" — not a text corpus item. If the native later wants Lal Kitab remedy data, the path is a direct `bg_remedies` ingest of structured remedy tables, not a text chunking pipeline.
+
 ## Amendment v1.1 — 13-text corpus decision (2026-06-08)
 
 The following 10 changes supersede the v1.0 body wherever they conflict. Specific inline sections (§0, §1, §2, §3a, §4, §6, §7, §8) have been updated in-place below.
 
-1. **DROP tajaka_neelakanthi and bhrigu_samhita.** Both texts are removed from the §2 table and all references. The corpus is 13 texts, not 15.
+1. ~~**DROP tajaka_neelakanthi and bhrigu_samhita.**~~ **[SUPERSEDED BY v1.3]** Only bhrigu_samhita is DROPPED (no defensible edition). tajaka_neelakanthi is BACK IN (native reversal, v1.3) — CC0 archive.org scan, 288pp, sa+hi, MEDIUM provenance. Corpus is 13 texts, not 15 (lal_kitab DROPPED, not tajaka).
 2. **Clear-and-rebuild mandate.** The "existing data KEPT / delta-ingest" framing is replaced: the writer executes `DELETE FROM classical_text_chunks` before rebuilding all texts from GCS PDFs. Idempotency contract: same PDF + pinned embedding model version = identical chunks via `content_sha256`.
 3. **Multi-volume support.** When a text has `gcs_path_vol2` in the registry (bphs has Vol 1+2; jataka_parijata has Vol I+II; yavana_jataka has vol1+vol2), BOTH volumes are ingested under one `text_id`. The chunker processes each volume sequentially, tagging chunks with `source_volume: 1` or `2`.
 4. **Devanagari/multilingual extraction.** The "OCR out of scope" hard stop is qualified: the extractor must handle non-Latin scripts (pdfminer/pymupdf text layer → `content_sa` for Sanskrit/Devanagari). Vertex AI `text-multilingual-embedding-002` handles Sanskrit/Hindi natively. The flag-to-native clause applies only to PDFs with no clean text layer (truly image-only scans); a PDF with a clean non-Latin text layer is NOT the OCR problem.
 5. **provenance_tier propagation.** `l0_texts.py` TEXTS registry carries `provenance_tier` (HIGH/MEDIUM/LOW) per text. Carry this into `classical_text_chunks.source_citation` as a structured prefix: e.g. `"[HIGH] BPHS — Trans. R. Santhanam, Ranjan Publications"`. Downstream bg_concordance/bg_compendium can filter/weight by tier (LOW chunks may be excluded from authoritative assemblies).
-6. **Floor recalculation for 13 texts.** The ≥14,000 floor is replaced with: staged floor (11 texts with GCS PDFs) ≥8,000 chunks; full floor (all 13 texts including muhurta_chintamani + lal_kitab when remediated) ≥10,000 chunks. muhurta_chintamani and lal_kitab are `UNSTAGED_PENDING_NATIVE_DECISION`; writer logs `AWAITING_NATIVE_DECISION` for these 2 (edition availability issue, not GCS upload issue).
+6. ~~**Floor recalculation for 13 texts.** ... muhurta_chintamani and lal_kitab are `UNSTAGED_PENDING_NATIVE_DECISION`; writer logs `AWAITING_NATIVE_DECISION` for these 2.~~ **[SUPERSEDED BY v1.3]** muhurta_chintamani IS STAGED (CC0, sa+hi, 172pp; Hindi OCR quality gate at BUILD). tajaka_neelakanthi IS STAGED (CC0, sa+hi, 288pp; Hindi OCR quality gate at BUILD). lal_kitab is DROPPED entirely — not in registry, no row, no chunks, no AWAITING note. Floor: 9,100 contingent (all 13, Hindi OCR gates passing) / 8,000 baseline (11 English texts).
 7. **sarvartha_chintamani OCR gate.** The staged PDF (B. Suryanarayana Row 1899) is image-only — no embedded text layer. The writer must OCR it before chunking (Google Document AI or pdfminer fallback). Alternative: the DjVu OCR extract from archive.org (520KB, ~48,423 English words) is an acceptable extraction path. See §2 note.
 8. **saravali partial-corpus note.** The staged PDF covers chapters 1–55 of 58 (CC BY-ND 3.0, MEDIUM provenance). See §2 note.
 9. **Remove false "existing pipeline" statement.** The v1.0 claim "PDF→text→chunk pipeline already exists in l0_texts.py per Stream C" is incorrect — `l0_texts.py` has a seed-chunk writer, not a PDF ingest pipeline. The writer must implement the PDF→extract→chunk→embed pipeline from scratch.
@@ -40,11 +56,11 @@ The following 10 changes supersede the v1.0 body wherever they conflict. Specifi
 ## §0 — Asset summary
 
 - **Asset ID:** `bg_texts`. **Backing:** `classical_text_chunks` (NOT `classical_chunks` — see §1). **Scope:** `global`. **Tier:** 2.
-- **Target floor:** **≥8,000 chunks** (11 staged texts); **≥10,000 chunks** (full 13 texts once muhurta_chintamani + lal_kitab are remediated).
+- **Target floor:** **≥9,100 chunks** (all 13 staged texts, contingent on Hindi OCR gate for muhurta + tajaka); **≥10,000 chunks** (full floor). If either Hindi text fails ingest quality gate, Vimarshaka returns CONDITIONAL-APPROVE with gap logged.
 - **Source category:** source PDFs in GCS + deterministic embedding transform.
-- **Dependency:** source PDFs staged in GCS for 11 of 13 texts. muhurta_chintamani + lal_kitab are `UNSTAGED_PENDING_NATIVE_DECISION` (edition sourcing required, not a GCS upload issue). yavana_jataka has multi-volume GCS paths (vol1 + vol2) and is staged.
+- **Dependency:** source PDFs staged in GCS for all 13 texts (corpus FINAL 2026-06-09). muhurta_chintamani + tajaka_neelakanthi use the Devanagari multilingual path with `AWAITING_NATIVE_DECISION` quality gate at ingest — both PDFs are staged; gate is at BUILD. bphs, jataka_parijata, yavana_jataka are multi-volume (gcs_path + gcs_path_vol2).
 
-## §3a — Floor Achievement Arithmetic (v1.1 — 13-text corpus)
+## §3a — Floor Achievement Arithmetic (v1.3 — 13-text corpus FINAL)
 
 Per-text expected chunk estimates for the 13-text corpus:
 
@@ -61,12 +77,13 @@ Per-text expected chunk estimates for the 13-text corpus:
 | 9 | sarvartha_chintamani | ~600 | OCR required (image-only PDF) |
 | 10 | brihat_samhita | ~1,800 | |
 | 11 | yavana_jataka | ~700 | vol1 + vol2 (multi-volume) |
-| 12 | muhurta_chintamani | ~700 | **UNSTAGED_PENDING_NATIVE_DECISION** |
-| 13 | lal_kitab | ~700 | **UNSTAGED_PENDING_NATIVE_DECISION** |
-| **11 staged** | | **~9,200** | texts 1–11 |
-| **All 13** | | **~10,600** | includes texts 12–13 when remediated |
+| 12 | muhurta_chintamani | ~700 | STAGED (CC0, sa+hi); **AWAITING_NATIVE_DECISION** at ingest OCR gate |
+| 13 | tajaka_neelakanthi | ~400 | STAGED (CC0, sa+hi); **AWAITING_NATIVE_DECISION** at ingest OCR gate |
+| **11 English texts** | | **~8,000** | texts 1–11 (baseline floor) |
+| **All 13** | | **~9,100** | texts 12–13 contingent on Hindi OCR gate |
+| **Full** | | **~10,000** | projected after full chunking |
 
-> **Floor thresholds:** Staged (11 texts): ≥8,000 chunks. Full (13 texts): ≥10,000 chunks. For texts 12–13, the writer logs `AWAITING_NATIVE_DECISION` (edition sourcing issue, not a GCS upload gap) and CONDITIONAL-APPROVEs the 11-text build. No migration authored by bg_texts (no depends_on UPDATE).
+> **Floor thresholds:** Baseline (11 English texts): ~8,000 chunks. Staged floor (all 13 texts, contingent): 9,100 chunks. Full projection: ≥10,000. For texts 12–13, the writer logs `AWAITING_NATIVE_DECISION` (OCR quality gate, not a GCS upload gap) and CONDITIONAL-APPROVEs if gate not passed. Vimarshaka treats a gated-out Hindi text as CONDITIONAL, not REJECT. No migration authored by bg_texts (no depends_on UPDATE).
 
 
 ## §1 — Schema reference
@@ -98,10 +115,10 @@ Per design §3.3 / `L0FR_SOURCE_DATA_v1_0.md`:
 | 9 | sarvartha_chintamani | MEDIUM | YES | NO | ~600 | **OCR required** — staged PDF (B. Suryanarayana Row 1899) is image-only; no embedded text layer. Writer must OCR before chunking (Google Document AI or pdfminer fallback). Alternative: DjVu OCR extract from archive.org (~520KB, ~48,423 English words) is an acceptable extraction path. |
 | 10 | brihat_samhita | HIGH | YES | NO | ~1,800 | |
 | 11 | yavana_jataka | MEDIUM | YES | YES (vol1+vol2) | ~700 | |
-| 12 | muhurta_chintamani | MEDIUM | **NO** | NO | ~700 | **UNSTAGED_PENDING_NATIVE_DECISION** — edition sourcing required; writer logs `AWAITING_NATIVE_DECISION` |
-| 13 | lal_kitab | LOW | **NO** | NO | ~700 | **UNSTAGED_PENDING_NATIVE_DECISION** — edition sourcing required; writer logs `AWAITING_NATIVE_DECISION` |
+| 12 | muhurta_chintamani | MEDIUM | YES | NO | ~700 | **AWAITING_NATIVE_DECISION** at ingest OCR gate — sa+hi Devanagari path; Khemraj/Mahidhara Sharma bhasha tika, CC0, 172pp, 78-80% Devanagari confirmed. Writer logs `AWAITING_NATIVE_DECISION` if OCR garbled at build, skips embed. |
+| 13 | tajaka_neelakanthi | MEDIUM | YES | NO | ~400 | **AWAITING_NATIVE_DECISION** at ingest OCR gate — sa+hi Devanagari path; CC0 archive.org, 288pp, 77-78% Devanagari confirmed. Covers Tajik/Varshaphala annual-chart system. Writer logs `AWAITING_NATIVE_DECISION` if OCR garbled at build, skips embed. |
 
-**Staged floor (11 texts): ≥8,000 chunks. Full floor (all 13 texts): ≥10,000 chunks.**
+**Staged floor (all 13 texts, contingent): ≥9,100 chunks. Full floor: ≥10,000 chunks. lal_kitab DROPPED — deferred as possible future bg_remedies ingestion (Lal Kitab remedies = distinct Urdu-Persian system, not a text corpus text).**
 
 > **provenance_tier propagation:** each text's `provenance_tier` (HIGH/MEDIUM/LOW) must be carried into `classical_text_chunks.source_citation` as a structured prefix, e.g. `"[HIGH] BPHS — Trans. R. Santhanam, Ranjan Publications"`. Downstream bg_concordance/bg_compendium can filter/weight by tier (LOW chunks may be excluded from authoritative assemblies).
 
@@ -121,7 +138,7 @@ TEXTS = [
    "expected_chunks":800,"staged":True,
    "source_citation":"[MEDIUM] Saravali (Kalyana Varma), chs 1–55/58, CC BY-ND 3.0"},
   # ... bphs (vol1+vol2), jataka_parijata (Vol I+II), yavana_jataka (vol1+vol2) — gcs_path_vol2 set;
-  # muhurta_chintamani/lal_kitab — staged=False, logs AWAITING_NATIVE_DECISION
+  # muhurta_chintamani/tajaka_neelakanthi — staged=True, Hindi OCR quality gate at BUILD (AWAITING_NATIVE_DECISION if garbled at ingest; lal_kitab DROPPED — not in registry)
 ]
 ```
 
@@ -131,7 +148,7 @@ TEXTS = [
 
 0. **Clear the table.** Execute `DELETE FROM classical_text_chunks` before any ingest. This is the clear-and-rebuild mandate — determinism requires a clean slate (prior chunking method was unknown). Log the row count deleted.
 1. **Locate the PDF(s)** in GCS (`gcs_path`; `gcs_path_vol2` if present for multi-volume texts).
-   - If `staged=False` (muhurta_chintamani, lal_kitab) → log `AWAITING_NATIVE_DECISION: <text_id>` (edition not yet sourced) and SKIP. Do NOT log these as `AWAITING_MANUAL_UPLOAD` — the issue is edition availability, not GCS upload.
+   - If `staged=False` (no text in the v1.3 13-text corpus has this flag — lal_kitab is DROPPED entirely, not `staged=False`) → for any future registry entry with `staged=False`, log `AWAITING_NATIVE_DECISION: <text_id>` and SKIP. lal_kitab MUST NOT appear in the registry at all.
    - If `staged=True` but GCS object absent → log `AWAITING_MANUAL_UPLOAD: <text_id>` and SKIP (operator action required).
    - For multi-volume texts (bphs, jataka_parijata, yavana_jataka): process `gcs_path` then `gcs_path_vol2` sequentially under the same `text_id`. Tag each chunk with `source_volume: 1` or `2`.
 2. **Extract + OCR gate.** Use pdfminer/pymupdf to extract the text layer. If the PDF has a clean text layer (including non-Latin/Devanagari scripts), proceed directly — multilingual PDFs with embedded text are not the "OCR problem". If the PDF is image-only (no text layer; detected by zero-character extraction): for sarvartha_chintamani, use Google Document AI or the archive.org DjVu OCR extract (~520KB); for other image-only PDFs, log `AWAITING_OCR: <text_id>` and flag to native. Sanskrit/Devanagari text layers are extracted to `content_sa`; English translations to `content_en`.
@@ -151,16 +168,16 @@ TEXTS = [
 
 ## §6 — Unit tests
 
-`test_bg_texts.py`: (1) ≥8,000 chunks total from staged texts OR (if any staged PDFs absent) ≥ the floor of the available texts with a logged `AWAITING_MANUAL_UPLOAD` / `AWAITING_NATIVE_DECISION` list; (2) every chunk has non-null `source_citation` (with `[HIGH|MEDIUM|LOW]` prefix) + `verse_ref`; (3) every chunk has a 768-dim `embedding` (no null embeddings on ingested texts); (4) all 13 `text_id`s present in `classical_texts` registry (muhurta_chintamani and lal_kitab rows present but chunk_count=0 with AWAITING_NATIVE_DECISION logged); (5) re-ingest after clear inserts the same count (idempotent); (6) FORENSIC spot-check: BPHS Ch.7 (bhava) chunks retrievable; (7) multi-volume check: bphs chunks tagged source_volume=1 AND source_volume=2; (8) `bphs_jaimini` row exists in `classical_texts`; `jaimini_sutram` row NOT deleted.
+`test_bg_texts.py`: (1) ≥9,100 chunks total from all 13 staged texts (contingent) OR ≥8,000 from the 11 English texts with `AWAITING_NATIVE_DECISION` logged for muhurta + tajaka if Hindi OCR gate gated them out; (2) every chunk has non-null `source_citation` (with `[HIGH|MEDIUM|LOW]` prefix) + `verse_ref`; (3) every chunk has a 768-dim `embedding` (no null embeddings on ingested texts); (4) all 13 `text_id`s present in `classical_texts` registry (muhurta_chintamani and tajaka_neelakanthi rows present; chunk_count=0 with AWAITING_NATIVE_DECISION logged if OCR gate blocked them); (5) re-ingest after clear inserts the same count (idempotent); (6) FORENSIC spot-check: BPHS Ch.7 (bhava) chunks retrievable; (7) multi-volume check: bphs chunks tagged source_volume=1 AND source_volume=2; (8) `bphs_jaimini` row exists in `classical_texts`; `jaimini_sutram` row NOT deleted; (9) lal_kitab NOT present in classical_texts (dropped corpus text).
 
 ## §7 — Vimarśaka check
 
-APPROVE iff: ≥8,000 chunks from staged texts (OR all staged texts ingested + gaps explicitly logged); zero null `source_citation` (every `source_citation` has `[HIGH|MEDIUM|LOW]` prefix); zero null `embedding` on ingested texts; 13 registry rows in `classical_texts`. **If below 8,000 staged floor solely due to `AWAITING_NATIVE_DECISION` (muhurta_chintamani, lal_kitab) or `AWAITING_MANUAL_UPLOAD` (staged text with missing GCS object), Vimarśaka returns CONDITIONAL-APPROVE with the gap list** — this is an operator/native action, not a writer failure. If below floor for any OTHER reason (pipeline failure, missing chunks on a staged text with a valid GCS object), REJECT. Full APPROVE (≥10,000) available only when all 13 texts are staged and ingested.
+APPROVE iff: ≥9,100 chunks from all 13 staged texts (OR ≥8,000 from English texts + AWAITING_NATIVE_DECISION logged for muhurta/tajaka if Hindi OCR gate blocked them); zero null `source_citation` (every `source_citation` has `[HIGH|MEDIUM|LOW]` prefix); zero null `embedding` on ingested texts; 13 registry rows in `classical_texts`; lal_kitab NOT in classical_texts. **If below 9,100 staged floor solely because muhurta_chintamani and/or tajaka_neelakanthi failed the Hindi OCR quality gate (AWAITING_NATIVE_DECISION logged), Vimarśaka returns CONDITIONAL-APPROVE with the gap list** — this is a native/operator decision, not a writer failure. If below 8,000 English-text floor for any reason (pipeline failure, missing chunks on a staged English text with valid GCS object), REJECT. Full APPROVE (≥10,000) available after complete chunking of all 13 texts.
 
 ## §8 — Hard stops + scope discipline
 
 - **Clear-before-rebuild mandate.** The writer MUST execute `DELETE FROM classical_text_chunks` before any ingest. Do NOT skip this step. Do NOT delta-ingest onto prior data — prior chunking method was unknown/non-reproducible.
-- **AWAITING_NATIVE_DECISION vs AWAITING_MANUAL_UPLOAD.** muhurta_chintamani and lal_kitab are `UNSTAGED_PENDING_NATIVE_DECISION` (edition sourcing issue). Log them as `AWAITING_NATIVE_DECISION`, NOT `AWAITING_MANUAL_UPLOAD`. Do NOT fabricate chunks, do NOT fail the whole asset. Surface the decision list to native.
+- **AWAITING_NATIVE_DECISION vs AWAITING_MANUAL_UPLOAD.** muhurta_chintamani and tajaka_neelakanthi use the Devanagari multilingual OCR path with an `AWAITING_NATIVE_DECISION` quality gate at BUILD (not staging — both PDFs are staged in GCS). If the OCR quality check at build time finds garbled/non-coherent Devanagari, log `AWAITING_NATIVE_DECISION: <text_id>`, skip embed, and surface to native. Do NOT fabricate chunks, do NOT fail the whole asset. Log `AWAITING_MANUAL_UPLOAD` only for a staged text whose GCS object is absent. lal_kitab is DROPPED from the corpus entirely — do NOT create a row for it.
 - **OCR gate for image-only PDFs.** If a staged PDF has no embedded text layer (zero-character extraction): for sarvartha_chintamani specifically, use Google Document AI or the archive.org DjVu OCR extract. For any other image-only PDF, log `AWAITING_OCR: <text_id>` and surface to native. Do NOT skip OCR-required texts silently.
 - **Non-Latin text layers are NOT the OCR problem.** A PDF with a clean Devanagari/Sanskrit text layer is extracted normally via pdfminer/pymupdf; Vertex AI `text-multilingual-embedding-002` handles Sanskrit/Hindi natively.
 - **provenance_tier propagation.** Every chunk's `source_citation` MUST carry a `[HIGH|MEDIUM|LOW]` prefix. Do NOT insert chunks with bare (un-prefixed) `source_citation` values.
@@ -171,4 +188,4 @@ APPROVE iff: ≥8,000 chunks from staged texts (OR all staged texts ingested + g
 
 ---
 
-*End of bg_texts brief (Document 6 of 15).*
+*End of bg_texts brief (Document 6 of 15). v1.3 — corpus FINAL: 13 texts all staged; lal_kitab DROPPED; tajaka_neelakanthi + muhurta_chintamani IN (Hindi OCR gated); floor 9,100 contingent.*
