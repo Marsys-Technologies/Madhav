@@ -7,6 +7,7 @@
 --   ayanamsha_id stored as 'tropical' (ayanamsha subtracted at read time)
 --
 -- Volume floor: >= 29,200 rows × 10 bodies for period 1980-2060
+-- SUPERSEDED: floor updated to 825,084 (91,676 days × 9 grahas, 1900-2150) via migration 182 / PR #228.
 --
 -- Gate: COUNT(*) >= floor; native birth date 1984-02-05 has Sun in Capricorn
 --
