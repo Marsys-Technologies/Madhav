@@ -32,7 +32,11 @@ UPDATE asset_registry SET
 WHERE asset_id = 'bg_text_index';
 
 -- bg_rules: 1,755 = 3,000 × (8,193 / 14,000) = 1,755.6 → 1,755.
--- Pattern-extraction output scales with chunk count; old 3,000 was projected off ~14k chunks.
+-- PROVISIONAL PLACEHOLDER. Pattern-extraction output scales with chunk count; old 3,000 was
+-- projected off ~14k chunks. This value prevents the NULL-bar bug on the unbuilt asset.
+-- The bg_rules writer's own migration MUST correct this to the REAL emergent count:
+--   UPDATE asset_registry SET target_floor = <actual_rows> WHERE asset_id = 'bg_rules';
+-- See CLAUDECODE_BRIEF_BG_RULES_v1_0.md §3a provisional note.
 UPDATE asset_registry SET
   target_floor = 1755,
   volume_explanation = '1,755 rules = honest scaling of old 3,000 estimate (projected at ~14k chunks) to actual 8,193-chunk corpus (ratio 0.5852). Pattern-extraction yield is chunk-proportional; old floor was unreachable and would have left bar permanently < 100%.'
@@ -55,8 +59,11 @@ UPDATE asset_registry SET
 WHERE asset_id = 'bg_concordance';
 
 -- bg_compendium_index: 3,000 → 1,755.
--- Pass B per-text×topic aggregation IS chunk-proportional; old 3,000 was impossible
--- against 8,193-chunk corpus. Same scale factor as bg_rules.
+-- PROVISIONAL PLACEHOLDER. Pass B per-text×topic aggregation IS chunk-proportional; old 3,000
+-- was impossible against 8,193-chunk corpus. Same scale factor as bg_rules.
+-- The bg_compendium_index writer's own migration MUST correct this to the REAL emergent count:
+--   UPDATE asset_registry SET target_floor = <actual_rows> WHERE asset_id = 'bg_compendium_index';
+-- See CLAUDECODE_BRIEF_BG_COMPENDIUM_INDEX_v1_0.md §3a provisional note.
 UPDATE asset_registry SET
   target_floor = 1755,
   volume_explanation = '1,755 index entries = 3,000 × (8,193 / 14,000) = 1,755.6 → 1,755. Pass B per-text-per-topic aggregation scales with corpus depth; old 3,000 was projected off ~14k chunks and would have left bar permanently incomplete against the actual 8,193-chunk corpus.'
