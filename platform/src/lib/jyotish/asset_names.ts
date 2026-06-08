@@ -30,7 +30,11 @@ export const ASSET_NAMES = {
   bg_text_index:   { sanskrit: 'Śabdakośa',      english: 'Text Index',         subtitle: 'Hybrid retrieval — vector + lexical + rerank',                     layer: 'L0' },
   bg_rules:        { sanskrit: 'Sūtravālī',      english: 'Rule Base',          subtitle: 'Extracted classical rules, verse-traceable',                       layer: 'L0' },
   bg_remedies:     { sanskrit: 'Upāya-kośa',     english: 'Remedy Corpus',      subtitle: 'Mantras, gemstones, charity, vrata, yantras, puja, tantric, ayurvedic', layer: 'L0' },
-  bg_concordance:  { sanskrit: 'Samanvaya',      english: 'Concordance',        subtitle: 'Cross-school agreement/divergence index — DORMANT placeholder',    layer: 'L0' },
+  bg_concordance:       { sanskrit: 'Samanvaya',      english: 'Concordance',        subtitle: 'Cross-school agreement/divergence index — DORMANT placeholder',    layer: 'L0' },
+  bg_yogas:             { sanskrit: 'Yoga-saṃgraha',  english: 'Yoga Catalog',       subtitle: 'Classical yoga definitions — Raja, Dhana, Pancha-Mahapurusha, …',  layer: 'L0' },
+  bg_dasha_systems:     { sanskrit: 'Daśā-paddhati',  english: 'Dasha Systems',      subtitle: 'Vimshottari, Yogini, Chara, Kalachakra, …',                        layer: 'L0' },
+  bg_doshas:            { sanskrit: 'Doṣa-kośa',      english: 'Dosha Catalog',      subtitle: 'Manglik, Kala-sarpa, Kemadruma, …',                                 layer: 'L0' },
+  bg_compendium_index:  { sanskrit: 'Anukrama',       english: 'Compendium Index',   subtitle: 'Cross-text chapter index + topic-coverage map',                    layer: 'L0' },
 
   // ── L1 Gaṇita — Chart Facts ───────────────────────────────────────────────
   ga_engine:       { sanskrit: 'Gaṇanā',         english: 'Engine',            subtitle: 'PyJHora chart computation — all ayanamshas',        layer: 'L1' },

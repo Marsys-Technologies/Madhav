@@ -99,8 +99,8 @@ export default defineConfig({
       'src/app/api/charts/__tests__/ayanamsha_status.test.ts',
       'src/app/api/conversations/__tests__/active_ayanamshas.test.ts',
       'src/app/clients/__tests__/chart_pages.test.tsx',
-      // Group O — asset naming (re-enable: asset_names registry repopulated post-L0FR)
-      'src/lib/jyotish/__tests__/asset_names.test.ts',
+      // Group O — asset naming — RE-ENABLED: L0 Phase α registered 12 assets (2026-06-08)
+      // 'src/lib/jyotish/__tests__/asset_names.test.ts',
       // Group P — smooth-stream flag-gate logic (re-enable: Y-S3 flag-gate corrected)
       'tests/unit/chat-v2/smooth_stream.test.ts',
     ],
