@@ -4,6 +4,7 @@ canonical_id: L0_BG_TEXTS_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a (≥14,000 chunks emergent; 3 manual PDFs are the hard operator prerequisite; CONDITIONAL-APPROVE)
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_texts writer (classical text corpus ingestion)
@@ -25,6 +26,16 @@ document_number: 6 of 15
 - **Target floor:** **≥14,000 chunks** across 15 texts (design §3.3).
 - **Source category:** source PDFs in GCS + deterministic embedding transform.
 - **Dependency:** source PDFs present in the GCS bucket. Texts 11 (Tajaka Neelakanthi), 12 (Yavana Jataka), 13 (Bhrigu Samhita) require MANUAL native upload (design §3.3 table).
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥14,000 chunks — EMERGENT, operator-gated)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `structured_extraction` | chunks from the 15 source PDFs (existing 5 ≈ 8,432 + 10 new ≈ 8,200) ingested + embedded (Vertex AI, the one permitted deterministic transform) | **≥14,000 projected** | per-text expected-chunk sums (§2 table): Saravali ~1,800, Brihat Samhita ~2,000, etc. |
+| **TOTAL** | | **≥14,000 (EMERGENT, needs 3 manual PDFs)** | 8,432 + ~8,200 ≈ 16,600 potential − ~1,300 behind manual PDFs |
+
+> **HARD OPERATOR PREREQUISITE:** 3 texts (Tajaka Neelakanthi, Yavana Jataka, Bhrigu Samhita ≈ 1,300 chunks) require MANUAL native upload to GCS. The writer logs `AWAITING_MANUAL_UPLOAD` and CONDITIONAL-APPROVEs the available corpus. Full floor reached only after the uploads + re-ingest. No migration (bg_texts authors no depends_on UPDATE).
+
 
 ## §1 — Schema reference
 

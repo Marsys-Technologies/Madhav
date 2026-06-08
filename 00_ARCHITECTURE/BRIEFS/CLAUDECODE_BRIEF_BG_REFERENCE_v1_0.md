@@ -4,6 +4,7 @@ canonical_id: L0_BG_REFERENCE_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a Floor Achievement Arithmetic; assigned migration 182 (content embeds — constants generator, glossary ~365, karakas 77, topic_tags generator — were authored in a prior pass)
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_reference writer (15 typed reference tables)
@@ -52,6 +53,19 @@ document_number: 4 of 15
 | `reference_dasha_systems` | **bg_dasha_systems writer** (Doc 12) | 15 | NOT this brief |
 
 > **Ownership rationale.** The pointer tables have FK constraints (`fk_ref_yoga` → `brahma_yoga_catalog`, etc., migration 178:78-100) that REJECT any insert before the parent catalog row exists. So they CANNOT be filled by a Tier-0 bg_reference run. Each catalog writer inserts its own pointer row in the same transaction it inserts the catalog row — guaranteeing FK validity and single-source-of-truth. This brief's Vimarśaka checks ONLY the 12 substantive tables; Vimarśaka-Ω (Doc 15) checks the pointer tables after Tier 1.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; writer-owned 12 tables, floor ≥1,225 / target ≥1,450)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `closed_set_inline` | existing 5 tables (planets 11 + nakshatras 27 + signs 12 + aspects ~19 + vargas 19 ≈ 88) + houses 12 + strength_systems 35 + upagrahas 11 + karakas 77 (§3.3) + glossary ~365 (§3.7) | **~588** | grep `"karaka_id":"`=77, `"term_id":"`≈365 in §3; existing-5 in l0_reference.py |
+| `deterministic_generated` | reference_constants generator over explicit attested tables incl. `ASHTAKAVARGA_BINDU_TABLE` (§3.5, ≥200) + reference_topic_tags cross-product (§3.6, ≥450) | **≥650** | run the §3.5/§3.6 generators; counts provable from their domains (9×bindu-points; planets×houses=108, lords×houses=144, …) |
+| `structured_extraction` | none required | 0 | — |
+| **TOTAL (this writer's 12 tables)** | | **≥1,238 → ~1,450** | ~588 + ~650 = ~1,238 (clears the ≥1,225 own-floor); the ≥1,450 target is reached as the generators emit their full domains |
+| pointer tables (NOT this writer) | reference_yogas 250 / reference_doshas 50 / reference_dasha_systems 15 | owned by catalog writers | Doc 11/12/13 §0.1 |
+
+> **Citation policy:** per the native-ratified policy (2026-06-08), `classical_tradition` is an accepted citation value for genuinely tradition-rooted rows; all numeric constants cite BPHS chapters. Migration **182** carries this brief's `depends_on=['bg_ontology']` UPDATE.
+
 
 ## §1 — Schema reference
 
@@ -993,7 +1007,7 @@ Per holistic design §4.1: **every `reference_*.canonical_id` MUST exist in `bra
 > **Therefore bg_reference depends_on bg_ontology** (Tier 0 ordering: bg_ontology runs first so the planet/sign/karaka/upagraha ids resolve). Add `depends_on` for bg_reference in this brief's migration:
 > ```sql
 > -- migration: bg_reference depends on bg_ontology for canonical_id FK validation
-> UPDATE asset_registry SET depends_on = ARRAY['bg_ontology']::text[] WHERE asset_id='bg_reference';
+> UPDATE asset_registry SET depends_on = ARRAY['bg_ontology']::text[] WHERE asset_id='bg_reference';  -- migration 182
 > ```
 > Implementation: the writer loads `SELECT canonical_id FROM brahma_ontology` into a set once, and checks membership before inserting any ontology-keyed row. If bg_ontology is empty (not yet built), the writer raises a clear error directing the orchestrator to build bg_ontology first — which the DAG dispatch (Doc 2 §6) guarantees.
 

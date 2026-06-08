@@ -4,6 +4,7 @@ canonical_id: L0_BG_TEXT_INDEX_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a (≥400 distinct tags, emergent on corpus, CONDITIONAL on manual PDFs); migration 187
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_text_index writer (deterministic topic_tag classifier)
@@ -25,6 +26,16 @@ document_number: 7 of 15
 - **count_sql** (already set, migration 179): `SELECT count(DISTINCT topic_tag) FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL`.
 - **Target floor:** **≥400 distinct topic tags** present on chunks (design §3.5 floor 400-600).
 - **Source category:** deterministic Python keyword-rule classifier.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥400 distinct topic_tags — EMERGENT)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `deterministic_generated` | distinct `topic_tag` values assigned by the §3 keyword-rule classifier over the embedded chunks, from the `reference_topic_tags` vocabulary (≥450, Doc 4 §3.6) | **≥400 projected** | classifier rules (planet×house 108, lordship 144, domain/dasha/yoga families) ∩ corpus coverage |
+| **TOTAL** | | **≥400 (EMERGENT on corpus)** | bounded above by the ≥450 vocabulary; reached as corpus coverage grows |
+
+> Floor is EMERGENT: it holds only if the corpus covers ≥400 of the ≥450 topic tags. **CONDITIONAL** if the 3 manual PDFs are absent (fewer chunks → fewer matchable tags) — rerun after full corpus. Every assigned tag MUST resolve in `reference_topic_tags` (no orphan tags). Migration **187** carries `depends_on=['bg_texts','bg_reference']`.
+
 
 ## §1 — Schema reference
 

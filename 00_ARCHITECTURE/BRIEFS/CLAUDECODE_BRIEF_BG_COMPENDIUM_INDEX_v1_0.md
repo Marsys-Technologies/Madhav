@@ -4,6 +4,7 @@ canonical_id: L0_BG_COMPENDIUM_INDEX_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a (≥3,000 aggregation rows, emergent on corpus/topic_tags, CONDITIONAL); migration 191 (dedup index)
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_compendium_index writer (search-acceleration meta-index)
@@ -24,6 +25,16 @@ document_number: 14 of 15
 - **Asset ID:** `bg_compendium_index`. **Backing:** `brahma_compendium_index`. **Scope:** `global`. **Tier:** 4.
 - **Target floor:** **≥3,000 rows** (design §3.12: ~3,000-5,000 = per-text-chapter ~300 + per-text-topic ~4,000).
 - **Source category:** deterministic aggregation over `bg_texts` chunks grouped by chapter + topic_tag.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥3,000 index rows — EMERGENT)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `deterministic_generated` | Pass A per-text-per-chapter (~300) + Pass B per-text-per-topic_tag (~2,700-4,000) aggregations over the corpus | **≥3,000 projected** | 15 texts × ~20 chapters ≈ 300; + per-text × distinct-topic_tag (≥450 tags × texts-they-appear-in) ≈ 2,700+ |
+| **TOTAL** | | **≥3,000 (EMERGENT on corpus)** | ~300 + ~2,700 = ≥3,000 |
+
+> Floor is EMERGENT: Pass B depends on `bg_text_index` having populated `topic_tag` on enough chunks across enough texts. **CONDITIONAL** if the corpus/topic_tags are incomplete (rerun after bg_text_index). `summary_text` is a mechanical first-N-chunks synopsis (ZERO LLM). Migration **191** carries the dedup unique index + `depends_on`.
+
 
 ## §1 — Schema reference (migration 176, verified)
 

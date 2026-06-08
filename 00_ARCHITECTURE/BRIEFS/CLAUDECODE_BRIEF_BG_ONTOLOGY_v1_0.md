@@ -4,6 +4,7 @@ canonical_id: L0_BG_ONTOLOGY_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — fixed two arbiter-description errors (live seed_ontology uses composite (entity_class, canonical_id), not (canonical_id)); added §3a; karaka entries generated from Doc 4 reference_karakas; migration 183
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_ontology writer (canonical entity vocabulary)
@@ -51,7 +52,20 @@ The design FK direction is `brahma_yoga_catalog.canonical_id → brahma_ontology
 | `dasha_system` | **bg_dasha_systems** (Doc 12) | ≥15 | 1 |
 | **full brahma_ontology** | | **≥700** | after Tier 1 |
 
-> **Cross-brief contract (binding on Docs 11/12/13):** each catalog writer, for every catalog row it inserts, ALSO inserts a `brahma_ontology` row with the matching `canonical_id`, the entity_class for that catalog, `name_en`/`name_sa`, `synonyms[]`, and a one-line description. It uses `ON CONFLICT (canonical_id) DO NOTHING` so re-runs are idempotent and bg_ontology's own run never collides. This makes the catalog the single author of both the name (ontology) and the doctrine (catalog) for its entities — no duplication, FK always satisfiable.
+> **Cross-brief contract (binding on Docs 11/12/13):** each catalog writer, for every catalog row it inserts, ALSO inserts a `brahma_ontology` row with the matching `canonical_id`, the entity_class for that catalog, `name_en`/`name_sa`, `synonyms[]`, and a one-line description. It uses `ON CONFLICT (entity_class, canonical_id) DO NOTHING` (the live composite arbiter — confirmed in `l0_ontology.py`; columns `canonical_name_en`/`canonical_name_sa`) so re-runs are idempotent and bg_ontology's own run never collides. This makes the catalog the single author of both the name (ontology) and the doctrine (catalog) for its entities — no duplication, FK always satisfiable.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; bg_ontology OWN floor ≥380)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `closed_set_inline` | existing (planet 11 + nakshatra 27 + sign 12 + house 12 = 62, KEPT) + new fully-inline classes (upagraha 11 + aspect_type 13 + remedy_type 12 + school 8 + text 15 = 59) | **121** | grep `_e("upagraha"/"aspect_type"/"remedy_type"/"school"/"text"` in §3 + existing l0_ontology.py |
+| `deterministic_generated` | `karaka` class — one `_e('karaka', id, …)` PER `reference_karakas` id (Doc 4 §3.3 has 77) → generated from that closed set | **77** | Doc 4's 77 `karaka_id`s; the generator emits one ontology row each |
+| `closed_set_inline` (domain+concept) | `domain` (≥40) + `concept` (≥150) — real named Jyotish concepts/life-areas, names-only (eval D1: "very low fabrication risk") | **≥190** | the §3.7 family lists (author inline; names-only, no doctrine) |
+| **TOTAL (own floor)** | | **≥388 ≥ 380** | 121 + 77 + ≥190 = ≥388 |
+| catalogs add (Tier 1) | yoga ≥250 + dosha ≥50 + dasha_system ≥15 | owned by Doc 11/12/13 | full brahma_ontology ≥700 after Tier 1 |
+
+> **Karaka determinism:** the karaka ontology entries are GENERATED from Doc 4's `reference_karakas` ids (same ids — the FK requires it), so they need no separate authoring and cannot drift. **domain/concept** are names-only closed lists (no doctrine — design §2.1); the §3.7 family lists are authored inline. Migration **183** carries `depends_on` (none — Tier 0 root) + is reserved for this brief.
+
 
 ## §1 — Schema reference
 
@@ -216,9 +230,9 @@ These are the softest classes; author from the explicit lists below (all are rea
 
 ## §4 — Writer implementation
 
-The Phase β `pipeline/orchestrator/writers/bg_ontology.py` delegates to `seed_ontology(...)` and returns `{inserted, skipped, by_class}` — **no change needed** beyond confirming the expanded `ENTITIES` flows through. In `l0_ontology.py`, the `seed_ontology()` INSERT already uses `ON CONFLICT (canonical_id) DO NOTHING`; keep it. Update `check_volume()` to report per-class counts and the ≥380 own-floor.
+The Phase β `pipeline/orchestrator/writers/bg_ontology.py` delegates to `seed_ontology(...)` and returns `{inserted, skipped, by_class}` — **no change needed** beyond confirming the expanded `ENTITIES` flows through. In `l0_ontology.py`, the `seed_ontology()` INSERT already uses **`ON CONFLICT (entity_class, canonical_id) DO NOTHING`** (the live composite arbiter — verified in `l0_ontology.py`); keep it. Update `check_volume()` to report per-class counts and the ≥380 own-floor.
 
-> **Idempotency + catalog coexistence:** because the catalog writers ALSO insert `brahma_ontology` rows (§0.1 contract) with `ON CONFLICT (canonical_id) DO NOTHING`, ordering is safe in both directions: if bg_ontology runs first it inserts its 12 classes; when a catalog runs it adds its class without colliding. The `entity_class` for a given canonical_id is owned by exactly one writer, so there is never a class conflict on the same id.
+> **Idempotency + catalog coexistence:** because the catalog writers ALSO insert `brahma_ontology` rows (§0.1 contract) with `ON CONFLICT (entity_class, canonical_id) DO NOTHING`, ordering is safe in both directions: if bg_ontology runs first it inserts its 12 classes; when a catalog runs it adds its class without colliding. The `entity_class` for a given canonical_id is owned by exactly one writer, so there is never a class conflict on the same id.
 
 ## §5 — FK validation logic
 

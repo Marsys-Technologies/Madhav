@@ -4,6 +4,7 @@ canonical_id: L0_BG_CONCORDANCE_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a (≥800 topic×school pointers, emergent on corpus, CONDITIONAL on manual PDFs); migration 190
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_concordance writer (chunk-pointer index per topic × school)
@@ -24,6 +25,16 @@ document_number: 10 of 15
 - **Asset ID:** `bg_concordance`. **Backing:** `classical_attributions` (reshaped by migration 177 to the chunk-pointer model). **Scope:** `global`. **Tier:** 4.
 - **Target floor:** **≥800 rows** (design §3.8: ~200 topics × 4-6 schools = 800-1,200; cockpit "topic count" ≈ 200).
 - **Source category:** deterministic topic × school chunk matching over the corpus.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥800 chunk-pointer rows — EMERGENT)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `deterministic_generated` | one row per (topic × school) where the corpus has ≥1 matching chunk — over ~200 topics × 4-6 schools | **≥800 projected** | ~200 `reference_topic_tags` topics × the per-school chunk grouping (TEXT_SCHOOL map, §3) |
+| **TOTAL** | | **≥800 (EMERGENT on corpus)** | 200 topics × ≥4 schools = ≥800 |
+
+> Floor is EMERGENT (depends on each topic having chunks across ≥4 schools, i.e. the full 15-text corpus). **CONDITIONAL** if the 3 manual PDFs are absent. NO stance synthesis (v1.1 chunk-pointer model); pointers only. Migration **190** carries `depends_on`.
+
 
 ## §1 — Schema reference (migration 177, verified — NOT the migration-158 MSR schema)
 

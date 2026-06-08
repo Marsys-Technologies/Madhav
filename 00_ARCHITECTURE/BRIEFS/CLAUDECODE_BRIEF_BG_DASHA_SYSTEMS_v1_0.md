@@ -4,6 +4,7 @@ canonical_id: L0_BG_DASHA_SYSTEMS_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a (18 systems ≥15 floor); confirmed ontology composite arbiter; migration 185
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_dasha_systems writer
@@ -28,10 +29,20 @@ document_number: 12 of 15
 ### §0.1 — Cross-brief contract (the catalog owns its ontology + pointer rows)
 
 Per Doc 5 §0.1, this writer, **in the same transaction** as each `brahma_dasha_systems` insert, also inserts:
-1. a `brahma_ontology` row: `entity_class='dasha_system'`, matching `canonical_id`, `name_en`/`name_sa`, `synonyms[]`, one-line description — `ON CONFLICT (canonical_id) DO NOTHING`.
+1. a `brahma_ontology` row: `entity_class='dasha_system'`, matching `canonical_id`, `name_en`/`name_sa`, `synonyms[]`, one-line description — `ON CONFLICT (entity_class, canonical_id) DO NOTHING` (the live composite arbiter).
 2. a `reference_dasha_systems` pointer row: `(canonical_id, name_en, school)` — `ON CONFLICT (canonical_id) DO NOTHING`. (FK `fk_ref_dasha_sys` → `brahma_dasha_systems`, so insert the catalog row FIRST, then the pointer.)
 
 This satisfies the holistic-design FK direction and single-source-of-truth: bg_dasha_systems is the sole author of every dasha id's name (ontology), doctrine (catalog), and index (pointer).
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥15)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `closed_set_inline` | complete dasha-system dicts embedded in §3 (Vimshottari, Ashtottari, Yogini, Kalachakra, Chara, Sthira, Niryana-Shoola, Shodashottari, Dwadashottari, Panchottari, Shatabdika, Chaturashiti-sama, Dwisaptati-sama, Shashtihayani, Shattrimsha-sama, Tara, Brahma, Yogardha) | **18** | grep `"canonical_id":"` in §3 = 18 |
+| **TOTAL** | | **18 ≥ 15 floor** | met inline; cycle totals unit-tested (Vimshottari=120, Yogini=36, Ashtottari=108) |
+
+> Ontology insert uses the live composite arbiter `ON CONFLICT (entity_class, canonical_id)` (fixed); catalog + pointer use their `canonical_id` PK. Migration **185** carries `depends_on`/ontology-arbiter reconciliation.
+
 
 ## §1 — Schema reference (migration 176, verified)
 
@@ -255,7 +266,7 @@ for d in DASHA_SYSTEMS:
          d.get("conditions_for_use"),d["school"],Json(d.get("classical_citations")),d.get("python_impl_module")))
     # 2. ontology row (§0.1 contract)
     cur.execute("""INSERT INTO brahma_ontology (entity_class,canonical_id,canonical_name_en,canonical_name_sa,synonyms,description,source_citation)
-        VALUES ('dasha_system',%s,%s,%s,%s,%s,%s) ON CONFLICT (canonical_id) DO NOTHING""",
+        VALUES ('dasha_system',%s,%s,%s,%s,%s,%s) ON CONFLICT (entity_class, canonical_id) DO NOTHING""",
         (d["canonical_id"],d["name_en"],d["name_sa"],_synonyms(d),f"{d['name_en']} — {d['total_cycle_years']}-year {d['school']} dasha system",
          f"BPHS/Jaimini; {d['name_en']}"))
     # 3. pointer row (§0.1 contract)

@@ -4,6 +4,7 @@ canonical_id: L0_BG_RULES_BRIEF
 version: 1.0
 status: READY_FOR_EXECUTION
 authored_by: Cowork (planning) 2026-06-08
+amended_by: Racayitā (Build-Guarantor gap-author) 2026-06-08 — added §3a yield-projection + HARD STOP (floor 3,000 emergent; reject-not-pad if pattern coverage underperforms); migration 188
 authored_for: Claude Code in Antigravity IDE
 native: Abhisek Mohanty
 workstream: L0 Brahmagyan unified build — bg_rules writer (deterministic rule extraction)
@@ -24,6 +25,18 @@ document_number: 8 of 15
 - **Asset ID:** `bg_rules`. **Backing:** `sutravali_rules`. **Scope:** `global`. **Tier:** 3.
 - **Target floor:** **≥3,000 rules** (design §3.6; the existing corpus has ~1,213 from prior work — this brief expands via pattern-library growth + the 10 newly-ingested texts).
 - **Source category:** deterministic regex extraction over `classical_text_chunks`.
+
+## §3a — Floor Achievement Arithmetic (Racayitā amendment; floor ≥3,000 — EMERGENT + HARD STOP)
+
+| Bucket | What | Count | Provable from |
+|---|---|---|---|
+| `closed_set_inline` | the pattern library is INFRASTRUCTURE, not rows (the ~50 templates are the extractor, not data) | 0 (rows) | — |
+| `deterministic_generated` | existing `sutravali_rules` from prior Stream-D extraction | **~1,213** | live table count |
+| `structured_extraction` | NEW rules from the §3 pattern library (target ~50 templates) over the 15-text corpus (~14,000 chunks), quality-gated ≥0.6, deterministic rule_id | **≥1,800 projected** | yield ≈ (chunks 14,000 × avg matches/chunk ~0.25 × quality-pass ~0.55) ≈ 1,900; +10 new texts vs the 5 that yielded 1,213 |
+| **TOTAL** | | **≥3,000 projected (EMERGENT)** | 1,213 + ≥1,800 ≈ ≥3,000 |
+
+> **Yield is a PROJECTION, not a guarantee** (the floor depends on corpus completeness + pattern coverage). **HARD STOP (§8):** if live rules < 3,000 after the FULL corpus + the full ~50-pattern library, the writer REJECTs and emits the coverage report (chunks with zero extractions) — it does NOT loosen the ≥0.6 quality gate to pad. **CONDITIONAL** if the 3 manual-upload PDFs are absent (rerun after full corpus). The ~50 patterns must be authored to the §3 families (only ~12 are shown); reaching 3,000 with only ~12 patterns is NOT assumed. Migration **188** carries `depends_on`.
+
 
 ## §1 — Schema reference (migration 081 + 177, verified)
 
