@@ -123,19 +123,29 @@ export async function POST(req: NextRequest) {
     await client.query('BEGIN')
 
     const seen = new Set<string>()
+    let spIdx = 0
     for (const asset of reversedAssets) {
       if (!asset.target_table || seen.has(asset.target_table)) continue
       seen.add(asset.target_table)
 
+      // Use a SAVEPOINT per DELETE so a single table failure rolls back only
+      // that statement, not the whole transaction (PostgreSQL marks the txn
+      // aborted on any error — without SAVEPOINT every subsequent statement
+      // would fail with "current transaction is aborted").
+      const sp = `clr_${spIdx++}`
+      await client.query(`SAVEPOINT ${sp}`)
       try {
         const sql = asset.scope === 'global'
           ? `DELETE FROM ${asset.target_table}`
           : `DELETE FROM ${asset.target_table} WHERE chart_id = $1`
         const params = asset.scope === 'global' ? [] : [chart_id]
         const result = await client.query(sql, params)
+        await client.query(`RELEASE SAVEPOINT ${sp}`)
         cleared_table_count++
         cleared_rows_total += result.rowCount ?? 0
       } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
+        await client.query(`RELEASE SAVEPOINT ${sp}`)
         failed_tables.push({
           table: asset.target_table,
           error: ((err as Error).message ?? 'unknown').substring(0, 200),

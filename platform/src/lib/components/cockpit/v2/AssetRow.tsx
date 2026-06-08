@@ -5,9 +5,10 @@ import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
+import { StopIconButton } from './StopIconButton'
 import { PlanModal } from './PlanModal'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
-import { RefreshCw } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
 import { useUserRole } from '@/hooks/useUserRole'
 
@@ -22,10 +23,8 @@ interface Props {
   onRunStarted: () => void
 }
 
-function derivePrimaryLabel(dormant: boolean, stale: boolean): string {
-  if (dormant) return 'Build'
-  if (stale) return 'Update'
-  return 'Rebuild'
+function derivePrimaryLabel(dormant: boolean): string {
+  return dormant ? 'Build' : 'Rebuild'
 }
 
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, onRunStarted }: Props) {
@@ -90,18 +89,22 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         {stat?.last_built_at ? (formatRelative(stat.last_built_at) ?? '—') : '—'}
       </div>
 
-      {/* Actions cell — right edge */}
+      {/* Actions cell — right edge: [Build/Rebuild] [Refresh] [Stop | Delete] */}
       <div className="flex items-center justify-end gap-1.5">
         {isActive && (
           <>
-            <button
-              title={activeRunId ? 'Run in progress…' : derivePrimaryLabel(derivedState === 'dormant', derivedState === 'stale')}
-              onClick={() => { if (!activeRunId) setShowPlanModal(true) }}
-              disabled={!!activeRunId}
-              className="w-[22px] h-[22px] flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <RefreshCw size={13} />
-            </button>
+            {/* Build/Rebuild — hidden when run active */}
+            {!activeRunId && (
+              <button
+                title={derivePrimaryLabel(derivedState === 'dormant')}
+                onClick={() => setShowPlanModal(true)}
+                className="w-[22px] h-[22px] flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              >
+                <Zap size={12} />
+              </button>
+            )}
+
+            {/* Refresh — always (role-gated for brahmagyan) */}
             {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
               <RefreshIconButton
                 chartId={chartId}
@@ -111,14 +114,20 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
                 onRefreshed={onRunStarted}
               />
             )}
+
+            {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
             {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
-              <ClearIconButton
-                chartId={chartId}
-                scope="asset"
-                scopeTarget={asset.asset_id}
-                size={22}
-                onSuccess={onRunStarted}
-              />
+              activeRunId ? (
+                <StopIconButton runId={activeRunId} size={22} onStopped={onRunStarted} />
+              ) : (
+                <ClearIconButton
+                  chartId={chartId}
+                  scope="asset"
+                  scopeTarget={asset.asset_id}
+                  size={22}
+                  onSuccess={onRunStarted}
+                />
+              )
             )}
           </>
         )}
@@ -129,8 +138,8 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
           chartId={chartId}
           scope="asset"
           scopeTarget={asset.asset_id}
-          action={derivedState === 'dormant' ? 'build' : derivedState === 'stale' ? 'update' : 'rebuild'}
-          label={derivePrimaryLabel(derivedState === 'dormant', derivedState === 'stale')}
+          action={derivedState === 'dormant' ? 'build' : 'rebuild'}
+          label={derivePrimaryLabel(derivedState === 'dormant')}
           assets={allAssets}
           onClose={() => setShowPlanModal(false)}
           onRunStarted={(_runId) => {

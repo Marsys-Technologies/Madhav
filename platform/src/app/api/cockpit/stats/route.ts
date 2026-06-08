@@ -42,9 +42,14 @@ interface RegistryAsset {
   target_floor: number | null
 }
 
+// Mutable reference so the timeout callback can reach the pool client acquired
+// inside fetchAssetStats and destroy it (see fetchAssetStatsWithTimeout).
+type ClientRef = { value: import('pg').PoolClient | null }
+
 async function fetchAssetStats(
   asset: RegistryAsset,
-  chartId: string | null
+  chartId: string | null,
+  clientRef?: ClientRef
 ): Promise<AssetStats> {
   const now = new Date().toISOString()
 
@@ -63,18 +68,17 @@ async function fetchAssetStats(
 
   const pool = await getPool()
   const client = await pool.connect()
+  if (clientRef) clientRef.value = client
   try {
     await client.query('BEGIN')
     await client.query("SET LOCAL statement_timeout = '2s'")
 
-    // Pass chartId whenever count_sql references $1, regardless of scope field
     const countParams = /\$1/.test(asset.count_sql) && chartId ? [chartId] : []
     const countResult = await client.query<{ count: string }>(asset.count_sql, countParams)
     const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
     let size_bytes: number | null = null
     if (asset.size_sql) {
-      // size_sql is always pg_total_relation_size('tablename') — never binds $1
       const sizeResult = await client.query<{ size: string }>(asset.size_sql, [])
       const raw = sizeResult.rows[0]?.size
       size_bytes = raw != null ? parseInt(raw, 10) : null
@@ -89,14 +93,13 @@ async function fetchAssetStats(
       size_bytes,
       last_updated: now,
       error: null,
-      state: 'dormant' as const,  // placeholder; GET handler overwrites via deriveState
+      state: 'dormant' as const,
       last_built_at: null,
     }
   } catch (err) {
     try { await client.query('ROLLBACK') } catch {}
     const msg = (err as Error).message ?? ''
-    const isTimeout =
-      msg.includes('statement timeout') || msg.includes('canceling statement')
+    const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
     return {
       asset_id: asset.asset_id,
       actual_rows: null,
@@ -104,12 +107,79 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
-      state: 'error' as const,    // placeholder; GET handler overwrites via deriveState
+      state: 'error' as const,
       last_built_at: null,
     }
   } finally {
-    client.release()
+    // Only release if the timeout hasn't already destroyed this client.
+    // clientRef.value is set to null by the timeout before calling release(true).
+    if (!clientRef || clientRef.value === client) {
+      client.release()
+      if (clientRef) clientRef.value = null
+    }
   }
+}
+
+// Per-asset wall-clock timeout.
+//
+// Problem: Promise.race alone is not enough. When the timeout fires and the
+// outer race resolves, fetchAssetStats is still running and still holds its
+// pool.connect() slot. On a half-open TCP connection (e.g. after a Cloud SQL
+// proxy restart) pool.connect() or the first query hangs for 30-60 s waiting
+// for the kernel TCP timeout (macOS keepidle = 7200 s, so OS keepalive is
+// useless here). With batchSize=6 stale connections, all 6 pool slots stay
+// occupied for 30-60 s — any concurrent request that needs a connection hits
+// connectionTimeoutMillis and crashes (the "Something went wrong" page).
+//
+// Fix: pass a clientRef into fetchAssetStats so we can call client.release(true)
+// (destroy = close the TCP socket immediately) when the timeout fires. This
+// frees the pool slot within 3.5 s instead of 30-60 s.
+const ASSET_TIMEOUT_MS = 3_500
+
+function fetchAssetStatsWithTimeout(
+  asset: RegistryAsset,
+  chartId: string | null
+): Promise<AssetStats> {
+  const timeoutResult: AssetStats = {
+    asset_id: asset.asset_id,
+    actual_rows: null,
+    volume: null,
+    size_bytes: null,
+    last_updated: new Date().toISOString(),
+    error: 'conn_timeout',
+    state: 'error' as const,
+    last_built_at: null,
+  }
+  const clientRef: ClientRef = { value: null }
+  const timeout = new Promise<AssetStats>((resolve) =>
+    setTimeout(() => {
+      // Destroy the hanging connection to free the pool slot immediately.
+      const c = clientRef.value
+      if (c) {
+        clientRef.value = null
+        try { c.release(true) } catch { /* already destroyed */ }
+      }
+      resolve(timeoutResult)
+    }, ASSET_TIMEOUT_MS)
+  )
+  return Promise.race([fetchAssetStats(asset, chartId, clientRef), timeout])
+}
+
+// Run asset fetches in batches to avoid saturating the pg pool (default max=10).
+// batchSize=6 → ceil(N/6) rounds × max(ASSET_TIMEOUT_MS, ~600ms) per round.
+async function fetchAssetStatsBatched(
+  assets: RegistryAsset[],
+  chartId: string | null,
+  batchSize = 6
+): Promise<PromiseSettledResult<AssetStats>[]> {
+  const all: PromiseSettledResult<AssetStats>[] = []
+  for (let i = 0; i < assets.length; i += batchSize) {
+    const batch = await Promise.allSettled(
+      assets.slice(i, i + batchSize).map(a => fetchAssetStatsWithTimeout(a, chartId))
+    )
+    all.push(...batch)
+  }
+  return all
 }
 
 export async function GET(req: NextRequest) {
@@ -136,9 +206,7 @@ export async function GET(req: NextRequest) {
       for (const r of tpRows) throughputMap.set(r.asset_id, r)
     }
 
-    const settled = await Promise.allSettled(
-      assets.map((asset) => fetchAssetStats(asset, chartId))
-    )
+    const settled = await fetchAssetStatsBatched(assets, chartId)
 
     const assetStats: AssetStats[] = settled.map((result, i) => {
       const asset = assets[i]
@@ -152,15 +220,13 @@ export async function GET(req: NextRequest) {
             size_bytes: null,
             last_updated: new Date().toISOString(),
             error: (result.reason as Error)?.message ?? 'unknown',
-            state: deriveState(asset, null, (result.reason as Error)?.message ?? 'unknown', tp?.state ?? null),
-            last_built_at: tp?.last_built_at ?? null,
+            state: 'error' as const,
+            last_built_at: null,
           }
-      const actual_rows = (base as AssetStats).actual_rows
-      const error = (base as AssetStats).error
       return {
         ...base,
-        volume: actual_rows,
-        state: deriveState(asset, actual_rows, error, tp?.state ?? null),
+        volume: base.actual_rows,
+        state: deriveState(asset, base.actual_rows, base.error, tp?.state ?? null),
         last_built_at: tp?.last_built_at ?? null,
       }
     })

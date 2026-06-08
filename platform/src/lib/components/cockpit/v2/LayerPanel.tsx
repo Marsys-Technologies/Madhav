@@ -8,6 +8,7 @@ import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
 import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
+import { StopIconButton } from './StopIconButton'
 import { useUserRole } from '@/hooks/useUserRole'
 
 const LAYER_COLOR: Record<string, string> = {
@@ -136,7 +137,7 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Right: asset count + rows (fixed-width cells) + build button */}
+        {/* Right: asset count + rows + [Build/Rebuild] [Refresh] [Stop | Delete] */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
@@ -147,21 +148,27 @@ export function LayerPanel({
           <span style={{ width: '82px', textAlign: 'right', fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
             {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
           </span>
-          <BuildActionButton
-            chartId={chartId}
-            scope="layer"
-            scopeTarget={layer}
-            size="sm"
-            stats={{
-              total: activeAssets.length,
-              dormant: dormantCount,
-              stale: staleCount,
-              active_run_id: layerRunId,
-              is_paused: layerRunPaused,
-            }}
-            onRunStarted={onRunStarted}
-            onRunStateChange={onRunStarted}
-          />
+
+          {/* Build/Rebuild — hidden when layer run active */}
+          {!layerRunId && (
+            <BuildActionButton
+              chartId={chartId}
+              scope="layer"
+              scopeTarget={layer}
+              size="sm"
+              stats={{
+                total: activeAssets.length,
+                dormant: dormantCount,
+                stale: staleCount,
+                active_run_id: null,
+                is_paused: false,
+              }}
+              onRunStarted={onRunStarted}
+              onRunStateChange={onRunStarted}
+            />
+          )}
+
+          {/* Refresh — always (role-gated for brahmagyan) */}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
             <RefreshIconButton
               chartId={chartId}
@@ -171,14 +178,20 @@ export function LayerPanel({
               onRefreshed={onRunStarted}
             />
           )}
+
+          {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
-            <ClearIconButton
-              chartId={chartId}
-              scope="layer"
-              scopeTarget={layer}
-              size={28}
-              onSuccess={onRunStarted}
-            />
+            layerRunId ? (
+              <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
+            ) : (
+              <ClearIconButton
+                chartId={chartId}
+                scope="layer"
+                scopeTarget={layer}
+                size={28}
+                onSuccess={onRunStarted}
+              />
+            )
           )}
         </div>
       </div>

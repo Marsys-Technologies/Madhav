@@ -9,5 +9,7 @@ export async function GET() {
   const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
   const role = rows[0]?.role ?? 'client'
 
-  return NextResponse.json({ role })
+  const response = NextResponse.json({ role })
+  response.headers.set('Cache-Control', 'private, max-age=300')
+  return response
 }

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     `SELECT id, scope, scope_target, action, state, plan, current_asset_id,
             created_at, started_at, pause_requested_at, stop_requested_at
      FROM build_runs
-     WHERE chart_id=$1 AND state IN ('running','paused')
+     WHERE chart_id=$1 AND state IN ('planned','running','paused')
      ORDER BY created_at DESC LIMIT 1`,
     [chart_id]
   )

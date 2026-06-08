@@ -12,9 +12,21 @@ let _pool: Pool | null = null
 
 // Recycle idle sockets before Cloud SQL Auth Proxy drops them (~10 min)
 // to avoid ECONNRESET on pooled-but-dead connections.
+//
+// idleTimeoutMillis: 15 s — aggressive eviction so connections cycle out before
+// the proxy's idle-drop window. macOS TCP keepalive (keepidle = 7200 s) is
+// effectively useless for detecting dead connections on this timescale, so we
+// rely on eviction instead. Cost: ~100 ms reconnect after quiet periods, which
+// is acceptable in local dev and has no effect in production (cloud-sql-connector
+// path manages its own connection lifecycle).
+//
+// connectionTimeoutMillis: fail fast if the pool queue is saturated (no available
+// slot within 5 s) rather than waiting indefinitely.
 const POOL_KEEPALIVE = {
   keepAlive: true,
-  idleTimeoutMillis: 30_000,
+  keepAliveInitialDelayMillis: 10_000,
+  idleTimeoutMillis: 15_000,
+  connectionTimeoutMillis: 5_000,
 }
 
 function attachErrorHandler(pool: Pool): Pool {

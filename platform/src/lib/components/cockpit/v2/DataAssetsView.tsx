@@ -39,8 +39,10 @@ interface Props {
 
 export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
-  const { stats } = useAssetStats({ chartId })
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+  // Poll at 5s during active builds so the 'building' state window in asset_throughput
+  // is actually caught. Without this, stats poll at 30s and always miss the window.
+  const { stats } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
   const layerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 

@@ -60,45 +60,48 @@ export default async function DashboardPage() {
 
   const chartIds = charts.map((c) => c.id)
 
-  // Per-layer pyramid data — fetches individual rows so we can derive
-  // Brahma-layer pip states for the ClientCard pip rail.
-  const layersResult = chartIds.length > 0
-    ? await query<{ chart_id: string; layer: string; sublayer: string; status: string; updated_at: string }>(
-        'SELECT chart_id, layer, sublayer, status, updated_at FROM pyramid_layers WHERE chart_id = ANY($1::uuid[])',
-        [chartIds]
-      )
-    : { rows: [] }
+  // Pyramid layers, active builds, and consumed-today all depend on chartIds
+  // but are independent of each other — run in parallel.
+  const [layersResult, buildsResult, consumedToday] = await Promise.all([
+    chartIds.length > 0
+      ? query<{ chart_id: string; layer: string; sublayer: string; status: string; updated_at: string }>(
+          'SELECT chart_id, layer, sublayer, status, updated_at FROM pyramid_layers WHERE chart_id = ANY($1::uuid[])',
+          [chartIds]
+        )
+      : Promise.resolve({ rows: [] }),
 
-  // Active runs — latest per chart (planned/running/paused only).
-  const buildsResult = chartIds.length > 0
-    ? await query<{
-        build_id: string
-        chart_id: string
-        status: string
-        progress_pct: number
-        ayanamshas: string[]
-        started_at: string | null
-        error_summary: string | null
-      }>(
-        `SELECT DISTINCT ON (chart_id)
-           id AS build_id, chart_id, state AS status,
-           COALESCE(
-             (SELECT ROUND(
-               COUNT(*) FILTER (WHERE bra.state = 'complete')::numeric
-               / NULLIF(COUNT(*), 0) * 100
-             ) FROM build_run_assets bra WHERE bra.run_id = build_runs.id),
-             0
-           )::int AS progress_pct,
-           ARRAY[]::text[] AS ayanamshas,
-           started_at,
-           NULL::text AS error_summary
-         FROM build_runs
-         WHERE chart_id = ANY($1::uuid[])
-           AND state IN ('planned', 'running', 'paused')
-         ORDER BY chart_id, created_at DESC`,
-        [chartIds]
-      )
-    : { rows: [] }
+    chartIds.length > 0
+      ? query<{
+          build_id: string
+          chart_id: string
+          status: string
+          progress_pct: number
+          ayanamshas: string[]
+          started_at: string | null
+          error_summary: string | null
+        }>(
+          `SELECT DISTINCT ON (chart_id)
+             id AS build_id, chart_id, state AS status,
+             COALESCE(
+               (SELECT ROUND(
+                 COUNT(*) FILTER (WHERE bra.state = 'complete')::numeric
+                 / NULLIF(COUNT(*), 0) * 100
+               ) FROM build_run_assets bra WHERE bra.run_id = build_runs.id),
+               0
+             )::int AS progress_pct,
+             ARRAY[]::text[] AS ayanamshas,
+             started_at,
+             NULL::text AS error_summary
+           FROM build_runs
+           WHERE chart_id = ANY($1::uuid[])
+             AND state IN ('planned', 'running', 'paused')
+           ORDER BY chart_id, created_at DESC`,
+          [chartIds]
+        )
+      : Promise.resolve({ rows: [] }),
+
+    fetchConsumedTodayCount(chartIds),
+  ])
 
   const pyramidPercents = new Map<string, number>()
   const lastActivityMap = new Map<string, string>()
@@ -150,8 +153,6 @@ export default async function DashboardPage() {
     const litCount = pips.filter((p) => p.state === 'lit').length
     pyramidPercents.set(chart.id, Math.round((litCount / BRAHMA_LAYER_ORDER.length) * 100))
   }
-
-  const consumedToday = await fetchConsumedTodayCount(chartIds)
 
   const chartsWithMeta: ChartWithMeta[] = charts.map((c) => ({
     ...c,

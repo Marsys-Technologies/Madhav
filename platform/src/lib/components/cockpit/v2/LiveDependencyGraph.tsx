@@ -226,10 +226,19 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
     return result
   }, [assets])
 
-  // Building asset IDs for targeted animation
-  const buildingIds = useMemo(() =>
-    new Set(assets.filter(a => a.state === 'building').map(a => a.asset_id)),
-  [assets])
+  // Building asset IDs for targeted animation.
+  // In local dev, SSE doesn't deliver state_change events (heartbeat-only fallback),
+  // so stats polling may never catch the brief 'building' window for fast assets.
+  // When a run is active, treat every asset in the run plan as "building" for
+  // animation purposes — this ensures orbital drift, edge shimmer, and node pulses
+  // all fire for the entire build, not just the ~1s each asset is in the DB state.
+  const buildingIds = useMemo(() => {
+    const fromState = new Set(assets.filter(a => a.state === 'building').map(a => a.asset_id))
+    if (activeRun && activeRun.plan && activeRun.plan.length > 0) {
+      for (const id of activeRun.plan) fromState.add(id)
+    }
+    return fromState
+  }, [assets, activeRun])
 
   // Hover closures
   const { upstreamSet, downstreamSet } = useMemo(() => {
@@ -460,11 +469,11 @@ export function LiveDependencyGraph({ assets, activeRun, onNodeClick }: Props) {
           const opacity = stateOpacity(state) * nodeOpacity(a.asset_id)
 
           const isDormant = state === 'dormant' || state === 'not_migrated'
-          const isBuilding = state === 'building'
+          const isBuilding = state === 'building' || buildingIds.has(a.asset_id)
           const isLit = state === 'lit'
           const isStale = state === 'stale'
 
-          // Pulse only when actually building and run is active
+          // Pulse when the asset is in the run plan or explicitly in 'building' state
           const shouldPulse = !prefersReducedMotion && isBuilding && isActiveRun
 
           return (

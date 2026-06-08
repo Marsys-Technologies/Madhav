@@ -27,7 +27,6 @@ interface Props {
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
   if (stats.dormant === stats.total) return { label: 'Build', action: 'build' }
-  if (stats.stale > 0) return { label: 'Update', action: 'update' }
   return { label: 'Rebuild', action: 'rebuild' }
 }
 

@@ -6,6 +6,7 @@ interface ChartContext {
   chartId: string
   chartName: string | null
   birthDate: string | null
+  birthTime: string | null
   birthPlace: string | null
   ayanamshaSet: string[]
   lifeSpanYears: number
@@ -14,12 +15,14 @@ interface ChartContext {
 interface InitialChartMeta {
   subject_name: string | null
   birth_date: string | null
+  birth_time?: string | null
   birth_place: string | null
 }
 
 export function useChartContext(chartId: string, initialMeta?: InitialChartMeta | null): ChartContext {
   const [chartName, setChartName] = useState<string | null>(initialMeta?.subject_name ?? null)
   const [birthDate, setBirthDate] = useState<string | null>(initialMeta?.birth_date ?? null)
+  const [birthTime, setBirthTime] = useState<string | null>(initialMeta?.birth_time ?? null)
   const [birthPlace, setBirthPlace] = useState<string | null>(initialMeta?.birth_place ?? null)
 
   useEffect(() => {
@@ -42,6 +45,7 @@ export function useChartContext(chartId: string, initialMeta?: InitialChartMeta 
         setChartName(body.subject_name ?? null)
         console.log('[CC] setChartName called with:', body.subject_name ?? null)
         setBirthDate(body.birth_date ?? null)
+        setBirthTime(body.birth_time ?? null)
         setBirthPlace(body.birth_place ?? null)
       } catch (e) {
         console.log('[CC] catch:', (e as Error)?.name, (e as Error)?.message)
@@ -60,6 +64,7 @@ export function useChartContext(chartId: string, initialMeta?: InitialChartMeta 
     chartId,
     chartName,
     birthDate,
+    birthTime,
     birthPlace,
     ayanamshaSet: ['Lahiri'],
     lifeSpanYears: 120,

@@ -2,20 +2,25 @@
 
 import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/date'
 import { useActiveRun } from '@/hooks/useActiveRun'
 import { useCockpitStatus } from '@/hooks/useCockpitStatus'
 import { BuildActionButton } from './BuildActionButton'
 import { RefreshIconButton } from './RefreshIconButton'
+import { StopIconButton } from './StopIconButton'
 
-function deriveGlobalLabel(assets: { state: string }[]): 'Build' | 'Update' | 'Rebuild' {
+/** Format pg TIME string "HH:MM:SS" → "HH:MM" (24-hour) */
+function formatBirthTime(t: string | null | undefined): string {
+  if (!t) return ''
+  const parts = t.split(':')
+  return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : t
+}
+
+function deriveGlobalLabel(assets: { state: string }[]): 'Build' | 'Rebuild' {
   const total = assets.length
   if (total === 0) return 'Build'
   const dormant = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
-  const stale = assets.filter(a => a.state === 'stale').length
   if (dormant === total) return 'Build'
-  if (stale > 0) return 'Update'
   return 'Rebuild'
 }
 
@@ -23,6 +28,7 @@ interface Props {
   chartId: string
   chartName?: string | null
   birthDate?: string | null
+  birthTime?: string | null
   birthPlace?: string | null
   assets?: { state: string }[]
   proMode?: boolean
@@ -36,6 +42,7 @@ export function CockpitHeader({
   chartId,
   chartName,
   birthDate,
+  birthTime,
   birthPlace,
   assets = [],
   proMode = false,
@@ -71,9 +78,15 @@ export function CockpitHeader({
   const globalRunId = activeRun?.id ?? null
   const globalRunPaused = activeRun?.state === 'paused'
 
-  const globalLabel = deriveGlobalLabel(assets)
   const dormantCount = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
   const staleCount = assets.filter(a => a.state === 'stale').length
+
+  // Subtitle: date · time · place — only show parts that are available
+  const datePart = formatDate(birthDate) || null
+  const timePart = formatBirthTime(birthTime) || null
+  const placePart = birthPlace ?? null
+  const subtitleParts = [datePart, timePart, placePart].filter(Boolean)
+  const subtitle = subtitleParts.join(' · ')
 
   return (
     <div
@@ -92,102 +105,102 @@ export function CockpitHeader({
           alignItems: 'center',
         }}
       >
-        {/* Left: chart name + coords */}
+        {/* Left: chart name + pro pill + date/time/location */}
         <div>
-          <h1
-            style={{
-              fontFamily: 'var(--display-stack)',
-              color: 'var(--gold-high)',
-              fontSize: '20px',
-              fontVariant: 'small-caps',
-              margin: 0,
-            }}
-          >
-            {chartName ?? 'Loading chart…'}
-          </h1>
-          <div
-            style={{
-              fontFamily: 'var(--ui-stack)',
-              fontSize: '12px',
-              color: 'var(--on-dark-mut)',
-              marginTop: '2px',
-            }}
-          >
-            {formatDate(birthDate) || '—'} · {birthPlace ?? '—'}{' '}
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1
               style={{
-                fontFamily: 'var(--mono-stack)',
-                fontSize: '11px',
-                color: 'var(--on-dark-faint)',
-                cursor: 'pointer',
-              }}
-              title={`Click to copy: ${chartId}`}
-              onClick={() => {
-                navigator.clipboard?.writeText(chartId)
-                  .then(() => toast.success('Chart ID copied'))
-                  .catch(() => null)
+                fontFamily: 'var(--display-stack)',
+                color: 'var(--gold-high)',
+                fontSize: '20px',
+                fontVariant: 'small-caps',
+                margin: 0,
               }}
             >
-              {chartId.slice(0, 14)}…
-            </span>
+              {chartName ?? 'Loading chart…'}
+            </h1>
+            <button
+              onClick={onProModeToggle}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: proMode ? 'rgba(168,124,42,0.28)' : 'rgba(168,124,42,0.10)',
+                border: `1px solid ${proMode ? 'var(--gold-engrave)' : 'rgba(168,124,42,0.35)'}`,
+                color: proMode ? 'var(--gold-bright)' : 'var(--on-dark-faint)',
+                fontSize: '10px',
+                fontFamily: 'var(--ui-stack)',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ◆ Pro
+            </button>
           </div>
+          {subtitle && (
+            <div
+              style={{
+                fontFamily: 'var(--ui-stack)',
+                fontSize: '12px',
+                color: 'var(--on-dark-mut)',
+                marginTop: '3px',
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
         </div>
-        {/* Right: Pro view pill + Build CTA (SIDECAR status lives in telemetry strip below) */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button
-            onClick={onProModeToggle}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '3px 10px',
-              borderRadius: '12px',
-              background: proMode ? 'rgba(168,124,42,0.28)' : 'rgba(168,124,42,0.10)',
-              border: `1px solid ${proMode ? 'var(--gold-engrave)' : 'rgba(168,124,42,0.35)'}`,
-              color: proMode ? 'var(--gold-bright)' : 'var(--on-dark-faint)',
-              fontSize: '10px',
-              fontFamily: 'var(--ui-stack)',
-              fontWeight: 600,
-              letterSpacing: '0.05em',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            ◆ Pro view
-          </button>
-          <BuildActionButton
-            chartId={chartId}
-            scope="global"
-            scopeTarget={null}
-            stats={{
-              total: assets.length || 1,
-              dormant: dormantCount,
-              stale: staleCount,
-              active_run_id: globalRunId,
-              is_paused: globalRunPaused,
-            }}
-            onRunStarted={refreshRun}
-            onRunStateChange={refreshRun}
-            onRebuildOverride={globalLabel === 'Rebuild' ? onGlobalRebuild : undefined}
-          />
+
+        {/* Right: [Build/Rebuild] [Refresh] [Stop | Delete] */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Build/Rebuild — hidden when a run is active */}
+          {!globalRunId && (
+            <BuildActionButton
+              chartId={chartId}
+              scope="global"
+              scopeTarget={null}
+              stats={{
+                total: assets.length || 1,
+                dormant: dormantCount,
+                stale: staleCount,
+                active_run_id: null,
+                is_paused: false,
+              }}
+              onRunStarted={refreshRun}
+              onRunStateChange={refreshRun}
+              onRebuildOverride={deriveGlobalLabel(assets) === 'Rebuild' ? onGlobalRebuild : undefined}
+            />
+          )}
+
+          {/* Refresh — always visible */}
           <RefreshIconButton
             chartId={chartId}
             scope="global"
             size={28}
             onRefreshed={onRefreshed}
           />
-          {!globalRunId && (
+
+          {/* Stop (when running) or Delete (when idle) */}
+          {globalRunId ? (
+            <StopIconButton runId={globalRunId} size={28} onStopped={refreshRun} />
+          ) : (
             <button
               title="Clear instrument"
               onClick={() => onGlobalClear?.()}
-              className="w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors ml-1"
+              className="w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors"
             >
               <Trash2 size={15} />
             </button>
           )}
         </div>
       </div>
-      {/* Telemetry strip — WRITERS / QUEUE / BUILD / SIDECAR (QPS + SPEND dropped: no data source) */}
+
+      {/* Telemetry strip */}
       <div
         style={{
           marginTop: '12px',

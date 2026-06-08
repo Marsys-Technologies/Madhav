@@ -50,11 +50,14 @@ export function useActiveRun(chartId: string): UseActiveRunResult {
     }
   }, [chartId])
 
+  const isRunning = run !== null
   useEffect(() => {
     fetch_()
+    // Always poll at 5s — a build can move from planned→running→completed in seconds,
+    // and a 30s interval misses the entire active window before isRunning flips.
     const t = setInterval(fetch_, 5_000)
     return () => clearInterval(t)
-  }, [fetch_])
+  }, [fetch_, isRunning])
 
   return { run, assets, refresh: fetch_ }
 }

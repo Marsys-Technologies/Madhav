@@ -26,6 +26,7 @@ interface ClearPreview {
 interface ChartMeta {
   subject_name: string | null
   birth_date: string | null
+  birth_time?: string | null
   birth_place: string | null
 }
 
@@ -36,7 +37,7 @@ interface Props {
 
 export function CockpitShell({ chartId, initialChartMeta }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('data')
-  const { chartName, birthDate, birthPlace } = useChartContext(chartId, initialChartMeta)
+  const { chartName, birthDate, birthTime, birthPlace } = useChartContext(chartId, initialChartMeta)
 
   // Asset state summary — populated by DataAssetsView via onAssetsReady
   const [assetStates, setAssetStates] = useState<{ state: string }[]>([])
@@ -126,6 +127,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
         chartId={chartId}
         chartName={chartName}
         birthDate={birthDate}
+        birthTime={birthTime}
         birthPlace={birthPlace}
         assets={assetStates}
         proMode={proMode}
