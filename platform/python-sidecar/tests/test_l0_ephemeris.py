@@ -2,12 +2,12 @@
 test_l0_ephemeris.py — Unit tests for brahmagyan.l0_ephemeris (BRAHMA-BG-0-6)
 
 Tests (all pass without live DB or pyswisseph):
-  1. VOLUME_FLOOR is >= 29,200
+  1. VOLUME_FLOOR is >= 825,084
   2. NATIVE constants correct (Bhubaneswar coords, birth date)
   3. SOURCE_CITATION is non-null
   4. AYANAMSHA_ID is 'tropical'
   5. DAILY_BODIES: 9 entries (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)
-  6. BUILD_START is 1980-01-01, BUILD_END is 2060-12-31
+  6. BUILD_START is 1900-01-01, BUILD_END is 2150-12-31
   7. check_volume: dry_run returns EMPTY status
   8. check_volume: EMPTY when row count = 0
   9. check_volume: AMBER when 0 < actual < floor
@@ -42,9 +42,9 @@ def _get_mod():
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 class TestConstants:
-    def test_volume_floor_gte_29200(self):
+    def test_volume_floor_gte_825084(self):
         mod = _get_mod()
-        assert mod.VOLUME_FLOOR >= 29_200
+        assert mod.VOLUME_FLOOR >= 825_084
 
     def test_bhubaneswar_lat(self):
         mod = _get_mod()
@@ -81,11 +81,11 @@ class TestConstants:
 
     def test_build_start(self):
         mod = _get_mod()
-        assert mod.BUILD_START == date(1980, 1, 1)
+        assert mod.BUILD_START == date(1900, 1, 1)
 
     def test_build_end(self):
         mod = _get_mod()
-        assert mod.BUILD_END == date(2060, 12, 31)
+        assert mod.BUILD_END == date(2150, 12, 31)
 
 
 # ── check_volume ──────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ class TestCheckVolume:
     def test_floor_present_in_dry_run(self):
         mod = _get_mod()
         result = mod.check_volume(dry_run=True)
-        assert result["floor"] >= 29_200
+        assert result["floor"] >= 825_084
 
     def _make_mock_conn(self, row_count: int, sun_lon: float | None,
                         null_citation: int = 0, null_ayanamsha: int = 0):
