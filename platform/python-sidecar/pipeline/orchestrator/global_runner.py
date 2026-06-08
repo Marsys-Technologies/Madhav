@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .db import connect
+from .writers import discover_all, get_writer, ContextSpec
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ def execute_global_build(run_id: Optional[str] = None) -> None:
             ).fetchall()
 
             logger.info("[global_build] found %d global assets to build", len(rows))
+            discover_all()  # D2: ensure all writer modules are imported before dispatch
 
             results = []
             for row in rows:
@@ -111,83 +113,25 @@ def _release_global_lock(conn, lock_key: int) -> None:
 
 def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
     """
-    Dispatch to the appropriate writer for the given asset.
+    Dispatch to the writer registered for asset_id via the WriterBase registry.
     Returns 'ok', 'deferred', or 'failed'.
     """
-    logger.info("[global_build] running writer for asset_id=%s", asset_id)
-
-    # Writer registry — maps asset_id to a callable
-    # Writers are imported lazily so missing modules degrade gracefully
-    writer_registry = _build_writer_registry()
-
-    if asset_id not in writer_registry:
-        logger.info("[global_build] DEFERRED: no writer for asset_id=%s (will run when stream lands)", asset_id)
+    writer_cls = get_writer(asset_id)
+    if writer_cls is None:
+        logger.info("[global_build] DEFERRED: no writer for asset_id=%s (will run when writer lands)", asset_id)
         return "deferred"
 
-    writer_fn = writer_registry[asset_id]
+    logger.info("[global_build] running writer for asset_id=%s", asset_id)
     try:
-        writer_fn(conn=conn, run_id=run_id, asset_row=row)
-        logger.info("[global_build] OK: asset_id=%s", asset_id)
+        ctx = ContextSpec(
+            asset_id=asset_id,
+            build_id=run_id,
+            db_conn=conn,
+            config={},
+        )
+        result = writer_cls().run(ctx)
+        logger.info("[global_build] OK: asset_id=%s rows_inserted=%d", asset_id, result.rows_inserted)
         return "ok"
     except Exception as exc:
         logger.error("[global_build] FAILED: asset_id=%s error=%s", asset_id, exc, exc_info=True)
         return "failed"
-
-
-def _build_writer_registry() -> dict:
-    """
-    Build the writer registry by importing available writer modules.
-    Each module is imported with try/except so missing modules are silent.
-    """
-    registry: dict = {}
-
-    # bg_reference — reference library (Stream A seeds minimal ontology)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_sarani import write_sarani
-        registry["bg_reference"] = write_sarani
-    except ImportError:
-        pass
-
-    # bg_concordance — concordance / brahma_ontology (seeded by Stream A)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_samanvaya import write_samanvaya
-        registry["bg_concordance"] = write_samanvaya
-    except ImportError:
-        pass
-
-    # bg_ephemeris — ephemeris (Stream B)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_kalapancanga import write_kalapancanga
-        registry["bg_ephemeris"] = write_kalapancanga
-    except ImportError:
-        pass
-
-    # bg_texts — classical text chunks (Stream C)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_shastra import write_shastra
-        registry["bg_texts"] = write_shastra
-    except ImportError:
-        pass
-
-    # bg_text_index — vector embeddings (Stream C)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_text_index import write_text_index
-        registry["bg_text_index"] = write_text_index
-    except ImportError:
-        pass
-
-    # bg_rules — rules corpus (Stream D)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_sutravali import write_sutravali
-        registry["bg_rules"] = write_sutravali
-    except ImportError:
-        pass
-
-    # bg_remedies — remedy corpus (Stream F)
-    try:
-        from pipeline.orchestrator.writers.brahmagyan_upaya_kosha import write_upaya_kosha
-        registry["bg_remedies"] = write_upaya_kosha
-    except ImportError:
-        pass
-
-    return registry
