@@ -163,7 +163,9 @@ sessions:
     asset: [ga_sade_sati]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA9_SADE_SATI_WRITER_v1_0.md
     branch: feature/ga9-sade-sati-writer
-    status: pending
+    status: passed
+    result_commit: 97024664
+    result_pr: 243
     depends_on: [ga3-chart-facts, ga4-panchanga, ga6-vargas, ga7-dashas, ga8-structural]
     acceptance: |
       upstream present (halt-clean if absent); ~15 A9 categories ×5 ay; cycles key off native's
@@ -177,7 +179,7 @@ sessions:
   # ---- WAVE CLOSE ----
   - id: red-team-is8b
     layer: red_team
-    status: pending
+    status: in_flight
     depends_on: [ga9-sade-sati]
     role: Vimarśaka + Pramāṇa (adversarial swarm)
     scope: full-instrument IS.8(b) red-team on the built L1 layer for the native
