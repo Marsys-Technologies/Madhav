@@ -79,7 +79,8 @@ sessions:
     asset: [ga_panchanga]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA4_PANCHANGA_WRITER_v1_0.md
     branch: feature/ga4-panchanga-writer
-    status: pending
+    status: passed
+    result_pr: 238
     depends_on: [ga3-chart-facts]
     acceptance: |
       panchanga_instant at native birth returns FORENSIC angas (Shukla Tritiya/Purva Bhadrapada/
@@ -91,7 +92,12 @@ sessions:
     asset: [ga_sensitive]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA5_SENSITIVE_POINTS_WRITER_v1_0.md
     branch: feature/ga5-sensitive-points-writer
-    status: pending
+    status: passed
+    result_commit: a07de6cc
+    result_pr: 241
+    notes: |
+      Migration 208 CONFLICT: GA4+GA7 also used 208 — rename GA5's to 209 before merge.
+      31 new A5 categories added to CHART_FACTS_SCHEMA.json.
     depends_on: [ga3-chart-facts]
     acceptance: |
       30 A5 categories in schema (16 new); prereq globals (G14 70+ Sahams, G44, G41) present OR
@@ -103,7 +109,8 @@ sessions:
     asset: [ga_vargas]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA6_VARGAS_WRITER_v1_0.md
     branch: feature/ga6-vargas-writer
-    status: pending
+    status: passed
+    result_pr: 239
     depends_on: [ga3-chart-facts]
     acceptance: |
       ~25 A6 categories in schema; chart_divisionals for 30 vargas × 25 bodies × 5 ay (atomic);
@@ -117,7 +124,13 @@ sessions:
     asset: [ga_dashas]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA7_DASHAS_WRITER_v1_0.md
     branch: feature/ga7-dashas-writer
-    status: pending
+    status: passed
+    result_commit: 94e0a5ad
+    result_pr: 240
+    notes: |
+      Target table resolved to chart_dashas (not ganita_dashas).
+      Migration 208 CONFLICT: GA4 also used 208 — rename GA7's to 210 before merge.
+      Level_n≤4 CHECK constraint enforced at DB level.
     depends_on: [ga3-chart-facts]
     acceptance: |
       target table confirmed (ganita_dashas vs chart_dashas — halt if ambiguous); 7 systems ×5 ay,
