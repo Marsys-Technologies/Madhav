@@ -4,14 +4,18 @@ import { query } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
 
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated'
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
 
 function deriveState(
-  asset: { is_active?: boolean; target_floor?: number | null },
+  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null },
   actualRows: number | null,
   error: string | null,
   throughputState: string | null
 ): AssetState {
+  // Service assets have no count_sql/target_table by design — they are healthy
+  // when registered + CURRENT. They must never fall through to the data-asset
+  // dormant/error logic below.
+  if (asset.asset_type === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
   if (throughputState === 'building') return 'building'
@@ -29,7 +33,7 @@ export interface AssetStats {
   last_updated: string
   error: string | null
   // Derived server-side; never null
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated'
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
 }
 
@@ -40,6 +44,8 @@ interface RegistryAsset {
   scope: string
   is_active: boolean
   target_floor: number | null
+  asset_type: 'data' | 'service' | null
+  health_probe: Record<string, unknown> | null
 }
 
 // Mutable reference so the timeout callback can reach the pool client acquired
@@ -52,6 +58,23 @@ async function fetchAssetStats(
   clientRef?: ClientRef
 ): Promise<AssetStats> {
   const now = new Date().toISOString()
+
+  // Service assets carry count_sql:null / target_table:null by design. They are
+  // not table-backed, so we never run SQL for them — a registered service is
+  // healthy. (Health-probe execution is a follow-up; default to service_ok so a
+  // correctly-registered service never renders as errored / missing_table.)
+  if (asset.asset_type === 'service') {
+    return {
+      asset_id: asset.asset_id,
+      actual_rows: null,
+      volume: null,
+      size_bytes: null,
+      last_updated: now,
+      error: null,
+      state: 'service_ok' as const,
+      last_built_at: null,
+    }
+  }
 
   if (!asset.count_sql) {
     return {
@@ -188,7 +211,8 @@ export async function GET(req: NextRequest) {
   try {
     // Load active assets that have count_sql
     const registryResult = await query<RegistryAsset>(`
-      SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor
+      SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor,
+             asset_type, health_probe
       FROM asset_registry
       WHERE is_active = true
       ORDER BY asset_id
