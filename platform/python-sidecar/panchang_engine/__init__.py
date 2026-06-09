@@ -1,11 +1,20 @@
 """
 panchang_engine — Deterministic Panchang computation, Drik-parity, no LLM.
-Public API: compute_panchang, panchang_range, find_muhurat.
+
+Public API (canonical — P2 re-arch, 2026-06-09):
+  panchanga_instant(instant, lat, lon, tz_offset)  → PanchangaInstant
+  panchanga_day(date, lat, lon, tz_offset)          → Panchang
+  compute_panchang(date, lat, lon, tz_offset)       → Panchang  (alias for panchanga_day)
+  panchang_range(date_from, date_to, lat, lon, tz_offset) → list[Panchang]
+  find_muhurat(...)                                 → list[MuhuratWindow]
+
+L0 Brahmagyan service asset — deterministic core, zero scoring/judgement.
+Muhurat scoring lives in the sibling `muhurat/` package.
 """
-__version__ = "1.0.0-S3"  # S3 = muhurat backend live (4C-6-S1)
+__version__ = "2.0.0-P2"  # P2 = panchanga_instant + panchanga_day APIs (2026-06-09)
 
 from .ayanamsha import set_ayanamsha, get_ayanamsha_value, DEFAULT_AYANAMSHA
-from .types import Panchang, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
+from .types import Panchang, PanchangaInstant, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
 from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
@@ -34,6 +43,17 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         compute_karana_pair, compute_vara,
     )
     from .special_yogas import detect_all_special_yogas
+    from .upagrahas import compute_upagrahas, compute_outer_planets
+    from .calendrical import compute_calendrical
+    from .rich_topics import (
+        compute_anandadi_yoga, compute_vasa_family, compute_panchaka,
+        compute_shoonya, compute_sun_moon_dynamics,
+    )
+    from .timings import (
+        compute_extended_inauspicious, compute_extended_auspicious,
+        compute_homa_windows, compute_day_muhurtas,
+        compute_festivals, compute_day_events,
+    )
     import swisseph as swe
     from datetime import datetime, timezone
 
@@ -96,6 +116,31 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         tithi, nakshatra, yoga, karana_first, karana_second, vara,
     )
 
+    # === RICH DAY TOPICS ===
+    _day_upagrahas      = compute_upagrahas(sunrise_utc, sunset_utc, vara.id)
+    _day_outer_planets  = compute_outer_planets(sunrise_utc)
+    _day_sun_moon       = compute_sun_moon_dynamics(jd_sunrise)
+    _day_inauspicious   = compute_extended_inauspicious(
+        sunrise_utc, sunset_utc, vara.id, nakshatra.id, nakshatra.end_utc)
+    _day_auspicious     = compute_extended_auspicious(
+        sunrise_utc, sunset_utc, vara.id, tithi.id, nakshatra.id)
+    _day_anandadi       = compute_anandadi_yoga(vara.id, nakshatra.id)
+    _day_vasa           = compute_vasa_family(tithi.id, vara.id, nakshatra.id)
+    _day_panchaka       = compute_panchaka(nakshatra.id)
+    _day_homa           = compute_homa_windows(sunrise_utc, sunset_utc)
+    _day_calendrical    = compute_calendrical(date, sun_lon, tithi.id, paksha)
+    _day_shoonya        = compute_shoonya(tithi.id, nakshatra.id)
+    _day_muhurtas       = compute_day_muhurtas(sunrise_utc, next_sunrise_utc)
+    _day_festivals      = compute_festivals(tithi.id, paksha, _day_calendrical.masa_purnimanta)
+    _day_events         = compute_day_events(date, lat, lon)
+
+    _day_topics = [
+        "angas", "planets", "timings", "choghadiya", "hora", "special_yogas",
+        "upagrahas", "outer_planets", "sun_moon", "inauspicious_full", "auspicious_full",
+        "anandadi_yoga", "vasa", "panchaka", "homa_windows", "calendrical",
+        "shoonya", "day_muhurtas", "festivals", "day_events",
+    ]
+
     # ephemeris version
     swe.set_ephe_path(None)
     ephe_ver = swe.version
@@ -124,7 +169,237 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
         planets=planets,
         computation_version=__version__,
         ephemeris_version=ephe_ver,
+        topics_computed=_day_topics,
+        upagrahas=_day_upagrahas,
+        outer_planets=_day_outer_planets,
+        sun_moon=_day_sun_moon,
+        inauspicious_full=_day_inauspicious,
+        auspicious_full=_day_auspicious,
+        anandadi_yoga=_day_anandadi,
+        vasa=_day_vasa,
+        panchaka=_day_panchaka,
+        homa_windows=_day_homa,
+        calendrical=_day_calendrical,
+        shoonya=_day_shoonya,
+        tara_bala=None,
+        festivals=_day_festivals,
+        day_events=_day_events,
+        day_muhurtas=_day_muhurtas,
     )
+
+
+def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "PanchangaInstant":
+    """
+    Compute panchang state at the exact given datetime (birth moment / event instant).
+
+    Unlike compute_panchang / panchanga_day (sunrise-based), all angas are
+    computed from planetary positions at the precise instant — correct for
+    birth-chart queries and any moment where the ruling anga at that exact
+    second is required.
+
+    Args:
+        instant: datetime.datetime — LOCAL time at the given tz_offset.
+                 naive (no tzinfo) — offset applied internally.
+        lat:        float — latitude decimal degrees (+N)
+        lon:        float — longitude decimal degrees (+E)
+        tz_offset:  int   — UTC offset in minutes (e.g. +330 for IST +05:30)
+
+    Returns:
+        PanchangaInstant — angas at the exact moment; floor-to-absent contract
+        for extended topics (topics_computed lists what is present).
+
+    FORENSIC gate (acharya-grade invariant):
+        panchanga_instant(datetime(1984,2,5,10,43), 20.27, 85.84, 330) must return
+        tithi="Shukla Tritiya", nakshatra="Purva Bhadrapada", yoga="Shiva",
+        karana="Garaja", vara="Ravivara".
+    """
+    from datetime import timedelta
+    from .timings import (
+        compute_sunrise_sunset,
+        compute_extended_inauspicious, compute_extended_auspicious,
+        compute_homa_windows, compute_choghadiya, compute_hora,
+    )
+    from .planets import compute_all_grahas
+    from .angas import (
+        compute_tithi, compute_nakshatra, compute_yoga,
+        compute_karana_pair, compute_vara,
+    )
+    from .lagna import compute_lagna
+    from .upagrahas import compute_upagrahas, compute_outer_planets
+    from .calendrical import compute_calendrical
+    from .rich_topics import (
+        compute_anandadi_yoga, compute_vasa_family, compute_panchaka,
+        compute_shoonya, compute_window_membership, compute_micro_timing,
+        compute_sun_moon_dynamics, compute_tithi_attrs, compute_nakshatra_attrs,
+    )
+    from .special_yogas import detect_all_special_yogas
+    import swisseph as swe
+
+    if not isinstance(instant, _datetime_type()):
+        raise ValidationError(f"instant must be datetime.datetime, got {type(instant)}")
+    if not (-90 <= lat <= 90):
+        raise ValidationError(f"lat out of range: {lat}")
+    if not (-180 <= lon <= 180):
+        raise ValidationError(f"lon out of range: {lon}")
+
+    # Set ayanamsha to Lahiri (project default)
+    set_ayanamsha("lahiri")
+
+    # Convert local instant to UTC
+    instant_utc = instant - timedelta(minutes=tz_offset)
+
+    # Julian Day at this exact moment
+    jd = _datetime_to_jd(instant_utc)
+
+    # Planetary positions at the exact instant
+    planets = compute_all_grahas(jd)
+    sun_lon = next(p.longitude_sidereal for p in planets if p.name == "Sun")
+    moon_lon = next(p.longitude_sidereal for p in planets if p.name == "Moon")
+
+    # All 5 angas at the instant (not sunrise-based)
+    tithi = compute_tithi(sun_lon, moon_lon, instant_utc)
+    nakshatra = compute_nakshatra(moon_lon, instant_utc)
+    yoga = compute_yoga(sun_lon, moon_lon, instant_utc)
+    karana_first, karana_second = compute_karana_pair(sun_lon, moon_lon, instant_utc, instant_utc)
+
+    # Vara from the local calendar date (day of week is date-level, not moment-level)
+    local_date = instant.date()
+    vara = compute_vara(local_date)
+
+    paksha = "shukla" if tithi.id <= 15 else "krishna"
+
+    # === RICH TOPICS ===
+    from datetime import timezone as _tz_mod
+
+    def _ensure_utc(dt):
+        return dt if dt.tzinfo else dt.replace(tzinfo=_tz_mod.utc)
+
+    _inst_u = _ensure_utc(instant_utc)
+
+    # T1: anga attributes
+    _tithi_attrs = compute_tithi_attrs(tithi.id)
+    _nakshatra_attrs = compute_nakshatra_attrs(nakshatra.id)
+
+    # T3: upagrahas + outer planets
+    _sunrise_utc, _sunset_utc = compute_sunrise_sunset(local_date, lat, lon, tz_offset)
+    _upagrahas = compute_upagrahas(_sunrise_utc, _sunset_utc, vara.id)
+    _outer_planets = compute_outer_planets(instant_utc)
+
+    # T4: Sun/Moon dynamics
+    _sun_moon = compute_sun_moon_dynamics(jd)
+
+    # T5 + T6: extended inauspicious + auspicious
+    _inauspicious_full = compute_extended_inauspicious(
+        _sunrise_utc, _sunset_utc, vara.id, nakshatra.id, nakshatra.end_utc)
+    _auspicious_full = compute_extended_auspicious(
+        _sunrise_utc, _sunset_utc, vara.id, tithi.id, nakshatra.id)
+
+    # T9: special yogas active at instant
+    _next_date = local_date + timedelta(days=1)
+    _next_sunrise, _ = compute_sunrise_sunset(_next_date, lat, lon, tz_offset)
+    _all_yogas = detect_all_special_yogas(
+        _sunrise_utc, _sunset_utc, _next_sunrise,
+        tithi, nakshatra, yoga, karana_first, karana_second, vara,
+    )
+    _special_yogas_instant = [
+        y for y in _all_yogas
+        if _ensure_utc(y["start_utc"]) <= _inst_u <= _ensure_utc(y["end_utc"])
+    ]
+
+    # T10-T15
+    _anandadi = compute_anandadi_yoga(vara.id, nakshatra.id)
+    _vasa = compute_vasa_family(tithi.id, vara.id, nakshatra.id)
+    _panchaka = compute_panchaka(nakshatra.id)
+    _homa_windows = compute_homa_windows(_sunrise_utc, _sunset_utc)
+    _calendrical = compute_calendrical(local_date, sun_lon, tithi.id, paksha)
+    _shoonya = compute_shoonya(tithi.id, nakshatra.id)
+
+    # T16: Tara Bala (natal reference not supplied at this surface)
+    _tara_bala = None
+
+    # T18: Lagna (P0)
+    _lagna = compute_lagna(instant, lat, lon, tz_offset)
+
+    # T19: Window membership
+    _choghadiya = compute_choghadiya(_sunrise_utc, _sunset_utc, _next_sunrise, vara.id)
+    _hora = compute_hora(_sunrise_utc, _next_sunrise, vara.id)
+    _window_membership = compute_window_membership(
+        _inst_u, _inauspicious_full, _auspicious_full, _choghadiya, _hora)
+
+    # T20: Micro-timing
+    _micro_timing = compute_micro_timing(_inst_u, _ensure_utc(_sunrise_utc))
+
+    _topics = [
+        "angas", "planets", "lagna", "upagrahas", "outer_planets",
+        "sun_moon", "inauspicious_full", "auspicious_full", "special_yogas",
+        "anandadi_yoga", "vasa", "panchaka", "homa_windows", "calendrical",
+        "shoonya", "window_membership", "micro_timing",
+        "tithi_attrs", "nakshatra_attrs",
+    ]
+
+    swe.set_ephe_path(None)
+    ephe_ver = swe.version
+
+    return PanchangaInstant(
+        instant_utc=instant_utc,
+        lat=lat,
+        lon=lon,
+        tz_offset_minutes=tz_offset,
+        tithi=tithi,
+        nakshatra=nakshatra,
+        yoga=yoga,
+        karana=karana_first,
+        karana_next=karana_second,
+        vara=vara,
+        paksha=paksha,
+        planets=list(planets),
+        computation_version=__version__,
+        ephemeris_version=ephe_ver,
+        topics_computed=_topics,
+        tithi_attrs=_tithi_attrs,
+        nakshatra_attrs=_nakshatra_attrs,
+        upagrahas=_upagrahas,
+        outer_planets=_outer_planets,
+        sun_moon=_sun_moon,
+        inauspicious_full=_inauspicious_full,
+        auspicious_full=_auspicious_full,
+        special_yogas_instant=_special_yogas_instant,
+        anandadi_yoga=_anandadi,
+        vasa=_vasa,
+        panchaka=_panchaka,
+        homa_windows=_homa_windows,
+        calendrical=_calendrical,
+        shoonya=_shoonya,
+        tara_bala=_tara_bala,
+        lagna=_lagna,
+        window_membership=_window_membership,
+        micro_timing=_micro_timing,
+    )
+
+
+def panchanga_day(date, lat: float, lon: float, tz_offset: int) -> "Panchang":
+    """
+    Return the full Panchang for a calendar day at the given location.
+
+    Equivalent to compute_panchang(); canonical name per P2 re-arch (2026-06-09).
+    Angas are sunrise-based (the ruling anga at the moment of sunrise).
+    For anga at an exact moment (e.g. birth time), use panchanga_instant().
+
+    Args:
+        date:      datetime.date — local calendar date
+        lat, lon:  float — decimal degrees
+        tz_offset: int   — UTC offset in minutes
+
+    Returns:
+        Panchang — full day record including timings, choghadiya, hora,
+        special yogas, and 9 graha states at sunrise.
+    """
+    return compute_panchang(date, lat, lon, tz_offset)
+
+
+def _datetime_type():
+    from datetime import datetime
+    return datetime
 
 
 def _datetime_to_jd(dt) -> float:
@@ -158,7 +433,7 @@ def find_muhurat(
     date_to,
     lat: float,
     lon: float,
-    tz_offset_minutes: int = 330,
+    tz_offset_minutes: int,
     native_chart=None,
     weights=None,
     top_n: int = 10,
@@ -180,7 +455,7 @@ def find_muhurat(
     Returns:
         list[MuhuratWindow] sorted by score descending
     """
-    from .muhurat import find_muhurat as _find_muhurat
+    from muhurat.finder import find_muhurat as _find_muhurat
     return _find_muhurat(
         event, date_from, date_to, lat, lon,
         tz_offset_minutes=tz_offset_minutes,

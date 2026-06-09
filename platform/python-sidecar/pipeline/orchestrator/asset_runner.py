@@ -104,6 +104,59 @@ def mark_asset_error(
     })
 
 
+# ── Service asset health-probe runner ─────────────────────────────────────────
+
+def _run_service_health_probe(
+    conn: psycopg.Connection,
+    cur,
+    run_id: str,
+    chart_id: str,
+    asset_id: str,
+    health_probe: dict | None,
+) -> None:
+    """
+    Execute the health probe for a service asset (storage_type='service').
+    Reports GREEN/degraded/down to asset_throughput and build_run_assets.
+    A service "build" produces no rows — integrity (FORENSIC-consistent smoke) is the gate.
+    """
+    from pipeline.orchestrator.service_probes import run_health_probe
+
+    try:
+        result = run_health_probe(asset_id, health_probe)
+        status = result.get("status", "unknown")  # "GREEN" | "degraded" | "down"
+        message = result.get("message", "")
+    except Exception as exc:
+        status = "down"
+        message = f"{type(exc).__name__}: {exc}"
+
+    if status == "GREEN":
+        cur.execute(
+            """UPDATE asset_throughput
+               SET state = 'lit', last_built_at = NOW(), rows_written = 0, last_error = NULL
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+            (chart_id, asset_id),
+        )
+        cur.execute(
+            """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
+               WHERE run_id = %s AND asset_id = %s""",
+            (run_id, asset_id),
+        )
+        conn.commit()
+        emit_event({
+            "type": "asset.state_change",
+            "chart_id": chart_id,
+            "asset_id": asset_id,
+            "from_state": "building",
+            "to_state": "lit",
+            "service_health": "GREEN",
+        })
+        logger.info("[orchestrator] service %s health probe GREEN", asset_id)
+    else:
+        error_msg = f"service health: {status} — {message}"
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, error_msg)
+        logger.warning("[orchestrator] service %s health probe %s: %s", asset_id, status, message)
+
+
 # ── Main per-asset execution ──────────────────────────────────────────────────
 
 def run_asset(
@@ -164,6 +217,20 @@ def run_asset(
         "from_state": None,
         "to_state": "building",
     })
+
+    # Check whether this asset is a service (asset_type='service' per migration 202)
+    cur.execute(
+        "SELECT asset_type, health_probe FROM asset_registry WHERE asset_id = %s",
+        (asset_id,),
+    )
+    registry_row = cur.fetchone()
+    is_service = registry_row and registry_row.get("asset_type") == "service"
+
+    if is_service:
+        # Service "build" = run health probe. No row writer involved.
+        _run_service_health_probe(conn, cur, run_id, chart_id, asset_id,
+                                  registry_row.get("health_probe"))
+        return
 
     # Resolve writer (discover_all is idempotent; self-heals if runner.py skipped it)
     discover_all()

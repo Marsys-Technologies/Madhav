@@ -103,6 +103,9 @@ export default defineConfig({
       // 'src/lib/jyotish/__tests__/asset_names.test.ts',
       // Group P — smooth-stream flag-gate logic (re-enable: Y-S3 flag-gate corrected)
       'tests/unit/chat-v2/smooth_stream.test.ts',
+      // Group Q — ICR detector module absent (re-enable: src/lib/icr/detector.ts implemented)
+      // ICR-S3 committed detector.test.ts but never created detector.ts (IntraSignalDetector).
+      'tests/icr/detector.test.ts',
     ],
   },
   resolve: {

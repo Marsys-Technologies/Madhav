@@ -374,3 +374,264 @@ def compute_hora(sunrise_utc: datetime, next_sunrise_utc: datetime,
         ))
 
     return timings
+
+
+# ===========================================================================
+# Extended timings — rich output contract additions (Tasks 7 + 8)
+# ===========================================================================
+
+def compute_extended_inauspicious(
+    sunrise_utc,
+    sunset_utc,
+    vara_id: int,
+    nakshatra_id: int,
+    nakshatra_end_utc,
+) -> list:
+    """
+    Full set of inauspicious windows (9 types):
+    rahu_kalam, yamaganda, gulika_kalam, durmuhurta (existing 4)
+    + yamakantaka, krakaca, varjyam, visha_ghati, sashtighati (5 new).
+    Returns list[Timing].
+    """
+    from .shastra_tables import (
+        YAMAKANTAKA_INDEX, KRAKACA_INDEX,
+        VARJYAM_TABLE, VISHA_GHATI_TABLE, SASHTIGHATI_GHATIKAS,
+    )
+
+    timings_list = []
+    day_dur = (sunset_utc - sunrise_utc).total_seconds()
+    part = day_dur / 8.0
+    ghatika_seconds = 24 * 60  # 1 ghatika = 24 minutes
+
+    def _period(idx: int):
+        s = sunrise_utc + timedelta(seconds=part * (idx - 1))
+        e = s + timedelta(seconds=part)
+        return s, e
+
+    # Rahu Kalam
+    s, e = _period(RAHU_KALAM_INDEX[vara_id])
+    timings_list.append(Timing("rahu_kalam", s, e))
+
+    # Yamaganda
+    s, e = _period(YAMAGANDAM_INDEX[vara_id])
+    timings_list.append(Timing("yamaganda", s, e))
+
+    # Gulika Kalam
+    s, e = _period(GULIKA_INDEX[vara_id])
+    timings_list.append(Timing("gulika_kalam", s, e))
+
+    # Durmuhurta
+    dur_entries = DUR_MUHURTA_TABLE.get(vara_id, [])
+    for offset_gh, dur_gh in dur_entries:
+        ds = sunrise_utc + timedelta(seconds=offset_gh * ghatika_seconds)
+        de = ds + timedelta(seconds=dur_gh * ghatika_seconds)
+        timings_list.append(Timing("durmuhurta", ds, de))
+
+    # Yamakantaka
+    s, e = _period(YAMAKANTAKA_INDEX[vara_id])
+    timings_list.append(Timing("yamakantaka", s, e))
+
+    # Krakaca (night-side; uses same part size from sunset)
+    krakaca_idx = KRAKACA_INDEX[vara_id]
+    ks = sunset_utc + timedelta(seconds=part * (krakaca_idx - 1))
+    ke = ks + timedelta(seconds=part)
+    timings_list.append(Timing("krakaca", ks, ke))
+
+    # Varjyam: ghatika offset from sunrise (same convention as AMRIT_KALAM_TABLE)
+    varjyam_entry = VARJYAM_TABLE.get(nakshatra_id, [None, None])
+    if varjyam_entry and varjyam_entry[0] is not None:
+        vs = sunrise_utc + timedelta(seconds=varjyam_entry[0] * ghatika_seconds)
+        ve = vs + timedelta(seconds=varjyam_entry[1] * ghatika_seconds)
+        timings_list.append(Timing("varjyam", vs, ve))
+
+    # Visha Ghati: ghatika from sunrise
+    vg = VISHA_GHATI_TABLE.get(nakshatra_id, [])
+    for gh in vg:
+        vgs = sunrise_utc + timedelta(seconds=(gh - 1) * ghatika_seconds)
+        vge = vgs + timedelta(seconds=ghatika_seconds)
+        timings_list.append(Timing("visha_ghati", vgs, vge))
+
+    # Sashtighati (specific ghatikas of day)
+    for gh in SASHTIGHATI_GHATIKAS:
+        sgs = sunrise_utc + timedelta(seconds=(gh - 1) * ghatika_seconds)
+        sge = sgs + timedelta(seconds=ghatika_seconds)
+        timings_list.append(Timing("sashtighati", sgs, sge))
+
+    return timings_list
+
+
+def compute_extended_auspicious(
+    sunrise_utc,
+    sunset_utc,
+    vara_id: int,
+    tithi_id: int,
+    nakshatra_id: int,
+) -> list:
+    """
+    Full set of auspicious windows (9 types).
+    Returns list[Timing].
+    """
+    timings_list = []
+    day_dur = (sunset_utc - sunrise_utc).total_seconds()
+
+    # Brahma Muhurta: 96 min before sunrise
+    timings_list.append(Timing("brahma_muhurta",
+        sunrise_utc - timedelta(minutes=96),
+        sunrise_utc - timedelta(minutes=48)))
+
+    # Pratah Sandhya: 48 min from sunrise
+    timings_list.append(Timing("pratah_sandhya",
+        sunrise_utc,
+        sunrise_utc + timedelta(minutes=48)))
+
+    # Abhijit: 8th muhurta of day (1-indexed → index 7)
+    m_dur = day_dur / 15.0
+    timings_list.append(Timing("abhijit",
+        sunrise_utc + timedelta(seconds=m_dur * 7),
+        sunrise_utc + timedelta(seconds=m_dur * 8)))
+
+    # Madhyahna Sandhya: solar noon ± 24 min
+    solar_noon = sunrise_utc + timedelta(seconds=day_dur / 2)
+    timings_list.append(Timing("madhyahna_sandhya",
+        solar_noon - timedelta(minutes=24),
+        solar_noon + timedelta(minutes=24)))
+
+    # Vijaya: 14th muhurta (index 13)
+    timings_list.append(Timing("vijaya",
+        sunrise_utc + timedelta(seconds=m_dur * 13),
+        sunrise_utc + timedelta(seconds=m_dur * 14)))
+
+    # Godhuli: cow-dust — 24 min before/after sunset
+    timings_list.append(Timing("godhuli",
+        sunset_utc - timedelta(minutes=24),
+        sunset_utc + timedelta(minutes=24)))
+
+    # Sayam Sandhya: 48 min before sunset
+    timings_list.append(Timing("sayam_sandhya",
+        sunset_utc - timedelta(minutes=48),
+        sunset_utc))
+
+    # Nishita: approximate midnight ± 24 min
+    night_dur = 86400 - day_dur
+    midnight = sunset_utc + timedelta(seconds=night_dur / 2)
+    timings_list.append(Timing("nishita",
+        midnight - timedelta(minutes=24),
+        midnight + timedelta(minutes=24)))
+
+    return timings_list
+
+
+def compute_homa_windows(sunrise_utc, sunset_utc) -> list:
+    """
+    Auspicious fire-ritual (Homa/Ahuti) windows at the 3 Sandhya times.
+    Returns list[Timing].
+    """
+    day_dur = (sunset_utc - sunrise_utc).total_seconds()
+    solar_noon = sunrise_utc + timedelta(seconds=day_dur / 2)
+    return [
+        Timing("homa_morning",
+               sunrise_utc - timedelta(minutes=24),
+               sunrise_utc + timedelta(minutes=24)),
+        Timing("homa_midday",
+               solar_noon - timedelta(minutes=24),
+               solar_noon + timedelta(minutes=24)),
+        Timing("homa_evening",
+               sunset_utc - timedelta(minutes=24),
+               sunset_utc + timedelta(minutes=24)),
+    ]
+
+
+def compute_day_muhurtas(sunrise_utc, next_sunrise_utc) -> list:
+    """
+    30 named muhurtas of the day (15 day + 15 night).
+    Returns list[dict]: {number, name, period, start_utc, end_utc, quality}.
+    """
+    DAY_MUHURTA_NAMES = [
+        "Rudra", "Ahi", "Mitra", "Pitri", "Vasu",
+        "Vara", "Vishvadeva", "Vidhi", "Sutamukhi", "Puruhuta",
+        "Vahini", "Naktankara", "Varuna", "Aryaman", "Bhaga",
+    ]
+    NIGHT_MUHURTA_NAMES = [
+        "Girisha", "Ajapada", "Ahirbudhnya", "Pushya", "Ashvini",
+        "Yama", "Agni", "Vidhata", "Kanda", "Aditi",
+        "Jiva", "Vishnu", "Dyumadgadsuti", "Brahma", "Samudram",
+    ]
+    AUSPICIOUS_DAY   = {3, 5, 6, 7, 8, 11, 13, 15}
+    AUSPICIOUS_NIGHT = {1, 2, 3, 5, 7, 9, 10, 12, 14}
+
+    total_sec = (next_sunrise_utc - sunrise_utc).total_seconds()
+    half = total_sec / 2
+    sunset_approx = sunrise_utc + timedelta(seconds=half)
+
+    result = []
+    day_m = half / 15
+    for i, name in enumerate(DAY_MUHURTA_NAMES):
+        s = sunrise_utc + timedelta(seconds=i * day_m)
+        e = s + timedelta(seconds=day_m)
+        result.append({"number": i + 1, "name": name, "period": "day",
+                        "start_utc": s, "end_utc": e,
+                        "quality": "auspicious" if (i + 1) in AUSPICIOUS_DAY else "neutral"})
+
+    night_m = half / 15
+    for i, name in enumerate(NIGHT_MUHURTA_NAMES):
+        s = sunset_approx + timedelta(seconds=i * night_m)
+        e = s + timedelta(seconds=night_m)
+        result.append({"number": i + 16, "name": name, "period": "night",
+                        "start_utc": s, "end_utc": e,
+                        "quality": "auspicious" if (i + 1) in AUSPICIOUS_NIGHT else "neutral"})
+    return result
+
+
+def compute_festivals(tithi_id: int, paksha: str, masa_purnimanta: str) -> list:
+    """
+    Return festival flags active on this day based on tithi + paksha + masa rules.
+    Returns list[dict]: {name, tithi_id, paksha, type}.
+    """
+    from .shastra_tables import FESTIVAL_RULES
+    result = []
+    for rule in FESTIVAL_RULES:
+        if tithi_id in rule["tithi_ids"]:
+            if rule["paksha"] == "any" or rule["paksha"] == paksha:
+                result.append({
+                    "name": rule["name"],
+                    "tithi_id": tithi_id,
+                    "paksha": paksha,
+                    "type": "vrata",
+                })
+    return result
+
+
+def compute_day_events(date_obj, lat: float, lon: float) -> list:
+    """
+    Scan the day for Sun sign ingress and lunar eclipse.
+    Returns list[dict]: {type, planet, description, utc_time}.
+    """
+    from .shastra_tables import SIGN_NAMES
+    events = []
+    jd_start = swe.julday(date_obj.year, date_obj.month, date_obj.day, 0)
+    jd_end   = jd_start + 1.0
+
+    sun_s, _ = swe.calc_ut(jd_start, swe.SUN)
+    sun_e, _ = swe.calc_ut(jd_end,   swe.SUN)
+    if int(sun_s[0] / 30) != int(sun_e[0] / 30):
+        new_sign = int(sun_e[0] / 30) % 12
+        events.append({
+            "type": "ingress",
+            "planet": "Sun",
+            "description": f"Sun enters {SIGN_NAMES[new_sign]}",
+            "utc_time": None,
+        })
+
+    try:
+        eclipse_res = swe.lun_eclipse_when(jd_start, swe.FLG_SWIEPH, 0, 0)
+        if eclipse_res and eclipse_res[1][0] and jd_start <= eclipse_res[1][0] <= jd_end:
+            events.append({
+                "type": "eclipse",
+                "planet": "Moon",
+                "description": "Lunar eclipse",
+                "utc_time": eclipse_res[1][0],
+            })
+    except Exception:
+        pass
+
+    return events

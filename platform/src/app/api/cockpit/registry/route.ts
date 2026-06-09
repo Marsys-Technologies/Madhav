@@ -23,6 +23,13 @@ export interface AssetRow {
   is_active: boolean
   estimated_seconds: number | null
   created_at: string
+  // Migration 202+ service-support fields
+  asset_type: 'data' | 'service' | null
+  layer_name: string | null
+  layer_index: string | null
+  provides_apis: Record<string, unknown>[] | null
+  health_probe: Record<string, unknown> | null
+  catalog_status: 'CURRENT' | 'DRAFT' | null
 }
 
 export async function GET() {
@@ -33,7 +40,8 @@ export async function GET() {
         english_description, storage_type, target_table, count_sql,
         size_sql, target_floor, expected_volume_formula,
         expected_volume_inputs, volume_explanation, depends_on,
-        scope, is_active, estimated_seconds, created_at
+        scope, is_active, estimated_seconds, created_at,
+        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status
       FROM asset_registry
       ORDER BY
         CASE layer

@@ -87,15 +87,15 @@ canonical_id: FORENSIC
 path: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md
 version: "8.0"
 status: ARCHIVED
-fingerprint_sha256: 85ca34690780c749eb155134b126dee5dffc9514c7611022385651ae2f2fa101
+fingerprint_sha256: 0b2f383b7b7448d4dc9f4b8825e3f3929765e66b26da82acab08d84b921a7ed9
 mirror_obligations:
   claude_side: null
   gemini_side: null
   mirror_mode: none
   authoritative_side: db
   asymmetries: "v8.0 markdown deleted from 01_FACTS_LAYER/ in PR #187 Legacy Teardown. Live source = chart_facts DB table via platform/src/lib/ganita/forensic_render.ts. Cold benchmark archived at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md."
-last_verified_session: fix/forensic-reference-consistency
-last_verified_on: 2026-06-08
+last_verified_session: feature/panchanga-service-registry
+last_verified_on: 2026-06-10
 notes: "ARCHIVED 2026-06-08. File deleted PR #187. Authoritative registry is CAPABILITY_MANIFEST.json (supersedes this file as of 2026-04-27)."
 ```
 
