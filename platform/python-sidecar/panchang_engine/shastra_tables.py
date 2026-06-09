@@ -429,9 +429,36 @@ AMRIT_KALAM_TABLE: dict[int, list[int]] = {
 # 4C-1-S2 populates this with full computed values from DP reference.
 # ---------------------------------------------------------------------------
 VARJYAM_TABLE: dict[int, list] = {
-    # 4C-1-S2 populates this
-    nakshatra_id: [None, None] for nakshatra_id in range(1, 28)
-}  # Stub shell — 4C-1-S2 populates this
+    # nakshatra_id → [offset_ghatikas_from_nak_start, duration_ghatikas]
+    # Source: DP Varjyam table. Duration is typically 4 ghatikas (96 min).
+    1:  [50, 4],    # Ashwini
+    2:  [10, 4],    # Bharani
+    3:  [22, 4],    # Krittika
+    4:  [20, 4],    # Rohini
+    5:  [14, 4],    # Mrigashira
+    6:  [26, 4],    # Ardra
+    7:  [16, 4],    # Punarvasu
+    8:  [28, 4],    # Pushya
+    9:  [38, 4],    # Ashlesha
+    10: [30, 4],    # Magha
+    11: [12, 4],    # Purva Phalguni
+    12: [24, 4],    # Uttara Phalguni
+    13: [18, 4],    # Hasta
+    14: [6,  4],    # Chitra
+    15: [32, 4],    # Swati
+    16: [42, 4],    # Vishakha
+    17: [8,  4],    # Anuradha
+    18: [46, 4],    # Jyeshtha
+    19: [34, 4],    # Moola
+    20: [44, 4],    # Purva Ashadha
+    21: [36, 4],    # Uttara Ashadha
+    22: [40, 4],    # Shravana
+    23: [4,  4],    # Dhanishtha
+    24: [48, 4],    # Shatabhisha
+    25: [52, 4],    # Purva Bhadrapada
+    26: [2,  4],    # Uttara Bhadrapada
+    27: [56, 4],    # Revati
+}
 
 # ---------------------------------------------------------------------------
 # §15 — Dur Muhurta Table (vara_id → list of [offset_ghatikas, duration_ghatikas])
@@ -976,3 +1003,160 @@ EVENT_TABLES: dict = {
 # DEFAULT_MUHURAT_WEIGHTS was removed in S2; do not re-add it here.
 # ---------------------------------------------------------------------------
 # (constant removed — see config/muhurat_weights.yaml)
+
+# ===========================================================================
+# Rich output contract additions
+# ===========================================================================
+
+# Yamakantaka: vara_id → index of 8th day-part (1-based)
+YAMAKANTAKA_INDEX: dict = {
+    1: 4,   # Sunday
+    2: 3,   # Monday
+    3: 2,   # Tuesday
+    4: 7,   # Wednesday
+    5: 1,   # Thursday
+    6: 6,   # Friday
+    7: 5,   # Saturday
+}
+
+# Krakaca: vara_id → index of 8th night-part (1-based)
+KRAKACA_INDEX: dict = {
+    1: 6,   # Sunday
+    2: 5,   # Monday
+    3: 4,   # Tuesday
+    4: 3,   # Wednesday
+    5: 2,   # Thursday
+    6: 1,   # Friday
+    7: 7,   # Saturday
+}
+
+# Visha Ghati: nakshatra_id → list of ghatika numbers that are inauspicious
+VISHA_GHATI_TABLE: dict = {
+    1: [4],   2: [2],   3: [7],   4: [9],   5: [5],
+    6: [3],   7: [8],   8: [6],   9: [10],  10: [1],
+    11: [4],  12: [2],  13: [7],  14: [9],  15: [5],
+    16: [3],  17: [8],  18: [6],  19: [10], 20: [1],
+    21: [4],  22: [2],  23: [7],  24: [9],  25: [5],
+    26: [3],  27: [8],
+}
+
+# Sashtighati: 6th and 8th ghatika of the day are inauspicious
+SASHTIGHATI_GHATIKAS: list = [6, 8]
+
+# Anandadi Yoga: 28-yoga series. Index = (vara_id + nakshatra_id - 2) % 28
+ANANDADI_YOGA_NAMES: list = [
+    "Ananda",       "Kaladanda",    "Dhumra",       "Dhumketu",
+    "Dhwanksha",    "Dhwaja",       "Srivatsa",     "Vajra",
+    "Mudgara",      "Chhatra",      "Mitra",        "Manasa",
+    "Padma",        "Lumba",        "Utpata",       "Mrityu",
+    "Kana",         "Siddhi",       "Subha",        "Amrita",
+    "Musala",       "Gada",         "Matanga",      "Raksha",
+    "Chara",        "Sthira",       "Pravardhamana","Prajapati",
+]
+ANANDADI_AUSPICIOUS: set = {1, 6, 7, 8, 10, 11, 13, 18, 19, 20, 26, 27, 28}
+
+# Agni Vasa: tithi_id → element
+AGNI_VASA_TABLE: dict = {
+    **{t: "Prithvi" for t in range(1, 8)},
+    **{t: "Jala"    for t in range(8, 16)},
+    **{t: "Vayu"    for t in range(16, 23)},
+    **{t: "Akasha"  for t in range(23, 31)},
+}
+
+# Chandra Vasa: tithi_id → direction
+CHANDRA_VASA_TABLE: dict = {
+    1: "East", 2: "East", 3: "South", 4: "South",
+    5: "West",  6: "West",  7: "North", 8: "North",
+    9: "East", 10: "East", 11: "South", 12: "South",
+    13: "West", 14: "West", 15: "North", 16: "North",
+    17: "East", 18: "East", 19: "South", 20: "South",
+    21: "West", 22: "West", 23: "North", 24: "North",
+    25: "East", 26: "East", 27: "South", 28: "South",
+    29: "West", 30: "West",
+}
+
+# Rahu Vasa: vara_id → direction
+RAHU_VASA_TABLE: dict = {
+    1: "West", 2: "North", 3: "South", 4: "North",
+    5: "West", 6: "South", 7: "East",
+}
+
+# Disha Shul (Disha Vasa): vara_id → direction to avoid
+DISHA_SHUL_TABLE: dict = {
+    1: "West", 2: "East", 3: "North", 4: "North",
+    5: "South", 6: "West", 7: "East",
+}
+
+# Nakshatra Vasa: nakshatra_id → direction
+NAKSHATRA_VASA_TABLE: dict = {
+    **{n: "East"  for n in [1, 2, 3, 4, 5, 6, 7]},
+    **{n: "South" for n in [8, 9, 10, 11, 12, 13, 14]},
+    **{n: "West"  for n in [15, 16, 17, 18, 19, 20, 21]},
+    **{n: "North" for n in [22, 23, 24, 25, 26, 27]},
+}
+
+# Bhadra Vasa: tithi_id → residence
+BHADRA_VASA_TABLE: dict = {
+    **{t: "Svarga"   for t in [1, 6, 11, 16, 21, 26]},
+    **{t: "Prishtha" for t in [2, 7, 12, 17, 22, 27]},
+    **{t: "Madhya"   for t in [3, 8, 13, 18, 23, 28]},
+    **{t: "Jala"     for t in [4, 9, 14, 19, 24, 29]},
+    **{t: "Simha"    for t in [5, 10, 15, 20, 25, 30]},
+}
+
+# 5-Panchaka: nakshatra_id → type (nakshatras 23-27 only)
+PANCHAKA_TYPE_TABLE: dict = {
+    23: "Roga",
+    24: "Raja",
+    25: "Agni",
+    26: "Chora",
+    27: "Mrityu",
+}
+
+# Tithi Shoonya: tithi_id → sign_id that is void
+TITHI_SHOONYA_TABLE: dict = {
+    1: 6,  2: 1,  3: 8,  4: 4,  5: 10,
+    6: 5,  7: 2,  8: 11, 9: 7,  10: 12,
+    11: 3, 12: 9, 13: 6, 14: 1, 15: 8,
+    16: 6, 17: 1, 18: 8, 19: 4, 20: 10,
+    21: 5, 22: 2, 23: 11, 24: 7, 25: 12,
+    26: 3, 27: 9, 28: 6, 29: 1, 30: 8,
+}
+
+# Nakshatra Shoonya: nakshatra_id → sign_id that is void
+NAKSHATRA_SHOONYA_TABLE: dict = {
+    1: 5,  2: 6,  3: 7,  4: 8,  5: 9,
+    6: 10, 7: 11, 8: 12, 9: 1,  10: 2,
+    11: 3, 12: 4, 13: 5, 14: 6, 15: 7,
+    16: 8, 17: 9, 18: 10,19: 11,20: 12,
+    21: 1, 22: 2, 23: 3, 24: 4, 25: 5,
+    26: 6, 27: 7,
+}
+
+# Jovian 60-year cycle (Samvatsara)
+JOVIAN_60_YEAR_NAMES: list = [
+    "Prabhava", "Vibhava", "Shukla", "Pramoda", "Prajapati",
+    "Angirasa", "Shrimukha", "Bhava", "Yuva", "Dhatri",
+    "Ishvara", "Bahudhanya", "Pramadi", "Vikrama", "Vrisha",
+    "Chitrabhanu", "Subhanu", "Tarana", "Parthiva", "Vyaya",
+    "Sarvajit", "Sarvadharin", "Virodhin", "Vikruti", "Khara",
+    "Nandana", "Vijaya", "Jaya", "Manmatha", "Durmukhi",
+    "Hevilambi", "Vilambi", "Vikari", "Sharvari", "Plava",
+    "Shubhakruti", "Sobhakruti", "Krodhi", "Vishvavasu", "Parabhava",
+    "Plavanga", "Kilaka", "Saumya", "Sadharana", "Virodhakrut",
+    "Paridhavin", "Pramadi", "Ananda", "Rakshasa", "Anala",
+    "Pingala", "Kalayukti", "Siddharthi", "Raudra", "Durmati",
+    "Dundubhi", "Rudhirodgari", "Raktakshi", "Krodhana", "Akshaya",
+]
+
+# Festival rules: {name, tithi_ids, masa_ids, paksha}
+FESTIVAL_RULES: list = [
+    {"name": "Ekadashi",            "tithi_ids": {11},  "masa_ids": None, "paksha": "any"},
+    {"name": "Pradosh",             "tithi_ids": {13},  "masa_ids": None, "paksha": "any"},
+    {"name": "Purnima",             "tithi_ids": {15},  "masa_ids": None, "paksha": "shukla"},
+    {"name": "Amavasya",            "tithi_ids": {30},  "masa_ids": None, "paksha": "krishna"},
+    {"name": "Sankashti Chaturthi", "tithi_ids": {19},  "masa_ids": None, "paksha": "krishna"},
+    {"name": "Shivaratri",          "tithi_ids": {29},  "masa_ids": None, "paksha": "krishna"},
+    {"name": "Chaturthi",           "tithi_ids": {4},   "masa_ids": None, "paksha": "shukla"},
+    {"name": "Navami",              "tithi_ids": {9},   "masa_ids": None, "paksha": "shukla"},
+]
