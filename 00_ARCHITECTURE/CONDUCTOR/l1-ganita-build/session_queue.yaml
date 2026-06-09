@@ -179,15 +179,28 @@ sessions:
   # ---- WAVE CLOSE ----
   - id: red-team-is8b
     layer: red_team
-    status: in_flight
+    status: passed
     depends_on: [ga9-sade-sati]
     role: Vimarśaka + Pramāṇa (adversarial swarm)
     scope: full-instrument IS.8(b) red-team on the built L1 layer for the native
     acceptance: no class-1 findings; class-2 findings carry a committed remediation plan.
+    remediation_commits:
+      C1.1_ga5: c5516232  # rename 208→209 (GA5 migration number conflict)
+      C1.1_ga6: 8604d364  # rename 209→210 (GA6 migration number conflict)
+      C1.1_ga7: 546490df  # rename 208→211 (GA7 migration number conflict)
+      C1.2_ga7: 546490df  # fix exception-swallowing CHECK constraint (same commit)
+      C2.1_ga7: 546490df  # fix ayanamsha canonical naming (same commit)
+      C2.2_ga6: 8604d364  # add CHECK constraint on verification_pass_status (same commit)
+    notes: |
+      C1.1 (class-1): All 3 migration file renames committed + pushed.
+      C1.2 (class-1): Exception-swallowing DO block replaced with direct DDL. Committed + pushed.
+      C2.1 (class-2): GA7 AYANAMSHAS list corrected to canonical DB keys. 73/73 tests pass. Committed + pushed.
+      C2.2 (class-2): CHECK constraint added to chart_divisionals.verification_pass_status. Committed + pushed.
+      C2.3: Resolves automatically with C2.1. No separate fix needed.
 
   - id: wave-close
     layer: close
-    status: pending
+    status: in_flight
     depends_on: [red-team-is8b]
     role: Sūtradhāra + Pramāṇa + Smṛti
     scope: |
