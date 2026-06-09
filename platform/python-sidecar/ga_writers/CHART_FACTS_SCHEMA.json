@@ -684,7 +684,8 @@
     },
 
     "_ga8_separator": {
-      "_note": "All categories below are GA8 T1 structural writer additions. GA3 categories above must not be re-emitted."
+      "_note": "All categories below are GA8 T1 structural writer additions. GA3 categories above must not be re-emitted.",
+      "ayanamsha_dependent": false
     },
 
     "aspect_parashari_given": {
