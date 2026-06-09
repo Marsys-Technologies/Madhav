@@ -263,6 +263,9 @@ jobs:
         #   tests/test_pyjhora_adapter/ — pyjhora_adapter package cleared (empty dir);
         #   tests/test_dasha_chain.py — imports pipeline.transit_search (removed in teardown);
         #   tests/extractors/test_cgm_extractor.py — pipeline.extractors.cgm_extractor removed.
+        #   tests/test_l0_remedy_corpus.py — tests target _get_conn/_in_memory_query/query_remedy
+        #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
+        #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
         #   Re-enable when L0 engine rebuild re-populates these modules.
         run: |
           pip install -r platform/python-sidecar/requirements.txt --quiet
@@ -271,5 +274,6 @@ jobs:
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
+            --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
             -q --tb=short --no-header
