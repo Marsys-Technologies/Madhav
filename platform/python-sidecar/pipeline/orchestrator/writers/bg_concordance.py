@@ -44,9 +44,9 @@ TEXT_SCHOOL: dict[str, str] = {
     "brihat_samhita":       "parashari",
     "tajaka_neelakanthi":   "tajaka",
     "yavana_jataka":        "parashari",
-    "bhrigu_samhita":       "nadi",
     "muhurta_chintamani":   "parashari",
-    "lal_kitab":            "lal_kitab",
+    "bhrigu_nandi_nadi":    "nadi",
+    "nadi_navamsa_patel":   "nadi",
 }
 
 

@@ -4,7 +4,7 @@ brahmagyan.l0_texts — BRAHMA WS-2 L0 Brahmagyan: Classical Text Corpus
 
 Manages the classical text corpus: text registry + verse-addressable chunks.
 
-13-text corpus (native decision 2026-06-09, prep/l0-corpus-staging):
+15-text corpus (Nadi additions 2026-06-09, feature/nadi-corpus-expansion):
   Originals (5):
     bphs, phaladeepika, jataka_parijata, uttara_kalamrita, bphs_jaimini
   Staged (8):
@@ -12,6 +12,9 @@ Manages the classical text corpus: text registry + verse-addressable chunks.
     brihat_samhita, yavana_jataka (2 vols, Pingree),
     muhurta_chintamani [Hindi/OCR, AWAITING_NATIVE_DECISION quality gate],
     tajaka_neelakanthi [Hindi/OCR, AWAITING_NATIVE_DECISION quality gate]
+  Nadi additions (2026-06-09, feature/nadi-corpus-expansion):
+    bhrigu_nandi_nadi (school=nadi, 327pp clean English aphorism prose),
+    nadi_navamsa_patel (school=nadi, DjVu .txt ingest, 92% coherent English)
 
 Dropped: lal_kitab (distinct Urdu-Persian system; deferred to bg_remedies ingestion),
          bhrigu_samhita (no defensible edition).
@@ -22,9 +25,11 @@ Muhurta Chintamani back IN (2026-06-09): Khemraj/Mahidhara Sharma bhasha tika,
 
 Volume floor: 8,193 chunks (actual deterministic build 2026-06-09; all 13 texts;
   Hindi OCR gates PASSED for muhurta + tajaka). Replaces contingent 9,100 estimate.
+  VOLUME_FLOOR_TEXTS updated to 15 after Nadi additions (2026-06-09).
+  VOLUME_FLOOR_CHUNKS remains 8,193 — will update after Phase 2 build + migration.
 
 Acceptance gate:
-  - classical_texts COUNT = 13
+  - classical_texts COUNT = 15
   - classical_text_chunks COUNT >= 8193 (actual floor v1.4; Hindi OCR gates PASSED)
   - text.read('bphs', 'CH1:V1') resolves
   - all chunks have non-null verse_ref + source_citation
@@ -36,6 +41,9 @@ BRAHMA-BG-0-3 | amended 2026-06-09 (prep/l0-corpus-staging): lal_kitab OUT,
   tajaka_neelakanthi + muhurta_chintamani IN (Hindi OCR, gated); floor 8000→9100
 BRAHMA-BG-0-4 | amended 2026-06-09 (fix/l0-text-asset-floors): actual build 8193 chunks;
   Hindi OCR PASSED; floor 9100→8193; asset_registry.target_floor updated (migration 183)
+BRAHMA-BG-0-5 | amended 2026-06-09 (feature/nadi-corpus-expansion): 13→15 texts;
+  Nadi additions: bhrigu_nandi_nadi + nadi_navamsa_patel (school=nadi, MEDIUM provenance);
+  VOLUME_FLOOR_TEXTS 13→15; VOLUME_FLOOR_CHUNKS unchanged pending Phase 2 build
 """
 from __future__ import annotations
 
@@ -302,6 +310,50 @@ TEXTS = [
         "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/yavana_jataka_vol1.pdf",
         "gcs_path_vol2": "gs://madhav-marsys-sources/L8/classical_texts/source/yavana_jataka_vol2.pdf",
         "provenance_tier": "HIGH",
+        "language_available": "en",
+    },
+    # ── 2 Nadi texts (staged 2026-06-09; quality PASS) ───────────────────────
+    {
+        # 327pp, 100% text layer, clean English aphorism prose.
+        # Minor chart-diagram label fragments (Sat./Ven./Dh./Dt.) — handled by
+        # bhrigu_nandi_chart_labels_re strip in bg_texts writer.
+        "text_id": "bhrigu_nandi_nadi",
+        "title_en": "Bhrigu Nandi Nadi",
+        "title_sa": "Bhṛgu Nandī Nāḍī",
+        "author": "R.G. Rao",
+        "school": "nadi",
+        "tradition": "vedic",
+        "tier": 2,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Bhrigu Nandi Nadi, R.G. Rao, Ranjan Publications (~1986)",
+        "source_citation": "[MEDIUM] Bhrigu Nandi Nadi — R.G. Rao, Ranjan Publications (~1986); archive.org grey-upload, provenance MEDIUM",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/bhrigu_nandi_nadi.pdf",
+        "provenance_tier": "MEDIUM",
+        "language_available": "en",
+    },
+    {
+        # DjVu .txt is the ingest source (417KB, 92% coherent English).
+        # ~8% inline Sanskrit-verse fragments — handled by verse_fragment
+        # >30%-non-ASCII line filter in bg_texts writer.
+        "text_id": "nadi_navamsa_patel",
+        "title_en": "Predicting Through Navamsa and Nadi Astrology",
+        "title_sa": None,
+        "author": "C.S. Patel",
+        "school": "nadi",
+        "tradition": "vedic",
+        "tier": 2,
+        "license": "public_domain",
+        "license_cleared": True,
+        "total_chapters": None,
+        "total_verses": None,
+        "source_edition": "Predicting Through Navamsa and Nadi Astrology, C.S. Patel, Sagar Publications (1996)",
+        "source_citation": "[MEDIUM] Predicting Through Navamsa and Nadi Astrology — C.S. Patel, Sagar Publications (1996); archive.org grey-upload, provenance MEDIUM",
+        "gcs_path": "gs://madhav-marsys-sources/L8/classical_texts/source/nadi_navamsa_patel.pdf",
+        "gcs_path_djvu_txt": "gs://madhav-marsys-sources/L8/classical_texts/source/nadi_navamsa_patel_djvu.txt",
+        "provenance_tier": "MEDIUM",
         "language_available": "en",
     },
 ]
@@ -645,15 +697,16 @@ SEED_CHUNKS = [
 
 
 # ── Volume floor ──────────────────────────────────────────────────────────────
-# All 13 texts now staged with GCS PDFs (2026-06-09 final corpus decision).
+# All 15 texts now staged with GCS PDFs (2026-06-09 final corpus decision).
 # muhurta_chintamani + tajaka_neelakanthi count toward floor ONLY if their Hindi OCR
 # quality gate passes at ingest. Vimarshaka treats a gated-out Hindi text as
 # CONDITIONAL, not a hard fail. Floor: 11-staged ~8,000 + muhurta ~700 + tajaka ~400.
+# Nadi additions (2026-06-09, feature/nadi-corpus-expansion): bhrigu_nandi_nadi + nadi_navamsa_patel
 
-VOLUME_FLOOR_TEXTS = 13          # all 13 texts staged with GCS PDFs
-VOLUME_FLOOR_TEXTS_FULL = 13     # same — no texts pending after 2026-06-09 decision
+VOLUME_FLOOR_TEXTS = 15          # 13 original + 2 Nadi additions (2026-06-09)
+VOLUME_FLOOR_TEXTS_FULL = 15     # same — no texts pending after 2026-06-09 Nadi decision
 VOLUME_FLOOR_CHUNKS = 8_193      # actual deterministic build 2026-06-09; Hindi OCR gates PASSED
-VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full floor (after complete chunking of all 13)
+VOLUME_FLOOR_CHUNKS_FULL = 10_000  # full floor (after complete chunking of all 15)
 
 
 # ── Writer ─────────────────────────────────────────────────────────────────────
