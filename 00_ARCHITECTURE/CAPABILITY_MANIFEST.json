@@ -609,6 +609,7 @@
       "version": "8.0",
       "status": "ARCHIVED",
       "layer": "L1",
+      "fingerprint_sha256": "0b2f383b7b7448d4dc9f4b8825e3f3929765e66b26da82acab08d84b921a7ed9",
       "expose_to_chat": "FORENSIC v8.0 markdown deleted from 01_FACTS_LAYER/ in PR #187 Legacy Teardown; cold benchmark copy at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md. LIVE source = chart_facts DB table via platform/src/lib/ganita/forensic_render.ts (canonical_id FORENSIC maps to chart_facts_query in provenance_assembler.ts).",
       "representations": [
         "file"
