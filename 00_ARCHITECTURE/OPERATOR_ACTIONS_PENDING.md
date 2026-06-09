@@ -1,6 +1,6 @@
 ---
 artifact: OPERATOR_ACTIONS_PENDING.md
-version: "1.3"
+version: "1.4"
 status: LIVING
 produced_during: DOC_CLEANUP_2026-05-31
 role: Single source of truth for all operator actions requiring human execution (GCP console, production DB, GitHub settings).
@@ -9,11 +9,12 @@ changelog:
   - v1.1 (2026-05-31, DOC_CLEANUP): Consolidated all pending operator actions from MULTI_AYANAMSHA_BUILD_CLOSE §6, MCPT_CLOSE, PLATFORM_MODERNIZATION_CLOSE, and CI-cleanup session.
   - v1.2 (2026-06-01, PYJHORA-POSTMERGE-DEPLOY-B): A.1 chart build marked DONE; A.2 migrations 121/122/124 UNBLOCKED; A.3 build-trigger 401 HIGH item added; A.4 forensic render HIGH item added; A.5 jh-parity residue MEDIUM item added.
   - v1.3 (2026-06-08, pipeline-audit-closeout): Added HIGH item for iac-apply.yml GCS state bucket IAM (GATE 2 infra-blocked finding). Noted PA-01 flags baked and GATE 1 passed.
+  - v1.4 (2026-06-09, L1-wipe): L1 Gaṇita data wipe executed (brief L1_DATA_WIPE_BRIEF v1.0). Added CRITICAL item 1b (14 absent tables = 13 l1_* + chart_facts confirmed missing from prod; build prerequisite before Brahma L1 build). chart_panchanga_cache pre/post: 91→0; all 6 existing tables now at 0 rows; backup pre-L1-wipe-20260609 confirmed in Cloud SQL.
 ---
 
 # Operator Actions Pending
 
-Last updated: 2026-06-08
+Last updated: 2026-06-09
 Single source of truth for all operator actions that require human execution
 (GCP console, production DB, GitHub settings). Updated at each session close.
 
@@ -50,6 +51,39 @@ Apply using psql or Cloud SQL proxy:
 psql $DB_URL -f platform/migrations/140_sarvatobhadra_chakra.sql
 # ... repeat for 141 through 153 in order
 ```
+
+### 1b. ⚠️ BRAHMA L1 BUILD PREREQUISITE — 14 tables absent from prod (confirmed 2026-06-09)
+
+L1 wipe execution (brief `L1_DATA_WIPE_BRIEF v1.0`, 2026-06-09) cross-checked the §2 kill
+list against live prod schema. **14 of 19 target tables do not exist on prod:**
+
+**13 `l1_*` tables (require migrations 140–153 from item 1 above):**
+`l1_sarvatobhadra_positions`, `l1_sarvatobhadra_vedha`, `l1_vedha_extended`,
+`l1_bhrigu_bindu_transits`, `l1_graha_aspects_lifetime`, `l1_time_synchronicity`,
+`l1_phase_locked_anchors`, `l1_varsha_digest`, `l1_tajik_varsha_year_lords`,
+`l1_kota_chakra`, `l1_kalanala_chakra`, `l1_ckn_chakra`, `l1_sapta_shalaka`
+
+**`chart_facts` — absent (unexpected):**
+Was reported populated (65 cells, 2026-06-01 native build) but does not appear in
+`pg_tables` as of this check. Either the table was dropped, or the proxy resolves a
+different DB instance than the one where the build ran. Verify before the Brahma L1 build:
+
+```sql
+-- Must return 1 row (not 0) and not error:
+SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename = 'chart_facts';
+-- If present, check row count:
+SELECT count(*) FROM chart_facts;
+```
+
+If absent: identify the migration that creates `chart_facts` and apply it before any L1
+writer runs. The 13 `l1_*` tables are gated on migrations 140–153 (item 1 above).
+
+**The Brahma L1 build cannot run its writers until all 14 tables exist on prod.**
+The 5 existing Gaṇita tables (`ganita_positions`, `ganita_graha_sthana`, `ganita_dashas`,
+`chart_divisionals`, `chart_panchanga`) are at 0 rows and schema-intact — no action needed
+on those. `chart_panchanga_cache` was wiped: 91 rows → 0 (will rebuild from panchanga data).
+
+---
 
 ### 2. Trigger native chart build — ✅ DONE 2026-06-01
 

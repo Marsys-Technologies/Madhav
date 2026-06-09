@@ -6,7 +6,7 @@
  *
  * Capability: query_dasha_periods
  * Engine: PyJHora 4.8.6
- * Layer: L1 Gaṇita — ganita.dasakrama
+ * Layer: L1 Gaṇita — ga_dashas
  *
  * Stream G deliverable (BRAHMA-G-1).
  */
@@ -51,7 +51,7 @@ export const tool: RetrievalTool = {
   description:
     'Compute Vimshottari dasha mahadasha chain for a chart via PyJHora. ' +
     'Returns mahadasha sequence with lord, start_date, end_date, antardasha tree. ' +
-    'Engine: PyJHora 4.8.6. Layer: L1 Gaṇita / ganita.dasakrama.',
+    'Engine: PyJHora 4.8.6. Layer: L1 Gaṇita / ga_dashas.',
 
   async retrieve(
     _plan: QueryPlan,
