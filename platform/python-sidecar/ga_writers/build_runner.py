@@ -1,9 +1,10 @@
 """
-build_runner.py — GA3 build orchestrator
-=========================================
-Runs the full GA3 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3+GA4 build orchestrator
+=============================================
+Runs the full GA3+GA4 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
+  3b. ga_panchanga → chart_facts (birth-instant panchanga — 31 INVARIANT + 8 DEPENDENT ×5 ayanamshas)
   3. Refresh materialized views (synchronous, required before build 'complete')
   4. Run all gate-validators
   5. Emit FINAL_SUMMARY dict
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
+from ga_writers.ga_panchanga_writer import build_ga_panchanga
 from ga_writers.gates import run_all_gates
 
 
@@ -46,6 +48,7 @@ MATERIALIZED_VIEWS = [
     "mv_chart_ashtakavarga_summary",
     "mv_chart_bhava_bala_summary",
     "mv_cross_ayanamsha_consensus",
+    "mv_chart_panchanga_birth_summary",
 ]
 
 
@@ -98,7 +101,7 @@ def run(
     )
 
     summary: dict[str, Any] = {
-        "session_id": "ga3-chart-facts",
+        "session_id": "ga3-ga4-chart-facts",
         "chart_id": chart_id,
         "build_id": build_id,
         "started_at": started_at,
@@ -158,6 +161,32 @@ def run(
             logger.error("[build_runner] ga_strength FAIL: %s", exc)
             return summary
 
+    # ── Step 3b: ga_panchanga ─────────────────────────────────────────────────
+    logger.info("[build_runner] Step 3b: ga_panchanga")
+    try:
+        pan_summary = build_ga_panchanga(
+            chart_id=chart_id,
+            build_id=build_id,
+            birth_params=birth_params,
+        )
+        summary["steps"]["ga_panchanga"] = {
+            "status": "PASS",
+            "chart_facts_rows": pan_summary["total_chart_facts_rows"],
+            "forensic_pass": pan_summary["forensic_pass"],
+            "invariant_rows": pan_summary["invariant_rows"],
+            "dependent_rows_by_ayanamsha": pan_summary["dependent_rows_by_ayanamsha"],
+        }
+        logger.info(
+            "[build_runner] ga_panchanga PASS: cf=%d invariant=%d",
+            pan_summary["total_chart_facts_rows"],
+            pan_summary["invariant_rows"],
+        )
+    except Exception as exc:
+        summary["steps"]["ga_panchanga"] = {"status": "FAIL", "error": str(exc)}
+        summary["status"] = "FAIL"
+        logger.error("[build_runner] ga_panchanga FAIL: %s", exc)
+        return summary
+
     # ── Step 3: Refresh MVs ───────────────────────────────────────────────────
     logger.info("[build_runner] Step 3: Refresh materialized views")
     try:
@@ -195,10 +224,12 @@ def run(
     # ── Compute totals ────────────────────────────────────────────────────────
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
+    pan_step = summary["steps"].get("ga_panchanga", {})
     total_gp = pos_step.get("ganita_positions_rows", 0)
     total_cf = (
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
+        + pan_step.get("chart_facts_rows", 0)
     )
 
     summary["totals"] = {
@@ -259,13 +290,15 @@ def main() -> None:
         cf_rows = result.get("totals", {}).get("chart_facts_rows", 0)
         gate_overall = result.get("gate_results", {}).get("overall", "UNKNOWN")
 
+        pan_rows = result.get("steps", {}).get("ga_panchanga", {}).get("chart_facts_rows", 0)
         print(f"\n{'='*60}")
-        print(f"GA3 BUILD COMPLETE")
+        print(f"GA3+GA4 BUILD COMPLETE")
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  ganita_positions:    {gp_rows} rows")
-        print(f"  chart_facts:         {cf_rows} rows")
+        print(f"  chart_facts total:   {cf_rows} rows")
+        print(f"    ga_panchanga:      {pan_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
         print(f"{'='*60}")
 
