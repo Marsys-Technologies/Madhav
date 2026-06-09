@@ -23,7 +23,8 @@ ALTER TABLE chart_divisionals
   ADD COLUMN IF NOT EXISTS fact_value_num       NUMERIC,
   ADD COLUMN IF NOT EXISTS fact_subject         TEXT,
   ADD COLUMN IF NOT EXISTS build_id_uuid        UUID,
-  ADD COLUMN IF NOT EXISTS verification_pass_status TEXT,
+  ADD COLUMN IF NOT EXISTS verification_pass_status TEXT
+    CHECK (verification_pass_status IN ('two_pass_verified','classical_match','divergent_flagged')),
   ADD COLUMN IF NOT EXISTS engine_version       TEXT,
   ADD COLUMN IF NOT EXISTS citation_ref         TEXT,
   ADD COLUMN IF NOT EXISTS citation_human       TEXT,
