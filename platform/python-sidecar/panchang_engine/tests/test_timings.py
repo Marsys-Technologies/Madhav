@@ -235,3 +235,91 @@ class TestHora:
                  "hora_jupiter", "hora_venus", "hora_saturn"}
         for t in result:
             assert t.label in valid, f"Invalid hora label: {t.label}"
+
+
+# ===================================================================
+# Task 7: Extended inauspicious/auspicious + homa + day muhurtas
+# ===================================================================
+
+def test_extended_inauspicious_has_varjyam():
+    from panchang_engine.timings import compute_extended_inauspicious
+    from panchang_engine import compute_panchang
+    from datetime import date
+    p = compute_panchang(date(1984, 2, 5), 20.27, 85.84, 330)
+    timings_list = compute_extended_inauspicious(
+        p.sunrise_utc, p.sunset_utc, p.vara.id, p.nakshatra.id, p.nakshatra.end_utc
+    )
+    labels = {t.label for t in timings_list}
+    assert "varjyam" in labels, f"Missing varjyam. Got: {labels}"
+    assert "yamakantaka" in labels, f"Missing yamakantaka. Got: {labels}"
+
+
+def test_extended_auspicious_has_brahma_muhurta():
+    from panchang_engine.timings import compute_extended_auspicious
+    from panchang_engine import compute_panchang
+    from datetime import date
+    p = compute_panchang(date(1984, 2, 5), 20.27, 85.84, 330)
+    timings_list = compute_extended_auspicious(
+        p.sunrise_utc, p.sunset_utc, p.vara.id, p.tithi.id, p.nakshatra.id
+    )
+    labels = {t.label for t in timings_list}
+    assert "brahma_muhurta" in labels, f"Missing brahma_muhurta. Got: {labels}"
+    assert "pratah_sandhya" in labels, f"Missing pratah_sandhya. Got: {labels}"
+    assert "godhuli" in labels, f"Missing godhuli. Got: {labels}"
+
+
+def test_homa_windows_count():
+    from panchang_engine.timings import compute_homa_windows
+    from panchang_engine import compute_panchang
+    from datetime import date
+    p = compute_panchang(date(1984, 2, 5), 20.27, 85.84, 330)
+    windows = compute_homa_windows(p.sunrise_utc, p.sunset_utc)
+    assert len(windows) >= 2
+    labels = {w.label for w in windows}
+    assert "homa_morning" in labels
+
+
+def test_day_muhurtas_count():
+    from panchang_engine.timings import compute_day_muhurtas
+    from panchang_engine import compute_panchang
+    from datetime import date, timedelta
+    p = compute_panchang(date(1984, 2, 5), 20.27, 85.84, 330)
+    # Approximate next sunrise as +24h
+    next_sunrise = p.sunrise_utc + timedelta(hours=24)
+    muhurtas = compute_day_muhurtas(p.sunrise_utc, next_sunrise)
+    assert len(muhurtas) == 30, f"Expected 30 muhurtas, got {len(muhurtas)}"
+    names = [m["name"] for m in muhurtas]
+    assert "Rudra" in names
+
+
+# ===================================================================
+# Task 8: Day-only topics — festivals + day events
+# ===================================================================
+
+def test_festivals_ekadashi():
+    from panchang_engine.timings import compute_festivals
+    festivals = compute_festivals(tithi_id=11, paksha="shukla", masa_purnimanta="Kartika")
+    names = [f["name"] for f in festivals]
+    assert "Ekadashi" in names
+
+
+def test_festivals_purnima():
+    from panchang_engine.timings import compute_festivals
+    festivals = compute_festivals(tithi_id=15, paksha="shukla", masa_purnimanta="Magha")
+    names = [f["name"] for f in festivals]
+    assert "Purnima" in names
+
+
+def test_festivals_empty_for_no_match():
+    from panchang_engine.timings import compute_festivals
+    festivals = compute_festivals(tithi_id=2, paksha="shukla", masa_purnimanta="Chaitra")
+    # Tithi 2 shukla has no major festival rule
+    assert isinstance(festivals, list)
+
+
+def test_day_events_returns_list():
+    from panchang_engine.timings import compute_day_events
+    from datetime import date
+    events = compute_day_events(date(2026, 4, 14), 20.27, 85.84)
+    assert isinstance(events, list)
+    # April 14 is often Sun ingress into Mesha (Sankranti)
