@@ -681,7 +681,719 @@
         "mv_preferred": "mv_chart_bhava_bala_summary"
       },
       "render_template": "House {house} total bhava bala: {total:.4f} rupa ({ayanamsha})."
+    },
+
+    "_a5_note": "GA5 adds 30 esoteric/Tajik/KP/Nadi/Lal Kitab categories. Every row carries 6 Section-B enrichment fields: tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag, vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec.",
+
+    "upagraha_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["DHUMA","VYATIPATA","PARIVESHA","INDRACHAPA","UPAKETU","KALA"],
+      "two_pass_methodology": "swisseph_derivation vs bphs_formula_rederivation tolerance_le_10arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "longitude_tropical": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "sign_lord": {"value_type": "text_enum","enum": ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "nakshatra_lord": {"value_type": "text_enum","enum": ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"],"verification_min": "two_pass_verified"},
+        "pada": {"value_type": "num","unit": null,"range": [1,4],"precision": 0,"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["upagrahas","shadow_grahas"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (upagraha) at {longitude_sidereal:.4f}° sidereal in {sign} ({ayanamsha})."
+    },
+
+    "saturn_derived_point": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["GULIKA_LAHIRI","GULIKA_HINDU","MANDI","YAMAGANDA_SPHUTA","MAANDI"],
+      "two_pass_methodology": "lahiri_reckoning vs hindu_reckoning emitted as separate formula_id rows; variance stored not halt",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "formula_id": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["gulika","mandi","saturn_points"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} at {longitude_sidereal:.4f}° in {sign} ({ayanamsha}, formula={formula_id})."
+    },
+
+    "esoteric_point_bhrigu_bindu": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["BHRIGU_BINDU"],
+      "two_pass_methodology": "midpoint_moon_rahu vs independent_midpoint_formula tolerance_le_10arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["bhrigu_bindu"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Bhrigu Bindu at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_yogi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["YOGI_POINT"],
+      "two_pass_methodology": "two formula variants bphs_93_20 and alt_96_40 emitted as separate formula_id rows; variance logged always",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "nakshatra_lord": {"value_type": "text_enum","enum": ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "formula_id": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["yogi_point","yoga_tara"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Yogi Point ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_avayogi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["AVAYOGI_POINT"],
+      "two_pass_methodology": "two formula variants matching Yogi variants; variance always logged",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "formula_id": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["avayogi"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Avayogi Point ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_mrityu": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["MRITYU_SPHUTA"],
+      "two_pass_methodology": "three variants bphs_ch39 + saravali + tajik_aapamrityu emitted as separate formula_id rows; variance logged",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "formula_id": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["mrityu_sphuta"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Mrityu Sphuta ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_trisphuta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["TRISPHUTA"],
+      "two_pass_methodology": "hora_lagna_primary vs hora_lagna_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["trisphuta"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Trisphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_chatushphuta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["CHATUSHPHUTA"],
+      "two_pass_methodology": "trisphuta_plus_sun primary; independent_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["chatushphuta"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Chatushphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_panchasphuta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["PANCHASPHUTA"],
+      "two_pass_methodology": "two variants with_saturn and with_rahu emitted as separate formula_id rows; variance always logged",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "formula_id": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["panchasphuta"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Panchasphuta ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_pranapada_sphuta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["PRANAPADA_SPHUTA"],
+      "two_pass_methodology": "moon_derived_formula vs independent_sunrise_moon_rederivation tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["pranapada"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Pranapada Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_trikona_dasha_sphuta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["TRIKONA_DASHA_SPHUTA"],
+      "two_pass_methodology": "jaimini_formula vs algebraic_rederivation tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["trikona_dasha"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Trikona Dasha Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_sri_yantra_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["SRI_YANTRA_SUN","SRI_YANTRA_MOON","SRI_YANTRA_LAGNA"],
+      "two_pass_methodology": "tantric_angular_mapping vs reprojection_from_natal_sun tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["sri_yantra"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Sri Yantra) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_brahma": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["BRAHMA_POINT"],
+      "two_pass_methodology": "jaimini_sutram_formula vs independent_algebraic_rederivation tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "assigned_graha": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["brahma_vishnu_shiva"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Brahma Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_vishnu": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["VISHNU_POINT"],
+      "two_pass_methodology": "jaimini_sutram_formula vs independent_algebraic_rederivation tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["brahma_vishnu_shiva"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Vishnu Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "esoteric_point_shiva": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["SHIVA_POINT"],
+      "two_pass_methodology": "jaimini_sutram_formula vs independent_algebraic_rederivation tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["brahma_vishnu_shiva"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Shiva Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "saham_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["SAHAM_PUNYA","SAHAM_VIDYA","SAHAM_VIVAHA","SAHAM_PUTRA","SAHAM_RAJYA","SAHAM_MRITYU","SAHAM_PITRU","SAHAM_MATRU","SAHAM_BANDHU","SAHAM_KARMA","SAHAM_LABHA","SAHAM_MAHATMYA","SAHAM_SATRU","SAHAM_JEEVA","SAHAM_DRAVYA","SAHAM_TAPAS","SAHAM_DHANA","SAHAM_PRASAVA","SAHAM_DUKHA","SAHAM_ROGA","SAHAM_PARADESH","SAHAM_KALI","SAHAM_GATI","SAHAM_BUDDHI","SAHAM_VIVADA","SAHAM_DESHA","SAHAM_PRAKRAMA","SAHAM_PAITRIKA","SAHAM_MANGALYA","SAHAM_STRI","SAHAM_BHRATRI","SAHAM_GRIHA","SAHAM_AKSA","SAHAM_VANIJAKARAKA","SAHAM_KARSAKA","SAHAM_PAASHA","SAHAM_YATNA","SAHAM_KALI2","SAHAM_BHRUGU","SAHAM_ASHA","SAHAM_SASTRA","SAHAM_VIDYUTA","SAHAM_KANDA","SAHAM_VAIRAGYA","SAHAM_MOKSHA","SAHAM_GURU","SAHAM_SEVA","SAHAM_PARAMARTHA","SAHAM_TAPASYA","SAHAM_ISHTA","SAHAM_KULA","SAHAM_AASTHA","SAHAM_AROGA","SAHAM_BHAGYA","SAHAM_HIMA","SAHAM_NAKSHA","SAHAM_DEHA","SAHAM_TANU","SAHAM_UDAYA","SAHAM_MITRA","SAHAM_AMRTA","SAHAM_KIRTIS","SAHAM_BALABALA","SAHAM_TYAGA","SAHAM_BHRISHA","SAHAM_APAMRITYU","SAHAM_SHATRU2","SAHAM_YATRA","SAHAM_SHILA"],
+      "two_pass_methodology": "g14_library_formula vs direct_formula_recomputation day_night_adjustment_validated tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "day_birth": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["saham","lots","arabic_parts"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Saham) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "karaka_chara_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["ATMAKARAKA","AMATYAKARAKA","BHRATRIKARAKA","MATRIKARAKA","PUTRAKARAKA","GNATIKARAKA","DARAKARAKA","STRIKARAKA"],
+      "two_pass_methodology": "rahu_excluded_sort vs rahu_included_sort both emitted if karaka_order_differs; AK_divergence halts build",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "assigned_graha": {"value_type": "text","verification_min": "two_pass_verified"},
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "degree_in_sign": {"value_type": "num","unit": "deg","range": [0.0,30.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "karaka_school": {"value_type": "text_enum","enum": ["parashari_rahu_excluded","kn_rao_rahu_included"],"verification_min": "two_pass_verified"},
+        "karaka_rank": {"value_type": "num","unit": null,"range": [1,8],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["karaka","atmakaraka","karakas"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject}: {assigned_graha} at {degree_in_sign:.4f}° in {sign} ({karaka_school}, {ayanamsha})."
+    },
+
+    "karakamsa_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["KARAKAMSA"],
+      "two_pass_methodology": "ak_d9_sign_primary vs algebraic_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "longitude_d9_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "atmakaraka_graha": {"value_type": "text","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["karakamsa"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Karakamsa: {sign} (AK={atmakaraka_graha}, {ayanamsha})."
+    },
+
+    "swamsa_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["SWAMSA_HOUSE_1","SWAMSA_HOUSE_2","SWAMSA_HOUSE_3","SWAMSA_HOUSE_4","SWAMSA_HOUSE_5","SWAMSA_HOUSE_6","SWAMSA_HOUSE_7","SWAMSA_HOUSE_8","SWAMSA_HOUSE_9","SWAMSA_HOUSE_10","SWAMSA_HOUSE_11","SWAMSA_HOUSE_12"],
+      "two_pass_methodology": "karakamsa_map_primary vs independent_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_number": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["swamsa"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Swamsa House {house_number}: {sign} ({ayanamsha})."
+    },
+
+    "arudha_pada": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["ARUDHA_A1","ARUDHA_A2","ARUDHA_A3","ARUDHA_A4","ARUDHA_A5","ARUDHA_A6","ARUDHA_A7","ARUDHA_A8","ARUDHA_A9","ARUDHA_A10","ARUDHA_A11","ARUDHA_A12","ARUDHA_SU","ARUDHA_MO","ARUDHA_MA","ARUDHA_ME","ARUDHA_JU","ARUDHA_VE","ARUDHA_SA"],
+      "two_pass_methodology": "jaimini_sutram_formula vs algebraic_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["arudha","arudha_lagna","pada"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Arudha) in {sign}, house {house_d1} ({ayanamsha})."
+    },
+
+    "midpoint": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["SUN-MOON","SUN-MAR","SUN-MER","SUN-JUP","SUN-VEN","SUN-SAT","SUN-RAH","SUN-KET","MOON-MAR","MOON-MER","MOON-JUP","MOON-VEN","MOON-SAT","MOON-RAH","MOON-KET","MAR-MER","MAR-JUP","MAR-VEN","MAR-SAT","MAR-RAH","MAR-KET","MER-JUP","MER-VEN","MER-SAT","MER-RAH","MER-KET","JUP-VEN","JUP-SAT","JUP-RAH","JUP-KET","VEN-SAT","VEN-RAH","VEN-KET","SAT-RAH","SAT-KET","RAH-KET","ASC-SUN","ASC-MOON","ASC-MAR","ASC-MER","ASC-JUP","ASC-VEN","ASC-SAT","ASC-RAH","ASC-KET","MC-SUN","MC-MOON","MC-MAR","MC-MER","MC-JUP","MC-VEN","MC-SAT","MC-RAH","MC-KET"],
+      "two_pass_methodology": "direct_midpoint_formula vs independent_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["midpoints"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Midpoint {subject} at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "kp_ruling_planets_natal": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["RP_ASC_LORD","RP_ASC_SUB_LORD","RP_MOON_SIGN_LORD","RP_MOON_STAR_LORD","RP_DAY_LORD"],
+      "two_pass_methodology": "kp_reader_formula vs independent_star_sub_lord_lookup exact_match_required",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "ruling_planet": {"value_type": "text","verification_min": "two_pass_verified"},
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["kp_ruling_planets","kp_rp"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "KP Ruling Planet ({subject}): {ruling_planet} ({ayanamsha})."
+    },
+
+    "kp_cuspal_significators": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["CUSP_1","CUSP_2","CUSP_3","CUSP_4","CUSP_5","CUSP_6","CUSP_7","CUSP_8","CUSP_9","CUSP_10","CUSP_11","CUSP_12"],
+      "two_pass_methodology": "kp_reader_cuspal_significator_rules vs independent_significator_graph_traversal exact_match_required",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "sign_lord": {"value_type": "text","verification_min": "two_pass_verified"},
+        "star_lord": {"value_type": "text","verification_min": "two_pass_verified"},
+        "sub_lord": {"value_type": "text","verification_min": "two_pass_verified"},
+        "significators_json": {"value_type": "jsonb","jsonb_justification": "significator arrays are genuinely irreducible composites varying in length per cusp","verification_min": "two_pass_verified"},
+        "cusp_longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["kp_cuspal","kp_significators"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "KP Cusp {subject}: sign_lord={sign_lord} star_lord={star_lord} sub_lord={sub_lord} ({ayanamsha})."
+    },
+
+    "aprakasha_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["DHWAJA","PATALA","KANDANGA","PIDAA","VIGHNI"],
+      "two_pass_methodology": "bphs_formula vs variant_parashara_hora_shastra tolerance_le_30arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["aprakasha","invisible_grahas"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Aprakasha) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "tajik_hadda_lord": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["HADDA_1","HADDA_2","HADDA_3","HADDA_4","HADDA_5","HADDA_6","HADDA_7","HADDA_8","HADDA_9","HADDA_10","HADDA_11","HADDA_12","HADDA_13","HADDA_14","HADDA_15","HADDA_16","HADDA_17","HADDA_18","HADDA_19","HADDA_20","HADDA_21","HADDA_22","HADDA_23","HADDA_24","HADDA_25","HADDA_26","HADDA_27","HADDA_28","HADDA_29","HADDA_30","HADDA_31","HADDA_32","HADDA_33","HADDA_34","HADDA_35","HADDA_36","HADDA_37","HADDA_38","HADDA_39","HADDA_40","HADDA_41","HADDA_42","HADDA_43","HADDA_44","HADDA_45","HADDA_46","HADDA_47","HADDA_48","HADDA_49","HADDA_50","HADDA_51","HADDA_52","HADDA_53","HADDA_54","HADDA_55","HADDA_56","HADDA_57","HADDA_58","HADDA_59","HADDA_60"],
+      "two_pass_methodology": "tajik_neelakanthi_formula vs independent_classical_table_rederivation exact_5zone_classification",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "lord": {"value_type": "text","verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "zone_start_deg": {"value_type": "num","unit": "deg","range": [0.0,30.0],"precision": 4,"verification_min": "two_pass_verified"},
+        "zone_end_deg": {"value_type": "num","unit": "deg","range": [0.0,30.0],"precision": 4,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["hadda","hadda_lords"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Hadda zone {subject}: lord={lord} in {sign} {zone_start_deg:.1f}°-{zone_end_deg:.1f}° ({ayanamsha})."
+    },
+
+    "tajik_triraashipathi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["TRIRAASHIPATHI"],
+      "two_pass_methodology": "tajik_neelakanthi_primary vs independent_rederivation tolerance_le_1deg",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "lord": {"value_type": "text","verification_min": "two_pass_verified"},
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["triraashipathi","tajik_year_lord"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Triraashipathi: {lord} ({ayanamsha})."
+    },
+
+    "tajik_vargottama_specific": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["TAJIK_VARGOTTAMA"],
+      "two_pass_methodology": "tajik_neelakanthi_primary vs independent_rederivation tolerance_le_1deg",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "is_vargottama": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["tajik_vargottama"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "Tajik Vargottama at {longitude_sidereal:.4f}° in {sign}, is_vargottama={is_vargottama} ({ayanamsha})."
+    },
+
+    "lal_kitab_special_point": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["PAKKA_GHAR_SUN","PAKKA_GHAR_MOON","PAKKA_GHAR_MAR","PAKKA_GHAR_MER","PAKKA_GHAR_JUP","PAKKA_GHAR_VEN","PAKKA_GHAR_SAT","LAL_KITAB_ARUDHA_1","LAL_KITAB_ARUDHA_2","LAL_KITAB_ARUDHA_3"],
+      "two_pass_methodology": "lal_kitab_g41_corpus vs independent_roop_chand_rederivation exact_match_required; absent_g41_floors_to_null_marked",
+      "section_b_enrichment": true,
+      "prerequisite": "G41_LAL_KITAB_CORPUS",
+      "allowed_keys": {
+        "house": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "graha": {"value_type": "text","verification_min": "two_pass_verified"},
+        "absent_prerequisite_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["lal_kitab"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Lal Kitab): house={house} ({ayanamsha})."
+    },
+
+    "maharsi_specific_point": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["VASISHTHA_SPHUTA","ATRI_SPHUTA","BHARADWAJA_SPHUTA","AGASTYA_SPHUTA","GAUTAMA_SPHUTA","KASHYAPA_SPHUTA","VISHWAMITRA_SPHUTA"],
+      "two_pass_methodology": "g44_nadi_rishi_lookup vs classical_nadi_text_formula exact_rishi_assignment; absent_g44_floors_to_null_marked",
+      "section_b_enrichment": true,
+      "prerequisite": "G44_NADI_RISHI_ATTRIBUTION",
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "rishi_name": {"value_type": "text","verification_min": "two_pass_verified"},
+        "absent_prerequisite_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["maharsi","nadi_rishi"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} Maharsi Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "bhrigu_nadi_point": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["BHRIGU_CHAKRA_1","BHRIGU_CHAKRA_2","BHRIGU_CHAKRA_3","BHRIGU_CHAKRA_4","BHRIGU_CHAKRA_5","BHRIGU_CHAKRA_6","BHRIGU_CHAKRA_7","BHRIGU_CHAKRA_8"],
+      "two_pass_methodology": "bhrigu_nadi_formula vs cross_ref_bhrigu_bindu_position tolerance_le_1arcmin",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "house_d1": {"value_type": "num","unit": null,"range": [1,12],"precision": 0,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["bhrigu_nadi"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject} (Bhrigu Nadi) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+    },
+
+    "nakshatra_pada_sensitive": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": ["LAGNA_PADA","MOON_PADA","SUN_PADA","AK_PADA"],
+      "two_pass_methodology": "pada_derivation_primary vs independent_rederivation tolerance_le_1arcsec",
+      "section_b_enrichment": true,
+      "allowed_keys": {
+        "nakshatra": {"value_type": "text_enum","enum": ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"],"verification_min": "two_pass_verified"},
+        "pada": {"value_type": "num","unit": null,"range": [1,4],"precision": 0,"verification_min": "two_pass_verified"},
+        "navamsha_sign": {"value_type": "text_enum","enum": ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"],"verification_min": "two_pass_verified"},
+        "longitude_sidereal": {"value_type": "num","unit": "deg","range": [0.0,360.0],"precision": 6,"verification_min": "two_pass_verified"},
+        "tolerance_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,3600.0],"precision": 2,"verification_min": "two_pass_verified"},
+        "near_sign_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "near_nakshatra_boundary_flag": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "vargottama_flag_at_point": {"value_type": "bool","verification_min": "two_pass_verified"},
+        "formula_provenance_text": {"value_type": "text","verification_min": "two_pass_verified"},
+        "cross_ayanamsha_divergence_arcsec": {"value_type": "num","unit": "arcsec","range": [0.0,360000.0],"precision": 2,"verification_min": "two_pass_verified"}
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {"common_query_patterns": ["nakshatra_pada"],"mv_preferred": "mv_chart_sensitive_points_summary"},
+      "render_template": "{subject}: nakshatra={nakshatra} pada={pada} navamsha={navamsha_sign} ({ayanamsha})."
     }
+
   },
 
   "channels": {
