@@ -28604,3 +28604,50 @@ session_close:
 ### Next session objective
 
 Brahma build arc: author Layer-0 foundation asset writers (Gaṇita + Bodha tier), seed the Asset Contract Registry per `BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md`, author the build job image for `brahma-foundation-bootstrap`.
+
+---
+
+```yaml
+session_id: GANITA-NAMING-REC-S1
+session_type: ops
+branch: feature/ganita-naming-reconciliation
+date: 2026-06-09
+brief: CLAUDECODE_BRIEF_GANITA_NAMING_RECONCILIATION_v1_0.md
+status: COMPLETE
+summary: >
+  Executed L1 Gaṇita naming reconciliation per brief. Phase 1: authored migration 195
+  (DELETE 8 ganita.* + INSERT 8 ga_* + 4 cross-table UPDATEs for depends_on +
+  expected_volume_formula); updated asset_registry_seed.ts (8 asset_ids + 3 cross-layer
+  depends_on); updated pyhora_natal_positions.ts + pyhora_dasha_periods.ts (layer
+  comments); updated graha_sthana_writer.py (live asset field + docstring) +
+  brahma_pipeline.py (comment). Applied to prod DB; verified 8 ga_* rows, 0 ganita.*
+  rows, target_table values unchanged, ga_sensitive.depends_on={bg_reference}.
+  Phase 2: updated L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md, CURRENT_STATE v5.70,
+  SESSION_LOG, CLAUDE.md §D snapshot.
+key_outcomes:
+  - migration_195: APPLIED — 8 ga_* rows live in prod asset_registry
+  - seed_idempotent: asset_registry_seed.ts now matches prod
+  - code_consumers_updated: pyhora_natal_positions.ts, pyhora_dasha_periods.ts,
+      graha_sthana_writer.py, brahma_pipeline.py
+  - docs_updated: L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md
+  - no_physical_table_renamed: ganita_positions/chart_divisionals/ganita_dashas/
+      chart_panchanga all unchanged
+phase_1_commit: d0de442b
+files_touched:
+  - platform/supabase/migrations/195_ganita_naming_reconciliation.sql
+  - platform/scripts/seed/asset_registry_seed.ts
+  - platform/src/lib/retrieve/pyhora_natal_positions.ts
+  - platform/src/lib/retrieve/pyhora_dasha_periods.ts
+  - platform/python-sidecar/brahmagyan/ganita/graha_sthana_writer.py
+  - platform/python-sidecar/pipeline/brahma_pipeline.py
+  - 00_ARCHITECTURE/L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+  - 00_ARCHITECTURE/SESSION_LOG.md
+  - CLAUDE.md
+current_state_updated: true
+current_state_version: 5.70
+next_session_objective: >
+  Nadi corpus expansion (CLAUDECODE_BRIEF_NADI_CORPUS_EXPANSION_v1_0.md) or
+  L1 Gaṇita build campaign (L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md nirīkṣaka audit)
+  per native direction.
+```
