@@ -6,7 +6,7 @@
  *
  * Capability: compute_natal_positions
  * Engine: PyJHora 4.8.6 (native decision: PyJHora IS the JH logic)
- * Layer: L1 Gaṇita — ganita.graha_sthana
+ * Layer: L1 Gaṇita — ga_positions
  *
  * Stream G deliverable (BRAHMA-G-1).
  */
@@ -68,7 +68,7 @@ export const tool: RetrievalTool = {
     'Compute per-chart natal graha positions (graha_sthana) via PyJHora. ' +
     'Returns Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu + Lagna ' +
     'with sign, nakshatra, pada, house, longitude. Engine: PyJHora 4.8.6. ' +
-    'Layer: L1 Gaṇita / ganita.graha_sthana.',
+    'Layer: L1 Gaṇita / ga_positions.',
 
   async retrieve(
     _plan: QueryPlan,

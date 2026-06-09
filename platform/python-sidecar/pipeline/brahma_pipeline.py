@@ -148,7 +148,7 @@ def _l1_ganita(build_id: str, chart: dict) -> dict:
     1. PyJHora (pyjhora_adapter) — primary engine (native decision)
     2. pyswisseph direct (brahmagyan.ganita.engine) — fallback
 
-    Also writes ganita.graha_sthana via graha_sthana_writer.
+    Also writes ga_positions via graha_sthana_writer.
     """
     from brahmagyan.ganita.engine import run_ganita
 

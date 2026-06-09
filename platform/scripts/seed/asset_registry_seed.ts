@@ -346,7 +346,7 @@ const ASSETS: AssetDef[] = [
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────
   {
-    asset_id: 'ganita.graha_sthana',
+    asset_id: 'ga_positions',
     layer: 'ganita', sort_order: 1,
     sanskrit_name: 'Graha-sthāna',
     english_name: 'Positions',
@@ -363,7 +363,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.varga',
+    asset_id: 'ga_vargas',
     layer: 'ganita', sort_order: 2,
     sanskrit_name: 'Varga',
     english_name: 'Divisional charts',
@@ -380,7 +380,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.dasakrama',
+    asset_id: 'ga_dashas',
     layer: 'ganita', sort_order: 3,
     sanskrit_name: 'Daśākrama',
     english_name: 'Vimshottari dasha',
@@ -397,7 +397,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.balatva',
+    asset_id: 'ga_strength',
     layer: 'ganita', sort_order: 4,
     sanskrit_name: 'Balatva',
     english_name: 'Strength tables',
@@ -414,7 +414,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: false, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.suksmabindu',
+    asset_id: 'ga_sensitive',
     layer: 'ganita', sort_order: 5,
     sanskrit_name: 'Sūkṣmabindu',
     english_name: 'Sensitive points',
@@ -431,7 +431,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: false, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.pancanga_janma',
+    asset_id: 'ga_panchanga',
     layer: 'ganita', sort_order: 6,
     sanskrit_name: 'Pañcāṅga-janma',
     english_name: 'Birth panchanga',
@@ -448,7 +448,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.sade_sati',
+    asset_id: 'ga_sade_sati',
     layer: 'ganita', sort_order: 7,
     sanskrit_name: 'Sāḍesātī',
     english_name: 'Sade Sati periods',
@@ -465,7 +465,7 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: false, estimated_seconds: null,
   },
   {
-    asset_id: 'ganita.tajaka',
+    asset_id: 'ga_tajaka',
     layer: 'ganita', sort_order: 8,
     sanskrit_name: 'Tājaka',
     english_name: 'Tajaka Varshaphal',
@@ -632,10 +632,10 @@ const ASSETS: AssetDef[] = [
     count_sql: 'SELECT count(*) FROM kala_timeline WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('kala_timeline')",
     target_floor: null,
-    expected_volume_formula: 'ACTUAL(ganita.dasakrama) + ACTUAL(bg_ephemeris) * TRANSITS_PER_DAY',
+    expected_volume_formula: 'ACTUAL(ga_dashas) + ACTUAL(bg_ephemeris) * TRANSITS_PER_DAY',
     expected_volume_inputs: null,
     volume_explanation: 'Dasha rows + transit event days; coefficient TRANSITS_PER_DAY measured on first build with ephemeris lit',
-    depends_on: ['ganita.dasakrama', 'bg_ephemeris'],
+    depends_on: ['ga_dashas', 'bg_ephemeris'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -669,7 +669,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from transit analysis over sensitive points; count depends on graha configuration',
-    depends_on: ['kala.kalasutra', 'ganita.suksmabindu'],
+    depends_on: ['kala.kalasutra', 'ga_sensitive'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -722,7 +722,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from multi-factor timing analysis; count depends on query window',
-    depends_on: ['kala.kalasutra', 'ganita.pancanga_janma'],
+    depends_on: ['kala.kalasutra', 'ga_panchanga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

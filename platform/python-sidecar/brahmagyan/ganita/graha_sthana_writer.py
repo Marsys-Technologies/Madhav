@@ -1,6 +1,6 @@
 """
-brahmagyan.ganita.graha_sthana_writer — Asset writer for ganita.graha_sthana
-=============================================================================
+brahmagyan.ganita.graha_sthana_writer — Asset writer for ga_positions
+======================================================================
 
 Uses PyJHora as the computation engine (native decision: PyJHora IS the JH logic).
 Writes per-chart natal positions to the `ganita_graha_sthana` table.
@@ -15,7 +15,7 @@ Acceptance contract (BRAHMA-G-1):
   - Moon in Purva Bhadrapada for native
   - Source citation: PyJHora / pyjhora_adapter
 
-Stream G deliverable: ganita.graha_sthana asset writer
+Stream G deliverable: ga_positions asset writer
 """
 from __future__ import annotations
 
@@ -284,5 +284,5 @@ def run_graha_sthana(
         "ayanamsha": ayanamsha,
         "rows_written": rows,
         "engine": "pyjhora",
-        "asset": "ganita.graha_sthana",
+        "asset": "ga_positions",
     }
