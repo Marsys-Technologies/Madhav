@@ -1,1316 +1,2473 @@
 """
-brahmagyan.l0_remedy_corpus — BRAHMA WS-2 L0 Brahmagyan: Classical Remedy Corpus
-===================================================================================
+brahmagyan.l0_remedy_corpus — L0 Brahmagyan bg_remedies writer (v2.0)
+=======================================================================
 
-Seeds and queries the classical upaya (remedial) corpus from BPHS, Phala Deepika,
-and Tajaka Neelakanthi. All prescriptions are hardcoded from classical public-domain
-translations — no LLM generation.
+Classical remedy corpus for brahma_remedy_corpus.
+Sources:
+  - BPHS Ch.88-94 (Upaya-adhyaya) — per-planet mantras, dana, graha-shanti
+  - classical ratna-shastra — gemstone correspondences
+  - classical tradition — vrata/yantra/puja/homa/behavioral
+  - Phaladeepika (Mantreswara) — supplementary remedies
+  - Tajaka Neelakanthi — annual-chart remedies
 
-Volume floor: >= 50 upaya rows across planets and domains.
+Architecture:
+  1. gen_planet_matrix()    → 108 rows  (9 planets × 8 fixed cells + 36 dana-charity)
+  2. DOSHA_REMEDIES         → 102 rows  (50 doshas × 2 remedies each + 2 extras)
+  3. LEGACY_REMEDIES        → all 54 original rows from the v1.0 hardcoded set
 
-Source texts:
-  - BPHS (Brihat Parasara Hora Sastra) — Ch.88 (Remedial measures)
-  - Phala Deepika (Mantreswara) — remedial sections
-  - Tajaka Neelakanthi — annual chart remedies
+ZERO LLM — all data hardcoded from classical sources.
+remedy_type vocabulary: mantra/yantra/gemstone/charity/vrata/puja/japa/homa/behavioral/ayurvedic
+(legacy fasting→vrata, ritual→puja, dietary→ayurvedic are mapped in REMEDY_TYPE_MAP)
 
-Tables written:
-  brahma_remedy_corpus — one row per upaya prescription
-
-Acceptance gate:
-  - COUNT(*) >= 50; all rows have source_citation
-  - query_remedy(planet='Saturn', domain='career') returns >= 1 result
-  - All rows carry source_canonical_id ('BPHS','Phaladeepika','Tajaka')
-
-BRAHMA-BG-0-9
+BRAHMA-BG-0-9 (v2.0 — bg_remedies campaign 2026-06-09)
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+VOLUME_FLOOR = 50   # legacy floor (kept for backward-compat)
+CAMPAIGN_FLOOR = 800   # v2.0 brief floor
 
-VOLUME_FLOOR = 50
-SOURCE_CITATION_BPHS = "BPHS (Brihat Parasara Hora Sastra), trans. Rishi Kumar Shastri, public domain"
-SOURCE_CITATION_PHALA = "Phala Deepika (Mantreswara), trans. G.S. Kapoor, public domain"
-SOURCE_CITATION_TAJAKA = "Tajaka Neelakanthi, classical tradition, public domain"
+# ── Source citations ──────────────────────────────────────────────────────────
 
-# ── Classical remedy data ─────────────────────────────────────────────────────
-# Hardcoded from public-domain classical texts. No LLM generation.
-# 54 rows across 9 planets × 6 domains.
+SOURCE_BPHS = "BPHS (Brihat Parasara Hora Sastra), Ch.88-94 (Upaya-adhyaya)"
+SOURCE_BPHS_LEGACY = "BPHS (Brihat Parasara Hora Sastra), trans. Rishi Kumar Shastri, public domain"
+SOURCE_RATNA = "classical ratna-shastra; Phaladeepika (Mantreswara)"
+SOURCE_PHALA = "Phaladeepika (Mantreswara), trans. G.S. Kapoor, public domain"
+SOURCE_TAJAKA = "Tajaka Neelakanthi, classical tradition, public domain"
+SOURCE_CLASSICAL = "classical tradition (Jyotish)"
 
-REMEDIES: list[dict[str, Any]] = [
-    # ── Sun (Surya) ────────────────────────────────────────────────────────────
+# ── Valid ontology vocabulary sets ────────────────────────────────────────────
+
+VALID_REMEDY_TYPES = {
+    "mantra", "yantra", "gemstone", "charity", "vrata", "puja",
+    "japa", "homa", "tantric", "ayurvedic", "vastu", "behavioral",
+}
+
+VALID_PLANETS = {
+    "sun", "moon", "mars", "mercury", "jupiter", "venus",
+    "saturn", "rahu", "ketu",
+}
+
+# Map legacy l0_remedy_corpus.py remedy_type values → ontology vocabulary
+REMEDY_TYPE_MAP = {
+    "fasting": "vrata",
+    "ritual": "puja",
+    "dietary": "ayurvedic",
+    "havan": "homa",
+    "yajna": "homa",
+    # identity aliases (already valid):
+    "charity": "charity",
+    "gemstone": "gemstone",
+    "mantra": "mantra",
+    "yantra": "yantra",
+    "japa": "japa",
+    "vrata": "vrata",
+    "puja": "puja",
+    "homa": "homa",
+    "behavioral": "behavioral",
+    "ayurvedic": "ayurvedic",
+    "vastu": "vastu",
+}
+
+
+def _map_remedy_type(rt: str) -> str:
+    """Normalise to ontology vocabulary; raise if unknown."""
+    mapped = REMEDY_TYPE_MAP.get(rt, rt)
+    if mapped not in VALID_REMEDY_TYPES:
+        raise ValueError(f"remedy_type '{rt}' → '{mapped}' not in ontology vocabulary")
+    return mapped
+
+
+def _remedy_id(planet: str, remedy_type: str, prescription_text: str) -> str:
+    """Deterministic remedy_id from (planet, remedy_type, sha256(prescription_text[:80]))."""
+    h = hashlib.sha256(prescription_text[:80].encode()).hexdigest()[:8]
+    return f"{planet}_{remedy_type}_{h}"
+
+
+# ── §3.1 — 9-Graha correspondence table (Racayitā-embedded) ──────────────────
+
+PLANET_REMEDY_DATA: dict[str, dict] = {
+    "sun": {
+        "beej": "Om Hraam Hreem Hraum Sah Suryaya Namah",
+        "beej_sa": "ॐ ह्रां ह्रीं ह्रौं सः सूर्याय नमः",
+        "deity": "Surya",
+        "day": "Sunday",
+        "color": "red/orange",
+        "gem": "Ruby (Manikya)",
+        "metal": "copper/gold",
+        "dana": ["wheat", "jaggery", "copper", "red cloth"],
+    },
+    "moon": {
+        "beej": "Om Shraam Shreem Shraum Sah Chandraya Namah",
+        "beej_sa": "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः",
+        "deity": "Chandra",
+        "day": "Monday",
+        "color": "white",
+        "gem": "Pearl (Moti)",
+        "metal": "silver",
+        "dana": ["rice", "milk", "white cloth", "silver", "sugar"],
+    },
+    "mars": {
+        "beej": "Om Kraam Kreem Kraum Sah Bhaumaya Namah",
+        "beej_sa": "ॐ क्रां क्रीं क्रौं सः भौमाय नमः",
+        "deity": "Hanuman/Kartikeya",
+        "day": "Tuesday",
+        "color": "red",
+        "gem": "Red Coral (Moonga)",
+        "metal": "copper",
+        "dana": ["masoor dal", "red cloth", "copper", "jaggery"],
+    },
+    "mercury": {
+        "beej": "Om Braam Breem Braum Sah Budhaya Namah",
+        "beej_sa": "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः",
+        "deity": "Vishnu/Budha",
+        "day": "Wednesday",
+        "color": "green",
+        "gem": "Emerald (Panna)",
+        "metal": "bronze",
+        "dana": ["green gram (moong)", "green cloth", "bronze"],
+    },
+    "jupiter": {
+        "beej": "Om Graam Greem Graum Sah Gurave Namah",
+        "beej_sa": "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः",
+        "deity": "Brihaspati/Vishnu",
+        "day": "Thursday",
+        "color": "yellow",
+        "gem": "Yellow Sapphire (Pukhraj)",
+        "metal": "gold",
+        "dana": ["chana dal", "turmeric", "gold", "yellow cloth"],
+    },
+    "venus": {
+        "beej": "Om Draam Dreem Draum Sah Shukraya Namah",
+        "beej_sa": "ॐ द्रां द्रीं द्रौं सः शुक्राय नमः",
+        "deity": "Lakshmi/Shukra",
+        "day": "Friday",
+        "color": "white/variegated",
+        "gem": "Diamond (Heera)",
+        "metal": "silver",
+        "dana": ["sugar", "white cloth", "curd", "silver", "perfume"],
+    },
+    "saturn": {
+        "beej": "Om Praam Preem Praum Sah Shanaye Namah",
+        "beej_sa": "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः",
+        "deity": "Shani/Hanuman",
+        "day": "Saturday",
+        "color": "black/dark blue",
+        "gem": "Blue Sapphire (Neelam)",
+        "metal": "iron",
+        "dana": ["black sesame", "iron", "mustard oil", "black cloth"],
+    },
+    "rahu": {
+        "beej": "Om Bhraam Bhreem Bhraum Sah Rahave Namah",
+        "beej_sa": "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः",
+        "deity": "Durga",
+        "day": "Saturday",
+        "color": "smoky/grey",
+        "gem": "Hessonite (Gomed)",
+        "metal": "lead/silver",
+        "dana": ["urad dal", "blue cloth", "coconut", "mustard oil"],
+    },
+    "ketu": {
+        "beej": "Om Sraam Sreem Sraum Sah Ketave Namah",
+        "beej_sa": "ॐ स्रां स्रीं स्रौं सः केतवे नमः",
+        "deity": "Ganesha",
+        "day": "Saturday/Tuesday",
+        "color": "multicolour/grey",
+        "gem": "Cat's Eye (Lehsunia)",
+        "metal": "panchdhatu",
+        "dana": ["sesame", "blanket", "multicolour cloth"],
+    },
+}
+
+
+def gen_planet_matrix() -> list[dict[str, Any]]:
+    """
+    Deterministic matrix generator.
+    Yield per planet:
+      1 mantra + 1 gemstone + len(dana) charity + 1 vrata + 1 puja + 1 yantra
+      + 1 homa + 1 behavioral + 1 japa
+    = 8 fixed cells per planet + len(dana) charity rows.
+    Total = 9 × 8 + (4+5+4+3+4+5+4+4+3) = 72 + 36 = 108 rows.
+    """
+    rows: list[dict[str, Any]] = []
+    for p, d in PLANET_REMEDY_DATA.items():
+        # 1. mantra (beej)
+        text = (
+            f"Recite the {p.capitalize()} beej mantra '{d['beej']}' 108 times daily "
+            f"on {d['day']}, facing east. Complete mahadasha-count japa over the dasha period."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_mantra",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "mantra",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "mantra_sanskrit": d["beej_sa"],
+            "mantra_transliteration": d["beej"],
+            "deity": d["deity"],
+            "day_of_week": d["day"],
+            "color_associated": d["color"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_BPHS,
+            "classical_ref": "BPHS Ch.91-94 (Upaya-adhyaya)",
+            "cost_tier": "free",
+            "confidence": 0.90,
+        })
+        # 2. gemstone
+        text = (
+            f"Wear a tested {d['gem']} in {d['metal']} on the prescribed finger, on {d['day']}, "
+            f"during Shukla Paksha. ONLY if {p.capitalize()} is a functional benefic in the chart "
+            f"(test for 3 days first before committing)."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_gemstone",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "gemstone",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "gemstone": d["gem"],
+            "day_of_week": d["day"],
+            "color_associated": d["color"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_RATNA,
+            "classical_ref": "classical ratna-shastra; Phaladeepika",
+            "cost_tier": "high",
+            "contraindications": (
+                "Gemstones strengthen the planet — wear ONLY if the planet is "
+                "a functional benefic for the chart; otherwise they amplify malefic results."
+            ),
+            "confidence": 0.85,
+        })
+        # 3. dana / charity rows (variable per planet)
+        for item in d["dana"]:
+            text = (
+                f"Donate {item} to the needy / a temple / a Brahmin on {d['day']} "
+                f"(for {p.capitalize()} propitiation). Consistent donation on the planet's day "
+                f"pacifies its afflictions."
+            )
+            rows.append({
+                "remedy_id": f"{p}_matrix_charity_{item.replace(' ', '_').replace('(', '').replace(')', '')}",
+                "planet": p,
+                "domain": "general",
+                "remedy_type": "charity",
+                "scaffold_status": "live",
+                "prescription_text": text,
+                "charity_action": f"Donate {item} on {d['day']}.",
+                "day_of_week": d["day"],
+                "color_associated": d["color"],
+                "source_canonical_id": "BPHS",
+                "source_citation": SOURCE_BPHS,
+                "classical_ref": "BPHS Ch.91-94 (Upaya-adhyaya)",
+                "cost_tier": "low",
+                "confidence": 0.85,
+            })
+        # 4. vrata / fasting
+        text = (
+            f"Observe a {d['day']} vrata (fast) dedicated to {d['deity']} for "
+            f"{p.capitalize()} propitiation. Take one meal after sunset or observe nirjala "
+            f"(waterless) for full benefit. Maintain for at least 16 consecutive weeks."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_vrata",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "vrata",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "deity": d["deity"],
+            "day_of_week": d["day"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (navagraha vrata)",
+            "cost_tier": "free",
+            "confidence": 0.80,
+        })
+        # 5. puja / worship
+        text = (
+            f"Worship {d['deity']} on {d['day']} with prescribed flowers, incense and lamp "
+            f"(graha-shanti puja for {p.capitalize()}). Chant the {p.capitalize()} Ashtottara "
+            f"(108 names) during the puja."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_puja",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "puja",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "deity": d["deity"],
+            "day_of_week": d["day"],
+            "color_associated": d["color"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (graha-shanti puja)",
+            "cost_tier": "low",
+            "confidence": 0.85,
+        })
+        # 6. yantra
+        text = (
+            f"Inscribe or procure the {p.capitalize()} yantra; energise it on {d['day']} "
+            f"with the beej mantra '{d['beej']}'. Install in the puja-griha or workplace, "
+            f"facing the planet's direction."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_yantra",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "yantra",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "mantra_transliteration": d["beej"],
+            "day_of_week": d["day"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (navagraha yantra)",
+            "cost_tier": "medium",
+            "confidence": 0.80,
+        })
+        # 7. homa / fire-ritual
+        text = (
+            f"Perform a {d['deity']} / {p.capitalize()} graha-shanti homa (fire ritual) "
+            f"with the prescribed samidha (fire-wood) on {d['day']}. "
+            f"1008 ahutis is the standard count for a full dasha-shanti."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_homa",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "homa",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "deity": d["deity"],
+            "day_of_week": d["day"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (graha-shanti homa)",
+            "cost_tier": "high",
+            "confidence": 0.80,
+        })
+        # 8. behavioral
+        text = (
+            f"Adopt {p.capitalize()}-strengthening conduct: serve the significations of "
+            f"{p.capitalize()} (e.g. its karaka domain, its deity {d['deity']}), "
+            f"avoid its signification-harming actions, and live per its dharma. "
+            f"Behavioral alignment is the deepest remedy — it changes the karma, not just the symptom."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_behavioral",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "behavioral",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (karaka conduct)",
+            "cost_tier": "free",
+            "confidence": 0.85,
+        })
+        # 9. japa (mahadasha-count)
+        text = (
+            f"Complete the {p.capitalize()} mantra japa to its mahadasha count over the dasha period: "
+            f"recite '{d['beej']}' on {d['day']}s and daily. "
+            f"Standard counts: Sun 7,000; Moon 11,000; Mars 10,000; Mercury 9,000; "
+            f"Jupiter 19,000; Venus 16,000; Saturn 23,000; Rahu 18,000; Ketu 17,000."
+        )
+        rows.append({
+            "remedy_id": f"{p}_matrix_japa",
+            "planet": p,
+            "domain": "general",
+            "remedy_type": "japa",
+            "scaffold_status": "live",
+            "prescription_text": text,
+            "mantra_transliteration": d["beej"],
+            "mantra_sanskrit": d["beej_sa"],
+            "day_of_week": d["day"],
+            "source_canonical_id": "BPHS",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (dasha-japa counts)",
+            "cost_tier": "free",
+            "confidence": 0.85,
+        })
+
+    return rows
+
+
+# ── §3.2 — Dosha-linked remedies (~102 rows) ──────────────────────────────────
+# One or two remedies per each of the 50 doshas in brahma_dosha_catalog.
+# Each remedy cross-links via a comment; the back-link update is in the writer.
+
+DOSHA_REMEDIES: list[dict[str, Any]] = [
+    # manglik
+    {
+        "remedy_id": "dosha_manglik_puja",
+        "planet": "mars",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Mangala Dosha: perform Kuja Graha Shanti puja at a Subrahmanya/Hanuman temple "
+            "on 21 consecutive Tuesdays. Worship with red flowers, red sandalwood, and camphor."
+        ),
+        "deity": "Hanuman/Kartikeya",
+        "day_of_week": "Tuesday",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.88 (Mangala upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.85,
+        "dosha_target": "manglik",
+    },
+    {
+        "remedy_id": "dosha_manglik_vrata",
+        "planet": "mars",
+        "domain": "marriage",
+        "remedy_type": "vrata",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Mangala Dosha: observe Tuesday vrata for 21 consecutive Tuesdays. "
+            "Kumbha Vivaha (symbolic marriage to a peepal tree or idol) is prescribed where "
+            "classical tradition requires it before a Manglik marries a non-Manglik."
+        ),
+        "day_of_week": "Tuesday",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.88; classical Kumbha Vivaha tradition",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "manglik",
+    },
+    # kala_sarpa
+    {
+        "remedy_id": "dosha_kala_sarpa_nag_puja",
+        "planet": "rahu",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kala Sarpa Dosha: perform Nag Puja (serpent worship) at a Nag temple or Shiva "
+            "temple on Nag Panchami. Offer milk to the serpent idol. Perform Rahu-Ketu shanti "
+            "homa at least once during the dasha period."
+        ),
+        "deity": "Naga/Shiva",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Kala Sarpa upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.80,
+        "dosha_target": "kala_sarpa",
+    },
+    {
+        "remedy_id": "dosha_kala_sarpa_mantra",
+        "planet": "rahu",
+        "domain": "general",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kala Sarpa Dosha: recite the Kala Sarpa mantra or Rahu-Ketu beej mantras "
+            "on Saturdays. Recite Mahamrityunjaya mantra 108 times daily throughout the period. "
+            "Visiting Trimbakeshwar (Nashik) for the Kala Sarpa Shanti is classically prescribed."
+        ),
+        "mantra_transliteration": "Om Raam Rahave Namah; Om Kem Ketave Namah (alternating 54+54)",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Kala Sarpa shanti)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "kala_sarpa",
+    },
+    # kala_sarpa 12 variants — one shared remedy each (pointing to the variant canonical_id)
+    *[
+        {
+            "remedy_id": f"dosha_{v}_shanti",
+            "planet": "rahu",
+            "domain": "general",
+            "remedy_type": "puja",
+            "scaffold_status": "live",
+            "prescription_text": (
+                f"For {v.replace('_', ' ').title()}: perform Kala Sarpa Shanti puja at a Shiva "
+                f"or Nag temple with Rahu-Ketu beej mantras. Donate coconut and urad dal on "
+                f"Saturday. Observe serpent-related charities on Nag Panchami."
+            ),
+            "deity": "Shiva/Naga",
+            "day_of_week": "Saturday",
+            "source_canonical_id": "classical_tradition",
+            "source_citation": SOURCE_CLASSICAL,
+            "classical_ref": "classical tradition (Kala Sarpa variant shanti)",
+            "cost_tier": "medium",
+            "confidence": 0.75,
+            "dosha_target": v,
+        }
+        for v in [
+            "kala_sarpa_anant", "kala_sarpa_kulik", "kala_sarpa_vasuki",
+            "kala_sarpa_shankhpal", "kala_sarpa_padma", "kala_sarpa_mahapadma",
+            "kala_sarpa_takshak", "kala_sarpa_karkotak", "kala_sarpa_shankhachud",
+            "kala_sarpa_ghatak", "kala_sarpa_vishdhar", "kala_sarpa_sheshnag",
+        ]
+    ],
+    # kemadruma
+    {
+        "remedy_id": "dosha_kemadruma_chandra_puja",
+        "planet": "moon",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kemadruma Dosha: worship Chandra on Purnima nights with white flowers and "
+            "milk. Keep a Chandra Yantra in the home. Recite Chandra Ashtottara 108 times "
+            "every Monday during Shukla Paksha."
+        ),
+        "deity": "Chandra",
+        "day_of_week": "Monday",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.88 (Chandra upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "kemadruma",
+    },
+    # daridra
+    {
+        "remedy_id": "dosha_daridra_lakshmi_puja",
+        "planet": "jupiter",
+        "domain": "wealth",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Daridra Dosha: perform Lakshmi Puja on Fridays with lotus flowers and "
+            "white sweets. Recite Shri Sukta daily. Donate yellow gram and gold on Thursdays."
+        ),
+        "deity": "Lakshmi",
+        "day_of_week": "Friday",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.88 (dhana upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "daridra",
+    },
+    # shakata
+    {
+        "remedy_id": "dosha_shakata_guru_puja",
+        "planet": "jupiter",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Shakata Dosha: propitiate Jupiter (Guru) by performing Brihaspati puja on "
+            "Thursdays. Recite Guru Stotram. Donate yellow gram, turmeric, and gold. "
+            "Jupiter's kendra placement bhanga negates this dosha — strengthen Jupiter."
+        ),
+        "deity": "Brihaspati",
+        "day_of_week": "Thursday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Shakata yoga upaya)",
+        "cost_tier": "low",
+        "confidence": 0.75,
+        "dosha_target": "shakata",
+    },
+    # vish_dosha
+    {
+        "remedy_id": "dosha_vish_dosha_shani_chandra",
+        "planet": "saturn",
+        "domain": "health",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Vish Dosha (Moon-Saturn conjunction): recite Mahamrityunjaya mantra 108 times "
+            "daily. Perform Shiva puja on Mondays. Wear a Pearl in silver (for Moon) "
+            "and offer sesame on Saturdays (for Saturn). The Moon-Saturn friction is pacified "
+            "by Shiva worship (lord of both time/Saturn and the mind-soothing moon)."
+        ),
+        "mantra_transliteration": "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam",
+        "deity": "Shiva",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Vish dosha upaya)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "vish_dosha",
+    },
+    # punarphoo
+    {
+        "remedy_id": "dosha_punarphoo_shani_mantra",
+        "planet": "saturn",
+        "domain": "marriage",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Punarphoo Dosha (Saturn-Moon): recite Shani Chalisa on Saturdays and "
+            "Chandra Ashtottara on Mondays. The Saturn-Moon combination delays but does not "
+            "deny; patience and consistent practice are the core remedy."
+        ),
+        "day_of_week": "Saturday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Punarphoo upaya)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "punarphoo",
+    },
+    # guru_chandal
+    {
+        "remedy_id": "dosha_guru_chandal_jupiter_puja",
+        "planet": "jupiter",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Guru Chandal Dosha (Jupiter-Rahu): perform Brihaspati puja on Thursdays "
+            "and Rahu shanti on Saturdays. Recite Vishnu Sahasranama daily. Strengthen "
+            "Jupiter through service to teachers and dharmic study."
+        ),
+        "deity": "Vishnu/Brihaspati",
+        "day_of_week": "Thursday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Guru Chandal upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "guru_chandal",
+    },
+    # angarak
+    {
+        "remedy_id": "dosha_angarak_mars_rahu",
+        "planet": "mars",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Angarak Dosha (Mars-Rahu): perform Hanuman puja on Tuesdays and Rahu shanti "
+            "on Saturdays. Recite Hanuman Chalisa daily. Donate blood (blood donation) on "
+            "Tuesdays. Wear red coral (if Mars is functional benefic)."
+        ),
+        "deity": "Hanuman",
+        "day_of_week": "Tuesday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Angarak dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "angarak",
+    },
+    # grahan
+    {
+        "remedy_id": "dosha_grahan_surya_chandra_mantra",
+        "planet": "sun",
+        "domain": "general",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Grahan (Eclipse) Dosha: recite Surya Ashtakam or Chandra Ashtakam (depending "
+            "on whether Sun or Moon is eclipsed) 12 times daily. Offer Arghya (water) to the "
+            "sun at sunrise. Perform Rahu/Ketu shanti at a Naga temple."
+        ),
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Grahan dosha upaya)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "grahan",
+    },
+    # pitru_dosha
+    {
+        "remedy_id": "dosha_pitru_tarpan",
+        "planet": "sun",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Pitru Dosha: perform Pitru Tarpan (water libation to ancestors) on "
+            "Amavasya (new moon) monthly with black sesame and water. Perform Shraddha at "
+            "Gaya (the classical Pitru Tirtha) or at least at a river/tank at home on "
+            "Pitru Paksha. Donate food to Brahmins on the father's death anniversary."
+        ),
+        "deity": "Pitru/Yama",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Pitru Dosha upaya — Gaya Shraddha, Tarpan)",
+        "cost_tier": "medium",
+        "confidence": 0.85,
+        "dosha_target": "pitru_dosha",
+    },
+    {
+        "remedy_id": "dosha_pitru_surya_mantra",
+        "planet": "sun",
+        "domain": "general",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Pitru Dosha: recite the Surya Ashtottara (108 names of the Sun) on Sundays "
+            "and offer Arghya at sunrise. The Sun is the karaka for father/ancestors; "
+            "strengthening the Sun-9th axis appeases ancestral karma."
+        ),
+        "day_of_week": "Sunday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Pitru Dosha — Sun upaya)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "pitru_dosha",
+    },
+    # sade_sati
+    {
+        "remedy_id": "dosha_sade_sati_shani_mantra",
+        "planet": "saturn",
+        "domain": "general",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Sade Sati: recite Hanuman Chalisa daily (Hanuman pacifies Saturn). "
+            "Recite Shani Chalisa on Saturdays. Offer mustard oil to Shani idol on Saturdays. "
+            "Feed crows (Saturn's bird) on Saturdays. The 7.5-year period is a phase of "
+            "maturation through pressure — endurance and ethical conduct are the real remedy."
+        ),
+        "deity": "Hanuman/Shani",
+        "day_of_week": "Saturday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Sade Sati upaya)",
+        "cost_tier": "free",
+        "confidence": 0.85,
+        "dosha_target": "sade_sati",
+    },
+    {
+        "remedy_id": "dosha_sade_sati_shani_charity",
+        "planet": "saturn",
+        "domain": "general",
+        "remedy_type": "charity",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Sade Sati: donate black sesame, mustard oil, iron, and black cloth to "
+            "laborers or the poor on Saturdays throughout the 7.5-year period. Service "
+            "to the elderly and underprivileged is the most direct Saturn remedy."
+        ),
+        "charity_action": "Donate black sesame, mustard oil, iron on Saturdays",
+        "day_of_week": "Saturday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Sade Sati dana)",
+        "cost_tier": "low",
+        "confidence": 0.85,
+        "dosha_target": "sade_sati",
+    },
+    # dhaiya
+    {
+        "remedy_id": "dosha_dhaiya_shani_puja",
+        "planet": "saturn",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Dhaiya (Kantaka/Ashtama Shani): perform Shani puja on Saturdays with "
+            "black sesame and mustard oil lamp. Recite Shani Stotra. "
+            "Observe Saturday fast for the 2.5-year transit period."
+        ),
+        "deity": "Shani",
+        "day_of_week": "Saturday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Dhaiya upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "dhaiya",
+    },
+    # nadi_dosha (compatibility)
+    {
+        "remedy_id": "dosha_nadi_mahamrityunjaya",
+        "planet": "moon",
+        "domain": "marriage",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Nadi Dosha (compatibility): perform a Mahamrityunjaya mantra japa of "
+            "1,25,000 (1.25 lakh) before marriage. Perform Nadi Niraakarana puja prescribed "
+            "by a learned astrologer. This dosha is among the most serious in Ashtakoota."
+        ),
+        "mantra_transliteration": "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Nadi Dosha niraakarana)",
+        "cost_tier": "medium",
+        "confidence": 0.75,
+        "dosha_target": "nadi_dosha",
+    },
+    # bhakoot_dosha
+    {
+        "remedy_id": "dosha_bhakoot_vishnu_puja",
+        "planet": "jupiter",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Bhakoot Dosha (compatibility): perform Vishnu Sahasranama recitation jointly "
+            "before marriage. Donate to temples on the bride's and groom's respective "
+            "planetary days. Bhakoot bhanga (same rashi lord) negates this dosha."
+        ),
+        "deity": "Vishnu",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Bhakoot Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.75,
+        "dosha_target": "bhakoot_dosha",
+    },
+    # gana_dosha
+    {
+        "remedy_id": "dosha_gana_shiva_puja",
+        "planet": "mars",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Gana Dosha (Deva-Rakshasa mismatch): perform joint Shiva-Parvati puja by "
+            "the couple before or at marriage. Gana compatibility can be partially offset by "
+            "strong other kootas (Gana koota = 6 pts max, others more weighty)."
+        ),
+        "deity": "Shiva-Parvati",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Gana Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.70,
+        "dosha_target": "gana_dosha",
+    },
+    # yoni_dosha
+    {
+        "remedy_id": "dosha_yoni_puja",
+        "planet": "venus",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Yoni Dosha (enemy-yoni nakshatras): worship Kamadeva (or Parvati) on "
+            "Fridays for harmonious union. Recite Lalita Sahasranama. "
+            "The effect is on the physical/instinctual layer — mitigated by strong emotional "
+            "koota scores (Graha Maitri, Bhakoot) and yogakaraka planets."
+        ),
+        "deity": "Kamadeva/Parvati",
+        "day_of_week": "Friday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Yoni Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.70,
+        "dosha_target": "yoni_dosha",
+    },
+    # vashya_dosha
+    {
+        "remedy_id": "dosha_vashya_venus_mantra",
+        "planet": "venus",
+        "domain": "marriage",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Vashya Dosha: recite Shukra Ashtottara on Fridays. The vashya koota (2 pts "
+            "max) has minor weight — offset it with strong mutual respect and aligned goals."
+        ),
+        "day_of_week": "Friday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Vashya Dosha upaya)",
+        "cost_tier": "free",
+        "confidence": 0.70,
+        "dosha_target": "vashya_dosha",
+    },
+    # tara_dosha_compat
+    {
+        "remedy_id": "dosha_tara_nakshatra_puja",
+        "planet": "moon",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Tara Dosha (compatibility): worship the presiding deity of the birth nakshatra "
+            "of both partners. Perform Nakshatra shanti puja. "
+            "Recite the respective nakshatra mantra 108 times on the nakshatra's day."
+        ),
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Tara Dosha upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.70,
+        "dosha_target": "tara_dosha_compat",
+    },
+    # varna_dosha
+    {
+        "remedy_id": "dosha_varna_surya_mantra",
+        "planet": "sun",
+        "domain": "marriage",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Varna Dosha (1 pt koota): the varna koota has the lowest weight in Ashtakoota. "
+            "Recite Surya Ashtottara on Sundays for the couple. This dosha is practically "
+            "overridden by strong performance on Nadi, Bhakoot, Gana kootas."
+        ),
+        "day_of_week": "Sunday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Varna Dosha upaya)",
+        "cost_tier": "free",
+        "confidence": 0.65,
+        "dosha_target": "varna_dosha",
+    },
+    # graha_maitri_dosha
+    {
+        "remedy_id": "dosha_graha_maitri_puja",
+        "planet": "jupiter",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Graha Maitri Dosha (enemy Moon-sign lords): each partner propitiates their "
+            "own Moon-sign lord on its day. Joint Vishnu puja on Thursdays. "
+            "Graha Maitri (5 pts max) is offset by shared spiritual practice."
+        ),
+        "deity": "Vishnu",
+        "day_of_week": "Thursday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Graha Maitri Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.70,
+        "dosha_target": "graha_maitri_dosha",
+    },
+    # balarishta
+    {
+        "remedy_id": "dosha_balarishta_jupiter_mantra",
+        "planet": "jupiter",
+        "domain": "health",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Balarishta: perform Mahamrityunjaya japa (1,25,000 times) as a shanti "
+            "for the child. Recite Vishnu Sahasranama. Jupiter aspect is the classical bhanga — "
+            "strengthen Jupiter in the chart through Guru puja."
+        ),
+        "mantra_transliteration": "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.9 (Arishta upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.80,
+        "dosha_target": "balarishta",
+    },
+    # gandanta_dosha
+    {
+        "remedy_id": "dosha_gandanta_shanti",
+        "planet": "moon",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Gandanta Dosha: perform Gandanta Shanti puja within 27 days of birth (or "
+            "as soon as identified). The puja propitiates the junction deity and the birth "
+            "nakshatra's presiding deity. The remedy is time-critical in classical tradition."
+        ),
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.9 (Gandanta shanti)",
+        "cost_tier": "medium",
+        "confidence": 0.85,
+        "dosha_target": "gandanta_dosha",
+    },
+    # shrapit_dosha
+    {
+        "remedy_id": "dosha_shrapit_shani_rahu",
+        "planet": "saturn",
+        "domain": "general",
+        "remedy_type": "homa",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Shrapit Dosha (Saturn-Rahu): perform a Shrapit Dosha Nivaran homa with "
+            "prescribed samidha on Saturdays. Recite the Shrapit Dosha mantra 1,08,000 times. "
+            "Donate black sesame and iron. Visit a Shani Shingnapur (or equivalent Shani temple) "
+            "on Saturdays."
+        ),
+        "deity": "Shani",
+        "day_of_week": "Saturday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Shrapit Dosha upaya)",
+        "cost_tier": "high",
+        "confidence": 0.80,
+        "dosha_target": "shrapit_dosha",
+    },
+    # mrityu_bhaga_dosha
+    {
+        "remedy_id": "dosha_mrityu_bhaga_mantra",
+        "planet": "sun",
+        "domain": "general",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Mrityu Bhaga Dosha: propitiate the afflicted planet with its beej mantra "
+            "108 times daily. Perform Mahamrityunjaya japa (11,000 minimum). "
+            "The 'death-degree' position is pacified by strengthening the planet's "
+            "digbala, dasha timing awareness, and puja on its day."
+        ),
+        "mantra_transliteration": "Om Tryambakam Yajamahe (planet-specific beej as indicated)",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Mrityu Bhaga upaya)",
+        "cost_tier": "free",
+        "confidence": 0.75,
+        "dosha_target": "mrityu_bhaga_dosha",
+    },
+    # kala_amrita_dosha
+    {
+        "remedy_id": "dosha_kala_amrita_shanti",
+        "planet": "ketu",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kala Amrita Dosha (reverse Kala Sarpa): perform Ketu shanti puja on "
+            "Tuesdays and Rahu shanti on Saturdays. This dosha is considered by some "
+            "schools to carry a more inward/moksha orientation — spiritual practices "
+            "and meditation are especially efficacious."
+        ),
+        "deity": "Ganesha",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Kala Amrita upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.75,
+        "dosha_target": "kala_amrita_dosha",
+    },
+    # mool_dosha
+    {
+        "remedy_id": "dosha_mool_shanti",
+        "planet": "ketu",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Mool (Gandmool) Dosha: perform Mool Shanti puja on the 27th day after "
+            "birth (or at the next occurrence of the birth nakshatra). Propitiate the "
+            "birth nakshatra's deity. This is the classical prescriptive timing in tradition."
+        ),
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Mool Shanti — 27th-day puja)",
+        "cost_tier": "medium",
+        "confidence": 0.85,
+        "dosha_target": "mool_dosha",
+    },
+    # abhukta_mula_dosha
+    {
+        "remedy_id": "dosha_abhukta_mula_shanti",
+        "planet": "ketu",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Abhukta Mula Dosha: perform the prescribed Abhukta Mula Shanti immediately "
+            "after birth — the traditional shanti for this junction is more urgent than the "
+            "general Mool Shanti. Propitiate Ketu and the presiding deity of Mula nakshatra."
+        ),
+        "deity": "Ketu/Nirriti",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Abhukta Mula shanti)",
+        "cost_tier": "medium",
+        "confidence": 0.85,
+        "dosha_target": "abhukta_mula_dosha",
+    },
+    # vish_kanya_dosha
+    {
+        "remedy_id": "dosha_vish_kanya_puja",
+        "planet": "venus",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Vish Kanya Dosha: perform the prescribed Vish Kanya Shanti puja before "
+            "marriage. Propitiate Venus and the birth nakshatra deity. This combination "
+            "is tradition-based and its weight must be assessed against the full chart."
+        ),
+        "deity": "Lakshmi/Shukra",
+        "day_of_week": "Friday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Vish Kanya upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.70,
+        "dosha_target": "vish_kanya_dosha",
+    },
+    # rajju_dosha
+    {
+        "remedy_id": "dosha_rajju_shiva_puja",
+        "planet": "moon",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Rajju Dosha (same rajju nakshatras): perform joint Shiva-Parvati puja "
+            "before marriage. The Rajju dosha is assessed in South-Indian matching; "
+            "offset by strong Nadi, Bhakoot satisfactions."
+        ),
+        "deity": "Shiva-Parvati",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Rajju Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.70,
+        "dosha_target": "rajju_dosha",
+    },
+    # vedha_dosha
+    {
+        "remedy_id": "dosha_vedha_nakshatra_puja",
+        "planet": "moon",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Vedha Dosha (obstructing nakshatra pair): each partner propitiates their "
+            "birth-nakshatra deity on the nakshatra's day. This koota carries medium weight "
+            "and is offset by strong Graha Maitri, Bhakoot, and Nadi scores."
+        ),
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Vedha Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.70,
+        "dosha_target": "vedha_dosha",
+    },
+    # stree_deergha_dosha
+    {
+        "remedy_id": "dosha_stree_deergha_puja",
+        "planet": "moon",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Stree Deergha Dosha (nakshatra count < 9): perform Nakshatra puja for "
+            "the bride's birth star on the wedding day. This koota (assessed from "
+            "bride's nakshatra) relates to the longevity of the union."
+        ),
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Stree Deergha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.65,
+        "dosha_target": "stree_deergha_dosha",
+    },
+    # mahendra_dosha
+    {
+        "remedy_id": "dosha_mahendra_vishnu_puja",
+        "planet": "jupiter",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Mahendra Dosha (Mahendra number absent): perform Vishnu puja on Thursdays "
+            "for the couple's progeny and prosperity. The Mahendra koota (progeny-related) "
+            "is partially offset by strong Jupiter in the individual charts."
+        ),
+        "deity": "Vishnu",
+        "day_of_week": "Thursday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Mahendra Dosha upaya)",
+        "cost_tier": "low",
+        "confidence": 0.65,
+        "dosha_target": "mahendra_dosha",
+    },
+    # balarishta_moon_dusthana
+    {
+        "remedy_id": "dosha_balarishta_moon_chandra_shanti",
+        "planet": "moon",
+        "domain": "health",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Balarishta (Moon in Dusthana): perform Chandra Shanti puja within 27 days. "
+            "Recite Mahamrityunjaya mantra 1,25,000 times as shanti. "
+            "Jupiter aspect on the Moon is the primary bhanga — Guru puja strengthens this."
+        ),
+        "deity": "Chandra",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.9 (Balarishta Chandra dusthana upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.80,
+        "dosha_target": "balarishta_moon_dusthana",
+    },
+    # balarishta_sandhi
+    {
+        "remedy_id": "dosha_balarishta_sandhi_shanti",
+        "planet": "moon",
+        "domain": "general",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Balarishta (Sandhi birth): perform Sandhi Shanti puja (or Lagna Shanti) "
+            "within the first lunar month. Propitiate the lagna lord and the Moon. "
+            "Strong lagna lord is the primary bhanga."
+        ),
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.9 (Sandhi balarishta upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.80,
+        "dosha_target": "balarishta_sandhi",
+    },
+    # balarishta_paap_kartari
+    {
+        "remedy_id": "dosha_balarishta_paap_kartari_mantra",
+        "planet": "jupiter",
+        "domain": "health",
+        "remedy_type": "mantra",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Balarishta (Papa Kartari): recite Mahamrityunjaya mantra 1,08,000 times "
+            "as shanti. Perform Jupiter puja (Guru is the primary bhanga lord — even one "
+            "Jupiter aspect dissolves the Papa Kartari arishta per BPHS Ch.9)."
+        ),
+        "mantra_transliteration": "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam",
+        "source_canonical_id": "BPHS",
+        "source_citation": SOURCE_BPHS,
+        "classical_ref": "BPHS Ch.9 (Papa Kartari balarishta upaya)",
+        "cost_tier": "free",
+        "confidence": 0.80,
+        "dosha_target": "balarishta_paap_kartari",
+    },
+    # kemadruma_compat_kuja
+    {
+        "remedy_id": "dosha_kemadruma_compat_kuja_mars",
+        "planet": "mars",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kuja Dosha (from Venus): perform Kuja Graha Shanti puja on 21 Tuesdays. "
+            "The Venus-referenced Manglik (Mars in 1/2/4/7/8/12 from Venus) reinforces "
+            "marital affliction when also present from lagna. Both must be pacified."
+        ),
+        "deity": "Kartikeya",
+        "day_of_week": "Tuesday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Venus-referenced Manglik upaya)",
+        "cost_tier": "medium",
+        "confidence": 0.80,
+        "dosha_target": "kemadruma_compat_kuja",
+    },
+    # kuja_dosha_from_moon
+    {
+        "remedy_id": "dosha_kuja_from_moon_hanuman",
+        "planet": "mars",
+        "domain": "marriage",
+        "remedy_type": "puja",
+        "scaffold_status": "live",
+        "prescription_text": (
+            "For Kuja Dosha (from Moon): perform Hanuman puja on Tuesdays. Recite Hanuman "
+            "Chalisa daily. This Moon-referenced Manglik check reinforces the lagna-based "
+            "check — when both are present, the remedy intensity doubles."
+        ),
+        "deity": "Hanuman",
+        "day_of_week": "Tuesday",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_CLASSICAL,
+        "classical_ref": "classical tradition (Moon-referenced Manglik upaya)",
+        "cost_tier": "low",
+        "confidence": 0.80,
+        "dosha_target": "kuja_dosha_from_moon",
+    },
+]
+
+# ── §3.3 — Legacy remedies (54 rows from v1.0) with remedy_type normalised ────
+# The original l0_remedy_corpus.py REMEDIES list, preserved as-is but with
+# remedy_type normalised (fasting→vrata, ritual→puja, dietary→ayurvedic)
+# and scaffold_status='live' added.
+
+LEGACY_REMEDIES: list[dict[str, Any]] = [
+    # ── Sun ────────────────────────────────────────────────────────────────────
     {
         "remedy_id": "sun_career_mantra_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "career",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Aditya Hridayam daily at sunrise, facing east, 108 times. This strengthens the Sun and brings favor from authority figures and government.",
         "mantra_text": "Om Hraam Hreem Hraum Sah Suryaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.90,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sun_health_gemstone_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "health",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear a Ruby (Manikya) of at least 3 carats set in gold, on the ring finger of the right hand, on a Sunday morning after sunrise. The gem strengthens the Sun and supports vitality.",
-        "mantra_text": None,
         "gemstone": "Ruby (Manikya)",
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.5",
     },
     {
         "remedy_id": "sun_general_charity_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate wheat, jaggery, copper vessels, or red-colored cloth to a Brahmin or temple on Sundays. Feed hungry people on Sundays.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate wheat, jaggery, copper on Sundays",
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sun_debilitated_mantra_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "general",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "For a debilitated Sun in Libra, chant the Surya Ashtakam 12 times daily and offer water to the rising Sun. Place a Surya Yantra at home.",
         "mantra_text": "Om Suryaya Namah (108 times daily)",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.80,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
     {
-        "remedy_id": "sun_spirituality_fasting_01",
-        "planet": "Sun",
+        "remedy_id": "sun_spirituality_vrata_01",
+        "planet": "sun",
         "domain": "spirituality",
-        "remedy_type": "fasting",
+        "remedy_type": "vrata",  # was fasting
+        "scaffold_status": "live",
         "prescription_text": "Fast on Sundays (Ravivara). Take one meal after sunset or abstain from salt. Observe for 12 consecutive Sundays for full benefit.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "sun_marriage_ritual_01",
-        "planet": "Sun",
+        "remedy_id": "sun_marriage_puja_01",
+        "planet": "sun",
         "domain": "marriage",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Surya Puja on Sunday mornings with red flowers, red sandalwood paste, and incense. Chant Surya Ashtottara (108 names). This reduces Sun's malefic effect on 7th house.",
         "mantra_text": "Om Aditya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.75,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Moon (Chandra) ─────────────────────────────────────────────────────────
+    # ── Moon ───────────────────────────────────────────────────────────────────
     {
         "remedy_id": "moon_health_mantra_01",
-        "planet": "Moon",
+        "planet": "moon",
         "domain": "health",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Chandra Ashtottara Shatanamavali 108 times on Mondays. The Moon governs the mind and bodily fluids — this mantra strengthens mental health and immunity.",
         "mantra_text": "Om Shraam Shreem Shraum Sah Chandraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "moon_wealth_gemstone_01",
-        "planet": "Moon",
+        "planet": "moon",
         "domain": "wealth",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear a natural Pearl (Moti) of at least 4 carats set in silver, on the little finger of the right hand, on a Monday during Shukla Paksha (waxing Moon).",
-        "mantra_text": None,
         "gemstone": "Pearl (Moti)",
-        "charity_action": None,
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.6",
     },
     {
         "remedy_id": "moon_general_charity_01",
-        "planet": "Moon",
+        "planet": "moon",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate white rice, milk, silver, white cloth, or ghee to a Brahmin or temple on Mondays during Shukla Paksha.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate white rice, milk, silver on Mondays",
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "moon_marriage_fasting_01",
-        "planet": "Moon",
+        "remedy_id": "moon_marriage_vrata_01",
+        "planet": "moon",
         "domain": "marriage",
-        "remedy_type": "fasting",
+        "remedy_type": "vrata",  # was fasting
+        "scaffold_status": "live",
         "prescription_text": "Fast on Mondays (Somavara). Take only white foods — rice, milk, curd. Offer milk to Shiva Linga. Observe for 16 consecutive Mondays.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "moon_career_ritual_01",
-        "planet": "Moon",
+        "remedy_id": "moon_career_puja_01",
+        "planet": "moon",
         "domain": "career",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Chandra Puja on Mondays with white flowers and white sandalwood paste. Keep a Chandra Yantra in the workplace.",
         "mantra_text": "Om Chandraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
-    # ── Mars (Mangala/Kuja) ────────────────────────────────────────────────────
+    # ── Mars ───────────────────────────────────────────────────────────────────
     {
         "remedy_id": "mars_marriage_mantra_01",
-        "planet": "Mars",
+        "planet": "mars",
         "domain": "marriage",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "For Mangala Dosha, chant the Mangala Ashtakam 108 times on Tuesdays. Perform Kuja Graha puja at a Subrahmanya temple. Observe 21 Tuesdays.",
         "mantra_text": "Om Kraam Kreem Kraum Sah Bhaumaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "mars_health_gemstone_01",
-        "planet": "Mars",
+        "planet": "mars",
         "domain": "health",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Red Coral (Moonga) of at least 6 carats set in gold or copper, on the ring finger of the right hand, on a Tuesday after sunrise.",
-        "mantra_text": None,
         "gemstone": "Red Coral (Moonga)",
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.7",
     },
     {
         "remedy_id": "mars_career_charity_01",
-        "planet": "Mars",
+        "planet": "mars",
         "domain": "career",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate red lentils (masoor dal), red cloth, copper, or blood (donate blood) on Tuesdays. Feed crows with wheat bread.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate red lentils, copper, red cloth on Tuesdays",
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Mercury (Budha) ────────────────────────────────────────────────────────
+    # ── Mercury ────────────────────────────────────────────────────────────────
     {
         "remedy_id": "mercury_education_mantra_01",
-        "planet": "Mercury",
+        "planet": "mercury",
         "domain": "education",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Budha Ashtottara Shatanamavali 108 times on Wednesdays. Mercury governs intellect, communication, and commerce.",
         "mantra_text": "Om Braam Breem Braum Sah Budhaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "mercury_wealth_gemstone_01",
-        "planet": "Mercury",
+        "planet": "mercury",
         "domain": "wealth",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Emerald (Panna) of at least 3 carats set in gold, on the little finger of the right hand, on a Wednesday morning during Shukla Paksha.",
-        "mantra_text": None,
         "gemstone": "Emerald (Panna)",
-        "charity_action": None,
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.8",
     },
     {
         "remedy_id": "mercury_career_charity_01",
-        "planet": "Mercury",
+        "planet": "mercury",
         "domain": "career",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate green moong dal, green cloth, or books on Wednesdays. Feed cows with grass. Donate to schools or libraries.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate green moong dal, books on Wednesdays",
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Jupiter (Guru/Brihaspati) ──────────────────────────────────────────────
+    # ── Jupiter ────────────────────────────────────────────────────────────────
     {
         "remedy_id": "jupiter_wealth_mantra_01",
-        "planet": "Jupiter",
+        "planet": "jupiter",
         "domain": "wealth",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant Guru Ashtottara Shatanamavali 108 times on Thursdays. Jupiter (Guru) blesses with wisdom, wealth, and progeny when propitiated.",
         "mantra_text": "Om Graam Greem Graum Sah Guruve Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.90,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "jupiter_education_gemstone_01",
-        "planet": "Jupiter",
+        "planet": "jupiter",
         "domain": "education",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Yellow Sapphire (Pukhraj) of at least 4 carats set in gold, on the index finger of the right hand, on a Thursday morning during Shukla Paksha.",
-        "mantra_text": None,
         "gemstone": "Yellow Sapphire (Pukhraj)",
-        "charity_action": None,
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.9",
     },
     {
         "remedy_id": "jupiter_general_charity_01",
-        "planet": "Jupiter",
+        "planet": "jupiter",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate yellow gram (chana dal), turmeric, yellow cloth, or gold on Thursdays. Feed Brahmins or holy men. Donate to educational institutions.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate yellow gram, turmeric, yellow cloth on Thursdays",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "jupiter_marriage_fasting_01",
-        "planet": "Jupiter",
+        "remedy_id": "jupiter_marriage_vrata_01",
+        "planet": "jupiter",
         "domain": "marriage",
-        "remedy_type": "fasting",
+        "remedy_type": "vrata",  # was fasting
+        "scaffold_status": "live",
         "prescription_text": "Fast on Thursdays (Guruvara). Take only yellow food — gram dal, turmeric rice. Observe for 16 consecutive Thursdays. Jupiter blesses progeny and marital harmony.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Venus (Shukra) ─────────────────────────────────────────────────────────
+    # ── Venus ──────────────────────────────────────────────────────────────────
     {
         "remedy_id": "venus_marriage_mantra_01",
-        "planet": "Venus",
+        "planet": "venus",
         "domain": "marriage",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant Shukra Ashtottara Shatanamavali 108 times on Fridays. Venus governs love, beauty, relationships, and luxury.",
         "mantra_text": "Om Draam Dreem Draum Sah Shukraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.90,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "venus_wealth_gemstone_01",
-        "planet": "Venus",
+        "planet": "venus",
         "domain": "wealth",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Diamond (Heera) or White Sapphire (Safed Pukhraj) of at least 1 carat set in platinum or silver, on the middle finger of the right hand, on a Friday.",
-        "mantra_text": None,
         "gemstone": "Diamond (Heera) or White Sapphire",
-        "charity_action": None,
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.10",
     },
     {
         "remedy_id": "venus_general_charity_01",
-        "planet": "Venus",
+        "planet": "venus",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate white rice, sugar, dairy products, white flowers, or silver on Fridays. Feed young girls (Kumari Puja). Donate to women's welfare.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate white foods, silver on Fridays; feed girls",
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Saturn (Shani) ─────────────────────────────────────────────────────────
+    # ── Saturn ─────────────────────────────────────────────────────────────────
     {
         "remedy_id": "sat_career_mantra_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "career",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Shani Ashtottara Shatanamavali (108 names of Saturn) or the Shani Chalisa daily, especially on Saturdays. Saturn rules karma, discipline, and professional perseverance.",
         "mantra_text": "Om Praam Preem Praum Sah Shanaischaraya Namah (108 times)",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.90,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sat_career_charity_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "career",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate black sesame seeds (til), black cloth, mustard oil, iron vessels, or sesame ladoos to laborers or the poor on Saturdays. Feed crows, who are Saturn's birds.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate sesame, oil, black cloth; feed crows on Saturdays",
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.90,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sat_career_gemstone_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "career",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Blue Sapphire (Neelam) of at least 4 carats set in gold or panchdhatu, on the middle finger of the right hand, on a Saturday during Krishna Paksha. Caution: test for 3 days first.",
-        "mantra_text": None,
         "gemstone": "Blue Sapphire (Neelam)",
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "blue",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.11",
+        "contraindications": "Test for 3 days before committing — Saturn gemstone is powerful and can amplify malefic results if Saturn is a functional malefic.",
     },
     {
         "remedy_id": "sat_health_mantra_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "health",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant Mahamrityunjaya mantra 108 times daily for Saturn-related chronic ailments (bones, joints, teeth, nervous system). Saturn governs Vata dosha.",
         "mantra_text": "Om Tryambakam Yajamahe Sugandhim Pushti-Vardhanam Urvarukamiva Bandhanan Mrityor Mukshiya Mamritat",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "sat_health_dietary_01",
-        "planet": "Saturn",
+        "remedy_id": "sat_health_ayurvedic_01",
+        "planet": "saturn",
         "domain": "health",
-        "remedy_type": "dietary",
+        "remedy_type": "ayurvedic",  # was dietary
+        "scaffold_status": "live",
         "prescription_text": "Avoid black foods on Saturdays. Sesame oil massage (abhyanga) on Saturdays strengthens bones and joints governed by Saturn. Warm foods and sesame are recommended.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
     {
-        "remedy_id": "sat_wealth_ritual_01",
-        "planet": "Saturn",
+        "remedy_id": "sat_wealth_puja_01",
+        "planet": "saturn",
         "domain": "wealth",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Shani Puja on Saturdays with black sesame, mustard oil lamp, and black flower garland. Recite Shani Stotra. Offer blue lotus or violets when available.",
         "mantra_text": "Om Shanaischaraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sat_marriage_charity_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "marriage",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Serve elderly people and those born in poverty on Saturdays. Donate blankets and warm clothes to the needy in winter. Saturn delays marriage; service pacifies its karma.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Serve elderly; donate blankets and warm clothes on Saturdays",
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "sat_general_fasting_01",
-        "planet": "Saturn",
+        "remedy_id": "sat_general_vrata_01",
+        "planet": "saturn",
         "domain": "general",
-        "remedy_type": "fasting",
+        "remedy_type": "vrata",  # was fasting
+        "scaffold_status": "live",
         "prescription_text": "Fast on Saturdays (Shanivara). Take only one meal in the evening. Avoid oil and non-vegetarian food. Observe for Sade Sati or Shani Dasha periods.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
-    # ── Rahu ──────────────────────────────────────────────────────────────────
+    # ── Rahu ───────────────────────────────────────────────────────────────────
     {
         "remedy_id": "rahu_career_mantra_01",
-        "planet": "Rahu",
+        "planet": "rahu",
         "domain": "career",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Rahu Beeja Mantra 18,000 times over 40 days for Rahu Mahadasha career difficulties. Rahu rules obsession, ambition, and unconventional paths.",
         "mantra_text": "Om Bhram Bhreem Bhroum Sah Rahave Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "smoke grey",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "rahu_health_gemstone_01",
-        "planet": "Rahu",
+        "planet": "rahu",
         "domain": "health",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Hessonite Garnet (Gomed) of at least 5 carats set in silver or panchdhatu, on the middle finger of the right hand, on a Saturday during Rahu Hora.",
-        "mantra_text": None,
         "gemstone": "Hessonite Garnet (Gomed)",
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "brown",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.12",
     },
     {
         "remedy_id": "rahu_general_charity_01",
-        "planet": "Rahu",
+        "planet": "rahu",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate barley, blue-grey cloth, coconut, or urad dal on Saturdays. Feed fish or donate to charitable organizations. Avoid negative thinking on Rahu-related matters.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate barley, coconut, urad dal on Saturdays",
         "day_of_week": "Saturday",
         "color_associated": "grey",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "rahu_marriage_ritual_01",
-        "planet": "Rahu",
+        "remedy_id": "rahu_marriage_puja_01",
+        "planet": "rahu",
         "domain": "marriage",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Rahu Graha Shanti Puja with prescribed flowers and mantras. Worship Durga or Kali on full moon nights. Rahu in 7H delays or complicates marriage.",
         "mantra_text": "Om Rahave Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "smoke grey",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
-    # ── Ketu ──────────────────────────────────────────────────────────────────
+    # ── Ketu ───────────────────────────────────────────────────────────────────
     {
         "remedy_id": "ketu_spirituality_mantra_01",
-        "planet": "Ketu",
+        "planet": "ketu",
         "domain": "spirituality",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant the Ketu Beeja Mantra 17,000 times over 40 days. Ketu rules moksha, liberation, and occult wisdom. Strong Ketu brings spiritual insight.",
         "mantra_text": "Om Sram Sreem Sraum Sah Ketave Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "grey",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "ketu_health_gemstone_01",
-        "planet": "Ketu",
+        "planet": "ketu",
         "domain": "health",
         "remedy_type": "gemstone",
+        "scaffold_status": "live",
         "prescription_text": "Wear Cat's Eye (Lehsunia/Vaidurya) of at least 5 carats set in silver, on the middle finger of the right hand, on a Tuesday or Thursday.",
-        "mantra_text": None,
         "gemstone": "Cat's Eye (Lehsunia)",
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "grey-green",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88 V.13",
     },
     {
         "remedy_id": "ketu_general_charity_01",
-        "planet": "Ketu",
+        "planet": "ketu",
         "domain": "general",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate sesame seeds, blankets, coloured cloth, or dogs (support animal welfare) on Tuesdays. Feed street dogs and provide them shelter.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate sesame, blankets; feed dogs on Tuesdays",
         "day_of_week": "Tuesday",
         "color_associated": "grey",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     # ── Tajaka (annual chart) remedies ─────────────────────────────────────────
     {
         "remedy_id": "taj_sun_muntha_mantra_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "general",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "For Sun as Munthesha (Lord of Muntha) in Tajaka Varshaphal, chant Aditya Hridayam at the time of Solar Return (Varsha Pravesh). This energizes the annual chart.",
         "mantra_text": "Aditya Hridayam (full recitation)",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.75,
         "source_canonical_id": "Tajaka",
-        "source_citation": SOURCE_CITATION_TAJAKA,
+        "source_citation": SOURCE_TAJAKA,
         "classical_ref": "Tajaka Neelakanthi, Varshaphal remedies",
     },
     {
-        "remedy_id": "taj_saturn_panchavargeeya_ritual_01",
-        "planet": "Saturn",
+        "remedy_id": "taj_saturn_panchavargeeya_puja_01",
+        "planet": "saturn",
         "domain": "career",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "For weak Saturn in Tajaka Varshaphal with low Panchavargeeya Bala, perform Shani Graha Shanti Yajna at the start of the year. This strengthens Saturn's annual contribution.",
-        "mantra_text": None,
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.70,
         "source_canonical_id": "Tajaka",
-        "source_citation": SOURCE_CITATION_TAJAKA,
+        "source_citation": SOURCE_TAJAKA,
         "classical_ref": "Tajaka Neelakanthi, Panchavargeeya Bala remedies",
     },
     {
-        "remedy_id": "taj_rahu_saham_ritual_01",
-        "planet": "Rahu",
+        "remedy_id": "taj_rahu_saham_puja_01",
+        "planet": "rahu",
         "domain": "general",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "When Rahu aspects or conjoins the Punya Saham (Lot of Fortune) in Tajaka, perform Rahu Shanti and donate coconut with coins in a river on Saturday.",
         "mantra_text": "Om Rahave Namah",
-        "gemstone": None,
         "charity_action": "Donate coconut with coins in a river",
         "day_of_week": "Saturday",
         "color_associated": "grey",
         "confidence": 0.70,
         "source_canonical_id": "Tajaka",
-        "source_citation": SOURCE_CITATION_TAJAKA,
+        "source_citation": SOURCE_TAJAKA,
         "classical_ref": "Tajaka Neelakanthi, Saham remedies",
     },
     # ── Additional cross-domain remedies ──────────────────────────────────────
     {
         "remedy_id": "mars_wealth_yantra_01",
-        "planet": "Mars",
+        "planet": "mars",
         "domain": "wealth",
         "remedy_type": "yantra",
+        "scaffold_status": "live",
         "prescription_text": "Install a Mangal Yantra (Mars Yantra) at home or workplace facing east. Energize on Tuesday during Shukla Paksha with red vermillion and red flowers.",
         "mantra_text": "Om Mangalaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, Yantra section",
     },
     {
         "remedy_id": "mercury_health_mantra_01",
-        "planet": "Mercury",
+        "planet": "mercury",
         "domain": "health",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "For Mercury-related skin and nervous system issues, chant Budha Ashtottara 108 times on Wednesdays. Mercury governs skin, lungs, and speech.",
         "mantra_text": "Om Braam Breem Braum Sah Budhaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "jupiter_spirituality_ritual_01",
-        "planet": "Jupiter",
+        "remedy_id": "jupiter_spirituality_puja_01",
+        "planet": "jupiter",
         "domain": "spirituality",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Brihaspati Puja on Thursdays with yellow flowers, gram dal, and camphor. Study sacred texts or listen to vedic recitation. Worship Vishnu or Dakshinamurthy.",
         "mantra_text": "Om Guruve Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "venus_health_mantra_01",
-        "planet": "Venus",
+        "planet": "venus",
         "domain": "health",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Chant Shukra Ashtottara 108 times on Fridays for Venus-related reproductive and kidney health issues. Venus governs the reproductive system and kidneys.",
         "mantra_text": "Om Draam Dreem Draum Sah Shukraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "moon_spirituality_ritual_01",
-        "planet": "Moon",
+        "remedy_id": "moon_spirituality_puja_01",
+        "planet": "moon",
         "domain": "spirituality",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Chandra Puja on Purnima (full moon) nights with white flowers and milk offerings. Practice meditation during moonrise. The Moon governs the mind.",
         "mantra_text": "Om Chandraya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "sun_wealth_yantra_01",
-        "planet": "Sun",
+        "planet": "sun",
         "domain": "wealth",
         "remedy_type": "yantra",
+        "scaffold_status": "live",
         "prescription_text": "Install a Surya Yantra at home facing east. Energize on Sunday morning during Shukla Paksha with red vermillion, red flowers, and incense.",
         "mantra_text": "Om Suryaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.80,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, Yantra section",
     },
     {
-        "remedy_id": "ketu_career_ritual_01",
-        "planet": "Ketu",
+        "remedy_id": "ketu_career_puja_01",
+        "planet": "ketu",
         "domain": "career",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Ketu Graha Shanti on Tuesdays with prescribed flowers (Kush grass). Worship Ganesha or Bhairava. Ketu can cause career disruptions through sudden changes.",
         "mantra_text": "Om Ketave Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "grey",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
     {
         "remedy_id": "rahu_wealth_yantra_01",
-        "planet": "Rahu",
+        "planet": "rahu",
         "domain": "wealth",
         "remedy_type": "yantra",
+        "scaffold_status": "live",
         "prescription_text": "Install a Rahu Yantra on Saturdays. Rahu can bring sudden financial windfalls as well as losses; the yantra stabilizes its volatile influence.",
         "mantra_text": "Om Rahave Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "smoke grey",
         "confidence": 0.70,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, Yantra section",
     },
     {
         "remedy_id": "sat_education_mantra_01",
-        "planet": "Saturn",
+        "planet": "saturn",
         "domain": "education",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Saturn delays but does not deny. Chant Shani Chalisa every Saturday during Shani Dasha to overcome obstacles in education and research. Saturn rewards persistent study.",
         "mantra_text": "Shani Chalisa (full text)",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
-        "remedy_id": "mars_spirituality_ritual_01",
-        "planet": "Mars",
+        "remedy_id": "mars_spirituality_puja_01",
+        "planet": "mars",
         "domain": "spirituality",
-        "remedy_type": "ritual",
+        "remedy_type": "puja",  # was ritual
+        "scaffold_status": "live",
         "prescription_text": "Perform Subrahmanya Puja (Karthikeya/Murugan) on Tuesdays. Offer red flowers and plantain. Mars's spiritual manifestation is the divine warrior.",
         "mantra_text": "Om Saravanabhavaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.80,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
     {
         "remedy_id": "venus_career_charity_01",
-        "planet": "Venus",
+        "planet": "venus",
         "domain": "career",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate dairy products, white sweets, perfume, or artistic materials on Fridays. Support artists and musicians. Venus blesses creative and luxury industries.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate dairy, sweets, perfume to artists on Fridays",
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
     {
         "remedy_id": "mercury_marriage_mantra_01",
-        "planet": "Mercury",
+        "planet": "mercury",
         "domain": "marriage",
         "remedy_type": "mantra",
+        "scaffold_status": "live",
         "prescription_text": "Mercury in 7H can bring a communicative, intellectual spouse but may cause indecision. Chant Budha Ashtottara 108 times on Wednesdays to strengthen Mercury's positive attributes.",
         "mantra_text": "Om Budhaya Namah",
-        "gemstone": None,
-        "charity_action": None,
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.75,
         "source_canonical_id": "Phaladeepika",
-        "source_citation": SOURCE_CITATION_PHALA,
+        "source_citation": SOURCE_PHALA,
         "classical_ref": "Phala Deepika, remedial section",
     },
     {
         "remedy_id": "jupiter_health_charity_01",
-        "planet": "Jupiter",
+        "planet": "jupiter",
         "domain": "health",
         "remedy_type": "charity",
+        "scaffold_status": "live",
         "prescription_text": "Donate sweets, yellow gram, turmeric, or gold to Brahmins on Thursdays for Jupiter-related liver and gallbladder issues. Jupiter governs the liver, fat, and growth.",
-        "mantra_text": None,
-        "gemstone": None,
         "charity_action": "Donate sweets, turmeric, gold on Thursdays",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.80,
         "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_CITATION_BPHS,
+        "source_citation": SOURCE_BPHS_LEGACY,
         "classical_ref": "BPHS Ch.88",
     },
 ]
 
 
-# ── Volume check ──────────────────────────────────────────────────────────────
+# ── Combined list builder ──────────────────────────────────────────────────────
 
-def check_volume(conn=None, dry_run: bool = False) -> dict[str, Any]:
+def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
     """
-    Check volume floor for brahma_remedy_corpus.
+    Scan classical_text_chunks for remedy-marker keywords.
+    Returns list of remedy row dicts ready for merge into the main INSERT loop.
+    ZERO LLM — deterministic regex classification only.
 
-    Returns:
-      {
-        "asset": "brahmagyan.remedy_corpus",
-        "actual_rows": int,
-        "floor": int,
-        "status": "GREEN" | "AMBER" | "EMPTY",
-        "saturn_career_check": {"status": "PASS"|"FAIL", "count": int},
-        "source_citation_check": {"status": "PASS"|"FAIL", "null_count": int},
-      }
+    scaffold_status='live'   — exactly one marker, planet resolved, unambiguous type
+    scaffold_status='review' — multiple markers, no planet, or ambiguous type
     """
-    if dry_run:
-        # Return in-memory count as proxy (no DB needed)
-        in_memory_count = len(REMEDIES)
-        status = "GREEN" if in_memory_count >= VOLUME_FLOOR else "AMBER"
-        return {
-            "asset": "brahmagyan.remedy_corpus",
-            "actual_rows": in_memory_count,
-            "floor": VOLUME_FLOOR,
-            "status": status,
-            "saturn_career_check": {
-                "status": "PASS",
-                "count": sum(
-                    1 for r in REMEDIES
-                    if r["planet"] == "Saturn" and r["domain"] == "career"
-                ),
-                "note": "dry_run: in-memory count",
-            },
-            "source_citation_check": {
-                "status": "PASS",
-                "null_count": 0,
-                "note": "dry_run: all hardcoded rows have citations",
-            },
-        }
+    import re
 
-    close_conn = False
-    if conn is None:
-        conn = _get_conn()
-        close_conn = True
+    # Priority-ordered marker → remedy_type mapping
+    MARKER_MAP = [
+        (re.compile(r'\bmantra\b', re.IGNORECASE), 'mantra'),
+        (re.compile(r'\byantra\b', re.IGNORECASE), 'yantra'),
+        (re.compile(r'\bjapa\b', re.IGNORECASE), 'japa'),
+        (re.compile(r'\bgemstone\b', re.IGNORECASE), 'gemstone'),
+        (re.compile(r'\bvrata\b', re.IGNORECASE), 'vrata'),
+        (re.compile(r'\bfast(?:ing)?\b', re.IGNORECASE), 'vrata'),
+        (re.compile(r'\bworship\b', re.IGNORECASE), 'puja'),
+        (re.compile(r'\bdonate\b', re.IGNORECASE), 'charity'),
+        (re.compile(r'\bdana\b', re.IGNORECASE), 'charity'),
+        (re.compile(r'\brecite\b', re.IGNORECASE), 'japa'),
+        (re.compile(r'\bwear\b', re.IGNORECASE), 'gemstone'),
+    ]
 
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM brahma_remedy_corpus")
-            actual_rows = cur.fetchone()[0]
+    # Planet word → canonical planet name (used in VALID_PLANETS)
+    PLANET_WORDS = {
+        'sun': 'sun', 'moon': 'moon', 'mars': 'mars', 'mercury': 'mercury',
+        'jupiter': 'jupiter', 'venus': 'venus', 'saturn': 'saturn',
+        'rahu': 'rahu', 'ketu': 'ketu',
+        'surya': 'sun', 'chandra': 'moon', 'mangal': 'mars', 'budha': 'mercury',
+        'guru': 'jupiter', 'shukra': 'venus', 'shani': 'saturn',
+    }
+    PLANET_PATTERN = re.compile(
+        r'\b(' + '|'.join(PLANET_WORDS.keys()) + r')\b',
+        re.IGNORECASE,
+    )
 
-            # Saturn career check
-            cur.execute(
-                """
-                SELECT COUNT(*) FROM brahma_remedy_corpus
-                WHERE planet = 'Saturn' AND domain = 'career'
-                """
-            )
-            saturn_career_count = cur.fetchone()[0]
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT chunk_id, text_id, source_citation, content_en
+            FROM classical_text_chunks
+            WHERE content_en ILIKE ANY(ARRAY[
+                '%mantra%','%yantra%','%japa%','%gemstone%','%vrata%','%fast%',
+                '%worship%','%donate%','%dana%','%recite%','%wear%'
+            ])
+        """)
+        rows = cur.fetchall()
 
-            # source_citation null check
-            cur.execute(
-                "SELECT COUNT(*) FROM brahma_remedy_corpus WHERE source_citation IS NULL"
-            )
-            null_citation = cur.fetchone()[0]
+    result: list[dict[str, Any]] = []
+    for chunk_id, text_id, source_citation, content_en in rows:
+        if not content_en:
+            continue
 
-        if actual_rows >= VOLUME_FLOOR:
-            status = "GREEN"
-        elif actual_rows > 0:
-            status = "AMBER"
+        # Find all matching markers
+        matched_types: list[str] = []
+        for pattern, rtype in MARKER_MAP:
+            if pattern.search(content_en):
+                matched_types.append(rtype)
+
+        if not matched_types:
+            continue
+
+        # Deduplicate matched types (preserving first-match priority)
+        seen_types: set[str] = set()
+        unique_types: list[str] = []
+        for t in matched_types:
+            if t not in seen_types:
+                seen_types.add(t)
+                unique_types.append(t)
+
+        remedy_type = unique_types[0]  # first-match wins
+        multi_marker = len(unique_types) > 1
+
+        # Planet detection
+        planet_matches = PLANET_PATTERN.findall(content_en)
+        planets_found = list(dict.fromkeys(
+            PLANET_WORDS[m.lower()] for m in planet_matches
+        ))
+        planet = planets_found[0] if len(planets_found) == 1 else None
+        multi_planet = len(planets_found) > 1
+
+        if planet is None:
+            # No planet or ambiguous — use 'general' placeholder; mark review
+            # 'general' is not in VALID_PLANETS so we skip these rows entirely
+            # (the INSERT validator would reject them)
+            continue
+
+        # scaffold_status
+        if multi_marker or multi_planet:
+            scaffold_status = 'review'
         else:
-            status = "EMPTY"
+            scaffold_status = 'live'
 
+        # Deterministic remedy_id with sweep_ prefix
+        h = hashlib.sha256(content_en[:80].encode()).hexdigest()[:8]
+        remedy_id = f"sweep_{planet}_{remedy_type}_{h}"
+
+        # Source citation: prefer chunk's own citation, fall back to text_id
+        citation = source_citation or f"classical_text_chunks text_id={text_id}"
+
+        # Prescription text = first 400 chars of content_en (truncated cleanly)
+        prescription_text = content_en[:400].rsplit(' ', 1)[0] if len(content_en) > 400 else content_en
+
+        row: dict[str, Any] = {
+            "remedy_id": remedy_id,
+            "planet": planet,
+            "domain": "general",
+            "remedy_type": remedy_type,
+            "prescription_text": prescription_text,
+            "mantra_text": None,
+            "gemstone": None,
+            "charity_action": None,
+            "day_of_week": None,
+            "color_associated": None,
+            "confidence": 0.70 if scaffold_status == 'live' else 0.55,
+            "source_canonical_id": str(text_id) if text_id else "CLASSICAL_CORPUS",
+            "source_citation": citation,
+            "classical_ref": f"chunk_id={chunk_id}",
+            "category": "corpus_sweep",
+            "deity": None,
+            "mantra_sanskrit": None,
+            "mantra_transliteration": None,
+            "cost_tier": None,
+            "contraindications": None,
+            "scaffold_status": scaffold_status,
+        }
+        result.append(row)
+
+    logger.info(
+        "[L0/remedies] sweep_classical_text_chunks: %d chunks scanned → %d rows extracted "
+        "(%d live, %d review)",
+        len(rows),
+        len(result),
+        sum(1 for r in result if r['scaffold_status'] == 'live'),
+        sum(1 for r in result if r['scaffold_status'] == 'review'),
+    )
+    return result
+
+
+def build_all_remedies() -> list[dict[str, Any]]:
+    """
+    Combine all three buckets, deduplicate by remedy_id, normalise remedy_type.
+    Returns list ready for INSERT.
+    """
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+
+    for r in gen_planet_matrix() + DOSHA_REMEDIES + LEGACY_REMEDIES:
+        rid = r["remedy_id"]
+        if rid in seen:
+            logger.debug("dedup skip: %s", rid)
+            continue
+        seen.add(rid)
+
+        # Normalise remedy_type to ontology vocabulary
+        rt = r.get("remedy_type", "")
+        r["remedy_type"] = _map_remedy_type(rt)
+
+        # Validate planet
+        planet = r.get("planet", "")
+        if planet not in VALID_PLANETS:
+            raise ValueError(f"remedy_id={rid}: planet='{planet}' not in ontology planet class")
+
+        # Ensure scaffold_status is set
+        r.setdefault("scaffold_status", "live")
+
+        # Ensure confidence in range
+        conf = r.get("confidence", 0.85)
+        if not (0 <= float(conf) <= 1):
+            raise ValueError(f"remedy_id={rid}: confidence={conf} out of range")
+
+        result.append(r)
+
+    return result
+
+
+# ── DB seed function ──────────────────────────────────────────────────────────
+
+def seed_remedy_corpus(
+    conn,
+    build_id: str | None = None,
+    dry_run: bool = False,
+    autocommit: bool = True,
+) -> dict[str, Any]:
+    """
+    Seed brahma_remedy_corpus with combined remedy corpus.
+    Uses INSERT ... ON CONFLICT (remedy_id) DO NOTHING for idempotency.
+
+    Returns dict with:
+        remedies_inserted, remedies_skipped, live_count, total_built
+    """
+    base_remedies = build_all_remedies()
+    sweep_rows = sweep_classical_text_chunks(conn)
+
+    # Dedup sweep rows against base (remedy_id collision avoidance)
+    existing_ids: set[str] = {r["remedy_id"] for r in base_remedies}
+    new_sweep_rows = [r for r in sweep_rows if r["remedy_id"] not in existing_ids]
+
+    all_remedies = base_remedies + new_sweep_rows
+    total_built = len(all_remedies)
+
+    logger.info(
+        "[L0/remedies] combined: base=%d sweep_new=%d total=%d",
+        len(base_remedies), len(new_sweep_rows), total_built,
+    )
+
+    if dry_run:
+        live_count = sum(1 for r in all_remedies if r.get("scaffold_status") == "live")
+        logger.info(
+            "[L0/remedies] dry_run — would insert %d remedies (%d live)",
+            total_built, live_count,
+        )
         return {
-            "asset": "brahmagyan.remedy_corpus",
-            "actual_rows": actual_rows,
-            "floor": VOLUME_FLOOR,
-            "status": status,
-            "saturn_career_check": {
-                "status": "PASS" if saturn_career_count >= 1 else "FAIL",
-                "count": saturn_career_count,
-            },
-            "source_citation_check": {
-                "status": "PASS" if null_citation == 0 else "FAIL",
-                "null_count": null_citation,
-            },
+            "remedies_inserted": total_built,
+            "remedies_skipped": 0,
+            "live_count": live_count,
+            "total_built": total_built,
+            "status": "DRY_RUN",
         }
 
-    finally:
-        if close_conn:
-            conn.close()
+    inserted = 0
+    skipped = 0
 
+    with conn.cursor() as cur:
+        # Validate table exists
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema='public' AND table_name='brahma_remedy_corpus'"
+        )
+        if cur.fetchone()[0] == 0:
+            raise RuntimeError(
+                "brahma_remedy_corpus table does not exist. Apply migrations first."
+            )
 
-def _get_conn():
-    import os
-    import psycopg2  # type: ignore[import]
-    url = os.environ.get("DATABASE_URL", "")
-    if not url:
-        raise RuntimeError("DATABASE_URL not set")
-    return psycopg2.connect(url)
-
-
-# ── Seed ─────────────────────────────────────────────────────────────────────
-
-def seed_remedy_corpus(conn=None) -> dict[str, Any]:
-    """
-    Seed brahma_remedy_corpus with classical upaya prescriptions.
-    Uses INSERT ... ON CONFLICT DO NOTHING for idempotency.
-    """
-    close_conn = False
-    if conn is None:
-        conn = _get_conn()
-        close_conn = True
-
-    try:
-        with conn.cursor() as cur:
-            cur.executemany(
+        for r in all_remedies:
+            cur.execute(
                 """
-                INSERT INTO brahma_remedy_corpus
-                  (remedy_id, planet, domain, remedy_type, prescription_text,
-                   mantra_text, gemstone, charity_action, day_of_week,
-                   color_associated, confidence, source_canonical_id,
-                   source_citation, classical_ref)
-                VALUES
-                  (%(remedy_id)s, %(planet)s, %(domain)s, %(remedy_type)s,
-                   %(prescription_text)s, %(mantra_text)s, %(gemstone)s,
-                   %(charity_action)s, %(day_of_week)s, %(color_associated)s,
-                   %(confidence)s, %(source_canonical_id)s, %(source_citation)s,
-                   %(classical_ref)s)
+                INSERT INTO brahma_remedy_corpus (
+                    remedy_id, planet, domain, remedy_type, prescription_text,
+                    mantra_text, gemstone, charity_action, day_of_week,
+                    color_associated, confidence, source_canonical_id,
+                    source_citation, classical_ref,
+                    category, deity, mantra_sanskrit, mantra_transliteration,
+                    cost_tier, contraindications, scaffold_status
+                ) VALUES (
+                    %(remedy_id)s, %(planet)s, %(domain)s, %(remedy_type)s,
+                    %(prescription_text)s, %(mantra_text)s, %(gemstone)s,
+                    %(charity_action)s, %(day_of_week)s, %(color_associated)s,
+                    %(confidence)s, %(source_canonical_id)s,
+                    %(source_citation)s, %(classical_ref)s,
+                    %(category)s, %(deity)s, %(mantra_sanskrit)s,
+                    %(mantra_transliteration)s, %(cost_tier)s,
+                    %(contraindications)s, %(scaffold_status)s
+                )
                 ON CONFLICT (remedy_id) DO NOTHING
                 """,
-                REMEDIES,
+                {
+                    "remedy_id": r["remedy_id"],
+                    "planet": r["planet"],
+                    "domain": r.get("domain", "general"),
+                    "remedy_type": r["remedy_type"],
+                    "prescription_text": r["prescription_text"],
+                    "mantra_text": r.get("mantra_text"),
+                    "gemstone": r.get("gemstone"),
+                    "charity_action": r.get("charity_action"),
+                    "day_of_week": r.get("day_of_week"),
+                    "color_associated": r.get("color_associated"),
+                    "confidence": float(r.get("confidence", 0.85)),
+                    "source_canonical_id": r.get("source_canonical_id", "BPHS"),
+                    "source_citation": r.get("source_citation", SOURCE_CLASSICAL),
+                    "classical_ref": r.get("classical_ref"),
+                    "category": r.get("category"),
+                    "deity": r.get("deity"),
+                    "mantra_sanskrit": r.get("mantra_sanskrit"),
+                    "mantra_transliteration": r.get("mantra_transliteration"),
+                    "cost_tier": r.get("cost_tier"),
+                    "contraindications": r.get("contraindications"),
+                    "scaffold_status": r.get("scaffold_status", "live"),
+                },
             )
+            if cur.rowcount > 0:
+                inserted += 1
+            else:
+                skipped += 1
+
+        # Query live count after insert
+        cur.execute(
+            "SELECT COUNT(*) FROM brahma_remedy_corpus WHERE scaffold_status='live'"
+        )
+        live_count = cur.fetchone()[0]
+
+    logger.info(
+        "[L0/remedies] inserted=%d skipped=%d live_count=%d",
+        inserted, skipped, live_count,
+    )
+
+    if autocommit:
         conn.commit()
+
+    return {
+        "remedies_inserted": inserted,
+        "remedies_skipped": skipped,
+        "live_count": live_count,
+        "total_built": total_built,
+        "status": "COMPLETE",
+    }
+
+
+# ── Legacy backward-compat ────────────────────────────────────────────────────
+
+def check_volume(conn=None, dry_run: bool = False) -> dict[str, Any]:
+    """Backward-compatible volume check."""
+    all_remedies = build_all_remedies()
+    if dry_run:
+        live = sum(1 for r in all_remedies if r.get("scaffold_status") == "live")
         return {
             "asset": "brahmagyan.remedy_corpus",
-            "rows_seeded": len(REMEDIES),
-            "status": "COMPLETE",
+            "actual_rows": live,
+            "floor": CAMPAIGN_FLOOR,
+            "status": "GREEN" if live >= CAMPAIGN_FLOOR else "AMBER",
         }
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        if close_conn:
-            conn.close()
-
-
-# ── Query API ─────────────────────────────────────────────────────────────────
-
-def query_remedy(
-    planet: str | None = None,
-    domain: str | None = None,
-    remedy_type: str | None = None,
-    conn=None,
-    limit: int = 20,
-    use_rag_fallback: bool = True,
-) -> dict[str, Any]:
-    """
-    Query classical upaya prescriptions from brahma_remedy_corpus.
-
-    Falls back to rag_chunks (source_canonical_id IN ('BPHS','Tajaka')) if
-    brahma_remedy_corpus is empty or unavailable.
-
-    Args:
-      planet: filter by planet ('Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu')
-      domain: filter by domain ('career','health','marriage','wealth','education','spirituality','general')
-      remedy_type: filter by type ('mantra','gemstone','charity','ritual','dietary','yantra','fasting')
-      conn: optional psycopg2 connection
-      limit: max results
-      use_rag_fallback: if True, falls back to rag_chunks when table is empty
-
-    Returns:
-      {
-        "ok": bool,
-        "planet": str | None,
-        "domain": str | None,
-        "remedies": [...],
-        "count": int,
-        "source": "brahma_remedy_corpus" | "rag_chunks_fallback" | "in_memory",
-        "provenance_envelope": {...},
-      }
-    """
-    close_conn = False
     if conn is None:
-        try:
-            conn = _get_conn()
-            close_conn = True
-        except Exception as exc:
-            # DB unavailable — return in-memory results
-            logger.warning("[l0_remedy_corpus] DB unavailable: %s — using in-memory", exc)
-            return _in_memory_query(planet, domain, remedy_type, limit, error=str(exc))
-
-    try:
-        # ── Try brahma_remedy_corpus first ────────────────────────────────────
-        try:
-            remedies = _query_corpus_table(conn, planet, domain, remedy_type, limit)
-            source = "brahma_remedy_corpus"
-        except Exception as exc:
-            logger.info("[l0_remedy_corpus] corpus table unavailable: %s", exc)
-            conn.rollback()
-            remedies = []
-            source = "unavailable"
-
-        # ── Fallback 1: rag_chunks ────────────────────────────────────────────
-        if not remedies and use_rag_fallback:
-            try:
-                remedies = _query_rag_fallback(conn, planet, domain, limit)
-                if remedies:
-                    source = "rag_chunks_fallback"
-            except Exception as exc:
-                logger.info("[l0_remedy_corpus] rag_chunks fallback unavailable: %s", exc)
-                conn.rollback()
-
-        # ── Fallback 2: in-memory data ────────────────────────────────────────
-        if not remedies:
-            return _in_memory_query(planet, domain, remedy_type, limit)
-
-        return {
-            "ok": True,
-            "planet": planet,
-            "domain": domain,
-            "remedy_type": remedy_type,
-            "remedies": remedies,
-            "count": len(remedies),
-            "source": source,
-            "provenance_envelope": {
-                "source": "brahmagyan.remedy_corpus",
-                "asset": "BRAHMA-BG-0-9",
-                "data_source": source,
-                "planet": planet,
-                "domain": domain,
-                "source_citation": SOURCE_CITATION_BPHS,
-                "computed_at": datetime.now(timezone.utc).isoformat(),
-            },
-        }
-
-    finally:
-        if close_conn:
-            conn.close()
-
-
-def _query_corpus_table(
-    conn,
-    planet: str | None,
-    domain: str | None,
-    remedy_type: str | None,
-    limit: int,
-) -> list[dict[str, Any]]:
-    """Query brahma_remedy_corpus with optional filters."""
-    conditions = []
-    params: list[Any] = []
-
-    if planet:
-        conditions.append("planet = %s")
-        params.append(planet)
-    if domain:
-        conditions.append("domain = %s")
-        params.append(domain)
-    if remedy_type:
-        conditions.append("remedy_type = %s")
-        params.append(remedy_type)
-
-    where = "WHERE " + " AND ".join(conditions) if conditions else ""
-    params.append(limit)
-
+        import os
+        import psycopg2
+        conn = psycopg2.connect(os.environ["DATABASE_URL"])
     with conn.cursor() as cur:
-        cur.execute(
-            f"""
-            SELECT remedy_id, planet, domain, remedy_type, prescription_text,
-                   mantra_text, gemstone, charity_action, day_of_week,
-                   color_associated, confidence, source_canonical_id,
-                   source_citation, classical_ref
-            FROM brahma_remedy_corpus
-            {where}
-            ORDER BY confidence DESC, planet, domain
-            LIMIT %s
-            """,
-            params,
-        )
-        cols = [d[0] for d in cur.description]
-        return [dict(zip(cols, r)) for r in cur.fetchall()]
-
-
-def _query_rag_fallback(
-    conn,
-    planet: str | None,
-    domain: str | None,
-    limit: int,
-) -> list[dict[str, Any]]:
-    """
-    Fallback: query rag_chunks for remedy content when brahma_remedy_corpus unavailable.
-    Searches WHERE source_canonical_id IN ('BPHS','Tajaka') AND content contains
-    remedy-related keywords.
-    """
-    remedy_keywords = ["remedy", "upaya", "mantra", "gemstone", "charity"]
-    ilike_conditions = " OR ".join(
-        f"content ILIKE %s" for _ in remedy_keywords
-    )
-    params: list[Any] = [f"%{kw}%" for kw in remedy_keywords]
-
-    if planet:
-        params.append(f"%{planet}%")
-        planet_condition = "AND content ILIKE %s"
-    else:
-        planet_condition = ""
-
-    params.extend(["BPHS", "Tajaka", "Phaladeepika"])
-    params.append(limit)
-
-    with conn.cursor() as cur:
-        cur.execute(
-            f"""
-            SELECT chunk_id AS remedy_id,
-                   source_canonical_id,
-                   content AS prescription_text,
-                   source_citation
-            FROM rag_chunks
-            WHERE ({ilike_conditions})
-              {planet_condition}
-              AND source_canonical_id = ANY(%s)
-            ORDER BY source_canonical_id
-            LIMIT %s
-            """,
-            params,
-        )
-        cols = [d[0] for d in cur.description]
-        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-        # Normalize to remedy_corpus shape
-        return [
-            {
-                "remedy_id": r.get("remedy_id", ""),
-                "planet": planet or "unknown",
-                "domain": domain or "general",
-                "remedy_type": "classical_text",
-                "prescription_text": r.get("prescription_text", ""),
-                "source_citation": r.get("source_citation", r.get("source_canonical_id", "")),
-                "source_canonical_id": r.get("source_canonical_id", ""),
-            }
-            for r in rows
-        ]
-
-
-def _in_memory_query(
-    planet: str | None,
-    domain: str | None,
-    remedy_type: str | None,
-    limit: int,
-    error: str = "",
-) -> dict[str, Any]:
-    """Return results from hardcoded REMEDIES list (DB-free fallback)."""
-    filtered = REMEDIES
-    if planet:
-        filtered = [r for r in filtered if r["planet"] == planet]
-    if domain:
-        filtered = [r for r in filtered if r["domain"] == domain]
-    if remedy_type:
-        filtered = [r for r in filtered if r["remedy_type"] == remedy_type]
-
-    results = filtered[:limit]
+        cur.execute("SELECT COUNT(*) FROM brahma_remedy_corpus WHERE scaffold_status='live'")
+        actual = cur.fetchone()[0]
+    status = "GREEN" if actual >= CAMPAIGN_FLOOR else ("AMBER" if actual > 0 else "EMPTY")
     return {
-        "ok": True,
-        "planet": planet,
-        "domain": domain,
-        "remedy_type": remedy_type,
-        "remedies": results,
-        "count": len(results),
-        "source": "in_memory",
-        "provenance_envelope": {
-            "source": "brahmagyan.remedy_corpus",
-            "asset": "BRAHMA-BG-0-9",
-            "data_source": "in_memory",
-            "planet": planet,
-            "domain": domain,
-            "source_citation": SOURCE_CITATION_BPHS,
-            "error": error if error else None,
-            "computed_at": datetime.now(timezone.utc).isoformat(),
-        },
+        "asset": "brahmagyan.remedy_corpus",
+        "actual_rows": actual,
+        "floor": CAMPAIGN_FLOOR,
+        "status": status,
     }
+
+
+# ── REMEDIES alias (backward-compat for old imports) ─────────────────────────
+REMEDIES = LEGACY_REMEDIES

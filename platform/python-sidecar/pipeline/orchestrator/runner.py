@@ -65,10 +65,10 @@ def check_signals(cur, run_id: str) -> Optional[str]:
     return None
 
 
-def is_asset_complete(cur, chart_id: str, asset_id: str) -> bool:
+def is_asset_complete(cur, chart_id, asset_id: str) -> bool:
     cur.execute(
         """SELECT state FROM asset_throughput
-           WHERE chart_id = %s AND asset_id = %s""",
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (chart_id, asset_id),
     )
     row = cur.fetchone()
@@ -87,6 +87,8 @@ def execute_run(run_id: str) -> None:
       3  — chart locked by another run (defer)
     """
     from .asset_runner import run_asset  # imported here to break circular deps
+    from .writers import discover_all    # D1: ensure all writer modules are imported
+    discover_all()
 
     conn = connect()
     conn.autocommit = False

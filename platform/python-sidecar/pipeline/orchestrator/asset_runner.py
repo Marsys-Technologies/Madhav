@@ -15,7 +15,7 @@ import traceback
 import psycopg
 
 from .events import emit_event
-from .writers import get_writer, ContextSpec
+from .writers import discover_all, get_writer, ContextSpec
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
         SELECT ar.asset_id, t.last_built_at
         FROM asset_registry ar
         LEFT JOIN asset_throughput t
-          ON t.asset_id = ar.asset_id AND t.chart_id = %s
+          ON t.asset_id = ar.asset_id AND t.chart_id IS NOT DISTINCT FROM %s
         WHERE ar.asset_id = ANY(
             SELECT unnest(depends_on) FROM asset_registry WHERE asset_id = %s
         )
@@ -85,7 +85,7 @@ def mark_asset_error(
     cur.execute(
         """UPDATE asset_throughput
            SET state = 'error', last_error = %s, last_built_at = NOW()
-           WHERE chart_id = %s AND asset_id = %s""",
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (error, chart_id, asset_id),
     )
     cur.execute(
@@ -124,14 +124,24 @@ def run_asset(
     """
     logger.info("[orchestrator] starting asset %s (pos=%d)", asset_id, position)
 
-    # Ensure asset_throughput row exists for this (chart_id, asset_id)
-    cur.execute(
-        """INSERT INTO asset_throughput (asset_id, chart_id, state)
-           VALUES (%s, %s, 'building')
-           ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-           DO UPDATE SET state = 'building', last_error = NULL""",
-        (asset_id, chart_id),
-    )
+    # Ensure asset_throughput row exists for this (chart_id, asset_id).
+    # Global assets (chart_id IS NULL) use a separate partial unique index (migration 184).
+    if chart_id is not None:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state)
+               VALUES (%s, %s, 'building')
+               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+               DO UPDATE SET state = 'building', last_error = NULL""",
+            (asset_id, chart_id),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state)
+               VALUES (%s, NULL, 'building')
+               ON CONFLICT (asset_id) WHERE chart_id IS NULL
+               DO UPDATE SET state = 'building', last_error = NULL""",
+            (asset_id,),
+        )
 
     cur.execute(
         """INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at)
@@ -155,7 +165,8 @@ def run_asset(
         "to_state": "building",
     })
 
-    # Resolve writer
+    # Resolve writer (discover_all is idempotent; self-heals if runner.py skipped it)
+    discover_all()
     writer_cls = get_writer(asset_id)
     if writer_cls is None:
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
@@ -193,7 +204,7 @@ def run_asset(
                built_against_upstream_hash = %s,
                built_against_writer_hash = %s,
                last_error = NULL
-           WHERE chart_id = %s AND asset_id = %s""",
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (rows_written, upstream_hash, writer_hash, chart_id, asset_id),
     )
 
@@ -223,7 +234,7 @@ def run_asset(
     if downstream:
         cur.execute(
             """UPDATE asset_throughput SET state = 'stale'
-               WHERE chart_id = %s AND asset_id = ANY(%s)
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
                AND state IN ('lit', 'mature')""",
             (chart_id, downstream),
         )
