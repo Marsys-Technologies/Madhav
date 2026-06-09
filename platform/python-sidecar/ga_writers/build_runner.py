@@ -1,15 +1,16 @@
 """
-build_runner.py — GA3 build orchestrator
-=========================================
-Runs the full GA3 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3 + GA6 build orchestrator
+===============================================
+Runs the full build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
-  3. Refresh materialized views (synchronous, required before build 'complete')
-  4. Run all gate-validators
-  5. Emit FINAL_SUMMARY dict
+  3. ga_vargas     → chart_divisionals (30 vargas × 25 categories, ~78K rows)
+  4. Refresh materialized views (synchronous, required before build 'complete')
+  5. Run all gate-validators
+  6. Emit FINAL_SUMMARY dict
 
 Usage:
-    python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID]
+    python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID] [--skip_vargas]
     # or import and call: build_runner.run(chart_id, build_id)
 
 Environment:
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
+from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.gates import run_all_gates
 
 
@@ -46,6 +48,9 @@ MATERIALIZED_VIEWS = [
     "mv_chart_ashtakavarga_summary",
     "mv_chart_bhava_bala_summary",
     "mv_cross_ayanamsha_consensus",
+    # GA6 MVs (migration 209)
+    "mv_chart_vargas_summary",
+    "mv_chart_super_vargottama_bodies",
 ]
 
 
@@ -82,6 +87,7 @@ def run(
     *,
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
+    skip_vargas: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -156,6 +162,38 @@ def run(
             summary["steps"]["ga_strength"] = {"status": "FAIL", "error": str(exc)}
             summary["status"] = "FAIL"
             logger.error("[build_runner] ga_strength FAIL: %s", exc)
+            return summary
+
+    # ── Step 2b: ga_vargas ───────────────────────────────────────────────────
+    if not skip_vargas:
+        logger.info("[build_runner] Step 2b: ga_vargas")
+        try:
+            vargas_summary = build_ga_vargas(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_vargas"] = {
+                "status": vargas_summary.get("status", "FAIL"),
+                "total_rows_written": vargas_summary.get("total_rows_written", 0),
+                "batches_completed": vargas_summary.get("batches_completed", 0),
+                "forensic_pass": all(
+                    r.get("result") == "PASS"
+                    for r in vargas_summary.get("forensic_results", {}).values()
+                ),
+            }
+            if vargas_summary.get("status") in ("FAIL", "FORENSIC_FAIL"):
+                summary["status"] = "FAIL"
+                logger.error("[build_runner] ga_vargas FAIL: %s", vargas_summary.get("status"))
+                return summary
+            logger.info(
+                "[build_runner] ga_vargas PASS: rows=%d",
+                vargas_summary.get("total_rows_written", 0),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_vargas"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_vargas FAIL exception: %s", exc)
             return summary
 
     # ── Step 3: Refresh MVs ───────────────────────────────────────────────────
@@ -238,6 +276,11 @@ def main() -> None:
         help="Skip ga_strength writer (positions only)",
     )
     parser.add_argument(
+        "--skip_vargas",
+        action="store_true",
+        help="Skip ga_vargas writer (vargas/divisionals only)",
+    )
+    parser.add_argument(
         "--json",
         dest="output_json",
         action="store_true",
@@ -249,6 +292,7 @@ def main() -> None:
         chart_id=args.chart_id,
         build_id=args.build_id,
         skip_strength=args.skip_strength,
+        skip_vargas=getattr(args, "skip_vargas", False),
     )
 
     if args.output_json:
