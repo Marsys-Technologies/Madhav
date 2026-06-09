@@ -683,7 +683,10 @@
       "render_template": "House {house} total bhava bala: {total:.4f} rupa ({ayanamsha})."
     },
 
-    "_a5_note": "GA5 adds 30 esoteric/Tajik/KP/Nadi/Lal Kitab categories. Every row carries 6 Section-B enrichment fields: tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag, vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec.",
+    "_a5_note": {
+      "_note": "GA5 adds 30 esoteric/Tajik/KP/Nadi/Lal Kitab categories. Every row carries 6 Section-B enrichment fields: tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag, vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec.",
+      "ayanamsha_dependent": false
+    },
 
     "upagraha_position": {
       "ayanamsha_dependent": true,
