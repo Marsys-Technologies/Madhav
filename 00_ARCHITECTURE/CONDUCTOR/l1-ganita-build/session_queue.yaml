@@ -60,7 +60,9 @@ sessions:
     asset: [ga_positions, ga_strength]
     brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA3_CHART_FACTS_WRITER_v1_0.md
     branch: feature/ga3-chart-facts-writer
-    status: pending
+    status: passed
+    result_commit: 2a9885c6
+    result_pr: 237
     requires_external_gate: phase0_done
     depends_on: []
     acceptance: |
