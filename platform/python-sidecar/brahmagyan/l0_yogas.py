@@ -951,12 +951,16 @@ YOGA_NAME_LEXICON: list[str] = [
 # Generic named-yoga regex (the open-ended workhorse)
 NAMED_YOGA_RE = re.compile(r'\b([A-Z][a-zA-Z]+(?:[ \-][A-Z][a-zA-Z]+)*)\s+[Yy]oga\b')
 
-# Chapters that are definitively yoga chapters in each text
-YOGA_CHAPTERS: dict[str, list[int]] = {
-    "saravali":     list(range(27, 52)),   # Ch.27-51 contain yoga definitions
-    "bphs":         list(range(30, 46)),   # Ch.30-45 contain yoga definitions
-    "phaladeepika": list(range(4, 12)),    # Ch.4-11 contain yoga definitions
-}
+# YOGA_CHAPTERS chapter filter REMOVED 2026-06-09 (remediation).
+# Root cause: the `chapter` column stores PDF page numbers, not classical chapter
+# numbers. The previous ranges (bphs 30-45, saravali 27-51, phaladeepika 4-11)
+# targeted introductory/preface PDF pages and missed the actual yoga content
+# (bphs correct pages ~355-415, phaladeepika ~16-35, saravali 52-80+).
+# Fix: drop the chapter filter entirely. The keyword filter
+# `lower(content_en) LIKE '%yoga%'` is the correct gate and already present.
+# This expands the scanned pool from ~37 chunks to ~403 chunks.
+# YOGA_CHAPTERS: dict kept as empty for reference; not used in the query.
+YOGA_CHAPTERS: dict[str, list[int]] = {}
 
 # Canonical IDs of inline core — these names are already covered
 _INLINE_IDS: set[str] = {y["canonical_id"] for y in YOGAS_CORE}
@@ -1019,17 +1023,13 @@ def extract_yogas_from_corpus(conn) -> list[dict]:
 
     try:
         with conn.cursor() as cur:
-            # Build the WHERE clause for yoga chapters
-            conditions = []
-            for text_id, chapters in YOGA_CHAPTERS.items():
-                ch_list = ",".join(str(c) for c in chapters)
-                conditions.append(f"(text_id = '{text_id}' AND chapter IN ({ch_list}))")
-
-            where_clause = " OR ".join(conditions)
-            cur.execute(f"""
+            # Chapter filter REMOVED 2026-06-09 (chapter column = PDF page numbers,
+            # not classical chapter numbers; old ranges mis-targeted intro/preface pages).
+            # Keyword filter `lower(content_en) LIKE '%yoga%'` is the correct gate.
+            cur.execute("""
                 SELECT id::text, text_id, chapter, verse_ref, content_en, tradition_school
                 FROM classical_text_chunks
-                WHERE ({where_clause})
+                WHERE text_id IN ('bphs', 'saravali', 'phaladeepika', 'chamatkar_chintamani')
                   AND lower(content_en) LIKE '%yoga%'
                 ORDER BY text_id, chapter, verse_start
             """)

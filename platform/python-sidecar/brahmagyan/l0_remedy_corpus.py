@@ -2130,6 +2130,147 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
 
 # ── Combined list builder ──────────────────────────────────────────────────────
 
+def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
+    """
+    Scan classical_text_chunks for remedy-marker keywords.
+    Returns list of remedy row dicts ready for merge into the main INSERT loop.
+    ZERO LLM — deterministic regex classification only.
+
+    scaffold_status='live'   — exactly one marker, planet resolved, unambiguous type
+    scaffold_status='review' — multiple markers, no planet, or ambiguous type
+    """
+    import re
+
+    # Priority-ordered marker → remedy_type mapping
+    MARKER_MAP = [
+        (re.compile(r'\bmantra\b', re.IGNORECASE), 'mantra'),
+        (re.compile(r'\byantra\b', re.IGNORECASE), 'yantra'),
+        (re.compile(r'\bjapa\b', re.IGNORECASE), 'japa'),
+        (re.compile(r'\bgemstone\b', re.IGNORECASE), 'gemstone'),
+        (re.compile(r'\bvrata\b', re.IGNORECASE), 'vrata'),
+        (re.compile(r'\bfast(?:ing)?\b', re.IGNORECASE), 'vrata'),
+        (re.compile(r'\bworship\b', re.IGNORECASE), 'puja'),
+        (re.compile(r'\bdonate\b', re.IGNORECASE), 'charity'),
+        (re.compile(r'\bdana\b', re.IGNORECASE), 'charity'),
+        (re.compile(r'\brecite\b', re.IGNORECASE), 'japa'),
+        (re.compile(r'\bwear\b', re.IGNORECASE), 'gemstone'),
+    ]
+
+    # Planet word → canonical planet name (used in VALID_PLANETS)
+    PLANET_WORDS = {
+        'sun': 'sun', 'moon': 'moon', 'mars': 'mars', 'mercury': 'mercury',
+        'jupiter': 'jupiter', 'venus': 'venus', 'saturn': 'saturn',
+        'rahu': 'rahu', 'ketu': 'ketu',
+        'surya': 'sun', 'chandra': 'moon', 'mangal': 'mars', 'budha': 'mercury',
+        'guru': 'jupiter', 'shukra': 'venus', 'shani': 'saturn',
+    }
+    PLANET_PATTERN = re.compile(
+        r'\b(' + '|'.join(PLANET_WORDS.keys()) + r')\b',
+        re.IGNORECASE,
+    )
+
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT chunk_id, text_id, source_citation, content_en
+            FROM classical_text_chunks
+            WHERE content_en ILIKE ANY(ARRAY[
+                '%mantra%','%yantra%','%japa%','%gemstone%','%vrata%','%fast%',
+                '%worship%','%donate%','%dana%','%recite%','%wear%'
+            ])
+        """)
+        rows = cur.fetchall()
+
+    result: list[dict[str, Any]] = []
+    for chunk_id, text_id, source_citation, content_en in rows:
+        if not content_en:
+            continue
+
+        # Find all matching markers
+        matched_types: list[str] = []
+        for pattern, rtype in MARKER_MAP:
+            if pattern.search(content_en):
+                matched_types.append(rtype)
+
+        if not matched_types:
+            continue
+
+        # Deduplicate matched types (preserving first-match priority)
+        seen_types: set[str] = set()
+        unique_types: list[str] = []
+        for t in matched_types:
+            if t not in seen_types:
+                seen_types.add(t)
+                unique_types.append(t)
+
+        remedy_type = unique_types[0]  # first-match wins
+        multi_marker = len(unique_types) > 1
+
+        # Planet detection
+        planet_matches = PLANET_PATTERN.findall(content_en)
+        planets_found = list(dict.fromkeys(
+            PLANET_WORDS[m.lower()] for m in planet_matches
+        ))
+        planet = planets_found[0] if len(planets_found) == 1 else None
+        multi_planet = len(planets_found) > 1
+
+        if planet is None:
+            # No planet or ambiguous — use 'general' placeholder; mark review
+            # 'general' is not in VALID_PLANETS so we skip these rows entirely
+            # (the INSERT validator would reject them)
+            continue
+
+        # scaffold_status
+        if multi_marker or multi_planet:
+            scaffold_status = 'review'
+        else:
+            scaffold_status = 'live'
+
+        # Deterministic remedy_id with sweep_ prefix
+        h = hashlib.sha256(content_en[:80].encode()).hexdigest()[:8]
+        remedy_id = f"sweep_{planet}_{remedy_type}_{h}"
+
+        # Source citation: prefer chunk's own citation, fall back to text_id
+        citation = source_citation or f"classical_text_chunks text_id={text_id}"
+
+        # Prescription text = first 400 chars of content_en (truncated cleanly)
+        prescription_text = content_en[:400].rsplit(' ', 1)[0] if len(content_en) > 400 else content_en
+
+        row: dict[str, Any] = {
+            "remedy_id": remedy_id,
+            "planet": planet,
+            "domain": "general",
+            "remedy_type": remedy_type,
+            "prescription_text": prescription_text,
+            "mantra_text": None,
+            "gemstone": None,
+            "charity_action": None,
+            "day_of_week": None,
+            "color_associated": None,
+            "confidence": 0.70 if scaffold_status == 'live' else 0.55,
+            "source_canonical_id": str(text_id) if text_id else "CLASSICAL_CORPUS",
+            "source_citation": citation,
+            "classical_ref": f"chunk_id={chunk_id}",
+            "category": "corpus_sweep",
+            "deity": None,
+            "mantra_sanskrit": None,
+            "mantra_transliteration": None,
+            "cost_tier": None,
+            "contraindications": None,
+            "scaffold_status": scaffold_status,
+        }
+        result.append(row)
+
+    logger.info(
+        "[L0/remedies] sweep_classical_text_chunks: %d chunks scanned → %d rows extracted "
+        "(%d live, %d review)",
+        len(rows),
+        len(result),
+        sum(1 for r in result if r['scaffold_status'] == 'live'),
+        sum(1 for r in result if r['scaffold_status'] == 'review'),
+    )
+    return result
+
+
 def build_all_remedies() -> list[dict[str, Any]]:
     """
     Combine all three buckets, deduplicate by remedy_id, normalise remedy_type.
@@ -2182,8 +2323,20 @@ def seed_remedy_corpus(
     Returns dict with:
         remedies_inserted, remedies_skipped, live_count, total_built
     """
-    all_remedies = build_all_remedies()
+    base_remedies = build_all_remedies()
+    sweep_rows = sweep_classical_text_chunks(conn)
+
+    # Dedup sweep rows against base (remedy_id collision avoidance)
+    existing_ids: set[str] = {r["remedy_id"] for r in base_remedies}
+    new_sweep_rows = [r for r in sweep_rows if r["remedy_id"] not in existing_ids]
+
+    all_remedies = base_remedies + new_sweep_rows
     total_built = len(all_remedies)
+
+    logger.info(
+        "[L0/remedies] combined: base=%d sweep_new=%d total=%d",
+        len(base_remedies), len(new_sweep_rows), total_built,
+    )
 
     if dry_run:
         live_count = sum(1 for r in all_remedies if r.get("scaffold_status") == "live")
