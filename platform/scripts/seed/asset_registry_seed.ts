@@ -28,7 +28,7 @@ interface AssetDef {
   sanskrit_name: string
   english_name: string
   english_description: string
-  storage_type: 'postgres_table' | 'pgvector' | 'postgres_view' | 'gcs_jsonl' | 'bigquery' | 'tool_only'
+  storage_type: 'postgres_table' | 'pgvector' | 'postgres_view' | 'gcs_jsonl' | 'bigquery' | 'tool_only' | 'service'
   target_table: string | null
   count_sql: string | null
   size_sql: string | null
@@ -40,6 +40,13 @@ interface AssetDef {
   scope: 'global' | 'per_chart'
   is_active: boolean  // overridden to false if target_table absent in prod
   estimated_seconds: null  // always null — measured on first build
+  // Migration 202+ fields (service-support upgrade)
+  asset_type?: 'data' | 'service'          // defaults to 'data' for all existing rows
+  layer_name?: string                       // e.g. 'Brahmagyan', 'Gaṇita' — derived by migration if omitted
+  layer_index?: string                      // e.g. 'L0', 'L1'
+  provides_apis?: Record<string, unknown>[] | null
+  health_probe?: Record<string, unknown> | null
+  catalog_status?: 'CURRENT' | 'DRAFT'     // L0 = CURRENT; L1–L5 = DRAFT
 }
 
 interface CoefficientDef {
@@ -1063,14 +1070,29 @@ async function main(): Promise<void> {
   // Insert asset_registry rows
   console.log('Seeding asset_registry...')
   for (const asset of ASSETS) {
+    // Derive layer_name / layer_index from layer code when not explicitly set
+    const layerNames: Record<string, string> = {
+      brahmagyan: 'Brahmagyan', ganita: 'Gaṇita', bodha: 'Bodha',
+      kala: 'Kāla', phala: 'Phala', mimamsa: 'Mīmāṃsā',
+    }
+    const layerIndices: Record<string, string> = {
+      brahmagyan: 'L0', ganita: 'L1', bodha: 'L2',
+      kala: 'L3', phala: 'L4', mimamsa: 'L5',
+    }
+    const assetType = asset.asset_type ?? 'data'
+    const layerName = asset.layer_name ?? layerNames[asset.layer] ?? asset.layer
+    const layerIndex = asset.layer_index ?? layerIndices[asset.layer] ?? null
+    const catalogStatus = asset.catalog_status ?? (asset.layer === 'brahmagyan' ? 'CURRENT' : 'DRAFT')
+
     await client.query(
       `INSERT INTO asset_registry (
         asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
         storage_type, target_table, count_sql, size_sql, target_floor,
         expected_volume_formula, expected_volume_inputs, volume_explanation,
-        depends_on, scope, is_active, estimated_seconds
+        depends_on, scope, is_active, estimated_seconds,
+        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
       ) ON CONFLICT (asset_id) DO UPDATE SET
         layer = EXCLUDED.layer,
         sort_order = EXCLUDED.sort_order,
@@ -1087,7 +1109,13 @@ async function main(): Promise<void> {
         volume_explanation = EXCLUDED.volume_explanation,
         depends_on = EXCLUDED.depends_on,
         scope = EXCLUDED.scope,
-        is_active = EXCLUDED.is_active`,
+        is_active = EXCLUDED.is_active,
+        asset_type = EXCLUDED.asset_type,
+        layer_name = EXCLUDED.layer_name,
+        layer_index = EXCLUDED.layer_index,
+        provides_apis = EXCLUDED.provides_apis,
+        health_probe = EXCLUDED.health_probe,
+        catalog_status = EXCLUDED.catalog_status`,
       [
         asset.asset_id, asset.layer, asset.sort_order,
         asset.sanskrit_name, asset.english_name, asset.english_description,
@@ -1096,6 +1124,10 @@ async function main(): Promise<void> {
         asset.expected_volume_inputs ? JSON.stringify(asset.expected_volume_inputs) : null,
         asset.volume_explanation,
         asset.depends_on, asset.scope, asset.is_active, asset.estimated_seconds,
+        assetType, layerName, layerIndex,
+        asset.provides_apis ? JSON.stringify(asset.provides_apis) : null,
+        asset.health_probe ? JSON.stringify(asset.health_probe) : null,
+        catalogStatus,
       ],
     )
     console.log(`  ${asset.is_active ? '✓' : '⚠'} ${asset.asset_id}`)
