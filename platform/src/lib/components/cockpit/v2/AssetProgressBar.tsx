@@ -12,9 +12,9 @@ const STATE_COLORS: Record<string, {
   fill: string; stroke: string; pill: string; pillColor: string
 }> = {
   dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.4)',    pill: 'NOT BUILT',     pillColor: 'rgba(155,131,80,0.8)' },
-  building:     { fill: 'rgba(212,166,72,0.6)',    stroke: 'rgba(212,166,72,0.8)',   pill: 'BUILDING',      pillColor: 'rgba(120,180,255,0.9)' },
-  lit:          { fill: 'rgba(236,197,106,0.85)',  stroke: 'rgba(236,197,106,1.0)',  pill: 'LIVE',          pillColor: 'rgba(140,210,140,0.95)' },
-  stale:        { fill: 'rgba(212,140,72,0.6)',    stroke: 'rgba(212,140,72,0.8)',   pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
+  building:     { fill: 'rgba(168,124,48,0.7)',    stroke: 'rgba(200,154,70,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(120,180,255,0.9)' },
+  lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(140,210,140,0.95)' },
+  stale:        { fill: 'rgba(166,108,52,0.7)',    stroke: 'rgba(196,128,64,0.75)',  pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
   error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
   not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.3)',     pill: 'NOT MIGRATED',  pillColor: 'rgba(120,110,90,0.7)' },
 }
@@ -62,8 +62,13 @@ export function AssetProgressBar({ state, actualRows, targetVolume }: AssetProgr
         </motion.div>
       )}
 
-      {/* Numeric overlay — centered monospace */}
-      <div className="absolute inset-0 flex items-center justify-center px-2 font-mono text-[10px] text-white/85">
+      {/* Numeric overlay — centered monospace. Right padding reserves room for
+          the state pill so the centered text never collides with it; the text
+          shadow keeps it legible over both filled and unfilled portions. */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pl-2 pr-[60px] font-mono text-[10px] text-white"
+        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+      >
         {numericText}
       </div>
 

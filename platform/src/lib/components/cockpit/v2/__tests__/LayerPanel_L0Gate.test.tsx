@@ -30,6 +30,13 @@ const ASSET_BASE = {
   is_active: true,
   estimated_seconds: null,
   created_at: '2026-01-01T00:00:00Z',
+  // Migration 202+ service-support fields
+  asset_type: 'data' as const,
+  layer_name: 'Brahma Jñāna',
+  layer_index: 'L0',
+  provides_apis: null,
+  health_probe: null,
+  catalog_status: 'CURRENT' as const,
 }
 
 describe('LayerPanel — L0 ClearIconButton gate', () => {

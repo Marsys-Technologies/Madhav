@@ -139,15 +139,19 @@ export function LayerPanel({
 
         {/* Right: asset count + rows + [Build/Rebuild] [Refresh] [Stop | Delete] */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
         >
-          <span style={{ width: '66px', textAlign: 'right', fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-faint)' }}>
-            {assets.length} assets
-          </span>
-          <span style={{ width: '82px', textAlign: 'right', fontFamily: 'var(--mono-stack)', fontSize: '11px', color: 'var(--on-dark-mut)' }}>
-            {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
-          </span>
+          {/* Metric group — two distinct figures separated by a hairline divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontFamily: 'var(--mono-stack)', fontSize: '11px' }}>
+            <span style={{ minWidth: '58px', textAlign: 'right', color: 'var(--on-dark-faint)' }}>
+              {assets.length} assets
+            </span>
+            <span aria-hidden style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.14)' }} />
+            <span style={{ minWidth: '88px', textAlign: 'right', color: 'var(--on-dark-mut)' }}>
+              {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
+            </span>
+          </div>
 
           {/* Build/Rebuild — hidden when layer run active */}
           {!layerRunId && (
@@ -204,7 +208,7 @@ export function LayerPanel({
             style={{
               display: 'grid',
               gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
-              gap: '8px',
+              gap: '16px',
               padding: '6px 12px',
               fontSize: '11px',
               textTransform: 'uppercase',
