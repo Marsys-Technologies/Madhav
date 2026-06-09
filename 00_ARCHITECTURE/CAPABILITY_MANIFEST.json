@@ -6,7 +6,7 @@
   "rebase_to": "Brahma-L0-L5",
   "rebase_date": "2026-06-05",
   "rebase_authorized_by": "CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIVATION_v1_0.md",
-  "entry_count": 117,
+  "entry_count": 119,
   "entries": [
     {
       "canonical_id": "BRAHMAGYAN_CLASSICAL_TEXTS",
@@ -19,7 +19,7 @@
         "folder"
       ],
       "interface_version": "1.0",
-      "rebase_note": "Rebase from L8 \u2192 Brahmagyan L0 classical texts substrate"
+      "rebase_note": "Rebase from L8 → Brahmagyan L0 classical texts substrate"
     },
     {
       "canonical_id": "BRAHMAGYAN_PROCUREMENT_MAP",
@@ -354,7 +354,7 @@
         "folder"
       ],
       "interface_version": "1.0",
-      "rebase_note": "Rebase from L9 \u2192 Brahmagyan L0 multi-school concordance substrate"
+      "rebase_note": "Rebase from L9 → Brahmagyan L0 multi-school concordance substrate"
     },
     {
       "canonical_id": "BRAHMAGYAN_SCHOOL_COVERAGE_AUDIT",
@@ -583,7 +583,7 @@
       "version": "2.0",
       "status": "SUPERSEDED",
       "layer": "L0",
-      "expose_to_chat": "Rebase from old L4 \u2192 Brahmagyan L0 remedy corpus; file is legacy predecessor to Brahma bodha_remediation",
+      "expose_to_chat": "Rebase from old L4 → Brahmagyan L0 remedy corpus; file is legacy predecessor to Brahma bodha_remediation",
       "representations": [
         "file"
       ],
@@ -692,7 +692,7 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "af68f246c795adc15639879efbd150b835c3eadb6411e1c3d22c89f9bcfdc69c",
-      "rebase_note": "Rebase from L1.5 \u2192 L1 Ganita; panchanga is a chart fact (L0 almanac feeds L1 panchanga)"
+      "rebase_note": "Rebase from L1.5 → L1 Ganita; panchanga is a chart fact (L0 almanac feeds L1 panchanga)"
     },
     {
       "canonical_id": "GANITA_POSITIONS_DB",
@@ -703,7 +703,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: ganita_positions \u2014 per-chart PyJHora computed positions"
+      "rebase_note": "Brahma DB table: ganita_positions — per-chart PyJHora computed positions"
     },
     {
       "canonical_id": "GANITA_DASHAS_DB",
@@ -714,7 +714,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: ganita_dashas \u2014 per-chart dasha timeline"
+      "rebase_note": "Brahma DB table: ganita_dashas — per-chart dasha timeline"
     },
     {
       "canonical_id": "CDLM",
@@ -722,7 +722,7 @@
       "version": "1.3",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. CDLM is a legacy synthesis artifact; Brahma Bodha (bodha_signals/bodha_graph) supersedes it",
+      "expose_to_chat": "Rebase from L2.5 → L2 Bodha. CDLM is a legacy synthesis artifact; Brahma Bodha (bodha_signals/bodha_graph) supersedes it",
       "representations": [
         "file"
       ],
@@ -735,7 +735,7 @@
       "version": "9.0",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. CGM superseded by Brahma bodha_graph / bodha_graph_edges",
+      "expose_to_chat": "Rebase from L2.5 → L2 Bodha. CGM superseded by Brahma bodha_graph / bodha_graph_edges",
       "representations": [
         "file"
       ],
@@ -748,7 +748,7 @@
       "version": "5.0",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. MSR 573 signals are grounded inputs to Brahma bodha_signals",
+      "expose_to_chat": "Rebase from L2.5 → L2 Bodha. MSR 573 signals are grounded inputs to Brahma bodha_signals",
       "representations": [
         "file"
       ],
@@ -761,7 +761,7 @@
       "version": "2.2",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. RM superseded by Brahma bodha_resonance table",
+      "expose_to_chat": "Rebase from L2.5 → L2 Bodha. RM superseded by Brahma bodha_resonance table",
       "representations": [
         "file"
       ],
@@ -774,7 +774,7 @@
       "version": "4.1",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. UCN superseded by Brahma bodha_domain_links",
+      "expose_to_chat": "Rebase from L2.5 → L2 Bodha. UCN superseded by Brahma bodha_domain_links",
       "representations": [
         "file"
       ],
@@ -790,7 +790,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_signals \u2014 per-chart signal activations"
+      "rebase_note": "Brahma DB table: bodha_signals — per-chart signal activations"
     },
     {
       "canonical_id": "BODHA_GRAPH_DB",
@@ -801,7 +801,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_graph + bodha_graph_edges \u2014 signal relationship graph"
+      "rebase_note": "Brahma DB table: bodha_graph + bodha_graph_edges — signal relationship graph"
     },
     {
       "canonical_id": "BODHA_RESONANCE_DB",
@@ -812,7 +812,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_resonance \u2014 cross-domain resonance scores"
+      "rebase_note": "Brahma DB table: bodha_resonance — cross-domain resonance scores"
     },
     {
       "canonical_id": "BODHA_DOMAIN_LINKS_DB",
@@ -823,7 +823,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_domain_links \u2014 domain concordance links"
+      "rebase_note": "Brahma DB table: bodha_domain_links — domain concordance links"
     },
     {
       "canonical_id": "BODHA_REMEDIATION_DB",
@@ -834,7 +834,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_remediation + bodha_remediation_staging \u2014 Remediation asset per v2.1 \u00a7F"
+      "rebase_note": "Brahma DB table: bodha_remediation + bodha_remediation_staging — Remediation asset per v2.1 §F"
     },
     {
       "canonical_id": "BODHA_SIGNAL_EMBEDDINGS_DB",
@@ -845,7 +845,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_signal_embeddings \u2014 vector embeddings for semantic search"
+      "rebase_note": "Brahma DB table: bodha_signal_embeddings — vector embeddings for semantic search"
     },
     {
       "canonical_id": "BODHA_CLUSTER_ATLAS",
@@ -853,7 +853,7 @@
       "version": "1.1",
       "status": "SUPERSEDED",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L3.5 \u2192 L2 Bodha. Discovery registers superseded by Brahma bodha_graph",
+      "expose_to_chat": "Rebase from L3.5 → L2 Bodha. Discovery registers superseded by Brahma bodha_graph",
       "representations": [
         "file"
       ],
@@ -905,7 +905,7 @@
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L2",
-      "expose_to_chat": "Rebase from L3.5 \u2192 L2 Bodha. Query taxonomy still valid for Brahma Bodha retrieval",
+      "expose_to_chat": "Rebase from L3.5 → L2 Bodha. Query taxonomy still valid for Brahma Bodha retrieval",
       "representations": [
         "file"
       ],
@@ -931,7 +931,7 @@
       "version": "1.1",
       "status": "SUPERSEDED",
       "layer": "L3",
-      "expose_to_chat": "Rebase from old L3 domain reports \u2192 Brahma Kala L3; domain reports are legacy synthetic outputs, superseded by Brahma kala_convergence + kala_timeline",
+      "expose_to_chat": "Rebase from old L3 domain reports → Brahma Kala L3; domain reports are legacy synthetic outputs, superseded by Brahma kala_convergence + kala_timeline",
       "representations": [
         "file"
       ],
@@ -1048,7 +1048,7 @@
       "version": "1.0",
       "status": "SUPERSEDED",
       "layer": "L3",
-      "expose_to_chat": "Rebase from old L5 temporal engines \u2192 Brahma Kala L3; superseded by Brahma kala_timeline + kala_convergence DB tables",
+      "expose_to_chat": "Rebase from old L5 temporal engines → Brahma Kala L3; superseded by Brahma kala_timeline + kala_convergence DB tables",
       "representations": [
         "file"
       ],
@@ -1064,7 +1064,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: kala_timeline \u2014 temporal event timeline per chart"
+      "rebase_note": "Brahma DB table: kala_timeline — temporal event timeline per chart"
     },
     {
       "canonical_id": "KALA_CONVERGENCE_DB",
@@ -1086,7 +1086,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: kala_obstruction \u2014 obstruction overlaps"
+      "rebase_note": "Brahma DB table: kala_obstruction — obstruction overlaps"
     },
     {
       "canonical_id": "PHALA_ANCHORS_DB",
@@ -1097,7 +1097,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_anchors \u2014 calibrated event anchors"
+      "rebase_note": "Brahma DB table: phala_anchors — calibrated event anchors"
     },
     {
       "canonical_id": "PHALA_MUHURTA_DB",
@@ -1108,7 +1108,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_muhurta \u2014 Muhurta/Electional engine (new asset per v2.1 \u00a7F)"
+      "rebase_note": "Brahma DB table: phala_muhurta — Muhurta/Electional engine (new asset per v2.1 §F)"
     },
     {
       "canonical_id": "PHALA_MITIGATION_DB",
@@ -1130,7 +1130,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_rectification + phala_rectification_best \u2014 birth-time rectification split"
+      "rebase_note": "Brahma DB table: phala_rectification + phala_rectification_best — birth-time rectification split"
     },
     {
       "canonical_id": "LEL_SCHEMA",
@@ -1138,7 +1138,7 @@
       "version": "0.1",
       "status": "CURRENT",
       "layer": "L5",
-      "expose_to_chat": "Rebase from L6 \u2192 L5 Mimamsa. Schema still governs LEL intake",
+      "expose_to_chat": "Rebase from L6 → L5 Mimamsa. Schema still governs LEL intake",
       "representations": [
         "file"
       ],
@@ -1183,7 +1183,7 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
-      "rebase_note": "Rebase from L6 \u2192 L5 Mimamsa. Prediction ledger is the held-out prospective data store"
+      "rebase_note": "Rebase from L6 → L5 Mimamsa. Prediction ledger is the held-out prospective data store"
     },
     {
       "canonical_id": "LL8_SPEC",
@@ -1191,7 +1191,7 @@
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L5",
-      "expose_to_chat": "Rebase from L6 \u2192 L5 Mimamsa. Bayesian update spec",
+      "expose_to_chat": "Rebase from L6 → L5 Mimamsa. Bayesian update spec",
       "representations": [
         "file"
       ],
@@ -1233,7 +1233,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_predictions \u2014 prospective prediction store"
+      "rebase_note": "Brahma DB table: mimamsa_predictions — prospective prediction store"
     },
     {
       "canonical_id": "MIMAMSA_CALIBRATION_DB",
@@ -1244,7 +1244,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_calibration \u2014 calibration metrics"
+      "rebase_note": "Brahma DB table: mimamsa_calibration — calibration metrics"
     },
     {
       "canonical_id": "MIMAMSA_MULTIPLIERS_DB",
@@ -1255,7 +1255,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_multipliers \u2014 learning multipliers (C5 mechanism)"
+      "rebase_note": "Brahma DB table: mimamsa_multipliers — learning multipliers (C5 mechanism)"
     },
     {
       "canonical_id": "MIMAMSA_QA_EVAL_DB",
@@ -1266,7 +1266,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_qa_eval \u2014 answer-quality eval (C1c)"
+      "rebase_note": "Brahma DB table: mimamsa_qa_eval — answer-quality eval (C1c)"
     },
     {
       "canonical_id": "MIMAMSA_EXPORT_LOG_DB",
@@ -1277,7 +1277,7 @@
       "expose_to_chat": false,
       "representations": [],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_export_log \u2014 BigQuery/Parquet OLAP export log (C3)"
+      "rebase_note": "Brahma DB table: mimamsa_export_log — BigQuery/Parquet OLAP export log (C3)"
     },
     {
       "canonical_id": "LL1_TWO_PASS_APPROVAL",
@@ -1493,7 +1493,7 @@
       "version": "1.7",
       "status": "CURRENT",
       "layer": "governance",
-      "expose_to_chat": "Canonical LEL \u2014 also registered under L1; governance track",
+      "expose_to_chat": "Canonical LEL — also registered under L1; governance track",
       "representations": [
         "file"
       ],
@@ -1506,12 +1506,56 @@
       "version": "1.0",
       "status": "CURRENT",
       "layer": "governance",
-      "expose_to_chat": "Rebase audit trail \u2014 WS-Misc conductor smriti",
+      "expose_to_chat": "Rebase audit trail — WS-Misc conductor smriti",
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
       "fingerprint": "9090f3dba880ce374760a58e50eda9e377e51861b50be85fdd90e70c28286627"
+    },
+    {
+      "canonical_id": "BG_PANCHANGA_ENGINE",
+      "asset_registry_id": "bg_panchanga",
+      "path": "platform/python-sidecar/panchang_engine/",
+      "version": "2.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "asset_type": "service",
+      "expose_to_chat": false,
+      "representations": [
+        "service",
+        "asset_registry"
+      ],
+      "interface_version": "1.0",
+      "provides_apis": [
+        "panchanga_instant",
+        "panchanga_day"
+      ],
+      "health_probe_type": "panchanga_engine",
+      "catalog_status": "CURRENT",
+      "note": "P3 registration 2026-06-09: L0 Brahmagyan service — deterministic panchang engine"
+    },
+    {
+      "canonical_id": "BG_EPHEMERIS_ENGINE",
+      "asset_registry_id": "bg_ephemeris_engine",
+      "path": "platform/python-sidecar/",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "asset_type": "service",
+      "expose_to_chat": false,
+      "representations": [
+        "service",
+        "asset_registry"
+      ],
+      "interface_version": "1.0",
+      "provides_apis": [
+        "swisseph.calc_ut",
+        "swisseph.houses_ex"
+      ],
+      "health_probe_type": "ephemeris_engine",
+      "catalog_status": "CURRENT",
+      "note": "P3 registration 2026-06-09: L0 Brahmagyan service — pyswisseph + DE441 ephemeris engine"
     }
   ],
   "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3"
