@@ -293,12 +293,24 @@ class TextsWriter(WriterBase):
                 notes=f"dry_run=True; would ingest {len(TEXTS)} texts from GCS PDFs",
             )
 
-        # ── Step 0: Clear existing chunks + remove lal_kitab ─────────────────
+        # ── Step 0: Mode-gated clear + registry cleanup ───────────────────────
+        # rebuild_mode: 'additive' (default) — INSERT only new texts, leave existing chunks
+        #               'full' — DELETE all chunks then rebuild entire corpus from scratch
+        # The additive path is the routine-add path; 'full' is the reproducibility-proof path.
+        rebuild_mode = ctx.config.get("rebuild_mode", "additive")
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) AS n FROM classical_text_chunks")
             pre_count = cur.fetchone()["n"]
-            cur.execute("DELETE FROM classical_text_chunks")
-            logger.info("[bg_texts] cleared %d existing chunks (clean rebuild)", pre_count)
+
+            if rebuild_mode == "full":
+                cur.execute("DELETE FROM classical_text_chunks")
+                logger.info("[bg_texts] full rebuild: cleared %d existing chunks", pre_count)
+            else:
+                logger.info(
+                    "[bg_texts] additive mode: %d existing chunks preserved; "
+                    "only new texts will be chunked + embedded",
+                    pre_count,
+                )
 
             cur.execute("DELETE FROM classical_texts WHERE text_id = 'lal_kitab'")
             if cur.rowcount:
@@ -335,12 +347,42 @@ class TextsWriter(WriterBase):
         conditional: list[str] = []
         per_text_counts: dict[str, int] = {}
 
+        # Pre-build the set of text_ids that already have chunks (for additive skip)
+        if rebuild_mode == "additive":
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT text_id FROM classical_text_chunks"
+                )
+                _already_present: set[str] = {row[0] for row in cur.fetchall()}
+            logger.info(
+                "[bg_texts] additive mode: %d text_ids already have chunks → will skip them",
+                len(_already_present),
+            )
+        else:
+            _already_present = set()
+
         for text in TEXTS:
             text_id = text["text_id"]
             is_hindi = text.get("language_available", "en") == "sa+hi"
             gcs_paths = [text["gcs_path"]]
             if text.get("gcs_path_vol2"):
                 gcs_paths.append(text["gcs_path_vol2"])
+
+            # ── 2a-pre. Additive skip: skip texts already present in DB ───────
+            if rebuild_mode == "additive" and text_id in _already_present:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM classical_text_chunks WHERE text_id = %s",
+                        (text_id,),
+                    )
+                    existing_n = cur.fetchone()[0]
+                logger.info(
+                    "[bg_texts] additive: skipping %s (%d chunks already present)",
+                    text_id, existing_n,
+                )
+                per_text_counts[text_id] = existing_n
+                total_chunks += existing_n
+                continue
 
             # ── 2a. Download PDF(s) from GCS ─────────────────────────────────
             vol_pages: list[tuple[int, list[str]]] = []  # (vol_num, page_texts)
