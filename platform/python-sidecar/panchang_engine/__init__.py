@@ -1,11 +1,20 @@
 """
 panchang_engine — Deterministic Panchang computation, Drik-parity, no LLM.
-Public API: compute_panchang, panchang_range, find_muhurat.
+
+Public API (canonical — P2 re-arch, 2026-06-09):
+  panchanga_instant(instant, lat, lon, tz_offset)  → PanchangaInstant
+  panchanga_day(date, lat, lon, tz_offset)          → Panchang
+  compute_panchang(date, lat, lon, tz_offset)       → Panchang  (alias for panchanga_day)
+  panchang_range(date_from, date_to, lat, lon, tz_offset) → list[Panchang]
+  find_muhurat(...)                                 → list[MuhuratWindow]
+
+L0 Brahmagyan service asset — deterministic core, zero scoring/judgement.
+Muhurat scoring lives in the sibling `muhurat/` package.
 """
-__version__ = "1.0.0-S3"  # S3 = muhurat backend live (4C-6-S1)
+__version__ = "2.0.0-P2"  # P2 = panchanga_instant + panchanga_day APIs (2026-06-09)
 
 from .ayanamsha import set_ayanamsha, get_ayanamsha_value, DEFAULT_AYANAMSHA
-from .types import Panchang, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
+from .types import Panchang, PanchangaInstant, Anga, Timing, PlanetState, MuhuratWindow, NatalChart
 from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
@@ -127,6 +136,120 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     )
 
 
+def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "PanchangaInstant":
+    """
+    Compute panchang state at the exact given datetime (birth moment / event instant).
+
+    Unlike compute_panchang / panchanga_day (sunrise-based), all angas are
+    computed from planetary positions at the precise instant — correct for
+    birth-chart queries and any moment where the ruling anga at that exact
+    second is required.
+
+    Args:
+        instant: datetime.datetime — LOCAL time at the given tz_offset.
+                 naive (no tzinfo) — offset applied internally.
+        lat:        float — latitude decimal degrees (+N)
+        lon:        float — longitude decimal degrees (+E)
+        tz_offset:  int   — UTC offset in minutes (e.g. +330 for IST +05:30)
+
+    Returns:
+        PanchangaInstant — angas at the exact moment; floor-to-absent contract
+        for extended topics (topics_computed lists what is present).
+
+    FORENSIC gate (acharya-grade invariant):
+        panchanga_instant(datetime(1984,2,5,10,43), 20.27, 85.84, 330) must return
+        tithi="Shukla Tritiya", nakshatra="Purva Bhadrapada", yoga="Shiva",
+        karana="Garaja", vara="Ravivara".
+    """
+    from datetime import timedelta
+    from .timings import compute_sunrise_sunset
+    from .planets import compute_all_grahas
+    from .angas import (
+        compute_tithi, compute_nakshatra, compute_yoga,
+        compute_karana_pair, compute_vara,
+    )
+    import swisseph as swe
+
+    if not isinstance(instant, _datetime_type()):
+        raise ValidationError(f"instant must be datetime.datetime, got {type(instant)}")
+    if not (-90 <= lat <= 90):
+        raise ValidationError(f"lat out of range: {lat}")
+    if not (-180 <= lon <= 180):
+        raise ValidationError(f"lon out of range: {lon}")
+
+    # Set ayanamsha to Lahiri (project default)
+    set_ayanamsha("lahiri")
+
+    # Convert local instant to UTC
+    instant_utc = instant - timedelta(minutes=tz_offset)
+
+    # Julian Day at this exact moment
+    jd = _datetime_to_jd(instant_utc)
+
+    # Planetary positions at the exact instant
+    planets = compute_all_grahas(jd)
+    sun_lon = next(p.longitude_sidereal for p in planets if p.name == "Sun")
+    moon_lon = next(p.longitude_sidereal for p in planets if p.name == "Moon")
+
+    # All 5 angas at the instant (not sunrise-based)
+    tithi = compute_tithi(sun_lon, moon_lon, instant_utc)
+    nakshatra = compute_nakshatra(moon_lon, instant_utc)
+    yoga = compute_yoga(sun_lon, moon_lon, instant_utc)
+    karana_first, karana_second = compute_karana_pair(sun_lon, moon_lon, instant_utc, instant_utc)
+
+    # Vara from the local calendar date (day of week is date-level, not moment-level)
+    local_date = instant.date()
+    vara = compute_vara(local_date)
+
+    paksha = "shukla" if tithi.id <= 15 else "krishna"
+
+    swe.set_ephe_path(None)
+    ephe_ver = swe.version
+
+    return PanchangaInstant(
+        instant_utc=instant_utc,
+        lat=lat,
+        lon=lon,
+        tz_offset_minutes=tz_offset,
+        tithi=tithi,
+        nakshatra=nakshatra,
+        yoga=yoga,
+        karana=karana_first,
+        karana_next=karana_second,
+        vara=vara,
+        paksha=paksha,
+        planets=list(planets),
+        computation_version=__version__,
+        ephemeris_version=ephe_ver,
+        topics_computed=["angas", "planets"],
+    )
+
+
+def panchanga_day(date, lat: float, lon: float, tz_offset: int) -> "Panchang":
+    """
+    Return the full Panchang for a calendar day at the given location.
+
+    Equivalent to compute_panchang(); canonical name per P2 re-arch (2026-06-09).
+    Angas are sunrise-based (the ruling anga at the moment of sunrise).
+    For anga at an exact moment (e.g. birth time), use panchanga_instant().
+
+    Args:
+        date:      datetime.date — local calendar date
+        lat, lon:  float — decimal degrees
+        tz_offset: int   — UTC offset in minutes
+
+    Returns:
+        Panchang — full day record including timings, choghadiya, hora,
+        special yogas, and 9 graha states at sunrise.
+    """
+    return compute_panchang(date, lat, lon, tz_offset)
+
+
+def _datetime_type():
+    from datetime import datetime
+    return datetime
+
+
 def _datetime_to_jd(dt) -> float:
     """Convert a UTC datetime to Julian Day (UT)."""
     import swisseph as swe
@@ -158,7 +281,7 @@ def find_muhurat(
     date_to,
     lat: float,
     lon: float,
-    tz_offset_minutes: int = 330,
+    tz_offset_minutes: int,
     native_chart=None,
     weights=None,
     top_n: int = 10,
@@ -180,7 +303,7 @@ def find_muhurat(
     Returns:
         list[MuhuratWindow] sorted by score descending
     """
-    from .muhurat import find_muhurat as _find_muhurat
+    from muhurat.finder import find_muhurat as _find_muhurat
     return _find_muhurat(
         event, date_from, date_to, lat, lon,
         tz_offset_minutes=tz_offset_minutes,

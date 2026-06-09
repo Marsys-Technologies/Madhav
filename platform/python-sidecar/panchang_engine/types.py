@@ -77,6 +77,37 @@ class Panchang:
 
 
 @dataclass(frozen=True)
+class PanchangaInstant:
+    """
+    Panchang state at an exact datetime (birth moment or event instant query).
+    Unlike Panchang (sunrise-based day record), all angas are computed at the
+    given instant — correct for birth charts and moment-specific queries.
+
+    Per-topic floor contract: only topics listed in `topics_computed` are present.
+    Absent topics are omitted (never fabricated). Current release computes:
+      "angas" — tithi/nakshatra/yoga/karana/vara/paksha
+      "planets" — 9 grahas sidereal state
+    """
+    instant_utc: datetime
+    lat: float
+    lon: float
+    tz_offset_minutes: int
+    # The 5 angas — computed at the exact instant (not sunrise-based)
+    tithi: Anga
+    nakshatra: Anga
+    yoga: Anga
+    karana: Anga          # ruling karana at the instant (primary)
+    karana_next: Optional[Anga]   # second karana of the tithi (may differ by day-end)
+    vara: Anga
+    paksha: str           # "shukla" (tithis 1–15) or "krishna" (tithis 16–30)
+    planets: list         # list[PlanetState] — 9 grahas sidereal at instant
+    # Metadata
+    computation_version: str
+    ephemeris_version: str
+    topics_computed: list  # list[str] — floor-to-absent contract
+
+
+@dataclass(frozen=True)
 class NatalChart:
     """
     Minimal natal chart reference for dasha-aware muhurat scoring (used in 4C.6).

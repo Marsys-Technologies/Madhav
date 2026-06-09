@@ -75,7 +75,7 @@ windows = find_muhurat(
 
 ## §3 — Layering: facts only
 
-`panchang_engine` is the **L1.5 computation layer** in the MARSYS-JIS
+`panchang_engine` is the **L0 Brahmagyan service** (`bg_panchanga`) in the MARSYS-JIS
 architecture. It outputs raw astronomical facts:
 
 - Sidereal longitudes (Lahiri)

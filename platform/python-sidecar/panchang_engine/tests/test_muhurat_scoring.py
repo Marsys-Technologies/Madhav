@@ -268,13 +268,13 @@ class TestFindMuhurat:
         """ValueError for unsupported event."""
         from panchang_engine.muhurat import find_muhurat
         with pytest.raises(ValueError, match="not in MVP set"):
-            find_muhurat("unsupported", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84)
+            find_muhurat("unsupported", date(2026, 1, 1), date(2026, 1, 31), 20.27, 85.84, 330)
 
     def test_find_muhurat_date_order_raises(self):
         """ValueError when date_from > date_to."""
         from panchang_engine.muhurat import find_muhurat
         with pytest.raises(ValueError, match="date_from"):
-            find_muhurat("vivah", date(2026, 2, 1), date(2026, 1, 1), 20.27, 85.84)
+            find_muhurat("vivah", date(2026, 2, 1), date(2026, 1, 1), 20.27, 85.84, 330)
 
     def test_find_muhurat_mocked_range(self):
         """
@@ -318,6 +318,7 @@ class TestFindMuhurat:
                 date(2026, 6, 4),
                 date(2026, 6, 4),
                 lat=20.27, lon=85.84,
+                tz_offset_minutes=330,
             )
 
         assert len(windows) == 1
