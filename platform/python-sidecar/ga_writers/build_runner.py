@@ -1,15 +1,18 @@
 """
-build_runner.py — GA3 build orchestrator
-=========================================
-Runs the full GA3 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3 + GA7 build orchestrator
+================================================
+Runs the full GA3+GA7 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
   3. Refresh materialized views (synchronous, required before build 'complete')
   4. Run all gate-validators
-  5. Emit FINAL_SUMMARY dict
+  5. ga_dashas (GA7) → chart_dashas (7 systems × 4-level Sukshma × 5 ayanamshas)
+     Per-system incremental; one system at a time for context-decay safety.
+  6. Emit FINAL_SUMMARY dict
 
 Usage:
     python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID]
+    python -m ga_writers.build_runner --skip_ga3 --ga7_systems vimshottari yogini
     # or import and call: build_runner.run(chart_id, build_id)
 
 Environment:
@@ -36,6 +39,7 @@ logger = logging.getLogger(__name__)
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
 from ga_writers.gates import run_all_gates
+from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
 
 
 # ── MV refresh ───────────────────────────────────────────────────────────────
@@ -82,9 +86,13 @@ def run(
     *,
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
+    skip_ga7: bool = False,
+    ga7_systems: list[str] | None = None,
+    ga7_ayanamshas: list[str] | None = None,
 ) -> dict[str, Any]:
     """
-    Run full GA3 build: positions + strength + MVs + gates.
+    Run full GA3 + GA7 build: positions + strength + MVs + gates + dashas.
+    GA7 runs per-system (context-decay-safe): one system at a time.
     Returns comprehensive summary dict.
     Raises on FORENSIC gate failure or two-pass divergence.
     """
@@ -192,6 +200,59 @@ def run(
         summary["gate_results"] = {"overall": "FAIL", "error": str(exc)}
         logger.error("[build_runner] Gate validation exception: %s", exc)
 
+    # ── Step 5: GA7 dashas (per-system incremental) ──────────────────────────
+    if not skip_ga7:
+        logger.info("[build_runner] Step 5: GA7 dashas (7 systems × 4-level Sukshma × 5 ayanamshas)")
+        # Build one system at a time for context-decay safety
+        target_systems = ga7_systems or GA7_SYSTEMS
+        for sys_id in target_systems:
+            logger.info("[build_runner] GA7 system: %s", sys_id)
+            try:
+                from ga_writers.ga_dashas_writer import build_system
+                ga7_sys_results = {}
+                ga7_ayas = ga7_ayanamshas or ["lahiri", "true_chitra", "kp", "raman", "surya_siddhanta"]
+                for aya in ga7_ayas:
+                    sys_result = build_system(sys_id, aya, chart_id, build_id)
+                    ga7_sys_results[f"{sys_id}:{aya}"] = sys_result
+
+                summary["steps"][f"ga_dashas_{sys_id}"] = {
+                    "status": "PASS",
+                    "system_id": sys_id,
+                    "ayanamshas": ga7_ayas,
+                    "results": ga7_sys_results,
+                    "total_rows": sum(
+                        r.get("rows_computed", 0) for r in ga7_sys_results.values()
+                    ),
+                }
+                logger.info(
+                    "[build_runner] GA7 %s PASS: %d rows",
+                    sys_id,
+                    summary["steps"][f"ga_dashas_{sys_id}"]["total_rows"],
+                )
+            except Exception as exc:
+                err_msg = str(exc)
+                summary["steps"][f"ga_dashas_{sys_id}"] = {
+                    "status": "FAIL",
+                    "system_id": sys_id,
+                    "error": err_msg,
+                }
+                logger.error("[build_runner] GA7 %s FAIL: %s", sys_id, err_msg)
+                if "FORENSIC HALT" in err_msg or "CRITICAL OVERRIDE VIOLATED" in err_msg:
+                    summary["status"] = "HALT"
+                    summary["halt_reason"] = err_msg
+                    return summary
+
+        # Post-pass: concurrency annotation (DB-side)
+        try:
+            from ga_writers.ga_dashas_writer import _run_concurrency_post_pass_db
+            _run_concurrency_post_pass_db(chart_id, build_id)
+            summary["steps"]["ga_dashas_concurrency_post_pass"] = {"status": "PASS"}
+        except Exception as exc:
+            logger.warning("[build_runner] GA7 concurrency post-pass skipped: %s", exc)
+            summary["steps"]["ga_dashas_concurrency_post_pass"] = {
+                "status": "WARN", "error": str(exc)
+            }
+
     # ── Compute totals ────────────────────────────────────────────────────────
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
@@ -200,15 +261,21 @@ def run(
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
     )
+    total_dasha_rows = sum(
+        v.get("total_rows", 0)
+        for k, v in summary["steps"].items()
+        if k.startswith("ga_dashas_") and isinstance(v, dict)
+    )
 
     summary["totals"] = {
         "ganita_positions_rows": total_gp,
         "chart_facts_rows": total_cf,
+        "chart_dashas_rows": total_dasha_rows,
     }
 
     gate_overall = summary.get("gate_results", {}).get("overall", "FAIL")
     all_steps_pass = all(
-        s.get("status") == "PASS"
+        s.get("status") in ("PASS", "WARN")
         for s in summary["steps"].values()
         if isinstance(s, dict)
     )
@@ -221,7 +288,7 @@ def run(
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GA3 chart_facts build runner")
+    parser = argparse.ArgumentParser(description="GA3+GA7 chart_facts + dashas build runner")
     parser.add_argument(
         "--chart_id",
         default=CANONICAL_CHART_ID,
@@ -238,6 +305,24 @@ def main() -> None:
         help="Skip ga_strength writer (positions only)",
     )
     parser.add_argument(
+        "--skip_ga7",
+        action="store_true",
+        help="Skip GA7 dashas writer",
+    )
+    parser.add_argument(
+        "--ga7_systems",
+        nargs="+",
+        default=None,
+        choices=GA7_SYSTEMS,
+        help="GA7: specific systems to run (default: all 7)",
+    )
+    parser.add_argument(
+        "--ga7_ayanamshas",
+        nargs="+",
+        default=None,
+        help="GA7: specific ayanamshas to run (default: all 5)",
+    )
+    parser.add_argument(
         "--json",
         dest="output_json",
         action="store_true",
@@ -249,6 +334,9 @@ def main() -> None:
         chart_id=args.chart_id,
         build_id=args.build_id,
         skip_strength=args.skip_strength,
+        skip_ga7=args.skip_ga7,
+        ga7_systems=args.ga7_systems,
+        ga7_ayanamshas=args.ga7_ayanamshas,
     )
 
     if args.output_json:
@@ -259,13 +347,15 @@ def main() -> None:
         cf_rows = result.get("totals", {}).get("chart_facts_rows", 0)
         gate_overall = result.get("gate_results", {}).get("overall", "UNKNOWN")
 
+        dasha_rows = result.get("totals", {}).get("chart_dashas_rows", 0)
         print(f"\n{'='*60}")
-        print(f"GA3 BUILD COMPLETE")
+        print(f"GA3+GA7 BUILD COMPLETE")
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  ganita_positions:    {gp_rows} rows")
         print(f"  chart_facts:         {cf_rows} rows")
+        print(f"  chart_dashas (GA7):  {dasha_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
         print(f"{'='*60}")
 
