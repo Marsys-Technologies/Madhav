@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # 5 canonical ayanamshas
-AYANAMSHAS = ["lahiri", "true_chitra", "kp", "raman", "surya_siddhanta"]
+AYANAMSHAS = ["lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "surya_siddhanta_classical"]
 
 # Calculation window
 WINDOW_START = date(1950, 1, 1)

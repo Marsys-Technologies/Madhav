@@ -100,17 +100,9 @@ CREATE INDEX IF NOT EXISTS cd_convergence_idx
   WHERE convergence_count_at_start IS NOT NULL;
 
 -- ── 15. Check constraint: enforce level_n 1-4 cap (CRITICAL OVERRIDE 1) ──────
--- Drop if exists first (idempotent), then add
-DO $$
-BEGIN
-  ALTER TABLE chart_dashas DROP CONSTRAINT IF EXISTS cd_level_n_max4;
-  ALTER TABLE chart_dashas ADD CONSTRAINT cd_level_n_max4
-    CHECK (level_n BETWEEN 1 AND 4);
-EXCEPTION WHEN others THEN
-  -- If constraint cannot be dropped/added due to existing data, log and continue
-  RAISE NOTICE 'cd_level_n_max4 constraint: %', SQLERRM;
-END;
-$$;
+ALTER TABLE chart_dashas DROP CONSTRAINT IF EXISTS cd_level_n_max4;
+ALTER TABLE chart_dashas ADD CONSTRAINT cd_level_n_max4
+  CHECK (level_n BETWEEN 1 AND 4);
 
 COMMIT;
 
