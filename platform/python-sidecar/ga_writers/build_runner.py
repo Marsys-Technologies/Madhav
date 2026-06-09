@@ -1,12 +1,14 @@
 """
-build_runner.py — GA3 build orchestrator
-=========================================
-Runs the full GA3 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3–GA9 build orchestrator
+=============================================
+Runs the full L1 Gaṇita build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
-  3. Refresh materialized views (synchronous, required before build 'complete')
+  3. Refresh GA3 materialized views (synchronous)
   4. Run all gate-validators
-  5. Emit FINAL_SUMMARY dict
+  5. ga_sade_sati  → chart_facts (~875 rows, 15 categories; GA9 — final step)
+     Requires GA3/GA4/GA6/GA7/GA8 rows present (Step 0 upstream verification).
+  6. Emit FINAL_SUMMARY dict
 
 Usage:
     python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID]
@@ -14,6 +16,7 @@ Usage:
 
 Environment:
     DATABASE_URL (or DIRECT_DATABASE_URL / POSTGRES_URL) — Postgres connection string.
+    SWISSEPH_EPHE_PATH — path to Swiss Ephemeris data files (default: /usr/share/ephe).
 """
 from __future__ import annotations
 
@@ -35,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
+from ga_writers.ga_sade_sati_writer import build_ga_sade_sati
 from ga_writers.gates import run_all_gates
 
 
@@ -82,6 +86,7 @@ def run(
     *,
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
+    skip_sade_sati: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -192,6 +197,33 @@ def run(
         summary["gate_results"] = {"overall": "FAIL", "error": str(exc)}
         logger.error("[build_runner] Gate validation exception: %s", exc)
 
+    # ── Step 5: GA9 — ga_sade_sati (final step; requires all upstreams) ───────
+    if not skip_sade_sati:
+        logger.info("[build_runner] Step 5: ga_sade_sati (GA9 — Sade Sati cycles)")
+        try:
+            ss_summary = build_ga_sade_sati(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_sade_sati"] = {
+                "status": "PASS",
+                "chart_facts_rows": ss_summary["total_chart_facts_rows"],
+                "two_pass_verified": ss_summary["two_pass_verified"],
+                "divergent_flagged": ss_summary["divergent_flagged"],
+                "ayanamshas": ss_summary.get("ayanamshas", {}),
+            }
+            logger.info(
+                "[build_runner] ga_sade_sati PASS: cf=%d two_pass=%s",
+                ss_summary["total_chart_facts_rows"],
+                ss_summary["two_pass_verified"],
+            )
+        except Exception as exc:
+            summary["steps"]["ga_sade_sati"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_sade_sati FAIL: %s", exc)
+            return summary
+
     # ── Compute totals ────────────────────────────────────────────────────────
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
@@ -200,6 +232,9 @@ def run(
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
     )
+
+    ss_step = summary["steps"].get("ga_sade_sati", {})
+    total_cf += ss_step.get("chart_facts_rows", 0)
 
     summary["totals"] = {
         "ganita_positions_rows": total_gp,
@@ -238,6 +273,11 @@ def main() -> None:
         help="Skip ga_strength writer (positions only)",
     )
     parser.add_argument(
+        "--skip_sade_sati",
+        action="store_true",
+        help="Skip ga_sade_sati writer (GA9 — Sade Sati cycles)",
+    )
+    parser.add_argument(
         "--json",
         dest="output_json",
         action="store_true",
@@ -249,6 +289,7 @@ def main() -> None:
         chart_id=args.chart_id,
         build_id=args.build_id,
         skip_strength=args.skip_strength,
+        skip_sade_sati=args.skip_sade_sati,
     )
 
     if args.output_json:
