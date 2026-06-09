@@ -353,7 +353,7 @@ class TextsWriter(WriterBase):
                 cur.execute(
                     "SELECT DISTINCT text_id FROM classical_text_chunks"
                 )
-                _already_present: set[str] = {row[0] for row in cur.fetchall()}
+                _already_present: set[str] = {row["text_id"] for row in cur.fetchall()}
             logger.info(
                 "[bg_texts] additive mode: %d text_ids already have chunks → will skip them",
                 len(_already_present),
@@ -375,7 +375,7 @@ class TextsWriter(WriterBase):
                         "SELECT COUNT(*) FROM classical_text_chunks WHERE text_id = %s",
                         (text_id,),
                     )
-                    existing_n = cur.fetchone()[0]
+                    existing_n = cur.fetchone()["count"]
                 logger.info(
                     "[bg_texts] additive: skipping %s (%d chunks already present)",
                     text_id, existing_n,
