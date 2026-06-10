@@ -54,6 +54,21 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.70 (2026-06-10, L1-GANITA-BUILD-WAVE-CLOSE):
+    **L1 Gaṇita Build COMPLETE.** GA3-GA9 writers merged to main via integration branch feature/ga3-chart-facts-writer.
+    Main HEAD: d228aa0f1cb3d4640b12ce6f124627c27b5e8147. Git tag: l1-ganita-build-complete.
+    7 writers (GA3 positions+strength, GA4 panchanga, GA5 sensitive, GA6 vargas, GA7 dashas, GA8 structural T1, GA9 sade sati).
+    169 chart_facts categories (GA3:27 + GA4:26 + GA5:32 + GA6:26 + GA8:43 + GA9:15; GA7 writes to chart_dashas).
+    7 migrations (206-213). 7 test suites all green on pre-merge CI.
+    IS.8(b) CLEARED - 0 class-1 findings; all 8 adversarial dimensions PASS.
+    Seal artifact: 00_ARCHITECTURE/L1_GANITA_BUILD_CLOSE_v1_0.md.
+    PRs merged: #237 (GA3 integration->main), #238 (GA4), #239 (GA6), #240 (GA7), #241 (GA5), #242 (GA8), #243 (GA9).
+    Operator actions pending: apply migrations 206-213, run build_runner.py for chart_id 482012f1-710e-4a25-994a-93821f5871aa, verify FORENSIC gate + row floors.
+    active_phase_plan_sub_phase: M5-A (L1 Ganita Build workstream COMPLETE; broader M5-A scope ongoing).
+    last_session_id: L1-GANITA-BUILD-WAVE-CLOSE. predecessor_session: BRAHMA-INFRA-PROVISIONING.
+    carry_forwards: ["Apply migrations 206-213 to production DB", "Run build_runner.py for canonical chart_id", "Verify FORENSIC anchors + row floors post-build"]
+    next_session_objective: "Brahma build arc continuation: apply pending migrations (140-153, 206-213) per OPERATOR_ACTIONS_PENDING.md CRITICAL section, then trigger native chart build."
+    file_updated_at: 2026-06-10. file_updated_by_session: L1-GANITA-BUILD-WAVE-CLOSE.
   - v5.69 (2026-06-03, BRAHMA-INFRA-PROVISIONING):
     **Brahma Infrastructure Provisioning COMPLETE. All 9 acceptance criteria met.**
     All phases of CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0 executed; brief status → COMPLETE.

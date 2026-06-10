@@ -495,7 +495,19 @@ const ASSETS: AssetDef[] = [
     english_description: 'Shadbala, ashtakavarga, and bhava bala per ayanamsha',
     storage_type: 'postgres_table',
     target_table: null,
-    count_sql: null,
+    // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
+    // stats route (reads asset_registry.count_sql, $1 = chart_id).
+    count_sql: `
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND (
+      fact_category LIKE 'graha_shadbala_%'
+      OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
+      OR fact_category LIKE 'graha_vimsopaka_%'
+      OR fact_category LIKE 'ashtakavarga_%'
+      OR fact_category LIKE 'house_bhava_bala_%'
+    )
+`,
     size_sql: null,
     target_floor: null,
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS',
@@ -512,7 +524,23 @@ const ASSETS: AssetDef[] = [
     english_description: 'Per-chart sensitive point positions computed from the catalog × ayanamshas',
     storage_type: 'postgres_table',
     target_table: null,
-    count_sql: null,
+    // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
+    // stats route (reads asset_registry.count_sql, $1 = chart_id).
+    count_sql: `
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND (
+      fact_category IN (
+        'upagraha_position', 'saturn_derived_point', 'saham_position',
+        'karaka_chara_position', 'karakamsa_position', 'swamsa_position',
+        'arudha_pada', 'midpoint', 'aprakasha_position',
+        'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point'
+      )
+      OR fact_category LIKE 'esoteric_point_%'
+      OR fact_category LIKE 'kp_%'
+      OR fact_category LIKE 'tajik_%'
+    )
+`,
     size_sql: null,
     target_floor: null,
     expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
@@ -546,7 +574,21 @@ const ASSETS: AssetDef[] = [
     english_description: 'Saturn transit-over-natal-Moon Sade Sati + Dhaiya window calculations per ayanamsha',
     storage_type: 'postgres_table',
     target_table: null,
-    count_sql: null,
+    // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
+    // stats route (reads asset_registry.count_sql, $1 = chart_id).
+    count_sql: `
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND fact_category IN (
+      'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
+      'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period',
+      'ardha_ashtama_shani_period', 'janma_shani_period',
+      'vishakha_shani_period', 'anumukha_shani_period',
+      'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check',
+      'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay',
+      'sade_sati_downstream_cross_reference'
+    )
+`,
     size_sql: null,
     target_floor: null,
     expected_volume_formula: 'AYANAMSHAS',

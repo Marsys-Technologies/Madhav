@@ -8,7 +8,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated'
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
 
 interface AssetWithState extends AssetRow {
   state: AssetState

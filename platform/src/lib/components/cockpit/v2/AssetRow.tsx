@@ -38,7 +38,7 @@ function ServiceHealthPill({
   hasError: boolean
   errorMsg?: string | null
 }) {
-  const isGreen = state === 'lit'
+  const isGreen = state === 'lit' || state === 'service_ok'
   const isRunning = state === 'building'
   const isError = hasError || state === 'error'
 
@@ -75,6 +75,48 @@ function ServiceHealthPill({
   )
 }
 
+// Per-asset status dot — collapses the repeated "CURRENT" text chip into a
+// single colored circle. green = CURRENT + healthy/lit; amber = building/stale/
+// dormant-but-current; red = error / not_migrated / catalog DRAFT.
+function StatusDot({
+  catalogStatus,
+  state,
+}: {
+  catalogStatus: string | null
+  state: string
+}) {
+  const isDraft = catalogStatus === 'DRAFT'
+  const isHealthy = state === 'lit' || state === 'service_ok'
+  const isAmber = state === 'building' || state === 'stale' || state === 'dormant'
+  const isRed = state === 'error' || state === 'not_migrated' || isDraft
+
+  const color = isRed
+    ? 'rgba(220,80,80,0.95)'
+    : isHealthy
+      ? 'rgba(83,200,100,0.95)'
+      : isAmber
+        ? '#ECC56A'
+        : 'rgba(255,255,255,0.35)'
+
+  const word = isHealthy ? 'healthy' : state
+  const title = `${catalogStatus ?? 'unknown'} · ${word}`
+
+  return (
+    <span
+      title={title}
+      style={{
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 4px ${color}`,
+        flexShrink: 0,
+        display: 'inline-block',
+      }}
+    />
+  )
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, onRunStarted }: Props) {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const { isSuperAdmin } = useUserRole()
@@ -93,7 +135,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
-        gap: '8px',
+        gap: '16px',
         alignItems: 'center',
         padding: '8px 12px',
         borderBottom: '1px solid rgba(255,255,255,0.04)',
@@ -103,33 +145,14 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         transition: 'background 0.4s ease, box-shadow 0.4s ease',
       }}
     >
-      {/* Asset name — bilingual two-line + catalog_status badge */}
+      {/* Asset name — bilingual two-line + status dot */}
       <div style={{ minWidth: 0 }} title={asset.asset_id}>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            <div className="text-[16px] leading-tight font-serif text-[#C4942A]">
+            <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />
+            <div className="text-[18px] leading-tight font-serif font-medium text-[#C4942A]">
               {asset.sanskrit_name}
             </div>
-            {asset.catalog_status && (
-              <span
-                title={`catalog_status: ${asset.catalog_status}`}
-                style={{
-                  fontSize: '8px',
-                  fontFamily: 'var(--mono-stack)',
-                  padding: '1px 4px',
-                  borderRadius: '3px',
-                  letterSpacing: '0.04em',
-                  background: asset.catalog_status === 'CURRENT'
-                    ? 'rgba(83,180,95,0.18)' : 'rgba(255,255,255,0.07)',
-                  color: asset.catalog_status === 'CURRENT'
-                    ? 'rgba(83,200,100,0.9)' : 'rgba(255,255,255,0.4)',
-                  border: `1px solid ${asset.catalog_status === 'CURRENT'
-                    ? 'rgba(83,180,95,0.35)' : 'rgba(255,255,255,0.12)'}`,
-                }}
-              >
-                {asset.catalog_status}
-              </span>
-            )}
           </div>
           <div className="text-[13px] leading-tight text-white/85 mt-0.5">
             {asset.english_name}
