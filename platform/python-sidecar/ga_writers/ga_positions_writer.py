@@ -496,6 +496,7 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
                %(source_calculation)s, %(verification_pass_status)s,
                %(engine_version)s, %(computed_at)s)
             ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+            WHERE formula_id IS NULL
             DO UPDATE SET
               fact_id          = EXCLUDED.fact_id,
               fact_value_text  = EXCLUDED.fact_value_text,
