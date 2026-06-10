@@ -293,7 +293,7 @@ def run(
         logger.warning("[build_runner] MV refresh failed (non-fatal): %s", exc)
 
     # ── Step 3: ga_structural (GA8) ──────────────────────────────────────────
-    if not skip_structural:
+    if not skip_ga8:
         logger.info("[build_runner] Step 3: ga_structural (GA8 T1)")
         try:
             struct_summary = build_ga_structural(
