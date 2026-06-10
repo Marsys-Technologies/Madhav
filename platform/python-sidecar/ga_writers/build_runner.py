@@ -1,5 +1,5 @@
 """
-build_runner.py — GA3+GA4+GA5 build orchestrator
+build_runner.py — GA3+GA4+GA5+GA6 build orchestrator
 =============================================
 Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
@@ -38,6 +38,7 @@ from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_I
 from ga_writers.ga_strength_writer import build_ga_strength
 from ga_writers.ga_panchanga_writer import build_ga_panchanga
 from ga_writers.ga_sensitive_writer import build_ga_sensitive
+from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.gates import run_all_gates
 
 
@@ -51,6 +52,8 @@ MATERIALIZED_VIEWS = [
     "mv_cross_ayanamsha_consensus",
     "mv_chart_panchanga_birth_summary",
     "mv_chart_sensitive_points_summary",  # GA5
+    # GA6 MVs (migration 210)
+    "mv_chart_vargas_summary",
 ]
 
 
@@ -88,6 +91,7 @@ def run(
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
     skip_sensitive: bool = False,
+    skip_vargas: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -163,6 +167,39 @@ def run(
             summary["status"] = "FAIL"
             logger.error("[build_runner] ga_strength FAIL: %s", exc)
             return summary
+
+    # ── Step 2b: ga_vargas ───────────────────────────────────────────────────
+    if not skip_vargas:
+        logger.info("[build_runner] Step 2b: ga_vargas")
+        try:
+            vargas_summary = build_ga_vargas(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_vargas"] = {
+                "status": vargas_summary.get("status", "FAIL"),
+                "total_rows_written": vargas_summary.get("total_rows_written", 0),
+                "batches_completed": vargas_summary.get("batches_completed", 0),
+                "forensic_pass": all(
+                    r.get("result") == "PASS"
+                    for r in vargas_summary.get("forensic_results", {}).values()
+                ),
+            }
+            if vargas_summary.get("status") in ("FAIL", "FORENSIC_FAIL"):
+                summary["status"] = "FAIL"
+                logger.error("[build_runner] ga_vargas FAIL: %s", vargas_summary.get("status"))
+                return summary
+            logger.info(
+                "[build_runner] ga_vargas PASS: rows=%d",
+                vargas_summary.get("total_rows_written", 0),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_vargas"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_vargas FAIL exception: %s", exc)
+            return summary
+
 
     # ── Step 3: ga_sensitive ─────────────────────────────────────────────────
     if not skip_sensitive:
@@ -322,6 +359,7 @@ def main() -> None:
         build_id=args.build_id,
         skip_strength=args.skip_strength,
         skip_sensitive=args.skip_sensitive,
+        skip_vargas=getattr(args, "skip_vargas", False),
     )
 
     if args.output_json:

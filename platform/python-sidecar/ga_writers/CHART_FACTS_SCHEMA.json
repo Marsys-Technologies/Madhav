@@ -5565,6 +5565,488 @@
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
       "render_template": "{subject} (upagraha) at {longitude_sidereal:.4f}° sidereal in {sign} ({ayanamsha})."
+    },
+    "karaka_per_varga": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "8 Jaimini Chara karakas x 30 vargas; Rahu included (8-karaka school)",
+      "allowed_keys": {
+        "assigned_graha": {
+          "value_type": "text"
+        },
+        "sign": {
+          "value_type": "text"
+        },
+        "dignity": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_ashtakavarga": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "bindu": {
+          "value_type": "num",
+          "range": [
+            0,
+            8
+          ]
+        },
+        "sarva_bindu": {
+          "value_type": "num",
+          "range": [
+            0,
+            56
+          ]
+        }
+      }
+    },
+    "varga_aspect_matrix": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "aspecting_body": {
+          "value_type": "text"
+        },
+        "aspected_sign": {
+          "value_type": "text"
+        },
+        "aspect_type": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_d108_karma_attribution": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "karma_type": {
+          "value_type": "text_enum",
+          "enum": [
+            "Sanchita",
+            "Prarabdha",
+            "Agami"
+          ]
+        }
+      }
+    },
+    "varga_d150_rishi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "27-rishi attribution per G44",
+      "allowed_keys": {
+        "rishi": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_d2700_sub_rishi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "Finest Nadi sub-rishi attribution per G44",
+      "allowed_keys": {
+        "rishi": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_d27_directional_quadrant": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "single",
+      "allowed_keys": {
+        "quadrant": {
+          "value_type": "text_enum",
+          "enum": [
+            "North",
+            "South",
+            "East",
+            "West"
+          ]
+        }
+      }
+    },
+    "varga_d30_lord_per_amsa": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "lord": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_d9_lagna_special": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "vargottama_lagna_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        },
+        "pushkara_lagna_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_deity_attribution": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "D60 60 deities BPHS Ch.7; D40/D45 devatas; D30 5-lord regions; etc.",
+      "allowed_keys": {
+        "deity": {
+          "value_type": "text"
+        },
+        "quality": {
+          "value_type": "text_enum",
+          "enum": [
+            "Benefic",
+            "Neutral",
+            "Malefic"
+          ]
+        }
+      }
+    },
+    "varga_dignity": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "dignity": {
+          "value_type": "text_enum",
+          "enum": [
+            "Exalted",
+            "Debilitated",
+            "Moolatrikona",
+            "Own",
+            "Friend",
+            "Neutral",
+            "Enemy",
+            "Unknown"
+          ]
+        }
+      }
+    },
+    "varga_formula_variant_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "D3 3 variants (Parashari/Jaimini/Mooltrikona); D2 2 variants",
+      "allowed_keys": {
+        "sign_parashari": {
+          "value_type": "text"
+        },
+        "sign_jaimini": {
+          "value_type": "text"
+        },
+        "sign_mooltrikona": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_house_lord": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "single",
+      "allowed_keys": {
+        "lord": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_house_occupant": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "single",
+      "allowed_keys": {
+        "house": {
+          "value_type": "num",
+          "range": [
+            1,
+            12
+          ]
+        }
+      }
+    },
+    "varga_karya_bhava_per_varga": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "karya_bhava": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_lal_kitab_special": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "D9 Pakka Ghar + D12 reading via G41",
+      "allowed_keys": {
+        "pakka_ghar_d9": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        },
+        "pakka_ghar_d12": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_position": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "single",
+      "note": "D60/D108/D150/D2700 are two_pass_verified; standard 16 vargas single",
+      "allowed_keys": {
+        "sign": {
+          "value_type": "text_enum",
+          "enum": [
+            "Aries",
+            "Taurus",
+            "Gemini",
+            "Cancer",
+            "Leo",
+            "Virgo",
+            "Libra",
+            "Scorpio",
+            "Sagittarius",
+            "Capricorn",
+            "Aquarius",
+            "Pisces"
+          ]
+        },
+        "sign_id": {
+          "value_type": "num",
+          "range": [
+            1,
+            12
+          ]
+        },
+        "degree_in_sign": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            30.0
+          ],
+          "unit": "deg"
+        },
+        "sign_lord": {
+          "value_type": "text"
+        },
+        "formula_id": {
+          "value_type": "text"
+        }
+      }
+    },
+    "varga_pushkara_bhaga_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "pushkara_bhaga": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_pushkara_navamsa_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "D9 only",
+      "allowed_keys": {
+        "pushkara_navamsa": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_rollup": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "vargottama_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "super_vargottama_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "pushkara_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "exalted_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "debilitated_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "own_sign_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "friendly_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "enemy_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            10
+          ]
+        },
+        "overall_dignity_score": {
+          "value_type": "num",
+          "range": [
+            0,
+            60
+          ]
+        }
+      }
+    },
+    "varga_saptavargaja_bala_component": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "Per-graha per-varga Sthana-bala component consumed by A8 shadbala",
+      "allowed_keys": {
+        "saptavargaja": {
+          "value_type": "num",
+          "range": [
+            0,
+            50
+          ]
+        }
+      }
+    },
+    "varga_super_vargottama_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "Post-pass: same sign in >=3 vargas",
+      "allowed_keys": {
+        "super_vargottama": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_trans_vargottama_count": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "trans_vargottama_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            30
+          ]
+        }
+      }
+    },
+    "varga_trikona_vargottama_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "trikona_vargottama": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_vargottama_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "allowed_keys": {
+        "vargottama": {
+          "value_type": "text_enum",
+          "enum": [
+            "True",
+            "False"
+          ]
+        }
+      }
+    },
+    "varga_vimsopaka_contribution": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_divisionals",
+      "verification_min": "two_pass_verified",
+      "note": "Feeds A8 graha_vimsopaka_shodasavarga rollup",
+      "allowed_keys": {
+        "contribution": {
+          "value_type": "num",
+          "range": [
+            0,
+            5
+          ]
+        }
+      }
     }
   },
   "channels": {
