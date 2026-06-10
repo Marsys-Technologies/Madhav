@@ -63,9 +63,11 @@ ENGINE_VERSION = "ga9/1.0.0"
 WINDOW_START = datetime(1950, 1, 1, tzinfo=timezone.utc)
 WINDOW_END = datetime(2100, 12, 31, tzinfo=timezone.utc)
 
-# 7.5-year cycle invariant in days (±30 days tolerance)
+# 7.5-year cycle invariant in days.
+# Saturn's orbit is elliptical and retrograde patterns vary; real Sade Sati
+# spans ~6-9 years (2190-3285 days), so tolerance must be ~±600 days.
 CYCLE_DAYS_EXPECTED = 365.25 * 7.5  # ~2739.4 days
-CYCLE_DAYS_TOLERANCE = 30.0
+CYCLE_DAYS_TOLERANCE = 600.0
 
 # Canonical 5 ayanamshas (same as GA3 / GA4 / GA8)
 CANONICAL_AYANAMSHAS: list[str] = [
@@ -380,21 +382,34 @@ def build_sade_sati_cycles(
     jan_sign = SIGNS[jan_num - 1]
     anu_sign = SIGNS[anu_num - 1]
 
-    # Index sign changes by target sign (sign_to)
-    entries_by_sign: dict[str, list[dict]] = {}
-    for ch in sign_changes:
-        entries_by_sign.setdefault(ch["sign_to"], []).append(ch)
+    # The zodiacally preceding sign for each boundary
+    prev_vis_sign = SIGNS[(vis_num - 2) % 12]   # sign before vis_sign (forward direction)
+    post_anu_sign = SIGNS[anu_num % 12]          # sign after anu_sign (forward direction)
 
-    vishakha_entries = sorted(entries_by_sign.get(vis_sign, []),
-                               key=lambda x: x["date_utc"])
-    janma_entries = sorted(entries_by_sign.get(jan_sign, []),
-                            key=lambda x: x["date_utc"])
-    anumukha_entries = sorted(entries_by_sign.get(anu_sign, []),
-                               key=lambda x: x["date_utc"])
-    # Exits from anumukha sign
+    # Use ONLY forward entries (Saturn arriving from the preceding zodiac sign).
+    # Retrograde re-entries (Saturn arriving from the following sign) create false
+    # short cycles and must be excluded from cycle-boundary detection.
+    vishakha_entries = sorted(
+        [ch for ch in sign_changes
+         if ch["sign_to"] == vis_sign and ch["sign_from"] == prev_vis_sign],
+        key=lambda x: x["date_utc"],
+    )
+    # Within-cycle events: first occurrence of janma/anu entry after cycle start
+    # may be direct or retrograde, so keep all entries but deduplicate vis boundaries.
+    all_entries_by_sign: dict[str, list[dict]] = {}
+    for ch in sign_changes:
+        all_entries_by_sign.setdefault(ch["sign_to"], []).append(ch)
+
+    janma_entries = sorted(all_entries_by_sign.get(jan_sign, []),
+                           key=lambda x: x["date_utc"])
+    anumukha_entries = sorted(all_entries_by_sign.get(anu_sign, []),
+                              key=lambda x: x["date_utc"])
+    # Cycle ends when Saturn makes its FORWARD exit from anu_sign (to post_anu_sign).
+    # Retrograde exits (back to jan_sign) do not end the cycle.
     exits_from_anu = sorted(
-        [ch for ch in sign_changes if ch["sign_from"] == anu_sign],
-        key=lambda x: x["date_utc"]
+        [ch for ch in sign_changes
+         if ch["sign_from"] == anu_sign and ch["sign_to"] == post_anu_sign],
+        key=lambda x: x["date_utc"],
     )
 
     cycles: list[dict] = []
