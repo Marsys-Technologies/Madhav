@@ -6047,6 +6047,1471 @@
           ]
         }
       }
+    },
+    "_ga8_separator": {
+      "_note": "All categories below are GA8 T1 structural writer additions. GA3 categories above must not be re-emitted.",
+      "ayanamsha_dependent": false
+    },
+    "argala_natal_matrix": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Target sign as 'SIGN_{N}' (1-based). 12 subjects × 4 argala positions = 144 atomic rows per (chart, ayanamsha).",
+      "atomicity": "CRITICAL: each row is atomic (one value_num per row, no JSONB blob). 12×12 = 144 rows per ayanamsha, NOT 1 blob.",
+      "allowed_keys": {
+        "from_sign_<M>_offset_<K>": {
+          "value_type": "num",
+          "unit": "argala_score",
+          "range": [
+            -1.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "row_count_invariant": 144,
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{target_sign} receives argala from {source_sign} (pos {offset}): score {score:.2f} ({ayanamsha})."
+    },
+    "ashtakavarga_anubindu": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Compound '{GRAHA}-HOUSE_{N}'",
+      "allowed_keys": {
+        "anubindu_bindus": {
+          "value_type": "num",
+          "unit": "bindu",
+          "range": [
+            0,
+            8
+          ],
+          "precision": 0,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} anubindu house {house}: {anubindu_bindus} bindu (post-trikona+ekadhipathya) ({ayanamsha})."
+    },
+    "aspect_jaimini": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Source sign (Aries, Taurus, ...)",
+      "allowed_keys": {
+        "on_<target_sign>": {
+          "value_type": "num",
+          "unit": "rasi_drishti",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "{source_sign} Jaimini rasi drishti on {target_sign} ({ayanamsha})."
+    },
+    "aspect_matrix_summary": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "aspects_received_count": {
+          "value_type": "num",
+          "range": [
+            0,
+            21
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "House {house} receives {aspects_received_count} Parashari aspects ({ayanamsha})."
+    },
+    "aspect_parashari_given": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "house_1": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_2": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_3": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_4": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_5": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_6": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_7": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_8": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_9": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_10": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_11": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "house_12": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "aspect_summary"
+        ],
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "{graha} gives Parashari aspect on {target_house} at strength {strength:.2f} ({ayanamsha})."
+    },
+    "aspect_parashari_received": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "from_SUN": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_MON": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_MAR": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_MER": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_JUP": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_VEN": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "from_SAT": {
+          "value_type": "num",
+          "unit": "strength",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "House {house} receives {source_graha} aspect at strength {strength:.2f} ({ayanamsha})."
+    },
+    "aspect_tajik": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Compound '{GRAHA1}_{GRAHA2}'",
+      "allowed_keys": {
+        "ithasala": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "eesarpha": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "manaau": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "yamaya": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "nakta": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "Tajik {type} between {g1} and {g2}: orb {orb:.2f}° ({ayanamsha})."
+    },
+    "bhava_bala_aspectual": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} aspectual strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_directional": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} directional strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_lord": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} lord strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_occupant": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} occupant strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_positional": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} positional strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_temporal": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} temporal strength: {strength:.4f} ({ayanamsha})."
+    },
+    "bhava_bala_total_extended": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "total": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} extended bhava bala total: {total:.4f} ({ayanamsha})."
+    },
+    "composite_dispositor_strength": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "terminal_strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} chain terminal strength: {terminal_strength:.4f} ({ayanamsha})."
+    },
+    "conjunction_within_orb": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Compound '{GRAHA1}_{GRAHA2}'",
+      "allowed_keys": {
+        "orb_deg": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            10.0
+          ],
+          "precision": 4,
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_aspect_matrix"
+      },
+      "render_template": "{g1} conjunct {g2} within {orb:.2f}° ({ayanamsha})."
+    },
+    "dosha_fires": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Dosha name (e.g., MANGAL_DOSHA_1H)",
+      "allowed_keys": {
+        "dosha_name": {
+          "value_type": "text",
+          "note": "Canonical dosha name. fact_value_jsonb holds constituent_facts_array + citation + cancellation_flag.",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "Dosha {dosha_name} fires{cancelled_note} ({ayanamsha})."
+    },
+    "graha_avastha_baladi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "baladi_state": {
+          "value_type": "text_enum",
+          "enum": [
+            "bal",
+            "kumar",
+            "yuva",
+            "vriddha",
+            "mrit"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} baladi avastha: {baladi_state} ({ayanamsha})."
+    },
+    "graha_avastha_deepta": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "deepta_state": {
+          "value_type": "text_enum",
+          "enum": [
+            "deepta",
+            "svastha",
+            "mudita",
+            "shanta",
+            "dina",
+            "dukhita",
+            "vikala",
+            "khala",
+            "kopa"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} deepta avastha: {deepta_state} ({ayanamsha})."
+    },
+    "graha_avastha_jagrad": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "jagrad_state": {
+          "value_type": "text_enum",
+          "enum": [
+            "jagrad",
+            "swapna",
+            "sushupta"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} consciousness avastha: {jagrad_state} ({ayanamsha})."
+    },
+    "graha_avastha_lajjitadi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "lajjitadi_state": {
+          "value_type": "text_enum",
+          "enum": [
+            "lajjita",
+            "garvita",
+            "kshudhita",
+            "trushita",
+            "mudita",
+            "kshobhita"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} lajjitadi avastha: {lajjitadi_state} ({ayanamsha})."
+    },
+    "graha_avastha_lifetime_exposure_summary": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "baladi_dominant": {
+          "value_type": "text",
+          "note": "Natal baladi state; full timeline via GA7 join",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} dominant avastha (natal baseline): {baladi_dominant} ({ayanamsha})."
+    },
+    "graha_avastha_sayanadi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "sayanadi_state": {
+          "value_type": "text_enum",
+          "enum": [
+            "sayana",
+            "upavishta",
+            "netrapani",
+            "prakashana",
+            "gamana",
+            "agamana",
+            "sabhaa",
+            "aagama",
+            "bhojana",
+            "nritya_lipsya"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} sayanadi avastha: {sayanadi_state} ({ayanamsha})."
+    },
+    "graha_composite_state_classification": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "classification": {
+          "value_type": "text_enum",
+          "enum": [
+            "severely_afflicted",
+            "debilitation_cancelled",
+            "debilitated",
+            "afflicted",
+            "well_placed",
+            "neutral",
+            "weak"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} composite state: {classification} ({ayanamsha})."
+    },
+    "graha_dispositor_chain": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "chain_jsonb_atomic": {
+          "value_type": "jsonb",
+          "jsonb_schema": {
+            "chain": "list[str]",
+            "signs": "list[str]",
+            "cycle_detected_at_step": "int|null",
+            "length": "int"
+          },
+          "verification_min": "two_pass_verified",
+          "sanctioned_jsonb_use": "chain_jsonb_atomic"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} dispositor chain: {chain_str}{cycle_note} ({ayanamsha})."
+    },
+    "graha_effective_dignity_modified_by_aspects": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "effective_dignity_score": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} effective dignity score (aspect-modified): {effective_dignity_score:.4f} ({ayanamsha})."
+    },
+    "graha_functional_class_per_ascendant": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "bphs_canonical": {
+          "value_type": "text_enum",
+          "enum": [
+            "functional_benefic",
+            "temporal_benefic",
+            "temporal_malefic",
+            "yogakaraka",
+            "neutral"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "raman_variant": {
+          "value_type": "text_enum",
+          "enum": [
+            "functional_benefic",
+            "temporal_benefic",
+            "temporal_malefic",
+            "yogakaraka",
+            "neutral"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} functional class (BPHS, {lagna} lagna): {bphs_canonical} ({ayanamsha})."
+    },
+    "graha_in_house_composite_strength": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Compound '{GRAHA}_IN_HOUSE_{N}'",
+      "allowed_keys": {
+        "bphs_weighted": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        },
+        "simple_multiplication": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        },
+        "cross_formula_divergence": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} in house {house}: BPHS composite {bphs:.4f}, simple {simple:.4f}, divergence {div:.4f} ({ayanamsha})."
+    },
+    "graha_saptavargaja_bala_component": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "saptavargaja_score": {
+          "value_type": "jsonb_ref",
+          "note": "Reference to chart_divisionals varga_saptavargaja_bala_component",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} saptavargaja bala: see chart_divisionals ({ayanamsha})."
+    },
+    "graha_special_state_rollup": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "is_combust": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "is_retrograde": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "is_vargottama": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "is_debilitated": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "is_exalted": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} special states: combust={is_combust}, retro={is_retrograde}, varg={is_vargottama} ({ayanamsha})."
+    },
+    "graha_tri_deva_role_strength": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "role_strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} tri-deva role strength ({role}): {role_strength:.4f} ({ayanamsha})."
+    },
+    "graha_vargottama_amplification_factor": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "amplification_factor": {
+          "value_type": "num",
+          "range": [
+            1.0,
+            1.25
+          ],
+          "precision": 2,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} vargottama amplification factor: {amplification_factor:.2f} ({ayanamsha})."
+    },
+    "graha_yoga_karaka_flag": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "is_yoga_karaka": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} is yoga karaka: {is_yoga_karaka} ({lagna} lagna, {ayanamsha})."
+    },
+    "house_strength_classification_rollup": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "classification": {
+          "value_type": "text_enum",
+          "enum": [
+            "strong",
+            "normal",
+            "weak"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "House {house} strength classification: {classification} ({ayanamsha})."
+    },
+    "jaimini_tri_deva_role_per_graha": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "tri_deva_role": {
+          "value_type": "text_enum",
+          "enum": [
+            "brahma",
+            "vishnu",
+            "shiva",
+            "neutral"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} Jaimini tri-deva role: {tri_deva_role} ({ayanamsha})."
+    },
+    "karaka_house_lord_overlap_flag": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "subject_note": "Significance name",
+      "allowed_keys": {
+        "is_overlap": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "Karaka/house-lord overlap for {significance}: {is_overlap} ({ayanamsha})."
+    },
+    "karakatva_strength_per_significance": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Significance name (e.g., 'self', 'wealth', 'career')",
+      "allowed_keys": {
+        "composite_strength": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            1.5
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        },
+        "natural_karaka": {
+          "value_type": "text_enum",
+          "enum": [
+            "Sun",
+            "Moon",
+            "Mars",
+            "Mercury",
+            "Jupiter",
+            "Venus",
+            "Saturn",
+            "Rahu",
+            "Ketu"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "Karakatva {significance}: natural karaka {karaka}, composite strength {strength:.4f} ({ayanamsha})."
+    },
+    "parivartana_pairs": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Compound '{GRAHA1}_{GRAHA2}'",
+      "allowed_keys": {
+        "parivartana_type": {
+          "value_type": "text_enum",
+          "enum": [
+            "Maha",
+            "Khala",
+            "Dainya"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{g1}-{g2} {parivartana_type} parivartana ({ayanamsha})."
+    },
+    "pranic_strength_per_graha": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "prana_score": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_t1_composite_strengths"
+      },
+      "render_template": "{graha} pranic strength (Nadi tradition): {prana_score:.4f} ({ayanamsha})."
+    },
+    "vimsopaka_bala_per_graha": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "vimsopaka_total": {
+          "value_type": "jsonb_ref",
+          "note": "Reference to chart_divisionals varga_vimsopaka_contribution",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{graha} vimsopaka bala (shodasavarga): see chart_divisionals ({ayanamsha})."
+    },
+    "virodha_argala_natal_matrix": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Target sign as 'SIGN_{N}'. 12 subjects × 4 virodha positions = 144 atomic rows per (chart, ayanamsha).",
+      "atomicity": "CRITICAL: atomic (value_num per row). 144 rows per ayanamsha.",
+      "allowed_keys": {
+        "from_sign_<M>_offset_<K>": {
+          "value_type": "num",
+          "unit": "virodha_score",
+          "range": [
+            0.0,
+            1.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "row_count_invariant": 144,
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{target_sign} virodha argala from {source_sign} (counter-pos {offset}): score {score:.2f} ({ayanamsha})."
+    },
+    "yoga_fires": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "subject_note": "Yoga name (e.g., RUCHAKA_MAHAPURUSHA)",
+      "allowed_keys": {
+        "yoga_name": {
+          "value_type": "text",
+          "note": "Canonical yoga name. fact_value_jsonb holds constituent_facts_array + citation + cancellation_flag + strength_score.",
+          "verification_min": "two_pass_verified"
+        },
+        "yoga_strength_score": {
+          "value_type": "num",
+          "range": [
+            0.0,
+            2.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "retrieval_hints": {
+        "mv_preferred": "mv_chart_yogas_fired_summary"
+      },
+      "render_template": "Yoga {yoga_name} fires; strength {strength:.2f}; {cancelled_note} ({ayanamsha})."
     }
   },
   "channels": {

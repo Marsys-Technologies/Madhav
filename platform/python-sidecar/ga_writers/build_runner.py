@@ -1,5 +1,5 @@
 """
-build_runner.py — GA3+GA4+GA5+GA6+GA7 build orchestrator
+build_runner.py — GA3+GA4+GA5+GA6+GA7+GA8 build orchestrator
 =============================================
 Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
@@ -40,6 +40,7 @@ from ga_writers.ga_panchanga_writer import build_ga_panchanga
 from ga_writers.ga_sensitive_writer import build_ga_sensitive
 from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
+from ga_writers.ga_structural_writer import build_ga_structural
 from ga_writers.gates import run_all_gates
 
 
@@ -96,6 +97,7 @@ def run(
     skip_ga7: bool = False,
     ga7_systems: list = None,
     ga7_ayanamshas: list = None,
+    skip_ga8: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -288,6 +290,41 @@ def run(
         summary["steps"]["mv_refresh"] = {"status": "FAIL", "error": str(exc)}
         logger.warning("[build_runner] MV refresh failed (non-fatal): %s", exc)
 
+    # ── Step 3: ga_structural (GA8) ──────────────────────────────────────────
+    if not skip_structural:
+        logger.info("[build_runner] Step 3: ga_structural (GA8 T1)")
+        try:
+            struct_summary = build_ga_structural(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_structural"] = {
+                "status": "PASS",
+                "chart_facts_rows": struct_summary["total_chart_facts_rows"],
+                "forensic_pass": struct_summary["forensic_pass"],
+                "two_pass_verified": struct_summary["two_pass_verified"],
+                "argala_count": struct_summary["argala_count"],
+                "virodha_count": struct_summary["virodha_count"],
+                "yoga_fires_count": struct_summary["yoga_fires_count"],
+                "dosha_fires_count": struct_summary["dosha_fires_count"],
+                "upstream_check": struct_summary.get("upstream_check"),
+            }
+            logger.info(
+                "[build_runner] ga_structural PASS: cf=%d two_pass=%s argala=%d yoga=%d dosha=%d",
+                struct_summary["total_chart_facts_rows"],
+                struct_summary["two_pass_verified"],
+                struct_summary["argala_count"],
+                struct_summary["yoga_fires_count"],
+                struct_summary["dosha_fires_count"],
+            )
+        except Exception as exc:
+            summary["steps"]["ga_structural"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_structural FAIL: %s", exc)
+            return summary
+
+
     # ── Step 5: GA7 dashas (per-system incremental) ──────────────────────────
     if not skip_ga7:
         logger.info("[build_runner] Step 5: GA7 dashas (7 systems × 4-level Sukshma × 5 ayanamshas)")
@@ -418,6 +455,7 @@ def main() -> None:
         skip_strength=args.skip_strength,
         skip_sensitive=args.skip_sensitive,
         skip_vargas=getattr(args, "skip_vargas", False),
+        skip_ga8=getattr(args, "skip_ga8", False),
         skip_ga7=args.skip_ga7,
         ga7_systems=args.ga7_systems,
         ga7_ayanamshas=args.ga7_ayanamshas,
