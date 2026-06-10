@@ -98,40 +98,12 @@ CREATE INDEX IF NOT EXISTS mv_sade_sati_chart_ay_idx
   ON mv_chart_sade_sati_lifetime_summary (chart_id, ayanamsha_id);
 
 
--- ── 2. asset_throughput entry for ga_sade_sati ────────────────────────────────
--- Cockpit bar tracks build state; row_count starts at 0 (updated at build close).
--- count_sql reflects total chart_facts rows for ga_sade_sati categories.
-
-INSERT INTO asset_throughput
-  (asset_id, chart_id, asset_label, row_count, target_row_count,
-   build_state, count_sql, last_build_id, updated_at)
-VALUES
-  (
-    'ga_sade_sati',
-    '482012f1-710e-4a25-994a-93821f5871aa',
-    'GA9 — Sade Sati Cycles (ga_sade_sati)',
-    0,
-    875,
-    'pending',
-    $$SELECT COUNT(*) FROM chart_facts
-      WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
-        AND fact_category IN (
-          'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',
-          'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period',
-          'ardha_ashtama_shani_period', 'janma_shani_period',
-          'vishakha_shani_period', 'anumukha_shani_period',
-          'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check',
-          'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay',
-          'sade_sati_downstream_cross_reference'
-        )$$,
-    NULL,
-    NOW()
-  )
-ON CONFLICT (asset_id, chart_id) DO UPDATE SET
-  asset_label      = EXCLUDED.asset_label,
-  target_row_count = EXCLUDED.target_row_count,
-  count_sql        = EXCLUDED.count_sql,
-  updated_at       = NOW();
+-- ── 2. asset_throughput entry for ga_sade_sati — REMOVED ──────────────────────
+-- The original INSERT here targeted asset_throughput columns (asset_label, row_count,
+-- target_row_count, build_state, count_sql, last_build_id) that do not exist on the
+-- redesigned asset_throughput telemetry table — it would fail on any real database.
+-- Superseded by migration 214, which registers count_sql on asset_registry (the table
+-- the cockpit stats route actually reads). Intentionally left as a no-op.
 
 
 COMMIT;

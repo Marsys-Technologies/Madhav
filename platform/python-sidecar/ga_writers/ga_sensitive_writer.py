@@ -1955,19 +1955,23 @@ def _refresh_mv(conn: Any) -> str:
 
 def _update_asset_throughput(conn: Any, chart_id: str, build_id: str, row_count: int) -> None:
     """Update asset_throughput for ga_sensitive."""
+    # Telemetry is best-effort and MUST NOT poison the build transaction. Wrap in a
+    # psycopg savepoint (conn.transaction()) so a schema mismatch on asset_throughput
+    # rolls back only this statement, never the committed sensitive-point rows. The
+    # cockpit reads count_sql from asset_registry (migration 214), not this table.
     try:
-        conn.execute(
-            """
-            INSERT INTO asset_throughput (asset_id, chart_id, build_id, row_count, updated_at)
-            VALUES (%s, %s, %s, %s, NOW())
-            ON CONFLICT (asset_id, chart_id) DO UPDATE SET
-                build_id = EXCLUDED.build_id,
-                row_count = EXCLUDED.row_count,
-                updated_at = NOW()
-            """,
-            [GA5_ASSET_ID, chart_id, build_id, row_count],
-        )
-        conn.commit()
+        with conn.transaction():
+            conn.execute(
+                """
+                INSERT INTO asset_throughput (asset_id, chart_id, build_id, row_count, updated_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (asset_id, chart_id) DO UPDATE SET
+                    build_id = EXCLUDED.build_id,
+                    row_count = EXCLUDED.row_count,
+                    updated_at = NOW()
+                """,
+                [GA5_ASSET_ID, chart_id, build_id, row_count],
+            )
         logger.info("[ga_sensitive] asset_throughput updated: %d rows", row_count)
     except Exception as exc:
         logger.warning("[ga_sensitive] asset_throughput update failed: %s", exc)

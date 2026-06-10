@@ -24,12 +24,20 @@ ALTER TABLE chart_divisionals
   ADD COLUMN IF NOT EXISTS fact_subject         TEXT,
   ADD COLUMN IF NOT EXISTS build_id_uuid        UUID,
   ADD COLUMN IF NOT EXISTS verification_pass_status TEXT
-    CHECK (verification_pass_status IN ('two_pass_verified','classical_match','divergent_flagged')),
+    CHECK (verification_pass_status IN ('two_pass_verified','classical_match','divergent_flagged','single')),
   ADD COLUMN IF NOT EXISTS engine_version       TEXT,
   ADD COLUMN IF NOT EXISTS citation_ref         TEXT,
   ADD COLUMN IF NOT EXISTS citation_human       TEXT,
   ADD COLUMN IF NOT EXISTS source_calculation   TEXT,
   ADD COLUMN IF NOT EXISTS computed_at          TIMESTAMPTZ;
+
+-- Relax legacy wide-row NOT NULLs: the GA6 atomic model writes one row per
+-- (fact_category, fact_key); non-position fact rows do not populate the legacy
+-- position columns. chart_id/ayanamsha_id/varga/build_id remain required.
+ALTER TABLE chart_divisionals ALTER COLUMN graha          DROP NOT NULL;
+ALTER TABLE chart_divisionals ALTER COLUMN sign           DROP NOT NULL;
+ALTER TABLE chart_divisionals ALTER COLUMN sign_number    DROP NOT NULL;
+ALTER TABLE chart_divisionals ALTER COLUMN degree_in_sign DROP NOT NULL;
 
 -- Section-B enrichment columns (A5 §3 universal enrichments, per GA6 brief §intro)
 ALTER TABLE chart_divisionals
@@ -83,7 +91,7 @@ SELECT
   MAX(CASE WHEN cd.fact_key = 'vargottama'      THEN cd.fact_value_text END) AS vargottama,
   MAX(CASE WHEN cd.fact_key = 'deity'           THEN cd.fact_value_text END) AS deity,
   MAX(CASE WHEN cd.fact_key = 'formula_id'      THEN cd.fact_value_text END) AS formula_id,
-  MAX(cd.build_id_uuid)                                                       AS build_id_uuid,
+  MAX(cd.build_id_uuid::text)::uuid                                                       AS build_id_uuid,
   MAX(cd.computed_at)                                                         AS computed_at
 FROM chart_divisionals cd
 WHERE cd.fact_category IN ('varga_position', 'varga_dignity', 'varga_vargottama_flag', 'varga_deity_attribution')
@@ -104,7 +112,7 @@ SELECT
   cd.ayanamsha_id,
   cd.graha                                    AS body,
   cd.fact_value_text                          AS super_vargottama,
-  MAX(cd.build_id_uuid)                       AS build_id_uuid,
+  MAX(cd.build_id_uuid::text)::uuid                       AS build_id_uuid,
   MAX(cd.computed_at)                         AS computed_at
 FROM chart_divisionals cd
 WHERE cd.fact_category = 'varga_super_vargottama_flag'

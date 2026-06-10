@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS chart_dashas (
   sandhi_flag              BOOLEAN NOT NULL DEFAULT FALSE,
   karaka_role_at_period    TEXT,
   verification_pass_status TEXT NOT NULL
-    CHECK (verification_pass_status IN ('two_pass_verified','classical_match','divergent_flagged')),
+    CHECK (verification_pass_status IN ('two_pass_verified','classical_match','divergent_flagged','single')),
   verification_method      TEXT NOT NULL,
   citation_ref             TEXT NOT NULL,
   citation_human           TEXT NOT NULL,
