@@ -424,8 +424,12 @@ PRANIC_BASE_SCORES: dict[str, float] = {
 # ── Halt log writer ───────────────────────────────────────────────────────────
 
 def _write_halt_log(reason: str, details: str) -> None:
-    """Write CONDUCTOR_HALT_LOG.md entry."""
-    halt_dir = pathlib.Path(__file__).parents[4] / "00_ARCHITECTURE" / "CONDUCTOR" / "l1-ganita-build"
+    """Write CONDUCTOR_HALT_LOG.md entry (no-op when conductor dir not reachable)."""
+    logger.error("[ga_structural_writer] HALT: %s | %s", reason, details)
+    try:
+        halt_dir = pathlib.Path(__file__).parents[4] / "00_ARCHITECTURE" / "CONDUCTOR" / "l1-ganita-build"
+    except IndexError:
+        return  # container has shallow path — logged above, no file to write
     halt_dir.mkdir(parents=True, exist_ok=True)
     halt_path = halt_dir / "CONDUCTOR_HALT_LOG.md"
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -515,7 +519,6 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
         """
         SELECT DISTINCT fact_category FROM chart_facts
         WHERE chart_id = %s
-        LIMIT 100
         """,
         [chart_id],
     )
@@ -2594,8 +2597,10 @@ def build_ga_structural(
             if not upstream["present"]:
                 msg = (
                     f"UPSTREAM ABSENT: GA3-GA7 rows missing for chart_id={chart_id}. "
-                    f"Missing categories: {upstream['missing']}"
+                    f"Missing categories: {upstream['missing']}. "
+                    f"Found categories: {upstream['categories_found']}"
                 )
+                logger.error("[ga_structural_writer] upstream check FAIL: %s", msg)
                 _write_halt_log("UPSTREAM_ABSENT", msg)
                 raise RuntimeError(msg)
             logger.info("[ga_structural_writer] Upstream check PASS: found %d categories",
