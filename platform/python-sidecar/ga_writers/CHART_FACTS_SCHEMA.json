@@ -7512,6 +7512,761 @@
         "mv_preferred": "mv_chart_yogas_fired_summary"
       },
       "render_template": "Yoga {yoga_name} fires; strength {strength:.2f}; {cancelled_note} ({ayanamsha})."
+    },
+    "anumukha_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Saturn in 2H from natal Moon — Sade Sati exit phase.",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
+    },
+    "ardha_ashtama_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Combined 4H and 8H Saturn-Moon configuration windows.",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "house_from_moon": {
+          "value_type": "num",
+          "range": [
+            4,
+            8
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
+    },
+    "ashtama_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Saturn in 8H from natal Moon.",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
+    },
+    "dhaiya_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects_pattern": "DHAIYA_{4H|8H}_N",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "house_from_moon": {
+          "value_type": "num",
+          "range": [
+            4,
+            8
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
+    },
+    "janma_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Saturn transiting natal Moon sign (peak Sade Sati).",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration",
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "kantaka_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Saturn in 4H from natal Moon. Subset of dhaiya_period rows.",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
+    },
+    "sade_sati_cancellation_check": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "CYCLE_1",
+        "CYCLE_2",
+        "CYCLE_3"
+      ],
+      "allowed_keys": {
+        "cancellation_active_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "cancellation_rules_invoked_jsonb": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "set of named predicates: splitting into 8 bool columns loses rule-name semantics needed for human-readable citations",
+          "allowed_values": [
+            "saturn_vargottama",
+            "saturn_own_sign",
+            "saturn_exalted",
+            "dispositor_strong",
+            "jupiter_aspect_to_saturn",
+            "saturn_moon_parivartana_natal",
+            "saturn_yoga_karaka",
+            "strong_benefic_dasha_concurrent"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "sade_sati_concurrent_dasha_overlay": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Q6=A: all 7 GA7 dasha systems — one atomic text key per system.",
+      "applies_to_subjects": [
+        "CYCLE_1",
+        "CYCLE_2",
+        "CYCLE_3"
+      ],
+      "allowed_keys": {
+        "concurrent_vimshottari_maha_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_vimshottari_antar_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_yogini_period_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_ashtottari_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_chara_karaka_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_naisargika_age_bracket": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_mudda_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "sade_sati_cycle": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "CYCLE_1",
+        "CYCLE_2",
+        "CYCLE_3"
+      ],
+      "allowed_keys": {
+        "cycle_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "cycle_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "range": [
+            2500,
+            3000
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "duration_years": {
+          "value_type": "num",
+          "unit": "years",
+          "range": [
+            6.5,
+            8.5
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "moon_sign_for_cycle": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "cycle_type": {
+          "value_type": "text_enum",
+          "enum": [
+            "full",
+            "partial",
+            "prospective"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "compound_with_next_cycle_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "compound_with_prior_cycle_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_lifetime",
+          "sade_sati_cycle_detail"
+        ],
+        "mv_preferred": "mv_chart_sade_sati_lifetime_summary"
+      },
+      "render_template": "Sade Sati {cycle_id}: {cycle_start_iso} → {cycle_end_iso} ({duration_years:.1f}y, Moon in {moon_sign_for_cycle}, {cycle_type}, {ayanamsha})."
+    },
+    "sade_sati_downstream_cross_reference": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "CYCLE_1",
+        "CYCLE_2",
+        "CYCLE_3"
+      ],
+      "allowed_keys": {
+        "d10_karya_bhava_activation_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "argala_during_period_jsonb": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "subset of GA8's 144-row argala matrix; each element is {from_h, to_h, strength} triple; count varies",
+          "verification_min": "two_pass_verified"
+        },
+        "tara_bala_baseline_ref": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "sade_sati_modifier_overlay": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Concurrent transit modifiers — all atomic boolean/text keys (no JSONB).",
+      "allowed_keys": {
+        "mars_aspect_to_saturn_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "jupiter_aspect_to_saturn_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_rahu_axis_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "eclipse_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_saturn_return_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "sade_sati_phase": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects_pattern": "CYCLE_N.{VISHAKHA|JANMA|ANUMUKHA}",
+      "allowed_keys": {
+        "phase_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "phase_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_years": {
+          "value_type": "num",
+          "unit": "years",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text_enum",
+          "enum": [
+            "exalted",
+            "own",
+            "mooltrikona",
+            "friend",
+            "neutral",
+            "enemy",
+            "debilitated"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_retrograde_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_nakshatra_transitions_jsonb_atomic": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "ordered time-series; count varies per phase",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_vimshottari_maha_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_vimshottari_antar_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_yogini_period_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_ashtottari_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_chara_karaka_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_naisargika_age_bracket": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_mudda_lord": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "mars_aspect_to_saturn_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "jupiter_aspect_to_saturn_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_rahu_axis_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "eclipse_during_period_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "concurrent_saturn_return_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "natal_saturn_aspects_natal_moon_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "pada_specific_modifier": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "tara_bala_during_peak": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "d10_karya_bhava_activation_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "d10_karya_activation_facts_jsonb": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "FK-style list of D10 fact_ids; count varies per cycle",
+          "verification_min": "two_pass_verified"
+        },
+        "argala_during_period_jsonb": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "set of house-pair activations from GA8's 144-row matrix; count varies",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ],
+        "mv_preferred": "mv_chart_sade_sati_lifetime_summary"
+      }
+    },
+    "sade_sati_phase_quarter": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "applies_to_subjects_pattern": "CYCLE_N.{VISHAKHA|JANMA|ANUMUKHA}.Q{1..4}",
+      "allowed_keys": {
+        "quarter_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "quarter_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "intensity_level": {
+          "value_type": "text_enum",
+          "enum": [
+            "High",
+            "Medium",
+            "Low"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "quarter_intensity_rationale_jsonb": {
+          "value_type": "jsonb",
+          "jsonb_sanctioned": true,
+          "irreducibility": "rule-set: the set of rules is the atom; N varies per quarter",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text_enum",
+          "enum": [
+            "exalted",
+            "own",
+            "mooltrikona",
+            "friend",
+            "neutral",
+            "enemy",
+            "debilitated"
+          ],
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "sade_sati_saturn_retrograde_subset": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Q5=A: Saturn retrograde windows within Sade Sati phases.",
+      "applies_to_subjects_pattern": "CYCLE_N.{VISHAKHA|JANMA|ANUMUKHA}.RETRO_M",
+      "allowed_keys": {
+        "retrograde_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "retrograde_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "sade_sati_cycle_detail"
+        ]
+      }
+    },
+    "vishakha_shani_period": {
+      "ayanamsha_dependent": true,
+      "atomic_grain_scrutiny": "highest",
+      "target_table": "chart_facts",
+      "note": "Saturn in 12H from natal Moon — Sade Sati entry phase.",
+      "allowed_keys": {
+        "period_start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "period_end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_days": {
+          "value_type": "num",
+          "unit": "days",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_sign": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "saturn_dignity": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "ga9/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "saturn_moon_configuration"
+        ]
+      }
     }
   },
   "channels": {

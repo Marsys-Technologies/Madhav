@@ -1,5 +1,5 @@
 """
-build_runner.py — GA3+GA4+GA5+GA6+GA7+GA8 build orchestrator
+build_runner.py — GA3+GA4+GA5+GA6+GA7+GA8+GA9 build orchestrator
 =============================================
 Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
@@ -41,6 +41,7 @@ from ga_writers.ga_sensitive_writer import build_ga_sensitive
 from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
 from ga_writers.ga_structural_writer import build_ga_structural
+from ga_writers.ga_sade_sati_writer import build_ga_sade_sati
 from ga_writers.gates import run_all_gates
 
 
@@ -98,6 +99,7 @@ def run(
     ga7_systems: list = None,
     ga7_ayanamshas: list = None,
     skip_ga8: bool = False,
+    skip_sade_sati: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -379,6 +381,34 @@ def run(
             }
 
 
+    # ── Step 5: GA9 — ga_sade_sati (final step; requires all upstreams) ───────
+    if not skip_sade_sati:
+        logger.info("[build_runner] Step 5: ga_sade_sati (GA9 — Sade Sati cycles)")
+        try:
+            ss_summary = build_ga_sade_sati(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_sade_sati"] = {
+                "status": "PASS",
+                "chart_facts_rows": ss_summary["total_chart_facts_rows"],
+                "two_pass_verified": ss_summary["two_pass_verified"],
+                "divergent_flagged": ss_summary["divergent_flagged"],
+                "ayanamshas": ss_summary.get("ayanamshas", {}),
+            }
+            logger.info(
+                "[build_runner] ga_sade_sati PASS: cf=%d two_pass=%s",
+                ss_summary["total_chart_facts_rows"],
+                ss_summary["two_pass_verified"],
+            )
+        except Exception as exc:
+            summary["steps"]["ga_sade_sati"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_sade_sati FAIL: %s", exc)
+            return summary
+
+
     # ── Step 4: Run all gates ─────────────────────────────────────────────────
     logger.info("[build_runner] Step 4: Gate validation")
     try:
@@ -455,6 +485,7 @@ def main() -> None:
         skip_strength=args.skip_strength,
         skip_sensitive=args.skip_sensitive,
         skip_vargas=getattr(args, "skip_vargas", False),
+        skip_sade_sati=getattr(args, "skip_sade_sati", False),
         skip_ga8=getattr(args, "skip_ga8", False),
         skip_ga7=args.skip_ga7,
         ga7_systems=args.ga7_systems,
