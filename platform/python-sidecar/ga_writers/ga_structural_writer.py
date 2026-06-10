@@ -2457,6 +2457,11 @@ def _build_esoteric_rows(
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     written = 0
     for r in rows:
+        row = dict(r)
+        # psycopg3 cannot adapt Python dicts/lists; serialize JSONB values to strings
+        v = row.get("fact_value_jsonb")
+        if isinstance(v, (dict, list)):
+            row["fact_value_jsonb"] = json.dumps(v)
         conn.execute(
             """
             INSERT INTO chart_facts
@@ -2486,7 +2491,7 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
               engine_version   = EXCLUDED.engine_version,
               computed_at      = EXCLUDED.computed_at
             """,
-            r,
+            row,
         )
         written += 1
     return written
