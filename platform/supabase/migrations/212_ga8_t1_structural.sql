@@ -21,7 +21,7 @@ SELECT
   fact_subject                                                         AS yoga_name,
   MAX(CASE WHEN fact_key = 'yoga_name'          THEN fact_value_text END) AS yoga_name_text,
   MAX(CASE WHEN fact_key = 'yoga_strength_score' THEN fact_value_num  END) AS yoga_strength_score,
-  MAX(
+  BOOL_OR(
     CASE WHEN fact_key = 'yoga_name'
     THEN (fact_value_jsonb->>'cancellation_flag')::boolean END
   )                                                                    AS cancellation_flag,

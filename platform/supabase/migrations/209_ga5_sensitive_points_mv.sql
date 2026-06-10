@@ -126,8 +126,8 @@ SELECT
     -- For karaka rows: assigned graha
     MAX(CASE WHEN cf.fact_key = 'assigned_graha' THEN cf.fact_value_text END)
         AS assigned_graha,
-    -- For saham/karaka: formula_id (from any row in group)
-    MIN(cf.formula_id)
+    -- For saham/karaka: formula_id (from any row in group; stored as an atomic fact_key)
+    MAX(CASE WHEN cf.fact_key = 'formula_id' THEN cf.fact_value_text END)
         AS formula_id,
     -- Section-B enrichment aggregates
     BOOL_OR(cf.near_sign_boundary_flag)
