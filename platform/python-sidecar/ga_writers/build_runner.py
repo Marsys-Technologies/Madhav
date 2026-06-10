@@ -1,13 +1,13 @@
 """
-build_runner.py — GA3 + GA5 build orchestrator
-===============================================
-Runs the full GA3 + GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3+GA4+GA5 build orchestrator
+=============================================
+Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
-  3. ga_sensitive  → chart_facts (30 A5 categories, ~13K rows, 5 ayanamshas)
-  4. Refresh materialized views (synchronous, required before build 'complete')
-  5. Run all gate-validators
-  6. Emit FINAL_SUMMARY dict
+  3b. ga_panchanga → chart_facts (birth-instant panchanga — 31 INVARIANT + 8 DEPENDENT ×5 ayanamshas)
+  3. Refresh materialized views (synchronous, required before build 'complete')
+  4. Run all gate-validators
+  5. Emit FINAL_SUMMARY dict
 
 Usage:
     python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID]
@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
+from ga_writers.ga_panchanga_writer import build_ga_panchanga
 from ga_writers.ga_sensitive_writer import build_ga_sensitive
 from ga_writers.gates import run_all_gates
 
@@ -48,6 +49,7 @@ MATERIALIZED_VIEWS = [
     "mv_chart_ashtakavarga_summary",
     "mv_chart_bhava_bala_summary",
     "mv_cross_ayanamsha_consensus",
+    "mv_chart_panchanga_birth_summary",
     "mv_chart_sensitive_points_summary",  # GA5
 ]
 
@@ -88,7 +90,7 @@ def run(
     skip_sensitive: bool = False,
 ) -> dict[str, Any]:
     """
-    Run full GA3+GA5 build: positions + strength + sensitive + MVs + gates.
+    Run full GA3 build: positions + strength + MVs + gates.
     Returns comprehensive summary dict.
     Raises on FORENSIC gate failure or two-pass divergence.
     """
@@ -102,7 +104,7 @@ def run(
     )
 
     summary: dict[str, Any] = {
-        "session_id": "ga3-chart-facts",
+        "session_id": "ga3-ga4-chart-facts",
         "chart_id": chart_id,
         "build_id": build_id,
         "started_at": started_at,
@@ -199,8 +201,35 @@ def run(
             logger.error("[build_runner] ga_sensitive FAIL: %s", exc)
             return summary
 
-    # ── Step 4: Refresh MVs ───────────────────────────────────────────────────
-    logger.info("[build_runner] Step 4: Refresh materialized views")
+
+    # ── Step 3b: ga_panchanga ─────────────────────────────────────────────────
+    logger.info("[build_runner] Step 3b: ga_panchanga")
+    try:
+        pan_summary = build_ga_panchanga(
+            chart_id=chart_id,
+            build_id=build_id,
+            birth_params=birth_params,
+        )
+        summary["steps"]["ga_panchanga"] = {
+            "status": "PASS",
+            "chart_facts_rows": pan_summary["total_chart_facts_rows"],
+            "forensic_pass": pan_summary["forensic_pass"],
+            "invariant_rows": pan_summary["invariant_rows"],
+            "dependent_rows_by_ayanamsha": pan_summary["dependent_rows_by_ayanamsha"],
+        }
+        logger.info(
+            "[build_runner] ga_panchanga PASS: cf=%d invariant=%d",
+            pan_summary["total_chart_facts_rows"],
+            pan_summary["invariant_rows"],
+        )
+    except Exception as exc:
+        summary["steps"]["ga_panchanga"] = {"status": "FAIL", "error": str(exc)}
+        summary["status"] = "FAIL"
+        logger.error("[build_runner] ga_panchanga FAIL: %s", exc)
+        return summary
+
+    # ── Step 3: Refresh MVs ───────────────────────────────────────────────────
+    logger.info("[build_runner] Step 3: Refresh materialized views")
     try:
         with _conn() as conn:
             mv_results = refresh_materialized_views(conn)
@@ -218,8 +247,8 @@ def run(
         summary["steps"]["mv_refresh"] = {"status": "FAIL", "error": str(exc)}
         logger.warning("[build_runner] MV refresh failed (non-fatal): %s", exc)
 
-    # ── Step 5: Run all gates ─────────────────────────────────────────────────
-    logger.info("[build_runner] Step 5: Gate validation")
+    # ── Step 4: Run all gates ─────────────────────────────────────────────────
+    logger.info("[build_runner] Step 4: Gate validation")
     try:
         with _conn() as conn:
             gate_results = run_all_gates(conn, chart_id, build_id)
@@ -236,18 +265,17 @@ def run(
     # ── Compute totals ────────────────────────────────────────────────────────
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
-    sens_step = summary["steps"].get("ga_sensitive", {})
+    pan_step = summary["steps"].get("ga_panchanga", {})
     total_gp = pos_step.get("ganita_positions_rows", 0)
     total_cf = (
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
-        + sens_step.get("chart_facts_rows", 0)
+        + pan_step.get("chart_facts_rows", 0)
     )
 
     summary["totals"] = {
         "ganita_positions_rows": total_gp,
         "chart_facts_rows": total_cf,
-        "sensitive_rows": sens_step.get("chart_facts_rows", 0),
     }
 
     gate_overall = summary.get("gate_results", {}).get("overall", "FAIL")
@@ -265,7 +293,7 @@ def run(
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GA3+GA5 chart_facts build runner")
+    parser = argparse.ArgumentParser(description="GA3+GA4+GA5 chart_facts build runner")
     parser.add_argument(
         "--chart_id",
         default=CANONICAL_CHART_ID,
@@ -280,11 +308,6 @@ def main() -> None:
         "--skip_strength",
         action="store_true",
         help="Skip ga_strength writer (positions only)",
-    )
-    parser.add_argument(
-        "--skip_sensitive",
-        action="store_true",
-        help="Skip ga_sensitive writer (GA5 30-category sensitive points)",
     )
     parser.add_argument(
         "--json",
@@ -307,17 +330,19 @@ def main() -> None:
         status = result.get("status", "UNKNOWN")
         gp_rows = result.get("totals", {}).get("ganita_positions_rows", 0)
         cf_rows = result.get("totals", {}).get("chart_facts_rows", 0)
-        sens_rows = result.get("totals", {}).get("sensitive_rows", 0)
         gate_overall = result.get("gate_results", {}).get("overall", "UNKNOWN")
 
+        pan_rows = result.get("steps", {}).get("ga_panchanga", {}).get("chart_facts_rows", 0)
         print(f"\n{'='*60}")
-        print(f"GA3+GA5 BUILD COMPLETE")
+        print(f"GA3+GA4+GA5 BUILD COMPLETE")
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  ganita_positions:    {gp_rows} rows")
-        print(f"  chart_facts:         {cf_rows} rows")
-        print(f"    of which GA5:      {sens_rows} sensitive-point rows")
+        print(f"  chart_facts total:   {cf_rows} rows")
+        sens_rows = summary.get("totals", {}).get("sensitive_rows", 0)
+        print(f"    ga_panchanga:      {pan_rows} rows")
+        print(f"    ga_sensitive:      {sens_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
         print(f"{'='*60}")
 
