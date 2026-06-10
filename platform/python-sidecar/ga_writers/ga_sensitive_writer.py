@@ -313,6 +313,7 @@ def _make_row(
     eng_ver: str,
     *,
     formula_id: str = "",
+    source_calculation: str | None = None,
     verification_pass_status: str = "two_pass_verified",
     tolerance_arcsec: float = 0.0,
     near_sign_boundary_flag: bool = False,
@@ -348,6 +349,7 @@ def _make_row(
         "fact_value_text": value_text,
         "fact_value_jsonb": value_jsonb,
         "formula_id": formula_id or None,
+        "source_calculation": source_calculation or f"pyjhora_adapter.sensitive/{eng_ver}",
         "citation_ref": cref,
         "citation_human": chuman,
         "verification_pass_status": verification_pass_status,
@@ -1888,47 +1890,50 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     inserted = 0
     for row in rows:
         try:
-            conn.execute(
-                """
-                INSERT INTO chart_facts (
-                    fact_id, chart_id, build_id, ayanamsha_id, engine_version,
-                    fact_category, fact_subject, fact_key,
-                    fact_value_num, fact_value_text, fact_value_jsonb,
-                    formula_id, citation_ref, citation_human,
-                    verification_pass_status,
-                    tolerance_arcsec, near_sign_boundary_flag,
-                    near_nakshatra_boundary_flag, vargottama_flag_at_point,
-                    formula_provenance_text, cross_ayanamsha_divergence_arcsec
-                ) VALUES (
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s,
-                    %s, %s, %s,
-                    %s, %s, %s,
-                    %s,
-                    %s, %s,
-                    %s, %s,
-                    %s, %s
+            with conn.transaction():  # savepoint — isolates each row so failures don't abort the transaction
+                conn.execute(
+                    """
+                    INSERT INTO chart_facts (
+                        fact_id, chart_id, build_id, ayanamsha_id, engine_version,
+                        fact_category, fact_subject, fact_key,
+                        fact_value_num, fact_value_text, fact_value_jsonb,
+                        formula_id, source_calculation, citation_ref, citation_human,
+                        verification_pass_status,
+                        tolerance_arcsec, near_sign_boundary_flag,
+                        near_nakshatra_boundary_flag, vargottama_flag_at_point,
+                        formula_provenance_text, cross_ayanamsha_divergence_arcsec
+                    ) VALUES (
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s,
+                        %s, %s,
+                        %s, %s,
+                        %s, %s
+                    )
+                    ON CONFLICT (fact_id) DO UPDATE SET
+                        fact_value_num = EXCLUDED.fact_value_num,
+                        fact_value_text = EXCLUDED.fact_value_text,
+                        fact_value_jsonb = EXCLUDED.fact_value_jsonb,
+                        source_calculation = EXCLUDED.source_calculation,
+                        verification_pass_status = EXCLUDED.verification_pass_status,
+                        build_id = EXCLUDED.build_id
+                    """,
+                    [
+                        row["fact_id"], row["chart_id"], row["build_id"],
+                        row["ayanamsha_id"], row["engine_version"],
+                        row["fact_category"], row["fact_subject"], row["fact_key"],
+                        row["fact_value_num"], row["fact_value_text"],
+                        row.get("fact_value_jsonb"),
+                        row.get("formula_id"), row["source_calculation"],
+                        row["citation_ref"], row["citation_human"],
+                        row["verification_pass_status"],
+                        row.get("tolerance_arcsec"), row.get("near_sign_boundary_flag"),
+                        row.get("near_nakshatra_boundary_flag"), row.get("vargottama_flag_at_point"),
+                        row.get("formula_provenance_text"), row.get("cross_ayanamsha_divergence_arcsec"),
+                    ],
                 )
-                ON CONFLICT (fact_id) DO UPDATE SET
-                    fact_value_num = EXCLUDED.fact_value_num,
-                    fact_value_text = EXCLUDED.fact_value_text,
-                    fact_value_jsonb = EXCLUDED.fact_value_jsonb,
-                    verification_pass_status = EXCLUDED.verification_pass_status,
-                    build_id = EXCLUDED.build_id
-                """,
-                [
-                    row["fact_id"], row["chart_id"], row["build_id"],
-                    row["ayanamsha_id"], row["engine_version"],
-                    row["fact_category"], row["fact_subject"], row["fact_key"],
-                    row["fact_value_num"], row["fact_value_text"],
-                    row.get("fact_value_jsonb"),
-                    row.get("formula_id"), row["citation_ref"], row["citation_human"],
-                    row["verification_pass_status"],
-                    row.get("tolerance_arcsec"), row.get("near_sign_boundary_flag"),
-                    row.get("near_nakshatra_boundary_flag"), row.get("vargottama_flag_at_point"),
-                    row.get("formula_provenance_text"), row.get("cross_ayanamsha_divergence_arcsec"),
-                ],
-            )
             inserted += 1
         except Exception as exc:
             logger.warning("[ga_sensitive] INSERT failed for %s.%s.%s: %s",
