@@ -1,18 +1,16 @@
 """
-build_runner.py — GA3 + GA7 build orchestrator
-================================================
-Runs the full GA3+GA7 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+build_runner.py — GA3+GA4+GA5+GA6+GA7 build orchestrator
+=============================================
+Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
+  3b. ga_panchanga → chart_facts (birth-instant panchanga — 31 INVARIANT + 8 DEPENDENT ×5 ayanamshas)
   3. Refresh materialized views (synchronous, required before build 'complete')
   4. Run all gate-validators
-  5. ga_dashas (GA7) → chart_dashas (7 systems × 4-level Sukshma × 5 ayanamshas)
-     Per-system incremental; one system at a time for context-decay safety.
-  6. Emit FINAL_SUMMARY dict
+  5. Emit FINAL_SUMMARY dict
 
 Usage:
     python -m ga_writers.build_runner [--chart_id UUID] [--build_id UUID]
-    python -m ga_writers.build_runner --skip_ga3 --ga7_systems vimshottari yogini
     # or import and call: build_runner.run(chart_id, build_id)
 
 Environment:
@@ -38,8 +36,11 @@ logger = logging.getLogger(__name__)
 
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
-from ga_writers.gates import run_all_gates
+from ga_writers.ga_panchanga_writer import build_ga_panchanga
+from ga_writers.ga_sensitive_writer import build_ga_sensitive
+from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
+from ga_writers.gates import run_all_gates
 
 
 # ── MV refresh ───────────────────────────────────────────────────────────────
@@ -50,6 +51,10 @@ MATERIALIZED_VIEWS = [
     "mv_chart_ashtakavarga_summary",
     "mv_chart_bhava_bala_summary",
     "mv_cross_ayanamsha_consensus",
+    "mv_chart_panchanga_birth_summary",
+    "mv_chart_sensitive_points_summary",  # GA5
+    # GA6 MVs (migration 210)
+    "mv_chart_vargas_summary",
 ]
 
 
@@ -86,13 +91,14 @@ def run(
     *,
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
+    skip_sensitive: bool = False,
+    skip_vargas: bool = False,
     skip_ga7: bool = False,
-    ga7_systems: list[str] | None = None,
-    ga7_ayanamshas: list[str] | None = None,
+    ga7_systems: list = None,
+    ga7_ayanamshas: list = None,
 ) -> dict[str, Any]:
     """
-    Run full GA3 + GA7 build: positions + strength + MVs + gates + dashas.
-    GA7 runs per-system (context-decay-safe): one system at a time.
+    Run full GA3 build: positions + strength + MVs + gates.
     Returns comprehensive summary dict.
     Raises on FORENSIC gate failure or two-pass divergence.
     """
@@ -106,7 +112,7 @@ def run(
     )
 
     summary: dict[str, Any] = {
-        "session_id": "ga3-chart-facts",
+        "session_id": "ga3-ga4-chart-facts",
         "chart_id": chart_id,
         "build_id": build_id,
         "started_at": started_at,
@@ -166,6 +172,103 @@ def run(
             logger.error("[build_runner] ga_strength FAIL: %s", exc)
             return summary
 
+    # ── Step 2b: ga_vargas ───────────────────────────────────────────────────
+    if not skip_vargas:
+        logger.info("[build_runner] Step 2b: ga_vargas")
+        try:
+            vargas_summary = build_ga_vargas(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            summary["steps"]["ga_vargas"] = {
+                "status": vargas_summary.get("status", "FAIL"),
+                "total_rows_written": vargas_summary.get("total_rows_written", 0),
+                "batches_completed": vargas_summary.get("batches_completed", 0),
+                "forensic_pass": all(
+                    r.get("result") == "PASS"
+                    for r in vargas_summary.get("forensic_results", {}).values()
+                ),
+            }
+            if vargas_summary.get("status") in ("FAIL", "FORENSIC_FAIL"):
+                summary["status"] = "FAIL"
+                logger.error("[build_runner] ga_vargas FAIL: %s", vargas_summary.get("status"))
+                return summary
+            logger.info(
+                "[build_runner] ga_vargas PASS: rows=%d",
+                vargas_summary.get("total_rows_written", 0),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_vargas"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_vargas FAIL exception: %s", exc)
+            return summary
+
+
+    # ── Step 3: ga_sensitive ─────────────────────────────────────────────────
+    if not skip_sensitive:
+        logger.info("[build_runner] Step 3: ga_sensitive (~13K rows, 30 categories)")
+        try:
+            sens_summary = build_ga_sensitive(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            sens_status = sens_summary.get("status", "FAIL")
+            if sens_status in ("HALT", "FAIL"):
+                summary["steps"]["ga_sensitive"] = {
+                    "status": sens_status,
+                    "error": sens_summary.get("db_error") or sens_summary.get("divergent_rows"),
+                    "detail": sens_summary,
+                }
+                summary["status"] = sens_status
+                logger.error("[build_runner] ga_sensitive %s", sens_status)
+                return summary
+            summary["steps"]["ga_sensitive"] = {
+                "status": "PASS",
+                "chart_facts_rows": sens_summary.get("total_rows", 0),
+                "inserted_rows": sens_summary.get("inserted_rows", 0),
+                "forensic_pass": sens_summary.get("forensic_pass", False),
+                "prerequisites": sens_summary.get("prerequisites", {}),
+            }
+            logger.info(
+                "[build_runner] ga_sensitive PASS: rows=%d inserted=%d",
+                sens_summary.get("total_rows", 0),
+                sens_summary.get("inserted_rows", 0),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_sensitive"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_sensitive FAIL: %s", exc)
+            return summary
+
+
+    # ── Step 3b: ga_panchanga ─────────────────────────────────────────────────
+    logger.info("[build_runner] Step 3b: ga_panchanga")
+    try:
+        pan_summary = build_ga_panchanga(
+            chart_id=chart_id,
+            build_id=build_id,
+            birth_params=birth_params,
+        )
+        summary["steps"]["ga_panchanga"] = {
+            "status": "PASS",
+            "chart_facts_rows": pan_summary["total_chart_facts_rows"],
+            "forensic_pass": pan_summary["forensic_pass"],
+            "invariant_rows": pan_summary["invariant_rows"],
+            "dependent_rows_by_ayanamsha": pan_summary["dependent_rows_by_ayanamsha"],
+        }
+        logger.info(
+            "[build_runner] ga_panchanga PASS: cf=%d invariant=%d",
+            pan_summary["total_chart_facts_rows"],
+            pan_summary["invariant_rows"],
+        )
+    except Exception as exc:
+        summary["steps"]["ga_panchanga"] = {"status": "FAIL", "error": str(exc)}
+        summary["status"] = "FAIL"
+        logger.error("[build_runner] ga_panchanga FAIL: %s", exc)
+        return summary
+
     # ── Step 3: Refresh MVs ───────────────────────────────────────────────────
     logger.info("[build_runner] Step 3: Refresh materialized views")
     try:
@@ -184,21 +287,6 @@ def run(
     except Exception as exc:
         summary["steps"]["mv_refresh"] = {"status": "FAIL", "error": str(exc)}
         logger.warning("[build_runner] MV refresh failed (non-fatal): %s", exc)
-
-    # ── Step 4: Run all gates ─────────────────────────────────────────────────
-    logger.info("[build_runner] Step 4: Gate validation")
-    try:
-        with _conn() as conn:
-            gate_results = run_all_gates(conn, chart_id, build_id)
-        summary["gate_results"] = gate_results
-        overall = gate_results.get("overall", "FAIL")
-        if overall == "FAIL":
-            logger.warning("[build_runner] Gate validation FAIL")
-        else:
-            logger.info("[build_runner] All gates PASS")
-    except Exception as exc:
-        summary["gate_results"] = {"overall": "FAIL", "error": str(exc)}
-        logger.error("[build_runner] Gate validation exception: %s", exc)
 
     # ── Step 5: GA7 dashas (per-system incremental) ──────────────────────────
     if not skip_ga7:
@@ -253,29 +341,41 @@ def run(
                 "status": "WARN", "error": str(exc)
             }
 
+
+    # ── Step 4: Run all gates ─────────────────────────────────────────────────
+    logger.info("[build_runner] Step 4: Gate validation")
+    try:
+        with _conn() as conn:
+            gate_results = run_all_gates(conn, chart_id, build_id)
+        summary["gate_results"] = gate_results
+        overall = gate_results.get("overall", "FAIL")
+        if overall == "FAIL":
+            logger.warning("[build_runner] Gate validation FAIL")
+        else:
+            logger.info("[build_runner] All gates PASS")
+    except Exception as exc:
+        summary["gate_results"] = {"overall": "FAIL", "error": str(exc)}
+        logger.error("[build_runner] Gate validation exception: %s", exc)
+
     # ── Compute totals ────────────────────────────────────────────────────────
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
+    pan_step = summary["steps"].get("ga_panchanga", {})
     total_gp = pos_step.get("ganita_positions_rows", 0)
     total_cf = (
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
-    )
-    total_dasha_rows = sum(
-        v.get("total_rows", 0)
-        for k, v in summary["steps"].items()
-        if k.startswith("ga_dashas_") and isinstance(v, dict)
+        + pan_step.get("chart_facts_rows", 0)
     )
 
     summary["totals"] = {
         "ganita_positions_rows": total_gp,
         "chart_facts_rows": total_cf,
-        "chart_dashas_rows": total_dasha_rows,
     }
 
     gate_overall = summary.get("gate_results", {}).get("overall", "FAIL")
     all_steps_pass = all(
-        s.get("status") in ("PASS", "WARN")
+        s.get("status") == "PASS"
         for s in summary["steps"].values()
         if isinstance(s, dict)
     )
@@ -288,7 +388,7 @@ def run(
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GA3+GA7 chart_facts + dashas build runner")
+    parser = argparse.ArgumentParser(description="GA3+GA4+GA5 chart_facts build runner")
     parser.add_argument(
         "--chart_id",
         default=CANONICAL_CHART_ID,
@@ -305,24 +405,6 @@ def main() -> None:
         help="Skip ga_strength writer (positions only)",
     )
     parser.add_argument(
-        "--skip_ga7",
-        action="store_true",
-        help="Skip GA7 dashas writer",
-    )
-    parser.add_argument(
-        "--ga7_systems",
-        nargs="+",
-        default=None,
-        choices=GA7_SYSTEMS,
-        help="GA7: specific systems to run (default: all 7)",
-    )
-    parser.add_argument(
-        "--ga7_ayanamshas",
-        nargs="+",
-        default=None,
-        help="GA7: specific ayanamshas to run (default: all 5)",
-    )
-    parser.add_argument(
         "--json",
         dest="output_json",
         action="store_true",
@@ -334,6 +416,8 @@ def main() -> None:
         chart_id=args.chart_id,
         build_id=args.build_id,
         skip_strength=args.skip_strength,
+        skip_sensitive=args.skip_sensitive,
+        skip_vargas=getattr(args, "skip_vargas", False),
         skip_ga7=args.skip_ga7,
         ga7_systems=args.ga7_systems,
         ga7_ayanamshas=args.ga7_ayanamshas,
@@ -347,15 +431,17 @@ def main() -> None:
         cf_rows = result.get("totals", {}).get("chart_facts_rows", 0)
         gate_overall = result.get("gate_results", {}).get("overall", "UNKNOWN")
 
-        dasha_rows = result.get("totals", {}).get("chart_dashas_rows", 0)
+        pan_rows = result.get("steps", {}).get("ga_panchanga", {}).get("chart_facts_rows", 0)
         print(f"\n{'='*60}")
-        print(f"GA3+GA7 BUILD COMPLETE")
+        print(f"GA3+GA4+GA5 BUILD COMPLETE")
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  ganita_positions:    {gp_rows} rows")
-        print(f"  chart_facts:         {cf_rows} rows")
-        print(f"  chart_dashas (GA7):  {dasha_rows} rows")
+        print(f"  chart_facts total:   {cf_rows} rows")
+        sens_rows = summary.get("totals", {}).get("sensitive_rows", 0)
+        print(f"    ga_panchanga:      {pan_rows} rows")
+        print(f"    ga_sensitive:      {sens_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
         print(f"{'='*60}")
 
