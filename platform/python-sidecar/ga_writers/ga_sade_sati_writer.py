@@ -267,12 +267,13 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
                     break
             transition_jd = (lo + hi) / 2.0
             # Convert JD back to gregorian UTC
-            year, month, day, hour = swe.jdut1_to_utc(transition_jd, swe.GREG_CAL)
-            h = int(hour)
-            m = int((hour - h) * 60)
-            s = int(((hour - h) * 60 - m) * 60)
-            transition_dt = datetime(int(year), int(month), int(day), h, m, s,
-                                     tzinfo=timezone.utc)
+            # pyswisseph jdut1_to_utc returns (year, month, day, hour, min, sec)
+            ut_parts = swe.jdut1_to_utc(transition_jd, swe.GREG_CAL)
+            transition_dt = datetime(
+                int(ut_parts[0]), int(ut_parts[1]), int(ut_parts[2]),
+                int(ut_parts[3]), int(ut_parts[4]), int(ut_parts[5]),
+                tzinfo=timezone.utc,
+            )
             sign_from = SIGNS[prev_sign - 1]
             sign_to = SIGNS[curr_sign - 1]
             changes.append({
@@ -315,10 +316,11 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
         return result[3]  # speed in deg/day
 
     def _jd_to_dt(jd: float) -> datetime:
-        year, month, day, hour = swe.jdut1_to_utc(jd, swe.GREG_CAL)
-        h = int(hour)
-        m = int((hour - h) * 60)
-        return datetime(int(year), int(month), int(day), h, m, tzinfo=timezone.utc)
+        ut_parts = swe.jdut1_to_utc(jd, swe.GREG_CAL)
+        return datetime(
+            int(ut_parts[0]), int(ut_parts[1]), int(ut_parts[2]),
+            int(ut_parts[3]), int(ut_parts[4]), tzinfo=timezone.utc,
+        )
 
     in_retro = _speed_at_jd(jd_start) < 0
     retro_start_jd: float | None = jd_start if in_retro else None
