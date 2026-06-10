@@ -509,8 +509,8 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
         "panchanga_tithi",
         # GA5: sensitive points
         "upagraha_position",
-        # GA6: vargas
-        "varga_dignity",
+        # GA6: varga_dignity lives in chart_divisionals (not chart_facts);
+        # checked separately via div_count below — removed from this list
         # GA7: dashas (check chart_dashas table)
     ]
 
@@ -540,7 +540,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
     missing = [c for c in required_upstream_categories
                if c not in found_categories and c != "chart_dashas"]
 
-    # Check GA6 chart_divisionals
+    # Check GA6 chart_divisionals (varga_dignity is stored there, not in chart_facts)
     try:
         cursor3 = conn.execute(
             "SELECT COUNT(*) FROM chart_divisionals WHERE chart_id = %s",
@@ -549,8 +549,10 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
         div_count = cursor3.fetchone()[0]
         if div_count > 0:
             found_categories.append("chart_divisionals")
+        else:
+            missing.append("chart_divisionals_GA6")
     except Exception:
-        pass
+        missing.append("chart_divisionals_GA6")
 
     return {
         "present": len(missing) == 0,
