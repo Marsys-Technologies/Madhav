@@ -1,5 +1,5 @@
 """
-build_runner.py — GA3+GA4+GA5+GA6 build orchestrator
+build_runner.py — GA3+GA4+GA5+GA6+GA7 build orchestrator
 =============================================
 Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
@@ -39,6 +39,7 @@ from ga_writers.ga_strength_writer import build_ga_strength
 from ga_writers.ga_panchanga_writer import build_ga_panchanga
 from ga_writers.ga_sensitive_writer import build_ga_sensitive
 from ga_writers.ga_vargas_writer import build_ga_vargas
+from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
 from ga_writers.gates import run_all_gates
 
 
@@ -92,6 +93,9 @@ def run(
     skip_strength: bool = False,
     skip_sensitive: bool = False,
     skip_vargas: bool = False,
+    skip_ga7: bool = False,
+    ga7_systems: list = None,
+    ga7_ayanamshas: list = None,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -284,6 +288,60 @@ def run(
         summary["steps"]["mv_refresh"] = {"status": "FAIL", "error": str(exc)}
         logger.warning("[build_runner] MV refresh failed (non-fatal): %s", exc)
 
+    # ── Step 5: GA7 dashas (per-system incremental) ──────────────────────────
+    if not skip_ga7:
+        logger.info("[build_runner] Step 5: GA7 dashas (7 systems × 4-level Sukshma × 5 ayanamshas)")
+        # Build one system at a time for context-decay safety
+        target_systems = ga7_systems or GA7_SYSTEMS
+        for sys_id in target_systems:
+            logger.info("[build_runner] GA7 system: %s", sys_id)
+            try:
+                from ga_writers.ga_dashas_writer import build_system
+                ga7_sys_results = {}
+                ga7_ayas = ga7_ayanamshas or ["lahiri", "true_chitra", "kp", "raman", "surya_siddhanta"]
+                for aya in ga7_ayas:
+                    sys_result = build_system(sys_id, aya, chart_id, build_id)
+                    ga7_sys_results[f"{sys_id}:{aya}"] = sys_result
+
+                summary["steps"][f"ga_dashas_{sys_id}"] = {
+                    "status": "PASS",
+                    "system_id": sys_id,
+                    "ayanamshas": ga7_ayas,
+                    "results": ga7_sys_results,
+                    "total_rows": sum(
+                        r.get("rows_computed", 0) for r in ga7_sys_results.values()
+                    ),
+                }
+                logger.info(
+                    "[build_runner] GA7 %s PASS: %d rows",
+                    sys_id,
+                    summary["steps"][f"ga_dashas_{sys_id}"]["total_rows"],
+                )
+            except Exception as exc:
+                err_msg = str(exc)
+                summary["steps"][f"ga_dashas_{sys_id}"] = {
+                    "status": "FAIL",
+                    "system_id": sys_id,
+                    "error": err_msg,
+                }
+                logger.error("[build_runner] GA7 %s FAIL: %s", sys_id, err_msg)
+                if "FORENSIC HALT" in err_msg or "CRITICAL OVERRIDE VIOLATED" in err_msg:
+                    summary["status"] = "HALT"
+                    summary["halt_reason"] = err_msg
+                    return summary
+
+        # Post-pass: concurrency annotation (DB-side)
+        try:
+            from ga_writers.ga_dashas_writer import _run_concurrency_post_pass_db
+            _run_concurrency_post_pass_db(chart_id, build_id)
+            summary["steps"]["ga_dashas_concurrency_post_pass"] = {"status": "PASS"}
+        except Exception as exc:
+            logger.warning("[build_runner] GA7 concurrency post-pass skipped: %s", exc)
+            summary["steps"]["ga_dashas_concurrency_post_pass"] = {
+                "status": "WARN", "error": str(exc)
+            }
+
+
     # ── Step 4: Run all gates ─────────────────────────────────────────────────
     logger.info("[build_runner] Step 4: Gate validation")
     try:
@@ -360,6 +418,9 @@ def main() -> None:
         skip_strength=args.skip_strength,
         skip_sensitive=args.skip_sensitive,
         skip_vargas=getattr(args, "skip_vargas", False),
+        skip_ga7=args.skip_ga7,
+        ga7_systems=args.ga7_systems,
+        ga7_ayanamshas=args.ga7_ayanamshas,
     )
 
     if args.output_json:
