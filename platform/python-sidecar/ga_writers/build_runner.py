@@ -321,9 +321,14 @@ def run(
                 struct_summary["dosha_fires_count"],
             )
         except Exception as exc:
-            summary["steps"]["ga_structural"] = {"status": "FAIL", "error": str(exc)}
+            import traceback as _tb
+            tb_str = _tb.format_exc()
+            summary["steps"]["ga_structural"] = {"status": "FAIL", "error": str(exc),
+                                                   "exc_type": type(exc).__name__}
             summary["status"] = "FAIL"
-            logger.error("[build_runner] ga_structural FAIL: %s", exc)
+            logger.error("[build_runner] ga_structural FAIL type=%s repr=%r: %s",
+                         type(exc).__name__, exc, exc)
+            logger.error("[build_runner] ga_structural traceback:\n%s", tb_str)
             return summary
 
 
