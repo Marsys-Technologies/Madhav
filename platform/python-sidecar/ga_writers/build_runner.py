@@ -1,7 +1,7 @@
 """
-build_runner.py — GA3+GA4 build orchestrator
+build_runner.py — GA3+GA4+GA5 build orchestrator
 =============================================
-Runs the full GA3+GA4 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
+Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
   1. ga_positions  → ganita_positions + chart_facts
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
   3b. ga_panchanga → chart_facts (birth-instant panchanga — 31 INVARIANT + 8 DEPENDENT ×5 ayanamshas)
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_strength_writer import build_ga_strength
 from ga_writers.ga_panchanga_writer import build_ga_panchanga
+from ga_writers.ga_sensitive_writer import build_ga_sensitive
 from ga_writers.gates import run_all_gates
 
 
@@ -49,6 +50,7 @@ MATERIALIZED_VIEWS = [
     "mv_chart_bhava_bala_summary",
     "mv_cross_ayanamsha_consensus",
     "mv_chart_panchanga_birth_summary",
+    "mv_chart_sensitive_points_summary",  # GA5
 ]
 
 
@@ -85,6 +87,7 @@ def run(
     *,
     birth_params: dict[str, Any] | None = None,
     skip_strength: bool = False,
+    skip_sensitive: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -160,6 +163,44 @@ def run(
             summary["status"] = "FAIL"
             logger.error("[build_runner] ga_strength FAIL: %s", exc)
             return summary
+
+    # ── Step 3: ga_sensitive ─────────────────────────────────────────────────
+    if not skip_sensitive:
+        logger.info("[build_runner] Step 3: ga_sensitive (~13K rows, 30 categories)")
+        try:
+            sens_summary = build_ga_sensitive(
+                chart_id=chart_id,
+                build_id=build_id,
+                birth_params=birth_params,
+            )
+            sens_status = sens_summary.get("status", "FAIL")
+            if sens_status in ("HALT", "FAIL"):
+                summary["steps"]["ga_sensitive"] = {
+                    "status": sens_status,
+                    "error": sens_summary.get("db_error") or sens_summary.get("divergent_rows"),
+                    "detail": sens_summary,
+                }
+                summary["status"] = sens_status
+                logger.error("[build_runner] ga_sensitive %s", sens_status)
+                return summary
+            summary["steps"]["ga_sensitive"] = {
+                "status": "PASS",
+                "chart_facts_rows": sens_summary.get("total_rows", 0),
+                "inserted_rows": sens_summary.get("inserted_rows", 0),
+                "forensic_pass": sens_summary.get("forensic_pass", False),
+                "prerequisites": sens_summary.get("prerequisites", {}),
+            }
+            logger.info(
+                "[build_runner] ga_sensitive PASS: rows=%d inserted=%d",
+                sens_summary.get("total_rows", 0),
+                sens_summary.get("inserted_rows", 0),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_sensitive"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_sensitive FAIL: %s", exc)
+            return summary
+
 
     # ── Step 3b: ga_panchanga ─────────────────────────────────────────────────
     logger.info("[build_runner] Step 3b: ga_panchanga")
@@ -252,7 +293,7 @@ def run(
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GA3 chart_facts build runner")
+    parser = argparse.ArgumentParser(description="GA3+GA4+GA5 chart_facts build runner")
     parser.add_argument(
         "--chart_id",
         default=CANONICAL_CHART_ID,
@@ -280,6 +321,7 @@ def main() -> None:
         chart_id=args.chart_id,
         build_id=args.build_id,
         skip_strength=args.skip_strength,
+        skip_sensitive=args.skip_sensitive,
     )
 
     if args.output_json:
@@ -292,13 +334,15 @@ def main() -> None:
 
         pan_rows = result.get("steps", {}).get("ga_panchanga", {}).get("chart_facts_rows", 0)
         print(f"\n{'='*60}")
-        print(f"GA3+GA4 BUILD COMPLETE")
+        print(f"GA3+GA4+GA5 BUILD COMPLETE")
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  ganita_positions:    {gp_rows} rows")
         print(f"  chart_facts total:   {cf_rows} rows")
+        sens_rows = summary.get("totals", {}).get("sensitive_rows", 0)
         print(f"    ga_panchanga:      {pan_rows} rows")
+        print(f"    ga_sensitive:      {sens_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
         print(f"{'='*60}")
 

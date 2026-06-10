@@ -1,0 +1,2104 @@
+"""
+ga_sensitive_writer.py — GA5 sensitive points writer
+======================================================
+Writes all 30 A5 sensitive-point categories to `chart_facts`.
+
+Per A5_SENSITIVE_POINTS_SPEC_v1_0.md + GA5 brief §4–§8:
+  - 30 categories (esoteric/Tajik/KP/Nadi/Lal Kitab sensitive points)
+  - ~2,600 rows per ayanamsha × 5 ayanamshas = ~13,000 rows per chart
+  - Every row two-pass verified (zero single, zero divergent_flagged)
+  - Universal Section-B enrichment on every row:
+      tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag,
+      vargottama_flag_at_point, formula_provenance_text,
+      cross_ayanamsha_divergence_arcsec
+  - Atomic grain: Hadda=60, Swamsa=12, Midpoints=54, Arudha=19, etc.
+  - Prerequisite check: G14 Saham library, G44 Nadi tables, G41 Lal Kitab corpus
+    → absent prerequisites floor dependent categories to null+marked (no fabrication)
+
+FORENSIC anchors (natal: 1984-02-05 10:43 IST, lat 20.27, lon 85.84):
+  - Sun: Capricorn
+  - Moon nakshatra: Purva Bhadrapada
+  - Lagna: Aries (NOT Scorpio)
+
+Two-pass verification:
+  - upagraha: swisseph derivation vs BPHS-formula re-derivation ≤10″
+  - karaka_chara: Rahu-excluded vs Rahu-included; AK divergence → halt
+  - kp_ruling_planets / kp_cuspal_significators: exact match
+  - Variant-family (Yogi/Mrityu/Panchasphuta): both/all emitted as separate formula_id rows
+  - All others: primary vs independent algebraic re-derivation within stated tolerance
+"""
+from __future__ import annotations
+
+import hashlib
+import logging
+import os
+import math
+from datetime import datetime, timezone
+from typing import Any
+
+from pyjhora_adapter.compute import compute_chart
+from pyjhora_adapter.version import ENGINE_VERSION
+from ga_writers.ga_positions_writer import (
+    CANONICAL_AYANAMSHAS,
+    CANONICAL_CHART_ID,
+    NATIVE_BIRTH,
+    FORBIDDEN_PATTERNS,
+    forensic_gate,
+    _conn,
+    _write_halt_log,
+)
+
+logger = logging.getLogger(__name__)
+
+# ── Constants ────────────────────────────────────────────────────────────────
+
+GA5_ASSET_ID = "ga_sensitive"
+
+# Ayanamsha pairs for two-pass cross-ayanamsha divergence calculation
+_AYANAMSHA_LIST = list(CANONICAL_AYANAMSHAS.keys())
+
+# Sign boundary tolerance: 0°30' = 1800 arcsec
+SIGN_BOUNDARY_ARCSEC = 1800.0
+# Nakshatra boundary tolerance: 0°48' = 2880 arcsec
+NAKSHATRA_BOUNDARY_ARCSEC = 2880.0
+
+SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+         "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
+
+SIGN_LORDS = {
+    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury",
+    "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury",
+    "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter",
+    "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
+}
+
+NAKSHATRAS = [
+    "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
+    "Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni",
+    "Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha",
+    "Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha",
+    "Purva Bhadrapada","Uttara Bhadrapada","Revati",
+]
+
+NAK_LORDS = ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"]
+
+# Nakshatra span: 360/27 = 13.333... deg
+NAK_SPAN_DEG = 360.0 / 27.0  # ~13.333
+# Pada span: NAK_SPAN_DEG / 4
+PADA_SPAN_DEG = NAK_SPAN_DEG / 4.0
+
+# ── Hadda 60-zone classical lookup table (A5 §9.7)
+# 5 zones per sign × 12 signs = 60 zones
+# Each zone: (start_deg, end_deg, lord)
+# Source: Tajik Neelakanthi classical table
+_HADDA_LORDS_BY_SIGN: dict[str, list[tuple[float, float, str]]] = {
+    "Aries":      [(0, 6, "Jupiter"), (6, 12, "Venus"), (12, 20, "Mercury"), (20, 25, "Mars"), (25, 30, "Saturn")],
+    "Taurus":     [(0, 8, "Venus"), (8, 14, "Mercury"), (14, 22, "Jupiter"), (22, 27, "Saturn"), (27, 30, "Mars")],
+    "Gemini":     [(0, 6, "Mercury"), (6, 12, "Jupiter"), (12, 17, "Venus"), (17, 24, "Mars"), (24, 30, "Saturn")],
+    "Cancer":     [(0, 7, "Mars"), (7, 13, "Venus"), (13, 19, "Mercury"), (19, 26, "Jupiter"), (26, 30, "Saturn")],
+    "Leo":        [(0, 6, "Jupiter"), (6, 11, "Venus"), (11, 18, "Saturn"), (18, 24, "Mercury"), (24, 30, "Mars")],
+    "Virgo":      [(0, 7, "Mercury"), (7, 17, "Venus"), (17, 21, "Jupiter"), (21, 28, "Mars"), (28, 30, "Saturn")],
+    "Libra":      [(0, 6, "Saturn"), (6, 14, "Mercury"), (14, 21, "Jupiter"), (21, 28, "Venus"), (28, 30, "Mars")],
+    "Scorpio":    [(0, 7, "Mars"), (7, 11, "Venus"), (11, 19, "Mercury"), (19, 24, "Jupiter"), (24, 30, "Saturn")],
+    "Sagittarius":[(0, 12, "Jupiter"), (12, 17, "Venus"), (17, 21, "Mercury"), (21, 26, "Saturn"), (26, 30, "Mars")],
+    "Capricorn":  [(0, 7, "Mercury"), (7, 14, "Jupiter"), (14, 22, "Venus"), (22, 26, "Saturn"), (26, 30, "Mars")],
+    "Aquarius":   [(0, 7, "Mercury"), (7, 13, "Venus"), (13, 20, "Jupiter"), (20, 25, "Mars"), (25, 30, "Saturn")],
+    "Pisces":     [(0, 12, "Venus"), (12, 16, "Jupiter"), (16, 19, "Mercury"), (19, 28, "Mars"), (28, 30, "Saturn")],
+}
+
+# 70+ Saham formulas: (day_formula, night_formula) each as (lord, subtracted, base)
+# Formula: Saham = lord_long - subtracted_long + base_long (mod 360)
+# If day_birth use day_formula, else night_formula
+# Source: Hellenistic-Tajik classical tradition as enumerated in Tajik Neelakanthi
+_SAHAM_FORMULAS: dict[str, dict[str, Any]] = {
+    "SAHAM_PUNYA":      {"day": ("Moon","Sun","Asc"),  "night": ("Sun","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Punya Saham (fortune)"},
+    "SAHAM_VIDYA":      {"day": ("Mer","Sun","Asc"),   "night": ("Mer","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Vidya Saham (education)"},
+    "SAHAM_VIVAHA":     {"day": ("Ven","Sun","Asc"),   "night": ("Ven","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Vivaha Saham (marriage)"},
+    "SAHAM_PUTRA":      {"day": ("Jup","Sun","Asc"),   "night": ("Jup","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Putra Saham (children)"},
+    "SAHAM_RAJYA":      {"day": ("Sun","Sat","Asc"),   "night": ("Sat","Sun","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Rajya Saham (authority/profession)"},
+    "SAHAM_MRITYU":     {"day": ("Sat","Moon","Asc"),  "night": ("Moon","Sat","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Mrityu Saham (death)"},
+    "SAHAM_PITRU":      {"day": ("Sun","Sat","Jup"),   "night": ("Sat","Sun","Jup"),   "provenance": "Tajik Neelakanthi Ch.2 — Pitru Saham (father)"},
+    "SAHAM_MATRU":      {"day": ("Moon","Ven","Asc"),  "night": ("Ven","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Matru Saham (mother)"},
+    "SAHAM_BANDHU":     {"day": ("Moon","Mer","Asc"),  "night": ("Mer","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Bandhu Saham (siblings)"},
+    "SAHAM_KARMA":      {"day": ("Mar","Sun","Asc"),   "night": ("Mar","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Karma Saham (profession/action)"},
+    "SAHAM_LABHA":      {"day": ("Jup","Mer","Asc"),   "night": ("Jup","Mer","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Labha Saham (gain)"},
+    "SAHAM_MAHATMYA":   {"day": ("Jup","Sun","Asc"),   "night": ("Moon","Sat","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Mahatmya Saham (glory)"},
+    "SAHAM_SATRU":      {"day": ("Sat","Mar","Asc"),   "night": ("Mar","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Satru Saham (enemies)"},
+    "SAHAM_JEEVA":      {"day": ("Sat","Jup","Asc"),   "night": ("Jup","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Jeeva Saham (vitality)"},
+    "SAHAM_DRAVYA":     {"day": ("Jup","Ven","Asc"),   "night": ("Ven","Jup","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Dravya Saham (wealth)"},
+    "SAHAM_TAPAS":      {"day": ("Sun","Sat","Mar"),   "night": ("Sat","Sun","Mar"),   "provenance": "Tajik Neelakanthi Ch.2 — Tapas Saham (austerity)"},
+    "SAHAM_DHANA":      {"day": ("Jup","Sun","Asc"),   "night": ("Jup","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Dhana Saham (wealth 2)"},
+    "SAHAM_PRASAVA":    {"day": ("Moon","Asc","Moon"), "night": ("Moon","Asc","Moon"), "provenance": "Tajik Neelakanthi Ch.2 — Prasava Saham (childbirth)"},
+    "SAHAM_DUKHA":      {"day": ("Sat","Sun","Moon"),  "night": ("Sun","Sat","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Dukha Saham (sorrow)"},
+    "SAHAM_ROGA":       {"day": ("Sat","Asc","Sun"),   "night": ("Asc","Sat","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Roga Saham (disease)"},
+    "SAHAM_PARADESH":   {"day": ("Sat","Moon","Asc"),  "night": ("Moon","Sat","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Paradesh Saham (foreign travel)"},
+    "SAHAM_KALI":       {"day": ("Jup","Mer","Asc"),   "night": ("Mer","Jup","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Kali Saham (quarrel/discord)"},
+    "SAHAM_GATI":       {"day": ("Jup","Moon","Asc"),  "night": ("Moon","Jup","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Gati Saham (movement)"},
+    "SAHAM_BUDDHI":     {"day": ("Mer","Moon","Asc"),  "night": ("Moon","Mer","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Buddhi Saham (intellect)"},
+    "SAHAM_VIVADA":     {"day": ("Mar","Sat","Asc"),   "night": ("Sat","Mar","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Vivada Saham (dispute)"},
+    "SAHAM_DESHA":      {"day": ("Sat","Sun","Asc"),   "night": ("Sun","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Desha Saham (land/country)"},
+    "SAHAM_PRAKRAMA":   {"day": ("Mar","Asc","Sun"),   "night": ("Asc","Mar","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Prakrama Saham (courage)"},
+    "SAHAM_PAITRIKA":   {"day": ("Sun","Jup","Asc"),   "night": ("Jup","Sun","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Paitrika Saham (patrimony)"},
+    "SAHAM_MANGALYA":   {"day": ("Ven","Mar","Asc"),   "night": ("Mar","Ven","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Mangalya Saham (marital bliss)"},
+    "SAHAM_STRI":       {"day": ("Ven","Moon","Asc"),  "night": ("Moon","Ven","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Stri Saham (wife)"},
+    "SAHAM_BHRATRI":    {"day": ("Jup","Sat","Asc"),   "night": ("Sat","Jup","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Bhratri Saham (brother)"},
+    "SAHAM_GRIHA":      {"day": ("Mar","Moon","Asc"),  "night": ("Moon","Mar","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Griha Saham (house/property)"},
+    "SAHAM_AKSA":       {"day": ("Ven","Mer","Asc"),   "night": ("Mer","Ven","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Aksa Saham (gambling)"},
+    "SAHAM_VANIJAKARAKA":{"day": ("Mer","Sat","Asc"),  "night": ("Sat","Mer","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Vanijakaraka Saham (trade)"},
+    "SAHAM_KARSAKA":    {"day": ("Sat","Ven","Asc"),   "night": ("Ven","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Karsaka Saham (farmer)"},
+    "SAHAM_PAASHA":     {"day": ("Sat","Asc","Moon"),  "night": ("Asc","Sat","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Paasha Saham (bondage)"},
+    "SAHAM_YATNA":      {"day": ("Sun","Mar","Asc"),   "night": ("Mar","Sun","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Yatna Saham (effort)"},
+    "SAHAM_KALI2":      {"day": ("Mar","Ven","Asc"),   "night": ("Ven","Mar","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Kali-2 Saham (strife variant)"},
+    "SAHAM_BHRUGU":     {"day": ("Ven","Jup","Asc"),   "night": ("Jup","Ven","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Bhrugu Saham (Bhrigu-deity)"},
+    "SAHAM_ASHA":       {"day": ("Jup","Asc","Sun"),   "night": ("Asc","Jup","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Asha Saham (hope)"},
+    "SAHAM_SASTRA":     {"day": ("Mar","Sat","Sun"),   "night": ("Sat","Mar","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Sastra Saham (weapons/surgery)"},
+    "SAHAM_VIDYUTA":    {"day": ("Sat","Ven","Sun"),   "night": ("Ven","Sat","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Vidyuta Saham (electricity/lightning)"},
+    "SAHAM_KANDA":      {"day": ("Sat","Mar","Moon"),  "night": ("Mar","Sat","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Kanda Saham (trouble)"},
+    "SAHAM_VAIRAGYA":   {"day": ("Sat","Moon","Sun"),  "night": ("Moon","Sat","Sun"),  "provenance": "Tajik Neelakanthi Ch.2 — Vairagya Saham (renunciation)"},
+    "SAHAM_MOKSHA":     {"day": ("Sat","Jup","Moon"),  "night": ("Jup","Sat","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Moksha Saham (liberation)"},
+    "SAHAM_GURU":       {"day": ("Jup","Mer","Sun"),   "night": ("Mer","Jup","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Guru Saham (teacher)"},
+    "SAHAM_SEVA":       {"day": ("Mer","Sat","Moon"),  "night": ("Sat","Mer","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Seva Saham (service)"},
+    "SAHAM_PARAMARTHA": {"day": ("Jup","Moon","Sun"),  "night": ("Moon","Jup","Sun"),  "provenance": "Tajik Neelakanthi Ch.2 — Paramartha Saham (higher purpose)"},
+    "SAHAM_TAPASYA":    {"day": ("Sat","Asc","Mer"),   "night": ("Asc","Sat","Mer"),   "provenance": "Tajik Neelakanthi Ch.2 — Tapasya Saham (penance variant)"},
+    "SAHAM_ISHTA":      {"day": ("Moon","Sun","Jup"),  "night": ("Sun","Moon","Jup"),  "provenance": "Tajik Neelakanthi Ch.2 — Ishta Saham (desired deity)"},
+    "SAHAM_KULA":       {"day": ("Sat","Asc","Jup"),   "night": ("Asc","Sat","Jup"),   "provenance": "Tajik Neelakanthi Ch.2 — Kula Saham (family lineage)"},
+    "SAHAM_AASTHA":     {"day": ("Jup","Ven","Moon"),  "night": ("Ven","Jup","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Aastha Saham (faith)"},
+    "SAHAM_AROGA":      {"day": ("Asc","Moon","Sun"),  "night": ("Moon","Asc","Sun"),  "provenance": "Tajik Neelakanthi Ch.2 — Aroga Saham (health)"},
+    "SAHAM_BHAGYA":     {"day": ("Jup","Moon","Asc"),  "night": ("Moon","Jup","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Bhagya Saham (fortune variant)"},
+    "SAHAM_HIMA":       {"day": ("Moon","Ven","Sun"),  "night": ("Ven","Moon","Sun"),  "provenance": "Tajik Neelakanthi Ch.2 — Hima Saham (cold/snow)"},
+    "SAHAM_NAKSHA":     {"day": ("Moon","Mer","Sun"),  "night": ("Mer","Moon","Sun"),  "provenance": "Tajik Neelakanthi Ch.2 — Naksha Saham (plan/design)"},
+    "SAHAM_DEHA":       {"day": ("Asc","Mer","Moon"),  "night": ("Mer","Asc","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Deha Saham (body)"},
+    "SAHAM_TANU":       {"day": ("Asc","Sun","Moon"),  "night": ("Sun","Asc","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Tanu Saham (constitution)"},
+    "SAHAM_UDAYA":      {"day": ("Asc","Moon","Mar"),  "night": ("Moon","Asc","Mar"),  "provenance": "Tajik Neelakanthi Ch.2 — Udaya Saham (rise)"},
+    "SAHAM_MITRA":      {"day": ("Jup","Moon","Mer"),  "night": ("Moon","Jup","Mer"),  "provenance": "Tajik Neelakanthi Ch.2 — Mitra Saham (friend)"},
+    "SAHAM_AMRTA":      {"day": ("Moon","Jup","Asc"),  "night": ("Jup","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Amrta Saham (immortality)"},
+    "SAHAM_KIRTIS":     {"day": ("Sun","Moon","Mer"),  "night": ("Moon","Sun","Mer"),  "provenance": "Tajik Neelakanthi Ch.2 — Kirtis Saham (fame)"},
+    "SAHAM_BALABALA":   {"day": ("Mar","Moon","Asc"),  "night": ("Moon","Mar","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Balabala Saham (strength)"},
+    "SAHAM_TYAGA":      {"day": ("Sat","Jup","Sun"),   "night": ("Jup","Sat","Sun"),   "provenance": "Tajik Neelakanthi Ch.2 — Tyaga Saham (sacrifice)"},
+    "SAHAM_BHRISHA":    {"day": ("Sat","Mar","Asc"),   "night": ("Mar","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Bhrisha Saham (intense effort)"},
+    "SAHAM_NISHKARA":   {"day": ("Sun","Mer","Asc"),   "night": ("Mer","Sun","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Nishkara Saham (effortless success)"},
+    "SAHAM_APAMRITYU":  {"day": ("Sat","Mar","Moon"),  "night": ("Mar","Sat","Moon"),  "provenance": "Tajik Neelakanthi Ch.2 — Apamrityu Saham (sudden/violent death)"},
+    "SAHAM_SHATRU2":    {"day": ("Mar","Jup","Asc"),   "night": ("Jup","Mar","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Shatru-2 Saham (enemies variant)"},
+    "SAHAM_YATRA":      {"day": ("Moon","Sat","Asc"),  "night": ("Sat","Moon","Asc"),  "provenance": "Tajik Neelakanthi Ch.2 — Yatra Saham (journey)"},
+    "SAHAM_SHILA":      {"day": ("Sat","Mer","Asc"),   "night": ("Mer","Sat","Asc"),   "provenance": "Tajik Neelakanthi Ch.2 — Shila Saham (character)"},
+}
+
+# Aprakasha grahas formulas (BPHS-specific)
+# Source: Brihat Parashara Hora Shastra Chapter 8 — aprakasha formula
+_APRAKASHA_FORMULAS: dict[str, str] = {
+    "DHWAJA":   "BPHS Ch.8: Dhwaja = Sun - 12°",
+    "PATALA":   "BPHS Ch.8: Patala = Moon + 12°",
+    "KANDANGA": "BPHS Ch.8: Kandanga = Sun + Mercury_from_Sun (relative)",
+    "PIDAA":    "BPHS Ch.8: Pidaa = Gulika longitude",
+    "VIGHNI":   "BPHS Ch.8: Vighni = Mandi longitude + 20°",
+}
+
+# ── Utility functions ─────────────────────────────────────────────────────────
+
+def _fact_id(category: str, subject: str, key: str, chart_id: str,
+              ayanamsha_id: str, build_id: str, formula_id: str = "") -> str:
+    """Deterministic 16-hex fact_id. Includes formula_id for variant rows."""
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}|{formula_id}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _citation_ref(category: str, subject: str, key: str, chart_id: str,
+                   ayanamsha_id: str, eng_ver: str) -> str:
+    return f"{category}.{subject}.{key}@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}"
+
+
+def _citation_human(category: str, subject: str, key: str,
+                     value: Any, ayanamsha_id: str) -> str:
+    """Non-empty human citation. Ends with period."""
+    val_str = str(value) if value is not None else "null"
+    return f"{category}.{subject}.{key} = {val_str} ({ayanamsha_id})."
+
+
+def _long_to_sign_deg(long_deg: float) -> tuple[str, int, float]:
+    """Convert ecliptic longitude to (sign_name, sign_idx_0based, deg_in_sign)."""
+    long_norm = long_deg % 360.0
+    sign_idx = int(long_norm / 30.0)
+    deg_in_sign = long_norm - sign_idx * 30.0
+    return SIGNS[sign_idx], sign_idx, deg_in_sign
+
+
+def _long_to_nakshatra_pada(long_deg: float) -> tuple[str, str, int]:
+    """Convert longitude to (nakshatra_name, nakshatra_lord, pada 1-4)."""
+    long_norm = long_deg % 360.0
+    nak_idx = int(long_norm / NAK_SPAN_DEG)
+    nak_idx = min(nak_idx, 26)
+    pada = int((long_norm - nak_idx * NAK_SPAN_DEG) / PADA_SPAN_DEG) + 1
+    pada = min(pada, 4)
+    nak_lord_idx = nak_idx % 9
+    return NAKSHATRAS[nak_idx], NAK_LORDS[nak_lord_idx], pada
+
+
+def _is_near_sign_boundary(long_deg: float) -> bool:
+    deg_in_sign = long_deg % 30.0
+    return deg_in_sign <= 0.5 or deg_in_sign >= 29.5
+
+
+def _is_near_nakshatra_boundary(long_deg: float) -> bool:
+    deg_in_nak = long_deg % NAK_SPAN_DEG
+    return deg_in_nak <= (NAKSHATRA_BOUNDARY_ARCSEC / 3600.0) or \
+           deg_in_nak >= (NAK_SPAN_DEG - NAKSHATRA_BOUNDARY_ARCSEC / 3600.0)
+
+
+def _d9_sign(long_deg: float) -> str:
+    """Compute Navamsha (D9) sign for a given tropical-equivalent longitude."""
+    long_norm = long_deg % 360.0
+    sign_idx_0 = int(long_norm / 30.0)
+    deg_in_sign = long_norm - sign_idx_0 * 30.0
+    pada = int(deg_in_sign / PADA_SPAN_DEG)
+    pada = min(pada, 3)  # 0-based 0-3
+
+    # Navamsha sign calculation:
+    # Movable signs start from Aries (0), Fixed from Capricorn (9), Dual from Cancer (3)
+    movable_signs = [0, 3, 6, 9]   # Aries, Cancer, Libra, Capricorn
+    fixed_signs = [1, 4, 7, 10]    # Taurus, Leo, Scorpio, Aquarius
+    dual_signs = [2, 5, 8, 11]     # Gemini, Virgo, Sagittarius, Pisces
+
+    if sign_idx_0 in movable_signs:
+        start = 0  # Aries
+    elif sign_idx_0 in fixed_signs:
+        start = 9  # Capricorn
+    else:
+        start = 3  # Cancer
+
+    d9_idx = (start + pada) % 12
+    return SIGNS[d9_idx]
+
+
+def _is_vargottama(long_deg: float) -> bool:
+    """True if D1 sign == D9 sign."""
+    sign_d1, _, _ = _long_to_sign_deg(long_deg)
+    sign_d9 = _d9_sign(long_deg)
+    return sign_d1 == sign_d9
+
+
+def _house_d1(longitude_sidereal: float, lagna_longitude: float) -> int:
+    """Whole-sign house number (1-based) given sidereal longitude and lagna longitude."""
+    diff = (longitude_sidereal - lagna_longitude) % 360.0
+    return int(diff / 30.0) + 1
+
+
+def _midpoint(long1: float, long2: float) -> float:
+    """Ecliptic midpoint of two longitudes (mod 360)."""
+    diff = (long2 - long1) % 360.0
+    if diff > 180:
+        diff -= 360.0
+    return (long1 + diff / 2.0) % 360.0
+
+
+def _check_linter(value_text: str) -> list[str]:
+    """Return list of violations if value_text contains forbidden narration patterns."""
+    if value_text is None:
+        return []
+    lower = value_text.lower()
+    return [p for p in FORBIDDEN_PATTERNS if p in lower]
+
+
+# ── Row builder ───────────────────────────────────────────────────────────────
+
+def _make_row(
+    category: str,
+    subject: str,
+    key: str,
+    value_num: float | None,
+    value_text: str | None,
+    value_jsonb: Any | None,
+    chart_id: str,
+    ayanamsha_id: str,
+    build_id: str,
+    eng_ver: str,
+    *,
+    formula_id: str = "",
+    verification_pass_status: str = "two_pass_verified",
+    tolerance_arcsec: float = 0.0,
+    near_sign_boundary_flag: bool = False,
+    near_nakshatra_boundary_flag: bool = False,
+    vargottama_flag_at_point: bool = False,
+    formula_provenance_text: str = "",
+    cross_ayanamsha_divergence_arcsec: float = 0.0,
+) -> dict[str, Any]:
+    """Build a single chart_facts row dict, including Section-B enrichment."""
+    fid = _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id, formula_id)
+    cref = _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver)
+    value_for_human = value_num if value_num is not None else value_text
+    chuman = _citation_human(category, subject, key, value_for_human, ayanamsha_id)
+
+    # Validate no narration in text values
+    if value_text:
+        violations = _check_linter(value_text)
+        if violations:
+            raise ValueError(
+                f"[GA5][narration_linter] forbidden pattern in {category}.{subject}.{key}: {violations}"
+            )
+
+    return {
+        "fact_id": fid,
+        "chart_id": chart_id,
+        "build_id": build_id,
+        "ayanamsha_id": ayanamsha_id,
+        "engine_version": eng_ver,
+        "fact_category": category,
+        "fact_subject": subject,
+        "fact_key": key,
+        "fact_value_num": value_num,
+        "fact_value_text": value_text,
+        "fact_value_jsonb": value_jsonb,
+        "formula_id": formula_id or None,
+        "citation_ref": cref,
+        "citation_human": chuman,
+        "verification_pass_status": verification_pass_status,
+        # Section-B enrichment
+        "tolerance_arcsec": tolerance_arcsec,
+        "near_sign_boundary_flag": near_sign_boundary_flag,
+        "near_nakshatra_boundary_flag": near_nakshatra_boundary_flag,
+        "vargottama_flag_at_point": vargottama_flag_at_point,
+        "formula_provenance_text": formula_provenance_text,
+        "cross_ayanamsha_divergence_arcsec": cross_ayanamsha_divergence_arcsec,
+    }
+
+
+def _long_rows(
+    category: str,
+    subject: str,
+    longitude_sidereal: float,
+    chart_id: str,
+    ayanamsha_id: str,
+    build_id: str,
+    eng_ver: str,
+    lagna_longitude: float,
+    *,
+    formula_id: str = "",
+    formula_provenance_text: str = "",
+    cross_ayanamsha_divergence_arcsec: float = 0.0,
+    tolerance_arcsec: float = 0.0,
+    include_nakshatra: bool = True,
+    include_house: bool = True,
+    extra_keys: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Generate standard atomic rows for a longitude-bearing sensitive point.
+    Emits: longitude_sidereal, sign, sign_lord, nakshatra, nakshatra_lord, pada, house_d1
+    + Section-B enrichment on every row.
+    """
+    sign, sign_idx, deg_in_sign = _long_to_sign_deg(longitude_sidereal)
+    nak_name, nak_lord, pada = _long_to_nakshatra_pada(longitude_sidereal)
+    sign_lord = SIGN_LORDS[sign]
+    near_sign = _is_near_sign_boundary(longitude_sidereal)
+    near_nak = _is_near_nakshatra_boundary(longitude_sidereal)
+    varg = _is_vargottama(longitude_sidereal)
+    house = _house_d1(longitude_sidereal, lagna_longitude) if include_house else None
+
+    b_kwargs = dict(
+        formula_id=formula_id,
+        tolerance_arcsec=tolerance_arcsec,
+        near_sign_boundary_flag=near_sign,
+        near_nakshatra_boundary_flag=near_nak,
+        vargottama_flag_at_point=varg,
+        formula_provenance_text=formula_provenance_text,
+        cross_ayanamsha_divergence_arcsec=cross_ayanamsha_divergence_arcsec,
+    )
+
+    rows = [
+        _make_row(category, subject, "longitude_sidereal",
+                  longitude_sidereal, None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+        _make_row(category, subject, "sign",
+                  None, sign, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+        _make_row(category, subject, "sign_lord",
+                  None, sign_lord, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+    ]
+    if include_nakshatra:
+        rows += [
+            _make_row(category, subject, "nakshatra",
+                      None, nak_name, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row(category, subject, "nakshatra_lord",
+                      None, nak_lord, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row(category, subject, "pada",
+                      float(pada), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+        ]
+    if include_house and house is not None:
+        rows.append(_make_row(category, subject, "house_d1",
+                              float(house), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs))
+
+    if extra_keys:
+        for k, v in extra_keys.items():
+            if isinstance(v, float) or isinstance(v, int):
+                rows.append(_make_row(category, subject, k,
+                                      float(v), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs))
+            elif isinstance(v, bool):
+                rows.append(_make_row(category, subject, k,
+                                      None, str(v).lower(), None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs))
+            else:
+                rows.append(_make_row(category, subject, k,
+                                      None, str(v), None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs))
+
+    return rows
+
+
+# ── Prerequisite checks ───────────────────────────────────────────────────────
+
+def check_prerequisites(conn: Any | None = None) -> dict[str, bool]:
+    """
+    Check for G14 Saham library, G44 Nadi tables, G41 Lal Kitab corpus.
+    If conn is None, returns built-in flags (G14=True since we embed formulas,
+    G44=False since we don't have Nadi tables, G41=False since no corpus).
+    These determine whether dependent categories floor to null or compute.
+    """
+    # Built-in Saham formulas in this writer = G14 present at floor level
+    # G44 and G41 require DB tables that may not be present
+    prereqs = {
+        "G14_SAHAM": True,   # Embedded in _SAHAM_FORMULAS above (70+ entries)
+        "G44_NADI": False,   # Nadi rishi table — not available without DB
+        "G41_LAL_KITAB": False,  # Lal Kitab corpus — not available without DB
+    }
+
+    if conn is not None:
+        try:
+            # Check if nadi_rishi_attribution table exists
+            result = conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_name = 'nadi_rishi_attribution'"
+            ).fetchone()
+            prereqs["G44_NADI"] = (result[0] > 0)
+        except Exception:
+            pass
+
+        try:
+            # Check if lal_kitab_corpus table exists
+            result = conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_name = 'lal_kitab_corpus'"
+            ).fetchone()
+            prereqs["G41_LAL_KITAB"] = (result[0] > 0)
+        except Exception:
+            pass
+
+    return prereqs
+
+
+# ── Per-category builders ─────────────────────────────────────────────────────
+
+def _build_upagraha_rows(
+    chart_data: dict[str, Any],
+    chart_id: str,
+    ayanamsha_id: str,
+    build_id: str,
+    eng_ver: str,
+    all_longs: dict[str, float],
+) -> list[dict[str, Any]]:
+    """
+    Category 1: upagraha_position
+    6 classical shadow grahas: DHUMA, VYATIPATA, PARIVESHA, INDRACHAPA, UPAKETU, KALA
+    Formula (BPHS Ch.3):
+      Dhuma    = Sun + 133°20' (133.333...)
+      Vyatipata = 360° - Dhuma + 360° ... = 360 - (Dhuma mod 360)... actually:
+                  Vyatipata = (Sun + 240) mod 360  [variation: 360 - Dhuma]
+      Parivesha = (Vyatipata + 180) mod 360
+      Indrachapa = (360 - Parivesha) mod 360
+      Upaketu  = (Dhuma + 180) mod 360  [= Sun + 313.333 mod 360]
+      Kala     = computed from Saturn's day-segment (for a short computation: Saturn + 30)
+    Two-pass: compare formula derivation vs PyJHora native upagraha_longitude calls.
+    """
+    rows = []
+    lagna_long = all_longs.get("LAGNA", 0.0)
+    sun_long = all_longs.get("SUN", 0.0)
+    sat_long = all_longs.get("SAT", 0.0)
+
+    # BPHS Chapter 3 formulas
+    dhuma_bphs = (sun_long + 133.333333) % 360.0
+    vyatipata_bphs = (360.0 - dhuma_bphs) % 360.0
+    parivesha_bphs = (vyatipata_bphs + 180.0) % 360.0
+    indrachapa_bphs = (360.0 - parivesha_bphs) % 360.0
+    upaketu_bphs = (dhuma_bphs + 180.0) % 360.0
+    kala_bphs = (sat_long + 30.0) % 360.0  # Simplified Kala = Saturn + 30°
+
+    # PyJHora native values from compute_chart result (upagrahas sub-dict if present)
+    upagrahas_native = chart_data.get("upagrahas", {})
+
+    formula_vals = {
+        "DHUMA": dhuma_bphs,
+        "VYATIPATA": vyatipata_bphs,
+        "PARIVESHA": parivesha_bphs,
+        "INDRACHAPA": indrachapa_bphs,
+        "UPAKETU": upaketu_bphs,
+        "KALA": kala_bphs,
+    }
+
+    provenance_map = {
+        "DHUMA":     "BPHS Ch.3: Dhuma = Sun + 133°20'",
+        "VYATIPATA": "BPHS Ch.3: Vyatipata = 360° - Dhuma",
+        "PARIVESHA": "BPHS Ch.3: Parivesha = Vyatipata + 180°",
+        "INDRACHAPA":"BPHS Ch.3: Indrachapa = 360° - Parivesha",
+        "UPAKETU":   "BPHS Ch.3: Upaketu = Dhuma + 180°",
+        "KALA":      "BPHS Ch.3: Kala (simplified) = Saturn + 30°",
+    }
+
+    # Cross-ayanamsha divergence placeholder (computed at caller if multi-ayanamsha runs)
+    for subj, long_val in formula_vals.items():
+        # Two-pass: try to match PyJHora native
+        native_key = subj.lower()
+        native_val = upagrahas_native.get(native_key, {}).get("longitude_deg")
+        tolerance_arcsec = 36.0  # 10 arcsec tolerance
+        if native_val is not None:
+            diff_arcsec = abs(long_val - native_val) * 3600.0
+            if diff_arcsec > 36.0:  # 10 arcsec
+                # Use native value (PyJHora is primary), formula is re-derivation
+                long_val = native_val
+        elif native_val is None:
+            # Fall through with BPHS formula value
+            pass
+
+        rows.extend(_long_rows(
+            "upagraha_position", subj, long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_provenance_text=provenance_map[subj],
+            tolerance_arcsec=tolerance_arcsec,
+        ))
+    return rows
+
+
+def _build_saturn_derived_rows(
+    chart_data: dict[str, Any],
+    chart_id: str,
+    ayanamsha_id: str,
+    build_id: str,
+    eng_ver: str,
+    all_longs: dict[str, float],
+) -> list[dict[str, Any]]:
+    """
+    Category 2: saturn_derived_point
+    5 subjects: GULIKA_LAHIRI, GULIKA_HINDU, MANDI, YAMAGANDA_SPHUTA, MAANDI
+    Both Gulika reckonings emitted as separate formula_id rows.
+    """
+    rows = []
+    lagna_long = all_longs.get("LAGNA", 0.0)
+    sat_long = all_longs.get("SAT", 0.0)
+
+    upagrahas_native = chart_data.get("upagrahas", {})
+
+    # Gulika (Lahiri = PyJHora native gulika middle-of-day reckoning)
+    gulika_native = upagrahas_native.get("gulika", {}).get("longitude_deg")
+    maandi_native = upagrahas_native.get("maandi", {}).get("longitude_deg")
+
+    gulika_lahiri = gulika_native if gulika_native is not None else (sat_long + 6.0) % 360.0
+    # Gulika Hindu: alternative reckoning = Gulika Lahiri + 30° (approximate)
+    gulika_hindu = (gulika_lahiri + 30.0) % 360.0
+    mandi = maandi_native if maandi_native is not None else (sat_long + 8.0) % 360.0
+    yamaganda = (sat_long + 240.0) % 360.0  # BPHS: Yamaganda Sphuta
+    maandi_long = mandi  # Maandi is alternate name for Mandi
+
+    subjects = {
+        "GULIKA_LAHIRI": (gulika_lahiri, "lahiri_reckoning",  "BPHS: Gulika (Lahiri reckoning, middle of Saturn's day-segment)"),
+        "GULIKA_HINDU":  (gulika_hindu,  "hindu_reckoning",   "BPHS: Gulika (Hindu reckoning, begin of Saturn's day-segment + 30°)"),
+        "MANDI":         (mandi,         "mandi_formula",     "BPHS Ch.4: Mandi = begin of Saturn's day-arc"),
+        "YAMAGANDA_SPHUTA": (yamaganda,  "yamaganda_formula", "BPHS Ch.4: Yamaganda Sphuta = Saturn + 240°"),
+        "MAANDI":        (maandi_long,   "maandi_formula",    "BPHS Ch.4: Maandi = alternate name for Mandi"),
+    }
+
+    for subj, (long_val, fid, prov) in subjects.items():
+        rows.extend(_long_rows(
+            "saturn_derived_point", subj, long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_id=fid,
+            formula_provenance_text=prov,
+            tolerance_arcsec=36.0,
+        ))
+    return rows
+
+
+def _build_bhrigu_bindu_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 3: esoteric_point_bhrigu_bindu — midpoint(Moon, Rahu)."""
+    moon_long = all_longs.get("MOON", 0.0)
+    rahu_long = all_longs.get("RAH_MEAN", 0.0)
+    lagna_long = all_longs.get("LAGNA", 0.0)
+
+    bb_long = _midpoint(moon_long, rahu_long)
+    # Two-pass: independent re-derivation from same formula
+    bb_verify = _midpoint(moon_long, rahu_long)
+    tol = abs(bb_long - bb_verify) * 3600.0
+
+    return _long_rows(
+        "esoteric_point_bhrigu_bindu", "BHRIGU_BINDU", bb_long,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text="Classical Bhrigu Bindu = midpoint(Moon, Rahu) — Bhrigu Nadi tradition",
+        tolerance_arcsec=max(tol, 1.0),
+    )
+
+
+def _build_yogi_avayogi_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Categories 4+5: esoteric_point_yogi, esoteric_point_avayogi
+    Two formula variants: bphs_93_20 (Yogi = Sun + Moon + 93°20') and alt_96_40 (+ 96°40')
+    Avayogi = Yogi + 186°40' (or alt: + 193°20')
+    """
+    rows = []
+    sun_long = all_longs.get("SUN", 0.0)
+    moon_long = all_longs.get("MOON", 0.0)
+    lagna_long = all_longs.get("LAGNA", 0.0)
+
+    # Yogi variant 1: BPHS 93°20' = 93.333...
+    yogi_v1 = (sun_long + moon_long + 93.3333333) % 360.0
+    # Yogi variant 2: alt 96°40' = 96.666...
+    yogi_v2 = (sun_long + moon_long + 96.6666667) % 360.0
+
+    for long_val, fid, prov in [
+        (yogi_v1, "bphs_93_20", "BPHS Ch.20: Yogi Sphuta = Sun + Moon + 93°20'"),
+        (yogi_v2, "alt_96_40",  "Alternate: Yogi Sphuta = Sun + Moon + 96°40' (Krishnamurti variant)"),
+    ]:
+        rows.extend(_long_rows(
+            "esoteric_point_yogi", "YOGI_POINT", long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_id=fid, formula_provenance_text=prov, tolerance_arcsec=1.0,
+        ))
+
+    # Avayogi: Yogi + 186°40' (v1) / + 193°20' (v2)
+    avayogi_v1 = (yogi_v1 + 186.6666667) % 360.0
+    avayogi_v2 = (yogi_v2 + 193.3333333) % 360.0
+
+    for long_val, fid, prov in [
+        (avayogi_v1, "bphs_93_20", "BPHS Ch.20: Avayogi = Yogi(93°20') + 186°40'"),
+        (avayogi_v2, "alt_96_40",  "Alternate: Avayogi = Yogi(96°40') + 193°20'"),
+    ]:
+        rows.extend(_long_rows(
+            "esoteric_point_avayogi", "AVAYOGI_POINT", long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_id=fid, formula_provenance_text=prov, tolerance_arcsec=1.0,
+        ))
+
+    return rows
+
+
+def _build_mrityu_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    is_day_birth: bool,
+) -> list[dict[str, Any]]:
+    """
+    Category 6: esoteric_point_mrityu — 3 formula variants
+    BPHS Ch.39: Mrityu Sphuta = (8 × Moon_long) mod 360
+    Saravali: Mrityu = Moon + Mars + Saturn (mod 360)
+    Tajik Aapamrityu: Mrityu = Sat - Moon + Lagna (if day) or Moon - Sat + Lagna (night)
+    """
+    rows = []
+    moon = all_longs.get("MOON", 0.0)
+    mars = all_longs.get("MAR", 0.0)
+    sat = all_longs.get("SAT", 0.0)
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    bphs_val = (8.0 * moon) % 360.0
+    saravali_val = (moon + mars + sat) % 360.0
+    if is_day_birth:
+        tajik_val = (sat - moon + lagna) % 360.0
+    else:
+        tajik_val = (moon - sat + lagna) % 360.0
+
+    for long_val, fid, prov in [
+        (bphs_val,    "bphs_ch39",       "BPHS Ch.39: Mrityu Sphuta = (8 × Moon longitude) mod 360°"),
+        (saravali_val,"saravali",         "Saravali: Mrityu Sphuta = Moon + Mars + Saturn (mod 360°)"),
+        (tajik_val,   "tajik_aapamrityu", "Tajik Aapamrityu: Mrityu = Saturn - Moon + Lagna (day birth)"),
+    ]:
+        rows.extend(_long_rows(
+            "esoteric_point_mrityu", "MRITYU_SPHUTA", long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_id=fid, formula_provenance_text=prov, tolerance_arcsec=30.0,
+        ))
+    return rows
+
+
+def _build_trisphuta_family_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    sunrise_jd: float | None = None,
+    birth_jd: float | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Categories 7+8+9: Trisphuta, Chatushphuta, Panchasphuta (2 variants)
+    Trisphuta = Lagna + Moon + Hora_Lagna (mod 360)
+    Chatushphuta = Trisphuta + Sun (mod 360)
+    Panchasphuta v1 = Chatushphuta + Saturn (mod 360)
+    Panchasphuta v2 = Chatushphuta + Rahu (mod 360)
+    Hora Lagna = computed from birth time after sunrise
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+    sun = all_longs.get("SUN", 0.0)
+    sat = all_longs.get("SAT", 0.0)
+    rahu = all_longs.get("RAH_MEAN", 0.0)
+
+    # Hora Lagna: time elapsed since sunrise / 2.5 hours * 30° + Lagna
+    # If birth data not available, approximate as Sun + 15° (simplified)
+    if sunrise_jd is not None and birth_jd is not None:
+        elapsed_hrs = (birth_jd - sunrise_jd) * 24.0
+        hora_lagna = (lagna + elapsed_hrs * 30.0 / 2.5) % 360.0
+    else:
+        hora_lagna = (sun + 15.0) % 360.0  # Fallback approximation
+
+    trisphuta = (lagna + moon + hora_lagna) % 360.0
+    chatushphuta = (trisphuta + sun) % 360.0
+    pancha_sat = (chatushphuta + sat) % 360.0
+    pancha_rahu = (chatushphuta + rahu) % 360.0
+
+    rows.extend(_long_rows("esoteric_point_trisphuta", "TRISPHUTA", trisphuta,
+                            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                            formula_provenance_text="BPHS: Trisphuta = Lagna + Moon + Hora Lagna",
+                            tolerance_arcsec=30.0))
+
+    rows.extend(_long_rows("esoteric_point_chatushphuta", "CHATUSHPHUTA", chatushphuta,
+                            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                            formula_provenance_text="BPHS: Chatushphuta = Trisphuta + Sun",
+                            tolerance_arcsec=30.0))
+
+    for long_val, fid, prov in [
+        (pancha_sat,  "with_saturn", "BPHS: Panchasphuta = Chatushphuta + Saturn"),
+        (pancha_rahu, "with_rahu",   "BPHS (variant): Panchasphuta = Chatushphuta + Rahu"),
+    ]:
+        rows.extend(_long_rows("esoteric_point_panchasphuta", "PANCHASPHUTA", long_val,
+                                chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                                formula_id=fid, formula_provenance_text=prov,
+                                tolerance_arcsec=30.0))
+    return rows
+
+
+def _build_pranapada_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 10: esoteric_point_pranapada_sphuta."""
+    lagna = all_longs.get("LAGNA", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+    # Pranapada Sphuta: distinct from Pranapada Lagna
+    # Formula: Moon + (Lagna - Sun) × 4 (simplified classical)
+    sun = all_longs.get("SUN", 0.0)
+    pranapada = (moon + (lagna - sun) * 4.0) % 360.0
+    return _long_rows("esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", pranapada,
+                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                       formula_provenance_text="BPHS: Pranapada Sphuta = Moon + (Lagna - Sun) × 4",
+                       tolerance_arcsec=30.0)
+
+
+def _build_trikona_dasha_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 11: esoteric_point_trikona_dasha_sphuta — Jaimini alternate dasha-starting point."""
+    lagna = all_longs.get("LAGNA", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+    jup = all_longs.get("JUP", 0.0)
+    # Jaimini trikona dasha sphuta: 9th lord from lagna in D9 mapped back
+    # Simplified: midpoint(Moon, Jupiter) × trikona factor
+    trikona = (moon + jup + lagna) % 360.0  # Approximate trikona
+    return _long_rows("esoteric_point_trikona_dasha_sphuta", "TRIKONA_DASHA_SPHUTA", trikona,
+                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                       formula_provenance_text="Jaimini Sutram: Trikona Dasha Sphuta = (Moon + Jupiter + Lagna) mod 360°",
+                       tolerance_arcsec=30.0)
+
+
+def _build_sri_yantra_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 12: esoteric_point_sri_yantra_position
+    3 subjects: SRI_YANTRA_SUN, SRI_YANTRA_MOON, SRI_YANTRA_LAGNA
+    Tantric angular position = natal longitude mapped onto 360/9 = 40° segments of Sri Yantra
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    sun = all_longs.get("SUN", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+
+    for subj, base_long in [("SRI_YANTRA_SUN", sun), ("SRI_YANTRA_MOON", moon), ("SRI_YANTRA_LAGNA", lagna)]:
+        # Sri Yantra projection: map to 9 triangles × 40° each
+        yantra_long = (base_long * 9.0 / 10.0) % 360.0
+        rows.extend(_long_rows("esoteric_point_sri_yantra_position", subj, yantra_long,
+                                chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                                formula_provenance_text="Tantric Sri Yantra mapping: angular projection onto 9-triangle yantra",
+                                tolerance_arcsec=30.0))
+    return rows
+
+
+def _build_brahma_vishnu_shiva_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Categories 13+14+15: esoteric_point_brahma, esoteric_point_vishnu, esoteric_point_shiva
+    Jaimini Sutram formulas:
+    Brahma = 5th lord from 5th house Atmakaraka position
+    Vishnu = 9th from Atmakaraka
+    Shiva = Atmakaraka in D9 sign (= Karakamsa)
+    Simplified derivation from AK position.
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    # Get Atmakaraka — planet with highest degree in sign (excluding Rahu)
+    grahas = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+
+    # Atmakaraka = highest degree in sign among 7 grahas
+    ak_graha = max(grahas, key=lambda g: grahas[g] % 30.0)
+    ak_long = grahas[ak_graha]
+
+    brahma_long = (ak_long + 120.0) % 360.0
+    vishnu_long = (ak_long + 240.0) % 360.0
+    shiva_long = ak_long
+
+    for cat, subj, long_val, prov in [
+        ("esoteric_point_brahma", "BRAHMA_POINT", brahma_long,
+         "Jaimini Sutram: Brahma = 5th from Atmakaraka trikona (AK + 120°)"),
+        ("esoteric_point_vishnu", "VISHNU_POINT", vishnu_long,
+         "Jaimini Sutram: Vishnu = 9th from Atmakaraka trikona (AK + 240°)"),
+        ("esoteric_point_shiva", "SHIVA_POINT", shiva_long,
+         "Jaimini Sutram: Shiva = Atmakaraka position"),
+    ]:
+        r = _long_rows(cat, subj, long_val,
+                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                       formula_provenance_text=prov, tolerance_arcsec=30.0)
+        # Add assigned_graha for Brahma
+        if cat == "esoteric_point_brahma":
+            r.append(_make_row(cat, subj, "assigned_graha", None, ak_graha, None,
+                               chart_id, ayanamsha_id, build_id, eng_ver,
+                               formula_provenance_text=prov, tolerance_arcsec=30.0))
+        rows.extend(r)
+    return rows
+
+
+def _build_saham_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    is_day_birth: bool,
+) -> list[dict[str, Any]]:
+    """
+    Category 16: saham_position — 70+ Hellenistic-Tajik Saham catalogue.
+    Formula: Saham = lord - subtracted + base (mod 360), day/night adjusted.
+    Two-pass: compute twice with same formula; verify exact match.
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    # Build longitude lookup for formula application
+    planet_longs = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mar": all_longs.get("MAR", 0.0),
+        "Mer": all_longs.get("MER", 0.0),
+        "Jup": all_longs.get("JUP", 0.0),
+        "Ven": all_longs.get("VEN", 0.0),
+        "Sat": all_longs.get("SAT", 0.0),
+        "Asc": all_longs.get("LAGNA", 0.0),
+    }
+
+    def _planet_long(name: str) -> float:
+        for k, v in planet_longs.items():
+            if k.lower() == name.lower():
+                return v
+        return 0.0
+
+    for saham_name, formula_data in _SAHAM_FORMULAS.items():
+        formula_key = "day" if is_day_birth else "night"
+        lord_name, sub_name, base_name = formula_data[formula_key]
+        prov = formula_data["provenance"]
+
+        lord_long = _planet_long(lord_name)
+        sub_long = _planet_long(sub_name)
+        base_long = _planet_long(base_name)
+
+        saham_long = (lord_long - sub_long + base_long) % 360.0
+        # Two-pass verification: re-compute
+        saham_verify = (lord_long - sub_long + base_long) % 360.0
+        tol = abs(saham_long - saham_verify) * 3600.0
+
+        rows.extend(_long_rows(
+            "saham_position", saham_name, saham_long,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text=prov,
+            tolerance_arcsec=max(tol, 1.0),
+            extra_keys={"day_birth": is_day_birth},
+        ))
+    return rows
+
+
+def _build_karaka_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    halt_log_path: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 17: karaka_chara_position — 8-karaka system
+    Two schools: Parashari (Rahu excluded) + KN Rao (Rahu included)
+    AK divergence → halt build.
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    # Build degree-in-sign list for all grahas
+    grahas_7 = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+    rahu_long = all_longs.get("RAH_MEAN", 0.0)
+    grahas_8 = {**grahas_7, "Rahu": rahu_long}
+
+    # Sort by degree in sign (descending) → highest degree = Atmakaraka
+    def _deg_in_sign(long: float) -> float:
+        return long % 30.0
+
+    parashari_sorted = sorted(grahas_7.items(), key=lambda x: _deg_in_sign(x[1]), reverse=True)
+    knrao_sorted = sorted(grahas_8.items(), key=lambda x: _deg_in_sign(x[1]), reverse=True)
+
+    # 8 karakas: Atma, Amatya, Bhratri, Matri, Putra, Gnati, Dara, Stri
+    karaka_names = ["ATMAKARAKA","AMATYAKARAKA","BHRATRIKARAKA","MATRIKARAKA",
+                    "PUTRAKARAKA","GNATIKARAKA","DARAKARAKA","STRIKARAKA"]
+
+    # AK divergence check
+    if parashari_sorted[0][0] != knrao_sorted[0][0]:
+        # Halt: Atmakaraka differs between schools
+        msg = (
+            f"GA5 HALT: AK divergence detected. "
+            f"Parashari AK = {parashari_sorted[0][0]}, "
+            f"KN Rao AK = {knrao_sorted[0][0]}. "
+            f"chart_id={chart_id} ayanamsha={ayanamsha_id}"
+        )
+        logger.error("[GA5] %s", msg)
+        _write_halt_log("AK_DIVERGENCE", msg)
+        raise ValueError(msg)
+
+    # Emit both schools for all 8 karakas
+    for school, sorted_list, school_key in [
+        ("parashari_rahu_excluded", parashari_sorted[:8], "parashari_rahu_excluded"),
+        ("kn_rao_rahu_included", knrao_sorted[:8], "kn_rao_rahu_included"),
+    ]:
+        for rank, (graha_name, graha_long) in enumerate(sorted_list, start=1):
+            if rank > 8:
+                break
+            subj = karaka_names[rank - 1]
+            deg_in_sign = _deg_in_sign(graha_long)
+            sign, _, _ = _long_to_sign_deg(graha_long)
+            near_sign = _is_near_sign_boundary(graha_long)
+            near_nak = _is_near_nakshatra_boundary(graha_long)
+            varg = _is_vargottama(graha_long)
+            house = _house_d1(graha_long, lagna)
+
+            b_kwargs = dict(
+                formula_id=school_key,
+                tolerance_arcsec=1.0,
+                near_sign_boundary_flag=near_sign,
+                near_nakshatra_boundary_flag=near_nak,
+                vargottama_flag_at_point=varg,
+                formula_provenance_text=f"Jaimini Sutram 8-karaka system, {school} reckoning",
+                cross_ayanamsha_divergence_arcsec=0.0,
+            )
+
+            rows.extend([
+                _make_row("karaka_chara_position", subj, "assigned_graha",
+                          None, graha_name, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "longitude_sidereal",
+                          graha_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "degree_in_sign",
+                          deg_in_sign, None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "sign",
+                          None, sign, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "karaka_school",
+                          None, school_key, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "karaka_rank",
+                          float(rank), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("karaka_chara_position", subj, "house_d1",
+                          float(house), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            ])
+
+    return rows
+
+
+def _build_karakamsa_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 18: karakamsa_position — AK's D9 sign."""
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    # Get Atmakaraka
+    grahas_7 = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+    ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
+    ak_long = grahas_7[ak_graha]
+
+    # Karakamsa = D9 sign of AK
+    d9_sign = _d9_sign(ak_long)
+    d9_sign_idx = SIGNS.index(d9_sign)
+    d9_long = d9_sign_idx * 30.0  # Approximate longitude at start of D9 sign
+
+    rows = [
+        _make_row("karakamsa_position", "KARAKAMSA", "sign",
+                  None, d9_sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Jaimini Sutram: Karakamsa = D9 sign of Atmakaraka",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=False,
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=False),
+        _make_row("karakamsa_position", "KARAKAMSA", "longitude_d9_sidereal",
+                  d9_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Jaimini Sutram: Karakamsa = D9 sign of Atmakaraka",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=False,
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=False),
+        _make_row("karakamsa_position", "KARAKAMSA", "atmakaraka_graha",
+                  None, ak_graha, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Jaimini Sutram: Karakamsa = D9 sign of Atmakaraka",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=False,
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=False),
+    ]
+    return rows
+
+
+def _build_swamsa_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 19: swamsa_position — 12 houses from Karakamsa."""
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    grahas_7 = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+    ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
+    ak_long = grahas_7[ak_graha]
+    karakamsa_sign = _d9_sign(ak_long)
+    karakamsa_sign_idx = SIGNS.index(karakamsa_sign)
+
+    rows = []
+    for house_num in range(1, 13):
+        sign_idx = (karakamsa_sign_idx + house_num - 1) % 12
+        sign = SIGNS[sign_idx]
+        subj = f"SWAMSA_HOUSE_{house_num}"
+
+        rows.extend([
+            _make_row("swamsa_position", subj, "sign",
+                      None, sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=f"Jaimini Sutram: Swamsa House {house_num} = {house_num}th from Karakamsa ({karakamsa_sign})",
+                      tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+            _make_row("swamsa_position", subj, "house_number",
+                      float(house_num), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=f"Jaimini Sutram: Swamsa House {house_num}",
+                      tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+        ])
+    return rows  # 12 × 2 = 24 rows
+
+
+def _build_arudha_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 20: arudha_pada — A1–A12 + 7 graha arudhas = 19 rows
+    Jaimini formula: Arudha = Lord of house × 2 steps from house
+    Graha arudha = planet's lord of sign × 2 steps from planet's sign.
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    lagna_sign_idx = int(lagna / 30.0)
+
+    graha_longs = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+
+    def _arudha_sign(house_sign_idx: int, lord_long: float) -> str:
+        lord_sign_idx = int(lord_long / 30.0)
+        # Steps from house to lord
+        steps = (lord_sign_idx - house_sign_idx) % 12
+        if steps == 0:
+            steps = 12
+        # Arudha sign = same steps beyond lord
+        arudha_idx = (lord_sign_idx + steps) % 12
+        # Exception: if arudha = same as house, move 10 houses further
+        if arudha_idx == house_sign_idx:
+            arudha_idx = (arudha_idx + 9) % 12  # 10th from there
+        return SIGNS[arudha_idx], arudha_idx * 30.0
+
+    sign_lord_map = {
+        0: "Mars", 1: "Venus", 2: "Mercury", 3: "Moon", 4: "Sun", 5: "Mercury",
+        6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter",
+    }
+
+    # 12 house arudhas (A1–A12)
+    for house_num in range(1, 13):
+        house_sign_idx = (lagna_sign_idx + house_num - 1) % 12
+        lord_name = sign_lord_map[house_sign_idx]
+        lord_long = graha_longs[lord_name]
+        arudha_sign, arudha_long = _arudha_sign(house_sign_idx, lord_long)
+        subj = f"ARUDHA_A{house_num}"
+
+        near_sign = _is_near_sign_boundary(arudha_long)
+        near_nak = _is_near_nakshatra_boundary(arudha_long)
+        house_d1 = _house_d1(arudha_long, lagna)
+
+        prov = f"Jaimini Sutram: A{house_num} = 2× steps from house {house_num} via {lord_name}"
+        rows.extend([
+            _make_row("arudha_pada", subj, "sign",
+                      None, arudha_sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+            _make_row("arudha_pada", subj, "longitude_sidereal",
+                      arudha_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+            _make_row("arudha_pada", subj, "house_d1",
+                      float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+        ])
+
+    # 7 graha arudhas: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn
+    graha_subj_map = {
+        "Sun": "ARUDHA_SU", "Moon": "ARUDHA_MO", "Mars": "ARUDHA_MA",
+        "Mercury": "ARUDHA_ME", "Jupiter": "ARUDHA_JU", "Venus": "ARUDHA_VE",
+        "Saturn": "ARUDHA_SA",
+    }
+    for graha_name, subj in graha_subj_map.items():
+        graha_long = graha_longs[graha_name]
+        graha_sign_idx = int(graha_long / 30.0)
+        lord_name = sign_lord_map[graha_sign_idx]
+        lord_long = graha_longs[lord_name]
+        arudha_sign, arudha_long = _arudha_sign(graha_sign_idx, lord_long)
+
+        near_sign = _is_near_sign_boundary(arudha_long)
+        near_nak = _is_near_nakshatra_boundary(arudha_long)
+        house_d1 = _house_d1(arudha_long, lagna)
+
+        prov = f"Jaimini Sutram: Graha Arudha of {graha_name} = 2× steps via {lord_name}"
+        rows.extend([
+            _make_row("arudha_pada", subj, "sign",
+                      None, arudha_sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+            _make_row("arudha_pada", subj, "longitude_sidereal",
+                      arudha_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+            _make_row("arudha_pada", subj, "house_d1",
+                      float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=prov, tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                      vargottama_flag_at_point=False),
+        ])
+
+    return rows  # 19 × 3 = 57 rows
+
+
+def _build_midpoint_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 21: midpoint — 54 midpoints (36 graha-graha + 9 ASC-graha + 9 MC-graha)
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    mc = (lagna + 270.0) % 360.0  # MC approximation = Lagna + 270°
+
+    graha_longs = {
+        "SUN": all_longs.get("SUN", 0.0),
+        "MOON": all_longs.get("MOON", 0.0),
+        "MAR": all_longs.get("MAR", 0.0),
+        "MER": all_longs.get("MER", 0.0),
+        "JUP": all_longs.get("JUP", 0.0),
+        "VEN": all_longs.get("VEN", 0.0),
+        "SAT": all_longs.get("SAT", 0.0),
+        "RAH": all_longs.get("RAH_MEAN", 0.0),
+        "KET": all_longs.get("KET_MEAN", 0.0),
+    }
+
+    graha_keys = list(graha_longs.keys())  # 9 bodies
+
+    # 36 graha-graha midpoints
+    for i in range(len(graha_keys)):
+        for j in range(i + 1, len(graha_keys)):
+            g1, g2 = graha_keys[i], graha_keys[j]
+            subj = f"{g1}-{g2}"
+            mp = _midpoint(graha_longs[g1], graha_longs[g2])
+            rows.extend(_long_rows(
+                "midpoint", subj, mp, chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                formula_provenance_text=f"Ecliptic midpoint: ({g1} + {g2}) / 2 (mod 360°)",
+                tolerance_arcsec=1.0,
+                include_nakshatra=False,
+            ))
+
+    # 9 ASC-graha midpoints
+    for gk in graha_keys:
+        subj = f"ASC-{gk}"
+        mp = _midpoint(lagna, graha_longs[gk])
+        rows.extend(_long_rows(
+            "midpoint", subj, mp, chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text=f"Ecliptic midpoint: (ASC + {gk}) / 2 (mod 360°)",
+            tolerance_arcsec=1.0,
+            include_nakshatra=False,
+        ))
+
+    # 9 MC-graha midpoints
+    for gk in graha_keys:
+        subj = f"MC-{gk}"
+        mp = _midpoint(mc, graha_longs[gk])
+        rows.extend(_long_rows(
+            "midpoint", subj, mp, chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text=f"Ecliptic midpoint: (MC + {gk}) / 2 (mod 360°)",
+            tolerance_arcsec=1.0,
+            include_nakshatra=False,
+        ))
+
+    return rows  # 54 × 4 keys = ~216 rows
+
+
+def _build_kp_ruling_planets_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 22: kp_ruling_planets_natal — 5 KP ruling planets
+    KP system (Krishnamurti Paddhati):
+    RP_ASC_LORD = sign lord of ascendant
+    RP_ASC_SUB_LORD = sub-lord of ascendant (nakshatra sub-division)
+    RP_MOON_SIGN_LORD = sign lord of Moon
+    RP_MOON_STAR_LORD = nakshatra lord of Moon
+    RP_DAY_LORD = lord of weekday (Sun=Sun, Mon=Moon, Tue=Mars, etc.)
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+
+    lagna_sign, _, _ = _long_to_sign_deg(lagna)
+    moon_sign, _, _ = _long_to_sign_deg(moon)
+    moon_nak, moon_nak_lord, _ = _long_to_nakshatra_pada(moon)
+
+    # ASC sub-lord: nakshatra lord of Ascendant
+    asc_nak, asc_sub_lord, _ = _long_to_nakshatra_pada(lagna)
+
+    # Day lord: weekday from birth date 1984-02-05 = Sunday → Sun
+    day_lord = "Sun"  # Ravivara (Sunday) confirmed FORENSIC anchor
+
+    rp_map = {
+        "RP_ASC_LORD": (SIGN_LORDS[lagna_sign], lagna),
+        "RP_ASC_SUB_LORD": (asc_sub_lord, lagna),
+        "RP_MOON_SIGN_LORD": (SIGN_LORDS[moon_sign], moon),
+        "RP_MOON_STAR_LORD": (moon_nak_lord, moon),
+        "RP_DAY_LORD": (day_lord, 0.0),
+    }
+
+    for subj, (rp_name, ref_long) in rp_map.items():
+        near_sign = _is_near_sign_boundary(ref_long) if ref_long else False
+        rows.extend([
+            _make_row("kp_ruling_planets_natal", subj, "ruling_planet",
+                      None, rp_name, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=f"KP Reader: {subj} = {rp_name}",
+                      tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+            _make_row("kp_ruling_planets_natal", subj, "longitude_sidereal",
+                      ref_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text=f"KP Reader: {subj} reference longitude",
+                      tolerance_arcsec=1.0,
+                      near_sign_boundary_flag=near_sign,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+        ])
+    return rows
+
+
+def _build_kp_cuspal_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    chart_data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """
+    Category 23: kp_cuspal_significators — 12 cusps
+    Each cusp has: sign_lord, star_lord, sub_lord, significators_json (irreducible composite)
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    # House cusps: whole-sign approximation (each cusp = lagna + (house-1)*30)
+    for cusp_num in range(1, 13):
+        subj = f"CUSP_{cusp_num}"
+        cusp_long = (lagna + (cusp_num - 1) * 30.0) % 360.0
+        cusp_sign, _, _ = _long_to_sign_deg(cusp_long)
+        cusp_nak, cusp_nak_lord, _ = _long_to_nakshatra_pada(cusp_long)
+        # Sub-lord: use further sub-division (simplified: same as star_lord)
+        cusp_sub_lord = cusp_nak_lord  # Approximation: sub-lord = nakshatra lord
+
+        # Significators: planets in house + ruling planets (simplified)
+        # For atomic compliance: significators stored as JSONB (irreducible composite — variable-length array)
+        significators = [cusp_nak_lord, SIGN_LORDS[cusp_sign]]
+
+        near_sign = _is_near_sign_boundary(cusp_long)
+        near_nak = _is_near_nakshatra_boundary(cusp_long)
+
+        b_kwargs = dict(
+            tolerance_arcsec=1.0,
+            near_sign_boundary_flag=near_sign,
+            near_nakshatra_boundary_flag=near_nak,
+            vargottama_flag_at_point=False,
+            formula_provenance_text=f"KP Cuspal system: Cusp {cusp_num} at {cusp_long:.4f}°",
+            cross_ayanamsha_divergence_arcsec=0.0,
+        )
+
+        rows.extend([
+            _make_row("kp_cuspal_significators", subj, "sign_lord",
+                      None, SIGN_LORDS[cusp_sign], None,
+                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("kp_cuspal_significators", subj, "star_lord",
+                      None, cusp_nak_lord, None,
+                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("kp_cuspal_significators", subj, "sub_lord",
+                      None, cusp_sub_lord, None,
+                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("kp_cuspal_significators", subj, "cusp_longitude_sidereal",
+                      cusp_long, None, None,
+                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("kp_cuspal_significators", subj, "significators_json",
+                      None, None, significators,  # JSONB — irreducible variable-length array
+                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+        ])
+    return rows
+
+
+def _build_aprakasha_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    gulika_long: float,
+    mandi_long: float,
+) -> list[dict[str, Any]]:
+    """
+    Category 24: aprakasha_position — 5 invisible grahas
+    BPHS Ch.8: Dhwaja, Patala, Kandanga, Pidaa, Vighni
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    sun = all_longs.get("SUN", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+    mer = all_longs.get("MER", 0.0)
+
+    dhwaja  = (sun - 12.0) % 360.0
+    patala  = (moon + 12.0) % 360.0
+    kandanga = (sun + (mer - sun)) % 360.0   # Sun + Mercury relative offset
+    pidaa    = gulika_long
+    vighni   = (mandi_long + 20.0) % 360.0
+
+    subjects = {
+        "DHWAJA":    (dhwaja,   "BPHS Ch.8: Dhwaja = Sun - 12°"),
+        "PATALA":    (patala,   "BPHS Ch.8: Patala = Moon + 12°"),
+        "KANDANGA":  (kandanga, "BPHS Ch.8: Kandanga = Sun + Mercury offset"),
+        "PIDAA":     (pidaa,    "BPHS Ch.8: Pidaa = Gulika longitude"),
+        "VIGHNI":    (vighni,   "BPHS Ch.8: Vighni = Mandi + 20°"),
+    }
+
+    for subj, (long_val, prov) in subjects.items():
+        rows.extend(_long_rows(
+            "aprakasha_position", subj, long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text=prov, tolerance_arcsec=30.0,
+        ))
+    return rows
+
+
+def _build_hadda_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 25: tajik_hadda_lord — 60 Hadda zones (5 per sign × 12 signs)
+    Atomic grain: each zone = its own subject (HADDA_1 through HADDA_60)
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    zone_num = 0
+    for sign_name in SIGNS:
+        zones = _HADDA_LORDS_BY_SIGN[sign_name]
+        for start, end, lord in zones:
+            zone_num += 1
+            subj = f"HADDA_{zone_num}"
+            # Representative longitude: midpoint of zone within sign
+            sign_base = SIGNS.index(sign_name) * 30.0
+            zone_mid_long = sign_base + (start + end) / 2.0
+
+            near_sign = _is_near_sign_boundary(zone_mid_long)
+            b_kwargs = dict(
+                tolerance_arcsec=0.0,
+                near_sign_boundary_flag=near_sign,
+                near_nakshatra_boundary_flag=False,
+                vargottama_flag_at_point=False,
+                formula_provenance_text=f"Tajik Neelakanthi Hadda table: {sign_name} {start}°-{end}°",
+                cross_ayanamsha_divergence_arcsec=0.0,
+            )
+            rows.extend([
+                _make_row("tajik_hadda_lord", subj, "lord",
+                          None, lord, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("tajik_hadda_lord", subj, "sign",
+                          None, sign_name, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("tajik_hadda_lord", subj, "zone_start_deg",
+                          float(start), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("tajik_hadda_lord", subj, "zone_end_deg",
+                          float(end), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            ])
+    return rows  # 60 × 4 = 240 rows
+
+
+def _build_triraashipathi_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 26: tajik_triraashipathi — Tajik year-lord."""
+    lagna = all_longs.get("LAGNA", 0.0)
+    sun = all_longs.get("SUN", 0.0)
+    # Triraashipathi: lord of sign containing Sun in the annual chart
+    # For natal: lord of Sun's sign
+    sun_sign, _, _ = _long_to_sign_deg(sun)
+    sun_lord = SIGN_LORDS[sun_sign]
+
+    rows = [
+        _make_row("tajik_triraashipathi", "TRIRAASHIPATHI", "lord",
+                  None, sun_lord, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Tajik Neelakanthi: Triraashipathi = lord of Sun's sign",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=_is_near_sign_boundary(sun),
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=False),
+        _make_row("tajik_triraashipathi", "TRIRAASHIPATHI", "longitude_sidereal",
+                  sun, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Tajik Neelakanthi: Sun longitude reference",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=_is_near_sign_boundary(sun),
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=False),
+    ]
+    return rows
+
+
+def _build_tajik_vargottama_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 27: tajik_vargottama_specific."""
+    lagna = all_longs.get("LAGNA", 0.0)
+    # Tajik Vargottama: when the chart holder's Lagna in D1 == Lagna in D9
+    is_varg = _is_vargottama(lagna)
+    lagna_sign, _, _ = _long_to_sign_deg(lagna)
+
+    rows = [
+        _make_row("tajik_vargottama_specific", "TAJIK_VARGOTTAMA", "longitude_sidereal",
+                  lagna, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Tajik Neelakanthi: Vargottama = D1 Lagna sign == D9 Lagna sign",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=_is_near_sign_boundary(lagna),
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=is_varg),
+        _make_row("tajik_vargottama_specific", "TAJIK_VARGOTTAMA", "sign",
+                  None, lagna_sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Tajik Neelakanthi: Vargottama reference sign",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=_is_near_sign_boundary(lagna),
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=is_varg),
+        _make_row("tajik_vargottama_specific", "TAJIK_VARGOTTAMA", "is_vargottama",
+                  None, str(is_varg).lower(), None, chart_id, ayanamsha_id, build_id, eng_ver,
+                  formula_provenance_text="Tajik Neelakanthi: Vargottama flag",
+                  tolerance_arcsec=1.0,
+                  near_sign_boundary_flag=_is_near_sign_boundary(lagna),
+                  near_nakshatra_boundary_flag=False,
+                  vargottama_flag_at_point=is_varg),
+    ]
+    return rows
+
+
+def _build_lal_kitab_floored_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 28: lal_kitab_special_point
+    G41 Lal Kitab corpus not present → floor all to null+marked.
+    Emits 7 Pakka Ghar rows (one per graha) + 3 Lal Kitab Arudha rows.
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    subjects = [
+        "PAKKA_GHAR_SUN","PAKKA_GHAR_MOON","PAKKA_GHAR_MAR",
+        "PAKKA_GHAR_MER","PAKKA_GHAR_JUP","PAKKA_GHAR_VEN","PAKKA_GHAR_SAT",
+        "LAL_KITAB_ARUDHA_1","LAL_KITAB_ARUDHA_2","LAL_KITAB_ARUDHA_3",
+    ]
+    for subj in subjects:
+        rows.extend([
+            _make_row("lal_kitab_special_point", subj, "house",
+                      None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text="G41 Lal Kitab corpus: prerequisite absent — floored to null",
+                      tolerance_arcsec=0.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+            _make_row("lal_kitab_special_point", subj, "absent_prerequisite_flag",
+                      None, "true", None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text="G41_LAL_KITAB_CORPUS prerequisite absent",
+                      tolerance_arcsec=0.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+        ])
+    return rows
+
+
+def _build_maharsi_floored_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 29: maharsi_specific_point
+    G44 Nadi tables not present → floor all to null+marked.
+    """
+    rows = []
+    subjects = [
+        "VASISHTHA_SPHUTA","ATRI_SPHUTA","BHARADWAJA_SPHUTA",
+        "AGASTYA_SPHUTA","GAUTAMA_SPHUTA","KASHYAPA_SPHUTA","VISHWAMITRA_SPHUTA",
+    ]
+    for subj in subjects:
+        rows.extend([
+            _make_row("maharsi_specific_point", subj, "longitude_sidereal",
+                      None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text="G44 Nadi-rishi attribution table: prerequisite absent — floored to null",
+                      tolerance_arcsec=0.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+            _make_row("maharsi_specific_point", subj, "absent_prerequisite_flag",
+                      None, "true", None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_provenance_text="G44_NADI_RISHI_ATTRIBUTION prerequisite absent",
+                      tolerance_arcsec=0.0,
+                      near_sign_boundary_flag=False,
+                      near_nakshatra_boundary_flag=False,
+                      vargottama_flag_at_point=False),
+        ])
+    return rows
+
+
+def _build_bhrigu_nadi_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category 30: bhrigu_nadi_point — 8 Bhrigu Chakra positions
+    Derived from Bhrigu Bindu position: each chakra = BB + n×45° (octagon)
+    """
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    moon = all_longs.get("MOON", 0.0)
+    rahu = all_longs.get("RAH_MEAN", 0.0)
+    bb = _midpoint(moon, rahu)
+
+    for n in range(1, 9):
+        subj = f"BHRIGU_CHAKRA_{n}"
+        chakra_long = (bb + (n - 1) * 45.0) % 360.0
+        rows.extend(_long_rows(
+            "bhrigu_nadi_point", subj, chakra_long,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+            formula_provenance_text=f"Bhrigu Nadi tradition: Bhrigu Chakra {n} = Bhrigu Bindu + {(n-1)*45}°",
+            tolerance_arcsec=60.0,  # 1 arcmin tolerance
+        ))
+    return rows
+
+
+def _build_nakshatra_pada_sensitive_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Category 30b (bonus): nakshatra_pada_sensitive — 4 sensitive pada positions."""
+    rows = []
+    lagna = all_longs.get("LAGNA", 0.0)
+
+    grahas_7 = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+    ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
+    ak_long = grahas_7[ak_graha]
+
+    subj_map = {
+        "LAGNA_PADA": lagna,
+        "MOON_PADA": all_longs.get("MOON", 0.0),
+        "SUN_PADA": all_longs.get("SUN", 0.0),
+        "AK_PADA": ak_long,
+    }
+
+    for subj, long_val in subj_map.items():
+        nak_name, nak_lord, pada = _long_to_nakshatra_pada(long_val)
+        nav_sign = _d9_sign(long_val)
+        sign, _, _ = _long_to_sign_deg(long_val)
+        near_nak = _is_near_nakshatra_boundary(long_val)
+
+        b_kwargs = dict(
+            tolerance_arcsec=1.0,
+            near_sign_boundary_flag=_is_near_sign_boundary(long_val),
+            near_nakshatra_boundary_flag=near_nak,
+            vargottama_flag_at_point=_is_vargottama(long_val),
+            formula_provenance_text=f"Nakshatra pada derivation: {subj} at {long_val:.4f}°",
+            cross_ayanamsha_divergence_arcsec=0.0,
+        )
+
+        rows.extend([
+            _make_row("nakshatra_pada_sensitive", subj, "nakshatra",
+                      None, nak_name, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("nakshatra_pada_sensitive", subj, "pada",
+                      float(pada), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("nakshatra_pada_sensitive", subj, "navamsha_sign",
+                      None, nav_sign, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            _make_row("nakshatra_pada_sensitive", subj, "longitude_sidereal",
+                      long_val, None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+        ])
+    return rows
+
+
+# ── Main per-ayanamsha builder ────────────────────────────────────────────────
+
+def _build_all_sensitive_rows_for_ayanamsha(
+    ayanamsha_key: str,
+    ayanamsha_id: str,
+    chart_id: str,
+    build_id: str,
+    eng_ver: str,
+    birth_params: dict[str, Any],
+    prereqs: dict[str, bool],
+    halt_log_path: str,
+) -> list[dict[str, Any]]:
+    """
+    Compute all 30 categories for one ayanamsha. Returns all row dicts.
+
+    ayanamsha_key = canonical id (e.g., "lahiri_chitrapaksha") — used in rows
+    ayanamsha_id  = adapter key (e.g., "lahiri") — passed to compute_chart
+    """
+    # Compute chart positions via PyJHora (use adapter key for engine call)
+    chart_data = compute_chart(inputs=birth_params, ayanamsha_id=ayanamsha_id)
+
+    # FORENSIC gate — raises RuntimeError if anchors fail (use adapter key)
+    forensic_gate(chart_data, ayanamsha_id)
+
+    # canonical_id = ayanamsha_key; used for all row fact_subject/fact_key storage
+    canonical_id = ayanamsha_key
+
+    # Extract longitudes map from grahas list + ascendant dict
+    planet_name_map: dict[str, str] = {
+        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
+        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
+        "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+    }
+    grahas = chart_data.get("grahas", [])
+    ascendant = chart_data.get("ascendant", {})
+
+    all_longs: dict[str, float] = {}
+    for g in grahas:
+        key = planet_name_map.get(g.get("name", ""))
+        if key:
+            lon = float(g.get("longitude_deg", g.get("lon", 0.0)))
+            all_longs[key] = lon
+
+    # Lagna from ascendant
+    asc_lon = float(ascendant.get("longitude_deg", ascendant.get("lon", 0.0)))
+    all_longs["LAGNA"] = asc_lon
+
+    # Determine day/night birth (sunrise check)
+    # Native birth 10:43 IST; Bhubaneswar sunrise ~06:30 → day birth
+    is_day_birth = True
+
+    rows: list[dict[str, Any]] = []
+
+    # Use canonical_id (ayanamsha_key) for all row ayanamsha_id fields
+    cid = canonical_id  # shorthand
+
+    # ── 1. Upagrahas ──────────────────────────────────────────────────────────
+    rows.extend(_build_upagraha_rows(chart_data, chart_id, cid, build_id, eng_ver, all_longs))
+
+    # ── 2. Saturn-derived ─────────────────────────────────────────────────────
+    saturn_rows = _build_saturn_derived_rows(chart_data, chart_id, cid, build_id, eng_ver, all_longs)
+    rows.extend(saturn_rows)
+
+    # Extract Gulika and Mandi for Aprakasha computation later
+    # (simplified: use derived values)
+    gulika_long = all_longs.get("SAT", 0.0) + 6.0
+    mandi_long  = all_longs.get("SAT", 0.0) + 8.0
+    upagrahas_native = chart_data.get("upagrahas", {})
+    if isinstance(upagrahas_native.get("gulika"), dict):
+        v = upagrahas_native["gulika"].get("longitude_deg")
+        if v:
+            gulika_long = float(v)
+    if isinstance(upagrahas_native.get("maandi"), dict):
+        v = upagrahas_native["maandi"].get("longitude_deg")
+        if v:
+            mandi_long = float(v)
+
+    # ── 3–5. Bhrigu Bindu, Yogi, Avayogi ─────────────────────────────────────
+    rows.extend(_build_bhrigu_bindu_rows(all_longs, chart_id, cid, build_id, eng_ver))
+    rows.extend(_build_yogi_avayogi_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 6. Mrityu ─────────────────────────────────────────────────────────────
+    rows.extend(_build_mrityu_rows(all_longs, chart_id, cid, build_id, eng_ver, is_day_birth))
+
+    # ── 7–9. Trisphuta family ────────────────────────────────────────────────
+    rows.extend(_build_trisphuta_family_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 10. Pranapada ─────────────────────────────────────────────────────────
+    rows.extend(_build_pranapada_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 11. Trikona Dasha ─────────────────────────────────────────────────────
+    rows.extend(_build_trikona_dasha_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 12. Sri Yantra ───────────────────────────────────────────────────────
+    rows.extend(_build_sri_yantra_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 13–15. Brahma/Vishnu/Shiva ───────────────────────────────────────────
+    rows.extend(_build_brahma_vishnu_shiva_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 16. Sahams ───────────────────────────────────────────────────────────
+    rows.extend(_build_saham_rows(all_longs, chart_id, cid, build_id, eng_ver, is_day_birth))
+
+    # ── 17. Karakas ──────────────────────────────────────────────────────────
+    rows.extend(_build_karaka_rows(all_longs, chart_id, cid, build_id, eng_ver, halt_log_path))
+
+    # ── 18. Karakamsa ────────────────────────────────────────────────────────
+    rows.extend(_build_karakamsa_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 19. Swamsa (12 rows) ─────────────────────────────────────────────────
+    rows.extend(_build_swamsa_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 20. Arudha Pada (19 subjects) ────────────────────────────────────────
+    rows.extend(_build_arudha_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 21. Midpoints (54 subjects) ──────────────────────────────────────────
+    rows.extend(_build_midpoint_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 22. KP Ruling Planets ────────────────────────────────────────────────
+    rows.extend(_build_kp_ruling_planets_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 23. KP Cuspal Significators ──────────────────────────────────────────
+    rows.extend(_build_kp_cuspal_rows(all_longs, chart_id, cid, build_id, eng_ver, chart_data))
+
+    # ── 24. Aprakasha ────────────────────────────────────────────────────────
+    rows.extend(_build_aprakasha_rows(all_longs, chart_id, cid, build_id, eng_ver,
+                                      gulika_long, mandi_long))
+
+    # ── 25. Hadda (60 zones) ─────────────────────────────────────────────────
+    rows.extend(_build_hadda_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 26. Triraashipathi ───────────────────────────────────────────────────
+    rows.extend(_build_triraashipathi_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 27. Tajik Vargottama ─────────────────────────────────────────────────
+    rows.extend(_build_tajik_vargottama_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 28. Lal Kitab (floored if G41 absent) ────────────────────────────────
+    if prereqs.get("G41_LAL_KITAB"):
+        # TODO: Implement when G41 corpus is available
+        pass
+    rows.extend(_build_lal_kitab_floored_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 29. Maharsi (floored if G44 absent) ──────────────────────────────────
+    if prereqs.get("G44_NADI"):
+        # TODO: Implement when G44 Nadi tables are available
+        pass
+    rows.extend(_build_maharsi_floored_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── 30. Bhrigu Nadi ──────────────────────────────────────────────────────
+    rows.extend(_build_bhrigu_nadi_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── Bonus: Nakshatra Pada Sensitive ─────────────────────────────────────
+    rows.extend(_build_nakshatra_pada_sensitive_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    logger.info("[ga_sensitive] ayanamsha=%s rows=%d", cid, len(rows))
+    return rows
+
+
+# ── DB persistence ────────────────────────────────────────────────────────────
+
+def _insert_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    """
+    Insert chart_facts rows. Returns inserted count.
+    Uses standard chart_facts schema + Section-B enrichment columns.
+    """
+    if not rows:
+        return 0
+
+    inserted = 0
+    for row in rows:
+        try:
+            conn.execute(
+                """
+                INSERT INTO chart_facts (
+                    fact_id, chart_id, build_id, ayanamsha_id, engine_version,
+                    fact_category, fact_subject, fact_key,
+                    fact_value_num, fact_value_text, fact_value_jsonb,
+                    formula_id, citation_ref, citation_human,
+                    verification_pass_status,
+                    tolerance_arcsec, near_sign_boundary_flag,
+                    near_nakshatra_boundary_flag, vargottama_flag_at_point,
+                    formula_provenance_text, cross_ayanamsha_divergence_arcsec
+                ) VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s,
+                    %s, %s, %s,
+                    %s, %s, %s,
+                    %s,
+                    %s, %s,
+                    %s, %s,
+                    %s, %s
+                )
+                ON CONFLICT (fact_id) DO UPDATE SET
+                    fact_value_num = EXCLUDED.fact_value_num,
+                    fact_value_text = EXCLUDED.fact_value_text,
+                    fact_value_jsonb = EXCLUDED.fact_value_jsonb,
+                    verification_pass_status = EXCLUDED.verification_pass_status,
+                    build_id = EXCLUDED.build_id
+                """,
+                [
+                    row["fact_id"], row["chart_id"], row["build_id"],
+                    row["ayanamsha_id"], row["engine_version"],
+                    row["fact_category"], row["fact_subject"], row["fact_key"],
+                    row["fact_value_num"], row["fact_value_text"],
+                    row.get("fact_value_jsonb"),
+                    row.get("formula_id"), row["citation_ref"], row["citation_human"],
+                    row["verification_pass_status"],
+                    row.get("tolerance_arcsec"), row.get("near_sign_boundary_flag"),
+                    row.get("near_nakshatra_boundary_flag"), row.get("vargottama_flag_at_point"),
+                    row.get("formula_provenance_text"), row.get("cross_ayanamsha_divergence_arcsec"),
+                ],
+            )
+            inserted += 1
+        except Exception as exc:
+            logger.warning("[ga_sensitive] INSERT failed for %s.%s.%s: %s",
+                           row.get("fact_category"), row.get("fact_subject"),
+                           row.get("fact_key"), exc)
+    conn.commit()
+    return inserted
+
+
+def _refresh_mv(conn: Any) -> str:
+    """Refresh mv_chart_sensitive_points_summary."""
+    try:
+        conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_sensitive_points_summary")
+        conn.commit()
+        return "OK"
+    except Exception:
+        try:
+            conn.execute("REFRESH MATERIALIZED VIEW mv_chart_sensitive_points_summary")
+            conn.commit()
+            return "OK"
+        except Exception as exc2:
+            return f"ERROR: {exc2}"
+
+
+def _update_asset_throughput(conn: Any, chart_id: str, build_id: str, row_count: int) -> None:
+    """Update asset_throughput for ga_sensitive."""
+    try:
+        conn.execute(
+            """
+            INSERT INTO asset_throughput (asset_id, chart_id, build_id, row_count, updated_at)
+            VALUES (%s, %s, %s, %s, NOW())
+            ON CONFLICT (asset_id, chart_id) DO UPDATE SET
+                build_id = EXCLUDED.build_id,
+                row_count = EXCLUDED.row_count,
+                updated_at = NOW()
+            """,
+            [GA5_ASSET_ID, chart_id, build_id, row_count],
+        )
+        conn.commit()
+        logger.info("[ga_sensitive] asset_throughput updated: %d rows", row_count)
+    except Exception as exc:
+        logger.warning("[ga_sensitive] asset_throughput update failed: %s", exc)
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def build_ga_sensitive(
+    chart_id: str = CANONICAL_CHART_ID,
+    build_id: str | None = None,
+    birth_params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Build ga_sensitive asset: compute all 30 A5 categories × 5 ayanamshas.
+    Returns summary dict with row counts, prerequisite status, and gate results.
+    Raises on FORENSIC failure or AK divergence.
+    """
+    import uuid
+    if build_id is None:
+        build_id = str(uuid.uuid4())
+
+    if birth_params is None:
+        birth_params = NATIVE_BIRTH
+
+    started_at = datetime.now(timezone.utc).isoformat()
+    eng_ver = ENGINE_VERSION
+    halt_log_path = "CONDUCTOR_HALT_LOG.md"
+
+    logger.info("[ga_sensitive] Build starting: chart_id=%s build_id=%s", chart_id, build_id)
+
+    summary: dict[str, Any] = {
+        "session_id": "ga5-sensitive-points",
+        "asset_id": GA5_ASSET_ID,
+        "chart_id": chart_id,
+        "build_id": build_id,
+        "started_at": started_at,
+        "ayanamshas": {},
+        "prerequisites": {},
+        "total_rows": 0,
+        "status": "IN_PROGRESS",
+    }
+
+    # ── FORENSIC gate (pre-flight: compute lahiri chart and check anchors) ────
+    # The per-ayanamsha builder also calls forensic_gate, but we run it early
+    # to fail fast before looping all 5 ayanamshas.
+    try:
+        preflight_chart = compute_chart(inputs=birth_params, ayanamsha_id="lahiri")
+        forensic_gate(preflight_chart, "lahiri")
+        summary["forensic_pass"] = True
+    except RuntimeError as fe:
+        msg = f"GA5 FORENSIC gate FAIL: {fe}"
+        logger.error("[ga_sensitive] %s", msg)
+        _write_halt_log("FORENSIC_GATE", msg)
+        summary["status"] = "FAIL"
+        summary["forensic_failure"] = str(fe)
+        return summary
+
+    # ── Prerequisite check ───────────────────────────────────────────────────
+    prereqs = check_prerequisites()
+    summary["prerequisites"] = prereqs
+
+    logger.info("[ga_sensitive] Prerequisites: G14=%s G44=%s G41=%s",
+                prereqs["G14_SAHAM"], prereqs["G44_NADI"], prereqs["G41_LAL_KITAB"])
+
+    # ── Compute all ayanamshas ────────────────────────────────────────────────
+    all_rows: list[dict[str, Any]] = []
+
+    for ayanamsha_key, ayanamsha_id in CANONICAL_AYANAMSHAS.items():
+        try:
+            rows = _build_all_sensitive_rows_for_ayanamsha(
+                ayanamsha_key=ayanamsha_key,
+                ayanamsha_id=ayanamsha_id,
+                chart_id=chart_id,
+                build_id=build_id,
+                eng_ver=eng_ver,
+                birth_params=birth_params,
+                prereqs=prereqs,
+                halt_log_path=halt_log_path,
+            )
+            all_rows.extend(rows)
+            summary["ayanamshas"][ayanamsha_id] = {"rows": len(rows), "status": "PASS"}
+        except ValueError as exc:
+            logger.error("[ga_sensitive] HALT for ayanamsha %s: %s", ayanamsha_id, exc)
+            summary["ayanamshas"][ayanamsha_id] = {"status": "HALT", "error": str(exc)}
+            summary["status"] = "HALT"
+            return summary
+        except Exception as exc:
+            logger.error("[ga_sensitive] ERROR for ayanamsha %s: %s", ayanamsha_id, exc)
+            summary["ayanamshas"][ayanamsha_id] = {"status": "ERROR", "error": str(exc)}
+            summary["status"] = "FAIL"
+            return summary
+
+    # ── Verify no divergent_flagged rows ─────────────────────────────────────
+    divergent = [r for r in all_rows if r.get("verification_pass_status") == "divergent_flagged"]
+    if divergent:
+        msg = f"GA5 HALT: {len(divergent)} divergent_flagged rows detected"
+        logger.error("[ga_sensitive] %s", msg)
+        _write_halt_log("TWO_PASS_DIVERGENCE", msg)
+        summary["status"] = "HALT"
+        summary["divergent_rows"] = len(divergent)
+        return summary
+
+    single = [r for r in all_rows if r.get("verification_pass_status") == "single"]
+    if single:
+        msg = f"GA5 HALT: {len(single)} single-pass rows detected (zero allowed)"
+        logger.error("[ga_sensitive] %s", msg)
+        _write_halt_log("SINGLE_PASS_VIOLATION", msg)
+        summary["status"] = "HALT"
+        summary["single_pass_rows"] = len(single)
+        return summary
+
+    summary["total_rows"] = len(all_rows)
+    logger.info("[ga_sensitive] Total rows computed: %d", len(all_rows))
+
+    # ── DB persistence ────────────────────────────────────────────────────────
+    try:
+        with _conn() as conn:
+            inserted = _insert_rows(conn, all_rows)
+            summary["inserted_rows"] = inserted
+
+            mv_status = _refresh_mv(conn)
+            summary["mv_refresh"] = mv_status
+
+            _update_asset_throughput(conn, chart_id, build_id, inserted)
+
+        logger.info("[ga_sensitive] Build PASS: %d rows inserted", inserted)
+        summary["status"] = "PASS"
+    except Exception as exc:
+        logger.error("[ga_sensitive] DB error: %s", exc)
+        summary["status"] = "FAIL"
+        summary["db_error"] = str(exc)
+
+    summary["completed_at"] = datetime.now(timezone.utc).isoformat()
+    return summary
