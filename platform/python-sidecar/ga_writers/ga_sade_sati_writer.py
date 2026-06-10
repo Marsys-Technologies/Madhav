@@ -1202,7 +1202,7 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
 
     # GA4: tara_bala_natal_baseline rows
     row = conn.execute(
-        "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%tara_bala%'",
+        "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%%tara_bala%%'",
         [chart_id]
     ).fetchone()
     results["ga4"] = (row[0] if row else 0) > 0
@@ -1210,7 +1210,7 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
     # GA6: varga rows in chart_divisionals or chart_facts
     try:
         row = conn.execute(
-            "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%varga%'",
+            "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%%varga%%'",
             [chart_id]
         ).fetchone()
         results["ga6"] = (row[0] if row else 0) > 0
