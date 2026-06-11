@@ -72,8 +72,9 @@ def run_no_narration_linter_db(conn: Any, chart_id: str, build_id: str) -> dict[
     """
     findings: list[str] = []
 
+    # Use %% so psycopg3 doesn't treat the wildcards as format placeholders
     patterns_sql = " OR ".join(
-        [f"LOWER(fact_value_text) LIKE '%{p}%'" for p in FORBIDDEN_PATTERNS]
+        [f"LOWER(fact_value_text) LIKE '%%{p}%%'" for p in FORBIDDEN_PATTERNS]
     )
     cursor = conn.execute(
         f"""
@@ -210,7 +211,7 @@ def run_atomic_grain_audit_db(
         FROM chart_facts
         WHERE chart_id = %s
           AND build_id = %s
-          AND fact_value_text LIKE '{%' OR fact_value_text LIKE '[%'
+          AND fact_value_text LIKE '{%%' OR fact_value_text LIKE '[%%'
         LIMIT 20
         """,
         [chart_id, build_id],
