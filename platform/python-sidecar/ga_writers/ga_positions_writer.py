@@ -525,6 +525,7 @@ def build_ga_positions(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn: Any = None,
     birth_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -533,11 +534,20 @@ def build_ga_positions(
     Returns summary dict with row counts.
 
     Raises RuntimeError on FORENSIC gate failure (no rows committed).
+
+    Connection ownership (Orchestrator Convergence Phase 3):
+    - conn injected (orchestrator path): writes on the caller-owned connection,
+      does NOT commit or close, does NOT write asset_throughput (the orchestrator
+      is the sole build-state writer). The caller's SAVEPOINT owns atomicity.
+    - conn None (legacy CLI path via build_runner): opens its own connection,
+      commits, closes, and writes asset_throughput via _telemetry.
     """
     import uuid
+    from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
 
+    owns_conn = conn is None
     bp = birth_params or NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
 
@@ -555,7 +565,7 @@ def build_ga_positions(
         chart_id, build_id,
     )
 
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
             logger.info("[ga_positions_writer] Computing ayanamsha=%s", canonical_id)
 
@@ -594,15 +604,18 @@ def build_ga_positions(
                 canonical_id, gp_count, cf_count,
             )
 
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
-    # Update asset_throughput
-    _update_asset_throughput(
-        chart_id=chart_id,
-        build_id=build_id,
-        asset_id="ga_positions",
-        row_count=summary["total_ganita_positions_rows"],
-    )
+    # asset_throughput is written by the orchestrator on the conformed path; only
+    # the legacy standalone CLI (owns_conn) writes it here via _telemetry.
+    if owns_conn:
+        _update_asset_throughput(
+            chart_id=chart_id,
+            build_id=build_id,
+            asset_id="ga_positions",
+            row_count=summary["total_ganita_positions_rows"],
+        )
 
     logger.info(
         "[ga_positions_writer] COMPLETE. Total gp=%d cf=%d",

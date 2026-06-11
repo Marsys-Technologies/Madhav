@@ -60,11 +60,39 @@ def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
+def _writer_source_paths(asset_id: str) -> list[str]:
+    """
+    Locate the source file(s) whose git history represents a writer — wherever
+    the writer lives (Orchestrator Convergence Phase 3: GA writers live in
+    ga_writers/, not pipeline/orchestrator/writers/, so the old hard-coded path
+    is wrong for them). Resolution order, generic + registry-driven:
+
+      1. the registered class's `source_paths` (repo-relative) if declared
+         (GA adapters set this to their ga_writers/ module);
+      2. else the registered class's own module file (inspect.getfile);
+      3. else fall back to the legacy convention.
+    """
+    import inspect
+
+    cls = get_writer(asset_id)
+    if cls is not None:
+        declared = getattr(cls, "source_paths", None)
+        if declared:
+            return list(declared)
+        try:
+            abs = inspect.getfile(cls)
+            idx = abs.find("platform/python-sidecar/")
+            return [abs[idx:] if idx >= 0 else abs]
+        except Exception:
+            pass
+    return [f"platform/python-sidecar/pipeline/orchestrator/writers/{asset_id.replace('.', '/')}.py"]
+
+
 def get_writer_git_hash(asset_id: str) -> str:
-    path = f"platform/python-sidecar/pipeline/orchestrator/writers/{asset_id.replace('.', '/')}.py"
+    paths = _writer_source_paths(asset_id)
     try:
         result = subprocess.run(
-            ["git", "log", "-1", "--format=%H", "--", path],
+            ["git", "log", "-1", "--format=%H", "--", *paths],
             capture_output=True, text=True, timeout=2,
         )
         return result.stdout.strip()[:16] if result.returncode == 0 else "unknown"

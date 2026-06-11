@@ -2063,7 +2063,7 @@ def compute_sandhi_post_pass(system_rows: list[dict]) -> None:
 
 # ── DB persistence (idempotent per-system) ────────────────────────────────────
 
-def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str) -> int:
+def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str, *, commit: bool = True) -> int:
     """
     Upsert rows into chart_dashas.
     Idempotent: ON CONFLICT on (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id).
@@ -2160,7 +2160,10 @@ def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str)
                 "start_date": str(row.get("start_date")),
             })
 
-    conn.commit()
+    # On the conformed orchestrator path (commit=False) the caller's SAVEPOINT +
+    # per-sub-step commit own atomicity; only the legacy CLI path commits here.
+    if commit:
+        conn.commit()
     return count
 
 
@@ -2208,14 +2211,23 @@ def build_system(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn: Any = None,
     skip_db: bool = False,
 ) -> dict[str, Any]:
     """
-    Build one dasha system for one ayanamsha.
+    Build one dasha system for one ayanamsha. This is the heavy-writer sub-step
+    grain (7 systems × 5 ayanamshas = 35 chunks) driven by the orchestrator.
     Context-decay-safe: call this per-system.
     Returns summary dict.
     Raises on FORENSIC gate failure or two-pass divergence.
+
+    Connection ownership (Orchestrator Convergence Phase 3):
+    - conn injected (orchestrator path): upserts on the caller-owned connection,
+      does NOT commit and does NOT write asset_throughput.
+    - conn None (legacy CLI path): opens its own connection, commits via
+      _upsert_rows, and writes asset_throughput via _telemetry.
     """
+    from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
 
@@ -2295,9 +2307,11 @@ def build_system(
     # DB write
     rows_written = 0
     if not skip_db:
-        with _conn() as conn:
-            rows_written = _upsert_rows(conn, rows, system_id, ayanamsha_id)
-            _update_asset_throughput(conn, chart_id, build_id, "ga_dashas", rows_written, "in_progress")
+        owns_conn = conn is None
+        with (_conn() if owns_conn else nullcontext(conn)) as c:
+            rows_written = _upsert_rows(c, rows, system_id, ayanamsha_id, commit=owns_conn)
+            if owns_conn:
+                _update_asset_throughput(c, chart_id, build_id, "ga_dashas", rows_written, "in_progress")
 
     logger.info(
         "[ga_dashas] System=%s ayanamsha=%s: %d rows written (verification=%s)",
@@ -2412,13 +2426,19 @@ def build_ga_dashas(
     return summary
 
 
-def _run_concurrency_post_pass_db(chart_id: str, build_id: str) -> None:
+def _run_concurrency_post_pass_db(chart_id: str, build_id: str, *, conn: Any = None) -> None:
     """
     Run concurrency post-pass against DB: for each L1 row in chart_dashas,
     compute concurrent_system_lords_jsonb + convergence_count_at_start
     and UPDATE the rows.
+
+    Connection ownership (Orchestrator Convergence Phase 3): conn injected →
+    runs on the caller-owned connection without committing; conn None → opens
+    and commits its own (legacy CLI path).
     """
-    with _conn() as conn:
+    from contextlib import nullcontext
+    owns_conn = conn is None
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         # Get all L1 rows for this chart+build, grouped by system
         cursor = conn.execute(
             """
@@ -2467,7 +2487,8 @@ def _run_concurrency_post_pass_db(chart_id: str, build_id: str) -> None:
                 [json.dumps(concurrent), convergence, str(row_id)],
             )
 
-        conn.commit()
+        if owns_conn:
+            conn.commit()
         logger.info(
             "[ga_dashas] Concurrency post-pass: updated %d L1 rows", len(all_l1)
         )

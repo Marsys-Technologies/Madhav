@@ -556,16 +556,27 @@ def compute_varsha(chart_id: str = CANONICAL_CHART_ID,
 
 def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
                     build_id: str | None = None,
-                    *, birth_params: dict[str, Any] | None = None,
+                    *, conn: Any = None,
+                    birth_params: dict[str, Any] | None = None,
                     reference_year: int = DEFAULT_REFERENCE_YEAR,
                     min_varsha: int = 1,
                     max_varsha: int | None = None,
                     ayanamshas: list[str] | None = None) -> dict[str, Any]:
     """Precompute the hybrid window (past→present+5) × 5 ayanamshas and write
     `l1_tajik_varsha_year_lords`. Raises on the FORENSIC Muntha miss or any
-    two-pass divergence (build halts)."""
+    two-pass divergence (build halts).
+
+    Connection ownership (Orchestrator Convergence Phase 3):
+    - conn injected (orchestrator path): writes on the caller-owned connection,
+      does NOT commit or close, does NOT write asset_throughput (the orchestrator
+      is the sole build-state writer). The caller's SAVEPOINT owns atomicity.
+    - conn None (legacy CLI path via build_runner): opens its own connection,
+      commits, closes, and writes asset_throughput via _telemetry.
+    """
+    from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
+    owns_conn = conn is None
     current_varsha = reference_year - BIRTH_YEAR + 1
     if max_varsha is None:
         max_varsha = current_varsha + 5
@@ -579,7 +590,7 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
     forensic_checks: list[dict] = []
     divergent: list[dict] = []
 
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         for canonical_aya in aya_ids:
             aya_adapter = CANONICAL_AYANAMSHAS[canonical_aya]
             natal = compute_chart({**NATIVE_BIRTH}, ayanamsha_id=aya_adapter)
@@ -627,10 +638,11 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
 
         deleted = replace_prior_tajik_varsha(conn, all_rows)
         inserted = _insert_rows(conn, all_rows)
-        conn.commit()
-        update_asset_throughput(conn, "ga_tajaka", chart_id, build_id,
-                                inserted, state="lit")
-        conn.commit()
+        if owns_conn:
+            conn.commit()
+            update_asset_throughput(conn, "ga_tajaka", chart_id, build_id,
+                                    inserted, state="lit")
+            conn.commit()
 
     forensic_pass = bool(forensic_checks) and all(
         c["sign"] == FORENSIC_MUNTHA_SIGN and c["house"] == FORENSIC_MUNTHA_HOUSE

@@ -1364,6 +1364,7 @@ def build_ga_sade_sati(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn: Any = None,
     birth_params: dict[str, Any] | None = None,
     window_start: datetime = WINDOW_START,
     window_end: datetime = WINDOW_END,
@@ -1383,8 +1384,11 @@ def build_ga_sade_sati(
     Raises RuntimeError on upstream-absent or divergent-flagged conditions.
     """
     import uuid
+    from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    owns_conn = conn is None
 
     computed_at = datetime.now(timezone.utc).isoformat()
 
@@ -1403,7 +1407,7 @@ def build_ga_sade_sati(
         chart_id, build_id,
     )
 
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         # ── Step 0: Upstream presence check ──────────────────────────────────
         upstream = _verify_upstream_rows(conn, chart_id)
         summary["upstream_check"] = upstream
@@ -1520,14 +1524,17 @@ def build_ga_sade_sati(
                 ayanamsha_id, written,
             )
 
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
         # ── Step 5: Refresh MV ────────────────────────────────────────────────
         _refresh_mv(conn)
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
     # ── Step 6: Update asset_throughput ──────────────────────────────────────
-    _update_asset_throughput(chart_id, build_id, summary["total_chart_facts_rows"])
+    if owns_conn:
+        _update_asset_throughput(chart_id, build_id, summary["total_chart_facts_rows"])
 
     summary["status"] = "PASS"
     logger.info(

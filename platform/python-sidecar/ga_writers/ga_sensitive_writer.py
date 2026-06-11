@@ -1882,10 +1882,11 @@ def _build_all_sensitive_rows_for_ayanamsha(
 
 # ── DB persistence ────────────────────────────────────────────────────────────
 
-def _insert_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) -> int:
     """
     Insert chart_facts rows. Returns inserted count.
     Uses standard chart_facts schema + Section-B enrichment columns.
+    When commit=False (caller-owned connection), does not commit.
     """
     if not rows:
         return 0
@@ -1949,20 +1950,24 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
             logger.warning("[ga_sensitive] INSERT failed for %s.%s.%s: %s",
                            row.get("fact_category"), row.get("fact_subject"),
                            row.get("fact_key"), exc)
-    conn.commit()
+    if commit:
+        conn.commit()
     return inserted
 
 
-def _refresh_mv(conn: Any) -> str:
-    """Refresh mv_chart_sensitive_points_summary."""
+def _refresh_mv(conn: Any, *, commit: bool = True) -> str:
+    """Refresh mv_chart_sensitive_points_summary.
+    When commit=False (caller-owned connection), does not commit."""
     try:
         conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_sensitive_points_summary")
-        conn.commit()
+        if commit:
+            conn.commit()
         return "OK"
     except Exception:
         try:
             conn.execute("REFRESH MATERIALIZED VIEW mv_chart_sensitive_points_summary")
-            conn.commit()
+            if commit:
+                conn.commit()
             return "OK"
         except Exception as exc2:
             return f"ERROR: {exc2}"
@@ -1978,16 +1983,28 @@ def _update_asset_throughput(conn: Any, chart_id: str, build_id: str, row_count:
 def build_ga_sensitive(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
+    *,
+    conn: Any = None,
     birth_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Build ga_sensitive asset: compute all 30 A5 categories × 5 ayanamshas.
     Returns summary dict with row counts, prerequisite status, and gate results.
     Raises on FORENSIC failure or AK divergence.
+
+    Connection ownership (Orchestrator Convergence Phase 3):
+    - conn injected (orchestrator path): writes on the caller-owned connection,
+      does NOT commit or close, does NOT write asset_throughput (the orchestrator
+      is the sole build-state writer). The caller's SAVEPOINT owns atomicity.
+    - conn None (legacy CLI path): opens its own connection, commits, closes, and
+      writes asset_throughput via _telemetry.
     """
     import uuid
+    from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    owns_conn = conn is None
 
     if birth_params is None:
         birth_params = NATIVE_BIRTH
@@ -2084,14 +2101,15 @@ def build_ga_sensitive(
 
     # ── DB persistence ────────────────────────────────────────────────────────
     try:
-        with _conn() as conn:
-            inserted = _insert_rows(conn, all_rows)
+        with (_conn() if owns_conn else nullcontext(conn)) as conn:
+            inserted = _insert_rows(conn, all_rows, commit=owns_conn)
             summary["inserted_rows"] = inserted
 
-            mv_status = _refresh_mv(conn)
+            mv_status = _refresh_mv(conn, commit=owns_conn)
             summary["mv_refresh"] = mv_status
 
-            _update_asset_throughput(conn, chart_id, build_id, inserted)
+            if owns_conn:
+                _update_asset_throughput(conn, chart_id, build_id, inserted)
 
         logger.info("[ga_sensitive] Build PASS: %d rows inserted", inserted)
         summary["status"] = "PASS"
