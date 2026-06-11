@@ -349,8 +349,12 @@ def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | N
 
 def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
                  varsha_year: int, natal_chart: dict, natal_sun_long: float,
-                 build_id: str) -> dict[str, Any]:
-    """Compute a single varsha row dict (annual chart) for one ayanamsha."""
+                 build_id: str, birth: dict | None = None) -> dict[str, Any]:
+    """Compute a single varsha row dict (annual chart) for one ayanamsha.
+
+    `birth` (Phase 3B) supplies the chart's place/tz for the annual chart compute;
+    None → native (NATIVE_BIRTH). The annual chart's instant comes from the solar
+    return; only its place/tz are taken from birth."""
     natal_lagna = natal_chart["ascendant"]
     natal_lagna_sign0 = int(natal_lagna["sign_id"]) - 1
     natal_lagna_deg = float(natal_lagna.get("degree_in_sign", 0.0))
@@ -372,7 +376,8 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     next_iso = next_instant.replace(microsecond=0).isoformat() + "+05:30"
 
     annual = compute_chart(
-        {**NATIVE_BIRTH, "datetime_iso": instant.replace(microsecond=0).isoformat()},
+        {**(birth or NATIVE_BIRTH),
+         "datetime_iso": instant.replace(microsecond=0).isoformat()},
         ayanamsha_id=aya_adapter,
     )
     varsha_lagna = annual["ascendant"]
@@ -577,7 +582,11 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
-    current_varsha = reference_year - BIRTH_YEAR + 1
+    # Per-chart birth (Phase 3B): None → native; a non-native chart passes its
+    # birth so the natal + annual (Varṣaphal) charts compute from its real data.
+    bp = birth_params or NATIVE_BIRTH
+    birth_year = int(str(bp["datetime_iso"])[:4])
+    current_varsha = reference_year - birth_year + 1
     if max_varsha is None:
         max_varsha = current_varsha + 5
     aya_ids = ayanamshas or list(CANONICAL_AYANAMSHAS.keys())
@@ -593,16 +602,17 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
     with (_conn() if owns_conn else nullcontext(conn)) as conn:
         for canonical_aya in aya_ids:
             aya_adapter = CANONICAL_AYANAMSHAS[canonical_aya]
-            natal = compute_chart({**NATIVE_BIRTH}, ayanamsha_id=aya_adapter)
+            natal = compute_chart({**bp}, ayanamsha_id=aya_adapter)
             natal_sun = float(
                 next(g for g in natal["grahas"] if g["name"] == "Sun")["longitude"]
             ) % 360.0
             aya_rows: list[dict] = []
             for v in range(min_varsha, max_varsha + 1):
                 row = _compute_one(conn, chart_id, canonical_aya, aya_adapter,
-                                   v, natal, natal_sun, build_id)
-                # FORENSIC gate.
-                if (canonical_aya == FORENSIC_AYANAMSHA
+                                   v, natal, natal_sun, build_id, birth=bp)
+                # FORENSIC gate — native-anchored Muntha; only asserted for the native.
+                if (chart_id == CANONICAL_CHART_ID
+                        and canonical_aya == FORENSIC_AYANAMSHA
                         and v == FORENSIC_VARSHA_YEAR):
                     fc = {
                         "varsha_year": v, "ayanamsha": canonical_aya,

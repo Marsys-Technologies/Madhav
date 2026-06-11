@@ -572,8 +572,10 @@ def build_ga_positions(
             # Compute chart
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
 
-            # FORENSIC gate — must pass before any write
-            forensic_gate(chart_output, canonical_id)
+            # FORENSIC gate — native-anchored; asserted only for the native chart
+            # (a non-native chart has no pre-verified anchor). Phase 3B.
+            if chart_id == CANONICAL_CHART_ID:
+                forensic_gate(chart_output, canonical_id)
 
             summary["forensic_pass"] = True
 

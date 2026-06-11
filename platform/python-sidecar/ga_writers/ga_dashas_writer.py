@@ -195,10 +195,14 @@ def _conn() -> Generator:
 
 # ── JD / date helpers ─────────────────────────────────────────────────────────
 
-def _birth_jd_utc() -> float:
+def _birth_jd_utc(birth: dict | None = None) -> float:
+    """Birth Julian Day (UT). Defaults to the native (BIRTH_*) when birth is None;
+    a non-native chart passes its birth_params (Phase 3B writer generalization)."""
     import swisseph as swe
-    dt_ist = datetime.fromisoformat(BIRTH_IST)
-    dt_utc = dt_ist - timedelta(hours=5, minutes=30)
+    iso = (birth or {}).get("datetime_iso") or BIRTH_IST
+    tz = float((birth or {}).get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    dt_local = datetime.fromisoformat(iso)
+    dt_utc = dt_local - timedelta(hours=tz)
     return swe.julday(
         dt_utc.year, dt_utc.month, dt_utc.day,
         dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0,
@@ -225,22 +229,27 @@ def _days_between(d1: date, d2: date) -> float:
 
 # ── Ayanamsha + Moon position ─────────────────────────────────────────────────
 
-def _get_moon_position(ayanamsha_id: str) -> tuple[float, float]:
+def _get_moon_position(ayanamsha_id: str, birth: dict | None = None) -> tuple[float, float]:
     """
-    Returns (moon_sidereal_lon, birth_jd_utc) for the native birth.
+    Returns (moon_sidereal_lon, birth_jd_utc). Defaults to the native birth when
+    birth is None; a non-native chart passes its birth_params (Phase 3B).
     Uses pyjhora_adapter engine.
     """
     from pyjhora_adapter.compute import compute_chart
     from pyjhora_adapter._ayanamsha import resolve_mode
     from pyjhora_adapter._jhora import drik
 
-    jd = _birth_jd_utc()
+    lat = float((birth or {}).get("latitude_deg", BIRTH_LAT))
+    lon = float((birth or {}).get("longitude_deg", BIRTH_LON))
+    tz = float((birth or {}).get("tz_offset_hours", BIRTH_TZ_OFFSET))
+
+    jd = _birth_jd_utc(birth)
     mode, _ = resolve_mode(ayanamsha_id)
     drik.set_ayanamsa_mode(mode)
-    place = drik.Place("native", BIRTH_LAT, BIRTH_LON, BIRTH_TZ_OFFSET)
+    place = drik.Place("native", lat, lon, tz)
 
     # Use pyjhora_adapter.compute for Moon sidereal longitude
-    chart = compute_chart(jd, BIRTH_LAT, BIRTH_LON, BIRTH_TZ_OFFSET, ayanamsha_id)
+    chart = compute_chart(jd, lat, lon, tz, ayanamsha_id)
     for body in chart.get("bodies", []):
         if body.get("name") == "Moon":
             return body.get("sidereal_longitude", 0.0), jd
@@ -411,35 +420,37 @@ def _get_karakas_active(lord: str, parent_lord: str | None) -> list[str]:
 
 # ── Two-pass verification ─────────────────────────────────────────────────────
 
-def _verify_vimshottari(rows: list[dict], moon_sid: float) -> str:
+def _verify_vimshottari(rows: list[dict], moon_sid: float,
+                        chart_id: str = CANONICAL_CHART_ID) -> str:
     """
     Two-pass verification for Vimshottari:
-    Pass 1: algebraic — sum of all L1 years ≈ N × 120y (within 1 day)
-    Pass 2: FORENSIC — the period containing the birth date (1984-02-05)
-            must have lord = Jupiter (Moon in Purva Bhadrapada → lord=Jupiter).
+    Pass 1: algebraic — sum of all L1 years ≈ N × 120y (within 1 day) [structural,
+            any chart].
+    Pass 2: FORENSIC — the period containing the NATIVE birth date (1984-02-05)
+            must have lord = Jupiter. Native-anchored; run only for the native
+            chart (Phase 3B). A non-native chart has its own birth date + lord.
     Returns 'two_pass_verified' or raises ValueError.
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
         raise ValueError("Vimshottari: no L1 rows")
 
-    # Pass 2 (FORENSIC): the mahadasha at birth must be Jupiter
-    # The window starts at 1950, so the first row may not be Jupiter.
-    # Find the period that contains birth date 1984-02-05.
-    birth_date = date(1984, 2, 5)
-    birth_period_lord: str | None = None
-    for row in l1_rows:
-        if row["start_date"] <= birth_date <= row["end_date"]:
-            birth_period_lord = row["lord_graha"]
-            break
-    if birth_period_lord is None:
-        raise ValueError("Vimshottari: no L1 row covers birth date 1984-02-05")
-    if birth_period_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
-        raise ValueError(
-            f"FORENSIC HALT: Vimshottari starting lord={birth_period_lord!r}, "
-            f"expected={FORENSIC_VIMSHOTTARI_STARTING_LORD!r}. "
-            f"Moon nakshatra must be Purva Bhadrapada (lord=Jupiter)."
-        )
+    # Pass 2 (FORENSIC) — native-only regression guard.
+    if chart_id == CANONICAL_CHART_ID:
+        birth_date = date(1984, 2, 5)
+        birth_period_lord: str | None = None
+        for row in l1_rows:
+            if row["start_date"] <= birth_date <= row["end_date"]:
+                birth_period_lord = row["lord_graha"]
+                break
+        if birth_period_lord is None:
+            raise ValueError("Vimshottari: no L1 row covers birth date 1984-02-05")
+        if birth_period_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
+            raise ValueError(
+                f"FORENSIC HALT: Vimshottari starting lord={birth_period_lord!r}, "
+                f"expected={FORENSIC_VIMSHOTTARI_STARTING_LORD!r}. "
+                f"Moon nakshatra must be Purva Bhadrapada (lord=Jupiter)."
+            )
 
     # Pass 1: algebraic — each L1 period should have correct duration
     for row in l1_rows:
@@ -653,8 +664,10 @@ def compute_vimshottari(
     nak_progress = (moon_sid - nak_idx_0 * nak_span) / nak_span
     balance_years = VIMSHOTTARI_YEARS[nak_lord] * (1.0 - nak_progress)
 
-    # FORENSIC HALT: check starting lord
-    if nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
+    # FORENSIC HALT: native-anchored starting-lord check — asserted only for the
+    # native chart (a non-native chart's starting lord is whatever its Moon yields).
+    # Phase 3B writer generalization.
+    if chart_id == CANONICAL_CHART_ID and nak_lord != FORENSIC_VIMSHOTTARI_STARTING_LORD:
         raise ValueError(
             f"FORENSIC HALT: Moon nakshatra lord={nak_lord!r}, "
             f"expected={FORENSIC_VIMSHOTTARI_STARTING_LORD!r}. "
@@ -2212,6 +2225,7 @@ def build_system(
     build_id: str | None = None,
     *,
     conn: Any = None,
+    birth_params: dict | None = None,
     skip_db: bool = False,
 ) -> dict[str, Any]:
     """
@@ -2226,6 +2240,10 @@ def build_system(
       does NOT commit and does NOT write asset_throughput.
     - conn None (legacy CLI path): opens its own connection, commits via
       _upsert_rows, and writes asset_throughput via _telemetry.
+
+    Per-chart birth (Phase 3B): birth_params None → the native (BIRTH_*); a
+    non-native chart passes its birth so the dashas compute from its real Moon.
+    The native-anchored FORENSIC assertion runs only for the native chart.
     """
     from contextlib import nullcontext
     if build_id is None:
@@ -2238,13 +2256,13 @@ def build_system(
 
     # Get Moon position (needed for most systems)
     try:
-        moon_sid, birth_jd = _get_moon_position(ayanamsha_id)
+        moon_sid, birth_jd = _get_moon_position(ayanamsha_id, birth_params)
     except Exception as exc:
         # Fallback: direct swisseph
         import swisseph as swe
         from pyjhora_adapter._ayanamsha import resolve_mode
         from pyjhora_adapter._jhora import drik
-        birth_jd = _birth_jd_utc()
+        birth_jd = _birth_jd_utc(birth_params)
         mode, _ = resolve_mode(ayanamsha_id)
         drik.set_ayanamsa_mode(mode)
         moon_sid = float(drik.sidereal_longitude(birth_jd, 1))  # 1 = Moon
@@ -2254,13 +2272,15 @@ def build_system(
     rows: list[dict] = []
 
     if system_id == "vimshottari":
-        # FORENSIC assertion
-        _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
+        # FORENSIC assertion — native-anchored (Moon nak + starting lord); a
+        # non-native chart has no pre-verified anchor, so it is not asserted.
+        if chart_id == CANONICAL_CHART_ID:
+            _assert_forensic_vimshottari([], moon_nak_name, moon_nak_lord)
         rows = compute_vimshottari(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)
         # KP sub-periods (CRITICAL OVERRIDE 2)
         kp_rows = compute_kp_subperiods(rows, chart_id, build_id, ayanamsha_id)
         rows.extend(kp_rows)
-        verification = _verify_vimshottari([r for r in rows if r["level_n"] <= 4 and r.get("kp_sublevel") is None], moon_sid)
+        verification = _verify_vimshottari([r for r in rows if r["level_n"] <= 4 and r.get("kp_sublevel") is None], moon_sid, chart_id)
 
     elif system_id == "yogini":
         rows = compute_yogini_system(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)

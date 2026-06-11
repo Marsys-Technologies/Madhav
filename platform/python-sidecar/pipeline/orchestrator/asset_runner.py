@@ -14,6 +14,7 @@ import traceback
 
 import psycopg
 
+from .birth_params import fetch_birth_params
 from .events import emit_event
 from .writers import discover_all, get_writer, ContextSpec, WriterBase
 
@@ -360,11 +361,23 @@ def run_asset(
     # stays under both reapers and resumes per-chunk. Writer must NOT
     # commit/rollback/close — this driver owns the transaction lifecycle.
     writer = writer_cls()
+
+    # Per-chart birth params (Phase 3B writer generalization): the orchestrator
+    # hands each writer the chart's real birth data so a NON-native chart builds
+    # correctly. Native → None (writer uses its verified NATIVE_BIRTH). A missing-
+    # data non-native row raises → mark the asset errored (loud halt, not a wrong
+    # chart).
+    try:
+        birth_params = fetch_birth_params(conn, chart_id)
+    except Exception as exc:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
+        return
+
     ctx = ContextSpec(
         asset_id=asset_id,
         build_id=run_id,
         db_conn=conn,
-        config={'chart_id': chart_id},
+        config={'chart_id': chart_id, 'birth_params': birth_params},
     )
     try:
         rows_inserted, rows_updated = _drive_substeps(

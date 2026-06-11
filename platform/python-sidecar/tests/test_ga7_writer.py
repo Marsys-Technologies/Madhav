@@ -740,7 +740,7 @@ class TestBuildSystem(unittest.TestCase):
         """build_system propagates FORENSIC halt if starting lord wrong."""
         mod = _get_mod()
         wrong_moon = 2.0  # Ashwini → Ketu lord
-        with patch.object(mod, "_get_moon_position", side_effect=lambda aya: (wrong_moon, BIRTH_JD)):
+        with patch.object(mod, "_get_moon_position", side_effect=lambda aya, birth=None: (wrong_moon, BIRTH_JD)):
             with self.assertRaises(ValueError) as ctx:
                 mod.build_system("vimshottari", "lahiri", skip_db=True)
         assert "FORENSIC HALT" in str(ctx.exception)
