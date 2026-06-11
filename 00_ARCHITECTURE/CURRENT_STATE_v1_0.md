@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.69
+version: 5.72
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,28 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.72 (2026-06-11, L1-GANITA-COCKPIT-RECONCILIATION):
+    **L1 Gaṇita cockpit count reconciliation + writer hardening COMPLETE.** The Gaṇita cockpit
+    layer header read 1,900 for chart 482012f1 despite ~580k built rows. Four root causes fixed
+    (none in the cockpit UI): wrong-table count_sql (ga_dashas→chart_dashas, ga_panchanga→chart_facts);
+    is_active=false on ga_strength/ga_sensitive/ga_sade_sati (omitted from stats route); ga_strength
+    category gap; ga_vargas coarse unique-index collapse (1,850→21,635 after widening
+    chart_divisionals_unique_idx to include fact_category+fact_key + GA6 re-run).
+    Migrations 217 (count_sql repoints + activations) + 218 (index) → PR #248 (merged a227c31a).
+    Registered missing ga_structural tile (migration 219, Saṃracanā, 6,075 rows) → PR #249 (merged 8866e2f6);
+    the five chart_facts tiles now partition chart_facts exactly (2,184+8,055+11,019+221+6,075=27,554).
+    Writer idempotency (all 8 writers replace-not-accrete via ga_writers/_idempotency.py + 8 unit tests),
+    asset_throughput reconciled (ga_writers/_telemetry.py — real schema), build_runner argparse fixed → PR #250.
+    Stale multi-build accumulation cleaned (chart_facts 13→1 build, chart_dashas 7→1 build; only 9dac88d5 kept).
+    **Validated cockpit end-state: Gaṇita layer header = 585,710 (was 1,900); all assets lit.**
+    Corrected canonical row counts (supersede v5.71/§7 premature-seal figures): chart_facts=27,554,
+    chart_dashas=536,471, chart_divisionals=21,635. Seal updated: L1_GANITA_BUILD_CLOSE_v1_0.md v1.2 §8.
+    Cleanup: l1-ganita Cloud Run Job confirmed deleted; 8 L1 worktrees removed; merged branches deleted (local+origin); pruned.
+    Drift reconciled: cockpit fix cherry-picked cleanly main (PR #248), independent of the unmerged
+    feature/panchanga-service-registry branch (panchanga feature lands separately).
+    last_session_id: L1-GANITA-COCKPIT-RECONCILIATION. predecessor_session: L1-GANITA-PRODUCTION-BUILD.
+    next_session_objective: "M5-A continuation; ready_for_L2=YES (L1 Gaṇita cockpit-validated, idempotent, telemetry-clean)."
+    file_updated_at: 2026-06-11. file_updated_by_session: L1-GANITA-COCKPIT-RECONCILIATION.
   - v5.70 (2026-06-10, L1-GANITA-BUILD-WAVE-CLOSE):
     **L1 Gaṇita Build COMPLETE.** GA3-GA9 writers merged to main via integration branch feature/ga3-chart-facts-writer.
     Main HEAD: d228aa0f1cb3d4640b12ce6f124627c27b5e8147. Git tag: l1-ganita-build-complete.
