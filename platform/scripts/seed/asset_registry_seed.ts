@@ -468,7 +468,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '60 vargas × 9 grahas × ayanamsha count — structural',
-    depends_on: [],
+    depends_on: ['ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -488,7 +488,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS ≈ 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130×.',
-    depends_on: [],
+    depends_on: ['ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -523,7 +523,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
-    depends_on: [],
+    depends_on: ['ga_positions'],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -558,7 +558,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',
-    depends_on: ['bg_reference'],
+    depends_on: ['ga_positions', 'bg_reference'],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -581,7 +581,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one panchanga row per ayanamsha" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).',
-    depends_on: [],
+    depends_on: ['ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -613,7 +613,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 11,019 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one row per ayanamsha" formula predates the full Sade Sati fact family (cycle / phase / phase_quarter / dhaiya / kantaka / ashtama / janma-shani periods + overlays).',
-    depends_on: [],
+    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_vargas', 'ga_dashas', 'ga_structural'],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -634,7 +634,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'WINDOW_VARSHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
-    depends_on: [],
+    depends_on: ['ga_positions', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -676,7 +676,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
-    depends_on: [],
+    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
