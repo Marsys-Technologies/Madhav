@@ -97,6 +97,33 @@ def replace_prior_chart_divisionals(conn: Any, rows: list[dict]) -> int:
     return deleted
 
 
+def replace_prior_tajik_varsha(conn: Any, rows: list[dict]) -> int:
+    """Delete prior l1_tajik_varsha_year_lords rows for the
+    (chart_id, ayanamsha_id, varsha_year) scope present in `rows`, regardless of
+    build_id, so a rebuild under any build_id REPLACES rather than accretes.
+
+    The table's UNIQUE key includes build_id, so without this a re-run would
+    append a second copy per varsha. Scoped to the exact (chart, ayanamsha,
+    varsha_year) triples being (re)written; per-varsha so a partial rebuild never
+    wipes siblings outside its window."""
+    if not rows:
+        return 0
+    years = _distinct(rows, "varsha_year")
+    ayanamshas = _distinct(rows, "ayanamsha_id")
+    if not years:
+        return 0
+    deleted = 0
+    for cid in _distinct(rows, "chart_id"):
+        sql = ("DELETE FROM l1_tajik_varsha_year_lords "
+               "WHERE chart_id = %s AND varsha_year = ANY(%s)")
+        params: list = [cid, years]
+        if ayanamshas:
+            sql += " AND ayanamsha_id = ANY(%s)"
+            params.append(ayanamshas)
+        deleted += _delete(conn, sql, params)
+    return deleted
+
+
 def clear_table_for_chart(conn: Any, table: str, chart_id: str) -> int:
     """Delete all rows for a chart from a whole-table-per-chart asset
     (e.g. ganita_positions). `table` is a trusted literal — never user input."""
