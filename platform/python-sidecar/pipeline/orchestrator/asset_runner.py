@@ -272,6 +272,139 @@ def _drive_substeps(
     return rows_inserted, rows_updated
 
 
+# ── Probe / verify-then-conditionally-regenerate (Phase 4 — the one new primitive) ─
+
+def _probe_asset(conn, cur, asset_id: str, registry_row: dict, is_service: bool) -> tuple[bool, str]:
+    """
+    Run an asset's health/integrity check. Returns (green, message).
+
+    - service asset (asset_type='service') → its health_probe.
+    - data asset with integrity_check_sql → runs the SQL; convention: it returns a
+      single row whose first column is truthy (boolean true / non-zero) when healthy.
+
+    Generic + metadata-driven: works for BOTH L0 service probes AND L0 data-asset
+    integrity checks, with no layer-specific branch (investigation §2.C).
+    """
+    if is_service:
+        from pipeline.orchestrator.service_probes import run_health_probe
+        try:
+            r = run_health_probe(asset_id, registry_row.get("health_probe"))
+        except Exception as exc:
+            return False, f"{type(exc).__name__}: {exc}"
+        return r.get("status") == "GREEN", r.get("message", "")
+
+    integrity_sql = registry_row.get("integrity_check_sql")
+    if integrity_sql:
+        try:
+            cur.execute(integrity_sql)
+            row = cur.fetchone()
+        except Exception as exc:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            return False, f"integrity_check_sql error: {exc}"
+        if not row:
+            return False, "integrity_check_sql returned no rows"
+        val = next(iter(row.values())) if isinstance(row, dict) else row[0]
+        return bool(val), f"integrity_check_sql → {val}"
+
+    return False, "no check defined"
+
+
+def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, message: str) -> None:
+    """Skip-if-green: mark the asset lit WITHOUT running its writer (no rows)."""
+    cur.execute(
+        """UPDATE asset_throughput
+           SET state = 'lit', last_built_at = NOW(),
+               rows_written = COALESCE(rows_written, 0), last_error = NULL
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+        (chart_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
+           WHERE run_id = %s AND asset_id = %s""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+    emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
+                "status": "green", "action": "skipped", "message": message[:500]})
+    emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
+                "from_state": "building", "to_state": "lit"})
+
+
+def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bool:
+    """
+    Run a data asset's registered writer to completion (sub-step driven). Marks
+    'lit' + downstream stale on success (returns True); marks 'error' and returns
+    False on failure. Reused by both the normal data path and the regenerate path.
+    """
+    discover_all()
+    writer_cls = get_writer(asset_id)
+    if writer_cls is None:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
+        return False
+
+    writer = writer_cls()
+    try:
+        birth_params = fetch_birth_params(conn, chart_id)
+    except Exception as exc:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
+        return False
+
+    ctx = ContextSpec(
+        asset_id=asset_id, build_id=run_id, db_conn=conn,
+        config={'chart_id': chart_id, 'birth_params': birth_params},
+    )
+    try:
+        rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)
+    except Exception as exc:
+        err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
+        logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
+        return False
+
+    rows_written = int((rows_inserted + rows_updated) or 0)
+    upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
+    writer_hash = get_writer_git_hash(asset_id)
+
+    cur.execute(
+        """UPDATE asset_throughput
+           SET state = 'lit', last_built_at = NOW(), rows_written = %s,
+               built_against_upstream_hash = %s, built_against_writer_hash = %s,
+               last_error = NULL
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+        (rows_written, upstream_hash, writer_hash, chart_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
+           WHERE run_id = %s AND asset_id = %s""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+
+    emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
+                "from_state": "building", "to_state": "lit"})
+    emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
+                "rows_written": rows_written})
+
+    downstream = compute_downstream_closure(cur, asset_id)
+    if downstream:
+        cur.execute(
+            """UPDATE asset_throughput SET state = 'stale'
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
+               AND state IN ('lit', 'mature')""",
+            (chart_id, downstream),
+        )
+        conn.commit()
+        for d in downstream:
+            emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": d,
+                        "from_state": "lit", "to_state": "stale"})
+
+    logger.info("[orchestrator] asset %s complete — %d rows", asset_id, rows_written)
+    return True
+
+
 # ── Main per-asset execution ──────────────────────────────────────────────────
 
 def run_asset(
@@ -333,118 +466,50 @@ def run_asset(
         "to_state": "building",
     })
 
-    # Check whether this asset is a service (asset_type='service' per migration 202)
+    # Asset metadata: probe/integrity-check + rebuild policy (Phase 4).
     cur.execute(
-        "SELECT asset_type, health_probe FROM asset_registry WHERE asset_id = %s",
+        """SELECT asset_type, health_probe, rebuild_on_probe_fail, integrity_check_sql
+           FROM asset_registry WHERE asset_id = %s""",
         (asset_id,),
     )
-    registry_row = cur.fetchone()
-    is_service = registry_row and registry_row.get("asset_type") == "service"
+    registry_row = cur.fetchone() or {}
+    is_service = registry_row.get("asset_type") == "service"
+    has_check = is_service or bool(registry_row.get("integrity_check_sql"))
+    rebuild_policy = bool(registry_row.get("rebuild_on_probe_fail"))
+
+    # ── Generic verify-then-conditionally-regenerate (the only new primitive) ──
+    # Metadata-driven, no `if layer == ...`: any asset (any layer) with a
+    # probe/integrity check AND rebuild_on_probe_fail=true participates. GREEN →
+    # skip (no writer run); FAIL → regenerate ONLY this asset via its registered
+    # writer → re-probe → lit / error. Works for L0 service probes AND L0 data
+    # integrity checks alike (investigation §2.C).
+    if has_check and rebuild_policy:
+        ok, msg = _probe_asset(conn, cur, asset_id, registry_row, is_service)
+        if ok:
+            _mark_probe_green(conn, cur, run_id, chart_id, asset_id, msg)
+            return
+        emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
+                    "status": "failed", "action": "regenerating", "message": msg[:500]})
+        if get_writer(asset_id) is None:
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id,
+                             f"probe failed ({msg}); no writer to regenerate")
+            return
+        if not _run_data_writer(conn, cur, run_id, chart_id, asset_id):
+            return  # writer failed; already marked error
+        ok2, msg2 = _probe_asset(conn, cur, asset_id, registry_row, is_service)
+        if ok2:
+            emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
+                        "status": "green", "action": "regenerated"})
+        else:
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id,
+                             f"regenerate-then-probe still failing: {msg2}")
+        return
 
     if is_service:
-        # Service "build" = run health probe. No row writer involved.
+        # Service "build" = run health probe (no rebuild policy → today's behaviour).
         _run_service_health_probe(conn, cur, run_id, chart_id, asset_id,
                                   registry_row.get("health_probe"))
         return
 
-    # Resolve writer (discover_all is idempotent; self-heals if runner.py skipped it)
-    discover_all()
-    writer_cls = get_writer(asset_id)
-    if writer_cls is None:
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
-        return
-
-    # Execute the writer as a sequence of sub-steps, each its own savepoint +
-    # last_built_at heartbeat + commit (see _drive_substeps). A light writer
-    # yields a single default sub-step (behaviour identical to the old single
-    # SAVEPOINT path); a heavy writer yields its natural chunks so a 40-min asset
-    # stays under both reapers and resumes per-chunk. Writer must NOT
-    # commit/rollback/close — this driver owns the transaction lifecycle.
-    writer = writer_cls()
-
-    # Per-chart birth params (Phase 3B writer generalization): the orchestrator
-    # hands each writer the chart's real birth data so a NON-native chart builds
-    # correctly. Native → None (writer uses its verified NATIVE_BIRTH). A missing-
-    # data non-native row raises → mark the asset errored (loud halt, not a wrong
-    # chart).
-    try:
-        birth_params = fetch_birth_params(conn, chart_id)
-    except Exception as exc:
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
-        return
-
-    ctx = ContextSpec(
-        asset_id=asset_id,
-        build_id=run_id,
-        db_conn=conn,
-        config={'chart_id': chart_id, 'birth_params': birth_params},
-    )
-    try:
-        rows_inserted, rows_updated = _drive_substeps(
-            conn, cur, run_id, chart_id, asset_id, writer, ctx,
-        )
-    except Exception as exc:
-        # The failed sub-step was already rolled back to its savepoint inside
-        # _drive_substeps; prior committed sub-steps stay durable. Mark errored.
-        err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
-        logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
-        return
-
-    rows_written = int((rows_inserted + rows_updated) or 0)
-    upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
-    writer_hash = get_writer_git_hash(asset_id)
-
-    cur.execute(
-        """UPDATE asset_throughput
-           SET state = 'lit',
-               last_built_at = NOW(),
-               rows_written = %s,
-               built_against_upstream_hash = %s,
-               built_against_writer_hash = %s,
-               last_error = NULL
-           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-        (rows_written, upstream_hash, writer_hash, chart_id, asset_id),
-    )
-
-    cur.execute(
-        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
-           WHERE run_id = %s AND asset_id = %s""",
-        (run_id, asset_id),
-    )
-    conn.commit()
-
-    emit_event({
-        "type": "asset.state_change",
-        "chart_id": chart_id,
-        "asset_id": asset_id,
-        "from_state": "building",
-        "to_state": "lit",
-    })
-    emit_event({
-        "type": "asset.progress",
-        "chart_id": chart_id,
-        "asset_id": asset_id,
-        "rows_written": rows_written,
-    })
-
-    # Mark transitive downstream stale
-    downstream = compute_downstream_closure(cur, asset_id)
-    if downstream:
-        cur.execute(
-            """UPDATE asset_throughput SET state = 'stale'
-               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
-               AND state IN ('lit', 'mature')""",
-            (chart_id, downstream),
-        )
-        conn.commit()
-        for d in downstream:
-            emit_event({
-                "type": "asset.state_change",
-                "chart_id": chart_id,
-                "asset_id": d,
-                "from_state": "lit",
-                "to_state": "stale",
-            })
-
-    logger.info("[orchestrator] asset %s complete — %d rows", asset_id, rows_written)
+    # Data asset: run its registered writer to completion (sub-step driven).
+    _run_data_writer(conn, cur, run_id, chart_id, asset_id)
