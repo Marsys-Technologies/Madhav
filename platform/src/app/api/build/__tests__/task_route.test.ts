@@ -144,7 +144,7 @@ describe('POST /api/build/task — happy path', () => {
   it('invokes the Cloud Run Job and records a dispatch event', async () => {
     mockInvokeBuildJob.mockResolvedValue({
       executionName:
-        'projects/p/locations/asia-south1/jobs/marsys-build-pipeline-job/executions/exec-xyz',
+        'projects/p/locations/asia-south1/jobs/brahma-build-pipeline-job/executions/exec-xyz',
     })
     const res = await POST(
       makeReq({

@@ -29,6 +29,13 @@ COPY platform/python-sidecar/pipeline/ ./platform/python-sidecar/pipeline/
 COPY platform/python-sidecar/brahmagyan/ ./platform/python-sidecar/brahmagyan/
 # Stream G: PyJHora adapter (pyjhora_adapter package)
 COPY platform/python-sidecar/pyjhora_adapter/ ./platform/python-sidecar/pyjhora_adapter/
+# L1 Gaṇita writers (ga_*). Required so the orchestrator (driven by --run-id) can
+# import + dispatch the registered GA WriterBase subclasses. Without this COPY,
+# `python -m ga_writers.*` and registered-writer discovery ModuleNotFoundError in
+# the deployed job image (Orchestrator Convergence Phase 1, 2026-06-12).
+# ga_writers' only non-stdlib import is pyjhora_adapter (COPYed above); psycopg
+# comes from requirements.txt.
+COPY platform/python-sidecar/ga_writers/ ./platform/python-sidecar/ga_writers/
 # CGM edge manifests (read by brahmagyan.bodha.bo22 at runtime)
 COPY 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 COPY 035_DISCOVERY_LAYER/cgm_supports_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/

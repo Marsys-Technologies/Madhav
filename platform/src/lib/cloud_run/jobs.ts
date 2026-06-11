@@ -2,7 +2,10 @@ import { ExecutionsClient } from '@google-cloud/run'
 
 const REGION = 'asia-south1'
 const PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
-const JOB = 'marsys-build-pipeline-job'
+// Single source of truth: BUILD_JOB_NAME (set in deploy.yml). Falls back to the
+// real deployed job name, NOT the legacy `marsys-build-pipeline-job` which does
+// not exist (Orchestrator Convergence Phase 1, 2026-06-12).
+const JOB = process.env.BUILD_JOB_NAME ?? 'brahma-build-pipeline-job'
 
 let _client: ExecutionsClient | null = null
 function client() {

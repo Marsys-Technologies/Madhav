@@ -142,7 +142,7 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
     // ── Stage 2: /api/build/task — Cloud Tasks calls us back ──────────
     mockInvokeBuildJob.mockResolvedValue({
       executionName:
-        'projects/p/locations/asia-south1/jobs/marsys-build-pipeline-job/executions/exec-e2e-1',
+        'projects/p/locations/asia-south1/jobs/brahma-build-pipeline-job/executions/exec-e2e-1',
     })
     const taskRes = await POST_TASK(
       makeTaskReq({

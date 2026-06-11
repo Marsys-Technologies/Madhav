@@ -14,7 +14,7 @@ import {
 const ENV: JobInvokerEnv = {
   gcpProject: 'madhav-astrology',
   jobLocation: 'asia-south1',
-  jobId: 'marsys-build-pipeline-job',
+  jobId: 'brahma-build-pipeline-job',
 }
 
 describe('readJobInvokerEnv', () => {
@@ -24,7 +24,7 @@ describe('readJobInvokerEnv', () => {
     } as unknown as NodeJS.ProcessEnv)
     expect(out.gcpProject).toBe('p')
     expect(out.jobLocation).toBe('asia-south1')
-    expect(out.jobId).toBe('marsys-build-pipeline-job')
+    expect(out.jobId).toBe('brahma-build-pipeline-job')
   })
 
   it('overrides default jobId when BUILD_JOB_NAME is set', () => {
@@ -43,7 +43,7 @@ describe('readJobInvokerEnv', () => {
 describe('jobPath', () => {
   it('builds projects/{p}/locations/{r}/jobs/{j}', () => {
     expect(jobPath(ENV)).toBe(
-      'projects/madhav-astrology/locations/asia-south1/jobs/marsys-build-pipeline-job',
+      'projects/madhav-astrology/locations/asia-south1/jobs/brahma-build-pipeline-job',
     )
   })
 })
@@ -58,7 +58,7 @@ describe('invokeBuildJob', () => {
         seen.envOverrides = envOverrides
         return {
           executionName:
-            'projects/madhav-astrology/locations/asia-south1/jobs/marsys-build-pipeline-job/executions/exec-xyz',
+            'projects/madhav-astrology/locations/asia-south1/jobs/brahma-build-pipeline-job/executions/exec-xyz',
         }
       },
     }

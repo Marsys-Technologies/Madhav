@@ -3,6 +3,20 @@
  * Invoked by Cloud Scheduler every 5 min.
  * Marks orphan build_runs as failed and stuck asset_throughput rows as error.
  * Emits Pub/Sub events so connected cockpits update immediately.
+ *
+ * ── Reaper thresholds (Orchestrator Convergence Phase 1 — confirmed, do NOT loosen) ──
+ * These thresholds protect against genuine hangs and MUST hold. A long-running heavy
+ * asset (e.g. ga_dashas, ~40 min) is kept visibly alive NOT by relaxing the reaper but
+ * by the Phase 3 per-sub-step heartbeat (each sub-step UPDATEs asset_throughput.last_built_at).
+ * The heartbeat cadence must beat BOTH thresholds below:
+ *   1. Orphan-run reaper: a build_runs row 'running' for > 30 min with NO asset_throughput
+ *      row (for that chart) whose last_built_at advanced in the last 10 min → 'failed'.
+ *      ⇒ Heartbeat must advance last_built_at at least every 10 min while a run is in flight.
+ *   2. Stuck-asset reaper: an asset_throughput row 'building' whose last_built_at is
+ *      older than 15 min → 'error'.
+ *      ⇒ Heartbeat must advance last_built_at at least every 15 min while an asset is building.
+ * Phase 3 emits a heartbeat per sub-step (35 sub-steps over ~40 min ⇒ ~1-2 min cadence),
+ * which clears both with wide margin. No logic change here in Phase 1 — thresholds confirmed only.
  */
 import { type NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
