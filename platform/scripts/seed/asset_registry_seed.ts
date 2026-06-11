@@ -477,9 +477,11 @@ const ASSETS: AssetDef[] = [
     english_name: 'Vimshottari dasha',
     english_description: 'Vimshottari dasha timeline: MD × AD × PD rows per ayanamsha',
     storage_type: 'postgres_table',
-    target_table: 'ganita_dashas',
-    count_sql: 'SELECT count(*) FROM ganita_dashas WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('ganita_dashas')",
+    // ga_dashas writer (GA7) writes to chart_dashas, not ganita_dashas (empty).
+    // Repointed in migration 217.
+    target_table: 'chart_dashas',
+    count_sql: 'SELECT count(*) FROM chart_dashas WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('chart_dashas')",
     target_floor: null,
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
@@ -495,17 +497,22 @@ const ASSETS: AssetDef[] = [
     english_description: 'Shadbala, ashtakavarga, and bhava bala per ayanamsha',
     storage_type: 'postgres_table',
     target_table: null,
-    // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
-    // stats route (reads asset_registry.count_sql, $1 = chart_id).
+    // Matches migration 217 — chart_facts-scoped count for the cockpit stats
+    // route (reads asset_registry.count_sql, $1 = chart_id). Broadened from the
+    // migration-214 form to the full documented family: the prior filter only
+    // matched `house_bhava_bala_%`/`graha_vimsopaka_%` and missed the
+    // `bhava_bala_*` family, `vimsopaka_bala_per_graha`, and
+    // `graha_saptavargaja_bala_component`.
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
     AND (
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
-      OR fact_category LIKE 'graha_vimsopaka_%'
+      OR fact_category LIKE '%vimsopaka%'
       OR fact_category LIKE 'ashtakavarga_%'
-      OR fact_category LIKE 'house_bhava_bala_%'
+      OR fact_category LIKE '%bhava_bala%'
+      OR fact_category = 'graha_saptavargaja_bala_component'
     )
 `,
     size_sql: null,
@@ -514,7 +521,8 @@ const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
     depends_on: [],
-    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    // Activated in migration 217 — the L1 build populates this asset.
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'ga_sensitive',
@@ -547,7 +555,8 @@ const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',
     depends_on: ['bg_reference'],
-    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    // Activated in migration 217 — the L1 build populates this asset.
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'ga_panchanga',
@@ -556,9 +565,13 @@ const ASSETS: AssetDef[] = [
     english_name: 'Birth panchanga',
     english_description: 'Natal panchanga (tithi, vara, nakshatra, yoga, karana) per ayanamsha',
     storage_type: 'postgres_table',
-    target_table: 'chart_panchanga',
-    count_sql: 'SELECT count(*) FROM chart_panchanga WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('chart_panchanga')",
+    // ga_panchanga writer (GA4) writes panchanga facts into chart_facts under the
+    // panchanga_* category family, not chart_panchanga (empty). Repointed in
+    // migration 217. size_sql is null — count is a category subset of the shared
+    // chart_facts table, so table size is not a meaningful per-asset metric.
+    target_table: 'chart_facts',
+    count_sql: "SELECT count(*) AS count FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'panchanga%'",
+    size_sql: null,
     target_floor: null,
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
@@ -595,7 +608,8 @@ const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: 'One row per ayanamsha for the native\'s Sade Sati window; awaits dedicated table',
     depends_on: [],
-    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    // Activated in migration 217 — the L1 build populates this asset.
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'ga_tajaka',
