@@ -445,7 +445,8 @@ const ASSETS: AssetDef[] = [
     target_table: 'ganita_positions',
     count_sql: 'SELECT count(*) FROM ganita_positions WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('ganita_positions')",
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 50,
     expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '9 grahas × ayanamsha count — one position row per graha per ayanamsha',
@@ -462,7 +463,8 @@ const ASSETS: AssetDef[] = [
     target_table: 'chart_divisionals',
     count_sql: 'SELECT count(*) FROM chart_divisionals WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('chart_divisionals')",
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 21635,
     expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '60 vargas × 9 grahas × ayanamsha count — structural',
@@ -481,10 +483,11 @@ const ASSETS: AssetDef[] = [
     target_table: 'chart_dashas',
     count_sql: 'SELECT count(*) FROM chart_dashas WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('chart_dashas')",
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 536471,
     expected_volume_formula: '(9 + 81 + 729) * AYANAMSHAS',
     expected_volume_inputs: null,
-    volume_explanation: 'Vimshottari tree: 9 MD + 81 AD + 729 PD = 819 rows × ayanamsha count — structural',
+    volume_explanation: 'target_floor = 536,471 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy formula (9+81+729)*AYANAMSHAS ≈ 4,095 predates the 4-level Sukshma + KP-sublevel Vimshottari tree and under-counts by ~130×.',
     depends_on: [],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -515,7 +518,8 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 2184,
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
@@ -549,7 +553,8 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 8055,
     expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',
@@ -571,10 +576,11 @@ const ASSETS: AssetDef[] = [
     target_table: 'chart_facts',
     count_sql: "SELECT count(*) AS count FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'panchanga%'",
     size_sql: null,
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 221,
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
-    volume_explanation: 'One panchanga row per ayanamsha — structural',
+    volume_explanation: 'target_floor = 221 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one panchanga row per ayanamsha" formula predates the enriched natal panchanga fact family (panchanga_* categories in chart_facts).',
     depends_on: [],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -602,10 +608,11 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 11019,
     expected_volume_formula: 'AYANAMSHAS',
     expected_volume_inputs: null,
-    volume_explanation: 'One row per ayanamsha for the native\'s Sade Sati window; awaits dedicated table',
+    volume_explanation: 'target_floor = 11,019 = achieved canonical count for chart 482012f1 (2026-06-11). The legacy "one row per ayanamsha" formula predates the full Sade Sati fact family (cycle / phase / phase_quarter / dhaiya / kantaka / ashtama / janma-shani periods + overlays).',
     depends_on: [],
     // Activated in migration 217 — the L1 build populates this asset.
     scope: 'per_chart', is_active: true, estimated_seconds: null,
@@ -661,7 +668,8 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    target_floor: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_floor: 6075,
     expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
