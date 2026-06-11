@@ -15,7 +15,7 @@ import traceback
 import psycopg
 
 from .events import emit_event
-from .writers import discover_all, get_writer, ContextSpec
+from .writers import discover_all, get_writer, ContextSpec, WriterBase
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +157,92 @@ def _run_service_health_probe(
         logger.warning("[orchestrator] service %s health probe %s: %s", asset_id, status, message)
 
 
+# ── Sub-step driver (Orchestrator Convergence Phase 2) ────────────────────────
+
+def _drive_substeps(
+    conn: psycopg.Connection,
+    cur,
+    run_id: str,
+    chart_id: str,
+    asset_id: str,
+    writer: WriterBase,
+    ctx: ContextSpec,
+    completed_keys: set[str] | None = None,
+) -> tuple[int, int]:
+    """
+    Drive a writer's sub-steps, each as its own SAVEPOINT + heartbeat + commit.
+
+    - `plan_substeps(ctx)` yields the chunk grain: ONE default sub-step for a
+      light writer (whole asset), N for a heavy writer (e.g. ga_dashas → 35
+      system×ayanamsha chunks).
+    - Each sub-step runs inside `SAVEPOINT writer_exec`; on failure the sub-step
+      is rolled back to the savepoint and the exception re-raised (the caller
+      marks the asset errored) — prior committed sub-steps stay durable.
+    - After each successful sub-step: refresh `asset_throughput.last_built_at`
+      (the reaper heartbeat — see watchdog/route.ts) + cumulative `rows_written`,
+      commit, and emit an `asset.substep` event (granular SSE).
+    - `completed_keys` (optional) lets a resumed run SKIP already-finished chunks;
+      omitted on a fresh run, where writer idempotency (replace-not-accrete,
+      scoped to `step.key`) makes an accidental re-run safe anyway.
+
+    The writer MUST NOT commit/rollback/close — this driver owns the transaction
+    lifecycle (one commit per sub-step). Returns (rows_inserted, rows_updated).
+    """
+    completed_keys = completed_keys or set()
+    substeps = writer.plan_substeps(ctx)
+    total = len(substeps)
+    rows_inserted = 0
+    rows_updated = 0
+
+    for idx, step in enumerate(substeps):
+        if step.key in completed_keys:
+            emit_event({
+                "type": "asset.substep",
+                "chart_id": chart_id,
+                "asset_id": asset_id,
+                "substep_key": step.key,
+                "substep_label": step.label,
+                "index": idx + 1,
+                "total": total,
+                "skipped": True,
+            })
+            continue
+
+        cur.execute("SAVEPOINT writer_exec")
+        try:
+            result = writer.run_substep(ctx, step)
+        except Exception:
+            cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
+            raise
+        cur.execute("RELEASE SAVEPOINT writer_exec")
+
+        rows_inserted += int(result.rows_inserted or 0)
+        rows_updated += int(result.rows_updated or 0)
+
+        # Heartbeat: keep the asset visibly alive for BOTH reapers and feed live
+        # cockpit progress. Cumulative rows_written is finalized below in run_asset.
+        cur.execute(
+            """UPDATE asset_throughput
+               SET last_built_at = NOW(), rows_written = %s
+               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+            (rows_inserted + rows_updated, chart_id, asset_id),
+        )
+        conn.commit()
+
+        emit_event({
+            "type": "asset.substep",
+            "chart_id": chart_id,
+            "asset_id": asset_id,
+            "substep_key": step.key,
+            "substep_label": step.label,
+            "index": idx + 1,
+            "total": total,
+            "rows_written": rows_inserted + rows_updated,
+        })
+
+    return rows_inserted, rows_updated
+
+
 # ── Main per-asset execution ──────────────────────────────────────────────────
 
 def run_asset(
@@ -239,27 +325,32 @@ def run_asset(
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"no writer registered for {asset_id}")
         return
 
-    # Execute writer inside savepoint — crash rolls back only its writes
-    # Writer must NOT commit/rollback; caller owns the transaction.
-    cur.execute("SAVEPOINT writer_exec")
+    # Execute the writer as a sequence of sub-steps, each its own savepoint +
+    # last_built_at heartbeat + commit (see _drive_substeps). A light writer
+    # yields a single default sub-step (behaviour identical to the old single
+    # SAVEPOINT path); a heavy writer yields its natural chunks so a 40-min asset
+    # stays under both reapers and resumes per-chunk. Writer must NOT
+    # commit/rollback/close — this driver owns the transaction lifecycle.
+    writer = writer_cls()
+    ctx = ContextSpec(
+        asset_id=asset_id,
+        build_id=run_id,
+        db_conn=conn,
+        config={'chart_id': chart_id},
+    )
     try:
-        ctx = ContextSpec(
-            asset_id=asset_id,
-            build_id=run_id,
-            db_conn=conn,
-            config={'chart_id': chart_id},
+        rows_inserted, rows_updated = _drive_substeps(
+            conn, cur, run_id, chart_id, asset_id, writer, ctx,
         )
-        result = writer_cls().run(ctx)
-        rows_written = result.rows_inserted + result.rows_updated
     except Exception as exc:
-        cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
+        # The failed sub-step was already rolled back to its savepoint inside
+        # _drive_substeps; prior committed sub-steps stay durable. Mark errored.
         err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
         logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
         return
-    cur.execute("RELEASE SAVEPOINT writer_exec")
 
-    rows_written = int(rows_written or 0)
+    rows_written = int((rows_inserted + rows_updated) or 0)
     upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
     writer_hash = get_writer_git_hash(asset_id)
 
