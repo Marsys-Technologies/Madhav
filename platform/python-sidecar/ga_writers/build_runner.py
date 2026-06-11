@@ -481,9 +481,31 @@ def main() -> None:
         help="Build UUID (auto-generated if not supplied)",
     )
     parser.add_argument(
-        "--skip_strength",
-        action="store_true",
+        "--skip_strength", action="store_true",
         help="Skip ga_strength writer (positions only)",
+    )
+    parser.add_argument(
+        "--skip_sensitive", action="store_true", help="Skip ga_sensitive (GA5) writer",
+    )
+    parser.add_argument(
+        "--skip_vargas", action="store_true", help="Skip ga_vargas (GA6) writer",
+    )
+    parser.add_argument(
+        "--skip_ga7", action="store_true", help="Skip ga_dashas (GA7) writer",
+    )
+    parser.add_argument(
+        "--skip_ga8", action="store_true", help="Skip ga_structural (GA8) writer",
+    )
+    parser.add_argument(
+        "--skip_sade_sati", action="store_true", help="Skip ga_sade_sati (GA9) writer",
+    )
+    parser.add_argument(
+        "--ga7_systems", nargs="*", default=None,
+        help="Limit GA7 to these dasha systems (default: all)",
+    )
+    parser.add_argument(
+        "--ga7_ayanamshas", nargs="*", default=None,
+        help="Limit GA7 to these ayanamshas (default: all)",
     )
     parser.add_argument(
         "--json",
@@ -498,9 +520,9 @@ def main() -> None:
         build_id=args.build_id,
         skip_strength=args.skip_strength,
         skip_sensitive=args.skip_sensitive,
-        skip_vargas=getattr(args, "skip_vargas", False),
-        skip_sade_sati=getattr(args, "skip_sade_sati", False),
-        skip_ga8=getattr(args, "skip_ga8", False),
+        skip_vargas=args.skip_vargas,
+        skip_sade_sati=args.skip_sade_sati,
+        skip_ga8=args.skip_ga8,
         skip_ga7=args.skip_ga7,
         ga7_systems=args.ga7_systems,
         ga7_ayanamshas=args.ga7_ayanamshas,

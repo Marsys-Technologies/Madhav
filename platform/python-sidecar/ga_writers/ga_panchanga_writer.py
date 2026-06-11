@@ -32,6 +32,9 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._telemetry import update_asset_throughput
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -1162,6 +1165,9 @@ def _emit_chandra_bala_baseline(chart_id: str, build_id: str, computed_at: str,
 # ── INSERT ────────────────────────────────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict]) -> int:
+    # Idempotency: replace this chart's prior rows for the scope being written so a
+    # rebuild under a new build_id replaces instead of accreting.
+    replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:
         conn.execute(
@@ -1203,26 +1209,8 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict]) -> int:
 # ── asset_throughput update ───────────────────────────────────────────────────
 
 def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """
-                UPDATE asset_throughput
-                   SET row_count     = %s,
-                       build_state   = 'built',
-                       last_build_id = %s,
-                       updated_at    = NOW()
-                 WHERE asset_id = 'ga_panchanga'
-                   AND chart_id = %s
-                """,
-                [row_count, build_id, chart_id],
-            )
-            conn.commit()
-            logger.info(
-                "[ga_panchanga_writer] asset_throughput updated: ga_panchanga rows=%d", row_count
-            )
-    except Exception as exc:
-        logger.warning("[ga_panchanga_writer] asset_throughput update failed (non-fatal): %s", exc)
+    with _conn() as conn:
+        update_asset_throughput(conn, "ga_panchanga", chart_id, build_id, row_count)
 
 
 # ── Main build function ────────────────────────────────────────────────────────

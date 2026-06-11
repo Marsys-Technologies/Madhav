@@ -54,6 +54,9 @@ import pathlib
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._telemetry import update_asset_throughput
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -1292,6 +1295,10 @@ def _read_moon_pada_per_ayanamsha(conn: Any, chart_id: str) -> dict[str, int]:
 # ── INSERT chart_facts rows ───────────────────────────────────────────────────
 
 def _insert_rows(conn: Any, rows: list[dict]) -> int:
+    # Idempotency: replace this chart's prior rows for the scope being written so a
+    # rebuild under a new build_id replaces instead of accreting (build_id is in the
+    # chart_facts unique key).
+    replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:
         conn.execute(
@@ -1332,29 +1339,8 @@ def _insert_rows(conn: Any, rows: list[dict]) -> int:
 # ── asset_throughput update ───────────────────────────────────────────────────
 
 def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """
-                UPDATE asset_throughput
-                   SET row_count      = %s,
-                       build_state    = 'built',
-                       last_build_id  = %s,
-                       updated_at     = NOW()
-                 WHERE asset_id = %s
-                   AND chart_id = %s
-                """,
-                [row_count, build_id, "ga_sade_sati", chart_id],
-            )
-            conn.commit()
-            logger.info(
-                "[ga_sade_sati_writer] asset_throughput updated: ga_sade_sati chart=%s rows=%d",
-                chart_id, row_count,
-            )
-    except Exception as exc:
-        logger.warning(
-            "[ga_sade_sati_writer] asset_throughput update failed (non-fatal): %s", exc
-        )
+    with _conn() as conn:
+        update_asset_throughput(conn, "ga_sade_sati", chart_id, build_id, row_count)
 
 
 # ── Materialized view refresh ─────────────────────────────────────────────────

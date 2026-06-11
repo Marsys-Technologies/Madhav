@@ -62,6 +62,8 @@ from typing import Any
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
+from ga_writers._idempotency import replace_prior_chart_divisionals
+from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -2110,6 +2112,9 @@ def _check_already_written(conn, chart_id: str, ayanamsha_id: str, varga_id: str
 
 def _write_rows_batch(conn, rows: list[dict]) -> int:
     """Write a batch of rows to chart_divisionals, return count written."""
+    # Idempotency: replace this chart's prior rows for the (ayanamsha, varga) scope
+    # in this batch so a rebuild replaces rather than leaving stale values.
+    replace_prior_chart_divisionals(conn, rows)
     written = 0
     for row in rows:
         try:
@@ -2123,29 +2128,10 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
 
 def _update_asset_throughput(conn, chart_id: str, build_id: str,
                               batch_num: int, total_batches: int, rows_so_far: int) -> None:
-    """Update asset_throughput incrementally after each varga batch."""
-    pct = round((batch_num / total_batches) * 100.0, 1)
-    # Telemetry is best-effort and MUST NOT poison the build transaction. Wrap in a
-    # psycopg savepoint (conn.transaction()) so a schema mismatch on asset_throughput
-    # rolls back only this statement, never the already-committed varga rows. The
-    # cockpit reads count_sql from asset_registry (migration 214), not this table.
-    try:
-        with conn.transaction():
-            conn.execute(
-                """
-                INSERT INTO asset_throughput (chart_id, asset_id, build_id, rows_written, pct_complete, updated_at)
-                VALUES (%s, 'ga_vargas', %s, %s, %s, NOW())
-                ON CONFLICT (chart_id, asset_id, build_id) DO UPDATE
-                  SET rows_written = EXCLUDED.rows_written,
-                      pct_complete = EXCLUDED.pct_complete,
-                      updated_at   = NOW()
-                """,
-                [chart_id, str(build_id), rows_so_far, pct],
-            )
-        logger.info("[ga_vargas] asset_throughput: batch %d/%d rows=%d pct=%.1f%%",
-                    batch_num, total_batches, rows_so_far, pct)
-    except Exception as exc:
-        logger.warning("[ga_vargas] asset_throughput update failed (non-fatal): %s", exc)
+    """Update asset_throughput incrementally after each varga batch (cumulative
+    rows_so_far; 'lit' once the final batch lands, 'building' before that)."""
+    state = "lit" if batch_num >= total_batches else "building"
+    update_asset_throughput(conn, "ga_vargas", chart_id, build_id, rows_so_far, state=state)
 
 
 # ── FORENSIC gate ─────────────────────────────────────────────────────────────
