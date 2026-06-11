@@ -77,6 +77,24 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
 
+      # Build the orchestrator job image (no push) so a broken Dockerfile.pipeline
+      # — e.g. a missing COPY for ga_writers/ — is caught at PR time. Context is the
+      # repo root because Dockerfile.pipeline COPYs from repo-root paths
+      # (platform/python-sidecar/* and 035_DISCOVERY_LAYER/*).
+      - name: Build pipeline job image (load, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./platform/python-sidecar/Dockerfile.pipeline
+          push: false
+          load: true
+          tags: brahma-pipeline:pr-check
+
+      - name: Verify ga_writers is importable in the pipeline image
+        run: |
+          docker run --rm --entrypoint python brahma-pipeline:pr-check \
+            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+
   deploy-web:
     name: Build & Deploy Web
     # Only deploy on workflow_run (CI passed on main) or manual dispatch.
@@ -192,6 +210,7 @@ jobs:
             VERTEX_AI_LOCATION=asia-south1
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
             BOOTSTRAP_JOB_NAME=brahma-foundation-bootstrap
+            BUILD_JOB_NAME=brahma-build-pipeline-job
             BQ_DATASET=brahma_l5_olap
             GCS_OLAP_PREFIX=gs://madhav-brahma-olap/parquet/
             MARSYS_REPO_ROOT=/app
@@ -337,3 +356,54 @@ jobs:
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
   # ── /4.edge_and_infra_hygiene ──
+
+  # ── Orchestrator Convergence Phase 1: brahma-pipeline job image under CI ──
+  # The `brahma-build-pipeline-job` Cloud Run Job image was previously built
+  # out-of-band by hand, so the deployed SHA was not reproducible from the repo
+  # and silently lacked ga_writers/ (the bug this arc fixes). This job builds +
+  # pushes the image from main on every deploy and re-points the Cloud Run Job at
+  # the new SHA, so the job image can never again diverge from the code.
+  # Context is the repo root (Dockerfile.pipeline COPYs repo-root paths).
+  deploy-pipeline-job:
+    name: Build & Deploy Pipeline Job Image
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push pipeline job image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./platform/python-sidecar/Dockerfile.pipeline
+          push: true
+          tags: |
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
+
+      - name: Re-point Cloud Run Job at the new image
+        run: |
+          gcloud run jobs update brahma-build-pipeline-job \
+            --region=${{ env.GCP_REGION }} \
+            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
+            --quiet
+
+      - name: Verify ga_writers is importable in the pushed image
+        run: |
+          docker run --rm --entrypoint python \
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
+            -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+  # ── /Orchestrator Convergence Phase 1 ──

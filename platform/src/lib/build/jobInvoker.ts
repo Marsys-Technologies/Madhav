@@ -1,5 +1,5 @@
 /**
- * Cloud Run Jobs invoker for `marsys-build-pipeline-job`.
+ * Cloud Run Jobs invoker for `brahma-build-pipeline-job`.
  *
  * Server-side library used by /api/build/task. The Cloud Run Jobs API
  * accepts an `RunJobRequest` with `Overrides.ContainerOverrides[].args` so we
@@ -55,7 +55,7 @@ export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvo
   const out: JobInvokerEnv = {
     gcpProject: get('GCP_PROJECT'),
     jobLocation: get('BUILD_JOB_LOCATION', env.GCP_REGION ?? 'asia-south1'),
-    jobId: get('BUILD_JOB_NAME', 'marsys-build-pipeline-job'),
+    jobId: get('BUILD_JOB_NAME', 'brahma-build-pipeline-job'),
   }
   if (missing.length > 0) {
     throw new Error(`[build/jobInvoker] missing env vars: ${missing.join(', ')}`)
