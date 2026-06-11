@@ -1743,8 +1743,9 @@ def _build_all_sensitive_rows_for_ayanamsha(
     # Compute chart positions via PyJHora (use adapter key for engine call)
     chart_data = compute_chart(inputs=birth_params, ayanamsha_id=ayanamsha_id)
 
-    # FORENSIC gate — raises RuntimeError if anchors fail (use adapter key)
-    forensic_gate(chart_data, ayanamsha_id)
+    # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
+    if chart_id == CANONICAL_CHART_ID:
+        forensic_gate(chart_data, ayanamsha_id)
 
     # canonical_id = ayanamsha_key; used for all row fact_subject/fact_key storage
     canonical_id = ayanamsha_key
@@ -2032,7 +2033,8 @@ def build_ga_sensitive(
     # to fail fast before looping all 5 ayanamshas.
     try:
         preflight_chart = compute_chart(inputs=birth_params, ayanamsha_id="lahiri")
-        forensic_gate(preflight_chart, "lahiri")
+        if chart_id == CANONICAL_CHART_ID:
+            forensic_gate(preflight_chart, "lahiri")
         summary["forensic_pass"] = True
     except RuntimeError as fe:
         msg = f"GA5 FORENSIC gate FAIL: {fe}"

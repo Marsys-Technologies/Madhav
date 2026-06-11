@@ -2236,7 +2236,8 @@ def build_ga_vargas(
         # FORENSIC gate — must pass or halt
         forensic_result = forensic_gate_vargas(all_vargas, ayan_id)
         summary["forensic_results"][ayan_id] = forensic_result
-        if forensic_result["result"] == "FAIL":
+        # native-anchored (D1 Sun/Lagna); only HALTS for the native chart (Phase 3B).
+        if chart_id == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
             logger.error("[ga_vargas] FORENSIC FAIL: %s", forensic_result["findings"])
             _write_halt_log(
                 chart_id, build_id, "GA6_FORENSIC_FAIL",

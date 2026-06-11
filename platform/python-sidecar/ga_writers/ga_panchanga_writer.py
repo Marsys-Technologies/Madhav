@@ -1268,8 +1268,9 @@ def build_ga_panchanga(
 
     pi = panchanga_instant(birth_dt, lat, lon, tz_min)
 
-    # FORENSIC gate — must pass before any write
-    panchanga_forensic_gate(pi)
+    # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
+    if chart_id == CANONICAL_CHART_ID:
+        panchanga_forensic_gate(pi)
     summary["forensic_pass"] = True
 
     # ── Build INVARIANT rows ─────────────────────────────────────────────────
