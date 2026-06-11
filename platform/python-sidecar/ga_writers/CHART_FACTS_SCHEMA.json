@@ -176,7 +176,7 @@
         ],
         "mv_preferred": "mv_chart_planet_summary"
       },
-      "render_template": "{graha} is in {sign} at {longitude:.2f}° sidereal ({ayanamsha}), nakshatra {nakshatra} pada {pada}, house {house_d1}."
+      "render_template": "{graha} is in {sign} at {longitude:.2f}\u00b0 sidereal ({ayanamsha}), nakshatra {nakshatra} pada {pada}, house {house_d1}."
     },
     "graha_speed_state": {
       "ayanamsha_dependent": false,
@@ -328,7 +328,7 @@
           "graha_summary"
         ]
       },
-      "render_template": "{graha} is {degree:.2f}° into {sign} (sign #{sign_num}) ({ayanamsha})."
+      "render_template": "{graha} is {degree:.2f}\u00b0 into {sign} (sign #{sign_num}) ({ayanamsha})."
     },
     "graha_shadbala_sthana": {
       "ayanamsha_dependent": true,
@@ -2077,7 +2077,7 @@
           "panchanga_summary"
         ]
       },
-      "render_template": "Eclipse proximity at birth (±15 days): {days_from_birth} ({ayanamsha})."
+      "render_template": "Eclipse proximity at birth (\u00b115 days): {days_from_birth} ({ayanamsha})."
     },
     "_a5_note": {
       "_note": "GA5 adds 30 esoteric/Tajik/KP/Nadi/Lal Kitab categories. Every row carries 6 Section-B enrichment fields: tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag, vargottama_flag_at_point, formula_provenance_text, cross_ayanamsha_divergence_arcsec.",
@@ -2212,7 +2212,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} (Aprakasha) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "{subject} (Aprakasha) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "arudha_pada": {
       "ayanamsha_dependent": true,
@@ -2425,7 +2425,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} (Bhrigu Nadi) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "{subject} (Bhrigu Nadi) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_avayogi": {
       "ayanamsha_dependent": true,
@@ -2555,7 +2555,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Avayogi Point ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Avayogi Point ({formula_id}) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_bhrigu_bindu": {
       "ayanamsha_dependent": true,
@@ -2681,7 +2681,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Bhrigu Bindu at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Bhrigu Bindu at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_brahma": {
       "ayanamsha_dependent": true,
@@ -2778,7 +2778,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Brahma Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Brahma Point at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_chatushphuta": {
       "ayanamsha_dependent": true,
@@ -2871,7 +2871,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Chatushphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Chatushphuta at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_mrityu": {
       "ayanamsha_dependent": true,
@@ -3001,7 +3001,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Mrityu Sphuta ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Mrityu Sphuta ({formula_id}) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_panchasphuta": {
       "ayanamsha_dependent": true,
@@ -3098,7 +3098,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Panchasphuta ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Panchasphuta ({formula_id}) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_pranapada_sphuta": {
       "ayanamsha_dependent": true,
@@ -3191,7 +3191,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Pranapada Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Pranapada Sphuta at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_shiva": {
       "ayanamsha_dependent": true,
@@ -3284,7 +3284,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Shiva Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Shiva Point at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_sri_yantra_position": {
       "ayanamsha_dependent": true,
@@ -3379,7 +3379,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} (Sri Yantra) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "{subject} (Sri Yantra) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_trikona_dasha_sphuta": {
       "ayanamsha_dependent": true,
@@ -3472,7 +3472,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Trikona Dasha Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Trikona Dasha Sphuta at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_trisphuta": {
       "ayanamsha_dependent": true,
@@ -3565,7 +3565,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Trisphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Trisphuta at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_vishnu": {
       "ayanamsha_dependent": true,
@@ -3658,7 +3658,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Vishnu Point at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Vishnu Point at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "esoteric_point_yogi": {
       "ayanamsha_dependent": true,
@@ -3804,7 +3804,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Yogi Point ({formula_id}) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Yogi Point ({formula_id}) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "karaka_chara_position": {
       "ayanamsha_dependent": true,
@@ -3928,7 +3928,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject}: {assigned_graha} at {degree_in_sign:.4f}° in {sign} ({karaka_school}, {ayanamsha})."
+      "render_template": "{subject}: {assigned_graha} at {degree_in_sign:.4f}\u00b0 in {sign} ({karaka_school}, {ayanamsha})."
     },
     "karakamsa_position": {
       "ayanamsha_dependent": true,
@@ -4365,7 +4365,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} Maharsi Sphuta at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "{subject} Maharsi Sphuta at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "midpoint": {
       "ayanamsha_dependent": true,
@@ -4511,7 +4511,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Midpoint {subject} at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "Midpoint {subject} at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "nakshatra_pada_sensitive": {
       "ayanamsha_dependent": true,
@@ -4840,7 +4840,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} (Saham) at {longitude_sidereal:.4f}° in {sign} ({ayanamsha})."
+      "render_template": "{subject} (Saham) at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha})."
     },
     "saturn_derived_point": {
       "ayanamsha_dependent": true,
@@ -4976,7 +4976,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} at {longitude_sidereal:.4f}° in {sign} ({ayanamsha}, formula={formula_id})."
+      "render_template": "{subject} at {longitude_sidereal:.4f}\u00b0 in {sign} ({ayanamsha}, formula={formula_id})."
     },
     "swamsa_position": {
       "ayanamsha_dependent": true,
@@ -5227,7 +5227,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Hadda zone {subject}: lord={lord} in {sign} {zone_start_deg:.1f}°-{zone_end_deg:.1f}° ({ayanamsha})."
+      "render_template": "Hadda zone {subject}: lord={lord} in {sign} {zone_start_deg:.1f}\u00b0-{zone_end_deg:.1f}\u00b0 ({ayanamsha})."
     },
     "tajik_triraashipathi": {
       "ayanamsha_dependent": true,
@@ -5384,7 +5384,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "Tajik Vargottama at {longitude_sidereal:.4f}° in {sign}, is_vargottama={is_vargottama} ({ayanamsha})."
+      "render_template": "Tajik Vargottama at {longitude_sidereal:.4f}\u00b0 in {sign}, is_vargottama={is_vargottama} ({ayanamsha})."
     },
     "upagraha_position": {
       "ayanamsha_dependent": true,
@@ -5564,7 +5564,7 @@
         ],
         "mv_preferred": "mv_chart_sensitive_points_summary"
       },
-      "render_template": "{subject} (upagraha) at {longitude_sidereal:.4f}° sidereal in {sign} ({ayanamsha})."
+      "render_template": "{subject} (upagraha) at {longitude_sidereal:.4f}\u00b0 sidereal in {sign} ({ayanamsha})."
     },
     "karaka_per_varga": {
       "ayanamsha_dependent": true,
@@ -6055,8 +6055,8 @@
     "argala_natal_matrix": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
-      "subject_note": "Target sign as 'SIGN_{N}' (1-based). 12 subjects × 4 argala positions = 144 atomic rows per (chart, ayanamsha).",
-      "atomicity": "CRITICAL: each row is atomic (one value_num per row, no JSONB blob). 12×12 = 144 rows per ayanamsha, NOT 1 blob.",
+      "subject_note": "Target sign as 'SIGN_{N}' (1-based). 12 subjects \u00d7 4 argala positions = 144 atomic rows per (chart, ayanamsha).",
+      "atomicity": "CRITICAL: each row is atomic (one value_num per row, no JSONB blob). 12\u00d712 = 144 rows per ayanamsha, NOT 1 blob.",
       "allowed_keys": {
         "from_sign_<M>_offset_<K>": {
           "value_type": "num",
@@ -6427,7 +6427,7 @@
       "retrieval_hints": {
         "mv_preferred": "mv_chart_aspect_matrix"
       },
-      "render_template": "Tajik {type} between {g1} and {g2}: orb {orb:.2f}° ({ayanamsha})."
+      "render_template": "Tajik {type} between {g1} and {g2}: orb {orb:.2f}\u00b0 ({ayanamsha})."
     },
     "bhava_bala_aspectual": {
       "ayanamsha_dependent": true,
@@ -6703,7 +6703,7 @@
       "retrieval_hints": {
         "mv_preferred": "mv_chart_aspect_matrix"
       },
-      "render_template": "{g1} conjunct {g2} within {orb:.2f}° ({ayanamsha})."
+      "render_template": "{g1} conjunct {g2} within {orb:.2f}\u00b0 ({ayanamsha})."
     },
     "dosha_fires": {
       "ayanamsha_dependent": true,
@@ -7467,7 +7467,7 @@
     "virodha_argala_natal_matrix": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
-      "subject_note": "Target sign as 'SIGN_{N}'. 12 subjects × 4 virodha positions = 144 atomic rows per (chart, ayanamsha).",
+      "subject_note": "Target sign as 'SIGN_{N}'. 12 subjects \u00d7 4 virodha positions = 144 atomic rows per (chart, ayanamsha).",
       "atomicity": "CRITICAL: atomic (value_num per row). 144 rows per ayanamsha.",
       "allowed_keys": {
         "from_sign_<M>_offset_<K>": {
@@ -7517,7 +7517,7 @@
       "ayanamsha_dependent": true,
       "atomic_grain_scrutiny": "highest",
       "target_table": "chart_facts",
-      "note": "Saturn in 2H from natal Moon — Sade Sati exit phase.",
+      "note": "Saturn in 2H from natal Moon \u2014 Sade Sati exit phase.",
       "allowed_keys": {
         "period_start_iso": {
           "value_type": "text",
@@ -7765,7 +7765,7 @@
       "ayanamsha_dependent": true,
       "atomic_grain_scrutiny": "highest",
       "target_table": "chart_facts",
-      "note": "Q6=A: all 7 GA7 dasha systems — one atomic text key per system.",
+      "note": "Q6=A: all 7 GA7 dasha systems \u2014 one atomic text key per system.",
       "applies_to_subjects": [
         "CYCLE_1",
         "CYCLE_2",
@@ -7882,7 +7882,7 @@
         ],
         "mv_preferred": "mv_chart_sade_sati_lifetime_summary"
       },
-      "render_template": "Sade Sati {cycle_id}: {cycle_start_iso} → {cycle_end_iso} ({duration_years:.1f}y, Moon in {moon_sign_for_cycle}, {cycle_type}, {ayanamsha})."
+      "render_template": "Sade Sati {cycle_id}: {cycle_start_iso} \u2192 {cycle_end_iso} ({duration_years:.1f}y, Moon in {moon_sign_for_cycle}, {cycle_type}, {ayanamsha})."
     },
     "sade_sati_downstream_cross_reference": {
       "ayanamsha_dependent": true,
@@ -7924,7 +7924,7 @@
       "ayanamsha_dependent": true,
       "atomic_grain_scrutiny": "highest",
       "target_table": "chart_facts",
-      "note": "Concurrent transit modifiers — all atomic boolean/text keys (no JSONB).",
+      "note": "Concurrent transit modifiers \u2014 all atomic boolean/text keys (no JSONB).",
       "allowed_keys": {
         "mars_aspect_to_saturn_during_period_flag": {
           "value_type": "text_enum",
@@ -8237,7 +8237,7 @@
       "ayanamsha_dependent": true,
       "atomic_grain_scrutiny": "highest",
       "target_table": "chart_facts",
-      "note": "Saturn in 12H from natal Moon — Sade Sati entry phase.",
+      "note": "Saturn in 12H from natal Moon \u2014 Sade Sati entry phase.",
       "allowed_keys": {
         "period_start_iso": {
           "value_type": "text",
@@ -8267,6 +8267,378 @@
           "saturn_moon_configuration"
         ]
       }
+    },
+    "panchanga_durmuhurta": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "DURMUHURTA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Durmuhurta on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_varjyam": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "VARJYAM_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Varjyam on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_visha_ghati": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "VISHA_GHATI_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Visha Ghati on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_sashtighati": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "SASHTIGHATI_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Sashtighati on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_yamakantaka": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "YAMAKANTAKA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Yamakantaka on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_krakaca": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "KRAKACA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_inauspicious"
+        ]
+      },
+      "render_template": "Krakaca on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_pratah_sandhya": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "PRATAH_SANDHYA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Pratah Sandhya on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_madhyahna_sandhya": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "MADHYAHNA_SANDHYA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Madhyahna Sandhya on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_sayam_sandhya": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "SAYAM_SANDHYA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Sayam Sandhya on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_vijaya_muhurta": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "VIJAYA_MUHURTA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Vijaya Muhurta on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_godhuli_muhurta": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "GODHULI_MUHURTA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Godhuli Muhurta on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "panchanga_nishita_kala": {
+      "ayanamsha_dependent": false,
+      "target_table": "chart_facts",
+      "ayanamsha_id_constant": "INVARIANT",
+      "applies_to_subjects": [
+        "NISHITA_KALA_BIRTH_DAY"
+      ],
+      "allowed_keys": {
+        "start_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "end_iso": {
+          "value_type": "text",
+          "verification_min": "two_pass_verified"
+        },
+        "duration_minutes": {
+          "value_type": "num",
+          "unit": "minutes",
+          "precision": 1,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "panchanga_engine/2.0.0-P2",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "panchanga_auspicious"
+        ]
+      },
+      "render_template": "Nishita Kala on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
     }
   },
   "channels": {
