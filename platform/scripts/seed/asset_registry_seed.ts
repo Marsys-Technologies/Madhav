@@ -170,7 +170,6 @@ const ASSETS: AssetDef[] = [
     english_description: 'The holy grail of L0 — structured properties of every classical Jyotish concept across 15 specialized typed tables.',
     storage_type: 'postgres_table',
     target_table: 'reference_nakshatras',
-<<<<<<< HEAD
     count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_nakshatras) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
     size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
     target_floor: null,
@@ -627,6 +626,47 @@ const ASSETS: AssetDef[] = [
     volume_explanation: 'Writer output — row count depends on aspect configurations found; awaits dedicated table',
     depends_on: [],
     scope: 'per_chart', is_active: false, estimated_seconds: null,
+  },
+  {
+    asset_id: 'ga_structural',
+    layer: 'ganita', sort_order: 9,
+    sanskrit_name: 'Saṃracanā',
+    english_name: 'Structural facts',
+    english_description: 'GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka and tri-deva roles, and base graha facts — per ayanamsha.',
+    storage_type: 'postgres_table',
+    target_table: null,
+    // Registered in migration 219. Positive family filter verified to equal the
+    // untiled chart_facts complement (6,075) — the five chart_facts tiles
+    // (strength/sensitive/sade_sati/panchanga/structural) partition chart_facts.
+    count_sql: `
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND (
+      fact_category LIKE 'aspect_%'
+      OR fact_category LIKE 'graha_avastha_%'
+      OR fact_category LIKE '%argala_natal_matrix'
+      OR fact_category LIKE 'graha_dispositor_%'
+      OR fact_category IN (
+        'graha_position', 'graha_sign_attributes', 'graha_functional_class_per_ascendant',
+        'graha_composite_state_classification', 'graha_effective_dignity_modified_by_aspects',
+        'graha_in_house_composite_strength', 'graha_special_state_rollup',
+        'graha_tri_deva_role_strength', 'graha_vargottama_amplification_factor',
+        'graha_yoga_karaka_flag', 'jaimini_tri_deva_role_per_graha',
+        'karaka_house_lord_overlap_flag', 'karakatva_strength_per_significance',
+        'composite_dispositor_strength', 'house_strength_classification_rollup',
+        'pranic_strength_per_graha', 'chandra_bala_natal_baseline', 'tara_bala_natal_baseline',
+        'nakshatra_pada_sensitive', 'yoga_fires', 'dosha_fires', 'conjunction_within_orb',
+        'panchaka_flag', 'bhadra_flag', 'eclipse_proximity_natal'
+      )
+    )
+`,
+    size_sql: null,
+    target_floor: null,
+    expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
+    expected_volume_inputs: null,
+    volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
+    depends_on: [],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
   // ── BODHA (8) ─────────────────────────────────────────────────────────────
