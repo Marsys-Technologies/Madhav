@@ -38,27 +38,122 @@ class WriterResult:
     notes: str = ''
 
 
+@dataclass
+class SubStep:
+    """
+    One savepoint-isolated, heartbeated unit of a heavy writer's work.
+
+    The grain is the writer's own natural chunk — e.g. for ga_dashas, one
+    (system × ayanamsha) pair (35 in total). The orchestrator drives each
+    SubStep returned by plan_substeps() as its own SAVEPOINT + last_built_at
+    heartbeat, so a 40-minute asset stays under both watchdog reapers and a
+    crash mid-asset resumes from the failed chunk (writer idempotency makes a
+    re-run of a completed chunk a safe replace).
+
+    `key` is unique within the asset and is the idempotency scope the writer's
+    replace_prior_* must target. `label` is human-readable for SSE.
+    """
+    key: str
+    label: str = ''
+
+    def __post_init__(self) -> None:
+        if not self.label:
+            self.label = self.key
+
+
 class WriterBase:
     """
-    Base class for all L0 Brahma Jñāna writers.
+    Base class for ALL orchestrator-driven writers (L0 Brahma Jñāna + L1 Gaṇita
+    + every future layer L2–L5).
+
+    ── FROZEN CONTRACT (Orchestrator Convergence Phase 2, 2026-06-12) ──────────
+    This is the FINAL shape of the writer contract. Future layers onboard by
+    CONFORMING to it (subclass + @register + registry metadata), never by
+    extending it. If a new layer appears to need a contract change, STOP and
+    raise it with the native — it means this freeze was wrong (a deliberate
+    architectural decision, not a routine edit). See
+    `ORCHESTRATOR_GENERALIZATION_INVESTIGATION_v1_0.md §2.B`.
+
+    The contract is exactly two shapes:
+
+      • LIGHT writer (L0 + light L1, the common case): implement `run(ctx)`.
+        It does the whole asset in one unit. It never sees sub-steps — the
+        orchestrator gives it a single default sub-step.
+
+      • HEAVY writer (e.g. ga_dashas: ~40 min, 35 chunks): override BOTH
+        `plan_substeps(ctx)` and `run_substep(ctx, step)`. The orchestrator
+        drives each sub-step as its own savepoint + heartbeat. Such a writer
+        gets a working `run(ctx)` for free (drives its own sub-steps, no
+        heartbeat) for CLI / direct use.
 
     Subclasses MUST:
     - set class attribute `asset_id` (matches asset_registry.asset_id)
-    - implement run(ctx: ContextSpec) -> WriterResult
+    - implement `run(ctx)`  OR  (`plan_substeps(ctx)` + `run_substep(ctx, step)`)
 
     Subclasses MUST NOT:
-    - call ctx.db_conn.commit() or ctx.db_conn.rollback() — caller owns the transaction
+    - call ctx.db_conn.commit() / rollback() — the orchestrator owns the
+      transaction + savepoint lifecycle (commits once per sub-step)
     - close ctx.db_conn — caller owns the connection
+    - open their own connection — use ctx.db_conn exclusively
+    - write asset_throughput — the orchestrator is the sole build-state writer
 
     Subclasses SHOULD:
-    - be deterministic (same input + same source = same output rows + same content hashes)
-    - use INSERT ... ON CONFLICT DO NOTHING (or DO UPDATE) for idempotency
+    - be deterministic (same input + same source = same output rows + hashes)
+    - call their own natural-key-scoped replace_prior_* (replace-not-accrete)
+      on ctx.db_conn immediately before INSERT, scoped to the sub-step's key,
+      so any chunk is safe to re-run
+    - honor ctx.dry_run
     - log progress at INFO level every ~100-1000 rows
     """
     asset_id: str = ''  # subclass overrides
 
+    # Hint mirroring asset_registry.has_substeps. The orchestrator drives
+    # sub-steps for EVERY writer regardless (a light writer simply has one
+    # default sub-step); this flag is advisory for cockpit/planner pre-invoke.
+    has_substeps: bool = False
+
+    def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        """
+        FROZEN CONTRACT. Return the sub-steps the orchestrator will drive.
+
+        Default: ONE sub-step covering the whole asset (the light-writer path).
+        Heavy writers override to expose their natural chunk grain (e.g.
+        ga_dashas → 35 SubStep(key=f'{system}:{ayanamsha}')).
+        """
+        return [SubStep(key=self.asset_id, label=self.asset_id)]
+
+    def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
+        """
+        FROZEN CONTRACT. Execute one sub-step on ctx.db_conn (no commit/close).
+
+        Default: delegate to run() — a light writer never sees sub-steps and is
+        invoked once with its single default sub-step. Heavy writers override
+        this AND plan_substeps, scoping their replace_prior_* to step.key.
+        """
+        return self.run(ctx)
+
     def run(self, ctx: ContextSpec) -> WriterResult:
-        raise NotImplementedError(f'{self.__class__.__name__} must implement run()')
+        """
+        FROZEN CONTRACT. The light-writer entry point (whole asset in one unit).
+
+        A heavy writer that overrides run_substep but not run() gets a working
+        run() for free: it drives its own sub-steps and aggregates (no
+        heartbeat — that is orchestrator-only). A writer that implements neither
+        run() nor run_substep() raises NotImplementedError.
+        """
+        if type(self).run_substep is not WriterBase.run_substep:
+            agg = WriterResult(asset_id=self.asset_id, rows_inserted=0)
+            for step in self.plan_substeps(ctx):
+                r = self.run_substep(ctx, step)
+                agg.rows_inserted += r.rows_inserted
+                agg.rows_updated += r.rows_updated
+                agg.rows_skipped += r.rows_skipped
+                agg.duration_seconds += r.duration_seconds
+            return agg
+        raise NotImplementedError(
+            f'{self.__class__.__name__} must implement run() '
+            f'or (plan_substeps + run_substep)'
+        )
 
 
 # Registry: asset_id → writer class
@@ -138,7 +233,7 @@ def discover_all() -> None:
 
 
 __all__ = [
-    'ContextSpec', 'WriterResult', 'WriterBase',
+    'ContextSpec', 'WriterResult', 'WriterBase', 'SubStep',
     'register', 'get_writer', 'list_writers', 'discover_all',
     'WRITER_REGISTRY',  # backward-compat alias
 ]
