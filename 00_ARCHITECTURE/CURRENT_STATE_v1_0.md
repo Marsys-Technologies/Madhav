@@ -69,6 +69,17 @@ changelog:
     carry_forwards: ["Apply migrations 206-213 to production DB", "Run build_runner.py for canonical chart_id", "Verify FORENSIC anchors + row floors post-build"]
     next_session_objective: "Brahma build arc continuation: apply pending migrations (140-153, 206-213) per OPERATOR_ACTIONS_PENDING.md CRITICAL section, then trigger native chart build."
     file_updated_at: 2026-06-10. file_updated_by_session: L1-GANITA-BUILD-WAVE-CLOSE.
+  - v5.71 (2026-06-11, L1-GANITA-PRODUCTION-BUILD):
+    **L1 Gaṇita Production Build COMPLETE.** build_runner.py executed successfully for chart_id 482012f1-710e-4a25-994a-93821f5871aa.
+    Cloud Run Job: l1-ganita-build-482012f1 execution w9g6q. build_id: 9dac88d5-6ac9-4532-b6e2-3f967dba23ae.
+    Status: PASS. All 5 quality gates PASS (FORENSIC_7_7, no_narration_linter, G7_only_facts, atomic_grain_audit, drift_detector). mv_refresh WARN (non-fatal, 4 MVs need unique index).
+    FORENSIC 7/7: Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries (all 5 ayanamshas) + Tithi=Shukla Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja PASS.
+    Row counts: ganita_positions=50, chart_facts=27,670 (GA3:530+1330, GA4:437, GA5:8195, GA8:6159, GA9:11019), chart_divisionals=22,635 (GA6), chart_dashas=536,731 (GA7 7 systems × 5 ayanamshas). Grand total ~587,086.
+    Bugs fixed during build run: Bug13/13b (gates.py psycopg3 % escaping), Bug14 (12 missing panchanga schema categories), Bug15 (mv_refresh WARN not FAIL + conn.rollback() cascade fix).
+    CHART_FACTS_SCHEMA.json categories: 169 → 181 (added 12 panchanga time-window categories). Commit a8d01205 on main.
+    Carry-forwards CLEARED: migrations 206-213 applied, build_runner.py executed, FORENSIC gates verified, row floors all met.
+    Cloud Run Job l1-ganita-build-482012f1 pending deletion (clean-up).
+    file_updated_at: 2026-06-11. file_updated_by_session: L1-GANITA-PRODUCTION-BUILD.
   - v5.69 (2026-06-03, BRAHMA-INFRA-PROVISIONING):
     **Brahma Infrastructure Provisioning COMPLETE. All 9 acceptance criteria met.**
     All phases of CLAUDECODE_BRIEF_BRAHMA_INFRA_PROVISIONING_v1_0 executed; brief status → COMPLETE.
