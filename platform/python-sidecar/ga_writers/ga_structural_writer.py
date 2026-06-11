@@ -76,6 +76,8 @@ from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -2455,6 +2457,9 @@ def _build_esoteric_rows(
 # ── INSERT ────────────────────────────────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    # Idempotency: replace this chart's prior rows for the scope being written so a
+    # rebuild under a new build_id replaces instead of accreting.
+    replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:
         row = dict(r)
@@ -2702,24 +2707,6 @@ def build_ga_structural(
 
 
 def _update_asset_throughput_structural(chart_id: str, build_id: str, row_count: int) -> None:
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """
-                UPDATE asset_throughput
-                   SET row_count      = %s,
-                       build_state    = 'built',
-                       last_build_id  = %s,
-                       updated_at     = NOW()
-                 WHERE asset_id = %s
-                   AND chart_id = %s
-                """,
-                [row_count, build_id, "ga_strength", chart_id],
-            )
-            conn.commit()
-            logger.info(
-                "[ga_structural_writer] asset_throughput updated: asset=ga_strength chart=%s rows=%d",
-                chart_id, row_count,
-            )
-    except Exception as exc:
-        logger.warning("[ga_structural_writer] asset_throughput update failed (non-fatal): %s", exc)
+    # asset_id is ga_structural (previously mis-stamped as ga_strength).
+    with _conn() as conn:
+        update_asset_throughput(conn, "ga_structural", chart_id, build_id, row_count)

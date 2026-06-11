@@ -34,6 +34,9 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
 
+from ga_writers._idempotency import replace_prior_chart_dashas
+from ga_writers._telemetry import update_asset_throughput
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -2070,6 +2073,11 @@ def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str)
     if not rows:
         return 0
 
+    # Idempotency: replace this chart's prior rows for the (ayanamsha, system) scope
+    # being written so a rebuild under a new build_id replaces instead of accreting
+    # (build_id is in the chart_dashas unique key).
+    replace_prior_chart_dashas(conn, rows)
+
     count = 0
     for row in rows:
         # Prepare JSONB columns
@@ -2166,26 +2174,10 @@ def _update_asset_throughput(
     rows_written: int,
     status: str = "in_progress",
 ) -> None:
-    """
-    Update asset_throughput for cockpit bar progress.
-    Per-system incremental so bar advances during long build.
-    """
-    try:
-        conn.execute(
-            """
-            INSERT INTO asset_throughput (
-                chart_id, build_id, asset_id, rows_written, status, updated_at
-            ) VALUES (%s, %s, %s, %s, %s, NOW())
-            ON CONFLICT (chart_id, build_id, asset_id) DO UPDATE SET
-                rows_written = asset_throughput.rows_written + EXCLUDED.rows_written,
-                status = EXCLUDED.status,
-                updated_at = NOW()
-            """,
-            [chart_id, build_id, asset_id, rows_written, status],
-        )
-        conn.commit()
-    except Exception as exc:
-        logger.debug("[ga_dashas] asset_throughput update skipped: %s", exc)
+    """Update asset_throughput (shared _telemetry helper, SET semantics). The final
+    call (status='complete') passes the grand total and marks the asset 'lit'."""
+    state = "lit" if status == "complete" else "building"
+    update_asset_throughput(conn, asset_id, chart_id, build_id, rows_written, state=state)
 
 
 # ── FORENSIC gate ─────────────────────────────────────────────────────────────
@@ -2399,12 +2391,16 @@ def build_ga_dashas(
         except Exception as exc:
             logger.warning("[ga_dashas] Concurrency post-pass failed: %s", exc)
 
-        # Final asset_throughput update — COMPLETE
+        # Final asset_throughput update — COMPLETE (pass the grand total, mark lit)
         try:
             with _conn() as conn:
+                total = conn.execute(
+                    "SELECT count(*) FROM chart_dashas WHERE chart_id = %s AND build_id = %s",
+                    [chart_id, build_id],
+                ).fetchone()[0]
                 _update_asset_throughput(
                     conn, chart_id, build_id, "ga_dashas",
-                    0, "complete"
+                    total, "complete"
                 )
         except Exception as exc:
             logger.debug("[ga_dashas] Final throughput update skipped: %s", exc)

@@ -36,6 +36,9 @@ from typing import Any
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 
+from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._telemetry import update_asset_throughput
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -477,6 +480,10 @@ def _write_ganita_positions_summary(
 # ── chart_facts INSERT (atomic rows) ─────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    # Idempotency: replace this chart's prior chart_facts rows for the scope being
+    # written so a rebuild under a new build_id replaces instead of accreting.
+    # (ganita_positions already upserts on its build_id-free natural key.)
+    replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:
         conn.execute(
@@ -613,30 +620,7 @@ def _update_asset_throughput(
     asset_id: str,
     row_count: int,
 ) -> None:
-    """
-    Update asset_throughput for this asset/chart to reflect built state.
-    Cockpit progress bars read this table.
-    """
-    try:
-        with _conn() as conn:
-            conn.execute(
-                """
-                UPDATE asset_throughput
-                   SET row_count      = %s,
-                       build_state    = 'built',
-                       last_build_id  = %s,
-                       updated_at     = NOW()
-                 WHERE asset_id = %s
-                   AND chart_id = %s
-                """,
-                [row_count, build_id, asset_id, chart_id],
-            )
-            conn.commit()
-            logger.info(
-                "[ga_positions_writer] asset_throughput updated: asset=%s chart=%s rows=%d",
-                asset_id, chart_id, row_count,
-            )
-    except Exception as exc:
-        logger.warning(
-            "[ga_positions_writer] asset_throughput update failed (non-fatal): %s", exc
-        )
+    """Update asset_throughput for this asset/chart to reflect built state
+    (delegates to the shared _telemetry helper writing the real schema)."""
+    with _conn() as conn:
+        update_asset_throughput(conn, asset_id, chart_id, build_id, row_count)
