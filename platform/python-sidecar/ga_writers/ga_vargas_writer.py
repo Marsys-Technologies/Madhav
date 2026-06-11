@@ -2061,11 +2061,15 @@ VALUES (
   %(tolerance_arcsec)s, %(near_sign_boundary_flag)s, %(near_nakshatra_boundary_flag)s,
   %(vargottama_flag_at_point)s, %(formula_provenance_text)s, %(cross_ayanamsha_divergence_arcsec)s
 )
-ON CONFLICT (chart_id, graha, ayanamsha_id, varga) DO NOTHING
+ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) DO NOTHING
 """
 
-# For atomic rows with fact_category/fact_key the unique index doesn't cover those,
-# so we track by fact_id (SHA hash) and skip duplicates
+# One row per (chart, graha, ayanamsha, varga, fact_category, fact_key) — matches
+# the chart_divisionals_unique_idx widened in migration 218 (and the granularity
+# mv_chart_vargas_summary pivots on). The pre-218 index was only
+# (chart_id, graha, ayanamsha_id, varga), which collapsed the ~25 per-planet-varga
+# category rows down to one; the explicit conflict target below now dedups at the
+# correct grain instead of silently dropping categories on a bare DO NOTHING.
 _UPSERT_WITH_FACT_ID_SQL = """
 INSERT INTO chart_divisionals (
   id, chart_id, graha, ayanamsha_id, varga, sign, sign_number, degree_in_sign,
@@ -2086,7 +2090,7 @@ VALUES (
   %(tolerance_arcsec)s, %(near_sign_boundary_flag)s, %(near_nakshatra_boundary_flag)s,
   %(vargottama_flag_at_point)s, %(formula_provenance_text)s, %(cross_ayanamsha_divergence_arcsec)s
 )
-ON CONFLICT DO NOTHING
+ON CONFLICT (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) DO NOTHING
 """
 
 
