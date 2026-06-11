@@ -2166,6 +2166,7 @@ def build_ga_vargas(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn=None,
     birth_params: dict | None = None,
     ayanamsha_subset: list[str] | None = None,
 ) -> dict:
@@ -2174,11 +2175,21 @@ def build_ga_vargas(
     Incremental + idempotent (checks what's written, skips completed batches).
     Context-decay protection: 6 batches of 5 vargas each.
     Returns summary dict.
+
+    Connection ownership (Orchestrator Convergence Phase 3): this is the heavy
+    ga_vargas writer; the orchestrator drives it one ayanamsha per sub-step via
+    ayanamsha_subset=[<aya>] + conn=<caller-owned>. When conn is injected, the
+    per-ayanamsha block runs on the caller-owned connection and does NOT commit
+    or write asset_throughput (the orchestrator owns the transaction + per-
+    sub-step commit). When conn is None (legacy CLI), behavior is unchanged.
     """
     import uuid as _uuid
+    from contextlib import nullcontext
 
     if build_id is None:
         build_id = str(_uuid.uuid4())
+
+    owns_conn = conn is None
 
     started_at = datetime.now(timezone.utc).isoformat()
     logger.info("[ga_vargas] Build starting: chart_id=%s build_id=%s", chart_id, build_id)
@@ -2239,7 +2250,7 @@ def build_ga_vargas(
         # For cross-varga harmonics post-pass, collect per-body sign per varga
         all_varga_signs: dict[str, dict[str, int]] = {b: {} for b in CLASSICAL_BODIES}
 
-        with _conn() as conn:
+        with (_conn() if owns_conn else nullcontext(conn)) as conn:
             for batch_idx, batch_vargas in enumerate(VARGA_BATCHES):
                 batch_rows = []
                 batch_label = f"batch_{batch_idx+1}"
@@ -2347,15 +2358,18 @@ def build_ga_vargas(
                 # Write batch
                 if batch_rows:
                     written = _write_rows_batch(conn, batch_rows)
-                    conn.commit()
+                    if owns_conn:
+                        conn.commit()
                     total_rows += written
                     logger.info("[ga_vargas] Batch %d/%d written: %d rows (total: %d)",
                                 batch_idx + 1, total_batches, written, total_rows)
-                    # Update asset_throughput incrementally
-                    _update_asset_throughput(
-                        conn, chart_id, build_id,
-                        batch_idx + 1, total_batches, total_rows,
-                    )
+                    # Update asset_throughput incrementally (legacy CLI only; the
+                    # orchestrator is the sole asset_throughput writer).
+                    if owns_conn:
+                        _update_asset_throughput(
+                            conn, chart_id, build_id,
+                            batch_idx + 1, total_batches, total_rows,
+                        )
 
                 summary["batches_completed"] = batch_idx + 1
 
@@ -2365,7 +2379,8 @@ def build_ga_vargas(
                     chart_id, ayan_id, build_id, str(build_id))
                 if d30_rows:
                     written = _write_rows_batch(conn, d30_rows)
-                    conn.commit()
+                    if owns_conn:
+                        conn.commit()
                     total_rows += written
                     logger.info("[ga_vargas] D30 lord rows written: %d", written)
 
@@ -2374,13 +2389,15 @@ def build_ga_vargas(
                 chart_id, ayan_id, build_id, all_varga_signs)
             if cross_rows:
                 written = _write_rows_batch(conn, cross_rows)
-                conn.commit()
+                if owns_conn:
+                    conn.commit()
                 total_rows += written
                 logger.info("[ga_vargas] Cross-varga rows written: %d", written)
 
-            # Final asset_throughput at 100%
-            _update_asset_throughput(conn, chart_id, build_id,
-                                     total_batches, total_batches, total_rows)
+            # Final asset_throughput at 100% (legacy CLI only; orchestrator owns it).
+            if owns_conn:
+                _update_asset_throughput(conn, chart_id, build_id,
+                                         total_batches, total_batches, total_rows)
 
     summary["total_rows_written"] = total_rows
     summary["status"] = "PASS"

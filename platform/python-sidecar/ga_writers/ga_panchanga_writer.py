@@ -1219,6 +1219,7 @@ def build_ga_panchanga(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: Optional[str] = None,
     *,
+    conn: Any = None,
     birth_params: Optional[dict] = None,
 ) -> dict[str, Any]:
     """
@@ -1237,6 +1238,9 @@ def build_ga_panchanga(
 
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    from contextlib import nullcontext
+    owns_conn = conn is None
 
     bp = birth_params or NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
@@ -1346,9 +1350,10 @@ def build_ga_panchanga(
     all_rows = invariant_rows + all_dependent
 
     # ── Write to DB ──────────────────────────────────────────────────────────
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         written = _insert_chart_facts_rows(conn, all_rows)
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
     summary["total_chart_facts_rows"] = written
     summary["status"] = "PASS"
@@ -1359,6 +1364,7 @@ def build_ga_panchanga(
     )
 
     # Update asset_throughput
-    _update_asset_throughput(chart_id, build_id, written)
+    if owns_conn:
+        _update_asset_throughput(chart_id, build_id, written)
 
     return summary

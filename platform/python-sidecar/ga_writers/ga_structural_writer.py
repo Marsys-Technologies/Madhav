@@ -2563,6 +2563,7 @@ def build_ga_structural(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn: Any = None,
     birth_params: dict[str, Any] | None = None,
     skip_upstream_check: bool = False,
 ) -> dict[str, Any]:
@@ -2580,6 +2581,9 @@ def build_ga_structural(
     import uuid
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    from contextlib import nullcontext
+    owns_conn = conn is None
 
     bp = birth_params or NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
@@ -2601,7 +2605,7 @@ def build_ga_structural(
 
     logger.info("[ga_structural_writer] Starting GA8 build chart_id=%s build_id=%s", chart_id, build_id)
 
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         # Step 0: Upstream presence check
         if not skip_upstream_check:
             upstream = check_upstream_presence(conn, chart_id)
@@ -2690,11 +2694,14 @@ def build_ga_structural(
                 canonical_id, cf_count, argala_count, yoga_count, dosha_count,
             )
 
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
-    # Update asset_throughput
-    _update_asset_throughput_structural(chart_id=chart_id, build_id=build_id,
-                                         row_count=summary["total_chart_facts_rows"])
+    # asset_throughput is written by the orchestrator on the conformed path; only
+    # the legacy standalone CLI (owns_conn) writes it here via _telemetry.
+    if owns_conn:
+        _update_asset_throughput_structural(chart_id=chart_id, build_id=build_id,
+                                             row_count=summary["total_chart_facts_rows"])
 
     logger.info(
         "[ga_structural_writer] COMPLETE. total_cf=%d two_pass=%s argala=%d virodha=%d",

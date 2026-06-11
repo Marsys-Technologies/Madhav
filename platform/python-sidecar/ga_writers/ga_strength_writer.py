@@ -898,6 +898,7 @@ def build_ga_strength(
     chart_id: str = CANONICAL_CHART_ID,
     build_id: str | None = None,
     *,
+    conn: Any = None,
     birth_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -913,6 +914,9 @@ def build_ga_strength(
     import uuid
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    from contextlib import nullcontext
+    owns_conn = conn is None
 
     bp = birth_params or NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
@@ -932,7 +936,7 @@ def build_ga_strength(
         chart_id, build_id,
     )
 
-    with _conn() as conn:
+    with (_conn() if owns_conn else nullcontext(conn)) as conn:
         for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
             logger.info("[ga_strength_writer] Computing ayanamsha=%s", canonical_id)
 
@@ -1000,14 +1004,16 @@ def build_ga_strength(
                 canonical_id, cf_count,
             )
 
-        conn.commit()
+        if owns_conn:
+            conn.commit()
 
     # Update asset_throughput
-    _update_asset_throughput_strength(
-        chart_id=chart_id,
-        build_id=build_id,
-        row_count=summary["total_chart_facts_rows"],
-    )
+    if owns_conn:
+        _update_asset_throughput_strength(
+            chart_id=chart_id,
+            build_id=build_id,
+            row_count=summary["total_chart_facts_rows"],
+        )
 
     logger.info(
         "[ga_strength_writer] COMPLETE. Total cf=%d two_pass=%s",
