@@ -42,6 +42,7 @@ from ga_writers.ga_vargas_writer import build_ga_vargas
 from ga_writers.ga_dashas_writer import build_ga_dashas, SYSTEMS as GA7_SYSTEMS
 from ga_writers.ga_structural_writer import build_ga_structural
 from ga_writers.ga_sade_sati_writer import build_ga_sade_sati
+from ga_writers.ga_tajaka_writer import build_ga_tajaka
 from ga_writers.gates import run_all_gates
 
 
@@ -109,6 +110,7 @@ def run(
     ga7_ayanamshas: list = None,
     skip_ga8: bool = False,
     skip_sade_sati: bool = False,
+    skip_tajaka: bool = False,
 ) -> dict[str, Any]:
     """
     Run full GA3 build: positions + strength + MVs + gates.
@@ -423,6 +425,37 @@ def run(
             return summary
 
 
+    # ── Step 6: ga_tajaka (Vārṣaphal annual chart — hybrid window) ────────────
+    if not skip_tajaka:
+        logger.info("[build_runner] Step 6: ga_tajaka (Vārṣaphal annual chart)")
+        try:
+            taj_summary = build_ga_tajaka(
+                chart_id=chart_id,
+                build_id=build_id,
+            )
+            summary["steps"]["ga_tajaka"] = {
+                "status": taj_summary.get("status", "FAIL"),
+                "total_rows_written": taj_summary.get("total_rows_written", 0),
+                "forensic_pass": taj_summary.get("forensic_pass", False),
+                "two_pass_verified": taj_summary.get("two_pass_verified", False),
+                "window": taj_summary.get("window"),
+                "per_ayanamsha_counts": taj_summary.get("per_ayanamsha_counts"),
+            }
+            logger.info(
+                "[build_runner] ga_tajaka PASS: rows=%d forensic=%s two_pass=%s",
+                taj_summary.get("total_rows_written", 0),
+                taj_summary.get("forensic_pass"),
+                taj_summary.get("two_pass_verified"),
+            )
+        except Exception as exc:
+            summary["steps"]["ga_tajaka"] = {"status": "FAIL", "error": str(exc)}
+            summary["status"] = "FAIL"
+            logger.error("[build_runner] ga_tajaka FAIL: %s", exc)
+            if "FORENSIC HALT" in str(exc) or "TWO-PASS HALT" in str(exc):
+                summary["status"] = "HALT"
+                summary["halt_reason"] = str(exc)
+            return summary
+
     # ── Step 4: Run all gates ─────────────────────────────────────────────────
     logger.info("[build_runner] Step 4: Gate validation")
     try:
@@ -500,6 +533,9 @@ def main() -> None:
         "--skip_sade_sati", action="store_true", help="Skip ga_sade_sati (GA9) writer",
     )
     parser.add_argument(
+        "--skip_tajaka", action="store_true", help="Skip ga_tajaka (Vārṣaphal) writer",
+    )
+    parser.add_argument(
         "--ga7_systems", nargs="*", default=None,
         help="Limit GA7 to these dasha systems (default: all)",
     )
@@ -522,6 +558,7 @@ def main() -> None:
         skip_sensitive=args.skip_sensitive,
         skip_vargas=args.skip_vargas,
         skip_sade_sati=args.skip_sade_sati,
+        skip_tajaka=args.skip_tajaka,
         skip_ga8=args.skip_ga8,
         skip_ga7=args.skip_ga7,
         ga7_systems=args.ga7_systems,

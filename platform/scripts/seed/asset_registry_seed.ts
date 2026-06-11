@@ -622,17 +622,20 @@ const ASSETS: AssetDef[] = [
     layer: 'ganita', sort_order: 8,
     sanskrit_name: 'Tājaka',
     english_name: 'Tajaka Varshaphal',
-    english_description: 'Annual chart (Varshaphal) and Tajaka aspects per ayanamsha',
+    english_description: 'Vārṣaphal annual chart per varsha (solar-return year): Muntha position, Vārṣeśa (year-lord) by tajik_classical + panchavargiya methods with candidate scoring, and the Tājik yogas firing in each annual chart — A7 hybrid storage (past→present+5 precomputed; rest on-demand), per ayanamsha.',
     storage_type: 'postgres_table',
-    target_table: null,
-    count_sql: null,
+    // Activated in migration 222 — the GA-Tajaka writer populates this asset.
+    target_table: 'l1_tajik_varsha_year_lords',
+    count_sql: 'SELECT count(*) AS count FROM l1_tajik_varsha_year_lords WHERE chart_id = $1',
     size_sql: null,
-    target_floor: null,
-    expected_volume_formula: null,
+    // Floor = achieved canonical count for chart 482012f1 (migration 222, 2026-06-11):
+    // A7 hybrid window varsha 1..48 (birth 1984 → present+5 ≈ 2031) × 5 ayanamshas.
+    target_floor: 240,
+    expected_volume_formula: 'WINDOW_VARSHAS * AYANAMSHAS',
     expected_volume_inputs: null,
-    volume_explanation: 'Writer output — row count depends on aspect configurations found; awaits dedicated table',
+    volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
     depends_on: [],
-    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'ga_structural',

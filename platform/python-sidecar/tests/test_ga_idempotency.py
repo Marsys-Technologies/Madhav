@@ -20,6 +20,7 @@ from ga_writers._idempotency import (  # noqa: E402
     replace_prior_chart_facts,
     replace_prior_chart_dashas,
     replace_prior_chart_divisionals,
+    replace_prior_tajik_varsha,
     clear_table_for_chart,
 )
 
@@ -169,6 +170,55 @@ def test_chart_divisionals_double_run_replaces():
     assert conn.count(CID) == 2
     replace_prior_chart_divisionals(conn, divs("b2")); conn.insert(divs("b2"), key)
     assert conn.count(CID) == 2
+
+
+TV_KEY = ("chart_id", "ayanamsha_id", "build_id", "varsha_year")
+
+
+def _tajik(build_id, years=range(1, 5)):
+    """ga_tajaka rows: one per (ayanamsha × varsha_year). Unique key incl build_id."""
+    rows = []
+    for ay in AYANAMSHAS:
+        for y in years:
+            rows.append({
+                "chart_id": CID, "ayanamsha_id": ay, "build_id": build_id,
+                "varsha_year": y,
+            })
+    return rows
+
+
+def _run_tajik_build(conn, rows):
+    replace_prior_tajik_varsha(conn, rows)  # the writer's idempotency step
+    conn.insert(rows, TV_KEY)               # the writer's INSERT
+
+
+def test_tajik_varsha_double_run_replaces_not_accretes():
+    conn = FakeConn("l1_tajik_varsha_year_lords")
+    _run_tajik_build(conn, _tajik("build-1"))
+    single = conn.count(CID)
+    assert single == 8  # 2 ayanamshas × 4 varshas
+    _run_tajik_build(conn, _tajik("build-2"))  # fresh build_id
+    assert conn.count(CID) == single           # replaced, not 16
+    assert {r["build_id"] for r in conn.rows} == {"build-2"}
+
+
+def test_tajik_varsha_without_helper_would_double():
+    conn = FakeConn("l1_tajik_varsha_year_lords")
+    conn.insert(_tajik("build-1"), TV_KEY)
+    conn.insert(_tajik("build-2"), TV_KEY)
+    assert conn.count(CID) == 16
+
+
+def test_tajik_varsha_partial_window_rebuild_leaves_other_varshas():
+    """On-demand recompute of a single varsha must not wipe the precomputed window."""
+    conn = FakeConn("l1_tajik_varsha_year_lords")
+    conn.insert(_tajik("build-1", years=range(1, 5)), TV_KEY)
+    assert conn.count(CID) == 8
+    # recompute only varsha 3 under a new build
+    _run_tajik_build(conn, _tajik("build-2", years=[3]))
+    assert conn.count(CID) == 8  # varsha 3 replaced (per ayanamsha), 1/2/4 untouched
+    assert {r["build_id"] for r in conn.rows if r["varsha_year"] == 3} == {"build-2"}
+    assert {r["build_id"] for r in conn.rows if r["varsha_year"] != 3} == {"build-1"}
 
 
 def test_clear_table_for_chart_scopes_to_chart():
