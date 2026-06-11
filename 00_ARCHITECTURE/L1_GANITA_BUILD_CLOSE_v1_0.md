@@ -1,6 +1,6 @@
 ---
 artifact: L1_GANITA_BUILD_CLOSE
-version: 1.1
+version: 1.2
 status: COMPLETE
 date_closed: 2026-06-10
 production_build_date: 2026-06-11
@@ -8,6 +8,11 @@ production_build_id: 9dac88d5-6ac9-4532-b6e2-3f967dba23ae
 production_build_status: PASS
 seal_commit: d228aa0f1cb3d4640b12ce6f124627c27b5e8147
 git_tag: l1-ganita-build-complete
+changelog:
+  - v1.0 → 1.1 (2026-06-11): added §7 production build evidence (build 9dac88d5, FORENSIC 7/7).
+  - v1.1 → 1.2 (2026-06-11): added §8 post-build cockpit reconciliation (cockpit count fixes,
+    ga_structural tile, writer idempotency + telemetry). §7's seal-time row counts are RETAINED
+    as the premature-seal record; §8 carries the corrected canonical counts.
 ---
 
 # L1 Gaṇita Build — Wave Close
@@ -177,6 +182,73 @@ Conductor queue: `00_ARCHITECTURE/CONDUCTOR/l1-ganita-build/session_queue.yaml` 
 Campaign doc: `00_ARCHITECTURE/L1_GANITA_BUILD_CAMPAIGN_v1_0.md`.
 
 CURRENT_STATE must be updated to reflect this workstream as COMPLETE.
+
+## §8 — Post-Build Cockpit Reconciliation (2026-06-11)
+
+After the build sealed (§7), the Gaṇita cockpit layer header read **1,900** for chart
+`482012f1` despite ~580k built rows. Diagnosis + fix landed as three PRs to `main`.
+
+### §8.1 — Premature-seal measurement note (history retained, not erased)
+
+§7's row counts were captured from the build runner's *reported* output / table totals at
+seal time and do not all match what is attributable to canonical build `9dac88d5`:
+
+| Asset | §7 seal figure | Corrected canonical (build 9dac88d5) | Cause of divergence |
+|---|---|---|---|
+| GA6 ga_vargas (chart_divisionals) | 22,635 | **21,635** persisted | writer *computed* ~22.6k but a coarse unique index (`chart_id,graha,ayanamsha,varga`) + `ON CONFLICT DO NOTHING` collapsed ~24 categories/planet-varga to 1, persisting only 1,850; after the index fix + re-run, 21,635 distinct rows persist (1,000 genuine dup facts deduped) |
+| Total chart_facts | 27,670 | **27,554** | seal counted across transient build_ids |
+| Total chart_dashas | 536,731 | **536,471** | seal mis-measure |
+| GA8 ga_structural (chart_facts) | 6,159 | **6,075** | seal mis-measure |
+
+These §7 figures are **retained** as the premature-seal record per governance discipline.
+
+### §8.2 — Cockpit count reconciliation — PR #248 (merged `a227c31a`)
+
+Four root causes, none in the (correct) cockpit UI:
+1. **Wrong-table count_sql** — `ga_dashas` counted empty `ganita_dashas` (writer wrote
+   `chart_dashas`); `ga_panchanga` counted empty `chart_panchanga` (writer wrote `chart_facts`
+   `panchanga_*`). Repointed (migration 217).
+2. **Inactive assets** — `ga_strength`/`ga_sensitive`/`ga_sade_sati` were `is_active=false`, so
+   the stats route omitted them entirely (the real reason the header was 1,900 = positions 50 +
+   vargas 1,850). Activated (migration 217).
+3. **ga_strength category gap** — broadened to its full `bhava_bala`/`vimsopaka`/`saptavargaja`
+   family (migration 217).
+4. **ga_vargas index bug** — widened `chart_divisionals_unique_idx` to include
+   `fact_category`+`fact_key` (`NULLS NOT DISTINCT`); re-ran GA6 → 21,635 rows / 24 categories
+   (migration 218 + writer ON CONFLICT fix).
+
+Also cleaned stale multi-build accumulation (13 chart_facts / 7 chart_dashas builds) down to
+canonical `9dac88d5` only; no other chart touched.
+
+### §8.3 — ga_structural cockpit tile — PR #249 (merged `8866e2f6`)
+
+Registered the missing `ga_structural` tile (`Saṃracanā`, migration 219). Positive family filter
+verified to equal the untiled complement (6,075); the five chart_facts tiles now partition
+`chart_facts`: 2,184 + 8,055 + 11,019 + 221 + 6,075 = 27,554.
+
+### §8.4 — Writer idempotency + telemetry + CLI — PR #250
+
+- **Idempotency**: all 8 writers now delete the chart's prior rows for exactly the scope they
+  (re)write before inserting (`ga_writers/_idempotency.py`), so a rebuild **replaces** instead of
+  accreting. 8 unit tests + prod re-run verification (sade_sati re-run leaves 11,019/27,554, 1 build).
+- **asset_throughput** reconciled (`ga_writers/_telemetry.py`) — writers had been INSERTing
+  non-existent columns; all 8 now write the real schema (verified: ga_sade_sati lands lit/11019).
+- **build_runner.main()** argparse fixed (missing skip_* / ga7_* flags caused AttributeError).
+
+### §8.5 — Validated cockpit end-state (chart 482012f1)
+
+| asset | count | status |
+|---|---|---|
+| ga_positions | 50 | lit |
+| ga_vargas | 21,635 | lit |
+| ga_dashas | 536,471 | lit |
+| ga_strength | 2,184 | lit |
+| ga_sensitive | 8,055 | lit |
+| ga_panchanga | 221 | lit |
+| ga_sade_sati | 11,019 | lit |
+| ga_structural | 6,075 | lit |
+| ga_pyjhora_engine | service | lit |
+| **Gaṇita layer header** | **585,710** | (was 1,900) |
 
 ---
 *Sealed 2026-06-10. All acceptance criteria met. Signed: Claude Sonnet 4.6.*
