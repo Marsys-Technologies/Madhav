@@ -465,7 +465,7 @@ const ASSETS: AssetDef[] = [
     size_sql: "SELECT pg_total_relation_size('chart_divisionals')",
     // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
     target_floor: 21635,
-    expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS',
+    expected_volume_formula: 'VARGAS * GRAHAS * AYANAMSHAS', // STALE_FORMULA: 60*9*5=2700 under-counts by ~8×; actual=21635 because chart_divisionals stores bhava+rashi+nakshatra sub-rows per position, not one row per varga×graha×ayanamsha
     expected_volume_inputs: null,
     volume_explanation: '60 vargas × 9 grahas × ayanamsha count — structural',
     depends_on: ['ga_positions'],
@@ -520,7 +520,7 @@ const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
     target_floor: 2184,
-    expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS',
+    expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS', // STALE_FORMULA: naive expansion gives (54+864+72)*5=4950 which over-counts by ~2×; actual=2184 because not all ashtakavarga sign×graha combos are stored and vimsopaka/bhava_bala sub-families are smaller than the theoretical max
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
     depends_on: ['ga_positions'],
