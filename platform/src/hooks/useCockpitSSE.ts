@@ -10,6 +10,7 @@ type RunState   = 'planned' | 'running' | 'paused' | 'completed' | 'stopped' | '
 export type CockpitEvent =
   | { type: 'asset.state_change'; asset_id: string; from_state: AssetState; to_state: AssetState }
   | { type: 'asset.progress';     asset_id: string; rows_written: number; expected_rows: number | null }
+  | { type: 'asset.substep';      asset_id: string; chart_id: string; substep_key: string; substep_label: string; index: number; total: number; rows_written: number }
   | { type: 'edge.first_signal';  from_asset_id: string; to_asset_id: string }
   | { type: 'run.state_change';   run_id: string; state: RunState }
 
@@ -77,6 +78,10 @@ export function useCockpitSSE(
         try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
       })
       es.addEventListener('edge.first_signal', (e) => {
+        resetHeartbeat()
+        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+      })
+      es.addEventListener('asset.substep', (e) => {
         resetHeartbeat()
         try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
       })

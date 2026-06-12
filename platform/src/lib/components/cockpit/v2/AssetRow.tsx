@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
+import type { SubstepOverlay } from './DataAssetsView'
 import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
@@ -20,6 +21,7 @@ interface Props {
   activeRunPaused: boolean
   highlighted?: boolean
   allAssets?: AssetRowType[]
+  substep?: SubstepOverlay | null
   onRunStarted: () => void
 }
 
@@ -117,7 +119,7 @@ function StatusDot({
   )
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, onRunStarted }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, substep, onRunStarted }: Props) {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const { isSuperAdmin } = useUserRole()
   const isActive = asset.is_active
@@ -171,6 +173,17 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
               actualRows={stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
             />
+            {/* Live substep progress — visible only during building when orchestrator emits asset.substep */}
+            {derivedState === 'building' && substep != null && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '3px', fontFamily: 'var(--mono-stack)', fontSize: '9px', color: 'rgba(255,255,255,0.45)', lineHeight: 1 }}>
+                {substep.actual_rows > 0 && (
+                  <span>{substep.actual_rows.toLocaleString()} rows</span>
+                )}
+                {substep.substep_total > 0 && (
+                  <span>Step {substep.substep_index} / {substep.substep_total}</span>
+                )}
+              </div>
+            )}
             {hasError && stat?.error && (
               <div style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
                 {stat.error.slice(0, 24)}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
+import type { SubstepOverlay } from './DataAssetsView'
 import { AssetRow as AssetRowComponent } from './AssetRow'
 import { BuildActionButton } from './BuildActionButton'
 import { ClearIconButton } from './ClearIconButton'
@@ -39,6 +40,7 @@ interface Props {
   focusedAssetId?: string | null
   chartId: string
   activeRun: ActiveRun | null
+  substepOverlay?: Map<string, SubstepOverlay>
   onRunStarted: () => void
 }
 
@@ -52,6 +54,7 @@ export function LayerPanel({
   focusedAssetId,
   chartId,
   activeRun,
+  substepOverlay,
   onRunStarted,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
@@ -239,6 +242,7 @@ export function LayerPanel({
                 activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
                 highlighted={focusedAssetId === asset.asset_id}
                 allAssets={allAssets}
+                substep={substepOverlay?.get(asset.asset_id) ?? null}
                 onRunStarted={onRunStarted}
               />
             )

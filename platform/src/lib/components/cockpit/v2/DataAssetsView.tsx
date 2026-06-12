@@ -10,6 +10,14 @@ import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
 import type { AssetWithState } from './LiveDependencyGraph'
 
+// SSE-live substep overlay — fields that come from asset.substep events only
+export interface SubstepOverlay {
+  actual_rows: number
+  substep_index: number
+  substep_total: number
+  substep_label: string
+}
+
 const LiveDependencyGraph = dynamic(
   () => import('./LiveDependencyGraph').then(m => m.LiveDependencyGraph),
   {
@@ -49,6 +57,9 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   // Live SSE overlay: patches from the orchestrator overwrite stats for DAG rendering
   const [sseOverlay, setSseOverlay] = useState<Map<string, Partial<AssetWithState>>>(new Map())
 
+  // Live substep overlay — separate from sseOverlay so it doesn't pollute AssetWithState
+  const [substepOverlay, setSubstepOverlay] = useState<Map<string, SubstepOverlay>>(new Map())
+
   const handleSSEEvent = useCallback((e: CockpitEvent) => {
     if (e.type === 'asset.state_change') {
       setSseOverlay(prev => {
@@ -60,6 +71,17 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
       setSseOverlay(prev => {
         const next = new Map(prev)
         next.set(e.asset_id, { ...prev.get(e.asset_id), actual_rows: e.rows_written })
+        return next
+      })
+    } else if (e.type === 'asset.substep') {
+      setSubstepOverlay(prev => {
+        const next = new Map(prev)
+        next.set(e.asset_id, {
+          actual_rows: e.rows_written,
+          substep_index: e.index,
+          substep_total: e.total,
+          substep_label: e.substep_label,
+        })
         return next
       })
     } else if (e.type === 'run.state_change') {
@@ -184,6 +206,7 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
                 focusedAssetId={focusedAssetId}
                 chartId={chartId}
                 activeRun={activeRun}
+                substepOverlay={substepOverlay}
                 onRunStarted={refreshRun}
               />
             </div>
