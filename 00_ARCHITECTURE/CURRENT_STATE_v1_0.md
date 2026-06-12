@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.73
+version: 5.74
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,18 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.74 (2026-06-12, L1-GANITA-CLOSURE-PASS):
+    **L1 Gaṇita closure pass COMPLETE (Phase E gated).** Phase F sealed:
+    `L1_GANITA_CLOSURE_v1_0.md` authored (canonical_id L1_GANITA_CLOSURE) — definitive
+    L1 closed record + L2 onboarding contract. PRs #263 (migration 225, drops orphaned
+    asset_throughput_pkey — unblocks non-native builds) + #264 (asset.substep SSE cockpit
+    wiring — live row count + substep progress during builds) both merged to main.
+    main HEAD: 77cef8acb32a8c829044a06b47a292058d742e8d. Phase E (non-native E2E + test
+    chart teardown) gated on operator confirmation: build Abhinandan Mohanty (1c826d5a)
+    → confirm PASS → cleanup. ready_for_L2=YES; L2 Bodha brief may be authored now.
+    last_session_id: L1-GANITA-CLOSURE-PASS. predecessor_session: L1-GANITA-COCKPIT-RECONCILIATION.
+    next_session_objective: "Operator: apply migration 225 to prod, run Phase E E2E (1c826d5a), confirm PASS, then cleanup. L2 Bodha brief ready to author."
+    file_updated_at: 2026-06-12. file_updated_by_session: L1-GANITA-CLOSURE-PASS.
   - v5.73 (2026-06-12, L1-GANITA-CLOSURE-PASS):
     **L1 Gaṇita closure pass in progress.** Phase A (read-only verifications) PASS — all 4
     checks green (L2 conformance checklist usable, ga_structural 6,075 rows queryable,
