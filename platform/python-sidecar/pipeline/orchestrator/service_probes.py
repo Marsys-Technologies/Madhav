@@ -33,6 +33,8 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
         return _probe_panchanga_engine(probe_spec)
     elif probe_type == "ephemeris_engine":
         return _probe_ephemeris_engine(probe_spec)
+    elif probe_type == "pyjhora_engine":
+        return _probe_pyjhora_engine(probe_spec)
     else:
         return {"status": "down", "message": f"unknown probe_type: {probe_type}", "checks": []}
 
@@ -155,6 +157,53 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         checks.append({"check": "mean_node_rahu_invariant", "passed": False, "error": str(exc)})
         failures.append(f"MEAN_NODE check failed: {exc}")
+
+    status = "GREEN" if not failures else ("degraded" if len(failures) < len(checks) else "down")
+    message = "All checks passed" if not failures else "; ".join(failures)
+    return {"status": status, "message": message, "checks": checks}
+
+
+# ── ga_pyjhora_engine probe ───────────────────────────────────────────────────
+
+_FORENSIC_PYJHORA = {
+    "datetime_iso": "1984-02-05T10:43:00",
+    "lat": 20.27,
+    "lon": 85.84,
+    "tz_offset_hours": 5.5,
+}
+
+
+def _probe_pyjhora_engine(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    # Check 1: pyjhora_adapter importable
+    try:
+        from pyjhora_adapter import drik  # noqa: F401
+        checks.append({"check": "pyjhora_adapter_importable", "passed": True})
+    except ImportError as exc:
+        checks.append({"check": "pyjhora_adapter_importable", "passed": False, "error": str(exc)})
+        failures.append(f"import failed: {exc}")
+        return {"status": "down", "message": str(exc), "checks": checks}
+
+    # Check 2: drik.ascendant returns 4-element list for FORENSIC birth
+    try:
+        from datetime import datetime
+        from pyjhora_adapter import drik
+        dt = datetime.fromisoformat(_FORENSIC_PYJHORA["datetime_iso"])
+        dob = drik.Date(dt.year, dt.month, dt.day)
+        tob = (dt.hour, dt.minute, dt.second)
+        place = drik.Place("Bhubaneswar", _FORENSIC_PYJHORA["lat"],
+                           _FORENSIC_PYJHORA["lon"], _FORENSIC_PYJHORA["tz_offset_hours"])
+        asc = drik.ascendant(dob, tob, place)
+        passed = isinstance(asc, (list, tuple)) and len(asc) >= 1
+        checks.append({"check": "drik_ascendant_returns_list", "passed": passed,
+                        "result_len": len(asc) if passed else None})
+        if not passed:
+            failures.append("drik.ascendant did not return a list/tuple of length >= 1")
+    except Exception as exc:
+        checks.append({"check": "drik_ascendant_returns_list", "passed": False, "error": str(exc)})
+        failures.append(f"drik.ascendant exception: {exc}")
 
     status = "GREEN" if not failures else ("degraded" if len(failures) < len(checks) else "down")
     message = "All checks passed" if not failures else "; ".join(failures)

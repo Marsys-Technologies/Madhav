@@ -2474,25 +2474,29 @@ def _run_concurrency_post_pass_db(chart_id: str, build_id: str, *, conn: Any = N
         all_l1 = cursor.fetchall()
 
         # Build per-system lookup
-        by_system: dict[str, list[tuple]] = {}
+        by_system: dict[str, list] = {}
         for row in all_l1:
-            sid = row[1]
+            sid = row["system_id"]
             if sid not in by_system:
                 by_system[sid] = []
-            by_system[sid].append(row)  # (row_id, system_id, lord, start, end)
+            by_system[sid].append(row)
 
         # For each row, find concurrent lords
         for row in all_l1:
-            row_id, sys_id, lord, start_d, end_d = row
+            row_id = row["dasha_row_id"]
+            sys_id = row["system_id"]
+            lord = row["lord_graha"]
+            start_d = row["start_date"]
+            end_d = row["end_date"]
             concurrent = {}
             for other_sys, other_rows in by_system.items():
                 if other_sys == sys_id:
                     continue
                 for other_row in other_rows:
-                    o_start = other_row[3]
-                    o_end = other_row[4]
+                    o_start = other_row["start_date"]
+                    o_end = other_row["end_date"]
                     if o_start <= start_d < o_end:
-                        concurrent[other_sys] = other_row[2]
+                        concurrent[other_sys] = other_row["lord_graha"]
                         break
 
             convergence = 1 + sum(1 for v in concurrent.values() if v == lord)

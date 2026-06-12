@@ -1218,14 +1218,14 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
         "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category = 'graha_position' AND fact_subject = 'MOON'",
         [chart_id]
     ).fetchone()
-    results["ga3"] = (row[0] if row else 0) > 0
+    results["ga3"] = (row["count"] if row else 0) > 0
 
     # GA4: tara_bala_natal_baseline rows
     row = conn.execute(
         "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%%tara_bala%%'",
         [chart_id]
     ).fetchone()
-    results["ga4"] = (row[0] if row else 0) > 0
+    results["ga4"] = (row["count"] if row else 0) > 0
 
     # GA6: varga rows in chart_divisionals or chart_facts
     try:
@@ -1233,7 +1233,7 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
             "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category LIKE '%%varga%%'",
             [chart_id]
         ).fetchone()
-        results["ga6"] = (row[0] if row else 0) > 0
+        results["ga6"] = (row["count"] if row else 0) > 0
     except Exception:
         results["ga6"] = False
 
@@ -1243,7 +1243,7 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
             "SELECT COUNT(*) FROM chart_dashas WHERE chart_id = %s",
             [chart_id]
         ).fetchone()
-        results["ga7"] = (row[0] if row else 0) > 0
+        results["ga7"] = (row["count"] if row else 0) > 0
     except Exception:
         results["ga7"] = False
 
@@ -1252,7 +1252,7 @@ def _verify_upstream_rows(conn: Any, chart_id: str) -> dict[str, bool]:
         "SELECT COUNT(*) FROM chart_facts WHERE chart_id = %s AND fact_category = 'argala_natal_matrix'",
         [chart_id]
     ).fetchone()
-    results["ga8"] = (row[0] if row else 0) > 0
+    results["ga8"] = (row["count"] if row else 0) > 0
 
     return results
 

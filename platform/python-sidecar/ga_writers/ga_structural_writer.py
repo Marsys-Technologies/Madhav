@@ -524,7 +524,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
         """,
         [chart_id],
     )
-    db_cats = {row[0] for row in cursor.fetchall()}
+    db_cats = {row["fact_category"] for row in cursor.fetchall()}
     found_categories = [c for c in required_upstream_categories if c in db_cats]
 
     # Check GA7 dashas separately
@@ -533,7 +533,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
             "SELECT COUNT(*) FROM chart_dashas WHERE chart_id = %s",
             [chart_id],
         )
-        dasha_count = cursor2.fetchone()[0]
+        dasha_count = cursor2.fetchone()["count"]
         if dasha_count > 0:
             found_categories.append("chart_dashas")
     except Exception:
@@ -548,7 +548,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
             "SELECT COUNT(*) FROM chart_divisionals WHERE chart_id = %s",
             [chart_id],
         )
-        div_count = cursor3.fetchone()[0]
+        div_count = cursor3.fetchone()["count"]
         if div_count > 0:
             found_categories.append("chart_divisionals")
         else:
