@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.72
+version: 5.73
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,23 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.73 (2026-06-12, L1-GANITA-CLOSURE-PASS):
+    **L1 Gaṇita closure pass in progress.** Phase A (read-only verifications) PASS — all 4
+    checks green (L2 conformance checklist usable, ga_structural 6,075 rows queryable,
+    asset_throughput isolation confirmed, migration 223 DAG correct). Phase B (id-naming
+    standardization) COMPLETE — migration 224 renames all 23 L2–L5 placeholder asset_ids
+    from dot-notation (bodha.*→bo_*, kala.*→ka_*, phala.*→ph_*, mimamsa.*→mi_*); PR #260
+    merged 3b4c9bb. Phase C (governance seal consistency) COMPLETE — L1_GANITA_BUILD_CLOSE
+    v1.2→v1.3: ga_tajaka (GA10, 240 rows, lit) added to §8.5 cockpit table; orchestrator
+    convergence arc noted (6 phases, PRs #254–#259, 1563 tests, contract FROZEN, seal at
+    ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md); id-naming standardization noted.
+    L1 Gaṇita final canonical state: 9 data assets + 1 service; chart_facts=27,554,
+    chart_dashas=536,471, chart_divisionals=21,635, ga_tajaka=240 (l1_tajik_varsha_year_lords),
+    total Gaṇita header=585,710, FORENSIC 7/7 PASS, orchestrator-native, cockpit-faithful,
+    id-naming standardized. ready_for_L2=YES.
+    last_session_id: L1-GANITA-CLOSURE-PASS. predecessor_session: L1-GANITA-COCKPIT-RECONCILIATION.
+    next_session_objective: "L1 closure pass Phases C/D complete; await Phase E (operator E2E) then Phase F seal."
+    file_updated_at: 2026-06-12. file_updated_by_session: L1-GANITA-CLOSURE-PASS.
   - v5.72 (2026-06-11, L1-GANITA-COCKPIT-RECONCILIATION):
     **L1 Gaṇita cockpit count reconciliation + writer hardening COMPLETE.** The Gaṇita cockpit
     layer header read 1,900 for chart 482012f1 despite ~580k built rows. Four root causes fixed

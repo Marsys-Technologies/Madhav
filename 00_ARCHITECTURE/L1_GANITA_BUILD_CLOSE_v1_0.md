@@ -1,6 +1,6 @@
 ---
 artifact: L1_GANITA_BUILD_CLOSE
-version: 1.2
+version: 1.3
 status: COMPLETE
 date_closed: 2026-06-10
 production_build_date: 2026-06-11
@@ -13,15 +13,20 @@ changelog:
   - v1.1 → 1.2 (2026-06-11): added §8 post-build cockpit reconciliation (cockpit count fixes,
     ga_structural tile, writer idempotency + telemetry). §7's seal-time row counts are RETAINED
     as the premature-seal record; §8 carries the corrected canonical counts.
+  - v1.2 → 1.3 (2026-06-12, L1-GANITA-CLOSURE-PASS Phase C): added ga_tajaka (GA10, 240 rows,
+    lit) to §8.5 cockpit table — activated post-seal in PR #253 (commit e8488ad4); corrected
+    §1 summary from "GA3–GA9" to "GA3–GA10 (9 data assets + 1 service)"; noted orchestrator
+    convergence arc (6 phases, PRs #254–#259, contract FROZEN, seal ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md)
+    and id-naming standardization (migration 224, PR #260).
 ---
 
 # L1 Gaṇita Build — Wave Close
 
 ## §1 — Summary
 
-The L1 Gaṇita layer (GA3–GA9) is **COMPLETE** and merged to `main` as of 2026-06-10.
+The L1 Gaṇita layer (GA3–GA10, 9 data assets + 1 service) is **COMPLETE** and merged to `main` as of 2026-06-10 (GA3–GA9) + 2026-06-12 (GA10 ga_tajaka, PR #253).
 
-All 7 writer sub-agents executed, all CI gates cleared, IS.8(b) red-team PASSED (0 class-1 findings), and all 7 PRs merged in sequence into `feature/ga3-chart-facts-writer` then to `main`.
+All writer sub-agents executed, all CI gates cleared, IS.8(b) red-team PASSED (0 class-1 findings), and all PRs merged to `main`. The orchestrator convergence arc (PRs #254–#259, contract FROZEN) and id-naming standardization (migration 224, PR #260) completed 2026-06-12.
 
 - **Main HEAD**: `d228aa0f1cb3d4640b12ce6f124627c27b5e8147`
 - **Git tag**: `l1-ganita-build-complete`
@@ -247,8 +252,47 @@ verified to equal the untiled complement (6,075); the five chart_facts tiles now
 | ga_panchanga | 221 | lit |
 | ga_sade_sati | 11,019 | lit |
 | ga_structural | 6,075 | lit |
+| ga_tajaka | 240 | lit |
 | ga_pyjhora_engine | service | lit |
-| **Gaṇita layer header** | **585,710** | (was 1,900) |
+| **Gaṇita layer header** | **585,710** | (was 1,900; ga_tajaka 240 rows in l1_tajik_varsha_year_lords, not chart_facts — counted separately) |
+
+## §9 — Post-Seal Arcs (2026-06-12)
+
+Three arcs executed after the §8 cockpit reconciliation seal, completing the L1 layer:
+
+### §9.1 — GA10 ga_tajaka activated (PR #253, commit e8488ad4)
+
+`ga_tajaka` writer (annual Vārṣaphal chart) activated from parked state. Writes
+240 rows to `l1_tajik_varsha_year_lords` table (one row per year-lord per ayanamsha
+for the native's varsha cycle). Registered in asset_registry as `ga_tajaka` (lit).
+Migration: 221 (ga_tajaka table + registration).
+
+### §9.2 — Orchestrator Convergence Arc (PRs #254–#259)
+
+Six-phase arc converging the build orchestrator into a FROZEN, metadata-driven,
+sub-step-capable writer contract:
+
+| Phase | PR | What |
+|---|---|---|
+| 1 — Deployment foundation | #254 (`38f842ff`) | Job-name fix, ga_writers in pipeline image, CI/IaC |
+| 2 — Freeze contract + sub-steps | #255 (`65ad201d`) | `SubStep` + `plan_substeps`/`run_substep` FROZEN |
+| 3 — Converge 9 GA writers | #256 (`3129f3e3`) | Transaction-ownership inverted; 9 `@register` adapters |
+| 3B — Per-chart generalization | #257 (`38ef773e`) | birth + FORENSIC generalized; any chart_id |
+| 4 — Rebuild-on-probe-fail + DAG | #258 (`20ed5a01`) | `rebuild_on_probe_fail`; migration 223 GA depends_on DAG |
+| 6 — Close + seal | #259 (`26bb0f38`) | `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` authored |
+
+**Result:** 1563 tests across all 6 phases. Contract FROZEN — future L2–L5 writers
+onboard via `@register` subclass only; orchestrator code never changes again.
+Seal artifact: `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`.
+
+### §9.3 — L2–L5 id-naming standardization (migration 224, PR #260, commit 3b4c9bb)
+
+Migration 224 renames all 23 L2–L5 placeholder `asset_id` values in `asset_registry`
+from dot-notation (`bodha.*`, `kala.*`, `phala.*`, `mimamsa.*`) to underscore
+(`bo_*`, `ka_*`, `ph_*`, `mi_*`), matching the established `ga_*` L1 convention.
+This is a governance-only rename — no writer code changes. The seed file
+(`platform/scripts/seed/asset_registry_seed.ts`) updated in the same PR to reflect
+the new ids. ready_for_L2=YES confirmed post-rename.
 
 ---
-*Sealed 2026-06-10. All acceptance criteria met. Signed: Claude Sonnet 4.6.*
+*Sealed 2026-06-10. §8 reconciliation 2026-06-11. §9 post-seal arcs recorded 2026-06-12. All acceptance criteria met. Signed: Claude Sonnet 4.6.*
