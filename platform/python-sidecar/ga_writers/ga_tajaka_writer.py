@@ -172,17 +172,19 @@ def _conn():
 
 # ── Ephemeris helpers ─────────────────────────────────────────────────────────
 
-def _sun_longitude(dt_local: datetime, aya_adapter: str) -> float:
+def _sun_longitude(dt_local: datetime, aya_adapter: str,
+                   birth_params: dict | None = None) -> float:
     """Sidereal Sun longitude (deg, 0..360) at a local-wallclock instant under
     `aya_adapter`, via the lightweight position engine (no full chart)."""
+    bp = birth_params or NATIVE_BIRTH
     dob = drik.Date(dt_local.year, dt_local.month, dt_local.day)
     tob = (dt_local.hour, dt_local.minute, dt_local.second)
     jd = utils.julian_day_number(dob, tob)
     grahas = compute_positions(
         jd, aya_adapter,
-        lat=float(NATIVE_BIRTH["latitude_deg"]),
-        lon=float(NATIVE_BIRTH["longitude_deg"]),
-        tz=float(NATIVE_BIRTH["tz_offset_hours"]),
+        lat=float(bp["latitude_deg"]),
+        lon=float(bp["longitude_deg"]),
+        tz=float(bp["tz_offset_hours"]),
     )
     for g in grahas:
         if g["name"] == "Sun":
@@ -195,19 +197,23 @@ def _ang_diff(a: float, b: float) -> float:
     return ((a - b + 180.0) % 360.0) - 180.0
 
 
-def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str
-                  ) -> tuple[datetime, dict[str, Any]]:
+def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
+                  birth_params: dict | None = None) -> tuple[datetime, dict[str, Any]]:
     """Root-find the local-wallclock instant in calendar year
-    (BIRTH_YEAR + varsha_year - 1) where the sidereal Sun returns to
+    (birth_year + varsha_year - 1) where the sidereal Sun returns to
     `natal_sun_long`. Bisection on the signed Sun-longitude difference within a
     ±2-day bracket around the birthday anniversary (widened to ±5 if needed)."""
-    cal_year = BIRTH_YEAR + varsha_year - 1
-    anniversary = datetime(cal_year, BIRTH_MONTH, BIRTH_DAY,
-                           int(NATIVE_BIRTH["datetime_iso"][11:13]),
-                           int(NATIVE_BIRTH["datetime_iso"][14:16]), 0)
+    bp = birth_params or NATIVE_BIRTH
+    iso = str(bp["datetime_iso"])
+    cal_year = int(iso[:4]) + varsha_year - 1
+    birth_month = int(iso[5:7])
+    birth_day = int(iso[8:10])
+    birth_hour = int(iso[11:13])
+    birth_min = int(iso[14:16])
+    anniversary = datetime(cal_year, birth_month, birth_day, birth_hour, birth_min, 0)
 
     def f(dt: datetime) -> float:
-        return _ang_diff(_sun_longitude(dt, aya_adapter), natal_sun_long)
+        return _ang_diff(_sun_longitude(dt, aya_adapter, birth_params=bp), natal_sun_long)
 
     bracket_days = 2
     lo = anniversary - timedelta(days=bracket_days)
@@ -338,7 +344,7 @@ def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | N
             [chart_id, canonical_aya],
         )
         row = cur.fetchone()
-        return row[0] if row else None
+        return row["fact_value_text"] if row else None
     except Exception as exc:  # noqa: BLE001
         logger.warning("[ga_tajaka_writer] trirashipathi read failed (%s): %s",
                        canonical_aya, exc)
@@ -370,8 +376,8 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     house_from_natal = ((muntha_sign0 - natal_lagna_sign0) % 12) + 1
 
     # ── Solar return + annual chart ──────────────────────────────────────────
-    instant, sr_audit = _solar_return(varsha_year, natal_sun_long, aya_adapter)
-    next_instant, _ = _solar_return(varsha_year + 1, natal_sun_long, aya_adapter)
+    instant, sr_audit = _solar_return(varsha_year, natal_sun_long, aya_adapter, birth_params=birth)
+    next_instant, _ = _solar_return(varsha_year + 1, natal_sun_long, aya_adapter, birth_params=birth)
     instant_iso = instant.replace(microsecond=0).isoformat() + "+05:30"
     next_iso = next_instant.replace(microsecond=0).isoformat() + "+05:30"
 
@@ -664,8 +670,8 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
         "build_id": build_id,
         "window": {"min_varsha": min_varsha, "max_varsha": max_varsha,
                    "reference_year": reference_year,
-                   "calendar_span": [BIRTH_YEAR + min_varsha - 1,
-                                     BIRTH_YEAR + max_varsha - 1]},
+                   "calendar_span": [birth_year + min_varsha - 1,
+                                     birth_year + max_varsha - 1]},
         "ayanamshas": list(aya_ids),
         "rows_deleted_idempotent": deleted,
         "total_rows_written": inserted,

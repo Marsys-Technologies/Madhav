@@ -2106,7 +2106,7 @@ def _check_already_written(conn, chart_id: str, ayanamsha_id: str, varga_id: str
         """,
         [chart_id, ayanamsha_id, varga_id, build_id],
     )
-    count = cur.fetchone()[0]
+    count = cur.fetchone()["count"]
     return count > 10  # > 10 rows means varga was written
 
 
