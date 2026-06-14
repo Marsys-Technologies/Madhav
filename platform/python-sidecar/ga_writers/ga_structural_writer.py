@@ -619,15 +619,17 @@ def _load_varga_positions(
     varga: str,
 ) -> dict[str, dict[str, Any]]:
     """Load graha positions for a specific varga from chart_divisionals (GA6 output).
-    Returns {graha_name: {sign, sign_num, house, degree}} for the varga.
-    Empty dict if varga data not present (GA6 not yet run).
+
+    Returns {graha_name: {sign, sign_num, house, degree}} for CLASSICAL_GRAHAS.
+    House is computed as (sign_num - lagna_sign_num) % 12 + 1 — GA6 does not
+    write a 'house' fact_key; only sign/sign_id/degree_in_sign are stored.
+    Empty dict if varga data not present in chart_divisionals (GA6 not yet run).
     """
     with conn.cursor() as cur:
         cur.execute("""
             SELECT graha,
                    MAX(CASE WHEN fact_key = 'sign'           THEN fact_value_text END) AS sign,
                    MAX(CASE WHEN fact_key = 'sign_id'        THEN fact_value_num  END) AS sign_num,
-                   MAX(CASE WHEN fact_key = 'house'          THEN fact_value_num  END) AS house,
                    MAX(CASE WHEN fact_key = 'degree_in_sign' THEN fact_value_num  END) AS degree
             FROM chart_divisionals
             WHERE chart_id = %s
@@ -637,16 +639,33 @@ def _load_varga_positions(
               AND graha IS NOT NULL
             GROUP BY graha
         """, (chart_id, ayanamsha_id, varga))
-        result = {}
+        raw: dict[str, dict[str, Any]] = {}
         for row in cur.fetchall():
-            graha_name, sign, sign_num, house, degree = row
-            if sign and house:
-                result[graha_name] = {
+            graha_name, sign, sign_num, degree = row
+            if sign and sign_num:
+                raw[graha_name] = {
                     "sign": sign,
-                    "sign_num": int(sign_num) if sign_num else 0,
-                    "house": int(house) if house else 0,
+                    "sign_num": int(sign_num),
                     "degree": float(degree) if degree else 0.0,
                 }
+
+    if not raw:
+        return {}
+
+    # Compute whole-sign house: count from Lagna's divisional sign.
+    lagna_sign_num = int(raw.get("Lagna", {}).get("sign_num", 1) or 1)
+    result = {}
+    for graha_name, data in raw.items():
+        if graha_name == "Lagna":
+            continue  # Lagna used only for reference; not enumerated as a graha
+        sn = data["sign_num"]
+        house = (sn - lagna_sign_num) % 12 + 1
+        result[graha_name] = {
+            "sign": data["sign"],
+            "sign_num": sn,
+            "house": house,
+            "degree": data["degree"],
+        }
     return result
 
 
@@ -2975,7 +2994,12 @@ def _build_varga_aspect_rows(
         else:
             varga_state = _load_varga_positions(conn, chart_id, ayanamsha_id, varga)
             if not varga_state:
-                logger.debug("[ga_structural] Skipping varga=%s: no positions in chart_divisionals", varga)
+                # LOUD: a missing shodasha varga is a build anomaly — GA6 should have written it.
+                logger.warning(
+                    "[ga_structural] VARGA_MISSING: varga=%s has no positions in chart_divisionals "
+                    "(chart_id=%s ayanamsha_id=%s) — GA6 may not have run for this varga.",
+                    varga, chart_id, ayanamsha_id,
+                )
                 continue
 
         rows.extend(_build_varga_relationship_rows(
