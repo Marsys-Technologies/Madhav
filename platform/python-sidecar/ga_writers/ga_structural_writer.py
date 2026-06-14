@@ -2868,6 +2868,7 @@ def _build_varga_relationship_rows(
             ))
 
     # ── Parivartana (mutual reception) per varga ───────────────────────────────
+    _seen_parivartana: set[str] = set()
     for g1 in CLASSICAL_GRAHAS:
         sign1 = get_sign(g1)
         if not sign1:
@@ -2883,6 +2884,9 @@ def _build_varga_relationship_rows(
             s1 = PLANET_TO_SUBJECT.get(g1, g1.upper())
             s2 = PLANET_TO_SUBJECT.get(lord1, lord1.upper())
             pair_key = "_".join(sorted([s1, s2]))
+            if pair_key in _seen_parivartana:
+                continue  # both A→B and B→A hit; emit only once
+            _seen_parivartana.add(pair_key)
             rows.append(_base_row(
                 "parivartana_per_varga", f"{varga_prefix}{pair_key}", "mutual_exchange",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
