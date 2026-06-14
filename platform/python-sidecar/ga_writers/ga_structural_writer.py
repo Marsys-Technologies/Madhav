@@ -530,23 +530,22 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
     ]
 
     found_categories = []
-    cursor = conn.execute(
-        """
-        SELECT DISTINCT fact_category FROM chart_facts
-        WHERE chart_id = %s
-        """,
-        [chart_id],
-    )
-    db_cats = {row["fact_category"] for row in cursor.fetchall()}
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT fact_category FROM chart_facts WHERE chart_id = %s",
+            (chart_id,),
+        )
+        db_cats = {row[0] for row in cur.fetchall()}
     found_categories = [c for c in required_upstream_categories if c in db_cats]
 
     # Check GA7 dashas separately
     try:
-        cursor2 = conn.execute(
-            "SELECT COUNT(*) FROM chart_dashas WHERE chart_id = %s",
-            [chart_id],
-        )
-        dasha_count = cursor2.fetchone()["count"]
+        with conn.cursor() as cur2:
+            cur2.execute(
+                "SELECT COUNT(*) FROM chart_dashas WHERE chart_id = %s",
+                (chart_id,),
+            )
+            dasha_count = cur2.fetchone()[0]
         if dasha_count > 0:
             found_categories.append("chart_dashas")
     except Exception:
@@ -557,11 +556,12 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
     # Check GA6 chart_divisionals (varga_dignity is stored there, not in chart_facts)
     try:
-        cursor3 = conn.execute(
-            "SELECT COUNT(*) FROM chart_divisionals WHERE chart_id = %s",
-            [chart_id],
-        )
-        div_count = cursor3.fetchone()["count"]
+        with conn.cursor() as cur3:
+            cur3.execute(
+                "SELECT COUNT(*) FROM chart_divisionals WHERE chart_id = %s",
+                (chart_id,),
+            )
+            div_count = cur3.fetchone()[0]
         if div_count > 0:
             found_categories.append("chart_divisionals")
         else:
