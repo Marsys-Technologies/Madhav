@@ -3166,10 +3166,23 @@ def _evaluate_catalog_rule(
 
     # ── Handle "all_planets_in_one_of" ──────────────────────────────────────────
     if "all_planets_in_one_of" in rule:
+        # Named house-group registry (classical bhava classifications)
+        _NAMED_HOUSE_GROUPS: dict[str, set[int]] = {
+            "four_kendra":    {1, 4, 7, 10},
+            "four_panaphara": {2, 5, 8, 11},
+            "four_apoklima":  {3, 6, 9, 12},
+            "trikona":        {1, 5, 9},
+            "dusthana":       {6, 8, 12},
+        }
         groups = rule["all_planets_in_one_of"]
         planets = CLASSICAL_GRAHAS
         for group in groups:
-            target_houses = {int(h) for h in group}
+            if isinstance(group, str):
+                target_houses = _NAMED_HOUSE_GROUPS.get(group)
+                if target_houses is None:
+                    continue  # Unknown named group — skip, don't crash
+            else:
+                target_houses = {int(h) for h in group}
             if all(graha_house(p) in target_houses for p in planets if graha_house(p) > 0):
                 return True, f"all_planets_in_group_{group}"
         return False, "no_group_matched"
