@@ -26,7 +26,7 @@ ALL_GA = [
     'ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive',
     'ga_structural', 'ga_sade_sati', 'ga_tajaka', 'ga_vargas', 'ga_dashas',
 ]
-HEAVY = {'ga_dashas', 'ga_vargas'}
+HEAVY = {'ga_dashas', 'ga_vargas', 'ga_structural'}
 
 
 class _Sentinel:
@@ -78,7 +78,6 @@ _LIGHT_FN = {
     'ga_strength':   ('ga_writers.ga_strength_writer',   'build_ga_strength'),
     'ga_panchanga':  ('ga_writers.ga_panchanga_writer',  'build_ga_panchanga'),
     'ga_sensitive':  ('ga_writers.ga_sensitive_writer',  'build_ga_sensitive'),
-    'ga_structural': ('ga_writers.ga_structural_writer',  'build_ga_structural'),
     'ga_sade_sati':  ('ga_writers.ga_sade_sati_writer',  'build_ga_sade_sati'),
     'ga_tajaka':     ('ga_writers.ga_tajaka_writer',     'build_ga_tajaka'),
 }
@@ -143,6 +142,33 @@ def test_ga_vargas_substep_threads_injected_conn(monkeypatch):
     assert seen['conn'] is sentinel
     assert seen['subset'] == ['lahiri']
     assert res.rows_inserted == 99
+
+
+def test_ga_structural_plan_is_per_ayanamsha():
+    steps = get_writer('ga_structural')().plan_substeps(_ctx(_Sentinel()))
+    assert len(steps) == 5                       # 5 canonical ayanamshas
+    assert all(isinstance(s, SubStep) for s in steps)
+    assert all(s.key.startswith('ayanamsha_') for s in steps)
+
+
+def test_ga_structural_substep_threads_injected_conn(monkeypatch):
+    import ga_writers.ga_structural_writer as gsw
+    seen = {}
+
+    def stub(*, chart_id, build_id, ayanamsha_id, conn, **kw):
+        seen.update(chart_id=chart_id, build_id=build_id, conn=conn,
+                    ayanamsha_id=ayanamsha_id)
+        return 42
+
+    monkeypatch.setattr(gsw, 'build_ga_structural_substep', stub)
+    sentinel = _Sentinel()
+    res = get_writer('ga_structural')().run_substep(
+        _ctx(sentinel), SubStep(key='ayanamsha_lahiri')
+    )
+
+    assert seen['conn'] is sentinel
+    assert seen['ayanamsha_id'] == 'lahiri'
+    assert res.rows_inserted == 42
 
 
 # ── D. Injected conn ⇒ no commit / no close / no telemetry (ga_positions) ────────
