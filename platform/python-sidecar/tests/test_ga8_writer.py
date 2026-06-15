@@ -725,7 +725,7 @@ class TestArgalaMatrices:
         )
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         for sign_num in range(1, 13):
-            sign_key = f"SIGN_{sign_num}"
+            sign_key = f"D1_SIGN_{sign_num}"
             nonzero = [r for r in argala
                        if r["fact_subject"] == sign_key
                        and r["fact_value_num"] is not None
@@ -755,7 +755,7 @@ class TestArgalaMatrices:
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         targets = {r["fact_subject"] for r in argala}
         for i in range(1, 13):
-            assert f"SIGN_{i}" in targets, f"SIGN_{i} missing from argala matrix"
+            assert f"D1_SIGN_{i}" in targets, f"D1_SIGN_{i} missing from argala matrix"
 
     def test_argala_atomic_no_jsonb_blob(self):
         """Each argala row is atomic (value_num, not a JSONB blob)."""

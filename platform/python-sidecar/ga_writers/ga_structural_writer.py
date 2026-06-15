@@ -122,9 +122,16 @@ SIGN_LORDS = {
     "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
 }
 
-# 16 Parashari shodasha vargas for aspect/conjunction/dispositor/dignity enumeration
+# 16 Parashari shodasha vargas
 SHODASHA_VARGAS = ["D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12",
                    "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"]
+
+# 11 supplementary + 3 Nadi vargas (D81 skipped per GA6 locked decision J)
+SUPPLEMENTARY_11 = ["D5", "D6", "D8", "D11", "D14", "D15", "D21", "D32", "D33", "D50", "D54"]
+NADI_3 = ["D108", "D150", "D2700"]
+
+# All 30 vargas GA6 computes — completeness-first per native decision 2026-06-12
+ALL_30_VARGAS = SHODASHA_VARGAS + SUPPLEMENTARY_11 + NADI_3
 
 # Exaltation signs per planet (classical Parashara)
 EXALTATION_SIGNS = {
@@ -2411,24 +2418,34 @@ def _build_argala_rows(
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    varga: str = "D1",
+    varga_sign_occupants: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Argala (intervention): for each sign, which signs have argala on it.
     Classical Jaimini rule: 2nd, 4th, 5th, 11th from a sign = argala positions.
     Virodha (counter-intervention): 12th, 10th, 9th, 3rd from a sign.
 
-    12×12 = 144 atomic rows for argala + 144 for virodha = 288 rows.
+    12×12 = 144 atomic rows for argala + 144 for virodha = 288 rows per varga.
     NOT blobs — each (subject_sign, source_sign) pair = one atomic row.
+
+    varga_sign_occupants: pre-built {sign_name: [graha_name, ...]} for non-D1 vargas.
+    When None (default), builds from chart_output (D1 natal occupancy).
+    Rows are tagged with varga prefix in fact_subject (e.g., D9_SIGN_4).
     """
     rows: list[dict[str, Any]] = []
-    grahas_data = chart_output.get("grahas", [])
+    varga_prefix = f"{varga}_"
 
-    # Build sign occupancy map (which grahas are in which sign)
-    sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
-    for g in grahas_data:
-        g_sign = g.get("sign", "")
-        if g_sign in sign_occupants:
-            sign_occupants[g_sign].append(g["name"])
+    if varga_sign_occupants is not None:
+        sign_occupants = varga_sign_occupants
+    else:
+        # Build sign occupancy map from D1 chart output
+        grahas_data = chart_output.get("grahas", [])
+        sign_occupants = {s: [] for s in SIGN_NAMES}
+        for g in grahas_data:
+            g_sign = g.get("sign", "")
+            if g_sign in sign_occupants:
+                sign_occupants[g_sign].append(g["name"])
 
     # Use module-level ARGALA_OFFSETS and VIRODHA_OFFSETS constants
     malefics_set = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
@@ -2459,7 +2476,7 @@ def _build_argala_rows(
 
             rows.append(_base_row(
                 "argala_natal_matrix",
-                f"SIGN_{target_sign_num}",
+                f"{varga_prefix}SIGN_{target_sign_num}",
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=net_argala,
@@ -2467,7 +2484,7 @@ def _build_argala_rows(
                 verif="two_pass_verified",
                 source=f"pyjhora_adapter.argala/{eng_ver}",
                 citation_human=(
-                    f"{target_sign} argala from {source_sign} "
+                    f"{varga} {target_sign} argala from {source_sign} "
                     f"(offset {offset}): score {net_argala:.2f} "
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
                 ),
@@ -2481,7 +2498,7 @@ def _build_argala_rows(
 
             rows.append(_base_row(
                 "virodha_argala_natal_matrix",
-                f"SIGN_{target_sign_num}",
+                f"{varga_prefix}SIGN_{target_sign_num}",
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=virodha_score,
@@ -2489,7 +2506,7 @@ def _build_argala_rows(
                 verif="two_pass_verified",
                 source=f"pyjhora_adapter.virodha_argala/{eng_ver}",
                 citation_human=(
-                    f"{target_sign} virodha from {source_sign} "
+                    f"{varga} {target_sign} virodha from {source_sign} "
                     f"(offset {offset}): score {virodha_score:.2f} "
                     f"({'virodha' if offset in VIRODHA_OFFSETS else 'no_virodha'}) ({ayanamsha_id})."
                 ),
@@ -2598,50 +2615,59 @@ def _build_esoteric_rows(
 
 # ── INSERT ────────────────────────────────────────────────────────────────────
 
+_CF_INSERT_COLS = [
+    "fact_id", "chart_id", "ayanamsha_id", "build_id",
+    "fact_category", "fact_subject", "fact_key",
+    "fact_value_text", "fact_value_num", "fact_value_jsonb",
+    "unit", "citation_ref", "citation_human",
+    "source_calculation", "verification_pass_status",
+    "engine_version", "computed_at",
+]
+
+_CF_INSERT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id          = EXCLUDED.fact_id,
+      fact_value_num   = EXCLUDED.fact_value_num,
+      fact_value_text  = EXCLUDED.fact_value_text,
+      fact_value_jsonb = EXCLUDED.fact_value_jsonb,
+      citation_ref     = EXCLUDED.citation_ref,
+      citation_human   = EXCLUDED.citation_human,
+      verification_pass_status = EXCLUDED.verification_pass_status,
+      engine_version   = EXCLUDED.engine_version,
+      computed_at      = EXCLUDED.computed_at
+"""
+
+
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)
-    written = 0
+
+    # Serialize JSONB values and build positional tuples once upfront.
+    tuples = []
     for r in rows:
         row = dict(r)
-        # psycopg3 cannot adapt Python dicts/lists; serialize JSONB values to strings
         v = row.get("fact_value_jsonb")
         if isinstance(v, (dict, list)):
             row["fact_value_jsonb"] = json.dumps(v)
-        conn.execute(
-            """
-            INSERT INTO chart_facts
-              (fact_id, chart_id, ayanamsha_id, build_id,
-               fact_category, fact_subject, fact_key,
-               fact_value_text, fact_value_num, fact_value_jsonb,
-               unit, citation_ref, citation_human,
-               source_calculation, verification_pass_status,
-               engine_version, computed_at)
-            VALUES
-              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
-               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
-               %(unit)s, %(citation_ref)s, %(citation_human)s,
-               %(source_calculation)s, %(verification_pass_status)s,
-               %(engine_version)s, %(computed_at)s)
-            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
-            WHERE formula_id IS NULL
-            DO UPDATE SET
-              fact_id          = EXCLUDED.fact_id,
-              fact_value_num   = EXCLUDED.fact_value_num,
-              fact_value_text  = EXCLUDED.fact_value_text,
-              fact_value_jsonb = EXCLUDED.fact_value_jsonb,
-              citation_ref     = EXCLUDED.citation_ref,
-              citation_human   = EXCLUDED.citation_human,
-              verification_pass_status = EXCLUDED.verification_pass_status,
-              engine_version   = EXCLUDED.engine_version,
-              computed_at      = EXCLUDED.computed_at
-            """,
-            row,
-        )
-        written += 1
-    return written
+        tuples.append(tuple(row.get(c) for c in _CF_INSERT_COLS))
+
+    # executemany with psycopg3 uses the pipeline protocol — collapses thousands of
+    # round-trips into a handful of network batches, avoiding Cloud SQL proxy timeouts.
+    with conn.cursor() as cur:
+        cur.executemany(_CF_INSERT_SQL, tuples)
+
+    return len(rows)
 
 
 # ── Two-pass verification ─────────────────────────────────────────────────────
@@ -2983,22 +3009,23 @@ def _build_varga_aspect_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Enumerate aspects/conjunctions/dispositors across all 16 shodasha vargas.
+    """Enumerate ALL structural relationships + argala matrices across all 30 vargas.
 
-    D1 uses chart_output directly (same data as existing _build_aspect_rows but
-    now tagged with varga='D1'). D2-D60 query chart_divisionals for positions.
+    D1 uses chart_output directly. D2-D2700 query chart_divisionals (GA6 output).
+    Per native decision 2026-06-12: every D1 construct (dignity, aspects, conjunctions,
+    dispositors, parivartana, vargottama, AND argala/virodha) computed for all 30 vargas.
 
     Each row carries varga + sign + ayanamsha + position — no unqualified rows.
     """
     rows: list[dict[str, Any]] = []
 
-    for varga in SHODASHA_VARGAS:
+    for varga in ALL_30_VARGAS:
         if varga == "D1":
             varga_state = _extract_chart_state(chart_output)
         else:
             varga_state = _load_varga_positions(conn, chart_id, ayanamsha_id, varga)
             if not varga_state:
-                # LOUD: a missing shodasha varga is a build anomaly — GA6 should have written it.
+                # LOUD: a missing varga is a build anomaly — GA6 should have written it.
                 logger.warning(
                     "[ga_structural] VARGA_MISSING: varga=%s has no positions in chart_divisionals "
                     "(chart_id=%s ayanamsha_id=%s) — GA6 may not have run for this varga.",
@@ -3008,6 +3035,17 @@ def _build_varga_aspect_rows(
 
         rows.extend(_build_varga_relationship_rows(
             varga, varga_state, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+
+        # Argala/virodha 144-cell matrices per varga — completeness-first (native decision 2026-06-12)
+        varga_sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
+        for graha_name, gdata in varga_state.items():
+            g_sign = gdata.get("sign", "")
+            if g_sign in varga_sign_occupants:
+                varga_sign_occupants[g_sign].append(graha_name)
+        rows.extend(_build_argala_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver,
+            varga=varga, varga_sign_occupants=varga_sign_occupants,
         ))
 
     return rows
@@ -3307,10 +3345,13 @@ def build_ga_structural(
 
     logger.info("[ga_structural_writer] Starting GA8 build chart_id=%s build_id=%s", chart_id, build_id)
 
-    with (_conn() if owns_conn else nullcontext(conn)) as conn:
-        # Step 0: Upstream presence check
+    # ── Phase 1: Upstream check + catalog pre-load (short-lived connection) ──────
+    # When owns_conn, we use a brief initial connection for the fast setup ops,
+    # then close it so each ayanamsha can open a fresh connection.  This prevents
+    # Cloud SQL proxy timeouts during the long (~15 min) per-ayanamsha compute phase.
+    with (_conn() if owns_conn else nullcontext(conn)) as setup_conn:
         if not skip_upstream_check:
-            upstream = check_upstream_presence(conn, chart_id)
+            upstream = check_upstream_presence(setup_conn, chart_id)
             summary["upstream_check"] = upstream
             if not upstream["present"]:
                 msg = (
@@ -3326,15 +3367,21 @@ def build_ga_structural(
         else:
             logger.warning("[ga_structural_writer] Upstream check SKIPPED (skip_upstream_check=True)")
 
-        all_rows_total: list[dict[str, Any]] = []
+        yoga_catalog = _load_yoga_catalog(setup_conn)
+        dosha_catalog = _load_dosha_catalog(setup_conn)
+        if owns_conn:
+            setup_conn.commit()
+    # setup_conn closed here (when owns_conn); caller's conn untouched (owns_conn=False)
 
-        # Pre-load catalogs once — avoids repeat DB queries per ayanamsha
-        yoga_catalog = _load_yoga_catalog(conn)
-        dosha_catalog = _load_dosha_catalog(conn)
+    # ── Phase 2: Per-ayanamsha build ──────────────────────────────────────────────
+    # owns_conn=True  → fresh _conn() per ayanamsha (avoids long-lived TCP stall)
+    # owns_conn=False → reuse caller's conn (orchestrator manages lifecycle)
+    all_rows_total: list[dict[str, Any]] = []
 
-        for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
-            logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
+    for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
+        logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
 
+        with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
@@ -3350,17 +3397,17 @@ def build_ga_structural(
             all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_vimsopaka_ext_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
-            all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
+            all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
+            all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
             all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_composite_strength_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_argala_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
+            all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
 
             # Two-pass verification passes
             try:
@@ -3392,7 +3439,7 @@ def build_ga_structural(
             summary["varga_rows_count"] = varga_rows
 
             # Insert
-            cf_count = _insert_chart_facts_rows(conn, all_rows)
+            cf_count = _insert_chart_facts_rows(ay_conn, all_rows)
             summary["ayanamshas"][canonical_id] = {
                 "chart_facts_rows": cf_count,
                 "argala_rows": argala_count,
@@ -3411,8 +3458,9 @@ def build_ga_structural(
                 canonical_id, cf_count, argala_count, yoga_count, dosha_count, varga_rows,
             )
 
-        if owns_conn:
-            conn.commit()
+            if owns_conn:
+                ay_conn.commit()
+        # ay_conn closed and committed here (when owns_conn)
 
     # asset_throughput is written by the orchestrator on the conformed path; only
     # the legacy standalone CLI (owns_conn) writes it here via _telemetry.
@@ -3472,8 +3520,8 @@ def build_ga_structural_substep(
     all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_argala_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
     all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
 
     # Two-pass verification

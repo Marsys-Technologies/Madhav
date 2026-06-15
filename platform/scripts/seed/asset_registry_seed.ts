@@ -672,9 +672,9 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    // Floor updated after multi-varga enumeration landed (PR #271-#272, 2026-06-15):
-    // 16 shodasha vargas × 5 ayanamshas now populated; floor = achieved count for 482012f1.
-    target_floor: 9576,
+    // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
+    // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
+    target_floor: 53953,
     expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
