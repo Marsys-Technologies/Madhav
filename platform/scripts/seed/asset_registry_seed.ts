@@ -442,14 +442,14 @@ const ASSETS: AssetDef[] = [
     english_name: 'Positions',
     english_description: 'Natal graha positions per ayanamsha (sidereal/tropical longitude, sign, nakshatra)',
     storage_type: 'postgres_table',
-    target_table: 'ganita_positions',
-    count_sql: 'SELECT count(*) FROM ganita_positions WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('ganita_positions')",
-    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_table: 'chart_facts',
+    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes')",
+    size_sql: "SELECT pg_total_relation_size('chart_facts')",
+    // Floor = achieved canonical count for chart 482012f1 (D2 deprecation: ganita_positions dual-write removed, count_sql now queries chart_facts).
     target_floor: 50,
-    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
+    expected_volume_formula: 'GRAHAS * AYANAMSHAS * FACT_KEYS',
     expected_volume_inputs: null,
-    volume_explanation: '9 grahas × ayanamsha count — one position row per graha per ayanamsha',
+    volume_explanation: '10 bodies × 5 ayanamshas × atomic fact keys per body (graha_position + graha_sign_attributes)',
     depends_on: [],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1246,9 +1246,9 @@ async function main(): Promise<void> {
 
   for (const asset of ASSETS) {
     if (!asset.target_table) {
-      console.log(`  ⚠ ${asset.asset_id}: no target_table — marking is_active=false`)
-      asset.is_active = false
-      absentAssets.push(`${asset.asset_id} (no target_table declared)`)
+      // null target_table is intentional for chart_facts-partitioned assets (use count_sql filter)
+      // and service assets (health_probe mechanism). Preserve is_active as defined — do NOT override.
+      console.log(`  – ${asset.asset_id}: no target_table (intentional — preserving is_active=${asset.is_active})`)
       continue
     }
     const { rows } = await client.query<{ to_regclass: string | null }>(
@@ -1266,10 +1266,9 @@ async function main(): Promise<void> {
 
   console.log()
 
-  // Hard stop limit raised from 5 → 20 (2026-06-15): expected absences now include
-  // 2 service assets (no target_table by design), 4 chart_facts-partitioned assets
-  // (null target_table by design), and up to 6 L2 Bodha tables (not yet built).
-  // All are expected absent until migration 226 is applied and L2 is built.
+  // Hard stop: only assets with a declared target_table that doesn't exist in prod are counted.
+  // Null-target_table assets (chart_facts-partitioned + service) are skipped above and never counted.
+  // Expected absences: up to ~12 L2–L5 tables not yet built. Limit = 20 gives headroom.
   if (absentAssets.length > 20) {
     await client.end()
     throw new Error(
@@ -1366,18 +1365,56 @@ async function main(): Promise<void> {
     console.log(`  ✓ ${coeff.coefficient_name} (${coeff.upstream_asset_id} → ${coeff.downstream_asset_id})`)
   }
 
+  // Post-apply DB readback assertion — verify DB state matches seed intent
+  // (not in-memory state: the in-memory ASSETS array may have been mutated during preflight)
+  console.log('\nPost-apply verification: reading back from DB...')
+  const { rows: dbRows } = await client.query<{ asset_id: string; is_active: boolean }>(
+    'SELECT asset_id, is_active FROM asset_registry ORDER BY sort_order',
+  )
+  const dbMap = new Map(dbRows.map(r => [r.asset_id, r.is_active]))
+  const seedMap = new Map(ASSETS.map(a => [a.asset_id, a.is_active]))
+
+  const mismatches: string[] = []
+  for (const [assetId, seedActive] of seedMap) {
+    const dbActive = dbMap.get(assetId)
+    if (dbActive === undefined) {
+      mismatches.push(`  MISSING in DB: ${assetId}`)
+    } else if (dbActive !== seedActive) {
+      mismatches.push(`  MISMATCH: ${assetId} — seed wants is_active=${seedActive}, DB has is_active=${dbActive}`)
+    }
+  }
+
   await client.end()
 
-  // Verification summary
-  const active = ASSETS.filter(a => a.is_active)
-  const inactive = ASSETS.filter(a => !a.is_active)
-  console.log('\n── Seed complete ────────────────────────────────────────────────')
-  console.log(`Total:    ${ASSETS.length}`)
-  console.log(`Active:   ${active.length}`)
-  console.log(`Inactive: ${inactive.length}`)
-  if (inactive.length > 0) {
-    console.log('Inactive list (target_table missing or null):')
-    inactive.forEach(a => console.log(`  - ${a.asset_id} (${a.target_table ?? 'no table declared'})`))
+  // Hard assert: chart_facts-partitioned assets must be active (these were the recurring divergence source)
+  const CRITICAL_ACTIVE = ['ga_strength', 'ga_sensitive', 'ga_sade_sati', 'ga_structural']
+  const criticalFailed = CRITICAL_ACTIVE.filter(id => dbMap.get(id) !== true)
+  if (criticalFailed.length > 0) {
+    throw new Error(
+      `ASSERTION FAILED: chart_facts-partitioned assets must be is_active=true after seed.\n` +
+      `Failed: ${criticalFailed.join(', ')}\n` +
+      'Run migration 228 to reactivate, then re-apply seed.',
+    )
+  }
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      `ASSERTION FAILED: ${mismatches.length} asset(s) have wrong is_active in DB after seed apply:\n` +
+      mismatches.join('\n'),
+    )
+  }
+
+  // Verification summary (from DB, not in-memory)
+  const active = [...dbMap.values()].filter(Boolean).length
+  const inactive = [...dbMap.values()].filter(v => !v).length
+  console.log('\n── Seed complete (DB-verified) ──────────────────────────────────')
+  console.log(`Total:    ${dbMap.size}`)
+  console.log(`Active:   ${active}`)
+  console.log(`Inactive: ${inactive}`)
+  if (inactive > 0) {
+    const inactiveIds = [...dbMap.entries()].filter(([, v]) => !v).map(([id]) => id)
+    console.log('Inactive list (target_table absent in prod):')
+    inactiveIds.forEach(id => console.log(`  - ${id}`))
   }
   console.log('\nCoefficients seeded (all current_value = NULL — measured on first build):')
   COEFFICIENTS.forEach(c => console.log(`  - ${c.coefficient_name}`))

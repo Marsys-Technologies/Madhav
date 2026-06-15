@@ -30,6 +30,7 @@ Two-pass verification:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import math
@@ -1898,6 +1899,35 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
 
     inserted = 0
     for row in rows:
+        # Serialize fact_value_jsonb: psycopg3 does not auto-cast Python lists/dicts
+        # to jsonb — pass an explicit JSON string so the cast always succeeds.
+        raw_jsonb = row.get("fact_value_jsonb")
+        if raw_jsonb is not None:
+            try:
+                jsonb_param = json.dumps(raw_jsonb)
+            except (TypeError, ValueError) as json_exc:
+                # JSON serialization failed for this row — emit a flagged skip-row
+                # so absence is explicit in the DB rather than silently dropped.
+                subject = row.get("fact_subject", "UNKNOWN")
+                key = row.get("fact_key", "UNKNOWN")
+                logger.warning(
+                    "[ga_sensitive] KP_PARSE_ERROR: JSON serialization failed for "
+                    "%s.%s.%s — emitting flagged error row. cause=%s",
+                    row.get("fact_category"), subject, key, json_exc,
+                )
+                error_row = dict(row)
+                error_row["fact_value_jsonb"] = None
+                error_row["fact_value_text"] = "KP_PARSE_ERROR"
+                error_row["fact_value_num"] = None
+                error_row["verification_pass_status"] = "data_error"
+                error_row["citation_human"] = (
+                    f"KP parse failed for {subject}: malformed JSONB in source data."
+                )
+                row = error_row
+                jsonb_param = None
+        else:
+            jsonb_param = None
+
         try:
             with conn.transaction():  # savepoint — isolates each row so failures don't abort the transaction
                 conn.execute(
@@ -1915,7 +1945,7 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
                     ) VALUES (
                         %s, %s, %s, %s, %s,
                         %s, %s, %s,
-                        %s, %s, %s,
+                        %s, %s, %s::jsonb,
                         %s, %s, %s,
                         %s, %s,
                         %s,
@@ -1937,7 +1967,7 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
                         row["ayanamsha_id"], row["engine_version"],
                         row["fact_category"], row["fact_subject"], row["fact_key"],
                         row["fact_value_num"], row["fact_value_text"],
-                        row.get("fact_value_jsonb"),
+                        jsonb_param,
                         row.get("formula_id"), row["source_calculation"], row["computed_at"],
                         row["citation_ref"], row["citation_human"],
                         row["verification_pass_status"],

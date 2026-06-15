@@ -1,7 +1,7 @@
 """
 ga_positions_writer.py — GA3 ga_positions writer
 ==================================================
-Writes per-chart, per-ayanamsha graha positions to `ganita_positions`.
+Writes per-chart, per-ayanamsha graha positions to `chart_facts`.
 
 Per A3_CHART_FACTS_SPEC §3 + GA3 brief §6.1:
   - 5 canonical ayanamshas × ≥10 bodies (9 grahas + Lagna)
@@ -14,16 +14,12 @@ FORENSIC anchors (birth: 1984-02-05 10:43 IST, lat 20.27, lon 85.84):
   - Moon nakshatra: Purva Bhadrapada
   - Lagna: Aries (NOT Scorpio)
 
-The writer inserts into `ganita_positions` (existing table). Since ganita_positions
-has a simpler schema (per-body, not per key-value atomic), it is used as a summary
-spine. chart_facts rows are also written for full atomic-grain compliance.
-
-Storage strategy per brief §3:
-  - ganita_positions: one row per (chart_id, ayanamsha_id, planet) — existing schema
+Storage strategy:
   - chart_facts rows: one row per atomic fact key (sign, nakshatra, longitude, etc.)
+    fact_category IN ('graha_position', 'graha_sign_attributes')
 
-Note: The ganita_positions table schema predates A3. We write into it as-is (the
-brief says "verify and use"). chart_facts gets the atomic-grain position rows.
+Note: The `ganita_positions` table is a legacy dual-write target that predates A3.
+The dual-write has been removed (D2 deprecation). chart_facts is the canonical store.
 """
 from __future__ import annotations
 
@@ -390,93 +386,6 @@ def _build_position_rows(
     return rows
 
 
-# ── ganita_positions summary writer ──────────────────────────────────────────
-
-def _write_ganita_positions_summary(
-    conn: Any,
-    chart_output: dict[str, Any],
-    chart_id: str,
-    build_id: str,
-    ayanamsha_id_canonical: str,
-    computed_at: str,
-) -> int:
-    """
-    Write/upsert one row per body into ganita_positions (existing summary table).
-    This feeds the cockpit progress bars (asset_throughput count_sql).
-    """
-    grahas = chart_output.get("grahas", [])
-    ascendant = chart_output.get("ascendant", {})
-    eng_ver = ENGINE_VERSION
-
-    bodies = list(grahas)
-    # Add Lagna as a synthetic body row
-    if ascendant:
-        bodies.append({
-            "name": "Lagna",
-            "longitude_deg": ascendant.get("longitude_deg", 0),
-            "sign_id": ascendant.get("sign_id", 1),
-            "sign": ascendant.get("sign", ""),
-            "nakshatra_id": ascendant.get("nakshatra_id", 0) or 0,
-            "nakshatra": ascendant.get("nakshatra") or "",
-            "nakshatra_pada": ascendant.get("pada", 0) or 0,
-            "retrograde": False,
-            "speed_dps": 0.0,
-        })
-
-    written = 0
-    for g in bodies:
-        lon = float(g.get("longitude_deg", g.get("lon", 0)))
-        sid = int(g.get("sign_id", 1))
-        nak_id = int(g.get("nakshatra_id", g.get("nakshatra_num", 0)) or 0)
-        nak_pada = int(g.get("nakshatra_pada", g.get("pada", 0)) or 0)
-        speed = float(g.get("speed_dps", g.get("speed", 0.0)) or 0.0)
-        is_retro = bool(g.get("retrograde", False))
-        planet_name = g["name"]
-
-        # Clamp nakshatra_id and pada to valid ranges for the CHECK constraints
-        if nak_id < 1 or nak_id > 27:
-            nak_id = 1  # Sentinel: engine gave 0 (e.g., Lagna with no nak)
-        if nak_pada < 1 or nak_pada > 4:
-            nak_pada = 1
-
-        conn.execute(
-            """
-            INSERT INTO ganita_positions
-              (chart_id, build_id, ayanamsha_id, planet,
-               tropical_longitude, sidereal_longitude,
-               sign_id, sign_name, nakshatra_id, nakshatra_name, nakshatra_pada,
-               speed_dps, is_retrograde, source_citation, computed_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT (chart_id, ayanamsha_id, planet) DO UPDATE SET
-              build_id         = EXCLUDED.build_id,
-              tropical_longitude = EXCLUDED.tropical_longitude,
-              sidereal_longitude = EXCLUDED.sidereal_longitude,
-              sign_id          = EXCLUDED.sign_id,
-              sign_name        = EXCLUDED.sign_name,
-              nakshatra_id     = EXCLUDED.nakshatra_id,
-              nakshatra_name   = EXCLUDED.nakshatra_name,
-              nakshatra_pada   = EXCLUDED.nakshatra_pada,
-              speed_dps        = EXCLUDED.speed_dps,
-              is_retrograde    = EXCLUDED.is_retrograde,
-              source_citation  = EXCLUDED.source_citation,
-              updated_at       = NOW()
-            """,
-            [
-                chart_id, build_id, ayanamsha_id_canonical, planet_name,
-                lon, lon,  # tropical ≈ sidereal (PyJHora returns sidereal)
-                sid, g.get("sign", ""),
-                nak_id, g.get("nakshatra", ""),
-                nak_pada,
-                speed, is_retro,
-                f"pyjhora_adapter/{ayanamsha_id_canonical}/{eng_ver}",
-                computed_at,
-            ],
-        )
-        written += 1
-
-    return written
-
-
 # ── chart_facts INSERT (atomic rows) ─────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
@@ -555,7 +464,6 @@ def build_ga_positions(
         "chart_id": chart_id,
         "build_id": build_id,
         "ayanamshas": {},
-        "total_ganita_positions_rows": 0,
         "total_chart_facts_rows": 0,
         "forensic_pass": False,
     }
@@ -585,25 +493,17 @@ def build_ga_positions(
                 canonical_id, adapter_id, computed_at,
             )
 
-            # Write ganita_positions summary rows
-            gp_count = _write_ganita_positions_summary(
-                conn, chart_output, chart_id, build_id,
-                canonical_id, computed_at,
-            )
-
             # Write chart_facts atomic rows
             cf_count = _insert_chart_facts_rows(conn, cf_rows)
 
             summary["ayanamshas"][canonical_id] = {
-                "ganita_positions_rows": gp_count,
                 "chart_facts_rows": cf_count,
             }
-            summary["total_ganita_positions_rows"] += gp_count
             summary["total_chart_facts_rows"] += cf_count
 
             logger.info(
-                "[ga_positions_writer] ayanamsha=%s gp_rows=%d cf_rows=%d",
-                canonical_id, gp_count, cf_count,
+                "[ga_positions_writer] ayanamsha=%s cf_rows=%d",
+                canonical_id, cf_count,
             )
 
         if owns_conn:
@@ -616,12 +516,11 @@ def build_ga_positions(
             chart_id=chart_id,
             build_id=build_id,
             asset_id="ga_positions",
-            row_count=summary["total_ganita_positions_rows"],
+            row_count=summary["total_chart_facts_rows"],
         )
 
     logger.info(
-        "[ga_positions_writer] COMPLETE. Total gp=%d cf=%d",
-        summary["total_ganita_positions_rows"],
+        "[ga_positions_writer] COMPLETE. Total cf=%d",
         summary["total_chart_facts_rows"],
     )
     return summary
