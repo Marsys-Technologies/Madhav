@@ -1570,3 +1570,36 @@ class TestGrahaYuddha:
         yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
         keys = {r["fact_key"] for r in yuddha_rows}
         assert "winner" in keys and "loser" in keys
+
+
+# ── §T9: Combustion and retrograde relational rows ────────────────────────────
+
+class TestCombustionRetrogradRelational:
+    def test_mercury_combustion_detected(self):
+        # Sun=295°, Mercury=300° → diff=5° < orb_limit=14° → Mercury combust
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        combust = [r for r in rows if r["fact_category"] == "combustion_relationship"]
+        subjects = {r["fact_subject"] for r in combust}
+        assert any("MER" in s for s in subjects), f"Mercury combustion missing. Subjects: {subjects}"
+
+    def test_retrograde_rows_emitted(self):
+        # Rahu and Ketu are retrograde in MOCK_CHART_OUTPUT → expect retrograde_aspect_modification rows
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        retro_rows = [r for r in rows if r["fact_category"] == "retrograde_aspect_modification"]
+        # Rahu (H2): 3 aspects + Ketu (H8): 3 aspects = 6 rows minimum
+        assert len(retro_rows) >= 6
+
+    def test_sun_has_no_combustion_row(self):
+        # Sun cannot be combust by itself; no row should have fact_value_jsonb["planet"] == "Sun"
+        # and also fact_subject ending in "_v_SUN" (Sun as the combusted planet is impossible)
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        combust = [r for r in rows if r["fact_category"] == "combustion_relationship"]
+        # No combusted planet should be Sun itself
+        combust_planets = {r["fact_value_jsonb"]["planet"] for r in combust}
+        assert "Sun" not in combust_planets

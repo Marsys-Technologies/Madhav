@@ -158,6 +158,13 @@ OWN_SIGNS: dict[str, list[str]] = {
     "Saturn": ["Capricorn", "Aquarius"],
 }
 
+# Combustion orbs per planet (classical; Sun excluded — it is the combustor)
+COMBUSTION_ORBS: dict[str, float] = {
+    "Moon": 12.0, "Mars": 17.0, "Mercury": 14.0,
+    "Jupiter": 11.0, "Venus": 10.0, "Saturn": 15.0,
+    "Rahu": 0.0, "Ketu": 0.0,
+}
+
 # Panchamahapurusha yoga definitions (planet + required house + own/exalt sign required)
 MAHAPURUSHA_YOGAS = {
     "RUCHAKA": {"planet": "Mars", "required_houses": [1, 4, 7, 10],
@@ -4137,6 +4144,114 @@ def _build_graha_yuddha_rows(
     return rows
 
 
+def _build_combustion_retrograde_relationship_rows(
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit combustion_relationship and retrograde_aspect_modification rows.
+
+    combustion_relationship: each non-Sun graha where the circular longitude diff
+        from Sun <= COMBUSTION_ORBS[graha].
+    retrograde_aspect_modification: for each retrograde graha, one row per Parashari
+        aspect it casts (aspect strength halved per classical retrograde modifier).
+    """
+    rows: list[dict[str, Any]] = []
+
+    # Locate Sun
+    sun_lon: float | None = None
+    for g in chart_output.get("grahas", []):
+        if g.get("name") == "Sun":
+            sun_lon = float(g.get("longitude", 0.0))
+            break
+
+    # Combustion detection
+    if sun_lon is not None:
+        for g in chart_output.get("grahas", []):
+            name = g.get("name", "")
+            if name == "Sun":
+                continue
+            orb_limit = COMBUSTION_ORBS.get(name, 0.0)
+            if orb_limit == 0.0:
+                continue
+            lon = float(g.get("longitude", 0.0))
+            diff = abs(lon - sun_lon)
+            if diff > 180.0:
+                diff = 360.0 - diff
+            if diff <= orb_limit:
+                subj = PLANET_TO_SUBJECT.get(name, name.upper())
+                rows.append(_base_row(
+                    "combustion_relationship",
+                    f"SUN_v_{subj}", "combust",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=round(diff, 6),
+                    unit="degrees",
+                    value_text="combust",
+                    value_jsonb={
+                        "planet": name,
+                        "sun_longitude": sun_lon,
+                        "planet_longitude": lon,
+                        "orb_deg": round(diff, 6),
+                        "orb_limit": orb_limit,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.combustion_relationship/{eng_ver}",
+                    citation_human=(
+                        f"{name} combust: within {round(diff,4)}° of Sun "
+                        f"(orb limit {orb_limit}°) ({ayanamsha_id})."
+                    ),
+                ))
+
+    # Retrograde aspect modification
+    for g in chart_output.get("grahas", []):
+        name = g.get("name", "")
+        retro = bool(g.get("retrograde", False))
+        if not retro:
+            continue
+        house = int(g.get("house", 0))
+        if not house:
+            continue
+        subj = PLANET_TO_SUBJECT.get(name, name.upper())
+        if name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif name in PARASHARI_ASPECTS:
+            asp_offsets = PARASHARI_ASPECTS[name]
+        else:
+            asp_offsets = PARASHARI_ASPECTS["all"]
+
+        for offset, strength in asp_offsets.items():
+            target_house = ((house - 1 + offset - 1) % 12) + 1
+            # Retrograde modifier: classical convention halves aspect strength
+            modified_strength = round(strength * 0.5, 4)
+            rows.append(_base_row(
+                "retrograde_aspect_modification",
+                f"{subj}_retro", f"house_{target_house}",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=modified_strength,
+                unit="strength",
+                value_jsonb={
+                    "planet": name,
+                    "source_house": house,
+                    "target_house": target_house,
+                    "aspect_offset": offset,
+                    "base_strength": strength,
+                    "modified_strength": modified_strength,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.retrograde_aspect_modification/{eng_ver}",
+                citation_human=(
+                    f"{name} (retrograde) modified aspect to H{target_house} "
+                    f"strength={modified_strength} ({ayanamsha_id})."
+                ),
+            ))
+
+    return rows
+
+
 def build_ga_structural_substep(
     chart_id: str,
     build_id: str,
@@ -4186,6 +4301,9 @@ def build_ga_structural_substep(
         conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
     all_rows.extend(_build_graha_yuddha_rows(
+        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+    all_rows.extend(_build_combustion_retrograde_relationship_rows(
         chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
 
