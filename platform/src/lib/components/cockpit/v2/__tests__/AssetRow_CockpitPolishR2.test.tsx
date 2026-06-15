@@ -68,6 +68,7 @@ function statOf(partial: Partial<AssetStats>): AssetStats {
     error: null,
     state: 'dormant',
     last_built_at: null,
+    build_state_stale: false,
     ...partial,
   }
 }

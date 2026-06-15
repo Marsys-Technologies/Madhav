@@ -2,8 +2,18 @@
 artifact: A11_CDLM_SPEC_v1_0.md
 document: A11 — CDLM (Cross-Domain Linkage Matrix) Specification
 status: LOCKED
-version: 1.0
+version: 1.1
 date: 2026-05-29
+changelog:
+  - v1.1 (2026-06-12, L2 Bodha §13.1 amendment): (a) Table prefix `l25_cdlm_*` → `bodha_cdlm_*`
+    per the native naming decision (L2_BODHA_BUILD_CAMPAIGN §3.1); schemas otherwise unchanged.
+    (b) ADDED first-class artifact `bodha_convergence` — convergence-density-per-domain (N
+    independent MSR signals converging on one of the 9 domains = computed weight-of-evidence),
+    governed by `convergence_formula_v1` (versioned pure function in bodha_writers/formulas.py).
+    The §13.1 design-philosophy extension (native-APPROVED 2026-06-12); `bo_sangati` owns it. See §2.6.
+    (c) Reads `bodha_contradictions` (owned by bo_karanajala) for contradiction-aware linkage.
+    Tables already built by migration 226. — see §2.6.
+  - v1.0 (2026-05-29): initial LOCKED spec, native sign-off.
 authored_by: Cowork (native-confirmed: 3 dasha systems × Maha-Antar dynamic; everything included; storage redesigned for retrieval-optimal; wipe-existing)
 intended_for: Claude Code sub-agents implementing the A11 CDLM writer to L2.5 layer
 prime_directive: Only computed facts. Structural cross-domain linkage from MSR signal aggregation. Versioned linkage formula. No narrative.
@@ -33,7 +43,26 @@ For each chart per ayanamsha, compute structural linkage between life domains vi
 - Architectural freedom: storage restructured for retrieval-optimal; **WIPE existing l25_cdlm rows**
 - Two-pass verification: MANDATORY per row
 
-## §2 — Storage architecture (5 tables + 5 MVs)
+## §1.1 — v1.1 amendment: naming + the convergence-density extension (§13.1)
+
+**Naming (v1.1):** every `l25_cdlm_*` table name in this spec is read as `bodha_cdlm_*` (the native
+naming decision; schemas unchanged). Migration 226 created them under the `bodha_` prefix.
+
+**`bodha_convergence` (new first-class artifact, §13.1):** beyond the pairwise cells in
+`bodha_cdlm_cells`, CDLM now computes, per (chart, ayanamsha, domain, snapshot), the
+**convergence density** — the count and weighted strength of independent MSR signals pointing at
+that domain (the "weight of evidence" move). This is a deterministic aggregation over
+`bodha_msr_signals.domains_affected_array` / `domain_salience_jsonb`, governed by
+**`convergence_formula_v1`** (`bodha_writers/formulas.py`, pure + unit-tested). One row per
+(chart, ayanamsha, domain, snapshot_type). It is a COLUMN-bearing artifact, not a gate — no
+threshold drop. Owned by the `bo_sangati` writer. Schema built by migration 226; documented at §2.6.
+
+**`bodha_contradictions` (read dependency):** CDLM reads contradiction-pairs (owned by
+`bo_karanajala`, A12 §13.1) to flag contradiction-aware linkage; it does not write that table.
+
+## §2 — Storage architecture (5 core tables + `bodha_convergence` + 5 MVs)
+
+> v1.1: table names below are `bodha_cdlm_*` (was `l25_cdlm_*`). Schemas unchanged from v1.0.
 
 ### Table 1 — `l25_cdlm_cells` (main fact table; all cells across all dimensions)
 

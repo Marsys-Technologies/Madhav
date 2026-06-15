@@ -1,0 +1,178 @@
+---
+# L1 Gaṇita Build — Session Queue
+# Conductor: Sūtradhāra
+# Mode: AUTONOMOUS_MODE (no human gates; agent gate-validators per campaign §E)
+# Authored: 2026-06-10 (Cowork — L1 build campaign kickoff)
+# Governs: L1_GANITA_BUILD_CAMPAIGN_v1_0.md + the 7 per-asset GA briefs
+# Pattern: matches 00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_PROMPT_v1_0.md loop
+
+wave: l1-ganita-build
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavL1
+branch_base: main                       # each session opens its own feature branch off main
+mode: AUTONOMOUS_MODE
+governing_principle: deterministic accuracy over volume; floors are aspirational, not gates
+canonical_chart_id: 482012f1-710e-4a25-994a-93821f5871aa   # native; asset_throughput already keyed
+dead_phantom_chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0  # NEVER write; specs use it as placeholder only
+max_fix_attempts: 5                     # per AUTONOMOUS_MODE; halt to CONDUCTOR_HALT_LOG on exhaustion
+parallel_assets_per_layer: true         # GA4/GA5/GA6/GA7 fan out in parallel
+context_decay_protection: true          # heavy writers (GA6/GA7) write incrementally + idempotently; re-kick resumes
+
+# Hard rails inherited by every sub-agent (campaign §A):
+rails:
+  - Postgres-direct writers (no JSONL/md dump); PyJHora engine
+  - NO JH-parity oracle anywhere — two-pass = internal-consistency only
+  - no audience tier; strip on sight
+  - atomic-grain storage (JSONB only for irreducible composites; each use justified)
+  - FORENSIC grounding gate is the hard correctness gate (anchors below)
+  - reversibility-by-construction; verify-before-promote; merge-verify before any "done"
+  - never fabricate a row to hit a floor; never halt for under-floor; integrity is the only hard gate
+
+forensic_anchors:                        # every writer asserts the engine output against these
+  sun_sign: Capricorn (Makara)
+  moon_nakshatra: Purva Bhadrapada (lord Jupiter)
+  lagna_sign: Aries (Mesha)              # NOT Scorpio — known trap
+  tithi: Shukla Tritiya
+  vara: Ravivara
+  yoga: Shiva
+  karana: Garaja
+
+# Agent gate-validators run after each session's writer (campaign §E):
+gate_validators:
+  - Pramāṇa          # two-pass verification status audit (zero divergent_flagged)
+  - FORENSIC         # the 7 anchors PASS for the native
+  - Sambandha        # constituent_facts_array / FK refs resolve (esp. GA8→GA3-7)
+  - atomic_grain     # no JSONB blob holds a value a WHERE should match
+  - Darpaṇa          # prime-directive / no-narration linter + drift_detector
+  - Vimarśaka        # human-perspective seal at wave close + IS.8(b) red-team
+
+external_gates:
+  phase0_done:
+    description: Phase 0 prerequisites complete on prod (panchang live, chart_facts exists, catalog CURRENT)
+    check_command: >
+      psql "$PROD_DSN" -tAc "SELECT (to_regclass('chart_facts') IS NOT NULL)
+      AND (SELECT bool_and(catalog_status='CURRENT') FROM asset_registry WHERE asset_id LIKE 'ga\_%');"
+    satisfied_when: "returns t"
+
+sessions:
+
+  # ---- SPINE: must land first; creates tables + schema + positions + strength ----
+  - id: ga3-chart-facts
+    asset: [ga_positions, ga_strength]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA3_CHART_FACTS_WRITER_v1_0.md
+    branch: feature/ga3-chart-facts-writer
+    status: pending
+    requires_external_gate: phase0_done
+    depends_on: []
+    acceptance: |
+      chart_facts DDL == A3 §1; chart_dashas + history + supersedence + 6 l25_* tables exist;
+      all A3 §9 indexes; CHART_FACTS_SCHEMA.json declares written categories + drift GREEN;
+      ga_positions → ganita_positions (>=5 ay × >=10 bodies, atomic, dual citation);
+      ga_strength → chart_facts (shadbala 7-atomic/graha, ashtakavarga atomic-per-house,
+      all two_pass_verified, zero single/divergent); FORENSIC 7/7; no-narration + atomic-grain GREEN;
+      MVs refresh at build close; asset_throughput keyed to canonical_chart_id; cockpit bars move.
+    notes: LOAD-BEARING — GA4–GA9 extend this schema. Halt the wave if this fails.
+
+  # ---- PARALLEL FAN-OUT on the spine ----
+  - id: ga4-panchanga
+    asset: [ga_panchanga]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA4_PANCHANGA_WRITER_v1_0.md
+    branch: feature/ga4-panchanga-writer
+    status: pending
+    depends_on: [ga3-chart-facts]
+    acceptance: |
+      panchanga_instant at native birth returns FORENSIC angas (Shukla Tritiya/Purva Bhadrapada/
+      Shiva/Garaja/Ravivara); all A4 §2 categories emitted (invariant @ INVARIANT, dependent ×5 ay);
+      every A4 §3 key present (Tara=27, Chandra=12, panchaka=5+1); floored topics null+marked, zero
+      fabricated; two-pass categories clean; MV refreshes; asset_throughput keyed; bar moves.
+
+  - id: ga5-sensitive
+    asset: [ga_sensitive]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA5_SENSITIVE_POINTS_WRITER_v1_0.md
+    branch: feature/ga5-sensitive-points-writer
+    status: pending
+    depends_on: [ga3-chart-facts]
+    acceptance: |
+      30 A5 categories in schema (16 new); prereq globals (G14 70+ Sahams, G44, G41) present OR
+      cleanly floored+reported; all 30 categories ×5 ay; EVERY row two_pass_verified (zero
+      single/divergent); Section-B enrichment atomic; Hadda=60/Swamsa=12/midpoints=54; 8-karaka
+      emits both schools on order-divergence, AK-difference halts; zero fabricated; MV refreshes; bar moves.
+
+  - id: ga6-vargas
+    asset: [ga_vargas]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA6_VARGAS_WRITER_v1_0.md
+    branch: feature/ga6-vargas-writer
+    status: pending
+    depends_on: [ga3-chart-facts]
+    acceptance: |
+      ~25 A6 categories in schema; chart_divisionals for 30 vargas × 25 bodies × 5 ay (atomic);
+      6 generic + D2700 via custom fn, internally consistent; cross-varga harmonics post-pass;
+      two-pass clean; deity/rishi present OR floored+reported; vimsopaka+saptavargaja emitted
+      (GA8 consumes); FORENSIC D1 reproduces natal positions exactly; 2 MVs refresh;
+      asset_throughput updated INCREMENTALLY (bar advances during build).
+    notes: Largest by rows (~78K). Incremental idempotent writes — re-kick resumes, not restarts.
+
+  - id: ga7-dashas
+    asset: [ga_dashas]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA7_DASHAS_WRITER_v1_0.md
+    branch: feature/ga7-dashas-writer
+    status: pending
+    depends_on: [ga3-chart-facts]
+    acceptance: |
+      target table confirmed (ganita_dashas vs chart_dashas — halt if ambiguous); 7 systems ×5 ay,
+      window 1950-2100; DEPTH CAPPED at level_n=4 Sukshma (ZERO level_n=5 Prana); KP as kp_sublevel
+      dimension (ZERO level_n=6/7); every row two_pass/classical_match; cycle-sum invariants hold
+      (Vim=120y/Yog=36y/Ash=108y/Nai=120y); 13 additions; only 3 sanctioned JSONB; FORENSIC starting
+      lord from Moon=Purva Bhadrapada; Mudda hybrid storage; per-system incremental bar; no MVs.
+    notes: Largest by absolute rows (~2.5-3M target). Build one system at a time across re-kicks.
+
+  # ---- CONVERGENCE: joins the spine + fan-out ----
+  - id: ga8-structural
+    asset: [ga_strength]   # structural categories; reconcile shadbala/ashtakavarga ownership with GA3
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA8_T1_STRUCTURAL_WRITER_v1_0.md
+    branch: feature/ga8-t1-structural-writer
+    status: pending
+    depends_on: [ga3-chart-facts, ga4-panchanga, ga5-sensitive, ga6-vargas, ga7-dashas]
+    acceptance: |
+      upstream rows present for canonical_chart_id (halt-clean if absent); ~35 A8 categories;
+      no shadbala/ashtakavarga duplicate-fact_id collision with GA3; 200+ G12 yogas fire-checked,
+      only genuine firings with constituent_facts_array fact_id refs, cancellation pass; both-formula
+      categories emit 2 formula_id rows + divergence; argala/virodha 12×12 atomic (not blobs);
+      two-pass minimum (conjunction may be single); classifications STAY L1; internal-consistency
+      (functional-class reflects Lagna=Aries); constituent refs resolve (L2 contract); 6 MVs; bar correct.
+    notes: Convergence node — the L2 feeder. constituent_facts_array integrity is the key obligation.
+
+  # ---- CROSS-REFERENCES EVERYTHING ----
+  - id: ga9-sade-sati
+    asset: [ga_sade_sati]
+    brief: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_GA9_SADE_SATI_WRITER_v1_0.md
+    branch: feature/ga9-sade-sati-writer
+    status: pending
+    depends_on: [ga3-chart-facts, ga4-panchanga, ga6-vargas, ga7-dashas, ga8-structural]
+    acceptance: |
+      upstream present (halt-clean if absent); ~15 A9 categories ×5 ay; cycles key off native's
+      per-ayanamsha Moon sign (Aquarius/Pisces boundary divergence captured); ATOMIC-GRAIN GREEN —
+      per-period flags + 7 concurrent-dasha-lords + Saturn-state atomic, only 5 sanctioned JSONB
+      (each justified); 8 cancellation rules per cycle+phase; quarter intensity BPHS Ch.71 + pada;
+      every row two_pass; ~7.5y/cycle invariant; FORENSIC Janma peak reproduces from ephemeris;
+      lifetime-summary MV (no time-varying MV); bar moves.
+    notes: Smallest by rows (~875), heaviest atomic-grain scrutiny.
+
+  # ---- WAVE CLOSE ----
+  - id: red-team-is8b
+    layer: red_team
+    status: pending
+    depends_on: [ga9-sade-sati]
+    role: Vimarśaka + Pramāṇa (adversarial swarm)
+    scope: full-instrument IS.8(b) red-team on the built L1 layer for the native
+    acceptance: no class-1 findings; class-2 findings carry a committed remediation plan.
+
+  - id: wave-close
+    layer: close
+    status: pending
+    depends_on: [red-team-is8b]
+    role: Sūtradhāra + Pramāṇa + Smṛti
+    scope: |
+      Final L1 AC sweep [verify-against: prod] for canonical_chart_id; per-asset PRs merged +
+      merge-verified; CI green; asset_throughput all 8 ga_* reflect true built state; cockpit shows
+      L1 lit; Smṛti close note; tag l1-ganita-build-complete. Report actual row counts vs aspirational
+      targets (NOT a gate — informational).

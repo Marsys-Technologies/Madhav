@@ -184,6 +184,12 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
                 )}
               </div>
             )}
+            {/* build-state stale badge: data present but throughput record is stale/absent */}
+            {stat?.build_state_stale && (
+              <div style={{ fontSize: '9px', color: 'rgba(236,197,106,0.65)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                build-state stale
+              </div>
+            )}
             {hasError && stat?.error && (
               <div style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
                 {stat.error.slice(0, 24)}

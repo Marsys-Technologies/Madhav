@@ -2,9 +2,18 @@
 artifact: A14_UCN_RETIRED_TO_UCD_v1_0.md
 document: A14 UCN retirement + rename to UCD (Unified Chart Digest)
 status: LOCKED
-version: 1.0
+version: 1.1
 date: 2026-05-29
 authored_by: Cowork (native-confirmed: Option α; UCN retired as separate asset; rename to UCD; 5 truly-new items fold into A8/A11/A12 chart_summaries)
+changelog:
+  - v1.1 (2026-06-12, L2 Bodha confirmation): `bo_samvada` (Saṃvāda) = UCD = **Option A: NOT a
+    per-chart writer** (native re-confirmed 2026-06-12, campaign §0.0 decision #4 / §14). UCD is a
+    read-side join (`vw_chart_digest` + a `query_ucd` tool) over the A8/A11/A12/A13 chart_summaries,
+    plus optionally the 5 folded columns. A P0 execution transiently mis-assigned `bo_samvada` as an
+    RM-resonance writer (`bodha_rm_resonances`); corrected via the Phase-E seed correction brief —
+    `bo_samvada` writes NO table, and `bodha_rm_resonances` belongs to `bo_upaya` (A13). UCD remains
+    a conceptual read surface, not a writer asset.
+  - v1.0 (2026-05-29): initial LOCKED retirement decision, native sign-off.
 ---
 
 # A14 — Retirement decision + rename to UCD

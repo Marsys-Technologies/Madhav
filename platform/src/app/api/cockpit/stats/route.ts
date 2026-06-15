@@ -19,8 +19,10 @@ function deriveState(
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
   if (throughputState === 'building') return 'building'
-  if (throughputState === 'stale') return 'stale'
-  if (actualRows === null || actualRows === 0) return 'dormant'
+  // Reconcile: count_sql is authoritative for data presence. 'stale' throughput
+  // only signals "out of sync" when there is genuinely no data (count=0/null).
+  // If actualRows > 0, the data is real — show lit regardless of throughput state.
+  if (actualRows === null || actualRows === 0) return throughputState === 'stale' ? 'stale' : 'dormant'
   if (asset.target_floor && actualRows < asset.target_floor) return 'building'
   return 'lit'
 }
@@ -35,6 +37,9 @@ export interface AssetStats {
   // Derived server-side; never null
   state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
+  // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
+  // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
+  build_state_stale: boolean
 }
 
 interface RegistryAsset {
@@ -73,6 +78,7 @@ async function fetchAssetStats(
       error: null,
       state: 'service_ok' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   }
 
@@ -86,6 +92,7 @@ async function fetchAssetStats(
       error: 'missing_table',
       state: 'error' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   }
 
@@ -118,6 +125,7 @@ async function fetchAssetStats(
       error: null,
       state: 'dormant' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   } catch (err) {
     try { await client.query('ROLLBACK') } catch {}
@@ -132,6 +140,7 @@ async function fetchAssetStats(
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
       state: 'error' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   } finally {
     // Only release if the timeout hasn't already destroyed this client.
@@ -172,6 +181,7 @@ function fetchAssetStatsWithTimeout(
     error: 'conn_timeout',
     state: 'error' as const,
     last_built_at: null,
+    build_state_stale: false,
   }
   const clientRef: ClientRef = { value: null }
   const timeout = new Promise<AssetStats>((resolve) =>
@@ -246,12 +256,20 @@ export async function GET(req: NextRequest) {
             error: (result.reason as Error)?.message ?? 'unknown',
             state: 'error' as const,
             last_built_at: null,
+            build_state_stale: false,
           }
+      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
+      // build_state_stale: data is present (count_sql > 0) but asset_throughput says
+      // stale/dormant/absent — signals the bar to badge "build-state stale".
+      const buildStateStale = derivedState === 'lit'
+        && (base.actual_rows != null && base.actual_rows > 0)
+        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp == null)
       return {
         ...base,
         volume: base.actual_rows,
-        state: deriveState(asset, base.actual_rows, base.error, tp?.state ?? null),
+        state: derivedState,
         last_built_at: tp?.last_built_at ?? null,
+        build_state_stale: buildStateStale,
       }
     })
 
