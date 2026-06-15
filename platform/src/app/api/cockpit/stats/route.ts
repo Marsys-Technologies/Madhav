@@ -18,13 +18,19 @@ function deriveState(
   if (asset.asset_type === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
+  // §N.4: count_sql is authoritative for data presence. Rows present and at/above
+  // floor → lit, regardless of throughput state ('building', 'stale', 'dormant',
+  // or absent). An orphaned 'building' record or cascade-stale flag does NOT
+  // override real data confirmed by count_sql.
+  if (actualRows != null && actualRows > 0) {
+    if (!asset.target_floor || actualRows >= asset.target_floor) return 'lit'
+    // Rows exist but haven't reached floor — genuinely still building.
+    return 'building'
+  }
+  // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
   if (throughputState === 'building') return 'building'
-  // Reconcile: count_sql is authoritative for data presence. 'stale' throughput
-  // only signals "out of sync" when there is genuinely no data (count=0/null).
-  // If actualRows > 0, the data is real — show lit regardless of throughput state.
-  if (actualRows === null || actualRows === 0) return throughputState === 'stale' ? 'stale' : 'dormant'
-  if (asset.target_floor && actualRows < asset.target_floor) return 'building'
-  return 'lit'
+  if (throughputState === 'stale') return 'stale'
+  return 'dormant'
 }
 
 export interface AssetStats {
@@ -260,10 +266,10 @@ export async function GET(req: NextRequest) {
           }
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
-      // stale/dormant/absent — signals the bar to badge "build-state stale".
+      // building/stale/dormant/absent — signals the bar to badge "build-state stale".
       const buildStateStale = derivedState === 'lit'
         && (base.actual_rows != null && base.actual_rows > 0)
-        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp == null)
+        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'building' || tp == null)
       return {
         ...base,
         volume: base.actual_rows,
