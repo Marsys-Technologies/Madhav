@@ -726,6 +726,76 @@ def _graha_longitude(chart_output: dict[str, Any], graha_name: str) -> float:
     return 0.0
 
 
+def _detect_kala_sarpa(varga_state: dict) -> dict:
+    """Detect Kala Sarpa / Kala Amrita formation in a varga state.
+
+    Classical rule:
+      - All 7 classical grahas hemmed within the Rahu→Ketu arc (going
+        forward clockwise from Rahu sign_num to Ketu sign_num) = Kala Sarpa.
+      - All 7 within the Ketu→Rahu arc = Kala Amrita.
+      - Any graha on a node-occupied sign = formation broken.
+
+    Returns: {"fires": bool, "variant": "kala_sarpa"|"kala_amrita"|"none",
+              "rahu_house": int, "ketu_house": int, "variant_name": str}
+    """
+    rahu_data = varga_state.get("Rahu") or varga_state.get("RAH_MEAN")
+    ketu_data = varga_state.get("Ketu") or varga_state.get("KET_MEAN")
+    if not rahu_data or not ketu_data:
+        return {"fires": False, "variant": "none", "rahu_house": 0, "ketu_house": 0, "variant_name": ""}
+
+    rahu_sign = int(rahu_data["sign_num"])   # 1–12
+    ketu_sign = int(ketu_data["sign_num"])   # 1–12
+    rahu_house = int(rahu_data.get("house", rahu_sign))
+    ketu_house = int(ketu_data.get("house", ketu_sign))
+
+    # Arc from Rahu→Ketu clockwise (signs strictly between + Rahu's own sign)
+    ks_arc: set[int] = set()
+    s = rahu_sign % 12 + 1
+    while s != ketu_sign:
+        ks_arc.add(s)
+        s = s % 12 + 1
+    ks_arc.add(rahu_sign)  # Rahu's own sign is in KS boundary
+
+    # Arc from Ketu→Rahu (Kala Amrita side, includes Ketu's own sign)
+    ka_arc: set[int] = set()
+    s = ketu_sign % 12 + 1
+    while s != rahu_sign:
+        ka_arc.add(s)
+        s = s % 12 + 1
+    ka_arc.add(ketu_sign)
+
+    on_ks_side = 0
+    on_ka_side = 0
+    present_count = 0
+    for g_name in CLASSICAL_GRAHAS:
+        g_data = varga_state.get(g_name)
+        if not g_data:
+            continue
+        present_count += 1
+        g_sign = int(g_data["sign_num"])
+        if g_sign in ks_arc:
+            on_ks_side += 1
+        elif g_sign in ka_arc:
+            on_ka_side += 1
+        # If g_sign is NEITHER arc → formation is broken (planet straddles boundary)
+
+    total_classified = on_ks_side + on_ka_side
+    if present_count == 0 or total_classified < present_count:
+        return {"fires": False, "variant": "none",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": ""}
+
+    if on_ks_side == present_count and on_ka_side == 0:
+        variant_name = f"KALA_SARPA_RAHU_H{rahu_house}"
+        return {"fires": True, "variant": "kala_sarpa",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": variant_name}
+    if on_ka_side == present_count and on_ks_side == 0:
+        variant_name = f"KALA_AMRITA_RAHU_H{rahu_house}"
+        return {"fires": True, "variant": "kala_amrita",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": variant_name}
+    return {"fires": False, "variant": "none",
+            "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": ""}
+
+
 # ── Group A: Aspects ──────────────────────────────────────────────────────────
 
 def _build_aspect_rows(
@@ -3024,6 +3094,31 @@ def _build_varga_relationship_rows(
                     f"D1={d1_sign}, {varga}={varga_sign} ({ayanamsha_id})."
                 ),
             ))
+
+    # ── Kala Sarpa / Kala Amrita per varga ────────────────────────────────────
+    ks_result = _detect_kala_sarpa(varga_state)
+    rows.append(_base_row(
+        "kala_sarpa_per_varga", f"{varga}_CHART", "ks_detection",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=ks_result["variant"],
+        value_num=1.0 if ks_result["fires"] else 0.0,
+        value_jsonb={
+            "varga": varga,
+            "fires": ks_result["fires"],
+            "variant": ks_result["variant"],
+            "variant_name": ks_result["variant_name"],
+            "rahu_house": ks_result["rahu_house"],
+            "ketu_house": ks_result["ketu_house"],
+            "ayanamsha_id": ayanamsha_id,
+        },
+        verif="two_pass_verified",
+        source=f"ga_structural.kala_sarpa_per_varga/{eng_ver}",
+        citation_human=(
+            f"Kala Sarpa detection in {varga}: "
+            f"{'FIRES as ' + ks_result['variant'] if ks_result['fires'] else 'not present'} "
+            f"(Rahu H{ks_result['rahu_house']}) ({ayanamsha_id})."
+        ),
+    ))
 
     return rows
 

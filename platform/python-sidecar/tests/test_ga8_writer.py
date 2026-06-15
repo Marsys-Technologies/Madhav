@@ -1278,3 +1278,72 @@ class TestVargaNodeRelationships:
                             if r["fact_category"] == "graha_dignity_per_varga"}
         for g_subj in ["D9_SUN", "D9_MOON", "D9_MAR", "D9_MER", "D9_JUP", "D9_VEN", "D9_SAT"]:
             assert g_subj in dignity_subjects, f"{g_subj} missing from per-varga dignity"
+
+
+# ── §14: Kala Sarpa / Kala Amrita detection ───────────────────────────────────
+
+# KS_STATE: Rahu H2 (Taurus), Ketu H8 (Scorpio), all 7 classical grahas in H3–H7 (Gemini–Leo)
+KS_STATE = {
+    "Sun":     {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 5.0},
+    "Moon":    {"sign": "Cancer",   "sign_num": 4, "house": 4, "degree": 10.0},
+    "Mars":    {"sign": "Leo",      "sign_num": 5, "house": 5, "degree": 15.0},
+    "Mercury": {"sign": "Cancer",   "sign_num": 4, "house": 4, "degree": 20.0},
+    "Jupiter": {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 25.0},
+    "Venus":   {"sign": "Leo",      "sign_num": 5, "house": 5, "degree": 8.0},
+    "Saturn":  {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 18.0},
+    "Rahu":    {"sign": "Taurus",   "sign_num": 2, "house": 2, "degree": 20.0},
+    "Ketu":    {"sign": "Scorpio",  "sign_num": 8, "house": 8, "degree": 20.0},
+}
+
+# KA_STATE: same nodes, all 7 classical grahas on the Ketu→Rahu arc (H9–H12, H1)
+KA_STATE = {
+    "Sun":     {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 5.0},
+    "Moon":    {"sign": "Capricorn",   "sign_num": 10, "house": 10, "degree": 10.0},
+    "Mars":    {"sign": "Aquarius",    "sign_num": 11, "house": 11, "degree": 15.0},
+    "Mercury": {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 20.0},
+    "Jupiter": {"sign": "Capricorn",   "sign_num": 10, "house": 10, "degree": 25.0},
+    "Venus":   {"sign": "Aquarius",    "sign_num": 11, "house": 11, "degree": 8.0},
+    "Saturn":  {"sign": "Pisces",      "sign_num": 12, "house": 12, "degree": 18.0},
+    "Rahu":    {"sign": "Taurus",      "sign_num": 2,  "house": 2,  "degree": 20.0},
+    "Ketu":    {"sign": "Scorpio",     "sign_num": 8,  "house": 8,  "degree": 20.0},
+}
+
+
+class TestKalaSarpaDetection:
+    """_detect_kala_sarpa correctly classifies KS / KA / none formations."""
+
+    def test_kala_sarpa_detected_when_all_planets_between_rahu_ketu(self):
+        result = sut._detect_kala_sarpa(KS_STATE)
+        assert result["fires"] is True
+        assert result["variant"] == "kala_sarpa"
+        assert result["rahu_house"] == 2
+
+    def test_kala_amrita_when_planets_on_ketu_side(self):
+        result = sut._detect_kala_sarpa(KA_STATE)
+        assert result["fires"] is True
+        assert result["variant"] == "kala_amrita"
+
+    def test_no_kala_sarpa_when_planets_on_both_sides(self):
+        # MOCK_CHART_OUTPUT has planets on both sides (native chart) — should not fire.
+        # Build varga_state from MOCK_CHART_OUTPUT grahas using sign_id field.
+        varga_state = {}
+        for g in MOCK_CHART_OUTPUT["grahas"]:
+            name = g["name"]
+            varga_state[name] = {
+                "sign": g["sign"],
+                "sign_num": g["sign_id"],
+                "house": g["house"],
+                "degree": g.get("longitude", 0.0) % 30,
+            }
+        result = sut._detect_kala_sarpa(varga_state)
+        assert result["fires"] is False
+
+    def test_kala_sarpa_emits_row_in_varga_relationships(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", KS_STATE, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        ks_rows = [r for r in rows if r["fact_category"] == "kala_sarpa_per_varga"]
+        assert len(ks_rows) == 1, f"Expected 1 KS row, got {len(ks_rows)}"
+        assert ks_rows[0]["fact_value_text"] == "kala_sarpa"
+        assert ks_rows[0]["fact_value_num"] == 1.0
