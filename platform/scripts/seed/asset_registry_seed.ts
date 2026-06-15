@@ -190,7 +190,7 @@ const ASSETS: AssetDef[] = [
     count_sql: 'SELECT count(*) FROM classical_text_chunks',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
     target_floor: 8193,
-    expected_volume_formula: 'CHUNKS_PER_CORPUS',
+    expected_volume_formula: null, // non-parametric — target_floor = 8193 is the authoritative count
     expected_volume_inputs: { corpus_texts: 13, actual_build_date: '2026-06-09', embedding_model: 'text-multilingual-embedding-002' },
     volume_explanation: '8,193 chunks across 13 classical texts (deterministic rebuild from GCS PDFs, pinned text-multilingual-embedding-002). Complete corpus; honest count from actual build — replaces pre-build estimate of 9,100.',
     depends_on: [],
@@ -631,7 +631,7 @@ const ASSETS: AssetDef[] = [
     // Floor = achieved canonical count for chart 482012f1 (migration 222, 2026-06-11):
     // A7 hybrid window varsha 1..48 (birth 1984 → present+5 ≈ 2031) × 5 ayanamshas.
     target_floor: 240,
-    expected_volume_formula: 'WINDOW_VARSHAS * AYANAMSHAS',
+    expected_volume_formula: null, // non-parametric — target_floor = 240 (A7 hybrid window varsha 1..48 × 5 ayanamshas)
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
     depends_on: ['ga_positions', 'ga_dashas'],
@@ -675,48 +675,31 @@ const ASSETS: AssetDef[] = [
     // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
     // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
     target_floor: 53953,
-    expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
+    expected_volume_formula: null, // non-parametric — target_floor = 53953 (all-30-vargas achieved count for 482012f1)
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
-  // ── BODHA global prerequisites ────────────────────────────────────────────
-  {
-    asset_id: 'bg_signal_type_registry',
-    layer: 'brahmagyan', sort_order: 99,
-    sanskrit_name: 'Saṅketa-koṣa',
-    english_name: 'Signal type registry',
-    english_description: 'Global registry of predicate definitions (G52) — gates bo_laksana predicate evaluation; ~500-700 rows across 6 traditions + synthetics',
-    storage_type: 'postgres_table',
-    target_table: 'signal_type_registry',
-    count_sql: 'SELECT count(*) FROM signal_type_registry',
-    size_sql: "SELECT pg_total_relation_size('signal_type_registry')",
-    target_floor: null,
-    expected_volume_formula: null,
-    expected_volume_inputs: null,
-    volume_explanation: 'Grows incrementally as classical authoring adds predicate definitions; starter set ~80 entries',
-    depends_on: [],
-    scope: 'global', is_active: true, estimated_seconds: null,
-  },
-
   // ── BODHA (8) ─────────────────────────────────────────────────────────────
+  // bg_signal_type_registry (G52) RETIRED 2026-06-15: predicate-firing model dropped;
+  // ga_structural enumerates exhaustively and labels from brahma_yoga_catalog (migration 223).
   {
     asset_id: 'bo_laksana',
     layer: 'bodha', sort_order: 1,
     sanskrit_name: 'Lakṣaṇa',
     english_name: 'Signal store (MSR)',
-    english_description: 'MARSYS Signal Register — grounded signals derived from signal_type_registry predicates × L1 chart_facts; primary table bodha_msr_signals',
+    english_description: 'MARSYS Signal Register — grounded signals derived from exhaustive L1 structural enumeration (ga_structural) × L1 chart_facts; primary table bodha_msr_signals',
     storage_type: 'postgres_table',
     target_table: 'bodha_msr_signals',
     count_sql: 'SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('bodha_msr_signals')",
     target_floor: null,
-    expected_volume_formula: 'ACTUAL(bg_signal_type_registry) * ACTIVATION_RATE * AYANAMSHAS',
+    expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Registry predicate count × fraction that fire on this chart × ayanamsha count; ACTIVATION_RATE measured on first production build',
-    depends_on: ['bg_signal_type_registry', 'ga_structural', 'bg_rules'],
+    volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; calibrated on first production build.',
+    depends_on: ['ga_structural', 'bg_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -727,7 +710,12 @@ const ASSETS: AssetDef[] = [
     english_description: 'Causal Graph Model — valenced directed edges between CGM nodes; pre-computed igraph metrics stored as flat columns',
     storage_type: 'postgres_table',
     target_table: 'bodha_cgm_edges',
-    count_sql: 'SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_sub_graphs WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_chart_topology_summary WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_contradictions WHERE chart_id = $1) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cgm_edges')",
     target_floor: null,
     expected_volume_formula: 'ACTUAL(bo_laksana) * EDGE_DENSITY',
@@ -778,7 +766,12 @@ const ASSETS: AssetDef[] = [
     english_description: 'Cross-Domain Linkage Matrix — computed_linkage cells, domain rollups, pattern clusters, evolution gradients; primary table bodha_cdlm_cells',
     storage_type: 'postgres_table',
     target_table: 'bodha_cdlm_cells',
-    count_sql: 'SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_domain_rollups WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_pattern_clusters WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_evolution_gradients WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_convergence WHERE chart_id = $1) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cdlm_cells')",
     target_floor: null,
     expected_volume_formula: null,
@@ -792,15 +785,20 @@ const ASSETS: AssetDef[] = [
     layer: 'bodha', sort_order: 6,
     sanskrit_name: 'Upāya',
     english_name: 'Remediation (RM)',
-    english_description: 'Remediation Map — classical remedies keyed to activated signals across 6 traditions × 18 categories; primary table bodha_rm_remedy_prescriptions',
+    english_description: 'Remediation Map — ALL 6 RM tables; primary table bodha_rm_resonances (resonance targets that remedies key off) + bodha_rm_remedy_prescriptions + 4 ancillary tables across 6 traditions × 18 categories',
     storage_type: 'pgvector',
-    target_table: 'bodha_rm_remedy_prescriptions',
-    count_sql: 'SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('bodha_rm_remedy_prescriptions')",
+    target_table: 'bodha_rm_resonances',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_rm_resonances WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_dasha_windowed_prescriptions WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_dosha_remedy_bundles WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_pattern_remedies WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_chart_summary WHERE chart_id = $1) AS count',
+    size_sql: "SELECT pg_total_relation_size('bodha_rm_resonances')",
     target_floor: null,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'One prescription per activated signal × tradition × remedy category; count calibrated on first production build',
+    volume_explanation: 'Sum across all 6 RM tables (resonances + prescriptions + dasha_windowed + dosha_bundles + pattern_remedies + chart_summary); count calibrated on first production build',
     depends_on: ['bo_laksana', 'bo_sangati'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -808,16 +806,16 @@ const ASSETS: AssetDef[] = [
     asset_id: 'bo_samvada',
     layer: 'bodha', sort_order: 7,
     sanskrit_name: 'Saṃvāda',
-    english_name: 'Resonance map (RM)',
-    english_description: 'Resonance Map — weakness-weighted resonance scores per graha × domain; primary table bodha_rm_resonances; resonance_score_v1 formula',
-    storage_type: 'postgres_table',
-    target_table: 'bodha_rm_resonances',
-    count_sql: 'SELECT count(*) FROM bodha_rm_resonances WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('bodha_rm_resonances')",
+    english_name: 'Unified Chart Digest (UCD)',
+    english_description: 'UCD — read-side conceptual digest (join of A8/A11/A12/A13 chart_summaries via vw_chart_digest + query_ucd). NOT a per-chart writer (A14 retirement, Option A). May later own the 5 folded UCD columns on existing summary tables.',
+    storage_type: 'postgres_view',
+    target_table: 'vw_chart_digest',
+    count_sql: null,
+    size_sql: null,
     target_floor: null,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'One row per graha × snapshot_type; deterministic count calibrated on first production build',
+    volume_explanation: 'Read-side view — no written rows; count_sql is null.',
     depends_on: ['bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -829,7 +827,7 @@ const ASSETS: AssetDef[] = [
     english_description: 'Per-build synthesis quality scorecard — citation density, whole-chart coverage, derivation compliance, layer separation score; keyed by (chart_id, build_id)',
     storage_type: 'postgres_table',
     target_table: 'synthesis_quality_scorecard',
-    count_sql: 'SELECT count(*) FROM synthesis_quality_scorecard WHERE chart_id = $1',
+    count_sql: 'SELECT count(*) FROM synthesis_quality_scorecard',
     size_sql: "SELECT pg_total_relation_size('synthesis_quality_scorecard')",
     target_floor: null,
     expected_volume_formula: null,
@@ -1105,12 +1103,6 @@ const ASSETS: AssetDef[] = [
 
 const COEFFICIENTS: CoefficientDef[] = [
   {
-    coefficient_name: 'ACTIVATION_RATE',
-    description: 'Fraction of signal_type_registry predicates that fire on a given chart (measured first production build)',
-    upstream_asset_id: 'bg_signal_type_registry',
-    downstream_asset_id: 'bo_laksana',
-  },
-  {
     coefficient_name: 'SIGNAL_PER_RULE',
     description: 'Signals produced per classical rule per ayanamsha set (measured first build)',
     upstream_asset_id: 'bg_rules',
@@ -1162,9 +1154,13 @@ function validateFormulas(assets: AssetDef[], coefficients: CoefficientDef[]): v
         }
       }
 
-      // Every coefficient referenced in formula must exist in COEFFICIENTS
+      // Every coefficient referenced in formula must exist in COEFFICIENTS.
+      // Strip ACTUAL() and FILE_COUNT() call bodies first — their args are not coefficient refs.
+      const coeffCheckStr = formula
+        .replace(/ACTUAL\([^)]+\)/g, '1')
+        .replace(/FILE_COUNT\([^)]+\)/g, '1')
       const coeffRe = /\b([A-Z_]+)\b/g
-      const formulaTokens = [...formula.matchAll(coeffRe)].map(m => m[1])
+      const formulaTokens = [...coeffCheckStr.matchAll(coeffRe)].map(m => m[1])
       for (const token of formulaTokens) {
         if (ALLOWED_VARS.has(token)) continue
         if (token.startsWith('ACTUAL') || token.startsWith('FILE_COUNT')) continue
@@ -1270,10 +1266,14 @@ async function main(): Promise<void> {
 
   console.log()
 
-  if (absentAssets.length > 5) {
+  // Hard stop limit raised from 5 → 20 (2026-06-15): expected absences now include
+  // 2 service assets (no target_table by design), 4 chart_facts-partitioned assets
+  // (null target_table by design), and up to 6 L2 Bodha tables (not yet built).
+  // All are expected absent until migration 226 is applied and L2 is built.
+  if (absentAssets.length > 20) {
     await client.end()
     throw new Error(
-      `HARD STOP: ${absentAssets.length} assets have absent target_tables (limit: 5).\n` +
+      `HARD STOP: ${absentAssets.length} assets have absent target_tables (limit: 20).\n` +
       `Absent:\n${absentAssets.map(a => `  - ${a}`).join('\n')}\n` +
       'Report to Cowork before proceeding.',
     )
