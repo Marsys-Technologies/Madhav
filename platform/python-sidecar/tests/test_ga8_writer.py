@@ -1474,3 +1474,25 @@ class TestHouseLordMatrix:
         assert len(aspect_rows) >= 1, (
             "Expected at least one lord_aspects_lord_per_varga row with grahas in H1-H9"
         )
+
+
+# ── §T6: Jaimini rasi drishti per varga ──────────────────────────────────────
+
+class TestJaiminiPerVarga:
+    def test_jaimini_per_varga_count(self):
+        vs = {"Sun": {"sign": "Leo", "sign_num": 5, "house": 5, "degree": 10.0}}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        jaimini_rows = [r for r in rows if r["fact_category"] == "aspect_jaimini_per_varga"]
+        assert len(jaimini_rows) == 108, f"Expected 108, got {len(jaimini_rows)}"
+
+    def test_jaimini_per_varga_tagged_with_varga(self):
+        vs = {"Sun": {"sign": "Leo", "sign_num": 5, "house": 5, "degree": 10.0}}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        jaimini_rows = [r for r in rows if r["fact_category"] == "aspect_jaimini_per_varga"]
+        assert all(r["fact_value_jsonb"]["varga"] == "D9" for r in jaimini_rows)

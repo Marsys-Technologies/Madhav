@@ -3402,6 +3402,42 @@ def _build_varga_relationship_rows(
         chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
 
+    # ── Jaimini rasi drishti per varga ────────────────────────────────────────
+    _ALL_SIGNS_LOCAL = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+                        "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
+    _SIGN_TYPES_LOCAL = {
+        "Aries":"movable","Cancer":"movable","Libra":"movable","Capricorn":"movable",
+        "Taurus":"fixed","Leo":"fixed","Scorpio":"fixed","Aquarius":"fixed",
+        "Gemini":"common","Virgo":"common","Sagittarius":"common","Pisces":"common",
+    }
+    for s1_idx, s1 in enumerate(_ALL_SIGNS_LOCAL):
+        s1_type = _SIGN_TYPES_LOCAL[s1]
+        for s2_idx, s2 in enumerate(_ALL_SIGNS_LOCAL):
+            if s1_idx == s2_idx:
+                continue
+            offset = (s2_idx - s1_idx) % 12
+            if offset in (1, 11):  # adjacent — no Jaimini aspect
+                continue
+            rows.append(_base_row(
+                "aspect_jaimini_per_varga", f"{varga}_{s1}", f"on_{s2}",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=1.0,
+                unit="rasi_drishti",
+                value_jsonb={
+                    "varga": varga,
+                    "source_sign": s1,
+                    "target_sign": s2,
+                    "source_sign_type": s1_type,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.jaimini_rasi_drishti_per_varga/{eng_ver}",
+                citation_human=(
+                    f"{s1} ({s1_type}) Jaimini rasi drishti on {s2} in {varga} ({ayanamsha_id})."
+                ),
+            ))
+
     return rows
 
 
