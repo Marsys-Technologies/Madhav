@@ -2779,9 +2779,14 @@ def _build_varga_relationship_rows(
         return float(d.get("degree", 0.0))
 
     # ── Dignity per graha ──────────────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         sign = get_sign(g_name)
         if not sign:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE_SIGN: %s has no sign in varga=%s ayanamsha=%s",
+                    g_name, varga, ayanamsha_id,
+                )
             continue
         house = get_house(g_name)
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -2814,14 +2819,21 @@ def _build_varga_relationship_rows(
         ))
 
     # ── Parashari aspects per varga ────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         house = get_house(g_name)
         sign = get_sign(g_name)
         if not house or not sign:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE_SIGN: %s has no sign/house in varga=%s ayanamsha=%s",
+                    g_name, varga, ayanamsha_id,
+                )
             continue
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if g_name in PARASHARI_ASPECTS:
+        if g_name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif g_name in PARASHARI_ASPECTS:
             asp_offsets = PARASHARI_ASPECTS[g_name]
         else:
             asp_offsets = PARASHARI_ASPECTS["all"]
@@ -2851,8 +2863,8 @@ def _build_varga_relationship_rows(
             ))
 
     # ── Conjunctions per varga (same-sign in non-D1; orb-based in D1) ─────────
-    for i, g1 in enumerate(CLASSICAL_GRAHAS):
-        for g2 in CLASSICAL_GRAHAS[i+1:]:
+    for i, g1 in enumerate(ALL_GRAHAS):
+        for g2 in ALL_GRAHAS[i+1:]:
             sign1 = get_sign(g1)
             sign2 = get_sign(g2)
             if not sign1 or not sign2:
@@ -2946,7 +2958,7 @@ def _build_varga_relationship_rows(
             ))
 
     # ── Dispositor chains per varga ────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         sign = get_sign(g_name)
         if not sign:
             continue
@@ -2986,7 +2998,7 @@ def _build_varga_relationship_rows(
     # ── Vargottama (same sign in D1 and this varga) ────────────────────────────
     if varga != "D1":
         d1_state = _extract_chart_state(chart_output)
-        for g_name in CLASSICAL_GRAHAS:
+        for g_name in ALL_GRAHAS:
             d1_sign = d1_state.get(g_name, {}).get("sign", "")
             varga_sign = get_sign(g_name)
             if not d1_sign or not varga_sign:

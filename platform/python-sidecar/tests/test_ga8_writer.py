@@ -1182,3 +1182,99 @@ class TestNodeAspectRows:
         # Nodes absent (no crash, but no node rows either)
         assert "RAH_MEAN" not in subjects
         assert "KET_MEAN" not in subjects
+
+
+# ── §Node Varga Relationships ─────────────────────────────────────────────────
+
+class TestVargaNodeRelationships:
+    """Rahu/Ketu must appear in per-varga dignity, aspects, conjunctions, vargottama."""
+
+    def _make_varga_state(self) -> dict:
+        return {
+            "Sun":     {"sign": "Aries",       "sign_num": 1,  "house": 1,  "degree": 5.0},
+            "Moon":    {"sign": "Cancer",      "sign_num": 4,  "house": 4,  "degree": 10.0},
+            "Mars":    {"sign": "Aries",       "sign_num": 1,  "house": 1,  "degree": 20.0},
+            "Mercury": {"sign": "Gemini",      "sign_num": 3,  "house": 3,  "degree": 15.0},
+            "Jupiter": {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 5.0},
+            "Venus":   {"sign": "Pisces",      "sign_num": 12, "house": 12, "degree": 8.0},
+            "Saturn":  {"sign": "Libra",       "sign_num": 7,  "house": 7,  "degree": 12.0},
+            "Rahu":    {"sign": "Gemini",      "sign_num": 3,  "house": 3,  "degree": 20.0},
+            "Ketu":    {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 20.0},
+        }
+
+    def test_rahu_ketu_in_varga_dignity(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        dignity_subjects = {r["fact_subject"] for r in rows
+                            if r["fact_category"] == "graha_dignity_per_varga"}
+        assert "D9_RAH_MEAN" in dignity_subjects, \
+            f"Rahu dignity missing. Subjects: {dignity_subjects}"
+        assert "D9_KET_MEAN" in dignity_subjects, \
+            f"Ketu dignity missing. Subjects: {dignity_subjects}"
+
+    def test_rahu_ketu_in_varga_aspects(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        aspect_subjects = {r["fact_subject"] for r in rows
+                           if r["fact_category"] == "aspect_parashari_per_varga"}
+        assert "D9_RAH_MEAN" in aspect_subjects, \
+            f"Rahu aspects missing. Subjects: {aspect_subjects}"
+        assert "D9_KET_MEAN" in aspect_subjects, \
+            f"Ketu aspects missing. Subjects: {aspect_subjects}"
+
+    def test_rahu_ketu_in_varga_conjunctions_when_same_sign(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        conj_subjects = {r["fact_subject"] for r in rows
+                         if r["fact_category"] == "conjunction_per_varga"}
+        # Mercury and Rahu both in Gemini (house 3) → conjunction fires
+        assert any("RAH_MEAN" in s and "MER" in s for s in conj_subjects) or \
+               any("MER" in s and "RAH_MEAN" in s for s in conj_subjects), \
+            f"Mercury-Rahu conjunction missing. Subjects: {conj_subjects}"
+
+    def test_rahu_ketu_in_vargottama_when_same_sign_as_d1(self):
+        # Rahu in Taurus in D1 (MOCK_CHART_OUTPUT). Make it Taurus in D9 too.
+        vs = self._make_varga_state()
+        vs["Rahu"] = {"sign": "Taurus", "sign_num": 2, "house": 2, "degree": 20.0}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        vargottama_subjects = {r["fact_subject"] for r in rows
+                               if r["fact_category"] == "vargottama_per_varga"}
+        assert "D9_RAH_MEAN" in vargottama_subjects, \
+            f"Rahu vargottama missing. Subjects: {vargottama_subjects}"
+        # The row should say is_vargottama = "vargottama"
+        rahu_row = next(r for r in rows
+                        if r["fact_category"] == "vargottama_per_varga"
+                        and r["fact_subject"] == "D9_RAH_MEAN")
+        assert rahu_row["fact_value_text"] == "vargottama"
+
+    def test_rahu_node_dignity_is_exalted_in_gemini(self):
+        # EXALTATION_SIGNS["Rahu"] = "Gemini" — Rahu in Gemini is exalted
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_dignity_rows = [r for r in rows
+                             if r["fact_category"] == "graha_dignity_per_varga"
+                             and r["fact_subject"] == "D9_RAH_MEAN"]
+        assert len(rahu_dignity_rows) == 1
+        # Rahu in Gemini should be "exalted" per EXALTATION_SIGNS constant
+        assert rahu_dignity_rows[0]["fact_value_text"] == "exalted"
+
+    def test_classical_grahas_still_have_all_per_varga_facts(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        dignity_subjects = {r["fact_subject"] for r in rows
+                            if r["fact_category"] == "graha_dignity_per_varga"}
+        for g_subj in ["D9_SUN", "D9_MOON", "D9_MAR", "D9_MER", "D9_JUP", "D9_VEN", "D9_SAT"]:
+            assert g_subj in dignity_subjects, f"{g_subj} missing from per-varga dignity"
