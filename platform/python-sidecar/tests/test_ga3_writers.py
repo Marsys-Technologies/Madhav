@@ -298,13 +298,20 @@ class TestPositionRows:
 # ── 21-27: Shadbala derivation ───────────────────────────────────────────────
 
 class TestShadbalaDerivation:
-    def test_returns_7_grahas(self, shadbala):
-        assert len(shadbala) == 7
+    def test_returns_7_or_more_grahas(self, shadbala):
+        # 7 classical planets + optional Rahu/Ketu nodal rows (naisargika_na=True)
+        assert len(shadbala) >= 7
+
+    def test_classical_planets_present(self, shadbala):
+        classical = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"}
+        assert classical.issubset(shadbala.keys()), (
+            f"Missing classical planets: {classical - shadbala.keys()}"
+        )
 
     def test_all_7_sub_keys_present(self, shadbala):
-        expected = {"sthana", "dig", "kala", "cheshta", "naisargika", "drik", "total"}
+        required = {"sthana", "dig", "kala", "cheshta", "naisargika", "drik", "total"}
         for graha, sb in shadbala.items():
-            assert set(sb.keys()) == expected, f"{graha} missing keys"
+            assert required.issubset(sb.keys()), f"{graha} missing keys: {required - sb.keys()}"
 
     def test_invariant_sum_equals_total(self, shadbala):
         sub_keys = ["sthana", "dig", "kala", "cheshta", "naisargika", "drik"]
