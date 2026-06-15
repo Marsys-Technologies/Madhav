@@ -1496,3 +1496,40 @@ class TestJaiminiPerVarga:
         )
         jaimini_rows = [r for r in rows if r["fact_category"] == "aspect_jaimini_per_varga"]
         assert all(r["fact_value_jsonb"]["varga"] == "D9" for r in jaimini_rows)
+
+
+# ── §T7: Karaka inter-relationship web ────────────────────────────────────────
+
+class TestKarakaWeb:
+    def _make_karaka_conn(self):
+        class _KC:
+            def execute(self, *a, **kw): pass
+            def fetchall(self): return [("ATMAKARAKA","Sun",None,None),("AMATYAKARAKA","Saturn",None,None),("DARAKARAKA","Mars",None,None)]
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        class _KConn:
+            def cursor(self): return _KC()
+        return _KConn()
+
+    def test_karaka_web_rows_emitted(self):
+        vs = {
+            "Sun":    {"sign":"Capricorn","sign_num":10,"house":10,"degree":5.0},
+            "Saturn": {"sign":"Libra",    "sign_num":7, "house":7, "degree":12.0},
+            "Mars":   {"sign":"Aries",    "sign_num":1, "house":1, "degree":15.0},
+        }
+        rows = sut._build_karaka_web_rows(
+            self._make_karaka_conn(), vs, MOCK_CHART_OUTPUT,
+            "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        assert len([r for r in rows if r["fact_category"] == "karaka_web_per_varga"]) > 0
+
+    def test_empty_karaka_returns_empty(self):
+        class _EC:
+            class _C:
+                def execute(self, *a, **kw): pass
+                def fetchall(self): return []
+                def __enter__(self): return self
+                def __exit__(self, *a): return False
+            def cursor(self): return _EC._C()
+        rows = sut._build_karaka_web_rows(_EC(), {}, MOCK_CHART_OUTPUT, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        assert rows == []

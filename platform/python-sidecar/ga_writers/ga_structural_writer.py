@@ -3441,6 +3441,119 @@ def _build_varga_relationship_rows(
     return rows
 
 
+def _build_karaka_web_rows(
+    conn: Any,
+    varga_state: dict[str, Any],
+    chart_output: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit karaka_web_per_varga rows: aspect and conjunction relationships between
+    Jaimini chara karaka planets in this varga.
+
+    Queries DB for jaimini_chara_karaka assignments, then checks each pair of
+    karaka-assigned grahas for conjunction (same sign) or Parashari aspect in this varga.
+    """
+    rows: list[dict[str, Any]] = []
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_subject, fact_value_text, fact_value_num, fact_value_jsonb
+                FROM chart_facts
+                WHERE chart_id = %s
+                  AND ayanamsha_id = %s
+                  AND fact_category = 'jaimini_chara_karaka'
+                  AND fact_key = 'graha'
+                """,
+                (chart_id, ayanamsha_id),
+            )
+            karaka_rows = cur.fetchall()
+    except Exception:
+        return rows
+
+    if not karaka_rows:
+        return rows
+
+    # Build role → planet mapping
+    karaka_map: dict[str, str] = {}
+    for row in karaka_rows:
+        role = row[0]   # fact_subject = role name (ATMAKARAKA, etc.)
+        planet = row[1]  # fact_value_text = planet name
+        if role and planet:
+            karaka_map[role] = planet
+
+    karaka_planets = list(karaka_map.values())
+    if len(karaka_planets) < 2:
+        return rows
+
+    # Check each pair for conjunction or aspect in this varga
+    for i, p_a in enumerate(karaka_planets):
+        for p_b in karaka_planets[i + 1:]:
+            data_a = varga_state.get(p_a)
+            data_b = varga_state.get(p_b)
+            if not data_a or not data_b:
+                continue
+            house_a = int(data_a.get("house", 0))
+            house_b = int(data_b.get("house", 0))
+            sign_a = str(data_a.get("sign", ""))
+            sign_b = str(data_b.get("sign", ""))
+            if not house_a or not house_b:
+                continue
+
+            relationship = None
+            if sign_a and sign_a == sign_b:
+                relationship = "conjunction"
+            else:
+                # Check Parashari aspect from A to B
+                if p_a in PARASHARI_ASPECTS:
+                    asp_offsets = PARASHARI_ASPECTS[p_a]
+                elif p_a in ("Rahu", "Ketu"):
+                    asp_offsets = NODE_PARASHARI_ASPECTS
+                else:
+                    asp_offsets = PARASHARI_ASPECTS["all"]
+                for offset in asp_offsets:
+                    target_house = ((house_a - 1 + offset - 1) % 12) + 1
+                    if target_house == house_b:
+                        relationship = "aspect"
+                        break
+
+            if relationship:
+                role_a = next((r for r, p in karaka_map.items() if p == p_a), p_a)
+                role_b = next((r for r, p in karaka_map.items() if p == p_b), p_b)
+                subj_a = PLANET_TO_SUBJECT.get(p_a, p_a.upper())
+                subj_b = PLANET_TO_SUBJECT.get(p_b, p_b.upper())
+                rows.append(_base_row(
+                    "karaka_web_per_varga",
+                    f"{varga}_{subj_a}",
+                    f"{relationship}_{subj_b}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_text=relationship,
+                    value_jsonb={
+                        "varga": varga,
+                        "planet_a": p_a,
+                        "planet_b": p_b,
+                        "role_a": role_a,
+                        "role_b": role_b,
+                        "relationship": relationship,
+                        "house_a": house_a,
+                        "house_b": house_b,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.karaka_web_per_varga/{eng_ver}",
+                    citation_human=(
+                        f"{role_a} ({p_a}) {relationship} with {role_b} ({p_b}) "
+                        f"in {varga} ({ayanamsha_id})."
+                    ),
+                ))
+
+    return rows
+
+
 def _build_varga_aspect_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -3473,6 +3586,12 @@ def _build_varga_aspect_rows(
 
         rows.extend(_build_varga_relationship_rows(
             varga, varga_state, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+
+        # Karaka inter-relationship web per varga
+        rows.extend(_build_karaka_web_rows(
+            conn, varga_state, chart_output, varga,
+            chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
 
         # Argala/virodha 144-cell matrices per varga — completeness-first (native decision 2026-06-12)
