@@ -1347,3 +1347,130 @@ class TestKalaSarpaDetection:
         assert len(ks_rows) == 1, f"Expected 1 KS row, got {len(ks_rows)}"
         assert ks_rows[0]["fact_value_text"] == "kala_sarpa"
         assert ks_rows[0]["fact_value_num"] == 1.0
+
+
+# ── Task 4: Special-point relationship tests ──────────────────────────────────
+
+class _MockCursor:
+    """Cursor that returns Gulika/Mandi (Taurus H2) + Arudha_Lagna (Leo H5)."""
+    def execute(self, *a, **kw): pass
+    def fetchall(self):
+        return [
+            ("gulika",       "Taurus", 2, 15.0),
+            ("mandi",        "Taurus", 2, 18.0),
+            ("arudha_lagna", "Leo",    5, 22.0),
+        ]
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+class _MockConn:
+    def cursor(self): return _MockCursor()
+
+
+class _EmptyCursor:
+    def execute(self, *a, **kw): pass
+    def fetchall(self): return []
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+class _EmptyConn:
+    def cursor(self): return _EmptyCursor()
+
+
+MOCK_CONN = _MockConn()
+EMPTY_CONN = _EmptyConn()
+
+
+class TestSpecialPointRelationships:
+    """Tests for _load_special_points and _build_special_point_relationship_rows."""
+
+    def test_aspect_received_rows_emitted(self):
+        """At least some grahas aspect at least one special point — rows > 0."""
+        rows = sut._build_special_point_relationship_rows(
+            MOCK_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        aspect_rows = [r for r in rows if r["fact_category"] == "aspect_received_by_special_point"]
+        assert len(aspect_rows) > 0, (
+            "Expected at least one aspect_received_by_special_point row; "
+            "check Parashari offsets for grahas vs special-point houses."
+        )
+
+    def test_conjunction_gulika_rahu_in_house_2(self):
+        """Gulika is in H2; Rahu is also in H2 (MOCK_CHART_OUTPUT) → conjunction row exists."""
+        # Verify MOCK data: Rahu house=2
+        rahu = next(g for g in MOCK_CHART_OUTPUT["grahas"] if g["name"] == "Rahu")
+        assert rahu["house"] == 2, "Test pre-condition: Rahu must be in H2 in MOCK_CHART_OUTPUT"
+
+        rows = sut._build_special_point_relationship_rows(
+            MOCK_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        conj_rows = [r for r in rows if r["fact_category"] == "conjunction_special_point"]
+        # At minimum: Gulika-Rahu and Mandi-Rahu conjunctions (both in H2)
+        subjects = [r["fact_subject"] for r in conj_rows]
+        assert "gulika" in subjects, f"Expected gulika conjunction row; got subjects: {subjects}"
+        # Check that the Rahu conjunction exists for gulika
+        gulika_conj = [r for r in conj_rows if r["fact_subject"] == "gulika"]
+        keys = [r["fact_key"] for r in gulika_conj]
+        assert any("RAH" in k or "Rahu" in k or "rahu" in k.lower() for k in keys), (
+            f"Expected Gulika-Rahu conjunction; got keys: {keys}"
+        )
+
+    def test_empty_conn_returns_empty(self):
+        """When _load_special_points returns [] the function returns []."""
+        rows = sut._build_special_point_relationship_rows(
+            EMPTY_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        assert rows == [], f"Expected [], got {len(rows)} rows"
+
+
+# ── Task 5: House-lord matrix tests ──────────────────────────────────────────
+
+def _make_spread_varga_state() -> dict:
+    """Varga state with all 9 grahas in distinct houses (1-9)."""
+    grahas_in_order = ["Sun", "Moon", "Mars", "Mercury", "Jupiter",
+                        "Venus", "Saturn", "Rahu", "Ketu"]
+    signs_for_houses = ["Aries", "Taurus", "Gemini", "Cancer", "Leo",
+                         "Virgo", "Libra", "Scorpio", "Sagittarius"]
+    state = {}
+    for i, g_name in enumerate(grahas_in_order):
+        h = i + 1  # houses 1–9
+        state[g_name] = {
+            "sign": signs_for_houses[i],
+            "sign_num": i + 1,
+            "house": h,
+            "degree": 10.0,
+        }
+    return state
+
+
+class TestHouseLordMatrix:
+    """Tests for _build_house_lord_matrix_rows."""
+
+    def test_exactly_12_lord_in_house_rows(self):
+        """One lord_in_house_per_varga row per house → exactly 12."""
+        varga_state = _make_spread_varga_state()
+        rows = sut._build_house_lord_matrix_rows(
+            "D1", varga_state, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        lord_rows = [r for r in rows if r["fact_category"] == "lord_in_house_per_varga"]
+        assert len(lord_rows) == 12, (
+            f"Expected exactly 12 lord_in_house_per_varga rows; got {len(lord_rows)}"
+        )
+
+    def test_at_least_one_lord_aspects_lord_row(self):
+        """With grahas in H1-H9 some lord must aspect another lord's house."""
+        varga_state = _make_spread_varga_state()
+        rows = sut._build_house_lord_matrix_rows(
+            "D1", varga_state, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        aspect_rows = [r for r in rows if r["fact_category"] == "lord_aspects_lord_per_varga"]
+        assert len(aspect_rows) >= 1, (
+            "Expected at least one lord_aspects_lord_per_varga row with grahas in H1-H9"
+        )

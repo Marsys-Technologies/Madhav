@@ -2808,6 +2808,282 @@ def _linter_check_rows(rows: list[dict[str, Any]]) -> None:
                     )
 
 
+# ── Special-point relationship helpers ───────────────────────────────────────
+
+def _load_special_points(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+) -> list[dict[str, Any]]:
+    """Load sensitive / special points for chart_id from chart_facts (GA5 output).
+
+    Queries upagraha_position rows emitted by GA5.  Each result tuple is
+    (name, sign, house_num, degree).  Returns a list of dicts:
+      {"name": str, "sign": str, "house": int, "degree": float}
+    On any DB exception: logs WARNING and returns [].
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_subject,
+                       MAX(CASE WHEN fact_key = 'sign'      THEN fact_value_text END) AS sign,
+                       MAX(CASE WHEN fact_key = 'house'     THEN fact_value_num  END) AS house_num,
+                       MAX(CASE WHEN fact_key = 'longitude' THEN fact_value_num  END) AS degree
+                FROM chart_facts
+                WHERE chart_id      = %s
+                  AND ayanamsha_id  = %s
+                  AND fact_category = 'upagraha_position'
+                GROUP BY fact_subject
+                """,
+                (chart_id, ayanamsha_id),
+            )
+            rows = cur.fetchall()
+        result = []
+        for name, sign, house_num, degree in rows:
+            if name and sign and house_num is not None:
+                result.append({
+                    "name": str(name),
+                    "sign": str(sign),
+                    "house": int(house_num),
+                    "degree": float(degree) if degree is not None else 0.0,
+                })
+        return result
+    except Exception as exc:
+        logger.warning(
+            "[ga_structural] _load_special_points failed (chart_id=%s ayanamsha_id=%s): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return []
+
+
+def _build_special_point_relationship_rows(
+    conn: Any,
+    chart_output: dict[str, Any],
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit aspect_received_by_special_point and conjunction_special_point rows.
+
+    For every special point loaded from GA5 (gulika, mandi, arudha lagna, etc.):
+      - aspect_received_by_special_point: any of the 9 grahas whose Parashari
+        aspect lands on the special point's house.
+      - conjunction_special_point: any graha co-placed in the same house.
+
+    All 9 grahas (CLASSICAL_GRAHAS + Rahu + Ketu) are checked.
+    """
+    special_points = _load_special_points(conn, chart_id, ayanamsha_id)
+    if not special_points:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    grahas = chart_output.get("grahas", [])
+
+    for sp in special_points:
+        sp_name = sp["name"]
+        sp_house = sp["house"]
+        sp_sign  = sp["sign"]
+
+        for g in grahas:
+            g_name  = g["name"]
+            g_house = int(g.get("house", 1))
+
+            # ── conjunction ───────────────────────────────────────────────────
+            if g_house == sp_house:
+                rows.append(_base_row(
+                    "conjunction_special_point",
+                    sp_name,
+                    f"conjunct_{PLANET_TO_SUBJECT.get(g_name, g_name.upper())}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_text=g_name,
+                    value_jsonb={
+                        "special_point": sp_name,
+                        "graha": g_name,
+                        "house": sp_house,
+                        "sign": sp_sign,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.conjunction_special_point/{eng_ver}",
+                    citation_human=(
+                        f"{g_name} conjunct special point {sp_name} in H{sp_house} "
+                        f"({sp_sign}) ({ayanamsha_id})."
+                    ),
+                ))
+
+            # ── Parashari aspect received ────────────────────────────────────
+            if g_name in ("Rahu", "Ketu"):
+                asp_offsets = NODE_PARASHARI_ASPECTS
+            elif g_name in PARASHARI_ASPECTS:
+                asp_offsets = PARASHARI_ASPECTS[g_name]
+            else:
+                asp_offsets = PARASHARI_ASPECTS["all"]
+
+            for offset, strength in asp_offsets.items():
+                target_house = ((g_house - 1 + offset - 1) % 12) + 1
+                if target_house == sp_house:
+                    rows.append(_base_row(
+                        "aspect_received_by_special_point",
+                        sp_name,
+                        f"aspected_by_{PLANET_TO_SUBJECT.get(g_name, g_name.upper())}",
+                        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                        value_num=strength,
+                        unit="strength",
+                        value_jsonb={
+                            "special_point": sp_name,
+                            "aspecting_graha": g_name,
+                            "graha_house": g_house,
+                            "aspect_offset": offset,
+                            "target_house": sp_house,
+                            "target_sign": sp_sign,
+                            "strength": strength,
+                            "ayanamsha_id": ayanamsha_id,
+                            "uncatalogued": False,
+                        },
+                        verif="two_pass_verified",
+                        source=f"ga_structural.aspect_received_by_special_point/{eng_ver}",
+                        citation_human=(
+                            f"{g_name} (H{g_house}) aspects special point {sp_name} "
+                            f"in H{sp_house} via offset {offset} (strength={strength}) "
+                            f"({ayanamsha_id})."
+                        ),
+                    ))
+
+    return rows
+
+
+# ── House-lord matrix helper ──────────────────────────────────────────────────
+
+def _build_house_lord_matrix_rows(
+    varga: str,
+    varga_state: dict[str, Any],
+    chart_output: dict[str, Any],
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit per-varga house-lord placement and inter-lord aspect rows.
+
+    lord_in_house_per_varga (12 rows):
+        For each of the 12 houses compute the sign that falls on that house
+        (whole-sign from D1 lagna), find that sign's lord, then look up where
+        that lord sits in this varga.
+
+    lord_aspects_lord_per_varga:
+        For every ordered pair (lord_A, lord_B) where lord_A's Parashari
+        aspect covers lord_B's house-in-varga, emit one row.
+
+    Uses D1 lagna for house→sign mapping (valid for D1; structural approximation
+    for higher vargas as documented in §N.4 — deterministic-first).
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    lagna_sign_num = int(
+        chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM)
+    )
+
+    def house_sign(h: int) -> str:
+        return SIGN_NAMES[(lagna_sign_num - 1 + h - 1) % 12]
+
+    # ── lord_in_house_per_varga — 12 rows ─────────────────────────────────────
+    lord_house_in_varga: dict[str, int] = {}  # lord_name → house in this varga
+
+    for house_num in range(1, 13):
+        sign = house_sign(house_num)
+        lord = SIGN_LORDS.get(sign, "Sun")
+        # Where is the lord placed in this varga?
+        placed_house = varga_state.get(lord, {}).get("house", 0)
+        lord_house_in_varga[lord] = placed_house
+
+        subj = f"{varga_prefix}H{house_num}"
+        rows.append(_base_row(
+            "lord_in_house_per_varga",
+            subj,
+            "lord_placement",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(placed_house),
+            value_text=f"{lord}_in_H{placed_house}" if placed_house else f"{lord}_unknown",
+            value_jsonb={
+                "varga": varga,
+                "house": house_num,
+                "sign": sign,
+                "lord": lord,
+                "lord_house_in_varga": placed_house,
+                "ayanamsha_id": ayanamsha_id,
+                "uncatalogued": False,
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.lord_in_house_per_varga/{eng_ver}",
+            citation_human=(
+                f"H{house_num} ({sign}) lord {lord} is in H{placed_house} in {varga} ({ayanamsha_id})."
+            ),
+        ))
+
+    # ── lord_aspects_lord_per_varga ────────────────────────────────────────────
+    # Build set of unique lords (may have ≤12 since multiple houses share one lord)
+    unique_lords = list(dict.fromkeys(
+        SIGN_LORDS.get(house_sign(h), "Sun") for h in range(1, 13)
+    ))
+
+    for lord_a in unique_lords:
+        house_a = lord_house_in_varga.get(lord_a, 0)
+        if not house_a:
+            continue
+        # Determine aspect offsets for lord_a
+        if lord_a in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif lord_a in PARASHARI_ASPECTS:
+            asp_offsets = PARASHARI_ASPECTS[lord_a]
+        else:
+            asp_offsets = PARASHARI_ASPECTS["all"]
+
+        for offset, strength in asp_offsets.items():
+            target_house = ((house_a - 1 + offset - 1) % 12) + 1
+            for lord_b in unique_lords:
+                if lord_b == lord_a:
+                    continue
+                house_b = lord_house_in_varga.get(lord_b, 0)
+                if not house_b:
+                    continue
+                if house_b == target_house:
+                    subj_a = PLANET_TO_SUBJECT.get(lord_a, lord_a.upper())
+                    subj_b = PLANET_TO_SUBJECT.get(lord_b, lord_b.upper())
+                    rows.append(_base_row(
+                        "lord_aspects_lord_per_varga",
+                        f"{varga_prefix}{subj_a}",
+                        f"aspects_{subj_b}",
+                        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                        value_num=strength,
+                        unit="strength",
+                        value_jsonb={
+                            "varga": varga,
+                            "lord_a": lord_a,
+                            "lord_a_house": house_a,
+                            "lord_b": lord_b,
+                            "lord_b_house": house_b,
+                            "aspect_offset": offset,
+                            "strength": strength,
+                            "ayanamsha_id": ayanamsha_id,
+                            "uncatalogued": False,
+                        },
+                        verif="two_pass_verified",
+                        source=f"ga_structural.lord_aspects_lord_per_varga/{eng_ver}",
+                        citation_human=(
+                            f"{lord_a} (H{house_a}) aspects lord {lord_b} (H{house_b}) "
+                            f"via offset {offset} in {varga} (strength={strength}) ({ayanamsha_id})."
+                        ),
+                    ))
+
+    return rows
+
+
 # ── R1: Multi-varga enumeration ───────────────────────────────────────────────
 
 def _build_varga_relationship_rows(
@@ -3118,6 +3394,12 @@ def _build_varga_relationship_rows(
             f"{'FIRES as ' + ks_result['variant'] if ks_result['fires'] else 'not present'} "
             f"(Rahu H{ks_result['rahu_house']}) ({ayanamsha_id})."
         ),
+    ))
+
+    # ── House-lord matrix per varga ────────────────────────────────────────────
+    rows.extend(_build_house_lord_matrix_rows(
+        varga, varga_state, chart_output,
+        chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
 
     return rows
@@ -3643,6 +3925,9 @@ def build_ga_structural_substep(
     all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
     all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_special_point_relationship_rows(
+        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
 
     # Two-pass verification
     try:
