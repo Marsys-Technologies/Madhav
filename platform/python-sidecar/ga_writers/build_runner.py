@@ -575,7 +575,7 @@ def main() -> None:
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
         print(f"  chart_facts total:   {cf_rows} rows")
-        sens_rows = summary.get("totals", {}).get("sensitive_rows", 0)
+        sens_rows = result.get("totals", {}).get("sensitive_rows", 0)
         print(f"    ga_panchanga:      {pan_rows} rows")
         print(f"    ga_sensitive:      {sens_rows} rows")
         print(f"  Gate overall:        {gate_overall}")
