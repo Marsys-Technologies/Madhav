@@ -3972,6 +3972,15 @@ def build_ga_structural(
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
             all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_special_point_relationship_rows(
+                ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
+            all_rows.extend(_build_graha_yuddha_rows(
+                chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
+            all_rows.extend(_build_combustion_retrograde_relationship_rows(
+                chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
 
             # Two-pass verification passes
             try:
