@@ -1104,3 +1104,62 @@ class TestSpecialStates:
         for g in MOCK_CHART_OUTPUT["grahas"]:
             subj = sut.PLANET_TO_SUBJECT.get(g["name"], g["name"].upper())
             assert subj in subjects
+
+
+# ── §Node Parashari Aspects ───────────────────────────────────────────────────
+
+class TestNodeAspectRows:
+    def test_rahu_ketu_appear_in_d1_parashari_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        assert "RAH_MEAN" in subjects, "Rahu missing from D1 Parashari aspects"
+        assert "KET_MEAN" in subjects, "Ketu missing from D1 Parashari aspects"
+
+    def test_rahu_emits_5th_7th_9th_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_aspect_keys = {r["fact_key"] for r in rows
+                            if r["fact_category"] == "aspect_parashari_given"
+                            and r["fact_subject"] == "RAH_MEAN"}
+        # Rahu in Taurus (house 2 per MOCK_CHART_OUTPUT) → 5th=house 6, 7th=house 8, 9th=house 10
+        assert "house_6" in rahu_aspect_keys
+        assert "house_8" in rahu_aspect_keys
+        assert "house_10" in rahu_aspect_keys
+        assert len(rahu_aspect_keys) == 3, f"Expected 3 node aspects, got: {rahu_aspect_keys}"
+
+    def test_ketu_emits_5th_7th_9th_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        ketu_aspect_keys = {r["fact_key"] for r in rows
+                            if r["fact_category"] == "aspect_parashari_given"
+                            and r["fact_subject"] == "KET_MEAN"}
+        # Ketu in Scorpio (house 8 per MOCK_CHART_OUTPUT) → 5th=house 12, 7th=house 2, 9th=house 4
+        assert "house_12" in ketu_aspect_keys
+        assert "house_2" in ketu_aspect_keys
+        assert "house_4" in ketu_aspect_keys
+        assert len(ketu_aspect_keys) == 3, f"Expected 3 node aspects, got: {ketu_aspect_keys}"
+
+    def test_node_aspect_strength_is_full(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_aspects = [r for r in rows
+                        if r["fact_category"] == "aspect_parashari_given"
+                        and r["fact_subject"] == "RAH_MEAN"]
+        for row in rahu_aspects:
+            assert row["fact_value_num"] == 1.0, \
+                f"Node aspect strength should be 1.0, got {row['fact_value_num']}"
+
+    def test_classical_grahas_still_have_their_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        for g in ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT"]:
+            assert g in subjects, f"{g} missing from Parashari aspects after node extension"

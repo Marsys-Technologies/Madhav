@@ -413,6 +413,11 @@ PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
     "Mars": {4: 1.0, 7: 1.0, 8: 1.0},
 }
 
+# Node special aspects: 5th/7th/9th — full strength (many Parashari authorities)
+# Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
+# here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
+NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
+
 # Jaimini Rasi drishti rules (fixed sign aspects)
 # Fixed signs: Taurus, Leo, Scorpio, Aquarius → aspect all but adjacent movable signs
 # Movable signs: Aries, Cancer, Libra, Capricorn → aspect all but adjacent common signs
@@ -734,7 +739,7 @@ def _build_aspect_rows(
     # Pass 1: Engine geometric derivation
     # Pass 2: G17-rule re-application (same classical rules = deterministic)
 
-    grahas_order = CLASSICAL_GRAHAS  # Only classical grahas for Parashari
+    grahas_order = ALL_GRAHAS  # Classical + Rahu/Ketu (nodes have 5th/7th/9th aspects)
 
     for g_name in grahas_order:
         g_data = state.get(g_name)
@@ -744,7 +749,9 @@ def _build_aspect_rows(
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
         # Determine aspect offsets for this graha
-        if g_name in PARASHARI_ASPECTS:
+        if g_name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif g_name in PARASHARI_ASPECTS:
             asp_offsets = PARASHARI_ASPECTS[g_name]
         else:
             asp_offsets = PARASHARI_ASPECTS["all"]
