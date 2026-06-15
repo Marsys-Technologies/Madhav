@@ -4035,6 +4035,108 @@ def build_ga_structural(
     return summary
 
 
+def _build_graha_yuddha_rows(
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Detect graha yuddha (planetary war): two classical grahas within 1° in the same sign.
+
+    Classical rule: only CLASSICAL_GRAHAS (no nodes) can be in yuddha.
+    Lower absolute longitude = winner; higher longitude = loser.
+    Emits 3 rows per pair: fact_key='winner', 'loser', 'orb_deg'.
+    """
+    rows: list[dict[str, Any]] = []
+
+    # Build longitude + sign table for classical grahas only
+    graha_data: list[tuple[str, float, str]] = []  # (name, longitude, sign)
+    for g in chart_output.get("grahas", []):
+        name = g.get("name", "")
+        if name not in CLASSICAL_GRAHAS:
+            continue
+        lon = float(g.get("longitude", 0.0))
+        sign = str(g.get("sign", ""))
+        graha_data.append((name, lon, sign))
+
+    for i, (name_a, lon_a, sign_a) in enumerate(graha_data):
+        for name_b, lon_b, sign_b in graha_data[i + 1:]:
+            if sign_a != sign_b:
+                continue  # must be same sign
+            orb = abs(lon_a - lon_b)
+            # Wrap-around within sign (max 30°, so no circular wrap needed beyond simple diff)
+            if orb > 1.0:
+                continue
+            # Lower longitude = winner (classical rule: closer to 0° of sign)
+            if lon_a <= lon_b:
+                winner, loser = name_a, name_b
+            else:
+                winner, loser = name_b, name_a
+            subj_w = PLANET_TO_SUBJECT.get(winner, winner.upper())
+            subj_l = PLANET_TO_SUBJECT.get(loser, loser.upper())
+            pair_key = f"{subj_w}_v_{subj_l}"
+
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "winner",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_text=winner,
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha in {sign_a}: {winner} wins over {loser} "
+                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                ),
+            ))
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "loser",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_text=loser,
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha in {sign_a}: {loser} loses to {winner} "
+                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                ),
+            ))
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "orb_deg",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=round(orb, 6),
+                unit="degrees",
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha orb in {sign_a}: {winner} vs {loser} "
+                    f"= {round(orb,4)}° ({ayanamsha_id})."
+                ),
+            ))
+
+    return rows
+
+
 def build_ga_structural_substep(
     chart_id: str,
     build_id: str,
@@ -4082,6 +4184,9 @@ def build_ga_structural_substep(
     all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_special_point_relationship_rows(
         conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+    all_rows.extend(_build_graha_yuddha_rows(
+        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
 
     # Two-pass verification

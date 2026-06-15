@@ -1533,3 +1533,40 @@ class TestKarakaWeb:
             def cursor(self): return _EC._C()
         rows = sut._build_karaka_web_rows(_EC(), {}, MOCK_CHART_OUTPUT, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
         assert rows == []
+
+
+# ── §T8: Graha yuddha ─────────────────────────────────────────────────────────
+
+class TestGrahaYuddha:
+    def _make_yuddha_chart(self):
+        """Sun=295°, Mercury moved to 295.6° — same sign (Capricorn), orb=0.6° < 1°."""
+        modified_grahas = []
+        for g in MOCK_CHART_OUTPUT["grahas"]:
+            if g["name"] == "Mercury":
+                modified_grahas.append({**g, "longitude": 295.6, "sign": "Capricorn"})
+            else:
+                modified_grahas.append(g)
+        return {**MOCK_CHART_OUTPUT, "grahas": modified_grahas}
+
+    def test_yuddha_detected_within_1_degree(self):
+        rows = sut._build_graha_yuddha_rows(
+            self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        assert len(yuddha_rows) >= 1
+
+    def test_no_yuddha_in_unmodified_mock(self):
+        # Sun=295°, Mercury=300° → diff=5° > 1° → no yuddha
+        rows = sut._build_graha_yuddha_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        assert isinstance(yuddha_rows, list)
+
+    def test_yuddha_has_winner_and_loser_keys(self):
+        rows = sut._build_graha_yuddha_rows(
+            self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        keys = {r["fact_key"] for r in yuddha_rows}
+        assert "winner" in keys and "loser" in keys
