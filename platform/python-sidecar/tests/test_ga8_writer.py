@@ -1163,3 +1163,22 @@ class TestNodeAspectRows:
                     if r["fact_category"] == "aspect_parashari_given"}
         for g in ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT"]:
             assert g in subjects, f"{g} missing from Parashari aspects after node extension"
+
+    def test_no_crash_when_nodes_absent_from_chart_output(self):
+        """If Rahu/Ketu missing from chart, classical aspects still work, no exception."""
+        chart_without_nodes = {
+            "ascendant": MOCK_CHART_OUTPUT["ascendant"],
+            "grahas": [g for g in MOCK_CHART_OUTPUT["grahas"]
+                       if g["name"] not in ("Rahu", "Ketu")],
+        }
+        # Should not raise; should produce classical graha aspects only
+        rows = sut._build_aspect_rows(
+            chart_without_nodes, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        # Classical grahas present
+        assert "SUN" in subjects
+        # Nodes absent (no crash, but no node rows either)
+        assert "RAH_MEAN" not in subjects
+        assert "KET_MEAN" not in subjects

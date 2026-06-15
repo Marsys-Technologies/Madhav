@@ -744,6 +744,12 @@ def _build_aspect_rows(
     for g_name in grahas_order:
         g_data = state.get(g_name)
         if g_data is None:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE: %s not found in chart_output for ayanamsha=%s — "
+                    "no aspect rows will be emitted for this node.",
+                    g_name, ayanamsha_id,
+                )
             continue
         g_house = g_data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -757,7 +763,7 @@ def _build_aspect_rows(
             asp_offsets = PARASHARI_ASPECTS["all"]
 
         for offset, strength in asp_offsets.items():
-            # Target house = (source_house - 1 + offset) % 12 + 1
+            # offset is 1-based; target = ((source - 1) + (offset - 1)) % 12 + 1
             target_house = ((g_house - 1 + offset - 1) % 12) + 1
             target_sign = _get_house_sign(chart_output, target_house)
             target_key = f"house_{target_house}"
