@@ -27,7 +27,7 @@ const CHART_ID = process.env.SMOKE_CHART_ID ?? 'test-chart'
 const CONSUME_URL = `/clients/${CHART_ID}/consume`
 
 /** Skip all tests in this file if session cookie is not provided. */
-const maybeTest = SESSION ? test : test.skip
+const maybeTest = (SESSION ? test : test.skip) as typeof test
 
 async function fillComposer(page: Page, text: string) {
   const input = page.getByTestId('v2-composer-input').first()
@@ -57,9 +57,10 @@ maybeTest.describe('C-S6: stop-and-retain partial', () => {
           value: SESSION ?? '',
           domain: 'localhost',
           path: '/',
+          expires: -1,
           httpOnly: true,
           secure: false,
-          sameSite: 'Lax',
+          sameSite: 'Lax' as const,
         },
       ],
       origins: [],
