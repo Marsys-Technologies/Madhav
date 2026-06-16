@@ -1333,25 +1333,26 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False, aut
         logger.info("[L0/reference] reference_planets: %d rows inserted", inserted)
 
         # -- reference_nakshatras --
-        inserted = 0
-        for nak in NAKSHATRAS:
-            (nak_id, name_en, name_sa, lord, deity, nature, guna,
-             start_deg, end_deg, pada_lords, body_part) = nak
-            cur.execute("""
-                INSERT INTO reference_nakshatras
-                  (nakshatra_id, canonical_name_en, canonical_name_sa, lord,
-                   deity, nature, guna, start_degree, end_degree,
-                   pada_lords, body_part, source_citation, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (nakshatra_id) DO NOTHING
-            """, (
-                nak_id, name_en, name_sa, lord, deity, nature, guna,
-                start_deg, end_deg, pada_lords, body_part,
-                TAITTIRIYA, now,
-            ))
-            inserted += cur.rowcount
-        counts["reference_nakshatras"] = inserted
-        logger.info("[L0/reference] reference_nakshatras: %d rows inserted", inserted)
+        if False:  # superseded by bg_nakshatra writer
+            inserted = 0
+            for nak in NAKSHATRAS:
+                (nak_id, name_en, name_sa, lord, deity, nature, guna,
+                 start_deg, end_deg, pada_lords, body_part) = nak
+                cur.execute("""
+                    INSERT INTO reference_nakshatras
+                      (nakshatra_id, canonical_name_en, canonical_name_sa, lord,
+                       deity, nature, guna, start_degree, end_degree,
+                       pada_lords, body_part, source_citation, created_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (nakshatra_id) DO NOTHING
+                """, (
+                    nak_id, name_en, name_sa, lord, deity, nature, guna,
+                    start_deg, end_deg, pada_lords, body_part,
+                    TAITTIRIYA, now,
+                ))
+                inserted += cur.rowcount
+            counts["reference_nakshatras"] = inserted
+            logger.info("[L0/reference] reference_nakshatras: %d rows inserted", inserted)
 
         # -- reference_signs --
         inserted = 0
