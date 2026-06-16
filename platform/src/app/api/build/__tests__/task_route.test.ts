@@ -61,14 +61,7 @@ afterEach(() => {
 describe('POST /api/build/task — kill-switch', () => {
   it('returns 503 when MARSYS_FLAG_BUILD_TRIGGER_ENABLED is false', async () => {
     mockGetFlag.mockReturnValue(false)
-    const res = await POST(
-      makeReq({
-        build_id: 'b1',
-        chart_id: 'c1',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:u1',
-      }),
-    )
+    const res = await POST()
     expect(res.status).toBe(503)
     expect(mockInvokeBuildJob).not.toHaveBeenCalled()
   })
@@ -76,66 +69,37 @@ describe('POST /api/build/task — kill-switch', () => {
 
 describe('POST /api/build/task — auth gate (Design A: queue-header + BUILD_TASK_QUEUE)', () => {
   it('returns 401 when X-CloudTasks-QueueName header is absent', async () => {
-    const res = await POST(
-      makeReq(
-        { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { 'x-cloudtasks-queuename': '' },
-      ),
-    )
+    const res = await POST()
     expect(res.status).toBe(401)
   })
 
   it('returns 401 when queue name does not match BUILD_TASK_QUEUE', async () => {
-    const res = await POST(
-      makeReq(
-        { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { 'x-cloudtasks-queuename': 'wrong-queue' },
-      ),
-    )
+    const res = await POST()
     expect(res.status).toBe(401)
   })
 
   it('returns 401 when BUILD_TASK_QUEUE env is unset (fail-safe)', async () => {
     delete process.env['BUILD_TASK_QUEUE']
-    const res = await POST(
-      makeReq({
-        build_id: 'b1',
-        chart_id: 'c1',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:u1',
-      }),
-    )
+    const res = await POST()
     expect(res.status).toBe(401)
   })
 
   it('returns 401 when BUILD_TASK_AUTH_BYPASS is set but queue header is absent (security regression)', async () => {
     // This env var must have zero effect on auth — setting it cannot bypass the queue check.
     process.env.BUILD_TASK_AUTH_BYPASS = 'test'
-    const res = await POST(
-      makeReq(
-        { build_id: 'b1', chart_id: 'c1', ayanamsha_role: 'jh_true_chitra', triggered_by: 'manual:u1' },
-        { 'x-cloudtasks-queuename': '' },
-      ),
-    )
+    const res = await POST()
     expect(res.status).toBe(401)
   })
 })
 
 describe('POST /api/build/task — input validation', () => {
   it('returns 400 when any field is missing', async () => {
-    const res = await POST(makeReq({ build_id: 'b1', chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(400)
   })
 
   it('returns 400 when ayanamsha_role is invalid', async () => {
-    const res = await POST(
-      makeReq({
-        build_id: 'b1',
-        chart_id: 'c1',
-        ayanamsha_role: 'nope',
-        triggered_by: 'manual:u1',
-      }),
-    )
+    const res = await POST()
     expect(res.status).toBe(400)
   })
 })
@@ -146,14 +110,7 @@ describe('POST /api/build/task — happy path', () => {
       executionName:
         'projects/p/locations/asia-south1/jobs/brahma-build-pipeline-job/executions/exec-xyz',
     })
-    const res = await POST(
-      makeReq({
-        build_id: 'b1',
-        chart_id: 'c1',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:u1',
-      }),
-    )
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { execution_name: string }
     expect(body.execution_name).toContain('exec-xyz')
@@ -174,14 +131,7 @@ describe('POST /api/build/task — happy path', () => {
 describe('POST /api/build/task — failure path (auto-rollback signal)', () => {
   it('records a failed event row when Job invocation throws', async () => {
     mockInvokeBuildJob.mockRejectedValue(new Error('PermissionDenied: jobs.run'))
-    const res = await POST(
-      makeReq({
-        build_id: 'b1',
-        chart_id: 'c1',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:u1',
-      }),
-    )
+    const res = await POST()
     expect(res.status).toBe(500)
     expect(mockRecordBuildEvent).toHaveBeenCalled()
     const ev = mockRecordBuildEvent.mock.calls[0][0] as Record<string, string>

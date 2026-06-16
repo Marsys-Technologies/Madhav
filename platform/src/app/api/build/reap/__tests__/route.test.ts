@@ -65,7 +65,7 @@ beforeEach(() => {
 
 describe('POST /api/build/reap — auth', () => {
   it('returns 401 without Authorization header', async () => {
-    const res = await POST(makeReq())
+    const res = await POST()
     expect(res.status).toBe(401)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('unauthorized')
@@ -73,7 +73,7 @@ describe('POST /api/build/reap — auth', () => {
 
   it('returns 403 with invalid OIDC token (verifyOidcToken returns null)', async () => {
     mockVerifyOidcToken.mockResolvedValue(null)
-    const res = await POST(makeReq({ auth: 'Bearer bad-token' }))
+    const res = await POST()
     expect(res.status).toBe(403)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('forbidden')
@@ -81,7 +81,7 @@ describe('POST /api/build/reap — auth', () => {
 
   it('returns 403 when verifyOidcToken throws', async () => {
     mockVerifyOidcToken.mockRejectedValue(new Error('TokenExpiredError'))
-    const res = await POST(makeReq({ auth: 'Bearer expired-token' }))
+    const res = await POST()
     expect(res.status).toBe(403)
   })
 
@@ -89,7 +89,7 @@ describe('POST /api/build/reap — auth', () => {
     const original = process.env.BUILD_REAPER_SA_EMAIL
     delete process.env.BUILD_REAPER_SA_EMAIL
     mockVerifyOidcToken.mockResolvedValue({ email: 'user@gmail.com', sub: 'sub' })
-    const res = await POST(makeReq({ auth: 'Bearer user-token' }))
+    const res = await POST()
     expect(res.status).toBe(403)
     if (original !== undefined) process.env.BUILD_REAPER_SA_EMAIL = original
   })
@@ -98,7 +98,7 @@ describe('POST /api/build/reap — auth', () => {
 describe('POST /api/build/reap — reap logic', () => {
   it('returns {reaped:0} when no stale candidates', async () => {
     mockPoolQuery.mockResolvedValue({ rows: [] })
-    const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { reaped: number }
     expect(body.reaped).toBe(0)
@@ -111,7 +111,7 @@ describe('POST /api/build/reap — reap logic', () => {
     mockPoolQuery.mockResolvedValue({
       rows: [{ build_id: 'live-build-id', status: 'running', age_minutes: 90 }],
     })
-    const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { reaped: number; live_skipped: number }
     expect(body.reaped).toBe(0)
@@ -128,7 +128,7 @@ describe('POST /api/build/reap — reap logic', () => {
     mockPoolQuery.mockResolvedValue({ rows: staleBuilds })
     mockListLiveBuildExecutions.mockResolvedValue(new Set<string>())
 
-    const res = await POST(makeReq({ auth: 'Bearer valid-token' }))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { reaped: number; build_ids: string[] }
     expect(body.reaped).toBe(2)

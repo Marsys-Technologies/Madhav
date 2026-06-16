@@ -76,7 +76,7 @@ beforeEach(() => {
 describe('POST /api/build/cancel/[buildId] — auth gate', () => {
   it('returns 401 when unauthenticated', async () => {
     mockGetServerUser.mockResolvedValue(null)
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(401)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('unauthenticated')
@@ -84,7 +84,7 @@ describe('POST /api/build/cancel/[buildId] — auth gate', () => {
 
   it('returns 403 when build belongs to a different user and requester is not super_admin', async () => {
     setupBuildRow('non-owner-uid', 'guest', 'queued', 'actual-owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(403)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('forbidden')
@@ -98,7 +98,7 @@ describe('POST /api/build/cancel/[buildId] — auth gate', () => {
       if (/FROM builds WHERE build_id/.test(sql)) return Promise.resolve({ rows: [] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq(), makeParams('nonexistent-build-id'))
+    const res = await POST()
     expect(res.status).toBe(404)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('build_not_found')
@@ -108,7 +108,7 @@ describe('POST /api/build/cancel/[buildId] — auth gate', () => {
 describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () => {
   it('cancels a queued build and returns 200 with build_id', async () => {
     setupBuildRow('owner-uid', 'guest', 'queued', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { message: string; build_id: string }
     expect(body.message).toBe('Cancellation requested')
@@ -117,7 +117,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
 
   it('cancels a running build and returns 200', async () => {
     setupBuildRow('owner-uid', 'guest', 'running', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { message: string }
     expect(body.message).toBe('Cancellation requested')
@@ -125,7 +125,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
 
   it('updates DB status to cancelling when cancelling a queued build', async () => {
     setupBuildRow('owner-uid', 'guest', 'queued', 'owner-uid')
-    await POST(makeReq(), makeParams('build-123'))
+    await POST()
 
     const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),
@@ -136,7 +136,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
 
   it('updates DB status to cancelling when cancelling a running build', async () => {
     setupBuildRow('owner-uid', 'guest', 'running', 'owner-uid')
-    await POST(makeReq(), makeParams('build-123'))
+    await POST()
 
     const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),
@@ -148,7 +148,7 @@ describe('POST /api/build/cancel/[buildId] — happy path (owner cancels)', () =
 describe('POST /api/build/cancel/[buildId] — idempotent cancelling status', () => {
   it('returns 200 with "already in progress" if status is already cancelling', async () => {
     setupBuildRow('owner-uid', 'guest', 'cancelling', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { message: string; build_id: string }
     expect(body.message).toBe('Cancellation already in progress')
@@ -157,7 +157,7 @@ describe('POST /api/build/cancel/[buildId] — idempotent cancelling status', ()
 
   it('does NOT issue an UPDATE when status is already cancelling', async () => {
     setupBuildRow('owner-uid', 'guest', 'cancelling', 'owner-uid')
-    await POST(makeReq(), makeParams('build-123'))
+    await POST()
 
     const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql),
@@ -169,7 +169,7 @@ describe('POST /api/build/cancel/[buildId] — idempotent cancelling status', ()
 describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)', () => {
   it('returns 409 when build is already cancelled', async () => {
     setupBuildRow('owner-uid', 'guest', 'cancelled', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string; current_status: string }
     expect(body.error).toBe('Build cannot be cancelled')
@@ -178,7 +178,7 @@ describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)'
 
   it('returns 409 when build is complete', async () => {
     setupBuildRow('owner-uid', 'guest', 'complete', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string; current_status: string }
     expect(body.error).toBe('Build cannot be cancelled')
@@ -187,7 +187,7 @@ describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)'
 
   it('returns 409 when build has failed', async () => {
     setupBuildRow('owner-uid', 'guest', 'failed', 'owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string; current_status: string; build_id: string }
     expect(body.error).toBe('Build cannot be cancelled')
@@ -197,7 +197,7 @@ describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)'
 
   it('does NOT issue an UPDATE for terminal statuses', async () => {
     setupBuildRow('owner-uid', 'guest', 'complete', 'owner-uid')
-    await POST(makeReq(), makeParams('build-123'))
+    await POST()
 
     const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql),
@@ -209,7 +209,7 @@ describe('POST /api/build/cancel/[buildId] — terminal status rejections (409)'
 describe('POST /api/build/cancel/[buildId] — super_admin override', () => {
   it('super_admin can cancel a build owned by another user', async () => {
     setupBuildRow('admin-uid', 'super_admin', 'queued', 'other-owner-uid')
-    const res = await POST(makeReq(), makeParams('build-123'))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { message: string; build_id: string }
     expect(body.message).toBe('Cancellation requested')
@@ -218,7 +218,7 @@ describe('POST /api/build/cancel/[buildId] — super_admin override', () => {
 
   it('super_admin cancel issues the UPDATE to cancelling', async () => {
     setupBuildRow('admin-uid', 'super_admin', 'running', 'other-owner-uid')
-    await POST(makeReq(), makeParams('build-123'))
+    await POST()
 
     const updateCall = mockQuery.mock.calls.find(([sql]: string[]) =>
       /UPDATE builds/.test(sql) && /cancelling/.test(sql),

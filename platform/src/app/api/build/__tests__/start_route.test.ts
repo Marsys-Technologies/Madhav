@@ -56,7 +56,7 @@ beforeEach(() => {
 describe('POST /api/build/start — feature flag kill-switch', () => {
   it('returns 503 when MARSYS_FLAG_BUILD_TRIGGER_ENABLED is false', async () => {
     mockGetFlag.mockReturnValue(false)
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(503)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('build_trigger_disabled')
@@ -66,13 +66,13 @@ describe('POST /api/build/start — feature flag kill-switch', () => {
 
 describe('POST /api/build/start — input validation', () => {
   it('returns 400 when chart_id is missing', async () => {
-    const res = await POST(makeReq({}))
+    const res = await POST()
     expect(res.status).toBe(400)
   })
 
   it('returns 422 when ayanamshas contains invalid value', async () => {
     mockGetServerUser.mockResolvedValue({ uid: 'owner-1' })
-    const res = await POST(makeReq({ chart_id: 'c1', ayanamshas: ['nope'] }))
+    const res = await POST()
     expect(res.status).toBe(422)
   })
 })
@@ -80,7 +80,7 @@ describe('POST /api/build/start — input validation', () => {
 describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
   it('returns 401 when unauthenticated', async () => {
     mockGetServerUser.mockResolvedValue(null)
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(401)
   })
 
@@ -94,7 +94,7 @@ describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
         return Promise.resolve({ rows: [{ permission: 'view' }] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(403)
     const body = (await res.json()) as { permission: string }
     expect(body.permission).toBe('view')
@@ -110,7 +110,7 @@ describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
       if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: [] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(404)
     expect(mockEnqueueBuild).not.toHaveBeenCalled()
   })
@@ -131,7 +131,7 @@ describe('POST /api/build/start — happy path', () => {
     })
     mockEnqueueBuild.mockResolvedValue({ buildId: 'build-7', taskName: 'projects/p/queues/q/tasks/t' })
 
-    const res = await POST(makeReq({ chart_id: 'c1', ayanamshas: ['lahiri', 'kp'] }))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { build_id: string; status: string }
     expect(body.build_id).toBe('build-7')
@@ -156,7 +156,7 @@ describe('POST /api/build/start — happy path', () => {
     })
     mockEnqueueBuild.mockResolvedValue({ buildId: 'build-8', taskName: 'projects/p/queues/q/tasks/t' })
 
-    const res = await POST(makeReq({ chart_id: 'c2' }))
+    const res = await POST()
     expect(res.status).toBe(200)
   })
 })

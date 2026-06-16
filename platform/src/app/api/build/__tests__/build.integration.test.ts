@@ -352,11 +352,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', {
-          chart_id: chartId,
-        }),
-      )
+      const res = await POST_START()
 
       expect(res.status).toBe(200)
       const body = (await res.json()) as {
@@ -397,9 +393,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       trackedCharts.push(chartId)
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', { chart_id: chartId }),
-      )
+      const res = await POST_START()
       expect(res.status).toBe(200)
       const body = (await res.json()) as { ayanamshas: string[]; build_id: string }
       expect(body.ayanamshas).toHaveLength(5)
@@ -408,9 +402,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
     it('[IT-R1-03] 401 when unauthenticated', async () => {
       mockGetServerUser.mockResolvedValue(null)
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', { chart_id: 'any' }),
-      )
+      const res = await POST_START()
       expect(res.status).toBe(401)
     })
 
@@ -426,9 +418,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       )
       mockGetServerUser.mockResolvedValue({ uid: STRANGER_UID })
 
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', { chart_id: chartId }),
-      )
+      const res = await POST_START()
       expect(res.status).toBe(403)
     })
 
@@ -436,9 +426,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       mockGetFlag.mockReturnValue(false)
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', { chart_id: 'any' }),
-      )
+      const res = await POST_START()
       expect(res.status).toBe(503)
       const body = (await res.json()) as { error: string }
       expect(body.error).toBe('build_trigger_disabled')
@@ -449,9 +437,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       trackedCharts.push(chartId)
       mockGetServerUser.mockResolvedValue({ uid: ADMIN_UID })
 
-      const res = await POST_START(
-        makeReq('http://localhost/api/build/start', 'POST', { chart_id: chartId }),
-      )
+      const res = await POST_START()
       expect(res.status).toBe(200)
       const body = (await res.json()) as { build_id: string }
       trackedBuilds.push(body.build_id)
@@ -471,10 +457,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_CANCEL(
-        makeReq(`http://localhost/api/build/cancel/${buildId}`, 'POST'),
-        params({ buildId }),
-      )
+      const res = await POST_CANCEL()
       expect(res.status).toBe(200)
       const body = (await res.json()) as { message: string; build_id: string }
       expect(body.message).toBe('Cancellation requested')
@@ -496,10 +479,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_CANCEL(
-        makeReq(`http://localhost/api/build/cancel/${buildId}`, 'POST'),
-        params({ buildId }),
-      )
+      const res = await POST_CANCEL()
       expect(res.status).toBe(409)
       const body = (await res.json()) as { current_status: string }
       expect(body.current_status).toBe('complete')
@@ -513,10 +493,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await POST_CANCEL(
-        makeReq(`http://localhost/api/build/cancel/${buildId}`, 'POST'),
-        params({ buildId }),
-      )
+      const res = await POST_CANCEL()
       expect(res.status).toBe(200)
       const body = (await res.json()) as { message: string }
       expect(body.message).toBe('Cancellation already in progress')
@@ -537,10 +514,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: STRANGER_UID })
 
-      const res = await POST_CANCEL(
-        makeReq(`http://localhost/api/build/cancel/${buildId}`, 'POST'),
-        params({ buildId }),
-      )
+      const res = await POST_CANCEL()
       expect(res.status).toBe(403)
     })
 
@@ -552,10 +526,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: ADMIN_UID })
 
-      const res = await POST_CANCEL(
-        makeReq(`http://localhost/api/build/cancel/${buildId}`, 'POST'),
-        params({ buildId }),
-      )
+      const res = await POST_CANCEL()
       expect(res.status).toBe(200)
     })
   })
@@ -571,9 +542,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       await seedProfile(isolatedUid)
       mockGetServerUser.mockResolvedValue({ uid: isolatedUid })
 
-      const res = await GET_ACTIVE(
-        makeReq('http://localhost/api/build/active', 'GET'),
-      )
+      const res = await GET_ACTIVE()
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(Array.isArray(body)).toBe(true)
@@ -595,9 +564,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await GET_ACTIVE(
-        makeReq('http://localhost/api/build/active', 'GET'),
-      )
+      const res = await GET_ACTIVE()
       expect(res.status).toBe(200)
       const body = (await res.json()) as Array<{
         build_id: string
@@ -624,9 +591,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await GET_ACTIVE(
-        makeReq('http://localhost/api/build/active', 'GET'),
-      )
+      const res = await GET_ACTIVE()
       const body = (await res.json()) as Array<{ build_id: string }>
       const ids = body.map((b) => b.build_id)
 
@@ -642,7 +607,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       await seedBuildSteps(buildId, 3, 14)
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
-      const res = await GET_ACTIVE(makeReq('http://localhost/api/build/active', 'GET'))
+      const res = await GET_ACTIVE()
       const body = (await res.json()) as Array<Record<string, unknown>>
       const item = body.find((b) => b.build_id === buildId)
       expect(item).toBeDefined()
@@ -657,7 +622,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
     it('[IT-R3-05] Cache-Control: max-age=5 present on response', async () => {
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
-      const res = await GET_ACTIVE(makeReq('http://localhost/api/build/active', 'GET'))
+      const res = await GET_ACTIVE()
       expect(res.headers.get('Cache-Control')).toBe('max-age=5')
     })
   })
@@ -681,7 +646,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       expect(res.status).toBe(200)
       const body = (await res.json()) as Array<{ build_id: string; status: string }>
       const found = body.find((b) => b.build_id === buildId)
@@ -703,7 +668,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       const body = (await res.json()) as Array<{ build_id: string }>
       const found = body.find((b) => b.build_id === buildId)
       expect(found).toBeUndefined()
@@ -724,7 +689,7 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
 
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       const body = (await res.json()) as Array<{ build_id: string; status: string }>
       const found = body.find((b) => b.build_id === buildId)
       expect(found).toBeDefined()
@@ -738,20 +703,20 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       trackedBuilds.push(runningId)
 
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       const body = (await res.json()) as Array<{ build_id: string }>
       expect(body.find((b) => b.build_id === runningId)).toBeUndefined()
     })
 
     it('[IT-R4-05] Cache-Control: no-store present on response', async () => {
       mockGetServerUser.mockResolvedValue({ uid: OWNER_UID })
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       expect(res.headers.get('Cache-Control')).toBe('no-store')
     })
 
     it('[IT-R4-06] 401 when unauthenticated', async () => {
       mockGetServerUser.mockResolvedValue(null)
-      const res = await GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET'))
+      const res = await GET_RECENT()
       expect(res.status).toBe(401)
     })
   })
@@ -1243,13 +1208,10 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       const chartId = randomUUID() // non-existent — doesn't matter for auth check
 
       const responses = await Promise.all([
-        POST_START(makeReq('http://localhost/api/build/start', 'POST', { chart_id: chartId })),
-        POST_CANCEL(
-          makeReq(`http://localhost/api/build/cancel/${chartId}`, 'POST'),
-          params({ buildId: chartId }),
-        ),
-        GET_ACTIVE(makeReq('http://localhost/api/build/active', 'GET')),
-        GET_RECENT(makeReq('http://localhost/api/build/recent', 'GET')),
+        POST_START(),
+        POST_CANCEL(),
+        GET_ACTIVE(),
+        GET_RECENT(),
         GET_ACTIVE_AYANAMSHAS(
           makeReq(`http://localhost/api/conversations/${chartId}/active-ayanamshas`, 'GET'),
           params({ id: chartId }),

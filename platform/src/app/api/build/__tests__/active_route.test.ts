@@ -89,7 +89,7 @@ beforeEach(() => {
 describe('GET /api/build/active — auth gate', () => {
   it('returns 401 when unauthenticated', async () => {
     mockGetServerUser.mockResolvedValue(null)
-    const res = await GET(makeReq())
+    const res = await GET()
     expect(res.status).toBe(401)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('unauthenticated')
@@ -101,7 +101,7 @@ describe('GET /api/build/active — auth gate', () => {
 describe('GET /api/build/active — empty result', () => {
   it('returns 200 with empty array when no active builds exist', async () => {
     setupMocks('user-1', 'guest', [])
-    const res = await GET(makeReq())
+    const res = await GET()
     expect(res.status).toBe(200)
     const body = (await res.json()) as unknown[]
     expect(Array.isArray(body)).toBe(true)
@@ -115,7 +115,7 @@ describe('GET /api/build/active — queued build included', () => {
   it('returns a queued build in the response array', async () => {
     const row = makeBuildRow({ status: 'queued', build_id: 'b-queued' })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     expect(res.status).toBe(200)
     const body = (await res.json()) as Array<{ build_id: string; status: string }>
     expect(body).toHaveLength(1)
@@ -126,7 +126,7 @@ describe('GET /api/build/active — queued build included', () => {
   it('includes a running build', async () => {
     const row = makeBuildRow({ status: 'running', build_id: 'b-running' })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ status: string }>
     expect(body[0].status).toBe('running')
   })
@@ -134,7 +134,7 @@ describe('GET /api/build/active — queued build included', () => {
   it('includes a cancelling build', async () => {
     const row = makeBuildRow({ status: 'cancelling', build_id: 'b-cancelling' })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ status: string }>
     expect(body[0].status).toBe('cancelling')
   })
@@ -146,7 +146,7 @@ describe('GET /api/build/active — response item shape', () => {
   it('response item contains all required fields', async () => {
     const row = makeBuildRow({ steps_complete: 7, steps_total: 14 })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<Record<string, unknown>>
     const item = body[0]
     expect(item).toHaveProperty('build_id')
@@ -164,7 +164,7 @@ describe('GET /api/build/active — response item shape', () => {
   it('ayanamshas is an array', async () => {
     const row = makeBuildRow({ ayanamshas: ['lahiri', 'kp', 'raman'] })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ ayanamshas: unknown }>
     expect(Array.isArray(body[0].ayanamshas)).toBe(true)
     expect(body[0].ayanamshas).toHaveLength(3)
@@ -173,7 +173,7 @@ describe('GET /api/build/active — response item shape', () => {
   it('chart_name is null when not joined', async () => {
     const row = makeBuildRow({ chart_name: null })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ chart_name: unknown }>
     expect(body[0].chart_name).toBeNull()
   })
@@ -181,7 +181,7 @@ describe('GET /api/build/active — response item shape', () => {
   it('started_at is null for queued builds', async () => {
     const row = makeBuildRow({ status: 'queued', started_at: null })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ started_at: unknown }>
     expect(body[0].started_at).toBeNull()
   })
@@ -193,7 +193,7 @@ describe('GET /api/build/active — progress_pct computation', () => {
   it('progress_pct is 0 when steps_total is 0', async () => {
     const row = makeBuildRow({ steps_complete: 0, steps_total: 0 })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ progress_pct: number }>
     expect(body[0].progress_pct).toBe(0)
   })
@@ -201,7 +201,7 @@ describe('GET /api/build/active — progress_pct computation', () => {
   it('progress_pct = 50 when 7/14 steps complete', async () => {
     const row = makeBuildRow({ steps_complete: 7, steps_total: 14 })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ progress_pct: number }>
     expect(body[0].progress_pct).toBe(50)
   })
@@ -209,7 +209,7 @@ describe('GET /api/build/active — progress_pct computation', () => {
   it('progress_pct = 100 when all steps complete', async () => {
     const row = makeBuildRow({ steps_complete: 14, steps_total: 14 })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ progress_pct: number }>
     expect(body[0].progress_pct).toBe(100)
   })
@@ -217,7 +217,7 @@ describe('GET /api/build/active — progress_pct computation', () => {
   it('steps_complete and steps_total are numeric in response', async () => {
     const row = makeBuildRow({ steps_complete: 3, steps_total: 14 })
     setupMocks('user-1', 'guest', [row])
-    const res = await GET(makeReq())
+    const res = await GET()
     const body = (await res.json()) as Array<{ steps_complete: number; steps_total: number }>
     expect(typeof body[0].steps_complete).toBe('number')
     expect(typeof body[0].steps_total).toBe('number')
@@ -234,7 +234,7 @@ describe('GET /api/build/active — super_admin scope', () => {
       makeBuildRow({ build_id: 'b-user2', status: 'queued' }),
     ]
     setupMocks('admin-uid', 'super_admin', rows)
-    const res = await GET(makeReq())
+    const res = await GET()
     expect(res.status).toBe(200)
     const body = (await res.json()) as Array<{ build_id: string }>
     expect(body).toHaveLength(2)
@@ -245,7 +245,7 @@ describe('GET /api/build/active — super_admin scope', () => {
 
   it('super_admin query does NOT pass uid as parameter', async () => {
     setupMocks('admin-uid', 'super_admin', [])
-    await GET(makeReq())
+    await GET()
 
     // The last query call (after profile lookup) should have empty params
     const calls = mockQuery.mock.calls as Array<[string, unknown[]]>
@@ -260,7 +260,7 @@ describe('GET /api/build/active — super_admin scope', () => {
 describe('GET /api/build/active — response headers', () => {
   it('sets Cache-Control: max-age=5', async () => {
     setupMocks('user-1', 'guest', [])
-    const res = await GET(makeReq())
+    const res = await GET()
     expect(res.headers.get('Cache-Control')).toBe('max-age=5')
   })
 })
