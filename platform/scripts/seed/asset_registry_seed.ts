@@ -170,7 +170,7 @@ const ASSETS: AssetDef[] = [
     english_description: 'The holy grail of L0 — structured properties of every classical Jyotish concept across 15 specialized typed tables.',
     storage_type: 'postgres_table',
     target_table: 'reference_nakshatras',
-    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_nakshatras) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
+    count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
     size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
     target_floor: null,
     expected_volume_formula: null,
@@ -432,6 +432,24 @@ const ASSETS: AssetDef[] = [
       expected_sun_approximate_sign: 10,
       note: 'JD = 1984-02-05 10:43 IST → UTC. Sun in Makara (sign 10) sidereal Lahiri.',
     },
+  },
+
+  {
+    asset_id: 'bg_nakshatra',
+    layer: 'brahmagyan', sort_order: 15,
+    sanskrit_name: 'Nakṣatra-sāraṇī',
+    english_name: 'Nakshatra Reference',
+    english_description: 'Global nakshatra reference — 28 nakshatras (incl. Abhijit), 108 padas, full Ashtakuta + supplementary compatibility matrices (2721 rows).',
+    storage_type: 'postgres_table',
+    target_table: 'reference_nakshatra',
+    count_sql: `SELECT (SELECT COUNT(*) FROM reference_nakshatra) + (SELECT COUNT(*) FROM reference_nakshatra_pada) + (SELECT COUNT(*) FROM reference_nakshatra_matrix) AS count`,
+    size_sql: "SELECT pg_total_relation_size('reference_nakshatra')",
+    target_floor: 2857,  // set after first prod build 2026-06-17 (§N.4)
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: '28 nakshatras + 108 padas + 2721 compatibility matrix rows (28×28 Ashtakuta cells × ~3.5 factors) = 2857 total rows.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
   },
 
   // ── GANITA (8) ────────────────────────────────────────────────────────────

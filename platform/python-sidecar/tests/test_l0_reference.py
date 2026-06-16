@@ -247,7 +247,7 @@ class TestDryRun:
         mod = _get_module()
         counts = mod.seed_reference(conn=None, dry_run=True)
         assert counts["reference_planets"] >= 11
-        assert counts["reference_nakshatras"] >= 27
+        assert counts["reference_nakshatras"] == 0  # DEPRECATED — authority transferred to bg_nakshatra
         assert counts["reference_signs"] >= 12
         assert counts["reference_aspects"] >= 19
         assert counts["reference_vargas"] >= 16
