@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: '/clients/:id/build',
+        destination: '/clients/:id/nirmana',
+        permanent: true,
+      },
+      {
+        source: '/clients/:id/build/:conversationId',
+        destination: '/clients/:id/nirmana/:conversationId',
+        permanent: true,
+      },
+    ]
+  },
   output: "standalone",
   // GCP SDK packages use dynamic requires internally — exclude from webpack bundle
   // so they're loaded from node_modules at runtime in the standalone container.

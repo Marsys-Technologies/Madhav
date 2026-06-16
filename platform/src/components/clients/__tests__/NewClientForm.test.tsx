@@ -38,7 +38,7 @@ beforeEach(() => {
   mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
-    json: async () => ({ chart_id: 'chart-123', redirect_url: '/clients/chart-123/build' }),
+    json: async () => ({ chart_id: 'chart-123', redirect_url: '/clients/chart-123/nirmana' }),
   })
 })
 
@@ -308,7 +308,7 @@ describe('NewClientForm', () => {
       }
       return {
         ok: true, status: 200,
-        json: async () => ({ chart_id: 'chart-123', redirect_url: '/clients/chart-123/build' }),
+        json: async () => ({ chart_id: 'chart-123', redirect_url: '/clients/chart-123/nirmana' }),
       }
     })
 
@@ -355,7 +355,7 @@ describe('NewClientForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /build chart/i }))
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/clients/chart-123/build'))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/clients/chart-123/nirmana'))
   })
 
   // ── Test 10: 422 response → errors distributed by field ───────────────────

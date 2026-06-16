@@ -616,7 +616,7 @@ export function NewClientForm() {
       }
 
       if (action === 'build') {
-        router.push(data.redirect_url ?? `/clients/${data.chart_id}/build`)
+        router.push(data.redirect_url ?? `/clients/${data.chart_id}/nirmana`)
       } else {
         router.push(`/dashboard?chart_created=${data.chart_id}`)
       }

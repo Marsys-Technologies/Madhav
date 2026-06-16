@@ -254,7 +254,7 @@ export function ClientCard({ chart }: Props) {
         {/* Action row: Nirmāṇa (build) · Vimarśa (analyze) */}
         <div className="flex gap-2 items-center">
           <Link
-            href={`/clients/${chart.id}/build`}
+            href={`/clients/${chart.id}/nirmana`}
             aria-label={`Nirmāṇa (build) — ${chart.name}`}
             className={vimarsaPrimary ? GHOST_BTN : FILLED_BTN}
           >

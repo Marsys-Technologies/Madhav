@@ -133,7 +133,7 @@ export default async function ConsultPage({
   const initialMessages = buildPanchangInitialMessages(promptParam, contextParam)
 
   // WS-1-S3-B: Derive capability gate state from pyramid layers.
-  const cockpitHref = `/clients/${id}/build`
+  const cockpitHref = `/clients/${id}/nirmana`
   const pyramidRows = pyramidResult.rows
   const l1Row = pyramidRows.find((r) => r.layer_key === 'L1')
   const isL1Built = l1Row?.status === 'built' || l1Row?.status === 'complete'

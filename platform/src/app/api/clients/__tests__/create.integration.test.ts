@@ -6,7 +6,7 @@
 // What these tests verify:
 //   - Happy-path chart row creation with all 5 ayanamshas stored
 //   - pyramid_layers rows are seeded for all 6 standard layers
-//   - redirect_url shape (falls back to /clients/{id}/build when absent)
+//   - redirect_url shape (falls back to /clients/{id}/nirmana when absent)
 //   - Required-field validation (name, birth_date, birth_time, birth_place)
 //   - Latitude / longitude boundary validation
 //   - Subject-name fallback (subject_name defaults to name when omitted)
@@ -132,7 +132,7 @@ async function simulateCreate(
     status: 200,
     body: {
       ...chart,
-      redirect_url: `/clients/${chart.id as string}/build`,
+      redirect_url: `/clients/${chart.id as string}/nirmana`,
     },
   }
 }
@@ -232,12 +232,12 @@ describe.skipIf(!DB_AVAILABLE)('POST /api/clients/create (integration)', () => {
 
   // ── Test 5 ──────────────────────────────────────────────────────────────────
 
-  it('returns redirect_url pointing to /clients/{id}/build', async () => {
+  it('returns redirect_url pointing to /clients/{id}/nirmana', async () => {
     const name = `${TEST_PREFIX}_T5`
     const res = await simulateCreate(pool, makeValidBody({ name }))
     expect(res.status).toBe(200)
     createdChartIds.push(res.body.id as string)
-    expect(res.body.redirect_url).toBe(`/clients/${res.body.id as string}/build`)
+    expect(res.body.redirect_url).toBe(`/clients/${res.body.id as string}/nirmana`)
   })
 
   // ── Test 6 ──────────────────────────────────────────────────────────────────

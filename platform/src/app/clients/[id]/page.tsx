@@ -89,7 +89,7 @@ export default async function ClientPage({
               <RoomCard
                 title="Build Room"
                 description="Chart corpus construction"
-                cta={{ label: 'Continue building', href: `/clients/${id}/build` }}
+                cta={{ label: 'Continue building', href: `/clients/${id}/nirmana` }}
               >
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between text-xs" style={{ color: 'var(--brand-gold)', opacity: 0.65 }}>

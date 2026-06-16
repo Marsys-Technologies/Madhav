@@ -70,7 +70,7 @@ export default function BuildCompleteToast() {
               ? `${label} build complete${ayas}`
               : `${label} build failed${ayas}`
 
-          const viewUrl = `/clients/${build.chart_id}/build`
+          const viewUrl = `/clients/${build.chart_id}/nirmana`
 
           if (build.status === 'complete') {
             toast.success(message, {

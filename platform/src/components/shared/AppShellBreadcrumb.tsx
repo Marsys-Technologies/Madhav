@@ -20,7 +20,7 @@ export function AppShellBreadcrumb({
   const pathname = usePathname()
   // Consume and cockpit build have their own headers — breadcrumb is redundant there
   if (pathname.includes('/consume')) return null
-  if (pathname.includes('/build')) return null
+  if (pathname.includes('/nirmana')) return null
   if (segments.length === 0) return null
 
   return (

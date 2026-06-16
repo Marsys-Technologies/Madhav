@@ -44,7 +44,7 @@ export const LAST_CHART_STORAGE_KEY = 'marsys.last_chart_id'
  *   - /clients/<old>/<suffix>  → /clients/<new>/<suffix>
  *   - /clients/<old>/consult/<conversationId> → /clients/<new>/consult
  *     (no silent conversation carry-over)
- *   - /clients/<old>/build/<conversationId> → /clients/<new>/build
+ *   - /clients/<old>/nirmana/<conversationId> → /clients/<new>/nirmana
  *   - /clients/<old>/consume/<conversationId> → /clients/<new>/consume
  *   - anything else → /clients/<new>
  */
@@ -55,7 +55,7 @@ export function computeSwitchHref(currentPath: string, newChartId: string): stri
   if (suffix === '') return `/clients/${newChartId}`
   // Strip a trailing /<conversationId> from build/consult/consume modules
   // to avoid mid-conversation context switches.
-  const modules = ['consult', 'build', 'consume']
+  const modules = ['consult', 'nirmana', 'consume']
   for (const mod of modules) {
     if (suffix === mod) return `/clients/${newChartId}/${mod}`
     if (suffix.startsWith(`${mod}/`)) return `/clients/${newChartId}/${mod}`

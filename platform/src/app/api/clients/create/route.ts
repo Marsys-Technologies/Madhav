@@ -302,7 +302,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
       chart_id: row.chart_id,
       client_id: row.client_id ?? null,
-      redirect_url: `/clients/${row.chart_id}/build`,
+      redirect_url: `/clients/${row.chart_id}/nirmana`,
       ayanamshas,
       idempotent: true,
       dedupe_reason: 'natural_key_match',
@@ -323,7 +323,7 @@ export async function POST(request: Request): Promise<Response> {
       return NextResponse.json({
         chart_id: row.chart_id,
         client_id: row.client_id ?? null,
-        redirect_url: `/clients/${row.chart_id}/build`,
+        redirect_url: `/clients/${row.chart_id}/nirmana`,
         ayanamshas,
         idempotent: true,
       })
@@ -405,7 +405,7 @@ export async function POST(request: Request): Promise<Response> {
   return NextResponse.json({
     chart_id: chart.id as string,
     client_id: chart.client_id as string,
-    redirect_url: `/clients/${chart.id as string}/build`,
+    redirect_url: `/clients/${chart.id as string}/nirmana`,
     ayanamshas,
   })
 }

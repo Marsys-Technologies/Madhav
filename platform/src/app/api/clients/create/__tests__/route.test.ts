@@ -254,7 +254,7 @@ describe('POST /api/clients/create — happy path', () => {
     expect(body.chart_id).toBeTruthy()
     // chart_id must be the row's `id` (PK), not an absent chart_id column
     expect(body.chart_id).toBe('row-uuid-001')
-    expect(body.redirect_url).toBe(`/clients/${body.chart_id}/build`)
+    expect(body.redirect_url).toBe(`/clients/${body.chart_id}/nirmana`)
   })
 
   it('defaults ayanamshas to all 5 when not provided', async () => {
@@ -318,7 +318,7 @@ describe('POST /api/clients/create — idempotency', () => {
 
     const body = (await res.json()) as { chart_id: string; redirect_url: string; idempotent: boolean }
     expect(body.chart_id).toBe('chart-idem-001')
-    expect(body.redirect_url).toBe('/clients/chart-idem-001/build')
+    expect(body.redirect_url).toBe('/clients/chart-idem-001/nirmana')
     expect(body.idempotent).toBe(true)
   })
 })
@@ -360,7 +360,7 @@ describe('POST /api/clients/create — natural-key dedupe', () => {
     expect(body.chart_id).toBe(existingChartId)
     expect(body.idempotent).toBe(true)
     expect(body.dedupe_reason).toBe('natural_key_match')
-    expect(body.redirect_url).toBe(`/clients/${existingChartId}/build`)
+    expect(body.redirect_url).toBe(`/clients/${existingChartId}/nirmana`)
     // Critical: no INSERT must have been executed
     expect(insertSpy).not.toHaveBeenCalled()
   })

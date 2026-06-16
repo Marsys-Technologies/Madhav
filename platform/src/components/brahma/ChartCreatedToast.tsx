@@ -73,7 +73,7 @@ export function ChartCreatedToast() {
 
         {/* Open cockpit link */}
         <a
-          href={`/clients/${chartId}/build`}
+          href={`/clients/${chartId}/nirmana`}
           className="flex-shrink-0 rounded-lg bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
           onClick={dismiss}
           aria-label="Open cockpit for new chart"
