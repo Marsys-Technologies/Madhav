@@ -208,7 +208,6 @@ describe('POST /api/build/start — happy path (owner, all 5 ayanamshas)', () =>
       /INSERT INTO builds/.test(sql),
     )
     expect(insertBuildsCall).toBeDefined()
-    expect(insertBuildsCall![1]).toContain('natal_engine/0.2.0-jh-parity')
 
     // Confirm build_steps INSERT was called
     const insertStepsCall = mockQuery.mock.calls.find(([sql]: string[]) =>

@@ -71,7 +71,7 @@ function makeBuildRow(overrides: Partial<{
     status: 'complete',
     finished_at: '2026-05-29T10:00:00.000Z',
     failed_at: null,
-    engine_version: 'natal_engine/0.2.0',
+    engine_version: 'pyjhora/1.0.0',
     ayanamshas: ['lahiri', 'true_chitra', 'kp', 'raman', 'surya_siddhanta'],
     steps_complete: 8,
     steps_total: 10,
@@ -102,7 +102,7 @@ function setupMocks(opts: {
     uid = 'user-1',
     role = 'guest',
     chartFound = true,
-    currentEngineVersion = 'natal_engine/0.2.0',
+    currentEngineVersion = 'pyjhora/1.0.0',
     buildRowsByAyanamsha = {},
   } = opts
 
@@ -313,9 +313,9 @@ describe('GET /api/charts/[id]/ayanamsha-status — complete status', () => {
 describe('GET /api/charts/[id]/ayanamsha-status — is_latest_engine', () => {
   it('is_latest_engine=false when build uses an older engine version', async () => {
     setupMocks({
-      currentEngineVersion: 'natal_engine/0.3.0',
+      currentEngineVersion: 'pyjhora/1.1.0',
       buildRowsByAyanamsha: {
-        lahiri: makeBuildRow({ engine_version: 'natal_engine/0.2.0' }),
+        lahiri: makeBuildRow({ engine_version: 'pyjhora/1.0.0' }),
       },
     })
     const res = await GET(makeReq(), makeParams())
@@ -325,7 +325,7 @@ describe('GET /api/charts/[id]/ayanamsha-status — is_latest_engine', () => {
   })
 
   it('is_latest_engine=true when build matches the current engine version', async () => {
-    const version = 'natal_engine/0.2.0'
+    const version = 'pyjhora/1.0.0'
     setupMocks({
       currentEngineVersion: version,
       buildRowsByAyanamsha: {
@@ -342,7 +342,7 @@ describe('GET /api/charts/[id]/ayanamsha-status — is_latest_engine', () => {
     setupMocks({
       currentEngineVersion: null, // table returns no rows
       buildRowsByAyanamsha: {
-        lahiri: makeBuildRow({ engine_version: 'natal_engine/0.1.0' }),
+        lahiri: makeBuildRow({ engine_version: 'pyjhora/0.9.0' }),
       },
     })
     const res = await GET(makeReq(), makeParams())

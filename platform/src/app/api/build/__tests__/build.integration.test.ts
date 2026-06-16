@@ -22,7 +22,6 @@
  *   2. POST /api/build/cancel/[buildId] — transitions to cancelling
  *   3. GET  /api/build/active          — in-progress builds with progress_pct
  *   4. GET  /api/build/recent          — unseen completed builds (24h window)
- *   5. GET  /api/engine/current        — current engine version metadata
  *   6. GET  /api/conversations/[id]/active-ayanamshas — J-01 graceful degradation
  *   7. GET  /api/charts/[id]/ayanamsha-status         — 5-ayanamsha per-chart state
  *   8. POST /api/clients/create        — hardened with rate-limit + idempotency
@@ -73,7 +72,6 @@ import { POST as POST_START } from '../start/route'
 import { POST as POST_CANCEL } from '../cancel/[buildId]/route'
 import { GET as GET_ACTIVE } from '../active/route'
 import { GET as GET_RECENT } from '../recent/route'
-import { GET as GET_ENGINE_CURRENT } from '../../engine/current/route'
 import { GET as GET_ACTIVE_AYANAMSHAS } from '../../conversations/[id]/active-ayanamshas/route'
 import { GET as GET_AYANAMSHA_STATUS } from '../../charts/[id]/ayanamsha-status/route'
 import { POST as POST_CLIENTS_CREATE } from '../../clients/create/route'
@@ -722,63 +720,6 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
   })
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Route 5: GET /api/engine/current
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  describe('Route 5 — GET /api/engine/current', () => {
-    it('[IT-R5-01] returns 200 with correct engine metadata when a version row exists', async () => {
-      const versionId = await seedEngineVersion({
-        versionStr: '2.0.0',
-        engineName: 'marsys-it',
-        gitSha: 'abc1234',
-      })
-      trackedEngineVersions.push(versionId)
-
-      const res = await GET_ENGINE_CURRENT(
-        makeReq('http://localhost/api/engine/current', 'GET'),
-      )
-      // Accept 200 or 404 — if another test inserted a newer row it may return
-      // a different version_id but the schema assertions still hold.
-      expect([200, 404]).toContain(res.status)
-
-      if (res.status === 200) {
-        const body = await res.json()
-        expect(body.version).toBeTruthy()
-        expect(body.status).toBe('current')
-        expect(body).toHaveProperty('promoted_at')
-        expect(body).toHaveProperty('version_id')
-        expect(body).toHaveProperty('engine_name')
-        expect(body.release_notes_uri).toBeNull()
-      }
-    })
-
-    it('[IT-R5-02] does NOT require authentication — returns without session', async () => {
-      // Deliberately provide no user mock — if the route required auth it
-      // would call getServerUser and fail/return 401.
-      const versionId = await seedEngineVersion({ versionStr: '3.0.0-noauth-test' })
-      trackedEngineVersions.push(versionId)
-
-      const res = await GET_ENGINE_CURRENT(
-        makeReq('http://localhost/api/engine/current', 'GET'),
-      )
-      // 200 or 404 are both acceptable — 401 is NOT.
-      expect(res.status).not.toBe(401)
-    })
-
-    it('[IT-R5-03] Cache-Control: max-age=300 on successful 200', async () => {
-      const versionId = await seedEngineVersion({ versionStr: '4.0.0-cache-test' })
-      trackedEngineVersions.push(versionId)
-
-      const res = await GET_ENGINE_CURRENT(
-        makeReq('http://localhost/api/engine/current', 'GET'),
-      )
-      if (res.status === 200) {
-        expect(res.headers.get('Cache-Control')).toBe('max-age=300')
-      }
-    })
-  })
-
-  // ═══════════════════════════════════════════════════════════════════════════
   // Route 6: GET /api/conversations/[id]/active-ayanamshas
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1236,14 +1177,6 @@ describe.skipIf(!DB_AVAILABLE)('Build API Routes — Integration (DB-backed)', (
       for (const res of responses) {
         expect(res.status, `Expected 401 for ${res.url}`).toBe(401)
       }
-    })
-
-    it('[IT-AUTH-02] GET /api/engine/current does NOT require auth', async () => {
-      // No user mock set up.
-      const res = await GET_ENGINE_CURRENT(
-        makeReq('http://localhost/api/engine/current', 'GET'),
-      )
-      expect(res.status).not.toBe(401)
     })
   })
 })

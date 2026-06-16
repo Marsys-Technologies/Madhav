@@ -8,7 +8,7 @@ to the chart_panchanga table.  Idempotent: ON CONFLICT (chart_id, build_id)
 DO UPDATE so repeated runs are safe.
 
 Design:
-  - Input: dict produced by natal_engine.compute_chart() (the 'panchanga' key)
+  - Input: dict produced by pyjhora_adapter.compute_chart() (the 'panchanga' key)
             + the chart-level metadata (chart_id, build_id, graha positions for
             sun/moon longitudes).
   - Output: one row in chart_panchanga.
@@ -80,7 +80,7 @@ VARA_NAMES: dict[int, str] = {
 }
 
 SOURCE_CITATION = (
-    "FORENSIC v8.0 §Panchanga; natal_engine GA-1-1 [BRAHMA]; "
+    "FORENSIC v8.0 §Panchanga; pyjhora_adapter GA-1-1 [BRAHMA]; "
     "MC §1-4 (Muhurta Chintamani); BS §2 (Brihat Samhita); "
     "PyJHora/pyswisseph DE441"
 )
@@ -317,7 +317,7 @@ def write_from_engine_output(
 
     Args:
         conn: Open psycopg connection.
-        engine_output: Dict returned by natal_engine.compute_chart().
+        engine_output: Dict returned by pyjhora_adapter.compute_chart().
         build_id: Build provenance tag.
         sunrise_utc: Optional sunrise UTC timestamp.
         sunrise_ist: Optional sunrise IST string.
