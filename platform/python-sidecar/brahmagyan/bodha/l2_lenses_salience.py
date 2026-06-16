@@ -28,7 +28,7 @@ bodha.salience — salience score per signal
 Layer:  L2 Bodha (grounded)
 Assets: bodha.lenses + bodha.negative_space + bodha.salience
 Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-        chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+        chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-BO-2-5/6/7 / l2-bodha-grounded
 """
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 PROVENANCE_ENVELOPE = {
     "layer": "L2",

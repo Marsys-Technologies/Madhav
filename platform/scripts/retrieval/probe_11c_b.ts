@@ -35,7 +35,7 @@ loadEnvFile('.env.rag')
 const DEPLOYED_URL = process.env.SMOKE_SERVER_URL ?? 'https://amjis-web-938361928218.asia-south1.run.app'
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? ''
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL ?? ''
-const CHART_ID = process.env.SMOKE_CHART_ID ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const CHART_ID = process.env.SMOKE_CHART_ID ?? '482012f1-710e-4a25-994a-93821f5871aa'
 const DB_URL = process.env.DATABASE_URL ?? ''
 
 const TEST_QUERIES = [

@@ -37,7 +37,7 @@ def _get_module():
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 SOURCE_CITATION = "Brahma QA golden set v1.0"
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # A well-formed B.11-compliant response touching all 6 layers
 FULL_RESPONSE = (

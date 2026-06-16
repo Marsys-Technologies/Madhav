@@ -28,17 +28,17 @@ Sub-system definitions:
   KA-3-3  kala.obstruction  — Sade Sati phases + ecliptic obstructions in range
 
 Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-  chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Usage:
     # Run composite temporal
     python -m brahmagyan.kala.temporal query \\
-        --chart-id 362f9f17-... \\
+        --chart-id 482012f1-... \\
         --start 1984 --end 2026
 
     # Run acceptance gate
     python -m brahmagyan.kala.temporal gate \\
-        --chart-id 362f9f17-...
+        --chart-id 482012f1-...
 
 BRAHMA-KA-3-4
 """
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1"
@@ -597,7 +597,7 @@ def temporal(
     picture for a date range via the three Kāla sub-systems.
 
     Args:
-        chart_id:   UUID of the chart (FORENSIC native: 362f9f17-...).
+        chart_id:   UUID of the chart (FORENSIC native: 482012f1-...).
         date_range: {"start": <year>, "end": <year>}
 
     Returns:
@@ -809,7 +809,7 @@ def main() -> None:
     parser.add_argument(
         "--chart-id",
         default=None,
-        help="Chart UUID (default: native FORENSIC chart 362f9f17-...)",
+        help="Chart UUID (default: native FORENSIC chart 482012f1-...)",
     )
 
     sub = parser.add_subparsers(dest="command")

@@ -31,7 +31,7 @@ Source:  LIFE_EVENT_LOG_v1_2.md (v1.7, 57 events, confidence 0.89)
          FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (dasha authority)
 
 Native:  Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
-         chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+         chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors: Silpī (WS-2 l5-mimamsa session)
 BRAHMA-MI-5-1
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 SOURCE_CITATION = "LIFE_EVENT_LOG_v1_2.md (v1.7, native-disclosed)"
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 VOLUME_FLOOR = 57
 
 # Training / hold-out boundary (ISO date string — exclusive upper bound for training)

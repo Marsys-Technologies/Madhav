@@ -22,7 +22,7 @@ Sources:
   - life_events — L1 LEL events, CALIBRATION intake only (57 events)
 
 Native:  Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-         chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0 (FORENSIC canonical)
+         chart_id: 482012f1-710e-4a25-994a-93821f5871aa (FORENSIC canonical)
 
 Usage:
     # Dry-run — show what would be exported
@@ -45,7 +45,7 @@ Environment variables:
     GCP_PROJECT        — GCP project ID (default: marsys-jis)
     GCS_BUCKET         — GCS bucket for Parquet staging (default: marsys-brahma-exports)
     BQ_DATASET         — BigQuery dataset (default: brahma_l5_olap)
-    NATIVE_CHART_ID    — Native chart UUID (default: 362f9f17-...)
+    NATIVE_CHART_ID    — Native chart UUID (default: 482012f1-...)
 
 Authors:  Brahma MI-5-5 session
 Version:  1.0 — 2026-06-04
@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 GCP_PROJECT   = os.environ.get("GCP_PROJECT",  "madhav-astrology")

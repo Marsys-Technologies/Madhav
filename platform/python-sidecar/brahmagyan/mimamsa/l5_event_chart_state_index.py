@@ -31,7 +31,7 @@ Source:  LIFE_EVENT_LOG_v1_2.md v1.7 (all chart_state_at_event blocks)
          l2_signals_scaffold.py VOLUME_FLOOR=569 UNGROUNDED signals
 
 Native:  Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
-         chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+         chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors: Silpī (WS-2 l5-mimamsa session)
 BRAHMA-MI-5-2
@@ -52,7 +52,7 @@ SOURCE_CITATION = (
     "l3_obstruction.py SADE_SATI_WINDOWS; "
     "l2_signals_scaffold.py"
 )
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 VOLUME_FLOOR = 57
 
 # ── L3 data import (graceful fallback if not available) ───────────────────────

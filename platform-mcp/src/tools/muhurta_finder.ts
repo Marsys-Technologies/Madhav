@@ -24,7 +24,7 @@
  *
  * FORENSIC grounding:
  *   Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *   A high-score education muhurta for the native should align with
  *   Mercury+Pushya windows (Mercury MD + Pushya nakshatra per BPHS ch.46).
  *
@@ -50,7 +50,7 @@ export const MuhurtaFinderInputSchema = z.object({
     .describe(
       'UUID of the chart to find auspicious windows for. ' +
       'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar): ' +
-      '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+      '482012f1-710e-4a25-994a-93821f5871aa'
     ),
 
   action_type: z
@@ -301,7 +301,7 @@ export function registerMuhurtaFinder(
         .uuid()
         .describe(
           'UUID of the chart. ' +
-          'Native (Abhisek Mohanty 1984-02-05 10:43 IST Bhubaneswar): 362f9f17-95a5-490b-a5a7-027d3e0efda0'
+          'Native (Abhisek Mohanty 1984-02-05 10:43 IST Bhubaneswar): 482012f1-710e-4a25-994a-93821f5871aa'
         ),
       action_type: z
         .enum(['marriage', 'travel', 'business', 'medical', 'education', 'property', 'general'])

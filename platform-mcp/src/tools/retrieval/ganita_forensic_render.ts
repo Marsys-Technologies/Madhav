@@ -104,7 +104,7 @@ export function registerGanitaForensicRenderTool(server: McpServer): void {
 
         // Determine chart_id (use native canonical ID if not provided)
         const target_chart_id = chart_id ??
-          '362f9f17-95a5-490b-a5a7-027d3e0efda0'  // native canonical chart
+          '482012f1-710e-4a25-994a-93821f5871aa'  // native canonical chart
 
         // Query ganita.positions from chart_facts
         const posResult = await client.query<{

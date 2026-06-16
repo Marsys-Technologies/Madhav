@@ -37,7 +37,7 @@ def _get_ledger_module():
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 SAMPLE_PREDICTION_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 SAMPLE_ANCHOR_ID = "PH-4-1.2026H1.CAREER"
 SAMPLE_SOURCE_CITATION = f"Brahma L4 phala.anchors / {SAMPLE_ANCHOR_ID}"

@@ -392,7 +392,7 @@ def build_bodha_resonance(
         Number of rows written.
 
     Environment variables (used when args are None/omitted):
-        NATIVE_CHART_ID  — chart UUID (e.g. 362f9f17-95a5-490b-a5a7-027d3e0efda0)
+        NATIVE_CHART_ID  — chart UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa)
         DATABASE_URL     — postgres connection string
     """
     import psycopg2

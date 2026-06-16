@@ -44,7 +44,7 @@ Contract (BRAHMA MI-5-6):
 Migration: brahma_mimamsa_answer_quality.sql (IF NOT EXISTS)
 
 Native:   Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-          chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+          chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors:  Silpī (MI-5-6 session)
 Version:  1.0 — 2026-06-04
@@ -72,7 +72,7 @@ router = APIRouter()
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 SOURCE_CITATION = "Brahma QA golden set v1.0"

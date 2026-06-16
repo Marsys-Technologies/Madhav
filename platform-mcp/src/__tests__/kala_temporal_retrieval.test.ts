@@ -36,7 +36,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
-const NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const DATE_RANGE = { start: '1984-01-01', end: '2040-12-31' }
 
 // ── Helper ────────────────────────────────────────────────────────────────────

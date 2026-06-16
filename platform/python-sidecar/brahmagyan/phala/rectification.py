@@ -26,7 +26,7 @@ NO LEAKAGE: test events 44–57 are NEVER used to select the best candidate.
 The test split is used only for post-selection scoring (out-of-sample validation).
 
 Native: Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar
-Chart UUID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+Chart UUID: 482012f1-710e-4a25-994a-93821f5871aa
 
 Source data:
   FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) — Vimshottari dasha sequence
@@ -42,13 +42,13 @@ B.10 compliance:
 
 Usage:
     # Run rectification and store results
-    python -m brahmagyan.phala.rectification seed --chart-id 362f9f17-...
+    python -m brahmagyan.phala.rectification seed --chart-id 482012f1-...
 
     # Query best candidate
-    python -m brahmagyan.phala.rectification query --chart-id 362f9f17-...
+    python -m brahmagyan.phala.rectification query --chart-id 482012f1-...
 
     # Run acceptance gate
-    python -m brahmagyan.phala.rectification gate --chart-id 362f9f17-...
+    python -m brahmagyan.phala.rectification gate --chart-id 482012f1-...
 
 BRAHMA-PH-4-3
 """
@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 # ── Native chart constant ──────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 # Canonical birth time (10:43 IST = 05:13 UTC on 1984-02-05)

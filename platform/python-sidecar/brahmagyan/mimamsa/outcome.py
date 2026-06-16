@@ -28,7 +28,7 @@ Depends:  brahma_mimamsa_outcome.sql
           LEL v1.7 (life event ground-truth for calibration)
 
 Native:   Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-          chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+          chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors:  Silpī (MI-5-3 session)
 Version:  1.0 — 2026-06-04
@@ -54,7 +54,7 @@ router = APIRouter()
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 # Valid techniques for calibration
@@ -699,7 +699,7 @@ class RecordOutcomeRequest(BaseModel):
         None,
         description=(
             "Chart UUID. Default: native chart "
-            "(Abhisek Mohanty 362f9f17-95a5-490b-a5a7-027d3e0efda0)"
+            "(Abhisek Mohanty 482012f1-710e-4a25-994a-93821f5871aa)"
         ),
     )
     outcome_note: Optional[str] = Field(

@@ -29,7 +29,7 @@ Contract (BRAHMA MI-5-4):
     - Internal to L4 computation — no FastAPI endpoint / no MCP tool
 
 Native:   Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-          chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+          chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Depends:  phala_anchors (for mean_brier_score calibration input)
           FORENSIC v8.0 §5.1 (canonical L1 chart ground-truth)

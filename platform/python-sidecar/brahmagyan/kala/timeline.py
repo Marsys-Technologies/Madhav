@@ -25,22 +25,22 @@ Depends on:
 
 Source data:
   FORENSIC §5.1 Vimshottari Dasha — Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-  chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Usage:
     # Seed native chart (date range defaults to 1984-01-01 → 2050-12-31)
-    python -m brahmagyan.kala.timeline seed --chart-id 362f9f17-...
+    python -m brahmagyan.kala.timeline seed --chart-id 482012f1-...
 
     # Query range
     python -m brahmagyan.kala.timeline query \\
-        --chart-id 362f9f17-... \\
+        --chart-id 482012f1-... \\
         --start 1991-01-01 --end 2010-12-31
 
     # Run acceptance gate
-    python -m brahmagyan.kala.timeline gate --chart-id 362f9f17-...
+    python -m brahmagyan.kala.timeline gate --chart-id 482012f1-...
 
 Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST Bhubaneswar
-  chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-KA-3-1
 """
@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1"

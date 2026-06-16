@@ -38,7 +38,7 @@ def _mod():
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 _CHART_FACTS_ROW = {
     "fact_id": "CF-PLN-001",

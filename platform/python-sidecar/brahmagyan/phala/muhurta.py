@@ -18,7 +18,7 @@ action_types: marriage | travel | business | medical | education | property | ge
 
 FORENSIC grounding:
     Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-    chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+    chart_id: 482012f1-710e-4a25-994a-93821f5871aa
     Mercury MD (2026–2043) per FORENSIC v8.0 §5.1 DSH.V.023
     A high-score muhurta for education aligns with Mercury+Pushya windows.
 
@@ -52,7 +52,7 @@ router = APIRouter()
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 VALID_ACTION_TYPES = frozenset({

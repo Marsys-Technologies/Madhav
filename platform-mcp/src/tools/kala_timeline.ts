@@ -22,7 +22,7 @@
  * Wiring: registerKalaTimeline(server, principal) → server.ts during L3 Kāla registration.
  *
  * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *
  * BRAHMA-KA-3-1
  */
@@ -153,10 +153,10 @@ const DateRangeSchema = z.object({
 const KalaTimelineSchema = z.object({
   /**
    * Chart UUID to query the timeline for.
-   * Native: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+   * Native: 482012f1-710e-4a25-994a-93821f5871aa
    */
   chart_id: z.string().uuid({
-    message: 'chart_id must be a valid UUID (e.g. 362f9f17-95a5-490b-a5a7-027d3e0efda0)',
+    message: 'chart_id must be a valid UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa)',
   }),
 
   /**

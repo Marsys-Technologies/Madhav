@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const CONSUME_URL = '/clients/362f9f17-95a5-490b-a5a7-027d3e0efda0/consume'
+const CONSUME_URL = '/clients/482012f1-710e-4a25-994a-93821f5871aa/consume'
 
 test.skip(!process.env.MARSYS_SUPER_ADMIN_SESSION, 'requires super-admin session')
 

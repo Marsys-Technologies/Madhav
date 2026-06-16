@@ -23,7 +23,7 @@
  *   bodha_query_signals_with_lens() — all from brahma_bo_2-5.sql
  *
  * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *
  * Wiring: registerBodhaLensesTool(server) → server.ts during L2 Bodha registration.
  *
@@ -248,7 +248,7 @@ const InputSchema = z.object({
     .uuid()
     .describe(
       'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 362f9f17-95a5-490b-a5a7-027d3e0efda0'
+        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
     ),
   lens: LensSchema.optional().describe(
     'Lens to apply to the signal set:\n' +

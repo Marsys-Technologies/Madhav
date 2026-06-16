@@ -19,7 +19,7 @@ Rule corpus: ~1,370 rules; 23 remedy-scoped rules directly cited
 Volume: ≥10 grounded remediation entries (achieved: 36)
 
 Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-Chart ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+Chart ID: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-BO-2-1 / l2-remediation-grounded
 """
