@@ -31,7 +31,7 @@ def _get_muhurta_module():
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 DATE_RANGE_90 = {"start": "2026-06-04", "end": "2026-09-01"}
 DATE_RANGE_30 = {"start": "2026-06-04", "end": "2026-07-04"}
 

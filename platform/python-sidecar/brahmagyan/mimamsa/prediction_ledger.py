@@ -32,7 +32,7 @@ Contract (BRAHMA MI-5-2):
 source_citation format: "Brahma L4 phala.anchors / [anchor_id]"
 
 Native:   Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-          chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+          chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Layer:    L5 Mīmāṃsā (depends on L4 phala.anchors)
 Depends:  brahma_mimamsa_prediction_ledger.sql
@@ -64,7 +64,7 @@ router = APIRouter()
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 # Valid domain values — extensible; used for soft validation only

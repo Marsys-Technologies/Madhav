@@ -11,7 +11,7 @@ import { readFileSync } from 'fs'
  *   - Post-answer flow (query submit + partial screenshot while streaming)
  *
  * Auth: reads Firebase __session cookie from /tmp/smoke_session_cookie.txt.
- * Chart ID: 362f9f17-95a5-490b-a5a7-027d3e0efda0 (Abhisek Mohanty, the native chart).
+ * Chart ID: 482012f1-710e-4a25-994a-93821f5871aa (Abhisek Mohanty, the native chart).
  *
  * Re-run:
  *   Write a fresh session cookie to /tmp/smoke_session_cookie.txt, then:
@@ -19,7 +19,7 @@ import { readFileSync } from 'fs'
  */
 
 const SS = 'tests/screenshots/gate_iii_smoke'
-const CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const CONSUME_URL = `/clients/${CHART_ID}/consume`
 
 function getSessionCookie(): string | null {

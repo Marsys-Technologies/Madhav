@@ -20,7 +20,7 @@ const BASE_URL = process.env.INTEGRATION_TEST_BASE_URL ?? 'http://localhost:3000
 const API_KEY = process.env.INTEGRATION_TEST_API_KEY ?? ''
 const DB_PROXY_PORT = process.env.DB_PROXY_PORT
 
-const CHART_ID = process.env.INTEGRATION_CHART_ID ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const CHART_ID = process.env.INTEGRATION_CHART_ID ?? '482012f1-710e-4a25-994a-93821f5871aa'
 // ^ Native chart ID (Abhisek Mohanty) — use for all tests
 
 // All tests are skipped unless integration env is configured

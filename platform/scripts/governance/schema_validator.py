@@ -227,13 +227,6 @@ def validate_session_log(repo_root: pathlib.Path) -> List[Violation]:
     return violations
 
 
-def validate_mirror_pair_structure(repo_root: pathlib.Path, ca) -> List[Violation]:
-    """§I.3.5 — RETIRED 2026-05-27 per ND.1 close-out.
-
-    The mirror-pair structural-parity check is retired along with the broader
-    Gemini collaboration. Function preserved as a no-op for caller compatibility.
-    """
-    return []
 
 
 def validate_version_monotonicity(repo_root: pathlib.Path, ca) -> List[Violation]:
@@ -837,13 +830,6 @@ def validate_learning_layer_stub(repo_root: pathlib.Path, schemas: dict | None =
     return violations
 
 
-def validate_mirror_structural_block(repo_root: pathlib.Path, ca) -> List[Violation]:
-    """RETIRED 2026-05-27 per ND.1 close-out.
-
-    Mirror structural-block check retired along with the broader Gemini
-    collaboration. No-op kept for caller compatibility.
-    """
-    return []
 
 
 def validate_dr_entry_yaml(raw: str) -> List[Violation]:
@@ -1123,7 +1109,6 @@ def run_corpus(repo_root: pathlib.Path) -> List[Violation]:
     violations.extend(validate_session_log(repo_root))
     violations.extend(validate_session_log_entries(repo_root))   # Step 10 addition
     violations.extend(validate_current_state(repo_root, schemas))  # Step 10 addition
-    violations.extend(validate_mirror_pair_structure(repo_root, ca))
     violations.extend(validate_version_monotonicity(repo_root, ca))
     violations.extend(validate_a3_schema(repo_root))
     return violations
@@ -1175,13 +1160,7 @@ def main() -> int:
             violations = validate_dr_entry_yaml(text)
         else:
             violations = run_corpus(args.repo_root)
-            # Step 12 extension: learning_layer_stub class + mirror structural blocks
             violations.extend(validate_learning_layer_stub(args.repo_root, load_schemas()))
-            try:
-                ca = load_canonical_artifacts(args.repo_root)
-                violations.extend(validate_mirror_structural_block(args.repo_root, ca))
-            except Exception:
-                pass
     except Exception:
         traceback.print_exc()
         return 4

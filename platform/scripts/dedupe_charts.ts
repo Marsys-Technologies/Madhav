@@ -30,7 +30,7 @@ import { Pool, PoolClient } from 'pg'
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
 
-const NATIVE_CANONICAL_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const NATIVE_CANONICAL_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
 const APPLY = process.argv.includes('--apply')
 

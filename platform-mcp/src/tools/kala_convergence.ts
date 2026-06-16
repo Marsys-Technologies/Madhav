@@ -17,7 +17,7 @@
  *   convergence_score = Σ(factor_weight_i) / (factor_count × 1.0), capped at 1.0
  *
  * Source data: FORENSIC_ASTROLOGICAL_DATA §5.1 Vimshottari Dasha + §22 Sade Sati cycles
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0 (native FORENSIC canonical)
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa (native FORENSIC canonical)
  *
  * Wiring: register via registerConvergenceWindow(server, principal) in server.ts
  *
@@ -86,7 +86,7 @@ export interface ConvergenceWindowResult {
 const ConvergenceWindowSchema = z.object({
   /** Chart UUID to retrieve convergence windows for. */
   chart_id: z.string().uuid({
-    message: 'chart_id must be a valid UUID (e.g. 362f9f17-95a5-490b-a5a7-027d3e0efda0)',
+    message: 'chart_id must be a valid UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa)',
   }),
 
   /**

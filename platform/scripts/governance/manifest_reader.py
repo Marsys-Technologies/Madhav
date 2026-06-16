@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-manifest_reader.py — loads CAPABILITY_MANIFEST.json + manifest_overrides.yaml mirror_pairs
-and returns a CanonicalArtifacts-compatible object.
+manifest_reader.py — loads CAPABILITY_MANIFEST.json and returns a CanonicalArtifacts-compatible object.
 
-Used as the manifest-mode backend for drift_detector.py, schema_validator.py, and
-mirror_enforcer.py when their USE_MANIFEST feature flags are active.
+Used as the manifest-mode backend for drift_detector.py and schema_validator.py
+when their USE_MANIFEST feature flags are active.
 """
 from __future__ import annotations
 
@@ -12,13 +11,10 @@ import json
 import pathlib
 from typing import Dict
 
-import yaml
-
 from _ca_loader import CanonicalArtifacts
 
 
 MANIFEST_PATH = "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
-OVERRIDES_PATH = "00_ARCHITECTURE/manifest_overrides.yaml"
 
 # Short-form aliases: CA §1 uses these IDs; manifest derives file-path-based IDs.
 # Mapping: short-form → manifest canonical_id.
@@ -35,15 +31,13 @@ _CA_ALIASES: Dict[str, str] = {
 
 def load_manifest_as_ca(repo_root: pathlib.Path) -> CanonicalArtifacts:
     """
-    Load CAPABILITY_MANIFEST.json and manifest_overrides.yaml mirror_pairs,
-    returning a CanonicalArtifacts object with the same .artifacts / .mirror_pairs
+    Load CAPABILITY_MANIFEST.json, returning a CanonicalArtifacts object with the same
+    .artifacts / .mirror_pairs interface as load_canonical_artifacts().
     interface as load_canonical_artifacts().
 
     artifacts dict keys: canonical_id → row dict with at minimum:
         path, status, version, fingerprint_sha256, layer, expose_to_chat, native_id
 
-    mirror_pairs dict keys: pair_id → row dict with at minimum:
-        claude_side, gemini_side, mirror_mode, known_asymmetries, enforcement_rule
     """
     manifest_file = repo_root / MANIFEST_PATH
     raw_text = manifest_file.read_text(encoding="utf-8")
@@ -73,20 +67,7 @@ def load_manifest_as_ca(repo_root: pathlib.Path) -> CanonicalArtifacts:
             artifacts[alias] = dict(artifacts[manifest_id])
             artifacts[alias]["canonical_id"] = alias  # expose alias as canonical_id
 
-    # Load mirror_pairs from manifest_overrides.yaml mirror_pairs section.
     mirror_pairs: Dict[str, dict] = {}
-    overrides_file = repo_root / OVERRIDES_PATH
-    if overrides_file.exists():
-        try:
-            overrides = yaml.safe_load(overrides_file.read_text(encoding="utf-8")) or {}
-            for pair_id, pair_data in (overrides.get("mirror_pairs") or {}).items():
-                if isinstance(pair_data, dict):
-                    mirror_pairs[pair_id] = dict(pair_data)
-                    mirror_pairs[pair_id].setdefault("pair_id", pair_id)
-        except Exception as exc:
-            import sys
-            print(f"[manifest_reader] Warning: could not load mirror_pairs from overrides: {exc}",
-                  file=sys.stderr)
 
     return CanonicalArtifacts(
         path=manifest_file,

@@ -7,7 +7,7 @@
  * Requires:
  *   - Next.js dev server at http://localhost:3000 with MARSYS_FLAG_CHAT_V2_ENABLED=true
  *   - MARSYS_SUPER_ADMIN_SESSION — super_admin Firebase session cookie
- *   - MARSYS_TEST_CLIENT_ID — the chart UUID (e.g. 362f9f17-95a5-490b-a5a7-027d3e0efda0 for Abhisek)
+ *   - MARSYS_TEST_CLIENT_ID — the chart UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa for Abhisek)
  *   - MARSYS_FIXTURE_MODE=true (set by global-setup; avoids real provider calls)
  *
  * Without MARSYS_SUPER_ADMIN_SESSION all 13 cases skip gracefully.

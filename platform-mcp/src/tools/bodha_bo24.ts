@@ -34,7 +34,7 @@ import type { Principal } from '../types.js'
 const RmWalkSchema = z.object({
   /** Chart UUID to retrieve resonance elements for. */
   chart_id: z.string().uuid({
-    message: 'chart_id must be a valid UUID (e.g. 362f9f17-95a5-490b-a5a7-027d3e0efda0)',
+    message: 'chart_id must be a valid UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa)',
   }),
 
   /**

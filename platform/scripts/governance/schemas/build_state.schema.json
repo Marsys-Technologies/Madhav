@@ -155,13 +155,6 @@
                 "type": "object",
                 "additionalProperties": true
               }
-            },
-            "mirror_enforcer": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": true
-              }
             }
           },
           "additionalProperties": false
@@ -249,8 +242,7 @@
           "status": { "type": "string" },
           "fingerprint_sha256": { "type": ["string", "null"] },
           "last_verified_session": { "type": ["string", "null"] },
-          "last_verified_on": { "type": ["string", "null"] },
-          "mirror_pair_id": { "type": ["string", "null"] }
+          "last_verified_on": { "type": ["string", "null"] }
         },
         "additionalProperties": false
       }
@@ -347,7 +339,6 @@
           "phase_id": { "type": ["string", "null"] },
           "drift_exit": { "type": ["integer", "null"] },
           "schema_exit": { "type": ["integer", "null"] },
-          "mirror_exit": { "type": ["integer", "null"] },
           "deliverable_one_liner": { "type": ["string", "null"] },
           "detail_shard": { "type": "string" }
         },

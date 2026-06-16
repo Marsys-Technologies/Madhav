@@ -28,18 +28,18 @@ Algorithm (self-contained — does not depend on live kala_timeline DB rows):
 
 Source: FORENSIC_ASTROLOGICAL_DATA_v6.0 §5.1 Vimshottari Dasha table.
 Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar.
-  chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0 (FORENSIC canonical)
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa (FORENSIC canonical)
 
 Usage:
     # Seed convergence windows to DB
-    python -m brahmagyan.kala.convergence seed --chart-id 362f9f17-...
+    python -m brahmagyan.kala.convergence seed --chart-id 482012f1-...
 
     # Query convergence windows
-    python -m brahmagyan.kala.convergence query --chart-id 362f9f17-... \\
+    python -m brahmagyan.kala.convergence query --chart-id 482012f1-... \\
         --start 2000-01-01 --end 2005-12-31
 
     # Run acceptance gate
-    python -m brahmagyan.kala.convergence gate --chart-id 362f9f17-...
+    python -m brahmagyan.kala.convergence gate --chart-id 482012f1-...
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 # ── Native chart constant ──────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 SOURCE_CITATION = "PyJHora/SwissEph DE441 + Brahma-L1"

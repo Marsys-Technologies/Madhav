@@ -7,7 +7,7 @@ REQUIRES: DB connection via DB_URL environment variable
 import os, pytest, psycopg2
 from urllib.parse import urlparse
 
-NATIVE_CHART_ID = '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 TEST_CHART_ID_B = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'  # fictitious second chart
 
 def get_conn():

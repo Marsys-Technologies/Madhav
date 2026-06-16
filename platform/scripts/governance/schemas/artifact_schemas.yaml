@@ -23,7 +23,6 @@ architecture_governance:
     - produced_during
     - changelog
     - authoritative_side
-    - mirror_obligations
     - consumers
     - date
     - schema
@@ -292,7 +291,6 @@ current_state:
   optional_frontmatter:
     - implements
     - supersedes
-    - mirror_obligations
     - update_rules
     - consumers
     - changelog

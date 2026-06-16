@@ -48,7 +48,7 @@ describe('MuhurtaFinderInputSchema', () => {
     ]
     for (const action_type of validTypes) {
       const result = MuhurtaFinderInputSchema.safeParse({
-        chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+        chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
         action_type,
         date_range: { start: '2026-06-04', end: '2026-09-01' },
       })
@@ -58,7 +58,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('rejects invalid action_type', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'INVALID_TYPE',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
     })
@@ -76,7 +76,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('rejects date_range with bad format', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'general',
       date_range: { start: '06-04-2026', end: '2026-09-01' },
     })
@@ -85,7 +85,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('accepts valid min_score in [0.0, 1.0]', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'education',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
       min_score: 0.70,
@@ -98,7 +98,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('rejects min_score > 1.0', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'education',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
       min_score: 1.5,
@@ -108,7 +108,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('rejects min_score < 0.0', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'education',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
       min_score: -0.1,
@@ -118,7 +118,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('defaults limit to 20', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'general',
       date_range: { start: '2026-06-04', end: '2026-07-04' },
     })
@@ -130,7 +130,7 @@ describe('MuhurtaFinderInputSchema', () => {
 
   it('rejects limit > 45', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'general',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
       limit: 100,
@@ -254,7 +254,7 @@ describe('phala.muhurta contract constants', () => {
 
   it('schema rejects missing action_type', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       date_range: { start: '2026-06-04', end: '2026-09-01' },
     })
     expect(result.success).toBe(false)
@@ -262,7 +262,7 @@ describe('phala.muhurta contract constants', () => {
 
   it('schema rejects missing date_range', () => {
     const result = MuhurtaFinderInputSchema.safeParse({
-      chart_id: '362f9f17-95a5-490b-a5a7-027d3e0efda0',
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
       action_type: 'education',
     })
     expect(result.success).toBe(false)

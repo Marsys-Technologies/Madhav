@@ -1,7 +1,7 @@
 {
   "run_date": "2026-05-11T14:48:37.341330+00:00",
   "base_url": "https://amjis-web-938361928218.asia-south1.run.app",
-  "chart_id": "362f9f17-95a5-490b-a5a7-027d3e0efda0",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
   "eval_stack": "gemini",
   "cloud_run_revision": "amjis-web-00076-hkr",
   "harness": "scripts/answer_eval.ts",

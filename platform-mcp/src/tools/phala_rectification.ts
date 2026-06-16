@@ -27,7 +27,7 @@
  *              LIFE_EVENT_LOG_v1_2.md (57 LEL events).
  *
  * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *
  * DB tables / functions:
  *   phala_rectification             — base table (61 candidates per chart)
@@ -169,7 +169,7 @@ const InputSchema = z.object({
     .describe(
       'UUID of the chart to rectify. ' +
         'Native chart (Abhisek Mohanty, 1984-02-05, 10:43 IST): ' +
-        '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+        '482012f1-710e-4a25-994a-93821f5871aa'
     ),
   show_candidates: z
     .boolean()
@@ -212,7 +212,7 @@ export function registerPhalaRectificationTool(server: McpServer): void {
       'B.10 compliance: dasha-level only; no Swiss Ephemeris re-run.\n' +
       'Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 + LIFE_EVENT_LOG_v1_2.md.\n\n' +
       'Native chart (Abhisek Mohanty, 1984-02-05): ' +
-      'chart_id = 362f9f17-95a5-490b-a5a7-027d3e0efda0\n\n' +
+      'chart_id = 482012f1-710e-4a25-994a-93821f5871aa\n\n' +
       'Requires phala_rectification table to be seeded first:\n' +
       '  python -m brahmagyan.phala.rectification seed --chart-id <uuid>\n\n' +
       'BRAHMA-PH-4-3 | phala.rectification contract.',

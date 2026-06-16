@@ -24,7 +24,7 @@ The get_cgm_subgraph MCP tool queries these rows.
 Layer:  L2 Bodha (scaffold)
 Asset:  bodha.graph (BO-2-2)
 Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-        chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+        chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-BO-2-2 / l2-bodha-scaffold
 """
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 VOLUME_FLOOR = 100
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 SOURCE_CITATION = "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md"
 MANIFEST_REL_PATH = "035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json"
 

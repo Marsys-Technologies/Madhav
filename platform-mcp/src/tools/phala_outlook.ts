@@ -26,7 +26,7 @@
  *     AC3 — tool smoke: native chart returns valid structure
  *
  * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *
  * Wiring: registerPhalaOutlookTool(server) → server.ts during L4 Phala registration.
  *
@@ -156,7 +156,7 @@ const InputSchema = z.object({
     .describe(
       'UUID of the chart. ' +
         'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar): ' +
-        '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+        '482012f1-710e-4a25-994a-93821f5871aa'
     ),
 
   horizon_months: z
@@ -227,7 +227,7 @@ export function registerPhalaOutlookTool(server: McpServer): void {
       'All 4 subsystems degrade gracefully: if a sub-system is unavailable,\n' +
       'its slot is returned as empty list / empty dict + an error provenance.\n\n' +
       'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar):\n' +
-      '  chart_id = 362f9f17-95a5-490b-a5a7-027d3e0efda0\n\n' +
+      '  chart_id = 482012f1-710e-4a25-994a-93821f5871aa\n\n' +
       'BRAHMA-PH-4-5 | phala.outlook contract.',
     InputSchema.shape,
     async (params) => {

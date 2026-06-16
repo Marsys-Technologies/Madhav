@@ -33,7 +33,7 @@ Source:  l5_lel_intake.py (MI-5-1)
          l5_learning_multiplier.py (MI-5-4-SCAFFOLD)
 
 Native:  Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
-         chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+         chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors: Silpī (WS-2 l5-mimamsa session)
 BRAHMA-MI-5-5
@@ -56,7 +56,7 @@ SOURCE_CITATION = (
     "l5_learning_multiplier.py (MI-5-4-SCAFFOLD); "
     "LIFE_EVENT_LOG_v1_2.md v1.7"
 )
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # BigQuery settings (overridable via environment)
 BQ_DATASET = os.environ.get("BQ_DATASET", "brahma_l5_mimamsa")

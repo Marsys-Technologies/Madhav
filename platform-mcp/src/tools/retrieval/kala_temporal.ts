@@ -31,7 +31,7 @@
  *       This file registers `kala_temporal_bundle` for the retrieval/ layer.
  *
  * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+ *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
  *
  * BRAHMA-KA-3-COMPOSITE / l3-kala
  */
@@ -43,7 +43,7 @@ import { z } from 'zod'
 
 const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
 const NATIVE_CHART_ID =
-  process.env['NATIVE_CHART_ID'] ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+  process.env['NATIVE_CHART_ID'] ?? '482012f1-710e-4a25-994a-93821f5871aa'
 const PYTHON_SIDECAR_URL =
   process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
 const DEFAULT_SNAPSHOT_DATE = '2026-06-05'
@@ -466,7 +466,7 @@ const InputSchema = z.object({
     .default(NATIVE_CHART_ID)
     .describe(
       'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 362f9f17-95a5-490b-a5a7-027d3e0efda0'
+        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
     ),
 
   date_range: z
@@ -521,7 +521,7 @@ FORENSIC anchors:
   • Jupiter exalted Cancer (H4): 2025-05-15 → 2026-06-01
 
 Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar.
-chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-KA-3-COMPOSITE | kala.temporal_bundle retrieval tool.`
 

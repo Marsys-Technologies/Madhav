@@ -66,7 +66,7 @@ router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 REPORTED_BIRTH_TIME = "10:43 IST"
 BIRTH_DATE = "1984-02-05"
 BIRTH_LOCATION = "Bhubaneswar, Odisha, India (20.27°N, 85.84°E, UTC+5:30)"

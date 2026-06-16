@@ -93,15 +93,14 @@ P_COWORK_LEDGER = "00_ARCHITECTURE/COWORK_LEDGER.md"
 P_CURRENT_BRIEF = "CLAUDECODE_BRIEF.md"
 P_DRIFT_REPORTS_DIR = "00_ARCHITECTURE/drift_reports"
 P_SCHEMA_REPORTS_DIR = "00_ARCHITECTURE/schema_reports"
-P_MIRROR_REPORTS_DIR = "00_ARCHITECTURE/mirror_reports"
 P_RED_TEAM_DIR = "verification_artifacts/RAG"
 P_DOMAIN_REPORTS_DIR = "03_DOMAIN_REPORTS"
 P_INTERVENTION_BACKFILL = "00_ARCHITECTURE/INTERVENTION_BACKFILL_v1_0.md"
 P_RAG_CHUNKING_REPORT = "verification_artifacts/RAG/chunking_report.json"
 P_RAG_EDGE_COUNT = "verification_artifacts/RAG/b4_edge_count.json"
 P_RAG_NODE_COUNT = "verification_artifacts/RAG/b4_node_count.json"
-P_CGM = "025_HOLISTIC_SYNTHESIS/CGM_v2_0.md"
-P_MSR = "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
+P_CGM = "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md"
+P_MSR = "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md"
 P_LEL = "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md"
 P_PREDICTION_LEDGER = "06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl"
 
@@ -786,27 +785,6 @@ def _read_schema_history(repo_root: pathlib.Path, n: int = TREND_WINDOW_DEFAULT)
     return results
 
 
-def _read_mirror_history(repo_root: pathlib.Path, n: int = TREND_WINDOW_DEFAULT) -> List[Dict[str, Any]]:
-    """Read most-recent N mirror report JSON sidecars."""
-    d = repo_root / P_MIRROR_REPORTS_DIR
-    if not d.exists():
-        return []
-    files = sorted(d.glob("*.json"), key=lambda f: f.name)[-n:]
-    results = []
-    for f in files:
-        try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-            results.append({
-                "report_file": f.name,
-                "session_id": data.get("session_id"),
-                "run_at": data.get("run_at"),
-                "exit_code": data.get("exit_code"),
-                "finding_count": data.get("pairs_failed", 0),
-            })
-        except Exception:
-            pass
-    return results
-
 
 def _read_cowork_ledger(repo_root: pathlib.Path) -> List[Dict[str, Any]]:
     """Read COWORK_LEDGER.md entries; returns empty list if file absent (graceful)."""
@@ -957,14 +935,12 @@ def _parse_all_sessions(repo_root: pathlib.Path) -> List[Dict[str, Any]]:
             except Exception:
                 open_block = None
 
-        # Extract drift/schema/mirror exit codes
+        # Extract drift/schema exit codes
         drift_exit = None
         schema_exit = None
-        mirror_exit = None
         if close_block and isinstance(close_block, dict):
             drift_run = close_block.get("drift_detector_run", {}) or {}
             schema_run = close_block.get("schema_validator_run", {}) or {}
-            mirror_run = close_block.get("mirror_enforcer_run", {}) or {}
             def _to_int_or_none(v):
                 try:
                     return int(v)
@@ -973,7 +949,6 @@ def _parse_all_sessions(repo_root: pathlib.Path) -> List[Dict[str, Any]]:
 
             drift_exit = _to_int_or_none(drift_run.get("exit_code")) if isinstance(drift_run, dict) else None
             schema_exit = _to_int_or_none(schema_run.get("exit_code")) if isinstance(schema_run, dict) else None
-            mirror_exit = _to_int_or_none(mirror_run.get("exit_code")) if isinstance(mirror_run, dict) else None
             if closed_on is None:
                 closed_on = _normalize_iso(close_block.get("closed_at", ""))
 
@@ -1032,7 +1007,6 @@ def _parse_all_sessions(repo_root: pathlib.Path) -> List[Dict[str, Any]]:
             "phase_id": phase_id,
             "drift_exit": drift_exit,
             "schema_exit": schema_exit,
-            "mirror_exit": mirror_exit,
             "deliverable_one_liner": deliverable,
             "detail_shard": f"sessions/{sid}.json",
         })
@@ -1122,17 +1096,14 @@ def _extract_session_body(repo_root: pathlib.Path, session_id: str) -> Optional[
             residuals = [str(r) for r in kr]
 
     # Linked reports
-    linked = {"drift": None, "schema": None, "mirror": None}
+    linked = {"drift": None, "schema": None}
     if close_yaml and isinstance(close_yaml, dict):
         drun = close_yaml.get("drift_detector_run", {}) or {}
         srun = close_yaml.get("schema_validator_run", {}) or {}
-        mrun = close_yaml.get("mirror_enforcer_run", {}) or {}
         if isinstance(drun, dict):
             linked["drift"] = drun.get("report_path")
         if isinstance(srun, dict):
             linked["schema"] = srun.get("report_path")
-        if isinstance(mrun, dict):
-            linked["mirror"] = mrun.get("report_path")
 
     # Phase id
     phase_id = None
@@ -1389,7 +1360,6 @@ def assemble_build_state(
     corpus_state = _read_corpus_state(repo_root)
     drift_trend = _read_drift_history(repo_root, trend_n)
     schema_trend = _read_schema_history(repo_root, trend_n)
-    mirror_trend = _read_mirror_history(repo_root, trend_n)
     cowork_ledger = _read_cowork_ledger(repo_root)
     current_brief = _read_current_brief(repo_root)
     sessions_index = _parse_all_sessions(repo_root)
@@ -1423,31 +1393,8 @@ def assemble_build_state(
             "fingerprint_sha256": row.get("fingerprint_sha256"),
             "last_verified_session": row.get("last_verified_session"),
             "last_verified_on": _normalize_iso(row.get("last_verified_on")),
-            "mirror_pair_id": (row.get("mirror_obligations") or {}).get("mirror_pair_id"),
         })
 
-    # Mirror pairs list (extended with last_verified_session + days_since)
-    mirror_list = []
-    today = _dt.date.today()
-    for pid, row in ca["mirror_pairs"].items():
-        lvs = row.get("last_verified_session")
-        lvo = row.get("last_verified_on")
-        days_since = None
-        if lvo:
-            try:
-                lvo_date = _dt.date.fromisoformat(str(lvo))
-                days_since = (today - lvo_date).days
-            except (ValueError, TypeError):
-                pass
-        mirror_list.append({
-            "pair_id": pid,
-            "claude_side": row.get("claude_side"),
-            "gemini_side": row.get("gemini_side"),
-            "authoritative_side": str(row.get("authoritative_side", "")),
-            "mirror_mode": str(row.get("mirror_mode", "")),
-            "last_verified_session": lvs,
-            "days_since_verified": days_since,
-        })
 
     # Enrich macro_arc with active/completed status from CURRENT_STATE.
     # Use integer comparison (int("M2"[1:]) == 2) to avoid "M10" < "M2" string bug.
@@ -1574,7 +1521,6 @@ def assemble_build_state(
             "scripts_trend": {
                 "drift_detector": drift_trend,
                 "schema_validator": schema_trend,
-                "mirror_enforcer": mirror_trend,
             },
         },
         "last_session": {
@@ -1599,7 +1545,6 @@ def assemble_build_state(
         },
         "disagreement_register": dr_data,
         "canonical_artifacts": artifacts_list,
-        "mirror_pairs": mirror_list,
         "recent_sessions": recent,
         # ---- v0.2.0 additions ----
         "red_team_passes": red_team_passes,

@@ -26,7 +26,7 @@ Source data:
   FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md) (dasha authority)
 
 Native: Abhisek Mohanty, born 1984-02-05, 10:43 IST, Bhubaneswar, Odisha, India
-Chart UUID: 362f9f17-95a5-490b-a5a7-027d3e0efda0
+Chart UUID: 482012f1-710e-4a25-994a-93821f5871aa
 
 Usage:
     # Ingest all 57 events

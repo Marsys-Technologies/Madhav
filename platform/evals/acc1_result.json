@@ -1,7 +1,7 @@
 {
   "acc1_status": "skipped",
   "chart_facts_count": 0,
-  "reason": "DB not reachable via local proxy (host=127.0.0.1 port=5433). Cloud SQL proxy not running in this environment. ACC1 answer:eval baseline requires live DB with chart_facts populated for native chart 362f9f17-95a5-490b-a5a7-027d3e0efda0.",
-  "operator_action_pending": "Run ACC1 after Cloud Run build job completes for native chart 362f9f17-95a5-490b-a5a7-027d3e0efda0. Command: python platform/scripts/answer_eval/run_eval.py --output platform/evals/post_build_orchestrator_eval.json 2>&1 | tail -20",
+  "reason": "DB not reachable via local proxy (host=127.0.0.1 port=5433). Cloud SQL proxy not running in this environment. ACC1 answer:eval baseline requires live DB with chart_facts populated for native chart 482012f1-710e-4a25-994a-93821f5871aa.",
+  "operator_action_pending": "Run ACC1 after Cloud Run build job completes for native chart 482012f1-710e-4a25-994a-93821f5871aa. Command: python platform/scripts/answer_eval/run_eval.py --output platform/evals/post_build_orchestrator_eval.json 2>&1 | tail -20",
   "timestamp": "2026-05-30T00:00:00Z"
 }

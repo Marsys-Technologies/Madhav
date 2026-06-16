@@ -10,7 +10,7 @@
  */
 import { test, expect, type Page } from '@playwright/test'
 
-const CLIENT_ID = process.env.MARSYS_TEST_CLIENT_ID ?? '362f9f17-95a5-490b-a5a7-027d3e0efda0'
+const CLIENT_ID = process.env.MARSYS_TEST_CLIENT_ID ?? '482012f1-710e-4a25-994a-93821f5871aa'
 const CONSUME_URL = `/clients/${CLIENT_ID}/consume`
 const SKIP_REASON = 'Skipped: MARSYS_SUPER_ADMIN_SESSION not set'
 

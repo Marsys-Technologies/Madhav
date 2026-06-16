@@ -22,18 +22,18 @@ Source data:
   excluded per the no-self-loops contract constraint.
 
 Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
-  chart_id: 362f9f17-95a5-490b-a5a7-027d3e0efda0 (FORENSIC canonical)
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa (FORENSIC canonical)
 
 Usage:
     # Seed native chart
-    python -m brahmagyan.bodha.bo22 seed --chart-id 362f9f17-...
+    python -m brahmagyan.bodha.bo22 seed --chart-id 482012f1-...
 
     # Query subgraph
-    python -m brahmagyan.bodha.bo22 query --chart-id 362f9f17-... \\
+    python -m brahmagyan.bodha.bo22 query --chart-id 482012f1-... \\
         --signal-ids PLN.SATURN PLN.MARS
 
     # Run acceptance gate
-    python -m brahmagyan.bodha.bo22 gate --chart-id 362f9f17-...
+    python -m brahmagyan.bodha.bo22 gate --chart-id 482012f1-...
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 # ── Native chart constant ──────────────────────────────────────────────────────
 
 NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "362f9f17-95a5-490b-a5a7-027d3e0efda0"
+    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
 )
 
 # ── Canonical edge data from cgm_edges_manifest_v1_0.json ─────────────────────
@@ -382,7 +382,7 @@ def seed_bodha_graph(
     Seed bodha_graph for a given chart_id from the canonical edge set.
 
     Args:
-        chart_id:     UUID of the chart (FORENSIC native: 362f9f17-...).
+        chart_id:     UUID of the chart (FORENSIC native: 482012f1-...).
         edges:        Override the canonical edge list (default: CANONICAL_EDGES).
         ayanamsha_id: Ayanamsha key (default 'lahiri').
         build_id:     Optional build provenance tag.
