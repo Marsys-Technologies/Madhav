@@ -146,6 +146,16 @@ def dignity_d1_from_sign(
     without tatkalika context. The function uses 'friend_sign'/'enemy_sign'
     for the naisargika-only assessment relative to the sign lord.
     """
+    # Moolatrikona check (before exaltation) — when a planet's moolatrikona and exaltation
+    # share the same sign (e.g. Mercury=Virgo), moolatrikona degree range takes precedence
+    # over the generic sign-level exaltation check. Classical priority: MT range > exalt sign.
+    mt_sign = _MOOLATRIKONA.get(graha) if dignity_ref is None else dignity_ref.get("moolatrikona_sign")
+    mt_range = _MOOLATRIKONA_RANGE.get(graha)
+    if mt_sign and sign == mt_sign and mt_range:
+        mt_from, mt_to = mt_range
+        if mt_from <= degree_in_sign < mt_to:
+            return "moolatrikona"
+
     # Exaltation check
     exalt_sign = _EXALTATION.get(graha) if dignity_ref is None else dignity_ref.get("exaltation_sign")
     if sign == exalt_sign:
@@ -155,14 +165,6 @@ def dignity_d1_from_sign(
     debi_sign = _DEBILITATION.get(graha) if dignity_ref is None else dignity_ref.get("debilitation_sign")
     if sign == debi_sign:
         return "debilitated"
-
-    # Moolatrikona check (must be in the right sign AND within degree range)
-    mt_sign = _MOOLATRIKONA.get(graha) if dignity_ref is None else dignity_ref.get("moolatrikona_sign")
-    mt_range = _MOOLATRIKONA_RANGE.get(graha)
-    if mt_sign and sign == mt_sign and mt_range:
-        mt_from, mt_to = mt_range
-        if mt_from <= degree_in_sign < mt_to:
-            return "moolatrikona"
 
     # Own sign check
     own = _OWN_SIGNS.get(graha, []) if dignity_ref is None else dignity_ref.get("own_signs", [])
