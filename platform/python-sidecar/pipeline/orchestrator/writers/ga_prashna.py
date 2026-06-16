@@ -14,14 +14,7 @@ FROZEN WriterBase contract:
 """
 from __future__ import annotations
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
-
-CANONICAL_AYANAMSHAS = [
-    "lahiri_chitrapaksha",
-    "true_chitra",
-    "krishnamurti",
-    "raman",
-    "surya_siddhanta_classical",
-]
+from ga_writers.ga_prashna_writer import CANONICAL_AYANAMSHAS
 
 
 @register("ga_prashna")
