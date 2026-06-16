@@ -1332,3 +1332,150 @@ assert _mt['bhakoot_kuta'] == 144, f"bhakoot_kuta: expected 144, got {_mt['bhako
 assert _mt['vedha'] == 26,        f"vedha: expected 26, got {_mt['vedha']}"
 assert _mt['varna_kuta'] == 49,   f"varna_kuta: expected 49, got {_mt['varna_kuta']}"
 assert _mt['graha_maitri_kuta'] == 49, f"graha_maitri: expected 49, got {_mt['graha_maitri_kuta']}"
+
+# ── Seed function ──────────────────────────────────────────────────────────────
+import json as _json
+import logging as _logging
+
+_logger = _logging.getLogger(__name__)
+
+_EXPECTED_FLOORS = {
+    "reference_nakshatra": 28,
+    "reference_nakshatra_pada": 108,
+    "reference_nakshatra_matrix": 2700,   # actual is ~2721; floor is conservative
+}
+
+
+def seed_nakshatra(
+    conn,
+    build_id: str,
+    *,
+    dry_run: bool = False,
+    autocommit: bool = False,
+) -> dict[str, int]:
+    """
+    Insert bg_nakshatra data into the 3 reference tables.
+
+    L0 idempotency: ON CONFLICT DO NOTHING.
+    Caller owns the transaction; this function never commits.
+    Returns row counts per table.
+    """
+    if dry_run:
+        _logger.info("[bg_nakshatra] dry_run=True")
+        return {
+            "reference_nakshatra": len(NAKSHATRAS_ENRICHED),
+            "reference_nakshatra_pada": len(PADAS),
+            "reference_nakshatra_matrix": len(MATRICES),
+        }
+
+    counts: dict[str, int] = {}
+    cur = conn.cursor()
+
+    # ── GRAIN 1: reference_nakshatra ──────────────────────────────────────────
+    inserted = 0
+    for row in NAKSHATRAS_ENRICHED:
+        cur.execute(
+            """
+            INSERT INTO reference_nakshatra (
+                nakshatra_id, name_sa_iast, name_sa_devanagari, name_en, alt_names,
+                start_longitude, end_longitude, span_degrees,
+                rashis_spanned, degree_in_rashi_ranges,
+                vimshottari_lord, presiding_deity, secondary_deities, ruling_planet,
+                gana, nadi, yoni_en, yoni_sa, yoni_sex,
+                varna, tatva, guna, pakshi, nakshatra_gender,
+                muhurta_type, disha, favorable_acts, prohibited_acts,
+                symbol, shakti, basis_above, basis_below, net_result,
+                motivation, body_part,
+                paramayus, naisargika_maturity_age, deity_domain,
+                is_gandanta, is_mula_sangya, is_panchaka, is_abhijit,
+                tradition_scope, classical_source, build_id
+            ) VALUES (
+                %(nakshatra_id)s, %(name_sa_iast)s, %(name_sa_devanagari)s,
+                %(name_en)s, %(alt_names)s,
+                %(start_longitude)s, %(end_longitude)s, %(span_degrees)s,
+                %(rashis_spanned)s, %(degree_in_rashi_ranges)s,
+                %(vimshottari_lord)s, %(presiding_deity)s, %(secondary_deities)s,
+                %(ruling_planet)s,
+                %(gana)s, %(nadi)s, %(yoni_en)s, %(yoni_sa)s, %(yoni_sex)s,
+                %(varna)s, %(tatva)s, %(guna)s, %(pakshi)s, %(nakshatra_gender)s,
+                %(muhurta_type)s, %(disha)s, %(favorable_acts)s, %(prohibited_acts)s,
+                %(symbol)s, %(shakti)s, %(basis_above)s, %(basis_below)s,
+                %(net_result)s, %(motivation)s, %(body_part)s,
+                %(paramayus)s, %(naisargika_maturity_age)s, %(deity_domain)s,
+                %(is_gandanta)s, %(is_mula_sangya)s, %(is_panchaka)s, %(is_abhijit)s,
+                %(tradition_scope)s, %(classical_source)s, %(build_id)s
+            )
+            ON CONFLICT (nakshatra_id) DO NOTHING
+            """,
+            {**row,
+             "degree_in_rashi_ranges": _json.dumps(row["degree_in_rashi_ranges"]),
+             "build_id": build_id},
+        )
+        inserted += cur.rowcount
+    counts["reference_nakshatra"] = inserted
+    _logger.info("[bg_nakshatra] reference_nakshatra: %d inserted", inserted)
+
+    # ── GRAIN 2: reference_nakshatra_pada ─────────────────────────────────────
+    inserted = 0
+    for row in PADAS:
+        cur.execute(
+            """
+            INSERT INTO reference_nakshatra_pada (
+                pada_id, nakshatra_id, pada_number, absolute_pada,
+                start_longitude, end_longitude,
+                pada_navamsa_sign, pada_lord, pada_akshara,
+                bija_sound, mantra_prefix,
+                pada_deity_nuance, element_shading, dosha_shading,
+                tradition_scope, classical_source, build_id
+            ) VALUES (
+                %(pada_id)s, %(nakshatra_id)s, %(pada_number)s, %(absolute_pada)s,
+                %(start_longitude)s, %(end_longitude)s,
+                %(pada_navamsa_sign)s, %(pada_lord)s, %(pada_akshara)s,
+                %(bija_sound)s, %(mantra_prefix)s,
+                %(pada_deity_nuance)s, %(element_shading)s, %(dosha_shading)s,
+                %(tradition_scope)s, %(classical_source)s, %(build_id)s
+            )
+            ON CONFLICT (nakshatra_id, pada_number) DO NOTHING
+            """,
+            {**row, "build_id": build_id},
+        )
+        inserted += cur.rowcount
+    counts["reference_nakshatra_pada"] = inserted
+    _logger.info("[bg_nakshatra] reference_nakshatra_pada: %d inserted", inserted)
+
+    # ── GRAIN 3: reference_nakshatra_matrix ───────────────────────────────────
+    inserted = 0
+    for row in MATRICES:
+        cur.execute(
+            """
+            INSERT INTO reference_nakshatra_matrix (
+                matrix_type, from_key, to_key, relation_value,
+                guna_points, max_points, notes,
+                tradition_scope, classical_source, build_id
+            ) VALUES (
+                %(matrix_type)s, %(from_key)s, %(to_key)s, %(relation_value)s,
+                %(guna_points)s, %(max_points)s, %(notes)s,
+                %(tradition_scope)s, %(classical_source)s, %(build_id)s
+            )
+            ON CONFLICT (matrix_type, from_key, to_key) DO NOTHING
+            """,
+            {**row, "build_id": build_id},
+        )
+        inserted += cur.rowcount
+    counts["reference_nakshatra_matrix"] = inserted
+    _logger.info("[bg_nakshatra] reference_nakshatra_matrix: %d inserted", inserted)
+
+    cur.close()
+    return counts
+
+
+def check_volume(conn) -> dict[str, dict]:
+    """Return per-table {actual, floor, status} for the cockpit stats route."""
+    cur = conn.cursor()
+    results = {}
+    for table, floor in _EXPECTED_FLOORS.items():
+        cur.execute(f"SELECT count(*) FROM {table}")   # nosec: table names are hardcoded constants
+        actual = cur.fetchone()[0]
+        results[table] = {"actual": actual, "floor": floor, "status": "ok" if actual >= floor else "below_floor"}
+    cur.close()
+    return results
