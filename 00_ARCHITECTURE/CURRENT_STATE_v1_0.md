@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.75
+version: 5.76
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.76 (2026-06-16, REPO-HYGIENE-CI-CLEANUP):
+    **L1 Gaṇita DRAFT→CURRENT promotion recorded.** Migration
+    236_ganita_catalog_current applied to prod — all 10 Gaṇita assets
+    (9 ga_* data + ga_pyjhora_engine service) catalog_status DRAFT→CURRENT;
+    cockpit Gaṇita dots now green; consistent with L1_GANITA_CLOSURE seal.
+    L2–L5 assets remain DRAFT (unsealed). main HEAD b9bb3a84.
+    file_updated_at: 2026-06-16. file_updated_by_session: REPO-HYGIENE-CI-CLEANUP.
   - v5.75 (2026-06-16, WAVE3-4-RETRIEVAL-BODHA):
     **Wave 3 (R1–R3) COMPLETE + Wave 4 (B1–B5) CODE_COMPLETE (B5 E2E build infra-gated).**
     Brief: CLAUDECODE_BRIEF_WAVE3_4_RETRIEVAL_AND_BODHA_v1_0.md → status CODE_COMPLETE.

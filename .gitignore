@@ -3,6 +3,7 @@
 venv/
 .tools/
 .claude/
+.claire/
 node_modules/
 __pycache__/
 *.pyc
