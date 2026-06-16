@@ -30,6 +30,7 @@ Two-pass verification:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import math
@@ -1380,45 +1381,75 @@ def _build_kp_cuspal_rows(
     # House cusps: whole-sign approximation (each cusp = lagna + (house-1)*30)
     for cusp_num in range(1, 13):
         subj = f"CUSP_{cusp_num}"
-        cusp_long = (lagna + (cusp_num - 1) * 30.0) % 360.0
-        cusp_sign, _, _ = _long_to_sign_deg(cusp_long)
-        cusp_nak, cusp_nak_lord, _ = _long_to_nakshatra_pada(cusp_long)
-        # Sub-lord: use further sub-division (simplified: same as star_lord)
-        cusp_sub_lord = cusp_nak_lord  # Approximation: sub-lord = nakshatra lord
+        try:
+            cusp_long = (lagna + (cusp_num - 1) * 30.0) % 360.0
+            cusp_sign, _, _ = _long_to_sign_deg(cusp_long)
+            cusp_nak, cusp_nak_lord, _ = _long_to_nakshatra_pada(cusp_long)
+            # Sub-lord: use further sub-division (simplified: same as star_lord)
+            cusp_sub_lord = cusp_nak_lord  # Approximation: sub-lord = nakshatra lord
 
-        # Significators: planets in house + ruling planets (simplified)
-        # For atomic compliance: significators stored as JSONB (irreducible composite — variable-length array)
-        significators = [cusp_nak_lord, SIGN_LORDS[cusp_sign]]
+            # Significators: planets in house + ruling planets (simplified)
+            # For atomic compliance: significators stored as JSONB (irreducible composite — variable-length array)
+            significators = [cusp_nak_lord, SIGN_LORDS[cusp_sign]]
 
-        near_sign = _is_near_sign_boundary(cusp_long)
-        near_nak = _is_near_nakshatra_boundary(cusp_long)
+            near_sign = _is_near_sign_boundary(cusp_long)
+            near_nak = _is_near_nakshatra_boundary(cusp_long)
 
-        b_kwargs = dict(
-            tolerance_arcsec=1.0,
-            near_sign_boundary_flag=near_sign,
-            near_nakshatra_boundary_flag=near_nak,
-            vargottama_flag_at_point=False,
-            formula_provenance_text=f"KP Cuspal system: Cusp {cusp_num} at {cusp_long:.4f}°",
-            cross_ayanamsha_divergence_arcsec=0.0,
-        )
+            b_kwargs = dict(
+                tolerance_arcsec=1.0,
+                near_sign_boundary_flag=near_sign,
+                near_nakshatra_boundary_flag=near_nak,
+                vargottama_flag_at_point=False,
+                formula_provenance_text=f"KP Cuspal system: Cusp {cusp_num} at {cusp_long:.4f}°",
+                cross_ayanamsha_divergence_arcsec=0.0,
+            )
 
-        rows.extend([
-            _make_row("kp_cuspal_significators", subj, "sign_lord",
-                      None, SIGN_LORDS[cusp_sign], None,
-                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
-            _make_row("kp_cuspal_significators", subj, "star_lord",
-                      None, cusp_nak_lord, None,
-                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
-            _make_row("kp_cuspal_significators", subj, "sub_lord",
-                      None, cusp_sub_lord, None,
-                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
-            _make_row("kp_cuspal_significators", subj, "cusp_longitude_sidereal",
-                      cusp_long, None, None,
-                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
-            _make_row("kp_cuspal_significators", subj, "significators_json",
-                      None, None, significators,  # JSONB — irreducible variable-length array
-                      chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
-        ])
+            rows.extend([
+                _make_row("kp_cuspal_significators", subj, "sign_lord",
+                          None, SIGN_LORDS[cusp_sign], None,
+                          chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("kp_cuspal_significators", subj, "star_lord",
+                          None, cusp_nak_lord, None,
+                          chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("kp_cuspal_significators", subj, "sub_lord",
+                          None, cusp_sub_lord, None,
+                          chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("kp_cuspal_significators", subj, "cusp_longitude_sidereal",
+                          cusp_long, None, None,
+                          chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+                _make_row("kp_cuspal_significators", subj, "significators_json",
+                          None, None, significators,  # JSONB — irreducible variable-length array
+                          chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
+            ])
+        except Exception as exc:
+            # Emit a visible skip-row so the drop is never silent (P3: no-silent-drop).
+            import uuid as _uuid_skip
+            skip_fid = _uuid_skip.uuid4().hex
+            rows.append({
+                "fact_id": skip_fid,
+                "chart_id": chart_id,
+                "build_id": build_id,
+                "ayanamsha_id": ayanamsha_id,
+                "engine_version": eng_ver,
+                "fact_category": "kp_cuspal_significators",
+                "fact_subject": subj,
+                "fact_key": "significators_json",
+                "fact_value_num": None,
+                "fact_value_text": f"KP_PARSE_ERROR: {exc}",
+                "fact_value_jsonb": None,
+                "formula_id": None,
+                "source_calculation": f"pyjhora_adapter.sensitive/{eng_ver}",
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+                "citation_ref": f"kp_cuspal:{subj}:error",
+                "citation_human": f"KP_PARSE_ERROR: cusp {cusp_num} skipped — {exc}",
+                "verification_pass_status": "skipped_malformed_source",
+                "tolerance_arcsec": 0.0,
+                "near_sign_boundary_flag": False,
+                "near_nakshatra_boundary_flag": False,
+                "vargottama_flag_at_point": False,
+                "formula_provenance_text": f"KP_PARSE_ERROR: cusp {cusp_num} — {exc}",
+                "cross_ayanamsha_divergence_arcsec": 0.0,
+            })
     return rows
 
 
@@ -1898,6 +1929,35 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
 
     inserted = 0
     for row in rows:
+        # Serialize fact_value_jsonb: psycopg3 does not auto-cast Python lists/dicts
+        # to jsonb — pass an explicit JSON string so the cast always succeeds.
+        raw_jsonb = row.get("fact_value_jsonb")
+        if raw_jsonb is not None:
+            try:
+                jsonb_param = json.dumps(raw_jsonb)
+            except (TypeError, ValueError) as json_exc:
+                # JSON serialization failed for this row — emit a flagged skip-row
+                # so absence is explicit in the DB rather than silently dropped.
+                subject = row.get("fact_subject", "UNKNOWN")
+                key = row.get("fact_key", "UNKNOWN")
+                logger.warning(
+                    "[ga_sensitive] KP_PARSE_ERROR: JSON serialization failed for "
+                    "%s.%s.%s — emitting flagged error row. cause=%s",
+                    row.get("fact_category"), subject, key, json_exc,
+                )
+                error_row = dict(row)
+                error_row["fact_value_jsonb"] = None
+                error_row["fact_value_text"] = "KP_PARSE_ERROR"
+                error_row["fact_value_num"] = None
+                error_row["verification_pass_status"] = "data_error"
+                error_row["citation_human"] = (
+                    f"KP parse failed for {subject}: malformed JSONB in source data."
+                )
+                row = error_row
+                jsonb_param = None
+        else:
+            jsonb_param = None
+
         try:
             with conn.transaction():  # savepoint — isolates each row so failures don't abort the transaction
                 conn.execute(
@@ -1915,7 +1975,7 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
                     ) VALUES (
                         %s, %s, %s, %s, %s,
                         %s, %s, %s,
-                        %s, %s, %s,
+                        %s, %s, %s::jsonb,
                         %s, %s, %s,
                         %s, %s,
                         %s,
@@ -1937,7 +1997,7 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
                         row["ayanamsha_id"], row["engine_version"],
                         row["fact_category"], row["fact_subject"], row["fact_key"],
                         row["fact_value_num"], row["fact_value_text"],
-                        row.get("fact_value_jsonb"),
+                        jsonb_param,
                         row.get("formula_id"), row["source_calculation"], row["computed_at"],
                         row["citation_ref"], row["citation_human"],
                         row["verification_pass_status"],

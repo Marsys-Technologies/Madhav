@@ -32,6 +32,8 @@ from __future__ import annotations
 
 import pytest
 
+import ga_writers.ga_strength_writer as sut
+
 
 def _get_mod():
     from brahmagyan.ganita import l1_strength as mod
@@ -43,6 +45,30 @@ def _positions():
     jd = _birth_jd_utc()
     pos = compute_positions_all_bodies(jd, "lahiri")
     return {p["name"]: p for p in pos}
+
+
+# ── Mock chart output for _derive_shadbala_from_positions unit tests ──────────
+# Represents a minimal plausible D1 chart with 9 bodies (7 classical + Rahu/Ketu).
+# Planets are placed in distinct houses so drik-bala varies across grahas.
+MOCK_CHART_OUTPUT: dict = {
+    "grahas": [
+        {"name": "Sun",     "sign_id": 10, "house": 10, "retrograde": False, "dignity_status": "neutral"},
+        {"name": "Moon",    "sign_id": 11, "house": 11, "retrograde": False, "dignity_status": "neutral"},
+        {"name": "Mars",    "sign_id": 1,  "house": 1,  "retrograde": False, "dignity_status": "own_sign"},
+        {"name": "Mercury", "sign_id": 10, "house": 10, "retrograde": False, "dignity_status": "neutral"},
+        {"name": "Jupiter", "sign_id": 9,  "house": 9,  "retrograde": False, "dignity_status": "own_sign"},
+        {"name": "Venus",   "sign_id": 12, "house": 12, "retrograde": False, "dignity_status": "neutral"},
+        {"name": "Saturn",  "sign_id": 3,  "house": 3,  "retrograde": False, "dignity_status": "neutral"},
+        {"name": "Rahu",    "sign_id": 6,  "house": 6,  "retrograde": True,  "dignity_status": "neutral"},
+        {"name": "Ketu",    "sign_id": 12, "house": 12, "retrograde": True,  "dignity_status": "neutral"},
+    ],
+    "panchanga": {
+        "vara": 0,       # Sunday
+        "tithi_id": 3,   # Shukla Tritiya → is_shukla=True
+        "is_daytime": True,
+    },
+    "ascendant": {"sign_id": 1, "sign": "Aries"},
+}
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -197,3 +223,116 @@ class TestBhavaBala:
     def test_total_rows_gte_floor(self, result):
         mod = _get_mod()
         assert result["total_rows"] >= mod.VOLUME_FLOOR
+
+
+# ── T1.4a: Nodal strength rows (Task 10) ─────────────────────────────────────
+
+class TestNodalStrengthRows:
+    def test_rahu_in_shadbala_output(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert "Rahu" in result, "Rahu missing from shadbala output"
+
+    def test_ketu_in_shadbala_output(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert "Ketu" in result, "Ketu missing from shadbala output"
+
+    def test_rahu_naisargika_is_zero(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("naisargika", -1) == 0.0
+
+    def test_ketu_naisargika_is_zero(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Ketu", {}).get("naisargika", -1) == 0.0
+
+    def test_rahu_has_naisargika_na_flag(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("naisargika_na") is True
+
+    def test_ketu_has_naisargika_na_flag(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Ketu", {}).get("naisargika_na") is True
+
+    def test_rahu_school_parashara_strict(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("school") == "parashara_strict"
+
+    def test_rahu_dig_is_zero(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("dig", -1) == 0.0
+
+    def test_rahu_kala_is_zero(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("kala", -1) == 0.0
+
+    def test_rahu_cheshta_is_zero(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        assert result.get("Rahu", {}).get("cheshta", -1) == 0.0
+
+    def test_classical_seven_still_present(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        classical = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"}
+        assert classical.issubset(result.keys()), (
+            f"Missing classical planets: {classical - result.keys()}"
+        )
+
+
+# ── T1.4b: Kala-bala day/night fix (Task 11) ─────────────────────────────────
+
+class TestKalaBalaDatetime:
+    def test_daytime_sun_kala_higher_than_nighttime(self):
+        result_day = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=10.72)
+        result_night = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=22.5)
+        sun_day = result_day.get("Sun", {}).get("kala", 0)
+        sun_night = result_night.get("Sun", {}).get("kala", 0)
+        assert sun_day != sun_night, "Sun kala-bala must differ between day and night"
+        assert sun_day > sun_night, (
+            f"Sun kala should be higher daytime: day={sun_day} night={sun_night}"
+        )
+
+    def test_nighttime_moon_kala_higher_than_daytime(self):
+        result_day = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=10.72)
+        result_night = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=22.5)
+        moon_day = result_day.get("Moon", {}).get("kala", 0)
+        moon_night = result_night.get("Moon", {}).get("kala", 0)
+        assert moon_night > moon_day, (
+            f"Moon kala should be higher nighttime: day={moon_day} night={moon_night}"
+        )
+
+    def test_birth_hour_boundary_dawn_is_daytime(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=6.0)
+        sun_kala = result.get("Sun", {}).get("kala", 0)
+        assert sun_kala == 0.75, f"Sun at birth_hour=6.0 should be daytime; kala={sun_kala}"
+
+    def test_birth_hour_boundary_midnight_is_nighttime(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=0.0)
+        sun_kala = result.get("Sun", {}).get("kala", 0)
+        assert sun_kala == 0.375, f"Sun at midnight should be nighttime; kala={sun_kala}"
+
+
+# ── T1.4c: Drik-bala from aspect matrix (Task 12) ────────────────────────────
+
+class TestDrikBala:
+    def test_drik_values_differ_across_grahas(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        driks = [d.get("drik", 0) for g, d in result.items() if g not in ("Rahu", "Ketu")]
+        assert len(set(driks)) > 1, (
+            f"All grahas have same drik (stub not fixed): {set(driks)}"
+        )
+
+    def test_drik_bounded_0_to_1(self):
+        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+        for g_name, sb in result.items():
+            drik = sb.get("drik", 0.5)
+            assert 0.0 <= drik <= 1.0, f"{g_name} drik={drik} out of bounds"
+
+    def test_compute_drik_bala_function_exists(self):
+        assert callable(sut._compute_drik_bala), "_compute_drik_bala not found on sut"
+
+    def test_compute_drik_bala_returns_float_in_range(self):
+        grahas = MOCK_CHART_OUTPUT["grahas"]
+        for g in grahas:
+            if g["name"] in ("Rahu", "Ketu"):
+                continue
+            val = sut._compute_drik_bala(g["name"], int(g["house"]), grahas)
+            assert isinstance(val, float), f"{g['name']} drik not float: {type(val)}"
+            assert 0.0 <= val <= 1.0, f"{g['name']} drik={val} out of [0, 1]"

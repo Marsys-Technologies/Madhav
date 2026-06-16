@@ -1,4 +1,4 @@
-// Surface: /clients/[id]/build (per-chart Build cockpit). Catches build-stream errors, /api/chat/build failures, and pyramid query errors.
+// Surface: /clients/[id]/nirmana (Nirmāṇa build tracker). Catches build-stream errors, /api/chat/build failures, and pyramid query errors.
 'use client'
 
 import { useEffect } from 'react'

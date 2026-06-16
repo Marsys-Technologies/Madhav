@@ -92,7 +92,7 @@ def test_light_adapter_threads_injected_conn(asset_id, monkeypatch):
 
     def stub(*, chart_id, build_id, conn, **kw):
         seen.update(chart_id=chart_id, build_id=build_id, conn=conn)
-        return {'total_chart_facts_rows': 7, 'total_ganita_positions_rows': 3,
+        return {'total_chart_facts_rows': 7,
                 'total_rows': 7, 'inserted_rows': 7, 'total_rows_written': 7}
 
     monkeypatch.setattr(mod, fn_name, stub)
@@ -195,7 +195,6 @@ def _neuter_positions_compute(monkeypatch):
     monkeypatch.setattr(gpw, 'compute_chart', lambda inputs, ayanamsha_id: {})
     monkeypatch.setattr(gpw, 'forensic_gate', lambda *a, **k: None)
     monkeypatch.setattr(gpw, '_build_position_rows', lambda *a, **k: [])
-    monkeypatch.setattr(gpw, '_write_ganita_positions_summary', lambda *a, **k: 0)
     monkeypatch.setattr(gpw, '_insert_chart_facts_rows', lambda *a, **k: 0)
     telem = {'n': 0}
     monkeypatch.setattr(gpw, '_update_asset_throughput',

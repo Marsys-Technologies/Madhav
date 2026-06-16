@@ -2,7 +2,7 @@
 build_runner.py — GA3+GA4+GA5+GA6+GA7+GA8+GA9 build orchestrator
 =============================================
 Runs the full GA3+GA4+GA5 build for chart_id = 482012f1-710e-4a25-994a-93821f5871aa:
-  1. ga_positions  → ganita_positions + chart_facts
+  1. ga_positions  → chart_facts (graha_position + graha_sign_attributes)
   2. ga_strength   → chart_facts (shadbala + ashtakavarga + bhava_bala)
   3b. ga_panchanga → chart_facts (birth-instant panchanga — 31 INVARIANT + 8 DEPENDENT ×5 ayanamshas)
   3. Refresh materialized views (synchronous, required before build 'complete')
@@ -146,13 +146,11 @@ def run(
         )
         summary["steps"]["ga_positions"] = {
             "status": "PASS",
-            "ganita_positions_rows": pos_summary["total_ganita_positions_rows"],
             "chart_facts_rows": pos_summary["total_chart_facts_rows"],
             "forensic_pass": pos_summary["forensic_pass"],
         }
         logger.info(
-            "[build_runner] ga_positions PASS: gp=%d cf=%d",
-            pos_summary["total_ganita_positions_rows"],
+            "[build_runner] ga_positions PASS: cf=%d",
             pos_summary["total_chart_facts_rows"],
         )
     except Exception as exc:
@@ -475,7 +473,6 @@ def run(
     pos_step = summary["steps"].get("ga_positions", {})
     str_step = summary["steps"].get("ga_strength", {})
     pan_step = summary["steps"].get("ga_panchanga", {})
-    total_gp = pos_step.get("ganita_positions_rows", 0)
     total_cf = (
         pos_step.get("chart_facts_rows", 0)
         + str_step.get("chart_facts_rows", 0)
@@ -483,7 +480,6 @@ def run(
     )
 
     summary["totals"] = {
-        "ganita_positions_rows": total_gp,
         "chart_facts_rows": total_cf,
     }
 
@@ -569,7 +565,6 @@ def main() -> None:
         print(json.dumps(result, indent=2, default=str))
     else:
         status = result.get("status", "UNKNOWN")
-        gp_rows = result.get("totals", {}).get("ganita_positions_rows", 0)
         cf_rows = result.get("totals", {}).get("chart_facts_rows", 0)
         gate_overall = result.get("gate_results", {}).get("overall", "UNKNOWN")
 
@@ -579,9 +574,8 @@ def main() -> None:
         print(f"  Status:              {status}")
         print(f"  chart_id:            {result.get('chart_id')}")
         print(f"  build_id:            {result.get('build_id')}")
-        print(f"  ganita_positions:    {gp_rows} rows")
         print(f"  chart_facts total:   {cf_rows} rows")
-        sens_rows = summary.get("totals", {}).get("sensitive_rows", 0)
+        sens_rows = result.get("totals", {}).get("sensitive_rows", 0)
         print(f"    ga_panchanga:      {pan_rows} rows")
         print(f"    ga_sensitive:      {sens_rows} rows")
         print(f"  Gate overall:        {gate_overall}")

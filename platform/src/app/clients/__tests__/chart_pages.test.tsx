@@ -158,17 +158,17 @@ describe('clients/[id] Profile page — access control + nav hub', () => {
 
 // ── Build page ──────────────────────────────────────────────────────────────
 
-describe('clients/[id]/build — access control', () => {
+describe('clients/[id]/nirmana — access control', () => {
   it('redirects to /login when no session', async () => {
     mockResolveAccess.mockResolvedValue(null)
-    const { default: BuildPage } = await import('../[id]/build/page')
+    const { default: BuildPage } = await import('../[id]/nirmana/page')
     await expect(BuildPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/login')
   })
 
   it('AC.1 — view-only grantee CANNOT enter /build (redirected to /clients/[id])', async () => {
     setAccess('view', 'guest')
-    const { default: BuildPage } = await import('../[id]/build/page')
+    const { default: BuildPage } = await import('../[id]/nirmana/page')
     await expect(BuildPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith(`/clients/${TEST_CHART_ID}`)
   })
@@ -178,7 +178,7 @@ describe('clients/[id]/build — access control', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ layer: 'L1', sublayer: 'A', status: 'complete' }] })
       .mockResolvedValueOnce({ rows: [{ id: TEST_CHART_ID, name: 'Chart' }] })
-    const { default: BuildPage } = await import('../[id]/build/page')
+    const { default: BuildPage } = await import('../[id]/nirmana/page')
     const jsx = await BuildPage({ params: Promise.resolve({ id: TEST_CHART_ID }) })
     const { getByTestId } = render(jsx)
     expect(getByTestId('cockpit-shell').getAttribute('data-chart-id')).toBe(TEST_CHART_ID)
@@ -275,9 +275,9 @@ describe('ChartSwitcher — switching logic (AC.2)', () => {
     expect(computeSwitchHref('/clients/old/consult/conv-123', 'new')).toBe('/clients/new/consult')
   })
 
-  it('computeSwitchHref — strips conversationId from /build/<conv>', async () => {
+  it('computeSwitchHref — strips conversationId from /nirmana/<conv>', async () => {
     const { computeSwitchHref } = await import('@/components/nav/ChartSwitcher')
-    expect(computeSwitchHref('/clients/old/build/conv-9', 'new')).toBe('/clients/new/build')
+    expect(computeSwitchHref('/clients/old/nirmana/conv-9', 'new')).toBe('/clients/new/nirmana')
   })
 
   it('computeSwitchHref — strips conversationId from /consume/<conv>', async () => {

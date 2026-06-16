@@ -5,7 +5,7 @@ const REGISTRY: RegistryRow[] = [
   { asset_id: 'bg_ephemeris',  layer: 'brahmagyan', scope: 'global',    target_table: 'ephemeris_daily' },
   { asset_id: 'bg_texts',      layer: 'brahmagyan', scope: 'global',    target_table: 'classical_text_chunks' },
   { asset_id: 'bg_ontology',   layer: 'brahmagyan', scope: 'global',    target_table: 'brahma_ontology' },
-  { asset_id: 'ga_positions',  layer: 'ganita',     scope: 'per_chart', target_table: 'ganita_positions' },
+  { asset_id: 'ga_positions',  layer: 'ganita',     scope: 'per_chart', target_table: 'chart_facts' },
   { asset_id: 'bo_signals',    layer: 'bodha',      scope: 'per_chart', target_table: 'bodha_signals' },
   { asset_id: 'ka_transits',   layer: 'kala',       scope: 'per_chart', target_table: 'kala_transits' },
 ]

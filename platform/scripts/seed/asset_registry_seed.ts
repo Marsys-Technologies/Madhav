@@ -190,7 +190,7 @@ const ASSETS: AssetDef[] = [
     count_sql: 'SELECT count(*) FROM classical_text_chunks',
     size_sql: "SELECT pg_total_relation_size('classical_text_chunks')",
     target_floor: 8193,
-    expected_volume_formula: 'CHUNKS_PER_CORPUS',
+    expected_volume_formula: null, // non-parametric — target_floor = 8193 is the authoritative count
     expected_volume_inputs: { corpus_texts: 13, actual_build_date: '2026-06-09', embedding_model: 'text-multilingual-embedding-002' },
     volume_explanation: '8,193 chunks across 13 classical texts (deterministic rebuild from GCS PDFs, pinned text-multilingual-embedding-002). Complete corpus; honest count from actual build — replaces pre-build estimate of 9,100.',
     depends_on: [],
@@ -352,7 +352,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'bg_panchanga',
     layer: 'brahmagyan', sort_order: 13,
-    sanskrit_name: 'पञ्चाङ्ग गणना',
+    sanskrit_name: 'Pañcāṅga Gaṇanā',
     english_name: 'Panchanga Engine',
     english_description: 'Deterministic panchang computation service (swisseph DE441, Lahiri ayanamsha, Drik-parity). Exposes panchanga_instant(instant,lat,lon,tz_offset) and panchanga_day(date,lat,lon,tz_offset). Zero LLM. Floor: 5 angas + timing windows + 9 graha states.',
     storage_type: 'service',
@@ -399,7 +399,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'bg_ephemeris_engine',
     layer: 'brahmagyan', sort_order: 14,
-    sanskrit_name: 'दृक् एफिमेरिस',
+    sanskrit_name: 'Druk Ephemeris',
     english_name: 'Ephemeris Engine',
     english_description: 'Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).',
     storage_type: 'service',
@@ -438,24 +438,26 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_positions',
     layer: 'ganita', sort_order: 1,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Graha-sthāna',
     english_name: 'Positions',
     english_description: 'Natal graha positions per ayanamsha (sidereal/tropical longitude, sign, nakshatra)',
     storage_type: 'postgres_table',
-    target_table: 'ganita_positions',
-    count_sql: 'SELECT count(*) FROM ganita_positions WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('ganita_positions')",
-    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
+    target_table: 'chart_facts',
+    count_sql: "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes')",
+    size_sql: "SELECT pg_total_relation_size('chart_facts')",
+    // Floor = achieved canonical count for chart 482012f1 (D2 deprecation: ganita_positions dual-write removed, count_sql now queries chart_facts).
     target_floor: 50,
-    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
+    expected_volume_formula: 'GRAHAS * AYANAMSHAS * FACT_KEYS',
     expected_volume_inputs: null,
-    volume_explanation: '9 grahas × ayanamsha count — one position row per graha per ayanamsha',
+    volume_explanation: '10 bodies × 5 ayanamshas × atomic fact keys per body (graha_position + graha_sign_attributes)',
     depends_on: [],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'ga_vargas',
     layer: 'ganita', sort_order: 2,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Varga',
     english_name: 'Divisional charts',
     english_description: 'D1–D60 divisional chart positions per ayanamsha',
@@ -474,6 +476,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_dashas',
     layer: 'ganita', sort_order: 3,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Daśākrama',
     english_name: 'Vimshottari dasha',
     english_description: 'Vimshottari dasha timeline: MD × AD × PD rows per ayanamsha',
@@ -494,6 +497,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_strength',
     layer: 'ganita', sort_order: 4,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Balatva',
     english_name: 'Strength tables',
     english_description: 'Shadbala, ashtakavarga, and bhava bala per ayanamsha',
@@ -530,6 +534,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_sensitive',
     layer: 'ganita', sort_order: 5,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Sūkṣmabindu',
     english_name: 'Sensitive points',
     english_description: 'Per-chart sensitive point positions computed from the catalog × ayanamshas',
@@ -565,6 +570,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_panchanga',
     layer: 'ganita', sort_order: 6,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Pañcāṅga-janma',
     english_name: 'Birth panchanga',
     english_description: 'Natal panchanga (tithi, vara, nakshatra, yoga, karana) per ayanamsha',
@@ -587,6 +593,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_sade_sati',
     layer: 'ganita', sort_order: 7,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Sāḍesātī',
     english_name: 'Sade Sati periods',
     english_description: 'Saturn transit-over-natal-Moon Sade Sati + Dhaiya window calculations per ayanamsha',
@@ -620,6 +627,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_tajaka',
     layer: 'ganita', sort_order: 8,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Tājaka',
     english_name: 'Tajaka Varshaphal',
     english_description: 'Vārṣaphal annual chart per varsha (solar-return year): Muntha position, Vārṣeśa (year-lord) by tajik_classical + panchavargiya methods with candidate scoring, and the Tājik yogas firing in each annual chart — A7 hybrid storage (past→present+5 precomputed; rest on-demand), per ayanamsha.',
@@ -631,7 +639,7 @@ const ASSETS: AssetDef[] = [
     // Floor = achieved canonical count for chart 482012f1 (migration 222, 2026-06-11):
     // A7 hybrid window varsha 1..48 (birth 1984 → present+5 ≈ 2031) × 5 ayanamshas.
     target_floor: 240,
-    expected_volume_formula: 'WINDOW_VARSHAS * AYANAMSHAS',
+    expected_volume_formula: null, // non-parametric — target_floor = 240 (A7 hybrid window varsha 1..48 × 5 ayanamshas)
     expected_volume_inputs: null,
     volume_explanation: 'target_floor = 240 = achieved canonical count for chart 482012f1 (2026-06-11): A7 hybrid window varsha 1..48 × 5 ayanamshas. Hybrid storage — varshas outside the precomputed window are computed on-demand by the retrieval tool via ga_tajaka_writer.compute_varsha().',
     depends_on: ['ga_positions', 'ga_dashas'],
@@ -640,6 +648,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_structural',
     layer: 'ganita', sort_order: 9,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Saṃracanā',
     english_name: 'Structural facts',
     english_description: 'GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka and tri-deva roles, and base graha facts — per ayanamsha.',
@@ -672,51 +681,34 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    // Floor updated after multi-varga enumeration landed (PR #271-#272, 2026-06-15):
-    // 16 shodasha vargas × 5 ayanamshas now populated; floor = achieved count for 482012f1.
-    target_floor: 9576,
-    expected_volume_formula: 'GA8_STRUCTURAL_CATEGORIES * AYANAMSHAS',
+    // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
+    // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
+    target_floor: 53953,
+    expected_volume_formula: null, // non-parametric — target_floor = 53953 (all-30-vargas achieved count for 482012f1)
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
-  // ── BODHA global prerequisites ────────────────────────────────────────────
-  {
-    asset_id: 'bg_signal_type_registry',
-    layer: 'brahmagyan', sort_order: 99,
-    sanskrit_name: 'Saṅketa-koṣa',
-    english_name: 'Signal type registry',
-    english_description: 'Global registry of predicate definitions (G52) — gates bo_laksana predicate evaluation; ~500-700 rows across 6 traditions + synthetics',
-    storage_type: 'postgres_table',
-    target_table: 'signal_type_registry',
-    count_sql: 'SELECT count(*) FROM signal_type_registry',
-    size_sql: "SELECT pg_total_relation_size('signal_type_registry')",
-    target_floor: null,
-    expected_volume_formula: null,
-    expected_volume_inputs: null,
-    volume_explanation: 'Grows incrementally as classical authoring adds predicate definitions; starter set ~80 entries',
-    depends_on: [],
-    scope: 'global', is_active: true, estimated_seconds: null,
-  },
-
   // ── BODHA (8) ─────────────────────────────────────────────────────────────
+  // bg_signal_type_registry (G52) RETIRED 2026-06-15: predicate-firing model dropped;
+  // ga_structural enumerates exhaustively and labels from brahma_yoga_catalog (migration 223).
   {
     asset_id: 'bo_laksana',
     layer: 'bodha', sort_order: 1,
     sanskrit_name: 'Lakṣaṇa',
     english_name: 'Signal store (MSR)',
-    english_description: 'MARSYS Signal Register — grounded signals derived from signal_type_registry predicates × L1 chart_facts; primary table bodha_msr_signals',
+    english_description: 'MARSYS Signal Register — grounded signals derived from exhaustive L1 structural enumeration (ga_structural) × L1 chart_facts; primary table bodha_msr_signals',
     storage_type: 'postgres_table',
     target_table: 'bodha_msr_signals',
     count_sql: 'SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1',
     size_sql: "SELECT pg_total_relation_size('bodha_msr_signals')",
     target_floor: null,
-    expected_volume_formula: 'ACTUAL(bg_signal_type_registry) * ACTIVATION_RATE * AYANAMSHAS',
+    expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Registry predicate count × fraction that fire on this chart × ayanamsha count; ACTIVATION_RATE measured on first production build',
-    depends_on: ['bg_signal_type_registry', 'ga_structural', 'bg_rules'],
+    volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; calibrated on first production build.',
+    depends_on: ['ga_structural', 'bg_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -727,7 +719,12 @@ const ASSETS: AssetDef[] = [
     english_description: 'Causal Graph Model — valenced directed edges between CGM nodes; pre-computed igraph metrics stored as flat columns',
     storage_type: 'postgres_table',
     target_table: 'bodha_cgm_edges',
-    count_sql: 'SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_sub_graphs WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_chart_topology_summary WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_contradictions WHERE chart_id = $1) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cgm_edges')",
     target_floor: null,
     expected_volume_formula: 'ACTUAL(bo_laksana) * EDGE_DENSITY',
@@ -778,7 +775,12 @@ const ASSETS: AssetDef[] = [
     english_description: 'Cross-Domain Linkage Matrix — computed_linkage cells, domain rollups, pattern clusters, evolution gradients; primary table bodha_cdlm_cells',
     storage_type: 'postgres_table',
     target_table: 'bodha_cdlm_cells',
-    count_sql: 'SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_domain_rollups WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_pattern_clusters WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_cdlm_evolution_gradients WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_convergence WHERE chart_id = $1) AS count',
     size_sql: "SELECT pg_total_relation_size('bodha_cdlm_cells')",
     target_floor: null,
     expected_volume_formula: null,
@@ -792,15 +794,20 @@ const ASSETS: AssetDef[] = [
     layer: 'bodha', sort_order: 6,
     sanskrit_name: 'Upāya',
     english_name: 'Remediation (RM)',
-    english_description: 'Remediation Map — classical remedies keyed to activated signals across 6 traditions × 18 categories; primary table bodha_rm_remedy_prescriptions',
+    english_description: 'Remediation Map — ALL 6 RM tables; primary table bodha_rm_resonances (resonance targets that remedies key off) + bodha_rm_remedy_prescriptions + 4 ancillary tables across 6 traditions × 18 categories',
     storage_type: 'pgvector',
-    target_table: 'bodha_rm_remedy_prescriptions',
-    count_sql: 'SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('bodha_rm_remedy_prescriptions')",
+    target_table: 'bodha_rm_resonances',
+    count_sql: 'SELECT (SELECT count(*) FROM bodha_rm_resonances WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_dasha_windowed_prescriptions WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_dosha_remedy_bundles WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_pattern_remedies WHERE chart_id = $1)'
+      + ' + (SELECT count(*) FROM bodha_rm_chart_summary WHERE chart_id = $1) AS count',
+    size_sql: "SELECT pg_total_relation_size('bodha_rm_resonances')",
     target_floor: null,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'One prescription per activated signal × tradition × remedy category; count calibrated on first production build',
+    volume_explanation: 'Sum across all 6 RM tables (resonances + prescriptions + dasha_windowed + dosha_bundles + pattern_remedies + chart_summary); count calibrated on first production build',
     depends_on: ['bo_laksana', 'bo_sangati'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -808,16 +815,16 @@ const ASSETS: AssetDef[] = [
     asset_id: 'bo_samvada',
     layer: 'bodha', sort_order: 7,
     sanskrit_name: 'Saṃvāda',
-    english_name: 'Resonance map (RM)',
-    english_description: 'Resonance Map — weakness-weighted resonance scores per graha × domain; primary table bodha_rm_resonances; resonance_score_v1 formula',
-    storage_type: 'postgres_table',
-    target_table: 'bodha_rm_resonances',
-    count_sql: 'SELECT count(*) FROM bodha_rm_resonances WHERE chart_id = $1',
-    size_sql: "SELECT pg_total_relation_size('bodha_rm_resonances')",
+    english_name: 'Unified Chart Digest (UCD)',
+    english_description: 'UCD — read-side conceptual digest (join of A8/A11/A12/A13 chart_summaries via vw_chart_digest + query_ucd). NOT a per-chart writer (A14 retirement, Option A). May later own the 5 folded UCD columns on existing summary tables.',
+    storage_type: 'postgres_view',
+    target_table: 'vw_chart_digest',
+    count_sql: null,
+    size_sql: null,
     target_floor: null,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'One row per graha × snapshot_type; deterministic count calibrated on first production build',
+    volume_explanation: 'Read-side view — no written rows; count_sql is null.',
     depends_on: ['bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -829,7 +836,7 @@ const ASSETS: AssetDef[] = [
     english_description: 'Per-build synthesis quality scorecard — citation density, whole-chart coverage, derivation compliance, layer separation score; keyed by (chart_id, build_id)',
     storage_type: 'postgres_table',
     target_table: 'synthesis_quality_scorecard',
-    count_sql: 'SELECT count(*) FROM synthesis_quality_scorecard WHERE chart_id = $1',
+    count_sql: 'SELECT count(*) FROM synthesis_quality_scorecard',
     size_sql: "SELECT pg_total_relation_size('synthesis_quality_scorecard')",
     target_floor: null,
     expected_volume_formula: null,
@@ -1105,12 +1112,6 @@ const ASSETS: AssetDef[] = [
 
 const COEFFICIENTS: CoefficientDef[] = [
   {
-    coefficient_name: 'ACTIVATION_RATE',
-    description: 'Fraction of signal_type_registry predicates that fire on a given chart (measured first production build)',
-    upstream_asset_id: 'bg_signal_type_registry',
-    downstream_asset_id: 'bo_laksana',
-  },
-  {
     coefficient_name: 'SIGNAL_PER_RULE',
     description: 'Signals produced per classical rule per ayanamsha set (measured first build)',
     upstream_asset_id: 'bg_rules',
@@ -1162,9 +1163,13 @@ function validateFormulas(assets: AssetDef[], coefficients: CoefficientDef[]): v
         }
       }
 
-      // Every coefficient referenced in formula must exist in COEFFICIENTS
+      // Every coefficient referenced in formula must exist in COEFFICIENTS.
+      // Strip ACTUAL() and FILE_COUNT() call bodies first — their args are not coefficient refs.
+      const coeffCheckStr = formula
+        .replace(/ACTUAL\([^)]+\)/g, '1')
+        .replace(/FILE_COUNT\([^)]+\)/g, '1')
       const coeffRe = /\b([A-Z_]+)\b/g
-      const formulaTokens = [...formula.matchAll(coeffRe)].map(m => m[1])
+      const formulaTokens = [...coeffCheckStr.matchAll(coeffRe)].map(m => m[1])
       for (const token of formulaTokens) {
         if (ALLOWED_VARS.has(token)) continue
         if (token.startsWith('ACTUAL') || token.startsWith('FILE_COUNT')) continue
@@ -1250,9 +1255,9 @@ async function main(): Promise<void> {
 
   for (const asset of ASSETS) {
     if (!asset.target_table) {
-      console.log(`  ⚠ ${asset.asset_id}: no target_table — marking is_active=false`)
-      asset.is_active = false
-      absentAssets.push(`${asset.asset_id} (no target_table declared)`)
+      // null target_table is intentional for chart_facts-partitioned assets (use count_sql filter)
+      // and service assets (health_probe mechanism). Preserve is_active as defined — do NOT override.
+      console.log(`  – ${asset.asset_id}: no target_table (intentional — preserving is_active=${asset.is_active})`)
       continue
     }
     const { rows } = await client.query<{ to_regclass: string | null }>(
@@ -1270,10 +1275,13 @@ async function main(): Promise<void> {
 
   console.log()
 
-  if (absentAssets.length > 5) {
+  // Hard stop: only assets with a declared target_table that doesn't exist in prod are counted.
+  // Null-target_table assets (chart_facts-partitioned + service) are skipped above and never counted.
+  // Expected absences: up to ~12 L2–L5 tables not yet built. Limit = 20 gives headroom.
+  if (absentAssets.length > 20) {
     await client.end()
     throw new Error(
-      `HARD STOP: ${absentAssets.length} assets have absent target_tables (limit: 5).\n` +
+      `HARD STOP: ${absentAssets.length} assets have absent target_tables (limit: 20).\n` +
       `Absent:\n${absentAssets.map(a => `  - ${a}`).join('\n')}\n` +
       'Report to Cowork before proceeding.',
     )
@@ -1366,18 +1374,56 @@ async function main(): Promise<void> {
     console.log(`  ✓ ${coeff.coefficient_name} (${coeff.upstream_asset_id} → ${coeff.downstream_asset_id})`)
   }
 
+  // Post-apply DB readback assertion — verify DB state matches seed intent
+  // (not in-memory state: the in-memory ASSETS array may have been mutated during preflight)
+  console.log('\nPost-apply verification: reading back from DB...')
+  const { rows: dbRows } = await client.query<{ asset_id: string; is_active: boolean }>(
+    'SELECT asset_id, is_active FROM asset_registry ORDER BY sort_order',
+  )
+  const dbMap = new Map(dbRows.map(r => [r.asset_id, r.is_active]))
+  const seedMap = new Map(ASSETS.map(a => [a.asset_id, a.is_active]))
+
+  const mismatches: string[] = []
+  for (const [assetId, seedActive] of seedMap) {
+    const dbActive = dbMap.get(assetId)
+    if (dbActive === undefined) {
+      mismatches.push(`  MISSING in DB: ${assetId}`)
+    } else if (dbActive !== seedActive) {
+      mismatches.push(`  MISMATCH: ${assetId} — seed wants is_active=${seedActive}, DB has is_active=${dbActive}`)
+    }
+  }
+
   await client.end()
 
-  // Verification summary
-  const active = ASSETS.filter(a => a.is_active)
-  const inactive = ASSETS.filter(a => !a.is_active)
-  console.log('\n── Seed complete ────────────────────────────────────────────────')
-  console.log(`Total:    ${ASSETS.length}`)
-  console.log(`Active:   ${active.length}`)
-  console.log(`Inactive: ${inactive.length}`)
-  if (inactive.length > 0) {
-    console.log('Inactive list (target_table missing or null):')
-    inactive.forEach(a => console.log(`  - ${a.asset_id} (${a.target_table ?? 'no table declared'})`))
+  // Hard assert: chart_facts-partitioned assets must be active (these were the recurring divergence source)
+  const CRITICAL_ACTIVE = ['ga_strength', 'ga_sensitive', 'ga_sade_sati', 'ga_structural']
+  const criticalFailed = CRITICAL_ACTIVE.filter(id => dbMap.get(id) !== true)
+  if (criticalFailed.length > 0) {
+    throw new Error(
+      `ASSERTION FAILED: chart_facts-partitioned assets must be is_active=true after seed.\n` +
+      `Failed: ${criticalFailed.join(', ')}\n` +
+      'Run migration 228 to reactivate, then re-apply seed.',
+    )
+  }
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      `ASSERTION FAILED: ${mismatches.length} asset(s) have wrong is_active in DB after seed apply:\n` +
+      mismatches.join('\n'),
+    )
+  }
+
+  // Verification summary (from DB, not in-memory)
+  const active = [...dbMap.values()].filter(Boolean).length
+  const inactive = [...dbMap.values()].filter(v => !v).length
+  console.log('\n── Seed complete (DB-verified) ──────────────────────────────────')
+  console.log(`Total:    ${dbMap.size}`)
+  console.log(`Active:   ${active}`)
+  console.log(`Inactive: ${inactive}`)
+  if (inactive > 0) {
+    const inactiveIds = [...dbMap.entries()].filter(([, v]) => !v).map(([id]) => id)
+    console.log('Inactive list (target_table absent in prod):')
+    inactiveIds.forEach(id => console.log(`  - ${id}`))
   }
   console.log('\nCoefficients seeded (all current_value = NULL — measured on first build):')
   COEFFICIENTS.forEach(c => console.log(`  - ${c.coefficient_name}`))

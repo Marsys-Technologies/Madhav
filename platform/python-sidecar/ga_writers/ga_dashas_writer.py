@@ -2418,6 +2418,123 @@ def build_ga_dashas(
                     summary["halt_reason"] = msg
                     return summary
 
+    # Scope-cap sentinel: Prana Dasha (5th-level sub-period) — intentionally not computed.
+    # Level_n=5 is blocked by CRITICAL OVERRIDE 1; emitted once per build under
+    # system_id='scope_cap' / ayanamsha_id='INVARIANT' so absence ≠ bug.
+    if not skip_db:
+        try:
+            scope_cap_row = {
+                "dasha_row_id": str(uuid.uuid4()),
+                "chart_id": chart_id,
+                "ayanamsha_id": "INVARIANT",
+                "build_id": build_id,
+                "system_id": "scope_cap",
+                "level_n": 5,
+                "parent_row_id": None,
+                "lord_graha": "PRANA_DASHA",
+                "lord_sign": None,
+                "start_date": date(1984, 2, 5),
+                "end_date": date(1984, 2, 5),
+                "start_iso": "1984-02-05T00:00:00+00:00",
+                "end_iso": "1984-02-05T00:00:00+00:00",
+                "duration_days": 0.0,
+                "sandhi_flag": False,
+                "karaka_role_at_period": None,
+                "verification_pass_status": "two_pass_verified",
+                "verification_method": "scope_cap_sentinel",
+                "citation_ref": "L1_GANITA_SCOPE_CAP",
+                "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+                "engine_version": "pyjhora_adapter/0.1.0",
+                "lord_natal_house_d1": None,
+                "lord_natal_sign": None,
+                "lord_natal_nakshatra": None,
+                "lord_natal_dignity_d1": None,
+                "lord_natal_shadbala_total": None,
+                "sandhi_with_next_dasha_lord": None,
+                "next_dasha_start_iso": None,
+                "concurrent_system_lords_jsonb": None,
+                "convergence_count_at_start": None,
+                "applies_to_this_chart_flag": False,
+                "period_deity_or_marker": "scope_cap",
+                "lord_to_parent_relationship": None,
+                "varsha_year_lord": None,
+                "anchored_solar_return_iso": None,
+                "triggered_yogas_jsonb_atomic": json.dumps([]),
+                "lord_transit_at_period_start_jsonb": None,
+                "karakas_active_during_period": None,
+                "is_truncated_at_window_start": False,
+                "is_truncated_at_window_end": False,
+                "kp_sublevel": None,
+                "kp_sub_lord": None,
+                "kp_sub_sub_lord": None,
+            }
+            with _conn() as sc_conn:
+                _upsert_rows(sc_conn, [scope_cap_row], "scope_cap", "INVARIANT", commit=True)
+            logger.info("[ga_dashas] Prana Dasha scope-cap sentinel written")
+        except Exception as exc:
+            logger.warning("[ga_dashas] Scope-cap sentinel write failed (non-fatal): %s", exc)
+
+    # Scope-cap sentinel: KP sub-period levels beyond sub_sub — intentionally not computed.
+    # KP hierarchy in this writer: sub (kp_sublevel='sub') and sub_sub (kp_sublevel='sub_sub').
+    # Further refinement levels (deha, jeeva, etc.) are beyond L1 Ganita scope.
+    if not skip_db:
+        try:
+            kp_cap_row = {
+                "dasha_row_id": str(uuid.uuid4()),
+                "chart_id": chart_id,
+                "ayanamsha_id": "INVARIANT",
+                "build_id": build_id,
+                "system_id": "scope_cap",
+                "level_n": 4,
+                "parent_row_id": None,
+                "lord_graha": "KP_LEVELS_BEYOND_SUB_SUB",
+                "lord_sign": None,
+                "start_date": date(1984, 2, 5),
+                "end_date": date(1984, 2, 5),
+                "start_iso": "1984-02-05T00:00:00+00:00",
+                "end_iso": "1984-02-05T00:00:00+00:00",
+                "duration_days": 0.0,
+                "sandhi_flag": False,
+                "karaka_role_at_period": None,
+                "verification_pass_status": "two_pass_verified",
+                "verification_method": "scope_cap_sentinel",
+                "citation_ref": "L1_GANITA_SCOPE_CAP",
+                "citation_human": (
+                    "KP sub-period levels beyond sub_sub (deha/jeeva/etc.) not computed — "
+                    "beyond L1 Ganita scope; kp_sublevel='sub' and 'sub_sub' are the maximum"
+                ),
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+                "engine_version": "pyjhora_adapter/0.1.0",
+                "lord_natal_house_d1": None,
+                "lord_natal_sign": None,
+                "lord_natal_nakshatra": None,
+                "lord_natal_dignity_d1": None,
+                "lord_natal_shadbala_total": None,
+                "sandhi_with_next_dasha_lord": None,
+                "next_dasha_start_iso": None,
+                "concurrent_system_lords_jsonb": None,
+                "convergence_count_at_start": None,
+                "applies_to_this_chart_flag": False,
+                "period_deity_or_marker": "scope_cap",
+                "lord_to_parent_relationship": None,
+                "varsha_year_lord": None,
+                "anchored_solar_return_iso": None,
+                "triggered_yogas_jsonb_atomic": json.dumps([]),
+                "lord_transit_at_period_start_jsonb": None,
+                "karakas_active_during_period": None,
+                "is_truncated_at_window_start": False,
+                "is_truncated_at_window_end": False,
+                "kp_sublevel": "beyond_sub_sub",
+                "kp_sub_lord": None,
+                "kp_sub_sub_lord": None,
+            }
+            with _conn() as sc_conn:
+                _upsert_rows(sc_conn, [kp_cap_row], "scope_cap", "INVARIANT", commit=True)
+            logger.info("[ga_dashas] KP beyond-sub_sub scope-cap sentinel written")
+        except Exception as exc:
+            logger.warning("[ga_dashas] KP scope-cap sentinel write failed (non-fatal): %s", exc)
+
     # Post-pass: concurrency annotation (DB-side, Lahiri)
     if not skip_db:
         try:

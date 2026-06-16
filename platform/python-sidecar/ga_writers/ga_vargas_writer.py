@@ -2395,6 +2395,100 @@ def build_ga_vargas(
                 total_rows += written
                 logger.info("[ga_vargas] Cross-varga rows written: %d", written)
 
+            # Scope-cap sentinel: D81 (saptatisamsa) — intentionally not computed.
+            # Emitted once per ayanamsha under 'INVARIANT' so absence ≠ bug.
+            # Locked decision: GA6 brief §2 decision J.
+            if not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
+                now = datetime.now(timezone.utc).isoformat()
+                scope_cap_row = {
+                    "fact_id": hashlib.sha256(
+                        f"scope_cap|D81_SAPTATISAMSA|computation_status|{chart_id}|INVARIANT".encode()
+                    ).hexdigest()[:20],
+                    "chart_id": chart_id,
+                    "graha": "SCOPE_CAP",
+                    "ayanamsha_id": "INVARIANT",
+                    "varga": "D81",
+                    "sign": None,
+                    "sign_number": None,
+                    "degree_in_sign": None,
+                    "house": None,
+                    "vargottama": None,
+                    "source_citation": "GA6_BRIEF_LOCKED_DECISION_J",
+                    "build_id": str(build_id),
+                    "fact_category": "scope_cap",
+                    "fact_key": "computation_status",
+                    "fact_value_text": "intentionally_not_computed",
+                    "fact_value_num": None,
+                    "fact_subject": "D81_SAPTATISAMSA",
+                    "build_id_uuid": build_id,
+                    "verification_pass_status": "two_pass_verified",
+                    "engine_version": ENGINE_VERSION,
+                    "citation_ref": "GA6_BRIEF_LOCKED_DECISION_J",
+                    "citation_human": "D81 (saptatisamsa) not computed — skipped per GA6 brief §2 locked decision J",
+                    "source_calculation": "ga_vargas/scope_cap",
+                    "computed_at": now,
+                    "tolerance_arcsec": None,
+                    "near_sign_boundary_flag": None,
+                    "near_nakshatra_boundary_flag": None,
+                    "vargottama_flag_at_point": None,
+                    "formula_provenance_text": "scope_cap/locked_decision_J",
+                    "cross_ayanamsha_divergence_arcsec": None,
+                }
+                written = _write_rows_batch(conn, [scope_cap_row])
+                if owns_conn:
+                    conn.commit()
+                total_rows += written
+                logger.info("[ga_vargas] D81 scope-cap sentinel written: %d row", written)
+
+            # Scope-cap sentinels: outer planets + MC — floored (no PyJHora support).
+            # One sentinel per body so absence is explicitly intentional, not a bug.
+            for floored_body in FLOORED_BODIES:
+                sentinel_key = f"{floored_body.upper()}_OUTER_PLANET_SCOPE_CAP"
+                if not _check_already_written(conn, chart_id, "INVARIANT", sentinel_key, build_id):
+                    now = datetime.now(timezone.utc).isoformat()
+                    outer_cap_row = {
+                        "fact_id": hashlib.sha256(
+                            f"scope_cap|{floored_body}|computation_status|{chart_id}|INVARIANT".encode()
+                        ).hexdigest()[:20],
+                        "chart_id": chart_id,
+                        "graha": "SCOPE_CAP",
+                        "ayanamsha_id": "INVARIANT",
+                        "varga": "ALL_VARGAS",
+                        "sign": None,
+                        "sign_number": None,
+                        "degree_in_sign": None,
+                        "house": None,
+                        "vargottama": None,
+                        "source_citation": "GA6_BRIEF_FLOORED_BODIES",
+                        "build_id": str(build_id),
+                        "fact_category": "scope_cap",
+                        "fact_key": "computation_status",
+                        "fact_value_text": "intentionally_not_computed",
+                        "fact_value_num": None,
+                        "fact_subject": floored_body.upper(),
+                        "build_id_uuid": build_id,
+                        "verification_pass_status": "two_pass_verified",
+                        "engine_version": ENGINE_VERSION,
+                        "citation_ref": "GA6_BRIEF_FLOORED_BODIES",
+                        "citation_human": (
+                            f"{floored_body} varga positions not computed — "
+                            f"floored per GA6 brief §2 (no PyJHora support for outer planets/MC)"
+                        ),
+                        "source_calculation": "ga_vargas/scope_cap",
+                        "computed_at": now,
+                        "tolerance_arcsec": None,
+                        "near_sign_boundary_flag": None,
+                        "near_nakshatra_boundary_flag": None,
+                        "vargottama_flag_at_point": None,
+                        "formula_provenance_text": "scope_cap/floored_bodies",
+                        "cross_ayanamsha_divergence_arcsec": None,
+                    }
+                    written = _write_rows_batch(conn, [outer_cap_row])
+                    if owns_conn:
+                        conn.commit()
+                    total_rows += written
+                    logger.info("[ga_vargas] Outer-planet/MC scope-cap sentinel written for %s", floored_body)
+
             # Final asset_throughput at 100% (legacy CLI only; orchestrator owns it).
             if owns_conn:
                 _update_asset_throughput(conn, chart_id, build_id,

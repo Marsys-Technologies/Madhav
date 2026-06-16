@@ -11,5 +11,5 @@ export default async function BuildConversationPage({
   params: Promise<{ id: string; conversationId: string }>
 }) {
   const { id } = await params
-  redirect(`/clients/${id}/build`)
+  redirect(`/clients/${id}/nirmana`)
 }

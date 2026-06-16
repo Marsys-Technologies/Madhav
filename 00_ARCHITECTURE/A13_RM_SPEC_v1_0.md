@@ -2,8 +2,17 @@
 artifact: A13_RM_SPEC_v1_0.md
 document: A13 — RM (Resonance Map) Specification
 status: LOCKED
-version: 1.0
+version: 1.1
 date: 2026-05-29
+changelog:
+  - v1.1 (2026-06-12, L2 Bodha amendment): (a) Table prefix `l25_rm_*` → `bodha_rm_*` per the
+    native naming decision; all 6 RM table schemas unchanged. (b) OWNERSHIP CLARIFIED: the single
+    `bo_upaya` writer owns ALL 6 RM tables — `bodha_rm_resonances` (the resonance targets, via
+    `resonance_score_v1`) AND `bodha_rm_remedy_prescriptions` + the other 4. A P0 execution
+    transiently mis-assigned `bodha_rm_resonances` to `bo_samvada`; corrected — `bo_samvada` is
+    UCD (A14, NOT a writer). RM = one asset = `bo_upaya`. `bo_upaya` count_sql sums all 6 tables.
+    Tables built by migration 226.
+  - v1.0 (2026-05-29): initial LOCKED spec, native sign-off.
 authored_by: Cowork (native-confirmed: all 15 clarifications = YES; full critical + non-critical scope included; G27 pre-flight audit declared parallel prerequisite)
 intended_for: Claude Code sub-agents implementing the A13 RM writer to L2.5 layer
 prime_directive: Only computed facts. Every remedy carries a classical-source citation. No narrative recommendations, no opinion-flavored guidance — the assignment of remedies to targets is deterministic, derived from formulas and corpus matches, never inferred from interpretation.

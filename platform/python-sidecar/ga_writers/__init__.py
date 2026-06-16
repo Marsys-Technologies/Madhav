@@ -1,8 +1,7 @@
 """
-ga_writers — L1 Gaṇita build writers for chart_facts, ganita_positions,
-ganita_dashas, chart_divisionals.
+ga_writers — L1 Gaṇita build writers for chart_facts, ganita_dashas, chart_divisionals.
 
-GA3: ga_positions_writer.py  → ganita_positions
+GA3: ga_positions_writer.py  → chart_facts (graha_position + graha_sign_attributes)
      ga_strength_writer.py   → chart_facts (shadbala + ashtakavarga + bhava_bala)
 GA4: ga_panchanga_writer.py  → chart_facts  [separate brief]
 GA5: ga_sensitive_writer.py  → chart_facts  [separate brief]

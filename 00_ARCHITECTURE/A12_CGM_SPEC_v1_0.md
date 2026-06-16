@@ -2,8 +2,20 @@
 artifact: A12_CGM_SPEC_v1_0.md
 document: A12 — CGM (Chart Graph Model) Specification
 status: LOCKED
-version: 1.0
+version: 1.1
 date: 2026-05-29
+changelog:
+  - v1.1 (2026-06-12, L2 Bodha §13.1 amendment): (a) Table prefix `l25_cgm_*` → `bodha_cgm_*`
+    per the native naming decision (L2_BODHA_BUILD_CAMPAIGN §3.1); schemas otherwise unchanged.
+    (b) FORMALIZED the graph-depth mandate (the §0 mission already implied it): final-dispositor
+    convergence (which planet the most dispositor chains terminate on = chart center of gravity),
+    weighted centrality ranking, and significator path-analysis are now first-class, materialized
+    into `bodha_cgm_paths`, governed by `centrality_formula_v1` (versioned pure function in
+    bodha_writers/formulas.py). The §13.1 design-philosophy extension (native-APPROVED 2026-06-12);
+    `bo_karanajala` owns it. (c) ADDED `bodha_contradictions` — contradiction-pairs (signals in
+    structural tension) as first-class rows with the deterministic tension basis; computed over the
+    CGM edge graph, owned by `bo_karanajala`, read by A11 CDLM. See §5.6. Tables built by migration 226.
+  - v1.0 (2026-05-29): initial LOCKED spec, native sign-off.
 authored_by: Cowork (native-confirmed: Option E technology realignment; all 10 A12 clarifications = YES; 3 execution adjustments locked)
 intended_for: Claude Code sub-agents implementing the A12 CGM writer to L2.5 layer
 prime_directive: Only computed facts. Structural graph of the chart as nodes + typed/weighted edges. Pre-materialized at build time via igraph in-memory compute. No runtime graph engine. No narrative.
@@ -116,7 +128,37 @@ Append `ephemeris_audit_jsonb` column to root fact tables (chart_facts, l25_cgm_
 
 `aspect_parashari`, `aspect_jaimini`, `aspect_tajik`, `dispositor`, `lordship`, `karaka_link` (natural), `karaka_chara_link` (Jaimini), `conjunction`, `parivartana`, `mutual_reception`, `configuration_constituent`, `domain_membership` (weighted by CDLM domain_salience), `bridge_edge` (from CDLM cgm_bridge_edge_seeds), `antagonist_edge` (from CDLM cgm_antagonist_edge_seeds), `pattern_cluster_membership`, `varga_dignity`, `karakamsa_link`, `swamsa_link`, `argala_edge` (Jaimini), `virodha_argala_edge`, `saham_link`, `midpoint_link`, `dasha_lord_link` (temporal), `conflict_resolution_edge` (new — connects contradicting signals to net-effect resolution path).
 
-## §5 — Storage architecture (5 tables)
+## §4.1 — v1.1 amendment: naming + graph-depth + contradictions (§13.1)
+
+**Naming (v1.1):** every `l25_cgm_*` table name in this spec is read as `bodha_cgm_*` (native
+naming decision; schemas unchanged). Migration 226 created them under the `bodha_` prefix.
+
+**`bodha_cgm_paths` (graph-depth, §13.1):** the §0 mission already mandates centrality / PageRank /
+motif / sub-graph computation at write time via igraph. v1.1 formalizes the deepest of these as a
+first-class materialized artifact:
+- **Final-dispositor convergence** — trace every dispositor chain to its terminus; the planet the
+  most chains converge on is the chart's center of gravity. Plus parivartana cycle structure.
+- **Weighted centrality ranking** — highest weighted degree (aspects given+received + lordships +
+  karaka roles), governed by **`centrality_formula_v1`** (`bodha_writers/formulas.py`, pure +
+  unit-tested) — a deterministic "most consequential factor" ranking.
+- **Significator path-analysis** — shortest-path / path-exists between domain significators
+  (e.g. 10L↔5L = career↔creativity), materialized so the LLM retrieves the chain rather than
+  recomputing it.
+Owned by `bo_karanajala`. One row per (chart, ayanamsha, path/terminus/centrality record).
+
+**`bodha_contradictions` (§13.1 — first-class):** contradiction-pairs — signals in structural
+tension (e.g. a Raja Yoga firing while its constituent planets are `divergent_flagged`; a benefic
+yoga whose lord is in maraṇa-kāraka-sthāna) — promoted from A10's `contradicts_signals_array`
+column to their own rows, each carrying the deterministic basis for the tension. Computed over the
+CGM edge graph (hence `bo_karanajala` owns it); A11 CDLM reads it for contradiction-aware linkage.
+Contradiction-detection is both the deepest insight and the drift guardrail (the MSR computed-value
+trap is itself a contradiction-detection problem). No threshold drop — every detected pair is a row.
+
+Both tables built by migration 226; documented at §5.6.
+
+## §5 — Storage architecture (5 core tables + `bodha_cgm_paths` + `bodha_contradictions`)
+
+> v1.1: table names below are `bodha_cgm_*` (was `l25_cgm_*`). Schemas unchanged from v1.0.
 
 ### Table 1 — `l25_cgm_nodes`
 

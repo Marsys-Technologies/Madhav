@@ -346,37 +346,7 @@ def write_positions(
     positions: list[dict[str, Any]],
     ayanamsha: str,
 ) -> int:
-    """Upsert ganita_positions rows. Returns row count."""
-    with _conn() as conn:
-        for p in positions:
-            conn.execute(
-                """
-                INSERT INTO ganita_positions
-                  (chart_id, build_id, ayanamsha_id, planet, tropical_longitude,
-                   sidereal_longitude, sign_id, sign_name, nakshatra_id, nakshatra_name,
-                   nakshatra_pada, speed_dps, is_retrograde, source_citation)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (chart_id, ayanamsha_id, planet) DO UPDATE SET
-                  build_id=EXCLUDED.build_id,
-                  tropical_longitude=EXCLUDED.tropical_longitude,
-                  sidereal_longitude=EXCLUDED.sidereal_longitude,
-                  sign_id=EXCLUDED.sign_id, sign_name=EXCLUDED.sign_name,
-                  nakshatra_id=EXCLUDED.nakshatra_id, nakshatra_name=EXCLUDED.nakshatra_name,
-                  nakshatra_pada=EXCLUDED.nakshatra_pada,
-                  speed_dps=EXCLUDED.speed_dps, is_retrograde=EXCLUDED.is_retrograde,
-                  source_citation=EXCLUDED.source_citation,
-                  updated_at=NOW()
-                """,
-                [
-                    chart_id, build_id, ayanamsha, p["name"],
-                    p["tropical_longitude"], p["sidereal_longitude"],
-                    p["sign_id"], p["sign"],
-                    p["nakshatra_id"], p["nakshatra"], p["nakshatra_pada"],
-                    p["speed_dps"], p["is_retrograde"],
-                    f"pyswisseph DE441 / {ayanamsha} ayanamsha",
-                ],
-            )
-        conn.commit()
+    """No-op: ganita_positions table dropped (D2). chart_facts is the positions store."""
     return len(positions)
 
 

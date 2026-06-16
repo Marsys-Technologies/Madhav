@@ -18,11 +18,17 @@ function deriveState(
   if (asset.asset_type === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
+  // §N.4: count_sql is authoritative for data presence. Rows present = lit,
+  // regardless of throughput state or target_floor. Floors are aspirational,
+  // NOT gates — an asset with rows > 0 and no active zero-row build is lit.
+  // An orphaned 'building' record or cascade-stale flag does NOT override real
+  // data confirmed by count_sql. Under-floor is shown as an informational badge
+  // (build_state_stale), never as 'building' or 'incomplete'.
+  if (actualRows != null && actualRows > 0) return 'lit'
+  // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
   if (throughputState === 'building') return 'building'
   if (throughputState === 'stale') return 'stale'
-  if (actualRows === null || actualRows === 0) return 'dormant'
-  if (asset.target_floor && actualRows < asset.target_floor) return 'building'
-  return 'lit'
+  return 'dormant'
 }
 
 export interface AssetStats {
@@ -32,9 +38,16 @@ export interface AssetStats {
   size_bytes: number | null
   last_updated: string
   error: string | null
+  // 'dataplane' = Cloud SQL proxy / connection-level failure (transient).
+  // 'query'     = per-asset SQL error (real data problem).
+  // undefined   = no error.
+  error_class?: 'dataplane' | 'query'
   // Derived server-side; never null
   state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
+  // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
+  // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
+  build_state_stale: boolean
 }
 
 interface RegistryAsset {
@@ -73,6 +86,7 @@ async function fetchAssetStats(
       error: null,
       state: 'service_ok' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   }
 
@@ -84,8 +98,10 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: 'missing_table',
+      error_class: 'query' as const,
       state: 'error' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   }
 
@@ -118,11 +134,15 @@ async function fetchAssetStats(
       error: null,
       state: 'dormant' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   } catch (err) {
     try { await client.query('ROLLBACK') } catch {}
     const msg = (err as Error).message ?? ''
     const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
+    const isDataPlane = msg.includes('ECONNREFUSED') || msg.includes('connection refused') ||
+      msg.includes('ETIMEDOUT') || msg.includes('Connection terminated') ||
+      msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo')
     return {
       asset_id: asset.asset_id,
       actual_rows: null,
@@ -130,8 +150,10 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
+      error_class: isDataPlane ? 'dataplane' as const : 'query' as const,
       state: 'error' as const,
       last_built_at: null,
+      build_state_stale: false,
     }
   } finally {
     // Only release if the timeout hasn't already destroyed this client.
@@ -170,8 +192,10 @@ function fetchAssetStatsWithTimeout(
     size_bytes: null,
     last_updated: new Date().toISOString(),
     error: 'conn_timeout',
+    error_class: 'dataplane' as const,
     state: 'error' as const,
     last_built_at: null,
+    build_state_stale: false,
   }
   const clientRef: ClientRef = { value: null }
   const timeout = new Promise<AssetStats>((resolve) =>
@@ -246,12 +270,20 @@ export async function GET(req: NextRequest) {
             error: (result.reason as Error)?.message ?? 'unknown',
             state: 'error' as const,
             last_built_at: null,
+            build_state_stale: false,
           }
+      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
+      // build_state_stale: data is present (count_sql > 0) but asset_throughput says
+      // building/stale/dormant/absent — signals the bar to badge "build-state stale".
+      const buildStateStale = derivedState === 'lit'
+        && (base.actual_rows != null && base.actual_rows > 0)
+        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'building' || tp == null)
       return {
         ...base,
         volume: base.actual_rows,
-        state: deriveState(asset, base.actual_rows, base.error, tp?.state ?? null),
+        state: derivedState,
         last_built_at: tp?.last_built_at ?? null,
+        build_state_stale: buildStateStale,
       }
     })
 

@@ -1,0 +1,72 @@
+/**
+ * L1 retrieval: graha avasthas
+ * Covers: graha_avastha_baladi, graha_avastha_deepta, graha_avastha_jagrad,
+ *         graha_avastha_lajjitadi, graha_avastha_lifetime_exposure_summary,
+ *         graha_avastha_sayanadi
+ * Tool: marsys://tool/L1/get_avasthas
+ */
+import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
+
+const AVASTHA_CATEGORIES = [
+  'graha_avastha_baladi', 'graha_avastha_deepta', 'graha_avastha_jagrad',
+  'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary', 'graha_avastha_sayanadi',
+]
+
+export const getAvasthsCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L1/get_avasthas',
+  type: 'tool',
+  layer: 'L1',
+  name: 'get_avasthas',
+  description:
+    'Retrieve graha Avastha (state) classifications for a chart. ' +
+    'Includes: Baladi Avastha (childhood/youth/middle-age/old-age/dead per degree position), ' +
+    'Deepta (illuminated) Avastha (moolatrikona-based illumination state), ' +
+    'Jagrad (awake) Avastha (day/night cycle state), ' +
+    'Lajjitadi Avastha (6 states: lajjita/gaurava/kshudha/trushita/mudita/kshobhita ' +
+    'based on co-tenancy patterns), ' +
+    'Lifetime Exposure Summary (probability of each avastha across a lifetime of dashas), ' +
+    'and Sayanadi Avastha (12-fold sleeping/waking/drunk/angry etc. classification). ' +
+    'Covers 6 avastha fact_categories.',
+  input_schema: {
+    chart_id:     { type: 'string', description: 'Chart UUID', required: true },
+    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    categories:   { type: 'array', description: 'Subset of avastha categories.', items: { type: 'string' } },
+    offset: { type: 'number', default: 0 },
+    limit:  { type: 'number', default: 300 },
+  },
+  required_inputs: ['chart_id'],
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 72, always_include: false },
+  },
+  async handler(args, _ctx) {
+    try {
+      const chartId    = args.chart_id as string
+      const limit      = Math.min((args.limit as number) ?? 300, 1000)
+      const offset     = (args.offset as number) ?? 0
+      const categories = (args.categories as string[]) ?? AVASTHA_CATEGORIES
+
+      const params: unknown[] = [chartId, categories, limit, offset]
+      let sql = `
+        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_numeric,
+               fact_value_text, fact_tags, epistemic_tier, source_asset_id
+        FROM chart_facts
+        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
+      `
+      if (args.ayanamsha_id) {
+        sql += ` AND ayanamsha_id = $${params.length + 1}`
+        params.push(args.ayanamsha_id as string)
+      }
+      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+
+      const result = await query<Record<string, unknown>>(sql, params)
+      return {
+        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: String(err), is_error: true }
+    }
+  },
+}

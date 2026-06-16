@@ -27,8 +27,7 @@ const BRAHMA_TABLE_CHECKS: { table: string; label: string }[] = [
   { table: 'brahmagyan_texts',     label: 'Brahmagyan reference texts (brahmagyan_texts)' },
   { table: 'pyramid_layers',       label: 'Pyramid layer registry (pyramid_layers)' },
   { table: 'build_manifests',      label: 'Build manifests (build_manifests)' },
-  { table: 'ganita_positions',     label: 'Gaṇita positions (ganita_positions)' },
-  { table: 'chart_facts',          label: 'Chart facts (chart_facts)' },
+  { table: 'chart_facts',          label: 'Chart facts — positions + all L1 Gaṇita (chart_facts)' },
   { table: 'rag_chunks',           label: 'RAG classical texts (rag_chunks)' },
 ]
 

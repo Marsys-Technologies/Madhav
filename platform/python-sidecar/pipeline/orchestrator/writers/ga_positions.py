@@ -28,6 +28,6 @@ class GaPositionsWriter(WriterBase):
         )
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=int(s.get('total_ganita_positions_rows', 0)),
+            rows_inserted=int(s.get('total_chart_facts_rows', 0)),
             notes=f"chart_facts={s.get('total_chart_facts_rows', 0)}",
         )

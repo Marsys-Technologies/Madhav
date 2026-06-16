@@ -1,0 +1,467 @@
+"""Versioned, pure, unit-tested formula functions for L2 Bodha.
+
+All functions are deterministic: same inputs → same output, always.
+No I/O, no randomness, no external state.
+
+Versions are embedded in the function name and in a VERSION_* constant so
+writers can stamp rows with the formula version they used.  When a formula
+changes, bump the version (v1 → v2), add a new function, keep the old one
+for backward compat during a transition build.
+
+Spec references:
+  salience_formula_v1     — A10 §4
+  linkage_formula_v1      — A11 §3
+  resonance_score_v1      — A13 §3
+  resonance_match_score_v1 — A13 §3
+  convergence_formula_v1  — Campaign §13.1 (new; not in A10/A11 — native sign-off
+                             required before bo_sangati brief is authored)
+  centrality_formula_v1   — Campaign §13.1 (new; native sign-off required before
+                             bo_karanajala brief is authored)
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from typing import Any
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Version constants — writers stamp these on each row
+# ──────────────────────────────────────────────────────────────────────────────
+
+VERSION_SALIENCE_FORMULA = "v1.0"
+VERSION_LINKAGE_FORMULA = "v1.0"
+VERSION_RESONANCE_FORMULA = "v1.0"
+VERSION_RESONANCE_MATCH_FORMULA = "v1.0"
+VERSION_CONVERGENCE_FORMULA = "v1.0"
+VERSION_CENTRALITY_FORMULA = "v1.0"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A10 §4  salience_formula_v1
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Dignity score lookup (A10 §4 table)
+DIGNITY_SCORE: dict[str, float] = {
+    "exalted":       1.00,
+    "mooltrikona":   0.95,
+    "own":           0.85,
+    "friend":        0.65,
+    "neutral":       0.50,
+    "enemy":         0.35,
+    "debilitated":   0.10,
+}
+
+# House weight multiplier (A10 §4 table)
+# Houses 1/4/5/7/9/10 are kendra/trikona; 3/6/10/11 upachaya; 6/8/12 dusthana.
+# House 10 appears in both upachaya and kendra — kendra value wins per spec
+# ("kendra+trikona (1) = 1.30").
+HOUSE_WEIGHT: dict[int, float] = {
+    1: 1.30,   # kendra + trikona
+    5: 1.20,   # trikona
+    9: 1.20,   # trikona
+    4: 1.15,   # kendra
+    7: 1.15,   # kendra
+    10: 1.15,  # kendra (overrides upachaya)
+    3: 1.05,   # upachaya
+    6: 0.90,   # upachaya ∩ dusthana → dusthana wins
+    11: 1.05,  # upachaya
+    8: 0.90,   # dusthana
+    12: 0.90,  # dusthana
+    2: 1.00,   # other
+}
+
+# Ashtakavarga support multiplier (A10 §4 table)
+def _av_multiplier(bindus: int) -> float:
+    if bindus >= 7:
+        return 1.15
+    if bindus >= 5:
+        return 1.05
+    if bindus >= 3:
+        return 1.00
+    if bindus >= 1:
+        return 0.85
+    return 0.70
+
+
+@dataclass
+class SalienceInputs:
+    """All deterministic inputs for salience_formula_v1.
+
+    Callers supply only what applies to the signal; unset fields default to
+    neutral (no boost, no penalty).
+    """
+    # Core strength decomposition
+    orb_tightness: float = 1.0          # [0,1]; 1 = exact, 0 = at max orb
+    shadbala_norm: float = 1.0          # shadbala_total / required, capped at 2.0
+    dignity_score: float = 0.50         # use DIGNITY_SCORE[state] or pass raw
+
+    # Verification certainty (from classical sources)
+    source_corroboration_count_by_text: int = 1   # distinct texts confirming
+
+    # Activation context
+    dasha_activation_proximity_score: float = 0.0  # 0..1 across 7 dasha systems
+    house_number: int = 2                           # house the primary graha occupies
+    ashtakavarga_bindus: int = 4                    # bindu count for that house
+
+    # Modifiers
+    aspect_modifier: float = 0.0            # 0..0.30
+    vargottama_amplification: float = 0.0   # 0 / 0.20 / 0.50
+    argala_modifier: float = 0.0            # 0..0.20
+    neechabhanga_modifier: float = 1.0      # 1.0 normal / 1.3 cancelled debility
+    cancellation_modifier: float = 1.0      # 1.0 normal / 0.1 cancelled yoga
+
+    # Pre-computed optional overrides (set to override table lookups above)
+    house_weight_multiplier_override: float | None = None
+    ashtakavarga_support_multiplier_override: float | None = None
+
+
+def salience_formula_v1(s: SalienceInputs) -> dict[str, float]:
+    """A10 §4 salience formula v1.0.
+
+    Returns a dict with all intermediate components AND the final
+    computed_salience so callers can store decomposed columns.
+    """
+    # Component 1: deterministic structural strength
+    deterministic_strength = s.orb_tightness * s.shadbala_norm * s.dignity_score
+
+    # Component 2: verification certainty (logarithmic; capped at 1.0)
+    verification_certainty = min(
+        math.log(1 + s.source_corroboration_count_by_text) / math.log(10),
+        1.0,
+    )
+
+    # Multipliers (use override if provided, else table lookup)
+    house_wt = (
+        s.house_weight_multiplier_override
+        if s.house_weight_multiplier_override is not None
+        else HOUSE_WEIGHT.get(s.house_number, 1.00)
+    )
+    av_mult = (
+        s.ashtakavarga_support_multiplier_override
+        if s.ashtakavarga_support_multiplier_override is not None
+        else _av_multiplier(s.ashtakavarga_bindus)
+    )
+
+    computed_salience = (
+        deterministic_strength
+        * verification_certainty
+        * (1 + s.dasha_activation_proximity_score * 0.5)
+        * house_wt
+        * av_mult
+        * (1 + s.aspect_modifier)
+        * (1 + s.vargottama_amplification)
+        * (1 + s.argala_modifier)
+        * s.neechabhanga_modifier
+        * s.cancellation_modifier
+    )
+
+    return {
+        "deterministic_strength": round(deterministic_strength, 6),
+        "verification_certainty": round(verification_certainty, 6),
+        "house_weight_multiplier": round(house_wt, 6),
+        "ashtakavarga_support_multiplier": round(av_mult, 6),
+        "computed_salience": round(computed_salience, 6),
+        "salience_formula_version": VERSION_SALIENCE_FORMULA,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A11 §3  linkage_formula_v1
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class LinkageInputs:
+    shared_signals: list[dict] = field(default_factory=list)
+    # Each signal dict: {salience: float, in_contradiction: bool}
+    high_convergence_count: int = 0       # signals with cross_ayanamsha_consistency_score >= 0.8
+    shared_factor_count: int = 0
+    cross_ayanamsha_stability_score: float = 1.0
+
+
+def linkage_formula_v1(cell: LinkageInputs) -> dict[str, float]:
+    """A11 §3 linkage formula v1.0."""
+    positive = sum(
+        s["salience"] for s in cell.shared_signals if not s.get("in_contradiction", False)
+    )
+    negative = sum(
+        s["salience"] for s in cell.shared_signals if s.get("in_contradiction", False)
+    ) * 0.5
+    net = positive - negative
+
+    signal_count = max(len(cell.shared_signals), 1)
+    high_convergence_bonus = (cell.high_convergence_count / signal_count) * 0.3
+    factor_density_bonus = math.log(1 + cell.shared_factor_count) * 0.1
+    stability_factor = max(cell.cross_ayanamsha_stability_score, 0.0)
+
+    computed_linkage = (
+        net
+        * (1 + factor_density_bonus)
+        * (1 + high_convergence_bonus)
+        * stability_factor
+    )
+
+    return {
+        "positive_contribution": round(positive, 6),
+        "negative_contribution": round(negative * 0.5 * 2, 6),  # stored as gross
+        "net_linkage_strength": round(net, 6),
+        "computed_linkage_strength": round(computed_linkage, 6),
+        "linkage_formula_version": VERSION_LINKAGE_FORMULA,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A13 §3  resonance_score_v1  (graha weakness score)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Chara karaka amplification map
+CHARA_KARAKA_AMP: dict[str, float] = {
+    "AK":  1.30,
+    "AmK": 1.15,
+    "BK":  1.10,
+    "MK":  1.05,
+    "PK":  1.05,
+    "PiK": 1.05,
+    "DK":  1.10,
+}
+
+
+@dataclass
+class ResonanceInputs:
+    # From A8 T1 structural
+    shadbala_normalized: float = 0.5       # 0..1
+    bhava_bala_normalized: float = 0.5
+    combustion_score: float = 0.0          # 0..1; 1 = fully combust
+    debility_score: float = 0.0            # 0..1; 1 = fully debilitated
+    affliction_count_normalized: float = 0.0
+    cancellation_burden: float = 0.0       # 0..1; cancelled benefic effects
+    dispositor_chain_weakness: float = 0.0 # 0..1
+    vargottama_absence_score: float = 0.0  # 0..1; 1 = not vargottama at all
+    dasha_proximity_activation_score: float = 0.0  # 0..1
+
+    # From MSR, CDLM, CGM
+    msr_signals_in_conflict: float = 0.0  # normalized sum of saliences in conflict
+    cdlm_weakest_constituent_count: float = 0.0  # normalized
+    cgm_motifs_weakest_node: float = 0.0          # normalized
+
+    # Karaka flags
+    is_yoga_karaka: bool = False
+    chara_role: str | None = None  # AK | AmK | BK | MK | PK | PiK | DK | None
+
+
+def resonance_score_v1(g: ResonanceInputs) -> dict[str, float]:
+    """A13 §3 resonance score v1.0 (graha weakness / remedy candidacy)."""
+    weakness_score = (
+        (1.0 - g.shadbala_normalized) * 0.30
+        + (1.0 - g.bhava_bala_normalized) * 0.15
+        + g.combustion_score * 0.10
+        + g.debility_score * 0.10
+        + g.affliction_count_normalized * 0.10
+        + g.cancellation_burden * 0.10
+        + g.dispositor_chain_weakness * 0.05
+        + g.vargottama_absence_score * 0.05
+        + g.dasha_proximity_activation_score * 0.05
+    )
+
+    contradiction_factor = min(g.msr_signals_in_conflict, 1.0)
+    domain_burden = min(g.cdlm_weakest_constituent_count, 1.0)
+    motif_burden = min(g.cgm_motifs_weakest_node, 1.0)
+
+    yoga_karaka_amp = 1.20 if g.is_yoga_karaka else 1.0
+    chara_amp = CHARA_KARAKA_AMP.get(g.chara_role or "", 1.0)
+
+    resonance = (
+        weakness_score
+        * (1 + contradiction_factor * 0.20)
+        * (1 + domain_burden * 0.15)
+        * (1 + motif_burden * 0.10)
+        * yoga_karaka_amp
+        * chara_amp
+    )
+
+    return {
+        "weakness_score": round(weakness_score, 6),
+        "contradiction_factor": round(contradiction_factor, 6),
+        "domain_burden": round(domain_burden, 6),
+        "motif_burden": round(motif_burden, 6),
+        "resonance_score": round(resonance, 6),
+        "resonance_score_formula_version": VERSION_RESONANCE_FORMULA,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A13 §3  resonance_match_score_v1  (how well a prescription fits a target)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Typology bias matrix — (typology, remedy_category) → bias multiplier.
+# Partial representation; extend as G27 corpus is built.
+TYPOLOGY_BIAS_MATRIX: dict[tuple[str, str], float] = {
+    ("career_dominant",        "mantra"):           0.10,
+    ("career_dominant",        "gem"):              0.15,
+    ("career_dominant",        "yantra"):           0.10,
+    ("spirituality_focused",   "mantra"):           0.20,
+    ("spirituality_focused",   "tantric_heavy"):    0.15,
+    ("relationship_centric",   "dana"):             0.15,
+    ("relationship_centric",   "color"):            0.10,
+    ("balanced",               "mantra"):           0.05,
+    ("fragmented",             "mantra"):           0.05,
+}
+
+
+@dataclass
+class ResonanceMatchInputs:
+    classical_strength_for_graha: float = 0.5   # 0..1; from G27
+    chart_typology: str = "balanced"
+    remedy_category: str = "mantra"
+    cross_tradition_corroboration_count: int = 1
+    targets_motif_id: str | None = None
+    active_motif_ids: set[str] = field(default_factory=set)
+    has_active_counter_indication: bool = False
+
+
+def resonance_match_score_v1(p: ResonanceMatchInputs) -> dict[str, float]:
+    """A13 §3 resonance-match score v1.0."""
+    base = p.classical_strength_for_graha
+    typology_bias = TYPOLOGY_BIAS_MATRIX.get((p.chart_typology, p.remedy_category), 0.0)
+    cross_tradition_boost = math.log(1 + p.cross_tradition_corroboration_count) * 0.10
+    pattern_alignment = (
+        0.15
+        if p.targets_motif_id and p.targets_motif_id in p.active_motif_ids
+        else 0.0
+    )
+    cancellation_penalty = 0.5 if p.has_active_counter_indication else 1.0
+
+    score = (
+        base
+        * (1 + typology_bias)
+        * (1 + cross_tradition_boost + pattern_alignment)
+        * cancellation_penalty
+    )
+
+    return {
+        "resonance_match_score": round(score, 6),
+        "match_score_formula_version": VERSION_RESONANCE_MATCH_FORMULA,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# §13.1  convergence_formula_v1
+# Computes the convergence score for a (chart, domain) pair — the weight of
+# evidence from N independent L1 signals converging on one domain.
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class ConvergenceInputs:
+    domain: str
+    signal_saliencies: list[float] = field(default_factory=list)
+    # Per-signal tradition labels (must parallel signal_saliencies)
+    signal_traditions: list[str] = field(default_factory=list)
+    contradiction_count: int = 0   # contradictions within this domain's signal pool
+
+
+def convergence_formula_v1(c: ConvergenceInputs) -> dict[str, Any]:
+    """§13.1 convergence formula v1.0.
+
+    convergence_score = (N × salience_weighted_mean × cross_tradition_multiplier)
+                        × contradiction_penalty
+
+    Rationale:
+      - N (convergence_count) is the primary signal: more independent firings = stronger case.
+      - salience_weighted_mean ensures quality (high-salience signals count more than noise).
+      - cross_tradition_multiplier rewards multi-tradition agreement (4+ traditions 1.5×,
+        3 = 1.3×, 2 = 1.1×, 1 = 1.0×) — mirrors the "weight of evidence" principle.
+      - contradiction_penalty discounts convergence when the domain has active conflicts.
+    """
+    n = len(c.signal_saliencies)
+    if n == 0:
+        return {
+            "convergence_count": 0,
+            "convergence_score": 0.0,
+            "cross_tradition_count": 0,
+            "salience_weighted_sum": 0.0,
+            "salience_max": 0.0,
+            "convergence_formula_version": VERSION_CONVERGENCE_FORMULA,
+        }
+
+    salience_sum = sum(c.signal_saliencies)
+    salience_max = max(c.signal_saliencies)
+    salience_mean = salience_sum / n
+
+    distinct_traditions = len(set(c.signal_traditions)) if c.signal_traditions else 1
+    tradition_multiplier = (
+        1.50 if distinct_traditions >= 4
+        else 1.30 if distinct_traditions == 3
+        else 1.10 if distinct_traditions == 2
+        else 1.00
+    )
+
+    contradiction_penalty = max(1.0 - (c.contradiction_count / max(n, 1)) * 0.3, 0.5)
+
+    convergence_score = n * salience_mean * tradition_multiplier * contradiction_penalty
+
+    return {
+        "convergence_count": n,
+        "convergence_score": round(convergence_score, 6),
+        "cross_tradition_count": distinct_traditions,
+        "salience_weighted_sum": round(salience_sum, 6),
+        "salience_max": round(salience_max, 6),
+        "convergence_formula_version": VERSION_CONVERGENCE_FORMULA,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# §13.1  centrality_formula_v1
+# Composite centrality score for a graph node — the deterministic "most
+# consequential factor" ranking.
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class CentralityInputs:
+    pagerank_score: float = 0.0
+    eigenvector_centrality: float = 0.0
+    betweenness_centrality: float = 0.0   # normalized [0,1]
+    harmonic_centrality: float = 0.0      # normalized [0,1]
+    degree_total: int = 0                  # degree_in + degree_out
+    max_degree_in_graph: int = 1           # for normalization
+    strength_score: float = 0.5            # A8 composite strength [0,1]
+    # Dispositor chain terminus weight: 1.0 + (chains_converging / total_nodes)
+    terminus_convergence_weight: float = 1.0
+
+
+def centrality_formula_v1(node: CentralityInputs) -> dict[str, float]:
+    """§13.1 centrality formula v1.0.
+
+    composite_centrality = weighted_average(pagerank, eigenvector, betweenness, harmonic)
+                           × degree_norm × strength_amplifier × terminus_weight
+
+    Weights reflect the classical insight that:
+      - PageRank (0.35): captures prestige — a planet aspected by strong planets matters more.
+      - Eigenvector (0.25): global influence — connected to influential nodes.
+      - Betweenness (0.20): bridge importance — controls paths between other factors.
+      - Harmonic (0.20): accessibility — can reach all other factors efficiently.
+
+    degree_norm prevents pure high-degree nodes from dominating (log-dampened).
+    strength_amplifier: a classically strong planet at a central graph position
+      is more consequential than a weak one in the same position.
+    terminus_weight: amplifies the "final dispositor" — all chains converge here.
+    """
+    graph_centrality = (
+        node.pagerank_score * 0.35
+        + node.eigenvector_centrality * 0.25
+        + node.betweenness_centrality * 0.20
+        + node.harmonic_centrality * 0.20
+    )
+
+    degree_norm = math.log(1 + node.degree_total) / math.log(1 + max(node.max_degree_in_graph, 1))
+    strength_amplifier = 0.5 + node.strength_score * 0.5   # [0.5, 1.0]
+
+    composite_centrality = (
+        graph_centrality
+        * (1 + degree_norm * 0.3)
+        * strength_amplifier
+        * node.terminus_convergence_weight
+    )
+
+    return {
+        "composite_centrality": round(composite_centrality, 6),
+        "centrality_formula_version": VERSION_CENTRALITY_FORMULA,
+    }

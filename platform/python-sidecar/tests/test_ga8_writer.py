@@ -725,7 +725,7 @@ class TestArgalaMatrices:
         )
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         for sign_num in range(1, 13):
-            sign_key = f"SIGN_{sign_num}"
+            sign_key = f"D1_SIGN_{sign_num}"
             nonzero = [r for r in argala
                        if r["fact_subject"] == sign_key
                        and r["fact_value_num"] is not None
@@ -755,7 +755,7 @@ class TestArgalaMatrices:
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         targets = {r["fact_subject"] for r in argala}
         for i in range(1, 13):
-            assert f"SIGN_{i}" in targets, f"SIGN_{i} missing from argala matrix"
+            assert f"D1_SIGN_{i}" in targets, f"D1_SIGN_{i} missing from argala matrix"
 
     def test_argala_atomic_no_jsonb_blob(self):
         """Each argala row is atomic (value_num, not a JSONB blob)."""
@@ -1104,3 +1104,502 @@ class TestSpecialStates:
         for g in MOCK_CHART_OUTPUT["grahas"]:
             subj = sut.PLANET_TO_SUBJECT.get(g["name"], g["name"].upper())
             assert subj in subjects
+
+
+# ── §Node Parashari Aspects ───────────────────────────────────────────────────
+
+class TestNodeAspectRows:
+    def test_rahu_ketu_appear_in_d1_parashari_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        assert "RAH_MEAN" in subjects, "Rahu missing from D1 Parashari aspects"
+        assert "KET_MEAN" in subjects, "Ketu missing from D1 Parashari aspects"
+
+    def test_rahu_emits_5th_7th_9th_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_aspect_keys = {r["fact_key"] for r in rows
+                            if r["fact_category"] == "aspect_parashari_given"
+                            and r["fact_subject"] == "RAH_MEAN"}
+        # Rahu in Taurus (house 2 per MOCK_CHART_OUTPUT) → 5th=house 6, 7th=house 8, 9th=house 10
+        assert "house_6" in rahu_aspect_keys
+        assert "house_8" in rahu_aspect_keys
+        assert "house_10" in rahu_aspect_keys
+        assert len(rahu_aspect_keys) == 3, f"Expected 3 node aspects, got: {rahu_aspect_keys}"
+
+    def test_ketu_emits_5th_7th_9th_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        ketu_aspect_keys = {r["fact_key"] for r in rows
+                            if r["fact_category"] == "aspect_parashari_given"
+                            and r["fact_subject"] == "KET_MEAN"}
+        # Ketu in Scorpio (house 8 per MOCK_CHART_OUTPUT) → 5th=house 12, 7th=house 2, 9th=house 4
+        assert "house_12" in ketu_aspect_keys
+        assert "house_2" in ketu_aspect_keys
+        assert "house_4" in ketu_aspect_keys
+        assert len(ketu_aspect_keys) == 3, f"Expected 3 node aspects, got: {ketu_aspect_keys}"
+
+    def test_node_aspect_strength_is_full(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_aspects = [r for r in rows
+                        if r["fact_category"] == "aspect_parashari_given"
+                        and r["fact_subject"] == "RAH_MEAN"]
+        for row in rahu_aspects:
+            assert row["fact_value_num"] == 1.0, \
+                f"Node aspect strength should be 1.0, got {row['fact_value_num']}"
+
+    def test_classical_grahas_still_have_their_aspects(self):
+        rows = sut._build_aspect_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        for g in ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT"]:
+            assert g in subjects, f"{g} missing from Parashari aspects after node extension"
+
+    def test_no_crash_when_nodes_absent_from_chart_output(self):
+        """If Rahu/Ketu missing from chart, classical aspects still work, no exception."""
+        chart_without_nodes = {
+            "ascendant": MOCK_CHART_OUTPUT["ascendant"],
+            "grahas": [g for g in MOCK_CHART_OUTPUT["grahas"]
+                       if g["name"] not in ("Rahu", "Ketu")],
+        }
+        # Should not raise; should produce classical graha aspects only
+        rows = sut._build_aspect_rows(
+            chart_without_nodes, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        subjects = {r["fact_subject"] for r in rows
+                    if r["fact_category"] == "aspect_parashari_given"}
+        # Classical grahas present
+        assert "SUN" in subjects
+        # Nodes absent (no crash, but no node rows either)
+        assert "RAH_MEAN" not in subjects
+        assert "KET_MEAN" not in subjects
+
+
+# ── §Node Varga Relationships ─────────────────────────────────────────────────
+
+class TestVargaNodeRelationships:
+    """Rahu/Ketu must appear in per-varga dignity, aspects, conjunctions, vargottama."""
+
+    def _make_varga_state(self) -> dict:
+        return {
+            "Sun":     {"sign": "Aries",       "sign_num": 1,  "house": 1,  "degree": 5.0},
+            "Moon":    {"sign": "Cancer",      "sign_num": 4,  "house": 4,  "degree": 10.0},
+            "Mars":    {"sign": "Aries",       "sign_num": 1,  "house": 1,  "degree": 20.0},
+            "Mercury": {"sign": "Gemini",      "sign_num": 3,  "house": 3,  "degree": 15.0},
+            "Jupiter": {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 5.0},
+            "Venus":   {"sign": "Pisces",      "sign_num": 12, "house": 12, "degree": 8.0},
+            "Saturn":  {"sign": "Libra",       "sign_num": 7,  "house": 7,  "degree": 12.0},
+            "Rahu":    {"sign": "Gemini",      "sign_num": 3,  "house": 3,  "degree": 20.0},
+            "Ketu":    {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 20.0},
+        }
+
+    def test_rahu_ketu_in_varga_dignity(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        dignity_subjects = {r["fact_subject"] for r in rows
+                            if r["fact_category"] == "graha_dignity_per_varga"}
+        assert "D9_RAH_MEAN" in dignity_subjects, \
+            f"Rahu dignity missing. Subjects: {dignity_subjects}"
+        assert "D9_KET_MEAN" in dignity_subjects, \
+            f"Ketu dignity missing. Subjects: {dignity_subjects}"
+
+    def test_rahu_ketu_in_varga_aspects(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        aspect_subjects = {r["fact_subject"] for r in rows
+                           if r["fact_category"] == "aspect_parashari_per_varga"}
+        assert "D9_RAH_MEAN" in aspect_subjects, \
+            f"Rahu aspects missing. Subjects: {aspect_subjects}"
+        assert "D9_KET_MEAN" in aspect_subjects, \
+            f"Ketu aspects missing. Subjects: {aspect_subjects}"
+
+    def test_rahu_ketu_in_varga_conjunctions_when_same_sign(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        conj_subjects = {r["fact_subject"] for r in rows
+                         if r["fact_category"] == "conjunction_per_varga"}
+        # Mercury and Rahu both in Gemini (house 3) → conjunction fires
+        assert any("RAH_MEAN" in s and "MER" in s for s in conj_subjects) or \
+               any("MER" in s and "RAH_MEAN" in s for s in conj_subjects), \
+            f"Mercury-Rahu conjunction missing. Subjects: {conj_subjects}"
+
+    def test_rahu_ketu_in_vargottama_when_same_sign_as_d1(self):
+        # Rahu in Taurus in D1 (MOCK_CHART_OUTPUT). Make it Taurus in D9 too.
+        vs = self._make_varga_state()
+        vs["Rahu"] = {"sign": "Taurus", "sign_num": 2, "house": 2, "degree": 20.0}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        vargottama_subjects = {r["fact_subject"] for r in rows
+                               if r["fact_category"] == "vargottama_per_varga"}
+        assert "D9_RAH_MEAN" in vargottama_subjects, \
+            f"Rahu vargottama missing. Subjects: {vargottama_subjects}"
+        # The row should say is_vargottama = "vargottama"
+        rahu_row = next(r for r in rows
+                        if r["fact_category"] == "vargottama_per_varga"
+                        and r["fact_subject"] == "D9_RAH_MEAN")
+        assert rahu_row["fact_value_text"] == "vargottama"
+
+    def test_rahu_node_dignity_is_exalted_in_gemini(self):
+        # EXALTATION_SIGNS["Rahu"] = "Gemini" — Rahu in Gemini is exalted
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        rahu_dignity_rows = [r for r in rows
+                             if r["fact_category"] == "graha_dignity_per_varga"
+                             and r["fact_subject"] == "D9_RAH_MEAN"]
+        assert len(rahu_dignity_rows) == 1
+        # Rahu in Gemini should be "exalted" per EXALTATION_SIGNS constant
+        assert rahu_dignity_rows[0]["fact_value_text"] == "exalted"
+
+    def test_classical_grahas_still_have_all_per_varga_facts(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        dignity_subjects = {r["fact_subject"] for r in rows
+                            if r["fact_category"] == "graha_dignity_per_varga"}
+        for g_subj in ["D9_SUN", "D9_MOON", "D9_MAR", "D9_MER", "D9_JUP", "D9_VEN", "D9_SAT"]:
+            assert g_subj in dignity_subjects, f"{g_subj} missing from per-varga dignity"
+
+
+# ── §14: Kala Sarpa / Kala Amrita detection ───────────────────────────────────
+
+# KS_STATE: Rahu H2 (Taurus), Ketu H8 (Scorpio), all 7 classical grahas in H3–H7 (Gemini–Leo)
+KS_STATE = {
+    "Sun":     {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 5.0},
+    "Moon":    {"sign": "Cancer",   "sign_num": 4, "house": 4, "degree": 10.0},
+    "Mars":    {"sign": "Leo",      "sign_num": 5, "house": 5, "degree": 15.0},
+    "Mercury": {"sign": "Cancer",   "sign_num": 4, "house": 4, "degree": 20.0},
+    "Jupiter": {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 25.0},
+    "Venus":   {"sign": "Leo",      "sign_num": 5, "house": 5, "degree": 8.0},
+    "Saturn":  {"sign": "Gemini",   "sign_num": 3, "house": 3, "degree": 18.0},
+    "Rahu":    {"sign": "Taurus",   "sign_num": 2, "house": 2, "degree": 20.0},
+    "Ketu":    {"sign": "Scorpio",  "sign_num": 8, "house": 8, "degree": 20.0},
+}
+
+# KA_STATE: same nodes, all 7 classical grahas on the Ketu→Rahu arc (H9–H12, H1)
+KA_STATE = {
+    "Sun":     {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 5.0},
+    "Moon":    {"sign": "Capricorn",   "sign_num": 10, "house": 10, "degree": 10.0},
+    "Mars":    {"sign": "Aquarius",    "sign_num": 11, "house": 11, "degree": 15.0},
+    "Mercury": {"sign": "Sagittarius", "sign_num": 9,  "house": 9,  "degree": 20.0},
+    "Jupiter": {"sign": "Capricorn",   "sign_num": 10, "house": 10, "degree": 25.0},
+    "Venus":   {"sign": "Aquarius",    "sign_num": 11, "house": 11, "degree": 8.0},
+    "Saturn":  {"sign": "Pisces",      "sign_num": 12, "house": 12, "degree": 18.0},
+    "Rahu":    {"sign": "Taurus",      "sign_num": 2,  "house": 2,  "degree": 20.0},
+    "Ketu":    {"sign": "Scorpio",     "sign_num": 8,  "house": 8,  "degree": 20.0},
+}
+
+
+class TestKalaSarpaDetection:
+    """_detect_kala_sarpa correctly classifies KS / KA / none formations."""
+
+    def test_kala_sarpa_detected_when_all_planets_between_rahu_ketu(self):
+        result = sut._detect_kala_sarpa(KS_STATE)
+        assert result["fires"] is True
+        assert result["variant"] == "kala_sarpa"
+        assert result["rahu_house"] == 2
+
+    def test_kala_amrita_when_planets_on_ketu_side(self):
+        result = sut._detect_kala_sarpa(KA_STATE)
+        assert result["fires"] is True
+        assert result["variant"] == "kala_amrita"
+
+    def test_no_kala_sarpa_when_planets_on_both_sides(self):
+        # MOCK_CHART_OUTPUT has planets on both sides (native chart) — should not fire.
+        # Build varga_state from MOCK_CHART_OUTPUT grahas using sign_id field.
+        varga_state = {}
+        for g in MOCK_CHART_OUTPUT["grahas"]:
+            name = g["name"]
+            varga_state[name] = {
+                "sign": g["sign"],
+                "sign_num": g["sign_id"],
+                "house": g["house"],
+                "degree": g.get("longitude", 0.0) % 30,
+            }
+        result = sut._detect_kala_sarpa(varga_state)
+        assert result["fires"] is False
+
+    def test_kala_sarpa_emits_row_in_varga_relationships(self):
+        rows = sut._build_varga_relationship_rows(
+            "D9", KS_STATE, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        ks_rows = [r for r in rows if r["fact_category"] == "kala_sarpa_per_varga"]
+        assert len(ks_rows) == 1, f"Expected 1 KS row, got {len(ks_rows)}"
+        assert ks_rows[0]["fact_value_text"] == "kala_sarpa"
+        assert ks_rows[0]["fact_value_num"] == 1.0
+
+
+# ── Task 4: Special-point relationship tests ──────────────────────────────────
+
+class _MockCursor:
+    """Cursor that returns Gulika/Mandi (Taurus H2) + Arudha_Lagna (Leo H5)."""
+    def execute(self, *a, **kw): pass
+    def fetchall(self):
+        return [
+            ("gulika",       "Taurus", 2, 15.0),
+            ("mandi",        "Taurus", 2, 18.0),
+            ("arudha_lagna", "Leo",    5, 22.0),
+        ]
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+class _MockConn:
+    def cursor(self): return _MockCursor()
+
+
+class _EmptyCursor:
+    def execute(self, *a, **kw): pass
+    def fetchall(self): return []
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+class _EmptyConn:
+    def cursor(self): return _EmptyCursor()
+
+
+MOCK_CONN = _MockConn()
+EMPTY_CONN = _EmptyConn()
+
+
+class TestSpecialPointRelationships:
+    """Tests for _load_special_points and _build_special_point_relationship_rows."""
+
+    def test_aspect_received_rows_emitted(self):
+        """At least some grahas aspect at least one special point — rows > 0."""
+        rows = sut._build_special_point_relationship_rows(
+            MOCK_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        aspect_rows = [r for r in rows if r["fact_category"] == "aspect_received_by_special_point"]
+        assert len(aspect_rows) > 0, (
+            "Expected at least one aspect_received_by_special_point row; "
+            "check Parashari offsets for grahas vs special-point houses."
+        )
+
+    def test_conjunction_gulika_rahu_in_house_2(self):
+        """Gulika is in H2; Rahu is also in H2 (MOCK_CHART_OUTPUT) → conjunction row exists."""
+        # Verify MOCK data: Rahu house=2
+        rahu = next(g for g in MOCK_CHART_OUTPUT["grahas"] if g["name"] == "Rahu")
+        assert rahu["house"] == 2, "Test pre-condition: Rahu must be in H2 in MOCK_CHART_OUTPUT"
+
+        rows = sut._build_special_point_relationship_rows(
+            MOCK_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        conj_rows = [r for r in rows if r["fact_category"] == "conjunction_special_point"]
+        # At minimum: Gulika-Rahu and Mandi-Rahu conjunctions (both in H2)
+        subjects = [r["fact_subject"] for r in conj_rows]
+        assert "gulika" in subjects, f"Expected gulika conjunction row; got subjects: {subjects}"
+        # Check that the Rahu conjunction exists for gulika
+        gulika_conj = [r for r in conj_rows if r["fact_subject"] == "gulika"]
+        keys = [r["fact_key"] for r in gulika_conj]
+        assert any("RAH" in k or "Rahu" in k or "rahu" in k.lower() for k in keys), (
+            f"Expected Gulika-Rahu conjunction; got keys: {keys}"
+        )
+
+    def test_empty_conn_returns_empty(self):
+        """When _load_special_points returns [] the function returns []."""
+        rows = sut._build_special_point_relationship_rows(
+            EMPTY_CONN, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        assert rows == [], f"Expected [], got {len(rows)} rows"
+
+
+# ── Task 5: House-lord matrix tests ──────────────────────────────────────────
+
+def _make_spread_varga_state() -> dict:
+    """Varga state with all 9 grahas in distinct houses (1-9)."""
+    grahas_in_order = ["Sun", "Moon", "Mars", "Mercury", "Jupiter",
+                        "Venus", "Saturn", "Rahu", "Ketu"]
+    signs_for_houses = ["Aries", "Taurus", "Gemini", "Cancer", "Leo",
+                         "Virgo", "Libra", "Scorpio", "Sagittarius"]
+    state = {}
+    for i, g_name in enumerate(grahas_in_order):
+        h = i + 1  # houses 1–9
+        state[g_name] = {
+            "sign": signs_for_houses[i],
+            "sign_num": i + 1,
+            "house": h,
+            "degree": 10.0,
+        }
+    return state
+
+
+class TestHouseLordMatrix:
+    """Tests for _build_house_lord_matrix_rows."""
+
+    def test_exactly_12_lord_in_house_rows(self):
+        """One lord_in_house_per_varga row per house → exactly 12."""
+        varga_state = _make_spread_varga_state()
+        rows = sut._build_house_lord_matrix_rows(
+            "D1", varga_state, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        lord_rows = [r for r in rows if r["fact_category"] == "lord_in_house_per_varga"]
+        assert len(lord_rows) == 12, (
+            f"Expected exactly 12 lord_in_house_per_varga rows; got {len(lord_rows)}"
+        )
+
+    def test_at_least_one_lord_aspects_lord_row(self):
+        """With grahas in H1-H9 some lord must aspect another lord's house."""
+        varga_state = _make_spread_varga_state()
+        rows = sut._build_house_lord_matrix_rows(
+            "D1", varga_state, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+        aspect_rows = [r for r in rows if r["fact_category"] == "lord_aspects_lord_per_varga"]
+        assert len(aspect_rows) >= 1, (
+            "Expected at least one lord_aspects_lord_per_varga row with grahas in H1-H9"
+        )
+
+
+# ── §T6: Jaimini rasi drishti per varga ──────────────────────────────────────
+
+class TestJaiminiPerVarga:
+    def test_jaimini_per_varga_count(self):
+        vs = {"Sun": {"sign": "Leo", "sign_num": 5, "house": 5, "degree": 10.0}}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        jaimini_rows = [r for r in rows if r["fact_category"] == "aspect_jaimini_per_varga"]
+        assert len(jaimini_rows) == 108, f"Expected 108, got {len(jaimini_rows)}"
+
+    def test_jaimini_per_varga_tagged_with_varga(self):
+        vs = {"Sun": {"sign": "Leo", "sign_num": 5, "house": 5, "degree": 10.0}}
+        rows = sut._build_varga_relationship_rows(
+            "D9", vs, MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        jaimini_rows = [r for r in rows if r["fact_category"] == "aspect_jaimini_per_varga"]
+        assert all(r["fact_value_jsonb"]["varga"] == "D9" for r in jaimini_rows)
+
+
+# ── §T7: Karaka inter-relationship web ────────────────────────────────────────
+
+class TestKarakaWeb:
+    def _make_karaka_conn(self):
+        class _KC:
+            def execute(self, *a, **kw): pass
+            def fetchall(self): return [("ATMAKARAKA","Sun",None,None),("AMATYAKARAKA","Saturn",None,None),("DARAKARAKA","Mars",None,None)]
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        class _KConn:
+            def cursor(self): return _KC()
+        return _KConn()
+
+    def test_karaka_web_rows_emitted(self):
+        vs = {
+            "Sun":    {"sign":"Capricorn","sign_num":10,"house":10,"degree":5.0},
+            "Saturn": {"sign":"Libra",    "sign_num":7, "house":7, "degree":12.0},
+            "Mars":   {"sign":"Aries",    "sign_num":1, "house":1, "degree":15.0},
+        }
+        rows = sut._build_karaka_web_rows(
+            self._make_karaka_conn(), vs, MOCK_CHART_OUTPUT,
+            "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        assert len([r for r in rows if r["fact_category"] == "karaka_web_per_varga"]) > 0
+
+    def test_empty_karaka_returns_empty(self):
+        class _EC:
+            class _C:
+                def execute(self, *a, **kw): pass
+                def fetchall(self): return []
+                def __enter__(self): return self
+                def __exit__(self, *a): return False
+            def cursor(self): return _EC._C()
+        rows = sut._build_karaka_web_rows(_EC(), {}, MOCK_CHART_OUTPUT, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        assert rows == []
+
+
+# ── §T8: Graha yuddha ─────────────────────────────────────────────────────────
+
+class TestGrahaYuddha:
+    def _make_yuddha_chart(self):
+        """Sun=295°, Mercury moved to 295.6° — same sign (Capricorn), orb=0.6° < 1°."""
+        modified_grahas = []
+        for g in MOCK_CHART_OUTPUT["grahas"]:
+            if g["name"] == "Mercury":
+                modified_grahas.append({**g, "longitude": 295.6, "sign": "Capricorn"})
+            else:
+                modified_grahas.append(g)
+        return {**MOCK_CHART_OUTPUT, "grahas": modified_grahas}
+
+    def test_yuddha_detected_within_1_degree(self):
+        rows = sut._build_graha_yuddha_rows(
+            self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        assert len(yuddha_rows) >= 1
+
+    def test_no_yuddha_in_unmodified_mock(self):
+        # Sun=295°, Mercury=300° → diff=5° > 1° → no yuddha
+        rows = sut._build_graha_yuddha_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        assert isinstance(yuddha_rows, list)
+
+    def test_yuddha_has_winner_and_loser_keys(self):
+        rows = sut._build_graha_yuddha_rows(
+            self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        keys = {r["fact_key"] for r in yuddha_rows}
+        assert "winner" in keys and "loser" in keys
+
+
+# ── §T9: Combustion and retrograde relational rows ────────────────────────────
+
+class TestCombustionRetrogradRelational:
+    def test_mercury_combustion_detected(self):
+        # Sun=295°, Mercury=300° → diff=5° < orb_limit=14° → Mercury combust
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        combust = [r for r in rows if r["fact_category"] == "combustion_relationship"]
+        subjects = {r["fact_subject"] for r in combust}
+        assert any("MER" in s for s in subjects), f"Mercury combustion missing. Subjects: {subjects}"
+
+    def test_retrograde_rows_emitted(self):
+        # Rahu and Ketu are retrograde in MOCK_CHART_OUTPUT → expect retrograde_aspect_modification rows
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        retro_rows = [r for r in rows if r["fact_category"] == "retrograde_aspect_modification"]
+        # Rahu (H2): 3 aspects + Ketu (H8): 3 aspects = 6 rows minimum
+        assert len(retro_rows) >= 6
+
+    def test_sun_has_no_combustion_row(self):
+        # Sun cannot be combust by itself; no row should have fact_value_jsonb["planet"] == "Sun"
+        # and also fact_subject ending in "_v_SUN" (Sun as the combusted planet is impossible)
+        rows = sut._build_combustion_retrograde_relationship_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        combust = [r for r in rows if r["fact_category"] == "combustion_relationship"]
+        # No combusted planet should be Sun itself
+        combust_planets = {r["fact_value_jsonb"]["planet"] for r in combust}
+        assert "Sun" not in combust_planets

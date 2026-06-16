@@ -122,9 +122,16 @@ SIGN_LORDS = {
     "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
 }
 
-# 16 Parashari shodasha vargas for aspect/conjunction/dispositor/dignity enumeration
+# 16 Parashari shodasha vargas
 SHODASHA_VARGAS = ["D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12",
                    "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60"]
+
+# 11 supplementary + 3 Nadi vargas (D81 skipped per GA6 locked decision J)
+SUPPLEMENTARY_11 = ["D5", "D6", "D8", "D11", "D14", "D15", "D21", "D32", "D33", "D50", "D54"]
+NADI_3 = ["D108", "D150", "D2700"]
+
+# All 30 vargas GA6 computes — completeness-first per native decision 2026-06-12
+ALL_30_VARGAS = SHODASHA_VARGAS + SUPPLEMENTARY_11 + NADI_3
 
 # Exaltation signs per planet (classical Parashara)
 EXALTATION_SIGNS = {
@@ -149,6 +156,13 @@ OWN_SIGNS: dict[str, list[str]] = {
     "Jupiter": ["Sagittarius", "Pisces"],
     "Venus": ["Taurus", "Libra"],
     "Saturn": ["Capricorn", "Aquarius"],
+}
+
+# Combustion orbs per planet (classical; Sun excluded — it is the combustor)
+COMBUSTION_ORBS: dict[str, float] = {
+    "Moon": 12.0, "Mars": 17.0, "Mercury": 14.0,
+    "Jupiter": 11.0, "Venus": 10.0, "Saturn": 15.0,
+    "Rahu": 0.0, "Ketu": 0.0,
 }
 
 # Panchamahapurusha yoga definitions (planet + required house + own/exalt sign required)
@@ -405,6 +419,11 @@ PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
     # Mars: 4th (full) + 8th (full) in addition to 7th
     "Mars": {4: 1.0, 7: 1.0, 8: 1.0},
 }
+
+# Node special aspects: 5th/7th/9th — full strength (many Parashari authorities)
+# Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
+# here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
+NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
 
 # Jaimini Rasi drishti rules (fixed sign aspects)
 # Fixed signs: Taurus, Leo, Scorpio, Aquarius → aspect all but adjacent movable signs
@@ -714,6 +733,76 @@ def _graha_longitude(chart_output: dict[str, Any], graha_name: str) -> float:
     return 0.0
 
 
+def _detect_kala_sarpa(varga_state: dict) -> dict:
+    """Detect Kala Sarpa / Kala Amrita formation in a varga state.
+
+    Classical rule:
+      - All 7 classical grahas hemmed within the Rahu→Ketu arc (going
+        forward clockwise from Rahu sign_num to Ketu sign_num) = Kala Sarpa.
+      - All 7 within the Ketu→Rahu arc = Kala Amrita.
+      - Any graha on a node-occupied sign = formation broken.
+
+    Returns: {"fires": bool, "variant": "kala_sarpa"|"kala_amrita"|"none",
+              "rahu_house": int, "ketu_house": int, "variant_name": str}
+    """
+    rahu_data = varga_state.get("Rahu") or varga_state.get("RAH_MEAN")
+    ketu_data = varga_state.get("Ketu") or varga_state.get("KET_MEAN")
+    if not rahu_data or not ketu_data:
+        return {"fires": False, "variant": "none", "rahu_house": 0, "ketu_house": 0, "variant_name": ""}
+
+    rahu_sign = int(rahu_data["sign_num"])   # 1–12
+    ketu_sign = int(ketu_data["sign_num"])   # 1–12
+    rahu_house = int(rahu_data.get("house", rahu_sign))
+    ketu_house = int(ketu_data.get("house", ketu_sign))
+
+    # Arc from Rahu→Ketu clockwise (signs strictly between + Rahu's own sign)
+    ks_arc: set[int] = set()
+    s = rahu_sign % 12 + 1
+    while s != ketu_sign:
+        ks_arc.add(s)
+        s = s % 12 + 1
+    ks_arc.add(rahu_sign)  # Rahu's own sign is in KS boundary
+
+    # Arc from Ketu→Rahu (Kala Amrita side, includes Ketu's own sign)
+    ka_arc: set[int] = set()
+    s = ketu_sign % 12 + 1
+    while s != rahu_sign:
+        ka_arc.add(s)
+        s = s % 12 + 1
+    ka_arc.add(ketu_sign)
+
+    on_ks_side = 0
+    on_ka_side = 0
+    present_count = 0
+    for g_name in CLASSICAL_GRAHAS:
+        g_data = varga_state.get(g_name)
+        if not g_data:
+            continue
+        present_count += 1
+        g_sign = int(g_data["sign_num"])
+        if g_sign in ks_arc:
+            on_ks_side += 1
+        elif g_sign in ka_arc:
+            on_ka_side += 1
+        # If g_sign is NEITHER arc → formation is broken (planet straddles boundary)
+
+    total_classified = on_ks_side + on_ka_side
+    if present_count == 0 or total_classified < present_count:
+        return {"fires": False, "variant": "none",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": ""}
+
+    if on_ks_side == present_count and on_ka_side == 0:
+        variant_name = f"KALA_SARPA_RAHU_H{rahu_house}"
+        return {"fires": True, "variant": "kala_sarpa",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": variant_name}
+    if on_ka_side == present_count and on_ks_side == 0:
+        variant_name = f"KALA_AMRITA_RAHU_H{rahu_house}"
+        return {"fires": True, "variant": "kala_amrita",
+                "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": variant_name}
+    return {"fires": False, "variant": "none",
+            "rahu_house": rahu_house, "ketu_house": ketu_house, "variant_name": ""}
+
+
 # ── Group A: Aspects ──────────────────────────────────────────────────────────
 
 def _build_aspect_rows(
@@ -727,23 +816,31 @@ def _build_aspect_rows(
     # Pass 1: Engine geometric derivation
     # Pass 2: G17-rule re-application (same classical rules = deterministic)
 
-    grahas_order = CLASSICAL_GRAHAS  # Only classical grahas for Parashari
+    grahas_order = ALL_GRAHAS  # Classical + Rahu/Ketu (nodes have 5th/7th/9th aspects)
 
     for g_name in grahas_order:
         g_data = state.get(g_name)
         if g_data is None:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE: %s not found in chart_output for ayanamsha=%s — "
+                    "no aspect rows will be emitted for this node.",
+                    g_name, ayanamsha_id,
+                )
             continue
         g_house = g_data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
         # Determine aspect offsets for this graha
-        if g_name in PARASHARI_ASPECTS:
+        if g_name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif g_name in PARASHARI_ASPECTS:
             asp_offsets = PARASHARI_ASPECTS[g_name]
         else:
             asp_offsets = PARASHARI_ASPECTS["all"]
 
         for offset, strength in asp_offsets.items():
-            # Target house = (source_house - 1 + offset) % 12 + 1
+            # offset is 1-based; target = ((source - 1) + (offset - 1)) % 12 + 1
             target_house = ((g_house - 1 + offset - 1) % 12) + 1
             target_sign = _get_house_sign(chart_output, target_house)
             target_key = f"house_{target_house}"
@@ -2411,24 +2508,34 @@ def _build_argala_rows(
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    varga: str = "D1",
+    varga_sign_occupants: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Argala (intervention): for each sign, which signs have argala on it.
     Classical Jaimini rule: 2nd, 4th, 5th, 11th from a sign = argala positions.
     Virodha (counter-intervention): 12th, 10th, 9th, 3rd from a sign.
 
-    12×12 = 144 atomic rows for argala + 144 for virodha = 288 rows.
+    12×12 = 144 atomic rows for argala + 144 for virodha = 288 rows per varga.
     NOT blobs — each (subject_sign, source_sign) pair = one atomic row.
+
+    varga_sign_occupants: pre-built {sign_name: [graha_name, ...]} for non-D1 vargas.
+    When None (default), builds from chart_output (D1 natal occupancy).
+    Rows are tagged with varga prefix in fact_subject (e.g., D9_SIGN_4).
     """
     rows: list[dict[str, Any]] = []
-    grahas_data = chart_output.get("grahas", [])
+    varga_prefix = f"{varga}_"
 
-    # Build sign occupancy map (which grahas are in which sign)
-    sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
-    for g in grahas_data:
-        g_sign = g.get("sign", "")
-        if g_sign in sign_occupants:
-            sign_occupants[g_sign].append(g["name"])
+    if varga_sign_occupants is not None:
+        sign_occupants = varga_sign_occupants
+    else:
+        # Build sign occupancy map from D1 chart output
+        grahas_data = chart_output.get("grahas", [])
+        sign_occupants = {s: [] for s in SIGN_NAMES}
+        for g in grahas_data:
+            g_sign = g.get("sign", "")
+            if g_sign in sign_occupants:
+                sign_occupants[g_sign].append(g["name"])
 
     # Use module-level ARGALA_OFFSETS and VIRODHA_OFFSETS constants
     malefics_set = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
@@ -2459,7 +2566,7 @@ def _build_argala_rows(
 
             rows.append(_base_row(
                 "argala_natal_matrix",
-                f"SIGN_{target_sign_num}",
+                f"{varga_prefix}SIGN_{target_sign_num}",
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=net_argala,
@@ -2467,7 +2574,7 @@ def _build_argala_rows(
                 verif="two_pass_verified",
                 source=f"pyjhora_adapter.argala/{eng_ver}",
                 citation_human=(
-                    f"{target_sign} argala from {source_sign} "
+                    f"{varga} {target_sign} argala from {source_sign} "
                     f"(offset {offset}): score {net_argala:.2f} "
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
                 ),
@@ -2481,7 +2588,7 @@ def _build_argala_rows(
 
             rows.append(_base_row(
                 "virodha_argala_natal_matrix",
-                f"SIGN_{target_sign_num}",
+                f"{varga_prefix}SIGN_{target_sign_num}",
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=virodha_score,
@@ -2489,7 +2596,7 @@ def _build_argala_rows(
                 verif="two_pass_verified",
                 source=f"pyjhora_adapter.virodha_argala/{eng_ver}",
                 citation_human=(
-                    f"{target_sign} virodha from {source_sign} "
+                    f"{varga} {target_sign} virodha from {source_sign} "
                     f"(offset {offset}): score {virodha_score:.2f} "
                     f"({'virodha' if offset in VIRODHA_OFFSETS else 'no_virodha'}) ({ayanamsha_id})."
                 ),
@@ -2598,50 +2705,59 @@ def _build_esoteric_rows(
 
 # ── INSERT ────────────────────────────────────────────────────────────────────
 
+_CF_INSERT_COLS = [
+    "fact_id", "chart_id", "ayanamsha_id", "build_id",
+    "fact_category", "fact_subject", "fact_key",
+    "fact_value_text", "fact_value_num", "fact_value_jsonb",
+    "unit", "citation_ref", "citation_human",
+    "source_calculation", "verification_pass_status",
+    "engine_version", "computed_at",
+]
+
+_CF_INSERT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id          = EXCLUDED.fact_id,
+      fact_value_num   = EXCLUDED.fact_value_num,
+      fact_value_text  = EXCLUDED.fact_value_text,
+      fact_value_jsonb = EXCLUDED.fact_value_jsonb,
+      citation_ref     = EXCLUDED.citation_ref,
+      citation_human   = EXCLUDED.citation_human,
+      verification_pass_status = EXCLUDED.verification_pass_status,
+      engine_version   = EXCLUDED.engine_version,
+      computed_at      = EXCLUDED.computed_at
+"""
+
+
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)
-    written = 0
+
+    # Serialize JSONB values and build positional tuples once upfront.
+    tuples = []
     for r in rows:
         row = dict(r)
-        # psycopg3 cannot adapt Python dicts/lists; serialize JSONB values to strings
         v = row.get("fact_value_jsonb")
         if isinstance(v, (dict, list)):
             row["fact_value_jsonb"] = json.dumps(v)
-        conn.execute(
-            """
-            INSERT INTO chart_facts
-              (fact_id, chart_id, ayanamsha_id, build_id,
-               fact_category, fact_subject, fact_key,
-               fact_value_text, fact_value_num, fact_value_jsonb,
-               unit, citation_ref, citation_human,
-               source_calculation, verification_pass_status,
-               engine_version, computed_at)
-            VALUES
-              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
-               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
-               %(unit)s, %(citation_ref)s, %(citation_human)s,
-               %(source_calculation)s, %(verification_pass_status)s,
-               %(engine_version)s, %(computed_at)s)
-            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
-            WHERE formula_id IS NULL
-            DO UPDATE SET
-              fact_id          = EXCLUDED.fact_id,
-              fact_value_num   = EXCLUDED.fact_value_num,
-              fact_value_text  = EXCLUDED.fact_value_text,
-              fact_value_jsonb = EXCLUDED.fact_value_jsonb,
-              citation_ref     = EXCLUDED.citation_ref,
-              citation_human   = EXCLUDED.citation_human,
-              verification_pass_status = EXCLUDED.verification_pass_status,
-              engine_version   = EXCLUDED.engine_version,
-              computed_at      = EXCLUDED.computed_at
-            """,
-            row,
-        )
-        written += 1
-    return written
+        tuples.append(tuple(row.get(c) for c in _CF_INSERT_COLS))
+
+    # executemany with psycopg3 uses the pipeline protocol — collapses thousands of
+    # round-trips into a handful of network batches, avoiding Cloud SQL proxy timeouts.
+    with conn.cursor() as cur:
+        cur.executemany(_CF_INSERT_SQL, tuples)
+
+    return len(rows)
 
 
 # ── Two-pass verification ─────────────────────────────────────────────────────
@@ -2699,6 +2815,282 @@ def _linter_check_rows(rows: list[dict[str, Any]]) -> None:
                     )
 
 
+# ── Special-point relationship helpers ───────────────────────────────────────
+
+def _load_special_points(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+) -> list[dict[str, Any]]:
+    """Load sensitive / special points for chart_id from chart_facts (GA5 output).
+
+    Queries upagraha_position rows emitted by GA5.  Each result tuple is
+    (name, sign, house_num, degree).  Returns a list of dicts:
+      {"name": str, "sign": str, "house": int, "degree": float}
+    On any DB exception: logs WARNING and returns [].
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_subject,
+                       MAX(CASE WHEN fact_key = 'sign'      THEN fact_value_text END) AS sign,
+                       MAX(CASE WHEN fact_key = 'house'     THEN fact_value_num  END) AS house_num,
+                       MAX(CASE WHEN fact_key = 'longitude' THEN fact_value_num  END) AS degree
+                FROM chart_facts
+                WHERE chart_id      = %s
+                  AND ayanamsha_id  = %s
+                  AND fact_category = 'upagraha_position'
+                GROUP BY fact_subject
+                """,
+                (chart_id, ayanamsha_id),
+            )
+            rows = cur.fetchall()
+        result = []
+        for name, sign, house_num, degree in rows:
+            if name and sign and house_num is not None:
+                result.append({
+                    "name": str(name),
+                    "sign": str(sign),
+                    "house": int(house_num),
+                    "degree": float(degree) if degree is not None else 0.0,
+                })
+        return result
+    except Exception as exc:
+        logger.warning(
+            "[ga_structural] _load_special_points failed (chart_id=%s ayanamsha_id=%s): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return []
+
+
+def _build_special_point_relationship_rows(
+    conn: Any,
+    chart_output: dict[str, Any],
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit aspect_received_by_special_point and conjunction_special_point rows.
+
+    For every special point loaded from GA5 (gulika, mandi, arudha lagna, etc.):
+      - aspect_received_by_special_point: any of the 9 grahas whose Parashari
+        aspect lands on the special point's house.
+      - conjunction_special_point: any graha co-placed in the same house.
+
+    All 9 grahas (CLASSICAL_GRAHAS + Rahu + Ketu) are checked.
+    """
+    special_points = _load_special_points(conn, chart_id, ayanamsha_id)
+    if not special_points:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    grahas = chart_output.get("grahas", [])
+
+    for sp in special_points:
+        sp_name = sp["name"]
+        sp_house = sp["house"]
+        sp_sign  = sp["sign"]
+
+        for g in grahas:
+            g_name  = g["name"]
+            g_house = int(g.get("house", 1))
+
+            # ── conjunction ───────────────────────────────────────────────────
+            if g_house == sp_house:
+                rows.append(_base_row(
+                    "conjunction_special_point",
+                    sp_name,
+                    f"conjunct_{PLANET_TO_SUBJECT.get(g_name, g_name.upper())}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_text=g_name,
+                    value_jsonb={
+                        "special_point": sp_name,
+                        "graha": g_name,
+                        "house": sp_house,
+                        "sign": sp_sign,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.conjunction_special_point/{eng_ver}",
+                    citation_human=(
+                        f"{g_name} conjunct special point {sp_name} in H{sp_house} "
+                        f"({sp_sign}) ({ayanamsha_id})."
+                    ),
+                ))
+
+            # ── Parashari aspect received ────────────────────────────────────
+            if g_name in ("Rahu", "Ketu"):
+                asp_offsets = NODE_PARASHARI_ASPECTS
+            elif g_name in PARASHARI_ASPECTS:
+                asp_offsets = PARASHARI_ASPECTS[g_name]
+            else:
+                asp_offsets = PARASHARI_ASPECTS["all"]
+
+            for offset, strength in asp_offsets.items():
+                target_house = ((g_house - 1 + offset - 1) % 12) + 1
+                if target_house == sp_house:
+                    rows.append(_base_row(
+                        "aspect_received_by_special_point",
+                        sp_name,
+                        f"aspected_by_{PLANET_TO_SUBJECT.get(g_name, g_name.upper())}",
+                        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                        value_num=strength,
+                        unit="strength",
+                        value_jsonb={
+                            "special_point": sp_name,
+                            "aspecting_graha": g_name,
+                            "graha_house": g_house,
+                            "aspect_offset": offset,
+                            "target_house": sp_house,
+                            "target_sign": sp_sign,
+                            "strength": strength,
+                            "ayanamsha_id": ayanamsha_id,
+                            "uncatalogued": False,
+                        },
+                        verif="two_pass_verified",
+                        source=f"ga_structural.aspect_received_by_special_point/{eng_ver}",
+                        citation_human=(
+                            f"{g_name} (H{g_house}) aspects special point {sp_name} "
+                            f"in H{sp_house} via offset {offset} (strength={strength}) "
+                            f"({ayanamsha_id})."
+                        ),
+                    ))
+
+    return rows
+
+
+# ── House-lord matrix helper ──────────────────────────────────────────────────
+
+def _build_house_lord_matrix_rows(
+    varga: str,
+    varga_state: dict[str, Any],
+    chart_output: dict[str, Any],
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit per-varga house-lord placement and inter-lord aspect rows.
+
+    lord_in_house_per_varga (12 rows):
+        For each of the 12 houses compute the sign that falls on that house
+        (whole-sign from D1 lagna), find that sign's lord, then look up where
+        that lord sits in this varga.
+
+    lord_aspects_lord_per_varga:
+        For every ordered pair (lord_A, lord_B) where lord_A's Parashari
+        aspect covers lord_B's house-in-varga, emit one row.
+
+    Uses D1 lagna for house→sign mapping (valid for D1; structural approximation
+    for higher vargas as documented in §N.4 — deterministic-first).
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    lagna_sign_num = int(
+        chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM)
+    )
+
+    def house_sign(h: int) -> str:
+        return SIGN_NAMES[(lagna_sign_num - 1 + h - 1) % 12]
+
+    # ── lord_in_house_per_varga — 12 rows ─────────────────────────────────────
+    lord_house_in_varga: dict[str, int] = {}  # lord_name → house in this varga
+
+    for house_num in range(1, 13):
+        sign = house_sign(house_num)
+        lord = SIGN_LORDS.get(sign, "Sun")
+        # Where is the lord placed in this varga?
+        placed_house = varga_state.get(lord, {}).get("house", 0)
+        lord_house_in_varga[lord] = placed_house
+
+        subj = f"{varga_prefix}H{house_num}"
+        rows.append(_base_row(
+            "lord_in_house_per_varga",
+            subj,
+            "lord_placement",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(placed_house),
+            value_text=f"{lord}_in_H{placed_house}" if placed_house else f"{lord}_unknown",
+            value_jsonb={
+                "varga": varga,
+                "house": house_num,
+                "sign": sign,
+                "lord": lord,
+                "lord_house_in_varga": placed_house,
+                "ayanamsha_id": ayanamsha_id,
+                "uncatalogued": False,
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.lord_in_house_per_varga/{eng_ver}",
+            citation_human=(
+                f"H{house_num} ({sign}) lord {lord} is in H{placed_house} in {varga} ({ayanamsha_id})."
+            ),
+        ))
+
+    # ── lord_aspects_lord_per_varga ────────────────────────────────────────────
+    # Build set of unique lords (may have ≤12 since multiple houses share one lord)
+    unique_lords = list(dict.fromkeys(
+        SIGN_LORDS.get(house_sign(h), "Sun") for h in range(1, 13)
+    ))
+
+    for lord_a in unique_lords:
+        house_a = lord_house_in_varga.get(lord_a, 0)
+        if not house_a:
+            continue
+        # Determine aspect offsets for lord_a
+        if lord_a in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif lord_a in PARASHARI_ASPECTS:
+            asp_offsets = PARASHARI_ASPECTS[lord_a]
+        else:
+            asp_offsets = PARASHARI_ASPECTS["all"]
+
+        for offset, strength in asp_offsets.items():
+            target_house = ((house_a - 1 + offset - 1) % 12) + 1
+            for lord_b in unique_lords:
+                if lord_b == lord_a:
+                    continue
+                house_b = lord_house_in_varga.get(lord_b, 0)
+                if not house_b:
+                    continue
+                if house_b == target_house:
+                    subj_a = PLANET_TO_SUBJECT.get(lord_a, lord_a.upper())
+                    subj_b = PLANET_TO_SUBJECT.get(lord_b, lord_b.upper())
+                    rows.append(_base_row(
+                        "lord_aspects_lord_per_varga",
+                        f"{varga_prefix}{subj_a}",
+                        f"aspects_{subj_b}",
+                        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                        value_num=strength,
+                        unit="strength",
+                        value_jsonb={
+                            "varga": varga,
+                            "lord_a": lord_a,
+                            "lord_a_house": house_a,
+                            "lord_b": lord_b,
+                            "lord_b_house": house_b,
+                            "aspect_offset": offset,
+                            "strength": strength,
+                            "ayanamsha_id": ayanamsha_id,
+                            "uncatalogued": False,
+                        },
+                        verif="two_pass_verified",
+                        source=f"ga_structural.lord_aspects_lord_per_varga/{eng_ver}",
+                        citation_human=(
+                            f"{lord_a} (H{house_a}) aspects lord {lord_b} (H{house_b}) "
+                            f"via offset {offset} in {varga} (strength={strength}) ({ayanamsha_id})."
+                        ),
+                    ))
+
+    return rows
+
+
 # ── R1: Multi-varga enumeration ───────────────────────────────────────────────
 
 def _build_varga_relationship_rows(
@@ -2740,9 +3132,14 @@ def _build_varga_relationship_rows(
         return float(d.get("degree", 0.0))
 
     # ── Dignity per graha ──────────────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         sign = get_sign(g_name)
         if not sign:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE_SIGN: %s has no sign in varga=%s ayanamsha=%s",
+                    g_name, varga, ayanamsha_id,
+                )
             continue
         house = get_house(g_name)
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -2775,14 +3172,21 @@ def _build_varga_relationship_rows(
         ))
 
     # ── Parashari aspects per varga ────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         house = get_house(g_name)
         sign = get_sign(g_name)
         if not house or not sign:
+            if g_name in ("Rahu", "Ketu"):
+                logger.warning(
+                    "[ga_structural] MISSING_NODE_SIGN: %s has no sign/house in varga=%s ayanamsha=%s",
+                    g_name, varga, ayanamsha_id,
+                )
             continue
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if g_name in PARASHARI_ASPECTS:
+        if g_name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif g_name in PARASHARI_ASPECTS:
             asp_offsets = PARASHARI_ASPECTS[g_name]
         else:
             asp_offsets = PARASHARI_ASPECTS["all"]
@@ -2812,8 +3216,8 @@ def _build_varga_relationship_rows(
             ))
 
     # ── Conjunctions per varga (same-sign in non-D1; orb-based in D1) ─────────
-    for i, g1 in enumerate(CLASSICAL_GRAHAS):
-        for g2 in CLASSICAL_GRAHAS[i+1:]:
+    for i, g1 in enumerate(ALL_GRAHAS):
+        for g2 in ALL_GRAHAS[i+1:]:
             sign1 = get_sign(g1)
             sign2 = get_sign(g2)
             if not sign1 or not sign2:
@@ -2907,7 +3311,7 @@ def _build_varga_relationship_rows(
             ))
 
     # ── Dispositor chains per varga ────────────────────────────────────────────
-    for g_name in CLASSICAL_GRAHAS:
+    for g_name in ALL_GRAHAS:
         sign = get_sign(g_name)
         if not sign:
             continue
@@ -2947,7 +3351,7 @@ def _build_varga_relationship_rows(
     # ── Vargottama (same sign in D1 and this varga) ────────────────────────────
     if varga != "D1":
         d1_state = _extract_chart_state(chart_output)
-        for g_name in CLASSICAL_GRAHAS:
+        for g_name in ALL_GRAHAS:
             d1_sign = d1_state.get(g_name, {}).get("sign", "")
             varga_sign = get_sign(g_name)
             if not d1_sign or not varga_sign:
@@ -2974,6 +3378,186 @@ def _build_varga_relationship_rows(
                 ),
             ))
 
+    # ── Kala Sarpa / Kala Amrita per varga ────────────────────────────────────
+    ks_result = _detect_kala_sarpa(varga_state)
+    rows.append(_base_row(
+        "kala_sarpa_per_varga", f"{varga}_CHART", "ks_detection",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=ks_result["variant"],
+        value_num=1.0 if ks_result["fires"] else 0.0,
+        value_jsonb={
+            "varga": varga,
+            "fires": ks_result["fires"],
+            "variant": ks_result["variant"],
+            "variant_name": ks_result["variant_name"],
+            "rahu_house": ks_result["rahu_house"],
+            "ketu_house": ks_result["ketu_house"],
+            "ayanamsha_id": ayanamsha_id,
+        },
+        verif="two_pass_verified",
+        source=f"ga_structural.kala_sarpa_per_varga/{eng_ver}",
+        citation_human=(
+            f"Kala Sarpa detection in {varga}: "
+            f"{'FIRES as ' + ks_result['variant'] if ks_result['fires'] else 'not present'} "
+            f"(Rahu H{ks_result['rahu_house']}) ({ayanamsha_id})."
+        ),
+    ))
+
+    # ── House-lord matrix per varga ────────────────────────────────────────────
+    rows.extend(_build_house_lord_matrix_rows(
+        varga, varga_state, chart_output,
+        chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+
+    # ── Jaimini rasi drishti per varga ────────────────────────────────────────
+    _ALL_SIGNS_LOCAL = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
+                        "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
+    _SIGN_TYPES_LOCAL = {
+        "Aries":"movable","Cancer":"movable","Libra":"movable","Capricorn":"movable",
+        "Taurus":"fixed","Leo":"fixed","Scorpio":"fixed","Aquarius":"fixed",
+        "Gemini":"common","Virgo":"common","Sagittarius":"common","Pisces":"common",
+    }
+    for s1_idx, s1 in enumerate(_ALL_SIGNS_LOCAL):
+        s1_type = _SIGN_TYPES_LOCAL[s1]
+        for s2_idx, s2 in enumerate(_ALL_SIGNS_LOCAL):
+            if s1_idx == s2_idx:
+                continue
+            offset = (s2_idx - s1_idx) % 12
+            if offset in (1, 11):  # adjacent — no Jaimini aspect
+                continue
+            rows.append(_base_row(
+                "aspect_jaimini_per_varga", f"{varga}_{s1}", f"on_{s2}",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=1.0,
+                unit="rasi_drishti",
+                value_jsonb={
+                    "varga": varga,
+                    "source_sign": s1,
+                    "target_sign": s2,
+                    "source_sign_type": s1_type,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.jaimini_rasi_drishti_per_varga/{eng_ver}",
+                citation_human=(
+                    f"{s1} ({s1_type}) Jaimini rasi drishti on {s2} in {varga} ({ayanamsha_id})."
+                ),
+            ))
+
+    return rows
+
+
+def _build_karaka_web_rows(
+    conn: Any,
+    varga_state: dict[str, Any],
+    chart_output: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit karaka_web_per_varga rows: aspect and conjunction relationships between
+    Jaimini chara karaka planets in this varga.
+
+    Queries DB for jaimini_chara_karaka assignments, then checks each pair of
+    karaka-assigned grahas for conjunction (same sign) or Parashari aspect in this varga.
+    """
+    rows: list[dict[str, Any]] = []
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_subject, fact_value_text, fact_value_num, fact_value_jsonb
+                FROM chart_facts
+                WHERE chart_id = %s
+                  AND ayanamsha_id = %s
+                  AND fact_category = 'jaimini_chara_karaka'
+                  AND fact_key = 'graha'
+                """,
+                (chart_id, ayanamsha_id),
+            )
+            karaka_rows = cur.fetchall()
+    except Exception:
+        return rows
+
+    if not karaka_rows:
+        return rows
+
+    # Build role → planet mapping
+    karaka_map: dict[str, str] = {}
+    for row in karaka_rows:
+        role = row[0]   # fact_subject = role name (ATMAKARAKA, etc.)
+        planet = row[1]  # fact_value_text = planet name
+        if role and planet:
+            karaka_map[role] = planet
+
+    karaka_planets = list(karaka_map.values())
+    if len(karaka_planets) < 2:
+        return rows
+
+    # Check each pair for conjunction or aspect in this varga
+    for i, p_a in enumerate(karaka_planets):
+        for p_b in karaka_planets[i + 1:]:
+            data_a = varga_state.get(p_a)
+            data_b = varga_state.get(p_b)
+            if not data_a or not data_b:
+                continue
+            house_a = int(data_a.get("house", 0))
+            house_b = int(data_b.get("house", 0))
+            sign_a = str(data_a.get("sign", ""))
+            sign_b = str(data_b.get("sign", ""))
+            if not house_a or not house_b:
+                continue
+
+            relationship = None
+            if sign_a and sign_a == sign_b:
+                relationship = "conjunction"
+            else:
+                # Check Parashari aspect from A to B
+                if p_a in PARASHARI_ASPECTS:
+                    asp_offsets = PARASHARI_ASPECTS[p_a]
+                elif p_a in ("Rahu", "Ketu"):
+                    asp_offsets = NODE_PARASHARI_ASPECTS
+                else:
+                    asp_offsets = PARASHARI_ASPECTS["all"]
+                for offset in asp_offsets:
+                    target_house = ((house_a - 1 + offset - 1) % 12) + 1
+                    if target_house == house_b:
+                        relationship = "aspect"
+                        break
+
+            if relationship:
+                role_a = next((r for r, p in karaka_map.items() if p == p_a), p_a)
+                role_b = next((r for r, p in karaka_map.items() if p == p_b), p_b)
+                subj_a = PLANET_TO_SUBJECT.get(p_a, p_a.upper())
+                subj_b = PLANET_TO_SUBJECT.get(p_b, p_b.upper())
+                rows.append(_base_row(
+                    "karaka_web_per_varga",
+                    f"{varga}_{subj_a}",
+                    f"{relationship}_{subj_b}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_text=relationship,
+                    value_jsonb={
+                        "varga": varga,
+                        "planet_a": p_a,
+                        "planet_b": p_b,
+                        "role_a": role_a,
+                        "role_b": role_b,
+                        "relationship": relationship,
+                        "house_a": house_a,
+                        "house_b": house_b,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.karaka_web_per_varga/{eng_ver}",
+                    citation_human=(
+                        f"{role_a} ({p_a}) {relationship} with {role_b} ({p_b}) "
+                        f"in {varga} ({ayanamsha_id})."
+                    ),
+                ))
+
     return rows
 
 
@@ -2983,22 +3567,23 @@ def _build_varga_aspect_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Enumerate aspects/conjunctions/dispositors across all 16 shodasha vargas.
+    """Enumerate ALL structural relationships + argala matrices across all 30 vargas.
 
-    D1 uses chart_output directly (same data as existing _build_aspect_rows but
-    now tagged with varga='D1'). D2-D60 query chart_divisionals for positions.
+    D1 uses chart_output directly. D2-D2700 query chart_divisionals (GA6 output).
+    Per native decision 2026-06-12: every D1 construct (dignity, aspects, conjunctions,
+    dispositors, parivartana, vargottama, AND argala/virodha) computed for all 30 vargas.
 
     Each row carries varga + sign + ayanamsha + position — no unqualified rows.
     """
     rows: list[dict[str, Any]] = []
 
-    for varga in SHODASHA_VARGAS:
+    for varga in ALL_30_VARGAS:
         if varga == "D1":
             varga_state = _extract_chart_state(chart_output)
         else:
             varga_state = _load_varga_positions(conn, chart_id, ayanamsha_id, varga)
             if not varga_state:
-                # LOUD: a missing shodasha varga is a build anomaly — GA6 should have written it.
+                # LOUD: a missing varga is a build anomaly — GA6 should have written it.
                 logger.warning(
                     "[ga_structural] VARGA_MISSING: varga=%s has no positions in chart_divisionals "
                     "(chart_id=%s ayanamsha_id=%s) — GA6 may not have run for this varga.",
@@ -3008,6 +3593,23 @@ def _build_varga_aspect_rows(
 
         rows.extend(_build_varga_relationship_rows(
             varga, varga_state, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+
+        # Karaka inter-relationship web per varga
+        rows.extend(_build_karaka_web_rows(
+            conn, varga_state, chart_output, varga,
+            chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+
+        # Argala/virodha 144-cell matrices per varga — completeness-first (native decision 2026-06-12)
+        varga_sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
+        for graha_name, gdata in varga_state.items():
+            g_sign = gdata.get("sign", "")
+            if g_sign in varga_sign_occupants:
+                varga_sign_occupants[g_sign].append(graha_name)
+        rows.extend(_build_argala_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver,
+            varga=varga, varga_sign_occupants=varga_sign_occupants,
         ))
 
     return rows
@@ -3307,10 +3909,13 @@ def build_ga_structural(
 
     logger.info("[ga_structural_writer] Starting GA8 build chart_id=%s build_id=%s", chart_id, build_id)
 
-    with (_conn() if owns_conn else nullcontext(conn)) as conn:
-        # Step 0: Upstream presence check
+    # ── Phase 1: Upstream check + catalog pre-load (short-lived connection) ──────
+    # When owns_conn, we use a brief initial connection for the fast setup ops,
+    # then close it so each ayanamsha can open a fresh connection.  This prevents
+    # Cloud SQL proxy timeouts during the long (~15 min) per-ayanamsha compute phase.
+    with (_conn() if owns_conn else nullcontext(conn)) as setup_conn:
         if not skip_upstream_check:
-            upstream = check_upstream_presence(conn, chart_id)
+            upstream = check_upstream_presence(setup_conn, chart_id)
             summary["upstream_check"] = upstream
             if not upstream["present"]:
                 msg = (
@@ -3326,15 +3931,21 @@ def build_ga_structural(
         else:
             logger.warning("[ga_structural_writer] Upstream check SKIPPED (skip_upstream_check=True)")
 
-        all_rows_total: list[dict[str, Any]] = []
+        yoga_catalog = _load_yoga_catalog(setup_conn)
+        dosha_catalog = _load_dosha_catalog(setup_conn)
+        if owns_conn:
+            setup_conn.commit()
+    # setup_conn closed here (when owns_conn); caller's conn untouched (owns_conn=False)
 
-        # Pre-load catalogs once — avoids repeat DB queries per ayanamsha
-        yoga_catalog = _load_yoga_catalog(conn)
-        dosha_catalog = _load_dosha_catalog(conn)
+    # ── Phase 2: Per-ayanamsha build ──────────────────────────────────────────────
+    # owns_conn=True  → fresh _conn() per ayanamsha (avoids long-lived TCP stall)
+    # owns_conn=False → reuse caller's conn (orchestrator manages lifecycle)
+    all_rows_total: list[dict[str, Any]] = []
 
-        for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
-            logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
+    for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
+        logger.info("[ga_structural_writer] Computing ayanamsha=%s", canonical_id)
 
+        with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
@@ -3350,17 +3961,26 @@ def build_ga_structural(
             all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_vimsopaka_ext_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
-            all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
+            all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
+            all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
             all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_composite_strength_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_argala_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
+            all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_special_point_relationship_rows(
+                ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
+            all_rows.extend(_build_graha_yuddha_rows(
+                chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
+            all_rows.extend(_build_combustion_retrograde_relationship_rows(
+                chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
 
             # Two-pass verification passes
             try:
@@ -3392,7 +4012,7 @@ def build_ga_structural(
             summary["varga_rows_count"] = varga_rows
 
             # Insert
-            cf_count = _insert_chart_facts_rows(conn, all_rows)
+            cf_count = _insert_chart_facts_rows(ay_conn, all_rows)
             summary["ayanamshas"][canonical_id] = {
                 "chart_facts_rows": cf_count,
                 "argala_rows": argala_count,
@@ -3411,8 +4031,9 @@ def build_ga_structural(
                 canonical_id, cf_count, argala_count, yoga_count, dosha_count, varga_rows,
             )
 
-        if owns_conn:
-            conn.commit()
+            if owns_conn:
+                ay_conn.commit()
+        # ay_conn closed and committed here (when owns_conn)
 
     # asset_throughput is written by the orchestrator on the conformed path; only
     # the legacy standalone CLI (owns_conn) writes it here via _telemetry.
@@ -3428,6 +4049,216 @@ def build_ga_structural(
         summary["virodha_count"],
     )
     return summary
+
+
+def _build_graha_yuddha_rows(
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Detect graha yuddha (planetary war): two classical grahas within 1° in the same sign.
+
+    Classical rule: only CLASSICAL_GRAHAS (no nodes) can be in yuddha.
+    Lower absolute longitude = winner; higher longitude = loser.
+    Emits 3 rows per pair: fact_key='winner', 'loser', 'orb_deg'.
+    """
+    rows: list[dict[str, Any]] = []
+
+    # Build longitude + sign table for classical grahas only
+    graha_data: list[tuple[str, float, str]] = []  # (name, longitude, sign)
+    for g in chart_output.get("grahas", []):
+        name = g.get("name", "")
+        if name not in CLASSICAL_GRAHAS:
+            continue
+        lon = float(g.get("longitude", 0.0))
+        sign = str(g.get("sign", ""))
+        graha_data.append((name, lon, sign))
+
+    for i, (name_a, lon_a, sign_a) in enumerate(graha_data):
+        for name_b, lon_b, sign_b in graha_data[i + 1:]:
+            if sign_a != sign_b:
+                continue  # must be same sign
+            orb = abs(lon_a - lon_b)
+            # Wrap-around within sign (max 30°, so no circular wrap needed beyond simple diff)
+            if orb > 1.0:
+                continue
+            # Lower longitude = winner (classical rule: closer to 0° of sign)
+            if lon_a <= lon_b:
+                winner, loser = name_a, name_b
+            else:
+                winner, loser = name_b, name_a
+            subj_w = PLANET_TO_SUBJECT.get(winner, winner.upper())
+            subj_l = PLANET_TO_SUBJECT.get(loser, loser.upper())
+            pair_key = f"{subj_w}_v_{subj_l}"
+
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "winner",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_text=winner,
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha in {sign_a}: {winner} wins over {loser} "
+                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                ),
+            ))
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "loser",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_text=loser,
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha in {sign_a}: {loser} loses to {winner} "
+                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                ),
+            ))
+            rows.append(_base_row(
+                "graha_yuddha", pair_key, "orb_deg",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=round(orb, 6),
+                unit="degrees",
+                value_jsonb={
+                    "winner": winner,
+                    "loser": loser,
+                    "orb_deg": round(orb, 6),
+                    "sign": sign_a,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.graha_yuddha/{eng_ver}",
+                citation_human=(
+                    f"Graha yuddha orb in {sign_a}: {winner} vs {loser} "
+                    f"= {round(orb,4)}° ({ayanamsha_id})."
+                ),
+            ))
+
+    return rows
+
+
+def _build_combustion_retrograde_relationship_rows(
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Emit combustion_relationship and retrograde_aspect_modification rows.
+
+    combustion_relationship: each non-Sun graha where the circular longitude diff
+        from Sun <= COMBUSTION_ORBS[graha].
+    retrograde_aspect_modification: for each retrograde graha, one row per Parashari
+        aspect it casts (aspect strength halved per classical retrograde modifier).
+    """
+    rows: list[dict[str, Any]] = []
+
+    # Locate Sun
+    sun_lon: float | None = None
+    for g in chart_output.get("grahas", []):
+        if g.get("name") == "Sun":
+            sun_lon = float(g.get("longitude", 0.0))
+            break
+
+    # Combustion detection
+    if sun_lon is not None:
+        for g in chart_output.get("grahas", []):
+            name = g.get("name", "")
+            if name == "Sun":
+                continue
+            orb_limit = COMBUSTION_ORBS.get(name, 0.0)
+            if orb_limit == 0.0:
+                continue
+            lon = float(g.get("longitude", 0.0))
+            diff = abs(lon - sun_lon)
+            if diff > 180.0:
+                diff = 360.0 - diff
+            if diff <= orb_limit:
+                subj = PLANET_TO_SUBJECT.get(name, name.upper())
+                rows.append(_base_row(
+                    "combustion_relationship",
+                    f"SUN_v_{subj}", "combust",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=round(diff, 6),
+                    unit="degrees",
+                    value_text="combust",
+                    value_jsonb={
+                        "planet": name,
+                        "sun_longitude": sun_lon,
+                        "planet_longitude": lon,
+                        "orb_deg": round(diff, 6),
+                        "orb_limit": orb_limit,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif="two_pass_verified",
+                    source=f"ga_structural.combustion_relationship/{eng_ver}",
+                    citation_human=(
+                        f"{name} combust: within {round(diff,4)}° of Sun "
+                        f"(orb limit {orb_limit}°) ({ayanamsha_id})."
+                    ),
+                ))
+
+    # Retrograde aspect modification
+    for g in chart_output.get("grahas", []):
+        name = g.get("name", "")
+        retro = bool(g.get("retrograde", False))
+        if not retro:
+            continue
+        house = int(g.get("house", 0))
+        if not house:
+            continue
+        subj = PLANET_TO_SUBJECT.get(name, name.upper())
+        if name in ("Rahu", "Ketu"):
+            asp_offsets = NODE_PARASHARI_ASPECTS
+        elif name in PARASHARI_ASPECTS:
+            asp_offsets = PARASHARI_ASPECTS[name]
+        else:
+            asp_offsets = PARASHARI_ASPECTS["all"]
+
+        for offset, strength in asp_offsets.items():
+            target_house = ((house - 1 + offset - 1) % 12) + 1
+            # Retrograde modifier: classical convention halves aspect strength
+            modified_strength = round(strength * 0.5, 4)
+            rows.append(_base_row(
+                "retrograde_aspect_modification",
+                f"{subj}_retro", f"house_{target_house}",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_num=modified_strength,
+                unit="strength",
+                value_jsonb={
+                    "planet": name,
+                    "source_house": house,
+                    "target_house": target_house,
+                    "aspect_offset": offset,
+                    "base_strength": strength,
+                    "modified_strength": modified_strength,
+                    "ayanamsha_id": ayanamsha_id,
+                    "uncatalogued": False,
+                },
+                verif="two_pass_verified",
+                source=f"ga_structural.retrograde_aspect_modification/{eng_ver}",
+                citation_human=(
+                    f"{name} (retrograde) modified aspect to H{target_house} "
+                    f"strength={modified_strength} ({ayanamsha_id})."
+                ),
+            ))
+
+    return rows
 
 
 def build_ga_structural_substep(
@@ -3472,9 +4303,18 @@ def build_ga_structural_substep(
     all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_argala_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
     all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_special_point_relationship_rows(
+        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+    all_rows.extend(_build_graha_yuddha_rows(
+        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+    all_rows.extend(_build_combustion_retrograde_relationship_rows(
+        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
 
     # Two-pass verification
     try:

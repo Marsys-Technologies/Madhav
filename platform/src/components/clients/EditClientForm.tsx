@@ -157,7 +157,7 @@ export function EditClientForm({ chart }: Props) {
         return
       }
       if (isBirthAffecting(initial, form)) {
-        router.push(`/clients/${chart.id}/build`)
+        router.push(`/clients/${chart.id}/nirmana`)
       } else {
         router.push('/dashboard')
       }

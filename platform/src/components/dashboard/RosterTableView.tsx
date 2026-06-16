@@ -134,7 +134,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
               <td className="px-3 py-2">
                 <div className="flex gap-1.5">
                   <Link
-                    href={`/clients/${c.id}/build`}
+                    href={`/clients/${c.id}/nirmana`}
                     className={cn(GHOST_BTN)}
                     aria-label={`Nirmāṇa (build) — ${c.name}`}
                   >

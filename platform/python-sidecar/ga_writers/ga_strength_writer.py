@@ -155,6 +155,43 @@ def _check_narration(text_value: str | None, context: str) -> None:
             )
 
 
+# ── Drik bala from aspect matrix ─────────────────────────────────────────────
+
+_BENEFIC_GRAHAS_DRIK = frozenset({"Jupiter", "Venus", "Mercury", "Moon"})
+_MALEFIC_GRAHAS_DRIK = frozenset({"Saturn", "Mars", "Sun", "Rahu", "Ketu"})
+_DRIK_ASPECT_OFFSETS: dict[str, dict[int, float]] = {
+    "Saturn":  {3: 0.25, 7: 1.0, 10: 0.75},
+    "Jupiter": {5: 1.0,  7: 1.0, 9: 1.0},
+    "Mars":    {4: 1.0,  7: 1.0, 8: 1.0},
+    "Rahu":    {5: 1.0,  7: 1.0, 9: 1.0},
+    "Ketu":    {5: 1.0,  7: 1.0, 9: 1.0},
+}
+_DRIK_DEFAULT_OFFSETS: dict[int, float] = {7: 1.0}
+
+
+def _compute_drik_bala(target_graha: str, target_house: int, grahas: list[dict]) -> float:
+    """Compute drik bala for a graha from Parashari aspects received.
+    Returns float in [0.0, 1.0]: 0.5 baseline ± aspect contributions.
+    """
+    net = 0.0
+    for g in grahas:
+        g_name = g["name"]
+        if g_name == target_graha:
+            continue
+        g_house = int(g.get("house", 0))
+        if not g_house:
+            continue
+        offsets = _DRIK_ASPECT_OFFSETS.get(g_name, _DRIK_DEFAULT_OFFSETS)
+        for offset, strength in offsets.items():
+            aspected_h = ((g_house - 1 + offset - 1) % 12) + 1
+            if aspected_h == target_house:
+                if g_name in _BENEFIC_GRAHAS_DRIK:
+                    net += strength * 0.25
+                elif g_name in _MALEFIC_GRAHAS_DRIK:
+                    net -= strength * 0.25
+    return max(0.0, min(1.0, 0.5 + net))
+
+
 # ── Shadbala derivation from positions ───────────────────────────────────────
 # When PyJHora's strength module is not available, we derive from positions.
 # This is a first-principles classical reconstruction for the two-pass invariant.
@@ -162,6 +199,7 @@ def _check_narration(text_value: str | None, context: str) -> None:
 def _derive_shadbala_from_positions(
     chart_output: dict[str, Any],
     ayanamsha_id: str,
+    birth_hour: float | None = None,
 ) -> dict[str, dict[str, float]]:
     """
     Derive shadbala sub-balas from positions using classical formulas.
@@ -172,12 +210,21 @@ def _derive_shadbala_from_positions(
       - Dig bala: directional strength (based on house position)
       - Kala bala: temporal strength (day/night, paksha, etc.)
       - Cheshta bala: motional strength (retrograde = strong for superior planets)
-      - Naisargika bala: natural strength (fixed table)
-      - Drik bala: aspectual strength (derived from aspects received)
+      - Naisargika bala: natural strength (fixed table; 0 for Rahu/Ketu)
+      - Drik bala: aspectual strength (derived from aspect matrix)
 
-    Note: Full shadbala is complex; this gives a first-order estimate sufficient
-    for two-pass invariant checking (total ≈ sum of sub-balas).
+    Rahu/Ketu are included with naisargika=0, dig=0, kala=0, cheshta=0 per
+    Parashara strict tradition (naisargika_na=True flag set on their entries).
+
+    Args:
+        chart_output: PyJHora chart output dict with grahas/panchanga.
+        ayanamsha_id: Ayanamsha identifier string.
+        birth_hour: Local birth hour as float (e.g. 10.72 = 10h 43m IST).
+                    When provided, overrides panchanga is_daytime lookup.
     """
+    _NODAL_GRAHAS = frozenset({"Rahu", "Ketu"})
+    _KNOWN_GRAHAS = frozenset(NAISARGIKA_BALA.keys()) | _NODAL_GRAHAS
+
     grahas = chart_output.get("grahas", [])
     panchanga = chart_output.get("panchanga", {})
 
@@ -185,8 +232,10 @@ def _derive_shadbala_from_positions(
 
     for g in grahas:
         name = g["name"]
-        if name not in NAISARGIKA_BALA:
+        if name not in _KNOWN_GRAHAS:
             continue
+
+        is_node = name in _NODAL_GRAHAS
 
         sign_id = int(g.get("sign_id", 1)) - 1  # 0-based
         house = int(g.get("house", 1))
@@ -196,6 +245,7 @@ def _derive_shadbala_from_positions(
         # ── Sthana bala (positional) ──────────────────────────────────────
         # Exaltation=1.0, Own=0.75, Mooltrikona=0.625, Friendly=0.5, Neutral=0.375,
         # Enemy=0.25, Debilitation=0.0
+        # Nodes: sign placement still matters for some schools — keep it.
         sthana_map = {
             "exalted": 1.0,
             "own_sign": 0.75,
@@ -205,64 +255,85 @@ def _derive_shadbala_from_positions(
         sthana = sthana_map.get(dignity, 0.375)
 
         # ── Dig bala (directional) ────────────────────────────────────────
-        # Sun/Mars strong in 10th; Moon/Venus in 4th; Jupiter/Mercury in 1st; Saturn in 7th
-        dig_strong_house = {
-            "Sun": 10, "Mars": 10,
-            "Moon": 4, "Venus": 4,
-            "Jupiter": 1, "Mercury": 1,
-            "Saturn": 7,
-        }
-        strong_h = dig_strong_house.get(name, 1)
-        # Dig bala: max at strong_h, zero at opposite (strong_h+6)
-        weak_h = ((strong_h - 1 + 6) % 12) + 1
-        # Linear interpolation from strong (1.0) to weak (0.0)
-        dist = abs(house - strong_h)
-        if dist > 6:
-            dist = 12 - dist
-        dig = 1.0 - (dist / 6.0)
+        # Nodes have no classical directional strength.
+        if is_node:
+            dig = 0.0
+        else:
+            # Sun/Mars strong in 10th; Moon/Venus in 4th; Jupiter/Mercury in 1st; Saturn in 7th
+            dig_strong_house = {
+                "Sun": 10, "Mars": 10,
+                "Moon": 4, "Venus": 4,
+                "Jupiter": 1, "Mercury": 1,
+                "Saturn": 7,
+            }
+            strong_h = dig_strong_house.get(name, 1)
+            # Linear interpolation from strong (1.0) to weak (0.0)
+            dist = abs(house - strong_h)
+            if dist > 6:
+                dist = 12 - dist
+            dig = 1.0 - (dist / 6.0)
 
         # ── Kala bala (temporal) ─────────────────────────────────────────
-        # Simplified: use vara (day of week) + paksha (lunar phase)
-        # Day-time strong: Sun, Jupiter, Saturn; Night-time strong: Moon, Mars, Venus; Mercury both
-        vara_idx = panchanga.get("vara", 0)  # 0=Sunday..6=Saturday
-        # tithi_id is the numeric index (1..30); "tithi" key is the name string
-        tithi_idx = int(panchanga.get("tithi_id", panchanga.get("tithi", 1)) or 1)
-        is_daytime = True  # birth was 10:43 IST — daytime
-        is_shukla = (1 <= tithi_idx <= 15)
+        # Nodes have no classical temporal strength.
+        if is_node:
+            kala = 0.0
+        else:
+            # Simplified: use vara (day of week) + paksha (lunar phase)
+            # Day-time strong: Sun, Jupiter, Saturn; Night-time strong: Moon, Mars, Venus; Mercury both
+            vara_idx = panchanga.get("vara", 0)  # 0=Sunday..6=Saturday
+            # tithi_id is the numeric index (1..30); "tithi" key is the name string
+            tithi_idx = int(panchanga.get("tithi_id", panchanga.get("tithi", 1)) or 1)
 
-        kala_day_strong = {"Sun", "Jupiter", "Saturn"}
-        kala_night_strong = {"Moon", "Mars", "Venus"}
-        if name in kala_day_strong:
-            kala = 0.75 if is_daytime else 0.375
-        elif name in kala_night_strong:
-            kala = 0.75 if not is_daytime else 0.375
-        else:  # Mercury
-            kala = 0.625
-        # Paksha bonus (tithi_idx may come as int or str from panchanga)
-        if name in {"Moon", "Jupiter"} and is_shukla:
-            kala = min(kala + 0.125, 1.0)
+            # Determine day/night from birth_hour if supplied; otherwise from panchanga.
+            if birth_hour is not None:
+                is_daytime = 6.0 <= birth_hour < 18.0
+            else:
+                panchanga_daytime = panchanga.get("is_daytime")
+                if panchanga_daytime is not None:
+                    is_daytime = bool(panchanga_daytime)
+                else:
+                    is_daytime = True  # conservative fallback: daytime (caller should pass birth_hour)
+
+            is_shukla = (1 <= tithi_idx <= 15)
+
+            kala_day_strong = {"Sun", "Jupiter", "Saturn"}
+            kala_night_strong = {"Moon", "Mars", "Venus"}
+            if name in kala_day_strong:
+                kala = 0.75 if is_daytime else 0.375
+            elif name in kala_night_strong:
+                kala = 0.75 if not is_daytime else 0.375
+            else:  # Mercury
+                kala = 0.625
+            # Paksha bonus (tithi_idx may come as int or str from panchanga)
+            if name in {"Moon", "Jupiter"} and is_shukla:
+                kala = min(kala + 0.125, 1.0)
 
         # ── Cheshta bala (motional) ──────────────────────────────────────
-        # Retrograde outer planets (Mars/Jupiter/Saturn) get high cheshta bala
-        # Direct inner planets get moderate
-        outer_planets = {"Mars", "Jupiter", "Saturn"}
-        if name in outer_planets and is_retro:
-            cheshta = 1.0
-        elif name in outer_planets:
-            cheshta = 0.5
+        # Nodes have no classical motional strength.
+        if is_node:
+            cheshta = 0.0
         else:
-            cheshta = 0.5  # Sun/Moon don't retrograde; Mercury/Venus moderate
+            # Retrograde outer planets (Mars/Jupiter/Saturn) get high cheshta bala
+            # Direct inner planets get moderate
+            outer_planets = {"Mars", "Jupiter", "Saturn"}
+            if name in outer_planets and is_retro:
+                cheshta = 1.0
+            elif name in outer_planets:
+                cheshta = 0.5
+            else:
+                cheshta = 0.5  # Sun/Moon don't retrograde; Mercury/Venus moderate
 
         # ── Naisargika bala (fixed) ──────────────────────────────────────
-        naisargika = NAISARGIKA_BALA[name]
+        # Nodes have no naisargika bala per Parashara strict.
+        naisargika = 0.0 if is_node else NAISARGIKA_BALA.get(name, 0.5)
 
         # ── Drik bala (aspectual) ────────────────────────────────────────
-        # Simplified: neutral 0.5 — full drik requires aspect matrix (GA8)
-        drik = 0.375
+        # Computed from D1 Parashari aspect matrix; nodes receive aspects too.
+        drik = _compute_drik_bala(name, house, grahas)
 
         total = sthana + dig + kala + cheshta + naisargika + drik
 
-        result[name] = {
+        entry: dict[str, Any] = {
             "sthana": round(sthana, 4),
             "dig": round(dig, 4),
             "kala": round(kala, 4),
@@ -271,6 +342,11 @@ def _derive_shadbala_from_positions(
             "drik": round(drik, 4),
             "total": round(total, 4),
         }
+        if is_node:
+            entry["naisargika_na"] = True
+            entry["school"] = "parashara_strict"
+
+        result[name] = entry
 
     return result
 
@@ -719,6 +795,51 @@ def _build_shadbala_rows(
                 "computed_at": computed_at,
             })
 
+    # ── Nodal grahas (Rahu / Ketu) ───────────────────────────────────────────
+    # Emit one row per sub-bala so the cockpit/retrieval layer sees explicit rows.
+    # Sub-balas not defined classically for nodes (dig, kala, cheshta, naisargika)
+    # are emitted with value=0 and verification_pass_status='not_defined_for_nodes'.
+    # Sthana (positional dignity) and drik (aspects received) ARE computable → use
+    # values from the shadbala dict (computed in _derive_shadbala_from_positions).
+    NODAL_UNDEFINED_SUBS = frozenset({"dig", "kala", "cheshta", "naisargika"})
+    nodal_grahas = ["Rahu", "Ketu"]
+    for graha_name in nodal_grahas:
+        subject = PLANET_TO_SUBJECT.get(graha_name, graha_name.upper())
+        sb = shadbala.get(graha_name, {})
+        if not sb:
+            continue  # node not in chart output (degenerate case)
+        for sub_key, category in category_map.items():
+            value = sb.get(sub_key, 0.0)
+            eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
+            if sub_key in NODAL_UNDEFINED_SUBS:
+                node_verif = "not_defined_for_nodes"
+            elif sub_key in ("sthana", "drik", "total"):
+                node_verif = verif_status
+            else:
+                node_verif = verif_status
+            fid = _fact_id(category, subject, "rupa", chart_id, eff_ayan, build_id)
+            cref = _citation_ref(category, subject, "rupa", chart_id, eff_ayan, eng_ver)
+            chum = _citation_human_strength(category, subject, "rupa", value, eff_ayan)
+            rows.append({
+                "fact_id": fid,
+                "chart_id": chart_id,
+                "ayanamsha_id": eff_ayan,
+                "build_id": build_id,
+                "fact_category": category,
+                "fact_subject": subject,
+                "fact_key": "rupa",
+                "fact_value_text": None,
+                "fact_value_num": value,
+                "fact_value_jsonb": None,
+                "unit": "rupa",
+                "citation_ref": cref,
+                "citation_human": chum,
+                "source_calculation": f"pyjhora_adapter.strength_classical/{eng_ver}",
+                "verification_pass_status": node_verif,
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
     return rows
 
 
@@ -947,8 +1068,17 @@ def build_ga_strength(
                 forensic_gate(chart_output, canonical_id)
             summary["forensic_pass"] = True
 
+            # Derive birth_hour from bp so kala-bala is not hardcoded to daytime.
+            from datetime import datetime as _dt_cls
+            _raw_dt = bp.get("datetime_iso", "")
+            try:
+                _parsed = _dt_cls.fromisoformat(_raw_dt)
+                _birth_hour: float | None = _parsed.hour + _parsed.minute / 60.0 + _parsed.second / 3600.0
+            except (ValueError, TypeError):
+                _birth_hour = None
+
             # ── Derive strength values ──────────────────────────────────
-            shadbala = _derive_shadbala_from_positions(chart_output, canonical_id)
+            shadbala = _derive_shadbala_from_positions(chart_output, canonical_id, birth_hour=_birth_hour)
             ishta_kashta = _derive_ishta_kashta(shadbala)
             vimsopaka = _derive_vimsopaka(shadbala)
             bav = _derive_ashtakavarga(chart_output)

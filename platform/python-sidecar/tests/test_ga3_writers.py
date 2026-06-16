@@ -298,13 +298,20 @@ class TestPositionRows:
 # ── 21-27: Shadbala derivation ───────────────────────────────────────────────
 
 class TestShadbalaDerivation:
-    def test_returns_7_grahas(self, shadbala):
-        assert len(shadbala) == 7
+    def test_returns_7_or_more_grahas(self, shadbala):
+        # 7 classical planets + optional Rahu/Ketu nodal rows (naisargika_na=True)
+        assert len(shadbala) >= 7
+
+    def test_classical_planets_present(self, shadbala):
+        classical = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"}
+        assert classical.issubset(shadbala.keys()), (
+            f"Missing classical planets: {classical - shadbala.keys()}"
+        )
 
     def test_all_7_sub_keys_present(self, shadbala):
-        expected = {"sthana", "dig", "kala", "cheshta", "naisargika", "drik", "total"}
+        required = {"sthana", "dig", "kala", "cheshta", "naisargika", "drik", "total"}
         for graha, sb in shadbala.items():
-            assert set(sb.keys()) == expected, f"{graha} missing keys"
+            assert required.issubset(sb.keys()), f"{graha} missing keys: {required - sb.keys()}"
 
     def test_invariant_sum_equals_total(self, shadbala):
         sub_keys = ["sthana", "dig", "kala", "cheshta", "naisargika", "drik"]
@@ -400,17 +407,32 @@ class TestStrengthRows:
             )
 
     def test_non_naisargika_two_pass_verified(self, shadbala_rows):
+        _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
+        _NODAL_UNDEFINED_CATS = frozenset({
+            "graha_shadbala_dig", "graha_shadbala_kala",
+            "graha_shadbala_cheshta", "graha_shadbala_naisargika",
+        })
         for r in shadbala_rows:
             if r["fact_category"] == "graha_shadbala_naisargika":
-                assert r["verification_pass_status"] == "classical_match"
+                if r["fact_subject"] in _NODAL_SUBJECTS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "classical_match"
             elif r["fact_category"].startswith("graha_shadbala") and r["fact_key"] == "rupa":
-                assert r["verification_pass_status"] == "two_pass_verified"
+                if r["fact_subject"] in _NODAL_SUBJECTS and r["fact_category"] in _NODAL_UNDEFINED_CATS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "two_pass_verified"
 
     def test_naisargika_invariant(self, shadbala_rows):
+        _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
         for r in shadbala_rows:
             if r["fact_category"] == "graha_shadbala_naisargika":
                 assert r["ayanamsha_id"] == "INVARIANT"
-                assert r["verification_pass_status"] == "classical_match"
+                if r["fact_subject"] in _NODAL_SUBJECTS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "classical_match"
 
     @pytest.fixture(scope="class")
     def bav_rows(self, native_chart, ashtakavarga):

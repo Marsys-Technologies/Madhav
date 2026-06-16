@@ -50,7 +50,7 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
-  const { stats } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  const { stats, refetch: refetchStats } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
   const layerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -64,7 +64,11 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
     if (e.type === 'asset.state_change') {
       setSseOverlay(prev => {
         const next = new Map(prev)
-        next.set(e.asset_id, { ...prev.get(e.asset_id), state: e.to_state })
+        // Terminal states: yield immediately to polled stats (count_sql truth).
+        // Non-terminal: write the overlay so the bar shows live in-flight state.
+        const TERMINAL = e.to_state === 'lit' || e.to_state === 'error' || e.to_state === 'dormant'
+        if (TERMINAL) next.delete(e.asset_id)
+        else next.set(e.asset_id, { ...prev.get(e.asset_id), state: e.to_state })
         return next
       })
     } else if (e.type === 'asset.progress') {
@@ -86,8 +90,16 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
       })
     } else if (e.type === 'run.state_change') {
       refreshRun()
+      // On run end, clear all overlays so polled stats become the single source of truth,
+      // then force an immediate re-poll so the cleared overlay is backfilled at once.
+      const RUN_DONE = ['complete', 'failed', 'stopped', 'cancelled'].includes(e.state)
+      if (RUN_DONE) {
+        setSseOverlay(new Map())
+        setSubstepOverlay(new Map())
+        refetchStats()
+      }
     }
-  }, [refreshRun])
+  }, [refreshRun, refetchStats])
 
   useCockpitSSE(chartId, handleSSEEvent)
 

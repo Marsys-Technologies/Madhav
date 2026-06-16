@@ -89,7 +89,7 @@ function StatusDot({
 }) {
   const isDraft = catalogStatus === 'DRAFT'
   const isHealthy = state === 'lit' || state === 'service_ok'
-  const isAmber = state === 'building' || state === 'stale' || state === 'dormant'
+  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
   const isRed = state === 'error' || state === 'not_migrated' || isDraft
 
   const color = isRed
@@ -123,13 +123,19 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
   const [showPlanModal, setShowPlanModal] = useState(false)
   const { isSuperAdmin } = useUserRole()
   const isActive = asset.is_active
-  const hasError = stat?.error != null && stat.error !== 'missing_table'
+  const isDataPlaneDown = stat?.error_class === 'dataplane'
+  // Suppress red-error display when the failure is a transient data-plane blip
+  const hasError = stat?.error != null && stat.error !== 'missing_table' && !isDataPlaneDown
 
-  // Derive state: prefer throughput state, fallback to row-count heuristic
+  // Derive state: prefer throughput state, fallback to row-count heuristic.
+  // Data-plane errors show as 'reconnecting' (amber) rather than 'error' (red)
+  // so a transient proxy restart doesn't falsely mark healthy assets as FAILED.
   const throughputState = stat?.state
   const derivedState: string = !isActive
     ? 'not_migrated'
-    : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
+    : isDataPlaneDown
+      ? 'reconnecting'
+      : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
 
   return (
     <div
@@ -169,7 +175,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         ) : (
           <>
             <AssetProgressBar
-              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated'}
+              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting'}
               actualRows={stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
             />
@@ -182,6 +188,18 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
                 {substep.substep_total > 0 && (
                   <span>Step {substep.substep_index} / {substep.substep_total}</span>
                 )}
+              </div>
+            )}
+            {/* build-state stale badge: data present but throughput record is stale/absent */}
+            {stat?.build_state_stale && (
+              <div style={{ fontSize: '9px', color: 'rgba(236,197,106,0.65)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                build-state stale
+              </div>
+            )}
+            {/* Transient data-plane blip — amber, not red */}
+            {isDataPlaneDown && (
+              <div style={{ fontSize: '9px', color: '#ECC56A', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
+                data plane reconnecting…
               </div>
             )}
             {hasError && stat?.error && (
