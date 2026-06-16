@@ -169,14 +169,9 @@ writer for the 5 folded UCD columns* on the existing summary tables. It is **not
 retired UCN narrative. (Option B — re-scoping UCD to a real per-chart resonance table, requiring
 an A14 spec amendment — was declined.) The `bo_samvada` brief is authored to Option A.
 
-### §3.4 — G52 `signal_type_registry` is a NEW GLOBAL prerequisite (handoff §8.3)
+### §3.4 — G52 `signal_type_registry` — ELIMINATED (native directive 2026-06-16)
 
-A10 §5 + §12 require `signal_type_registry` (~500–700 data-driven predicate definitions across
-all 6 traditions + synthetic predicates) **seeded before `bo_laksana` runs** — predicate
-evaluation is data-driven, not hardcoded. It does not exist anywhere yet (confirmed at open).
-**Phase-0 builds it as an L0/global asset** (`bg_*` or a global registry table per the L0
-naming) with its own writer + seed, registered in `asset_registry`, and made a `depends_on`
-of `bo_laksana`. This is the largest Phase-0 sub-task and gates the entire layer.
+G52 was planned as a global predicate-firing registry. It is now **fully eliminated** per native directive 2026-06-16. The projection model is used instead: `bo_laksana` projects `ga_structural` enumeration; `signal_type_id` is derived from the relationship's class/tradition pattern — no registry lookup, no seed task, no migration dependency. See A10 v1.3 §5.
 
 ### §3.5 — The `l25_*` placeholder DDL is a STUB, not the spec (handoff §8.4)
 
@@ -210,9 +205,8 @@ bo_pramana_mapa (scorecard)      depends_on: []  (global)
 executor runs this automatically from `depends_on`. **Verify the edges match what each writer
 actually reads** (the L1 Phase-4 lesson: the declared DAG must match real read dependencies).
 One correction to confirm: `bo_laksana.depends_on` should also pull `ga_structural` (its
-primary feed) + `signal_type_registry` (G52) — `[bg_rules]` alone is insufficient. The DAG
-executor resolves transitively, but `signal_type_registry` is a global that must be an explicit
-edge.
+primary feed) — `[bg_rules]` alone is insufficient. `signal_type_registry` (G52) is eliminated
+and is no longer a DAG edge.
 
 ---
 
@@ -304,7 +298,7 @@ deliberation committed into "fact" fields (C3); interpretive claims in `signal_n
   composed `computed_salience`. Interpretive salience/valence is the ONLY thing a model could
   supply — and Bodha does NOT supply it at write time (serve-time concern).
 - **Fresh build — do NOT port the old MSR_v5_0 573 hand-authored signals.** Bodha computes
-  signals fresh from `signal_type_registry` predicates × L1 facts. The old corpus is reference
+  signals fresh from L1 facts (ga_structural projection — G52 signal_type_registry eliminated). The old corpus is reference
   for *coverage intent* only, never an import source. (This is what makes Bodha clean by
   construction rather than audited-and-fixed.)
 
@@ -364,8 +358,8 @@ Phase-0 is the foundation. Each item is a discrete, surgical, verified step:
 | # | Phase-0 task | Detail |
 |---|---|---|
 | P0.1 | **Settle table naming in code** | Author the corrective migration: drop the 6 `l25_*` stub tables (migration 206); create the ~17 full-spec `bodha_*` tables from A10–A14 schemas (renamed `l25_`→`bodha_`). Apply surgically via Cloud SQL proxy, one at a time, file-vs-live verified, tracker row recorded. |
-| P0.2 | **Build G52 `signal_type_registry`** | New global asset: ~500–700 data-driven predicate definitions (A10 §5 schema) across all 6 traditions + synthetics. Its own writer + seed, registered in `asset_registry`, made an explicit `depends_on` edge of `bo_laksana`. **Largest Phase-0 task; gates the layer.** |
-| P0.3 | **Reconcile the 8 seed rows → real spec tables** | Update each `bo_` row's `target_table`/`count_sql`/`size_sql` to point at its real `bodha_*` spec table(s) per §3.2 map. Confirm `depends_on` matches real reads (add `ga_structural` + `signal_type_registry` to `bo_laksana`). Flip the 8 rows DRAFT→CURRENT only after their tables + writers exist. |
+| P0.2 | **G52 `signal_type_registry` — ELIMINATED** | G52 eliminated per native directive 2026-06-16. No build task, no seed, no migration. `bo_laksana` uses the projection model (see §3.4). |
+| P0.3 | **Reconcile the 8 seed rows → real spec tables** | Update each `bo_` row's `target_table`/`count_sql`/`size_sql` to point at its real `bodha_*` spec table(s) per §3.2 map. Confirm `depends_on` matches real reads (add `ga_structural` to `bo_laksana`; G52 `signal_type_registry` eliminated). Flip the 8 rows DRAFT→CURRENT only after their tables + writers exist. |
 | P0.4 | **Resolve the `bo_samvada`/UCD open item** | Native decision per §3.3 (Option A recommended). Encode the choice before authoring `bo_samvada`'s brief. |
 | P0.5 | **Confirm Phase-5 E2E + non-native build proven** | The orchestrator-native build must be proven on a non-native chart before L2 rides the same machinery. #266 fixed non-native builds; confirm the Phase-5 E2E runbook (`ORCHESTRATOR_CONVERGENCE_CLOSE §4`) has been executed green, or schedule it as a Phase-0 gate. `[[project-orchestrator-convergence-complete]]` notes Phase-5 live E2E is operator-only + NOT YET RUN — **run it before L2 builds.** |
 | P0.6 | **Author the shared idempotency helper** | `bodha_writers/_idempotency.py` mirroring `ga_writers/_idempotency.py` — per-chart scoped `replace_prior_*(conn, chart_id, natural_key)`. All `bo_` writers import it. |
@@ -382,7 +376,7 @@ exact source `ga_*` facts it reads; the two-pass verification method; the FORENS
 assertions; atomic grain + idempotency; `count_sql`/`target_floor` cockpit wiring.
 
 **Batch 1 (the root):** `CLAUDECODE_BRIEF_BO_LAKSANA` (A10 MSR). The biggest and the root —
-author it alone, get it built + cockpit-verified, before the fan-out. Includes G52 dependency.
+author it alone, get it built + cockpit-verified, before the fan-out. G52 dependency eliminated.
 
 **Batch 2 (the fan-out, parallel-safe on MSR):**
 `CLAUDECODE_BRIEF_BO_SANGATI` (A11 CDLM), `CLAUDECODE_BRIEF_BO_BIMBA` + `BO_KARANAJALA`
@@ -435,10 +429,10 @@ discipline.
 
 ## §12 — Verification checklist before declaring L2 Bodha done
 
-- [ ] All ~17 `bodha_*` tables exist to spec; 6 `l25_*` stubs gone; G52 `signal_type_registry` seeded.
+- [ ] All ~17 `bodha_*` tables exist to spec; 6 `l25_*` stubs gone; G52 eliminated — no seed required.
 - [ ] 8 `bo_` writers `@register`'d, conformant (§7 checklist), shipped in `brahma-pipeline` image, discoverable.
 - [ ] Orchestrator builds the whole layer in DAG order from one `scope=layer/bodha` run; heavy writers heartbeat.
-- [ ] `bo_laksana` emits genuine MSR signals fresh from G52 × L1 facts (NOT ported from MSR_v5_0); no threshold drop (weak tail present).
+- [ ] `bo_laksana` emits genuine MSR signals from L1 facts (ga_structural projection; no G52 registry; NOT ported from MSR_v5_0); no threshold drop (weak tail present).
 - [ ] Salience + resonance are `salience_formula_v1`/`resonance_score_v1` — reproducible, unit-tested; no judgment.
 - [ ] Every row references `fact_id`(s) in `constituent_facts_array`; FORENSIC-anchored values inherited from L1, never re-derived; zero `divergent_flagged`.
 - [ ] Two-pass verification on every row; epistemic tier carried (`two_pass_verified` vs `documented_approximation`); citation_ref non-null.
@@ -580,7 +574,7 @@ MVs are NOT counted** (they're derived). `target_floor` = achieved sum after fir
 
 | asset | spec | bodha_* tables it writes | primary (headline) | depends_on (corrected) |
 |---|---|---|---|---|
-| `bo_laksana` | A10 | `bodha_msr_signals` (+ MVs `mv_msr_top_signals_per_chart`/`_recurring_patterns_per_chart`/`_domain_summary`) | `bodha_msr_signals` | `['ga_structural','signal_type_registry']` |
+| `bo_laksana` | A10 | `bodha_msr_signals` (+ MVs `mv_msr_top_signals_per_chart`/`_recurring_patterns_per_chart`/`_domain_summary`) | `bodha_msr_signals` | `['ga_structural','bg_rules']` |
 | `bo_sangati` | A11 + §13.1 | `bodha_cdlm_cells`, `bodha_cdlm_domain_rollups`, `bodha_cdlm_chart_summary`, `bodha_cdlm_pattern_clusters`, `bodha_cdlm_evolution_gradients`, **`bodha_convergence`** (+ 5 MVs) | `bodha_cdlm_cells` | `['bo_laksana']` |
 | `bo_bimba` | A12 (nodes) | `bodha_cgm_nodes` | `bodha_cgm_nodes` | `['bo_laksana']` |
 | `bo_karanajala` | A12 (edges+struct) + §13.1 | `bodha_cgm_edges`, `bodha_cgm_sub_graphs`, `bodha_cgm_motifs`, `bodha_cgm_chart_topology_summary`, **`bodha_cgm_paths`** | `bodha_cgm_edges` | `['bo_laksana']` |

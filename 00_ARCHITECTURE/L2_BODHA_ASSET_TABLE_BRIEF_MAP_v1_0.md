@@ -26,7 +26,7 @@ read_in_combination_with:
 
 | Layer | Status | Note |
 |---|---|---|
-| **Tables ↔ migration DDL** | ✅ COMPLETE & CORRECT | All 23 tables in migration 226 match the §14 locked set exactly (20 spec `bodha_*` + 3 §13.1 extensions + `synthesis_quality_scorecard` + `signal_type_registry`) + 8 MVs. |
+| **Tables ↔ migration DDL** | ✅ COMPLETE & CORRECT | All 23 tables in migration 226 match the §14 locked set exactly (20 spec `bodha_*` + 3 §13.1 extensions + `synthesis_quality_scorecard` + `signal_type_registry`). Note: `signal_type_registry` (G52) is **ELIMINATED per native directive 2026-06-16** — if present in prod it is an orphan; no writer reads it. + 8 MVs. |
 | **Asset → tables (design)** | ✅ LOCKED & CORRECT | §14 + the v1.1 specs define every asset's full table set. |
 | **Asset → tables (live seed)** | ⚠️ 2 fixes PENDING | Seed correct except `bo_samvada` (still points at `bodha_rm_resonances`; should be UCD/none) and `bo_upaya` (needs to OWN `bodha_rm_resonances` + sum 6 tables). Both in the authored-but-not-yet-applied `BODHA_P0E_SEED_CORRECTION` brief. |
 | **Asset → writer briefs** | ❌ INCOMPLETE (0 of 8 writer briefs) | Only the seed-correction brief exists. The 8 per-asset writer briefs are the post-alignment step (campaign §9) and are not yet written. |
@@ -44,8 +44,8 @@ in `count_sql` (derived).
 
 | asset | spec | tables it OWNS (built ✅) | primary | seed target_table now | depends_on (live ✅) | writer brief | brief status |
 |---|---|---|---|---|---|---|---|
-| `bg_signal_type_registry` | A10 §5 (G52) | `signal_type_registry` ✅ | `signal_type_registry` | `signal_type_registry` ✅ | `[]` | `CLAUDECODE_BRIEF_BODHA_G52_PREDICATE_AUTHORING` | ❌ (table+starter seed done; full 500–700 authoring brief not written) |
-| `bo_laksana` | A10 | `bodha_msr_signals` ✅ (+3 MVs ✅) | `bodha_msr_signals` | `bodha_msr_signals` ✅ | `['bg_signal_type_registry','ga_structural','bg_rules']` ✅ | `CLAUDECODE_BRIEF_BO_LAKSANA` | ❌ not written (Batch 1 root) |
+| `bg_signal_type_registry` | A10 §5 (G52) — **ELIMINATED 2026-06-16** | ~~`signal_type_registry`~~ — ELIMINATED | n/a | n/a | n/a | no brief required — G52 eliminated per native directive | ELIMINATED — no build task |
+| `bo_laksana` | A10 | `bodha_msr_signals` ✅ (+3 MVs ✅) | `bodha_msr_signals` | `bodha_msr_signals` ✅ | `['ga_structural','bg_rules']` (G52 eliminated — removed from depends_on) | `CLAUDECODE_BRIEF_BO_LAKSANA` | ❌ not written (Batch 1 root) |
 | `bo_sangati` | A11 | `bodha_cdlm_cells` ✅, `_domain_rollups` ✅, `_chart_summary` ✅, `_pattern_clusters` ✅, `_evolution_gradients` ✅, `bodha_convergence` ✅ | `bodha_cdlm_cells` | `bodha_cdlm_cells` ✅ | `['bo_laksana']` ✅ | `CLAUDECODE_BRIEF_BO_SANGATI` | ❌ not written (Batch 2) |
 | `bo_bimba` | A12 (nodes) | `bodha_cgm_nodes` ✅ | `bodha_cgm_nodes` | `bodha_cgm_nodes` ✅ | `['bo_laksana']` ✅ | `CLAUDECODE_BRIEF_BO_BIMBA` | ❌ not written (Batch 2) |
 | `bo_karanajala` | A12 (edges+struct) | `bodha_cgm_edges` ✅, `_sub_graphs` ✅, `_motifs` ✅, `_chart_topology_summary` ✅, `bodha_cgm_paths` ✅, `bodha_contradictions` ✅ | `bodha_cgm_edges` | `bodha_cgm_edges` ✅ | `['bo_laksana']` ✅ | `CLAUDECODE_BRIEF_BO_KARANAJALA` | ❌ not written (Batch 2 — deepest-built) |
@@ -54,9 +54,8 @@ in `count_sql` (derived).
 | `bo_samvada` | A14 (Option A) | **NONE** — UCD = read-side `vw_chart_digest` + `query_ucd` | n/a | `bodha_rm_resonances` ⚠️ (must clear → UCD) | `['bo_laksana']` ✅ | (no writer brief; UCD read-tool spec instead) | ⚠️ seed fix pending; not a writer |
 | `bo_pramana_mapa` | scorecard | `synthesis_quality_scorecard` ✅ (global) | same | `synthesis_quality_scorecard` ⚠️ (drop `WHERE chart_id`) | `[]` ✅ | `CLAUDECODE_BRIEF_BO_PRAMANA_MAPA` | ❌ not written (Batch 3) |
 
-**Table accounting:** 20 distinct `bodha_*` tables owned across the writers + `synthesis_quality_scorecard`
-+ `signal_type_registry` = **22 tables**; plus `bodha_signal_embeddings` is the 21st `bodha_*`. Migration
-226 = **23 tables total + 8 MVs**. (`bodha_contradictions` + `bodha_convergence` + `bodha_cgm_paths`
+**Table accounting:** 20 distinct `bodha_*` tables owned across the writers + `synthesis_quality_scorecard` = **21 tables** (G52 `signal_type_registry` ELIMINATED 2026-06-16 — no longer counted as an active asset). Migration
+226 = **23 tables total + 8 MVs** (includes `signal_type_registry` as a migration artifact that is now an orphan). (`bodha_contradictions` + `bodha_convergence` + `bodha_cgm_paths`
 are the 3 §13.1 extensions.) The earlier "21" recount omitted the two non-`bodha_`-prefixed tables.
 
 ## §2 — The 3 open links (what makes it NOT-yet-complete) + who closes each
@@ -65,15 +64,14 @@ are the 3 §13.1 extensions.) The earlier "21" recount omitted the two non-`bodh
    across all 6 RM tables. → `BODHA_P0E_SEED_CORRECTION` brief, Antigravity applies (Phase E).
 2. **`bo_samvada` seed row** (⚠️) — clear off `bodha_rm_resonances`; set to UCD/Option-A (view, no
    count). → same correction brief.
-3. **8 writer briefs + the G52 authoring brief** (❌) — do not exist yet. → Cowork authors them
+3. **8 writer briefs** (❌) — do not exist yet. → Cowork authors them
    post-alignment, campaign §9 batch order: Batch 1 `bo_laksana` → Batch 2 (`bo_sangati`,
    `bo_bimba`, `bo_karanajala`, `bo_samskara`, + the UCD read-tool spec for `bo_samvada`) →
-   Batch 3 (`bo_upaya`, `bo_pramana_mapa`). G52 full-predicate authoring brief is its own item
-   (gates `bo_laksana`).
+   Batch 3 (`bo_upaya`, `bo_pramana_mapa`). G52 eliminated — no G52 authoring brief; `bo_laksana` is not gated on it.
 
 ## §3 — What IS fully reconciled (no action)
-- All 23 tables built to spec (migration 226) — names, the 3 §13.1 extensions, the scorecard, G52.
-- 6 of 8 `bo_` seed `target_table`s correct; `bo_laksana.depends_on` corrected (G52 + ga_structural).
+- All 23 tables built to spec (migration 226) — names, the 3 §13.1 extensions, the scorecard. `signal_type_registry` (G52) in migration 226 is an orphan — G52 ELIMINATED 2026-06-16.
+- 6 of 8 `bo_` seed `target_table`s correct; `bo_laksana.depends_on` corrected (ga_structural; G52 eliminated — no G52 edge).
 - A10–A14 specs at v1.1 — text matches built tables.
 - The §14 design map — authoritative and complete.
 

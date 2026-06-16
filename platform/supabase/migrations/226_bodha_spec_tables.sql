@@ -2,36 +2,13 @@
 -- L2 Bodha Phase-0 (P0.1): create the full-spec bodha_* tables (renamed from l25_* per campaign §3.1).
 -- All ~23 tables (MSR, CDLM×5, CGM×5+paths, RM×6, embeddings, scorecard, convergence,
 -- contradictions) + all spec-required indexes + 8 materialized views (A10×3 + A11×5).
--- Also creates global signal_type_registry (G52, P0.2).
+-- G52 signal_type_registry ELIMINATED 2026-06-16 (native directive); see migration 237.
 --
 -- Prerequisites: pgvector extension (already present since migration 081).
 -- Does NOT touch platform/migrations/ l25_* tables — those are a separate migration tree
 -- disposition handled by L2_BODHA_P0_1_LEGACY_TABLE_DISPOSITION_v1_0.md.
 
 BEGIN;
-
--- ────────────────────────────────────────────────────────────────────────────
--- G52  signal_type_registry  (global — no chart_id; P0.2)
--- ────────────────────────────────────────────────────────────────────────────
-
-CREATE TABLE signal_type_registry (
-  signal_type_id                      TEXT PRIMARY KEY,
-  signal_type_class                   TEXT NOT NULL,   -- 'yoga'|'dosha'|'composite_state'|'parivartana'|'karaka_alignment'|'dasha_triggered'|'sade_sati'|'panchaka'|'transit_overlay'|'tradition_specific'|'varga_pattern'|'synthetic'
-  signal_tradition                    TEXT NOT NULL,   -- 'parashari'|'jaimini'|'tajik'|'kp'|'lal_kitab'|'nadi_bhrigu'|'maharsi'|'multi'
-  activation_predicate_text           TEXT,
-  activation_predicate_jsonb          JSONB NOT NULL,
-  constituent_facts_pattern_jsonb     JSONB,
-  classical_sources_array             TEXT[] NOT NULL,
-  classical_citations_jsonb           JSONB,
-  default_domains_affected_array      TEXT[] NOT NULL,
-  salience_formula_overrides_jsonb    JSONB,
-  default_remedy_hooks_array          TEXT[],
-  predicted_outcome_class             TEXT,
-  since_engine_version                TEXT NOT NULL
-);
-
-CREATE INDEX str_class_tradition_idx ON signal_type_registry (signal_type_class, signal_tradition);
-CREATE INDEX str_domains_gin_idx     ON signal_type_registry USING gin (default_domains_affected_array);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- A10  bodha_msr_signals  (~50 cols; A10 §3; renamed from l25_msr_signals)

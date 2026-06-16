@@ -180,8 +180,7 @@ These are real failures already documented — do not repeat them:
    ambiguity cost a halt — settle this first.)
 2. **UCN → UCD:** A14 is "UCN RETIRED → UCD" — confirm what `bo_samvada` (UCN resonance) actually builds
    (the resonance/UCD digest), not the retired UCN.
-3. **G52 signal_type_registry** is a NEW GLOBAL asset A10 depends on — confirm it exists (or build it as an
-   L0/global prereq) before bo_laksana runs.
+3. **G52 signal_type_registry** — ELIMINATED 2026-06-16 (native directive). No build task, no seed, no dependency. `bo_laksana` uses projection model; `signal_type_id` derived from class/tradition. See A10 v1.3 §5.
 4. **The l25_* tables** were created-but-empty by the L1 GA3 migration (A3 §7) — confirm their DDL matches
    the A10–A14 schemas, or author corrective migrations.
 5. **Phase 5 E2E + Abhinandan** — confirm L1's orchestrator-native build is proven on a non-native chart
