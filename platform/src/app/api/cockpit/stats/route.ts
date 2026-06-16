@@ -18,15 +18,13 @@ function deriveState(
   if (asset.asset_type === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
-  // §N.4: count_sql is authoritative for data presence. Rows present and at/above
-  // floor → lit, regardless of throughput state ('building', 'stale', 'dormant',
-  // or absent). An orphaned 'building' record or cascade-stale flag does NOT
-  // override real data confirmed by count_sql.
-  if (actualRows != null && actualRows > 0) {
-    if (!asset.target_floor || actualRows >= asset.target_floor) return 'lit'
-    // Rows exist but haven't reached floor — genuinely still building.
-    return 'building'
-  }
+  // §N.4: count_sql is authoritative for data presence. Rows present = lit,
+  // regardless of throughput state or target_floor. Floors are aspirational,
+  // NOT gates — an asset with rows > 0 and no active zero-row build is lit.
+  // An orphaned 'building' record or cascade-stale flag does NOT override real
+  // data confirmed by count_sql. Under-floor is shown as an informational badge
+  // (build_state_stale), never as 'building' or 'incomplete'.
+  if (actualRows != null && actualRows > 0) return 'lit'
   // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
   if (throughputState === 'building') return 'building'
   if (throughputState === 'stale') return 'stale'
@@ -40,6 +38,10 @@ export interface AssetStats {
   size_bytes: number | null
   last_updated: string
   error: string | null
+  // 'dataplane' = Cloud SQL proxy / connection-level failure (transient).
+  // 'query'     = per-asset SQL error (real data problem).
+  // undefined   = no error.
+  error_class?: 'dataplane' | 'query'
   // Derived server-side; never null
   state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
@@ -96,6 +98,7 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: 'missing_table',
+      error_class: 'query' as const,
       state: 'error' as const,
       last_built_at: null,
       build_state_stale: false,
@@ -137,6 +140,9 @@ async function fetchAssetStats(
     try { await client.query('ROLLBACK') } catch {}
     const msg = (err as Error).message ?? ''
     const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
+    const isDataPlane = msg.includes('ECONNREFUSED') || msg.includes('connection refused') ||
+      msg.includes('ETIMEDOUT') || msg.includes('Connection terminated') ||
+      msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo')
     return {
       asset_id: asset.asset_id,
       actual_rows: null,
@@ -144,6 +150,7 @@ async function fetchAssetStats(
       size_bytes: null,
       last_updated: now,
       error: isTimeout ? 'timeout' : msg.slice(0, 120),
+      error_class: isDataPlane ? 'dataplane' as const : 'query' as const,
       state: 'error' as const,
       last_built_at: null,
       build_state_stale: false,
@@ -185,6 +192,7 @@ function fetchAssetStatsWithTimeout(
     size_bytes: null,
     last_updated: new Date().toISOString(),
     error: 'conn_timeout',
+    error_class: 'dataplane' as const,
     state: 'error' as const,
     last_built_at: null,
     build_state_stale: false,

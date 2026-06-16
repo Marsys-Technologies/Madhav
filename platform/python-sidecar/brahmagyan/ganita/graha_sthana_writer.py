@@ -159,21 +159,11 @@ def _upsert_graha_sthana_rows(
     ayanamsha_id: str,
 ) -> int:
     """
-    Upsert rows into ganita_graha_sthana (preferred) or ganita_positions (fallback).
+    Upsert rows into ganita_graha_sthana.
     Returns number of rows upserted.
     """
     with _conn() as conn:
-        # Check if ganita_graha_sthana exists
-        table_exists = conn.execute(
-            "SELECT 1 FROM information_schema.tables WHERE table_name='ganita_graha_sthana'"
-        ).fetchone()
-
-        if table_exists:
-            _upsert_into_graha_sthana(conn, chart_id, build_id, rows, ayanamsha_id)
-        else:
-            # Fall back to ganita_positions which already exists
-            _upsert_into_ganita_positions(conn, chart_id, build_id, rows, ayanamsha_id)
-
+        _upsert_into_graha_sthana(conn, chart_id, build_id, rows, ayanamsha_id)
         conn.commit()
 
     return len(rows)
@@ -203,42 +193,6 @@ def _upsert_into_graha_sthana(conn, chart_id, build_id, rows, ayanamsha_id):
                 row["longitude_deg"], row["sign"], row["sign_id"],
                 row["nakshatra"], row["nakshatra_id"], row["pada"],
                 row["house"], row["is_retrograde"], row["speed_dps"],
-                f"pyjhora/{ayanamsha_id}",
-            ],
-        )
-
-
-def _upsert_into_ganita_positions(conn, chart_id, build_id, rows, ayanamsha_id):
-    """Fallback: write into ganita_positions using existing schema."""
-    for row in rows:
-        # Convert longitude_deg to degree_in_sign
-        degree_in_sign = row["longitude_deg"] % 30.0
-        conn.execute(
-            """
-            INSERT INTO ganita_positions
-              (chart_id, build_id, ayanamsha_id, planet, tropical_longitude,
-               sidereal_longitude, sign_id, sign_name, nakshatra_id, nakshatra_name,
-               nakshatra_pada, speed_dps, is_retrograde, source_citation)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT (chart_id, ayanamsha_id, planet) DO UPDATE SET
-              build_id=EXCLUDED.build_id,
-              tropical_longitude=EXCLUDED.tropical_longitude,
-              sidereal_longitude=EXCLUDED.sidereal_longitude,
-              sign_id=EXCLUDED.sign_id, sign_name=EXCLUDED.sign_name,
-              nakshatra_id=EXCLUDED.nakshatra_id, nakshatra_name=EXCLUDED.nakshatra_name,
-              nakshatra_pada=EXCLUDED.nakshatra_pada,
-              speed_dps=EXCLUDED.speed_dps, is_retrograde=EXCLUDED.is_retrograde,
-              source_citation=EXCLUDED.source_citation,
-              updated_at=NOW()
-            """,
-            [
-                chart_id, build_id, ayanamsha_id, row["planet"],
-                row["longitude_deg"],       # tropical (approx; we use sidereal)
-                row["longitude_deg"],       # sidereal (PyJHora returns sidereal)
-                row["sign_id"], row["sign"],
-                row["nakshatra_id"], row["nakshatra"],
-                row["pada"],
-                row["speed_dps"], row["is_retrograde"],
                 f"pyjhora/{ayanamsha_id}",
             ],
         )

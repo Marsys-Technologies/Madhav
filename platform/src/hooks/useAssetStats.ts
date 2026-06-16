@@ -15,6 +15,7 @@ export function useAssetStats({
   stats: Map<string, AssetStats>
   lastFetched: Date | null
   error: string | null
+  refetch: () => void
 } {
   const [stats, setStats] = useState<Map<string, AssetStats>>(new Map())
   const [lastFetched, setLastFetched] = useState<Date | null>(null)
@@ -72,5 +73,12 @@ export function useAssetStats({
     }
   }, [fetchStats, isBuilding])
 
-  return { stats, lastFetched, error }
+  // Expose a one-shot refetch for callers that need to force an immediate poll
+  // (e.g. after a run ends so the cleared SSE overlay is backfilled at once).
+  const refetch = useCallback(() => {
+    const controller = new AbortController()
+    fetchStats(controller.signal)
+  }, [fetchStats])
+
+  return { stats, lastFetched, error, refetch }
 }

@@ -352,7 +352,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'bg_panchanga',
     layer: 'brahmagyan', sort_order: 13,
-    sanskrit_name: 'पञ्चाङ्ग गणना',
+    sanskrit_name: 'Pañcāṅga Gaṇanā',
     english_name: 'Panchanga Engine',
     english_description: 'Deterministic panchang computation service (swisseph DE441, Lahiri ayanamsha, Drik-parity). Exposes panchanga_instant(instant,lat,lon,tz_offset) and panchanga_day(date,lat,lon,tz_offset). Zero LLM. Floor: 5 angas + timing windows + 9 graha states.',
     storage_type: 'service',
@@ -399,7 +399,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'bg_ephemeris_engine',
     layer: 'brahmagyan', sort_order: 14,
-    sanskrit_name: 'दृक् एफिमेरिस',
+    sanskrit_name: 'Druk Ephemeris',
     english_name: 'Ephemeris Engine',
     english_description: 'Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).',
     storage_type: 'service',
@@ -438,6 +438,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_positions',
     layer: 'ganita', sort_order: 1,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Graha-sthāna',
     english_name: 'Positions',
     english_description: 'Natal graha positions per ayanamsha (sidereal/tropical longitude, sign, nakshatra)',
@@ -456,6 +457,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_vargas',
     layer: 'ganita', sort_order: 2,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Varga',
     english_name: 'Divisional charts',
     english_description: 'D1–D60 divisional chart positions per ayanamsha',
@@ -474,6 +476,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_dashas',
     layer: 'ganita', sort_order: 3,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Daśākrama',
     english_name: 'Vimshottari dasha',
     english_description: 'Vimshottari dasha timeline: MD × AD × PD rows per ayanamsha',
@@ -494,6 +497,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_strength',
     layer: 'ganita', sort_order: 4,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Balatva',
     english_name: 'Strength tables',
     english_description: 'Shadbala, ashtakavarga, and bhava bala per ayanamsha',
@@ -530,6 +534,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_sensitive',
     layer: 'ganita', sort_order: 5,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Sūkṣmabindu',
     english_name: 'Sensitive points',
     english_description: 'Per-chart sensitive point positions computed from the catalog × ayanamshas',
@@ -565,6 +570,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_panchanga',
     layer: 'ganita', sort_order: 6,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Pañcāṅga-janma',
     english_name: 'Birth panchanga',
     english_description: 'Natal panchanga (tithi, vara, nakshatra, yoga, karana) per ayanamsha',
@@ -587,6 +593,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_sade_sati',
     layer: 'ganita', sort_order: 7,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Sāḍesātī',
     english_name: 'Sade Sati periods',
     english_description: 'Saturn transit-over-natal-Moon Sade Sati + Dhaiya window calculations per ayanamsha',
@@ -620,6 +627,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_tajaka',
     layer: 'ganita', sort_order: 8,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Tājaka',
     english_name: 'Tajaka Varshaphal',
     english_description: 'Vārṣaphal annual chart per varsha (solar-return year): Muntha position, Vārṣeśa (year-lord) by tajik_classical + panchavargiya methods with candidate scoring, and the Tājik yogas firing in each annual chart — A7 hybrid storage (past→present+5 precomputed; rest on-demand), per ayanamsha.',
@@ -640,6 +648,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_structural',
     layer: 'ganita', sort_order: 9,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Saṃracanā',
     english_name: 'Structural facts',
     english_description: 'GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka and tri-deva roles, and base graha facts — per ayanamsha.',

@@ -18,8 +18,7 @@ Storage strategy:
   - chart_facts rows: one row per atomic fact key (sign, nakshatra, longitude, etc.)
     fact_category IN ('graha_position', 'graha_sign_attributes')
 
-Note: The `ganita_positions` table is a legacy dual-write target that predates A3.
-The dual-write has been removed (D2 deprecation). chart_facts is the canonical store.
+chart_facts is the canonical positions store (ganita_positions dropped at migration 232).
 """
 from __future__ import annotations
 
@@ -391,7 +390,6 @@ def _build_position_rows(
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     # Idempotency: replace this chart's prior chart_facts rows for the scope being
     # written so a rebuild under a new build_id replaces instead of accreting.
-    # (ganita_positions already upserts on its build_id-free natural key.)
     replace_prior_chart_facts(conn, rows)
     written = 0
     for r in rows:

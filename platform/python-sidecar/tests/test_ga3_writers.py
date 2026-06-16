@@ -407,17 +407,32 @@ class TestStrengthRows:
             )
 
     def test_non_naisargika_two_pass_verified(self, shadbala_rows):
+        _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
+        _NODAL_UNDEFINED_CATS = frozenset({
+            "graha_shadbala_dig", "graha_shadbala_kala",
+            "graha_shadbala_cheshta", "graha_shadbala_naisargika",
+        })
         for r in shadbala_rows:
             if r["fact_category"] == "graha_shadbala_naisargika":
-                assert r["verification_pass_status"] == "classical_match"
+                if r["fact_subject"] in _NODAL_SUBJECTS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "classical_match"
             elif r["fact_category"].startswith("graha_shadbala") and r["fact_key"] == "rupa":
-                assert r["verification_pass_status"] == "two_pass_verified"
+                if r["fact_subject"] in _NODAL_SUBJECTS and r["fact_category"] in _NODAL_UNDEFINED_CATS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "two_pass_verified"
 
     def test_naisargika_invariant(self, shadbala_rows):
+        _NODAL_SUBJECTS = frozenset({"RAH_MEAN", "KET_MEAN"})
         for r in shadbala_rows:
             if r["fact_category"] == "graha_shadbala_naisargika":
                 assert r["ayanamsha_id"] == "INVARIANT"
-                assert r["verification_pass_status"] == "classical_match"
+                if r["fact_subject"] in _NODAL_SUBJECTS:
+                    assert r["verification_pass_status"] == "not_defined_for_nodes"
+                else:
+                    assert r["verification_pass_status"] == "classical_match"
 
     @pytest.fixture(scope="class")
     def bav_rows(self, native_chart, ashtakavarga):

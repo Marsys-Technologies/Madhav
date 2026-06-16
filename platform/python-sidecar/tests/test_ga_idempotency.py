@@ -222,12 +222,12 @@ def test_tajik_varsha_partial_window_rebuild_leaves_other_varshas():
 
 
 def test_clear_table_for_chart_scopes_to_chart():
-    conn = FakeConn("ganita_positions", rows=[
-        {"chart_id": CID, "planet": "Sun"},
-        {"chart_id": "other", "planet": "Sun"},
+    conn = FakeConn("chart_facts", rows=[
+        {"chart_id": CID, "fact_category": "graha_position"},
+        {"chart_id": "other", "fact_category": "graha_position"},
     ])
-    # clear_table_for_chart emits: DELETE FROM ganita_positions WHERE chart_id = %s
-    deleted = clear_table_for_chart(conn, "ganita_positions", CID)
+    # clear_table_for_chart emits: DELETE FROM <table> WHERE chart_id = %s
+    deleted = clear_table_for_chart(conn, "chart_facts", CID)
     assert deleted == 1
     assert conn.count(CID) == 0
     assert any(r["chart_id"] == "other" for r in conn.rows)

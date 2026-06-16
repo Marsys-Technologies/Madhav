@@ -292,7 +292,7 @@ def _derive_shadbala_from_positions(
                 if panchanga_daytime is not None:
                     is_daytime = bool(panchanga_daytime)
                 else:
-                    is_daytime = True  # native birth: 10:43 IST → daytime
+                    is_daytime = True  # conservative fallback: daytime (caller should pass birth_hour)
 
             is_shukla = (1 <= tithi_idx <= 15)
 
@@ -795,6 +795,51 @@ def _build_shadbala_rows(
                 "computed_at": computed_at,
             })
 
+    # ── Nodal grahas (Rahu / Ketu) ───────────────────────────────────────────
+    # Emit one row per sub-bala so the cockpit/retrieval layer sees explicit rows.
+    # Sub-balas not defined classically for nodes (dig, kala, cheshta, naisargika)
+    # are emitted with value=0 and verification_pass_status='not_defined_for_nodes'.
+    # Sthana (positional dignity) and drik (aspects received) ARE computable → use
+    # values from the shadbala dict (computed in _derive_shadbala_from_positions).
+    NODAL_UNDEFINED_SUBS = frozenset({"dig", "kala", "cheshta", "naisargika"})
+    nodal_grahas = ["Rahu", "Ketu"]
+    for graha_name in nodal_grahas:
+        subject = PLANET_TO_SUBJECT.get(graha_name, graha_name.upper())
+        sb = shadbala.get(graha_name, {})
+        if not sb:
+            continue  # node not in chart output (degenerate case)
+        for sub_key, category in category_map.items():
+            value = sb.get(sub_key, 0.0)
+            eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
+            if sub_key in NODAL_UNDEFINED_SUBS:
+                node_verif = "not_defined_for_nodes"
+            elif sub_key in ("sthana", "drik", "total"):
+                node_verif = verif_status
+            else:
+                node_verif = verif_status
+            fid = _fact_id(category, subject, "rupa", chart_id, eff_ayan, build_id)
+            cref = _citation_ref(category, subject, "rupa", chart_id, eff_ayan, eng_ver)
+            chum = _citation_human_strength(category, subject, "rupa", value, eff_ayan)
+            rows.append({
+                "fact_id": fid,
+                "chart_id": chart_id,
+                "ayanamsha_id": eff_ayan,
+                "build_id": build_id,
+                "fact_category": category,
+                "fact_subject": subject,
+                "fact_key": "rupa",
+                "fact_value_text": None,
+                "fact_value_num": value,
+                "fact_value_jsonb": None,
+                "unit": "rupa",
+                "citation_ref": cref,
+                "citation_human": chum,
+                "source_calculation": f"pyjhora_adapter.strength_classical/{eng_ver}",
+                "verification_pass_status": node_verif,
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
     return rows
 
 
@@ -1023,8 +1068,17 @@ def build_ga_strength(
                 forensic_gate(chart_output, canonical_id)
             summary["forensic_pass"] = True
 
+            # Derive birth_hour from bp so kala-bala is not hardcoded to daytime.
+            from datetime import datetime as _dt_cls
+            _raw_dt = bp.get("datetime_iso", "")
+            try:
+                _parsed = _dt_cls.fromisoformat(_raw_dt)
+                _birth_hour: float | None = _parsed.hour + _parsed.minute / 60.0 + _parsed.second / 3600.0
+            except (ValueError, TypeError):
+                _birth_hour = None
+
             # ── Derive strength values ──────────────────────────────────
-            shadbala = _derive_shadbala_from_positions(chart_output, canonical_id)
+            shadbala = _derive_shadbala_from_positions(chart_output, canonical_id, birth_hour=_birth_hour)
             ishta_kashta = _derive_ishta_kashta(shadbala)
             vimsopaka = _derive_vimsopaka(shadbala)
             bav = _derive_ashtakavarga(chart_output)

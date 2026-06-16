@@ -126,5 +126,5 @@ def replace_prior_tajik_varsha(conn: Any, rows: list[dict]) -> int:
 
 def clear_table_for_chart(conn: Any, table: str, chart_id: str) -> int:
     """Delete all rows for a chart from a whole-table-per-chart asset
-    (e.g. ganita_positions). `table` is a trusted literal — never user input."""
+    (e.g. chart_dashas). `table` is a trusted literal — never user input."""
     return _delete(conn, f"DELETE FROM {table} WHERE chart_id = %s", [chart_id])
