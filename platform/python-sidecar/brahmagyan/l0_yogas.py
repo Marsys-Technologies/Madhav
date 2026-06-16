@@ -939,6 +939,176 @@ SARAVALI_YOGA_LOOKUP: dict[str, tuple[str, str, dict]] = {
     "Vapi Yoga (Saravali)":  ("vapi_sar",               "dhana",  {"requires": [{"relation": "all_planets_in_panapharas_or_apoklimas"}]}),
 }
 
+# ── §3.9b.i — Yoga family taxonomy (seeded into yoga_families table) ──────────
+# Added 2026-06-17 — Yoga Subsystem Gate-1
+
+YOGA_FAMILIES: list[dict] = [
+    {
+        "family_id": "mahapurusha",
+        "parent_family_id": None,
+        "name_en": "Pancha Mahapurusha",
+        "name_sa": "Pañca Mahāpuruṣa",
+        "description": "Five great-man yogas formed by the five non-luminary planets in own or exaltation sign in a kendra",
+        "classical_citation": "BPHS Ch.75 (Pancha Mahapurusha Yoga adhyaya); Saravali Ch.27",
+    },
+    {
+        "family_id": "nabhasa",
+        "parent_family_id": None,
+        "name_en": "Nabhasa Yogas",
+        "name_sa": "Nābhasa",
+        "description": "Sky (nabhasa) yogas defined by the distribution of all seven planets across signs, houses or sign-types",
+        "classical_citation": "BPHS Ch.35 (Nabhasa Yoga adhyaya); Saravali Ch.34–37",
+    },
+    {
+        "family_id": "nabhasa_aakriti",
+        "parent_family_id": "nabhasa",
+        "name_en": "Nabhasa — Aakriti (Shape)",
+        "name_sa": "Ākṛti",
+        "description": "20 Nabhasa yogas defined by the geometric shape formed by planetary positions across houses",
+        "classical_citation": "BPHS Ch.35 v.1–40; Saravali Ch.35",
+    },
+    {
+        "family_id": "nabhasa_sankhya",
+        "parent_family_id": "nabhasa",
+        "name_en": "Nabhasa — Sankhya (Number)",
+        "name_sa": "Saṅkhyā",
+        "description": "7 Nabhasa yogas defined by the count of signs occupied by the seven planets (1 to 7)",
+        "classical_citation": "BPHS Ch.35 v.41–48; Saravali Ch.36",
+    },
+    {
+        "family_id": "nabhasa_dala",
+        "parent_family_id": "nabhasa",
+        "name_en": "Nabhasa — Dala (Group)",
+        "name_sa": "Dala",
+        "description": "2 Nabhasa yogas (Mala/Sarpa) defined by benefics or malefics occupying the three kendras",
+        "classical_citation": "BPHS Ch.35 v.49–52; Saravali Ch.37",
+    },
+    {
+        "family_id": "nabhasa_asraya",
+        "parent_family_id": "nabhasa",
+        "name_en": "Nabhasa — Asraya (Sign-type)",
+        "name_sa": "Āśraya",
+        "description": "3 Nabhasa yogas (Rajju/Musala/Nala) defined by all planets in movable, fixed or dual signs",
+        "classical_citation": "BPHS Ch.35 v.53–56; Saravali Ch.34",
+    },
+    {
+        "family_id": "raja",
+        "parent_family_id": None,
+        "name_en": "Raja Yogas",
+        "name_sa": "Rāja",
+        "description": "Status-conferring combinations, primarily kendra-trikona lord associations and special dharmika linkages",
+        "classical_citation": "BPHS Ch.39–40; Phaladeepika Ch.7",
+    },
+    {
+        "family_id": "raja_dharma_karma",
+        "parent_family_id": "raja",
+        "name_en": "Dharma-Karmadhipati Raja",
+        "name_sa": "Dharma-Karmādhipati",
+        "description": "Raja yoga formed by the 9th and 10th lords associating",
+        "classical_citation": "BPHS Ch.39 v.1–6",
+    },
+    {
+        "family_id": "raja_vipareeta",
+        "parent_family_id": "raja",
+        "name_en": "Vipareeta Raja",
+        "name_sa": "Viparīta Rāja",
+        "description": "Paradoxical raja yogas formed by dusthana lords placed in dusthanas",
+        "classical_citation": "BPHS Ch.40 v.7–12; Phaladeepika Ch.7",
+    },
+    {
+        "family_id": "dhana",
+        "parent_family_id": None,
+        "name_en": "Dhana Yogas",
+        "name_sa": "Dhana",
+        "description": "Wealth-producing combinations, primarily involving lords of houses 1, 2, 5, 9, 11",
+        "classical_citation": "BPHS Ch.41 (Dhana Yoga adhyaya)",
+    },
+    {
+        "family_id": "chandra",
+        "parent_family_id": None,
+        "name_en": "Chandra Yogas",
+        "name_sa": "Candra",
+        "description": "Lunar yogas formed by planets placed in relation to the Moon (2nd, 12th, kendras)",
+        "classical_citation": "BPHS Ch.29–30; Saravali Ch.38",
+    },
+    {
+        "family_id": "surya",
+        "parent_family_id": None,
+        "name_en": "Surya Yogas",
+        "name_sa": "Sūrya",
+        "description": "Solar yogas formed by planets placed in the 2nd and 12th from the Sun",
+        "classical_citation": "BPHS Ch.30; Saravali Ch.41",
+    },
+    {
+        "family_id": "arishta",
+        "parent_family_id": None,
+        "name_en": "Arishta Yogas",
+        "name_sa": "Ariṣṭa",
+        "description": "Negative/afflicting combinations indicating hardship, poverty or isolation",
+        "classical_citation": "BPHS Ch.42 (Arishta Yoga adhyaya)",
+    },
+    {
+        "family_id": "sannyasa",
+        "parent_family_id": None,
+        "name_en": "Sannyasa / Pravrajya Yogas",
+        "name_sa": "Pravrajyā",
+        "description": "Renunciation and ascetic-path combinations involving 4+ planets grouped in a house",
+        "classical_citation": "BPHS Ch.36 (Pravrajya Yoga adhyaya); Saravali Ch.45",
+    },
+    {
+        "family_id": "specialized",
+        "parent_family_id": None,
+        "name_en": "Specialized Yogas",
+        "name_sa": None,
+        "description": "Named combinatorial yogas from multiple classical sources (Kala Sarpa, Guru-Chandala, etc.)",
+        "classical_citation": "Various — BPHS, Saravali, Phaladeepika",
+    },
+]
+
+
+def seed_yoga_families(conn, dry_run: bool = False) -> dict:
+    """
+    Seed yoga_families table with family taxonomy.
+    L0 idempotency: ON CONFLICT DO NOTHING.
+    Transaction ownership: caller owns commit.
+    Returns dict with families_inserted count and warnings.
+    """
+    if dry_run:
+        return {"families_inserted": len(YOGA_FAMILIES), "warnings": []}
+
+    warnings: list[str] = []
+    inserted = 0
+
+    # Two-pass: root families first, then children (parent FK constraint)
+    roots = [f for f in YOGA_FAMILIES if f["parent_family_id"] is None]
+    children = [f for f in YOGA_FAMILIES if f["parent_family_id"] is not None]
+
+    with conn.cursor() as cur:
+        for f in roots + children:
+            try:
+                cur.execute("""
+                    INSERT INTO yoga_families
+                      (family_id, parent_family_id, name_en, name_sa, description, classical_citation)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (family_id) DO NOTHING
+                """, (
+                    f["family_id"],
+                    f.get("parent_family_id"),
+                    f["name_en"],
+                    f.get("name_sa"),
+                    f.get("description"),
+                    f.get("classical_citation"),
+                ))
+                if cur.rowcount > 0:
+                    inserted += 1
+            except Exception as exc:
+                warnings.append(f"yoga_families insert failed for {f['family_id']}: {exc}")
+                logger.warning("[l0_yogas] yoga_families insert failed for %s: %s", f["family_id"], exc)
+
+    logger.info("[l0_yogas] yoga_families: %d inserted, %d warnings", inserted, len(warnings))
+    return {"families_inserted": inserted, "warnings": warnings}
+
+
 # ── §3.9b — Corpus extraction helpers ─────────────────────────────────────────
 
 # Recall-aid lexicon for yoga name detection (names only; not formation rules)
