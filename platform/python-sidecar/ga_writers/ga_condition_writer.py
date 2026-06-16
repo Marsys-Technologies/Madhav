@@ -77,6 +77,10 @@ _BALADI_SCORES: dict[str, float] = {
 }
 
 # Condition formula component weights (must sum to 1.0)
+# Note: combustion component is a subtraction penalty, not an additive term.
+# Max achievable score for a non-combust planet = 0.35 + 0.20 + 0.10 + 0.20 = 0.85
+# (dignity_d1 + deeptaadi + baladi + varga; combustion penalty = 0 when not combust)
+# A combust planet incurs a 0.15 penalty (floor ~0.70 for otherwise strong planets).
 _FORMULA_WEIGHTS = {
     "dignity_d1":   0.35,
     "deeptaadi":    0.20,
@@ -599,7 +603,7 @@ def _load_graha_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> list[d
     Uses a resilient column-discovery approach — tries preferred column names
     and falls back gracefully.
     """
-    rows: list[dict] = {}
+    rows: dict[str, dict] = {}
 
     # Step 1: Get sign and degree_in_sign from graha_sign_attributes category
     try:
@@ -1025,6 +1029,12 @@ def build_ga_condition_substep(
                 "for ayanamsha=%s",
                 sun_dignity, ayanamsha_id,
             )
+
+        # FORENSIC: Saturn=Libra → exalted (BPHS Ch.3)
+        saturn_rows = [r for r in insert_rows if r.get("graha") == "Saturn"]
+        if saturn_rows:
+            assert saturn_rows[0].get("dignity_d1") == "exalted", \
+                f"FORENSIC FAIL: Saturn=Libra must be exalted, got {saturn_rows[0].get('dignity_d1')}"
 
     # ── Idempotent replace: DELETE then INSERT ─────────────────────────────────
     with conn.cursor() as cur:

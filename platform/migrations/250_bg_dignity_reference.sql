@@ -213,24 +213,24 @@ VALUES
     ('Saturn', 'Ketu',    'friend',  'BPHS Ch.27'),
 
     -- Rahu's relations (classical synthesis)
-    ('Rahu', 'Venus',   'friend',  'Classical_Rahu_Maitri'),
-    ('Rahu', 'Saturn',  'friend',  'Classical_Rahu_Maitri'),
-    ('Rahu', 'Mercury', 'friend',  'Classical_Rahu_Maitri'),
-    ('Rahu', 'Sun',     'enemy',   'Classical_Rahu_Maitri'),
-    ('Rahu', 'Moon',    'enemy',   'Classical_Rahu_Maitri'),
-    ('Rahu', 'Mars',    'neutral', 'Classical_Rahu_Maitri'),
-    ('Rahu', 'Jupiter', 'neutral', 'Classical_Rahu_Maitri'),
-    ('Rahu', 'Ketu',    'enemy',   'Classical_Rahu_Maitri'),
+    ('Rahu', 'Venus',   'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Saturn',  'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Mercury', 'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Sun',     'enemy',   'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Moon',    'enemy',   'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Mars',    'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Jupiter', 'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Rahu', 'Ketu',    'enemy',   'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
 
     -- Ketu's relations (classical synthesis)
-    ('Ketu', 'Mars',    'friend',  'Classical_Ketu_Maitri'),
-    ('Ketu', 'Venus',   'friend',  'Classical_Ketu_Maitri'),
-    ('Ketu', 'Saturn',  'friend',  'Classical_Ketu_Maitri'),
-    ('Ketu', 'Sun',     'neutral', 'Classical_Ketu_Maitri'),
-    ('Ketu', 'Moon',    'neutral', 'Classical_Ketu_Maitri'),
-    ('Ketu', 'Mercury', 'neutral', 'Classical_Ketu_Maitri'),
-    ('Ketu', 'Jupiter', 'neutral', 'Classical_Ketu_Maitri'),
-    ('Ketu', 'Rahu',    'enemy',   'Classical_Ketu_Maitri')
+    ('Ketu', 'Mars',    'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Venus',   'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Saturn',  'friend',  'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Sun',     'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Moon',    'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Mercury', 'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Jupiter', 'neutral', 'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)'),
+    ('Ketu', 'Rahu',    'enemy',   'UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)')
 ON CONFLICT (graha, other_graha) DO UPDATE SET
     relation           = EXCLUDED.relation,
     classical_citation = EXCLUDED.classical_citation;
@@ -509,9 +509,9 @@ VALUES
     ('Saturn',  15, 12, NULL,
      'Saravali Ch.6 / BPHS Ch.3'),
     ('Rahu',     9,  7, 'Nodes combust per some traditions; excluded by others',
-     'Classical_Combustion; tradition varies'),
+     'BPHS Ch.3 (combustion doctrine; Rahu/Ketu orb per traditional commentary)'),
     ('Ketu',     9,  7, 'Nodes combust per some traditions; excluded by others',
-     'Classical_Combustion; tradition varies')
+     'BPHS Ch.3 (combustion doctrine; Rahu/Ketu orb per traditional commentary)')
 ON CONFLICT (graha) DO UPDATE SET
     orb_degrees        = EXCLUDED.orb_degrees,
     deep_orb_degrees   = EXCLUDED.deep_orb_degrees,

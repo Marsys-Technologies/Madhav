@@ -274,7 +274,9 @@ class TestConditionScore:
         assert score is None
 
     def test_exalted_planet_scores_high(self):
-        """Exalted, deepta, yuva, not combust → score near top."""
+        """Exalted, deepta, yuva, not combust → score near top.
+        Formula ceiling for non-combust planet = 0.85 (dignity_d1 + deeptaadi + baladi + varga).
+        """
         score, _ = compute_condition_score_v1(
             dignity_score=1.0,
             deeptaadi="deepta",
@@ -285,7 +287,7 @@ class TestConditionScore:
             varga_score=1.0,
         )
         assert score is not None
-        assert score >= 0.9
+        assert score >= 0.80
 
     def test_debilitated_combust_scores_low(self):
         """Debilitated and deeply combust → score near bottom."""
@@ -419,3 +421,25 @@ class TestTatkalikaRelation:
     def test_same_house_is_enemy(self):
         # Offset 0 → not in friend offsets → enemy
         assert compute_tatkalika_relation(planet_house=5, reference_planet_house=5) == "enemy"
+
+
+# ── 11. dry_run guard ─────────────────────────────────────────────────────────
+
+def test_run_substep_dry_run_returns_zero_rows():
+    """ctx.dry_run=True must return 0 rows and make no DB calls."""
+    from pipeline.orchestrator.writers.ga_condition import GaConditionWriter
+    from pipeline.orchestrator.writers import SubStep, ContextSpec
+    from unittest.mock import MagicMock
+
+    writer = GaConditionWriter()
+    ctx = MagicMock(spec=ContextSpec)
+    ctx.config = {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"}
+    ctx.build_id = "test-dry-build"
+    ctx.dry_run = True
+    ctx.db_conn = MagicMock()
+
+    step = SubStep(key="ayanamsha_lahiri_chitrapaksha", label="test")
+    result = writer.run_substep(ctx, step)
+
+    assert result.rows_inserted == 0, f"dry_run must return 0 rows, got {result.rows_inserted}"
+    ctx.db_conn.cursor.assert_not_called()

@@ -46,7 +46,7 @@ INSERT INTO asset_registry (
     '9_GRAHAS * 5_AYANAMSHAS',
     '{"grahas": 9, "ayanamshas": 5}'::jsonb,
     '9 classical grahas × 5 canonical ayanamshas = 45 rows per chart; one unified condition row per (chart, ayanamsha, graha).',
-    ARRAY['ga_positions', 'ga_vargas']::text[],
+    ARRAY['ga_positions', 'ga_vargas', 'ga_dashas']::text[],
     'per_chart',
     true,
     true,
