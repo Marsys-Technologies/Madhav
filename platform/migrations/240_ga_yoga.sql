@@ -35,7 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_ga_yoga_firings_yoga
 INSERT INTO asset_registry (
     asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
     storage_type, target_table, count_sql, size_sql, target_floor,
-    expected_volume_formula, volume_explanation, depends_on, scope, is_active
+    expected_volume_formula, volume_explanation, depends_on, scope, is_active,
+    has_substeps
 ) VALUES (
     'ga_yoga',
     'ganita',
@@ -52,6 +53,7 @@ INSERT INTO asset_registry (
     'Sum of fired yogas across 5 ayanamshas for a given chart',
     ARRAY['ga_structural', 'ga_dashas']::text[],
     'per_chart',
+    true,
     true
 ) ON CONFLICT (asset_id) DO UPDATE SET
     english_name = EXCLUDED.english_name,
@@ -60,4 +62,5 @@ INSERT INTO asset_registry (
     count_sql = EXCLUDED.count_sql,
     target_floor = EXCLUDED.target_floor,
     sort_order = EXCLUDED.sort_order,
-    is_active = EXCLUDED.is_active;
+    is_active = EXCLUDED.is_active,
+    has_substeps = EXCLUDED.has_substeps;

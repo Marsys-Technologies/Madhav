@@ -1379,7 +1379,7 @@ def _yoga_citation(y: dict) -> str:
 # ── Main seeder ────────────────────────────────────────────────────────────────
 
 def seed_yogas(conn, build_id: str | None = None,
-               dry_run: bool = False, autocommit: bool = True) -> dict:
+               dry_run: bool = False, autocommit: bool = False) -> dict:
     """
     Seed brahma_yoga_catalog, brahma_ontology (entity_class='yoga'),
     and reference_yogas.

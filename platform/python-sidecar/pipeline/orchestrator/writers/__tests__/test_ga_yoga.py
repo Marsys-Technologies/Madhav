@@ -525,6 +525,58 @@ def test_gajakesari_fires_when_jupiter_in_kendra_from_moon():
     assert "jupiter" in result["constituent_planets"]
 
 
+# ── FORENSIC — native-chart yoga assertions ────────────────────────────────────
+
+CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+
+def test_forensic_budha_aditya_fires_on_native_chart():
+    """
+    FORENSIC assertion: Sun=Capricorn + Mercury=Capricorn (native chart, Lahiri).
+    Budha-Aditya must fire when degrees are not within 3° combustion gate.
+    Guard: CANONICAL_CHART_ID only.
+    """
+    if CANONICAL_CHART_ID != "482012f1-710e-4a25-994a-93821f5871aa":
+        return  # non-native chart — skip FORENSIC assertion
+    from ga_writers.ga_yoga_writer import ChartState, _evaluate_yoga
+
+    # Native: Aries lagna; Sun ≈ 292°, Mercury ≈ 305° (Lahiri, ~13° apart — not combust)
+    facts = []
+    facts.append(_make_fact("f-lagna", "lagna", "lagna", "sign", value_text="aries"))
+    facts.append(_make_fact("f-sun-sign", "graha_position", "sun", "sign", value_text="capricorn"))
+    facts.append(_make_fact("f-sun-house", "graha_position", "sun", "house", value_num=10))
+    facts.append(_make_fact("f-merc-sign", "graha_position", "mercury", "sign", value_text="capricorn"))
+    facts.append(_make_fact("f-merc-house", "graha_position", "mercury", "house", value_num=10))
+    sun_fact = _make_fact("f-sun-deg", "graha_position", "sun", "degree_absolute")
+    sun_fact["fact_value_num"] = 292.0
+    sun_fact["degree_absolute"] = 292.0
+    merc_fact = _make_fact("f-merc-deg", "graha_position", "mercury", "degree_absolute")
+    merc_fact["fact_value_num"] = 305.0
+    merc_fact["degree_absolute"] = 305.0
+    facts.extend([sun_fact, merc_fact])
+
+    state = ChartState(facts)
+
+    budha_aditya = {
+        "canonical_id": "budha_aditya",
+        "category": "other",
+        "formation_rule_jsonb": {
+            "requires": [
+                {"relation": "sun_mercury_conjunct"},
+                {"condition": "mercury_not_too_combust"},
+            ]
+        },
+        "cancellation_conditions": {},
+    }
+    result = _evaluate_yoga(budha_aditya, state)
+    assert result is not None, \
+        "FORENSIC FAIL: budha_aditya must fire for native chart (Sun+Mercury in Capricorn, 13° apart)"
+    assert result["fired"] is True, \
+        "FORENSIC FAIL: budha_aditya fired=False unexpectedly for native chart"
+    assert "sun" in result["constituent_planets"]
+    assert "mercury" in result["constituent_planets"]
+
+
 # ── seed_yoga_families ─────────────────────────────────────────────────────────
 
 def test_seed_yoga_families_dry_run():
