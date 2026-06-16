@@ -1061,3 +1061,274 @@ assert _pbp_padas[0]['pada_navamsa_sign'] == 'Aries'
 assert _pbp_padas[0]['pada_lord'] == 'mars'
 assert _pbp_padas[0]['pada_akshara'] == 'Se'
 assert _pbp_padas[0]['absolute_pada'] == 97
+
+# ── Relational matrices ─────────────────────────────────────────────────────────
+# 12 matrix types stored as rows: {matrix_type, from_key, to_key, relation_value,
+# guna_points, max_points, notes, classical_source}
+# Total: tara(729) + yoni(196) + gana(9) + nadi(9) + rajju(~27) + varna(49)
+#        + graha_maitri(49) + bhakoot(144) + vedha(26) + vashya(25)
+#        + mahendra(729) + stree_deergha(729) ≈ 3441 rows
+
+def _build_matrices() -> list[dict]:
+    rows: list[dict] = []
+
+    # ── 1. Gana Kuta (3×3, max 6 gunas) ─────────────────────────────────────
+    gana_scores = {
+        ("Deva", "Deva"): 6, ("Manushya", "Manushya"): 6, ("Rakshasa", "Rakshasa"): 6,
+        ("Deva", "Manushya"): 5, ("Manushya", "Deva"): 5,
+        ("Deva", "Rakshasa"): 0, ("Rakshasa", "Deva"): 0,
+        ("Manushya", "Rakshasa"): 0, ("Rakshasa", "Manushya"): 0,
+    }
+    for (g1, g2), pts in gana_scores.items():
+        rows.append(dict(
+            matrix_type="gana_kuta", from_key=g1, to_key=g2,
+            relation_value="compatible" if pts >= 5 else "incompatible",
+            guna_points=pts, max_points=6, notes=None,
+            tradition_scope="classical", classical_source="bphs:ch73",
+        ))
+
+    # ── 2. Nadi Kuta (3×3, max 8 gunas) ─────────────────────────────────────
+    nadis = ["Adi", "Madhya", "Antya"]
+    for n1 in nadis:
+        for n2 in nadis:
+            pts = 0 if n1 == n2 else 8
+            rows.append(dict(
+                matrix_type="nadi_kuta", from_key=n1, to_key=n2,
+                relation_value="nadi_dosha" if pts == 0 else "compatible",
+                guna_points=pts, max_points=8, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 3. Yoni Kuta (14×14, max 4 gunas) ────────────────────────────────────
+    yoni_enemies = {
+        "Horse": "Buffalo", "Buffalo": "Horse",
+        "Dog": "Hare", "Hare": "Dog",
+        "Serpent": "Mongoose", "Mongoose": "Serpent",
+        "Rat": "Cat", "Cat": "Rat",
+        "Lion": "Elephant", "Elephant": "Lion",
+        "Goat": "Monkey", "Monkey": "Goat",
+        "Cow": "Tiger", "Tiger": "Cow",
+    }
+    yoni_animals = ["Horse", "Elephant", "Goat", "Serpent", "Dog", "Cat",
+                    "Rat", "Cow", "Buffalo", "Tiger", "Hare", "Mongoose",
+                    "Monkey", "Lion"]
+    for y1 in yoni_animals:
+        for y2 in yoni_animals:
+            if y1 == y2:
+                pts, rel = 4, "same_yoni"
+            elif yoni_enemies.get(y1) == y2:
+                pts, rel = 0, "enemy"
+            else:
+                pts, rel = 2, "friendly"
+            rows.append(dict(
+                matrix_type="yoni_kuta", from_key=y1, to_key=y2,
+                relation_value=rel,
+                guna_points=pts, max_points=4, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 4. Tara Kuta (27×27, max 3 gunas) ────────────────────────────────────
+    tara_map = {
+        1: ("Janma", 0), 2: ("Sampat", 2), 3: ("Vipat", 0),
+        4: ("Kshema", 2), 5: ("Pratyari", 0), 6: ("Sadhaka", 1.5),
+        7: ("Vadha", 0), 8: ("Mitra", 2), 9: ("Atimitra", 2),
+    }
+    for from_id in range(1, 28):
+        for to_id in range(1, 28):
+            dist = (to_id - from_id) % 27 or 27
+            tara_pos = ((dist - 1) % 9) + 1
+            tara_name, pts = tara_map[tara_pos]
+            rows.append(dict(
+                matrix_type="tara_kuta",
+                from_key=str(from_id), to_key=str(to_id),
+                relation_value=tara_name,
+                guna_points=pts, max_points=3,
+                notes=f"dist={dist},pos={tara_pos}",
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 5. Rajju (nakshatra → rajju group membership) ─────────────────────────
+    rajju_groups = {
+        "Padha_Aroha":  ([2, 16, 21], "aroha"),
+        "Padha_Avaroha":([6, 11, 27], "avaroha"),
+        "Kati_Aroha":   ([3, 15, 20], "aroha"),
+        "Kati_Avaroha": ([7, 12, 26], "avaroha"),
+        "Nabhi_Aroha":  ([4, 14, 19], "aroha"),
+        "Nabhi_Avaroha":([8, 13, 25], "avaroha"),
+        "Kantha_Aroha": ([5, 9, 18],  "aroha"),
+        "Kantha_Avaroha":([1, 22, 24],"avaroha"),
+        "Shira":        ([10, 17, 23],"both"),
+    }
+    for rajju_name, (nak_ids, direction) in rajju_groups.items():
+        for nak_id in nak_ids:
+            rows.append(dict(
+                matrix_type="rajju",
+                from_key=str(nak_id), to_key=rajju_name,
+                relation_value=direction,
+                guna_points=None, max_points=None,
+                notes=f"nakshatra_id={nak_id} → rajju '{rajju_name}'",
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 6. Varna Kuta (7×7, max 1 guna) ─────────────────────────────────────
+    varnas_rank = {
+        "Brahmin": 4, "Kshatriya": 3, "Vaishya": 2, "Shudra": 1,
+        "Farmer": 1, "Butcher": 1, "Mleccha": 1,
+    }
+    all_varnas = list(varnas_rank.keys())
+    for v1 in all_varnas:
+        for v2 in all_varnas:
+            pts = 1 if varnas_rank[v1] >= varnas_rank[v2] else 0
+            rows.append(dict(
+                matrix_type="varna_kuta", from_key=v1, to_key=v2,
+                relation_value="compatible" if pts else "incompatible",
+                guna_points=pts, max_points=1, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 7. Graha Maitri Kuta (7×7, max 5 gunas) ─────────────────────────────
+    planet_friends: dict[str, list[str]] = {
+        "sun":     ["moon", "mars", "jupiter"],
+        "moon":    ["sun", "mercury"],
+        "mars":    ["sun", "moon", "jupiter"],
+        "mercury": ["sun", "venus"],
+        "jupiter": ["sun", "moon", "mars"],
+        "venus":   ["mercury", "saturn"],
+        "saturn":  ["mercury", "venus"],
+    }
+    planet_enemies: dict[str, list[str]] = {
+        "sun":     ["venus", "saturn"],
+        "moon":    [],
+        "mars":    ["mercury"],
+        "mercury": ["moon"],
+        "jupiter": ["mercury", "venus"],
+        "venus":   ["sun", "moon"],
+        "saturn":  ["sun", "moon", "mars"],
+    }
+    gm_score_map = {
+        ("friend", "friend"): 5, ("friend", "neutral"): 4,
+        ("neutral", "friend"): 4, ("neutral", "neutral"): 3,
+        ("friend", "enemy"): 1, ("enemy", "friend"): 1,
+        ("enemy", "neutral"): 0, ("neutral", "enemy"): 0,
+        ("enemy", "enemy"): 0,
+    }
+
+    def _rel(p1: str, p2: str) -> str:
+        if p2 in planet_friends.get(p1, []):
+            return "friend"
+        if p2 in planet_enemies.get(p1, []):
+            return "enemy"
+        return "neutral"
+
+    planets = ["sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"]
+    for p1 in planets:
+        for p2 in planets:
+            r1, r2 = _rel(p1, p2), _rel(p2, p1)
+            pts = gm_score_map.get((r1, r2), 3)
+            rows.append(dict(
+                matrix_type="graha_maitri_kuta",
+                from_key=p1, to_key=p2,
+                relation_value=f"{r1}_{r2}",
+                guna_points=pts, max_points=5, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 8. Bhakoot Kuta (12×12, max 7 gunas) ─────────────────────────────────
+    inauspicious = {(2, 12), (12, 2), (5, 9), (9, 5), (6, 8), (8, 6)}
+    for sign1 in range(1, 13):
+        for sign2 in range(1, 13):
+            d_fwd = (sign2 - sign1) % 12 or 12
+            d_rev = (sign1 - sign2) % 12 or 12
+            pts = 0 if (d_fwd, d_rev) in inauspicious else 7
+            rows.append(dict(
+                matrix_type="bhakoot_kuta",
+                from_key=str(sign1), to_key=str(sign2),
+                relation_value=f"{d_fwd}/{d_rev}",
+                guna_points=pts, max_points=7,
+                notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 9. Vedha pairs (13 pairs × 2 directions = 26 rows) ───────────────────
+    vedha_pairs = [
+        (1, 16), (2, 15), (3, 14), (4, 13), (5, 12), (6, 11), (7, 10),
+        (8, 9), (17, 27), (18, 26), (19, 25), (20, 24), (21, 23),
+    ]
+    for (n1, n2) in vedha_pairs:
+        for (fn, tn) in [(n1, n2), (n2, n1)]:
+            rows.append(dict(
+                matrix_type="vedha",
+                from_key=str(fn), to_key=str(tn),
+                relation_value="vedha_pair",
+                guna_points=None, max_points=None, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 10. Vashya Kuta (5×5, max 2 gunas) ──────────────────────────────────
+    vashya_scores = {
+        ("Dwipada", "Dwipada"): 2, ("Chaturpada", "Chaturpada"): 2,
+        ("Jalasheela", "Jalasheela"): 2, ("Keeta", "Keeta"): 2,
+        ("Vanachara", "Vanachara"): 2,
+        ("Dwipada", "Chaturpada"): 1, ("Chaturpada", "Dwipada"): 1,
+        ("Jalasheela", "Chaturpada"): 1, ("Chaturpada", "Jalasheela"): 1,
+    }
+    vashya_groups = ["Dwipada", "Chaturpada", "Jalasheela", "Keeta", "Vanachara"]
+    for v1 in vashya_groups:
+        for v2 in vashya_groups:
+            pts = vashya_scores.get((v1, v2), 0)
+            rows.append(dict(
+                matrix_type="vashya_kuta", from_key=v1, to_key=v2,
+                relation_value="compatible" if pts > 0 else "incompatible",
+                guna_points=pts, max_points=2, notes=None,
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 11. Mahendra (27×27) ─────────────────────────────────────────────────
+    mahendra_dists = {4, 7, 10, 13, 16, 19, 22, 25}
+    for from_id in range(1, 28):
+        for to_id in range(1, 28):
+            dist = (to_id - from_id) % 27 or 27
+            is_m = dist in mahendra_dists
+            rows.append(dict(
+                matrix_type="mahendra",
+                from_key=str(from_id), to_key=str(to_id),
+                relation_value="mahendra" if is_m else "non_mahendra",
+                guna_points=None, max_points=None,
+                notes=f"dist={dist}",
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    # ── 12. Stree-Deergha (27×27) ────────────────────────────────────────────
+    for from_id in range(1, 28):
+        for to_id in range(1, 28):
+            d_fwd = (to_id - from_id) % 27 or 27
+            d_rev = (from_id - to_id) % 27 or 27
+            min_d = min(d_fwd, d_rev)
+            rows.append(dict(
+                matrix_type="stree_deergha",
+                from_key=str(from_id), to_key=str(to_id),
+                relation_value="dosha" if min_d < 9 else "ok",
+                guna_points=None, max_points=None,
+                notes=f"min_dist={min_d}",
+                tradition_scope="classical", classical_source="bphs:ch73",
+            ))
+
+    return rows
+
+
+MATRICES: list[dict] = _build_matrices()
+
+# Sanity checks
+from collections import Counter as _Counter
+_mt = _Counter(r['matrix_type'] for r in MATRICES)
+assert _mt['tara_kuta'] == 729,   f"tara_kuta: expected 729, got {_mt['tara_kuta']}"
+assert _mt['nadi_kuta'] == 9,     f"nadi_kuta: expected 9, got {_mt['nadi_kuta']}"
+assert _mt['gana_kuta'] == 9,     f"gana_kuta: expected 9, got {_mt['gana_kuta']}"
+assert _mt['yoni_kuta'] == 196,   f"yoni_kuta: expected 196, got {_mt['yoni_kuta']}"
+assert _mt['vashya_kuta'] == 25,  f"vashya_kuta: expected 25, got {_mt['vashya_kuta']}"
+assert _mt['mahendra'] == 729,    f"mahendra: expected 729, got {_mt['mahendra']}"
+assert _mt['stree_deergha'] == 729, f"stree_deergha: expected 729, got {_mt['stree_deergha']}"
+assert _mt['bhakoot_kuta'] == 144, f"bhakoot_kuta: expected 144, got {_mt['bhakoot_kuta']}"
+assert _mt['vedha'] == 26,        f"vedha: expected 26, got {_mt['vedha']}"
+assert _mt['varna_kuta'] == 49,   f"varna_kuta: expected 49, got {_mt['varna_kuta']}"
+assert _mt['graha_maitri_kuta'] == 49, f"graha_maitri: expected 49, got {_mt['graha_maitri_kuta']}"
