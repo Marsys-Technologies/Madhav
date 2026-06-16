@@ -14,10 +14,10 @@ from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 _AYANAMSHAS = [
     "lahiri_chitrapaksha",
-    "kp",
+    "krishnamurti",
     "true_chitra",
     "raman",
-    "yukteshwar",
+    "surya_siddhanta_classical",
 ]
 
 

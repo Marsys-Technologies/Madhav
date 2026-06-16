@@ -49,10 +49,10 @@ ALL_GRAHAS = [
 
 CANONICAL_AYANAMSHAS = [
     "lahiri_chitrapaksha",
-    "kp",
+    "krishnamurti",
     "true_chitra",
     "raman",
-    "yukteshwar",
+    "surya_siddhanta_classical",
 ]
 
 # Citation attached to every ga_medical row — references BOTH source tables
@@ -264,7 +264,7 @@ def build_ga_medical_substep(
     medical_mappings = _load_medical_mappings(conn)
     positions        = _load_graha_positions(conn, chart_id, ayanamsha_id)
 
-    # FORENSIC log for canonical chart
+    # FORENSIC guard for canonical chart — assert-and-halt, not log-only
     if chart_id == CANONICAL_CHART_ID and ayanamsha_id == "lahiri_chitrapaksha":
         sun_score = condition_scores.get("Sun")
         saturn_score = condition_scores.get("Saturn")
@@ -276,6 +276,22 @@ def build_ga_medical_substep(
             "Moon nakshatra=%s (expected Purva Bhadrapada)",
             chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
         )
+        # Sun = Capricorn (debilitated) → condition_score must be < 0.4 → 'strong'
+        sun_strength = indication_strength_from_score(sun_score)
+        if sun_strength != "strong":
+            raise AssertionError(
+                f"FORENSIC VIOLATION: Sun indication_strength={sun_strength!r} "
+                f"but expected 'strong' (Sun debilitated in Capricorn, score={sun_score!r}) "
+                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
+            )
+        # Saturn = Libra (exalted) → condition_score must be > 0.6 → 'mild'
+        sat_strength = indication_strength_from_score(saturn_score)
+        if sat_strength != "mild":
+            raise AssertionError(
+                f"FORENSIC VIOLATION: Saturn indication_strength={sat_strength!r} "
+                f"but expected 'mild' (Saturn exalted in Libra, score={saturn_score!r}) "
+                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
+            )
 
     # Step 3–5: Build rows
     rows_to_insert = []
@@ -328,18 +344,6 @@ def build_ga_medical_substep(
             %s, %s,
             %s, %s
         )
-        ON CONFLICT (chart_id, ayanamsha_id, graha) DO UPDATE SET
-            natal_sign          = EXCLUDED.natal_sign,
-            natal_nakshatra     = EXCLUDED.natal_nakshatra,
-            indication_strength = EXCLUDED.indication_strength,
-            dosha_aggravated    = EXCLUDED.dosha_aggravated,
-            organ_watch         = EXCLUDED.organ_watch,
-            body_part_watch     = EXCLUDED.body_part_watch,
-            nakshatra_body_part = EXCLUDED.nakshatra_body_part,
-            indication_tier     = EXCLUDED.indication_tier,
-            not_diagnosis       = EXCLUDED.not_diagnosis,
-            classical_citation  = EXCLUDED.classical_citation,
-            computed_at         = EXCLUDED.computed_at
     """
 
     inserted = 0

@@ -14,7 +14,7 @@ BEGIN;
 INSERT INTO asset_registry (
     asset_id, layer, scope, sanskrit_name, english_name, english_description,
     storage_type, target_table, count_sql, target_floor,
-    depends_on, is_active, asset_type, layer_name, layer_index, catalog_status
+    depends_on, has_substeps, is_active, asset_type, layer_name, layer_index, catalog_status
 ) VALUES (
     'ga_medical',
     'ganita',
@@ -32,7 +32,8 @@ INSERT INTO asset_registry (
     'ga_medical',
     'SELECT COUNT(*) FROM ga_medical WHERE chart_id = $1',
     45,
-    ARRAY['ga_condition', 'ga_positions'],
+    ARRAY['ga_condition_composite', 'ga_positions', 'bg_medical_mappings', 'bg_nakshatra_medical'],
+    true,
     true,
     'data',
     'Gaṇita',
@@ -50,6 +51,7 @@ ON CONFLICT (asset_id) DO UPDATE SET
     count_sql           = EXCLUDED.count_sql,
     target_floor        = EXCLUDED.target_floor,
     depends_on          = EXCLUDED.depends_on,
+    has_substeps        = EXCLUDED.has_substeps,
     is_active           = EXCLUDED.is_active,
     asset_type          = EXCLUDED.asset_type,
     layer_name          = EXCLUDED.layer_name,

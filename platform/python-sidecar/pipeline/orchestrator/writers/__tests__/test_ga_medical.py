@@ -363,10 +363,10 @@ def test_ga_medical_plan_substeps_five():
     keys = {s.key for s in steps}
     expected_keys = {
         "ayanamsha_lahiri_chitrapaksha",
-        "ayanamsha_kp",
+        "ayanamsha_krishnamurti",
         "ayanamsha_true_chitra",
         "ayanamsha_raman",
-        "ayanamsha_yukteshwar",
+        "ayanamsha_surya_siddhanta_classical",
     }
     assert keys == expected_keys, f"Substep keys mismatch: {keys}"
 
