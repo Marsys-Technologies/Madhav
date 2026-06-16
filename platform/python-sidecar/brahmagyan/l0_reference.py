@@ -7,14 +7,14 @@ from BPHS and related classical texts. No LLM generation. No live computation.
 
 Tables written:
   reference_planets    — 9 grahas + 2 nodes (11 rows)
-  reference_nakshatras — 27 nakshatras
+  reference_nakshatras — DEPRECATED (see bg_nakshatra)
   reference_signs      — 12 zodiac signs
   reference_aspects    — graha drishti (planetary aspects)
   reference_vargas     — 16 shodasha vargas (D1–D60)
 
 Volume floors (WS-2 honest gate):
   reference_planets:    >= 11 rows (9 grahas + 2 nodes)
-  reference_nakshatras: >= 27 rows
+  reference_nakshatras: DEPRECATED (authority transferred to bg_nakshatra)
   reference_signs:      >= 12 rows
   reference_aspects:    >= 30 rows (all planets × aspect houses)
   reference_vargas:     >= 16 rows
@@ -1291,7 +1291,7 @@ def seed_reference(conn, build_id: str | None = None, dry_run: bool = False, aut
     if dry_run:
         return {
             "reference_planets": len(PLANETS),
-            "reference_nakshatras": len(NAKSHATRAS),
+            "reference_nakshatras": 0,  # DEPRECATED — authority transferred to bg_nakshatra
             "reference_signs": len(SIGNS),
             "reference_aspects": len(ASPECTS),
             "reference_vargas": len(VARGAS),
@@ -1580,7 +1580,7 @@ def check_volume(conn) -> dict[str, dict]:
     """
     floors = {
         "reference_planets": 11,
-        "reference_nakshatras": 27,
+        "reference_nakshatras": 0,  # DEPRECATED — authority transferred to bg_nakshatra
         "reference_signs": 12,
         "reference_aspects": 19,
         "reference_vargas": 16,

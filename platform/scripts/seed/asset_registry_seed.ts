@@ -444,7 +444,7 @@ const ASSETS: AssetDef[] = [
     target_table: 'reference_nakshatra',
     count_sql: `SELECT (SELECT COUNT(*) FROM reference_nakshatra) + (SELECT COUNT(*) FROM reference_nakshatra_pada) + (SELECT COUNT(*) FROM reference_nakshatra_matrix) AS count`,
     size_sql: "SELECT pg_total_relation_size('reference_nakshatra')",
-    target_floor: 2857,
+    target_floor: null,  // set after first build (§N.4)
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '28 nakshatras + 108 padas + 2721 compatibility matrix rows (28×28 Ashtakuta cells × ~3.5 factors) = 2857 total rows.',
