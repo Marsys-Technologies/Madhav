@@ -76,37 +76,18 @@ WHITELIST_TICKETS = {
         "files": ["00_ARCHITECTURE/B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE.md"],
         "booked_for": "PHASE_B_PLAN v1.0.3 amendment cycle",
     },
-    # STEP_LEDGER Step 5A close — 00_ARCHITECTURE/CLAUDE.md helper file v2.1 pointer
-    "WARN.6": {
-        "description": "00_ARCHITECTURE/CLAUDE.md helper v2.1 pointer",
-        "files": ["00_ARCHITECTURE/CLAUDE.md"],
-        "booked_for": "Step 9 CLAUDE.md rebuild cycle",
-    },
-    # STEP_LEDGER Step 5A close — 025_HOLISTIC_SYNTHESIS/CLAUDE.md helper file v2.1 pointer
-    "WARN.7": {
-        "description": "025_HOLISTIC_SYNTHESIS/CLAUDE.md helper v2.1 pointer",
-        "files": ["025_HOLISTIC_SYNTHESIS/CLAUDE.md"],
-        "booked_for": "Step 9 CLAUDE.md rebuild cycle",
-    },
-    # ND.1 close-out 2026-05-27 — Gemini mirror retired; .gemini/project_state.md and
-    # mirror_enforcer.py references are dead pointers across governance surfaces.
-    # Booked for governance surface cleanup in next quarterly pass (§H).
-    "WARN.8": {
-        "description": "Gemini mirror retirement dead pointers (ND.1 close-out 2026-05-27)",
-        "files": [
-            "00_ARCHITECTURE/STEP_LEDGER_v1_0.md",
-            "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
-            "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md",
-            "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
-            "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
-            "00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md",
-            "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
-            "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
-            "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md",
-            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
-        ],
-        "booked_for": "Quarterly governance pass (§H) — remove Gemini mirror references",
-    },
+    # WARN.6 removed 2026-06-16 (chore/governance-repoint): generated 0 findings post-v6.0
+    # CLAUDE.md rebuild — 00_ARCHITECTURE/CLAUDE.md helper file exists on disk and the
+    # phantom-reference check no longer fires on it.
+    # WARN.7 removed 2026-06-16 (chore/governance-repoint): generated 0 findings post-v6.0
+    # CLAUDE.md rebuild — 025_HOLISTIC_SYNTHESIS/CLAUDE.md helper file exists on disk and
+    # the phantom-reference check no longer fires on it.
+    # WARN.8 removed 2026-06-16 (chore/governance-repoint): mirror_enforcer dead code
+    # cleared in Phase 1 (chore/legacy-dead-code-kill / Legacy Governance Teardown).
+    # Dead basenames (mirror_enforcer.py, .gemini/project_state.md, p6_uvc_consistency.py,
+    # rag/ledger.py) moved to _FUTURE_ARTIFACTS to suppress phantom-reference noise while
+    # preserving the historical audit trail in governance markdown. Removal verified:
+    # drift_detector exits 3 (MEDIUM/LOW only) post-change.
     # GISMCP remediation arc (2026-05-26) modified 5 platform-mcp tool files
     # (tier-gate removal + alias creation + mantras filter fix). The declared
     # fingerprints in CAPABILITY_MANIFEST were not rotated in that arc session.
@@ -508,6 +489,16 @@ _FUTURE_ARTIFACTS = {
     # Pending L0 rebuild of the rag module.
     "schemas.py",                           # rag schemas module — pending L0 rebuild
     "router.py",                            # rag router module — pending L0 rebuild
+    # Gemini mirror retirement (ND.1 close-out 2026-05-27) — these files were deleted when
+    # the mirror discipline was retired. Governance markdown (STEP_LEDGER, GOVERNANCE_INTEGRITY_PROTOCOL,
+    # etc.) retains historical backtick references as audit trail; suppress phantom-reference
+    # noise without removing the historical evidence. WARN.8 whitelist entry removed 2026-06-16.
+    "mirror_enforcer.py",                   # Gemini mirror enforcer — retired ND.1 close-out
+    "project_state.md",                     # .gemini/project_state.md — retired ND.1 close-out
+    # p6_uvc_consistency.py and rag/ledger.py appear in STEP_LEDGER historical audit entries;
+    # never re-introduced; suppress phantom noise without touching historical record.
+    "p6_uvc_consistency.py",                # historical STEP_LEDGER reference — never re-introduced
+    "ledger.py",                            # rag/ledger.py historical reference — pending L0 rebuild
 }
 
 # Regex for template/example path placeholders (vX_Y, vN_N, etc.)
