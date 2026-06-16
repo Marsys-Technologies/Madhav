@@ -1029,20 +1029,6 @@ def build_ga_yoga_substep(
                         %s, %s,
                         %s::jsonb, NOW()
                     )
-                    ON CONFLICT (chart_id, ayanamsha_id, yoga_canonical_id)
-                    DO UPDATE SET
-                        fired = EXCLUDED.fired,
-                        constituent_fact_ids = EXCLUDED.constituent_fact_ids,
-                        constituent_planets = EXCLUDED.constituent_planets,
-                        constituent_houses = EXCLUDED.constituent_houses,
-                        strength = EXCLUDED.strength,
-                        strength_formula_version = EXCLUDED.strength_formula_version,
-                        partial_formation_pct = EXCLUDED.partial_formation_pct,
-                        is_partial = EXCLUDED.is_partial,
-                        bhanga_active = EXCLUDED.bhanga_active,
-                        bhanga_rule_fired = EXCLUDED.bhanga_rule_fired,
-                        family_ids = EXCLUDED.family_ids,
-                        computed_at = NOW()
                 """, (
                     chart_id,
                     build_uuid,
@@ -1082,8 +1068,9 @@ def build_ga_yoga_substep(
 
 def _forensic_assert(rows_inserted: int, ayanamsha_id: str) -> None:
     """
-    Soft FORENSIC check for native chart 482012f1-710e-4a25-994a-93821f5871aa.
-    Logs warnings (not halts) for expected yoga patterns.
+    Hard FORENSIC assertion for native chart 482012f1-710e-4a25-994a-93821f5871aa.
+    Raises AssertionError (halts the build) if 0 yogas fired — this is a sign of
+    missing chart_facts input, not a valid empty result for the native's chart.
 
     Known expected checks for Aries lagna, Sun/Capricorn, Moon/Purva Bhadrapada:
     - budha_aditya: Sun and Mercury conjunction — common in Capricorn
@@ -1092,13 +1079,11 @@ def _forensic_assert(rows_inserted: int, ayanamsha_id: str) -> None:
     - sunapha/anapha: planets around Moon check
     """
     if rows_inserted == 0:
-        logger.warning(
-            "[ga_yoga_writer] FORENSIC WARNING: native chart %s ayanamsha=%s "
-            "fired 0 yogas — check chart_facts completeness",
-            CANONICAL_CHART_ID, ayanamsha_id,
+        raise AssertionError(
+            f"[ga_yoga_writer] FORENSIC FAIL: native chart {CANONICAL_CHART_ID} "
+            f"ayanamsha={ayanamsha_id} fired 0 yogas — check chart_facts completeness"
         )
-    else:
-        logger.info(
-            "[ga_yoga_writer] FORENSIC: native chart %s ayanamsha=%s fired %d yogas",
-            CANONICAL_CHART_ID, ayanamsha_id, rows_inserted,
-        )
+    logger.info(
+        "[ga_yoga_writer] FORENSIC: native chart %s ayanamsha=%s fired %d yogas",
+        CANONICAL_CHART_ID, ayanamsha_id, rows_inserted,
+    )
