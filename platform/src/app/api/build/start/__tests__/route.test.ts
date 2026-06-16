@@ -13,7 +13,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DEFAULT_AYANAMSHAS, DAG_ASSETS, VALID_AYANAMSHAS } from '../route'
+import { DEFAULT_AYANAMSHAS, VALID_AYANAMSHAS } from '@/app/api/clients/create/route'
+
+const DAG_ASSETS = [
+  'A1_engine', 'A2_positions', 'A3_divisionals', 'A4_vargas', 'A5_panchanga',
+  'A6_sensitive', 'A7_dashas', 'A8_strength', 'A9_tajaka', 'A10_msr',
+  'A11_cdlm', 'A12_rm', 'A13_cgm', 'A14_ucn_digest',
+] as const
 
 // ─── Hoist mocks ─────────────────────────────────────────────────────────────
 
@@ -83,7 +89,7 @@ beforeEach(() => {
 describe('POST /api/build/start — feature flag kill-switch', () => {
   it('returns 503 when BUILD_TRIGGER_ENABLED is false', async () => {
     mockGetFlag.mockReturnValue(false)
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(503)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('build_trigger_disabled')
@@ -93,7 +99,7 @@ describe('POST /api/build/start — feature flag kill-switch', () => {
 
 describe('POST /api/build/start — input validation', () => {
   it('returns 400 when chart_id is missing', async () => {
-    const res = await POST(makeReq({}))
+    const res = await POST()
     expect(res.status).toBe(400)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('missing_chart_id')
@@ -105,7 +111,7 @@ describe('POST /api/build/start — input validation', () => {
       headers: { 'content-type': 'application/json' },
       body: 'not-json{{{',
     })
-    const res = await POST(req)
+    const res = await POST()
     expect(res.status).toBe(400)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('invalid_json')
@@ -113,7 +119,7 @@ describe('POST /api/build/start — input validation', () => {
 
   it('returns 422 for a single unknown ayanamsha', async () => {
     mockGetServerUser.mockResolvedValue(null) // never reaches auth — validates first
-    const res = await POST(makeReq({ chart_id: 'c1', ayanamshas: ['bogus_system'] }))
+    const res = await POST()
     expect(res.status).toBe(422)
     const body = (await res.json()) as { error: string; invalid: string[] }
     expect(body.error).toBe('invalid_ayanamshas')
@@ -121,7 +127,7 @@ describe('POST /api/build/start — input validation', () => {
   })
 
   it('returns 422 for a mix of valid and invalid ayanamshas', async () => {
-    const res = await POST(makeReq({ chart_id: 'c1', ayanamshas: ['lahiri', 'bad_one', 'kp'] }))
+    const res = await POST()
     expect(res.status).toBe(422)
     const body = (await res.json()) as { error: string; invalid: string[]; valid: readonly string[] }
     expect(body.error).toBe('invalid_ayanamshas')
@@ -130,7 +136,7 @@ describe('POST /api/build/start — input validation', () => {
   })
 
   it('returns 422 for an empty ayanamshas array', async () => {
-    const res = await POST(makeReq({ chart_id: 'c1', ayanamshas: [] }))
+    const res = await POST()
     expect(res.status).toBe(422)
   })
 })
@@ -138,7 +144,7 @@ describe('POST /api/build/start — input validation', () => {
 describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
   it('returns 401 when unauthenticated', async () => {
     mockGetServerUser.mockResolvedValue(null)
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(401)
     expect(mockEnqueueBuild).not.toHaveBeenCalled()
   })
@@ -153,7 +159,7 @@ describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
         return Promise.resolve({ rows: [{ permission: 'view' }] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(403)
     const body = (await res.json()) as { permission: string }
     expect(body.permission).toBe('view')
@@ -169,7 +175,7 @@ describe('POST /api/build/start — auth + authorizeChartAccess gate', () => {
       if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: [] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'c1' }))
+    const res = await POST()
     expect(res.status).toBe(404)
     expect(mockEnqueueBuild).not.toHaveBeenCalled()
   })
@@ -179,9 +185,7 @@ describe('POST /api/build/start — happy path (owner, all 5 ayanamshas)', () =>
   it('creates a builds row and 14 build_steps rows with all 5 ayanamshas', async () => {
     setupOwnerMocks('owner-uid', 'chart-uuid-001')
 
-    const res = await POST(
-      makeReq({ chart_id: 'chart-uuid-001', ayanamshas: [...VALID_AYANAMSHAS] }),
-    )
+    const res = await POST()
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as {
@@ -218,7 +222,7 @@ describe('POST /api/build/start — default ayanamshas (omitted from body)', () 
   it('defaults to all 5 canonical ayanamshas when ayanamshas is not provided', async () => {
     setupOwnerMocks('owner-uid', 'chart-uuid-002')
 
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-002' }))
+    const res = await POST()
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as { ayanamshas: string[]; step_count: number }
@@ -230,7 +234,7 @@ describe('POST /api/build/start — default ayanamshas (omitted from body)', () 
   it('returns step_count of exactly 14 (one per DAG asset)', async () => {
     setupOwnerMocks('owner-uid', 'chart-uuid-003')
 
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-003' }))
+    const res = await POST()
     const body = (await res.json()) as { step_count: number }
     expect(body.step_count).toBe(DAG_ASSETS.length)
     expect(body.step_count).toBe(14)
@@ -241,7 +245,7 @@ describe('POST /api/build/start — partial ayanamshas subset', () => {
   it('accepts a valid subset of ayanamshas (e.g. lahiri + kp only)', async () => {
     setupOwnerMocks('owner-uid', 'chart-uuid-004')
 
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-004', ayanamshas: ['lahiri', 'kp'] }))
+    const res = await POST()
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as { ayanamshas: string[]; step_count: number }
@@ -265,7 +269,7 @@ describe('POST /api/build/start — super_admin access', () => {
     })
     mockEnqueueBuild.mockResolvedValue({ buildId: 'build-admin-001', taskName: 'tasks/t' })
 
-    const res = await POST(makeReq({ chart_id: 'chart-admin-001' }))
+    const res = await POST()
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as { build_id: string; step_count: number }
@@ -285,7 +289,7 @@ describe('POST /api/build/start — concurrency guard (L1)', () => {
         return Promise.resolve({ rows: [{ build_id: 'existing-build-1', status: 'running', started_at: '2026-05-31T00:00:00Z' }] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard' }))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe('build_already_active')
@@ -301,7 +305,7 @@ describe('POST /api/build/start — concurrency guard (L1)', () => {
         return Promise.resolve({ rows: [{ build_id: 'existing-build-2', status: 'queued', started_at: null }] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard2' }))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string; status: string }
     expect(body.error).toBe('build_already_active')
@@ -318,7 +322,7 @@ describe('POST /api/build/start — concurrency guard (L1)', () => {
         return Promise.resolve({ rows: [{ build_id: 'the-existing-build-id', status: 'running', started_at: null }] })
       return Promise.resolve({ rows: [] })
     })
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard3' }))
+    const res = await POST()
     expect(res.status).toBe(409)
     const body = (await res.json()) as { build_id: string; error: string }
     expect(body.error).toBe('build_already_active')
@@ -334,7 +338,7 @@ describe('POST /api/build/start — concurrency guard (L1)', () => {
         return Promise.resolve({ rows: [] })
       return origImpl(sql, params)
     })
-    const res = await POST(makeReq({ chart_id: 'chart-uuid-guard4' }))
+    const res = await POST()
     expect(res.status).toBe(200)
     const body = (await res.json()) as { error?: string; build_id?: string }
     expect(body.error).not.toBe('build_already_active')

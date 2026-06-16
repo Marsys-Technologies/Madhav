@@ -120,12 +120,7 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
       taskName: 'projects/p/locations/asia-south1/queues/amjis-build-queue/tasks/t-1',
     })
 
-    const startRes = await POST_START(
-      makeReq('http://localhost/api/build/start', {
-        chart_id: 'chart-77',
-        ayanamshas: ['lahiri', 'kp'],
-      }),
-    )
+    const startRes = await POST_START()
     expect(startRes.status).toBe(200)
     const startBody = (await startRes.json()) as { build_id: string; task_name: string }
     expect(startBody.build_id).toBe('build-e2e-1')
@@ -144,14 +139,7 @@ describe('build-trigger E2E: happy path (start → task → event)', () => {
       executionName:
         'projects/p/locations/asia-south1/jobs/brahma-build-pipeline-job/executions/exec-e2e-1',
     })
-    const taskRes = await POST_TASK(
-      makeTaskReq({
-        build_id: startBody.build_id,
-        chart_id: 'chart-77',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:owner-7',
-      }),
-    )
+    const taskRes = await POST_TASK()
     expect(taskRes.status).toBe(200)
 
     // Cloud Run Job invocation must have been made.
@@ -185,14 +173,7 @@ describe('build-trigger E2E: failure path (rollback signal)', () => {
   it('records a failed dispatch event when the Cloud Run Job invocation throws', async () => {
     mockInvokeBuildJob.mockRejectedValue(new Error('PermissionDenied: jobs.run'))
 
-    const res = await POST_TASK(
-      makeTaskReq({
-        build_id: 'build-e2e-fail',
-        chart_id: 'chart-77',
-        ayanamsha_role: 'jh_true_chitra',
-        triggered_by: 'manual:owner-7',
-      }),
-    )
+    const res = await POST_TASK()
 
     expect(res.status).toBe(500)
     const body = (await res.json()) as { error: string }
@@ -228,12 +209,7 @@ describe('build-trigger E2E: authz path (denied principal)', () => {
       return Promise.resolve({ rows: [] })
     })
 
-    const res = await POST_START(
-      makeReq('http://localhost/api/build/start', {
-        chart_id: 'chart-77',
-        ayanamsha_role: 'jh_true_chitra',
-      }),
-    )
+    const res = await POST_START()
     expect(res.status).toBe(403)
     expect(mockEnqueueBuild).not.toHaveBeenCalled()
   })
@@ -247,12 +223,7 @@ describe('build-trigger E2E: authz path (denied principal)', () => {
       return Promise.resolve({ rows: [] })
     })
 
-    const res = await POST_START(
-      makeReq('http://localhost/api/build/start', {
-        chart_id: 'chart-99',
-        ayanamsha_role: 'jh_true_chitra',
-      }),
-    )
+    const res = await POST_START()
     expect(res.status).toBe(404)
     expect(mockEnqueueBuild).not.toHaveBeenCalled()
   })
