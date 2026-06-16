@@ -15,7 +15,10 @@ L1 idempotency: DELETE WHERE chart_id = %s AND ayanamsha_id = %s, then INSERT.
 Never commits — caller owns the transaction.
 """
 from __future__ import annotations
+import logging
 from typing import Optional, Any
+
+logger = logging.getLogger(__name__)
 
 # Canonical ayanamshas — MUST match ga_positions_writer.py CANONICAL_AYANAMSHAS exactly
 CANONICAL_AYANAMSHAS = [
@@ -118,8 +121,14 @@ def compute_prashna_judgment(
     positions = {r[0]: {"longitude": r[1], "retrograde": r[2]} for r in cur.fetchall()}
 
     if not positions:
+        # Prashna chart exists but ga_positions not yet built — build ordering issue
+        logger.warning(
+            "[ga_prashna_writer] chart_id=%s ayanamsha=%s: prashna chart exists "
+            "but ga_positions is empty — ensure ga_positions runs before ga_prashna",
+            chart_id, ayanamsha_id,
+        )
         cur.close()
-        return None  # No positions built yet — wait for ga_positions
+        return None
 
     # Step 3: Get Lagna from positions (Ascendant is stored as 'Lagna' or 'Ascendant')
     lagna_data = positions.get("Lagna") or positions.get("Ascendant")
