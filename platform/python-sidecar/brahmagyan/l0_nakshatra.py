@@ -956,3 +956,108 @@ _abhijit = NAKSHATRAS_ENRICHED[27]
 assert _abhijit['is_abhijit'] is True
 assert _abhijit['nadi'] is None
 assert _abhijit['yoni_sex'] is None
+
+# ── Per-pada data (108) ────────────────────────────────────────────────────────
+# Deterministic: starting point = Ashwini pada 1 = Aries navamsa.
+# Navamsa signs cycle 1-12 (Aries to Pisces) across all 108 padas.
+# Pada lord = the ruling planet of the navamsa sign.
+# Source: bphs:ch92 (pada structure) + muhurta_chintamani:ch7 (aksharas)
+
+_NAVAMSA_SIGNS = [
+    "Aries", "Taurus", "Gemini", "Cancer",
+    "Leo", "Virgo", "Libra", "Scorpio",
+    "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+]
+
+_SIGN_LORDS = {
+    "Aries": "mars", "Taurus": "venus", "Gemini": "mercury", "Cancer": "moon",
+    "Leo": "sun", "Virgo": "mercury", "Libra": "venus", "Scorpio": "mars",
+    "Sagittarius": "jupiter", "Capricorn": "saturn", "Aquarius": "saturn",
+    "Pisces": "jupiter",
+}
+
+# 108 aksharas for naming — from Muhurta Chintamani Ch.7 (classical tradition)
+# Sequence: 4 aksharas per nakshatra, in nakshatra order 1-27
+# Abhijit has no conventional akshara assignments in the 27-fold system
+_AKSHARAS: list[tuple] = [
+    # (pada1, pada2, pada3, pada4) for each nakshatra 1-27
+    ("Chu", "Che", "Cho", "La"),       # 1  Ashwini
+    ("Li", "Lu", "Le", "Lo"),          # 2  Bharani
+    ("A", "I", "U", "E"),              # 3  Krittika
+    ("O", "Va", "Vi", "Vu"),           # 4  Rohini
+    ("Ve", "Vo", "Ka", "Ki"),          # 5  Mrigasira
+    ("Ku", "Gha", "Da", "Na"),         # 6  Ardra
+    ("Ke", "Ko", "Ha", "Hi"),          # 7  Punarvasu
+    ("Hu", "He", "Ho", "Da"),          # 8  Pushya
+    ("Di", "Du", "De", "Do"),          # 9  Ashlesha
+    ("Ma", "Mi", "Mu", "Me"),          # 10 Magha
+    ("Mo", "Ta", "Ti", "Tu"),          # 11 Purva Phalguni
+    ("Te", "To", "Pa", "Pi"),          # 12 Uttara Phalguni
+    ("Pu", "Sha", "Na", "Tha"),        # 13 Hasta
+    ("Pe", "Po", "Ra", "Ri"),          # 14 Chitra
+    ("Ru", "Re", "Ro", "Ta"),          # 15 Swati
+    ("Ti", "Tu", "Te", "To"),          # 16 Vishakha
+    ("Na", "Ni", "Nu", "Ne"),          # 17 Anuradha
+    ("No", "Ya", "Yi", "Yu"),          # 18 Jyeshtha
+    ("Ye", "Yo", "Bha", "Bhi"),        # 19 Moola
+    ("Bhu", "Dha", "Pha", "Dha"),      # 20 Purva Ashadha
+    ("Bhe", "Bho", "Ja", "Ji"),        # 21 Uttara Ashadha
+    ("Ju", "Je", "Jo", "Sha"),         # 22 Shravana
+    ("Ga", "Gi", "Gu", "Ge"),          # 23 Dhanishtha
+    ("Go", "Sa", "Si", "Su"),          # 24 Shatabhisha
+    ("Se", "So", "Da", "Di"),          # 25 Purva Bhadrapada
+    ("Du", "Tha", "Jha", "Da"),        # 26 Uttara Bhadrapada
+    ("De", "Do", "Cha", "Chi"),        # 27 Revati
+]
+
+assert len(_AKSHARAS) == 27, "Need exactly 27 rows (one per nakshatra, Abhijit excluded)"
+
+
+def _build_padas() -> list[dict]:
+    """Build 108 pada rows deterministically from navamsa cycle + akshara table."""
+    padas = []
+    navamsa_idx = 0   # starts at Aries (index 0)
+
+    for nak in NAKSHATRAS_ENRICHED[:27]:   # skip Abhijit (no conventional pada in 27-fold)
+        nak_id = nak['nakshatra_id']
+        nak_start = nak['start_longitude']
+        aksharas = _AKSHARAS[nak_id - 1]
+        for pada_num in range(1, 5):
+            absolute_pada = (nak_id - 1) * 4 + pada_num
+            navamsa_sign = _NAVAMSA_SIGNS[navamsa_idx % 12]
+            pada_start = nak_start + (pada_num - 1) * 3.33333
+            pada_end   = nak_start + pada_num * 3.33333
+
+            padas.append(dict(
+                pada_id=absolute_pada,
+                nakshatra_id=nak_id,
+                pada_number=pada_num,
+                absolute_pada=absolute_pada,
+                start_longitude=round(pada_start, 5),
+                end_longitude=round(pada_end, 5),
+                pada_navamsa_sign=navamsa_sign,
+                pada_lord=_SIGN_LORDS[navamsa_sign],
+                pada_akshara=aksharas[pada_num - 1],
+                bija_sound=None,
+                mantra_prefix=None,
+                pada_deity_nuance=None,
+                element_shading=None,
+                dosha_shading=None,
+                tradition_scope="classical",
+                classical_source="bphs:ch92 + muhurta_chintamani:ch7",
+            ))
+            navamsa_idx += 1
+
+    assert len(padas) == 108, f"Expected 108 padas, got {len(padas)}"
+    return padas
+
+
+PADAS: list[dict] = _build_padas()
+
+# FORENSIC: native Moon in Purva Bhadrapada — pada 1 = Aries navamsa
+_pbp_padas = [p for p in PADAS if p['nakshatra_id'] == 25]
+assert len(_pbp_padas) == 4
+assert _pbp_padas[0]['pada_navamsa_sign'] == 'Aries'
+assert _pbp_padas[0]['pada_lord'] == 'mars'
+assert _pbp_padas[0]['pada_akshara'] == 'Se'
+assert _pbp_padas[0]['absolute_pada'] == 97
