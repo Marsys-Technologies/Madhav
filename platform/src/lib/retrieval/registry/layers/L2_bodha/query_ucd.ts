@@ -60,13 +60,11 @@ export const queryUcdCapability: CapabilityDescriptor = {
 
   llm_hints: {
     agentic: {
-      cost_class:      'cheap',
-      cacheable:       true,
-      pre_fetch:       true,
+      cost_class: 'cheap',
+      cacheable:  true,
     },
     bulk_context: {
       pre_fetch_priority: 1,
-      context_label:     'bodha_digest',
     },
   },
 
@@ -125,7 +123,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
         db.query(convSql,   [chart_id, ayanamsha_id]),
       ])
 
-      const digest = digestResult.rows[0] ?? {}
+      const digest = (digestResult.rows[0] ?? {}) as Record<string, unknown>
 
       return {
         content: {
