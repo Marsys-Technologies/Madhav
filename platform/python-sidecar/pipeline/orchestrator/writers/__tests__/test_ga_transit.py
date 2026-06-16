@@ -209,6 +209,9 @@ def test_bg_transit_rules_dry_run_returns_zero():
     result = writer.run(ctx)
 
     assert result.asset_id == "bg_transit_rules"
+    assert result.rows_inserted == 0, (
+        f"dry_run must return 0 rows_inserted, got {result.rows_inserted}"
+    )
     # dry_run: seed_transit_rules returns counts but makes no DB calls
     ctx.db_conn.cursor.assert_not_called()
 
@@ -313,3 +316,6 @@ def test_forensic_moon_sign_passes_for_aquarius():
     # Should NOT raise — Moon is aquarius (FORENSIC pass)
     result = writer.run_substep(ctx, step)
     assert result.asset_id == "ga_transit_anchors"
+    assert result.rows_inserted > 0, (
+        f"Expected rows_inserted > 0 on FORENSIC-pass substep, got {result.rows_inserted}"
+    )

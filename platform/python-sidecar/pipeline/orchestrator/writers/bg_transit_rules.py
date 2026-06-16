@@ -23,7 +23,10 @@ class BgTransitRulesWriter(WriterBase):
     def run(self, ctx) -> WriterResult:  # type: ignore[override]
         from brahmagyan.l0_transit import seed_transit_rules
 
-        counts = seed_transit_rules(ctx.db_conn, dry_run=ctx.dry_run)
+        if ctx.dry_run:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run")
+
+        counts = seed_transit_rules(ctx.db_conn, dry_run=False)
 
         return WriterResult(
             asset_id=self.asset_id,

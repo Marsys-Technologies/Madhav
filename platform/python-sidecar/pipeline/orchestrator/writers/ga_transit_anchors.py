@@ -139,12 +139,12 @@ class GaTransitAnchorsWriter(WriterBase):
         # ── FORENSIC assertion for canonical native chart ─────────────────────
         if chart_id == CANONICAL_CHART_ID:
             moon_sign = positions.get("moon", {}).get("natal_sign", "")
-            if moon_sign and moon_sign != "aquarius":
+            if not moon_sign or moon_sign != "aquarius":
                 raise AssertionError(
                     f"FORENSIC VIOLATION: Moon natal_sign={moon_sign!r} "
                     f"but expected 'aquarius' for chart_id={CANONICAL_CHART_ID} "
                     f"ayanamsha={ayanamsha_id}. "
-                    "Check ga_positions build for this chart."
+                    "Moon absent or wrong sign — check ga_positions build for this chart."
                 )
 
         # ── Resolve Moon sign for house-from-Moon computation ─────────────────
@@ -188,12 +188,6 @@ class GaTransitAnchorsWriter(WriterBase):
                         (chart_id, build_id, ayanamsha_id, graha,
                          natal_sign, natal_house_from_moon, natal_degree_absolute)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (chart_id, ayanamsha_id, graha) DO UPDATE SET
-                        build_id               = EXCLUDED.build_id,
-                        natal_sign             = EXCLUDED.natal_sign,
-                        natal_house_from_moon  = EXCLUDED.natal_house_from_moon,
-                        natal_degree_absolute  = EXCLUDED.natal_degree_absolute,
-                        computed_at            = NOW()
                     """,
                     (
                         chart_id,
