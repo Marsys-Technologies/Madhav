@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.74
+version: 5.75
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,33 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.75 (2026-06-16, WAVE3-4-RETRIEVAL-BODHA):
+    **Wave 3 (R1–R3) COMPLETE + Wave 4 (B1–B5) CODE_COMPLETE (B5 E2E build infra-gated).**
+    Brief: CLAUDECODE_BRIEF_WAVE3_4_RETRIEVAL_AND_BODHA_v1_0.md → status CODE_COMPLETE.
+    Wave 3 deliverables: 19 L1 grouped retrieval tools (all 158 chart_facts categories);
+    4 L0 corpus query tools (yoga/dosha/remedy/classical-texts); CI regression gate
+    (tests/retrieval/coverage_gate.test.ts, 6 vitest tests, 6/6 PASS).
+    Wave 4 deliverables: all 8 bo_* WriterBase subclasses written + frozen-contract-conformant:
+    bo_laksana (HEAVY, bodha_msr_signals, salience_formula_v1, constituent_facts_array L1 refs);
+    bo_bimba (LIGHT, bodha_cgm_nodes, 28 nodes/aya: 9 graha + 12 bhava + 7 domain);
+    bo_karanajala (LIGHT, bodha_cgm_edges + bodha_contradictions, yoga_vs_dosha detection);
+    bo_sangati (LIGHT, bodha_cdlm_cells + bodha_convergence, linkage_formula_v1 + convergence_formula_v1);
+    bo_samskara (LIGHT, bodha_signal_embeddings, placeholder_hash_v1 deterministic 768-dim);
+    bo_upaya (LIGHT, bodha_rm_resonances + bodha_rm_remedy_prescriptions, G27-grounded);
+    bo_pramana_mapa (LIGHT, synthesis_quality_scorecard, trap1 audit + MV refresh);
+    bo_samvada (LIGHT, vw_chart_digest VIEW, UCD read surface).
+    L2 retrieval: query_ucd tool (marsys://tool/L2/query_ucd) registered in L2_bodha/index.ts.
+    Migration 230 (230_bodha_registry_reconcile.sql): updates 8 bo_* count_sql + target_table to spec tables.
+    Seal: L2_BODHA_CLOSE_v1_0.md authored (L3 Kāla onboarding contract in §4).
+    B5 blocker: Cloud SQL proxy at 127.0.0.1:5433 NOT running — E2E orchestrator build pending.
+    Next session: activate Cloud SQL proxy → run `POST /api/cockpit/runs scope=layer/bodha` →
+    update target_floors → declare L2 CLOSED → author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md.
+    branch: feature/ga8-all30-vargas (in-flight). last_session_id: WAVE3-4-RETRIEVAL-BODHA.
+    predecessor_session: L1-GANITA-CLOSURE-PASS. file_updated_at: 2026-06-16.
+    next_session_objective: >
+      "B5 E2E: activate Cloud SQL proxy, apply migration 230, run orchestrator layer build
+      for scope=layer/bodha on chart 482012f1, verify 8 bo_* assets lit in cockpit,
+      update target_floors to achieved counts, declare L2 CLOSED, author L3_KALA_CAMPAIGN_HANDOFF."
   - v5.74 (2026-06-12, L1-GANITA-CLOSURE-PASS):
     **L1 Gaṇita closure pass COMPLETE (Phase E gated).** Phase F sealed:
     `L1_GANITA_CLOSURE_v1_0.md` authored (canonical_id L1_GANITA_CLOSURE) — definitive
