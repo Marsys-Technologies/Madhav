@@ -121,6 +121,10 @@ def build_ga_vastu_substep(
 
         computed_at = datetime.now(timezone.utc)
 
+        # Track FORENSIC values during insert loop
+        _forensic_sun_impact: Optional[str] = None
+        _forensic_saturn_impact: Optional[str] = None
+
         # ── Insert one row per graha that has a direction mapping ───────────
         for graha in ALL_GRAHAS:
             direction = GRAHA_TO_DIRECTION.get(graha)
@@ -144,14 +148,6 @@ def build_ga_vastu_substep(
                     (%s, %s, %s, %s,
                      %s, %s, %s,
                      'traditional_vastu', %s, %s)
-                ON CONFLICT (chart_id, ayanamsha_id, graha) DO UPDATE SET
-                    direction        = EXCLUDED.direction,
-                    condition_score  = EXCLUDED.condition_score,
-                    dignity_d1       = EXCLUDED.dignity_d1,
-                    direction_impact = EXCLUDED.direction_impact,
-                    indication_tier  = EXCLUDED.indication_tier,
-                    classical_citation = EXCLUDED.classical_citation,
-                    computed_at      = EXCLUDED.computed_at
                 """,
                 (
                     chart_id, ayanamsha_id, graha, direction,
@@ -160,6 +156,27 @@ def build_ga_vastu_substep(
                 ),
             )
             rows_inserted += 1
+
+            # Track FORENSIC grahas for post-loop assertion
+            if graha == "Sun":
+                _forensic_sun_impact = direction_impact
+            elif graha == "Saturn":
+                _forensic_saturn_impact = direction_impact
+
+    # ── FORENSIC assertion for canonical native chart ─────────────────────────
+    if chart_id == CANONICAL_CHART_ID:
+        if not _forensic_sun_impact or _forensic_sun_impact != "weakened":
+            raise AssertionError(
+                f"FORENSIC VIOLATION: Sun direction_impact={_forensic_sun_impact!r} "
+                f"but expected 'weakened' (Sun debilitated in Capricorn) "
+                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
+            )
+        if not _forensic_saturn_impact or _forensic_saturn_impact != "strengthened":
+            raise AssertionError(
+                f"FORENSIC VIOLATION: Saturn direction_impact={_forensic_saturn_impact!r} "
+                f"but expected 'strengthened' (Saturn exalted in Libra) "
+                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
+            )
 
     logger.info(
         "ga_vastu: chart_id=%s ayanamsha_id=%s — %d rows inserted",

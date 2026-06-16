@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS bg_vastu_direction_remedials (
     direction           TEXT NOT NULL REFERENCES bg_vastu_directions(direction),
     remedy_type         TEXT NOT NULL,
     remedy_description  TEXT NOT NULL,
-    classical_citation  TEXT NOT NULL
+    classical_citation  TEXT NOT NULL,
+    UNIQUE (direction, remedy_type)
 );
 
 -- Seed 2–3 remedies per direction (~22 rows)
@@ -85,7 +86,7 @@ VALUES
     ('Southwest', 'space',   'Keep southwest (Nairitya) zone heavy, closed, and structurally solid; Rahu/Earth demands stability', 'Vastu Shastra tradition (Nairitya corner)'),
     ('Southwest', 'color',   'Use earthy tones — brown, terracotta — in southwest to ground Rahu energy and prevent instability', 'Brihat Samhita Ch.53'),
     ('Southwest', 'symbol',  'Avoid toilets or water bodies in southwest; place heavy furniture or master bedroom here to suppress negative Nairitya influence', 'Mayamata Ch.6')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (direction, remedy_type) DO NOTHING;
 
 COMMIT;
 

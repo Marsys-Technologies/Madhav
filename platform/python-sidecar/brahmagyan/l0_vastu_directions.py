@@ -271,7 +271,7 @@ def seed_vastu_directions(
     conn,
     build_id: str | None = None,
     dry_run: bool = False,
-    autocommit: bool = True,
+    autocommit: bool = False,
 ) -> dict[str, int]:
     """Seed bg_vastu_directions and bg_vastu_direction_remedials.
 
@@ -320,7 +320,7 @@ def seed_vastu_directions(
                     (direction, remedy_type, remedy_description, classical_citation)
                 VALUES
                     (%(direction)s, %(remedy_type)s, %(remedy_description)s, %(classical_citation)s)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (direction, remedy_type) DO NOTHING
                 """,
                 row,
             )

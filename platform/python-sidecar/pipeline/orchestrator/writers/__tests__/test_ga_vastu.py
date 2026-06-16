@@ -262,3 +262,32 @@ def test_all_remedials_have_citation():
             f"Remedial for direction='{row['direction']}' remedy_type='{row['remedy_type']}' "
             f"missing classical_citation"
         )
+
+
+# ── 21. plan_substeps returns exactly 5 (one per canonical ayanamsha) ─────────
+
+def test_ga_vastu_plan_substeps_returns_five():
+    """GaVastuWriter.plan_substeps must return exactly 5 SubSteps."""
+    from unittest.mock import MagicMock
+    from pipeline.orchestrator.writers import ContextSpec
+
+    writer = GaVastuWriter()
+    ctx = MagicMock(spec=ContextSpec)
+    substeps = writer.plan_substeps(ctx)
+
+    assert len(substeps) == 5, (
+        f"plan_substeps must return 5 substeps (one per canonical ayanamsha), "
+        f"got {len(substeps)}: {[s.key for s in substeps]}"
+    )
+
+    expected_keys = {
+        "ayanamsha_lahiri_chitrapaksha",
+        "ayanamsha_true_chitra",
+        "ayanamsha_krishnamurti",
+        "ayanamsha_raman",
+        "ayanamsha_surya_siddhanta_classical",
+    }
+    actual_keys = {s.key for s in substeps}
+    assert actual_keys == expected_keys, (
+        f"Unexpected substep keys: {actual_keys - expected_keys} missing: {expected_keys - actual_keys}"
+    )
