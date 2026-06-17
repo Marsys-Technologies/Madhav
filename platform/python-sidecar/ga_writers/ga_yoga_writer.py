@@ -120,8 +120,7 @@ def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]
     with conn.cursor() as cur:
         cur.execute("""
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text,
-                   fact_value_num, fact_value_jsonb, house_number, sign, sign_number,
-                   nakshatra, degree_in_sign, degree_absolute
+                   fact_value_num, fact_value_jsonb
             FROM chart_facts
             WHERE chart_id = %s AND ayanamsha_id = %s
         """, (chart_id, ayanamsha_id))
