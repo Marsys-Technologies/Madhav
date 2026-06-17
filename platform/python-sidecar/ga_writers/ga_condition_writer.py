@@ -664,23 +664,17 @@ def _load_varga_dignity_spread(
     """
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            # Map graha name to UPPER_SNAKE subject
-            _GRAHA_SUBJ = {
-                "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
-                "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
-                "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
-            }
-            subject = _GRAHA_SUBJ.get(graha, graha.upper())
-
+            # chart_divisionals.graha stores Title Case ("Sun", "Moon", ...) — pass graha directly.
+            # Include both 'varga_position' (sign) and 'varga_dignity' (dignity_status, dignity_score).
             cur.execute("""
                 SELECT varga, fact_key, fact_value_text, fact_value_num
                 FROM chart_divisionals
-                WHERE chart_id    = %s
-                  AND ayanamsha_id = %s
-                  AND graha        = %s
-                  AND fact_category = 'varga_position'
-                  AND fact_key IN ('sign', 'dignity_status', 'dignity_score')
-            """, (chart_id, ayanamsha_id, subject))
+                WHERE chart_id       = %s
+                  AND ayanamsha_id   = %s
+                  AND graha          = %s
+                  AND fact_category IN ('varga_position', 'varga_dignity')
+                  AND fact_key       IN ('sign', 'dignity_status', 'dignity_score')
+            """, (chart_id, ayanamsha_id, graha))
 
             spread: dict[str, Any] = {}
             for varga, key, val_text, val_num in cur.fetchall():
@@ -699,7 +693,7 @@ def _load_varga_dignity_spread(
             return spread
 
     except Exception as exc:
-        logger.debug("[ga_condition_writer] chart_divisionals not available for varga spread: %s", exc)
+        logger.warning("[ga_condition_writer] chart_divisionals varga spread failed for %s: %s", graha, exc)
         return None
 
 
@@ -744,12 +738,13 @@ def _load_dasha_periods(
     """
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            # chart_dashas column is lord_graha (not graha_label)
             cur.execute("""
-                SELECT system_id, level_n, graha_label, start_iso, end_iso
+                SELECT system_id, level_n, lord_graha, start_iso, end_iso
                 FROM chart_dashas
-                WHERE chart_id    = %s
-                  AND graha_label = %s
-                  AND level_n     = 1
+                WHERE chart_id   = %s
+                  AND lord_graha = %s
+                  AND level_n    = 1
                 ORDER BY start_iso
                 LIMIT 3
             """, (chart_id, graha))
@@ -770,7 +765,7 @@ def _load_dasha_periods(
             return periods, None   # weak periods require cross-reference with condition score
 
     except Exception as exc:
-        logger.debug("[ga_condition_writer] chart_dashas lookup failed for %s: %s", graha, exc)
+        logger.warning("[ga_condition_writer] chart_dashas lookup failed for %s: %s", graha, exc)
         return None, None
 
 
