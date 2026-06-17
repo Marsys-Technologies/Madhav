@@ -90,7 +90,7 @@ describe('Cockpit Polish R2 — AssetRow', () => {
         onRunStarted={() => {}}
       />
     )
-    expect(screen.getByText('● GREEN')).toBeTruthy()
+    expect(screen.getByTitle('CURRENT · healthy')).toBeTruthy()
     expect(screen.queryByText(/missing_table/)).toBeNull()
     expect(screen.queryByText(/degraded/)).toBeNull()
   })
@@ -147,7 +147,7 @@ describe('Cockpit Polish R2 — parent context (LayerPanel renders a service row
         onRunStarted={() => {}}
       />
     )
-    expect(screen.getByText('● GREEN')).toBeTruthy()
+    expect(screen.getByTitle('CURRENT · healthy')).toBeTruthy()
     expect(screen.queryByText(/degraded/)).toBeNull()
   })
 })
