@@ -712,6 +712,7 @@ const ASSETS: AssetDef[] = [
   {
     asset_id: 'ga_nakshatra',
     layer: 'ganita', sort_order: 20,
+    catalog_status: 'CURRENT',
     sanskrit_name: 'Nakṣatra-Paṭala',
     english_name: 'Nakshatra Parallel Chart',
     english_description: 'Per-chart parallel nakshatra chart: placement+attribute JOIN from bg_nakshatra, KP sub-lords (star/sub/sub-sub/prana) per body and house cusp, nakshatra dispositor graph, gaṇḍānta severity flags, tara bala, per-chart statistics. Into chart_facts. Authoritative L1 nakshatra grain.',
