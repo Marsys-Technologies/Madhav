@@ -28651,3 +28651,55 @@ next_session_objective: >
   L1 Gaṇita build campaign (L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md nirīkṣaka audit)
   per native direction.
 ```
+
+---
+
+## GATE3-SIX-SUBSYSTEM-CLOSE — 2026-06-17
+
+```yaml
+session_open:
+  session_id: GATE3-SIX-SUBSYSTEM-CLOSE
+  date: 2026-06-17
+  branch: feature/bg-nakshatra-l0
+  chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+  objective: >
+    Continued from prior compacted context. Complete Gate-3 production deployment:
+    fix remaining psycopg3 dict_row incompatibility bugs across ga_sade_sati and
+    ga_structural; restore ga_sade_sati asset_throughput metadata; run FORENSIC 7/7
+    verification pass and Vimarśaka IS.8(b) red-team; emit SIX_SUBSYSTEM_BUILD_CLOSE.
+
+session_body:
+  commits:
+    - hash: f721aae6
+      message: "test: mock cursor() row_factory=None for _NullConn/_MockConn/_EmptyConn"
+    - hash: ecbc8f95
+      message: "test: _KConn/_EC cursor row_factory=None — CI green"
+    - hash: f541eb55
+      message: "fix(ga_structural): str(chart_id)[:8] — UUID not subscriptable"
+    - hash: 1c5fbade
+      message: "fix(ga_sade_sati): dict key access for 7 positional row accesses"
+  sql_ops:
+    - "UPDATE asset_throughput SET state='lit', rows_written=11019, last_error=NULL WHERE chart_id='482012f1-...' AND asset_id='ga_sade_sati' — UPDATE 1"
+  forensic_result: "7/7 PASS — Sun=Capricorn, Moon=PuBha/Aquarius, Lagna=Aries×5, Tithi=ShuklaT, Vara=Ravi, Yoga=Shiva, Karana=Garaja all confirmed"
+  red_team_result: "RT-8 PASS — 0 RED findings (phantom check, aya coverage, score ordering, vastu mapping, Moon body part, sade sati integrity, prashna zero, vastu 40-not-45)"
+  seal_artifact: 00_ARCHITECTURE/SIX_SUBSYSTEM_BUILD_CLOSE_v1_0.md
+
+session_close:
+  assets_lit:
+    ga_condition: 45
+    ga_medical: 45
+    ga_prashna: 0
+    ga_sade_sati: 11019
+    ga_structural: 75168
+    ga_transit_anchors: 45
+    ga_vastu: 40
+    ga_yoga: 5
+  forensic_pass: true
+  red_team_pass: true
+  current_state_updated: true
+  current_state_version: 5.77
+  next_session_objective: >
+    L2 Bodha E2E build: apply migration 230, run scope=layer/bodha orchestrator build
+    for chart 482012f1, verify 8 bo_* assets lit, update target_floors, declare L2 CLOSED,
+    author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md.
+```

@@ -5,7 +5,7 @@ Conforms to the FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.
 """
 from __future__ import annotations
 
-from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from pipeline.orchestrator.writers import WriterBase, WriterResult, register, ContextSpec
 
 
 @register("bg_prashna_rules")
@@ -20,7 +20,7 @@ class PrashnaRulesWriter(WriterBase):
 
     asset_id = "bg_prashna_rules"
 
-    def run(self, ctx) -> WriterResult:  # type: ignore[override]
+    def run(self, ctx: ContextSpec) -> WriterResult:
         from brahmagyan.l0_prashna import seed_prashna_rules
 
         counts = seed_prashna_rules(ctx.db_conn, dry_run=ctx.dry_run)

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.76
+version: 5.79
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,71 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.79 (2026-06-17, L0-PRE-PR-FIXES):
+    **L0 Brahmagyan PROD-VERIFIED SEALED.** Pre-PR fixes per CLAUDECODE_BRIEF_L0_PRE_PR_FIXES_v1_0.md:
+    (STEP 1) Prod-verify gate PASS — all 7 checks confirmed on Cloud SQL prod; discovered migrations
+    295–305 data effects were on prod but not in _migrations_applied ledger; retroactively recorded
+    ledger entries for 295–305 with correct SHA256.
+    (STEP 2) Migration 305 committed (target_floor 36→41 bg_prashna_rules, 41→50 bg_transit_rules,
+    closes DEFER-006/007); migration 306 created and applied to prod (REC-004: aligns
+    reference_nakshatra.body_part with bg_nakshatra_medical Ashtanga Hridayam scheme, 27/27 AGREE);
+    seed patch: asset_registry_seed.ts updated with correct target_floors.
+    (STEP 3) REC dispositions recorded in L0_BRAHMAGYAN_CLOSURE_v1_0.md §6: REC-001 governance-note
+    only (no view); REC-002 deferred to L1 (no L0 view); REC-003 logged as pre-L2-Bodha data task;
+    REC-004 RESOLVED via migration 306.
+    (STEP 4) Closure record updated: §2 floors corrected, §6 dispositions, §7 DEFER-006/007 RESOLVED
+    + DEFER-005 tracked follow-up, §10 migrations 305+306 added, §11 prod-verify PASS table new.
+    Seal is now prod-verified (not just branch-asserted).
+    branch: fix/l0-closure-integrity. last_session_id: L0-PRE-PR-FIXES.
+    predecessor_session: L0-BRAHMAGYAN-CLOSURE.
+    next_session_objective: >
+      "PR fix/l0-closure-integrity → main open for native review. After merge: begin L1 Gaṇita
+      closure pass (same A+B+C method, consuming §5 L1 opportunity register from
+      L0_BRAHMAGYAN_CLOSURE_v1_0.md)."
+    file_updated_at: 2026-06-17. file_updated_by_session: L0-PRE-PR-FIXES.
+  - v5.78 (2026-06-17, L0-BRAHMAGYAN-CLOSURE):
+    **L0 Brahmagyan SEALED.** First-ever proper closure of the L0 layer (built incrementally by
+    the autonomous subsystem program, never coherently closed). Autonomous Sūtradhāra conductor
+    ran all 4 phases: (A) Integrity audit — 21 assets, 12 checks each, all findings resolved via
+    migrations 295–304 (4 count_sql fixes, 6 target_floor updates, bg_reference target_table fix,
+    bg_dignity_reference registered for 5 orphaned tables, global throughput for bg_compendium_index,
+    dormant throughput for bg_transit_engine + bg_nakshatra_medical, transit target_tables set,
+    deprecation comments on reference_nakshatras + classical_chunks + prashna_charts);
+    (B) Enrichment audit — 47 rows built: bg_transit_vedha NEW TABLE (33 vedha pairs, BPHS Ch.29
+    + Phaladeepika Ch.26), 5 missing Tajik yogas (tajik_yogas 11→16, Tajika Neelakanthi Ch.4),
+    9 Venus transit rules (houses 4–12, BPHS Ch.29); 3 items deferred on hard-gate
+    (Abhijit attributes, Rahu/Ketu transit phala);
+    (C) Synergy hunt — bg_graha_dik 9-row Dig Bala reference table built (migration 304,
+    BPHS Ch.27 + Saravali Ch.3 + Brihat Jataka Ch.2); 2 L1 + 4 L2 synergy opportunities
+    logged as opportunity register.
+    FORENSIC 7/7 PASS. Vimarsaka IS.8(b) red-team: PASS (0 RED, 3 AMBER — all documented).
+    Final L0: 22 registered assets, migrations 295–304 applied to prod, seed file patched.
+    Seal: L0_BRAHMAGYAN_CLOSURE_v1_0.md.
+    branch: fix/l0-closure-integrity. last_session_id: L0-BRAHMAGYAN-CLOSURE.
+    predecessor_session: GATE3-SIX-SUBSYSTEM-CLOSE.
+    next_session_objective: >
+      "Create PR from fix/l0-closure-integrity to main. Native review of L0 Brahmagyan Closure.
+      After PR merge: begin L1 Gaṇita closure pass (same A+B+C method, consuming §5 L1 opportunity
+      register from L0_BRAHMAGYAN_CLOSURE_v1_0.md)."
+    file_updated_at: 2026-06-17. file_updated_by_session: L0-BRAHMAGYAN-CLOSURE.
+  - v5.77 (2026-06-17, GATE3-SIX-SUBSYSTEM-CLOSE):
+    **Gate-3 Production Build CLOSED.** All 8 L1 Gaṇita subsystem assets lit on production for
+    chart 482012f1-710e-4a25-994a-93821f5871aa. FORENSIC 7/7 PASS. Vimarśaka IS.8(b) RT-8 PASS
+    (0 RED findings). Key fixes this session: (1) ga_structural UUID `str(chart_id)[:8]` fix
+    (commit f541eb55); (2) ga_sade_sati dict-key access fix for 7 positional row accesses
+    (commit 1c5fbade); (3) test mock cursor() `row_factory=None` fixes (commits f721aae6,
+    ecbc8f95). ga_sade_sati 11,019 rows confirmed intact after Cloud SQL Proxy timeout event;
+    asset_throughput metadata corrected via direct SQL UPDATE. Seal: SIX_SUBSYSTEM_BUILD_CLOSE_v1_0.md.
+    Asset totals: ga_condition=45, ga_medical=45, ga_prashna=0, ga_sade_sati=11019,
+    ga_structural=75168, ga_transit_anchors=45, ga_vastu=40, ga_yoga=5.
+    branch: feature/bg-nakshatra-l0. last_session_id: GATE3-SIX-SUBSYSTEM-CLOSE.
+    predecessor_session: WAVE3-4-RETRIEVAL-BODHA.
+    next_session_objective: >
+      "L2 Bodha E2E build: activate Cloud SQL proxy, apply migration 230
+      (bodha_registry_reconcile), run orchestrator layer build scope=layer/bodha on chart 482012f1,
+      verify 8 bo_* assets lit, update target_floors, declare L2 CLOSED, author
+      L3_KALA_CAMPAIGN_HANDOFF_v1_0.md."
+    file_updated_at: 2026-06-17. file_updated_by_session: GATE3-SIX-SUBSYSTEM-CLOSE.
   - v5.76 (2026-06-16, REPO-HYGIENE-CI-CLEANUP):
     **L1 Gaṇita DRAFT→CURRENT promotion recorded.** Migration
     236_ganita_catalog_current applied to prod — all 10 Gaṇita assets
@@ -4447,7 +4512,13 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: SRP-DEPLOY         # UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
+  last_session_id: L0-PRE-PR-FIXES  # 2026-06-17: L0 Brahmagyan PROD-VERIFIED SEALED. Prod-verify gate PASS (7/7), migration 305+306 applied to PROD, REC dispositions recorded, DEFER-006/007 RESOLVED. Predecessor L0-BRAHMAGYAN-CLOSURE.
+    # === Predecessor L0-BRAHMAGYAN-CLOSURE (2026-06-17) ===
+    # L0-BRAHMAGYAN-CLOSURE: L0 Brahmagyan SEALED. 22 assets, migrations 295-304, FORENSIC 7/7 PASS, IS.8(b) RT PASS (0 RED). Predecessor GATE3-SIX-SUBSYSTEM-CLOSE.
+    # === Predecessor GATE3-SIX-SUBSYSTEM-CLOSE (2026-06-17) preserved for audit ===
+    # GATE3-SIX-SUBSYSTEM-CLOSE: All 8 L1 Gaṇita subsystem assets lit. FORENSIC 7/7 PASS. RT-8 PASS. Fixes: ga_structural UUID fix, ga_sade_sati dict-key fix, test mock cursor() fixes.
+    # === Predecessor SRP-DEPLOY (2026-05-30) ===
+    # SRP-DEPLOY: UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
     # === Predecessor R11V2-PHASE-DE-ROLLOUT (2026-05-23) preserved for audit ===
     # R11V2-PHASE-DE-ROLLOUT: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
     # === Predecessor R11V2-DISPATCH-WIRING-COMPLETE (2026-05-22) ===
