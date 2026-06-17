@@ -649,12 +649,9 @@ const ASSETS: AssetDef[] = [
     english_description: 'Shadbala, ashtakavarga, and bhava bala per ayanamsha',
     storage_type: 'postgres_table',
     target_table: null,
-    // Matches migration 217 — chart_facts-scoped count for the cockpit stats
-    // route (reads asset_registry.count_sql, $1 = chart_id). Broadened from the
-    // migration-214 form to the full documented family: the prior filter only
-    // matched `house_bhava_bala_%`/`graha_vimsopaka_%` and missed the
-    // `bhava_bala_*` family, `vimsopaka_bala_per_graha`, and
-    // `graha_saptavargaja_bala_component`.
+    // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 1 adds 4 per-varga bala
+    // categories covered by the new `graha_%_bala_per_varga` clause. ashtakavarga per-varga
+    // rows already covered by existing `ashtakavarga_%`. Migration 217 broadened the family.
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
@@ -665,11 +662,12 @@ const ASSETS: AssetDef[] = [
       OR fact_category LIKE 'ashtakavarga_%'
       OR fact_category LIKE '%bhava_bala%'
       OR fact_category = 'graha_saptavargaja_bala_component'
+      OR fact_category LIKE 'graha_%_bala_per_varga'
     )
 `,
     size_sql: null,
-    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
-    target_floor: 2184,
+    // Floor = achieved canonical count for chart 482012f1 (migration 307, 2026-06-18).
+    target_floor: 11936,
     expected_volume_formula: '(6*GRAHAS + 8*GRAHAS*SIGNS + 6*BHAVAS) * AYANAMSHAS', // STALE_FORMULA: naive expansion gives (54+864+72)*5=4950 which over-counts by ~2×; actual=2184 because not all ashtakavarga sign×graha combos are stored and vimsopaka/bhava_bala sub-families are smaller than the theoretical max
     expected_volume_inputs: null,
     volume_explanation: 'Shadbala: 6 scores × 9 grahas; ashtakavarga: 8 tables × 9 grahas × 12 signs; bhava bala: 6 scores × 12 bhavas — all × ayanamshas',
@@ -686,8 +684,10 @@ const ASSETS: AssetDef[] = [
     english_description: 'Per-chart sensitive point positions computed from the catalog × ayanamshas',
     storage_type: 'postgres_table',
     target_table: null,
-    // Matches migration 214 verbatim — chart_facts-scoped count for the cockpit
-    // stats route (reads asset_registry.count_sql, $1 = chart_id).
+    // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 3 adds Tier-1 sensitive
+    // points: sensitive_point_gulika_mandi, sun_derived_upagraha, special_lagna (new IN entries);
+    // esoteric_point_sphuta_fertility + esoteric_point_yogi_system covered by esoteric_point_%.
+    // nakshatra_pada_sensitive (80 rows) was previously missing from the IN list; added here.
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
@@ -696,7 +696,9 @@ const ASSETS: AssetDef[] = [
         'upagraha_position', 'saturn_derived_point', 'saham_position',
         'karaka_chara_position', 'karakamsa_position', 'swamsa_position',
         'arudha_pada', 'midpoint', 'aprakasha_position',
-        'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point'
+        'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point',
+        'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna',
+        'nakshatra_pada_sensitive'
       )
       OR fact_category LIKE 'esoteric_point_%'
       OR fact_category LIKE 'kp_%'
@@ -704,8 +706,8 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    // Floor = achieved canonical count for chart 482012f1 (migration 220, 2026-06-11).
-    target_floor: 8055,
+    // Floor = achieved canonical count for chart 482012f1 (migration 307, 2026-06-18).
+    target_floor: 8610,
     expected_volume_formula: 'ACTUAL(bg_reference) * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Derived from the reference library count × ayanamshas; awaits dedicated per-chart table',

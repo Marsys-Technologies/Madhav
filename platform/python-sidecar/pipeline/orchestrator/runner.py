@@ -7,6 +7,8 @@ Core execution loop: load a build_run, acquire lock, walk per-asset plan.
 from __future__ import annotations
 
 import logging
+import os
+import signal
 import sys
 from typing import Optional
 
@@ -17,6 +19,11 @@ from .events import emit_event
 from .locks import acquire_chart_lock, release_chart_lock
 
 logger = logging.getLogger(__name__)
+
+# Concurrency cap: keep worst-case orchestrator connections well under Cloud SQL
+# max_connections=50 (budget: 50 − ~12 app/agent headroom − 5 margin = 33 available).
+# Default 10 leaves ample room; override via env var for larger deployments.
+_MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "10"))
 
 
 # ── Run-level helpers ─────────────────────────────────────────────────────────
@@ -90,9 +97,23 @@ def execute_run(run_id: str) -> None:
     from .writers import discover_all    # D1: ensure all writer modules are imported
     discover_all()
 
+    # SIGTERM → SystemExit so finally blocks run and the connection is cleaned up.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+
     conn = connect()
     conn.autocommit = False
     cur = conn.cursor()
+
+    # Concurrency cap: defer if too many runs are already active.
+    cur.execute("SELECT count(*) AS active FROM build_runs WHERE state = 'running'")
+    active_count = cur.fetchone()["active"]
+    if active_count >= _MAX_CONCURRENT_RUNS:
+        logger.warning(
+            "[orchestrator] max concurrent runs (%d) reached (%d active) — deferring run %s",
+            _MAX_CONCURRENT_RUNS, active_count, run_id,
+        )
+        conn.close()
+        sys.exit(3)
 
     run = load_run(cur, run_id)
     if run is None:
@@ -115,12 +136,12 @@ def execute_run(run_id: str) -> None:
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "running"})
 
         for position, asset_id in enumerate(plan):
-            signal = check_signals(cur, run_id)
-            if signal == "stop":
+            sig = check_signals(cur, run_id)
+            if sig == "stop":
                 mark_run_state(conn, cur, run_id, "stopped", ended_at=True)
                 emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "stopped"})
                 return
-            if signal == "pause":
+            if sig == "pause":
                 mark_run_state(conn, cur, run_id, "paused")
                 emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
                 return
@@ -144,6 +165,14 @@ def execute_run(run_id: str) -> None:
         raise
 
     finally:
+        # Guard B: roll back any open transaction BEFORE releasing the advisory
+        # lock, so a killed/interrupted build never leaves a txn open on the
+        # connection. Advisory locks are session-level and survive ROLLBACK, so
+        # the unlock below is still effective after the rollback.
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         try:
             release_chart_lock(cur, chart_id)
             conn.commit()

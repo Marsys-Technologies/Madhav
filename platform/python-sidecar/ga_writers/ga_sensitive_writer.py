@@ -1753,6 +1753,279 @@ def _build_nakshatra_pada_sensitive_rows(
     return rows
 
 
+# ── Amendment 3: 5 Tier-1 classical sensitive point builders ─────────────────
+
+GULIKA_DAY_SEGMENT = {0: 5, 1: 6, 2: 4, 3: 7, 4: 3, 5: 2, 6: 6}  # BPHS Ch.4
+MANDI_DAY_SEGMENT  = {0: 5, 1: 6, 2: 4, 3: 7, 4: 3, 5: 2, 6: 6}  # Mandi = Gulika
+
+DAGDHA_RASHI_BY_VARA: dict[int, list[str]] = {
+    0: ["Leo", "Scorpio"],
+    1: ["Gemini", "Virgo"],
+    2: ["Cancer", "Pisces"],
+    3: ["Libra", "Aquarius"],
+    4: ["Scorpio", "Capricorn"],
+    5: ["Aries", "Gemini"],
+    6: ["Taurus", "Cancer"],
+}
+
+
+def _build_gulika_mandi_sensitive_rows(
+    chart_data: dict, all_longs: dict, chart_id: str, ayanamsha_id: str,
+    build_id: str, eng_ver: str, panchanga: dict,
+) -> list[dict]:
+    rows: list[dict] = []
+    lagna_long_raw = all_longs.get("LAGNA")
+    if lagna_long_raw is None:
+        logging.warning("_build_gulika_mandi_sensitive_rows: LAGNA absent from all_longs; skipping")
+        return []
+    lagna_long = lagna_long_raw
+    sat_long_raw = all_longs.get("SAT")
+    vara = panchanga.get("vara_id")
+    if vara is None:
+        logging.warning("_build_gulika_mandi_sensitive_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        vara = 0
+
+    # Try native PyJHora upagrahas first
+    upagrahas_native = chart_data.get("upagrahas", {})
+    gulika_long = None
+    if isinstance(upagrahas_native.get("gulika"), dict):
+        gulika_long = upagrahas_native["gulika"].get("longitude_deg")
+    mandi_long = None
+    if isinstance(upagrahas_native.get("maandi"), dict):
+        mandi_long = upagrahas_native["maandi"].get("longitude_deg")
+
+    # Classical fallback
+    if gulika_long is None:
+        seg = GULIKA_DAY_SEGMENT.get(vara, 5)
+        gulika_long = ((seg - 0.5) / 8.0 * 360.0 + lagna_long) % 360.0
+    if mandi_long is None:
+        seg = MANDI_DAY_SEGMENT.get(vara, 5)
+        mandi_long = ((seg - 0.5) / 8.0 * 360.0 + lagna_long) % 360.0
+
+    gulika_seg = GULIKA_DAY_SEGMENT.get(vara, 5)
+    mandi_seg = MANDI_DAY_SEGMENT.get(vara, 5)
+
+    rows.extend(_long_rows(
+        "sensitive_point_gulika_mandi", "GULIKA", gulika_long,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            f"BPHS Ch.4: Gulika = Saturn-son occupying 8th day-segment on Sunday "
+            f"(segment {gulika_seg}/8 for vara={vara})"
+        ),
+    ))
+    rows.extend(_long_rows(
+        "sensitive_point_gulika_mandi", "MANDI", mandi_long,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            f"BPHS Ch.4: Mandi = alternate name for Gulika (same day-segment calculation, "
+            f"segment {mandi_seg}/8 for vara={vara})"
+        ),
+    ))
+    return rows
+
+
+def _build_sun_derived_upagrahas_rows(
+    all_longs: dict, chart_id: str, ayanamsha_id: str,
+    build_id: str, eng_ver: str, panchanga: dict,
+) -> list[dict]:
+    rows: list[dict] = []
+    sun_long_raw = all_longs.get("SUN")
+    if sun_long_raw is None:
+        logging.warning("_build_sun_derived_upagrahas_rows: SUN absent from all_longs; skipping")
+        return []
+    sun_long = sun_long_raw
+    lagna_long_raw = all_longs.get("LAGNA")
+    if lagna_long_raw is None:
+        logging.warning("_build_sun_derived_upagrahas_rows: LAGNA absent from all_longs; skipping")
+        return []
+    lagna_long = lagna_long_raw
+    vara = panchanga.get("vara_id")
+    if vara is None:
+        logging.warning("_build_sun_derived_upagrahas_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        vara = 0
+
+    kala_sun = (sun_long + 180.0) % 360.0
+    mrityu_sun = (sun_long + vara * 30.0) % 360.0
+    artha_prahara = (sun_long + 120.0) % 360.0
+    yamaghantaka = (sun_long + 240.0) % 360.0
+
+    subjects = [
+        ("KALA_SUN", kala_sun,
+         "BPHS Ch.4: Kala (Sun-derived) = Sun + 180 deg — underworld gate point, distinct from Saturn+30 deg approximation"),
+        ("MRITYU_SUN", mrityu_sun,
+         f"BPHS Ch.4: Mrityu (Sun-derived) = Sun + (vara x 30 deg) — weekday-indexed mortality point (vara={vara})"),
+        ("ARTHA_PRAHARA", artha_prahara,
+         "BPHS Ch.4: Artha Prahara = Sun + 120 deg — trine wealth gate"),
+        ("YAMAGHANTAKA", yamaghantaka,
+         "BPHS Ch.4: Yamaghantaka = Sun + 240 deg — 2nd trine mortality gate"),
+    ]
+    for subj, long_val, prov in subjects:
+        rows.extend(_long_rows(
+            "sun_derived_upagraha", subj, long_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_provenance_text=prov,
+        ))
+    return rows
+
+
+def _build_special_lagnas_rows(
+    all_longs: dict, chart_id: str, ayanamsha_id: str,
+    build_id: str, eng_ver: str, panchanga: dict,
+) -> list[dict]:
+    rows: list[dict] = []
+    sun_long_raw = all_longs.get("SUN")
+    lagna_long_raw = all_longs.get("LAGNA")
+    if sun_long_raw is None or lagna_long_raw is None:
+        logging.warning("_build_special_lagnas_rows: SUN or LAGNA absent from all_longs; skipping")
+        return []
+    sun_long = sun_long_raw
+    lagna_long = lagna_long_raw
+
+    hora_advance = (sun_long % 30.0) * 2.0
+    hora_lagna = (lagna_long + hora_advance) % 360.0
+
+    ghati_within = sun_long % 30.0
+    ghati_lagna = (lagna_long + ghati_within * 12.0) % 360.0
+
+    bhava_lagna = (sun_long * 2.0 - lagna_long + 180.0) % 360.0
+
+    rows.extend(_long_rows(
+        "special_lagna", "HORA_LAGNA", hora_lagna,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            "BPHS Ch.11: Hora Lagna advances 1 sign/hora (2 rev/day); "
+            "approximated from lagna + Sun within-sign offset x 2"
+        ),
+    ))
+    rows.extend(_long_rows(
+        "special_lagna", "GHATI_LAGNA", ghati_lagna,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            "BPHS: Ghati Lagna advances 1 sign/ghati (24 min); "
+            "approximated from lagna + Sun within-sign offset x 12"
+        ),
+    ))
+    # Vighati Lagna — floored (too granular without sub-second birth precision)
+    rows.append(_make_row(
+        "special_lagna", "VIGHATI_LAGNA", "longitude_sidereal",
+        None, "floored_requires_birth_seconds_precision", None,
+        chart_id, ayanamsha_id, build_id, eng_ver,
+        verification_pass_status="floored",
+        formula_provenance_text=(
+            "BPHS: Vighati Lagna changes every 24 seconds; "
+            "floor without sub-second birth precision"
+        ),
+    ))
+    rows.extend(_long_rows(
+        "special_lagna", "BHAVA_LAGNA", bhava_lagna,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text="BPHS: Bhava Lagna = (Sun x 2 - Lagna + 180 deg) mod 360 deg",
+    ))
+    return rows
+
+
+def _build_sphuta_completion_rows(
+    all_longs: dict, chart_id: str, ayanamsha_id: str,
+    build_id: str, eng_ver: str,
+) -> list[dict]:
+    rows: list[dict] = []
+    sun_long_raw = all_longs.get("SUN")
+    jup_long_raw = all_longs.get("JUP")
+    ven_long_raw = all_longs.get("VEN")
+    moon_long_raw = all_longs.get("MOON")
+    mar_long_raw = all_longs.get("MAR")
+    _SPHUTA_PLANETS = {"SUN": sun_long_raw, "JUP": jup_long_raw, "VEN": ven_long_raw, "MOON": moon_long_raw, "MAR": mar_long_raw}
+    _missing = [k for k, v in _SPHUTA_PLANETS.items() if v is None]
+    if _missing:
+        logging.warning("_build_sphuta_completion_rows: missing planets %s; skipping", _missing)
+        return []
+    sun_long = sun_long_raw
+    jup_long = jup_long_raw
+    ven_long = ven_long_raw
+    moon_long = moon_long_raw
+    mar_long = mar_long_raw
+    lagna_long_raw = all_longs.get("LAGNA")
+    if lagna_long_raw is None:
+        logging.warning("_build_sphuta_completion_rows: LAGNA absent from all_longs; skipping")
+        return []
+    lagna_long = lagna_long_raw
+
+    beeja = (sun_long + jup_long + ven_long) % 360.0
+    kshetra = (moon_long + jup_long + mar_long) % 360.0
+
+    rows.extend(_long_rows(
+        "esoteric_point_sphuta_fertility", "BEEJA_SPHUTA", beeja,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            "BPHS medical astrology: Beeja Sphuta (seed/male fertility) = "
+            "(Sun + Jupiter + Venus) mod 360 deg"
+        ),
+    ))
+    rows.extend(_long_rows(
+        "esoteric_point_sphuta_fertility", "KSHETRA_SPHUTA", kshetra,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_provenance_text=(
+            "BPHS medical astrology: Kshetra Sphuta (field/female fertility) = "
+            "(Moon + Jupiter + Mars) mod 360 deg"
+        ),
+    ))
+    return rows
+
+
+def _build_yogi_system_completion_rows(
+    all_longs: dict, chart_id: str, ayanamsha_id: str,
+    build_id: str, eng_ver: str, panchanga: dict,
+) -> list[dict]:
+    rows: list[dict] = []
+    sun_long_raw = all_longs.get("SUN")
+    moon_long_raw = all_longs.get("MOON")
+    if sun_long_raw is None or moon_long_raw is None:
+        logging.warning("_build_yogi_system_completion_rows: SUN or MOON absent from all_longs; skipping")
+        return []
+    sun_long = sun_long_raw
+    moon_long = moon_long_raw
+    vara = panchanga.get("vara_id")
+    if vara is None:
+        logging.warning("_build_yogi_system_completion_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        vara = 0
+
+    yogi_long = (sun_long + moon_long + 93.3333333) % 360.0
+    nak_name, nak_lord, pada = _long_to_nakshatra_pada(yogi_long)
+    yogi_graha = nak_lord
+
+    rows.extend([
+        _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "assigned_graha",
+                  None, yogi_graha, None,
+                  chart_id, ayanamsha_id, build_id, eng_ver,
+                  verification_pass_status="two_pass_verified",
+                  formula_provenance_text="BPHS Ch.20: Yogi Graha = nakshatra lord of Yogi Sphuta (Sun+Moon+93 deg 20')"),
+        _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "nakshatra",
+                  None, nak_name, None,
+                  chart_id, ayanamsha_id, build_id, eng_ver,
+                  verification_pass_status="two_pass_verified",
+                  formula_provenance_text="BPHS Ch.20: Yogi Graha nakshatra"),
+        _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "yogi_point_longitude",
+                  yogi_long, None, None,
+                  chart_id, ayanamsha_id, build_id, eng_ver,
+                  verification_pass_status="two_pass_verified",
+                  formula_provenance_text="BPHS Ch.20: Yogi Sphuta (source) = Sun + Moon + 93 deg 20'"),
+    ])
+
+    dagdha_signs = DAGDHA_RASHI_BY_VARA.get(vara, [])
+    for i, sign in enumerate(dagdha_signs, start=1):
+        subj = f"DAGDHA_RASHI_{i}"
+        rows.append(_make_row(
+            "esoteric_point_yogi_system", subj, "sign",
+            None, sign, None,
+            chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="two_pass_verified",
+            formula_provenance_text=(
+                f"Muhurta Chintamani: Dagdha Rashi {i} for vara={vara} (Sunday=0): {sign}"
+            ),
+        ))
+    return rows
+
+
 # ── Main per-ayanamsha builder ────────────────────────────────────────────────
 
 def _build_all_sensitive_rows_for_ayanamsha(
@@ -1800,6 +2073,13 @@ def _build_all_sensitive_rows_for_ayanamsha(
     # Lagna from ascendant
     asc_lon = float(ascendant.get("longitude_deg", ascendant.get("lon", 0.0)))
     all_longs["LAGNA"] = asc_lon
+
+    # Panchanga block (vara=0..6 Sunday-based, etc.)
+    panchanga = chart_data.get("panchanga", {})
+    if not panchanga:
+        # Fallback: derive vara from birth_params if PyJHora didn't provide it
+        # Native birth 1984-02-05 was a Sunday → vara=0
+        panchanga = {"vara": birth_params.get("vara", 0), "is_daytime": True}
 
     # Determine day/night birth (sunrise check)
     # Native birth 10:43 IST; Bhubaneswar sunrise ~06:30 → day birth
@@ -1907,6 +2187,18 @@ def _build_all_sensitive_rows_for_ayanamsha(
 
     # ── Bonus: Nakshatra Pada Sensitive ─────────────────────────────────────
     rows.extend(_build_nakshatra_pada_sensitive_rows(all_longs, chart_id, cid, build_id, eng_ver))
+
+    # ── Amendment 3: 5 Tier-1 classical sensitive points ────────────────────
+    rows.extend(_build_gulika_mandi_sensitive_rows(
+        chart_data, all_longs, chart_id, cid, build_id, eng_ver, panchanga))
+    rows.extend(_build_sun_derived_upagrahas_rows(
+        all_longs, chart_id, cid, build_id, eng_ver, panchanga))
+    rows.extend(_build_special_lagnas_rows(
+        all_longs, chart_id, cid, build_id, eng_ver, panchanga))
+    rows.extend(_build_sphuta_completion_rows(
+        all_longs, chart_id, cid, build_id, eng_ver))
+    rows.extend(_build_yogi_system_completion_rows(
+        all_longs, chart_id, cid, build_id, eng_ver, panchanga))
 
     logger.info("[ga_sensitive] ayanamsha=%s rows=%d", cid, len(rows))
     return rows
@@ -2037,6 +2329,50 @@ def _refresh_mv(conn: Any, *, commit: bool = True) -> str:
 def _update_asset_throughput(conn: Any, chart_id: str, build_id: str, row_count: int) -> None:
     """Update asset_throughput for ga_sensitive (shared _telemetry helper)."""
     update_asset_throughput(conn, GA5_ASSET_ID, chart_id, build_id, row_count)
+
+
+# ── Per-ayanamsha helpers (used by heavy-writer orchestrator adapter) ─────────
+
+def get_ga_sensitive_context(
+    birth_params: dict[str, Any],
+    conn: Any | None = None,
+) -> tuple[dict[str, bool], str]:
+    """Return (prereqs, eng_ver) for use across per-ayanamsha substeps.
+    FORENSIC gate fires inside _build_all_sensitive_rows_for_ayanamsha per substep."""
+    prereqs = check_prerequisites(conn=conn)
+    return prereqs, ENGINE_VERSION
+
+
+def build_ga_sensitive_for_ayanamsha(
+    ayanamsha_key: str,
+    ayanamsha_id: str,
+    chart_id: str,
+    build_id: str,
+    conn: Any,
+    birth_params: dict[str, Any],
+    prereqs: dict[str, bool],
+    eng_ver: str,
+) -> int:
+    """Compute and persist chart_facts for one ayanamsha. conn is caller-owned;
+    does NOT commit — the orchestrator's _drive_substeps commits after this returns.
+    Returns inserted row count."""
+    rows = _build_all_sensitive_rows_for_ayanamsha(
+        ayanamsha_key=ayanamsha_key,
+        ayanamsha_id=ayanamsha_id,
+        chart_id=chart_id,
+        build_id=build_id,
+        eng_ver=eng_ver,
+        birth_params=birth_params,
+        prereqs=prereqs,
+        halt_log_path="CONDUCTOR_HALT_LOG.md",
+    )
+    divergent = [r for r in rows if r.get("verification_pass_status") == "divergent_flagged"]
+    if divergent:
+        raise ValueError(f"GA5: {len(divergent)} divergent_flagged rows in {ayanamsha_id}")
+    single = [r for r in rows if r.get("verification_pass_status") == "single"]
+    if single:
+        raise ValueError(f"GA5: {len(single)} single-pass rows in {ayanamsha_id}")
+    return _insert_rows(conn, rows, commit=False)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

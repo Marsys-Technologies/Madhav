@@ -21,10 +21,14 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 import psycopg.rows
+
+from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS
+from pyjhora_adapter.version import ENGINE_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +122,37 @@ _MOOLATRIKONA_RANGE: dict[str, tuple[float, float]] = {
     "Sun": (0, 20), "Moon": (4, 30), "Mars": (0, 12),
     "Mercury": (16, 20), "Jupiter": (0, 10), "Venus": (0, 15), "Saturn": (0, 20),
 }
+
+# ── Amendment 2 constants ─────────────────────────────────────────────────────
+
+# Maps Title-case dignity values from chart_divisionals → lowercase canonical keys
+# used by avastha_deeptaadi_from_dignity_and_state and DIGNITY_SCORES.
+_DIVISIONAL_DIGNITY_NORMALIZE: dict[str, str] = {
+    "Exalted":      "exalted",
+    "Own":          "own",
+    "Moolatrikona": "moolatrikona",
+    "Friend":       "friend_sign",
+    "Neutral":      "neutral_sign",
+    "Enemy":        "enemy_sign",
+    "Debilitated":  "debilitated",
+}
+
+# Avasthas that are intrinsically D1 concepts — no canonical per-varga method exists.
+# Each tuple is (fact_category, reason_text stored in fact_value_text).
+INTRINSICALLY_D1_AVASTHAS = [
+    (
+        "graha_avastha_jagradadi_per_varga",
+        "floored: waking/dreaming state is a single D1 concept with no canonical varga extension (BPHS)",
+    ),
+    (
+        "graha_avastha_sayanadi_per_varga",
+        "floored: 12 sleeping-posture states are D1-only per Parashara; no canonical varga method exists",
+    ),
+    (
+        "graha_avastha_lajjitadi_per_varga",
+        "floored: ashamed/glad states depend on D1 conjunction/aspect context; not computable per-varga",
+    ),
+]
 
 
 # ── Pure helper functions (testable without DB) ───────────────────────────────
@@ -673,7 +708,7 @@ def _load_varga_dignity_spread(
                   AND ayanamsha_id   = %s
                   AND graha          = %s
                   AND fact_category IN ('varga_position', 'varga_dignity')
-                  AND fact_key       IN ('sign', 'dignity_status', 'dignity_score')
+                  AND fact_key       IN ('sign', 'dignity', 'dignity_score')
             """, (chart_id, ayanamsha_id, graha))
 
             spread: dict[str, Any] = {}
@@ -682,7 +717,7 @@ def _load_varga_dignity_spread(
                     spread[varga] = {}
                 if key == "sign":
                     spread[varga]["sign"] = val_text
-                elif key == "dignity_status":
+                elif key == "dignity":
                     spread[varga]["dignity"] = val_text
                 elif key == "dignity_score":
                     spread[varga]["score"] = float(val_num) if val_num is not None else None
@@ -810,6 +845,191 @@ def _detect_graha_yuddha(position_map: dict[str, dict]) -> dict[str, tuple[str, 
                     result[g1] = (g2, "loser")
 
     return result
+
+
+# ── Amendment 2: Per-varga avastha helpers ───────────────────────────────────
+
+def _build_per_varga_avastha_rows(
+    conn: Any,
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict]:
+    """
+    Build chart_facts rows for the two varga-computable avasthas (Baladi, Deeptadi)
+    plus floor rows for the three intrinsically-D1 avasthas.
+
+    Sources:
+      - Part A (Baladi):   avastha_baladi_from_degree applied to degree_in_sign per varga.
+      - Part B (Deeptadi): avastha_deeptaadi_from_dignity_and_state applied to dignity per varga,
+                           with is_combust=False, is_retrograde=False (combustion is D1-only).
+      - Part C (floors):   One row per graha × INTRINSICALLY_D1_AVASTHAS, fact_key='D_ALL',
+                           verification_pass_status='floored'.
+
+    Queries chart_divisionals for degree_in_sign (fact_key='degree_in_sign') and
+    dignity_status (fact_key='dignity_status') per (graha, varga), excluding Lagna.
+
+    Returns list of dicts ready for chart_facts insertion.
+    """
+    rows: list[dict] = []
+
+    # ── Query chart_divisionals for per-varga degree + dignity ────────────────
+    # The GA6 atomic model stores one row per (chart_id, ayanamsha_id, varga, graha, fact_key).
+    # We aggregate degree_in_sign + dignity_status per (graha, varga) in Python.
+    try:
+        cur = conn.execute(
+            """
+            SELECT graha, varga, fact_key, fact_value_text, fact_value_num
+            FROM chart_divisionals
+            WHERE chart_id      = %s
+              AND ayanamsha_id  = %s
+              AND graha IS NOT NULL
+              AND graha != 'Lagna'
+              AND fact_key IN ('degree_in_sign', 'dignity')
+            """,
+            (chart_id, ayanamsha_id),
+        )
+        divisional_raw = cur.fetchall()
+    except Exception as exc:
+        logger.warning(
+            "[ga_condition_writer] per_varga_avastha: chart_divisionals query failed: %s", exc
+        )
+        divisional_raw = []
+
+    # Aggregate into {(graha, varga): {"degree_in_sign": float, "dignity": str}}
+    varga_data: dict[tuple[str, str], dict] = {}
+    for row in divisional_raw:
+        # Support both dict-like and tuple rows
+        if hasattr(row, "get"):
+            graha    = row.get("graha")
+            varga    = row.get("varga")
+            fkey     = row.get("fact_key")
+            fval_txt = row.get("fact_value_text")
+            fval_num = row.get("fact_value_num")
+        else:
+            graha, varga, fkey, fval_txt, fval_num = row
+        if not graha or not varga or not fkey:
+            continue
+        key = (graha, varga)
+        if key not in varga_data:
+            varga_data[key] = {}
+        if fkey == "degree_in_sign" and fval_num is not None:
+            varga_data[key]["degree_in_sign"] = float(fval_num)
+        elif fkey == "dignity" and fval_txt is not None:
+            varga_data[key]["dignity"] = fval_txt
+
+    # ── Part A + B: varga-computable avasthas ─────────────────────────────────
+    for (graha, varga), data in varga_data.items():
+        degree_in_sign = data.get("degree_in_sign")
+        dignity_raw    = data.get("dignity")
+
+        # Part A — Baladi avastha
+        if degree_in_sign is not None:
+            baladi_val = avastha_baladi_from_degree(degree_in_sign)
+            rows.append({
+                "fact_id":                 str(uuid.uuid4()),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            ayanamsha_id,
+                "build_id":                build_id,
+                "fact_category":           "graha_avastha_baladi_per_varga",
+                "fact_subject":            graha.upper(),
+                "fact_key":                varga,
+                "fact_value_text":         baladi_val,
+                "fact_value_num":          None,
+                "fact_value_jsonb":        None,
+                "unit":                    None,
+                "citation_ref":            f"graha_avastha_baladi_per_varga.{graha}.{varga}@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+                "citation_human":          f"{graha.capitalize()} baladi avastha in {varga}: {baladi_val}",
+                "source_calculation":      f"ga_condition_writer.avastha_baladi_from_degree_per_varga/{eng_ver}",
+                "verification_pass_status":"computed_extension",
+                "engine_version":          eng_ver,
+                "computed_at":             computed_at,
+            })
+
+        # Part B — Deeptadi avastha
+        if dignity_raw is not None:
+            normalized_dignity = _DIVISIONAL_DIGNITY_NORMALIZE.get(dignity_raw, "neutral_sign")
+            deeptaadi_val = avastha_deeptaadi_from_dignity_and_state(
+                normalized_dignity, is_combust=False, is_retrograde=False
+            )
+            rows.append({
+                "fact_id":                 str(uuid.uuid4()),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            ayanamsha_id,
+                "build_id":                build_id,
+                "fact_category":           "graha_avastha_deeptaadi_per_varga",
+                "fact_subject":            graha.upper(),
+                "fact_key":                varga,
+                "fact_value_text":         deeptaadi_val,
+                "fact_value_num":          None,
+                "fact_value_jsonb":        None,
+                "unit":                    None,
+                "citation_ref":            f"graha_avastha_deeptaadi_per_varga.{graha}.{varga}@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+                "citation_human":          f"{graha.capitalize()} deeptaadi avastha in {varga}: {deeptaadi_val}",
+                "source_calculation":      f"ga_condition_writer.deeptaadi_from_graha_dignity_per_varga/{eng_ver}",
+                "verification_pass_status":"computed_extension",
+                "engine_version":          eng_ver,
+                "computed_at":             computed_at,
+            })
+
+    # ── Part C: Intrinsically-D1 floor rows ───────────────────────────────────
+    for graha in ALL_GRAHAS:
+        for floor_cat, reason in INTRINSICALLY_D1_AVASTHAS:
+            rows.append({
+                "fact_id":                 str(uuid.uuid4()),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            ayanamsha_id,
+                "build_id":                build_id,
+                "fact_category":           floor_cat,
+                "fact_subject":            graha.upper(),
+                "fact_key":                "D_ALL",
+                "fact_value_text":         reason,
+                "fact_value_num":          None,
+                "fact_value_jsonb":        None,
+                "unit":                    None,
+                "citation_ref":            f"{floor_cat}.{graha}.D_ALL@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+                "citation_human":          f"{graha.capitalize()} {floor_cat}: floored (intrinsically D1, no per-varga computation)",
+                "source_calculation":      f"ga_condition_writer.intrinsically_d1_avastha_floor/{eng_ver}",
+                "verification_pass_status":"floored",
+                "engine_version":          eng_ver,
+                "computed_at":             computed_at,
+            })
+
+    return rows
+
+
+def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
+    """Delete-then-insert per (chart_id, ayanamsha_id, fact_category) for per-varga avastha categories."""
+    if not rows:
+        return
+
+    # ── Idempotent delete scoped to the categories we are about to write ──────
+    cats = sorted({r["fact_category"] for r in rows})
+    ayanamshas = sorted({r["ayanamsha_id"] for r in rows})
+    chart_ids  = sorted({r["chart_id"] for r in rows})
+    for cid in chart_ids:
+        conn.execute(
+            "DELETE FROM chart_facts WHERE chart_id = %s AND fact_category = ANY(%s) AND ayanamsha_id = ANY(%s)",
+            [cid, cats, ayanamshas],
+        )
+
+    # ── Bulk INSERT ───────────────────────────────────────────────────────────
+    cols = [
+        "fact_id", "chart_id", "ayanamsha_id", "build_id",
+        "fact_category", "fact_subject", "fact_key",
+        "fact_value_text", "fact_value_num", "fact_value_jsonb",
+        "unit", "citation_ref", "citation_human",
+        "source_calculation", "verification_pass_status",
+        "engine_version", "computed_at",
+    ]
+    placeholders = ", ".join(["%s"] * len(cols))
+    col_str = ", ".join(cols)
+    sql = f"INSERT INTO chart_facts ({col_str}) VALUES ({placeholders})"
+    for row in rows:
+        values = [row[c] for c in cols]
+        conn.execute(sql, values)
 
 
 # ── Main build function ───────────────────────────────────────────────────────
@@ -1077,4 +1297,13 @@ def build_ga_condition_substep(
         "[ga_condition_writer] Inserted %d rows for chart=%s ayanamsha=%s",
         inserted, chart_id, ayanamsha_id,
     )
+
+    # ── Amendment 2: Per-varga avastha rows ─────────────────────────────────────
+    per_varga_rows = _build_per_varga_avastha_rows(
+        conn, chart_id, str(build_id) if build_id else None, ayanamsha_id, computed_at, ENGINE_VERSION
+    )
+    if per_varga_rows:
+        _insert_per_varga_avastha_rows(conn, per_varga_rows)
+        logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", len(per_varga_rows))
+
     return inserted
