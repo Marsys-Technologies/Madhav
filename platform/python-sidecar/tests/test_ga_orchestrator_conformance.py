@@ -26,7 +26,7 @@ ALL_GA = [
     'ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive',
     'ga_structural', 'ga_sade_sati', 'ga_tajaka', 'ga_vargas', 'ga_dashas',
 ]
-HEAVY = {'ga_dashas', 'ga_vargas', 'ga_structural'}
+HEAVY = {'ga_dashas', 'ga_vargas', 'ga_structural', 'ga_sensitive'}
 
 
 class _Sentinel:
@@ -77,7 +77,6 @@ _LIGHT_FN = {
     'ga_positions':  ('ga_writers.ga_positions_writer',  'build_ga_positions'),
     'ga_strength':   ('ga_writers.ga_strength_writer',   'build_ga_strength'),
     'ga_panchanga':  ('ga_writers.ga_panchanga_writer',  'build_ga_panchanga'),
-    'ga_sensitive':  ('ga_writers.ga_sensitive_writer',  'build_ga_sensitive'),
     'ga_sade_sati':  ('ga_writers.ga_sade_sati_writer',  'build_ga_sade_sati'),
     'ga_tajaka':     ('ga_writers.ga_tajaka_writer',     'build_ga_tajaka'),
 }
@@ -169,6 +168,40 @@ def test_ga_structural_substep_threads_injected_conn(monkeypatch):
     assert seen['conn'] is sentinel
     assert seen['ayanamsha_id'] == 'lahiri'
     assert res.rows_inserted == 42
+
+
+def test_ga_sensitive_plan_is_per_ayanamsha():
+    steps = get_writer('ga_sensitive')().plan_substeps(_ctx(_Sentinel()))
+    assert len(steps) == 5                       # 5 canonical ayanamshas
+    assert all(isinstance(s, SubStep) for s in steps)
+    assert all(s.key.startswith('ayanamsha:') for s in steps)
+
+
+def test_ga_sensitive_substep_threads_injected_conn(monkeypatch):
+    import ga_writers.ga_sensitive_writer as gsw
+    seen = {}
+
+    def stub_ctx(birth_params, conn=None):
+        return ({'G14_SAHAM': True, 'G41_LAL_KITAB': False, 'G44_NADI': False},
+                'pyjhora/1.0.0')
+
+    def stub_build(*, ayanamsha_key, ayanamsha_id, chart_id, build_id, conn,
+                   birth_params, prereqs, eng_ver):
+        seen.update(ayanamsha_key=ayanamsha_key, chart_id=chart_id,
+                    build_id=build_id, conn=conn)
+        return 1722
+
+    monkeypatch.setattr(gsw, 'get_ga_sensitive_context', stub_ctx)
+    monkeypatch.setattr(gsw, 'build_ga_sensitive_for_ayanamsha', stub_build)
+    sentinel = _Sentinel()
+    res = get_writer('ga_sensitive')().run_substep(
+        _ctx(sentinel), SubStep(key='ayanamsha:lahiri_chitrapaksha')
+    )
+
+    assert seen['conn'] is sentinel
+    assert seen['ayanamsha_key'] == 'lahiri_chitrapaksha'
+    assert seen['chart_id'] == 'chart-C'
+    assert res.rows_inserted == 1722
 
 
 # ── D. Injected conn ⇒ no commit / no close / no telemetry (ga_positions) ────────

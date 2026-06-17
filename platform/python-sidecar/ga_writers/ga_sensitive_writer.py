@@ -2331,6 +2331,50 @@ def _update_asset_throughput(conn: Any, chart_id: str, build_id: str, row_count:
     update_asset_throughput(conn, GA5_ASSET_ID, chart_id, build_id, row_count)
 
 
+# ── Per-ayanamsha helpers (used by heavy-writer orchestrator adapter) ─────────
+
+def get_ga_sensitive_context(
+    birth_params: dict[str, Any],
+    conn: Any | None = None,
+) -> tuple[dict[str, bool], str]:
+    """Return (prereqs, eng_ver) for use across per-ayanamsha substeps.
+    FORENSIC gate fires inside _build_all_sensitive_rows_for_ayanamsha per substep."""
+    prereqs = check_prerequisites(conn=conn)
+    return prereqs, ENGINE_VERSION
+
+
+def build_ga_sensitive_for_ayanamsha(
+    ayanamsha_key: str,
+    ayanamsha_id: str,
+    chart_id: str,
+    build_id: str,
+    conn: Any,
+    birth_params: dict[str, Any],
+    prereqs: dict[str, bool],
+    eng_ver: str,
+) -> int:
+    """Compute and persist chart_facts for one ayanamsha. conn is caller-owned;
+    does NOT commit — the orchestrator's _drive_substeps commits after this returns.
+    Returns inserted row count."""
+    rows = _build_all_sensitive_rows_for_ayanamsha(
+        ayanamsha_key=ayanamsha_key,
+        ayanamsha_id=ayanamsha_id,
+        chart_id=chart_id,
+        build_id=build_id,
+        eng_ver=eng_ver,
+        birth_params=birth_params,
+        prereqs=prereqs,
+        halt_log_path="CONDUCTOR_HALT_LOG.md",
+    )
+    divergent = [r for r in rows if r.get("verification_pass_status") == "divergent_flagged"]
+    if divergent:
+        raise ValueError(f"GA5: {len(divergent)} divergent_flagged rows in {ayanamsha_id}")
+    single = [r for r in rows if r.get("verification_pass_status") == "single"]
+    if single:
+        raise ValueError(f"GA5: {len(single)} single-pass rows in {ayanamsha_id}")
+    return _insert_rows(conn, rows, commit=False)
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def build_ga_sensitive(
