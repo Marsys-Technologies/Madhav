@@ -5,7 +5,7 @@ Conforms to the FROZEN WriterBase contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.
 """
 from __future__ import annotations
 
-from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from pipeline.orchestrator.writers import WriterBase, WriterResult, register, ContextSpec
 
 
 @register("bg_transit_rules")
@@ -20,7 +20,7 @@ class BgTransitRulesWriter(WriterBase):
 
     asset_id = "bg_transit_rules"
 
-    def run(self, ctx) -> WriterResult:  # type: ignore[override]
+    def run(self, ctx: ContextSpec) -> WriterResult:
         from brahmagyan.l0_transit import seed_transit_rules
 
         if ctx.dry_run:
