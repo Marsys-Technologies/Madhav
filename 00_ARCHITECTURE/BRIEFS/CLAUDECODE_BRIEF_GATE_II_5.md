@@ -17,7 +17,7 @@ model_preference: gemini-2.5-pro (critical); gemini-2.0-flash-lite or deepseek-c
 parent_planning_doc: 00_ARCHITECTURE/briefs/OPUS_PLANNING_SESSION_v2_0.md
 estimated_runtime: 8–14 hours uninterrupted
 relates_to:
-  - 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_GATE_II_v2_0.md (predecessor; CLOSED)
+  - 99_ARCHIVE/BRIEFS_RETIRED/CLAUDECODE_BRIEF_GATE_II_v2_0.md (predecessor; CLOSED)
   - 00_ARCHITECTURE/POST_GATE_II_FOLLOWUPS.md (FU.1 panel-mode trace emission — still deferred)
   - BLOCKERS.md (from prior fixup pass: §B.1 visual smoke, §B.2 audit_events schema mismatch)
 changelog:
@@ -64,7 +64,7 @@ All must pass before W1 begins. Executor runs these checks.
 - [ ] `tsc --noEmit` baseline — capture pre-existing error count as the floor
 - [ ] `npm run lint` baseline state captured
 - [ ] Read `CLAUDECODE_BRIEF.md` (this file, copied to worktree root by §11)
-- [ ] Read `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_GATE_II_v2_0.md` (predecessor, archived)
+- [ ] Read `99_ARCHIVE/BRIEFS_RETIRED/CLAUDECODE_BRIEF_GATE_II_v2_0.md` (predecessor, archived)
 - [ ] Read `CLOSE_REPORT.md` §13 (post-close fixup) and `BLOCKERS.md`
 - [ ] Read `GAP_ANALYSIS.md` §J in full
 - [ ] Re-read original brief §3 (D1–D8) and §4.5 (R1–R9) — these still apply
