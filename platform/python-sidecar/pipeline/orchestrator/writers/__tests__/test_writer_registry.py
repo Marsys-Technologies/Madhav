@@ -59,7 +59,8 @@ def test_run_asset_success_transitions():
 
     with patch.object(asset_runner, "emit_event") as mock_emit, \
          patch.object(asset_runner, "compute_upstream_hash", return_value="aabbccdd"), \
-         patch.object(asset_runner, "get_writer_git_hash", return_value="deaddead"):
+         patch.object(asset_runner, "get_writer_git_hash", return_value="deaddead"), \
+         patch.object(asset_runner, "fetch_birth_params", return_value=None):
 
         asset_runner.run_asset(conn, cur, "run-1", "chart-1", "fixture.success", 0)
 
@@ -92,7 +93,8 @@ def test_run_asset_writer_error_marks_error_state():
 
     with patch.object(asset_runner, "emit_event") as mock_emit, \
          patch.object(asset_runner, "compute_upstream_hash", return_value="x"), \
-         patch.object(asset_runner, "get_writer_git_hash", return_value="x"):
+         patch.object(asset_runner, "get_writer_git_hash", return_value="x"), \
+         patch.object(asset_runner, "fetch_birth_params", return_value=None):
 
         # Should NOT raise — per-asset error recovery
         asset_runner.run_asset(conn, cur, "run-2", "chart-2", "fixture.crashing", 0)
