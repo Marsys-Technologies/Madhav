@@ -1508,7 +1508,7 @@ class TestKarakaWeb:
             def __enter__(self): return self
             def __exit__(self, *a): return False
         class _KConn:
-            def cursor(self): return _KC()
+            def cursor(self, row_factory=None): return _KC()
         return _KConn()
 
     def test_karaka_web_rows_emitted(self):
@@ -1530,7 +1530,7 @@ class TestKarakaWeb:
                 def fetchall(self): return []
                 def __enter__(self): return self
                 def __exit__(self, *a): return False
-            def cursor(self): return _EC._C()
+            def cursor(self, row_factory=None): return _EC._C()
         rows = sut._build_karaka_web_rows(_EC(), {}, MOCK_CHART_OUTPUT, "D9", CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
         assert rows == []
 
