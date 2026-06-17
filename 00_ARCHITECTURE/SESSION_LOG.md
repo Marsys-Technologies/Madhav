@@ -28654,6 +28654,8 @@ next_session_objective: >
 
 ---
 
+## GATE3-SIX-SUBSYSTEM-CLOSE — 2026-06-17
+
 ```yaml
 session_open:
   session_id: GATE3-SIX-SUBSYSTEM-CLOSE
