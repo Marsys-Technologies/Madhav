@@ -47,6 +47,9 @@ interface Props {
   onGlobalClear?: () => void
   onGlobalRebuild?: () => void
   onRefreshed?: () => void
+  /** 'card' = standalone bordered card (default). 'inline' = compact, no card
+   *  chrome — sits at the top of the scrolling ledger column. */
+  variant?: 'card' | 'inline'
 }
 
 export function CockpitHeader({
@@ -57,6 +60,7 @@ export function CockpitHeader({
   birthPlace,
   assets = [],
   proMode = false,
+  variant = 'card',
   onProModeToggle,
   onGlobalClear,
   onGlobalRebuild,
@@ -99,9 +103,16 @@ export function CockpitHeader({
   const subtitleParts = [datePart, timePart, placePart].filter(Boolean)
   const subtitle = subtitleParts.join(' · ')
 
+  const inline = variant === 'inline'
+
   return (
     <div
-      style={{
+      style={inline ? {
+        // compact: no card chrome, hairline divider below; lives at top of the ledger
+        padding: '0 0 12px 0',
+        margin: '0 0 10px 0',
+        borderBottom: '1px solid var(--black-line)',
+      } : {
         background: 'var(--black-raised)',
         border: '1px solid var(--black-line)',
         borderRadius: 'var(--r-card)',

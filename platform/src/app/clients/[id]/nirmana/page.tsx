@@ -44,9 +44,9 @@ export default async function BuildPage({
   const initialChartMeta = chartRows[0] ?? null
 
   return (
-    <div data-testid="build-page-root" data-permission={access.permission} className="pt-6">
-      {/* ── Nirmāṇa page header — mirrors Nava Jātaka (NewClientForm.tsx:646–670) ── */}
-      <div className="relative flex items-center justify-center w-full mt-8 mb-2">
+    <div data-testid="build-page-root" data-permission={access.permission} className="h-screen flex flex-col overflow-hidden pt-3">
+      {/* ── Nirmāṇa page header — centered wordmark, kept slim so the instrument fills the view ── */}
+      <div className="relative flex items-center justify-center w-full mt-1 mb-1 shrink-0">
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
@@ -60,8 +60,10 @@ export default async function BuildPage({
           <span className="opacity-55 text-brand-gold font-serif ml-1" aria-hidden="true">॥</span>
         </h1>
       </div>
-      <p className="bt-label bt-label-upper text-brand-gold/55 mb-6" style={{ textAlign: 'center' }}>Build Tracker</p>
-      <CockpitShell chartId={id} initialChartMeta={initialChartMeta} />
+      <p className="bt-label bt-label-upper text-brand-gold/55 mb-2 shrink-0" style={{ textAlign: 'center' }}>Build Tracker</p>
+      <div className="flex-1 min-h-0">
+        <CockpitShell chartId={id} initialChartMeta={initialChartMeta} />
+      </div>
     </div>
   )
 }

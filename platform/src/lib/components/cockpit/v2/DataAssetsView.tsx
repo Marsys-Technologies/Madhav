@@ -45,9 +45,11 @@ interface Props {
   chartId: string
   /** Called whenever the merged asset+state list changes — used by CockpitShell to drive the header label */
   onAssetsReady?: (assets: AssetWithState[]) => void
+  /** Optional content rendered at the top of the scrolling ledger column (chart identity + telemetry + actions). */
+  header?: React.ReactNode
 }
 
-export function DataAssetsView({ chartId, onAssetsReady }: Props) {
+export function DataAssetsView({ chartId, onAssetsReady, header }: Props) {
   const { assets, isLoading, error } = useAssetRegistry()
   const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
@@ -221,7 +223,7 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
       {/* 60% — layer panels: independently scrolls, fade-masked top/bottom */}
       <div
         style={{
-          flex: narrow ? '1 1 auto' : '0 0 60%',
+          flex: narrow ? '1 1 auto' : '0 0 55%',
           minWidth: 0,
           width: narrow ? '100%' : undefined,
           height: narrow ? 'auto' : '100%',
@@ -231,6 +233,8 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
           maskImage: narrow ? undefined : fadeMask,
         }}
       >
+        {/* Chart identity + telemetry + actions ride at the top of the ledger and scroll with it */}
+        {header}
         {orderedLayers.map((layer) => {
           const layerAssets = byLayer.get(layer) ?? []
           const focusedInLayer = focusedAssetId != null && layerAssets.some(a => a.asset_id === focusedAssetId)
@@ -262,7 +266,7 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
       {/* 40% — armillary instrument: anchored, does not scroll with left pane */}
       <div
         style={{
-          flex: narrow ? '1 1 auto' : '0 0 40%',
+          flex: narrow ? '1 1 auto' : '0 0 45%',
           minWidth: 0,
           width: narrow ? '100%' : undefined,
           height: narrow ? '360px' : '100%',

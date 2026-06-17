@@ -109,16 +109,35 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   const [proMode, setProMode] = useState(false)
 
+  // The chart identity + telemetry + actions, compact — rides at the top of the
+  // scrolling ledger column (no full-width header card; graph gets the height).
+  const headerEl = (
+    <CockpitHeader
+      variant="inline"
+      chartId={chartId}
+      chartName={chartName}
+      birthDate={birthDate}
+      birthTime={birthTime}
+      birthPlace={birthPlace}
+      assets={assetStates}
+      proMode={proMode}
+      onProModeToggle={() => setProMode(p => !p)}
+      onGlobalClear={clearLoading ? undefined : handleGlobalClear}
+      onGlobalRebuild={clearLoading ? undefined : handleGlobalRebuild}
+      onRefreshed={() => {}}
+    />
+  )
+
   return (
     <div
       className="marsys-cockpit"
       style={{
         background: 'var(--black)',
-        height: '100vh',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         color: 'var(--on-dark)',
-        padding: '16px',
+        padding: '8px 16px 16px',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
@@ -131,20 +150,12 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
         .marsys-cockpit [data-icon-btn]:hover { transform: translateY(-1px); }
         @media (prefers-reduced-motion: reduce) { .marsys-cockpit [data-icon-btn]:hover { transform: none; } }
       `}</style>
-      <CockpitHeader
-        chartId={chartId}
-        chartName={chartName}
-        birthDate={birthDate}
-        birthTime={birthTime}
-        birthPlace={birthPlace}
-        assets={assetStates}
-        proMode={proMode}
-        onProModeToggle={() => setProMode(p => !p)}
-        onGlobalClear={clearLoading ? undefined : handleGlobalClear}
-        onGlobalRebuild={clearLoading ? undefined : handleGlobalRebuild}
-        onRefreshed={() => {}}
-      />
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
+      {/* Pro-only tab switcher — the lone "Data assets" tab is dropped in normal mode */}
+      {proMode && (
+        <div style={{ marginBottom: '4px', flexShrink: 0 }}>
+          <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
+        </div>
+      )}
       {activeTab === 'data' && (
         <motion.div
           key="tab-data"
@@ -153,25 +164,20 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
           transition={{ duration: DUR.micro }}
           style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
-          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} />
+          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} header={headerEl} />
         </motion.div>
       )}
       {activeTab === 'workflow' && proMode && (
-        <motion.div key="tab-workflow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }}>
+        <motion.div key="tab-workflow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {headerEl}
           <WorkflowView chartId={chartId} />
         </motion.div>
       )}
       {activeTab === 'agents' && proMode && (
-        <motion.div key="tab-agents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }}>
+        <motion.div key="tab-agents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {headerEl}
           <AgentsView chartId={chartId} />
         </motion.div>
-      )}
-      {(activeTab === 'workflow' || activeTab === 'agents') && !proMode && (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)', fontSize: '14px', lineHeight: 1.7 }}>
-          This view lives in Pro.
-          <br />
-          Enable the <span style={{ color: 'var(--gold-high)' }}>◆ Pro</span> toggle beside the chart name to access it.
-        </div>
       )}
 
       {clearPreview && (
