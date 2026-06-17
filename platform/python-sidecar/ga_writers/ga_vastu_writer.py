@@ -26,6 +26,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+import psycopg.rows
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -93,7 +95,7 @@ def build_ga_vastu_substep(
     """
     rows_inserted = 0
 
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         # ── L1 idempotency: delete (chart_id, ayanamsha_id) slice ─────────
         cur.execute(
             "DELETE FROM ga_vastu_planet_direction_map WHERE chart_id = %s AND ayanamsha_id = %s",
