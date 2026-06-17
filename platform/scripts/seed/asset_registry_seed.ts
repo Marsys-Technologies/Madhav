@@ -709,6 +709,24 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
+  {
+    asset_id: 'ga_nakshatra',
+    layer: 'ganita', sort_order: 20,
+    sanskrit_name: 'Nakṣatra-Paṭala',
+    english_name: 'Nakshatra Parallel Chart',
+    english_description: 'Per-chart parallel nakshatra chart: placement+attribute JOIN from bg_nakshatra, KP sub-lords (star/sub/sub-sub/prana) per body and house cusp, nakshatra dispositor graph, gaṇḍānta severity flags, tara bala, per-chart statistics. Into chart_facts. Authoritative L1 nakshatra grain.',
+    storage_type: 'postgres_table',
+    target_table: 'chart_facts',
+    count_sql: `SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha')`,
+    size_sql: "SELECT pg_total_relation_size('chart_facts')",
+    target_floor: 1802,  // set after first prod build 2026-06-17 (§N.4)
+    expected_volume_formula: 'BODIES × AYANAMSHAS × FACT_CATEGORIES + CROSS_AYANAMSHA',
+    expected_volume_inputs: null,
+    volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).',
+    depends_on: ['bg_nakshatra', 'ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
   // ── BODHA (8) ─────────────────────────────────────────────────────────────
   // bg_signal_type_registry (G52) RETIRED 2026-06-15: predicate-firing model dropped;
   // ga_structural enumerates exhaustively and labels from brahma_yoga_catalog (migration 223).
