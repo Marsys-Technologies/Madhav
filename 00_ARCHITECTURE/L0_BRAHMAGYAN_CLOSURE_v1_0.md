@@ -9,8 +9,11 @@ sealed_by: L0 Brahmagyan Closure Pass (autonomous Sūtradhāra conductor)
 seal_basis: Phases A (integrity audit + fixes) + B (enrichment) + C (synergy) complete per L0_BRAHMAGYAN_CLOSURE_PASS_v1_0.md
 forensic_anchor: "7/7 PASS (Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries, Tithi=Shukla Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja)"
 chart_id_canonical: 482012f1-710e-4a25-994a-93821f5871aa
-migrations_applied: 295, 296, 297, 298, 299, 300, 301, 302, 303, 304
+migrations_applied: 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306
 branch: fix/l0-closure-integrity
+prod_verified: true
+prod_verify_date: 2026-06-17
+seal_basis_extended: Prod-verify gate PASS (all 7 checks) + migration 305 (DEFER-006/007 floors) + migration 306 (REC-004 body_part) applied to PROD with ledger records. Ledger entries 295-306 confirmed in _migrations_applied.
 ---
 
 # L0 Brahmagyan — Closure Record v1.0
@@ -54,14 +57,14 @@ Plus bg_graha_dik (new table built in Phase C, registered under bg_dignity_refer
 | bg_nakshatra_medical | data | global | 27 | 27 | bg_nakshatra_medical | CURRENT (no writer — see §7 DEFER-002) |
 | bg_ontology | data | global | — | 623 | brahma_ontology | CURRENT |
 | bg_panchanga | service | global | — | N/A | — | CURRENT |
-| bg_prashna_rules | data | global | 36 | 41 | bg_prashna_lagna_methods(5) + bg_prashna_tajik_yogas(16) + bg_prashna_significators(12) + bg_prashna_fructification_rules(5) + bg_prashna_special_techniques(3) | CURRENT (floor stale post-Phase B: tajik_yogas grew from 11→16; floor update needed) |
+| bg_prashna_rules | data | global | 41 | 41 | bg_prashna_lagna_methods(5) + bg_prashna_tajik_yogas(16) + bg_prashna_significators(12) + bg_prashna_fructification_rules(5) + bg_prashna_special_techniques(3) | CURRENT (floor updated to 41 in migration 305 + seed patch — DEFER-006 RESOLVED) |
 | bg_reference | data | global | — | 1,485 | reference_planets(11) + reference_signs(12) + reference_aspects(19) + reference_vargas(19) + reference_houses(12) + reference_strength_systems(33) + reference_karakas(77) + reference_upagrahas(11) + reference_constants(203) + reference_topic_tags(481) + reference_glossary(364) + reference_yogas(175) + reference_doshas(50) + reference_dasha_systems(18) | CURRENT |
 | bg_remedies | data | global | 266 | 266 | brahma_remedy_corpus | CURRENT |
 | bg_rules | data | global | 2,912 | 2,912 | sutravali_rules | CURRENT |
 | bg_text_index | data | global | 361 | 361 | brahma_compendium_index_chunks (distinct topic_tags with embeddings) | CURRENT |
 | bg_texts | data | global | 10,651 | 10,651 | classical_text_chunks | CURRENT |
 | bg_transit_engine | data | global | 9 | 9 | bg_transit_engine | CURRENT (no writer — see §7 DEFER-001) |
-| bg_transit_rules | data | global | 41 | 50 | bg_transit_rules | CURRENT (floor set pre-Phase B; actual 50 post Venus rows; floor needs update to 50) |
+| bg_transit_rules | data | global | 50 | 50 | bg_transit_rules | CURRENT (floor updated to 50 in migration 305 + seed patch — DEFER-007 RESOLVED) |
 | bg_vastu_directions | data | global | 32 | 32 | bg_vastu_directions(8) + bg_vastu_direction_remedials(24) | CURRENT |
 | bg_yogas | data | global | 175 | 175 | brahma_yoga_catalog | CURRENT |
 
@@ -167,28 +170,31 @@ Row summary (bg_graha_dik):
 
 ---
 
-## §6 — Structural Recommendations (native sign-off required)
+## §6 — Structural Recommendations — Dispositions (native-decided)
 
-**REC-001: Unified directional authority**
+**REC-001: Unified directional authority — ACCEPTED AS GOVERNANCE NOTE (no view built)**
 Three tables cover graha+direction from different frameworks: bg_graha_dik (Dig Bala: graha→peak
 house), bg_vastu_directions (Vastu Shastra: direction→ruling_graha), reference_nakshatra.disha
-(nakshatra→direction). These are complementary not redundant, but can create confusion for query
-writers. Recommendation: a governance note clarifying which to use for which query type, OR a
-combined VIEW bg_graha_direction_authority with a framework discriminator column.
+(nakshatra→direction). These are complementary, not redundant. **Disposition:** governance note
+only — use bg_graha_dik for Dig Bala strength; bg_vastu_directions for Vastu/remedial; 
+reference_nakshatra.disha for nakshatra direction. No VIEW built. No migration.
 
-**REC-002: Transit table consolidation**
-bg_transit_rules (50 rows) and bg_transit_vedha (33 rows) are complementary. Recommendation:
-a VIEW bg_transit_combined (LEFT JOIN rules to vedha on graha + primary_house + vedha_house)
-to avoid consumers joining manually. Candidate migration 305.
+**REC-002: Transit table consolidation — DEFERRED TO L1**
+bg_transit_rules (50 rows) and bg_transit_vedha (33 rows) are complementary. **Disposition:**
+build the join in the consuming ga_transit writer (not as standing L0 infra — no pre-building
+later phases). Logged in the L1 opportunity register (L1-OPP-001, §5). No VIEW created at L0.
 
-**REC-003: brahma_dosha_catalog.associated_remedies[] population**
-Empty for all 50 doshas. A dosha×remedy crosswalk from brahma_remedy_corpus would complete
-this. Required before L2 bo_upaya can fully consume it. Classical research + data entry task.
+**REC-003: brahma_dosha_catalog.associated_remedies[] population — LOGGED AS PRE-L2-BODHA DATA TASK**
+Empty for all 50 doshas. **Disposition:** tracked as L2-OPP-003 (§5). Not an L0 blocker.
+Required before bo_upaya can fully consume it. Classical research + data entry task before L2 open.
 
-**REC-004: bg_nakshatra_medical vs reference_nakshatra.body_part inconsistency**
-Both tables contain nakshatra→body_part data from the same classical sources (Ashtanga
-Hridayam/BPHS) with differing values (e.g., Ashwini: "feet/knees" vs "head"). Audit which
-source is canonical per tradition; consider deprecating one.
+**REC-004: bg_nakshatra_medical vs reference_nakshatra.body_part inconsistency — RESOLVED**
+bg_nakshatra_medical uses the Ashtanga Hridayam / BPHS Kalanara sequential scheme (authoritative:
+Ashwini=feet/knees). reference_nakshatra.body_part previously used the rashi-based Kalapurusha
+sign scheme (Ashwini in Aries=head — a different tradition). **Resolution:** migration 306 updated
+all 27 reference_nakshatra.body_part values to match bg_nakshatra_medical (Ashtanga Hridayam
+scheme). Abhijit (nakshatra_id=28) remains NULL — no classical assignment. Both tables now AGREE
+for all 27 nakshatras. COMMENT added on reference_nakshatra.body_part documenting the scheme.
 
 ---
 
@@ -219,18 +225,19 @@ Both empty (0 rows) with COMMENT PLACEHOLDER/DEPRECATED applied. Live code refer
 classical_chunks: l0_text_index.py._search_classical_chunks(); prashna_charts: ga_prashna_writer.py
 Step 1. Fix sequence: update referencing code to remove queries, then apply DROP TABLE migration.
 
-**DEFER-005 — bg_nakshatra upstream hash (P2-D)**
+**DEFER-005 — bg_nakshatra upstream hash (P2-D) — OPEN (tracked follow-up)**
 built_against_upstream_hash = 'e3b0c44298fc1c14' (SHA256 of empty string). Writer runs with
-rows_written=0 (idempotent; data already present) but hash tracking is broken. Investigate why
-bg_nakshatra.py hashes empty input; ensure writer correctly computes hash of its data inputs.
+rows_written=0 (idempotent; data already present) but hash tracking is broken. Latent
+silent-staleness risk: if bg_nakshatra data ever changes, the broken hash will not detect drift.
+**Follow-up required before L1 or L2 consumes bg_nakshatra extensively.** Tracked here as
+explicit disclosure. Fix: investigate why bg_nakshatra.py hashes empty input; ensure writer
+computes hash of its actual data source (e.g., the JH reference or the migration SQL digest).
 
-**DEFER-006 — bg_prashna_rules target_floor stale post-Phase B**
-Phase B added 5 Tajik yogas (tajik_yogas: 11→16), making prashna total 41 (was 36). The
-registered target_floor=36 is now stale. Update to 41 in next seed + migration cycle.
+**DEFER-006 — bg_prashna_rules target_floor stale post-Phase B — RESOLVED**
+Migration 305 + seed patch updated target_floor from 36→41. Applied to PROD. CLOSED.
 
-**DEFER-007 — bg_transit_rules target_floor stale post-Phase B**
-Phase B added 9 Venus transit rules (41→50). The registered target_floor=41 is now stale.
-Update to 50 in next seed + migration cycle.
+**DEFER-007 — bg_transit_rules target_floor stale post-Phase B — RESOLVED**
+Migration 305 + seed patch updated target_floor from 41→50. Applied to PROD. CLOSED.
 
 ---
 
@@ -301,8 +308,37 @@ L0 is the chart-agnostic deterministic base that L2 Bodha projects over.
 | 302_deprecate_reference_nakshatras.sql | COMMENT DEPRECATED on reference_nakshatras table | APPLIED |
 | 303_comment_residual_tables.sql | COMMENT DEPRECATED on classical_chunks and prashna_charts | APPLIED |
 | 304_bg_graha_dik.sql | CREATE TABLE bg_graha_dik + INSERT 9 Dig Bala rows | APPLIED |
+| 305_fix_post_enrichment_target_floors.sql | target_floor 36→41 for bg_prashna_rules, 41→50 for bg_transit_rules (DEFER-006/007) | APPLIED TO PROD |
+| 306_fix_reference_nakshatra_body_part.sql | UPDATE reference_nakshatra.body_part (all 27 rows) to Ashtanga Hridayam scheme — aligns with bg_nakshatra_medical (REC-004) | APPLIED TO PROD |
+
+**Ledger note:** Migrations 295–305 were applied to PROD database directly (data effects confirmed
+via prod-verify gate); ledger entries were retroactively inserted into _migrations_applied on
+2026-06-17 with correct SHA256 values. Migration 306 was applied and recorded atomically in one
+transaction via psql BEGIN/COMMIT.
+
+---
+
+## §11 — Prod-Verify Gate Results
+
+Run 2026-06-17 against PROD Cloud SQL instance (madhav-astrology:asia-south1:amjis-postgres).
+All checks PASS.
+
+| Check | Verification | Result |
+|---|---|---|
+| 1 | Migrations 295–306 effects on PROD | PASS — all data effects confirmed; ledger retroactively updated |
+| 2a | bg_graha_dik: 9 rows | PASS |
+| 2b | bg_transit_vedha: 33 rows | PASS |
+| 3a | bg_prashna_tajik_yogas: 16 rows | PASS |
+| 3b | bg_transit_rules: 50 rows | PASS |
+| 4 | 4 count_sqls execute without error (bg_prashna_rules=41, bg_transit_engine=9, bg_transit_rules=50, bg_vastu_directions=32) | PASS |
+| 5 | All 22 brahmagyan assets CURRENT in prod asset_registry | PASS |
+| 6 | bg_dignity_reference registered, count_sql returns 151 | PASS |
+| 7 | FORENSIC: reference_nakshatra nakshatra_id=25 = Purva Bhadrapada, vimshottari_lord=jupiter | PASS |
+
+**L0 Brahmagyan is prod-verified sealed.** The seal basis is prod-confirmed, not just branch-asserted.
 
 ---
 
 *Seal issued by autonomous Sūtradhāra Conductor, L0 Brahmagyan Closure Pass, 2026-06-17.*
+*Pre-PR fixes (STEP 1–4) applied 2026-06-17 per CLAUDECODE_BRIEF_L0_PRE_PR_FIXES_v1_0.md.*
 *Native single end-review pending before PR merge to main.*
