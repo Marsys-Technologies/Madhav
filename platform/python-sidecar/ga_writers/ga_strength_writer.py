@@ -80,6 +80,16 @@ SHADBALA_REQUIRED: dict[str, float] = {
 SARVA_BINDU_TOTAL = 337
 
 
+# ── Amendment 1: Divisional planet name mapping ──────────────────────────────
+# Maps uppercase planet codes from chart_divisionals.graha to the title-case
+# names used by BENEFIC_HOUSES in _derive_ashtakavarga.
+_DIVISIONAL_TO_BENEFIC: dict[str, str] = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+    "LAGNA": "Lagna", "ASC": "Lagna",
+}
+
+
 # ── fact_id + citations ──────────────────────────────────────────────────────
 
 def _fact_id(category: str, subject: str, key: str, chart_id: str,
@@ -972,6 +982,479 @@ def _build_bhava_bala_rows(
     return rows
 
 
+# ── Amendment 1: Per-varga Ashtakavarga ──────────────────────────────────────
+
+def _derive_ashtakavarga_for_varga(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    varga: str,
+) -> dict[str, list[int]]:
+    """
+    Derive ashtakavarga bindus for a divisional varga using sign positions from
+    chart_divisionals.
+
+    Queries chart_divisionals for varga_position rows (fact_key='sign_id') to
+    obtain the sign (1-based) of each planet in the given varga, then applies the
+    same BENEFIC_HOUSES computation as _derive_ashtakavarga.
+
+    Returns {planet_name: [12 bindus]} + SARVA key, or {} if positions unavailable.
+    """
+    try:
+        rows = conn.execute(
+            """
+            SELECT fact_subject, fact_value_num
+            FROM chart_divisionals
+            WHERE chart_id = %s
+              AND ayanamsha_id = %s
+              AND fact_category = 'varga_position'
+              AND fact_key = 'sign_id'
+              AND varga = %s
+            """,
+            (chart_id, ayanamsha_id, varga),
+        ).fetchall()
+    except Exception as exc:
+        logging.warning(
+            "[ga_strength_writer] varga=%s query failed: %s", varga, exc
+        )
+        return {}
+
+    if not rows:
+        return {}
+
+    # Build planet_signs: {benefic_name → sign_id_1based}
+    # SQL already filters fact_key='sign_id'; rows are (fact_subject, fact_value_num)
+    planet_signs: dict[str, int] = {}
+    for row in rows:
+        if isinstance(row, dict):
+            fact_subject = row["fact_subject"]
+            fact_value_num = row["fact_value_num"]
+        else:
+            fact_subject, fact_value_num = row[0], row[1]
+
+        if fact_value_num is None:
+            continue
+
+        # fact_subject is "{varga}.{SUBJECT_CODE}" e.g. "D9.SUN"; normalize to uppercase
+        parts = fact_subject.split(".")
+        subject_code = parts[-1].upper() if len(parts) >= 2 else fact_subject.upper()
+
+        benefic_name = _DIVISIONAL_TO_BENEFIC.get(subject_code)
+        if benefic_name is None:
+            logging.debug(
+                "[ga_strength_writer] _derive_ashtakavarga_for_varga: "
+                "unrecognized subject_code=%s (varga=%s); skipping",
+                subject_code, varga,
+            )
+            continue
+
+        sign_id = int(fact_value_num)
+        if sign_id < 1 or sign_id > 12:
+            continue
+        planet_signs[benefic_name] = sign_id
+
+    # Need at least the 7 classical planets + Lagna to compute meaningful AV
+    required = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Lagna"}
+    if not required.issubset(planet_signs.keys()):
+        logging.warning(
+            "[ga_strength_writer] varga=%s missing planets %s; skipping AV",
+            varga, required - planet_signs.keys(),
+        )
+        return {}
+
+    # BENEFIC_HOUSES is the same table as in _derive_ashtakavarga (BPHS classical).
+    BENEFIC_HOUSES: dict[str, dict[str, list[int]]] = {
+        "Sun": {
+            "Sun":     [1, 2, 4, 7, 8, 9, 10, 11],
+            "Moon":    [3, 6, 10, 11],
+            "Mars":    [1, 2, 4, 7, 8, 9, 10, 11],
+            "Mercury": [3, 5, 6, 9, 10, 11, 12],
+            "Jupiter": [5, 6, 9, 11],
+            "Venus":   [6, 7, 12],
+            "Saturn":  [1, 2, 4, 7, 8, 9, 10, 11],
+            "Lagna":   [3, 4, 6, 10, 11, 12],
+        },
+        "Moon": {
+            "Sun":     [3, 6, 7, 8, 10, 11],
+            "Moon":    [1, 3, 6, 7, 10, 11],
+            "Mars":    [2, 3, 5, 6, 9, 10, 11],
+            "Mercury": [1, 3, 4, 5, 7, 8, 10, 11],
+            "Jupiter": [1, 4, 7, 8, 10, 11, 12],
+            "Venus":   [3, 4, 5, 7, 9, 10, 11],
+            "Saturn":  [3, 5, 6, 11],
+            "Lagna":   [3, 6, 10, 11],
+        },
+        "Mars": {
+            "Sun":     [3, 5, 6, 10, 11],
+            "Moon":    [3, 6, 11],
+            "Mars":    [1, 2, 4, 7, 8, 10, 11],
+            "Mercury": [3, 5, 6, 11],
+            "Jupiter": [6, 10, 11, 12],
+            "Venus":   [6, 8, 11, 12],
+            "Saturn":  [1, 4, 7, 8, 9, 10, 11],
+            "Lagna":   [1, 3, 6, 10, 11],
+        },
+        "Mercury": {
+            "Sun":     [5, 6, 9, 11, 12],
+            "Moon":    [2, 4, 6, 8, 10, 11],
+            "Mars":    [1, 2, 4, 7, 8, 9, 10, 11],
+            "Mercury": [1, 3, 5, 6, 9, 10, 11, 12],
+            "Jupiter": [6, 8, 11, 12],
+            "Venus":   [1, 2, 3, 4, 5, 8, 9, 11],
+            "Saturn":  [1, 2, 4, 7, 8, 9, 10, 11],
+            "Lagna":   [1, 2, 4, 6, 8, 10, 11],
+        },
+        "Jupiter": {
+            "Sun":     [1, 2, 3, 4, 7, 8, 10, 11],
+            "Moon":    [2, 5, 7, 9, 11],
+            "Mars":    [1, 2, 4, 7, 8, 10, 11],
+            "Mercury": [1, 2, 4, 5, 6, 9, 10, 11],
+            "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11],
+            "Venus":   [2, 5, 6, 9, 10, 11],
+            "Saturn":  [3, 5, 6, 12],
+            "Lagna":   [1, 2, 4, 5, 6, 7, 9, 10, 11],
+        },
+        "Venus": {
+            "Sun":     [8, 11, 12],
+            "Moon":    [1, 2, 3, 4, 5, 8, 9, 11, 12],
+            "Mars":    [3, 4, 6, 9, 11, 12],
+            "Mercury": [3, 5, 6, 9, 11],
+            "Jupiter": [5, 8, 9, 10, 11],
+            "Venus":   [1, 2, 3, 4, 5, 8, 9, 10, 11],
+            "Saturn":  [3, 4, 5, 8, 9, 10, 11],
+            "Lagna":   [1, 2, 3, 4, 5, 8, 9, 11],
+        },
+        "Saturn": {
+            "Sun":     [1, 2, 4, 7, 8, 10, 11],
+            "Moon":    [3, 6, 11],
+            "Mars":    [3, 5, 6, 10, 11, 12],
+            "Mercury": [6, 8, 9, 10, 11, 12],
+            "Jupiter": [5, 6, 11, 12],
+            "Venus":   [6, 11, 12],
+            "Saturn":  [3, 5, 6, 11],
+            "Lagna":   [1, 3, 4, 6, 10, 11],
+        },
+    }
+
+    result: dict[str, list[int]] = {}
+    sarva = [0] * 12
+
+    for planet_name, contributor_map in BENEFIC_HOUSES.items():
+        bindus = [0] * 12
+
+        for contributor, benefic_rel_houses in contributor_map.items():
+            contrib_sign = planet_signs.get(contributor)
+            if contrib_sign is None:
+                continue
+
+            for rel_h in benefic_rel_houses:
+                abs_sign_0based = (contrib_sign - 1 + rel_h - 1) % 12
+                bindus[abs_sign_0based] += 1
+
+        result[planet_name] = bindus
+        sarva = [sarva[i] + bindus[i] for i in range(12)]
+
+    result["SARVA"] = sarva
+    return result
+
+
+def _build_ashtakavarga_per_varga_rows(
+    bav_varga: dict[str, list[int]],
+    varga: str,
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Build chart_facts rows for per-varga ashtakavarga.
+
+    fact_category = "ashtakavarga_bindu_per_varga"
+      subject = "{PLANET_CODE}-HOUSE_{N}", fact_key = varga (e.g. "D9")
+    fact_category = "ashtakavarga_pinda_sarva_per_varga"
+      subject = graha code, fact_key = varga
+    """
+    rows: list[dict[str, Any]] = []
+
+    planet_subjects = {
+        "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
+        "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "SARVA": "SARVA",
+    }
+
+    # Verify SARVA = 337
+    sarva_list = bav_varga.get("SARVA", [])
+    sarva_total = sum(sarva_list)
+    if abs(sarva_total - SARVA_BINDU_TOTAL) > 2:
+        logging.warning(
+            "[ga_strength_writer] varga=%s SARVA=%d expected=%d (floored_sarva_mismatch)",
+            varga, sarva_total, SARVA_BINDU_TOTAL,
+        )
+        bindu_verif = "floored_sarva_mismatch"
+    else:
+        bindu_verif = "two_pass_verified"
+
+    src_calc = f"pyjhora_adapter.ashtakavarga_per_varga/{eng_ver}"
+
+    for planet_name, subject in planet_subjects.items():
+        bindus_list = bav_varga.get(planet_name, [0] * 12)
+
+        # Per-house bindu rows
+        for h_idx, bindus in enumerate(bindus_list):
+            house_num = h_idx + 1
+            compound_subject = f"{subject}-HOUSE_{house_num}"
+            cat = "ashtakavarga_bindu_per_varga"
+
+            fid = _fact_id(cat, compound_subject, varga, chart_id, ayanamsha_id, build_id)
+            cref = _citation_ref(cat, compound_subject, varga, chart_id, ayanamsha_id, eng_ver)
+            rows.append({
+                "fact_id": fid,
+                "chart_id": chart_id,
+                "ayanamsha_id": ayanamsha_id,
+                "build_id": build_id,
+                "fact_category": cat,
+                "fact_subject": compound_subject,
+                "fact_key": varga,
+                "fact_value_text": None,
+                "fact_value_num": float(bindus),
+                "fact_value_jsonb": None,
+                "unit": "bindu",
+                "citation_ref": cref,
+                "citation_human": (
+                    f"{planet_name} ashtakavarga house {house_num} in {varga}: "
+                    f"{int(bindus)} bindu ({ayanamsha_id})."
+                ),
+                "source_calculation": src_calc,
+                "verification_pass_status": bindu_verif,
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
+        # Pinda sarva row
+        pinda_cat = "ashtakavarga_pinda_sarva_per_varga"
+        pinda_val = sum(bindus_list)
+        fid2 = _fact_id(pinda_cat, subject, varga, chart_id, ayanamsha_id, build_id)
+        cref2 = _citation_ref(pinda_cat, subject, varga, chart_id, ayanamsha_id, eng_ver)
+        rows.append({
+            "fact_id": fid2,
+            "chart_id": chart_id,
+            "ayanamsha_id": ayanamsha_id,
+            "build_id": build_id,
+            "fact_category": pinda_cat,
+            "fact_subject": subject,
+            "fact_key": varga,
+            "fact_value_text": None,
+            "fact_value_num": float(pinda_val),
+            "fact_value_jsonb": None,
+            "unit": "bindu",
+            "citation_ref": cref2,
+            "citation_human": (
+                f"{planet_name} sarva pinda in {varga}: {int(pinda_val)} ({ayanamsha_id})."
+            ),
+            "source_calculation": src_calc,
+            "verification_pass_status": bindu_verif,
+            "engine_version": eng_ver,
+            "computed_at": computed_at,
+        })
+
+    return rows
+
+
+# ── Amendment 1: Positional Shadbala for gap-vargas ───────────────────────────
+
+# Dignity → rupa mapping for sthana bala (positional component)
+_DIGNITY_TO_RUPA: dict[str, float] = {
+    "exalted": 3.0,
+    "own_sign": 2.0,
+    "moolatrikona": 2.0,
+    "friend": 1.5,
+    "neutral": 1.0,
+    "enemy": 0.5,
+    "debilitated": 0.0,
+}
+
+
+def _build_positional_components_per_varga_rows(
+    conn: Any,
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+    gap_vargas: list[str],
+    verif_status: str,
+) -> list[dict[str, Any]]:
+    """
+    Build sthana and drik bala floor rows for gap vargas (D5, D6, D8, D11, D14, D15).
+
+    For sthana bala: queries chart_divisionals for dignity_status and maps to rupa.
+    For drik bala: emits a floored row (varga aspect geometry not available).
+    """
+    rows: list[dict[str, Any]] = []
+
+    classical_subjects = {
+        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+    }
+
+    for varga in gap_vargas:
+        # Query dignity rows for this varga
+        try:
+            dignity_rows = conn.execute(
+                """
+                SELECT fact_subject, fact_value_text
+                FROM chart_divisionals
+                WHERE chart_id = %s
+                  AND ayanamsha_id = %s
+                  AND fact_category = 'varga_dignity'
+                  AND fact_key = 'dignity'
+                  AND varga = %s
+                """,
+                (chart_id, ayanamsha_id, varga),
+            ).fetchall()
+        except Exception as exc:
+            logging.warning(
+                "[ga_strength_writer] gap_varga=%s dignity query failed: %s", varga, exc
+            )
+            dignity_rows = []
+
+        # Build lookup: subject_code → dignity_status
+        dignity_map: dict[str, str] = {}
+        for drow in dignity_rows:
+            if isinstance(drow, dict):
+                fact_subject = drow["fact_subject"]
+                dignity_val = drow["fact_value_text"]
+            else:
+                fact_subject, dignity_val = drow[0], drow[1]
+            # fact_subject is "{varga}.{SUBJECT_CODE}" e.g. "D5.SUN"
+            parts = fact_subject.split(".")
+            subject_code = parts[-1] if len(parts) >= 2 else fact_subject
+            if dignity_val:
+                dignity_map[subject_code] = dignity_val.lower()
+
+        for subj_code, planet_name in classical_subjects.items():
+            # ── Sthana bala per varga ──────────────────────────────────
+            dignity_str = dignity_map.get(subj_code, "neutral")
+            rupa_val = _DIGNITY_TO_RUPA.get(dignity_str, 1.0)
+            sthana_cat = "graha_sthana_bala_per_varga"
+            fid_sthana = _fact_id(sthana_cat, subj_code, varga, chart_id, ayanamsha_id, build_id)
+            cref_sthana = _citation_ref(sthana_cat, subj_code, varga, chart_id, ayanamsha_id, eng_ver)
+            rows.append({
+                "fact_id": fid_sthana,
+                "chart_id": chart_id,
+                "ayanamsha_id": ayanamsha_id,
+                "build_id": build_id,
+                "fact_category": sthana_cat,
+                "fact_subject": subj_code,
+                "fact_key": varga,
+                "fact_value_text": None,
+                "fact_value_num": rupa_val,
+                "fact_value_jsonb": None,
+                "unit": "rupa",
+                "citation_ref": cref_sthana,
+                "citation_human": (
+                    f"{planet_name} sthana bala in {varga}: {rupa_val:.1f} rupa "
+                    f"(dignity={dignity_str}) ({ayanamsha_id})."
+                ),
+                "source_calculation": f"classical_dignity_table/{eng_ver}",
+                "verification_pass_status": verif_status,
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
+            # ── Drik bala per varga (floored) ──────────────────────────
+            drik_cat = "graha_drik_bala_per_varga"
+            fid_drik = _fact_id(drik_cat, subj_code, varga, chart_id, ayanamsha_id, build_id)
+            cref_drik = _citation_ref(drik_cat, subj_code, varga, chart_id, ayanamsha_id, eng_ver)
+            rows.append({
+                "fact_id": fid_drik,
+                "chart_id": chart_id,
+                "ayanamsha_id": ayanamsha_id,
+                "build_id": build_id,
+                "fact_category": drik_cat,
+                "fact_subject": subj_code,
+                "fact_key": varga,
+                "fact_value_text": "floored: drik_requires_varga_aspect_geometry",
+                "fact_value_num": None,
+                "fact_value_jsonb": None,
+                "unit": None,
+                "citation_ref": cref_drik,
+                "citation_human": (
+                    f"{planet_name} drik bala in {varga}: floored — "
+                    f"varga aspect geometry not available ({ayanamsha_id})."
+                ),
+                "source_calculation": f"classical_dignity_table/{eng_ver}",
+                "verification_pass_status": "floored",
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
+    return rows
+
+
+# ── Amendment 1: Kala/Cheshta floor rows ─────────────────────────────────────
+
+def _build_kala_cheshta_floor_rows(
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+    floor_vargas: list[str],
+) -> list[dict[str, Any]]:
+    """
+    Emit floor rows for kala_bala and cheshta_bala across all vargas.
+
+    These components have no canonical per-varga method, so they are marked
+    floored and stored for completeness and downstream L2 consumption.
+    """
+    rows: list[dict[str, Any]] = []
+
+    classical_subjects = ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT"]
+
+    floor_categories = [
+        (
+            "graha_kala_bala_per_varga",
+            "floored: no_canonical_per_varga_method",
+            "No canonical Parashara method exists for kala bala in divisional charts.",
+        ),
+        (
+            "graha_cheshta_bala_per_varga",
+            "floored: no_canonical_per_varga_method",
+            "No canonical Parashara method exists for cheshta bala in divisional charts.",
+        ),
+    ]
+
+    for varga in floor_vargas:
+        for subj_code in classical_subjects:
+            for cat, floor_text, provenance_text in floor_categories:
+                fid = _fact_id(cat, subj_code, varga, chart_id, ayanamsha_id, build_id)
+                cref = _citation_ref(cat, subj_code, varga, chart_id, ayanamsha_id, eng_ver)
+                rows.append({
+                    "fact_id": fid,
+                    "chart_id": chart_id,
+                    "ayanamsha_id": ayanamsha_id,
+                    "build_id": build_id,
+                    "fact_category": cat,
+                    "fact_subject": subj_code,
+                    "fact_key": varga,
+                    "fact_value_text": floor_text,
+                    "fact_value_num": None,
+                    "fact_value_jsonb": None,
+                    "unit": None,
+                    "citation_ref": cref,
+                    "citation_human": (
+                        f"{subj_code} {cat} in {varga}: {floor_text} ({ayanamsha_id})."
+                    ),
+                    "source_calculation": f"classical_floor/{eng_ver}",
+                    "verification_pass_status": "floored",
+                    "engine_version": eng_ver,
+                    "computed_at": computed_at,
+                })
+
+    return rows
+
+
 # ── chart_facts INSERT ────────────────────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
@@ -1115,6 +1598,27 @@ def build_ga_strength(
             all_rows.extend(_build_bhava_bala_rows(
                 bhava_bala, chart_id, build_id, canonical_id,
                 computed_at, eng_ver, verif_status,
+            ))
+
+            # ── Amendment 1: Per-varga strength enrichment ─────────────────────────────
+            SHODASAVARGA_MINUS_D1 = ["D2","D3","D4","D7","D9","D10","D12","D16","D20","D24","D27","D30","D40","D45","D60"]
+            for varga in SHODASAVARGA_MINUS_D1:
+                bav_varga = _derive_ashtakavarga_for_varga(conn, chart_id, canonical_id, varga)
+                if bav_varga:
+                    all_rows.extend(_build_ashtakavarga_per_varga_rows(
+                        bav_varga, varga, chart_id, build_id, canonical_id, computed_at, eng_ver
+                    ))
+                else:
+                    logging.warning("[ga_strength_writer] varga=%s missing positions; skipping per-varga AV", varga)
+
+            GAP_VARGAS = ["D5","D6","D8","D11","D14","D15"]
+            all_rows.extend(_build_positional_components_per_varga_rows(
+                conn, chart_id, build_id, canonical_id, computed_at, eng_ver, GAP_VARGAS, verif_status
+            ))
+
+            FLOOR_VARGAS = SHODASAVARGA_MINUS_D1 + GAP_VARGAS
+            all_rows.extend(_build_kala_cheshta_floor_rows(
+                chart_id, build_id, canonical_id, computed_at, eng_ver, FLOOR_VARGAS
             ))
 
             # ── Insert ──────────────────────────────────────────────────
