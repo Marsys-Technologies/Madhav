@@ -1780,9 +1780,9 @@ def _build_gulika_mandi_sensitive_rows(
         return []
     lagna_long = lagna_long_raw
     sat_long_raw = all_longs.get("SAT")
-    vara = panchanga.get("vara")
+    vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_gulika_mandi_sensitive_rows: panchanga missing 'vara'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        logging.warning("_build_gulika_mandi_sensitive_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
         vara = 0
 
     # Try native PyJHora upagrahas first
@@ -1839,9 +1839,9 @@ def _build_sun_derived_upagrahas_rows(
         logging.warning("_build_sun_derived_upagrahas_rows: LAGNA absent from all_longs; skipping")
         return []
     lagna_long = lagna_long_raw
-    vara = panchanga.get("vara")
+    vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_sun_derived_upagrahas_rows: panchanga missing 'vara'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        logging.warning("_build_sun_derived_upagrahas_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
         vara = 0
 
     kala_sun = (sun_long + 180.0) % 360.0
@@ -1984,9 +1984,9 @@ def _build_yogi_system_completion_rows(
         return []
     sun_long = sun_long_raw
     moon_long = moon_long_raw
-    vara = panchanga.get("vara")
+    vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_yogi_system_completion_rows: panchanga missing 'vara'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
+        logging.warning("_build_yogi_system_completion_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
         vara = 0
 
     yogi_long = (sun_long + moon_long + 93.3333333) % 360.0
