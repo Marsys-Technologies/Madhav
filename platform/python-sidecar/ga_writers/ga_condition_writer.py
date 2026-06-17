@@ -24,6 +24,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import psycopg.rows
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -524,7 +526,7 @@ def compute_motion_state(graha: str, speed: float) -> str:
 def _load_dignity_ref(conn: Any) -> dict[str, dict]:
     """Load bg_dignity_reference into a dict keyed by graha name."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT graha, exaltation_sign, exaltation_degree,
                        debilitation_sign, debilitation_degree,
@@ -553,7 +555,7 @@ def _load_dignity_ref(conn: Any) -> dict[str, dict]:
 def _load_combustion_orbs(conn: Any) -> dict[str, dict]:
     """Load bg_combustion_orbs into a dict keyed by graha name."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT graha, orb_degrees, deep_orb_degrees
                 FROM bg_combustion_orbs
@@ -580,7 +582,7 @@ def _load_combustion_orbs(conn: Any) -> dict[str, dict]:
 def _load_naisargika_friendships(conn: Any) -> dict[str, dict[str, str]]:
     """Load bg_graha_naisargika_friendship into a nested dict."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT graha, other_graha, relation
                 FROM bg_graha_naisargika_friendship
@@ -609,7 +611,7 @@ def _load_graha_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> list[d
 
     # Step 1: Get sign and degree_in_sign from graha_sign_attributes category
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT fact_subject, fact_key, fact_value_text, fact_value_num
                 FROM chart_facts
@@ -661,7 +663,7 @@ def _load_varga_dignity_spread(
     Returns None when chart_divisionals is unavailable or has no data.
     """
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             # Map graha name to UPPER_SNAKE subject
             _GRAHA_SUBJ = {
                 "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
@@ -741,7 +743,7 @@ def _load_dasha_periods(
     Peak = graha's own mahadasha; weak = based on condition context.
     """
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT system_id, level_n, graha_label, start_iso, end_iso
                 FROM chart_dashas

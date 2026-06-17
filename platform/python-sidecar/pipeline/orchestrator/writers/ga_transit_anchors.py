@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import logging
 
+import psycopg.rows
+
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,7 @@ class GaTransitAnchorsWriter(WriterBase):
 
         # ── Load graha positions from chart_facts ─────────────────────────────
         positions: dict[str, dict] = {}
-        with ctx.db_conn.cursor() as cur:
+        with ctx.db_conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute(
                 """
                 SELECT fact_subject, fact_key, fact_value_text, fact_value_num
