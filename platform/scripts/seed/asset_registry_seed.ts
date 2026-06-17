@@ -831,8 +831,8 @@ const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
     // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
-    target_floor: 53953,
-    expected_volume_formula: null, // non-parametric — target_floor = 53953 (all-30-vargas achieved count for 482012f1)
+    target_floor: 74644,
+    expected_volume_formula: null, // non-parametric — target_floor = 74644 (all-30-vargas achieved count for 482012f1)
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
