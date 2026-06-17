@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.77
+version: 5.78
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,31 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.78 (2026-06-17, L0-BRAHMAGYAN-CLOSURE):
+    **L0 Brahmagyan SEALED.** First-ever proper closure of the L0 layer (built incrementally by
+    the autonomous subsystem program, never coherently closed). Autonomous Sūtradhāra conductor
+    ran all 4 phases: (A) Integrity audit — 21 assets, 12 checks each, all findings resolved via
+    migrations 295–304 (4 count_sql fixes, 6 target_floor updates, bg_reference target_table fix,
+    bg_dignity_reference registered for 5 orphaned tables, global throughput for bg_compendium_index,
+    dormant throughput for bg_transit_engine + bg_nakshatra_medical, transit target_tables set,
+    deprecation comments on reference_nakshatras + classical_chunks + prashna_charts);
+    (B) Enrichment audit — 47 rows built: bg_transit_vedha NEW TABLE (33 vedha pairs, BPHS Ch.29
+    + Phaladeepika Ch.26), 5 missing Tajik yogas (tajik_yogas 11→16, Tajika Neelakanthi Ch.4),
+    9 Venus transit rules (houses 4–12, BPHS Ch.29); 3 items deferred on hard-gate
+    (Abhijit attributes, Rahu/Ketu transit phala);
+    (C) Synergy hunt — bg_graha_dik 9-row Dig Bala reference table built (migration 304,
+    BPHS Ch.27 + Saravali Ch.3 + Brihat Jataka Ch.2); 2 L1 + 4 L2 synergy opportunities
+    logged as opportunity register.
+    FORENSIC 7/7 PASS. Vimarsaka IS.8(b) red-team: PASS (0 RED, 3 AMBER — all documented).
+    Final L0: 22 registered assets, migrations 295–304 applied to prod, seed file patched.
+    Seal: L0_BRAHMAGYAN_CLOSURE_v1_0.md.
+    branch: fix/l0-closure-integrity. last_session_id: L0-BRAHMAGYAN-CLOSURE.
+    predecessor_session: GATE3-SIX-SUBSYSTEM-CLOSE.
+    next_session_objective: >
+      "Create PR from fix/l0-closure-integrity to main. Native review of L0 Brahmagyan Closure.
+      After PR merge: begin L1 Gaṇita closure pass (same A+B+C method, consuming §5 L1 opportunity
+      register from L0_BRAHMAGYAN_CLOSURE_v1_0.md)."
+    file_updated_at: 2026-06-17. file_updated_by_session: L0-BRAHMAGYAN-CLOSURE.
   - v5.77 (2026-06-17, GATE3-SIX-SUBSYSTEM-CLOSE):
     **Gate-3 Production Build CLOSED.** All 8 L1 Gaṇita subsystem assets lit on production for
     chart 482012f1-710e-4a25-994a-93821f5871aa. FORENSIC 7/7 PASS. Vimarśaka IS.8(b) RT-8 PASS
@@ -4465,7 +4490,11 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: SRP-DEPLOY         # UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
+  last_session_id: L0-BRAHMAGYAN-CLOSURE  # 2026-06-17: L0 Brahmagyan SEALED. 22 assets, migrations 295-304, FORENSIC 7/7 PASS, IS.8(b) RT PASS (0 RED). Predecessor GATE3-SIX-SUBSYSTEM-CLOSE.
+    # === Predecessor GATE3-SIX-SUBSYSTEM-CLOSE (2026-06-17) preserved for audit ===
+    # GATE3-SIX-SUBSYSTEM-CLOSE: All 8 L1 Gaṇita subsystem assets lit. FORENSIC 7/7 PASS. RT-8 PASS. Fixes: ga_structural UUID fix, ga_sade_sati dict-key fix, test mock cursor() fixes.
+    # === Predecessor SRP-DEPLOY (2026-05-30) ===
+    # SRP-DEPLOY: UDA1-GOVERNANCE-CLOSE 2026-05-25: UDA-1 COMPLETE — PR #161 merged 0a2447f3; 15 tools channel mcp→both; portal RETRIEVAL_TOOLS 36→51; worktrees MadhavParity/R11 series/MadhavToolingFix retired. Predecessor DAR-LAND-ON-MAIN.
     # === Predecessor R11V2-PHASE-DE-ROLLOUT (2026-05-23) preserved for audit ===
     # R11V2-PHASE-DE-ROLLOUT: D.1 PASS, D.2 WAIVED, D.3 NOT_IMPLEMENTED (rolled back), E.1–E.4 NOT_IMPLEMENTED (not flipped). deploy.yml flags fixed. STREAM_R11V2_COMPLETE.md §7 added. D/E result docs written. Predecessor R11V2-DISPATCH-WIRING-COMPLETE.
     # === Predecessor R11V2-DISPATCH-WIRING-COMPLETE (2026-05-22) ===
