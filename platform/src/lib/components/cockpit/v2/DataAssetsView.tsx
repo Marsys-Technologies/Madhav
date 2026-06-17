@@ -18,13 +18,15 @@ export interface SubstepOverlay {
   substep_label: string
 }
 
-const LiveDependencyGraph = dynamic(
-  () => import('./LiveDependencyGraph').then(m => m.LiveDependencyGraph),
+// Instrument pane: the armillary graph (replaces the orbital LiveDependencyGraph).
+// LiveDependencyGraph.tsx is retained in place for the AssetWithState type + easy revert.
+const InstrumentGraph = dynamic(
+  () => import('./ArmillaryGraph').then(m => m.ArmillaryGraph),
   {
     ssr: false,
     loading: () => (
       <div className="w-full h-full flex items-center justify-center text-white/40 text-sm">
-        Loading dependency graph…
+        Loading instrument…
       </div>
     ),
   }
@@ -52,6 +54,18 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
   // is actually caught. Without this, stats poll at 30s and always miss the window.
   const { stats, refetch: refetchStats } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
+  // Bidirectional bond: which asset is hovered anywhere (row or bead). Shared
+  // so hovering a row lights the matching bead and vice versa.
+  const [hoveredAssetId, setHoveredAssetId] = useState<string | null>(null)
+  // Responsive: stack the two panes below a narrow breakpoint.
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const apply = () => setNarrow(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
   const layerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   // Live SSE overlay: patches from the orchestrator overwrite stats for DAG rendering
@@ -196,10 +210,27 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
     return false
   }
 
+  // First-run: every asset dormant → the instrument has not been built yet.
+  const allDormant = assetsWithState.length > 0 &&
+    assetsWithState.every(a => a.state === 'dormant' || a.state === 'not_migrated')
+
+  const fadeMask = 'linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%)'
+
   return (
-    <div style={{ display: 'flex', gap: '24px', height: '100%', overflow: 'hidden' }}>
-      {/* 60% — layer panels: independently scrolls */}
-      <div style={{ flex: '0 0 60%', minWidth: 0, height: '100%', overflowY: 'auto', padding: '8px 0' }}>
+    <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', gap: '24px', height: '100%', overflow: narrow ? 'auto' : 'hidden' }}>
+      {/* 60% — layer panels: independently scrolls, fade-masked top/bottom */}
+      <div
+        style={{
+          flex: narrow ? '1 1 auto' : '0 0 60%',
+          minWidth: 0,
+          width: narrow ? '100%' : undefined,
+          height: narrow ? 'auto' : '100%',
+          overflowY: narrow ? 'visible' : 'auto',
+          padding: '8px 0',
+          WebkitMaskImage: narrow ? undefined : fadeMask,
+          maskImage: narrow ? undefined : fadeMask,
+        }}
+      >
         {orderedLayers.map((layer) => {
           const layerAssets = byLayer.get(layer) ?? []
           const focusedInLayer = focusedAssetId != null && layerAssets.some(a => a.asset_id === focusedAssetId)
@@ -216,6 +247,8 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
                 defaultExpanded={isLayerExpanded(layer)}
                 forceExpand={focusedInLayer}
                 focusedAssetId={focusedAssetId}
+                hoveredAssetId={hoveredAssetId}
+                onHover={setHoveredAssetId}
                 chartId={chartId}
                 activeRun={activeRun}
                 substepOverlay={substepOverlay}
@@ -226,13 +259,41 @@ export function DataAssetsView({ chartId, onAssetsReady }: Props) {
         })}
       </div>
 
-      {/* 40% — Live dependency graph: anchored, does not scroll with left pane */}
-      <div style={{ flex: '0 0 40%', minWidth: 0, height: '100%', overflow: 'hidden' }}>
-        <LiveDependencyGraph
+      {/* 40% — armillary instrument: anchored, does not scroll with left pane */}
+      <div
+        style={{
+          flex: narrow ? '1 1 auto' : '0 0 40%',
+          minWidth: 0,
+          width: narrow ? '100%' : undefined,
+          height: narrow ? '360px' : '100%',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <InstrumentGraph
           assets={assetsWithState}
           activeRun={activeRun}
           onNodeClick={handleNodeClick}
+          hoveredId={hoveredAssetId}
+          onHover={setHoveredAssetId}
         />
+        {/* First-run invocation — classical welcome over the dormant cage */}
+        {allDormant && (
+          <div
+            style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+              pointerEvents: 'none', padding: '24px',
+            }}
+          >
+            <div style={{ fontFamily: 'var(--display-stack)', fontVariant: 'small-caps', color: 'var(--gold-high)', fontSize: '22px', letterSpacing: '0.04em', marginBottom: '6px' }}>
+              The instrument awaits
+            </div>
+            <div style={{ fontFamily: 'var(--ui-stack)', color: 'var(--on-dark-mut)', fontSize: '13px', maxWidth: '34ch', lineHeight: 1.6 }}>
+              This chart has not been built. We begin with Brahma Jñāna.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

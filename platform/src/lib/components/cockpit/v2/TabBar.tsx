@@ -1,5 +1,8 @@
 'use client'
 
+import { motion } from 'framer-motion'
+import { DUR, EASE } from './motion'
+
 type Tab = 'data' | 'workflow' | 'agents'
 
 interface Props {
@@ -100,6 +103,7 @@ export function TabBar({ activeTab, onTabChange, proMode = false }: Props) {
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             style={{
+              position: 'relative',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -108,9 +112,7 @@ export function TabBar({ activeTab, onTabChange, proMode = false }: Props) {
               fontFamily: 'var(--ui-stack)',
               cursor: 'pointer',
               border: 'none',
-              borderBottom: isActive
-                ? '2px solid var(--gold-engrave)'
-                : '2px solid transparent',
+              borderBottom: '2px solid transparent',
               background: isActive ? 'var(--black-raised)' : 'transparent',
               color: isActive ? 'var(--gold-high)' : 'var(--on-dark-mut)',
               borderRadius: '4px 4px 0 0',
@@ -119,6 +121,17 @@ export function TabBar({ activeTab, onTabChange, proMode = false }: Props) {
           >
             <tab.Icon />
             <span>{tab.label}</span>
+            {/* Shared sliding underline — "magic ink" between tabs */}
+            {isActive && (
+              <motion.div
+                layoutId="cockpit-tab-underline"
+                style={{
+                  position: 'absolute', left: 0, right: 0, bottom: '-2px', height: '2px',
+                  background: 'var(--gold-engrave)', borderRadius: '2px',
+                }}
+                transition={{ duration: DUR.base, ease: EASE.out }}
+              />
+            )}
           </button>
         )
       })}

@@ -1041,3 +1041,46 @@ body {
 .poly-pulse {
   animation: polyPulse 8s ease-in-out infinite;
 }
+
+/* ── Cockpit a11y + micro-interaction unifiers ─────────────────────────────
+   One place to give every cockpit button a consistent gold focus ring and a
+   subtle lift on hover, closing the focus-visible gap without touching each
+   button component individually.                                          */
+.marsys-cockpit button:focus-visible {
+  outline: 1px solid var(--gold-core);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.marsys-cockpit [data-icon-btn]:hover {
+  transform: translateY(-1px);
+}
+.marsys-cockpit [data-icon-btn] {
+  transition: transform 0.15s ease, color 0.15s, background 0.15s;
+}
+
+/* Scroll-fade mask: hint that a vertically-scrollable pane has more content
+   above/below the fold. Applied to the left layer-panel column.           */
+.marsys-scroll-fade {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+
+/* ROOT sphere slow breathing glow — distinct, slower rhythm than beadBreathe. */
+@keyframes armRootBreathe {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1; }
+}
+
+/* Nirmāṇa data view: 60/40 split that stacks below a narrow breakpoint. */
+.nirmana-split { display: flex; gap: 24px; height: 100%; overflow: hidden; }
+.nirmana-pane-left { flex: 0 0 60%; min-width: 0; height: 100%; overflow-y: auto; padding: 8px 0; }
+.nirmana-pane-right { flex: 0 0 40%; min-width: 0; height: 100%; overflow: hidden; position: relative; }
+@media (max-width: 900px) {
+  .nirmana-split { flex-direction: column; overflow-y: auto; }
+  .nirmana-pane-left { flex: 1 1 auto; width: 100%; height: auto; overflow: visible; }
+  .nirmana-pane-right { flex: 1 1 auto; width: 100%; height: 360px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marsys-cockpit [data-icon-btn]:hover { transform: none; }
+}

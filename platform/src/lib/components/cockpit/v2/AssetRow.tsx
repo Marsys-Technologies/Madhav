@@ -44,30 +44,36 @@ function ServiceHealthPill({
   const isRunning = state === 'building'
   const isError = hasError || state === 'error'
 
-  const bg = isGreen ? 'rgba(83,180,95,0.15)' : isRunning ? 'rgba(236,197,106,0.12)' : 'rgba(200,60,60,0.12)'
-  const border = isGreen ? 'rgba(83,180,95,0.4)' : isRunning ? 'rgba(236,197,106,0.4)' : 'rgba(200,60,60,0.35)'
-  const color = isGreen ? 'rgba(83,200,100,0.95)' : isRunning ? '#ECC56A' : 'rgba(220,80,80,0.9)'
-  const label = isGreen ? '● GREEN' : isRunning ? '◎ probing…' : isError ? '✕ degraded' : '— dormant'
+  // Same block geometry as AssetProgressBar (full-width 22px track + right-edge
+  // state pill), so a service row reads consistently with the data rows.
+  const fill = isGreen ? 'rgba(83,180,95,0.55)' : isRunning ? 'rgba(168,124,48,0.7)' : isError ? 'rgba(232,108,108,0.55)' : 'rgba(122,86,24,0.0)'
+  const stroke = isGreen ? 'rgba(83,180,95,0.7)' : isRunning ? 'rgba(200,154,70,0.75)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
+  const pillColor = isGreen ? 'rgba(140,210,140,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
+  const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isError ? 'FAILED' : 'DORMANT'
 
   return (
     <div>
-      <span
-        title={isError && errorMsg ? errorMsg : `service health: ${label}`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          fontSize: '10px',
-          fontFamily: 'var(--mono-stack)',
-          padding: '2px 7px',
-          borderRadius: '4px',
-          background: bg,
-          border: `1px solid ${border}`,
-          color,
-          letterSpacing: '0.03em',
-        }}
+      <div
+        style={{ position: 'relative', height: '22px', width: '100%' }}
+        title={isError && errorMsg ? errorMsg : `service health: ${pill}`}
       >
-        {label}
-      </span>
+        {/* Track */}
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '3px', border: `1px solid ${stroke}`, background: 'rgba(15,12,8,0.6)' }} />
+        {/* Fill */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: '3px', background: fill }} />
+        {/* State pill — right edge, mirrors AssetProgressBar */}
+        <div
+          style={{
+            position: 'absolute', top: '2px', right: '2px', bottom: '2px',
+            display: 'flex', alignItems: 'center', padding: '0 6px',
+            borderRadius: '2px', background: 'rgba(10,8,6,0.85)',
+            color: pillColor, fontFamily: 'var(--mono-stack)',
+            fontSize: '8px', letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
+        >
+          {pill}
+        </div>
+      </div>
       {isError && errorMsg && (
         <div style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
           {errorMsg.slice(0, 28)}
@@ -211,16 +217,16 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         )}
       </div>
 
-      {/* Last built — relative time with full datetime tooltip */}
+      {/* Last built — relative time with full datetime tooltip (centered column) */}
       <div
-        style={{ fontSize: '11px', color: 'var(--on-dark-faint)', fontFamily: 'var(--mono-stack)' }}
+        style={{ fontSize: '11px', color: 'var(--on-dark-faint)', fontFamily: 'var(--mono-stack)', textAlign: 'center' }}
         title={stat?.last_built_at ? formatDateTime(stat.last_built_at) : 'never built'}
       >
         {stat?.last_built_at ? (formatRelative(stat.last_built_at) ?? '—') : '—'}
       </div>
 
-      {/* Actions cell — right edge: [Build/Rebuild] [Refresh] [Stop | Delete] */}
-      <div className="flex items-center justify-end gap-1.5">
+      {/* Actions cell — centered column: [Build/Rebuild] [Refresh] [Stop | Delete] */}
+      <div className="flex items-center justify-center gap-1.5">
         {isActive && (
           <>
             {/* Build/Rebuild — hidden when run active */}

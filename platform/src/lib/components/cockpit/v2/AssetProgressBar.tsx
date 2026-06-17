@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface AssetProgressBarProps {
   state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting'
@@ -12,7 +12,7 @@ const STATE_COLORS: Record<string, {
   fill: string; stroke: string; pill: string; pillColor: string
 }> = {
   dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.4)',    pill: 'NOT BUILT',     pillColor: 'rgba(155,131,80,0.8)' },
-  building:     { fill: 'rgba(168,124,48,0.7)',    stroke: 'rgba(200,154,70,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(120,180,255,0.9)' },
+  building:     { fill: 'rgba(168,124,48,0.7)',    stroke: 'rgba(200,154,70,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(236,197,106,0.95)' },
   lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(140,210,140,0.95)' },
   stale:        { fill: 'rgba(166,108,52,0.7)',    stroke: 'rgba(196,128,64,0.75)',  pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
   error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
@@ -38,13 +38,13 @@ export function AssetProgressBar({ state, actualRows, targetVolume }: AssetProgr
         style={{ borderColor: colors.stroke, background: 'rgba(15,12,8,0.6)' }}
       />
 
-      {/* Fill — animated width */}
+      {/* Fill — full-width track scaled on X (transform, not layout-triggering width) */}
       <motion.div
-        className="absolute top-0 bottom-0 left-0 rounded-l-[3px]"
+        className="absolute top-0 bottom-0 left-0 right-0 rounded-l-[3px] origin-left"
         style={{ background: colors.fill }}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: pct / 100 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       />
 
       {/* Building shimmer overlay */}
@@ -73,16 +73,23 @@ export function AssetProgressBar({ state, actualRows, targetVolume }: AssetProgr
         {numericText}
       </div>
 
-      {/* State pill — right edge inside the bar */}
+      {/* State pill — right edge inside the bar; label cross-fades on state change */}
       <div
-        className="absolute top-[2px] right-[2px] bottom-[2px] flex items-center px-1.5 rounded-[2px] font-mono text-[8px] uppercase"
-        style={{
-          background: 'rgba(10,8,6,0.85)',
-          color: colors.pillColor,
-          letterSpacing: '0.06em',
-        }}
+        className="absolute top-[2px] right-[2px] bottom-[2px] flex items-center px-1.5 rounded-[2px] font-mono text-[8px] uppercase overflow-hidden"
+        style={{ background: 'rgba(10,8,6,0.85)', letterSpacing: '0.06em' }}
       >
-        {colors.pill}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={colors.pill}
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -3 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            style={{ color: colors.pillColor, display: 'block' }}
+          >
+            {colors.pill}
+          </motion.span>
+        </AnimatePresence>
       </div>
     </div>
   )

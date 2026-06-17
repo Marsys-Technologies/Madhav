@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { DUR, EASE } from './motion'
 
 interface TableCount {
   table: string
@@ -132,8 +134,20 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
   }
 
   return (
-    <div style={overlay} onClick={onClose}>
-      <div style={modal} onClick={e => e.stopPropagation()}>
+    <motion.div
+      style={overlay}
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: DUR.modal }}
+    >
+      <motion.div
+        style={modal}
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.98, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: DUR.modal, ease: EASE.out }}
+      >
         {/* Title */}
         <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--marsys-error)', marginBottom: '16px' }}>
           {config.title(scopeTarget)}
@@ -271,7 +285,7 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
             {loading ? 'Clearing…' : config.confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

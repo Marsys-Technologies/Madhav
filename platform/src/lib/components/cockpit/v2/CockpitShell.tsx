@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { DUR } from './motion'
 import { CockpitHeader } from './CockpitHeader'
 import { TabBar } from './TabBar'
 import { DataAssetsView } from './DataAssetsView'
@@ -48,8 +50,6 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   // Whether the clear is part of a Rebuild flow (chains a build POST after clear)
   const [rebuildMode, setRebuildMode] = useState(false)
-
-  console.log('[Shell] render — chartName=', chartName, 'birthDate=', birthDate)
 
   const handleAssetsReady = useCallback((assets: AssetWithState[]) => {
     setAssetStates(assets.map(a => ({ state: a.state })))
@@ -123,6 +123,14 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
         overflow: 'hidden',
       }}
     >
+      {/* Cockpit-wide a11y + micro-interaction unifiers (component-scoped so they
+          load reliably in dev; mirrored in globals.css for production builds). */}
+      <style>{`
+        .marsys-cockpit button:focus-visible { outline: 1px solid var(--gold-core); outline-offset: 2px; border-radius: 4px; }
+        .marsys-cockpit [data-icon-btn] { transition: transform 0.15s ease, color 0.15s, background 0.15s; }
+        .marsys-cockpit [data-icon-btn]:hover { transform: translateY(-1px); }
+        @media (prefers-reduced-motion: reduce) { .marsys-cockpit [data-icon-btn]:hover { transform: none; } }
+      `}</style>
       <CockpitHeader
         chartId={chartId}
         chartName={chartName}
@@ -138,15 +146,31 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} proMode={proMode} />
       {activeTab === 'data' && (
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <motion.div
+          key="tab-data"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: DUR.micro }}
+          style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
           <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} />
-        </div>
+        </motion.div>
       )}
-      {activeTab === 'workflow' && proMode && <WorkflowView chartId={chartId} />}
-      {activeTab === 'agents' && proMode && <AgentsView chartId={chartId} />}
+      {activeTab === 'workflow' && proMode && (
+        <motion.div key="tab-workflow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }}>
+          <WorkflowView chartId={chartId} />
+        </motion.div>
+      )}
+      {activeTab === 'agents' && proMode && (
+        <motion.div key="tab-agents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.micro }}>
+          <AgentsView chartId={chartId} />
+        </motion.div>
+      )}
       {(activeTab === 'workflow' || activeTab === 'agents') && !proMode && (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)', fontSize: '14px' }}>
-          Enable Pro view to access this tab.
+        <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)', fontSize: '14px', lineHeight: 1.7 }}>
+          This view lives in Pro.
+          <br />
+          Enable the <span style={{ color: 'var(--gold-high)' }}>◆ Pro</span> toggle beside the chart name to access it.
         </div>
       )}
 

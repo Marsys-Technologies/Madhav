@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import type { BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
+import { DUR, EASE } from './motion'
 
 interface PlanData {
   plan: string[]
@@ -81,15 +83,18 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
       : `~${Math.ceil(planData.estimated_seconds / 60)}m`
 
   return (
-    <div
+    <motion.div
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
         background: 'rgba(0,0,0,0.7)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: DUR.modal }}
     >
-      <div
+      <motion.div
         style={{
           background: 'var(--black-raised)',
           border: '1px solid var(--black-line)',
@@ -101,6 +106,9 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           flexDirection: 'column',
           gap: '16px',
         }}
+        initial={{ opacity: 0, scale: 0.98, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: DUR.modal, ease: EASE.out }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontFamily: 'var(--display-stack)', color: 'var(--gold-high)', fontSize: '16px', margin: 0 }}>
@@ -187,7 +195,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
             </div>
           </>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

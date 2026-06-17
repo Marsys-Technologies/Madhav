@@ -9,6 +9,17 @@ import { BuildActionButton } from './BuildActionButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
 
+// Sun-node mark — the brand's sanctioned sacred-geometry glyph (replaces the
+// uncontrolled ◆ Unicode lozenge). A small 4-point star drawn at 1px stroke,
+// same hand as the TabBar icons.
+function SunNode({ size = 9 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 0.5 L7.2 4.8 L11.5 6 L7.2 7.2 L6 11.5 L4.8 7.2 L0.5 6 L4.8 4.8 Z" />
+    </svg>
+  )
+}
+
 /** Format pg TIME string "HH:MM:SS" → "HH:MM" (24-hour) */
 function formatBirthTime(t: string | null | undefined): string {
   if (!t) return ''
@@ -121,14 +132,16 @@ export function CockpitHeader({
             </h1>
             <button
               onClick={onProModeToggle}
+              aria-pressed={proMode}
+              data-icon-btn
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
                 padding: '2px 8px',
                 borderRadius: '12px',
-                background: proMode ? 'rgba(168,124,42,0.28)' : 'rgba(168,124,42,0.10)',
-                border: `1px solid ${proMode ? 'var(--gold-engrave)' : 'rgba(168,124,42,0.35)'}`,
+                background: proMode ? 'color-mix(in srgb, var(--gold-core) 26%, transparent)' : 'color-mix(in srgb, var(--gold-core) 10%, transparent)',
+                border: `1px solid ${proMode ? 'var(--gold-engrave)' : 'color-mix(in srgb, var(--gold-core) 35%, transparent)'}`,
                 color: proMode ? 'var(--gold-bright)' : 'var(--on-dark-faint)',
                 fontSize: '10px',
                 fontFamily: 'var(--ui-stack)',
@@ -139,7 +152,7 @@ export function CockpitHeader({
                 whiteSpace: 'nowrap',
               }}
             >
-              ◆ Pro
+              <SunNode /> Pro
             </button>
           </div>
           {subtitle && (
@@ -192,7 +205,16 @@ export function CockpitHeader({
             <button
               title="Clear instrument"
               onClick={() => onGlobalClear?.()}
-              className="w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors"
+              data-icon-btn
+              className="w-[28px] h-[28px] flex items-center justify-center rounded text-white/40 transition-colors"
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--marsys-error)'
+                e.currentTarget.style.background = 'color-mix(in srgb, var(--marsys-error) 16%, transparent)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = ''
+                e.currentTarget.style.background = 'transparent'
+              }}
             >
               <Trash2 size={15} />
             </button>
@@ -200,8 +222,9 @@ export function CockpitHeader({
         </div>
       </div>
 
-      {/* Telemetry strip */}
+      {/* Telemetry strip — instrument readout; announces BUILD/SIDECAR changes */}
       <div
+        aria-live="polite"
         style={{
           marginTop: '12px',
           display: 'flex',
@@ -213,24 +236,39 @@ export function CockpitHeader({
         }}
       >
         {([
-          ['WRITERS', cockpitStatus.writers ?? '…'],
-          ['QUEUE',   cockpitStatus.queue   ?? '…'],
-          ['BUILD',   cockpitStatus.build   ?? '…'],
+          ['WRITERS', String(cockpitStatus.writers ?? '…')],
+          ['QUEUE',   String(cockpitStatus.queue   ?? '…')],
+          ['BUILD',   String(cockpitStatus.build   ?? '…')],
           ['SIDECAR', sidecarLabel],
-        ] as [string, string][]).map(([k, v]) => (
-          <span key={k}>
-            <span style={{ textTransform: 'uppercase', fontSize: '9.5px', letterSpacing: '0.08em' }}>
-              {k}
-            </span>{' '}
-            <span style={{
-              color: k === 'BUILD' && v === 'running' ? '#60a5fa'
-                   : k === 'SIDECAR' && v === 'DOWN'  ? 'var(--marsys-error, #e05252)'
-                   : 'var(--on-dark)',
-            }}>
-              {v}
+        ] as [string, string][]).map(([k, v]) => {
+          const buildRunning = k === 'BUILD' && v === 'running'
+          const sidecarDown = k === 'SIDECAR' && v === 'DOWN'
+          const lampColor = buildRunning ? 'var(--gold-high)' : sidecarDown ? 'var(--marsys-error)' : null
+          return (
+            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ textTransform: 'uppercase', fontSize: '9.5px', letterSpacing: '0.08em' }}>
+                {k}
+              </span>
+              {lampColor && (
+                <span
+                  aria-hidden
+                  style={{
+                    width: '5px', height: '5px', borderRadius: '50%', background: lampColor,
+                    boxShadow: `0 0 5px ${lampColor}`,
+                    animation: buildRunning ? 'obs-live-pulse 1.4s ease-in-out infinite' : undefined,
+                  }}
+                />
+              )}
+              <span style={{
+                color: buildRunning ? 'var(--gold-high)'
+                     : sidecarDown ? 'var(--marsys-error)'
+                     : 'var(--on-dark)',
+              }}>
+                {v}
+              </span>
             </span>
-          </span>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

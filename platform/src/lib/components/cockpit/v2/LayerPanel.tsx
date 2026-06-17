@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { ActiveRun } from '@/hooks/useActiveRun'
@@ -11,14 +12,26 @@ import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
 import { useUserRole } from '@/hooks/useUserRole'
+import { DUR, EASE, STAGGER } from './motion'
 
-const LAYER_COLOR: Record<string, string> = {
-  brahmagyan: 'var(--gold-high)',
-  ganita: '#6B9FD4',
-  bodha: '#5BAF7A',
-  kala: '#4AAFAF',
-  phala: '#9B7FD4',
-  mimamsa: 'var(--on-dark-mut)',
+// Layer identity is a value-step within the gold ramp (not a jewel hue) —
+// each layer's sun-node sits a notch differently on the burnished-gold scale.
+const LAYER_GOLD: Record<string, string> = {
+  brahmagyan: '#ECC56A',
+  ganita:     '#D2A23C',
+  bodha:      '#A87C2A',
+  kala:       '#8A5E12',
+  phala:      '#B98A2E',
+  mimamsa:    '#6E4E0F',
+}
+
+// Sun-node mark — the brand's sanctioned glyph, tinted per layer along the gold ramp.
+function SunNode({ color, size = 11 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" stroke={color} strokeWidth="1" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M6 0.5 L7.2 4.8 L11.5 6 L7.2 7.2 L6 11.5 L4.8 7.2 L0.5 6 L4.8 4.8 Z" />
+    </svg>
+  )
 }
 
 const LAYER_NAMES: Record<string, { sa: string; en: string }> = {
@@ -38,6 +51,8 @@ interface Props {
   defaultExpanded?: boolean
   forceExpand?: boolean
   focusedAssetId?: string | null
+  hoveredAssetId?: string | null
+  onHover?: (assetId: string | null) => void
   chartId: string
   activeRun: ActiveRun | null
   substepOverlay?: Map<string, SubstepOverlay>
@@ -52,6 +67,8 @@ export function LayerPanel({
   defaultExpanded = false,
   forceExpand,
   focusedAssetId,
+  hoveredAssetId,
+  onHover,
   chartId,
   activeRun,
   substepOverlay,
@@ -98,7 +115,14 @@ export function LayerPanel({
     >
       {/* Header */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`${layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -106,13 +130,19 @@ export function LayerPanel({
           padding: '12px 16px',
           cursor: 'pointer',
           background: 'var(--black-raised)',
-          borderLeft: `3px solid ${LAYER_COLOR[layer] ?? 'var(--black-line)'}`,
         }}
       >
-        {/* Chevron */}
-        <span style={{ color: 'var(--on-dark-mut)', fontSize: '12px', flexShrink: 0 }}>
-          {expanded ? '▼' : '▶'}
-        </span>
+        {/* Rotating caret + per-layer sun-node mark (gold hairline language, no jewel stripe) */}
+        <motion.svg
+          width="11" height="11" viewBox="0 0 12 12" fill="none"
+          stroke="var(--on-dark-mut)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true" style={{ flexShrink: 0 }}
+          animate={{ rotate: expanded ? 90 : 0 }}
+          transition={{ duration: DUR.base, ease: EASE.out }}
+        >
+          <path d="M4 2 L8 6 L4 10" />
+        </motion.svg>
+        <SunNode color={LAYER_GOLD[layer] ?? 'var(--gold-core)'} />
 
         {/* Name column — bilingual two-line: Sanskrit (22px gold) above, English (14px) below */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -203,52 +233,74 @@ export function LayerPanel({
         </div>
       </div>
 
-      {/* Body */}
-      {expanded && (
-        <div style={{ background: 'var(--black)' }}>
-          {/* Column headers */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
-              gap: '16px',
-              padding: '6px 12px',
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--on-dark-faint)',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
-              fontFamily: 'var(--ui-stack)',
-            }}
+      {/* Body — animated expand/collapse */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: DUR.panel, ease: EASE.inOut }}
+            style={{ background: 'var(--black)', overflow: 'hidden' }}
           >
-            <div>Asset</div>
-            <div>Progress</div>
-            <div>Last built</div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
-          </div>
-          {assets.map((asset) => {
-            const assetRunActive = activeRun != null && (
-              activeRun.scope === 'global' ||
-              (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
-              (activeRun.scope === 'asset' && activeRun.scope_target === asset.asset_id)
-            )
-            return (
-              <AssetRowComponent
-                key={asset.asset_id}
-                asset={asset}
-                stat={stats.get(asset.asset_id) ?? null}
-                chartId={chartId}
-                activeRunId={assetRunActive ? activeRun!.id : null}
-                activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
-                highlighted={focusedAssetId === asset.asset_id}
-                allAssets={allAssets}
-                substep={substepOverlay?.get(asset.asset_id) ?? null}
-                onRunStarted={onRunStarted}
-              />
-            )
-          })}
-        </div>
-      )}
+            {/* Column headers */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,42%) minmax(0,28%) minmax(0,14%) minmax(0,16%)',
+                gap: '16px',
+                padding: '6px 12px',
+                fontSize: '11px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: 'var(--on-dark-faint)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                fontFamily: 'var(--ui-stack)',
+              }}
+            >
+              <div>Asset</div>
+              <div style={{ textAlign: 'center' }}>Progress</div>
+              <div style={{ textAlign: 'center' }}>Last built</div>
+              <div style={{ textAlign: 'center' }}>Actions</div>
+            </div>
+            {[...assets].sort((a, b) => {
+              // services first, then data assets; stable within each group
+              const aSvc = a.asset_type === 'service' ? 0 : 1
+              const bSvc = b.asset_type === 'service' ? 0 : 1
+              return aSvc - bSvc
+            }).map((asset, i) => {
+              const assetRunActive = activeRun != null && (
+                activeRun.scope === 'global' ||
+                (activeRun.scope === 'layer' && activeRun.scope_target === layer) ||
+                (activeRun.scope === 'asset' && activeRun.scope_target === asset.asset_id)
+              )
+              return (
+                <motion.div
+                  key={asset.asset_id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: DUR.base, ease: EASE.out, delay: i * STAGGER }}
+                  onMouseEnter={() => onHover?.(asset.asset_id)}
+                  onMouseLeave={() => onHover?.(null)}
+                >
+                  <AssetRowComponent
+                    asset={asset}
+                    stat={stats.get(asset.asset_id) ?? null}
+                    chartId={chartId}
+                    activeRunId={assetRunActive ? activeRun!.id : null}
+                    activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
+                    highlighted={focusedAssetId === asset.asset_id || hoveredAssetId === asset.asset_id}
+                    allAssets={allAssets}
+                    substep={substepOverlay?.get(asset.asset_id) ?? null}
+                    onRunStarted={onRunStarted}
+                  />
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

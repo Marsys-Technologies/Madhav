@@ -140,9 +140,9 @@ export function MiniDAG({ targetAssetId, planAssetIds, assets }: MiniDAGProps) {
                 fill={isTarget ? 'url(#miniRootBead)' : 'url(#miniNodeBead)'}
                 stroke={isTarget ? '#ECC56A' : '#C4A268'}
                 strokeWidth={isTarget ? 1.2 : 0.8}
-                initial={{ opacity: 0, scale: 0 }}
+                initial={{ opacity: 0, scale: 0.4 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: li * 0.1 + idx * 0.03, type: 'spring' }}
+                transition={{ delay: li * 0.1 + idx * 0.03, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
                 style={{ transformOrigin: `${cx}px ${cy}px` }}
               />
               <text

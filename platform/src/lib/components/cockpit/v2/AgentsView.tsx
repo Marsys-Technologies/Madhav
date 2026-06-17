@@ -117,7 +117,7 @@ export function AgentsView({ chartId }: Props) {
         </h3>
         {building.length === 0 ? (
           <div style={{ color: 'var(--on-dark-faint)', fontSize: '13px', fontFamily: 'var(--ui-stack)' }}>
-            No active agents — build may be queued or between assets.
+            No active agents. Build may be queued, or between assets.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
