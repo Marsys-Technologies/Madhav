@@ -27,6 +27,8 @@ import time
 import uuid
 from typing import Any
 
+import psycopg.rows
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -117,11 +119,10 @@ def compute_yoga_strength_v1(
 
 def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]:
     """Load all chart_facts rows for (chart_id, ayanamsha_id)."""
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute("""
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text,
-                   fact_value_num, fact_value_jsonb, house_number, sign, sign_number,
-                   nakshatra, degree_in_sign, degree_absolute
+                   fact_value_num, fact_value_jsonb
             FROM chart_facts
             WHERE chart_id = %s AND ayanamsha_id = %s
         """, (chart_id, ayanamsha_id))
@@ -131,7 +132,7 @@ def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]
 
 def _load_yoga_catalog(conn: Any) -> list[dict]:
     """Load all yoga catalog rows from brahma_yoga_catalog."""
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute("""
             SELECT canonical_id, name_sa, name_en, category, formation_rule_jsonb,
                    cancellation_conditions, classical_citations, computed_strength_formula,
@@ -156,7 +157,7 @@ def _load_yoga_catalog(conn: Any) -> list[dict]:
 def _load_yoga_families(conn: Any) -> dict[str, list[str]]:
     """Load yoga → family mapping from yoga_family_members (if table exists)."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT yoga_canonical_id, family_id
                 FROM yoga_family_members
