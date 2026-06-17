@@ -1,0 +1,353 @@
+"""
+pipeline.orchestrator.writers.ga_nakshatra — L1 per-chart parallel nakshatra chart.
+
+Heavy WriterBase: plan_substeps (5 ayanamshas + cross-ayanamsha) + run_substep.
+Writes 14 fact_categories into chart_facts.
+bg_nakshatra is AUTHORITY for static attrs (JOIN, cite, never restate).
+"""
+from __future__ import annotations
+import hashlib
+import time
+import json
+import logging
+from datetime import datetime, timezone
+from typing import Any
+
+from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
+from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers.ga_nakshatra_emitters import (
+    emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
+    emit_dispositor_graph, emit_tara_bala, emit_statistics,
+    PLANET_TO_SUBJECT,
+)
+from pyjhora_adapter.compute import compute_chart
+from pyjhora_adapter.version import ENGINE_VERSION
+
+logger = logging.getLogger(__name__)
+
+CANONICAL_AYANAMSHAS: dict[str, str] = {
+    "lahiri_chitrapaksha": "lahiri",
+    "true_chitra":         "true_chitra",
+    "krishnamurti":        "kp",
+    "raman":               "raman",
+    "surya_siddhanta_classical": "surya_siddhanta",
+}
+
+GA_NAKSHATRA_FACT_CATEGORIES = [
+    "graha_nakshatra_join", "graha_pada_join", "nakshatra_lord_placement",
+    "graha_kp_lords", "cusp_kp_lords", "graha_gandanta", "graha_degree_flags",
+    "nakshatra_dispositor", "nakshatra_exchange", "nakshatra_conjunction",
+    "nakshatra_cogravity", "graha_tara_bala", "nakshatra_statistics",
+    "nakshatra_cross_ayanamsha",
+]
+
+NAK_LORD_STR_TO_BODY: dict[str, str] = {
+    "Ketu": "Ketu", "Venus": "Venus", "Sun": "Sun", "Moon": "Moon",
+    "Mars": "Mars", "Rahu": "Rahu", "Jupiter": "Jupiter",
+    "Saturn": "Saturn", "Mercury": "Mercury",
+}
+
+
+def _fact_id(category: str, subject: str, key: str,
+             chart_id: str, ayanamsha_id: str, build_id: str) -> str:
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _enrich_rows(rows: list[dict], eng_ver: str, computed_at: str) -> list[dict]:
+    """Add fact_id, citation_ref, citation_human, verification_pass_status, engine_version, computed_at."""
+    enriched = []
+    for r in rows:
+        chart_id    = r["chart_id"]
+        ay          = r["ayanamsha_id"]
+        build_id    = r["build_id"]
+        category    = r["fact_category"]
+        subject     = r["fact_subject"]
+        key         = r["fact_key"]
+        value_text  = r.get("fact_value_text")
+        value_num   = r.get("fact_value_num")
+
+        fid  = _fact_id(category, subject, key, chart_id, ay, build_id)
+        cref = f"{category}.{subject}.{key}@chart={chart_id}:ay={ay}:eng={eng_ver}"
+        # Simple human-readable citation
+        if value_text is not None:
+            chum = f"{subject} {key}: {value_text} [{category}]"
+        elif value_num is not None:
+            chum = f"{subject} {key}: {value_num} [{category}]"
+        else:
+            chum = f"{subject} {key} [{category}]"
+
+        enriched.append({
+            **r,
+            "fact_value_jsonb":          None,
+            "unit":                      None,
+            "fact_id":                   fid,
+            "citation_ref":              cref,
+            "citation_human":            chum,
+            "verification_pass_status":  "PASS",
+            "engine_version":            eng_ver,
+            "computed_at":               computed_at,
+        })
+    return enriched
+
+
+def _fetch_bg_nakshatra(conn: Any) -> tuple[dict[int, dict], dict[tuple, dict]]:
+    """Fetch reference_nakshatra and reference_nakshatra_pada for JOIN."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT nakshatra_id, name_en, vimshottari_lord, presiding_deity,
+                   gana, nadi, yoni_en, yoni_sex, varna, tatva, guna, pakshi,
+                   shakti, motivation, symbol
+            FROM reference_nakshatra
+            ORDER BY nakshatra_id
+        """)
+        cols = ["nakshatra_id","name_en","vimshottari_lord","presiding_deity",
+                "gana","nadi","yoni_en","yoni_sex","varna","tatva","guna","pakshi",
+                "shakti","motivation","symbol"]
+        nak_rows = {r[0]: dict(zip(cols, r)) for r in cur.fetchall()}
+
+        cur.execute("""
+            SELECT nakshatra_id, pada_number, pada_akshara, pada_navamsa_sign, pada_lord
+            FROM reference_nakshatra_pada
+            ORDER BY nakshatra_id, pada_number
+        """)
+        pada_rows = {(r[0], r[1]): dict(zip(
+            ["nakshatra_id","pada_number","pada_akshara","pada_navamsa_sign","pada_lord"], r))
+            for r in cur.fetchall()}
+
+    return nak_rows, pada_rows
+
+
+def _check_bg_nakshatra_present(conn: Any) -> bool:
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM reference_nakshatra")
+        return cur.fetchone()[0] >= 27
+
+
+def _build_nak_lord_map(grahas_plus_lagna: list[dict], nak_rows: dict) -> dict[str, str]:
+    """Build {body_name: nakshatra_lord_body_name} for dispositor graph."""
+    result = {}
+    for body_data in grahas_plus_lagna:
+        bname = body_data.get("name", "")
+        if bname not in PLANET_TO_SUBJECT:
+            continue
+        nak_id = body_data.get("nakshatra_id")
+        nak_ref = nak_rows.get(nak_id, {})
+        lord_str = nak_ref.get("vimshottari_lord", "")
+        lord_body = NAK_LORD_STR_TO_BODY.get(lord_str)
+        if lord_body:
+            result[bname] = lord_body
+    return result
+
+
+def _forensic_gate(chart_output: dict, ayanamsha_id: str) -> None:
+    """FORENSIC: Moon must be in Purva Bhadrapada for native chart."""
+    grahas = chart_output.get("grahas", [])
+    moon = next((g for g in grahas if g.get("name") == "Moon"), None)
+    if moon is None:
+        raise RuntimeError(f"FORENSIC FAIL: Moon not found in chart_output (ay={ayanamsha_id})")
+    nak_name = moon.get("nakshatra", "")
+    nak_id   = moon.get("nakshatra_id")
+    if nak_name != "Purva Bhadrapada" or nak_id != 25:
+        raise RuntimeError(
+            f"FORENSIC FAIL: Moon nakshatra expected 'Purva Bhadrapada' (id=25), "
+            f"got '{nak_name}' (id={nak_id}) (ay={ayanamsha_id})"
+        )
+
+
+def _run_ayanamsha_pass(
+    ctx: ContextSpec, canonical_id: str, adapter_id: str,
+    nak_rows: dict, pada_rows: dict,
+    chart_id: str, birth_params: dict,
+) -> WriterResult:
+    t0 = time.time()
+    chart_output = compute_chart(inputs=birth_params, ayanamsha_id=adapter_id)
+
+    # FORENSIC gate — native chart only (chart_id matches canonical native)
+    NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+    if chart_id == NATIVE_CHART_ID:
+        _forensic_gate(chart_output, canonical_id)
+
+    grahas = chart_output.get("grahas", [])
+    asc    = chart_output.get("ascendant", {})
+    body_nak_lord = _build_nak_lord_map(grahas + [{"name": "Lagna", **asc}], nak_rows)
+
+    build_id = ctx.build_id
+    computed_at = datetime.now(timezone.utc).isoformat()
+
+    all_rows: list[dict] = []
+    all_rows += emit_nakshatra_join(chart_id, canonical_id, build_id, chart_output, nak_rows, pada_rows)
+    all_rows += emit_kp_lords(chart_id, canonical_id, build_id, chart_output)
+    all_rows += emit_gandanta_flags(chart_id, canonical_id, build_id, chart_output)
+    all_rows += emit_dispositor_graph(chart_id, canonical_id, build_id, chart_output, body_nak_lord)
+    all_rows += emit_tara_bala(chart_id, canonical_id, build_id, chart_output)
+    all_rows += emit_statistics(chart_id, canonical_id, build_id, chart_output, nak_rows)
+
+    all_rows = _enrich_rows(all_rows, ENGINE_VERSION, computed_at)
+
+    if ctx.dry_run:
+        return WriterResult(
+            asset_id="ga_nakshatra", rows_inserted=len(all_rows),
+            duration_seconds=time.time() - t0,
+            notes=f"DRY RUN ayanamsha={canonical_id}: {len(all_rows)} rows",
+        )
+
+    replace_prior_chart_facts(ctx.db_conn, all_rows)
+    for r in all_rows:
+        ctx.db_conn.execute(
+            """
+            INSERT INTO chart_facts
+              (fact_id, chart_id, ayanamsha_id, build_id,
+               fact_category, fact_subject, fact_key,
+               fact_value_text, fact_value_num, fact_value_jsonb,
+               unit, citation_ref, citation_human,
+               source_calculation, verification_pass_status,
+               engine_version, computed_at)
+            VALUES
+              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+               %(unit)s, %(citation_ref)s, %(citation_human)s,
+               %(source_calculation)s, %(verification_pass_status)s,
+               %(engine_version)s, %(computed_at)s)
+            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+            WHERE formula_id IS NULL
+            DO UPDATE SET
+              fact_id                  = EXCLUDED.fact_id,
+              fact_value_text          = EXCLUDED.fact_value_text,
+              fact_value_num           = EXCLUDED.fact_value_num,
+              citation_ref             = EXCLUDED.citation_ref,
+              citation_human           = EXCLUDED.citation_human,
+              engine_version           = EXCLUDED.engine_version,
+              computed_at              = EXCLUDED.computed_at
+            """,
+            r,
+        )
+
+    logger.info("ga_nakshatra %s: %d rows inserted", canonical_id, len(all_rows))
+    return WriterResult(
+        asset_id="ga_nakshatra", rows_inserted=len(all_rows),
+        duration_seconds=time.time() - t0,
+        notes=f"ayanamsha={canonical_id}: {len(all_rows)} rows",
+    )
+
+
+@register('ga_nakshatra')
+class NakshatraWriter(WriterBase):
+    asset_id = 'ga_nakshatra'
+    has_substeps = True
+
+    def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        return [
+            SubStep(key=f"ayanamsha:{ay}", label=f"Nakshatra pass: {ay}")
+            for ay in CANONICAL_AYANAMSHAS
+        ] + [SubStep(key="cross_ayanamsha", label="Cross-ayanamsha consistency")]
+
+    def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
+        t0 = time.time()
+
+        if not _check_bg_nakshatra_present(ctx.db_conn):
+            raise RuntimeError(
+                "HALT: reference_nakshatra has <27 rows — bg_nakshatra must be built first."
+            )
+
+        nak_rows, pada_rows = _fetch_bg_nakshatra(ctx.db_conn)
+        chart_id    = ctx.config.get("chart_id") or ctx.asset_id
+        birth_params = ctx.config.get("birth_params", ctx.config)
+
+        if step.key.startswith("ayanamsha:"):
+            canonical_id = step.key[len("ayanamsha:"):]
+            adapter_id   = CANONICAL_AYANAMSHAS[canonical_id]
+            return _run_ayanamsha_pass(
+                ctx, canonical_id, adapter_id,
+                nak_rows, pada_rows, chart_id, birth_params,
+            )
+
+        if step.key == "cross_ayanamsha":
+            rows: list[dict] = []
+            build_id    = ctx.build_id
+            computed_at = datetime.now(timezone.utc).isoformat()
+
+            with ctx.db_conn.cursor() as cur:
+                cur.execute("""
+                    SELECT fact_subject, fact_value_num
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND fact_category = 'graha_nakshatra_join'
+                      AND fact_key = 'nakshatra_id_ref'
+                """, (chart_id,))
+                results = cur.fetchall()
+
+            body_naks: dict[str, list[float]] = {}
+            for subj, val_num in results:
+                if val_num is not None:
+                    body_naks.setdefault(subj, []).append(float(val_num))
+
+            for body, nak_ids in body_naks.items():
+                unique    = set(nak_ids)
+                total_ay  = len(nak_ids)
+                agree_cnt = total_ay if len(unique) == 1 else 0
+                rows.append({
+                    "chart_id": chart_id, "ayanamsha_id": "INVARIANT",
+                    "build_id": build_id,
+                    "fact_category": "nakshatra_cross_ayanamsha",
+                    "fact_subject": body,
+                    "fact_key": "nak_5ay_consistency",
+                    "fact_value_text": f"{total_ay if len(unique)==1 else agree_cnt}/{total_ay}",
+                    "fact_value_num": None,
+                    "source_calculation": "ga_nakshatra:cross_ayanamsha",
+                })
+                if len(unique) == 1:
+                    rows.append({
+                        "chart_id": chart_id, "ayanamsha_id": "INVARIANT",
+                        "build_id": build_id,
+                        "fact_category": "nakshatra_cross_ayanamsha",
+                        "fact_subject": body,
+                        "fact_key": "stable_nakshatra_id",
+                        "fact_value_num": list(unique)[0],
+                        "fact_value_text": None,
+                        "source_calculation": "ga_nakshatra:cross_ayanamsha",
+                    })
+
+            rows = _enrich_rows(rows, ENGINE_VERSION, computed_at)
+
+            if not ctx.dry_run and rows:
+                replace_prior_chart_facts(ctx.db_conn, rows)
+                for r in rows:
+                    ctx.db_conn.execute(
+                        """
+                        INSERT INTO chart_facts
+                          (fact_id, chart_id, ayanamsha_id, build_id,
+                           fact_category, fact_subject, fact_key,
+                           fact_value_text, fact_value_num, fact_value_jsonb,
+                           unit, citation_ref, citation_human,
+                           source_calculation, verification_pass_status,
+                           engine_version, computed_at)
+                        VALUES
+                          (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+                           %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+                           %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+                           %(unit)s, %(citation_ref)s, %(citation_human)s,
+                           %(source_calculation)s, %(verification_pass_status)s,
+                           %(engine_version)s, %(computed_at)s)
+                        ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+                        WHERE formula_id IS NULL
+                        DO UPDATE SET
+                          fact_id        = EXCLUDED.fact_id,
+                          fact_value_text = EXCLUDED.fact_value_text,
+                          fact_value_num  = EXCLUDED.fact_value_num,
+                          citation_ref    = EXCLUDED.citation_ref,
+                          citation_human  = EXCLUDED.citation_human,
+                          engine_version  = EXCLUDED.engine_version,
+                          computed_at     = EXCLUDED.computed_at
+                        """,
+                        r,
+                    )
+
+            return WriterResult(
+                asset_id="ga_nakshatra", rows_inserted=len(rows),
+                duration_seconds=time.time() - t0,
+                notes=f"cross_ayanamsha: {len(rows)} rows",
+            )
+
+        raise ValueError(f"Unknown substep key: {step.key}")
