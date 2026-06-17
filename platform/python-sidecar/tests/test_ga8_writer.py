@@ -75,7 +75,7 @@ class _NullCursor:
 
 class _NullConn:
     """No-op DB connection for offline tests; cursor() returns _NullCursor."""
-    def cursor(self): return _NullCursor()
+    def cursor(self, row_factory=None): return _NullCursor()
 
 
 NULL_CONN = _NullConn()
@@ -1365,7 +1365,7 @@ class _MockCursor:
 
 
 class _MockConn:
-    def cursor(self): return _MockCursor()
+    def cursor(self, row_factory=None): return _MockCursor()
 
 
 class _EmptyCursor:
@@ -1376,7 +1376,7 @@ class _EmptyCursor:
 
 
 class _EmptyConn:
-    def cursor(self): return _EmptyCursor()
+    def cursor(self, row_factory=None): return _EmptyCursor()
 
 
 MOCK_CONN = _MockConn()
