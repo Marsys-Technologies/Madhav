@@ -83,6 +83,7 @@ import pathlib
 from datetime import datetime, timezone
 from typing import Any
 
+import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from ga_writers._idempotency import replace_prior_chart_facts
@@ -549,7 +550,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
     ]
 
     found_categories = []
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute(
             "SELECT DISTINCT fact_category FROM chart_facts WHERE chart_id = %s",
             (chart_id,),
@@ -559,7 +560,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
     # Check GA7 dashas separately
     try:
-        with conn.cursor() as cur2:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur2:
             cur2.execute(
                 "SELECT COUNT(*) FROM chart_dashas WHERE chart_id = %s",
                 (chart_id,),
@@ -575,7 +576,7 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
     # Check GA6 chart_divisionals (varga_dignity is stored there, not in chart_facts)
     try:
-        with conn.cursor() as cur3:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur3:
             cur3.execute(
                 "SELECT COUNT(*) FROM chart_divisionals WHERE chart_id = %s",
                 (chart_id,),
@@ -644,7 +645,7 @@ def _load_varga_positions(
     write a 'house' fact_key; only sign/sign_id/degree_in_sign are stored.
     Empty dict if varga data not present in chart_divisionals (GA6 not yet run).
     """
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute("""
             SELECT graha,
                    MAX(CASE WHEN fact_key = 'sign'           THEN fact_value_text END) AS sign,
@@ -1294,7 +1295,7 @@ def _build_vimsopaka_ext_rows(
 def _real_fact_id_ref(conn: Any, chart_id: str, ayanamsha_id: str,
                        category: str, subject: str, key: str) -> str | None:
     """Look up a real fact_id from chart_facts for the given upstream fact."""
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute(
             """SELECT fact_id FROM chart_facts
                WHERE chart_id = %s AND ayanamsha_id = %s
@@ -2830,7 +2831,7 @@ def _load_special_points(
     On any DB exception: logs WARNING and returns [].
     """
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute(
                 """
                 SELECT fact_subject,
@@ -3465,7 +3466,7 @@ def _build_karaka_web_rows(
     rows: list[dict[str, Any]] = []
 
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute(
                 """
                 SELECT fact_subject, fact_value_text, fact_value_num, fact_value_jsonb
@@ -3621,7 +3622,7 @@ def _load_yoga_catalog(conn: Any) -> list[dict[str, Any]]:
     """Load brahma_yoga_catalog from DB. Returns list of dicts with keys:
     canonical_id, name_en, category, formation_rule_jsonb, classical_citations, source_chunk_ids, school."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT canonical_id, name_en, category, formation_rule_jsonb,
                        classical_citations, source_chunk_ids, school
@@ -3639,7 +3640,7 @@ def _load_dosha_catalog(conn: Any) -> list[dict[str, Any]]:
     """Load brahma_dosha_catalog from DB. Returns list of dicts with keys:
     canonical_id, name_en, category, formation_rule_jsonb, classical_citations, source_chunk_ids, school."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT canonical_id, name_en, category, formation_rule_jsonb,
                        classical_citations, source_chunk_ids, school

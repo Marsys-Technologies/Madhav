@@ -36,6 +36,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+import psycopg.rows
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ def _load_condition_scores(
     """
     result: dict[str, Optional[float]] = {g: None for g in ALL_GRAHAS}
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT graha, condition_score
                 FROM ga_condition_composite
@@ -131,7 +133,7 @@ def _load_medical_mappings(conn: Any) -> dict[str, dict]:
     """
     result: dict[str, dict] = {}
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT graha, dosha, dhatu, organ_systems, body_part,
                        disease_tendency, classical_citation
@@ -163,7 +165,7 @@ def _load_graha_positions(
     """
     result: dict[str, dict] = {}
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT fact_subject, fact_key, fact_value_text
                 FROM chart_facts
@@ -202,7 +204,7 @@ def _load_nakshatra_body_part(conn: Any, nakshatra_name: str) -> Optional[str]:
     if not nakshatra_name:
         return None
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT body_part
                 FROM bg_nakshatra_medical
