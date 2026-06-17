@@ -1620,7 +1620,7 @@ def _build_yoga_rows(
                 verif="two_pass_verified",
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
                 citation_human=(
-                    f"Yoga {name_en} ({yoga_name}) labels chart {chart_id[:8]} "
+                    f"Yoga {name_en} ({yoga_name}) labels chart {str(chart_id)[:8]} "
                     f"({ayanamsha_id}): {reason}."
                 ),
             ))
@@ -1665,7 +1665,7 @@ def _build_yoga_rows(
                 verif="two_pass_verified",
                 source=f"pyjhora_adapter.yoga_fires/{eng_ver}",
                 citation_human=(
-                    f"Yoga {yoga_name} fires for chart {chart_id[:8]}"
+                    f"Yoga {yoga_name} fires for chart {str(chart_id)[:8]}"
                     f"{' (cancelled by ' + cancelled_by + ')' if cancelled else ''}"
                     f"; strength {yoga_strength:.2f} ({ayanamsha_id})."
                 ),
@@ -1720,7 +1720,7 @@ def _build_dosha_rows(
                 verif="two_pass_verified",
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
                 citation_human=(
-                    f"Dosha {name_en} ({dosha_name}) labels chart {chart_id[:8]} "
+                    f"Dosha {name_en} ({dosha_name}) labels chart {str(chart_id)[:8]} "
                     f"({ayanamsha_id}): {reason}."
                 ),
             ))
