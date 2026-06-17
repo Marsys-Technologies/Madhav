@@ -33,7 +33,7 @@ to exist); **G gates the writer briefs** (verify prod, not worktree). C, D, F ru
 
 ```
 A (spec amends) ─→ B (P0.1 reconcile) ─┐
-C (G52 registry) ──────────────────────┤
+C (G52 ELIMINATED) ─────────────────── (no action)
 D (helper+formulas) ────────────────────┼─→ E (seed repoint) ─→ G (verify) ─→ [bo_laksana brief]
 F (Phase-5 E2E, parallel) ──────────────┘        (build-time gate, must be green before build RUNS)
 ```
@@ -57,12 +57,8 @@ F (Phase-5 E2E, parallel) ──────────────┘        (
   (A10×3, A11×5). Surgical migrations, one at a time, file-vs-live verified, tracker rows. *Produces:*
   the reconciliation brief + (on execution) the canonical `bodha_*` tables live in prod.
 
-- **Phase C — G52 `signal_type_registry` brief** *(Cowork authors → Antigravity executes)*
-  The layer-gating prereq. The global registry table (A10 §5) + the ~500–700 data-driven predicate
-  seed across all 6 traditions + synthetics + its writer + `asset_registry` row. `bo_laksana` cannot
-  run without it. Independent of B — author in parallel. *Produces:* the registry brief + (on
-  execution) the seeded `signal_type_registry`. **The biggest Phase-0 task** (the predicate seed may
-  warrant its own sub-brief).
+- **Phase C — G52 `signal_type_registry` — ELIMINATED (native directive 2026-06-16)**
+  G52 is fully eliminated. No registry brief, no seed, no `asset_registry` row, no dependency edge. This phase does not exist. `bo_laksana` uses the projection model; `signal_type_id` derived from class/tradition pattern in `ga_structural`. See A10 v1.3 §5.
 
 - **Phase D — Foundations brief: idempotency helper + versioned formulas** *(Cowork authors → Antigravity executes)*
   `bodha_writers/_idempotency.py` mirroring `ga_writers/_idempotency.py` (per-chart replace-scoped
@@ -72,8 +68,8 @@ F (Phase-5 E2E, parallel) ──────────────┘        (
 
 - **Phase E — P0.3 seed reconciliation brief** *(Cowork authors → Antigravity executes)*
   Re-point the 8 `bo_` registry rows' `target_table`/`count_sql`/`size_sql` to their real spec
-  tables; fix `bo_laksana.depends_on` to add `ga_structural` + `signal_type_registry`; keep rows
-  DRAFT until their writers exist. **Depends on B (tables) + C (registry).** **The exact target map
+  tables; fix `bo_laksana.depends_on` to add `ga_structural` (G52 `signal_type_registry` eliminated — no edge); keep rows
+  DRAFT until their writers exist. **Depends on B (tables).** (Phase C eliminated.) **The exact target map
   is LOCKED in `L2_BODHA_BUILD_CAMPAIGN_v1_0.md §14`** (asset → full table set → primary →
   summed `count_sql` → corrected `depends_on`) — Phase E is pure transcription of §14. *Produces:*
   the seed brief + (on execution) the registry rows pointing at real tables with summed count_sql.
@@ -84,8 +80,8 @@ F (Phase-5 E2E, parallel) ──────────────┘        (
   — runs in parallel with A–E. *Produces:* a green E2E proof (or the runbook to get there).
 
 - **Phase G — Alignment verification** *(Cowork audits)*
-  Short readiness re-check that A–E actually landed in PROD (not worktree): re-run V1/V5/V6, confirm
-  the spec tables + 8 registry rows + G52 exist, confirm `consult` repointed + green, confirm the
+  Short readiness re-check that A–E actually landed in PROD (not worktree): re-run V1/V5, confirm
+  the spec tables + 8 registry rows exist (G52 eliminated — no V6 check), confirm `consult` repointed + green, confirm the
   formula module + helper imported. Guards against the worktree-complete-only trap
   (`[[feedback-ac-must-verify-target-environment]]`). **Green here = cleared to author writer briefs.**
   *Produces:* a one-page readiness sign-off.
@@ -107,7 +103,7 @@ convergence+contradiction first-class · `bo_bimba`+`bo_karanajala` CGM built DE
 |---|---|---|---|
 | A — spec amendments | Cowork→native | NOT STARTED | (A11/A12 amended versions) |
 | B — P0.1 reconciliation | Cowork→Antigravity | NOT STARTED | (brief + migrations) |
-| C — G52 registry | Cowork→Antigravity | NOT STARTED | (brief + seed) |
+| C — G52 registry | N/A | ELIMINATED 2026-06-16 | (no brief, no seed — G52 eliminated per native directive) |
 | D — helper + formulas | Cowork→Antigravity | NOT STARTED | (brief + module) |
 | E — seed repoint | Cowork→Antigravity | NOT STARTED | (brief + registry rows) |
 | F — Phase-5 E2E | operator | NOT STARTED | (E2E proof) |

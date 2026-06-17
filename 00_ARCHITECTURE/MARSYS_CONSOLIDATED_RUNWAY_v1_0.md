@@ -43,7 +43,7 @@ Grouped; the §2 sequence orders them.
 - D1. KP cuspal significators silently dropped on malformed JSON (ga_sensitive) — fix JSON or store flagged skip-row (no-silent-drop).
 - D2. `ganita_positions` legacy dual-write — deprecate (obsolete vs chart_facts).
 - D3. Scope-cap markers — Prana dasha / D81 "intentionally-not-computed" flags so absence ≠ bug.
-- D4. (the two parked items) Mercury vargottama confirmed; bg_signal_type_registry retired — DONE, listed for closure-completeness.
+- D4. (the two parked items) Mercury vargottama confirmed; bg_signal_type_registry (G52) ELIMINATED 2026-06-16 (native directive) — no table, no seed, no dependency — DONE, listed for closure-completeness.
 
 **E. Retrievability pillar (the second pillar — entirely ahead):**
 - E1. The new query/retrieval layer over the now-complete L1 base — the whole reason creation was fixed first. Tools that expose every stored category to the LLM (the data-integrity audit found ~30% coverage on the legacy tools, being rebuilt). This is a major workstream, scoped after L1 is sealed + the rebuild wave clears.

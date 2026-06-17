@@ -101,7 +101,7 @@ a proven base, plus one brownfield reconciliation (legacy + l25_ tables) that is
 | C2 | Legacy coarse `bodha_*` tables (9: signals, domain_links, graph, graph_edges, graph_staging, remediation, remediation_staging, resonance, signal_embeddings) | **PRESENT in baseline** | `0001_brahma_baseline.sql` lines ~1116–1380; Wave-1/Wave-2 era, dot-notation `bodha.*` writer comments |
 | C3 | `l25_*` tables (21 distinct defs: 6 core + staging + lattice/derivation/divergence extras) | **PRESENT, live (migration 137)** | `platform/migrations/_archive/137_l25_tables.sql` (live origin; 206 re-declares `IF NOT EXISTS`); `l25_msr_signals` ~12 cols vs A10's ~50. Live count = V1 |
 | C3b | `bodha_signals` LIVE READER (the load-bearing finding) | **PRESENT — blocks blind DROP** | `platform/src/app/api/chat/consult/route.ts:22` runs `SELECT signal_id, signal_name, signal_text FROM bodha_signals WHERE signal_id IN (...)`. Repoint before retire. |
-| C4 | `signal_type_registry` (G52, ~500–700 predicates) | **ABSENT** | no DDL, no seed, no code references anywhere |
+| C4 | `signal_type_registry` (G52, ~500–700 predicates) | **ELIMINATED** | G52 eliminated per native directive 2026-06-16; no build required |
 | C5 | 8 `bo_` registry rows + DAG | **PRESENT** | `asset_registry_seed.ts` lines 685–810; migration 224 renamed `bodha.*`→`bo_*` + wired `depends_on` |
 | C6 | 8 `bo_` `target_table`/`count_sql` | **PRESENT but point at LEGACY tables** | seed points `bo_laksana`→`bodha_signals` (the coarse legacy table), NOT a spec table — must be re-pointed in P0.3 |
 | C7 | `bo_*` writer classes (`@register('bo_*')`) | **ABSENT** | no `bo_` writers; writers-dir holds only `bg_*` + `ga_*` |
@@ -137,14 +137,12 @@ a proven base, plus one brownfield reconciliation (legacy + l25_ tables) that is
 - **STANDARDIZATION NOTE:** this completes standardization-sense (A) (asset-id/WriterBase/
   fact-grammar) for L2; it retires only standardization-sense (B) (the legacy column-shape). See §0.
 
-### P0.2 — G52 `signal_type_registry` (the layer-gating prereq)
-- **HAVE:** nothing (C4).
-- **NEED:** global table (A10 §5 schema) + a seed of ~500–700 data-driven predicate definitions
-  across all 6 traditions + synthetics, + a writer, + an `asset_registry` row, + an explicit
-  `depends_on` edge into `bo_laksana`.
-- **WHO-BUILDS:** Antigravity. **Largest Phase-0 task; gates the entire layer** — `bo_laksana`
-  cannot run without it. The ~500–700 predicate seed is itself a substantial sub-project (likely
-  its own brief).
+### P0.2 — G52 `signal_type_registry` — ELIMINATED (native directive 2026-06-16)
+- **STATUS:** Task eliminated entirely. G52 was never built and the native decision removes the requirement.
+- **NO NEED:** no global table, no seed, no writer, no `asset_registry` row, no `depends_on` edge.
+  `bo_laksana` uses the projection model — `signal_type_id` is derived from the relationship's
+  class/tradition pattern in `ga_structural`. See A10 v1.3 §5 and BODHA_BUILDOUT_CONTEXT_HANDOFF §2.
+- **WHO-BUILDS:** nobody — this task does not exist.
 
 ### P0.3 — Reconcile the 8 `bo_` seed rows → real spec tables
 - **HAVE (verified 2026-06-12):** all 8 rows wired, but EVERY ONE points at a LEGACY coarse table,
@@ -158,12 +156,12 @@ a proven base, plus one brownfield reconciliation (legacy + l25_ tables) that is
   `bo_samskara`→`bodha_signal_embeddings` (name matches; re-confirm shape) ·
   `bo_pramana_mapa`→`synthesis_quality_scorecard` (no DDL yet; name aligned).
 - **NEED:** re-point each row's `target_table`/`count_sql`/`size_sql` to its real spec table(s);
-  add `ga_structural` + `signal_type_registry` to `bo_laksana.depends_on` (currently `[bg_rules]`
-  only — insufficient); keep rows DRAFT until their tables + writers exist.
+  add `ga_structural` to `bo_laksana.depends_on` (currently `[bg_rules]` only — insufficient);
+  G52 `signal_type_registry` eliminated — do not add it as an edge; keep rows DRAFT until their tables + writers exist.
 - **`count_sql` basis = SUM across ALL the asset's tables** (native, 2026-06-12) — chart-scoped
   summed expression, not a single primary table. `target_floor` = achieved sum after build.
 - **NOTE:** registry→table mapping being un-reconciled NOW is on-plan — Phase E is correctly gated
-  after Phase B (spec tables exist) + Phase C (G52 exists). This row documents the verified current
+  after Phase B (spec tables exist). Phase C (G52) is eliminated. This row documents the verified current
   state, not a defect.
 - **LOCKED TARGET MAP:** the exact asset→full-table-set→primary→summed-`count_sql`→corrected-
   `depends_on` is now authored as `L2_BODHA_BUILD_CAMPAIGN_v1_0.md §14`. Phase E transcribes it
@@ -211,7 +209,7 @@ Each confirms a live-DB fact this report could only infer from code. Run via the
 | V3 | Is anything still READING the legacy / l25_ tables? (reverse-citation gate, P0.1 — run per table before each DROP) | code-plane grep, not SQL: `grep -rln "bodha_signals\|bodha_graph\|bodha_domain_links\|bodha_remediation\|bodha_resonance\|l25_" platform/src platform/platform-mcp platform/python-sidecar` → reclassify any live citation KEEP-OR-REPOINT before DROP. **KNOWN: `bodha_signals` ← `consult/route.ts:22` (repoint first).** |
 | V4 | Applied-migration ledger — is 137 (l25_ tables) applied + which l25_/bodha_ tables are live? | `SELECT * FROM _migrations_applied WHERE name LIKE '%137%' OR name LIKE '%l25%';` (confirm the ledger table's real name first; pair with V1) |
 | V5 | Live `asset_registry` rows for the 8 `bo_` assets (status, target_table, count_sql, depends_on) | `SELECT asset_id, layer, scope, target_table, count_sql, depends_on, is_active FROM asset_registry WHERE asset_id LIKE 'bo\_%' ORDER BY sort_order;` |
-| V6 | Is `signal_type_registry` truly absent live? | `SELECT to_regclass('public.signal_type_registry');` (NULL = absent) |
+| V6 | `signal_type_registry` (G52) — ELIMINATED 2026-06-16; no verification needed. | (no query — G52 eliminated per native directive; do not build or check for this table) |
 | V7 | L1 native feed present + FORENSIC-anchored (the read contract) | `SELECT count(*) FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'; -- expect 27554` and `... WHERE category LIKE 'ga_structural%'` ≈ 6075 |
 | V8 | Phase-5 E2E state — any non-native chart with lit `ga_*` rows? | `SELECT chart_id, count(*) FROM asset_throughput WHERE asset_id LIKE 'ga\_%' AND state='lit' AND chart_id <> '482012f1-710e-4a25-994a-93821f5871aa' GROUP BY chart_id;` (rows = an E2E build happened) |
 | V9 | Cloud Run revision matches main HEAD before any prod probe | `gcloud run services describe amjis-web --region asia-south1 --format='value(status.traffic[0].revisionName)'` then cross-check the merge SHA (`[[feedback-verify-cloud-run-revision-before-chrome-probe]]`) |
@@ -226,7 +224,7 @@ P0.4 bo_samvada/UCD call ─┤ (native decision — unblocks one brief)
                           │
 P0.1 reconcile tables ────┼─→ (REPOINT consult route → V1+V2+V3 per table → DROP verified-safe → CREATE spec tables)
   └ §13.1 spec amendments ┘    (CONVERGENCE/CONTRADICTION/GRAPH tables — APPROVED, author w/ briefs)
-P0.2 G52 signal_type_registry ─→ (gates bo_laksana; largest task)
+P0.2 ELIMINATED — G52 not required
 P0.6 idempotency helper ──┐
 P0.7 versioned formulas ──┘ (parallel, small)
 P0.3 re-point seed rows ──→ (after tables exist; flip DRAFT→CURRENT after writers)
@@ -235,8 +233,7 @@ P0.3 re-point seed rows ──→ (after tables exist; flip DRAFT→CURRENT afte
 ```
 
 **Recommended authoring sequence for the Phase-0 briefs:** (1) the table-reconciliation brief
-incl. the §13.1 spec amendments + the V1–V3 disposition gate; (2) the G52 registry brief (the
-big one); (3) a small combined brief for the idempotency helper + the four formula functions;
+incl. the §13.1 spec amendments + the V1–V3 disposition gate; (2) P0.2 G52 eliminated — no brief required; (3) a small combined brief for the idempotency helper + the four formula functions;
 (4) the seed-reconciliation brief. P0.4 + P0.5 are decisions/operator-runs, not authored writers.
 
 ---
@@ -275,5 +272,5 @@ big one); (3) a small combined brief for the idempotency helper + the four formu
 — (a) three coexisting table representations rather than a clean rename, and (b) a LIVE READER on
 `bodha_signals` that turns "DROP" into "repoint-first" — which is exactly what this pass was for.
 All four §6 decisions are now RESOLVED. Next: author the Phase-0 briefs in the §4 order (P0.1
-reconciliation against the corrected repoint-not-drop disposition → G52 → helper+formulas →
-seed-repoint).*
+reconciliation against the corrected repoint-not-drop disposition → helper+formulas →
+seed-repoint). G52 eliminated — no G52 brief in the sequence.*

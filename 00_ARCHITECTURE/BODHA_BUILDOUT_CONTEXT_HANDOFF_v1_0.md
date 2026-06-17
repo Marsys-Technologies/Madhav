@@ -45,7 +45,7 @@ is next, and its code is already scaffolded but NOT yet run — the tables are e
 - `brahma_remedy_corpus` (260 remedies) — what `bo_upaya` (RM) grounds remedies to (every remedy carries a classical citation; none invented).
 - `bg_texts` (8,193 classical chunks + embeddings), `bg_rules` (1,976 verse-traceable rules), `bg_ontology`, `bg_reference` (15 typed vocab tables), `bg_doshas`, `bg_dasha_systems` (18).
 - Two service engines: `bg_panchanga` (Pañcāṅga Gaṇanā) + `bg_ephemeris_engine` (Druk Ephemeris).
-- **Retired:** `bg_signal_type_registry` (G52) — the predicate-firing-registry idea is DROPPED (see §2); it survives only as a name/citation catalog, now dormant. Do NOT build Bodha as a predicate registry.
+- **Eliminated:** `bg_signal_type_registry` (G52) — G52 ELIMINATED 2026-06-16 (native directive); no table, no seed, no dependency. Do NOT build Bodha as a predicate registry.
 
 ### L1 Gaṇita — this chart's computed facts (SEALED, built, all CURRENT, promoted from DRAFT 2026-06-16)
 10 assets, **~654,999 rows** into `chart_facts` (+ `chart_dashas`, `chart_divisionals`). The
@@ -123,7 +123,7 @@ alone, or does it need the whole relationship set to exist first?):
   authored → bounded → can never cover every relationship. Enumeration (already done in
   `ga_structural`) is bounded only by the chart's finite combinatorics → complete by construction.
   So: the relational base is exhaustive enumeration (L1); named yogas/doshas are a LABEL pass over it
-  (from L0 catalog); Bodha projects + enriches. **G52-as-firing-registry is DROPPED.**
+  (from L0 catalog); Bodha projects + enriches. **G52 is ELIMINATED ENTIRELY (native directive 2026-06-16).**
 
 **THE ANTI-DRIFT SPINE (the load-bearing acceptance for the whole layer):** every Bodha signal's
 `constituent_facts_array` MUST resolve to real `chart_facts.fact_id` rows. A Bodha signal that
@@ -131,9 +131,8 @@ restates an L1 computed value as its own truth, or whose fact_id doesn't resolve
 bug — not a stored divergence (Trap 1). This is the single most important thing to verify when the
 build runs.
 
-**A10 was respecced to v1.2** to match this: prime_directive = population-level enrichment over
-`ga_structural` enumeration; `depends_on ga_structural` PRIMARY; G52 demoted to a name/citation
-labeling catalog, NOT firing; §0 mission rewritten from "evaluate predicates against atoms" to
+**A10 was respecced to v1.3** to match this: prime_directive = population-level enrichment over
+`ga_structural` enumeration; `depends_on ga_structural` PRIMARY; G52 eliminated entirely (native directive 2026-06-16); §0 mission rewritten from "evaluate predicates against atoms" to
 "project ga_structural + compute population enrichment."
 
 ---
@@ -236,11 +235,9 @@ the achieved SUM after first build (floors are aspirational, NOT gates — never
    `bodha_signals` table has a LIVE READER (`consult/route.ts`); the `l25_*` tables are live
    (migration 137). Repoint any reader to the spec table (or a compat view) BEFORE retiring a legacy
    table. Never blind-DROP — run a reverse-citation check first.
-6. **G52 predicate registry is DROPPED as a firing engine** (see §2). Do NOT build a signal_type_registry
+6. **G52 predicate registry is ELIMINATED ENTIRELY** (native directive 2026-06-16; see §2). Do NOT build a signal_type_registry
    as a Bodha prerequisite — the old A10 §5/§12 requirement for it is superseded by the projection model.
-   (Earlier campaign text in `L2_BODHA_BUILD_CAMPAIGN §3.4` still describes G52 as a prereq — that
-   predates the architecture decision; the projection model in §2 here overrides it. Confirm with the
-   native if a brief reintroduces it.)
+   (`L2_BODHA_BUILD_CAMPAIGN §3.4` has been updated to reflect this elimination; the projection model in §2 here governs.)
 7. **No audience tier** anywhere (no client/acharya/super_admin gating in writers — serve-time governs access).
 8. **Deterministic-first:** Python over LLM for all build-time computation. Embeddings are a
    deterministic transform and are fine; generative LLM for curation is NOT.
@@ -317,7 +314,7 @@ onto a broken root.
 **Out of scope for Bodha (named so they're not pulled in):** L3 Kāla / dasha-temporal activation
 (when a relationship is active/dormant by period — deferred to the time layer); any `ga_structural`
 re-amendment (it is complete at 74,644 rows); cross-chart correlation (L5 Mīmāṃsā). Do NOT
-reintroduce the predicate-firing model or G52 as a firing engine.
+reintroduce the predicate-firing model or G52 in any form.
 
 ---
 *End of BODHA_BUILDOUT_CONTEXT_HANDOFF v1.0. Self-contained: foundation built-state (L0 851,910 /

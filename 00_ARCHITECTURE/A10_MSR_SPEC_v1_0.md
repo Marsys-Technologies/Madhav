@@ -2,9 +2,14 @@
 artifact: A10_MSR_SPEC_v1_0.md
 document: A10 — MSR (Multi-System Register) Specification
 status: LOCKED
-version: 1.2
-date: 2026-05-29
+version: 1.3
+date: 2026-06-17
 changelog:
+  - v1.3 (2026-06-17): G52 `signal_type_registry` FULLY ELIMINATED per native directive 2026-06-16.
+    Table dropped (migration 237); removed from migration 226 (unapplied); removed from `depends_on`;
+    §5 replaced with elimination tombstone; §12 note 1 / note 7 / §13 item 3 updated. `signal_type_id`
+    field on `bodha_msr_signals` remains as a free-text derived label (from `signal_type_class` +
+    classical name pattern), not a FK to any registry. bo_laksana needs no registry lookup.
   - v1.2 (2026-06-14, L1_L2_RELATIONSHIP_ARCHITECTURE_DECISION_v1_0.md §4+§6): Architecture
     decision purges predicate-firing model from MSR. (a) §0 mission rewritten: MSR INHERITS
     exhaustively-enumerated relational fabric from `ga_structural` (L1) — does NOT re-fire
@@ -20,14 +25,13 @@ changelog:
     (b) The `contradicts_signals_array` column REMAINS on `bodha_msr_signals`, but contradiction
     PAIRS are additionally promoted to a first-class `bodha_contradictions` table (owned by
     `bo_karanajala`, documented in A12 v1.1 §5.6) — A10 emits the array; A12 materializes the pairs.
-    (c) `bo_laksana` (the A10 writer) `depends_on` corrected to `['ga_structural','signal_type_registry']`.
-    `signal_type_registry` (G52) built by migration 226 + seeded (starter ~80; full 500-700 pending).
-    Tables built by migration 226.
+    (c) `bo_laksana` (the A10 writer) `depends_on` was corrected to include `signal_type_registry`;
+    that dependency is now removed — G52 eliminated v1.3.
   - v1.0 (2026-05-29): initial LOCKED spec, native sign-off.
 authored_by: Cowork (native-confirmed: exhaustive scope; ~800-1,250 signals per (chart, ayanamsha); synthetic signals included; downstream-driven enrichments included)
 intended_for: Claude Code sub-agents implementing the bo_laksana (A10 MSR) writer to bodha_msr_signals table (L2 layer)
 prime_directive: Only computed facts. Population-level enrichment over ga_structural exhaustive enumeration (salience ranking, convergence, contradiction, domain-salience). No re-firing of predicates already enumerated at L1. No narrative. Two-pass verification mandatory. Closes Contamination C2 (no threshold drop — strength as column not gate).
-depends_on: ga_structural (PRIMARY — exhaustive L1 relational enumeration; MSR inherits, does not re-fire), G1 classical corpus, G27 remedies, G28 worked examples, G52 signal_type_registry (name/citation CATALOG for labeling only — NOT a firing mechanism)
+depends_on: ga_structural (PRIMARY — exhaustive L1 relational enumeration; MSR inherits, does not re-fire), G1 classical corpus, G27 remedies, G28 worked examples
 ---
 
 # A10 — MSR (Multi-System Register) Specification
@@ -40,8 +44,9 @@ For each chart per ayanamsha, **inherit** the exhaustively-enumerated relational
 **What MSR inherits from ga_structural (does NOT re-compute):** every aspect, conjunction, dispositor
 chain, parivartana, argala cell, composite state, and avastha across all vargas + dasha-time-windows —
 produced by exhaustive enumeration at L1 (all grahas × all houses × all signs), stored with
-`constituent_facts_array` back to `chart_facts.fact_id`, and labeled with classical names where a
-match exists in G52 `signal_type_registry`. `ga_structural` is the sole enumeration engine.
+`constituent_facts_array` back to `chart_facts.fact_id`, and labeled with classical names derived
+from `signal_type_class` + tradition pattern (no registry lookup — G52 eliminated). `ga_structural`
+is the sole enumeration engine.
 
 **What MSR adds (population-level — impossible to compute from any single relationship in isolation):**
 - `top_k_salience_rank` — this signal's rank relative to all others in the chart
@@ -76,7 +81,7 @@ to `chart_facts.fact_id` via `ga_structural`. Stored in `bodha_msr_signals` (L2 
 - Q2: C — BOTH per-text corroboration count + per-verse corroboration count emitted as separate fields
 - Q3: A — confidence interval per signal (P10/P50/P90 under input perturbation)
 - Q4: A — all 7 dasha systems contribute to `dasha_activation_proximity_score`
-- Q5: A — G52 `signal_type_registry` authored as new global asset
+- Q5: SUPERSEDED — G52 `signal_type_registry` ELIMINATED 2026-06-16 (native directive; table dropped; no registry dependency)
 - Q6: A — 9 standard CDLM domains (career, relationships, health, wealth, family, learning, spirituality, longevity, character)
 - Q7: A — all 6 traditions emitted via `signal_tradition` discriminator
 - Q8: A — cross-ayanamsha consistency score computed per signal
@@ -257,34 +262,16 @@ bindu ≥ 7 = 1.15, 5-6 = 1.05, 3-4 = 1.00, 1-2 = 0.85, 0 = 0.70
 - `neechabhanga_modifier`: 1.0 (normal) or 1.3 (debilitation cancelled)
 - `cancellation_modifier`: 1.0 (normal) or 0.1 (yoga/dosha cancelled — kept but tanked)
 
-## §5 — Signal type registry (G52, new global asset)
+## §5 — Signal type registry (G52) — ELIMINATED
 
-`marsys_global.signal_type_registry`:
-```sql
-CREATE TABLE signal_type_registry (
-  signal_type_id              TEXT PRIMARY KEY,
-  signal_type_class           TEXT NOT NULL,
-  signal_tradition            TEXT NOT NULL,
-  activation_predicate_text   TEXT,                          -- human-readable predicate
-  activation_predicate_jsonb  JSONB NOT NULL,                -- machine-executable predicate
-  constituent_facts_pattern_jsonb JSONB,                     -- required atom shape
-  classical_sources_array     TEXT[] NOT NULL,
-  classical_citations_jsonb   JSONB,                         -- per-source chapter/verse
-  default_domains_affected_array TEXT[] NOT NULL,
-  salience_formula_overrides_jsonb JSONB,                    -- per-type adjustments to v1
-  default_remedy_hooks_array  TEXT[],                        -- G27 remedy_ids
-  predicted_outcome_class     TEXT,                          -- classical-text-implied outcome
-  since_engine_version        TEXT NOT NULL
-);
-```
-
-Registry seeded with ~500-700 entries spanning all 6 traditions + synthetic patterns. **Role (v1.2):**
-a name/citation catalog for LABELING inherited `ga_structural` relationships — NOT a firing mechanism.
-When an enumerated configuration matches a classical definition in this registry, `signal_type_id`
-+ `classical_sources_array` are attached as labels. Configurations matching no registry entry are
-STILL recorded (as uncatalogued structural relationships). The registry gates labels, not existence.
-`activation_predicate_text` / `activation_predicate_jsonb` remain as documentation fields but are
-NOT evaluated by `bo_laksana`; `ga_structural` already enumerated the relationship.
+> **G52 `signal_type_registry` is ELIMINATED** per native directive 2026-06-16. The table has been
+> dropped (migration 237; migration 226's CREATE TABLE block removed). There is no registry, no
+> predicate catalog, no seed task, no `depends_on` edge. This section is retained as a tombstone only.
+>
+> **Projection model (the replacement):** `signal_type_id` on `bodha_msr_signals` is a free-text
+> derived label constructed by `bo_laksana` from the relationship's `signal_type_class` + classical
+> name pattern — it does NOT look up any registry table. `ga_structural` enumeration is the sole
+> authority; bo_laksana projects and enriches. No registry gates existence or labels.
 
 ## §6 — Verification
 
@@ -393,22 +380,21 @@ Examples:
 
 1. `ga_structural` rows for the chart must exist before `bo_laksana` runs — bo_laksana reads the
    exhaustive L1 enumeration and projects it into `bodha_msr_signals` with population-level enrichment.
-   G52 `signal_type_registry` must be seeded before `bo_laksana` runs — as the name/citation catalog
-   used for labeling (NOT as a predicate source).
+   No registry seed required (G52 eliminated).
 2. Salience formula v1 implemented as pure function; unit tests validate (known inputs → known outputs)
 3. Synthetic signal pass runs LAST (after primary signals committed); reads primary MSR rows, computes
    composite population-level enrichment over them
 4. Cross-ayanamsha consistency pass runs after all 5 ayanamshas computed; joins across to compute per-signal consistency_score
 5. Downstream-enrichment fields (graph_edge_pattern_jsonb, graha_weakness_indicators_jsonb, etc.) populated at write time
 6. top_k_salience_rank pre-computed per chart globally after all signals committed
-7. Two-pass verification per signal per G52 registry methodology
+7. Two-pass verification per signal (independent classical-rule re-derivation; G52 registry methodology retired)
 8. Halt build on divergent_flagged
 
 ## §13 — Locked decisions (final committed surface)
 
 1. l25_msr_signals table schema with ~50 columns (full §3)
 2. Salience formula v1.0 versioned + unit-tested
-3. G52 signal_type_registry as name/citation catalog (~500-700 entries; gates labels, not existence)
+3. G52 signal_type_registry ELIMINATED 2026-06-16 — no registry dependency, no seed task, projection model only
 4. All 12 signal_type_class enumerations + 7 traditions
 5. Synthetic signals INCLUDED
 6. All A-V additions + all 10 clarification answers locked
