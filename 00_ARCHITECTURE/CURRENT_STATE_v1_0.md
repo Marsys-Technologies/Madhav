@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.76
+version: 5.77
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.77 (2026-06-17, GATE3-SIX-SUBSYSTEM-CLOSE):
+    **Gate-3 Production Build CLOSED.** All 8 L1 Gaṇita subsystem assets lit on production for
+    chart 482012f1-710e-4a25-994a-93821f5871aa. FORENSIC 7/7 PASS. Vimarśaka IS.8(b) RT-8 PASS
+    (0 RED findings). Key fixes this session: (1) ga_structural UUID `str(chart_id)[:8]` fix
+    (commit f541eb55); (2) ga_sade_sati dict-key access fix for 7 positional row accesses
+    (commit 1c5fbade); (3) test mock cursor() `row_factory=None` fixes (commits f721aae6,
+    ecbc8f95). ga_sade_sati 11,019 rows confirmed intact after Cloud SQL Proxy timeout event;
+    asset_throughput metadata corrected via direct SQL UPDATE. Seal: SIX_SUBSYSTEM_BUILD_CLOSE_v1_0.md.
+    Asset totals: ga_condition=45, ga_medical=45, ga_prashna=0, ga_sade_sati=11019,
+    ga_structural=75168, ga_transit_anchors=45, ga_vastu=40, ga_yoga=5.
+    branch: feature/bg-nakshatra-l0. last_session_id: GATE3-SIX-SUBSYSTEM-CLOSE.
+    predecessor_session: WAVE3-4-RETRIEVAL-BODHA.
+    next_session_objective: >
+      "L2 Bodha E2E build: activate Cloud SQL proxy, apply migration 230
+      (bodha_registry_reconcile), run orchestrator layer build scope=layer/bodha on chart 482012f1,
+      verify 8 bo_* assets lit, update target_floors, declare L2 CLOSED, author
+      L3_KALA_CAMPAIGN_HANDOFF_v1_0.md."
+    file_updated_at: 2026-06-17. file_updated_by_session: GATE3-SIX-SUBSYSTEM-CLOSE.
   - v5.76 (2026-06-16, REPO-HYGIENE-CI-CLEANUP):
     **L1 Gaṇita DRAFT→CURRENT promotion recorded.** Migration
     236_ganita_catalog_current applied to prod — all 10 Gaṇita assets
