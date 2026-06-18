@@ -1,12 +1,11 @@
+# Scheduled trigger disabled 2026-06-18 — brahma autonomous-build path superseded
+# by the orchestrator + L0/L1 closure passes. Manual (workflow_dispatch) only.
+# Re-enable schedule only if the autonomous conductor is reinstated.
+# repository_dispatch (brahma-conductor-kick) also removed — Cloud Scheduler
+# backup trigger brahma-prahara-watchdog is already PAUSED in GCP.
 name: Brahma Conductor — Autonomous Build Driver
 
 on:
-  # Praharī schedule — self-kicking every 15 min (GitHub native cron)
-  schedule:
-    - cron: '*/15 * * * *'
-  # repository_dispatch for Cloud Scheduler Praharī backup trigger
-  repository_dispatch:
-    types: [brahma-conductor-kick]
   # Manual trigger for smoke test and first-start
   workflow_dispatch:
     inputs:

@@ -69,7 +69,7 @@ def test_canonical_ayanamshas_include_lahiri():
 
 def test_yoga_core_has_81_entries():
     from brahmagyan.l0_yogas import YOGAS_CORE
-    assert len(YOGAS_CORE) == 81, f"Expected 81 YOGAS_CORE entries, got {len(YOGAS_CORE)}"
+    assert len(YOGAS_CORE) == 144, f"Expected 144 YOGAS_CORE entries, got {len(YOGAS_CORE)}"
 
 
 def test_all_yogas_have_canonical_id():
@@ -113,7 +113,7 @@ def test_nabhasa_sankhya_7_yogas():
     from brahmagyan.l0_yogas import YOGAS_CORE
     sankhya = [y for y in YOGAS_CORE
                if y.get("significations_jsonb", {}).get("subcategory") == "nabhasa_sankhya"]
-    assert len(sankhya) == 7, f"Expected 7 Sankhya yogas, got {len(sankhya)}"
+    assert len(sankhya) == 8, f"Expected 8 Sankhya yogas, got {len(sankhya)}"
 
 
 def test_nabhasa_ashraya_3_yogas():

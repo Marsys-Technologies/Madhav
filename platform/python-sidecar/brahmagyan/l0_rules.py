@@ -1134,7 +1134,7 @@ def seed_rules(
             "SELECT COUNT(*) FROM information_schema.tables "
             "WHERE table_schema='public' AND table_name='sutravali_rules'"
         )
-        if cur.fetchone()[0] == 0:
+        if cur.fetchone()['count'] == 0:
             raise RuntimeError(
                 "sutravali_rules table does not exist — apply migration 081 first."
             )
@@ -1144,14 +1144,14 @@ def seed_rules(
             "SELECT COUNT(*) FROM information_schema.tables "
             "WHERE table_schema='public' AND table_name='classical_text_chunks'"
         )
-        if cur.fetchone()[0] == 0:
+        if cur.fetchone()['count'] == 0:
             raise RuntimeError(
                 "classical_text_chunks table does not exist — bg_texts must run first."
             )
 
         # Load upstream chunks count
         cur.execute("SELECT COUNT(*) FROM classical_text_chunks")
-        upstream_chunks = cur.fetchone()[0]
+        upstream_chunks = cur.fetchone()['count']
 
         if upstream_chunks == 0:
             logger.warning("[rules] classical_text_chunks is empty — 0 rules extracted")
@@ -1167,15 +1167,15 @@ def seed_rules(
 
         # Load valid text_ids
         cur.execute("SELECT DISTINCT text_id FROM classical_text_chunks")
-        valid_text_ids = {r[0] for r in cur.fetchall()}
+        valid_text_ids = {r['text_id'] for r in cur.fetchall()}
 
         # Load valid dasha_system_ids for FK validation
         cur.execute("SELECT canonical_id FROM brahma_dasha_systems")
-        valid_dasha_ids = {r[0] for r in cur.fetchall()}
+        valid_dasha_ids = {r['canonical_id'] for r in cur.fetchall()}
 
         # Load valid yoga_canonical_ids for FK validation
         cur.execute("SELECT canonical_id FROM brahma_yoga_catalog")
-        valid_yoga_ids = {r[0] for r in cur.fetchall()}
+        valid_yoga_ids = {r['canonical_id'] for r in cur.fetchall()}
 
     if dry_run:
         logger.info(
@@ -1216,7 +1216,7 @@ def seed_rules(
             if not rows:
                 break
             batch = [
-                {"id": r[0], "text_id": r[1], "verse_ref": r[2], "content_en": r[3]}
+                {"id": r['id'], "text_id": r['text_id'], "verse_ref": r['verse_ref'], "content_en": r['content_en']}
                 for r in rows
             ]
 

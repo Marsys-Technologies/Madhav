@@ -1,147 +1,116 @@
 ---
-artifact: CLAUDECODE_BRIEF_A4_S3_v1_0.md
+artifact: CLAUDECODE_BRIEF_FOUNDATION_SESSION_1
 type: CLAUDECODE_BRIEF
 version: 1.0
 status: COMPLETE
-authored_by: Conductor (2026-05-29)
-session_id: A4-S3
-stream: A4
-worktree: ../MadhavA4Panch
-branch: feature/a3a4a5/a4-panchanga
-title: 9 inauspicious time windows (two_pass_verified)
+authored_by: Cowork 2026-06-18
+session_type: claude_code_autonomous (documented-defaults; native reviews at end)
+phase: pre-L2 foundation close-out + PROD verification
+chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 may_touch:
-  - platform/python-sidecar/pipeline/writers/panchanga_writer_a4.py
-  - platform/python-sidecar/pipeline/writers/__tests__/test_panchanga_a4_inauspicious.py
-must_not_touch:
-  - platform/src/**
-  - platform/python-sidecar/natal_engine/**
   - platform/migrations/**
-  - 00_ARCHITECTURE/**
-  - CLAUDE.md
+  - platform/scripts/seed/asset_registry_seed.ts
+  - platform/python-sidecar/brahmagyan/**            # l0_yogas.py, l0_doshas.py, l0 catalog content, bg_medical
+  - platform/python-sidecar/**bg_rules**             # the extractor + its rebuild
+  - platform/python-sidecar/**bg_ephemeris** , **bg_dignity_reference** , **bg_transit_rules** , **bg_medical_mappings**   # autonomy-writer verification
+  - 00_ARCHITECTURE/**                               # verification reports + CURRENT_STATE + registers
+must_not_touch:
+  - platform/python-sidecar/ga_writers/ga_structural_writer.py          # SESSION 2 / ga_structural track ONLY
+  - platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py
+  - platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py
+  - any L2 bo_* asset
 acceptance_criteria:
-  - emit_inauspicious_windows() added to panchanga_writer_a4.py
-  - 9 categories emitted: rahu_kalam, yamaganda_kalam, gulika_kalam, durmuhurta, varjyam, visha_ghati, sashtighati, yamakantaka, krakaca
-  - Each has start_iso, end_iso, duration_minutes keys
-  - All verification_pass_status=two_pass_verified
-  - ayanamsha_id=INVARIANT
-  - Tests pass
+  - migrations 315–317 (+ any new) APPLIED to prod, ledger-reconciled
+  - all §6 endpoint checks pass via /api/cockpit/stats?chart_id=482012f1 (NOT db, NOT a report claim)
+  - bg_rules sampled THEN mined; floor = achieved; deterministic extractor confirmed
+  - 4 autonomy writers confirmed REGENERABLE (behavioral, not "file exists")
+  - bg_medical grid/combos verified present-or-built
+  - FOUNDATION_SESSION_1_CLOSE.md written with endpoint JSON evidence
 ---
 
-# CLAUDECODE_BRIEF — A4-S3
-## 9 inauspicious time windows writer
+# CLAUDE CODE — Foundation Completion Session 1 (autonomous; documented defaults; review-at-end)
 
-## §0 — Context
+Read CLAUDE.md §C (mandatory session-open reads) FIRST. Then this brief governs the session. Run the items in
+order, FULLY AUTONOMOUS using the DOCUMENTED DEFAULTS at the bottom; native reviews ONCE at the end. Source:
+`00_ARCHITECTURE/FOUNDATION_COMPLETION_HANDOFF_v1_0.md` + `FOUNDATION_COMPLETION_ARC_v1_0.md`. **ga_structural's
+re-architecture is SESSION 2 — do NOT touch it (see must_not_touch).**
 
-You are in /Users/Dev/Vibe-Coding/Apps/MadhavA4Panch on branch feature/a3a4a5/a4-panchanga.
-A4-S1 and A4-S2 are done. Extend panchanga_writer_a4.py with emit_inauspicious_windows().
+**STANDING RAILS (non-negotiable):** computed-and-cited HARD GATE (uncited → floor NULL+reason, NEVER fabricate);
+canonical-or-floor; deterministic-first (no generative LLM for content — HALT if the bg_rules extractor is
+generative); L1-is-authority; FROZEN orchestrator contract (HALT if a change seems needed); surgical migrations
+only, numbered above main's current max (parallel thread wrote 315/316/317 — confirm next-free + continue),
+ledger-reconciled with correct SHA; seed-consistency; **VERIFY VIA THE ENDPOINT `/api/cockpit/stats?chart_id=
+482012f1` — underscore param, NOT chartId — never DB-only, never a report's claim**; floors = ACHIEVED count
+(every number in the handoff/audit is a TO-VERIFY pointer, NEVER a build target); only 482012f1; FORENSIC 7/7;
+**branch-complete ≠ prod-true — VERIFY post-apply.**
 
-## §1 — Implementation
+---
 
-Add to panchanga_writer_a4.py:
+## ITEM 1 — Apply + prod-verify the parallel close-out thread (migrations 315–317)
 
-```python
-# Weekday lookup tables for 1/8-day window positions (1-based, 1=first eighth of day)
-RAHU_KALAM_POS   = {0:7, 1:1, 2:6, 3:4, 4:5, 5:3, 6:2}   # Sun=0
-YAMAGANDA_POS    = {0:4, 1:7, 2:3, 3:6, 4:2, 5:5, 6:1}
-GULIKA_POS       = {0:5, 1:6, 2:4, 3:7, 4:3, 5:2, 6:6}
+Parallel thread WROTE 315 (ga_prashna count_sql fix), 316 (bg_nakshatra_medical ADD COLUMN dosha), 317
+(ga_pyjhora error reset) but did NOT apply them. Apply all three to PROD surgically, ledger-reconcile. Verify via
+ENDPOINT: ga_prashna lit/0-valid (not red); ga_pyjhora GREEN after 317 + a probe (if still error → service is
+genuinely down, root-cause it, don't just re-clear); bg_nakshatra_medical `dosha` column exists+populated. Confirm
+CI green with the assert changes (YOGAS_CORE=144, doshas assert=79). Merge.
 
-def _kalam_window(sunrise_iso, sunset_iso, pos_1based):
-    from datetime import datetime, timedelta
-    sr = datetime.fromisoformat(sunrise_iso[:19])
-    ss = datetime.fromisoformat(sunset_iso[:19])
-    seg = (ss - sr).total_seconds() / 8
-    start = sr + timedelta(seconds=(pos_1based - 1) * seg)
-    end   = sr + timedelta(seconds=pos_1based * seg)
-    return start.isoformat(), end.isoformat(), round(seg / 60, 1)
+## ITEM 2 — Autonomy gaps: CONFIRM the 4 writers actually regenerate (behavioral, not "file added")
 
-def emit_inauspicious_windows(chart_id, build_id, weekday,
-                               sunrise_iso, sunset_iso):
-    from datetime import datetime, timedelta
-    rows = []
-    AYANAMSHA = 'INVARIANT'
+Parallel thread added writers (bg_transit_engine → folded into bg_transit_rules; bg_nakshatra_medical → folded
+into bg_medical_mappings; bg_ephemeris → new; bg_dignity_reference → new). VERIFY each by triggering a Rebuild of
+that asset_id via the orchestrator and confirming it REGENERATES (not DEFERS). The test is "does Rebuild-All now
+cover all 39 assets," not "a file exists." Report any that still DEFER (+ fix).
 
-    def add_window(cat, subj, start, end, dur_min):
-        for k, v, vt in [('start_iso', start, 'text'), ('end_iso', end, 'text'),
-                          ('duration_minutes', dur_min, 'num'),
-                          ('weekday_table_reference', 'classical_muhurta', 'text')]:
-            rows.append({
-                'fact_id': make_fact_id(cat, subj, k, chart_id, AYANAMSHA, build_id),
-                'chart_id': chart_id, 'ayanamsha_id': AYANAMSHA, 'build_id': build_id,
-                'fact_category': cat, 'fact_subject': subj, 'fact_key': k,
-                'fact_value_num': float(v) if vt == 'num' else None,
-                'fact_value_text': str(v) if vt == 'text' else None,
-                'citation_ref': make_citation_ref(cat, subj, k, chart_id, AYANAMSHA),
-                'citation_human': f"{subj}: {k}={v}.",
-                'source_calculation': f'panchanga_writer_a4/{cat}',
-                'verification_pass_status': 'two_pass_verified',
-                'engine_version': ENGINE_VERSION,
-                'computed_at': __import__('datetime').datetime.now(
-                    __import__('datetime').timezone.utc),
-            })
+## ITEM 3 — bg_rules: do the SKIPPED yield-sampling FIRST, then mine
 
-    sr = datetime.fromisoformat(sunrise_iso[:19])
-    ss = datetime.fromisoformat(sunset_iso[:19])
-    day_sec = (ss - sr).total_seconds()
-    muhurta = day_sec / 15
+Parallel thread skipped sampling, jumped to "run rebuild." bg_rules ≈ 90% of the foundation delta, currently an
+unpinned ±30k guess. ORDER:
+1. SAMPLE a few hundred un-mined `classical_text_chunks` (~7,533 unprocessed), run the EXISTING extractor, measure
+   actual rules-per-chunk yield → report a tightened projection.
+2. CONFIRM the extractor is DETERMINISTIC (rule-extraction over cited text), NOT generative. If generative → HALT
+   + flag (violates deterministic-first; do not mine).
+3. MINE all chunks (ON CONFLICT DO NOTHING), each rule cited to source chunk_id. bg_rules floor = ACHIEVED;
+   seed-patch; endpoint-verify the new count.
 
-    # 1. Rahu Kalam
-    s,e,d = _kalam_window(sunrise_iso, sunset_iso, RAHU_KALAM_POS[weekday])
-    add_window('panchanga_rahu_kalam', 'RAHU_KALAM_BIRTH_DAY', s, e, d)
+## ITEM 4 — Catalog completeness (DEFAULT accept-as-built; EXCEPTION bg_medical grid/combos)
 
-    # 2. Yamaganda
-    s,e,d = _kalam_window(sunrise_iso, sunset_iso, YAMAGANDA_POS[weekday])
-    add_window('panchanga_yamaganda_kalam', 'YAMAGANDA_KALAM_BIRTH_DAY', s, e, d)
+A3: bg_yogas 81→144, bg_doshas 50→79, bg_medical 9→21 — all BELOW the audit's soft estimates (~250/~80-120/~150-200).
+- DEFAULT: accept bg_yogas + bg_doshas as-built (hard gate working; don't pad to a target). Spot-check 3-4 entries
+  each for genuine formation_rule_jsonb + citation (not stubs); if clean, accept. Report.
+- EXCEPTION — bg_medical_mappings (21 vs ~150-200, a large gap): the audit described a 27×3 nakshatra-dosha GRID +
+  planetary-combination tier. CHECK whether bg_medical_mappings now CONTAINS the grid + combos or only the
+  single-planet tier + a few additions. If the grid/combos are genuinely MISSING (deferred, not just "fewer than
+  estimated"), BUILD them (deterministic + cited: BPHS Ch.18 / Ayurvedic-Jyotish). If present and 21 is the
+  correct citable count, accept. Report which. (ga_medical reads bg_medical_mappings → rebuild ga_medical after if
+  bg_medical changed — ga_medical is in scope, ga_structural is NOT.)
 
-    # 3. Gulika
-    s,e,d = _kalam_window(sunrise_iso, sunset_iso, GULIKA_POS[weekday])
-    add_window('panchanga_gulika_kalam', 'GULIKA_KALAM_BIRTH_DAY', s, e, d)
+## ITEM 5 — bg_remedies (DEFAULT accept; log bo_upaya dependency)
 
-    # 4. Durmuhurta (7th muhurta of 15)
-    dm_s = (sr + timedelta(seconds=6*muhurta)).isoformat()
-    dm_e = (sr + timedelta(seconds=7*muhurta)).isoformat()
-    add_window('panchanga_durmuhurta', 'DURMUHURTA_1_BIRTH_DAY', dm_s, dm_e, round(muhurta/60,1))
++66 (→283) vs "thousands in tradition." DEFAULT: accept as-built (first pass; bo_upaya is downstream). LOG in
+OPEN_ITEMS that bo_upaya remedy depth depends on a future bg_remedies expansion. No build this session.
 
-    # 5. Varjyam (~24 min, nakshatra-specific — simplified)
-    vj_s = (ss + timedelta(hours=1)).isoformat()
-    vj_e = (ss + timedelta(hours=1, minutes=24)).isoformat()
-    add_window('panchanga_varjyam', 'VARJYAM_BIRTH_DAY', vj_s, vj_e, 24.0)
+## ITEM 6 — FINAL VERIFICATION (the seal) — ENDPOINT ONLY, paste the JSON
 
-    # 6. Visha Ghati (poison portion, simplified)
-    vg_s = (sr + timedelta(seconds=day_sec*0.6)).isoformat()
-    vg_e = (sr + timedelta(seconds=day_sec*0.6 + 1440)).isoformat()
-    add_window('panchanga_visha_ghati', 'VISHA_GHATI_BIRTH_DAY', vg_s, vg_e, 24.0)
+Hit `/api/cockpit/stats?chart_id=482012f1` and assert (paste JSON as evidence):
+- Every L0+L1 asset lit / non-null / no-error / not-stale.
+- ga_prashna lit-0-valid; ga_pyjhora GREEN.
+- bg_rules at new mined floor; bg_yogas=144; bg_doshas=79; bg_medical at confirmed floor.
+- 4 autonomy assets regenerable (Item 2).
+- ZERO regressions vs the pre-session endpoint snapshot.
+Then: update CURRENT_STATE; mark Session-1 items closed in OPEN_ITEMS_REGISTER + FOUNDATION_COMPLETION_HANDOFF;
+write `00_ARCHITECTURE/FOUNDATION_SESSION_1_CLOSE.md` (endpoint JSON + bg_rules sampling result + bg_medical
+verdict + autonomy-confirm result).
 
-    # 7. Sashtighati
-    sg_s = (sr + timedelta(hours=8)).isoformat()
-    sg_e = (sr + timedelta(hours=9)).isoformat()
-    add_window('panchanga_sashtighati', 'SASHTIGHATI_BIRTH_DAY', sg_s, sg_e, 60.0)
+**Set this brief frontmatter `status: COMPLETE` when done.** Session 2 (ga_structural Option-C rebuild) opens
+against the settled, prod-verified foundation — do NOT do Session-2 work here.
 
-    # 8. Yamakantaka
-    yk_s = (sr + timedelta(hours=4)).isoformat()
-    yk_e = (sr + timedelta(hours=5, minutes=30)).isoformat()
-    add_window('panchanga_yamakantaka', 'YAMAKANTAKA_BIRTH_DAY', yk_s, yk_e, 90.0)
+---
 
-    # 9. Krakaca
-    kr_s = (ss - timedelta(hours=2)).isoformat()
-    kr_e = (ss - timedelta(hours=1)).isoformat()
-    add_window('panchanga_krakaca', 'KRAKACA_BIRTH_DAY', kr_s, kr_e, 60.0)
-
-    return rows
-```
-
-## §2 — Test
-
-Write test_panchanga_a4_inauspicious.py testing:
-- 9 categories emitted (rahu_kalam, yamaganda_kalam, gulika_kalam, durmuhurta, varjyam, visha_ghati, sashtighati, yamakantaka, krakaca)
-- All have start_iso and end_iso keys
-- All have verification_pass_status=two_pass_verified
-- Native Sunday: RAHU_KALAM should be the 7th eighth (position 7)
-
-## §3 — Commit
-
-```bash
-git add platform/python-sidecar/pipeline/writers/panchanga_writer_a4.py \
-        platform/python-sidecar/pipeline/writers/__tests__/test_panchanga_a4_inauspicious.py
-git commit -m "feat(writers/A4-S3): 9 inauspicious time windows two_pass_verified [A4-S3]"
-```
-Set status: COMPLETE. Print: "A4-S3 COMPLETE: 9 inauspicious windows, N tests passing."
+## DOCUMENTED DEFAULTS (applied autonomously, no halt)
+- Catalogs: accept-as-built EXCEPT bg_medical grid/combos (Item 4 — build if genuinely missing).
+- bg_rules extractor: proceed only if DETERMINISTIC; HALT if generative.
+- Autonomy writers: parallel thread's fold-ins stand; VERIFY they regenerate, fix if they DEFER.
+- Migrations continue from next free number above 317.
+- OUT OF SCOPE → Session 2: ga_structural, bo_laksana, the yoga_label fork, the aspect_tajik fork, nakshatra_dispositor
+  alignment, per-varga edge-weight ingest. Touch NONE of these.
+- bg_remedies: accept + log; no build.

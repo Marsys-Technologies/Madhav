@@ -39,6 +39,16 @@ the L1 closure sweeps; TWO are genuinely-unbuilt Gate-3 data (confirming Gate-3 
 Note: L1 also confirmed the enrichment landed — Balatva/Strength 11,936 (4h ago), Sūkṣmabindu/Sensitive 8,610
 (47m ago) both LIVE+fresh = PR #298 prod-validated in the cockpit.
 
+## CLOSE-OUT STATUS 2026-06-18 (pre-L2 cleanup complete)
+
+- L0 + L1 BOTH prod-sealed + verified (L0 PR #297 @ a6f564cc; L1 PR #299 @ 37ebd082; L1 prod-verify VERIFIED v2.1).
+- Cockpit GENUINELY clean — endpoint-verified (camelCase-probe artifact resolved; bo_samskara count_sql fixed mig 314). [[feedback-verify-cockpit-endpoint-not-just-sql]]
+- Migration ledger reconciled 311–314 (IDs 76–79).
+- 11 stale open PRs audited → 10 CLOSED as superseded (#172/#180/#183/#185/#190/#194/#195/#196/#199/#206, each with documented reason); **#179 KEPT** (unmerged cascade-modal/route work — cherry-pick-or-close later).
+- Brahma Conductor scheduled CI (red every 15min, obsolete autonomous-build path) → schedule removed, PR #300 OPEN (merge to stop the red; Cloud Scheduler watchdog already paused). Real gates (Gaṇita Quality Gate + Deploy to Cloud Run) GREEN.
+- REMAINING (non-blocking): merge PR #300; decide #179 (cherry-pick cascade work or close); Group A4 (chore/repo-hygiene-isolated branch + /Madhav-nirmana-ui dir); Group C L0 residuals (DEFER-001..005, REC-003) tracked.
+- **NEXT: L2 Bodha** — foundation clean. bo_samskara fix already cleared the first L2 schema issue.
+
 ## GROUP A — Cockpit / CI hygiene (parallel; do before or alongside L1 closure)
 
 | # | Item | Owner | Status | Note |
@@ -63,7 +73,7 @@ Note: L1 also confirmed the enrichment landed — Balatva/Strength 11,936 (4h ag
 
 | # | Item | Owner | Status | Note |
 |---|---|---|---|---|
-| C1 | **DEFER-001/002** — bg_transit_engine + bg_nakshatra_medical have NO WriterBase writer (data migration-seeded, not orchestrator-reproducible) | Claude-Code | OPEN, disclosed | Write @register writers so L0 is fully rebuildable. |
+| C1 | **DEFER-001/002** — bg_transit_engine + bg_nakshatra_medical have NO WriterBase writer (data migration-seeded, not orchestrator-reproducible) | Claude-Code | ✅ RESOLVED (Foundation-Session-1 2026-06-18) | bg_transit_rules writer added (folds bg_transit_engine); bg_medical_mappings writer already registered bg_nakshatra_medical. Both confirmed regenerable. |
 | C2 | **DEFER-003** — reference_nakshatras DROP needs bg_reference.py refactor first (still INSERTs into it) | Claude-Code | OPEN, disclosed | Refactor → governance-script update → DROP migration. |
 | C3 | **DEFER-004** — classical_chunks + prashna_charts (empty) DROP needs code-ref removal first | Claude-Code | OPEN, disclosed | l0_text_index.py + ga_prashna_writer.py reference them. |
 | C4 | **DEFER-005** — bg_nakshatra upstream-hash tracking broken (hashes empty string; latent silent-staleness) | Claude-Code | OPEN, should be tracked issue | Data correct; change-detection broken. File as issue. |
@@ -77,6 +87,14 @@ Note: L1 also confirmed the enrichment landed — Balatva/Strength 11,936 (4h ag
 | D2 | **227-file brief purge** | Claude-Code | ✅ DONE (PR #282 @ d9c668ca) | 229 non-CURRENT briefs → 99_ARCHIVE/BRIEFS_RETIRED/ (290 total archived); 5 CURRENT/ACTIVE/READY retained by STATUS not count (reverse-citation discipline held). G52 signal_type_registry also eliminated (PR #281, 0 live refs). 85 live briefs remain. |
 | D3 | **Tier-3 merge queue + Tier-B branch audit** — accumulated worktrees/branches awaiting reviewed merges | Claude-Code | OPEN | ~per-branch sessions; never batch. |
 | D4 | **feature/panchanga-service-registry branch** — pending its own PR (independent of layer closures) | Claude-Code | OPEN | Phantom branch from earlier. |
+
+## GROUP E — Foundation-Session-1 residuals (2026-06-18, pre-L2)
+
+| # | Item | Owner | Status | Note |
+|---|---|---|---|---|
+| E1 | **bg_remedies depth / bo_upaya dependency** — bg_remedies has 266 rows (first deterministically-citable pass; classical tradition has thousands). L2 bo_upaya (remedy prescription layer) will read bg_remedies depth directly. | Cowork-plan | LOGGED, DEFERRED to L2 | Accept 266 as-built. A future bg_remedies expansion pass is needed BEFORE bo_upaya produces rich outputs. Flag at bo_upaya spec time. |
+| E2 | **bg_rules yield = corpus ceiling** — full 10,651-chunk mine confirmed 2,912 rules (0 new insertions); remaining 9,625 chunks don't contain regex-extractable rule patterns. The current regex pattern library (19 patterns) is the yield ceiling for the existing corpus. | Cowork-note | LOGGED, no action | Expanding yield requires either (a) new pattern families or (b) corpus expansion (more classical_text_chunks). Floor = 2,912 (ACHIEVED). |
+| E3 | **bg_yogas count 175 in DB vs 144 in l0_yogas.py** — endpoint shows bg_yogas=175 (in brahma_yoga_catalog); YOGAS_CORE=144. Discrepancy: the DB may contain the full 175-entry catalog including entries beyond YOGAS_CORE. Verify if intentional or a stale count. | Claude-Code | OPEN | Check whether brahma_yoga_catalog has 175 entries or 144; if 175, YOGAS_CORE list may be incomplete. Non-blocking for L2 open. |
 
 ---
 

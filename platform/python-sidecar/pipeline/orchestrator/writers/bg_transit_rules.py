@@ -9,6 +9,7 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register, Co
 
 
 @register("bg_transit_rules")
+@register("bg_transit_engine")
 class BgTransitRulesWriter(WriterBase):
     """
     Seeds bg_transit_engine and bg_transit_rules with classical Gochara reference data.
@@ -16,6 +17,11 @@ class BgTransitRulesWriter(WriterBase):
     L0 (Brahmagyan) writer — chart-agnostic static reference only.
     No PyJHora calls, no per-chart computation.
     Idempotency: ON CONFLICT DO UPDATE (L0 standard).
+
+    Note: bg_transit_engine (asset_registry catalog_status=CURRENT, sort_order=61) is a
+    sub-table seeded by this writer via seed_transit_rules(). The second @register decorator
+    above routes "Rebuild bg_transit_engine" requests through this writer so both asset_ids
+    resolve correctly. asset_id remains "bg_transit_rules" (the primary).
     """
 
     asset_id = "bg_transit_rules"
