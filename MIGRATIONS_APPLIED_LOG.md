@@ -134,6 +134,7 @@ executor: Claude Code (autonomous, native-authorized)
 | 317_ga_pyjhora_engine_reset_stale_error.sql | 2026-06-18 | FOUNDATION-SESSION-1 | Reset ga_pyjhora_engine asset_throughput state to 'dormant' | Bug fixed in migration: state=NULL → state='dormant' to satisfy NOT NULL |
 | 318_ga_structural_target_floor_update.sql | 2026-06-18 | GA-STRUCTURAL-REMEDIATION | asset_registry target_floor for ga_structural: 74034 → 77821 | SHA256: 9caadb418b0c6957a443c8bbdd003e2495082f69cf04dc3088ed64a802f83341 |
 | 319_ga_structural_count_sql_phase2.sql | 2026-06-18 | PRE-L2-TAKE-STOCK | ga_structural count_sql: full 65-category explicit IN list covering Phase-2 depth | SHA256: b320af08824d6bdbed8b2e5349e8119c6ce4e47ad7b3a9595d815090bf818998; returns exactly 77,821 for chart 482012f1 |
+| 320_ga_prashna_fix_description.sql | NOT_APPLIED | — | ga_prashna asset_registry description: chart_facts reference | Reads graha positions from chart_facts (written by ga_positions) instead of ga_positions directly |
 
 ---
 
