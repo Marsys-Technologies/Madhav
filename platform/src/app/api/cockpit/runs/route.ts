@@ -79,11 +79,24 @@ export async function POST(req: NextRequest) {
   )
   await Promise.all(assetInserts)
 
-  // Invoke Cloud Run Job — non-blocking; failure is non-fatal (watchdog will reap if needed)
+  // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
   try {
     await invokeRunJob(runId)
   } catch (err) {
-    console.warn('[api/cockpit/runs] invokeRunJob failed (non-fatal):', (err as Error).message)
+    const errMsg = (err as Error).message
+    console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)
+    await query(
+      `UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`,
+      [errMsg, runId]
+    )
+    await query(
+      `UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`,
+      [runId]
+    )
+    return NextResponse.json(
+      { error: 'Failed to dispatch build job', detail: errMsg, run_id: runId },
+      { status: 503 }
+    )
   }
 
   return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length } }, { status: 201 })

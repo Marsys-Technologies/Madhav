@@ -69,7 +69,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      RETURNING chart_id, asset_id`
   )
 
-  // 3. Emit events
+  // 3. Orphan build_runs: planned > 10 min with started_at IS NULL (dispatch never happened)
+  const undispatchedRuns = await query<{ id: string; chart_id: string }>(
+    `UPDATE build_runs
+     SET state = 'failed', ended_at = NOW(),
+         last_error = 'orphan-watchdog: run never dispatched'
+     WHERE state = 'planned'
+       AND started_at IS NULL
+       AND created_at < NOW() - INTERVAL '10 minutes'
+     RETURNING id, chart_id`
+  )
+  // Also abort the queued assets so they don't sit in limbo
+  if (undispatchedRuns.rows.length > 0) {
+    const runIds = undispatchedRuns.rows.map(r => r.id)
+    await query(
+      `UPDATE build_run_assets SET state = 'aborted'
+       WHERE run_id = ANY($1) AND state = 'queued'`,
+      [runIds]
+    )
+  }
+
+  // 4. Emit events
   await Promise.allSettled([
     ...orphanRuns.rows.map(r =>
       publishEvent({ type: 'run.state_change', chart_id: r.chart_id, run_id: r.id, state: 'failed' })
@@ -77,10 +97,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ...stuckAssets.rows.map(a =>
       publishEvent({ type: 'asset.state_change', chart_id: a.chart_id, asset_id: a.asset_id, to_state: 'error' })
     ),
+    ...undispatchedRuns.rows.map(r =>
+      publishEvent({ type: 'run.state_change', chart_id: r.chart_id, run_id: r.id, state: 'failed' })
+    ),
   ])
 
   return NextResponse.json({
     orphan_runs_failed: orphanRuns.rowCount ?? 0,
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
+    undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
   })
 }
