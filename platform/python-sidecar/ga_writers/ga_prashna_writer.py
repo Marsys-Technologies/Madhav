@@ -112,19 +112,28 @@ def compute_prashna_judgment(
 
     question_class, lagna_method, kp_number, querent_direction, active_nostril = row
 
-    # Step 2: Get planetary positions from ga_positions
-    cur.execute(
-        "SELECT graha, longitude, retrograde FROM ga_positions "
-        "WHERE chart_id = %s AND ayanamsha_id = %s",
-        (chart_id, ayanamsha_id)
-    )
-    positions = {r[0]: {"longitude": r[1], "retrograde": r[2]} for r in cur.fetchall()}
+    # Step 2: Get planetary positions from chart_facts (graha_position rows)
+    cur.execute("""
+        SELECT fact_subject,
+               MAX(CASE WHEN fact_key = 'longitude_sidereal' THEN fact_value_num  END),
+               MAX(CASE WHEN fact_key = 'retrograde_flag'    THEN fact_value_text END)
+        FROM chart_facts
+        WHERE chart_id      = %s
+          AND ayanamsha_id  = %s
+          AND fact_category = 'graha_position'
+        GROUP BY fact_subject
+    """, (chart_id, ayanamsha_id))
+    positions = {
+        r[0]: {"longitude": r[1], "retrograde": (r[2] == "retrograde")}
+        for r in cur.fetchall()
+        if r[1] is not None
+    }
 
     if not positions:
-        # Prashna chart exists but ga_positions not yet built — build ordering issue
+        # Prashna chart exists but chart_facts graha_position rows not yet built — build ordering issue
         logger.warning(
             "[ga_prashna_writer] chart_id=%s ayanamsha=%s: prashna chart exists "
-            "but ga_positions is empty — ensure ga_positions runs before ga_prashna",
+            "but chart_facts has no graha_position rows — ensure ga_positions runs before ga_prashna",
             chart_id, ayanamsha_id,
         )
         cur.close()
