@@ -152,15 +152,12 @@ def cast_prashna_chart(
         dt = dt.astimezone(timezone.utc)
 
     birth_params: dict[str, Any] = {
-        "year": dt.year,
-        "month": dt.month,
-        "day": dt.day,
-        "hour": dt.hour,
-        "minute": dt.minute,
-        "second": dt.second,
-        "latitude": question_lat,
-        "longitude": question_lon,
-        "tz_offset": 0.0,  # already normalized to UTC
+        "datetime_iso": dt.isoformat(),
+        "latitude_deg": question_lat,
+        "longitude_deg": question_lon,
+        "tz_offset_hours": 0.0,  # already normalized to UTC
+        "place_name": "",
+        "subject_label": "prashna",
     }
 
     # 3. Generate UUID for the prashna chart
