@@ -815,7 +815,7 @@ const ASSETS: AssetDef[] = [
       OR fact_category LIKE 'graha_dispositor_%'
       OR fact_category LIKE '%_per_varga'
       OR fact_category IN (
-        'graha_position', 'graha_sign_attributes', 'graha_functional_class_per_ascendant',
+        'graha_functional_class_per_ascendant',
         'graha_composite_state_classification', 'graha_effective_dignity_modified_by_aspects',
         'graha_in_house_composite_strength', 'graha_special_state_rollup',
         'graha_tri_deva_role_strength', 'graha_vargottama_amplification_factor',
@@ -831,8 +831,9 @@ const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
     // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
+    // Corrected to 74644 conservative per migration 309 (BUG-1 fix); exact floor pending prod re-run.
     target_floor: 74644,
-    expected_volume_formula: null, // non-parametric — target_floor = 74644 (all-30-vargas achieved count for 482012f1)
+    expected_volume_formula: null, // non-parametric — target_floor = 74644 (conservative; pending migration-309 prod re-run)
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],

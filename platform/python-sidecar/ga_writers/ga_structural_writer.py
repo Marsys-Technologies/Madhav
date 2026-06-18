@@ -568,8 +568,8 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
             dasha_count = cur2.fetchone()[0]
         if dasha_count > 0:
             found_categories.append("chart_dashas")
-    except Exception:
-        pass  # Table may not exist yet
+    except Exception as exc:
+        logger.warning("[ga_structural] chart_dashas preflight check failed: %s", exc)
 
     missing = [c for c in required_upstream_categories
                if c not in found_categories and c != "chart_dashas"]
@@ -586,7 +586,8 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
             found_categories.append("chart_divisionals")
         else:
             missing.append("chart_divisionals_GA6")
-    except Exception:
+    except Exception as exc:
+        logger.warning("[ga_structural] chart_divisionals preflight check failed: %s", exc)
         missing.append("chart_divisionals_GA6")
 
     return {
@@ -1196,7 +1197,8 @@ def _build_anubindu_rows(
     from ga_writers.ga_strength_writer import _derive_ashtakavarga
     try:
         bav = _derive_ashtakavarga(chart_output)
-    except Exception:
+    except Exception as exc:
+        logger.warning("[ga_structural] _derive_ashtakavarga failed: %s", exc)
         return rows
 
     planet_subjects = {
@@ -3479,7 +3481,8 @@ def _build_karaka_web_rows(
                 (chart_id, ayanamsha_id),
             )
             karaka_rows = cur.fetchall()
-    except Exception:
+    except Exception as exc:
+        logger.warning("[ga_structural] jaimini_chara_karaka query failed: %s", exc)
         return rows
 
     if not karaka_rows:
