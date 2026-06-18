@@ -5358,61 +5358,70 @@ def _build_nakshatra_dispositor_chain_rows(
 ) -> list[dict]:
     """GAP-4: nakshatra dispositor chain per graha, referencing ga_nakshatra fact_ids.
 
-    Queries graha_nakshatra_join for each graha's nakshatra_lord fact.
+    Queries graha_nakshatra_join for each graha's nakshatra_lord fact_id (L1-authority
+    reference per §N.5). Nakshatra names come from graha_position (fact_key='nakshatra').
     Builds the nakshatra-lord chain: graha → lord(graha's nak) → lord(that planet's nak) → ...
-    until cycle. Stores chain in fact_value_jsonb; constituent_facts_array references
-    the ga_nakshatra fact_id for the starting graha (GAP-4 resolution).
+    until cycle. Stores chain + constituent_fact_ids in fact_value_jsonb (GAP-4 resolution;
+    chart_facts has no constituent_facts_array column — reference lives in jsonb).
     """
     rows: list[dict] = []
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            # nakshatra_lord fact_ids from graha_nakshatra_join
             cur.execute("""
-                SELECT fact_subject, fact_key, fact_value_text, fact_id
+                SELECT fact_subject, fact_value_text, fact_id
                 FROM chart_facts
                 WHERE chart_id = %s AND ayanamsha_id = %s
                   AND fact_category = 'graha_nakshatra_join'
-                  AND fact_key IN ('nakshatra_lord', 'nakshatra')
+                  AND fact_key = 'nakshatra_lord'
             """, (chart_id, ayanamsha_id))
-            raw = cur.fetchall()
+            lord_raw = cur.fetchall()
+
+            # nakshatra names from graha_position
+            cur.execute("""
+                SELECT fact_subject, fact_value_text
+                FROM chart_facts
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                  AND fact_category = 'graha_position'
+                  AND fact_key = 'nakshatra'
+            """, (chart_id, ayanamsha_id))
+            nak_raw = cur.fetchall()
     except Exception as exc:
         logger.warning("[ga_structural] nakshatra_dispositor_chain query failed: %s", exc)
         return []
 
     from collections import defaultdict
-    graha_data: dict[str, dict] = defaultdict(dict)
-    graha_fact_id: dict[str, str] = {}  # graha_subject → nakshatra_lord fact_id
-    for subj, key, val_text, fact_id in raw:
-        graha_data[subj][key] = val_text or ""
-        if key == "nakshatra_lord":
-            graha_fact_id[subj] = str(fact_id)
+    graha_lord: dict[str, str] = {}   # subject → lowercase lord name
+    graha_fact_id: dict[str, str] = {}  # subject → nakshatra_lord fact_id (L1 ref)
+    for subj, lord_text, fact_id in lord_raw:
+        graha_lord[subj] = lord_text or ""
+        graha_fact_id[subj] = str(fact_id)
 
-    # Build subject→planet and planet→subject maps
+    graha_nakshatra: dict[str, str] = {}  # subject → nakshatra name
+    for subj, nak_text in nak_raw:
+        graha_nakshatra[subj] = nak_text or ""
+
     subj_to_planet: dict[str, str] = {v: k for k, v in PLANET_TO_SUBJECT.items()}
 
-    # Build nak_lord_map: planet_name → planet_name of nakshatra lord
-    # graha_data keys are fact_subject (e.g. "JUP"), values include nakshatra_lord (lowercase)
+    # Build nak_lord_planet: planet_name → planet_name of its nakshatra lord
     nak_lord_planet: dict[str, str] = {}
-    for subj, data in graha_data.items():
+    for subj, lord_lower in graha_lord.items():
         planet_name = subj_to_planet.get(subj, "")
-        lord_lower = data.get("nakshatra_lord", "")
-        if planet_name and lord_lower:
-            # lord_lower is lowercase planet name (e.g. "ketu") — capitalize first letter
-            lord_cap = lord_lower.capitalize()
-            # Handle "Rahu"/"Ketu" — they might be stored as "rahu"/"ketu"
-            if lord_lower in ("rahu", "rahu_mean"):
-                lord_cap = "Rahu"
-            elif lord_lower in ("ketu", "ketu_mean"):
-                lord_cap = "Ketu"
-            nak_lord_planet[planet_name] = lord_cap
+        if not planet_name or not lord_lower:
+            continue
+        lord_cap = lord_lower.capitalize()
+        if lord_lower in ("rahu", "rahu_mean"):
+            lord_cap = "Rahu"
+        elif lord_lower in ("ketu", "ketu_mean"):
+            lord_cap = "Ketu"
+        nak_lord_planet[planet_name] = lord_cap
 
-    for subj, data in graha_data.items():
+    for subj in graha_lord:
         planet_name = subj_to_planet.get(subj, "")
         if not planet_name:
             continue
-        if "nakshatra_lord" not in data:
-            continue
 
-        # Walk the chain
+        # Walk the nakshatra-lord chain
         chain: list[str] = [planet_name]
         seen: dict[str, int] = {planet_name: 0}
         current = planet_name
@@ -5429,33 +5438,35 @@ def _build_nakshatra_dispositor_chain_rows(
             chain.append(nxt)
             current = nxt
 
-        # Collect nakshatras along the chain (the nakshatra of each step planet)
+        # Nakshatra for each step planet (from graha_position, excludes cycle terminus)
         chain_naks: list[str] = []
-        for step_planet in chain[:-1]:  # exclude the cycle terminus
+        for step_planet in chain[:-1]:
             step_subj = PLANET_TO_SUBJECT.get(step_planet, "")
-            nak = graha_data.get(step_subj, {}).get("nakshatra", "")
+            nak = graha_nakshatra.get(step_subj, "")
             if nak:
                 chain_naks.append(nak)
 
         chain_length = len(chain)
         fid = graha_fact_id.get(subj, "")
+        effective_cycle = cycle_at_step if cycle_at_step >= 0 else chain_length - 1
 
         rows.append(_base_row(
             "nakshatra_dispositor_chain", subj, "chain_jsonb",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            # constituent_fact_ids lives inside jsonb: chart_facts has no array column
             value_jsonb={
                 "chain": chain,
                 "length": chain_length,
                 "nakshatras": chain_naks,
-                "cycle_at_step": cycle_at_step if cycle_at_step >= 0 else chain_length - 1,
+                "cycle_at_step": effective_cycle,
+                "constituent_fact_ids": [fid] if fid else [],
             },
-            constituent_facts_array=[fid] if fid else [],
             verif="two_pass_verified",
             source=f"ga_structural.nakshatra_dispositor_chain/{eng_ver}",
             citation_human=(
                 f"{planet_name} nak-lord chain length={chain_length} "
-                f"(cycle@{cycle_at_step}) in {ayanamsha_id}. "
-                f"GAP-4: references ga_nakshatra fact_id={fid}."
+                f"(cycle@{effective_cycle}) in {ayanamsha_id}. "
+                f"GAP-4: L1 nakshatra_lord fact_id={fid} (graha_nakshatra_join)."
             ),
         ))
     return rows
