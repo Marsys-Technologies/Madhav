@@ -493,6 +493,78 @@ NAKSHATRA_LORDS: dict[str, str] = {
     "Purva Bhadrapada": "Jupiter", "Uttara Bhadrapada": "Saturn", "Revati": "Mercury",
 }
 
+# ── Natural planetary friendship table (Parashari BPHS Ch.3) ─────────────────
+
+NATURAL_PLANET_RELATIONS: dict[str, dict[str, frozenset]] = {
+    "Sun":     {"friends": frozenset({"Moon", "Mars", "Jupiter"}),
+                "neutral": frozenset({"Mercury"}),
+                "enemies": frozenset({"Venus", "Saturn", "Rahu", "Ketu"})},
+    "Moon":    {"friends": frozenset({"Sun", "Mercury"}),
+                "neutral": frozenset({"Mars", "Jupiter", "Venus", "Saturn"}),
+                "enemies": frozenset({"Rahu", "Ketu"})},
+    "Mars":    {"friends": frozenset({"Sun", "Moon", "Jupiter"}),
+                "neutral": frozenset({"Venus", "Saturn"}),
+                "enemies": frozenset({"Mercury", "Rahu", "Ketu"})},
+    "Mercury": {"friends": frozenset({"Sun", "Venus"}),
+                "neutral": frozenset({"Mars", "Jupiter", "Saturn"}),
+                "enemies": frozenset({"Moon", "Rahu", "Ketu"})},
+    "Jupiter": {"friends": frozenset({"Sun", "Moon", "Mars"}),
+                "neutral": frozenset({"Saturn"}),
+                "enemies": frozenset({"Mercury", "Venus", "Rahu", "Ketu"})},
+    "Venus":   {"friends": frozenset({"Mercury", "Saturn"}),
+                "neutral": frozenset({"Mars", "Jupiter"}),
+                "enemies": frozenset({"Sun", "Moon", "Rahu", "Ketu"})},
+    "Saturn":  {"friends": frozenset({"Mercury", "Venus"}),
+                "neutral": frozenset({"Jupiter"}),
+                "enemies": frozenset({"Sun", "Moon", "Mars", "Rahu", "Ketu"})},
+    "Rahu":    {"friends": frozenset({"Venus", "Mercury", "Saturn"}),
+                "neutral": frozenset({"Jupiter", "Mars"}),
+                "enemies": frozenset({"Sun", "Moon", "Ketu"})},
+    "Ketu":    {"friends": frozenset({"Venus", "Mercury", "Saturn"}),
+                "neutral": frozenset({"Jupiter", "Mars"}),
+                "enemies": frozenset({"Sun", "Moon", "Rahu"})},
+}
+
+# Significance-to-bhava mapping (classical Parashari house assignment per tradition)
+SIGNIFICANCE_TO_BHAVA: dict[str, int] = {
+    "self": 1, "wealth": 2, "siblings": 3, "mother": 4,
+    "children": 5, "enemies": 6, "spouse": 7, "longevity": 8,
+    "luck": 9, "career": 10, "gains": 11, "losses": 12,
+    "dharma": 9, "artha": 2, "kama": 7, "moksha": 12,
+    "body": 1, "courage": 3, "intelligence": 5, "happiness": 4,
+    "education": 5, "travel": 9, "lineage": 5, "spiritual_merit": 9,
+    "obstacles": 8, "foreign_travel": 12, "inner_strength": 3,
+    "creativity": 5, "authority": 10, "liberation": 12,
+}
+
+
+def _get_planet_concordance(p1: str, p2: str) -> str:
+    """Return karaka-bhava concordance using natural Parashari friendship table (BPHS Ch.3).
+
+    concordant   = same planet
+    friendly     = mutual friends
+    friendly_reverse = one friend / one neutral (half-friendship)
+    neutral      = mutual neutral or mixed neutral+neutral
+    enemy        = at least one enemy relationship present
+    """
+    if p1 == p2:
+        return "concordant"
+    rel1 = NATURAL_PLANET_RELATIONS.get(p1, {})
+    rel2 = NATURAL_PLANET_RELATIONS.get(p2, {})
+    p1_to_p2 = ("friend" if p2 in rel1.get("friends", frozenset())
+                 else "enemy" if p2 in rel1.get("enemies", frozenset())
+                 else "neutral")
+    p2_to_p1 = ("friend" if p1 in rel2.get("friends", frozenset())
+                 else "enemy" if p1 in rel2.get("enemies", frozenset())
+                 else "neutral")
+    if p1_to_p2 == "friend" and p2_to_p1 == "friend":
+        return "friendly"
+    if "enemy" in (p1_to_p2, p2_to_p1):
+        return "enemy"
+    if "friend" in (p1_to_p2, p2_to_p1):
+        return "friendly_reverse"
+    return "neutral"
+
 
 # ── Halt log writer ───────────────────────────────────────────────────────────
 
@@ -3654,6 +3726,459 @@ def _build_karaka_web_rows(
     return rows
 
 
+# ── Graph-theoretic per-varga builders ───────────────────────────────────────
+# Six categories: graha_centrality, dispositor_tree, chart_cluster,
+# chart_center_of_gravity, convergence_count, karaka_bhava_concordance.
+# All computed per-varga so L2 Bodha gets varga-scoped graph signals.
+
+
+def _build_graph_centrality_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Parashari aspect-graph degree centrality per graha in this varga.
+
+    Edge(g1,g2) exists if g1 aspects g2 OR g2 aspects g1 OR they are conjunct.
+    Degree = count of unique other grahas connected to g (undirected).
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+    adjacency: dict[str, set] = {g: set() for g in ALL_GRAHAS}
+
+    graha_house_map: dict[str, int] = {}
+    graha_sign_map: dict[str, str] = {}
+    for g in ALL_GRAHAS:
+        d = varga_state.get(g)
+        if d and d.get("house"):
+            graha_house_map[g] = int(d["house"])
+            graha_sign_map[g] = str(d.get("sign", ""))
+
+    present = [g for g in ALL_GRAHAS if g in graha_house_map]
+    for i, g1 in enumerate(present):
+        h1 = graha_house_map[g1]
+        s1 = graha_sign_map[g1]
+        for g2 in present[i + 1:]:
+            h2 = graha_house_map[g2]
+            s2 = graha_sign_map[g2]
+            connected = (
+                _graha_aspects_house(g1, h1, h2) > 0.0
+                or _graha_aspects_house(g2, h2, h1) > 0.0
+                or (s1 and s1 == s2)
+            )
+            if connected:
+                adjacency[g1].add(g2)
+                adjacency[g2].add(g1)
+
+    for g_name in present:
+        subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+        degree = len(adjacency[g_name])
+        rows.append(_base_row(
+            "graha_centrality", f"{varga_prefix}{subj}", "degree_centrality",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(degree),
+            value_jsonb={
+                "varga": varga,
+                "degree_centrality": degree,
+                "connected_to": sorted(adjacency[g_name]),
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.graha_centrality/{eng_ver}",
+            citation_human=(
+                f"{g_name} Parashari aspect-graph degree={degree} in {varga} ({ayanamsha_id})."
+            ),
+        ))
+    return rows
+
+
+def _build_dispositor_tree_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Sign-lord dispositor tree per varga.
+
+    Maps each graha to its sign lord recursively until a cycle. Roots are
+    self-disposing planets (occupying an own sign). Emits one row per graha
+    + one CHART summary row.
+    """
+    from collections import deque
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    graha_sign: dict[str, str] = {}
+    for g in ALL_GRAHAS:
+        d = varga_state.get(g)
+        if d and d.get("sign"):
+            graha_sign[g] = str(d["sign"])
+
+    def get_dispositor(planet: str) -> str:
+        return SIGN_LORDS.get(graha_sign.get(planet, ""), planet)
+
+    # Roots: self-disposing (in own sign)
+    roots = [g for g in graha_sign if get_dispositor(g) == g]
+
+    # Parent map
+    parent_map: dict[str, str] = {g: get_dispositor(g) for g in graha_sign}
+
+    # BFS depth from roots
+    depth_map: dict[str, int] = {}
+    queue: deque = deque()
+    for r in roots:
+        depth_map[r] = 0
+        queue.append(r)
+    visited = set(roots)
+    while queue:
+        cur = queue.popleft()
+        for g in graha_sign:
+            if parent_map.get(g) == cur and g not in visited:
+                depth_map[g] = depth_map[cur] + 1
+                visited.add(g)
+                queue.append(g)
+
+    for g in graha_sign:
+        if g not in depth_map:
+            depth_map[g] = -1  # cycle member without own-sign root
+
+    # Children map (subjects)
+    children_map: dict[str, list] = {g: [] for g in ALL_GRAHAS}
+    for g in graha_sign:
+        d = parent_map.get(g, g)
+        if d != g and d in children_map:
+            children_map[d].append(PLANET_TO_SUBJECT.get(g, g.upper()))
+
+    for g_name in ALL_GRAHAS:
+        if g_name not in graha_sign:
+            continue
+        subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+        disp = parent_map.get(g_name, g_name)
+        disp_subj = PLANET_TO_SUBJECT.get(disp, disp.upper())
+        depth = depth_map.get(g_name, -1)
+        rows.append(_base_row(
+            "dispositor_tree", f"{varga_prefix}{subj}", "tree_position",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(depth) if depth >= 0 else None,
+            value_text=disp_subj,
+            value_jsonb={
+                "varga": varga,
+                "parent": disp_subj,
+                "children": children_map.get(g_name, []),
+                "depth": depth,
+                "is_root": (g_name in roots),
+                "sign": graha_sign.get(g_name, ""),
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.dispositor_tree/{eng_ver}",
+            citation_human=(
+                f"{g_name} in {varga} ({ayanamsha_id}): disposited by {disp}, depth={depth}."
+            ),
+        ))
+
+    root_subjects = [PLANET_TO_SUBJECT.get(r, r.upper()) for r in roots]
+    rows.append(_base_row(
+        "dispositor_tree", f"{varga_prefix}CHART", "summary",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=",".join(root_subjects) if root_subjects else "cycle",
+        value_num=float(len(roots)),
+        value_jsonb={"varga": varga, "roots": root_subjects, "root_count": len(roots)},
+        verif="two_pass_verified",
+        source=f"ga_structural.dispositor_tree/{eng_ver}",
+        citation_human=(
+            f"Dispositor tree roots in {varga} ({ayanamsha_id}): {root_subjects}."
+        ),
+    ))
+    return rows
+
+
+def _build_chart_cluster_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Parashari aspect-graph connected components (clusters) per varga.
+
+    Uses union-find over the same adjacency as graha_centrality.
+    All grahas in one connected component share cluster_id=0, etc.
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    graha_house_map: dict[str, int] = {}
+    graha_sign_map: dict[str, str] = {}
+    for g in ALL_GRAHAS:
+        d = varga_state.get(g)
+        if d and d.get("house"):
+            graha_house_map[g] = int(d["house"])
+            graha_sign_map[g] = str(d.get("sign", ""))
+
+    present = [g for g in ALL_GRAHAS if g in graha_house_map]
+
+    # Union-find
+    uf_parent: dict[str, str] = {g: g for g in present}
+
+    def find(x: str) -> str:
+        while uf_parent[x] != x:
+            uf_parent[x] = uf_parent[uf_parent[x]]
+            x = uf_parent[x]
+        return x
+
+    def union(x: str, y: str) -> None:
+        uf_parent[find(x)] = find(y)
+
+    for i, g1 in enumerate(present):
+        h1 = graha_house_map[g1]
+        s1 = graha_sign_map[g1]
+        for g2 in present[i + 1:]:
+            h2 = graha_house_map[g2]
+            s2 = graha_sign_map[g2]
+            if (
+                _graha_aspects_house(g1, h1, h2) > 0.0
+                or _graha_aspects_house(g2, h2, h1) > 0.0
+                or (s1 and s1 == s2)
+            ):
+                union(g1, g2)
+
+    root_to_cluster: dict[str, int] = {}
+    cluster_counter = 0
+    for g in present:
+        r = find(g)
+        if r not in root_to_cluster:
+            root_to_cluster[r] = cluster_counter
+            cluster_counter += 1
+
+    for g_name in present:
+        subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+        cluster_id = root_to_cluster[find(g_name)]
+        rows.append(_base_row(
+            "chart_cluster", f"{varga_prefix}{subj}", "cluster_id",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(cluster_id),
+            value_jsonb={
+                "varga": varga,
+                "cluster_id": cluster_id,
+                "total_clusters": cluster_counter,
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.chart_cluster/{eng_ver}",
+            citation_human=(
+                f"{g_name} cluster_id={cluster_id} (of {cluster_counter}) "
+                f"in {varga} ({ayanamsha_id})."
+            ),
+        ))
+    return rows
+
+
+def _build_chart_cog_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Chart center of gravity: planet terminating all dispositor chains per varga.
+
+    Walks each graha's sign-lord chain until a self-disposing planet or cycle.
+    Tallies how many chains terminate at each planet; the plurality terminus is
+    the center of gravity.
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    graha_sign: dict[str, str] = {}
+    for g in ALL_GRAHAS:
+        d = varga_state.get(g)
+        if d and d.get("sign"):
+            graha_sign[g] = str(d["sign"])
+
+    def get_dispositor(planet: str) -> str:
+        return SIGN_LORDS.get(graha_sign.get(planet, ""), planet)
+
+    def walk_to_terminus(start: str) -> str:
+        seen: set = set()
+        cur = start
+        for _ in range(13):
+            if cur in seen:
+                return cur
+            seen.add(cur)
+            disp = get_dispositor(cur)
+            if disp == cur:
+                return cur
+            cur = disp
+        return cur
+
+    tally: dict[str, int] = {}
+    for g in graha_sign:
+        t = walk_to_terminus(g)
+        tally[t] = tally.get(t, 0) + 1
+
+    if tally:
+        final_disp = max(tally, key=lambda x: tally[x])
+        chains_here = tally[final_disp]
+    else:
+        final_disp = "Sun"
+        chains_here = 0
+
+    final_disp_subj = PLANET_TO_SUBJECT.get(final_disp, final_disp.upper())
+    rows.append(_base_row(
+        "chart_center_of_gravity", f"{varga_prefix}CHART", "final_dispositor",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=final_disp_subj,
+        value_num=float(chains_here),
+        value_jsonb={
+            "varga": varga,
+            "final_dispositor": final_disp_subj,
+            "chains_terminating_here": chains_here,
+            "tally": {
+                PLANET_TO_SUBJECT.get(k, k.upper()): v for k, v in tally.items()
+            },
+        },
+        verif="two_pass_verified",
+        source=f"ga_structural.chart_center_of_gravity/{eng_ver}",
+        citation_human=(
+            f"COG in {varga} ({ayanamsha_id}): {final_disp} terminates {chains_here} chains."
+        ),
+    ))
+
+    cluster_count = len(tally)
+    rows.append(_base_row(
+        "chart_center_of_gravity", f"{varga_prefix}CHART", "cluster_count",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_num=float(cluster_count),
+        value_jsonb={"varga": varga, "cluster_count": cluster_count},
+        verif="two_pass_verified",
+        source=f"ga_structural.chart_center_of_gravity/{eng_ver}",
+        citation_human=f"Dispositor-chain cluster_count={cluster_count} in {varga} ({ayanamsha_id}).",
+    ))
+    return rows
+
+
+def _build_convergence_count_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Total Parashari + conjunction edge count per graha and per house in this varga.
+
+    Counts undirected edges: each pair counted once toward both members' totals.
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    graha_house_map: dict[str, int] = {}
+    graha_sign_map: dict[str, str] = {}
+    for g in ALL_GRAHAS:
+        d = varga_state.get(g)
+        if d and d.get("house"):
+            graha_house_map[g] = int(d["house"])
+            graha_sign_map[g] = str(d.get("sign", ""))
+
+    present = [g for g in ALL_GRAHAS if g in graha_house_map]
+    graha_edges: dict[str, int] = {g: 0 for g in present}
+    house_edges: dict[int, int] = {h: 0 for h in range(1, 13)}
+
+    for i, g1 in enumerate(present):
+        h1 = graha_house_map[g1]
+        s1 = graha_sign_map[g1]
+        for g2 in present[i + 1:]:
+            h2 = graha_house_map[g2]
+            s2 = graha_sign_map[g2]
+            if (
+                _graha_aspects_house(g1, h1, h2) > 0.0
+                or _graha_aspects_house(g2, h2, h1) > 0.0
+                or (s1 and s1 == s2)
+            ):
+                graha_edges[g1] += 1
+                graha_edges[g2] += 1
+                if 1 <= h1 <= 12:
+                    house_edges[h1] += 1
+                if 1 <= h2 <= 12 and h2 != h1:
+                    house_edges[h2] += 1
+
+    for g_name in present:
+        subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+        count = graha_edges[g_name]
+        rows.append(_base_row(
+            "convergence_count", f"{varga_prefix}{subj}", "total_edges",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(count),
+            value_jsonb={"varga": varga, "total_edges": count, "entity": "graha"},
+            verif="two_pass_verified",
+            source=f"ga_structural.convergence_count/{eng_ver}",
+            citation_human=f"{g_name} total aspect-edges={count} in {varga} ({ayanamsha_id}).",
+        ))
+
+    for h in range(1, 13):
+        count = house_edges[h]
+        rows.append(_base_row(
+            "convergence_count", f"{varga_prefix}H{h}", "total_edges",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_num=float(count),
+            value_jsonb={"varga": varga, "house": h, "total_edges": count, "entity": "house"},
+            verif="two_pass_verified",
+            source=f"ga_structural.convergence_count/{eng_ver}",
+            citation_human=f"H{h} convergence_count={count} in {varga} ({ayanamsha_id}).",
+        ))
+    return rows
+
+
+def _build_karaka_bhava_concordance_per_varga_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Compare natural karaka vs bhava lord for each significance in this varga.
+
+    For each significance in KARAKATVA_SIGNIFICANCES: look up the classical bhava
+    number, find that bhava's sign (whole-sign from varga lagna), find the sign lord,
+    compare to the natural karaka via the Parashari friendship table.
+    """
+    rows: list[dict[str, Any]] = []
+    varga_prefix = f"{varga}_"
+
+    lagna_data = varga_state.get("Lagna") or varga_state.get("LAGNA")
+    lagna_sign_num = int(lagna_data.get("sign_num", 1)) if lagna_data else 1
+    if lagna_sign_num == 0:
+        lagna_sign_num = 1
+
+    for signif in KARAKATVA_SIGNIFICANCES:
+        bhava_num = SIGNIFICANCE_TO_BHAVA.get(signif, 1)
+        bhava_sign_num = ((lagna_sign_num - 1 + bhava_num - 1) % 12) + 1
+        bhava_sign = SIGN_NAMES[bhava_sign_num - 1]
+        bhava_lord = SIGN_LORDS.get(bhava_sign, "Sun")
+
+        natural_karaka = NATURAL_KARAKAS.get(signif, "Jupiter")
+        concordance = _get_planet_concordance(natural_karaka, bhava_lord)
+
+        nat_subj = PLANET_TO_SUBJECT.get(natural_karaka, natural_karaka.upper())
+        lord_subj = PLANET_TO_SUBJECT.get(bhava_lord, bhava_lord.upper())
+
+        rows.append(_base_row(
+            "karaka_bhava_concordance", f"{varga_prefix}{signif}", "concordance_value",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text=concordance,
+            value_jsonb={
+                "varga": varga,
+                "significance": signif,
+                "bhava_num": bhava_num,
+                "bhava_sign": bhava_sign,
+                "bhava_lord": lord_subj,
+                "natural_karaka": nat_subj,
+                "concordance": concordance,
+            },
+            verif="two_pass_verified",
+            source=f"ga_structural.karaka_bhava_concordance/{eng_ver}",
+            citation_human=(
+                f"{signif} ({varga} {ayanamsha_id}): natural_karaka={natural_karaka} "
+                f"vs bhava{bhava_num}_lord={bhava_lord} → {concordance}."
+            ),
+        ))
+    return rows
+
+
 def _build_varga_aspect_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -3730,6 +4255,26 @@ def _build_varga_aspect_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
         rows.extend(_build_virupa_drishti_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+
+        # Graph-theoretic layer per varga
+        rows.extend(_build_graph_centrality_per_varga_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+        rows.extend(_build_dispositor_tree_per_varga_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+        rows.extend(_build_chart_cluster_per_varga_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+        rows.extend(_build_chart_cog_per_varga_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+        rows.extend(_build_convergence_count_per_varga_rows(
+            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ))
+        rows.extend(_build_karaka_bhava_concordance_per_varga_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
 
@@ -4101,6 +4646,9 @@ def build_ga_structural(
             ))
             all_rows.extend(_build_combustion_retrograde_relationship_rows(
                 chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
+            all_rows.extend(_build_nakshatra_dispositor_chain_rows(
+                ay_conn, chart_id, build_id, canonical_id, computed_at, eng_ver
             ))
 
             # Two-pass verification passes
@@ -4804,6 +5352,115 @@ def _build_nakshatra_relationship_rows(
     return rows
 
 
+def _build_nakshatra_dispositor_chain_rows(
+    conn: Any, chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict]:
+    """GAP-4: nakshatra dispositor chain per graha, referencing ga_nakshatra fact_ids.
+
+    Queries graha_nakshatra_join for each graha's nakshatra_lord fact.
+    Builds the nakshatra-lord chain: graha → lord(graha's nak) → lord(that planet's nak) → ...
+    until cycle. Stores chain in fact_value_jsonb; constituent_facts_array references
+    the ga_nakshatra fact_id for the starting graha (GAP-4 resolution).
+    """
+    rows: list[dict] = []
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute("""
+                SELECT fact_subject, fact_key, fact_value_text, fact_id
+                FROM chart_facts
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                  AND fact_category = 'graha_nakshatra_join'
+                  AND fact_key IN ('nakshatra_lord', 'nakshatra')
+            """, (chart_id, ayanamsha_id))
+            raw = cur.fetchall()
+    except Exception as exc:
+        logger.warning("[ga_structural] nakshatra_dispositor_chain query failed: %s", exc)
+        return []
+
+    from collections import defaultdict
+    graha_data: dict[str, dict] = defaultdict(dict)
+    graha_fact_id: dict[str, str] = {}  # graha_subject → nakshatra_lord fact_id
+    for subj, key, val_text, fact_id in raw:
+        graha_data[subj][key] = val_text or ""
+        if key == "nakshatra_lord":
+            graha_fact_id[subj] = str(fact_id)
+
+    # Build subject→planet and planet→subject maps
+    subj_to_planet: dict[str, str] = {v: k for k, v in PLANET_TO_SUBJECT.items()}
+
+    # Build nak_lord_map: planet_name → planet_name of nakshatra lord
+    # graha_data keys are fact_subject (e.g. "JUP"), values include nakshatra_lord (lowercase)
+    nak_lord_planet: dict[str, str] = {}
+    for subj, data in graha_data.items():
+        planet_name = subj_to_planet.get(subj, "")
+        lord_lower = data.get("nakshatra_lord", "")
+        if planet_name and lord_lower:
+            # lord_lower is lowercase planet name (e.g. "ketu") — capitalize first letter
+            lord_cap = lord_lower.capitalize()
+            # Handle "Rahu"/"Ketu" — they might be stored as "rahu"/"ketu"
+            if lord_lower in ("rahu", "rahu_mean"):
+                lord_cap = "Rahu"
+            elif lord_lower in ("ketu", "ketu_mean"):
+                lord_cap = "Ketu"
+            nak_lord_planet[planet_name] = lord_cap
+
+    for subj, data in graha_data.items():
+        planet_name = subj_to_planet.get(subj, "")
+        if not planet_name:
+            continue
+        if "nakshatra_lord" not in data:
+            continue
+
+        # Walk the chain
+        chain: list[str] = [planet_name]
+        seen: dict[str, int] = {planet_name: 0}
+        current = planet_name
+        cycle_at_step = -1
+        for _ in range(15):
+            nxt = nak_lord_planet.get(current, "")
+            if not nxt:
+                break
+            if nxt in seen:
+                chain.append(nxt)
+                cycle_at_step = len(chain) - 1
+                break
+            seen[nxt] = len(chain)
+            chain.append(nxt)
+            current = nxt
+
+        # Collect nakshatras along the chain (the nakshatra of each step planet)
+        chain_naks: list[str] = []
+        for step_planet in chain[:-1]:  # exclude the cycle terminus
+            step_subj = PLANET_TO_SUBJECT.get(step_planet, "")
+            nak = graha_data.get(step_subj, {}).get("nakshatra", "")
+            if nak:
+                chain_naks.append(nak)
+
+        chain_length = len(chain)
+        fid = graha_fact_id.get(subj, "")
+
+        rows.append(_base_row(
+            "nakshatra_dispositor_chain", subj, "chain_jsonb",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_jsonb={
+                "chain": chain,
+                "length": chain_length,
+                "nakshatras": chain_naks,
+                "cycle_at_step": cycle_at_step if cycle_at_step >= 0 else chain_length - 1,
+            },
+            constituent_facts_array=[fid] if fid else [],
+            verif="two_pass_verified",
+            source=f"ga_structural.nakshatra_dispositor_chain/{eng_ver}",
+            citation_human=(
+                f"{planet_name} nak-lord chain length={chain_length} "
+                f"(cycle@{cycle_at_step}) in {ayanamsha_id}. "
+                f"GAP-4: references ga_nakshatra fact_id={fid}."
+            ),
+        ))
+    return rows
+
+
 def _build_bhava_chalit_divergence_rows(
     conn: Any, chart_output: dict, chart_id: str, build_id: str,
     ayanamsha_id: str, computed_at: str, eng_ver: str,
@@ -5053,6 +5710,9 @@ def build_ga_structural_substep(
 
     # Phase-3 blind-spot builders
     all_rows.extend(_build_nakshatra_relationship_rows(
+        conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+    ))
+    all_rows.extend(_build_nakshatra_dispositor_chain_rows(
         conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
     ))
     all_rows.extend(_build_bhava_chalit_divergence_rows(
