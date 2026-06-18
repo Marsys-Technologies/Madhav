@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from routers import ephemeris, events, sade_sati, jaimini, v7_additions
 from routers import panchang as panchang_router
 from routers import pyhora as pyhora_router
+from routers import prashna as prashna_router
 
 load_dotenv()
 
@@ -56,6 +57,9 @@ app.include_router(mimamsa_prediction_router, prefix="/api/brahma", dependencies
 
 # BRAHMA Stream G — PyHora natal computation (graha_sthana, vimshottari_dasha, special_lagnas)
 app.include_router(pyhora_router.router, prefix="/api/pyhora", dependencies=[Depends(verify_api_key)])
+
+# L1 Prashna — horary cast + judgment (namespace-isolated, never writes to native natal stream)
+app.include_router(prashna_router.router, prefix="/api/compute/prashna", dependencies=[Depends(verify_api_key)])
 
 
 @app.get("/health")
