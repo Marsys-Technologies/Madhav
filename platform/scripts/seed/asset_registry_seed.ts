@@ -847,13 +847,15 @@ const ASSETS: AssetDef[] = [
     )
 `,
     size_sql: null,
-    // Floor: 74644 conservative (pending prod re-run with corrected count_sql post-migration-309).
-    // Pre-enrichment scope: 87169 included ~10,610 rows from other assets (BUG-1).
-    // Exact floor to be confirmed after post-merge orchestrator build.
-    target_floor: 74644,
-    expected_volume_formula: null, // non-parametric — exact floor pending prod re-run (migration 309 BUG-1 fix)
+    // Floor: 74,034 measured on prod chart 482012f1 (2026-06-18, migration 310).
+    // Corrected count_sql (migration 309 BUG-1 fix) confirmed excluding:
+    //   - 2,835 graha_avastha_%_per_varga (ga_condition)
+    //   - 9,690 bala per_varga (ga_strength)
+    //   - 80 nakshatra_pada_sensitive (ga_sensitive)
+    target_floor: 74034,
+    expected_volume_formula: null, // non-parametric — floor 74,034 measured prod (migration 310, 2026-06-18)
     expected_volume_inputs: null,
-    volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
+    volume_explanation: 'GA8 T1 structural facts — floor 74,034 measured on prod chart 482012f1 with corrected count_sql (migration 309 BUG-1 fix). Excludes ga_condition per-varga avasthas + ga_strength bala per_varga + ga_sensitive nakshatra_pada_sensitive rows.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -894,13 +896,14 @@ const ASSETS: AssetDef[] = [
     // from ga_structural count_sql so ga_condition is the sole counter of those rows.
     count_sql: `(SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
     size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
-    // target_floor: null pending post-enrichment prod build.
-    // Pre-enrichment D1-only floor was 45 (9 grahas × 5 ay). Post-Amendment-2, combined count
-    // expected ~6,795 (45 D1 + ~6,750 per-varga). Set after first prod build with enrichment.
-    target_floor: null,
-    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    // Floor: 2,880 measured on prod chart 482012f1 (2026-06-18, migration 310).
+    // Breakdown: 45 D1 composite (ga_condition_composite) + 2,835 per-varga avastha (chart_facts).
+    // Note: per-varga count (2,835) is below Amendment-2 estimate (~6,750) because
+    // graha_kala_bala_per_varga is FLOORED (NULL fact_value_num, not counted in avastha total).
+    target_floor: 2880,
+    expected_volume_formula: null, // non-parametric — floor 2,880 measured prod (migration 310, 2026-06-18)
     expected_volume_inputs: null,
-    volume_explanation: 'D1 composite: 9 grahas × 5 ayanamshas = 45. Per-varga enrichment adds ~6,750 rows (5 avastha categories × 9 grahas × 30 vargas × 5 ay). Total pending prod confirmation.',
+    volume_explanation: 'ga_condition combined: 45 D1 composite + 2,835 per-varga avastha chart_facts = 2,880 total. Measured on prod chart 482012f1 (2026-06-18). graha_kala_bala_per_varga floored (NULL fact_value_num).',
     depends_on: ['ga_positions', 'ga_vargas', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.80
+version: 5.81
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.81 (2026-06-18, L1-GANITA-REBASE-AND-PR):
+    **L1 Gaṇita PROD-SEALED (§6 VERIFIED).** Executed CLAUDECODE_BRIEF_L1_REBASE_AND_PR_v1_0.md
+    all 5 steps in single session. STEP 1: Rebased feature/l1-phase3-enrichment on main; resolved
+    2 conflicts (ga_structural floor comment; seed AssetRow test); all 4 tests pass. STEP 2: PR #299
+    opened and merged to main (merge commit 37ebd082) via `gh pr merge 299 --merge --admin` after
+    all CI checks passed. STEP 3: Post-merge prod-verify §6 checklist PASS — ga_strength 11,936 ✓;
+    ga_sensitive 8,610 ✓; ga_structural 74,034 ✓; ga_condition 2,880 ✓; FORENSIC 7/7 ✓;
+    BUG-1 clean (NOT IN exclusion confirmed); Deeptadi-dignity cross-validated via chart_facts join.
+    STEP 4: Migration 310 emitted (`platform/migrations/310_l1_closure_measured_floors.sql`) — floors
+    set to measured prod values (ga_structural 74,034; ga_condition 2,880); seed patched to match.
+    STEP 5: L1_GANITA_CLOSURE_v2_0.md flipped prod_verify_status PENDING→VERIFIED; version 2.0→2.1;
+    §6 checklist fully ticked (§6.10 Cockpit PENDING, non-blocking). Phase E (Abhinandan `1c826d5a`
+    operator E2E) still GATED — independent of L1 closure. main HEAD: 37ebd082 (merge commit).
+    Monitoring obligation logged: ga_structural count_sql NOT IN exclusion list + ga_condition
+    arithmetic subquery are enumeration-fragile for future enrichment passes.
+    last_session_id: L1-GANITA-REBASE-AND-PR. predecessor_session: L1-GANITA-CLOSURE-PASS-v2.
+    next_session_objective: >
+      "L1 Gaṇita fully prod-sealed. Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md,
+      apply migration 230 (bodha_registry_reconcile), run orchestrator build for chart 482012f1
+      scope=layer/bodha, verify 8 bo_* assets lit, set target_floors, declare L2 CLOSED."
+    file_updated_at: 2026-06-18. file_updated_by_session: L1-GANITA-REBASE-AND-PR.
   - v5.80 (2026-06-18, L1-GANITA-CLOSURE-PASS-v2):
     **L1 Gaṇita POST-ENRICHMENT RE-SEAL.** Autonomous 5-phase closure pass on branch
     feature/l1-phase3-enrichment. All phases complete; prod-verify pending post-merge build.
@@ -4542,7 +4563,11 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: L0-PRE-PR-FIXES  # 2026-06-17: L0 Brahmagyan PROD-VERIFIED SEALED. Prod-verify gate PASS (7/7), migration 305+306 applied to PROD, REC dispositions recorded, DEFER-006/007 RESOLVED. Predecessor L0-BRAHMAGYAN-CLOSURE.
+  last_session_id: L1-GANITA-REBASE-AND-PR  # 2026-06-18: L1 Gaṇita PROD-SEALED. PR #299 merged (37ebd082); §6 prod-verify PASS; migration 310 (measured floors); L1_GANITA_CLOSURE_v2_0.md v2.1 VERIFIED. Predecessor L1-GANITA-CLOSURE-PASS-v2.
+    # === Predecessor L1-GANITA-CLOSURE-PASS-v2 (2026-06-18) ===
+    # L1-GANITA-CLOSURE-PASS-v2: L1 POST-ENRICHMENT RE-SEAL on branch feature/l1-phase3-enrichment. All 5 closure phases complete; L1_GANITA_CLOSURE_v2_0.md emitted (CONDITIONAL seal). Predecessor L0-PRE-PR-FIXES.
+    # === Predecessor L0-PRE-PR-FIXES (2026-06-17) ===
+    # L0-PRE-PR-FIXES: L0 Brahmagyan PROD-VERIFIED SEALED. Prod-verify gate PASS (7/7), migration 305+306 applied to PROD, REC dispositions recorded, DEFER-006/007 RESOLVED. Predecessor L0-BRAHMAGYAN-CLOSURE.
     # === Predecessor L0-BRAHMAGYAN-CLOSURE (2026-06-17) ===
     # L0-BRAHMAGYAN-CLOSURE: L0 Brahmagyan SEALED. 22 assets, migrations 295-304, FORENSIC 7/7 PASS, IS.8(b) RT PASS (0 RED). Predecessor GATE3-SIX-SUBSYSTEM-CLOSE.
     # === Predecessor GATE3-SIX-SUBSYSTEM-CLOSE (2026-06-17) preserved for audit ===
@@ -5390,6 +5415,20 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    L1 Gaṇita fully prod-sealed (§6 VERIFIED, migration 310 applied, L1_GANITA_CLOSURE v2.1).
+    Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md + L2_BODHA_CLOSE_v1_0.md;
+    apply migration 230 (230_bodha_registry_reconcile.sql) to prod; activate Cloud SQL proxy at
+    127.0.0.1:5433; run orchestrator build scope=layer/bodha for chart 482012f1; verify 8 bo_*
+    assets lit in cockpit; update target_floors; declare L2 CLOSED; author L3_KALA_CAMPAIGN_HANDOFF.
+    Phase E (Abhinandan `1c826d5a` operator E2E) still GATED — independent of L2 start.
+    Monitoring obligation: ga_structural NOT IN exclusion list + ga_condition arithmetic count_sql
+    are enumeration-fragile — revisit after any future L1 enrichment.
+    === Predecessor next_session_objective (L1-GANITA-CLOSURE-PASS-v2, superseded) preserved for audit ===
+    Open PR feature/l1-phase3-enrichment → main. After merge: run orchestrator build for
+    chart 482012f1; complete §6 prod-verify checklist in L1_GANITA_CLOSURE_v2_0.md;
+    emit migration 310 with confirmed floors for ga_structural + ga_condition; then begin
+    L2 Bodha campaign per L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md.
+    === Predecessor next_session_objective (UDA-1/M6, superseded) preserved for audit ===
     UDA-1 COMPLETE. UDA-2 planning: author briefs for 10 portal-only→MCP wrapper sessions.
     portal_retrieval_tools_count: 51 (UDA-1 added 15; was 36). Or open M6-A-S1 per
     PHASE_M6_PLAN_v1_0.md. UDA-2 (10 sessions), UDA-3 (3 sessions), UDA-4 (2 sessions) queued.
