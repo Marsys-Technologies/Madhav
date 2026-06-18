@@ -58,3 +58,23 @@ def test_cast_prashna_chart_returns_chart_id():
     assert result["rows_inserted"] == 10  # 2 rows × 5 ayanamshas
     mock_positions.assert_called_once()
     assert mock_judgment.call_count == 5  # one per ayanamsha
+
+
+def test_validate_rejects_whats_contraction():
+    result = validate_prashna_question("What's my Moon sign?")
+    assert result["valid"] is False
+
+
+def test_validate_rejects_whats_no_apostrophe():
+    result = validate_prashna_question("whats my lagna?")
+    assert result["valid"] is False
+
+
+def test_validate_rejects_whatre_contraction():
+    result = validate_prashna_question("What're the aspects on my chart?")
+    assert result["valid"] is False
+
+
+def test_validate_still_accepts_genuine_horary():
+    result = validate_prashna_question("Will I get this job?")
+    assert result["valid"] is True

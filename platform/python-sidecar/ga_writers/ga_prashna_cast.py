@@ -44,6 +44,10 @@ _REJECTION_PATTERNS: list[str] = [
     "house of",
     "what is",
     "what are",
+    "what's",
+    "whats",
+    "what're",
+    " sign?",
     "tell me about",
     "describe",
     "explain",
@@ -163,14 +167,7 @@ def cast_prashna_chart(
     # 3. Generate UUID for the prashna chart
     prashna_chart_id = str(uuid.uuid4())
 
-    # 4. Insert into charts (the prashna chart IS a chart)
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO charts (id, created_at) VALUES (%s, NOW()) ON CONFLICT (id) DO NOTHING",
-            (prashna_chart_id,),
-        )
-
-    # 5. Insert into prashna_charts
+    # 4. Insert into prashna_charts
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -200,7 +197,7 @@ def cast_prashna_chart(
             ),
         )
 
-    # 6. Build ga_positions directly with question-moment birth_params
+    # 5. Build ga_positions directly with question-moment birth_params
     build_ga_positions(
         chart_id=prashna_chart_id,
         build_id=build_id,
@@ -208,7 +205,7 @@ def cast_prashna_chart(
         birth_params=birth_params,
     )
 
-    # 7. Seed + compute prashna judgment for each ayanamsha
+    # 6. Seed + compute prashna judgment for each ayanamsha
     total_rows = 0
     judgment_by_ayanamsha: dict[str, Any] = {}
 

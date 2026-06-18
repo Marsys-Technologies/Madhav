@@ -20,6 +20,25 @@ from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
+# Abbreviation-to-full-name map: chart_facts.fact_subject uses abbreviated tokens,
+# but bg_prashna_significators stores full planet names.  Normalize at source so all
+# downstream lookups (PLANET_DAILY_MOTION, PLANET_ORBS, querent_planet checks) work.
+_ABBREV_TO_FULL: dict[str, str] = {
+    "SUN":       "Sun",
+    "MOON":      "Moon",
+    "MAR":       "Mars",
+    "MER":       "Mercury",
+    "JUP":       "Jupiter",
+    "VEN":       "Venus",
+    "SAT":       "Saturn",
+    "RAH_MEAN":  "Rahu",
+    "KET_MEAN":  "Ketu",
+    "LAGNA":     "Lagna",
+    # Alternate Ascendant storage names
+    "ASC":       "Lagna",
+    "ASCENDANT": "Lagna",
+}
+
 # Canonical ayanamshas — MUST match ga_positions_writer.py CANONICAL_AYANAMSHAS exactly
 CANONICAL_AYANAMSHAS = [
     "lahiri_chitrapaksha",
@@ -124,7 +143,7 @@ def compute_prashna_judgment(
         GROUP BY fact_subject
     """, (chart_id, ayanamsha_id))
     positions = {
-        r[0]: {"longitude": r[1], "retrograde": (r[2] == "retrograde")}
+        _ABBREV_TO_FULL.get(r[0], r[0]): {"longitude": float(r[1]), "retrograde": (r[2] == "retrograde")}
         for r in cur.fetchall()
         if r[1] is not None
     }
