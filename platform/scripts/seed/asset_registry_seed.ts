@@ -802,18 +802,36 @@ const ASSETS: AssetDef[] = [
     english_description: 'GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka and tri-deva roles, and base graha facts — per ayanamsha.',
     storage_type: 'postgres_table',
     target_table: null,
-    // Registered in migration 219. Positive family filter verified to equal the
-    // untiled chart_facts complement (6,075) — the five chart_facts tiles
-    // (strength/sensitive/sade_sati/panchanga/structural) partition chart_facts.
+    // Registered in migration 219. Positive family filter covers ga_structural's own categories.
+    // Migration 309 (2026-06-18) fixes scope inflation introduced by L1 enrichment:
+    //   - Narrows graha_avastha_% to exclude %_per_varga (those belong to ga_condition)
+    //   - Narrows %_per_varga with NOT IN exclusion for enrichment-added categories
+    //     (ashtakavarga/*_bala_per_varga from ga_strength; avastha_*_per_varga from ga_condition)
+    //   - Removes nakshatra_pada_sensitive (written by ga_sensitive_writer; counted there)
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
     AND (
       fact_category LIKE 'aspect_%'
-      OR fact_category LIKE 'graha_avastha_%'
+      OR (fact_category LIKE 'graha_avastha_%' AND fact_category NOT LIKE '%_per_varga')
       OR fact_category LIKE '%argala_natal_matrix'
       OR fact_category LIKE 'graha_dispositor_%'
-      OR fact_category LIKE '%_per_varga'
+      OR (
+        fact_category LIKE '%_per_varga'
+        AND fact_category NOT IN (
+          'graha_avastha_baladi_per_varga',
+          'graha_avastha_deeptaadi_per_varga',
+          'graha_avastha_jagradadi_per_varga',
+          'graha_avastha_sayanadi_per_varga',
+          'graha_avastha_lajjitadi_per_varga',
+          'ashtakavarga_bindu_per_varga',
+          'ashtakavarga_pinda_sarva_per_varga',
+          'graha_sthana_bala_per_varga',
+          'graha_drik_bala_per_varga',
+          'graha_kala_bala_per_varga',
+          'graha_cheshta_bala_per_varga'
+        )
+      )
       OR fact_category IN (
         'graha_functional_class_per_ascendant',
         'graha_composite_state_classification', 'graha_effective_dignity_modified_by_aspects',
@@ -823,17 +841,17 @@ const ASSETS: AssetDef[] = [
         'karaka_house_lord_overlap_flag', 'karakatva_strength_per_significance',
         'composite_dispositor_strength', 'house_strength_classification_rollup',
         'pranic_strength_per_graha', 'chandra_bala_natal_baseline', 'tara_bala_natal_baseline',
-        'nakshatra_pada_sensitive', 'yoga_fires', 'dosha_fires', 'conjunction_within_orb',
+        'yoga_fires', 'dosha_fires', 'conjunction_within_orb',
         'panchaka_flag', 'bhadra_flag', 'eclipse_proximity_natal'
       )
     )
 `,
     size_sql: null,
-    // Floor updated after all-30-vargas expansion + argala-per-varga (2026-06-15):
-    // 30 vargas × 5 ayanamshas; argala/virodha 144×30 per ayanamsha; floor = achieved count for 482012f1.
-    // Corrected to 74644 conservative per migration 309 (BUG-1 fix); exact floor pending prod re-run.
+    // Floor: 74644 conservative (pending prod re-run with corrected count_sql post-migration-309).
+    // Pre-enrichment scope: 87169 included ~10,610 rows from other assets (BUG-1).
+    // Exact floor to be confirmed after post-merge orchestrator build.
     target_floor: 74644,
-    expected_volume_formula: null, // non-parametric — target_floor = 74644 (conservative; pending migration-309 prod re-run)
+    expected_volume_formula: null, // non-parametric — exact floor pending prod re-run (migration 309 BUG-1 fix)
     expected_volume_inputs: null,
     volume_explanation: 'GA8 T1 structural facts across the chart_facts category families — partitions chart_facts together with the strength/sensitive/sade_sati/panchanga tiles.',
     depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
@@ -856,6 +874,111 @@ const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).',
     depends_on: ['bg_nakshatra', 'ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
+  // ── GA SATELLITE ASSETS (built by L1 writers; registered via migrations 240/252/280/287/291)
+  // These 5 assets were absent from the seed (seed-DB divergence closed by L1 closure pass).
+  // DB values come from prior migrations; floor values are latest-confirmed per migration chain.
+  {
+    asset_id: 'ga_condition',
+    layer: 'ganita', sort_order: 29,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Graha-sthiti',
+    english_name: 'Planetary Condition Composite',
+    english_description: 'Unified dignity, avastha (baladi/jagradadi/deeptaadi/lajjitaadi/sayanadi), motion state, combustion, naisargika/tatkalika/panchadha friendship, graha yuddha, and a 0–1 condition score per graha per ayanamsha. Amendment 2 (L1 Enrichment v2.0) adds per-varga Baladi + Deeptadi avasthas to chart_facts.',
+    storage_type: 'postgres_table',
+    target_table: 'ga_condition_composite',
+    // Combined count: D1 composite rows (ga_condition_composite) + per-varga avastha rows (chart_facts).
+    // Amendment 2 added graha_avastha_*_per_varga rows; BUG-1 fix (migration 309) removed them
+    // from ga_structural count_sql so ga_condition is the sole counter of those rows.
+    count_sql: `(SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
+    size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
+    // target_floor: null pending post-enrichment prod build.
+    // Pre-enrichment D1-only floor was 45 (9 grahas × 5 ay). Post-Amendment-2, combined count
+    // expected ~6,795 (45 D1 + ~6,750 per-varga). Set after first prod build with enrichment.
+    target_floor: null,
+    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_inputs: null,
+    volume_explanation: 'D1 composite: 9 grahas × 5 ayanamshas = 45. Per-varga enrichment adds ~6,750 rows (5 avastha categories × 9 grahas × 30 vargas × 5 ay). Total pending prod confirmation.',
+    depends_on: ['ga_positions', 'ga_vargas', 'ga_dashas'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+  {
+    asset_id: 'ga_yoga',
+    layer: 'ganita', sort_order: 30,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Yoga-nidhi',
+    english_name: 'Yoga Firings',
+    english_description: 'Per-chart yoga firing table: evaluates classical Nabhasa and other yoga formation rules against L1 chart_facts. Each row = one yoga that fired, with constituent fact ids, strength, and family tagging.',
+    storage_type: 'postgres_table',
+    target_table: 'ga_yoga_firings',
+    count_sql: `SELECT COUNT(*) FROM ga_yoga_firings WHERE chart_id = $1::uuid`,
+    size_sql: `SELECT pg_total_relation_size('ga_yoga_firings')`,
+    // Floor = 5 (only Yuga Nabhasa fires for native chart 482012f1; confirmed by Phase 1 L1 closure audit).
+    // Migration 308 corrected from 50 (generic estimate) to 5.
+    target_floor: 5,
+    expected_volume_formula: 'YOGAS_IN_CATALOG × AYANAMSHAS_COUNT',
+    expected_volume_inputs: null,
+    volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
+    depends_on: ['ga_structural', 'ga_dashas'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+  {
+    asset_id: 'ga_vastu',
+    layer: 'ganita', sort_order: 31,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Vastu-graha-dik-mapa',
+    english_name: 'Vastu Planet Direction Map',
+    english_description: 'Maps each classical graha to its ruling Vastu direction (per bg_vastu_directions) and computes direction_impact (weakened / neutral / strengthened) using condition_score from ga_condition_composite. Indication tier: traditional_vastu.',
+    storage_type: 'postgres_table',
+    target_table: 'ga_vastu_planet_direction_map',
+    count_sql: `SELECT COUNT(*) FROM ga_vastu_planet_direction_map WHERE chart_id = $1`,
+    size_sql: `SELECT pg_total_relation_size('ga_vastu_planet_direction_map')`,
+    // Floor = 40 (confirmed prod count, migration 294 corrected from 45; Ketu skipped — no classical direction).
+    target_floor: 40,
+    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_inputs: null,
+    volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
+    depends_on: ['ga_condition'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+  {
+    asset_id: 'ga_medical',
+    layer: 'ganita', sort_order: 32,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Vaidya-phala',
+    english_name: 'Medical / Ayurvedic Indications',
+    english_description: 'Per-chart Ayurvedic Jyotish indication summary: dosha aggravation, organ watch, body-part watch, and indication_strength derived from ga_condition condition_score joined with bg_medical_mappings. MEDICAL DISCLAIMER: indication_tier=jyotish_indication; not_diagnosis=TRUE.',
+    storage_type: 'postgres_table',
+    target_table: 'ga_medical',
+    count_sql: `SELECT COUNT(*) FROM ga_medical WHERE chart_id = $1`,
+    size_sql: null,
+    // Floor = 45 (9 grahas × 5 ayanamshas; confirmed prod count).
+    target_floor: 45,
+    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_inputs: null,
+    volume_explanation: '9 grahas × 5 ayanamshas = 45 indication rows per chart.',
+    depends_on: ['ga_condition', 'ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+  {
+    asset_id: 'ga_prashna',
+    layer: 'ganita', sort_order: 7,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Praśna-viveka',
+    english_name: 'Prashna Horary Judgment',
+    english_description: 'Per-prashna-chart horary judgment: Prashna-Lagna by each method, querent/quesited significators, Tajik Ithasala/Eesarpha analysis, and fructification timing. Only computed when a prashna chart exists for the chart_id; returns 0 rows for natal charts.',
+    storage_type: 'postgres_table',
+    target_table: 'ga_prashna_judgment',
+    count_sql: `(SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1) AS count`,
+    size_sql: null,
+    // Floor = 0 (natal charts return 0 horary rows by design; Phase 1 L1 audit confirmed).
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: '0 for natal charts (horary only). Actual prashna count depends on number of prashna charts submitted.',
+    depends_on: ['ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
