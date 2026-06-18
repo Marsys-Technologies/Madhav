@@ -166,8 +166,8 @@ def _load_yoga_families(conn: Any) -> dict[str, list[str]]:
             for (yoga_id, family_id) in cur.fetchall():
                 mapping.setdefault(yoga_id, []).append(family_id)
             return mapping
-    except Exception:
-        # Table may not exist yet — soft fail
+    except Exception as exc:
+        logger.warning("[ga_yoga] Family mapping load failed: %s", exc)
         return {}
 
 

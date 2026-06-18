@@ -1,0 +1,15 @@
+-- Migration 241: Guard A — idle_in_transaction_session_timeout for build role
+--
+-- Root cause of the Jun-17-2026 connection-exhaustion incident: an interrupted
+-- ga_sensitive build left multiple connections in "idle in transaction" state
+-- holding RowExclusiveLock on chart_facts and all 13 of its indexes indefinitely.
+--
+-- This guard auto-terminates any session that holds an open transaction without
+-- executing a query for more than 120 seconds. 120s is safely above the longest
+-- legitimate gap between consecutive SQL statements during any writer substep
+-- (individual INSERT gaps are sub-second; Python computation between rows is <1ms).
+-- It is short enough to release orphaned connections within 2 minutes of a crash.
+--
+-- Applied to the amjis_app role (the build/writer role used by the orchestrator
+-- and all ga_* standalone runners).
+ALTER ROLE amjis_app SET idle_in_transaction_session_timeout = '120s';

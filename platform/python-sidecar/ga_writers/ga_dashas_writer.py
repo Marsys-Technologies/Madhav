@@ -2554,7 +2554,7 @@ def build_ga_dashas(
                     total, "complete"
                 )
         except Exception as exc:
-            logger.debug("[ga_dashas] Final throughput update skipped: %s", exc)
+            logger.warning("[ga_dashas] Final throughput update skipped: %s", exc)
 
     failed = [k for k, v in summary["systems"].items() if v.get("status") == "FAIL"]
     summary["status"] = "FAIL" if failed else "PASS"

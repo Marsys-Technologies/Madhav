@@ -290,8 +290,8 @@ def _write_halt_log(gate_name: str, msg: str) -> None:
                     )
                 return
             p = p.parent
-    except Exception:
-        pass  # Best-effort — do not mask the original error
+    except Exception as exc:
+        logger.debug("[ga_panchanga] _write_halt_log failed (best-effort): %s", exc)
 
 
 # ── Row emitters — INVARIANT categories ─────────────────────────────────────
@@ -807,7 +807,8 @@ def _emit_inauspicious_window(pi: Any, window_name: str, subject: str,
         if getattr(et, "tzinfo", None) is None:
             et = et.replace(tzinfo=_tz.utc)
         duration_min = (et - st).total_seconds() / 60.0
-    except Exception:
+    except Exception as exc:
+        logger.warning("[ga_panchanga] Duration computation failed: %s", exc)
         duration_min = None
 
     rows += [
@@ -862,7 +863,8 @@ def _emit_auspicious_window(pi: Any, window_name: str, subject: str,
         if getattr(et, "tzinfo", None) is None:
             et = et.replace(tzinfo=_tz.utc)
         duration_min = (et - st).total_seconds() / 60.0
-    except Exception:
+    except Exception as exc:
+        logger.warning("[ga_panchanga] Duration computation failed: %s", exc)
         duration_min = None
 
     rows += [

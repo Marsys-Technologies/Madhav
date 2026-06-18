@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.79
+version: 5.80
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,36 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.80 (2026-06-18, L1-GANITA-CLOSURE-PASS-v2):
+    **L1 Gaṇita POST-ENRICHMENT RE-SEAL.** Autonomous 5-phase closure pass on branch
+    feature/l1-phase3-enrichment. All phases complete; prod-verify pending post-merge build.
+    Phase 1 (Integrity Audit): L1_INTEGRITY_FINDINGS_v1_0.md — 15 checks, 6 PASS, 6 WARN,
+    1 FAIL (FORENSIC lahiri_chitrapaksha — root-caused + resolved in e68206bf), 2 NEEDS-LIVE-DB.
+    Phase 2 (Fix): Migration 308 (ga_structural floor 87169 + ga_yoga floor 5); migration 309
+    (BUG-1 ga_structural count_sql scope inflation fixed; 5 satellite assets added to seed).
+    Bare-except fixes at 8 sites in ga_yoga/ga_structural/ga_panchanga/ga_dashas writers.
+    Guard A (migration 241) + Guard B (runner.py finally+rollback; asset_runner.py rollback) confirmed.
+    Seed: ga_structural floor 87169→74644 (conservative post-BUG-1; exact pending prod);
+    5 assets added (ga_condition, ga_yoga, ga_vastu, ga_medical, ga_prashna).
+    Phase 3 (Enrichment Verify-and-Fold): L1_ENRICHMENT_REGISTER_v1_0.md — Amendments 1+2+3
+    code-verified (per-varga Ashtakavarga + positional bala + Baladi/Deeptadi avasthas +
+    5 Tier-1 sensitive points); prod-verify SQL provided; FORENSIC 7/7 analysis complete.
+    Phase 4 (Cross-Asset Synergy): L1_SYNERGY_REGISTER_v1_0.md — 2 bugs (BUG-1 fixed),
+    4 gaps, 7 synergies, 2 architectural patterns.
+    Close: L1_GANITA_CLOSURE_v2_0.md emitted (supersedes v1.0); Vimarśaka IS.8(b) red-team
+    PASS (6 challenges, 0 blocking, 2 caveats documented); L1_GANITA_CLOSURE_v1_0.md marked
+    SUPERSEDED-BY-v2_0. Commits: b5843f5f, dd5f66cf, ccc69c30, 4f34c682 + closure commit.
+    Active campaign: L1 Gaṇita → next: merge branch, run post-merge prod verification,
+    set ga_structural + ga_condition exact floors (migration 310), then begin L2 Bodha.
+    Phase E (Abhinandan E2E) still GATED; L2 Bodha onboarding can begin independently.
+    branch: feature/l1-phase3-enrichment. last_session_id: L1-GANITA-CLOSURE-PASS-v2.
+    predecessor_session: L0-PRE-PR-FIXES.
+    next_session_objective: >
+      "Open PR feature/l1-phase3-enrichment → main. After merge: run orchestrator build for
+      chart 482012f1; complete §6 prod-verify checklist in L1_GANITA_CLOSURE_v2_0.md;
+      emit migration 310 with confirmed floors for ga_structural + ga_condition; then begin
+      L2 Bodha campaign per L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md."
+    file_updated_at: 2026-06-18. file_updated_by_session: L1-GANITA-CLOSURE-PASS-v2.
   - v5.79 (2026-06-17, L0-PRE-PR-FIXES):
     **L0 Brahmagyan PROD-VERIFIED SEALED.** Pre-PR fixes per CLAUDECODE_BRIEF_L0_PRE_PR_FIXES_v1_0.md:
     (STEP 1) Prod-verify gate PASS — all 7 checks confirmed on Cloud SQL prod; discovered migrations
