@@ -49,6 +49,29 @@ execution — never build against a number from any doc); only 482012f1; FORENSI
 
 ---
 
+## PART 0 — Q1 yoga_label/ga_yoga fork: INVESTIGATE FIRST (read-only), confirm, THEN build (native-ruled GATE)
+
+**Do this BEFORE any rebuild. It gates Part B's yoga ruling.** ga_structural is set to become the SOLE writer of
+`yoga_label` (a yoga firing = relational config = ga_structural's per the three-tier boundary). But ga_yoga ALSO
+writes yoga_label today, and L2 bo_samskara reads ga_yoga. Confirm the canonical-source decision on EVIDENCE, not
+the default:
+1. **Head-to-head (read-only):** query ga_structural's `yoga_label` (catalog-fired against the now-144-core
+   bg_yogas — audit showed ~409 rows) vs ga_yoga's `ga_yoga_firings` (5 rows; its evaluator has `return None`
+   stubs, lines 812-825). Compare: same yogas? does ga_structural's carry richer detail (real constituent
+   fact_ids, per-ayanamsha, citations)? does ga_yoga produce ANYTHING ga_structural does not (e.g. a firing
+   semantic ga_structural lacks)?
+2. **Confirm or override the default:** DEFAULT = ga_structural is canonical (richer, catalog-driven, single
+   relational source); ga_yoga becomes per-chart firing-DETAIL or is repointed (bo_samskara reads ga_structural's
+   yoga_label). PROCEED on the default ONLY IF the head-to-head confirms ga_structural is a superset / richer and
+   ga_yoga adds nothing unique. If ga_yoga HAS a unique semantic → HALT and flag for native (don't silently drop it).
+3. Same investigation for `aspect_tajik` (ga_structural vs ga_tajaka's 1,200 tajik_hadda_lord): confirm
+   ga_structural generates the tajik RELATIONSHIPS referencing ga_tajaka's VALUES; ga_tajaka isn't dropping a
+   relationship ga_structural won't regenerate.
+Output a short `GA_STRUCTURAL_YOGA_FORK_FINDING.md` with the head-to-head + the confirmed decision. THEN proceed
+to Part A–E. (This replaces the prior "apply default + flag" with "investigate → confirm → build" per native ruling.)
+
+---
+
 ## PART A — STOP COMPUTING VALUES (replace every inline value with a canonical reference)
 
 Audit `ga_structural_writer.py` for EVERY place it computes/derives a VALUE inline, and replace it with a

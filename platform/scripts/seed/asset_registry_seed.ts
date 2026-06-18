@@ -842,21 +842,29 @@ const ASSETS: AssetDef[] = [
         'composite_dispositor_strength', 'house_strength_classification_rollup',
         'pranic_strength_per_graha', 'chandra_bala_natal_baseline', 'tara_bala_natal_baseline',
         'yoga_fires', 'dosha_fires', 'conjunction_within_orb',
-        'panchaka_flag', 'bhadra_flag', 'eclipse_proximity_natal'
+        'panchaka_flag', 'bhadra_flag', 'eclipse_proximity_natal',
+        -- Phase-2 depth additions (GA_STRUCTURAL_MAXIMAL_DEPTH_SPEC v1.0, 2026-06-18)
+        'sambandha_grade', 'nakshatra_dispositor_chain', 'dispositor_tree',
+        'bhava_significance_link', 'karaka_bhava_concordance', 'net_argala',
+        'nway_configuration', 'chart_center_of_gravity', 'graha_centrality',
+        'dispositor_cycle', 'chart_cluster', 'varga_provenance_meta',
+        'convergence_count', 'contradiction_pair'
       )
     )
 `,
     size_sql: null,
-    // Floor: 74,034 measured on prod chart 482012f1 (2026-06-18, migration 310).
-    // Corrected count_sql (migration 309 BUG-1 fix) confirmed excluding:
+    // Floor: 77,821 measured on prod chart 482012f1 (2026-06-18, GA-STRUCTURAL-REMEDIATION session).
+    // Includes all Phase-2 depth categories (dual-path collapse + depth rebuild per brief
+    // GA_STRUCTURAL_REMEDIATION_v1_0.md). Parivartana false-positives eliminated (163 rows removed).
+    // count_sql excludes (migration 309 BUG-1 fix):
     //   - 2,835 graha_avastha_%_per_varga (ga_condition)
     //   - 9,690 bala per_varga (ga_strength)
     //   - 80 nakshatra_pada_sensitive (ga_sensitive)
-    target_floor: 74034,
-    expected_volume_formula: null, // non-parametric — floor 74,034 measured prod (migration 310, 2026-06-18)
+    target_floor: 77821,
+    expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'GA8 T1 structural facts — floor 74,034 measured on prod chart 482012f1 with corrected count_sql (migration 309 BUG-1 fix). Excludes ga_condition per-varga avasthas + ga_strength bala per_varga + ga_sensitive nakshatra_pada_sensitive rows.',
-    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas'],
+    volume_explanation: 'GA8 T1 structural facts — floor 77,821 post-Phase-2 rebuild (2026-06-18). All 14 depth categories active: sambandha_grade(180), nakshatra_dispositor_chain(45), dispositor_tree(50), bhava_significance_link(180), karaka_bhava_concordance(150), net_argala(60), nway_configuration(5), chart_center_of_gravity(10), graha_centrality(45), chart_cluster(45), convergence_count(105), contradiction_pair(1810), dispositor_cycle(0 — no cycles), varga_provenance_meta(0 — no issues).',
+    depends_on: ['ga_positions', 'ga_strength', 'ga_panchanga', 'ga_sensitive', 'ga_vargas', 'ga_dashas', 'ga_nakshatra'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 

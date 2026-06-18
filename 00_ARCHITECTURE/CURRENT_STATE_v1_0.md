@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.81
+version: 5.83
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,35 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.83 (2026-06-18, GA-STRUCTURAL-REMEDIATION):
+    **GA8 ga_structural REMEDIATED AND PROD-VERIFIED.** Executed all 5 steps of
+    CLAUDECODE_BRIEF_GA_STRUCTURAL_REMEDIATION_v1_0.md.
+    STEP 1: Dual-path collapsed — build_ga_structural rewritten as thin delegation wrapper
+    calling build_ga_structural_substep for each ayanamsha; single authoritative code path.
+    STEP 2: Phase-1 gaps closed — _build_shadbala_extension_rows + _build_anubindu_rows wired
+    to GA3 chart_facts via conn param (constituent_facts_array populated from live fact_ids);
+    _load_special_points extended to load sensitive_point_gulika_mandi + sun_derived_upagraha
+    in addition to upagraha_position. Pre-existing bug fixed: conjunction_within_orb verif
+    corrected from two_pass_verified → single (TestAspectRows::test_conjunction_verif_is_single;
+    176 tests pass post-fix).
+    STEP 3: Self-parivartana eliminated — guard `if lord1 == g1: continue` added in
+    _build_varga_relationship_rows; 163 false-positive rows removed (pre-remediation: 163;
+    post-remediation: 0).
+    STEP 4: Prod rebuild complete — 77,821 rows (5 ayanamshas); build_time ~148s; all 12
+    non-zero depth categories confirmed; 2 legitimately zero (dispositor_cycle, varga_provenance_meta);
+    Jupiter final-dispositor confirmed; sambandha JUP_RAH_MEAN=0.25 correct; net-argala H5/H8/H11
+    strong positive verified; self-parivartana=0 confirmed.
+    STEP 5: Docs updated — GA_STRUCTURAL_DEPTH_VERIFICATION_v1_0.md v1.1 PASS; asset_registry
+    target_floor 74034→77821 (measured post-remediation); CURRENT_STATE v5.83.
+    FLAG (native-decides-later): karaka_bhava_concordance uses CAREER/SPOUSE as fact_subject
+    identifiers — style note, not blocking; native decides rename-or-keep before L2 MSR authoring.
+    branch: chore/disable-brahma-conductor-schedule.
+    last_session_id: GA-STRUCTURAL-REMEDIATION. predecessor_session: FOUNDATION-SESSION-1.
+    next_session_objective: >
+      "ga_structural remediated and prod-verified (77,821 rows, all depth categories present).
+      Commit all remediation changes and open PR chore/disable-brahma-conductor-schedule → main.
+      After merge: begin L2 Bodha campaign per L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md."
+    file_updated_at: 2026-06-18. file_updated_by_session: GA-STRUCTURAL-REMEDIATION.
   - v5.82 (2026-06-18, FOUNDATION-SESSION-1):
     **Pre-L2 Foundation Close-Out COMPLETE.** Executed all 6 items of CLAUDECODE_BRIEF_FOUNDATION_SESSION_1.
     ITEM 1: Migrations 315–317 applied to prod (315 ga_prashna count_sql fix; 316 bg_nakshatra_medical ADD COLUMN
@@ -4586,7 +4615,9 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: FOUNDATION-SESSION-1  # 2026-06-18: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
+  last_session_id: GA-STRUCTURAL-REMEDIATION  # 2026-06-18: ga_structural remediated and prod-verified. Dual-path collapsed; all Phase-2 depth categories deployed (77,821 rows); parivartana false-positives eliminated; GA3 constituent refs wired; GA5 enrichment fully loaded. Predecessor FOUNDATION-SESSION-1.
+    # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
+    # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
     # L1-GANITA-REBASE-AND-PR: L1 Gaṇita PROD-SEALED. PR #299 merged (37ebd082); §6 prod-verify PASS; migration 310 (measured floors); L1_GANITA_CLOSURE_v2_0.md v2.1 VERIFIED. Predecessor L1-GANITA-CLOSURE-PASS-v2.
     # === Predecessor L1-GANITA-CLOSURE-PASS-v2 (2026-06-18) ===
