@@ -26,6 +26,9 @@ function deriveState(
   // (build_state_stale), never as 'building' or 'incomplete'.
   if (actualRows != null && actualRows > 0) return 'lit'
   // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
+  // 'lit' here means the writer ran and zero rows is correct by design (e.g. ga_prashna
+  // on a natal chart with no horary questions submitted).
+  if (throughputState === 'lit') return 'lit'
   if (throughputState === 'building') return 'building'
   if (throughputState === 'stale') return 'stale'
   return 'dormant'
@@ -112,7 +115,7 @@ async function fetchAssetStats(
     await client.query('BEGIN')
     await client.query("SET LOCAL statement_timeout = '2s'")
 
-    const countParams = /\$1/.test(asset.count_sql) && chartId ? [chartId] : []
+    const countParams = /\$1/.test(asset.count_sql) ? [chartId] : []
     const countResult = await client.query<{ count: string }>(asset.count_sql, countParams)
     const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
@@ -248,7 +251,10 @@ export async function GET(req: NextRequest) {
     const throughputMap = new Map<string, { state: string; last_built_at: string | null }>()
     if (chartId) {
       const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null }>(
-        `SELECT asset_id, state, last_built_at FROM asset_throughput WHERE chart_id = $1`,
+        `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at
+           FROM asset_throughput
+          WHERE chart_id = $1 OR chart_id IS NULL
+          ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST, last_built_at DESC NULLS LAST`,
         [chartId]
       )
       for (const r of tpRows) throughputMap.set(r.asset_id, r)

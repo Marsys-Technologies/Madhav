@@ -4,7 +4,7 @@ Tests for the Medical/Ayurvedic Subsystem Gate-1 — ga_medical writer and l0_me
 Covers:
   1.  Both writers (bg_medical_mappings, ga_medical) registered
   2.  ga_medical has_substeps = True
-  3.  bg_medical_mappings has 9 rows (all 9 classical grahas)
+  3.  bg_medical_mappings has 21 rows (9 classical grahas + 12 combination/dignity entries)
   4.  All medical mapping rows have non-empty classical_citation
   5.  Sun → pitta dosha
   6.  Saturn → vata dosha
@@ -77,10 +77,10 @@ def test_ga_medical_has_substeps():
 # ── 3. bg_medical_mappings has 9 rows ─────────────────────────────────────────
 
 def test_medical_mappings_nine_rows():
-    """MEDICAL_MAPPINGS must contain exactly 9 rows (one per classical graha)."""
+    """MEDICAL_MAPPINGS must contain 21 rows (9 classical grahas + 12 combination/dignity entries)."""
     mod = _l0()
-    assert len(mod.MEDICAL_MAPPINGS) == 9, (
-        f"Expected 9 medical mappings, got {len(mod.MEDICAL_MAPPINGS)}"
+    assert len(mod.MEDICAL_MAPPINGS) == 21, (
+        f"Expected 21 medical mappings, got {len(mod.MEDICAL_MAPPINGS)}"
     )
 
 

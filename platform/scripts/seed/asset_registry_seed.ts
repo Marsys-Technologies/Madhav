@@ -172,7 +172,7 @@ const ASSETS: AssetDef[] = [
     target_table: 'reference_nakshatras',
     count_sql: 'SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) + (SELECT count(*) FROM reference_yogas) + (SELECT count(*) FROM reference_doshas) + (SELECT count(*) FROM reference_dasha_systems) AS count',
     size_sql: "SELECT pg_total_relation_size('reference_nakshatras')",
-    target_floor: null,
+    target_floor: 1485,  // set after prod measurement 2026-06-18 (§N.4)
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sum of 15 reference_* tables (per design §3.2). Each table is normalized + typed; ontology resolves names, reference holds properties.',
@@ -206,7 +206,7 @@ const ASSETS: AssetDef[] = [
     target_table: 'brahma_ontology',
     count_sql: 'SELECT count(*) FROM brahma_ontology',
     size_sql: "SELECT pg_total_relation_size('brahma_ontology')",
-    target_floor: null,
+    target_floor: 623,  // set after prod measurement 2026-06-18 (§N.4)
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Static vocabulary — count established at seed; used by resolve_entity retrieval tool',
@@ -894,7 +894,7 @@ const ASSETS: AssetDef[] = [
     // Combined count: D1 composite rows (ga_condition_composite) + per-varga avastha rows (chart_facts).
     // Amendment 2 added graha_avastha_*_per_varga rows; BUG-1 fix (migration 309) removed them
     // from ga_structural count_sql so ga_condition is the sole counter of those rows.
-    count_sql: `(SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
+    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
     size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
     // Floor: 2,880 measured on prod chart 482012f1 (2026-06-18, migration 310).
     // Breakdown: 45 D1 composite (ga_condition_composite) + 2,835 per-varga avastha (chart_facts).
@@ -974,13 +974,33 @@ const ASSETS: AssetDef[] = [
     english_description: 'Per-prashna-chart horary judgment: Prashna-Lagna by each method, querent/quesited significators, Tajik Ithasala/Eesarpha analysis, and fructification timing. Only computed when a prashna chart exists for the chart_id; returns 0 rows for natal charts.',
     storage_type: 'postgres_table',
     target_table: 'ga_prashna_judgment',
-    count_sql: `(SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1) AS count`,
+    count_sql: `SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1`,
     size_sql: null,
     // Floor = 0 (natal charts return 0 horary rows by design; Phase 1 L1 audit confirmed).
     target_floor: 0,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '0 for natal charts (horary only). Actual prashna count depends on number of prashna charts submitted.',
+    depends_on: ['ga_positions'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
+  {
+    asset_id: 'ga_transit_anchors',
+    layer: 'ganita', sort_order: 33,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gochara-sthāna-ādhāra',
+    english_name: 'Transit Natal Anchors',
+    english_description: 'Natal position anchors for Gochara (transit) analysis: stores each graha\'s natal sign, natal degree absolute, and house-from-Moon for each ayanamsha. Gate-1 of the Transit/Gochara subsystem. 45 rows per chart (5 ayanamshas × 9 grahas).',
+    storage_type: 'postgres_table',
+    target_table: 'ga_transit_anchors',
+    count_sql: `SELECT COUNT(*) FROM ga_transit_anchors WHERE chart_id = $1`,
+    size_sql: null,
+    // Floor = 45 (9 grahas × 5 ayanamshas; confirmed writer spec ga_transit_anchors.py).
+    target_floor: 45,
+    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_inputs: null,
+    volume_explanation: '9 grahas × 5 ayanamshas = 45 anchor rows per chart.',
     depends_on: ['ga_positions'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1052,14 +1072,14 @@ const ASSETS: AssetDef[] = [
     english_description: 'Vertex AI 768-dim vector embeddings — one per MSR signal',
     storage_type: 'pgvector',
     target_table: 'bodha_signal_embeddings',
-    count_sql: 'SELECT count(*) FROM bodha_signal_embeddings WHERE chart_id = $1',
+    count_sql: 'SELECT count(*) FROM bodha_signal_embeddings',
     size_sql: "SELECT pg_total_relation_size('bodha_signal_embeddings')",
     target_floor: null,
     expected_volume_formula: 'ACTUAL(bo_laksana)',
     expected_volume_inputs: null,
     volume_explanation: 'One embedding per signal — exact 1:1 with Lakṣaṇa count',
     depends_on: ['bo_laksana'],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'bo_sangati',

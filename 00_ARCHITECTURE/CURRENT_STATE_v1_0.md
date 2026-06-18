@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.82 (2026-06-18, FOUNDATION-SESSION-1):
+    **Pre-L2 Foundation Close-Out COMPLETE.** Executed all 6 items of CLAUDECODE_BRIEF_FOUNDATION_SESSION_1.
+    ITEM 1: Migrations 315–317 applied to prod (315 ga_prashna count_sql fix; 316 bg_nakshatra_medical ADD COLUMN
+    dosha; 317 ga_pyjhora_engine reset stale error — bug in original migration fixed: `state=NULL` → `state='dormant'`
+    to avoid NOT NULL violation). All SHA256s in _migrations_applied ledger. ITEM 2: All 4 autonomy writers confirmed
+    REGENERABLE via behavioral test: bg_transit_rules(50), bg_medical_mappings(21+27), bg_dignity_reference(151),
+    bg_doshas(79). Bug found+fixed: l0_doshas/l0_yogas/l0_remedy_corpus/l0_rules all used integer-indexed `fetchone()[0]`
+    with psycopg3 dict_row factory — fixed to column-name access across all files. ITEM 3: bg_rules yield-sampling:
+    0 new rules from 300 un-mined chunks (genuine corpus ceiling); full mine confirmed 2,912 = ACHIEVED (ZERO LLM,
+    pure Python regex). ITEM 4: Catalog completeness — bg_yogas(175) ACCEPT as-built; bg_doshas(79) ACCEPT; bg_medical
+    "27×3 grid" PRESENT as 27-row compact-array (not separate rows per combo); ACCEPT as-built. ITEM 5: bg_remedies(266)
+    ACCEPT; bo_upaya dependency logged in OPEN_ITEMS GROUP E. ITEM 6: Final endpoint verification 2026-06-18T12:09:20Z —
+    ALL L0+L1 assets lit/service_ok, ZERO errors. CI 474 pass 21 skip (GREEN). Tests updated: YOGAS_CORE 81→144,
+    Sankhya 7→8, MEDICAL_MAPPINGS 9→21. New GROUP E in OPEN_ITEMS_REGISTER (E1 bg_remedies/bo_upaya, E2 bg_rules
+    ceiling, E3 bg_yogas discrepancy). Sealing artifact: 00_ARCHITECTURE/FOUNDATION_SESSION_1_CLOSE.md.
+    branch: chore/disable-brahma-conductor-schedule.
+    last_session_id: FOUNDATION-SESSION-1. predecessor_session: L1-GANITA-REBASE-AND-PR.
+    next_session_objective: >
+      "Foundation Session 1 COMPLETE. PR chore/disable-brahma-conductor-schedule → main with all foundation
+      completion changes. Session 2: author + run ga_structural Option-C relational-hub rebuild per
+      STAGED_CLAUDECODE_BRIEF_FOUNDATION_SESSION_2_GA_STRUCTURAL.md. Resolve Q1 (yoga_label/ga_yoga canonical-source
+      fork) before ga_structural rebuild. After Session 2: open L2 Bodha campaign."
+    file_updated_at: 2026-06-18. file_updated_by_session: FOUNDATION-SESSION-1.
   - v5.81 (2026-06-18, L1-GANITA-REBASE-AND-PR):
     **L1 Gaṇita PROD-SEALED (§6 VERIFIED).** Executed CLAUDECODE_BRIEF_L1_REBASE_AND_PR_v1_0.md
     all 5 steps in single session. STEP 1: Rebased feature/l1-phase3-enrichment on main; resolved
@@ -4563,7 +4586,9 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: L1-GANITA-REBASE-AND-PR  # 2026-06-18: L1 Gaṇita PROD-SEALED. PR #299 merged (37ebd082); §6 prod-verify PASS; migration 310 (measured floors); L1_GANITA_CLOSURE_v2_0.md v2.1 VERIFIED. Predecessor L1-GANITA-CLOSURE-PASS-v2.
+  last_session_id: FOUNDATION-SESSION-1  # 2026-06-18: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
+    # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
+    # L1-GANITA-REBASE-AND-PR: L1 Gaṇita PROD-SEALED. PR #299 merged (37ebd082); §6 prod-verify PASS; migration 310 (measured floors); L1_GANITA_CLOSURE_v2_0.md v2.1 VERIFIED. Predecessor L1-GANITA-CLOSURE-PASS-v2.
     # === Predecessor L1-GANITA-CLOSURE-PASS-v2 (2026-06-18) ===
     # L1-GANITA-CLOSURE-PASS-v2: L1 POST-ENRICHMENT RE-SEAL on branch feature/l1-phase3-enrichment. All 5 closure phases complete; L1_GANITA_CLOSURE_v2_0.md emitted (CONDITIONAL seal). Predecessor L0-PRE-PR-FIXES.
     # === Predecessor L0-PRE-PR-FIXES (2026-06-17) ===
@@ -5415,14 +5440,16 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    L1 Gaṇita fully prod-sealed (§6 VERIFIED, migration 310 applied, L1_GANITA_CLOSURE v2.1).
-    Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md + L2_BODHA_CLOSE_v1_0.md;
-    apply migration 230 (230_bodha_registry_reconcile.sql) to prod; activate Cloud SQL proxy at
-    127.0.0.1:5433; run orchestrator build scope=layer/bodha for chart 482012f1; verify 8 bo_*
-    assets lit in cockpit; update target_floors; declare L2 CLOSED; author L3_KALA_CAMPAIGN_HANDOFF.
-    Phase E (Abhinandan `1c826d5a` operator E2E) still GATED — independent of L2 start.
-    Monitoring obligation: ga_structural NOT IN exclusion list + ga_condition arithmetic count_sql
-    are enumeration-fragile — revisit after any future L1 enrichment.
+    Foundation Session 1 COMPLETE. Merge PR chore/disable-brahma-conductor-schedule → main (all
+    foundation completion changes: migrations 311-317, l0 dict_row fixes, expanded catalogs, new writers,
+    test updates). Session 2: author + run ga_structural Option-C relational-hub rebuild per
+    STAGED_CLAUDECODE_BRIEF_FOUNDATION_SESSION_2_GA_STRUCTURAL.md — first resolve Q1 (yoga_label/ga_yoga
+    canonical-source fork, head-to-head investigation needed before rebuild). After Session 2: open L2 Bodha
+    per L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md. Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    === Predecessor next_session_objective (L1-GANITA-REBASE-AND-PR, superseded) preserved for audit ===
+    L1 Gaṇita fully prod-sealed. Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md;
+    apply migration 230; run orchestrator build scope=layer/bodha for chart 482012f1; verify 8 bo_*
+    assets lit; update target_floors; declare L2 CLOSED; author L3_KALA_CAMPAIGN_HANDOFF.
     === Predecessor next_session_objective (L1-GANITA-CLOSURE-PASS-v2, superseded) preserved for audit ===
     Open PR feature/l1-phase3-enrichment → main. After merge: run orchestrator build for
     chart 482012f1; complete §6 prod-verify checklist in L1_GANITA_CLOSURE_v2_0.md;

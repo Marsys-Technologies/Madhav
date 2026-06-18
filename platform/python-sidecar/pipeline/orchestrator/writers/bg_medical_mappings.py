@@ -22,8 +22,16 @@ from brahmagyan.l0_medical import seed_medical_mappings
 logger = logging.getLogger(__name__)
 
 
+@register('bg_nakshatra_medical')  # sub-table seeded by this writer (see class docstring)
 @register('bg_medical_mappings')
 class BgMedicalMappingsWriter(WriterBase):
+    """
+    Seeds bg_medical_mappings (9 graha rows) AND bg_nakshatra_medical (27 nakshatra rows).
+
+    bg_nakshatra_medical is a sub-table of this writer's build scope — it has no
+    independent writer. The @register('bg_nakshatra_medical') decorator above ensures
+    the orchestrator marks that asset built when this writer runs successfully.
+    """
     asset_id = 'bg_medical_mappings'
     source_paths = ['platform/python-sidecar/brahmagyan/l0_medical.py']
 

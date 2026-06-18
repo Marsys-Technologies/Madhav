@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 BPHS_CITATION = "BPHS (Brihat Parasara Hora Sastra), classical tradition"
 BPHS_CH9 = "BPHS Ch.9 (Arishta-adhyaya)"
+BPHS_CH78 = "BPHS Ch.78 (Kuja Dosha / Vivaha Dosha adhyaya)"
 CLASSICAL_TRADITION = "classical tradition (Jyotish)"
 
 # ── Dosha corpus (50 entries, all inline) ─────────────────────────────────────
@@ -1103,9 +1104,791 @@ DOSHAS: list[dict] = [
         "classical_citations": [{"text_id": "bphs", "chapter": 9}],
         "source_citation": BPHS_CH9,
     },
+
+    # ── §2 — Kuja (Mangal) Dosha specific-house variants (BPHS Ch.78) ─────────
+    {
+        "canonical_id": "kuja_dosha_lagna_1st",
+        "name_sa": "Kuja Doṣa — Lagna-prathama",
+        "name_en": "Kuja Dosha (Mars in 1st from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 1,
+            "reference": "lagna",
+        },
+        "formation_text": "Mars in the 1st house from lagna — the mildest Kuja Dosha house placement.",
+        "effects_text": (
+            "Physical aggression, impulsive temperament; mild marriage affliction "
+            "compared to the 7th/8th placement."
+        ),
+        "severity_grades": {"mild": "1st house is the least severe Kuja position"},
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in Aries or Scorpio (own sign) in 1st",
+                "Jupiter aspects Mars",
+                "Benefic conjunction with Mars",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_lagna_4th",
+        "name_sa": "Kuja Doṣa — Lagna-caturtha",
+        "name_en": "Kuja Dosha (Mars in 4th from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 4,
+            "reference": "lagna",
+        },
+        "formation_text": "Mars in the 4th house from lagna — disrupts domestic happiness and property.",
+        "effects_text": (
+            "Domestic friction, property disputes, marital tension through home environment."
+        ),
+        "severity_grades": {"moderate": "4th house Mars — domestic and marital strain"},
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in Aries/Scorpio/Capricorn in 4th",
+                "Jupiter aspects Mars",
+                "Moon strong from 4th",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_lagna_7th",
+        "name_sa": "Kuja Doṣa — Lagna-saptama",
+        "name_en": "Kuja Dosha (Mars in 7th from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 7,
+            "reference": "lagna",
+        },
+        "formation_text": (
+            "Mars in the 7th from lagna — the classic kalatra-house placement; "
+            "severe marital affliction."
+        ),
+        "effects_text": (
+            "Severe marital strain; harm to spouse; divorce or conflict in partnership."
+        ),
+        "severity_grades": {
+            "severe": "7th house is the most direct marital-house Mars placement",
+        },
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in Capricorn (exaltation) in 7th",
+                "Both partners Manglik",
+                "Jupiter aspects 7th or 7th lord",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_lagna_8th",
+        "name_sa": "Kuja Doṣa — Lagna-ashtama",
+        "name_en": "Kuja Dosha (Mars in 8th from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 8,
+            "reference": "lagna",
+        },
+        "formation_text": "Mars in the 8th from lagna — longevity house; severe affliction.",
+        "effects_text": (
+            "Longevity of marriage threatened; potential widowhood/widowerhood in classical texts; "
+            "deep marital and health affliction."
+        ),
+        "severity_grades": {"severe": "8th is the most severe Kuja Dosha position"},
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in own/exaltation in 8th (Scorpio, Capricorn)",
+                "Jupiter aspects 8th lord",
+                "Benefic Jupiter in 8th",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_lagna_12th",
+        "name_sa": "Kuja Doṣa — Lagna-dvādaśa",
+        "name_en": "Kuja Dosha (Mars in 12th from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 12,
+            "reference": "lagna",
+        },
+        "formation_text": "Mars in the 12th from lagna — loss house; bedroom/expense affliction.",
+        "effects_text": (
+            "Loss of marital happiness through bedroom discord; health of spouse affected; "
+            "expenditure through conflict."
+        ),
+        "severity_grades": {"moderate": "12th house Kuja Dosha — bedroom and loss themes"},
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in Sagittarius/Pisces in 12th (friendly/own sign by some accounts)",
+                "Jupiter aspect on Mars",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_lagna_2nd",
+        "name_sa": "Kuja Doṣa — Lagna-dvitīya",
+        "name_en": "Kuja Dosha (Mars in 2nd from Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "house": 2,
+            "reference": "lagna",
+        },
+        "formation_text": (
+            "Mars in the 2nd from lagna — family/speech house; "
+            "admitted by some classical authorities as a Kuja Dosha house."
+        ),
+        "effects_text": (
+            "Harsh speech, family quarrels; financial disputes in marriage; "
+            "considered Kuja Dosha by Parashara (BPHS Ch.78) though debated."
+        ),
+        "severity_grades": {"mild": "2nd house — speech and family affliction"},
+        "cancellation_conditions": {
+            "bhanga": [
+                "Mars in own/exaltation in 2nd (Aries, Capricorn)",
+                "Jupiter aspects 2nd house",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+
+    # ── §3 — Kuja Dosha cancellation-condition variants ──────────────────────
+    {
+        "canonical_id": "kuja_dosha_bhanga_own_sign",
+        "name_sa": "Kuja Doṣa Bhaṅga (Svakṣetra)",
+        "name_en": "Kuja Dosha Bhanga (Mars in Own Sign)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "houses": [1, 2, 4, 7, 8, 12],
+            "reference": "lagna",
+            "cancellation_condition": "mars_in_own_sign_aries_or_scorpio",
+        },
+        "formation_text": (
+            "Mars in a Kuja Dosha house but in its own sign "
+            "(Aries or Scorpio) — Kuja Dosha is cancelled."
+        ),
+        "effects_text": (
+            "The dosha is neutralised; Mars in own sign in a Kuja house gives strength "
+            "without marital affliction."
+        ),
+        "severity_grades": {"none": "Bhanga — dosha negated"},
+        "cancellation_conditions": {"applies": "This entry is itself a cancellation record"},
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+    {
+        "canonical_id": "kuja_dosha_bhanga_exaltation",
+        "name_sa": "Kuja Doṣa Bhaṅga (Uccha)",
+        "name_en": "Kuja Dosha Bhanga (Mars Exalted)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "mars",
+            "houses": [1, 2, 4, 7, 8, 12],
+            "reference": "lagna",
+            "cancellation_condition": "mars_in_exaltation_capricorn",
+        },
+        "formation_text": "Mars in a Kuja Dosha house in Capricorn (exaltation) — Kuja Dosha cancelled.",
+        "effects_text": "Exalted Mars in a Kuja house gives power without the dosha.",
+        "severity_grades": {"none": "Bhanga — dosha negated"},
+        "cancellation_conditions": {"applies": "This entry records the exaltation bhanga rule"},
+        "classical_citations": [{"text_id": "bphs", "chapter": 78}],
+        "source_citation": BPHS_CH78,
+    },
+
+    # ── §4 — Grahan Dosha sub-types ──────────────────────────────────────────
+    {
+        "canonical_id": "surya_grahan_dosha",
+        "name_sa": "Sūrya Grahaṇa Doṣa",
+        "name_en": "Surya Grahan Dosha (Solar Eclipse Dosha)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "conjunction": ["sun", "rahu"],
+            "or": {"conjunction": ["sun", "ketu"]},
+        },
+        "formation_text": "Sun conjunct Rahu or Ketu — natal solar eclipse combination.",
+        "effects_text": (
+            "Affliction to vitality, father, authority; ego and identity themes; "
+            "ancestral karmic debt related to the father."
+        ),
+        "severity_grades": {
+            "mild": "wide orb (> 10°), benefic aspect",
+            "moderate": "moderate orb",
+            "severe": "close (< 5°) in dusthana or lagna",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects Sun", "Sun in own/exaltation"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "chandra_grahan_dosha",
+        "name_sa": "Candra Grahaṇa Doṣa",
+        "name_en": "Chandra Grahan Dosha (Lunar Eclipse Dosha)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "conjunction": ["moon", "rahu"],
+            "or": {"conjunction": ["moon", "ketu"]},
+        },
+        "formation_text": "Moon conjunct Rahu or Ketu — natal lunar eclipse combination.",
+        "effects_text": (
+            "Mental affliction, emotional instability, distorted perceptions; "
+            "mother-related karma; Rahu conjunct Moon is also called Chandal combination."
+        ),
+        "severity_grades": {
+            "mild": "wide orb, strong Moon",
+            "moderate": "Moon waning",
+            "severe": "close conjunction in 4th/12th with weak Moon",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects Moon", "benefic in kendra from Moon"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "lagna_lord_grahan_dosha",
+        "name_sa": "Lagneśa Grahaṇa Doṣa",
+        "name_en": "Lagna Lord Grahan Dosha",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "lagna_lord",
+            "conjunct_node": True,
+        },
+        "formation_text": "The lagna lord conjunct Rahu or Ketu — eclipse affliction to self and body.",
+        "effects_text": (
+            "Physical or identity affliction channelled through the eclipse of the self-significator; "
+            "health concerns, identity distortion."
+        ),
+        "severity_grades": {
+            "moderate": "default",
+            "severe": "in dusthana or lagna lord debilitated",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects lagna lord", "lagna lord in own/exaltation"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+
+    # ── §5 — Pitra Dosha sub-types ───────────────────────────────────────────
+    {
+        "canonical_id": "pitra_dosha_sun_rahu",
+        "name_sa": "Pitṛ Doṣa — Sūrya-Rāhu",
+        "name_en": "Pitra Dosha (Sun-Rahu conjunction)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {"conjunction": ["sun", "rahu"]},
+        "formation_text": "Sun conjunct Rahu — the primary Pitra Dosha indicator.",
+        "effects_text": (
+            "Ancestral karmic debt; father-related affliction; obstacles in dharmic path "
+            "until ancestral patterns are resolved."
+        ),
+        "severity_grades": {
+            "moderate": "wide conjunction",
+            "severe": "close conjunction (< 8°) in 1/5/9",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects Sun", "Sun strong in own/exalt"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "pitra_dosha_9th_lord_afflicted",
+        "name_sa": "Pitṛ Doṣa — Bhāgyeśa Pīḍita",
+        "name_en": "Pitra Dosha (9th Lord Afflicted)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "9th_lord",
+            "affliction": ["rahu", "ketu", "saturn"],
+            "mode": "conjunction_or_aspect",
+        },
+        "formation_text": "The 9th lord afflicted by Rahu, Ketu or Saturn through conjunction or aspect.",
+        "effects_text": (
+            "Ancestral karma affecting fortune; obstacles to dharma and father's blessings."
+        ),
+        "severity_grades": {
+            "moderate": "aspect affliction",
+            "severe": "conjunction with 9th lord debilitated",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects 9th house or its lord"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "pitra_dosha_sun_12th_malefic",
+        "name_sa": "Pitṛ Doṣa — Sūrya Dvādaśa",
+        "name_en": "Pitra Dosha (Sun in 12th with Malefic Aspect)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "sun",
+            "house": 12,
+            "malefic_aspect": True,
+        },
+        "formation_text": "Sun in the 12th house with malefic aspect — loss of paternal blessings.",
+        "effects_text": (
+            "Loss of father early or estrangement; ancestral debt; expenditure through paternal karma."
+        ),
+        "severity_grades": {
+            "moderate": "12th Sun with mild malefic",
+            "severe": "Sun debilitated in 12th with Saturn/Rahu aspect",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects 12th", "Sun exalted/own in 12th (Sagittarius for some lagnas)"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "pitra_dosha_sun_saturn_conjunction",
+        "name_sa": "Pitṛ Doṣa — Sūrya-Śani Yoga",
+        "name_en": "Pitra Dosha (Sun-Saturn Conjunction)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {"conjunction": ["sun", "saturn"]},
+        "formation_text": "Sun conjunct Saturn — father-enemy combination; ancestral karmic debt.",
+        "effects_text": (
+            "Father-related karma; separation from or conflict with father; "
+            "delayed or obstructed paternal blessings."
+        ),
+        "severity_grades": {
+            "moderate": "wide conjunction",
+            "severe": "close conjunction in 9th/12th",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects the conjunction", "one planet exalted"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+
+    # ── §6 — Naga Dosha / Sarpa Dosha variants ───────────────────────────────
+    {
+        "canonical_id": "naga_dosha_nodes_kendra",
+        "name_sa": "Nāga Doṣa (Kendra)",
+        "name_en": "Naga Dosha (Rahu/Ketu in Kendra)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "rahu_or_ketu",
+            "houses": [1, 4, 7, 10],
+        },
+        "formation_text": "Rahu or Ketu placed in the kendras (1st, 4th, 7th, 10th).",
+        "effects_text": (
+            "Serpent energy in foundational houses; karmic themes in self, home, "
+            "partnership or career. Specific effects depend on the house and the node."
+        ),
+        "severity_grades": {
+            "mild": "benefic association or aspect",
+            "moderate": "kendra nodes unafflicted",
+            "severe": "kendra nodes with malefic conjunction",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects the nodal house", "strong kendra lord"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "naga_dosha_rahu_lagna",
+        "name_sa": "Nāga Doṣa — Rāhu Lagna",
+        "name_en": "Naga Dosha (Rahu in Lagna)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {"planet": "rahu", "house": 1},
+        "formation_text": "Rahu in the 1st house (lagna) — serpent in self.",
+        "effects_text": (
+            "Identity and body affliction; obsessive personality; karmic patterns "
+            "playing out through the self; also can give worldly ambition and charisma."
+        ),
+        "severity_grades": {
+            "moderate": "Rahu in neutral sign in lagna",
+            "severe": "Rahu in enemy sign or with malefic",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects lagna", "Rahu in exaltation (Gemini/Taurus)"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "sarpa_yoga_dosha",
+        "name_sa": "Sarpa Yoga (Doṣa)",
+        "name_en": "Sarpa Yoga Dosha",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "malefics_in": "three_kendras",
+            "benefics_elsewhere": True,
+        },
+        "formation_text": (
+            "Three kendras occupied by malefics with benefics not in kendras "
+            "— the Nabhasa Sarpa yoga as a dosha."
+        ),
+        "effects_text": (
+            "Hardship, poverty, cruelty of disposition; weakened foundations of life."
+        ),
+        "severity_grades": {
+            "moderate": "two malefic kendras",
+            "severe": "three or four malefic kendras",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["strong benefic trines", "benefic aspect on all kendra malefics"]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 35}],
+        "source_citation": BPHS_CITATION,
+    },
+
+    # ── §7 — Additional classical doshas from BPHS / tradition ───────────────
+    {
+        "canonical_id": "chandal_yoga_dosha",
+        "name_sa": "Cāṇḍāla Yoga Doṣa (Candra)",
+        "name_en": "Chandal Yoga Dosha (Moon-Rahu)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {"conjunction": ["moon", "rahu"]},
+        "formation_text": "Moon conjunct Rahu — Chandal yoga; the intellect and emotions corrupted.",
+        "effects_text": (
+            "Mental distortions, deceptive tendencies, unconventional behaviour; "
+            "can also give extraordinary perceptive ability if strong."
+        ),
+        "severity_grades": {
+            "mild": "wide orb, strong Moon",
+            "severe": "close conjunction in 5th/9th/12th",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects Moon", "Moon in own/exaltation"]
+        },
+        "classical_citations": [{"text_id": "classical_tradition"}],
+        "source_citation": CLASSICAL_TRADITION,
+    },
+    {
+        "canonical_id": "graha_yuddha_dosha",
+        "name_sa": "Graha Yuddha Doṣa",
+        "name_en": "Graha Yuddha Dosha (Planetary War)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "requires": "two non-luminary planets within 1 degree of each other (excluding Sun/Moon/nodes)",
+        },
+        "formation_text": (
+            "Two planets (excluding Sun, Moon, and nodes) within 1° of each other — "
+            "planetary war (graha yuddha). The losing planet (lower declination) is weakened."
+        ),
+        "effects_text": (
+            "The losing planet's significations are damaged for the life; "
+            "both planets' significations are disturbed."
+        ),
+        "severity_grades": {
+            "mild": "within 1° but loser not debilitated",
+            "severe": "loser also combust or debilitated",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["loser planet in own or exaltation sign (then it may win)"]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "papa_kartari_lagna",
+        "name_sa": "Pāpa Kartari (Lagna)",
+        "name_en": "Papa Kartari Dosha (Lagna hemmed by malefics)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "malefics_in": ["2nd_from_lagna", "12th_from_lagna"],
+        },
+        "formation_text": (
+            "Malefics in both the 2nd and 12th from the lagna, hemming the ascendant "
+            "— papa-kartari on the lagna."
+        ),
+        "effects_text": (
+            "Body and vitality hemmed; obstacles to self-expression and health; "
+            "physical vulnerability."
+        ),
+        "severity_grades": {
+            "moderate": "one classical malefic each side",
+            "severe": "Sun/Saturn or Mars/Rahu hemming lagna",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["shubha kartari also present (benefics also flanking)", "lagna lord very strong"]
+        },
+        "classical_citations": [{"text_id": "phaladeepika"}],
+        "source_citation": "Phaladeepika by Mantresvara (classical tradition)",
+    },
+    {
+        "canonical_id": "papa_kartari_moon",
+        "name_sa": "Pāpa Kartari (Candra)",
+        "name_en": "Papa Kartari Dosha (Moon hemmed by malefics)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "malefics_in": ["2nd_from_moon", "12th_from_moon"],
+        },
+        "formation_text": "Malefics in the 2nd and 12th from the Moon, hemming the mind.",
+        "effects_text": (
+            "Mental hemming; anxiety, emotional suppression, psychological vulnerability; "
+            "reinforces kemadruma effects."
+        ),
+        "severity_grades": {
+            "moderate": "malefics flanking Moon",
+            "severe": "Moon also waning with no benefic aspect",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["benefic aspect on Moon", "Moon in own/exaltation"]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 9}],
+        "source_citation": BPHS_CH9,
+    },
+    {
+        "canonical_id": "badhaka_dosha",
+        "name_sa": "Bādhaka Doṣa",
+        "name_en": "Badhaka Dosha",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "badhaka_lord": "lord_of_badhaka_house_afflicting_lagna_or_lagna_lord",
+            "badhaka_house_by_lagna_type": {
+                "movable_lagna": "11th_house",
+                "fixed_lagna": "9th_house",
+                "dual_lagna": "7th_house",
+            },
+        },
+        "formation_text": (
+            "The Badhaka lord (11th for movable lagnas, 9th for fixed, 7th for dual) "
+            "afflicts the lagna or its lord."
+        ),
+        "effects_text": (
+            "Hidden obstacles, unexplained chronic difficulties, enemies from unexpected quarters; "
+            "effects are obstructive rather than directly harmful."
+        ),
+        "severity_grades": {
+            "mild": "badhaka lord weak or in friendly sign",
+            "severe": "badhaka lord strong in kendra/dusthana aspecting lagna",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["badhaka lord debilitated", "strong benefic on badhaka house"]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "karaka_dosha",
+        "name_sa": "Kāraka Doṣa",
+        "name_en": "Karaka Dosha (Karaka in its own house)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "requires": "natural significator (karaka) of a house placed in that house itself",
+            "example": "Jupiter in 5th (putrakaraka in putra-bhava)",
+        },
+        "formation_text": (
+            "A planet placed in the house it naturally signifies (e.g. Jupiter in 5th, "
+            "Venus in 7th) — Karaka Dosha."
+        ),
+        "effects_text": (
+            "Classical rule: karaka in its own bhava can damage the bhava's results "
+            "(karako bhava nashaya). The house's external manifestations (spouse, child) "
+            "may be hindered despite the significations being strong internally."
+        ),
+        "severity_grades": {
+            "mild": "karaka well-aspected or in own/exaltation",
+            "moderate": "default",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["strong bhava lord elsewhere", "additional benefic influence on house"]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "combust_dosha",
+        "name_sa": "Maudhya Doṣa (Āsta)",
+        "name_en": "Combust Dosha (Maudhya)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "requires": "planet within combustion orb of Sun (varies by planet)",
+            "orbs_degrees": {
+                "moon": 12,
+                "mars": 17,
+                "mercury": 14,
+                "mercury_retrograde": 12,
+                "jupiter": 11,
+                "venus": 10,
+                "venus_retrograde": 8,
+                "saturn": 15,
+            },
+        },
+        "formation_text": (
+            "A planet within its classical combustion orb of the Sun — Maudhya (burnt) state."
+        ),
+        "effects_text": (
+            "Planet's significations burnt out or suppressed; the ego (Sun) overwhelms the planet's "
+            "natural expression. House lordships of the combust planet are weakened."
+        ),
+        "severity_grades": {
+            "mild": "near combustion boundary",
+            "severe": "deep combustion (< 2°) in enemy sign",
+        },
+        "cancellation_conditions": {
+            "bhanga": [
+                "planet retrograde (especially Mercury/Venus — reduces combustion effect)",
+                "planet in own or exaltation sign despite combustion",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "dusthana_trikona_dosha",
+        "name_sa": "Dusthāna Tṛtīya Doṣa",
+        "name_en": "Dusthana Trikona Dosha (Malefic in trikona)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "malefic_in": "trikona_1_5_9",
+            "condition": "malefic_not_a_trikona_lord_itself",
+        },
+        "formation_text": (
+            "A natural malefic in a trikona (1/5/9) without being a trikona lord — "
+            "damages fortune, progeny or dharma."
+        ),
+        "effects_text": (
+            "Fortune and dharma afflicted; progeny issues if 5th afflicted; "
+            "paternal/guru karma if 9th affected."
+        ),
+        "severity_grades": {
+            "moderate": "one malefic in trikona",
+            "severe": "multiple malefics in trikonas",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["malefic is trikona lord (then yogakaraka)", "benefic aspect on trikona"]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 9}],
+        "source_citation": BPHS_CH9,
+    },
+    {
+        "canonical_id": "neecha_dosha",
+        "name_sa": "Nīca Doṣa (Debilitation)",
+        "name_en": "Neecha Dosha (Planet in Debilitation)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "planet": "any",
+            "dignity": "debilitated",
+            "condition": "no_neecha_bhanga",
+        },
+        "formation_text": "A planet in its debilitation sign without neecha-bhanga cancellation.",
+        "effects_text": (
+            "Planet functions at minimum strength; significations degraded; "
+            "house lordships weakened. Severity depends on which planet and house."
+        ),
+        "severity_grades": {
+            "mild": "debilitation in upachaya (3/6/10/11)",
+            "severe": "debilitation in kendra or trikona without bhanga",
+        },
+        "cancellation_conditions": {
+            "bhanga": [
+                "dispositor in kendra from lagna or Moon (neecha-bhanga)",
+                "exaltation lord of the debilitated sign in kendra",
+                "planet exalted in navamsa",
+                "mutual debilitation aspect",
+            ]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "gulika_dosha",
+        "name_sa": "Gulika Doṣa (Māndī)",
+        "name_en": "Gulika Dosha (Mandi)",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "requires": "Gulika (Mandi) — son of Saturn — in kendra or trikona or conjunct a planet",
+            "note": "Gulika calculated from Saturn's weekday portion of the day",
+        },
+        "formation_text": (
+            "Gulika (Mandi), a sub-planet / shadow point, in a kendra, trikona "
+            "or conjunct a major planet."
+        ),
+        "effects_text": (
+            "Poisoning influence on the house/planet it touches; chronic hidden affliction; "
+            "malefic contamination of the significations."
+        ),
+        "severity_grades": {
+            "moderate": "Gulika in neutral position",
+            "severe": "Gulika conjunct Moon or lagna lord",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["Jupiter aspects Gulika", "Gulika in its own sign or exaltation by some accounts"]
+        },
+        "classical_citations": [{"text_id": "bphs"}],
+        "source_citation": BPHS_CITATION,
+    },
+    {
+        "canonical_id": "trikona_dusthana_parivartana_dosha",
+        "name_sa": "Tṛkoṇa-Dusthāna Parivartana Doṣa",
+        "name_en": "Trikona-Dusthana Parivartana Dosha",
+        "category": "graha_placement",
+        "school": "parashari",
+        "formation_rule_jsonb": {
+            "requires": "sign_exchange_between_a_trikona_lord_and_a_dusthana_lord_6_8_12",
+        },
+        "formation_text": (
+            "The lord of a trikona (1/5/9) and the lord of a dusthana (6/8/12) exchange signs — "
+            "Dainya parivartana tainting fortune."
+        ),
+        "effects_text": (
+            "Fortune or dharma house contaminated by dusthana themes; "
+            "obstructed luck, health/debt/loss themes entering the trikona."
+        ),
+        "severity_grades": {
+            "moderate": "one trikona and one dusthana",
+            "severe": "involving the 9th and 8th lords",
+        },
+        "cancellation_conditions": {
+            "bhanga": ["strong benefic in the trikona house", "both lords strong despite exchange"]
+        },
+        "classical_citations": [{"text_id": "bphs", "chapter": 39}],
+        "source_citation": BPHS_CITATION,
+    },
 ]
 
-assert len(DOSHAS) == 50, f"Expected 50 doshas, got {len(DOSHAS)}"
+assert len(DOSHAS) == 79, f"Expected 79 doshas, got {len(DOSHAS)}"
 
 
 # ── Seed function ──────────────────────────────────────────────────────────────
@@ -1146,7 +1929,7 @@ def seed_doshas(
             "SELECT COUNT(*) FROM information_schema.tables "
             "WHERE table_schema='public' AND table_name='brahma_dosha_catalog'"
         )
-        if cur.fetchone()[0] == 0:
+        if cur.fetchone()['count'] == 0:
             raise RuntimeError(
                 "brahma_dosha_catalog table does not exist — cannot write bg_doshas. "
                 "Apply migration 176 first."
