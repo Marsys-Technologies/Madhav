@@ -3,6 +3,10 @@
 venv/
 .tools/
 .claude/
+!.claude/agents/
+!.claude/agents/**
+!.claude/skills/
+!.claude/skills/**
 .claire/
 node_modules/
 __pycache__/
