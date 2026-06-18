@@ -2,7 +2,8 @@
 artifact: L1_GANITA_CLOSURE_v1_0.md
 canonical_id: L1_GANITA_CLOSURE
 version: 1.0
-status: CURRENT
+status: SUPERSEDED-BY-v2_0
+superseded_by: L1_GANITA_CLOSURE_v2_0.md (2026-06-18 — post-enrichment re-seal)
 date_sealed: 2026-06-12
 seals:
   - L1-GANITA-CLOSURE-PASS (Phases A–D; Phase E pending operator E2E)
