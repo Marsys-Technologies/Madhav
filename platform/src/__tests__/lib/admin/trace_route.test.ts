@@ -37,7 +37,7 @@ describe('GET /api/admin/trace/[query_id]', () => {
   it('returns 403 for a client (non-super_admin) user', async () => {
     vi.mocked(getServerUserWithProfile).mockResolvedValue({
       user: { uid: 'user-1' } as never,
-      profile: { id: 'user-1', role: 'client', status: 'active' },
+      profile: { id: 'user-1', role: 'guest', status: 'active' },
     })
     const res = await GET(makeReq(), { params: Promise.resolve({ query_id: QUERY_ID }) })
     expect(res.status).toBe(403)

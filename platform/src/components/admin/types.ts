@@ -10,7 +10,7 @@ export interface AdminAccessRequest {
 
 export interface AdminUser {
   id: string
-  role: 'super_admin' | 'client'
+  role: 'super_admin' | 'guest'
   status: 'pending' | 'active' | 'disabled'
   name: string | null
   username: string | null

@@ -69,7 +69,7 @@ function setUser(uid: string) {
   mockGetServerUser.mockResolvedValue({ uid, email: `${uid}@test` })
 }
 
-function setProfile(role: 'super_admin' | 'guest' | 'client') {
+function setProfile(role: 'super_admin' | 'guest') {
   mockQuery.mockImplementationOnce(async () => ({
     rows: [{ id: 'x', role, name: null, username: null, email: null, status: 'active' }],
   }))
@@ -167,9 +167,9 @@ describe('Dashboard — role-gated roster (AC.1)', () => {
     expect(queryAllByTestId('chart-row')).toHaveLength(0)
   })
 
-  it('legacy "client" role is treated as guest (filtered SQL)', async () => {
+  it('guest role uses filtered SQL (owned + granted charts)', async () => {
     setUser(GUEST_UID)
-    setProfile('client')
+    setProfile('guest')
     setCharts([{ id: 'c1' }])
     setLayers([])
     setBuilds([])

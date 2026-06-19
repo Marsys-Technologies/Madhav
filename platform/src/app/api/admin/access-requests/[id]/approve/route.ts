@@ -7,7 +7,7 @@ import { res } from '@/lib/errors'
 
 interface ApproveBody {
   username?: string
-  role?: 'super_admin' | 'client'
+  role?: 'super_admin' | 'guest'
 }
 
 interface RequestRow {
@@ -36,7 +36,7 @@ export async function POST(
   const usernameError = validateUsername(username)
   if (usernameError) return res.badRequest(usernameError)
 
-  const role = body.role === 'super_admin' ? 'super_admin' : 'client'
+  const role = body.role === 'super_admin' ? 'super_admin' : 'guest'
 
   // 1. Load the request row.
   let reqRows: RequestRow[]
@@ -87,7 +87,7 @@ export async function POST(
   const uid = firebaseUser.uid
   try {
     await query(
-      'INSERT INTO profiles (id, role, status, name, username, email, approved_at, approved_by) VALUES ($1,\'client\',\'active\',$2,$3,$4,now(),$5) ON CONFLICT (id) DO NOTHING',
+      'INSERT INTO profiles (id, role, status, name, username, email, approved_at, approved_by) VALUES ($1,\'guest\',\'active\',$2,$3,$4,now(),$5) ON CONFLICT (id) DO NOTHING',
       [uid, req.full_name, username, req.email, auth.user.uid]
     )
     // Override role if super_admin was requested

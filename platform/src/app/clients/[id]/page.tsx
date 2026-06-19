@@ -32,7 +32,7 @@ export default async function ClientPage({
   const chart = chartResult.rows[0] ?? null
   if (!chart) redirect('/dashboard')
 
-  const role = access.role === 'super_admin' ? 'super_admin' : 'client'
+  const role = access.role === 'super_admin' ? 'super_admin' : 'guest'
   const canBuild = access.canBuild
 
   const [forensicChart, conversationsResult, layersResult, buildManifestResult] = await Promise.all([

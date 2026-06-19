@@ -22,9 +22,9 @@ export async function POST(request: Request) {
     return res.unauthenticated()
   }
 
-  let profile: { id: string; role: 'super_admin' | 'client'; status: 'pending' | 'active' | 'disabled' } | null
+  let profile: { id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled' } | null
   try {
-    const { rows: existing } = await query<{ id: string; role: 'super_admin' | 'client'; status: 'pending' | 'active' | 'disabled' }>(
+    const { rows: existing } = await query<{ id: string; role: 'super_admin' | 'guest'; status: 'pending' | 'active' | 'disabled' }>(
       'SELECT id, role, status FROM profiles WHERE id=$1',
       [decoded.uid]
     )
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const role =
       decoded.email && decoded.email === process.env.SUPER_ADMIN_EMAIL
         ? 'super_admin'
-        : 'client'
+        : 'guest'
     try {
       await query(
         'INSERT INTO profiles (id, role, status, name, email) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',

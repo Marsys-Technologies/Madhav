@@ -102,9 +102,9 @@ describe('AppShell', () => {
     expect(queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull()
   })
 
-  it('shows Jātakas nav link for all roles', () => {
+  it('shows Jātakas nav link for guest role', () => {
     const { getByRole } = render(
-      <AppShell user={BASE_USER} profile={{ role: 'client' }} />
+      <AppShell user={BASE_USER} profile={{ role: 'guest' }} />
     )
     expect(getByRole('link', { name: 'Jātakas' })).toBeTruthy()
   })
@@ -116,9 +116,9 @@ describe('AppShell', () => {
     expect(getByRole('link', { name: 'Cockpit' })).toBeTruthy()
   })
 
-  it('hides Cockpit link for client role', () => {
+  it('hides Cockpit link for guest role', () => {
     const { container } = render(
-      <AppShell user={BASE_USER} profile={{ role: 'client' }} />
+      <AppShell user={BASE_USER} profile={{ role: 'guest' }} />
     )
     const cockpitLink = container.querySelector('a[href="/cockpit"]')
     expect(cockpitLink).toBeNull()

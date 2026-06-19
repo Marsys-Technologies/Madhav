@@ -4,7 +4,7 @@ import type { ForensicChart } from '@/lib/forensic/snapshot'
 
 interface ProfileSideRailProps {
   chart: ForensicChart
-  role: 'super_admin' | 'client'
+  role: 'super_admin' | 'guest'
   freshnessAt: string | null
   audienceTier: string
   chartId: string

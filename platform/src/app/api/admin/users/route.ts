@@ -11,7 +11,7 @@ interface CreateBody {
   full_name?: string
   email?: string
   username?: string
-  role?: 'super_admin' | 'client'
+  role?: 'super_admin' | 'guest'
 }
 
 export async function GET() {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   const fullName = (body.full_name ?? '').trim()
   const email = (body.email ?? '').trim().toLowerCase()
   const username = (body.username ?? '').trim().toLowerCase()
-  const role = body.role === 'super_admin' ? 'super_admin' : 'client'
+  const role = body.role === 'super_admin' ? 'super_admin' : 'guest'
 
   if (!fullName || fullName.length > 100) {
     return res.badRequest('Full name is required.')

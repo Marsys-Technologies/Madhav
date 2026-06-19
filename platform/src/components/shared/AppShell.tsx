@@ -8,7 +8,7 @@ export type { BreadcrumbSegment }
 interface AppShellProps {
   children?: ReactNode
   user: { uid: string; email?: string; name?: string }
-  profile: { role: 'super_admin' | 'admin' | 'client'; status?: string }
+  profile: { role: 'super_admin' | 'admin' | 'guest'; status?: string }
   breadcrumb?: BreadcrumbSegment[]
 }
 

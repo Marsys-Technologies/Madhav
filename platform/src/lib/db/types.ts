@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'client'
+export type Role = 'super_admin' | 'guest'
 export type AccountStatus = 'pending' | 'active' | 'disabled'
 export type PyramidStatus = 'not_started' | 'in_progress' | 'complete'
 export type ConversationModule = 'build' | 'consume'
