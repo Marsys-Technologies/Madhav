@@ -30,7 +30,7 @@ export default async function TimelineLayout({
   return (
     <AppShell
       user={user}
-      profile={{ role: (profile?.role as 'super_admin' | 'client') ?? 'client', status: 'active' }}
+      profile={{ role: (profile?.role as 'super_admin' | 'guest') ?? 'guest', status: 'active' }}
       breadcrumb={[
         { label: 'Roster', href: '/dashboard' },
         { label: chart.name ?? id, href: `/clients/${id}` },

@@ -39,13 +39,65 @@ const ASSET_BASE = {
   catalog_status: 'CURRENT' as const,
 }
 
+describe('LayerPanel — L0 BuildActionButton gate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('hides BuildActionButton for brahmagyan layer when not super_admin', () => {
+    mockUseUserRole.mockReturnValue({ role: 'guest', isSuperAdmin: false, loading: false })
+    render(
+      <LayerPanel
+        layer="brahmagyan"
+        assets={[ASSET_BASE]}
+        stats={new Map()}
+        chartId="chart-1"
+        activeRun={null}
+        onRunStarted={() => {}}
+      />
+    )
+    // BuildActionButton renders a button with text 'Build' or 'Rebuild' — should not be present
+    expect(screen.queryByText(/^(Build|Rebuild)$/)).toBeNull()
+  })
+
+  it('shows BuildActionButton for brahmagyan layer when super_admin', () => {
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+    render(
+      <LayerPanel
+        layer="brahmagyan"
+        assets={[ASSET_BASE]}
+        stats={new Map()}
+        chartId="chart-1"
+        activeRun={null}
+        onRunStarted={() => {}}
+      />
+    )
+    expect(screen.getByText(/^(Build|Rebuild)$/)).toBeTruthy()
+  })
+
+  it('shows BuildActionButton for non-brahmagyan layer regardless of role', () => {
+    mockUseUserRole.mockReturnValue({ role: 'guest', isSuperAdmin: false, loading: false })
+    render(
+      <LayerPanel
+        layer="ganita"
+        assets={[{ ...ASSET_BASE, asset_id: 'ga_positions', layer: 'ganita', scope: 'per_chart' }]}
+        stats={new Map()}
+        chartId="chart-1"
+        activeRun={null}
+        onRunStarted={() => {}}
+      />
+    )
+    expect(screen.getByText(/^(Build|Rebuild)$/)).toBeTruthy()
+  })
+})
+
 describe('LayerPanel — L0 ClearIconButton gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('hides ClearIconButton for brahmagyan layer when not super_admin', () => {
-    mockUseUserRole.mockReturnValue({ role: 'client', isSuperAdmin: false, loading: false })
+    mockUseUserRole.mockReturnValue({ role: 'guest', isSuperAdmin: false, loading: false })
     render(
       <LayerPanel
         layer="brahmagyan"
@@ -77,7 +129,7 @@ describe('LayerPanel — L0 ClearIconButton gate', () => {
   })
 
   it('shows ClearIconButton for non-brahmagyan layer regardless of role', () => {
-    mockUseUserRole.mockReturnValue({ role: 'client', isSuperAdmin: false, loading: false })
+    mockUseUserRole.mockReturnValue({ role: 'guest', isSuperAdmin: false, loading: false })
     render(
       <LayerPanel
         layer="ganita"

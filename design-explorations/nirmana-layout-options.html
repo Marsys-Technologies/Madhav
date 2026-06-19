@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nirmāṇa — layout options</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+:root{
+  --black:#0A0806; --black-raised:#14110B; --black-line:#241D10;
+  --gold-engrave:#6E4E0F; --gold-core:#A87C2A; --gold-bright:#D2A23C; --gold-high:#ECC56A;
+  --on-dark:#F3EEE2; --on-dark-mut:#B9AE93; --on-dark-faint:#7C725B; --success-text:#8FD49B;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--black);color:var(--on-dark);font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:34px 28px 80px}
+.head{text-align:center;margin-bottom:6px}
+.head .eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-core)}
+.head h1{font-family:var(--display);font-variant:small-caps;font-weight:600;font-size:34px;color:var(--gold-high);letter-spacing:.04em;margin:4px 0}
+.head p{max-width:80ch;margin:8px auto 0;color:var(--on-dark-mut);font-size:13px;line-height:1.6}
+.divider{width:120px;height:1px;margin:22px auto;position:relative;background:linear-gradient(90deg,transparent,var(--gold-engrave),transparent)}
+.divider::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:var(--gold-high);transform:translate(-50%,-50%);box-shadow:0 0 6px var(--gold-high)}
+
+.opt{max-width:1120px;margin:0 auto 40px}
+.opt-cap{display:flex;align-items:baseline;gap:12px;margin-bottom:10px}
+.opt-cap .n{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-core)}
+.opt-cap h2{font-family:var(--display);font-variant:small-caps;font-weight:600;font-size:24px;color:var(--gold-high);letter-spacing:.03em}
+.opt-cap .tl{margin-left:auto;font-size:12px;color:var(--on-dark-faint)}
+.frame{height:420px;border:1px solid var(--black-line);border-radius:12px;background:#0c0a06;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.note{margin-top:8px;font-size:12px;color:var(--on-dark-mut);line-height:1.55}
+.note b{color:var(--success-text);font-weight:600}
+.note .con b{color:var(--gold-bright)}
+
+/* shared bits */
+.chev{color:var(--on-dark-mut);font-size:13px}
+.wordmark{font-family:var(--display);font-variant:small-caps;color:var(--gold-high);letter-spacing:.04em}
+.name{font-family:var(--display);font-variant:small-caps;color:var(--gold-high);letter-spacing:.03em}
+.sub{color:var(--on-dark-mut)}
+.chips{display:flex;gap:10px;font-family:var(--mono);font-size:10px;color:var(--on-dark-faint)}
+.chips b{color:var(--on-dark)}
+.lamp{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold-high);box-shadow:0 0 5px var(--gold-high);vertical-align:middle}
+.btn{font-family:var(--ui);font-size:11px;padding:5px 12px;border-radius:6px;background:linear-gradient(180deg,var(--gold-bright),var(--gold-core));color:#1a1206;font-weight:600}
+.icn{width:22px;height:22px;border-radius:5px;border:1px solid var(--black-line);display:inline-flex;align-items:center;justify-content:center;color:var(--on-dark-faint);font-size:12px}
+.layerrow{border:1px solid var(--black-line);border-radius:8px;background:var(--black-raised);padding:9px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.layerrow .sn{width:9px;height:9px;flex:0 0 9px}
+.layerrow .nm{font-family:var(--display);font-variant:small-caps;font-size:16px;color:var(--gold-high);line-height:1}
+.layerrow .en{font-size:10px;color:var(--on-dark-mut)}
+.layerrow .meta{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--on-dark-faint)}
+.scrollhint{position:absolute;right:6px;writing-mode:vertical-rl;font-size:9px;letter-spacing:.2em;color:var(--gold-core);opacity:.7}
+.fixedbadge{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--gold-core);border:1px solid var(--gold-engrave);border-radius:4px;padding:2px 7px;background:rgba(10,8,6,.7)}
+.leftcol{position:relative;overflow:hidden;padding:12px}
+.leftcol::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(180deg,transparent,#0c0a06)}
+.gpane{position:relative;background:radial-gradient(ellipse at 50% 50%,#100c08,#070503 70%)}
+
+/* mini orrery */
+.orrery{position:absolute;inset:0}
+.orrery svg{width:100%;height:100%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.orb-rot{transform-origin:center;animation:spin 40s linear infinite}
+</style>
+</head>
+<body>
+<div class="head">
+  <div class="eyebrow">Nirmāṇa · layout restructure</div>
+  <h1>Fixed Instrument, Scrolling Ledger</h1>
+  <p>Three ways to slim the top panel, drop the lone “Data assets” tab, and give the armillary a fixed, fully-visible pane while the layer list scrolls on its own. Same content, different vertical economy.</p>
+</div>
+<div class="divider"></div>
+
+<!-- ============ OPTION 1 ============ -->
+<div class="opt">
+  <div class="opt-cap"><span class="n">Option 1</span><h2>Slim Command Bar</h2><span class="tl">one ~52px bar · graph ≈ 42%</span></div>
+  <div class="frame">
+    <!-- slim top bar -->
+    <div style="height:52px;flex:0 0 52px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--black-line);background:var(--black-raised)">
+      <span class="chev">‹</span>
+      <span class="wordmark" style="font-size:18px">॥ Nirmāṇa ॥</span>
+      <span style="width:1px;height:20px;background:var(--black-line)"></span>
+      <span class="name" style="font-size:17px">Abhisek Mohanty</span>
+      <span class="sub" style="font-size:11px">05 Feb 1984 · 10:43 · Bhubaneswar</span>
+      <span class="chips" style="margin-left:auto"><span>W <b>56</b></span><span>Q <b>0</b></span><span>BUILD <span class="lamp"></span> <b style="color:var(--gold-high)">running</b></span><span>SIDECAR <b>OK</b></span></span>
+      <span class="btn">Rebuild</span><span class="icn">⟳</span><span class="icn">🗑</span>
+    </div>
+    <!-- body split -->
+    <div style="flex:1;display:flex;min-height:0">
+      <div class="leftcol" style="flex:0 0 58%;border-right:1px solid var(--black-line)">
+        <div class="scrollhint" style="top:14px">SCROLL ▾</div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#ECC56A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Brahma Jñāna</div><div class="en">Foundation</div></div><div class="meta">22 · 855,059 rows</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#D2A23C" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Gaṇita</div><div class="en">Chart facts</div></div><div class="meta">17 · 674,533 rows</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#A87C2A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Bodha</div><div class="en">Chart intelligence</div></div><div class="meta">8 · — rows</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#8A5E12" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Kāla</div><div class="en">Temporal</div></div><div class="meta">4 · — rows</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#B98A2E" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Phala</div><div class="en">Prediction</div></div><div class="meta">5 · — rows</div></div>
+      </div>
+      <div class="gpane" style="flex:0 0 42%">
+        <div class="fixedbadge">FIXED · FULL HEIGHT</div>
+        <div class="orrery" id="orr1"></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">Most conservative. The whole header collapses to a single bar; the graph starts ~90px higher and the pane runs full height, fixed. <b>+ Familiar, low-risk</b> · <b>+ Everything stays on one bar</b> · <span class="con"><b>~</b> Bar is dense on a narrow window</span></div>
+</div>
+
+<!-- ============ OPTION 2 ============ -->
+<div class="opt">
+  <div class="opt-cap"><span class="n">Option 2</span><h2>Graph Hero · identity in the ledger</h2><span class="tl">no top bar · graph = full page height</span></div>
+  <div class="frame">
+    <div style="flex:1;display:flex;min-height:0">
+      <!-- left column carries identity + telemetry at its top, then scrolls -->
+      <div class="leftcol" style="flex:0 0 54%;border-right:1px solid var(--black-line)">
+        <div class="scrollhint" style="top:14px">SCROLL ▾</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span class="chev">‹</span>
+          <div style="flex:1">
+            <div class="name" style="font-size:19px">Abhisek Mohanty</div>
+            <div class="sub" style="font-size:11px">05 Feb 1984 · 10:43 · Bhubaneswar</div>
+          </div>
+          <span class="btn">Rebuild</span><span class="icn">⟳</span><span class="icn">🗑</span>
+        </div>
+        <div class="chips" style="padding:7px 2px;border-top:1px solid var(--black-line);border-bottom:1px solid var(--black-line);margin-bottom:10px"><span>WRITERS <b>56</b></span><span>QUEUE <b>0</b></span><span>BUILD <span class="lamp"></span> <b style="color:var(--gold-high)">running</b></span><span>SIDECAR <b>OK</b></span></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#ECC56A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Brahma Jñāna</div><div class="en">Foundation</div></div><div class="meta">22 · 855,059</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#D2A23C" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Gaṇita</div><div class="en">Chart facts</div></div><div class="meta">17 · 674,533</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#A87C2A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Bodha</div><div class="en">Chart intelligence</div></div><div class="meta">8 · —</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#8A5E12" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Kāla</div><div class="en">Temporal</div></div><div class="meta">4 · —</div></div>
+      </div>
+      <div class="gpane" style="flex:0 0 46%">
+        <div class="fixedbadge">FIXED · FULL HEIGHT</div>
+        <div style="position:absolute;top:12px;left:14px" class="wordmark">॥ Nirmāṇa ॥</div>
+        <div class="orrery" id="orr2"></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">The chart identity + telemetry move to the top of the scrolling ledger (they scroll away as you read down). The graph then owns the <b>entire</b> page height — the tallest, most immersive orrery. <b>+ Maximum graph real-estate</b> · <b>+ Cleanest top edge</b> · <span class="con"><b>~</b> Identity/actions scroll out of view (mitigate: keep the bar pinned)</span></div>
+</div>
+
+<!-- ============ OPTION 3 ============ -->
+<div class="opt">
+  <div class="opt-cap"><span class="n">Option 3</span><h2>Wide Instrument · gauges</h2><span class="tl">slim bar · graph = 50%</span></div>
+  <div class="frame">
+    <div style="height:46px;flex:0 0 46px;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid var(--black-line);background:var(--black-raised)">
+      <span class="chev">‹</span>
+      <span class="name" style="font-size:17px">Abhisek Mohanty</span>
+      <span class="sub" style="font-size:10px">05 Feb 1984 · Bhubaneswar</span>
+      <span style="margin-left:auto;display:flex;gap:14px;align-items:center">
+        <span style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--on-dark-faint)"><div style="color:var(--on-dark);font-size:13px">56</div>WRITERS</span>
+        <span style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--on-dark-faint)"><div style="color:var(--on-dark);font-size:13px">0</div>QUEUE</span>
+        <span style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--on-dark-faint)"><div style="color:var(--gold-high);font-size:13px"><span class="lamp"></span> run</div>BUILD</span>
+        <span class="btn">Rebuild</span><span class="icn">⟳</span><span class="icn">🗑</span>
+      </span>
+    </div>
+    <div style="flex:1;display:flex;min-height:0">
+      <div class="leftcol" style="flex:0 0 50%;border-right:1px solid var(--black-line)">
+        <div class="scrollhint" style="top:14px">SCROLL ▾</div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#ECC56A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Brahma Jñāna</div><div class="en">Foundation</div></div><div class="meta">22 · 855,059</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#D2A23C" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Gaṇita</div><div class="en">Chart facts</div></div><div class="meta">17 · 674,533</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#A87C2A" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Bodha</div><div class="en">Chart intelligence</div></div><div class="meta">8 · —</div></div>
+        <div class="layerrow"><svg class="sn" viewBox="0 0 12 12" fill="none" stroke="#8A5E12" stroke-width="1"><path d="M6 .5 7.2 4.8 11.5 6 7.2 7.2 6 11.5 4.8 7.2 .5 6 4.8 4.8Z"/></svg><div><div class="nm">Kāla</div><div class="en">Temporal</div></div><div class="meta">4 · —</div></div>
+      </div>
+      <div class="gpane" style="flex:0 0 50%">
+        <div class="fixedbadge">FIXED · FULL HEIGHT</div>
+        <div class="orrery" id="orr3"></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">Slim bar with telemetry rendered as little gauges, and the graph widened to 50% so the orrery reads bigger. <b>+ Graph feels like the centerpiece</b> · <b>+ Telemetry reads instrument-like</b> · <span class="con"><b>~</b> Less width for the asset rows</span></div>
+</div>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+function orrery(id){
+  const host=document.getElementById(id); if(!host) return;
+  const svg=document.createElementNS(NS,"svg"); svg.setAttribute("viewBox","0 0 400 400");
+  svg.innerHTML=`
+    <defs>
+      <radialGradient id="sun_${id}" cx="36%" cy="30%" r="80%"><stop offset="0%" stop-color="#FFFCEF"/><stop offset="40%" stop-color="#F4D98A"/><stop offset="75%" stop-color="#D2A23C"/><stop offset="100%" stop-color="#5C3F12"/></radialGradient>
+      <radialGradient id="pl_${id}" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#F4E3B0"/><stop offset="45%" stop-color="#C49A3E"/><stop offset="100%" stop-color="#5C3F12"/></radialGradient>
+    </defs>
+    <g class="orb-rot" transform-origin="200 200">
+      <ellipse cx="200" cy="200" rx="70" ry="26" fill="none" stroke="rgba(196,154,62,.18)" transform="rotate(18 200 200)"/>
+      <ellipse cx="200" cy="200" rx="110" ry="40" fill="none" stroke="rgba(196,154,62,.15)" transform="rotate(-22 200 200)"/>
+      <ellipse cx="200" cy="200" rx="150" ry="55" fill="none" stroke="rgba(196,154,62,.12)" transform="rotate(40 200 200)"/>
+      <circle cx="268" cy="186" r="13" fill="url(#pl_${id})" stroke="#C49A3E"/>
+      <circle cx="120" cy="225" r="11" fill="url(#pl_${id})" stroke="#C49A3E"/>
+      <circle cx="225" cy="142" r="7" fill="none" stroke="rgba(107,78,24,.7)"/>
+      <circle cx="300" cy="250" r="6" fill="none" stroke="rgba(107,78,24,.7)"/>
+    </g>
+    <circle cx="200" cy="200" r="20" fill="url(#sun_${id})" stroke="#D2A23C"/>
+    <circle cx="193" cy="193" r="5" fill="rgba(255,255,255,.7)"/>`;
+  host.appendChild(svg);
+}
+orrery("orr1"); orrery("orr2"); orrery("orr3");
+</script>
+</body>
+</html>

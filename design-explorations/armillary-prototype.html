@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nirmāṇa — Armillary instrument (interactive prototype)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+:root{
+  --black:#0A0806; --black-raised:#14110B; --black-line:#241D10;
+  --gold-engrave:#6E4E0F; --gold-core:#A87C2A; --gold-bright:#D2A23C; --gold-high:#ECC56A;
+  --on-dark:#F3EEE2; --on-dark-mut:#B9AE93; --on-dark-faint:#7C725B;
+  --success-text:#8FD49B; --warning-text:#ECC56A;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--black);color:var(--on-dark);font-family:var(--ui);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px}
+.head{text-align:center;margin-bottom:6px}
+.head .eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-core)}
+.head h1{font-family:var(--display);font-variant:small-caps;font-weight:600;font-size:34px;
+  color:var(--gold-high);letter-spacing:.04em;margin:4px 0}
+.head p{max-width:74ch;color:var(--on-dark-mut);font-size:13px;line-height:1.6;margin:6px auto 0}
+
+.frame{width:760px;max-width:96vw;margin-top:18px;border:1px solid var(--black-line);border-radius:12px;
+  background:var(--black-raised);overflow:hidden}
+.bartop{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--black-line)}
+.bartop .ttl{font-family:var(--display);font-variant:small-caps;font-size:20px;color:var(--gold-high);letter-spacing:.03em}
+.controls{display:flex;gap:8px}
+.controls button{font-family:var(--ui);font-size:11.5px;letter-spacing:.04em;color:var(--on-dark-mut);
+  background:rgba(168,124,42,.08);border:1px solid rgba(168,124,42,.30);border-radius:6px;padding:6px 12px;cursor:pointer;
+  transition:all .15s}
+.controls button:hover{color:var(--gold-high);border-color:var(--gold-core);transform:translateY(-1px)}
+.controls button.on{background:rgba(168,124,42,.26);color:var(--gold-high);border-color:var(--gold-bright)}
+
+.stage{position:relative;height:520px;
+  background:radial-gradient(ellipse at 50% 52%, #100c08 0%, #070503 62%, #040302 100%);overflow:hidden}
+.stage svg{display:block;width:100%;height:100%}
+#sun{filter:drop-shadow(0 0 18px rgba(236,197,106,.5));animation:sunB 5s ease-in-out infinite}
+@keyframes sunB{0%,100%{filter:drop-shadow(0 0 16px rgba(236,197,106,.42))}50%{filter:drop-shadow(0 0 26px rgba(236,197,106,.62))}}
+.tip{position:absolute;pointer-events:none;background:rgba(14,11,6,.94);border:1px solid rgba(196,154,62,.34);
+  border-radius:6px;padding:7px 10px;font-size:11px;opacity:0;transition:opacity .12s;transform:translate(-50%,-120%);white-space:nowrap;z-index:5}
+.tip .sa{font-family:var(--display);font-variant:small-caps;font-size:15px;color:var(--gold-high);letter-spacing:.03em}
+.tip .id{font-family:var(--mono);font-size:9.5px;color:var(--on-dark-faint);margin-top:1px}
+.tip .st{font-family:var(--mono);font-size:9.5px;margin-top:3px}
+.legend{display:flex;gap:18px;justify-content:center;padding:12px;border-top:1px solid var(--black-line);
+  font-family:var(--mono);font-size:10.5px;color:var(--on-dark-faint);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.note{max-width:760px;margin:18px auto 0;color:var(--on-dark-faint);font-size:12px;line-height:1.6;text-align:center}
+@media (prefers-reduced-motion:reduce){#sun{animation:none}}
+</style>
+</head>
+<body>
+<div class="head">
+  <div class="eyebrow">Nirmāṇa · instrument pane · interactive prototype</div>
+  <h1>Armillary Instrument</h1>
+  <p>True 3-D projection, depth-sorted, idle-alive. Hover a bead to summon its dependency arcs (edges appear only in context, which is how this form stays legible). Toggle <em>Building</em> to preview ignition. Drag horizontally to rotate by hand.</p>
+</div>
+
+<div class="frame">
+  <div class="bartop">
+    <div class="ttl">Abhisek Mohanty · closure</div>
+    <div class="controls">
+      <button id="btnIdle" class="on">◷ Idle</button>
+      <button id="btnBuild">⚡ Building</button>
+      <button id="btnSpin" class="on">↻ Auto-rotate</button>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <svg id="svg" viewBox="0 0 760 520" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="nodeBead" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="#F4E3B0"/><stop offset="45%" stop-color="#C49A3E"/><stop offset="100%" stop-color="#5C3F12"/>
+        </radialGradient>
+        <radialGradient id="nodeBuild" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="#FFF3CE"/><stop offset="45%" stop-color="#E8C878"/><stop offset="100%" stop-color="#8A5E12"/>
+        </radialGradient>
+        <radialGradient id="rootSun" cx="36%" cy="30%" r="82%">
+          <stop offset="0%" stop-color="#FFFCEF"/><stop offset="34%" stop-color="#F4D98A"/>
+          <stop offset="70%" stop-color="#D2A23C"/><stop offset="100%" stop-color="#5C3F12"/>
+        </radialGradient>
+        <radialGradient id="atmo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#C49A3E" stop-opacity=".16"/><stop offset="100%" stop-color="#C49A3E" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <g id="dust"></g>
+      <g id="rings"></g>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </svg>
+    <div class="tip" id="tip"><div class="sa"></div><div class="id"></div><div class="st"></div></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:#C49A3E"></i> built / live</span>
+    <span><i style="background:#E8C878;box-shadow:0 0 6px #E8C878"></i> building</span>
+    <span><i style="background:none;border:1px solid rgba(107,78,24,.7)"></i> not built</span>
+    <span><i style="background:#A66C34"></i> out of sync</span>
+    <span style="color:var(--on-dark-faint)">6 rings = 6 layers · radius = depth from ROOT</span>
+  </div>
+</div>
+<p class="note">Representative data (real layers, ids, dependencies, mixed states). The production component reads the live asset registry through the same interface the current graph uses, so hover→row-highlight and click→scroll parity carry over.</p>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+const E=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+// ── Representative, real-shaped dataset ─────────────────────────────────────
+const LAYERS=["brahmagyan","ganita","bodha","kala","phala","mimamsa"];
+const LNAME={brahmagyan:"Brahma Jñāna",ganita:"Gaṇita",bodha:"Bodha",kala:"Kāla",phala:"Phala",mimamsa:"Mīmāṃsā"};
+const A=[]; // assets
+function add(id,sa,en,layer,type,dep,state){A.push({id,sa,en,layer,type,depends_on:dep||[],state:state||"lit"});}
+// L0 brahmagyan (incl 2 services)
+add("bg_ephemeris_engine","Druk Ephemeris","Ephemeris Engine","brahmagyan","service",[],"lit");
+add("bg_panchanga","Pañcāṅga Gaṇanā","Panchanga Engine","brahmagyan","service",[],"lit");
+add("bg_graha_sphuta","Graha-sphuṭa","Graha Sphuta","brahmagyan","data",["bg_ephemeris_engine"],"lit");
+add("bg_sarani","Sāraṇī","Reference Library","brahmagyan","data",[],"lit");
+add("bg_nakshatra","Nakṣatra","Nakshatra Table","brahmagyan","data",["bg_sarani"],"lit");
+add("bg_yoga","Yoga Kośa","Yoga Library","brahmagyan","data",["bg_sarani"],"lit");
+add("bg_dignity","Bala Kośa","Dignity Tables","brahmagyan","data",["bg_sarani"],"lit");
+add("bg_tajik","Tājika","Tajik Yogas","brahmagyan","data",["bg_sarani"],"stale");
+add("bg_vedha","Vedha","Vedha Table","brahmagyan","data",["bg_sarani"],"lit");
+// L1 ganita
+add("ga_chart_service","Kuṇḍalī Sevā","Chart Service","ganita","service",["bg_graha_sphuta"],"lit");
+add("ga_chart","Kuṇḍalī","Chart Facts","ganita","data",["ga_chart_service","bg_graha_sphuta"],"lit");
+add("ga_dashas","Daśā","Dasha Periods","ganita","data",["ga_chart"],"lit");
+add("ga_divisionals","Varga","Divisional Charts","ganita","data",["ga_chart"],"lit");
+add("ga_nakshatra","Nakṣatra Sthiti","Nakshatra State","ganita","data",["ga_chart","bg_nakshatra"],"lit");
+add("ga_sensitive","Sūkṣma Bindu","Sensitive Points","ganita","data",["ga_chart"],"lit");
+add("ga_strength","Bala","Strength Systems","ganita","data",["ga_chart","bg_dignity"],"lit");
+add("ga_prashna","Praśna","Horary","ganita","data",["ga_chart"],"stale");
+// L2 bodha
+add("bo_laksana","Lakṣaṇa","Signatures","bodha","data",["ga_chart","ga_strength"],"lit");
+add("bo_bimba","Bimba","Image","bodha","data",["bo_laksana"],"lit");
+add("bo_karanajala","Kāraṇajāla","Causal Web","bodha","data",["bo_laksana"],"lit");
+add("bo_sangati","Saṅgati","Coherence","bodha","data",["bo_laksana"],"building");
+add("bo_samvada","Saṃvāda","Dialogue","bodha","data",["bo_laksana"],"dormant");
+add("bo_samskara","Saṃskāra","Conditioning","bodha","data",["bo_laksana"],"dormant");
+add("bo_upaya","Upāya","Remedy","bodha","data",["bo_sangati","bo_samvada"],"dormant");
+add("bo_pramana_mapa","Pramāṇa Māpa","Confidence Map","bodha","data",["bo_upaya"],"dormant");
+// L3 kala
+add("ka_gochara","Gochara","Transits","kala","data",["ga_dashas"],"dormant");
+add("ka_vedha","Kāla Vedha","Temporal Vedha","kala","data",["ka_gochara"],"dormant");
+add("ka_sandhi","Sandhi","Junctures","kala","data",["ga_dashas"],"dormant");
+add("ka_ritu","Ṛtu","Seasonality","kala","data",["ka_gochara"],"dormant");
+// L4 phala
+add("ph_phala","Phala","Prediction","phala","data",["bo_pramana_mapa","ka_gochara"],"dormant");
+add("ph_yoga_phala","Yoga Phala","Yoga Results","phala","data",["bo_laksana"],"dormant");
+add("ph_dasha_phala","Daśā Phala","Period Results","phala","data",["ga_dashas","bo_laksana"],"dormant");
+add("ph_sankalita","Saṅkalita","Synthesis","phala","data",["ph_phala","ph_yoga_phala"],"dormant");
+add("ph_nimitta","Nimitta","Omens","phala","data",["ph_phala"],"dormant");
+// L5 mimamsa
+add("mi_pariksa","Parīkṣā","Calibration","mimamsa","data",["ph_sankalita"],"dormant");
+add("mi_pramana","Pramāṇa","Evidence","mimamsa","data",["mi_pariksa"],"dormant");
+add("mi_sodhana","Śodhana","Refinement","mimamsa","data",["mi_pramana"],"dormant");
+
+const byId=Object.fromEntries(A.map(a=>[a.id,a]));
+
+// ── 3-D math ────────────────────────────────────────────────────────────────
+function rotY(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:c*p.x+s*p.z,y:p.y,z:-s*p.x+c*p.z};}
+function rotX(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x,y:c*p.y-s*p.z,z:s*p.y+c*p.z};}
+function rotZ(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:c*p.x-s*p.y,y:s*p.x+c*p.y,z:p.z};}
+
+// per-layer ring radius + orientation (the armillary "cage")
+const RING={
+  brahmagyan:{R:70, tx:0.34, tz:0.0 },
+  ganita:    {R:104,tx:-0.42,tz:0.62},
+  bodha:     {R:138,tx:0.52, tz:-0.5},
+  kala:      {R:166,tx:-0.22,tz:1.02},
+  phala:     {R:192,tx:0.66, tz:0.34},
+  mimamsa:   {R:214,tx:0.12, tz:-0.92},
+};
+const BASE_R={ROOT:17,brahmagyan:7.5,ganita:6.8,bodha:6.6,kala:6.2,phala:6.4,mimamsa:7};
+const CAM_TILT=0.30, FOC=540, CX=380, CY=270;
+
+// place each asset at an angle on its layer ring
+const siblings={};
+LAYERS.forEach(L=>siblings[L]=A.filter(a=>a.layer===L));
+A.forEach(a=>{
+  const sib=siblings[a.layer];const i=sib.indexOf(a);
+  a._theta=(i/sib.length)*Math.PI*2 + LAYERS.indexOf(a.layer)*0.4;
+});
+// static (un-spun) world position on the ring plane
+function ringPoint(a,theta){
+  const r=RING[a.layer];
+  let p={x:Math.cos(theta)*r.R, y:Math.sin(theta)*r.R, z:0};
+  p=rotX(p,r.tx); p=rotZ(p,r.tz);
+  return p;
+}
+function project(p){
+  const s=FOC/(FOC - p.z);
+  return {x:CX+p.x*s, y:CY+p.y*s, s, z:p.z};
+}
+
+// ── DOM build ────────────────────────────────────────────────────────────────
+const gRings=document.getElementById("rings");
+const gEdges=document.getElementById("edges");
+const gNodes=document.getElementById("nodes");
+const gDust=document.getElementById("dust");
+const tip=document.getElementById("tip");
+const stage=document.getElementById("stage");
+
+// rings as sampled polylines
+const RSEG=80;
+const ringEls={};
+LAYERS.forEach(L=>{
+  const path=E("path",{fill:"none",stroke:"rgba(196,154,62,.18)","stroke-width":0.8});
+  gRings.appendChild(path); ringEls[L]=path;
+});
+
+// dust
+const dust=[];
+for(let i=0;i<34;i++){
+  const x=Math.random()*760,y=Math.random()*520,r=0.5+Math.random()*1.1;
+  const c=E("circle",{cx:x,cy:y,r,fill:"#6B4E18",opacity:0.25});
+  c.style.animation=`dustTw ${6+Math.random()*8}s ease-in-out ${Math.random()*4}s infinite`;
+  gDust.appendChild(c);dust.push(c);
+}
+const sheet=document.styleSheets[0];
+sheet.insertRule("@keyframes dustTw{0%,100%{opacity:.18}50%{opacity:.42}}",sheet.cssRules.length);
+
+// nodes
+const nodeEls={};
+function fillFor(st){return st==="dormant"||st==="not_migrated"?"none":st==="building"?"url(#nodeBuild)":"url(#nodeBead)";}
+function strokeFor(st){return st==="dormant"?"rgba(107,78,24,.7)":st==="stale"?"rgba(166,108,52,.8)":st==="building"?"#E8C878":"#C49A3E";}
+A.forEach(a=>{
+  const g=E("g",{cursor:"pointer"});
+  const atmo=E("circle",{r:1,fill:"url(#atmo)",class:"atmo"});
+  const halo=E("circle",{r:1,fill:"none",stroke:"none"});
+  const main=E("circle",{r:1,fill:fillFor(a.state),stroke:strokeFor(a.state),"stroke-width":1.4});
+  const spec=E("circle",{r:1,fill:"rgba(255,255,255,.5)",opacity:0});
+  const hit=E("circle",{r:1,fill:"transparent"});
+  g.append(atmo,halo,main,spec,hit);
+  g.addEventListener("pointerenter",()=>setHover(a.id));
+  g.addEventListener("pointerleave",()=>setHover(null));
+  g.addEventListener("click",()=>flash(a));
+  gNodes.appendChild(g);
+  nodeEls[a.id]={g,atmo,halo,main,spec,a};
+});
+// ROOT
+const rootG=E("g",{id:"sun"});
+const rootAtmo=E("circle",{cx:CX,cy:CY,r:54,fill:"url(#atmo)"});
+const rootMain=E("circle",{cx:CX,cy:CY,r:BASE_R.ROOT,fill:"url(#rootSun)",stroke:"#D2A23C","stroke-width":1.4});
+const rootSpec=E("circle",{cx:CX-6,cy:CY-6,r:4.5,fill:"rgba(255,255,255,.72)"});
+rootG.append(rootAtmo,rootMain,rootSpec);
+gNodes.appendChild(rootG);
+
+// ── interaction state ────────────────────────────────────────────────────────
+let hoveredId=null, upset=new Set(), downset=new Set();
+function closure(id){
+  upset=new Set();downset=new Set();
+  (function up(x){(byId[x].depends_on||[]).forEach(d=>{if(byId[d]&&!upset.has(d)){upset.add(d);up(d);}});})(id);
+  (function dn(x){A.forEach(a=>{if((a.depends_on||[]).includes(x)&&!downset.has(a.id)){downset.add(a.id);dn(a.id);}});})(id);
+}
+function setHover(id){
+  hoveredId=id;
+  if(id)closure(id); else {upset.clear();downset.clear();}
+  if(!id){tip.style.opacity=0;}
+  else{
+    const a=byId[id];
+    tip.querySelector(".sa").textContent=a.sa+"  ·  "+a.en;
+    tip.querySelector(".id").textContent=a.id;
+    const st=tip.querySelector(".st");
+    const col={lit:"var(--success-text)",building:"#E8C878",stale:"#D2A23C",dormant:"var(--on-dark-faint)"}[a.state]||"var(--on-dark-mut)";
+    st.textContent="● "+a.state+"  ·  "+LNAME[a.layer];st.style.color=col;
+    tip.style.opacity=1;
+  }
+}
+function flash(a){
+  const f=document.createElement("div");
+  f.textContent="→ scroll to row: "+a.sa+" ("+a.en+")";
+  f.style.cssText="position:fixed;left:50%;bottom:38px;transform:translateX(-50%);background:rgba(14,11,6,.95);border:1px solid var(--gold-core);color:var(--gold-high);font-family:var(--ui);font-size:12px;padding:8px 16px;border-radius:8px;z-index:9;opacity:0;transition:opacity .2s";
+  document.body.appendChild(f);requestAnimationFrame(()=>f.style.opacity=1);
+  setTimeout(()=>{f.style.opacity=0;setTimeout(()=>f.remove(),250);},1400);
+}
+
+// ── modes ────────────────────────────────────────────────────────────────────
+let mode="idle", autoSpin=true;
+const btnIdle=document.getElementById("btnIdle"),btnBuild=document.getElementById("btnBuild"),btnSpin=document.getElementById("btnSpin");
+const savedStates=Object.fromEntries(A.map(a=>[a.id,a.state]));
+btnIdle.onclick=()=>{mode="idle";btnIdle.classList.add("on");btnBuild.classList.remove("on");
+  A.forEach(a=>a.state=savedStates[a.id]);refreshStatics();igniteOrder=null;};
+btnBuild.onclick=()=>{mode="build";btnBuild.classList.add("on");btnIdle.classList.remove("on");startIgnition();};
+btnSpin.onclick=()=>{autoSpin=!autoSpin;btnSpin.classList.toggle("on",autoSpin);};
+
+// ignition: light beads outward from ROOT in topological waves
+let igniteOrder=null, igniteStart=0;
+function startIgnition(){
+  // BFS depth from roots
+  const depth={};A.forEach(a=>depth[a.id]=(a.depends_on&&a.depends_on.length)?99:0);
+  for(let k=0;k<8;k++)A.forEach(a=>{(a.depends_on||[]).forEach(d=>{if(byId[d])depth[a.id]=Math.min(depth[a.id],(depth[d]??0)+1);});});
+  igniteOrder=A.slice().sort((x,y)=>depth[x.id]-depth[y.id]);
+  igniteOrder.forEach(a=>a.state="dormant");refreshStatics();
+  igniteStart=performance.now();
+}
+function refreshStatics(){
+  A.forEach(a=>{const n=nodeEls[a.id];n.main.setAttribute("fill",fillFor(a.state));n.main.setAttribute("stroke",strokeFor(a.state));});
+}
+
+// ── drag to rotate ───────────────────────────────────────────────────────────
+let dragging=false,lastX=0,manualPhi=0;
+stage.addEventListener("pointerdown",e=>{dragging=true;lastX=e.clientX;});
+window.addEventListener("pointerup",()=>dragging=false);
+window.addEventListener("pointermove",e=>{if(dragging){manualPhi+=(e.clientX-lastX)*0.006;lastX=e.clientX;}});
+
+// ── render loop ──────────────────────────────────────────────────────────────
+const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+let phi=0,last=performance.now();
+function frame(now){
+  const dt=(now-last)/1000;last=now;
+  const spinRate=mode==="build"?0.16:0.07;
+  if(autoSpin&&!reduce)phi+=spinRate*dt;
+  const PHI=phi+manualPhi;
+
+  // ignition progression
+  if(mode==="build"&&igniteOrder){
+    const elapsed=(now-igniteStart)/1000;const perNode=0.22;
+    igniteOrder.forEach((a,i)=>{
+      const t=i*perNode;
+      if(elapsed>t+0.6) a.state="lit";
+      else if(elapsed>t) a.state="building";
+    });
+    refreshStatics();
+    if(igniteOrder.every(a=>a.state==="lit")&&elapsed>igniteOrder.length*perNode+2){startIgnition();} // loop
+  }
+
+  // rings
+  LAYERS.forEach(L=>{
+    let d="";
+    for(let i=0;i<=RSEG;i++){
+      const th=(i/RSEG)*Math.PI*2;
+      let p=ringPoint({layer:L},th);
+      p=rotY(p,PHI);p=rotX(p,CAM_TILT);
+      const pr=project(p);
+      d+=(i?"L":"M")+pr.x.toFixed(1)+" "+pr.y.toFixed(1)+" ";
+    }
+    const r=ringEls[L];r.setAttribute("d",d);
+    const active=mode==="build";
+    r.setAttribute("stroke",active?"rgba(232,200,120,.26)":"rgba(196,154,62,.16)");
+  });
+
+  // nodes: compute projected positions + depth
+  const order=[];
+  A.forEach(a=>{
+    let p=ringPoint(a,a._theta);
+    p=rotY(p,PHI);p=rotX(p,CAM_TILT);
+    const pr=project(p);a._pr=pr;order.push(a);
+  });
+  // ROOT depth = 0
+  // depth sort (far first)
+  order.sort((x,y)=>x._pr.z-y._pr.z);
+
+  // reorder DOM: dust(static) already first; we reorder node groups + inject root by z
+  const frag=document.createDocumentFragment();
+  let rootPlaced=false;
+  order.forEach(a=>{
+    if(!rootPlaced && a._pr.z>0){frag.appendChild(rootG);rootPlaced=true;}
+    frag.appendChild(nodeEls[a.id].g);
+  });
+  if(!rootPlaced)frag.appendChild(rootG);
+  gNodes.appendChild(frag);
+
+  // update each node visual
+  A.forEach(a=>{
+    const n=nodeEls[a.id],pr=a._pr;
+    const base=BASE_R[a.layer]||6;
+    const depthScale=pr.s; // perspective scale (front bigger)
+    const r=base*depthScale*(a.id===hoveredId?1.5:1);
+    const dim = hoveredId && a.id!==hoveredId && !upset.has(a.id) && !downset.has(a.id);
+    const fade = (pr.z<0?0.55:1); // behind ROOT plane → dimmer
+    const op=(a.state==="dormant"?0.62:1)*(dim?0.16:1)*fade;
+    n.main.setAttribute("cx",pr.x);n.main.setAttribute("cy",pr.y);n.main.setAttribute("r",r.toFixed(2));
+    n.main.setAttribute("opacity",op);
+    n.main.setAttribute("stroke-width",(1.3*depthScale).toFixed(2));
+    n.atmo.setAttribute("cx",pr.x);n.atmo.setAttribute("cy",pr.y);
+    n.atmo.setAttribute("r",(r*2.6).toFixed(2));
+    n.atmo.setAttribute("opacity",a.state==="dormant"?0:op*0.9);
+    // specular
+    const lit=a.state==="lit"||a.state==="building";
+    n.spec.setAttribute("cx",(pr.x-r*0.3));n.spec.setAttribute("cy",(pr.y-r*0.3));
+    n.spec.setAttribute("r",(r*0.26).toFixed(2));n.spec.setAttribute("opacity",lit?op*0.85:0);
+    n.g.querySelector("circle:last-child").setAttribute("cx",pr.x);
+    n.g.querySelector("circle:last-child").setAttribute("cy",pr.y);
+    n.g.querySelector("circle:last-child").setAttribute("r",(r+6).toFixed(2));
+    // building glow
+    n.main.setAttribute("filter",a.state==="building"?"drop-shadow(0 0 5px rgba(232,200,120,.9))":"");
+  });
+
+  // contextual edges (hover closure, or build active path)
+  while(gEdges.firstChild)gEdges.removeChild(gEdges.firstChild);
+  function edge(fromP,toP,col,w,flow){
+    const mx=(fromP.x+toP.x)/2,my=(fromP.y+toP.y)/2-26;
+    const path=E("path",{d:`M${fromP.x} ${fromP.y} Q ${mx} ${my} ${toP.x} ${toP.y}`,fill:"none",stroke:col,"stroke-width":w});
+    if(flow){path.setAttribute("stroke-dasharray","4 4");path.setAttribute("stroke-dashoffset",(-now/40)%8);}
+    gEdges.appendChild(path);
+  }
+  const rootP={x:CX,y:CY};
+  if(hoveredId){
+    const draw=(a)=>{
+      const deps=(a.depends_on&&a.depends_on.length)?a.depends_on:["ROOT"];
+      deps.forEach(d=>{const fp=d==="ROOT"?rootP:(byId[d]?byId[d]._pr:null);if(fp)edge(fp,a._pr,"rgba(236,197,106,.5)",1.1,false);});
+    };
+    const h=byId[hoveredId];draw(h);
+    upset.forEach(id=>draw(byId[id]));
+    downset.forEach(id=>{const a=byId[id];edge((a.depends_on.includes(hoveredId)?byId[hoveredId]._pr:rootP),a._pr,"rgba(196,154,62,.42)",0.9,false);});
+    // move tooltip
+    tip.style.left=h._pr.x+"px";tip.style.top=(h._pr.y-10)+"px";
+  }else if(mode==="build"){
+    A.forEach(a=>{if(a.state==="building"||a.state==="lit"){
+      const deps=(a.depends_on&&a.depends_on.length)?a.depends_on:["ROOT"];
+      deps.forEach(d=>{const fp=d==="ROOT"?rootP:(byId[d]?byId[d]._pr:null);
+        if(fp&&(byId[d]?["lit","building"].includes(byId[d].state):true))edge(fp,a._pr,"rgba(232,200,120,.32)",0.9,true);});
+    }});
+  }
+
+  // root breathing scale handled by CSS filter; keep position fixed
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

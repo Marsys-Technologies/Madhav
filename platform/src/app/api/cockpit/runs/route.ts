@@ -4,16 +4,23 @@ import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 
-async function requireSuperAdmin() {
+async function requireUser() {
   const user = await getServerUser()
   if (!user) return null
-  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
-  if (rows[0]?.role !== 'super_admin') return null
   return user
 }
 
+async function getUserRole(uid: string): Promise<string> {
+  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [uid])
+  return rows[0]?.role ?? 'guest'
+}
+
+interface RegistryEntryWithScope extends RegistryEntry {
+  scope: string
+}
+
 export async function POST(req: NextRequest) {
-  const user = await requireSuperAdmin()
+  const user = await requireUser()
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
@@ -28,6 +35,31 @@ export async function POST(req: NextRequest) {
     action: BuildAction
   }
 
+  const role = await getUserRole(user.uid)
+  const isSuperAdmin = role === 'super_admin'
+  const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']
+
+  // Authorization: non-super-admin cannot build L0 layer
+  if (!isSuperAdmin && scope === 'layer' && scope_target === 'brahmagyan') {
+    return NextResponse.json({ error: 'Only super_admin can build L0 Brahmagyan layer', code: 'FORBIDDEN_L0' }, { status: 403 })
+  }
+
+  // Authorization: global/L0 assets are singletons — scope='asset' on a global asset
+  // is invalid for everyone (L0 must be built at scope='global' or scope='layer'+'brahmagyan')
+  if (scope === 'asset' && scope_target) {
+    const { rows: assetRows } = await query<{ scope: string }>(
+      'SELECT scope FROM asset_registry WHERE asset_id=$1',
+      [scope_target]
+    )
+    if (assetRows[0]?.scope === 'global') {
+      if (!isSuperAdmin) {
+        return NextResponse.json({ error: 'Only super_admin can build global assets', code: 'FORBIDDEN_L0' }, { status: 403 })
+      }
+      // Even super_admin: global assets are singletons, must be built at scope='global'
+      return NextResponse.json({ error: 'Global assets must be built at scope=global, not scope=asset', code: 'FORBIDDEN_L0' }, { status: 403 })
+    }
+  }
+
   // 409 gate — block if an active run already exists for this chart
   const activeCheck = await query<{ id: string }>(
     `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
@@ -40,10 +72,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Resolve the plan
+  // Resolve the plan — filter registry by allowedScopes so non-super-admin plans
+  // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic)
   const [registryResult, throughputResult] = await Promise.all([
-    query<RegistryEntry>(
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
+    query<RegistryEntryWithScope>(
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds, scope
        FROM asset_registry ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
@@ -52,8 +85,11 @@ export async function POST(req: NextRequest) {
     ),
   ])
 
+  // Filter registry to allowed scopes — non-super-admin silently excludes L0/global assets
+  const allowedRegistry = registryResult.rows.filter(r => allowedScopes.includes(r.scope))
+
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const { plan } = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
+  const { plan } = resolveBuildPlan({ scope, scope_target, action, registry: allowedRegistry, throughput })
 
   if (plan.length === 0) {
     return NextResponse.json({ error: 'No assets to build for this scope/action combination' }, { status: 422 })
@@ -79,11 +115,24 @@ export async function POST(req: NextRequest) {
   )
   await Promise.all(assetInserts)
 
-  // Invoke Cloud Run Job — non-blocking; failure is non-fatal (watchdog will reap if needed)
+  // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
   try {
     await invokeRunJob(runId)
   } catch (err) {
-    console.warn('[api/cockpit/runs] invokeRunJob failed (non-fatal):', (err as Error).message)
+    const errMsg = (err as Error).message
+    console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)
+    await query(
+      `UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`,
+      [errMsg, runId]
+    )
+    await query(
+      `UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`,
+      [runId]
+    )
+    return NextResponse.json(
+      { error: 'Failed to dispatch build job', detail: errMsg, run_id: runId },
+      { status: 503 }
+    )
   }
 
   return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length } }, { status: 201 })

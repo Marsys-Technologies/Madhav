@@ -186,8 +186,8 @@ export function LayerPanel({
             </span>
           </div>
 
-          {/* Build/Rebuild — hidden when layer run active */}
-          {!layerRunId && (
+          {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
+          {!layerRunId && (isSuperAdmin || layer !== 'brahmagyan') && (
             <BuildActionButton
               chartId={chartId}
               scope="layer"

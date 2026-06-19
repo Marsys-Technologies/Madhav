@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.83
+version: 5.84
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,32 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.84 (2026-06-18, PRE-L2-TAKE-STOCK):
+    **Foundation prod-sealed. All 4 native cockpit observations resolved.**
+    PR #300 (ga_structural maximal-depth + F5/F1/F6 fixes) merged to main (SHA a6eaaaba) and deployed
+    to Cloud Run (revision confirmed). Phase-2 ga_structural rebuilt: 77,821 rows (5 ayanamshas, all
+    65 fact_category types, build_id 22fcef22). Migration 319 applied: ga_structural count_sql rewritten
+    as explicit 65-category IN list derived from authoritative build_id query — returns exactly 77,821.
+    Migration 318 (target_floor 77821) already applied by GA-STRUCTURAL-REMEDIATION session; logged here.
+    Four PRE_L2_TAKE_STOCK observations RESOLVED:
+      obs#1 ga_prashna red-dot → lit/0 (migration 315 + PR #300 deriveState fix) ✓
+      obs#2 ga_structural 73,942→77,821 (PR #300 + rebuild + migration 319) ✓
+      obs#3 bg_yogas ~81→175 (Foundation Session 1 rebuilt; 175=accepted floor) ✓
+      obs#4 same as #2 ✓
+    PRE_L2_TAKE_STOCK_v1_0.md status: CURRENT→RESOLVED.
+    Migrations log: 315-319 appended.
+    DB verification: ga_structural=77,821 ✓; ga_prashna=lit/0 ✓; bg_yogas=175 (accepted floor) ✓.
+    bg_yogas note: user instruction "bg_yogas=144" referred to YOGAS_CORE (CI assert subset=144);
+    total brahma_yoga_catalog=175 (144 properly-formed + 31 legacy entries) — NOT a bug; sealed in
+    Foundation Session 1 (FOUNDATION_SESSION_1_CLOSE.md §5 E3 note).
+    Foundation (L0 + L1 + ga_structural maximal-depth) is PROD-SEALED. Gate clear for L2 Bodha.
+    branch: chore/disable-brahma-conductor-schedule.
+    last_session_id: PRE-L2-TAKE-STOCK. predecessor_session: GA-STRUCTURAL-REMEDIATION.
+    next_session_objective: >
+      "Foundation prod-sealed. Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md,
+      confirm yoga_label/aspect_tajik fork defaults with native (PRE_L2_TAKE_STOCK §5), then
+      open bo_laksana first L2 build."
+    file_updated_at: 2026-06-18. file_updated_by_session: PRE-L2-TAKE-STOCK.
   - v5.83 (2026-06-18, GA-STRUCTURAL-REMEDIATION):
     **GA8 ga_structural REMEDIATED AND PROD-VERIFIED.** Executed all 5 steps of
     CLAUDECODE_BRIEF_GA_STRUCTURAL_REMEDIATION_v1_0.md.
@@ -5471,6 +5497,11 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    Foundation PROD-SEALED. All 4 PRE_L2_TAKE_STOCK observations resolved. ga_structural=77,821 confirmed
+    via migration 319. Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md; confirm
+    yoga_label/aspect_tajik fork defaults with native (PRE_L2_TAKE_STOCK §5); then open bo_laksana first
+    L2 build. Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    === Predecessor next_session_objective (FOUNDATION-SESSION-1, superseded) preserved for audit ===
     Foundation Session 1 COMPLETE. Merge PR chore/disable-brahma-conductor-schedule → main (all
     foundation completion changes: migrations 311-317, l0 dict_row fixes, expanded catalogs, new writers,
     test updates). Session 2: author + run ga_structural Option-C relational-hub rebuild per

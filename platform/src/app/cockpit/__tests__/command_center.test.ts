@@ -46,7 +46,7 @@ function authForbidden() {
   )
   mockGetServerUserWithProfile.mockResolvedValue({
     user: { uid: 'u', email: 'u@test' } as any,
-    profile: { id: 'u', role: 'client', status: 'active' } as const,
+    profile: { id: 'u', role: 'guest', status: 'active' } as const,
   })
 }
 

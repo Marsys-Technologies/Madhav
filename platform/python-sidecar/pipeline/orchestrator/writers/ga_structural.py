@@ -12,6 +12,7 @@ from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 class GaStructuralWriter(WriterBase):
     asset_id = 'ga_structural'
     has_substeps = True
+    depends_on = ['ga_condition', 'ga_nakshatra']
     source_paths = ['platform/python-sidecar/ga_writers/ga_structural_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:

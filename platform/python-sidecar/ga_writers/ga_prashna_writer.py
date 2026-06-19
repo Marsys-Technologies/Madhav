@@ -20,6 +20,25 @@ from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
+# Abbreviation-to-full-name map: chart_facts.fact_subject uses abbreviated tokens,
+# but bg_prashna_significators stores full planet names.  Normalize at source so all
+# downstream lookups (PLANET_DAILY_MOTION, PLANET_ORBS, querent_planet checks) work.
+_ABBREV_TO_FULL: dict[str, str] = {
+    "SUN":       "Sun",
+    "MOON":      "Moon",
+    "MAR":       "Mars",
+    "MER":       "Mercury",
+    "JUP":       "Jupiter",
+    "VEN":       "Venus",
+    "SAT":       "Saturn",
+    "RAH_MEAN":  "Rahu",
+    "KET_MEAN":  "Ketu",
+    "LAGNA":     "Lagna",
+    # Alternate Ascendant storage names
+    "ASC":       "Lagna",
+    "ASCENDANT": "Lagna",
+}
+
 # Canonical ayanamshas — MUST match ga_positions_writer.py CANONICAL_AYANAMSHAS exactly
 CANONICAL_AYANAMSHAS = [
     "lahiri_chitrapaksha",
@@ -112,19 +131,28 @@ def compute_prashna_judgment(
 
     question_class, lagna_method, kp_number, querent_direction, active_nostril = row
 
-    # Step 2: Get planetary positions from ga_positions
-    cur.execute(
-        "SELECT graha, longitude, retrograde FROM ga_positions "
-        "WHERE chart_id = %s AND ayanamsha_id = %s",
-        (chart_id, ayanamsha_id)
-    )
-    positions = {r[0]: {"longitude": r[1], "retrograde": r[2]} for r in cur.fetchall()}
+    # Step 2: Get planetary positions from chart_facts (graha_position rows)
+    cur.execute("""
+        SELECT fact_subject,
+               MAX(CASE WHEN fact_key = 'longitude_sidereal' THEN fact_value_num  END),
+               MAX(CASE WHEN fact_key = 'retrograde_flag'    THEN fact_value_text END)
+        FROM chart_facts
+        WHERE chart_id      = %s
+          AND ayanamsha_id  = %s
+          AND fact_category = 'graha_position'
+        GROUP BY fact_subject
+    """, (chart_id, ayanamsha_id))
+    positions = {
+        _ABBREV_TO_FULL.get(r[0], r[0]): {"longitude": float(r[1]), "retrograde": (r[2] == "retrograde")}
+        for r in cur.fetchall()
+        if r[1] is not None
+    }
 
     if not positions:
-        # Prashna chart exists but ga_positions not yet built — build ordering issue
+        # Prashna chart exists but chart_facts graha_position rows not yet built — build ordering issue
         logger.warning(
             "[ga_prashna_writer] chart_id=%s ayanamsha=%s: prashna chart exists "
-            "but ga_positions is empty — ensure ga_positions runs before ga_prashna",
+            "but chart_facts has no graha_position rows — ensure ga_positions runs before ga_prashna",
             chart_id, ayanamsha_id,
         )
         cur.close()

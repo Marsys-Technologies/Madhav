@@ -24,7 +24,7 @@ function ApproveForm({
   onApproved: () => void
 }) {
   const [username, setUsername] = useState('')
-  const [role, setRole] = useState<'client' | 'super_admin'>('client')
+  const [role, setRole] = useState<'guest' | 'super_admin'>('guest')
   const [submitting, setSubmitting] = useState(false)
   const [resetLink, setResetLink] = useState<string | null>(null)
 
@@ -93,10 +93,10 @@ function ApproveForm({
         <label className={adminLabel}>Role</label>
         <select
           value={role}
-          onChange={(e) => setRole(e.target.value as 'client' | 'super_admin')}
+          onChange={(e) => setRole(e.target.value as 'guest' | 'super_admin')}
           className={adminInput + ' mt-1.5'}
         >
-          <option value="client">client</option>
+          <option value="guest">guest</option>
           <option value="super_admin">super_admin</option>
         </select>
       </div>

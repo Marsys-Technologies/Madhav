@@ -62,7 +62,7 @@ export default async function ClientLayout({
     <ZoneRoot zone="ink">
       <AppShell
         user={access.user}
-        profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'client', status: 'active' }}
+        profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'guest', status: 'active' }}
         breadcrumb={[
           { label: 'Roster', href: '/dashboard' },
           { label: chart.name ?? id, href: `/clients/${id}`, current: true },

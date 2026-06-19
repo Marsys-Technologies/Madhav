@@ -6,7 +6,7 @@ import { query } from '@/lib/db/client'
 
 export interface ProfileAuth {
   id: string
-  role: 'super_admin' | 'client'
+  role: 'super_admin' | 'guest'
   status: 'pending' | 'active' | 'disabled'
 }
 

@@ -55,7 +55,7 @@ interface NavItem {
 
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
-  profile: { role: 'super_admin' | 'admin' | 'client'; status?: string }
+  profile: { role: 'super_admin' | 'admin' | 'guest'; status?: string }
 }
 
 // Aligned with components/nav/role-gates.NAV_ITEMS (single source of truth for

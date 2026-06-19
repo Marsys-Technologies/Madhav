@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nirmāṇa — alternative structures (exploration)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+
+:root{
+  --black:#0A0806; --black-deep:#000; --black-raised:#14110B; --black-line:#241D10;
+  --gold-engrave:#6E4E0F; --gold-deep:#8A5E12; --gold-core:#A87C2A;
+  --gold-bright:#D2A23C; --gold-high:#ECC56A;
+  --on-dark:#F3EEE2; --on-dark-mut:#B9AE93; --on-dark-faint:#7C725B;
+  --success-text:#8FD49B;
+  --display:"Cormorant Garamond",Georgia,serif;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--black); color:var(--on-dark);
+  font-family:var(--ui); -webkit-font-smoothing:antialiased;
+  padding:40px 32px 80px; min-height:100vh;
+}
+.page-head{text-align:center; margin-bottom:8px}
+.page-head .eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-core)}
+.page-head h1{font-family:var(--display);font-variant:small-caps;font-weight:600;
+  font-size:42px;color:var(--gold-high);letter-spacing:.04em;line-height:1.1;margin:6px 0}
+.page-head p{max-width:70ch;margin:10px auto 0;color:var(--on-dark-mut);font-size:14px;line-height:1.65}
+.divider{width:120px;height:1px;margin:28px auto;position:relative;
+  background:linear-gradient(90deg,transparent,var(--gold-engrave),transparent)}
+.divider::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;
+  border-radius:50%;background:var(--gold-high);transform:translate(-50%,-50%);box-shadow:0 0 6px var(--gold-high)}
+
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;max-width:1180px;margin:0 auto}
+.card{
+  background:var(--black-raised);border:1px solid var(--black-line);border-radius:12px;
+  overflow:hidden;display:flex;flex-direction:column;
+}
+.card.wide{grid-column:1 / -1}
+.stage{
+  position:relative;height:380px;
+  background:radial-gradient(ellipse at 50% 50%, #0e0b07 0%, #060503 70%, #040302 100%);
+  overflow:hidden;
+}
+.card.wide .stage{height:300px}
+.meta{padding:16px 20px 20px;border-top:1px solid var(--black-line)}
+.meta .tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-core);font-family:var(--mono)}
+.meta h3{font-family:var(--display);font-variant:small-caps;font-weight:600;font-size:24px;
+  color:var(--gold-high);letter-spacing:.03em;margin:4px 0 6px}
+.meta p{font-size:13px;line-height:1.6;color:var(--on-dark-mut)}
+.meta .pros{margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px}
+.meta .pros b{color:var(--success-text);font-weight:600}
+.meta .pros .con b{color:var(--gold-bright)}
+.label{position:absolute;font-family:var(--display);font-variant:small-caps;
+  letter-spacing:.04em;fill:var(--gold-high)}
+
+/* ════════ A · ARMILLARY SPHERE (CSS 3D) ════════ */
+.arm-scene{position:absolute;inset:0;display:grid;place-items:center;perspective:900px}
+.arm{width:230px;height:230px;position:relative;transform-style:preserve-3d;
+  animation:armSpin 34s linear infinite}
+@keyframes armSpin{to{transform:rotateY(360deg)}}
+.arm .ring{position:absolute;inset:0;border-radius:50%;transform-style:preserve-3d}
+.arm .ring i{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(212,166,72,.40)}
+.arm .ring-eq{transform:rotateX(78deg)}
+.arm .ring-eq i{border-color:rgba(236,197,106,.55)}
+.arm .ring-1{transform:rotateX(60deg) rotateY(0deg);width:180px;height:180px;inset:25px}
+.arm .ring-2{transform:rotateX(55deg) rotateY(60deg);width:200px;height:200px;inset:15px}
+.arm .ring-3{transform:rotateX(70deg) rotateY(120deg)}
+.arm .ring-mer{transform:rotateY(90deg)}
+.arm .ring-mer i{border-color:rgba(196,154,62,.35)}
+/* beads riding rings */
+.arm .bead{position:absolute;width:9px;height:9px;border-radius:50%;top:50%;left:0;
+  margin:-4.5px 0 0 -4.5px;
+  background:radial-gradient(circle at 35% 30%,#FFF8E0,#ECC56A 55%,#7A5618);
+  box-shadow:0 0 6px rgba(236,197,106,.6)}
+.arm .b2{left:100%}.arm .b3{left:50%;top:0}.arm .b4{left:50%;top:100%}
+.arm-sun{position:absolute;width:46px;height:46px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#FFFCEF 0%,#F4D98A 30%,#D4A648 60%,#5C3F12 100%);
+  box-shadow:0 0 26px 6px rgba(236,197,106,.45),0 0 60px 18px rgba(168,124,42,.25);
+  animation:sunBreathe 5s ease-in-out infinite}
+@keyframes sunBreathe{0%,100%{box-shadow:0 0 26px 6px rgba(236,197,106,.40),0 0 60px 18px rgba(168,124,42,.22)}
+  50%{box-shadow:0 0 32px 9px rgba(236,197,106,.58),0 0 74px 24px rgba(168,124,42,.32)}}
+
+/* ════════ B · NAKSHATRA DIAL / ASTROLABE ════════ */
+.dial-sweep{transform-origin:center;animation:sweep 12s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.twinkle{animation:tw 3.5s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ════════ C · ASCENSION COLUMN ════════ */
+.rise{animation:rise 4.5s ease-in-out infinite}
+@keyframes rise{0%{opacity:.15;transform:translateY(6px)}50%{opacity:.9}100%{opacity:.15;transform:translateY(-10px)}}
+.breathe{animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.85}50%{opacity:1}}
+
+/* ════════ D · CONSTELLATION ════════ */
+.star{animation:starTw 4s ease-in-out infinite}
+@keyframes starTw{0%,100%{opacity:.45}50%{opacity:1}}
+
+/* ════════ E · YANTRA MANDALA ════════ */
+.bloom{transform-origin:center;animation:bloom 6s ease-in-out infinite}
+@keyframes bloom{0%,100%{opacity:.55}50%{opacity:1}}
+.mandSpin{transform-origin:center;animation:mandSpin 60s linear infinite}
+@keyframes mandSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="page-head">
+  <div class="eyebrow">Nirmāṇa · build tracker</div>
+  <h1>Alternative Structures for the Instrument Pane</h1>
+  <p>Five replacements for the generic orbital sphere — each grounded in the MARSYS language (black ground, gold ramp, sacred geometry) and, where possible, in Jyotiṣa's own visual grammar. Live motion runs in this file; the notes call out what each buys and what it costs.</p>
+</div>
+<div class="divider"></div>
+
+<div class="grid">
+
+  <!-- A · ARMILLARY SPHERE -->
+  <div class="card">
+    <div class="stage">
+      <div class="arm-scene">
+        <div class="arm">
+          <div class="ring ring-eq"><i></i><span class="bead"></span><span class="bead b2"></span></div>
+          <div class="ring ring-1"><i></i><span class="bead b3"></span><span class="bead b4"></span></div>
+          <div class="ring ring-2"><i></i><span class="bead"></span></div>
+          <div class="ring ring-3"><i></i><span class="bead b2"></span></div>
+          <div class="ring ring-mer"><i></i><span class="bead b3"></span></div>
+          <div class="arm-sun"></div>
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="tag">A · classical instrument</div>
+      <h3>Armillary Sphere</h3>
+      <p>A real pre-telescopic astronomical instrument: gold great-circle rings tilted around a central sun. Layers become rings at growing radius and tilt; assets are beads riding them. Reads instantly as “a precise classical instrument,” which is exactly what Nirmāṇa is.</p>
+      <div class="pros">
+        <span><b>+</b> Most on-brand &amp; thematic</span>
+        <span><b>+</b> Genuine 3-D depth &amp; life at idle</span>
+        <span class="con"><b>~</b> DAG edges harder to read on rings</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- B · NAKSHATRA DIAL -->
+  <div class="card">
+    <div class="stage">
+      <svg viewBox="0 0 360 380" width="100%" height="100%">
+        <defs>
+          <radialGradient id="dBead" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="#FFFBE8"/><stop offset="55%" stop-color="#EFE0BC"/><stop offset="100%" stop-color="#A47A28"/>
+          </radialGradient>
+          <radialGradient id="dSun" cx="38%" cy="32%" r="80%">
+            <stop offset="0%" stop-color="#FFFCEF"/><stop offset="40%" stop-color="#F4D98A"/><stop offset="75%" stop-color="#D4A648"/><stop offset="100%" stop-color="#5C3F12"/>
+          </radialGradient>
+        </defs>
+        <g transform="translate(180,190)">
+          <!-- concentric layer rings -->
+          <circle r="150" fill="none" stroke="rgba(196,154,62,.14)"/>
+          <circle r="122" fill="none" stroke="rgba(196,154,62,.12)"/>
+          <circle r="94"  fill="none" stroke="rgba(196,154,62,.10)"/>
+          <circle r="66"  fill="none" stroke="rgba(196,154,62,.10)"/>
+          <circle r="40"  fill="none" stroke="rgba(196,154,62,.10)"/>
+          <!-- 12 spokes (rashi divisions) -->
+          <g stroke="rgba(168,124,42,.16)">
+            <!-- generated spokes -->
+            <line x1="0" y1="-150" x2="0" y2="-40"/>
+            <line x1="75" y1="-129.9" x2="20" y2="-34.6" transform="rotate(0)"/>
+          </g>
+          <g stroke="rgba(168,124,42,.13)" id="spokes"></g>
+          <!-- sweep hand -->
+          <g class="dial-sweep">
+            <line x1="0" y1="0" x2="0" y2="-150" stroke="rgba(236,197,106,.5)" stroke-width="1.4"/>
+            <polygon points="0,-150 -4,-138 4,-138" fill="rgba(236,197,106,.7)"/>
+            <line x1="0" y1="0" x2="0" y2="-150" stroke="url(#sweepGlow)" stroke-width="8" opacity=".25"/>
+          </g>
+          <!-- nodes seated in segments -->
+          <g id="dialNodes"></g>
+          <!-- center sun -->
+          <circle r="17" fill="url(#dSun)" stroke="#D4A648" stroke-width="1.3"/>
+          <circle cx="-5" cy="-5" r="4" fill="rgba(255,255,255,.7)"/>
+        </g>
+        <text x="180" y="28" text-anchor="middle" font-family="var(--display)" font-size="13" fill="rgba(236,197,106,.55)" letter-spacing="2">B R A H M A &#160; J &#209; &#256; N A &#8594; M &#298; M &#256; &#7747; S &#256;</text>
+      </svg>
+    </div>
+    <div class="meta">
+      <div class="tag">B · jyotiṣa-native dial</div>
+      <h3>Nakṣatra Dial / Astrolabe</h3>
+      <p>The chart’s own grammar: a circular dial divided into segments (rāśi / nakṣatra), concentric rings for the six layers, and a slow sweep hand that lights each asset as it passes — the build literally becomes a transit. An operator reads it like a kuṇḍalī.</p>
+      <div class="pros">
+        <span><b>+</b> Speaks Jyotiṣa directly</span>
+        <span><b>+</b> Sweep = elegant build progress</span>
+        <span class="con"><b>~</b> Dependencies implied, not drawn</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- C · ASCENSION COLUMN -->
+  <div class="card">
+    <div class="stage">
+      <svg viewBox="0 0 360 380" width="100%" height="100%">
+        <defs>
+          <radialGradient id="cBead" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="#FFFBE8"/><stop offset="55%" stop-color="#EFE0BC"/><stop offset="100%" stop-color="#A47A28"/>
+          </radialGradient>
+          <linearGradient id="cRise" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="rgba(236,197,106,0)"/><stop offset="100%" stop-color="rgba(236,197,106,.55)"/>
+          </linearGradient>
+        </defs>
+        <!-- strata bands, earth (bottom) -> intelligence (top) -->
+        <g font-family="var(--display)" font-size="11" fill="rgba(236,197,106,.6)" letter-spacing="1.5">
+          <g id="strata"></g>
+        </g>
+        <!-- rising light streams -->
+        <g stroke-width="1.1" fill="none">
+          <path class="rise" d="M110 350 L110 40" stroke="url(#cRise)" style="animation-delay:0s"/>
+          <path class="rise" d="M180 350 L180 40" stroke="url(#cRise)" style="animation-delay:.8s"/>
+          <path class="rise" d="M250 350 L250 40" stroke="url(#cRise)" style="animation-delay:1.6s"/>
+        </g>
+        <g id="colNodes"></g>
+      </svg>
+    </div>
+    <div class="meta">
+      <div class="tag">C · readable topology</div>
+      <h3>Ascension Column</h3>
+      <p>Literally the brand line, “from earth to intelligence”: L0 Brahmagyāna at the base, L5 Mīmāṃsā at the crown, each layer a stratum of nodes with edges flowing upward as light. The clearest read of the actual dependency DAG, and ignition rises from the ground.</p>
+      <div class="pros">
+        <span><b>+</b> Best for scanning dependencies</span>
+        <span><b>+</b> Embodies the tagline</span>
+        <span class="con"><b>~</b> Least “wow”, more diagram than icon</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- D · CONSTELLATION -->
+  <div class="card">
+    <div class="stage">
+      <svg viewBox="0 0 360 380" width="100%" height="100%">
+        <defs>
+          <radialGradient id="starG" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFF8E0"/><stop offset="60%" stop-color="#ECC56A"/><stop offset="100%" stop-color="rgba(122,86,24,0)"/>
+          </radialGradient>
+        </defs>
+        <g id="starLines" stroke="rgba(196,154,62,.22)" stroke-width=".7"></g>
+        <g id="stars"></g>
+      </svg>
+    </div>
+    <div class="meta">
+      <div class="tag">D · celestial field</div>
+      <h3>Constellation Field</h3>
+      <p>Assets as stars, each layer its own named constellation, joined by faint star-chart lines. It twinkles at idle so the pane is never dead, and a building asset flares like a nova. Atmospheric and unmistakably astrological without being literal.</p>
+      <div class="pros">
+        <span><b>+</b> Always alive, low-key</span>
+        <span><b>+</b> Thematic (stars = jyotiṣa)</span>
+        <span class="con"><b>~</b> Layout looks scattered, not ordered</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- E · YANTRA MANDALA (wide) -->
+  <div class="card wide">
+    <div class="stage">
+      <svg viewBox="0 0 760 300" width="100%" height="100%">
+        <defs>
+          <radialGradient id="yBindu" cx="38%" cy="32%" r="80%">
+            <stop offset="0%" stop-color="#FFFCEF"/><stop offset="40%" stop-color="#F4D98A"/><stop offset="75%" stop-color="#D4A648"/><stop offset="100%" stop-color="#5C3F12"/>
+          </radialGradient>
+          <radialGradient id="yBead" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="#FFFBE8"/><stop offset="55%" stop-color="#EFE0BC"/><stop offset="100%" stop-color="#A47A28"/>
+          </radialGradient>
+        </defs>
+        <g transform="translate(380,150)">
+          <!-- outer lotus petals -->
+          <g class="mandSpin" id="petals"></g>
+          <!-- interlocking yantra triangles -->
+          <g class="bloom" stroke="rgba(236,197,106,.4)" fill="none" stroke-width="1">
+            <polygon points="0,-110 95,55 -95,55"/>
+            <polygon points="0,110 95,-55 -95,-55"/>
+            <polygon points="0,-78 68,40 -68,40"/>
+            <polygon points="0,78 68,-40 -68,-40"/>
+          </g>
+          <!-- concentric layer rings -->
+          <circle r="128" fill="none" stroke="rgba(196,154,62,.12)"/>
+          <circle r="96"  fill="none" stroke="rgba(196,154,62,.10)"/>
+          <circle r="60"  fill="none" stroke="rgba(196,154,62,.10)"/>
+          <!-- nodes on petal tips -->
+          <g id="mandNodes"></g>
+          <!-- bindu -->
+          <circle r="15" fill="url(#yBindu)" stroke="#D4A648" stroke-width="1.3"/>
+          <circle cx="-4" cy="-4" r="3.5" fill="rgba(255,255,255,.7)"/>
+        </g>
+      </svg>
+    </div>
+    <div class="meta">
+      <div class="tag">E · sacred geometry as structure</div>
+      <h3>Śrī Yantra Mandala</h3>
+      <p>The brand says sacred geometry is the <em>only</em> decorative motif — here it becomes the structure itself. Interlocking yantra triangles and a lotus surround a central bindu (ROOT); layers are nested rings, assets sit on petal tips, and a build illuminates outward from the centre. The most ceremonial option.</p>
+      <div class="pros">
+        <span><b>+</b> Purest brand expression</span>
+        <span><b>+</b> Ceremonial, memorable</span>
+        <span class="con"><b>~</b> Fixed symmetry fights a changing DAG</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const NS="http://www.w3.org/2000/svg";
+const layers=["brahmagyan","ganita","bodha","kala","phala","mimamsa"];
+const layerNames=["Brahma Jñāna","Gaṇita","Bodha","Kāla","Phala","Mīmāṃsā"];
+function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+
+// ── B: dial spokes + nodes ──
+(function(){
+  const sp=document.getElementById("spokes");
+  for(let i=0;i<12;i++){const a=i*30*Math.PI/180;
+    sp.appendChild(el("line",{x1:Math.sin(a)*40,y1:-Math.cos(a)*40,x2:Math.sin(a)*150,y2:-Math.cos(a)*150}));}
+  const radii=[150,122,94,66,40];const counts=[7,8,6,4,5];
+  const g=document.getElementById("dialNodes");
+  radii.forEach((r,li)=>{for(let i=0;i<counts[li];i++){
+    const a=((i+.5)/counts[li]*360 + li*9)*Math.PI/180;
+    const c=el("circle",{cx:Math.sin(a)*r,cy:-Math.cos(a)*r,r:li===0?3.4:4,fill:"url(#dBead)",stroke:"#C4A268","stroke-width":.7,class:"twinkle"});
+    c.style.animationDelay=(i*0.3+li*0.2)+"s";g.appendChild(c);}});
+})();
+
+// ── C: strata + nodes ──
+(function(){
+  const st=document.getElementById("strata");
+  const cn=document.getElementById("colNodes");
+  const ys=[60,108,156,204,252,300];const counts=[4,6,8,5,5,3];
+  ys.forEach((y,li)=>{
+    const t=el("text",{x:24,y:y+4});t.textContent=layerNames[li];st.appendChild(t);
+    // faint band
+    cn.appendChild(el("line",{x1:96,y1:y,x2:336,y2:y,stroke:"rgba(196,154,62,.10)"}));
+    const n=counts[li];for(let i=0;i<n;i++){
+      const x=120+i*(210/Math.max(n-1,1));
+      const lit=li>=3; // top layers "lit"
+      const c=el("circle",{cx:x,cy:y,r:5,fill:lit?"url(#cBead)":"none",stroke:lit?"#D4A648":"rgba(107,78,24,.6)","stroke-width":1.4,class:"breathe"});
+      c.style.animationDelay=(i*0.2+li*0.15)+"s";cn.appendChild(c);
+      if(li<5){ // upward edge to a node above
+        cn.appendChild(el("line",{x1:x,y1:y-5,x2:120+ (i%counts[li+1])*(210/Math.max(counts[li+1]-1,1)),y2:ys[li+1]+5,stroke:"rgba(196,154,62,.13)","stroke-width":.7}));
+      }
+    }
+  });
+})();
+
+// ── D: constellations ──
+(function(){
+  const stars=document.getElementById("stars");
+  const lines=document.getElementById("starLines");
+  // cluster centers per layer
+  const centers=[[80,90],[250,70],[300,180],[160,150],[90,250],[260,290]];
+  const counts=[4,6,5,7,4,3];
+  function rnd(s){let x=Math.sin(s)*10000;return x-Math.floor(x);}
+  centers.forEach((c,li)=>{
+    const pts=[];
+    for(let i=0;i<counts[li];i++){
+      const x=c[0]+(rnd(li*9+i)*2-1)*46;const y=c[1]+(rnd(li*13+i*3)*2-1)*40;
+      pts.push([x,y]);
+    }
+    // connect sequentially within constellation
+    for(let i=0;i<pts.length-1;i++)
+      lines.appendChild(el("line",{x1:pts[i][0],y1:pts[i][1],x2:pts[i+1][0],y2:pts[i+1][1]}));
+    pts.forEach((p,i)=>{
+      const halo=el("circle",{cx:p[0],cy:p[1],r:i===0?9:6,fill:"url(#starG)",class:"star"});
+      halo.style.animationDelay=(i*0.4+li*0.3)+"s";stars.appendChild(halo);
+      stars.appendChild(el("circle",{cx:p[0],cy:p[1],r:i===0?2.4:1.6,fill:"#FFF8E0"}));
+    });
+    // constellation label
+    const t=el("text",{x:c[0],y:c[1]-54,"text-anchor":"middle","font-family":"var(--display)","font-size":11,fill:"rgba(236,197,106,.45)","letter-spacing":1});
+    t.textContent=layerNames[li];stars.appendChild(t);
+  });
+})();
+
+// ── E: petals + nodes ──
+(function(){
+  const petals=document.getElementById("petals");
+  const N=16;
+  for(let i=0;i<N;i++){const a=i*(360/N);
+    const p=el("path",{d:"M0,-128 Q14,-150 0,-170 Q-14,-150 0,-128 Z",fill:"none",stroke:"rgba(168,124,42,.30)","stroke-width":1,transform:`rotate(${a})`});
+    petals.appendChild(p);}
+  const mn=document.getElementById("mandNodes");
+  const radii=[128,96,60];const counts=[10,7,5];
+  radii.forEach((r,li)=>{for(let i=0;i<counts[li];i++){
+    const a=(i/counts[li]*360)*Math.PI/180;
+    const c=el("circle",{cx:Math.sin(a)*r,cy:-Math.cos(a)*r,r:li===2?5:4,fill:"url(#yBead)",stroke:"#C4A268","stroke-width":.7,class:"bloom"});
+    c.style.animationDelay=(i*0.25+li*0.4)+"s";mn.appendChild(c);}});
+})();
+</script>
+</body>
+</html>

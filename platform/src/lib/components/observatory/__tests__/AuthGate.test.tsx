@@ -42,7 +42,7 @@ describe('AuthGate', () => {
     vi.mocked(getFlag).mockReturnValue(true)
     vi.mocked(getServerUserWithProfile).mockResolvedValue({
       user: { uid: 'u1' } as never,
-      profile: { id: 'u1', role: 'client', status: 'active' },
+      profile: { id: 'u1', role: 'guest', status: 'active' },
     })
     await renderAsync(
       AuthGate({ children: <span data-testid="protected-child" /> }) as Promise<React.ReactElement>,

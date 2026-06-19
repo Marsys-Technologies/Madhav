@@ -229,8 +229,8 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       <div className="flex items-center justify-center gap-1.5">
         {isActive && (
           <>
-            {/* Build/Rebuild — hidden when run active */}
-            {!activeRunId && (
+            {/* Build/Rebuild — hidden when run active; role-gated for brahmagyan */}
+            {!activeRunId && (isSuperAdmin || asset.layer !== 'brahmagyan') && (
               <button
                 title={derivePrimaryLabel(derivedState === 'dormant')}
                 onClick={() => setShowPlanModal(true)}

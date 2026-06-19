@@ -25,7 +25,7 @@ export async function GET() {
       'SELECT role FROM profiles WHERE id=$1',
       [user.uid],
     )
-    const role = profileResult.rows[0]?.role ?? 'client'
+    const role = profileResult.rows[0]?.role ?? 'guest'
 
     let charts: Array<{
       id: string
