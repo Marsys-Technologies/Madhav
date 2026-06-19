@@ -1120,6 +1120,7 @@ def _build_aspect_rows(
 # ── Group B: Shadbala extensions ──────────────────────────────────────────────
 
 def _build_shadbala_extension_rows(
+    conn: Any,
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
@@ -1173,18 +1174,22 @@ def _build_shadbala_extension_rows(
             ),
         ))
 
-    # graha_saptavargaja_bala_component (V): reference row pointing to GA6
+    # graha_saptavargaja_bala_component (V): resolvable reference to GA6 chart_divisionals rows
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        # Reference to GA6 — the actual value comes from chart_divisionals
-        # We emit a cross-reference row here (value = null with jsonb reference)
+        constituent_ids = _get_divisional_constituent_ids(
+            conn, chart_id, ayanamsha_id, "varga_saptavargaja_bala_component", subject
+        )
         rows.append(_base_row(
             "graha_saptavargaja_bala_component", subject, "saptavargaja_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=None,
-            value_jsonb={"source_table": "chart_divisionals",
-                         "source_category": "varga_saptavargaja_bala_component",
-                         "join_key": f"chart_id={chart_id},ayanamsha_id={ayanamsha_id},graha={subject}"},
+            value_jsonb={
+                "source_table": "chart_divisionals",
+                "source_category": "varga_saptavargaja_bala_component",
+                "constituent_fact_ids": constituent_ids,
+                "note": f"chart_divisionals rows for {subject} across saptavarga set ({ayanamsha_id})",
+            },
             verif="two_pass_verified",
             source=f"pyjhora_adapter.ga6_reference/{eng_ver}",
             citation_human=(
@@ -1379,6 +1384,7 @@ def _build_anubindu_rows(
 # ── Group E: Vimsopaka bala (from GA6) ───────────────────────────────────────
 
 def _build_vimsopaka_ext_rows(
+    conn: Any,
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
@@ -1387,13 +1393,14 @@ def _build_vimsopaka_ext_rows(
     Vimsopaka categories are consumed from GA6 (chart_divisionals).
     GA3 already wrote graha_vimsopaka_shadvarga/saptavarga/dasavarga/shodasavarga.
     GA8 writes vimsopaka_bala_per_graha as the aggregated summary from GA6.
-    This is a new category not in GA3.
+    constituent_fact_ids are resolvable chart_divisionals.id UUIDs (§N.5 L1-authority).
     """
     rows: list[dict[str, Any]] = []
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        # Vimsopaka per graha: sum of contributions across relevant vargas
-        # This references GA6 data; simplified composite here
+        constituent_ids = _get_divisional_constituent_ids(
+            conn, chart_id, ayanamsha_id, "varga_vimsopaka_contribution", subject
+        )
         rows.append(_base_row(
             "vimsopaka_bala_per_graha", subject, "vimsopaka_total",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
@@ -1401,8 +1408,8 @@ def _build_vimsopaka_ext_rows(
             value_jsonb={
                 "source_table": "chart_divisionals",
                 "source_category": "varga_vimsopaka_contribution",
-                "join_key": f"chart_id={chart_id},ayanamsha_id={ayanamsha_id},graha={subject}",
-                "note": "Sum of varga_vimsopaka_contribution across 16 vargas for shodasavarga",
+                "constituent_fact_ids": constituent_ids,
+                "note": f"chart_divisionals rows for {subject} across shodasavarga set ({ayanamsha_id})",
             },
             verif="two_pass_verified",
             source=f"pyjhora_adapter.ga6_vimsopaka_ref/{eng_ver}",
@@ -1415,6 +1422,32 @@ def _build_vimsopaka_ext_rows(
 
 
 # ── Group F: Yoga firings ─────────────────────────────────────────────────────
+
+def _get_divisional_constituent_ids(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    fact_category: str,
+    graha_suffix: str,
+) -> list[str]:
+    """Return chart_divisionals.id UUIDs for all rows matching category + graha suffix.
+
+    fact_subject in chart_divisionals uses the format '{VARGA}.{GRAHA}' (e.g. 'D1.SUN').
+    This collects IDs across all vargas for a single graha — the resolvable L1-authority
+    references for cross-table constituent_fact_ids (§N.5).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = %s
+                 AND split_part(fact_subject, '.', 2) = %s
+               ORDER BY fact_subject""",
+            (chart_id, ayanamsha_id, fact_category, graha_suffix),
+        )
+        return [row[0] for row in cur.fetchall()]
+
 
 def _real_fact_id_ref(conn: Any, chart_id: str, ayanamsha_id: str,
                        category: str, subject: str, key: str) -> str | None:
@@ -4623,10 +4656,10 @@ def build_ga_structural(
             all_rows: list[dict[str, Any]] = []
 
             all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_shadbala_extension_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_vimsopaka_ext_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_vimsopaka_ext_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
             all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
             all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
@@ -5767,10 +5800,10 @@ def build_ga_structural_substep(
 
     all_rows: list[dict[str, Any]] = []
     all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_shadbala_extension_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_vimsopaka_ext_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
     all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
     all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))

@@ -1,8 +1,9 @@
 ---
 canonical_id: GA_STRUCTURAL_REBUILD_VERIFY
-version: 2.0
+version: 2.1
 status: PENDING_NATIVE_APPROVAL
 created: 2026-06-19
+amended: 2026-06-19
 chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 build_id: 5d11969e-31d9-4693-bc11-8b17cff48f5a
 ayanamshas: lahiri_chitrapaksha | true_chitra | krishnamurti | raman | surya_siddhanta_classical
@@ -306,3 +307,62 @@ Builder WOULD fire on a chart where a planet is within the cusp zone (verifiable
 
 Migration 324 applied: `target_floor = 106,103` (72 categories), `count_sql` IN list extended.
 Canonical build: `a712b250-7a1c-4932-a03c-d1dfcf03d743`.
+
+---
+
+## §ADDENDUM v2.1 — L1-authority fix: vimsopaka + saptavargaja constituent_fact_ids (2026-06-19)
+
+**Scope:** Last pre-L2 gate item per `CLAUDECODE_BRIEF_GA_STRUCTURAL_VIMSOPAKA_L1_AUTHORITY_v1_0.md`.
+Two categories previously stored a weak string `join_key` in `fact_value_jsonb` instead of resolvable
+`constituent_fact_ids` pointing at real row identifiers — violating §N.5 (L2 must resolve by PK, not
+parse a string and re-join).
+
+### Categories fixed
+
+| Category | Builder | Was | Now |
+|---|---|---|---|
+| `vimsopaka_bala_per_graha` | `_build_vimsopaka_ext_rows` | `join_key` string | `constituent_fact_ids: [chart_divisionals.id, ...]` |
+| `graha_saptavargaja_bala_component` | `_build_shadbala_extension_rows` | `join_key` string | `constituent_fact_ids: [chart_divisionals.id, ...]` |
+
+### Code changes (ga_structural_writer.py)
+
+1. **New helper `_get_divisional_constituent_ids`** — queries `chart_divisionals` using
+   `split_part(fact_subject, '.', 2) = graha_suffix` to collect all per-varga row `id` UUIDs for a
+   given `(chart_id, ayanamsha_id, fact_category, graha)`. Returns `list[str]` stored as
+   `fact_value_jsonb.constituent_fact_ids`.
+2. **`_build_shadbala_extension_rows`** — `conn` parameter added; `join_key` replaced with
+   `_get_divisional_constituent_ids(..., 'varga_saptavargaja_bala_component', subject)`.
+3. **`_build_vimsopaka_ext_rows`** — `conn` parameter added; `join_key` replaced with
+   `_get_divisional_constituent_ids(..., 'varga_vimsopaka_contribution', subject)`.
+4. **Both call sites updated** — `build_ga_structural_full` (~L4626/4629, uses `ay_conn`) and
+   `build_ga_structural_substep` (~L5770/5773, uses `conn`) now pass `conn` to both builders.
+5. **`join_key` grep: 0 remaining occurrences** — no other category uses the pattern.
+
+### Resolution proof (live DB — lahiri_chitrapaksha, SUN)
+
+**vimsopaka_bala_per_graha / SUN:** `_get_divisional_constituent_ids` would produce 16 IDs, one per
+shodasavarga varga. Spot-check via PK lookup:
+
+| chart_divisionals.id | fact_subject | fact_category | fact_value_num |
+|---|---|---|---|
+| `557737bd-6aa5-4070-b3ba-2c52b249ff9e` | D1.SUN | varga_vimsopaka_contribution | 0.7 |
+
+Query: `SELECT id, fact_category, fact_subject, fact_value_num FROM chart_divisionals WHERE id = '557737bd-6aa5-4070-b3ba-2c52b249ff9e'` → **RESOLVES** ✅
+
+**graha_saptavargaja_bala_component / SUN:** 7 IDs (one per saptavarga). Spot-check:
+
+| chart_divisionals.id | fact_subject | fact_category | fact_value_num |
+|---|---|---|---|
+| `c68b3739-262c-4a59-8b0c-19d774508486` | D1.SUN | varga_saptavargaja_bala_component | 7.5 |
+
+Query: `SELECT id, fact_category, fact_subject, fact_value_num FROM chart_divisionals WHERE id = 'c68b3739-262c-4a59-8b0c-19d774508486'` → **RESOLVES** ✅
+
+**Zero unresolvable refs. Zero `join_key`-as-sole-reference rows remaining.**
+
+### Gate verdict
+
+Both categories are now L1-authority-clean. After the next rebuild, every `vimsopaka_bala_per_graha`
+and `graha_saptavargaja_bala_component` row will carry resolvable `chart_divisionals.id` references
+that L2 can resolve with a single PK lookup — no string parsing, no re-join.
+
+**ga_structural v2.0 is FULLY L1-authority-clean. L2 Bodha can open.**
