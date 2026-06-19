@@ -1120,10 +1120,10 @@ def _build_aspect_rows(
 # ── Group B: Shadbala extensions ──────────────────────────────────────────────
 
 def _build_shadbala_extension_rows(
-    conn: Any,
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
     """
     GA8 extensions only — does NOT re-emit GA3 categories.
@@ -1177,8 +1177,9 @@ def _build_shadbala_extension_rows(
     # graha_saptavargaja_bala_component (V): resolvable reference to GA6 chart_divisionals rows
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        constituent_ids = _get_divisional_constituent_ids(
-            conn, chart_id, ayanamsha_id, "varga_saptavargaja_bala_component", subject
+        constituent_ids = (
+            _get_divisional_constituent_ids(conn, chart_id, ayanamsha_id, "varga_saptavargaja_bala_component", subject)
+            if conn is not None else []
         )
         rows.append(_base_row(
             "graha_saptavargaja_bala_component", subject, "saptavargaja_score",
@@ -4656,7 +4657,7 @@ def build_ga_structural(
             all_rows: list[dict[str, Any]] = []
 
             all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_shadbala_extension_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, conn=ay_conn))
             all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_vimsopaka_ext_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
@@ -5800,7 +5801,7 @@ def build_ga_structural_substep(
 
     all_rows: list[dict[str, Any]] = []
     all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_shadbala_extension_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
     all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
