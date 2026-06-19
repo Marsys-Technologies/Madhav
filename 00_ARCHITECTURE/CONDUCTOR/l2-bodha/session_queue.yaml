@@ -1,0 +1,192 @@
+campaign_id: L2_BODHA_BUILDOUT
+spec_artifact: 00_ARCHITECTURE/L2_BODHA_AUTONOMOUS_EXECUTION_PLAN_v1_0.md
+spec_version: "1.0"
+branch: feature/l2-bodha
+worktree: /Users/Dev/Vibe-Coding/Apps/MadhavL2Bodha
+authored_on: 2026-06-19
+merge_cadence: per_session_auto_merge_on_green_ci
+halt_policy: fully_autonomous_per_AUTONOMY_RESILIENCE_PATTERN   # Tier-3 (catastrophic-budget) ONLY reaches the native
+model_policy: gemini_deepseek_only   # Anthropic banned unless native asks
+data_plane: prod_via_cloud_sql_proxy_5433
+native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+migration_tree: platform/migrations/   # CANONICAL (max 324) — new L2 migrations start at 325+
+governing:
+  - 00_ARCHITECTURE/L2_BODHA_AUTONOMOUS_EXECUTION_PLAN_v1_0.md   # the wave plan + the L2-specific swarm additions
+  - 00_ARCHITECTURE/AUTONOMY_RESILIENCE_PATTERN_v1_0.md          # 3-tier escalation; deep-fix ladder; Vimarśaka
+  - 00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md        # role roster (+ Pramāṇa-Bodha for this run)
+  - 00_ARCHITECTURE/L2_BODHA_SCHEMA_REDESIGN_v1_0.md             # the enriched table contract (DDL source)
+  - 00_ARCHITECTURE/L2_BODHA_JUDGMENT_SUBSTRATE_STRATEGY_v1_0.md # the judgment guarantees Pramāṇa-Bodha verifies
+  - 00_ARCHITECTURE/L2_BODHA_STORAGE_ARCHITECTURE_v1_0.md        # embedding protocol + S1-S5
+  - 00_ARCHITECTURE/L2_BODHA_RETRIEVAL_STRATEGY_v1_0.md          # F1 de-dup + lel_enabled propagation
+  - 00_ARCHITECTURE/LEL_TOGGLE_GOVERNING_PRINCIPLE_v1_0.md       # lel_origin tagging + zero-leak proof
+  - 00_ARCHITECTURE/L2_BODHA_DISCOVERY_MISSION_v1_0.md           # bo_anveshana mandate
+asset_briefs:
+  bo_laksana:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_LAKSANA_v1_0.md
+  bo_sangati:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SANGATI_v1_0.md
+  bo_karanajala:   00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
+  bo_bimba:        00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_KARANAJALA_BIMBA_v1_0.md
+  bo_samskara:     00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMSKARA_v1_0.md
+  bo_samvada:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_SAMVADA_v1_0.md
+  bo_upaya:        00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_UPAYA_v1_0.md
+  bo_drishti:      00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_DRISHTI_v1_0.md
+  bo_anveshana:    00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_ANVESHANA_v1_0.md
+  bo_pramana_mapa: 00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_BO_PRAMANA_MAPA_v1_0.md
+  b6_eval:         00_ARCHITECTURE/BRIEFS/CLAUDECODE_BRIEF_B6_EVAL_HARNESS_v1_0.md
+
+# Standing rails for EVERY session (the inherited non-negotiables)
+standing_gates: ["tsc", "vitest_changed", "lint", "frozen_orchestrator_contract", "prod_verify", "anti_drift_resolve", "lel_zero_leak"]
+standing_halt_conditions:
+  - "frozen orchestrator contract change needed (Tier-2 STUB+log or deep-fix; NEVER native halt)"
+  - "anti-drift: a constituent reference does not resolve to a real fact_id"
+  - "FORENSIC 7/7 regression"
+  - "fabricated discovery/insight (must trace to real substrate)"
+  - "lel_origin element surviving in a lel_enabled=false return"
+  - "catastrophic-runaway budget ceiling (Tier-3 — the ONLY native-input event)"
+
+sessions:
+  # ───────────────────────── WAVE-0 — PRE-FLIGHT (schema) ─────────────────────────
+  - id: W0-SCHEMA
+    wave: "0"
+    asset: infra
+    depends_on: []
+    gates: ["disposition_classifier_no_live_reader", "prod_verify_tables_exist", "migration_above_324", "schema_validate"]
+    work: >
+      Author + apply migrations 325+ : DROP+CREATE the bodha_* tables to the enriched contract
+      (L2_BODHA_SCHEMA_REDESIGN §3) incl. the cross-cutting spine columns (fact_kind / source_l1_asset /
+      source_subsystem / classical_sources_jsonb / epistemic_jsonb / signal_summary_text + signal_headline_text /
+      signature_tier / valence / lel_origin) + the NEW tables (bodha_question_lenses, bodha_chart_gestalt,
+      bodha_discoveries, bodha_anomalies, the evidence-ledger + central_dynamics + pivots + propagation tables,
+      cross-subsystem edge support) + drop the G52 signal_type_registry orphan. Create the embedding shared-constant
+      module; classical_chunks cleanup. Each DROP routes through the disposition classifier (confirm NO live reader —
+      the bodha_signals trap). PROD-VERIFY every promised table exists post-apply.
+    status: pending
+    halt_conditions: ["a DROP target has a live reader (REPOINT first)", "a promised table missing post-apply"]
+
+  # ───────────────── WAVE-A — bo_laksana ROOT + THE HARD SPINE GATE ─────────────────
+  - id: WA-LAKSANA
+    wave: "A"
+    asset: bo_laksana
+    depends_on: ["W0-SCHEMA"]
+    gates: ["standing", "spine_proof"]   # ★ spine_proof is the HARD INTERNAL GATE ★
+    work: >
+      Build bo_laksana per its brief: FULL projection of all 14 L1 assets (no curation), read refs from
+      fact_value_jsonb.constituent_fact_ids, category-agnostic signal model, source_subsystem tag on every signal,
+      L0 classical bridge, salience + signature_tier + structured epistemic, conditional salience, lossless
+      signal_summary_text + signal_headline_text, 3 MVs, the L2_bodha MSR retrieval tools. Pin the projection
+      count via one prod query at start; set target_floor = achieved.
+    spine_proof: >
+      ON PROD, ALL must hold or FAN-OUT IS BLOCKED: (1) zero unresolved constituent_facts_array elements;
+      (2) MSR count == the pinned chart_facts signal-population count (all 14 assets); (3) FORENSIC anchors inherit
+      L1 values (Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries, Muntha=Libra/7H/Venus); (4) every L1 subsystem
+      produced ≥1 source_subsystem-tagged signal; (5) weak tail present; (6) idempotent (re-run stable).
+    on_spine_fail: "deep-fix ladder (4 attempts → stronger reasoner → 3-model parallel → park bo_laksana); NEVER native halt; fan-out stays blocked"
+    status: pending
+    halt_conditions: ["spine_proof fails after the full deep-fix ladder (park; whole layer blocks — correct behavior)"]
+
+  # ───────────────────────── WAVE-B — FAN-OUT (parallel) ─────────────────────────
+  - id: WB-SANGATI
+    wave: "B"
+    asset: bo_sangati
+    depends_on: ["WA-LAKSANA"]   # blocked until the spine gate passes
+    gates: ["standing", "ledger_independence_no_double_count", "non_redundancy_layered"]
+    work: "CDLM linkage + the DOMAIN EVIDENCE LEDGERS (weight-of-evidence; independence dedup) + C1-C5 (typed links, central dynamics, pivots, propagation, link-judgment-parity) + bodha_convergence."
+    status: pending
+    halt_conditions: ["ledger double-counts a shared-fact signal", "ledger recomputes L1/bodha_convergence instead of citing"]
+  - id: WB-KARANAJALA
+    wave: "B"
+    asset: bo_karanajala+bo_bimba
+    depends_on: ["WA-LAKSANA"]
+    gates: ["standing", "cross_subsystem_noise_guard", "graph_anti_drift"]
+    work: "ONE igraph compute → multi-entity nodes (source_subsystem-tagged) + edges (full value-vector) + sub_graphs/motifs/topology/paths + bodha_contradictions + the CROSS-SUBSYSTEM EDGE family (§XS, computed at L2 from L1 facts + L0 mappings, noise-guarded) + compute-WIDE centrality + the recursive-traversal retrieval primitive + query_cross_subsystem."
+    status: pending
+    halt_conditions: ["cross-subsystem every-pair noise (edge count unbounded)", "an edge underlying_msr_signal_ids does not resolve"]
+  - id: WB-SAMSKARA
+    wave: "B"
+    asset: bo_samskara
+    depends_on: ["WA-LAKSANA"]
+    gates: ["standing", "embedding_consistency", "real_semantics_proof"]
+    work: "REAL Vertex text-multilingual-embedding-002 embeddings of signal_summary_text (replace placeholder_hash); shared pinned constant; per-row stamping; cross-layer consistency CI check; 1:1 with MSR; the signal↔classical bridge tool."
+    status: pending
+    halt_conditions: ["model/dim mismatch vs classical_text_chunks", "related signals not cosine-near (hash not replaced)"]
+  - id: WB-SAMVADA
+    wave: "B"
+    asset: bo_samvada
+    depends_on: ["WA-LAKSANA"]
+    gates: ["standing", "pillars_meet_reachability", "no_pre_answer"]
+    work: "THIN-writer gestalt (bodha_chart_gestalt: defining threads + headline/watch-list/central-question + domain-verdict map + outliers + zoom spine) + vw_chart_digest view + query_ucd/query_zoom. The pillars-meet reachability proof."
+    status: pending
+    halt_conditions: ["the gestalt stores a verdict/conclusion (pre-answer)", "a stored item unreachable from the digest"]
+
+  # ───────────────────────── WAVE-C — DEPENDENTS ─────────────────────────
+  - id: WC-UPAYA
+    wave: "C"
+    asset: bo_upaya
+    depends_on: ["WA-LAKSANA", "WB-SANGATI"]
+    gates: ["standing", "l0_grounding_absolute", "two_planes_no_dated_schedule", "subsystem_remedy_coverage"]
+    work: "RM 6 tables; SEED FIX (owns resonances + summed count_sql); R1 causal-root; R2 do-not-remedy (remediation_advisability); R3 evidence ledger + mechanism + dissents; R4 fit/program/question-reachable; R5 subsystem-coverage (medical/vastu/nakshatra remedials — widen taxonomy + query by all affliction keys + coverage audit)."
+    status: pending
+    halt_conditions: ["a prescription has no resolvable brahma_remedy_corpus citation (invented)", "a dated remedy schedule computed (L3 leak)"]
+  - id: WC-DRISHTI
+    wave: "C"
+    asset: bo_drishti
+    depends_on: ["WA-LAKSANA", "WB-SANGATI", "WB-KARANAJALA"]
+    gates: ["standing", "wildcard_sweep_present", "no_pre_answer", "ranks_never_caps"]
+    work: "The question-lens (bodha_question_lenses): template set + MANDATORY wildcard graph-sweep (non_template_significant) + ranks-never-caps + points-never-pre-answers (points_only)."
+    status: pending
+    halt_conditions: ["a lens returns only its template (no wildcard sweep)", "a lens stores a verdict (pre-answer)"]
+
+  # ───────────────────────── WAVE-D — DISCOVERY ─────────────────────────
+  - id: WD-ANVESHANA
+    wave: "D"
+    asset: bo_anveshana
+    depends_on: ["WB-SANGATI", "WB-KARANAJALA", "WB-SAMSKARA", "WC-DRISHTI"]
+    gates: ["standing", "discovery_not_fabricated", "meaningfulness_gate", "subsystem_discovery_coverage"]
+    work: "The DISCOVERY ENGINE: non-obviousness score + graph-mining (structural holes/brokers/motifs/articulation) + embedding outliers + distributional anomalies; D1-D7 (lived-impact, meaningfulness gate, corroboration, surface-depth delta, falsifiable hypothesis, novelty, ruthless ranking); S.1 intra-subsystem + S.2 CROSS-subsystem crown-jewel (mines the CGM cross-subsystem edges) + S.3 coverage; bodha_discoveries + bodha_anomalies + query_discoveries."
+    status: pending
+    halt_conditions: ["a discovery does not trace to real substrate (fabricated)", "a subsystem un-mined"]
+
+  # ───────────────── WAVE-E — CONSCIENCE + RETRIEVAL ─────────────────
+  - id: WE-PRAMANA
+    wave: "E"
+    asset: bo_pramana_mapa
+    depends_on: ["WC-UPAYA", "WC-DRISHTI", "WD-ANVESHANA"]
+    gates: ["standing", "anti_drift_itemized_seal", "judgment_integrity_audit"]
+    work: "The CONSCIENCE: itemized anti-drift seal gate + judgment-integrity audit (ledger independence, no-pre-answer, pillars-meet reachability, tunnel-vision, epistemic + L0-grounding coverage, embedding consistency, LEL zero-leak) + calibration-readiness frame + retrievable self-assessment. + the full L2_bodha retrieval tool layer + the extended coverage gate."
+    status: pending
+    halt_conditions: ["any load-bearing audit fails (anti-drift / pillars-meet / no-pre-answer) — SEAL BLOCKER → deep-fix"]
+
+  # ───────────────── WAVE-F — B6 EVAL (AI-assessed SEAL GATE) ─────────────────
+  - id: WF-B6-EVAL
+    wave: "F"
+    asset: b6_eval
+    depends_on: ["WE-PRAMANA"]
+    gates: ["b6_recall", "b6_provenance_100", "b6_no_fabrication_zero", "b6_dedup", "b6_outlier_recall", "b6_judgment", "b6_discovery", "b6_lel_off_zero_dna"]
+    work: >
+      Build + run the B6 semantic-completeness + judgment-quality eval harness in BOTH LEL modes (pinned LLM for
+      reproducibility; deterministic scoring vs known-complete answer sets). The LEL-OFF baseline gates the seal
+      (all thresholds + provably zero lel_origin-tagged elements). Adversarial tests prove it measures real
+      retrieval. Falsifiable-discovery check vs the SACROSANCT held-out LEL (calibration measurement, not a gate).
+      AI-assessed seal verdict by MULTI-MODEL CONSENSUS, logged to Smṛti.
+    on_subthreshold: "deep-fix loop (route the failing dimension back to the responsible asset); NEVER native halt"
+    status: pending
+    halt_conditions: ["sub-threshold after the full deep-fix budget (park + Smṛti escalation; native reviews retrospectively)"]
+
+  # ───────────────────────── WAVE-G — SEAL (autonomous) ─────────────────────────
+  - id: WG-SEAL
+    wave: "G"
+    asset: seal
+    depends_on: ["WF-B6-EVAL"]
+    gates: ["standing", "vimarsaka_final_audit_green", "cockpit_9_assets_lit", "ci_green"]
+    work: >
+      Promote bo_* DRAFT→CURRENT; author 00_ARCHITECTURE/L2_BODHA_CLOSE_v1_0.md (validated state + the L3 Kāla
+      onboarding contract); update CURRENT_STATE + SESSION_LOG; final merge to main + push; Vimarśaka final
+      adversarial audit. The native reviews the SEALED layer retrospectively (Smṛti digests + L2_BODHA_CLOSE).
+    status: pending
+    halt_conditions: ["Vimarśaka RED on the final audit (auto-revert PR; run continues with revert)"]
+
+# ───────────────────────── swarm role additions for THIS run ─────────────────────────
+swarm_role_additions:
+  - "Pramāṇa-Bodha: Pramāṇa's sibling — verifies the JUDGMENT layer (ledger independence, discovery-not-fabricated, pillars-meet reachability, LEL zero-leak, no-pre-answer), not just data integrity."
+  - "B6-in-swarm: an LLM-in-the-loop eval step at a pinned model; deterministic scoring; multi-model-consensus seal verdict."
+  - "Vimarśaka extended: its post-merge adversarial read now also checks the judgment-integrity guarantees."
+  - "Hard spine gate: the Sūtradhāra MUST NOT dispatch Wave-B until WA-LAKSANA.spine_proof passes."

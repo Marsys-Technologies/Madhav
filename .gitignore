@@ -90,3 +90,6 @@ platform/python-sidecar/tests/test_pyjhora_adapter/_scratch/
 
 # Antigravity IDE briefing pastes — ephemeral working documents, not canonical artifacts
 ANTIGRAVITY_PASTE_*.md
+
+# Test result output directories (regenerated on demand — not source artifacts)
+test-results/
