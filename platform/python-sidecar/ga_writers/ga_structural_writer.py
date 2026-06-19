@@ -5258,71 +5258,106 @@ def _build_nakshatra_relationship_rows(
     conn: Any, chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
 ) -> list[dict]:
-    """Read graha_nakshatra_join; emit co-tenancy, tara_bala, nakshatra_lord_relationship."""
+    """Emit nakshatra_co_tenancy, tara_bala, nakshatra_lord_relationship.
+
+    Nakshatra NAMES come from graha_position (fact_key='nakshatra') — same source
+    used by nakshatra_dispositor_chain (GAP-4 lesson: graha_nakshatra_join has no
+    'nakshatra' key; it stores attributes keyed by gana/guna/nakshatra_lord etc.).
+    Nakshatra LORD fact_ids come from graha_nakshatra_join (fact_key='nakshatra_lord')
+    for L1-authority constituent references.
+    Constituent refs live in fact_value_jsonb['constituent_fact_ids'] — the
+    constituent_facts_array column does not exist in chart_facts.
+    """
     rows = []
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            # Nakshatra names + fact_ids from graha_position (same source as dispositor_chain)
             cur.execute("""
-                SELECT fact_subject, fact_key, fact_value_text, fact_value_num, fact_id
+                SELECT fact_subject, fact_value_text, fact_id
+                FROM chart_facts
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                  AND fact_category = 'graha_position'
+                  AND fact_key = 'nakshatra'
+            """, (chart_id, ayanamsha_id))
+            nak_raw = cur.fetchall()
+
+            # Nakshatra lord names + fact_ids from graha_nakshatra_join (L1-authority refs)
+            cur.execute("""
+                SELECT fact_subject, fact_value_text, fact_id
                 FROM chart_facts
                 WHERE chart_id = %s AND ayanamsha_id = %s
                   AND fact_category = 'graha_nakshatra_join'
+                  AND fact_key = 'nakshatra_lord'
             """, (chart_id, ayanamsha_id))
-            raw = cur.fetchall()
+            lord_raw = cur.fetchall()
     except Exception as exc:
-        logger.warning("[ga_structural] graha_nakshatra_join query failed: %s", exc)
+        logger.warning("[ga_structural] nakshatra_relationship query failed: %s", exc)
         return []
 
     from collections import defaultdict
-    graha_nak: dict[str, dict] = defaultdict(dict)
-    graha_fact_id: dict[str, str] = {}
-    for subj, key, val_text, val_num, fact_id in raw:
-        graha_nak[subj][key] = val_text or (str(int(val_num)) if val_num is not None else "")
-        if key == "nakshatra":
-            graha_fact_id[subj] = str(fact_id)
+
+    # graha → nakshatra name + graha_position fact_id
+    graha_nak_name: dict[str, str] = {}
+    graha_nak_fid: dict[str, str] = {}
+    for subj, nak_text, fact_id in nak_raw:
+        if nak_text:
+            graha_nak_name[subj] = nak_text
+            graha_nak_fid[subj] = str(fact_id)
+
+    # graha → nakshatra lord name + graha_nakshatra_join fact_id (L1 ref)
+    graha_lord_name: dict[str, str] = {}
+    graha_lord_fid: dict[str, str] = {}
+    for subj, lord_text, fact_id in lord_raw:
+        if lord_text:
+            graha_lord_name[subj] = lord_text
+            graha_lord_fid[subj] = str(fact_id)
 
     moon_subj = PLANET_TO_SUBJECT.get("Moon", "MOON")
-    moon_nak = graha_nak.get(moon_subj, {}).get("nakshatra", "")
+    moon_nak = graha_nak_name.get(moon_subj, "")
     moon_nak_idx = NAKSHATRA_NAMES_27.index(moon_nak) if moon_nak in NAKSHATRA_NAMES_27 else -1
+    moon_nak_fid = graha_nak_fid.get(moon_subj, "")
     TARA_NAMES = ["janma", "sampat", "vipat", "kshema", "pratyak", "sadhaka", "naidhana", "mitra", "atimitra"]
 
+    # Co-tenancy: group grahas by shared nakshatra
     by_nak: dict[str, list[str]] = defaultdict(list)
-    for graha_subj, data in graha_nak.items():
-        nak = data.get("nakshatra", "")
-        if nak:
-            by_nak[nak].append(graha_subj)
+    for graha_subj, nak in graha_nak_name.items():
+        by_nak[nak].append(graha_subj)
 
     for nak_name, co_grahas in by_nak.items():
         if len(co_grahas) >= 2:
             for i, g1 in enumerate(co_grahas):
                 for g2 in co_grahas[i+1:]:
-                    fids = [graha_fact_id.get(g1, ""), graha_fact_id.get(g2, "")]
-                    fids = [f for f in fids if f]
+                    fids = [f for f in [graha_nak_fid.get(g1, ""), graha_nak_fid.get(g2, "")] if f]
                     rows.append(_base_row(
                         "nakshatra_co_tenancy", nak_name, f"co_{g1}_{g2}",
                         chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                         value_text=f"{g1}&{g2}",
-                        value_jsonb={"nakshatra": nak_name, "grahas": [g1, g2]},
-                        constituent_facts_array=fids,
+                        value_jsonb={
+                            "nakshatra": nak_name,
+                            "grahas": [g1, g2],
+                            "constituent_fact_ids": fids,
+                        },
                         verif="two_pass_verified",
                         source=f"ga_structural.nakshatra_co_tenancy/{eng_ver}",
                         citation_human=f"{g1} and {g2} co-tenant in {nak_name} ({ayanamsha_id}).",
                     ))
 
-    for graha_subj, data in graha_nak.items():
-        nak = data.get("nakshatra", "")
-        if not nak:
-            continue
+    for graha_subj, nak in graha_nak_name.items():
         nak_idx = NAKSHATRA_NAMES_27.index(nak) if nak in NAKSHATRA_NAMES_27 else -1
-        nak_lord = NAKSHATRA_LORDS.get(nak, "")
-        fid = graha_fact_id.get(graha_subj, "")
+        nak_lord = graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(nak, ""))
+        graha_nak_fact_id = graha_nak_fid.get(graha_subj, "")
+        lord_fact_id = graha_lord_fid.get(graha_subj, "")
 
         rows.append(_base_row(
             "nakshatra_lord_relationship", graha_subj, "nakshatra_lord",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=nak_lord,
-            value_jsonb={"graha_subject": graha_subj, "nakshatra": nak, "lord": nak_lord},
-            constituent_facts_array=[fid] if fid else [],
+            value_jsonb={
+                "graha_subject": graha_subj,
+                "nakshatra": nak,
+                "lord": nak_lord,
+                "constituent_fact_ids": [f for f in [graha_nak_fact_id, lord_fact_id] if f],
+            },
             verif="two_pass_verified",
             source=f"ga_structural.nakshatra_lord_relationship/{eng_ver}",
             citation_human=f"{graha_subj} in {nak}; lord={nak_lord} ({ayanamsha_id}).",
@@ -5332,17 +5367,19 @@ def _build_nakshatra_relationship_rows(
             tara_count = (nak_idx - moon_nak_idx) % 27 + 1
             tara_idx = (tara_count - 1) % 9
             tara_name = TARA_NAMES[tara_idx]
-            moon_fid = graha_fact_id.get(moon_subj, "")
             rows.append(_base_row(
                 "tara_bala", graha_subj, "tara_from_moon",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=float(tara_count),
                 value_text=tara_name,
                 value_jsonb={
-                    "graha_subject": graha_subj, "nakshatra": nak,
-                    "moon_nakshatra": moon_nak, "tara_count": tara_count, "tara_name": tara_name,
+                    "graha_subject": graha_subj,
+                    "nakshatra": nak,
+                    "moon_nakshatra": moon_nak,
+                    "tara_count": tara_count,
+                    "tara_name": tara_name,
+                    "constituent_fact_ids": [f for f in [graha_nak_fact_id, moon_nak_fid] if f],
                 },
-                constituent_facts_array=[f for f in [fid, moon_fid] if f],
                 verif="two_pass_verified",
                 source=f"ga_structural.tara_bala/{eng_ver}",
                 citation_human=(
@@ -5476,51 +5513,87 @@ def _build_bhava_chalit_divergence_rows(
     conn: Any, chart_output: dict, chart_id: str, build_id: str,
     ayanamsha_id: str, computed_at: str, eng_ver: str,
 ) -> list[dict]:
-    """Flag when bhava-chalit placement differs from rasi house placement."""
+    """Flag when equal-bhava (Sripati chalit) house differs from rasi (whole-sign) house.
+
+    Root-cause fix: no GA writer writes a 'bhava_chalit_house' category to chart_facts,
+    so the original DB query always returned 0 rows. Bhava chalit positions are computed
+    inline here from chart_output — 12 equal bhavas of 30° each starting at the
+    ascendant longitude. A graha that falls in a different equal-bhava house than its
+    rasi (whole-sign) house is flagged as diverging.
+    Constituent refs live in fact_value_jsonb['constituent_fact_ids'].
+    """
     rows = []
+
+    asc = chart_output.get("ascendant", {})
+    asc_long = float(asc.get("longitude", 0.0))
+
+    # 12 equal-bhava cusps: cusp k = (asc_long + (k-1)*30) % 360
+    cusp_starts = [(asc_long + i * 30.0) % 360.0 for i in range(12)]
+
+    def _chalit_house_for(g_long: float) -> int:
+        g = g_long % 360.0
+        for h in range(12):
+            start = cusp_starts[h]
+            end = cusp_starts[(h + 1) % 12]
+            if start < end:
+                if start <= g < end:
+                    return h + 1
+            else:  # arc wraps 360 → 0
+                if g >= start or g < end:
+                    return h + 1
+        return 1
+
+    # Pre-load graha_position fact_ids for constituent refs (one query, not N queries)
+    graha_pos_fids: dict[str, str] = {}
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
-                SELECT fact_subject,
-                       MAX(CASE WHEN fact_key = 'house_chalit' THEN fact_value_num END) AS chalit_h,
-                       MAX(fact_id::text) AS fact_id
-                FROM chart_facts
+                SELECT fact_subject, fact_id FROM chart_facts
                 WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'bhava_chalit_house'
-                GROUP BY fact_subject
+                  AND fact_category = 'graha_position'
+                  AND fact_key = 'sign'
             """, (chart_id, ayanamsha_id))
-            chalit_rows = cur.fetchall()
+            for subj, fid in cur.fetchall():
+                graha_pos_fids[subj] = str(fid)
     except Exception as exc:
-        logger.warning("[ga_structural] bhava_chalit_house query failed: %s", exc)
-        return []
+        logger.warning("[ga_structural] bhava_chalit graha_pos prefetch failed: %s", exc)
 
-    g_house_rasi = {
-        g["name"]: int(g.get("house", 1))
-        for g in chart_output.get("grahas", [])
-    }
-    for subj, chalit_h, fid in chalit_rows:
-        if chalit_h is None:
-            continue
-        chalit_h = int(chalit_h)
-        g_name = next((g for g, s in PLANET_TO_SUBJECT.items() if s == subj), None)
-        rasi_h = g_house_rasi.get(g_name, chalit_h) if g_name else chalit_h
-        diverges = (chalit_h != rasi_h)
-        if diverges:
+    divergence_count = 0
+    for g in chart_output.get("grahas", []):
+        g_name = g.get("name", "")
+        g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+        rasi_h = int(g.get("house", 1))
+        g_long = float(g.get("longitude", 0.0))
+        chalit_h = _chalit_house_for(g_long)
+
+        if chalit_h != rasi_h:
+            divergence_count += 1
+            fid = graha_pos_fids.get(g_subj, "")
             rows.append(_base_row(
-                "bhava_chalit_rasi_divergence", subj, "diverges_from_rasi",
+                "bhava_chalit_rasi_divergence", g_subj, "diverges_from_rasi",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_text="true",
                 value_jsonb={
-                    "rasi_house": rasi_h, "chalit_house": chalit_h,
+                    "rasi_house": rasi_h,
+                    "chalit_house": chalit_h,
                     "diverges": True,
+                    "asc_longitude": round(asc_long, 4),
+                    "graha_longitude": round(g_long, 4),
+                    "constituent_fact_ids": [fid] if fid else [],
                 },
-                constituent_facts_array=[fid] if fid else [],
                 verif="two_pass_verified",
                 source=f"ga_structural.bhava_chalit_divergence/{eng_ver}",
                 citation_human=(
-                    f"{subj} bhava-chalit diverges: rasi H{rasi_h} vs chalit H{chalit_h} ({ayanamsha_id})."
+                    f"{g_subj} bhava-chalit diverges: rasi H{rasi_h} vs chalit H{chalit_h} "
+                    f"(asc={asc_long:.2f}°, graha={g_long:.2f}°) ({ayanamsha_id})."
                 ),
             ))
+
+    logger.info(
+        "[ga_structural] bhava_chalit_divergence: %d/%d grahas shift house in equal-bhava "
+        "(asc_long=%.2f°, %s)",
+        divergence_count, len(chart_output.get("grahas", [])), asc_long, ayanamsha_id,
+    )
     return rows
 
 

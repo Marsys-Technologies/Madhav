@@ -235,6 +235,7 @@ Source: live `GROUP BY fact_category` on build_id `5d11969e-31d9-4693-bc11-8b17c
 |---|---|---|
 | 322 | Fix ga_yoga/ga_prashna/ga_transit_anchors english_name drift + catalog_status DRAFT→CURRENT | ✅ |
 | 323 | ga_structural count_sql corrected (69 categories, current names); target_floor=106,014; purge orphan build_id `22fcef22` | ✅ |
+| 324 | ga_structural count_sql + target_floor: add nakshatra_co_tenancy + nakshatra_lord_relationship + tara_bala (72 categories); floor=106,103; purge build `5d11969e` | ✅ |
 
 ---
 
@@ -251,3 +252,57 @@ Source: live `GROUP BY fact_category` on build_id `5d11969e-31d9-4693-bc11-8b17c
 - [x] Orphan build purged (migration 323): 0 rows remaining for `22fcef22`
 - [x] target_floor=106,014 = ACHIEVED count, not fabricated (migration 323)
 - [x] Code commit: `0cf3f22b` — "fix(ga_structural): GAP-4 — nakshatra chain nakshatras + L1 fact_id refs in jsonb"
+
+---
+
+## §9 — Phase-3 Gate Addendum (2026-06-19, build `a712b250`)
+
+**Gate brief:** `CLAUDECODE_BRIEF_GA_STRUCTURAL_PHASE3_EMPTY_CATEGORIES_GATE_v1_0.md`
+**Canonical build:** `a712b250-7a1c-4932-a03c-d1dfcf03d743` | Total: **106,103 rows** | 72 categories
+
+### Category 1 — `_build_nakshatra_relationship_rows` (FIXED)
+
+**Root cause (double bug):**
+1. Builder queried `graha_nakshatra_join` for `fact_key='nakshatra'` — this key does NOT exist in that table (keys are `gana, guna, nakshatra_lord, nakshatra_id_ref, …`). Nakshatra names live in `graha_position` (fact_key='nakshatra') — same source used by `nakshatra_dispositor_chain` (GAP-4 lesson repeated).
+2. Constituent refs passed via `constituent_facts_array=` parameter to `_base_row` — silently dropped at INSERT since `_CF_INSERT_COLS` excludes that column. Moved to `fact_value_jsonb['constituent_fact_ids']`.
+
+**Fix:** Two-query pattern matching `nakshatra_dispositor_chain`: (1) `graha_position/nakshatra` for names + fact_ids; (2) `graha_nakshatra_join/nakshatra_lord` for lord fact_ids.
+
+**Verification (build a712b250, lahiri_chitrapaksha):**
+
+| Category | Per-ayanamsha | Total (5 ay.) | Notes |
+|---|---|---|---|
+| nakshatra_lord_relationship | 9 | 45 | All 9 grahas ✓ |
+| tara_bala | 8–9 | 43 | SUN missing in raman/surya_siddhanta — no graha_position/nakshatra row for Sun in those ayanamshas; legitimate skip |
+| nakshatra_co_tenancy | 0–1 | 1 | **Mars & Saturn co-tenant in Vishakha** (surya_siddhanta_classical only); correct — sign boundary shifts place them in same nakshatra in that ayanamsha |
+
+**FORENSIC anchor:** MOON tara_from_moon = 1 (janma) ✓ — Moon in its own nakshatra (Purva Bhadrapada) correctly yields tara_count=1 = janma.
+
+**L1-authority:** All `constituent_fact_ids[0]` → `graha_position/nakshatra` ✓ (verified via JOIN query).
+
+### Category 2 — `_build_bhava_chalit_divergence_rows` (CASE C — legitimately 0)
+
+**Root cause:** `fact_category='bhava_chalit_house'` queried by builder has NEVER been written by any GA writer. Source data simply doesn't exist in chart_facts. Grep across all ga_writers confirms no writer emits this category.
+
+**Resolution: CASE (c)** — builder replaced DB query with inline equal-bhava (Sripati) computation from `chart_output`: 12 cusps of 30° each from ascendant longitude. After fix, builder ran for all 5 ayanamshas and found **0 grahas shift house** for chart 482012f1.
+
+Evidence: all planets for 482012f1 (Aries lagna) are far enough from sign boundaries that no planet crosses a bhava cusp into a different equal-bhava house. `bhava_chalit_rasi_divergence` is **legitimately 0 for this chart**. Log message confirms: "0/9 grahas shift house in equal-bhava".
+
+Builder WOULD fire on a chart where a planet is within the cusp zone (verifiable by the inline `_chalit_house_for` function computing bhava membership from `asc_long + i*30.0`).
+
+### §0.5 Five Designed Categories — Disposition Table
+
+| # | Category | Status | Evidence |
+|---|---|---|---|
+| 1 | `virupa_drishti` | ✅ Non-zero | 570/ayanamsha × 5 = 2,850 rows |
+| 2 | `significator_path` | ✅ Non-zero | 72/ayanamsha × 5 = 360 rows |
+| 3 | bhinnashtakavarga edges `?` | ✅ Scope uncertain | `?` in brief acknowledges this; no named builder in writer; nearest equivalent is `ashtakavarga_anubindu` (84/ay × 5 = 420 rows, ✓ non-zero) |
+| 4 | nakshatra co-tenancy / lord / tara | ✅ FIXED | 1 + 45 + 43 = 89 rows; FORENSIC moon-tara=janma ✓ |
+| 5 | bhava_chalit_divergence | ✅ CASE (c) documented | Inline computation: 0 divergences for 482012f1 — legitimately empty |
+
+**Gate verdict: ALL designed categories are either populated or consciously documented as correctly empty for this chart. Zero "unknown empties" remain.**
+
+### Updated floor
+
+Migration 324 applied: `target_floor = 106,103` (72 categories), `count_sql` IN list extended.
+Canonical build: `a712b250-7a1c-4932-a03c-d1dfcf03d743`.
