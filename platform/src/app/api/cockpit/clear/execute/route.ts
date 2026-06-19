@@ -19,7 +19,7 @@ async function requireUser() {
 
 async function getUserRole(uid: string): Promise<string> {
   const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [uid])
-  return rows[0]?.role ?? 'client'
+  return rows[0]?.role ?? 'guest'
 }
 
 const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
