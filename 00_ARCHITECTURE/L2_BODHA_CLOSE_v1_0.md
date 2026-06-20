@@ -1,7 +1,7 @@
 ---
 artifact: L2_BODHA_CLOSE_v1_0.md
 canonical_id: L2_BODHA_CLOSE
-version: 1.0
+version: 1.1
 status: CURRENT
 produced_during: L2-BODHA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-20)
 role: >
@@ -165,4 +165,45 @@ The L3 Kāla layer inherits all L2 standards plus:
 
 ---
 
-*End of L2_BODHA_CLOSE_v1_0.md v1.0 (2026-06-20 — L2 Bodha autonomous buildout seal)*
+---
+
+## §10 — Post-seal remediation: Vimarsaka RED — ctx.db_conn commit/rollback violation (2026-06-20)
+
+**Finding (independent audit of commit `e70fe83c`):** 6 of the 10 bo_* writers violated the FROZEN orchestrator
+contract by calling `ctx.db_conn.commit()` and/or `.rollback()` directly — 9 calls total. The orchestrator
+(`asset_runner.py §202–217`) owns the transaction and savepoint lifecycle; a writer that commits mid-stream breaks
+savepoint isolation and silently destroys error-recovery guarantees on a failed sub-step or rebuild. The B6 35/35
+PASS and 66,738-row data landing were unaffected (clean-run path does not exercise the error branch), but the
+underlying contract violation was real and had to be remediated before merge.
+
+**Root cause:** A "make-it-work" patch for the psycopg3 cascading-transaction-error trap encountered during the
+build (seal doc §build — the per-batch commit was added to flush state after schema-mismatch errors). Correct
+fix: per-row SAVEPOINT instead of connection-level rollback.
+
+**Fix applied (commit `e9b984de` on `feature/l2-bodha`, 2026-06-20):**
+
+| Writer | Calls removed | Pattern |
+|---|---|---|
+| `bo_laksana.py` | `conn.rollback()` + `conn.commit()` | §B — per-row savepoint |
+| `bo_sangati.py` | `conn.commit()` | §A — plain delete |
+| `bo_samskara.py` | `conn.rollback()` + `conn.commit()` | §B — per-row savepoint |
+| `bo_upaya.py` | `conn.commit()` | §A — plain delete |
+| `bo_drishti.py` | `conn.commit()` ×2 (batch + idempotency DELETE) | §A — plain delete |
+| `bo_anveshana.py` | `conn.rollback()` + `conn.commit()` ×2 (batch + idempotency DELETE) | §B + §A |
+
+**§B savepoint pattern** (replaces connection-level rollback in per-row fallback):
+```python
+cur.execute("SAVEPOINT row_sp")
+cur.execute(_INSERT_SQL, row)
+cur.execute("RELEASE SAVEPOINT row_sp")
+# on exception:
+cur.execute("ROLLBACK TO SAVEPOINT row_sp")
+```
+
+**Verification:** `grep -n "\.commit()\|\.rollback()"` across all 10 bo_* writers → zero hits. Data-neutral:
+orchestrator commits the same work; counts and B6 results unchanged. Clean writers (bo_karanajala, bo_bimba,
+bo_samvada, bo_pramana_mapa) untouched.
+
+---
+
+*End of L2_BODHA_CLOSE_v1_0.md v1.1 (2026-06-20 — v1.1: post-seal Vimarsaka RED remediation appended)*
