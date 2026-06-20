@@ -147,7 +147,8 @@ test.describe('γ8: ConsumeChatV2 WCAG 2.1 AA — source attribute assertions', 
   test('all icon-only action buttons have accessible names', () => {
     expect(V2_SRC).toContain('aria-label="Scroll to bottom"')
     expect(V2_SRC).toContain('aria-label="Stop generating response"')
-    expect(V2_SRC).toContain('aria-label="Cancel current response and send new query"')
+    // R10 edit-while-streaming branch: text+icon button with explicit aria-label
+    expect(V2_SRC).toContain('aria-label="Stop and edit"')
     expect(V2_SRC).toContain('aria-label="Send message"')
     expect(V2_SRC).toContain('aria-label="Attach image or PDF file"')
   })
