@@ -57,12 +57,14 @@ function arcPath(cx: number, cy: number, r: number, frac: number): string {
 }
 
 // ── Per-layer aggregate ─────────────────────────────────────────────────────
-type LayerAgg = { count: number; state: string; builtFrac: number }
-function aggregate(assets: AssetWithState[]): LayerAgg {
+export type LayerAgg = { count: number; state: string; builtFrac: number }
+export function aggregate(assets: AssetWithState[]): LayerAgg {
   const total = assets.length || 1
   const building = assets.some(a => a.state === 'building')
-  const built = assets.filter(a => a.state === 'lit').length
-  const stale = assets.some(a => a.state === 'stale')
+  // service_ok counts as built (service assets have no rows, state is never 'lit').
+  // build_state_stale counts as built (rows are present; ledger is behind, not absent).
+  const built = assets.filter(a => a.state === 'lit' || a.state === 'service_ok' || a.build_state_stale).length
+  const stale = assets.some(a => a.state === 'stale' || a.build_state_stale)
   const state = building ? 'building' : built === 0 ? 'dormant' : stale ? 'stale' : 'lit'
   return { count: assets.length, state, builtFrac: built / total }
 }

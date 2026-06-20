@@ -143,6 +143,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header }: Props) {
       state: overlay?.state ?? s?.state ?? 'dormant',
       last_built_at: s?.last_built_at ?? null,
       actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
+      build_state_stale: s?.build_state_stale ?? false,
     }
   })
 
