@@ -170,6 +170,16 @@ def _run_service_health_probe(
                WHERE run_id = %s AND asset_id = %s""",
             (run_id, asset_id),
         )
+        # Write service health telemetry to asset_registry (mig 242 columns).
+        # health_probe result → 'healthy'; last_invoked_at = NOW().
+        cur.execute(
+            """UPDATE asset_registry
+               SET service_health = 'healthy',
+                   last_invoked_at = NOW(),
+                   last_selftest_at = NOW()
+               WHERE asset_id = %s""",
+            (asset_id,),
+        )
         conn.commit()
         emit_event({
             "type": "asset.state_change",
@@ -183,6 +193,23 @@ def _run_service_health_probe(
     else:
         error_msg = f"service health: {status} — {message}"
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, error_msg)
+        # Write degraded/unhealthy to asset_registry (mig 242 columns).
+        health_col_value = "degraded" if status == "degraded" else "unhealthy"
+        try:
+            cur.execute(
+                """UPDATE asset_registry
+                   SET service_health = %s,
+                       last_invoked_at = NOW()
+                   WHERE asset_id = %s""",
+                (health_col_value, asset_id),
+            )
+            conn.commit()
+        except Exception as hc_exc:
+            logger.debug("[orchestrator] service_health update skipped (col missing?): %s", hc_exc)
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         logger.warning("[orchestrator] service %s health probe %s: %s", asset_id, status, message)
 
 

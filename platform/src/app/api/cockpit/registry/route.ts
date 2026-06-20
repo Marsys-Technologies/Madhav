@@ -30,6 +30,12 @@ export interface AssetRow {
   provides_apis: Record<string, unknown>[] | null
   health_probe: Record<string, unknown> | null
   catalog_status: 'CURRENT' | 'DRAFT' | null
+  // Migration 242+ L3 Kāla service-asset-type fields
+  asset_kind: 'data' | 'service' | 'artifact' | null
+  service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
+  last_invoked_at: string | null
+  last_selftest_at: string | null
+  selftest_detail: Record<string, unknown> | null
 }
 
 export async function GET() {
@@ -41,7 +47,9 @@ export async function GET() {
         size_sql, target_floor, expected_volume_formula,
         expected_volume_inputs, volume_explanation, depends_on,
         scope, is_active, estimated_seconds, created_at,
-        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status
+        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
+        asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail,
+        asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail
       FROM asset_registry
       ORDER BY
         CASE layer

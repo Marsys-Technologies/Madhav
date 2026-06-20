@@ -51,6 +51,9 @@ export interface AssetStats {
   // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
   // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
   build_state_stale: boolean
+  // Service-asset health fields (populated for asset_type='service'; null for data assets)
+  service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
+  last_invoked_at: string | null
 }
 
 interface RegistryAsset {
@@ -61,7 +64,10 @@ interface RegistryAsset {
   is_active: boolean
   target_floor: number | null
   asset_type: 'data' | 'service' | null
+  asset_kind: 'data' | 'service' | 'artifact' | null
   health_probe: Record<string, unknown> | null
+  service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
+  last_invoked_at: string | null
 }
 
 // Mutable reference so the timeout callback can reach the pool client acquired
@@ -90,6 +96,8 @@ async function fetchAssetStats(
       state: 'service_ok' as const,
       last_built_at: null,
       build_state_stale: false,
+      service_health: asset.service_health ?? null,
+      last_invoked_at: asset.last_invoked_at ?? null,
     }
   }
 
@@ -105,6 +113,8 @@ async function fetchAssetStats(
       state: 'error' as const,
       last_built_at: null,
       build_state_stale: false,
+      service_health: null,
+      last_invoked_at: null,
     }
   }
 
@@ -138,6 +148,8 @@ async function fetchAssetStats(
       state: 'dormant' as const,
       last_built_at: null,
       build_state_stale: false,
+      service_health: null,
+      last_invoked_at: null,
     }
   } catch (err) {
     try { await client.query('ROLLBACK') } catch {}
@@ -157,6 +169,8 @@ async function fetchAssetStats(
       state: 'error' as const,
       last_built_at: null,
       build_state_stale: false,
+      service_health: null,
+      last_invoked_at: null,
     }
   } finally {
     // Only release if the timeout hasn't already destroyed this client.
@@ -199,6 +213,8 @@ function fetchAssetStatsWithTimeout(
     state: 'error' as const,
     last_built_at: null,
     build_state_stale: false,
+    service_health: null,
+    last_invoked_at: null,
   }
   const clientRef: ClientRef = { value: null }
   const timeout = new Promise<AssetStats>((resolve) =>
@@ -239,7 +255,7 @@ export async function GET(req: NextRequest) {
     // Load active assets that have count_sql
     const registryResult = await query<RegistryAsset>(`
       SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor,
-             asset_type, health_probe
+             asset_type, asset_kind, health_probe, service_health, last_invoked_at
       FROM asset_registry
       WHERE is_active = true
       ORDER BY asset_id
@@ -277,6 +293,8 @@ export async function GET(req: NextRequest) {
             state: 'error' as const,
             last_built_at: null,
             build_state_stale: false,
+            service_health: null,
+            last_invoked_at: null,
           }
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
