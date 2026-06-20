@@ -14,6 +14,7 @@ interface AssetWithState extends AssetRow {
   state: AssetState
   last_built_at: string | null
   actual_rows: number | null
+  build_state_stale?: boolean
 }
 
 // ── Antique-gold palette (art constants — intentional literal values) ──────────

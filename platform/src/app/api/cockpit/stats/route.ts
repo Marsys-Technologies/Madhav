@@ -280,10 +280,10 @@ export async function GET(req: NextRequest) {
           }
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
-      // building/stale/dormant/absent — signals the bar to badge "build-state stale".
+      // building/stale/dormant/error/absent — signals the bar to badge "build-state stale".
       const buildStateStale = derivedState === 'lit'
         && (base.actual_rows != null && base.actual_rows > 0)
-        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'building' || tp == null)
+        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'building' || tp?.state === 'error' || tp == null)
       return {
         ...base,
         volume: base.actual_rows,
