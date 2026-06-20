@@ -94,8 +94,15 @@ ON CONFLICT DO NOTHING
 def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(sql, params)
+        rows = cur.fetchall()
+        if not rows:
+            return []
+        # Connection may use dict_row factory (rows are already dicts) or tuple_row.
+        # dict_row: iterating the row gives KEYS not values, so zip(cols, row) would be wrong.
+        if isinstance(rows[0], dict):
+            return [dict(r) for r in rows]
         cols = [d.name for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row)) for row in rows]
 
 
 def _safe_float(v: Any, default: float = 0.0) -> float:
