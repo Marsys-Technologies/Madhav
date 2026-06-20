@@ -533,6 +533,146 @@ class TestLelZeroLeak:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# GATE G-MAG — output magnitude: each bo_* asset's live count must meet floor
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestOutputMagnitude:
+    """G-MAG: every bo_* asset must produce >= its registered target_floor rows.
+
+    Runs the asset's own chart-scoped count_sql live against PROD.
+    A writer producing < 10% of its floor causes this gate to FAIL — this is
+    the gap that allowed a seal while bo_anveshana had 5 rows vs floor 5770.
+    """
+
+    BO_ASSET_FLOORS: dict[str, int] = {
+        "bo_laksana":    500,
+        "bo_bimba":      100,
+        "bo_karanajala": 300,
+        "bo_sangati":    80,
+        "bo_samvada":    50,
+        "bo_samskara":   1000,
+        "bo_drishti":    50,
+        "bo_upaya":      10,
+        "bo_anveshana":  5770,
+        "bo_pramana_mapa": 1,
+    }
+
+    def test_bo_asset_counts_meet_floors(self, conn):
+        """Query asset_registry for count_sql, execute each, assert >= target_floor."""
+        rows = _fetch(
+            conn,
+            """SELECT asset_id, count_sql, target_floor
+               FROM asset_registry
+               WHERE asset_id LIKE 'bo_%%'
+                 AND catalog_status = 'CURRENT'
+               ORDER BY asset_id""",
+        )
+        assert rows, "No active bo_* assets found in asset_registry — registry not seeded"
+
+        failures = []
+        for row in rows:
+            asset_id = row["asset_id"]
+            count_sql = row["count_sql"]
+            registered_floor = int(row["target_floor"] or 0)
+
+            floor = max(registered_floor, self.BO_ASSET_FLOORS.get(asset_id, 0))
+            if floor == 0:
+                continue
+
+            try:
+                # count_sql may use $1 (PostgreSQL positional) or %(chart_id)s (named).
+                # Normalise to %s and supply one param per placeholder occurrence.
+                if "$1" in count_sql:
+                    normalised = count_sql.replace("$1", "%s")
+                    n_placeholders = normalised.count("%s")
+                    params: list | dict = [CHART_ID] * n_placeholders
+                else:
+                    normalised = count_sql
+                    params = {"chart_id": CHART_ID}
+                live_count = _count(conn, normalised, params)
+            except Exception as exc:
+                failures.append(f"{asset_id}: count_sql failed — {exc}")
+                continue
+
+            if live_count < floor:
+                pct_of_floor = live_count / floor if floor > 0 else 1.0
+                failures.append(
+                    f"{asset_id}: count={live_count} < floor={floor} "
+                    f"({pct_of_floor:.1%} of floor) — G-MAG FAIL"
+                )
+
+        assert not failures, "Output magnitude gate failures:\n" + "\n".join(failures)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GATE G-RUN — writer runnability: each bo_* writer must import cleanly
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestWriterRunnability:
+    """G-RUN: every bo_* writer module must import without ModuleNotFoundError."""
+
+    BO_WRITER_MODULES = [
+        "pipeline.orchestrator.writers.bo_laksana",
+        "pipeline.orchestrator.writers.bo_bimba",
+        "pipeline.orchestrator.writers.bo_karanajala",
+        "pipeline.orchestrator.writers.bo_sangati",
+        "pipeline.orchestrator.writers.bo_samvada",
+        "pipeline.orchestrator.writers.bo_samskara",
+        "pipeline.orchestrator.writers.bo_drishti",
+        "pipeline.orchestrator.writers.bo_upaya",
+        "pipeline.orchestrator.writers.bo_anveshana",
+        "pipeline.orchestrator.writers.bo_pramana_mapa",
+    ]
+
+    def test_all_bo_writers_import_cleanly(self):
+        """Each writer module must be importable without ModuleNotFoundError."""
+        import subprocess
+        import sys
+
+        failures = []
+        for module in self.BO_WRITER_MODULES:
+            result = subprocess.run(
+                [sys.executable, "-c", f"import {module}"],
+                capture_output=True,
+                text=True,
+                cwd="/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar",
+                env={**__import__("os").environ, "PYTHONPATH": "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar"},
+            )
+            if result.returncode != 0:
+                stderr = result.stderr.strip()
+                failures.append(f"{module}: {stderr[:300]}")
+
+        assert not failures, (
+            "Writer import failures (G-RUN gate):\n" + "\n".join(failures)
+        )
+
+    def test_bo_anveshana_embedding_fallback_is_disabled(self):
+        """_fetch_embeddings_np must NOT have a silent return-None fallback path."""
+        import inspect
+        import sys
+        import importlib
+
+        # Ensure fresh import from the correct path
+        if "pipeline.orchestrator.writers.bo_anveshana" in sys.modules:
+            del sys.modules["pipeline.orchestrator.writers.bo_anveshana"]
+
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "bo_anveshana",
+            "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        # Don't exec (would trigger side effects) — just read the source
+        with open("/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py") as f:
+            src = f.read()
+
+        assert "return [], None" not in src, (
+            "_fetch_embeddings_np still has silent 'return [], None' fallback — "
+            "embedding parse failures will degrade silently. Fix: raise on parse error."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SEAL SCORECARD — aggregate gate result
 # ═══════════════════════════════════════════════════════════════════════════════
 

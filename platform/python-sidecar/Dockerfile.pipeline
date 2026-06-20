@@ -36,6 +36,7 @@ COPY platform/python-sidecar/pyjhora_adapter/ ./platform/python-sidecar/pyjhora_
 # ga_writers' only non-stdlib import is pyjhora_adapter (COPYed above); psycopg
 # comes from requirements.txt.
 COPY platform/python-sidecar/ga_writers/ ./platform/python-sidecar/ga_writers/
+COPY platform/python-sidecar/bodha_writers/ ./platform/python-sidecar/bodha_writers/
 # Panchang engine (ga_panchanga + ga_pyjhora_engine health probe). Required since
 # ga_panchanga_writer imports panchang_engine at build time.
 COPY platform/python-sidecar/panchang_engine/ ./platform/python-sidecar/panchang_engine/

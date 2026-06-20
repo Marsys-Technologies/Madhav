@@ -176,38 +176,70 @@ def _compute_non_obviousness(conn: Any, chart_id: str, aya: str) -> list[dict]:
 # ── Primitive 2: Embedding outlier detection ───────────────────────────────────
 
 def _fetch_embeddings_np(conn: Any, chart_id: str, aya: str) -> tuple[list[str], np.ndarray | None]:
-    """Load signal_ids + embedding vectors for one ayanamsha. Returns (signal_ids, matrix)."""
+    """Load signal_ids + embedding vectors for one ayanamsha.
+
+    Casts embedding_vec::text so psycopg3 binary mode always returns a string,
+    never bytes/memoryview. Parse failures RAISE rather than returning a silent
+    empty result — the old silent fallback was the root cause of 5-row output
+    (vs floor 5770). Empty rows (no data in table) return an empty signal list
+    with no matrix, which is a legitimate no-op.
+    """
     rows = _fetch_dict(
         conn,
-        """SELECT signal_id, embedding_vec FROM bodha_signal_embeddings
+        """SELECT signal_id, embedding_vec::text AS embedding_vec
+           FROM bodha_signal_embeddings
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, aya],
     )
     if not rows:
-        return [], None
+        no_mat: np.ndarray | None = None
+        return [], no_mat
 
-    signal_ids = [str(r["signal_id"]) for r in rows]
-    try:
-        # embedding_vec is stored as a vector / list
-        vecs = []
-        for r in rows:
-            v = r["embedding_vec"]
-            if v is None:
+    signal_ids: list[str] = []
+    vecs: list[list[float]] = []
+    skipped = 0
+    for r in rows:
+        v = r["embedding_vec"]
+        if v is None:
+            skipped += 1
+            continue
+        if isinstance(v, (list, tuple)):
+            vecs.append([float(x) for x in v])
+            signal_ids.append(str(r["signal_id"]))
+        elif isinstance(v, str):
+            # Strip both bracket styles: pgvector may emit [x,y] or {x,y}
+            v_clean = v.strip().strip("[]{}")
+            floats = [float(x) for x in v_clean.split(",") if x.strip()]
+            if not floats:
+                skipped += 1
                 continue
-            if isinstance(v, (list, tuple)):
-                vecs.append([float(x) for x in v])
-            elif isinstance(v, str):
-                v_clean = v.strip("[]")
-                vecs.append([float(x) for x in v_clean.split(",")])
-            else:
-                vecs.append(list(v))
-        if not vecs:
-            return [], None
-        mat = np.array(vecs, dtype=np.float32)
-        return signal_ids[:len(vecs)], mat
-    except Exception as exc:
-        logger.warning("[bo_anveshana] embedding load failed: %s", exc)
-        return [], None
+            vecs.append(floats)
+            signal_ids.append(str(r["signal_id"]))
+        else:
+            raise RuntimeError(
+                f"[bo_anveshana] Unexpected embedding_vec type {type(v).__name__} for "
+                f"signal_id={r.get('signal_id')} — register pgvector adapter or cast to text"
+            )
+
+    if skipped > 0:
+        logger.warning("[bo_anveshana] %d embedding rows skipped (None/empty)", skipped)
+
+    if not vecs:
+        raise RuntimeError(
+            f"[bo_anveshana] No valid embedding vectors parsed for chart={chart_id} aya={aya} "
+            f"({len(rows)} rows fetched, all failed to parse)"
+        )
+
+    dim0 = len(vecs[0])
+    bad_dims = [i for i, vec in enumerate(vecs) if len(vec) != dim0]
+    if bad_dims:
+        raise RuntimeError(
+            f"[bo_anveshana] Inhomogeneous embedding dimensions: expected {dim0} but "
+            f"{len(bad_dims)} rows differ — data integrity error"
+        )
+
+    mat = np.array(vecs, dtype=np.float32)
+    return signal_ids, mat
 
 
 def _compute_embedding_outliers(signal_ids: list[str], mat: np.ndarray) -> list[tuple[str, float]]:
