@@ -26,9 +26,6 @@ const SESSION = process.env.SMOKE_SESSION_COOKIE
 const CHART_ID = process.env.SMOKE_CHART_ID ?? 'test-chart'
 const CONSUME_URL = `/clients/${CHART_ID}/consume`
 
-/** Skip all tests in this file if session cookie is not provided. */
-const maybeTest = (SESSION ? test : test.skip) as typeof test
-
 async function fillComposer(page: Page, text: string) {
   const input = page.getByTestId('v2-composer-input').first()
   await expect(input).toBeVisible({ timeout: 10_000 })
@@ -48,30 +45,36 @@ async function clickStop(page: Page) {
   await stopBtn.click()
 }
 
-maybeTest.describe('C-S6: stop-and-retain partial', () => {
-  maybeTest.use({
+test.describe('C-S6: stop-and-retain partial', () => {
+  test.use({
     storageState: {
-      cookies: [
-        {
-          name: 'session',
-          value: SESSION ?? '',
-          domain: 'localhost',
-          path: '/',
-          expires: -1,
-          httpOnly: true,
-          secure: false,
-          sameSite: 'Lax' as const,
-        },
-      ],
+      cookies: SESSION
+        ? [
+            {
+              name: 'session',
+              value: SESSION,
+              domain: 'localhost',
+              path: '/',
+              expires: -1,
+              httpOnly: true,
+              secure: false,
+              sameSite: 'Lax' as const,
+            },
+          ]
+        : [],
       origins: [],
     },
+  })
+
+  test.beforeEach(async () => {
+    test.skip(!SESSION, 'SMOKE_SESSION_COOKIE not set; skipping authenticated tests')
   })
 
   // ─────────────────────────────────────────────────────────────────────────
   // AC1: Send→stop morph visible (Anthropic stack as proxy for all 5)
   // ─────────────────────────────────────────────────────────────────────────
 
-  maybeTest('AC1: stop button appears during streaming on Anthropic stack', async ({ page }) => {
+  test('AC1: stop button appears during streaming on Anthropic stack', async ({ page }) => {
     await page.goto(CONSUME_URL)
 
     // Send a query that will stream for a few seconds
@@ -90,7 +93,7 @@ maybeTest.describe('C-S6: stop-and-retain partial', () => {
   // AC2 + AC3: Abort severs stream; partial persists in DOM
   // ─────────────────────────────────────────────────────────────────────────
 
-  maybeTest('AC2+AC3: partial response retained in DOM after stop', async ({ page }) => {
+  test('AC2+AC3: partial response retained in DOM after stop', async ({ page }) => {
     await page.goto(CONSUME_URL)
 
     // Send a query likely to produce a long response
@@ -119,7 +122,7 @@ maybeTest.describe('C-S6: stop-and-retain partial', () => {
   // AC4: Page refresh shows partial response
   // ─────────────────────────────────────────────────────────────────────────
 
-  maybeTest('AC4: partial response visible after page refresh', async ({ page }) => {
+  test('AC4: partial response visible after page refresh', async ({ page }) => {
     await page.goto(CONSUME_URL)
 
     await fillComposer(page, 'What is the significance of Ashtakavarga?')
@@ -149,7 +152,7 @@ maybeTest.describe('C-S6: stop-and-retain partial', () => {
   // Escape key stop
   // ─────────────────────────────────────────────────────────────────────────
 
-  maybeTest('Escape key stops streaming', async ({ page }) => {
+  test('Escape key stops streaming', async ({ page }) => {
     await page.goto(CONSUME_URL)
     await fillComposer(page, 'Describe Saturn transits briefly.')
     await clickSend(page)
@@ -183,9 +186,9 @@ test('C-S6: Composer.tsx contains stop morph logic (showStop)', async () => {
 test('C-S6: route.ts registers abort listener', async () => {
   const fs = await import('fs')
   const src = fs.readFileSync(
-    '../platform/src/app/api/chat/consume/route.ts',
+    '../platform/src/app/api/chat/consult/route.ts',
     'utf8'
   )
-  // β3 abort sentinel
+  // β3 abort sentinel (registered in consult/route.ts, not consume)
   expect(src).toContain("signal.addEventListener('abort'")
 })

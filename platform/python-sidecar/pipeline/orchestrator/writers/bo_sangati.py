@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION   = "bo_sangati_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 KNOWN_DOMAINS = [
     "career", "wealth", "health", "relationship",
@@ -107,33 +110,35 @@ INSERT INTO bodha_convergence (
 _BATCH_SIZE = 50
 
 
+def _fetch_dict(conn, sql: str, params: list) -> list[dict]:
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        cols = [d.name for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
 def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
-    rows = conn.execute(
-        """SELECT signal_id, signal_type_class, signal_tradition, domains_affected_array,
-                  computed_salience, verification_pass_status, salience_formula_version,
-                  signal_type_id
-           FROM bodha_msr_signals
-           WHERE chart_id = %s AND ayanamsha_id = %s""",
-        [chart_id, aya],
-    ).fetchall()
-    keys = [
-        "signal_id", "signal_type_class", "signal_tradition", "domains_affected_array",
-        "computed_salience", "verification_pass_status", "salience_formula_version",
-        "signal_type_id",
-    ]
-    return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+    return _fetch_dict(conn, """
+        SELECT signal_id::text, signal_type_class, signal_tradition, domains_affected_array,
+               computed_salience, verification_pass_status, salience_formula_version,
+               signal_type_id
+        FROM bodha_msr_signals
+        WHERE chart_id = %s AND ayanamsha_id = %s
+    """, [chart_id, aya])
 
 
 def _fetch_contradiction_domains(conn, chart_id: str, aya: str) -> set[str]:
-    """Returns set of domains that appear in contradiction rows."""
-    rows = conn.execute(
-        """SELECT domains_affected_array FROM bodha_contradictions
-           WHERE chart_id = %s AND ayanamsha_id = %s""",
-        [chart_id, aya],
-    ).fetchall()
+    """Returns set of domains that appear in bodha_contradictions rows (may be empty)."""
+    try:
+        rows = _fetch_dict(conn, """
+            SELECT domains_affected_array FROM bodha_contradictions
+            WHERE chart_id = %s AND ayanamsha_id = %s
+        """, [chart_id, aya])
+    except Exception:
+        return set()
     result: set[str] = set()
     for r in rows:
-        arr = r[0] if isinstance(r, (tuple, list)) else r.get("domains_affected_array", [])
+        arr = r.get("domains_affected_array") or []
         if arr:
             result.update(arr)
     return result
@@ -212,6 +217,13 @@ def _build_cdlm_cells(
             "negative_contribution": round(negative, 6),
             "net_linkage_strength": round(net, 6),
             "computed_linkage_strength": round(computed_strength, 6),
+            "domain_relationship_class": (
+                "positive_strong" if net >= 2000 else
+                "positive_moderate" if net >= 500 else
+                "positive_weak" if net > 0 else
+                "neutral" if net == 0 else
+                "inverse"
+            ),
             "linkage_formula_version": lf_result["linkage_formula_version"],
             "contradicting_signal_pairs_count": 1 if contradiction_flag else 0,
             "cross_domain_contradiction_flag": contradiction_flag,
@@ -301,10 +313,11 @@ def _build_convergence_rows(
 
 def _batch_insert(conn, rows: list[dict], sql: str) -> int:
     inserted = 0
-    for i in range(0, len(rows), _BATCH_SIZE):
-        for row in rows[i:i + _BATCH_SIZE]:
-            conn.execute(sql, row)
-        inserted += len(rows[i:i + _BATCH_SIZE])
+    with conn.cursor() as cur:
+        for i in range(0, len(rows), _BATCH_SIZE):
+            batch = rows[i:i + _BATCH_SIZE]
+            cur.executemany(sql, batch)
+            inserted += len(batch)
     return inserted
 
 

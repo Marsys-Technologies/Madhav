@@ -164,6 +164,7 @@ class BoSamvadaWriter(WriterBase):
 
         conn = ctx.db_conn
         try:
+            conn.execute("DROP VIEW IF EXISTS vw_chart_digest CASCADE")
             conn.execute(_CREATE_VIEW_CLEAN)
             logger.info("[bo_samvada] vw_chart_digest created/replaced")
             return WriterResult(asset_id=self.asset_id, rows_inserted=1,

@@ -29,7 +29,10 @@ ENGINE_VERSION   = "bo_bimba_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
 GRAPH_LIB        = "internal"
 GRAPH_LIB_VER    = "1.0"
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 KNOWN_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",

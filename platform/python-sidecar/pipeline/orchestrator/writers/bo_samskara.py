@@ -3,35 +3,40 @@ bo_samskara — Signal Embeddings (L2 Bodha)
 ==========================================
 Creates one bodha_signal_embeddings row per bodha_msr_signals row (1:1).
 
-Embedding strategy: deterministic hash-seeded vector (placeholder_hash_v1).
-  - SHA-256 of embedding_input_summary → seed for numpy random generator
-  - Gaussian sample → L2-normalize → 768-dim unit vector
-  - embedding_model = 'placeholder_hash_v1' marks this as a deterministic placeholder
-  - Semantically opaque but fully deterministic; replace by re-running after wiring
-    a real embedding service.
-
-NOTE: numpy is required. If not installed: `pip install numpy` in the sidecar venv.
+Embedding strategy: Vertex AI text-multilingual-embedding-002 (768-dim).
+  - embedding_model = 'text-multilingual-embedding-002'
+  - Batched via google-genai client (EMBED_BATCH_SIZE=100)
+  - Real semantic vectors replacing the placeholder_hash_v1 deterministic approach.
 
 LIGHT writer — one run() call over all ayanamshas.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import struct
+import os
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
 ENGINE_VERSION   = "bo_samskara_v1.0"
-EMBEDDING_MODEL  = "placeholder_hash_v1"
-EMBEDDING_VER    = "1.0"
+EMBEDDING_MODEL  = "text-multilingual-embedding-002"
+EMBEDDING_VER    = "002"
 EMBEDDING_DIM    = 768
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+GCP_PROJECT      = os.environ.get("GCP_PROJECT", "madhav-astrology")
+VERTEX_LOCATION  = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
+EMBED_BATCH_SIZE = 100
+
+_genai_client: Any = None
+
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 _INSERT = """
 INSERT INTO bodha_signal_embeddings (
@@ -51,24 +56,25 @@ ON CONFLICT (signal_id) DO UPDATE SET
   computed_at             = EXCLUDED.computed_at
 """
 
-_BATCH_SIZE = 100
+_BATCH_SIZE = 10
 
 
-def _text_to_deterministic_vec(text: str) -> list[float]:
-    """
-    Deterministic 768-dim unit vector seeded from SHA-256(text).
-    Uses only stdlib + numpy (no ML model needed).
-    """
-    import numpy as np  # noqa: PLC0415
-    seed_bytes = hashlib.sha256(text.encode("utf-8")).digest()
-    # Use first 8 bytes as uint64 seed
-    seed = struct.unpack("<Q", seed_bytes[:8])[0]
-    rng  = np.random.default_rng(seed)
-    vec  = rng.standard_normal(EMBEDDING_DIM).astype(np.float32)
-    norm = np.linalg.norm(vec)
-    if norm > 0:
-        vec = vec / norm
-    return vec.tolist()
+def _get_genai_client() -> Any:
+    global _genai_client
+    if _genai_client is None:
+        from google import genai  # noqa: PLC0415
+        _genai_client = genai.Client(
+            vertexai=True,
+            project=GCP_PROJECT,
+            location=VERTEX_LOCATION,
+        )
+    return _genai_client
+
+
+def _embed_batch(texts: list[str]) -> list[list[float]]:
+    client = _get_genai_client()
+    resp = client.models.embed_content(model=EMBEDDING_MODEL, contents=texts)
+    return [list(e.values) for e in resp.embeddings]
 
 
 def _build_input_summary(sig: dict) -> str:
@@ -119,10 +125,26 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
 
 def _batch_insert(conn, rows: list[dict]) -> int:
     inserted = 0
-    for i in range(0, len(rows), _BATCH_SIZE):
-        for row in rows[i:i + _BATCH_SIZE]:
-            conn.execute(_INSERT, row)
-        inserted += len(rows[i:i + _BATCH_SIZE])
+    total = len(rows)
+    with conn.cursor() as cur:
+        for i in range(0, total, _BATCH_SIZE):
+            batch = rows[i:i + _BATCH_SIZE]
+            try:
+                cur.executemany(_INSERT, batch)
+            except Exception:
+                logger.warning("[bo_samskara] batch at %d failed, falling back per-row", i)
+                for row in batch:
+                    try:
+                        cur.execute("SAVEPOINT row_sp")
+                        cur.execute(_INSERT, row)
+                        cur.execute("RELEASE SAVEPOINT row_sp")
+                    except Exception as row_exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT row_sp")
+                        logger.warning("[bo_samskara] skipping embedding %s: %s",
+                                       row.get("signal_id"), row_exc)
+            inserted += len(batch)
+            if inserted % 2000 == 0 or i + _BATCH_SIZE >= total:
+                logger.info("[bo_samskara] embedded %d/%d", inserted, total)
     return inserted
 
 
@@ -147,22 +169,30 @@ class BoSamskaraWriter(WriterBase):
                 logger.info("[bo_samskara dry_run] %s — %d signals", aya, len(signals))
                 continue
 
+            # Build (signal, summary) pairs first
+            signal_summaries: list[tuple[dict, str]] = [
+                (sig, _build_input_summary(sig)) for sig in signals
+            ]
+
+            # Batch-embed all summaries for this ayanamsha
             rows: list[dict] = []
-            for sig in signals:
-                summary = _build_input_summary(sig)
-                vec     = _text_to_deterministic_vec(summary)
-                rows.append({
-                    "embedding_id":             str(uuid.uuid4()),
-                    "signal_id":                str(sig["signal_id"]),
-                    "chart_id":                 chart_id,
-                    "ayanamsha_id":             aya,
-                    "build_id":                 build_id,
-                    "embedding_vec":            "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
-                    "embedding_model":          EMBEDDING_MODEL,
-                    "embedding_model_version":  EMBEDDING_VER,
-                    "embedding_input_summary":  summary,
-                    "computed_at":              now,
-                })
+            for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
+                batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
+                batch_texts = [summary for _, summary in batch]
+                vecs = _embed_batch(batch_texts)
+                for (sig, summary), vec in zip(batch, vecs):
+                    rows.append({
+                        "embedding_id":             str(uuid.uuid4()),
+                        "signal_id":                str(sig["signal_id"]),
+                        "chart_id":                 chart_id,
+                        "ayanamsha_id":             aya,
+                        "build_id":                 build_id,
+                        "embedding_vec":            "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
+                        "embedding_model":          EMBEDDING_MODEL,
+                        "embedding_model_version":  EMBEDDING_VER,
+                        "embedding_input_summary":  summary,
+                        "computed_at":              now,
+                    })
 
             replace_prior_signal_embeddings(conn, chart_id, aya)
             logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))

@@ -37,7 +37,10 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION   = "bo_upaya_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 KNOWN_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
@@ -75,7 +78,7 @@ INSERT INTO bodha_rm_remedy_prescriptions (
   tradition, sub_tradition,
   remedy_category, remedy_id_g27, remedy_label_human,
   prescription_detail_jsonb,
-  classical_strength_rating, classical_source_citation_id, classical_source_text_jsonb,
+  classical_strength_rating, classical_sources_jsonb, classical_source_text_jsonb,
   targets_motif_id, targets_cell_id, targets_dosha_class,
   resonance_match_score, match_score_formula_version,
   counter_indications_array, incompatible_with_prescription_ids_array, prerequisite_prescription_ids_array,
@@ -88,14 +91,14 @@ INSERT INTO bodha_rm_remedy_prescriptions (
   recommended_hora_lord_array, recommended_choghadiya_window_array,
   initiation_lunar_phase_recommendation_array, recommended_facing_direction,
   outcome_tracking_placeholder_jsonb, prescription_embedding_vec,
-  verification_pass_status, citation_ref, citation_human, computed_at, engine_version
+  verification_pass_status, citation_ref, citation_human, computed_at
 ) VALUES (
   %(prescription_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
   %(target_graha)s, %(target_resonance_id)s,
   %(tradition)s, NULL,
   %(remedy_category)s, %(remedy_id_g27)s, %(remedy_label_human)s,
   %(prescription_detail_jsonb)s::jsonb,
-  %(classical_strength_rating)s, %(classical_source_citation_id)s, NULL,
+  %(classical_strength_rating)s, %(classical_sources_jsonb)s::jsonb, NULL,
   NULL, NULL, %(targets_dosha_class)s,
   %(resonance_match_score)s, %(match_score_formula_version)s,
   %(counter_indications_array)s, NULL, NULL,
@@ -104,7 +107,7 @@ INSERT INTO bodha_rm_remedy_prescriptions (
   %(cross_tradition_corroboration_count)s, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL,
-  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
 )
 ON CONFLICT DO NOTHING
 """
@@ -117,7 +120,7 @@ _BATCH_SIZE = 50
 def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
     """graha → normalized shadbala (total / 390)."""
     rows = conn.execute(
-        """SELECT fact_key, fact_value_numeric FROM chart_facts
+        """SELECT fact_key, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_shadbala_total'""",
         [chart_id, aya],
     ).fetchall()
@@ -125,7 +128,7 @@ def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
     for r in rows:
         key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
         graha = key.split(":")[0] if ":" in key else key
-        val   = float(r[1] if isinstance(r, tuple) else r.get("fact_value_numeric") or 390.0)
+        val   = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 390.0)
         out[graha] = min(val / 390.0, 2.0)
     return out
 
@@ -133,7 +136,7 @@ def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
 def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
     """house → normalized bhava bala (total / 300)."""
     rows = conn.execute(
-        """SELECT fact_key, fact_value_numeric FROM chart_facts
+        """SELECT fact_key, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'bhava_bala_total'""",
         [chart_id, aya],
     ).fetchall()
@@ -144,7 +147,7 @@ def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
             house = int(key.split(":")[-1]) if ":" in key else int(key)
         except ValueError:
             continue
-        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_numeric") or 300.0)
+        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 300.0)
         out[house] = min(val / 300.0, 2.0)
     return out
 
@@ -155,7 +158,7 @@ def _fetch_special_states(conn: Any, chart_id: str, aya: str) -> dict[str, set[s
         """SELECT fact_key, fact_value_text FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND fact_category IN ('graha_special_state_rollup', 'graha_dignity_per_varga')
-             AND (fact_key LIKE '%:D1%' OR fact_category = 'graha_special_state_rollup')""",
+             AND (fact_key LIKE '%%:D1%%' OR fact_category = 'graha_special_state_rollup')""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, set[str]] = {}
@@ -173,9 +176,9 @@ def _fetch_special_states(conn: Any, chart_id: str, aya: str) -> dict[str, set[s
 def _fetch_graha_house_placements(conn: Any, chart_id: str, aya: str) -> dict[str, int]:
     """graha → bhava number (D1 placement)."""
     rows = conn.execute(
-        """SELECT fact_key, fact_value_numeric FROM chart_facts
+        """SELECT fact_key, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position'
-             AND fact_key LIKE '%:D1%:bhava%'""",
+             AND fact_key LIKE '%%:D1%%:bhava%%'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, int] = {}
@@ -183,7 +186,7 @@ def _fetch_graha_house_placements(conn: Any, chart_id: str, aya: str) -> dict[st
         key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
         graha = key.split(":")[0]
         try:
-            val = int(r[1] if isinstance(r, tuple) else r.get("fact_value_numeric") or 1)
+            val = int(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 1)
             out[graha] = val
         except (TypeError, ValueError):
             pass
@@ -430,7 +433,7 @@ def _build_resonances_and_prescriptions(
                     "deity": corpus_row.get("deity"),
                 }),
                 "classical_strength_rating": str(corpus_row.get("confidence") or ""),
-                "classical_source_citation_id": str(corpus_row.get("source_canonical_id") or "BPHS"),
+                "classical_sources_jsonb": json.dumps({"source_id": str(corpus_row.get("source_canonical_id") or "BPHS"), "citation": str(corpus_row.get("classical_ref") or "")}),
                 "targets_dosha_class": (dosha_by_graha.get(graha) or [None])[0],
                 "resonance_match_score": round(float(rm_result["resonance_match_score"]), 6),
                 "match_score_formula_version": rm_result["match_score_formula_version"],
@@ -445,7 +448,6 @@ def _build_resonances_and_prescriptions(
                 "citation_ref": f"brahma_remedy_corpus/{corpus_row.get('remedy_id')}",
                 "citation_human": f"G27 remedy {corpus_row.get('remedy_id')} for {graha}",
                 "computed_at": now,
-                "engine_version": ENGINE_VERSION,
             })
 
     return resonances, prescriptions
@@ -453,10 +455,11 @@ def _build_resonances_and_prescriptions(
 
 def _batch_insert(conn: Any, rows: list[dict], sql: str) -> int:
     inserted = 0
-    for i in range(0, len(rows), _BATCH_SIZE):
-        for row in rows[i:i + _BATCH_SIZE]:
-            conn.execute(sql, row)
-        inserted += len(rows[i:i + _BATCH_SIZE])
+    with conn.cursor() as cur:
+        for i in range(0, len(rows), _BATCH_SIZE):
+            batch = rows[i:i + _BATCH_SIZE]
+            cur.executemany(sql, batch)
+            inserted += len(batch)
     return inserted
 
 
@@ -491,8 +494,8 @@ class BoUpayaWriter(WriterBase):
                 chart_id, aya, build_id, conn, now
             )
 
-            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
+            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
 
             clean_res = _strip_private_keys(resonances)
             logger.info("[bo_upaya] %s — %d resonances, %d prescriptions",
