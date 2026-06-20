@@ -5,7 +5,7 @@ Creates one bodha_signal_embeddings row per bodha_msr_signals row (1:1).
 
 Embedding strategy: Vertex AI text-multilingual-embedding-002 (768-dim).
   - embedding_model = 'text-multilingual-embedding-002'
-  - Batched via google-genai client (EMBED_BATCH_SIZE=20)
+  - Batched via google-genai client (EMBED_BATCH_SIZE=100)
   - Real semantic vectors replacing the placeholder_hash_v1 deterministic approach.
 
 LIGHT writer — one run() call over all ayanamshas.
@@ -29,7 +29,7 @@ EMBEDDING_VER    = "002"
 EMBEDDING_DIM    = 768
 GCP_PROJECT      = os.environ.get("GCP_PROJECT", "madhav-astrology")
 VERTEX_LOCATION  = os.environ.get("VERTEX_AI_LOCATION", "asia-south1")
-EMBED_BATCH_SIZE = 20
+EMBED_BATCH_SIZE = 100
 
 _genai_client: Any = None
 
