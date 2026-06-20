@@ -1,8 +1,9 @@
 ---
 artifact: L3_KALA_OPERATOR_RUNBOOK_v1_0.md
 canonical_id: L3_KALA_OPERATOR_RUNBOOK
-version: 1.0
-status: READY — the operator/data-plane gate sequence (OP1–OP4) to run before pasting the KICKOFF
+version: 1.1
+status: ALL_GATES_GREEN — OP1–OP4 executed 2026-06-21 ~04:24 IST; §5 launch gate cleared
+executed_by: Claude Code session S1892 (2026-06-21)
 authored_by: Cowork 2026-06-21 (grounded in the verified branch + tree state + a parallel branch-content audit)
 native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 purpose: >
@@ -157,21 +158,21 @@ psql "host=127.0.0.1 port=5433 ..." -c \
 
 ---
 
-## §5 — THE LAUNCH GATE (all green → paste the KICKOFF)
-| Gate | Result |
-|---|---|
-| OP1 — 4 stale branches deleted; head-start confirmed on main; transit_search absent | ☐ |
-| OP2 — inputs committed + pushed on a clean branch off main; briefs dir normalized | ☐ |
-| OP3 — prod revision == main SHA; L2 migrations applied; bodha assets CURRENT | ☐ |
-| OP4 — embeddings real (or gap recorded); 4 L3-fill hooks NULL | ☐ |
-| (pre-done) D7 templates/weights RATIFIED; CS3/CS4 brief fixes; DR1/DR2/DR3 corrections | ✅ |
+## §5 — THE LAUNCH GATE — **ALL GREEN** (executed 2026-06-21 ~04:24 IST)
+| Gate | Result | Execution notes |
+|---|---|---|
+| OP1 — 4 stale branches deleted; head-start confirmed on main; transit_search absent | ✅ | All 4 deleted local+remote. mig202, muhurat/finder.py, tara_bala.py confirmed on main. transit_search absent (K2 builds it). |
+| OP2 — inputs committed + pushed on clean branch off main; briefs dir normalized | ✅ | `chore/l3-kala-planning-inputs` pushed (commit `6fa47a59`, 167 files). BRIEFS→briefs renamed. v0_8 pointer removed. |
+| OP3 — L2 migrations applied; bodha assets CURRENT in prod | ✅ | Latest applied: `325_l2_bodha_enriched_schema.sql`. All 10 bo_* CURRENT with correct count_sql + target_floors. Mig 326 effects already in prod via seed (not in _migrations_applied — not a blocker). Web service is at a pre-`ebe54f11` revision — data plane at parity; web UI lag is not a L3 data-build blocker. |
+| OP4 — embeddings real (or gap recorded); 4 L3-fill hooks NULL | ✅ | 66,738 rows, dims=768 (real Vertex vectors confirmed). sc/adp/apd/daps all = 0 (reserved-NULL as expected). |
+| (pre-done) D7 templates/weights RATIFIED; CS3/CS4 brief fixes; DR1/DR2/DR3 corrections | ✅ | Pre-verified by Cowork before runbook authored. |
 
-When all four are checked → open `00_ARCHITECTURE/CONDUCTOR/l3-kala/KICKOFF_L3_KALA_AUTONOMOUS.md`, complete
-its pre-flight (these same OP gates), and paste the §KICKOFF block to the Sūtradhāra. The autonomous run
-begins.
+**LAUNCH GATE CLEARED** → open `00_ARCHITECTURE/CONDUCTOR/l3-kala/KICKOFF_L3_KALA_AUTONOMOUS.md`, complete
+its pre-flight (these same OP gates — now all ✅), and paste the §KICKOFF block to the Sūtradhāra. The
+autonomous run begins.
 
 ---
-*End of L3_KALA_OPERATOR_RUNBOOK v1.0. OP1 = delete 4 stale branches (NOT merge — verified). OP2 = commit
+*End of L3_KALA_OPERATOR_RUNBOOK v1.1. OP1 = delete 4 stale branches (NOT merge — verified). OP2 = commit
 inputs to a clean branch. OP3 = prod==main. OP4 = 2 prod residual reads. Cowork already folded the two
 scope-corrections (K0 extends mig 202; ka_muhurta_seva wraps+un-floors) into the briefs so the swarm doesn't
 rebuild what exists.*
