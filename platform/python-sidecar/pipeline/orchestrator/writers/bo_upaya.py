@@ -494,8 +494,8 @@ class BoUpayaWriter(WriterBase):
                 chart_id, aya, build_id, conn, now
             )
 
-            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
+            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
 
             clean_res = _strip_private_keys(resonances)
             logger.info("[bo_upaya] %s — %d resonances, %d prescriptions",
