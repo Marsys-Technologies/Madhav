@@ -31,7 +31,10 @@ ENGINE_VERSION   = "bo_samskara_v1.0"
 EMBEDDING_MODEL  = "placeholder_hash_v1"
 EMBEDDING_VER    = "1.0"
 EMBEDDING_DIM    = 768
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 _INSERT = """
 INSERT INTO bodha_signal_embeddings (
@@ -51,7 +54,7 @@ ON CONFLICT (signal_id) DO UPDATE SET
   computed_at             = EXCLUDED.computed_at
 """
 
-_BATCH_SIZE = 100
+_BATCH_SIZE = 10
 
 
 def _text_to_deterministic_vec(text: str) -> list[float]:
@@ -119,10 +122,25 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
 
 def _batch_insert(conn, rows: list[dict]) -> int:
     inserted = 0
-    for i in range(0, len(rows), _BATCH_SIZE):
-        for row in rows[i:i + _BATCH_SIZE]:
-            conn.execute(_INSERT, row)
-        inserted += len(rows[i:i + _BATCH_SIZE])
+    total = len(rows)
+    with conn.cursor() as cur:
+        for i in range(0, total, _BATCH_SIZE):
+            batch = rows[i:i + _BATCH_SIZE]
+            try:
+                cur.executemany(_INSERT, batch)
+            except Exception:
+                logger.warning("[bo_samskara] batch at %d failed, falling back per-row", i)
+                for row in batch:
+                    try:
+                        cur.execute(_INSERT, row)
+                    except Exception as row_exc:
+                        logger.warning("[bo_samskara] skipping embedding %s: %s",
+                                       row.get("signal_id"), row_exc)
+                        conn.rollback()
+            conn.commit()
+            inserted += len(batch)
+            if inserted % 2000 == 0 or i + _BATCH_SIZE >= total:
+                logger.info("[bo_samskara] embedded %d/%d", inserted, total)
     return inserted
 
 

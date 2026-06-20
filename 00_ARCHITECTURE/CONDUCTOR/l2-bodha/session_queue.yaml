@@ -1,4 +1,5 @@
 campaign_id: L2_BODHA_BUILDOUT
+campaign_status: COMPLETE  # 2026-06-20 — B6 35/35 PASS; L2_BODHA_CLOSE_v1_0.md sealed
 spec_artifact: 00_ARCHITECTURE/L2_BODHA_AUTONOMOUS_EXECUTION_PLAN_v1_0.md
 spec_version: "1.0"
 branch: feature/l2-bodha
@@ -9,7 +10,14 @@ halt_policy: fully_autonomous_per_AUTONOMY_RESILIENCE_PATTERN   # Tier-3 (catast
 model_policy: gemini_deepseek_only   # Anthropic banned unless native asks
 data_plane: prod_via_cloud_sql_proxy_5433
 native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
-migration_tree: platform/migrations/   # CANONICAL (max 324) — new L2 migrations start at 325+
+migration_tree: platform/migrations/   # CANONICAL. Prep finding 2026-06-19: prod DB at mig 323; file 324 EXISTS but is UNAPPLIED. Wave-0 FIRST action = apply 324, THEN write L2 migrations from 325+.
+prep_findings:   # from PREIMPL_READINESS_REPORT.md (commit ebfc7922) — the swarm MUST honor these
+  prod_revision: amjis-web-00638-2gs   # == e6be443e merge; prod==main PASS
+  db_migration_state: "prod at 323; file 324 exists UNAPPLIED — apply 324 first (Wave-0), then 325+"
+  expected_tracked_gaps:   # EXPECTED — flag as documented gaps, do NOT deep-fix-loop on them
+    - "F2 remedy corpus: planet + dosha covered (266 rows); nakshatra-key / vastu-direction (0 rows) / body-part-key = remedy_corpus_gap → bo_upaya §R5 flags them; an L0-corpus-expansion follow-on, NOT a build failure"
+    - "§XS cross-subsystem: bg_nakshatra_medical (27) + vastu (3 tables) present; NO chakra table → tracked gap, edges cover what exists"
+    - "classical_chunks (stale): empty/deprecated, NO live reader → leave in place, no action (NOT the retire/repoint case)"
 governing:
   - 00_ARCHITECTURE/L2_BODHA_AUTONOMOUS_EXECUTION_PLAN_v1_0.md   # the wave plan + the L2-specific swarm additions
   - 00_ARCHITECTURE/AUTONOMY_RESILIENCE_PATTERN_v1_0.md          # 3-tier escalation; deep-fix ladder; Vimarśaka
@@ -49,9 +57,10 @@ sessions:
     wave: "0"
     asset: infra
     depends_on: []
-    gates: ["disposition_classifier_no_live_reader", "prod_verify_tables_exist", "migration_above_324", "schema_validate"]
+    gates: ["apply_mig_324_first", "disposition_classifier_no_live_reader", "prod_verify_tables_exist", "migration_above_324", "schema_validate"]
+    first_action: "APPLY migration 324 to prod (it exists on disk but is UNAPPLIED; prod is at 323) + reconcile the ledger. THEN author L2 migrations from 325+."
     work: >
-      Author + apply migrations 325+ : DROP+CREATE the bodha_* tables to the enriched contract
+      FIRST apply the unapplied migration 324 (prep finding). THEN author + apply migrations 325+ : DROP+CREATE the bodha_* tables to the enriched contract
       (L2_BODHA_SCHEMA_REDESIGN §3) incl. the cross-cutting spine columns (fact_kind / source_l1_asset /
       source_subsystem / classical_sources_jsonb / epistemic_jsonb / signal_summary_text + signal_headline_text /
       signature_tier / valence / lel_origin) + the NEW tables (bodha_question_lenses, bodha_chart_gestalt,

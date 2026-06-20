@@ -34,7 +34,10 @@ ENGINE_VERSION   = "bo_karanajala_v1.0"
 SNAPSHOT_TYPE    = "static_natal"
 GRAPH_LIB        = "internal"
 GRAPH_LIB_VER    = "1.0"
-CANONICAL_AYAS   = ["LAHIRI", "RAMAN", "KRISHNAMURTI", "YUKTESHWAR", "TROPICAL"]
+CANONICAL_AYAS   = [
+    "lahiri_chitrapaksha", "raman", "krishnamurti",
+    "surya_siddhanta_classical", "true_chitra",
+]
 
 _EDGE_INSERT = """
 INSERT INTO bodha_cgm_edges (
@@ -137,7 +140,7 @@ def _parse_cfg(sig: dict) -> dict:
 
 
 def _graha_from_cfg(cfg: dict) -> str | None:
-    for k in ("graha", "primary_graha", "lord", "fact_key"):
+    for k in ("graha", "primary_graha", "lord", "from_graha", "fact_key"):
         v = cfg.get(k, "")
         if v in KNOWN_GRAHAS:
             return str(v)
@@ -249,9 +252,10 @@ def _build_edges_and_contradictions(
             if graha:
                 dosha_by_graha[graha] = sig
 
-        # ── Aspect / conjunction edges ─────────────────────────────────────
+        # ── Aspect / conjunction / path edges ────────────────────────────────
         elif sig_class == "composite_state" and graha:
-            aspected_graha = cfg.get("aspected_graha") or cfg.get("graha_b")
+            aspected_graha = (cfg.get("aspected_graha") or cfg.get("graha_b")
+                              or cfg.get("to_graha"))
             if not aspected_graha:
                 fact_key = cfg.get("fact_key", "")
                 parts = fact_key.split(":")

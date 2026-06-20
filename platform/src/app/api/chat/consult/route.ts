@@ -12,14 +12,14 @@ import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
 
-/** Fetch signal name + description from bodha_signals for a list of signal IDs.
+/** Fetch signal headline + summary from bodha_msr_signals for a list of signal IDs.
  *  Returns a map signal_id → snippet string. Missing IDs get empty string. */
 async function fetchMsrSnippets(signalIds: string[]): Promise<Map<string, string>> {
   if (signalIds.length === 0) return new Map()
   try {
     const placeholders = signalIds.map((_, i) => `$${i + 1}`).join(', ')
     const { rows } = await query<{ signal_id: string; name: string; description: string }>(
-      `SELECT signal_id, signal_name AS name, signal_text AS description FROM bodha_signals WHERE signal_id IN (${placeholders})`,
+      `SELECT signal_id::text, signal_headline_text AS name, signal_summary_text AS description FROM bodha_msr_signals WHERE signal_id::text IN (${placeholders})`,
       signalIds,
     )
     return new Map(rows.map(r => {

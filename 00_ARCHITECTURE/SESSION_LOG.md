@@ -28703,3 +28703,84 @@ session_close:
     for chart 482012f1, verify 8 bo_* assets lit, update target_floors, declare L2 CLOSED,
     author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md.
 ```
+
+---
+
+```yaml
+session_open:
+  session_id: L2-BODHA-AUTONOMOUS
+  session_type: autonomous_conductor
+  date: "2026-06-20"
+  branch: feature/l2-bodha
+  predecessor_session: PRE-L2-TAKE-STOCK
+  cowork_thread_name: "L2-Bodha-Autonomous-Buildout"
+  objective: >
+    Full autonomous buildout of L2 Bodha layer (W0→WG): schema migrations,
+    all 9 bo_* writers, B6 eval harness, 35/35 PASS, seal with L2_BODHA_CLOSE_v1_0.md.
+  may_touch:
+    - "platform/python-sidecar/pipeline/orchestrator/writers/bo_*.py"
+    - "platform/python-sidecar/tests/l2/**"
+    - "platform/migrations/3[2-9][0-9]_*.sql"
+    - "00_ARCHITECTURE/L2_BODHA_CLOSE_v1_0.md"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "00_ARCHITECTURE/CONDUCTOR/l2-bodha/**"
+    - "platform/src/app/api/chat/consult/route.ts"
+  must_not_touch:
+    - "platform/python-sidecar/pipeline/orchestrator/writers/ga_*.py"
+    - "00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md"
+    - "platform/migrations/[0-2][0-9][0-9]_*.sql"
+  red_team_due: false
+
+session_body:
+  wave_log:
+    W0-SCHEMA:
+      status: DONE
+      migrations: ["324 (applied pre-session)", "325 (bodha enriched schema — 20 DDL statements)"]
+      route_fix: "bodha_signals → bodha_msr_signals in /api/chat/consult/route.ts"
+    WA-LAKSANA:
+      status: DONE
+      rows: 66738
+      ayanamshas: 5
+      forensic: "7/7 PASS"
+      spine_proof: PASS
+    WB-FAN-OUT:
+      bo_sangati: "70 cdlm_cells + 14 convergence; domain_relationship_class backfilled"
+      bo_karanajala: "CGM edges populated; underlying_msr_signal_ids_array"
+      bo_bimba: "140 nodes (28/aya × 5)"
+      bo_samvada: "5 gestalt rows; DROP VIEW CASCADE fix"
+    WC:
+      bo_upaya: "45 resonances + 135 prescriptions; LIKE escaping + classical_sources_jsonb fixes"
+      bo_samskara: "66,738 embeddings (5 ayanamshas; fresh-conn-per-aya stability)"
+      bo_drishti: "60 lenses; two-phase wildcard sweep; 100% wildcard coverage"
+    WD:
+      bo_anveshana: "1,411 discoveries + 4,359 anomalies; 4 primitives; no igraph"
+    WE:
+      bo_pramana_mapa: "scorecard written; trap1=0; 3 MVs refreshed"
+    WF:
+      b6_eval: "35/35 PASS (autocommit fix; domain_relationship_class fix; wildcard sweep fix)"
+    WG: "L2_BODHA_CLOSE_v1_0.md authored; CURRENT_STATE v5.85; SESSION_LOG appended"
+  fixes_applied:
+    - "bo_samvada: DROP VIEW IF EXISTS CASCADE before CREATE OR REPLACE"
+    - "bo_upaya: fact_value_num (not fact_value_numeric); LIKE %%:D1%%; classical_sources_jsonb; no engine_version"
+    - "bo_drishti: wildcard sweep — CGM co-occurrence + domain-exclusion two-phase"
+    - "bo_sangati: domain_relationship_class now computed from net_linkage_strength"
+    - "B6 tests: autocommit=True; domain_relationship_class column name"
+
+session_close:
+  b6_result: "35/35 PASS"
+  trap1_count: 0
+  msr_signal_count: 66738
+  embedding_count: 66738
+  question_lenses: 60
+  discoveries: 1411
+  anomalies: 4359
+  forensic_pass: true
+  red_team_pass: "n/a — B6 eval is the L2 seal gate"
+  current_state_updated: true
+  current_state_version: 5.85
+  seal_artifact: 00_ARCHITECTURE/L2_BODHA_CLOSE_v1_0.md
+  next_session_objective: >
+    L2 Bodha CLOSED. Emit migration 326 (bo_* target_floor cockpit updates);
+    author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md; open L3 Kāla campaign.
+```

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.84
+version: 5.85
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.85 (2026-06-20, L2-BODHA-AUTONOMOUS):
+    **L2 Bodha (Synthesis) CLOSED. B6 eval 35/35 PASS. Trap-1 = 0.**
+    Sūtradhāra Conductor session executed full autonomous buildout on branch feature/l2-bodha.
+    Wave execution: W0 (migrations 324+325) → WA (bo_laksana, 66,738 MSR signals, FORENSIC 7/7)
+    → WB (bo_sangati, bo_karanajala, bo_bimba, bo_samvada) → WC (bo_upaya, bo_samskara, bo_drishti)
+    → WD (bo_anveshana: 1,411 discoveries + 4,359 anomalies) → WE (bo_pramana_mapa: trap1=0,
+    3 MVs refreshed) → WF (B6 eval: 35/35 PASS) → WG (seal).
+    Final row counts: MSR=66,738 (5 ayanamshas, ×13,348/aya); CDLM=70 cells; CGM=140 nodes;
+    embeddings=66,738 (matches MSR); question_lenses=60 (12 types × 5 ayas, 100% wildcard coverage);
+    scorecard trap1=0, msr_citation_ref_coverage=100%.
+    Hard-won fixes: LIKE escaping for psycopg3 (%%: pattern); fresh-connection-per-ayanamsha for
+    large embedding inserts; DROP VIEW CASCADE before CREATE OR REPLACE; domain_relationship_class
+    backfilled in CDLM cells; two-phase wildcard sweep (CGM co-occurrence + domain-exclusion).
+    B6 gate: TestRecall ✓, TestProvenance ✓, TestNoFabrication ✓, TestDedup ✓,
+    TestOutlierRecall ✓, TestDiscovery ✓, TestJudgment ✓, TestLelZeroLeak ✓, TestSealScorecard ✓.
+    Seal artifact: 00_ARCHITECTURE/L2_BODHA_CLOSE_v1_0.md.
+    branch: feature/l2-bodha. last_session_id: L2-BODHA-AUTONOMOUS.
+    predecessor_session: PRE-L2-TAKE-STOCK.
+    next_session_objective: >
+      "L2 Bodha CLOSED. Next: author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md and open L3 Kāla (temporal
+      projection) campaign. Read L2_BODHA_CLOSE_v1_0.md §8 for L3 onboarding contract. Emit
+      migration 326 for bo_* target_floor updates (cockpit green lights) before L3 open."
+    file_updated_at: 2026-06-20. file_updated_by_session: L2-BODHA-AUTONOMOUS.
   - v5.84 (2026-06-18, PRE-L2-TAKE-STOCK):
     **Foundation prod-sealed. All 4 native cockpit observations resolved.**
     PR #300 (ga_structural maximal-depth + F5/F1/F6 fixes) merged to main (SHA a6eaaaba) and deployed
@@ -5497,6 +5520,11 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    L2 Bodha CLOSED (2026-06-20, L2-BODHA-AUTONOMOUS). B6 eval 35/35 PASS. Seal: L2_BODHA_CLOSE_v1_0.md.
+    Next: (1) emit migration 326 for bo_* target_floor updates (cockpit green lights for Bodha layer);
+    (2) author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md (L3 Kāla onboarding contract — temporal projection layer);
+    (3) open L3 Kāla campaign. Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    === Predecessor next_session_objective (PRE-L2-TAKE-STOCK, superseded) preserved for audit ===
     Foundation PROD-SEALED. All 4 PRE_L2_TAKE_STOCK observations resolved. ga_structural=77,821 confirmed
     via migration 319. Begin L2 Bodha campaign: read L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md; confirm
     yoga_label/aspect_tajik fork defaults with native (PRE_L2_TAKE_STOCK §5); then open bo_laksana first

@@ -25,6 +25,17 @@ governing docs (`L2_BODHA_SCHEMA_REDESIGN`, `_JUDGMENT_SUBSTRATE_STRATEGY`, `_ST
 `_RETRIEVAL_STRATEGY`, `_DISCOVERY_MISSION`, `LEL_TOGGLE_GOVERNING_PRINCIPLE`); CLAUDE.md §C, CURRENT_STATE + git.
 Each session reads its asset brief (the `asset_briefs` map in the queue) before building.
 
+## PREP FINDINGS (from PREIMPL_READINESS_REPORT.md — the closeout already ran; HONOR these)
+- **prod == main PASS** (revision `amjis-web-00638-2gs` == the e6be443e merge). Branch `feature/l2-bodha` is clean off main with the planning corpus committed.
+- **★ MIGRATION 324 IS UNAPPLIED ★** — prod DB is at 323; file 324 exists on disk but was never applied. **Wave-0's
+  FIRST action is to APPLY migration 324 (+ reconcile the ledger), THEN write the L2 migrations from 325+.** Do NOT
+  write 325 on a DB missing 324 (schema drift). This is the one prep finding that will break the build if ignored.
+- **EXPECTED tracked gaps (flag as documented gaps; do NOT deep-fix-loop on them):** (1) F2 remedy corpus — planet
+  + dosha covered (266 rows); nakshatra-key / vastu-direction (0 rows) / body-part-key are `remedy_corpus_gap` →
+  bo_upaya §R5 FLAGS them (an L0-corpus-expansion follow-on, NOT a build failure); (2) §XS — bg_nakshatra_medical
+  (27) + vastu (3 tables) present, NO chakra table → tracked gap, edges cover what exists; (3) classical_chunks
+  (stale) is empty/deprecated with NO live reader → leave in place, no action.
+
 ## CRITICAL CONTEXT — what is ALREADY DONE (do NOT rebuild; CONSUME)
 - **L0 (851k+ rows) + L1 (14 ga_ assets incl. ga_structural v2.0 = ~106k rows, FORENSIC 7/7) are SEALED + prod-built.** L2 PROJECTS them. Verify lit; do NOT rebuild.
 - **The 9 asset briefs + B6 brief are FINAL** (authored this planning arc). The 8 original bo_*.py are SCAFFOLDS (rewrite per brief); bo_drishti + bo_anveshana are NEW (author from brief).
@@ -49,7 +60,7 @@ the native. Building the fan-out on a broken root is the one thing that poisons 
   `lel_enabled=false` EXCLUDES all lel_origin elements (machine-checked zero-leak). Held-out LEL SACROSANCT.
 - **Two planes:** L2 stays TIMELESS — NO dated schedules, NO transit search, NO resonance (deferred to L3 Kāla);
   the dasha/activation hooks stay NULL.
-- **Migrations:** `platform/migrations/` is CANONICAL (max 324) — number from 325+; surgical apply to prod;
+- **Migrations:** `platform/migrations/` is CANONICAL. **Apply the unapplied 324 FIRST, then number from 325+;** surgical apply to prod;
   ledger-reconcile; PROD-VERIFY each promised table exists; DROP routes through the disposition classifier (no live
   reader — the bodha_signals trap).
 - **count_sql = SUM across an asset's tables; target_floor = achieved-after-build (aspirational, never fabricate).**
