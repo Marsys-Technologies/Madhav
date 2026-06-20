@@ -1,7 +1,7 @@
 ---
 artifact: L2_BODHA_CLOSE_v1_0.md
 canonical_id: L2_BODHA_CLOSE
-version: 1.1
+version: 1.2
 status: CURRENT
 produced_during: L2-BODHA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-20)
 role: >
@@ -12,6 +12,8 @@ role: >
 supersedes: L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md (that doc was the entry brief;
   this doc is the sealed closure record).
 changelog:
+  - v1.2 (2026-06-20, L2-BODHA-POSTSEAL-CLOSEOUT): §11 appended — C1–C5 closeout arc.
+  - v1.1 (2026-06-20, L2-BODHA-AUTONOMOUS): §10 appended — Vimarsaka RED fix.
   - v1.0 (2026-06-20, L2-BODHA-AUTONOMOUS): Initial seal — L2 Bodha layer CLOSED.
 ---
 
@@ -206,4 +208,52 @@ bo_samvada, bo_pramana_mapa) untouched.
 
 ---
 
-*End of L2_BODHA_CLOSE_v1_0.md v1.1 (2026-06-20 — v1.1: post-seal Vimarsaka RED remediation appended)*
+## §11 — Post-seal closeout: C1–C5 remediation arc (2026-06-20 / L2-BODHA-POSTSEAL-CLOSEOUT)
+
+Executed per `L2_POSTSEAL_CLOSEOUT_BRIEF_v1_0.md`. Sequence: C1→C2→C4→C3→C5.
+
+**C1 — Cockpit invisibility fix (migration 327).**
+Root cause: migration 326 set `catalog_status='CURRENT'` but never set `is_active=true` — the stats route
+(`platform/src/app/api/cockpit/stats/route.ts`) filters `WHERE is_active = true`, rendering all 10 bo_* assets
+invisible. Migration 327 (`platform/migrations/327_l2_bodha_cockpit_is_active.sql`) applied directly to prod:
+- `UPDATE asset_registry SET is_active = true WHERE asset_id IN (10 bo_* ids)`
+- `UPDATE asset_registry SET count_sql = 'SELECT count(*) FROM vw_chart_digest WHERE chart_id = $1' WHERE asset_id = 'bo_samvada'`
+  (bo_samvada count_sql was pointing at the empty `bodha_chart_gestalt` table instead of the live `vw_chart_digest` view)
+All 10 bo_* assets now `is_active=true`; cockpit fully reflective. Committed: `18502eb3`.
+
+**C2 — Real Vertex AI embeddings replacing placeholder_hash_v1.**
+`bo_samskara.py` wired to `google.genai.Client(vertexai=True)` → `text-multilingual-embedding-002` (768-dim).
+`EMBED_BATCH_SIZE=100` (5× reduction from 20). `CANONICAL_AYAS` = `["lahiri_chitrapaksha","raman","krishnamurti",
+"surya_siddhanta_classical","true_chitra"]`. Read/embed/write separation per ayanamsha (autocommit=True READ_conn
+closed before Vertex API calls; fresh WRITE_conn for DELETE+INSERT only) to avoid `idle_in_transaction_session_timeout`.
+Final row count: 66,738 (1:1 with MSR signals; 5 ayanamshas). `embedding_model='text-multilingual-embedding-002'`,
+`embedding_model_version='002'`. Commits: `31df2bbe`, `70df03f0`, `83c07eb9`, `e25eb129`.
+
+**C4 — Vimarsaka fix re-verification (post-C2 re-run of all 6 fixed writers).**
+Re-ran 5 of the 6 fixed writers against prod (bo_laksana deferred to after embedding run to avoid signal_id
+invalidation race). All re-ran idempotently without errors:
+- bo_sangati: 100 rows (cdlm_cells=70, convergence=30) ✓
+- bo_upaya: 180 rows (resonances=45, prescriptions=135) ✓ — plus additional FK order fix (see below)
+- bo_drishti: 60 rows (lenses=60, 12 types × 5 ayas) ✓
+- bo_anveshana: 5,770 rows (discoveries=1,445, anomalies=4,325) ✓ — total invariant preserved
+- bo_samskara: 66,738 real embeddings ✓ (= C2)
+- bo_laksana: re-run after embedding writes complete (idempotency: delete-then-insert bodha_msr_signals)
+
+**Additional fix — bo_upaya FK idempotency order (commit `21ade7f4`).**
+`replace_prior_rm_resonances` was called before `replace_prior_rm_prescriptions` — FK
+`bodha_rm_remedy_prescriptions.target_resonance_id → bodha_rm_resonances.resonance_id` requires
+child deleted before parent. Order corrected; first re-run verified clean.
+
+**C3 — PR #302 merged to main.**
+All CI gates green after 4 progressive fixes: (a) SESSION_LOG heading for schema_validator; (b) E2E
+stop-and-retain-r11c.spec.ts maybeTest crash; (c) test_b6_eval_harness integration marker; (d) axe.spec.ts
+stale aria-label. Merged SHA `864288f2` (squash) to main. `feature/l2-bodha` branch retained.
+
+**C5 — Remedy corpus gaps tracked.**
+Created `00_ARCHITECTURE/BRAHMA_CORPUS_DEFERRED_v1_0.md` with 4 deferred L0 corpus expansion items:
+nakshatra-key remedials, vastu-direction remedials, body-part-key remedials, chakra table. Status OPEN, disposition
+DEFER. These are L0 corpus gaps, not L2 build bugs; bo_upaya correctly flags them as `remedy_corpus_gap`.
+
+---
+
+*End of L2_BODHA_CLOSE_v1_0.md v1.2 (2026-06-20 — v1.2: post-seal C1–C5 closeout arc appended)*
