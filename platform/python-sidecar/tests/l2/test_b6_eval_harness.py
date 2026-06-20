@@ -549,7 +549,7 @@ class TestOutputMagnitude:
         "bo_bimba":      100,
         "bo_karanajala": 300,
         "bo_sangati":    80,
-        "bo_samvada":    50,
+        "bo_samvada":    5,
         "bo_samskara":   1000,
         "bo_drishti":    50,
         "bo_upaya":      10,
