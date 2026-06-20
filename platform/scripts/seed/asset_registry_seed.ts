@@ -63,11 +63,20 @@ interface CoefficientDef {
 const ALLOWED_VARS = new Set([
   'AYANAMSHAS', 'GRAHAS', 'SIGNS', 'HOUSES', 'NAKSHATRAS',
   'VARGAS', 'BHAVAS', 'LIFE_SPAN_YEARS', 'DATE_RANGE_DAYS',
+  'FACT_KEYS',
+  'BODIES', 'FACT_CATEGORIES', 'CROSS_AYANAMSHA',
+  'YOGAS_IN_CATALOG', 'AYANAMSHAS_COUNT',
 ])
 const DEFAULTS: Record<string, number> = {
   AYANAMSHAS: 5, GRAHAS: 9, SIGNS: 12, HOUSES: 12,
   NAKSHATRAS: 27, VARGAS: 60, BHAVAS: 12,
   LIFE_SPAN_YEARS: 90, DATE_RANGE_DAYS: 44000,
+  FACT_KEYS: 1,          // atomic fact-key count per body per ayanamsha (graha_position + graha_sign_attributes)
+  BODIES: 21,            // grahas (9) + house cusps (12) for nakshatra writer scope
+  FACT_CATEGORIES: 17,   // nakshatra fact-category count per body per ayanamsha
+  CROSS_AYANAMSHA: 17,   // cross-ayanamsha consistency rows in ga_nakshatra
+  YOGAS_IN_CATALOG: 1,   // illustrative default (native chart fires 1 yoga × 5 ayanamshas)
+  AYANAMSHAS_COUNT: 5,   // alias used in ga_yoga formula
 }
 
 function parseFormula(
@@ -880,7 +889,7 @@ const ASSETS: AssetDef[] = [
     count_sql: `SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha')`,
     size_sql: "SELECT pg_total_relation_size('chart_facts')",
     target_floor: 1802,  // set after first prod build 2026-06-17 (§N.4)
-    expected_volume_formula: 'BODIES × AYANAMSHAS × FACT_CATEGORIES + CROSS_AYANAMSHA',
+    expected_volume_formula: 'BODIES * AYANAMSHAS * FACT_CATEGORIES + CROSS_AYANAMSHA',
     expected_volume_inputs: null,
     volume_explanation: '357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).',
     depends_on: ['bg_nakshatra', 'ga_positions'],
@@ -929,7 +938,7 @@ const ASSETS: AssetDef[] = [
     // Floor = 5 (only Yuga Nabhasa fires for native chart 482012f1; confirmed by Phase 1 L1 closure audit).
     // Migration 308 corrected from 50 (generic estimate) to 5.
     target_floor: 5,
-    expected_volume_formula: 'YOGAS_IN_CATALOG × AYANAMSHAS_COUNT',
+    expected_volume_formula: 'YOGAS_IN_CATALOG * AYANAMSHAS_COUNT',
     expected_volume_inputs: null,
     volume_explanation: 'Sum of fired yogas across 5 ayanamshas; only Yuga Nabhasa yoga fires for chart 482012f1 (5 rows = 1 yoga × 5 ayanamshas).',
     depends_on: ['ga_structural', 'ga_dashas'],
@@ -948,7 +957,7 @@ const ASSETS: AssetDef[] = [
     size_sql: `SELECT pg_total_relation_size('ga_vastu_planet_direction_map')`,
     // Floor = 40 (confirmed prod count, migration 294 corrected from 45; Ketu skipped — no classical direction).
     target_floor: 40,
-    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: 'Up to 9 grahas × 5 ayanamshas = 45; Ketu skipped (no Vastu direction mapping) → 40 rows.',
     depends_on: ['ga_condition'],
@@ -967,7 +976,7 @@ const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor = 45 (9 grahas × 5 ayanamshas; confirmed prod count).
     target_floor: 45,
-    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '9 grahas × 5 ayanamshas = 45 indication rows per chart.',
     depends_on: ['ga_condition', 'ga_positions'],
@@ -1006,7 +1015,7 @@ const ASSETS: AssetDef[] = [
     size_sql: null,
     // Floor = 45 (9 grahas × 5 ayanamshas; confirmed writer spec ga_transit_anchors.py).
     target_floor: 45,
-    expected_volume_formula: '9_GRAHAS * 5_AYANAMSHAS',
+    expected_volume_formula: 'GRAHAS * AYANAMSHAS',
     expected_volume_inputs: null,
     volume_explanation: '9 grahas × 5 ayanamshas = 45 anchor rows per chart.',
     depends_on: ['ga_positions'],
