@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""
+Standalone runner for bo_upaya against prod DB (Cloud SQL Auth Proxy at 127.0.0.1:5433).
+Bypasses discover_all()/_auto_discover() which hard-fails on ga_nakshatra (jhora not installed).
+
+Usage:
+    python run_bo_upaya_prod.py [--dry-run]
+"""
+import os, sys, uuid, logging, argparse
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+logger = logging.getLogger("bo_upaya_runner")
+sys.path.insert(0, os.path.dirname(__file__))
+
+import psycopg
+from pipeline.orchestrator.writers import ContextSpec, _REGISTRY
+# Import the writer module directly — avoids discover_all()/get_writer() which both
+# call _auto_discover() and hard-fail on ga_nakshatra (jhora not installed in this venv).
+import pipeline.orchestrator.writers.bo_upaya  # noqa: F401 — registers via @register
+
+CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+DB_URL   = os.environ.get("DATABASE_URL",
+    "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    writer_cls = _REGISTRY.get("bo_upaya")
+    if writer_cls is None:
+        print("ERROR: bo_upaya not in registry", file=sys.stderr)
+        sys.exit(1)
+
+    writer = writer_cls()
+    build_id = str(uuid.uuid4())
+    logger.info("build_id=%s chart_id=%s dry_run=%s", build_id, CHART_ID, args.dry_run)
+
+    conn = psycopg.connect(DB_URL, prepare_threshold=None)
+    conn.autocommit = False
+    ctx = ContextSpec(
+        asset_id="bo_upaya",
+        build_id=build_id,
+        db_conn=conn,
+        config={"chart_id": CHART_ID},
+        dry_run=args.dry_run,
+    )
+    result = writer.run(ctx)
+    conn.commit()
+    conn.close()
+    logger.info("bo_upaya COMPLETE: rows_inserted=%d notes=%s", result.rows_inserted, result.notes)
+
+if __name__ == "__main__":
+    main()
