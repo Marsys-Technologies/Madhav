@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.86
+version: 5.87
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.87 (2026-06-21, L2-BODHA-WRITER-FIX-AND-SEAL):
+    **L2 Bodha VERIFIED-WHOLE. Two pre-existing writer bugs remediated; B6 harness hardened.**
+    Bug 1 — bo_anveshana: (a) _fetch_dict was doing zip(cols, row) against dict_row factory rows,
+    yielding column names as values for every query since the writer was authored; (b) _fetch_embeddings_np
+    had a silent except-return-[]-None fallback swallowing all parse errors. Fixed: isinstance(rows[0],dict)
+    guard in _fetch_dict returns rows directly; new _fetch_embeddings_np raises on failure, builds signal_ids
+    in-loop, casts embedding_vec::text. Rebuilt to 5,770 rows (floor 5,770 ✓; state=lit).
+    Bug 2 — bo_pramana_mapa: bodha_writers/ package not COPY'd into Dockerfile.pipeline; added one COPY
+    directive. Rebuilt to 1 row (floor 1 ✓; state=lit; no ModuleNotFoundError).
+    B6 hardening: TestOutputMagnitude (G-MAG) + TestWriterRunnability (G-RUN) added to
+    test_b6_eval_harness.py. G-MAG: live count_sql per bo_* asset vs floor; G-RUN: subprocess import
+    check + structural fallback guard. Final result: 3/3 PASSED.
+    G-MAG + G-RUN are STANDING SEAL REQUIREMENTS for L2 Bodha and any future layer.
+    All 10 bo_* assets lit on PROD. L2_BODHA_CLOSE_v1_0.md bumped to v1.3 (§12 appended).
+    PR #305 merged (SHA f7ce8662). Branch: main (commits ebe54f11, 576c8cc7 direct to main).
+    last_session_id: L2-BODHA-WRITER-FIX-AND-SEAL.
+    predecessor_session: L2-BODHA-POSTSEAL-CLOSEOUT.
+    next_session_objective: >
+      "L2 Bodha VERIFIED-WHOLE. Open L3 Kāla campaign: read L2_BODHA_CLOSE_v1_0.md §8 for
+      L3 onboarding contract; author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md."
+    file_updated_at: 2026-06-21. file_updated_by_session: L2-BODHA-WRITER-FIX-AND-SEAL.
   - v5.86 (2026-06-20, L2-BODHA-POSTSEAL-CLOSEOUT):
     **L2 Bodha Post-Seal Closeout COMPLETE. All 5 C-items closed or documented.**
     C1: Migration 327 applied — is_active=true for all 10 bo_* assets; bo_samvada count_sql fixed.
@@ -5538,6 +5559,14 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    L2 Bodha VERIFIED-WHOLE (2026-06-21, L2-BODHA-WRITER-FIX-AND-SEAL). All 10 bo_* assets lit.
+    Two writer bugs fixed: bo_anveshana _fetch_dict dict_row mismatch + silent embedding fallback;
+    bo_pramana_mapa Dockerfile.pipeline missing COPY. B6 G-MAG + G-RUN gates added and GREEN (3/3).
+    L2_BODHA_CLOSE_v1_0.md v1.3 (§12 appended). CURRENT_STATE v5.87.
+    Next: (1) author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md (L3 Kāla onboarding contract);
+    (2) open L3 Kāla campaign. Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    G-MAG + G-RUN are STANDING SEAL REQUIREMENTS — run before any future layer close.
+    === Predecessor next_session_objective (L2-BODHA-POSTSEAL-CLOSEOUT, superseded) preserved for audit ===
     L2 Bodha CLOSED (2026-06-20, L2-BODHA-AUTONOMOUS). B6 eval 35/35 PASS. Seal: L2_BODHA_CLOSE_v1_0.md.
     Next: (1) emit migration 326 for bo_* target_floor updates (cockpit green lights for Bodha layer);
     (2) author L3_KALA_CAMPAIGN_HANDOFF_v1_0.md (L3 Kāla onboarding contract — temporal projection layer);
