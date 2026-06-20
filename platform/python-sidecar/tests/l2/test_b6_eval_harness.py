@@ -30,6 +30,11 @@ from typing import Any
 import psycopg
 import pytest
 
+# All tests in this file require a live DATABASE_URL (psycopg to 127.0.0.1:5433).
+# The CI environment has no DB, so the entire module is marked integration and
+# excluded via `-m "not integration"` in the governance-gates pytest invocation.
+pytestmark = pytest.mark.integration
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 DB_URL   = os.environ.get(
