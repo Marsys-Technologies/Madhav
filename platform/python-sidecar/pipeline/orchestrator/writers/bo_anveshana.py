@@ -717,11 +717,12 @@ def _batch_insert(conn: Any, rows: list[dict], sql: str, batch_size: int = 50) -
                 logger.warning("[bo_anveshana] batch failed at %d: %s", i, exc)
                 for row in batch:
                     try:
+                        cur.execute("SAVEPOINT row_sp")
                         cur.execute(sql, row)
+                        cur.execute("RELEASE SAVEPOINT row_sp")
                     except Exception as re:
+                        cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_anveshana] row skip: %s", re)
-                        conn.rollback()
-            conn.commit()
             inserted += len(batch)
     return inserted
 
@@ -745,7 +746,6 @@ class BoAnveshanaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM bodha_discoveries WHERE chart_id = %s", [chart_id])
             cur.execute("DELETE FROM bodha_anomalies WHERE chart_id = %s", [chart_id])
-            conn.commit()
 
         total_disc = 0
         total_anom = 0

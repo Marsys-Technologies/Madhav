@@ -132,12 +132,13 @@ def _batch_insert(conn, rows: list[dict]) -> int:
                 logger.warning("[bo_samskara] batch at %d failed, falling back per-row", i)
                 for row in batch:
                     try:
+                        cur.execute("SAVEPOINT row_sp")
                         cur.execute(_INSERT, row)
+                        cur.execute("RELEASE SAVEPOINT row_sp")
                     except Exception as row_exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_samskara] skipping embedding %s: %s",
                                        row.get("signal_id"), row_exc)
-                        conn.rollback()
-            conn.commit()
             inserted += len(batch)
             if inserted % 2000 == 0 or i + _BATCH_SIZE >= total:
                 logger.info("[bo_samskara] embedded %d/%d", inserted, total)

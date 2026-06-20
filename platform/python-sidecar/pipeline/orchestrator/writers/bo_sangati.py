@@ -317,7 +317,6 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
         for i in range(0, len(rows), _BATCH_SIZE):
             batch = rows[i:i + _BATCH_SIZE]
             cur.executemany(sql, batch)
-            conn.commit()
             inserted += len(batch)
     return inserted
 

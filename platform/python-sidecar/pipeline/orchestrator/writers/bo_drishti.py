@@ -257,7 +257,6 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
         for i in range(0, len(rows), 25):
             batch = rows[i:i + 25]
             cur.executemany(_INSERT, batch)
-            conn.commit()
             inserted += len(batch)
     return inserted
 
@@ -281,7 +280,6 @@ class BoDrishtiWriter(WriterBase):
         # Idempotency: delete prior rows for this chart
         with conn.cursor() as cur:
             cur.execute("DELETE FROM bodha_question_lenses WHERE chart_id = %s", [chart_id])
-            conn.commit()
 
         for aya in CANONICAL_AYAS:
             aya_rows: list[dict] = []
