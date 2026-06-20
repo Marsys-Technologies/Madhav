@@ -49,42 +49,46 @@ def run_one_ayanamsha(aya: str, chart_id: str, db_url: str, dry_run: bool) -> tu
     log = logging.getLogger(f"bo_samskara.{aya}")
     log.info("starting aya=%s", aya)
 
+    # Phase 1: READ — autocommit=True so no transaction is held during long Vertex calls.
+    # idle_in_transaction_session_timeout kills connections held open during API waits.
+    read_conn = psycopg.connect(db_url, prepare_threshold=None, autocommit=True)
+    try:
+        signals = _fetch_signals(read_conn, chart_id, aya)
+        log.info("aya=%s signals=%d", aya, len(signals))
+    finally:
+        read_conn.close()  # Release before Vertex calls — no DB held during API wait
+
+    if dry_run:
+        return aya, 0
+
+    now = datetime.now(timezone.utc).isoformat()
+    build_id = str(uuid.uuid4())
+
+    # Phase 2: EMBED — no DB connection open during Vertex AI calls
+    signal_summaries = [(sig, _build_input_summary(sig)) for sig in signals]
+    rows = []
+    for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
+        batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
+        batch_texts = [summary for _, summary in batch]
+        vecs = _embed_batch(batch_texts)
+        for (sig, summary), vec in zip(batch, vecs):
+            rows.append({
+                "embedding_id":            str(uuid.uuid4()),
+                "signal_id":               str(sig["signal_id"]),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            aya,
+                "build_id":                build_id,
+                "embedding_vec":           "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
+                "embedding_model":         EMBEDDING_MODEL,
+                "embedding_model_version": EMBEDDING_VER,
+                "embedding_input_summary": summary,
+                "computed_at":             now,
+            })
+
+    # Phase 3: WRITE — fresh connection, short-lived transaction for DELETE+INSERT only
     conn = psycopg.connect(db_url, prepare_threshold=None)
     conn.autocommit = False
-
     try:
-        signals = _fetch_signals(conn, chart_id, aya)
-        log.info("aya=%s signals=%d", aya, len(signals))
-
-        if dry_run:
-            conn.rollback()
-            return aya, 0
-
-        now = datetime.now(timezone.utc).isoformat()
-        build_id = str(uuid.uuid4())
-
-        # Build summaries
-        signal_summaries = [(sig, _build_input_summary(sig)) for sig in signals]
-
-        # Embed in batches
-        rows = []
-        for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
-            batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
-            batch_texts = [summary for _, summary in batch]
-            vecs = _embed_batch(batch_texts)
-            for (sig, summary), vec in zip(batch, vecs):
-                rows.append({
-                    "embedding_id":            str(uuid.uuid4()),
-                    "signal_id":               str(sig["signal_id"]),
-                    "chart_id":                chart_id,
-                    "ayanamsha_id":            aya,
-                    "build_id":                build_id,
-                    "embedding_vec":           "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
-                    "embedding_model":         EMBEDDING_MODEL,
-                    "embedding_model_version": EMBEDDING_VER,
-                    "embedding_input_summary": summary,
-                    "computed_at":             now,
-                })
 
         # Idempotency: delete this aya's rows, then insert fresh
         replace_prior_signal_embeddings(conn, chart_id, aya)
