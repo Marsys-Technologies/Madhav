@@ -109,6 +109,10 @@ export interface MultiSchoolResult {
   domain: Domain
   schoolResults: SchoolResult[]
   convergence: ConvergenceScore
+  // E2/E3 extensions (U4 2026-06-22): authority-weighted consensus
+  weightedMeanScore?: number
+  perSchoolWeighted?: Partial<Record<SchoolName, number>>
+  weightedSchoolsAgreeing?: number
 }
 
 // Abhisek Mohanty's natal chart — canonical L1 data (FORENSIC v8.0; chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)
