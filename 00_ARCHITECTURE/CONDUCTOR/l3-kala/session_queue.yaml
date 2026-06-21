@@ -1,0 +1,99 @@
+# =============================================================================
+# L3 KĀLA — CONDUCTOR SESSION QUEUE  (the Sūtradhāra walks this top-to-bottom)
+# canonical_id: L3_KALA_SESSION_QUEUE  | version: 1.0  | authored: Cowork 2026-06-21
+# native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+# Inputs: 13 briefs (00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_L3_*.md),
+#         L3_KALA_AUTONOMOUS_EXECUTION_PLAN_v1_0.md, L3_KALA_PRE_IMPL_CLOSEOUT_v1_0.md,
+#         L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md (RATIFIED — read-only).
+# Framework: AUTONOMY_RESILIENCE_PATTERN + BUILD_GUARANTOR_SWARM_CHARTER (reuse, do not reinvent).
+# =============================================================================
+
+meta:
+  layer: kala
+  asset_prefix: ka_
+  table_prefix: kala_
+  model_policy: "Gemini/DeepSeek (Anthropic banned unless native asks)"
+  orchestrator_contract: "FROZEN — @register/WriterBase, never commit ctx.db_conn, never write asset_throughput"
+  ratify_gates_status: "PRE-SATISFIED (I-7/I-15/I-16 RATIFIED in L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md) — DO NOT HALT for them"
+  native_input: "Tier-3 catastrophic-budget ceiling ONLY (async, resumable). Nothing else pauses."
+
+# ---- PRE-FAN-OUT (the Conductor does these ONCE, before any agent spawns) ----
+pre_fan_out:
+  - id: PRE-1
+    action: "Verify PART-A closeout gate green (L3_KALA_PRE_IMPL_CLOSEOUT_v1_0.md §F): OP1 branch-reconcile DONE, OP2 inputs committed to clean branch off origin/main, OP3 prod==main, OP4 prod residuals."
+    blocking: true   # HARD — do not proceed if any OP gate is red
+  - id: PRE-2
+    action: "PRE-ALLOCATE the 8 migration numbers (CS2) in DAG order. Confirm canonical tree platform/supabase/migrations/ + next free number (the 'two-174' trap). Assign: K0, ka_yojaka, ka_sangam, ka_vighnakara, ka_kalasutra, ka_kala_darshana, ka_jivana_parva, ka_bhavishya_lekha."
+    blocking: true
+  - id: PRE-3
+    action: "Confirm the RATIFIED templates/weights doc is read-only-pinned; any 're-pick weight' impulse downstream = Tier-2 STUB+log, never a native halt."
+    blocking: true
+
+# ---- THE WAVE QUEUE ----
+waves:
+  - wave: K0
+    gate_before_next: "service-asset-type RESOLVES end-to-end (schema + cockpit render + orchestrator self-test path), PROD-verified. ALL K1 blocked until green."
+    runs_alone: true
+    assets:
+      - { id: k0_service_asset_type, brief: CLAUDECODE_BRIEF_L3_K0_SERVICE_ASSET_TYPE_v1_0.md, kind: infra }
+
+  - wave: K1
+    parallel: true   # disjoint files
+    seed_edit_policy: "SERIALIZE asset_registry_seed.ts (CS1) — one post-wave seed-reconciliation commit, NOT concurrent edits"
+    assets:
+      - { id: ka_graha_sancara, brief: CLAUDECODE_BRIEF_L3_KA_GRAHA_SANCARA_v1_0.md, kind: service, note: "wrap M3 get_transit_states; ephemeris cache; TRUE_NODE; reads bg_ephemeris" }
+      - { id: ka_dasha_kala,    brief: CLAUDECODE_BRIEF_L3_KA_DASHA_KALA_v1_0.md,    kind: service, note: "reads chart_dashas (level-4 Sookshma), 7 systems, KP=sublevel; lazy pruning tree-walk" }
+      - { id: ka_muhurta_seva,  brief: CLAUDECODE_BRIEF_L3_KA_MUHURTA_SEVA_v1_0.md,  kind: service, note: "LIVE by (date,location); Tara Bala; demote the fenced cache (I-10)" }
+
+  - wave: K2
+    assets:
+      - { id: ka_gochara, brief: CLAUDECODE_BRIEF_L3_KA_GOCHARA_v1_0.md, kind: service,
+          note: "BUILD pipeline/transit_search from PHASE_4D spec; TRUE_NODE; coarse-to-fine search_long_horizon; subsumes ka_transit_almanac; fix crashing router",
+          verifier: "transit_search BUILD verifier — deterministic re-derivation, internal-consistency only (NO JH-parity)" }
+
+  - wave: K3
+    assets:
+      - { id: ka_yojaka, brief: CLAUDECODE_BRIEF_L3_KA_YOJAKA_v1_0.md, kind: artifact,
+          note: "USES RATIFIED I-15 templates + I-7 weights (pre-approved, no halt). classifier + class→template binder",
+          verifier: "activation-bridge integrity — bound predicates reference REAL L2 signal_id + L1 fact_ids; ZERO L2 writes" }
+
+  - wave: K4
+    internal_order: "ka_sangam FIRST (hard spine gate) THEN ka_kalasutra"
+    assets:
+      - { id: ka_sangam, brief: CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md, kind: artifact,
+          note: "Convergence core Mode A+B + rigor stratum; USES RATIFIED I-16 form + weights",
+          hard_internal_gate: "SPINE-FIRST: prove ONE signal end-to-end (classify→Mode A+B→rigor scores→ranked window→anti-drift clean) BEFORE ka_kalasutra/K5/K6 dispatch. Failure → deep-fix ladder, NOT native." }
+      - { id: ka_kalasutra, brief: CLAUDECODE_BRIEF_L3_KA_KALASUTRA_v1_0.md, kind: artifact,
+          blocked_by_intra_wave: [ka_sangam],
+          note: "Activation artifact; fills L2 NULL hooks via artifact (zero L2 writes); PRESERVE the id (5 downstream deps)" }
+
+  - wave: K5
+    internal_order: "ka_vighnakara FIRST THEN ka_kala_darshana (catalog reads danger windows — CS3 fix)"
+    assets:
+      - { id: ka_vighnakara, brief: CLAUDECODE_BRIEF_L3_KA_VIGHNAKARA_v1_0.md, kind: artifact, note: "Danger engine = inverse search reuse of ka_sangam spine; extends kala_obstruction; temporal dissonance" }
+      - { id: ka_kala_darshana, brief: CLAUDECODE_BRIEF_L3_KA_KALA_DARSHANA_v1_0.md, kind: artifact,
+          blocked_by_intra_wave: [ka_vighnakara],
+          note: "Lifetime catalog; mirrors bodha_discoveries shape; cross-subsystem convergence WITH independence discount" }
+
+  - wave: K6
+    parallel: true
+    seed_edit_policy: "SERIALIZE asset_registry_seed.ts (CS1)"
+    assets:
+      - { id: ka_tulana,          brief: CLAUDECODE_BRIEF_L3_KA_TULANA_v1_0.md,          kind: service,  note: "cross-pattern prioritization; RATIFIED I-11 weights; dissonance-aware verdicts" }
+      - { id: ka_jivana_parva,    brief: CLAUDECODE_BRIEF_L3_KA_JIVANA_PARVA_v1_0.md,    kind: artifact, note: "daśā macro-narrative; chapters from chart_dashas MD boundaries; theme from THIS native" }
+      - { id: ka_bhavishya_lekha, brief: CLAUDECODE_BRIEF_L3_KA_BHAVISHYA_LEKHA_v1_0.md, kind: artifact, note: "prediction-record emitter → L5 mi_bhavisya; MUST NOT write mimamsa_* tables; LEL toggle honored" }
+
+# ---- SEAL (autonomous, AI-assessed) ----
+seal:
+  - "COMPUTATIONAL eval gate: reproduce KNOWN past activations (replay LEL events through the predicates). Predictive calibration DEFERRED to L4/L5 — NOT a blocker."
+  - "Promote all ka_* DRAFT→CURRENT."
+  - "Author L3_KALA_CLOSE_v1_0.md (+ the L4 Phala onboarding contract)."
+  - "Update CURRENT_STATE + SESSION_LOG; merge to main + push; Vimarśaka final audit."
+
+# ---- CROSS-CUTTING GATES (every asset) ----
+per_asset_gates:
+  - "Frozen contract: grep the writer for ctx.db_conn.commit()/.rollback() → MUST be ZERO (L2 Vimarśaka-RED lesson)."
+  - "Anti-drift: references L2 signal_id + L1/ephemeris fact_ids; never restates; zero L2 writes."
+  - "PROD-VERIFY: ACs verify against prod (Cloud SQL Auth Proxy), not a worktree DB (Brahma V1.3 lesson)."
+  - "FORENSIC: the 7 birth anchors hold; only chart 482012f1."
+  - "Vimarśaka-temporal: post-merge audit checks time-indexed/probabilistic outputs, not just row counts."
