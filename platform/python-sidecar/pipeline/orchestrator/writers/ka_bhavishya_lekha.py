@@ -35,7 +35,21 @@ class KaBhavishyaLekhaWriter(WriterBase):
             darshana_rows = cur.fetchall()
 
         if not darshana_rows:
-            return WriterResult(rows_written=0, warnings=['No future darshana windows — run ka_kala_darshana first'])
+            return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
+
+        # CF.L3.5: batch-fetch signal_type_id for domain mapping
+        signal_ids_seen = [str(r[1]) for r in darshana_rows if r[1]]
+        signal_type_map: dict[str, str] = {}
+        if signal_ids_seen:
+            placeholders = ','.join(['%s'] * len(signal_ids_seen))
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT signal_id, signal_type_id FROM bodha_msr_signals WHERE signal_id IN ({placeholders})",
+                    signal_ids_seen,
+                )
+                for sig_id, type_id in cur.fetchall():
+                    if type_id:
+                        signal_type_map[str(sig_id)] = str(type_id)
 
         rows = []
         for rank, row in enumerate(darshana_rows, start=1):
@@ -46,8 +60,8 @@ class KaBhavishyaLekhaWriter(WriterBase):
             # Probability tier
             tier = _assign_tier(eff_score, net_label)
 
-            # Domain inference (simplified: use rank rotation for diversity)
-            domain = _infer_domain(rank, net_label)
+            # CF.L3.5: domain from signal_type_id keywords; rank rotation as fallback
+            domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
 
             # Falsifiability hook
             falsifiability = _build_falsifiability(tier, domain, peak_date, eff_score)
@@ -93,7 +107,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
                     ) VALUES %s
                 """, rows)
 
-        return WriterResult(rows_written=len(rows))
+        return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=len(rows))
 
 
 def _assign_tier(effective_score: float, net_label: str) -> str:
@@ -107,15 +121,35 @@ def _assign_tier(effective_score: float, net_label: str) -> str:
     return 'tier_3_speculative'
 
 
-# Domain rotation for diversity (real impl would read bhava/signal type)
 _DOMAINS = ['career', 'health', 'relationship', 'finance', 'spiritual', 'education', 'general']
 
+# CF.L3.5: keyword sets for signal_type_id → domain mapping.
+# Checked in order; first match wins; falls through to rank rotation.
+_DOMAIN_KEYWORDS: list[tuple[str, list[str]]] = [
+    ('career',       ['raja_yoga', 'amatyakaraka', 'tenth', 'karma', 'arudha', 'dasamsha',
+                      'profession', 'status', 'power', 'authority']),
+    ('relationship', ['kalatra', 'seventh', 'upapada', 'navamsha', 'spouse', 'partner',
+                      'union', 'marriage', 'venus_yoga']),
+    ('finance',      ['dhana', 'second', 'eleventh', 'artha', 'wealth', 'income',
+                      'lakshmi', 'kubera', 'dhan']),
+    ('health',       ['ayur', 'sixth', 'eighth', 'maraka', 'bala', 'disease',
+                      'vitality', 'longevity', 'immunity']),
+    ('spiritual',    ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'bhakti',
+                      'tapas', 'jnana', 'liberation']),
+    ('education',    ['vidya', 'fourth', 'fifth', 'learning', 'intellect', 'mercury_yoga',
+                      'saraswati', 'knowledge']),
+]
 
-def _infer_domain(rank: int, net_label: str) -> str:
+
+def _infer_domain(rank: int, net_label: str, signal_type_id: str | None = None) -> str:
     """
-    Infer domain from rank (rotates through domains for diversity).
-    Real impl would read signal's constituent_facts -> bhava -> domain mapping.
+    CF.L3.5: infer domain from signal_type_id keywords first; rank rotation as fallback.
     """
+    if signal_type_id:
+        tid_lower = signal_type_id.lower()
+        for domain, keywords in _DOMAIN_KEYWORDS:
+            if any(kw in tid_lower for kw in keywords):
+                return domain
     return _DOMAINS[rank % len(_DOMAINS)]
 
 

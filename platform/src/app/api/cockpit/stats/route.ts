@@ -7,15 +7,16 @@ export const dynamic = 'force-dynamic'
 type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
 
 function deriveState(
-  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null },
+  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null; asset_kind?: string | null },
   actualRows: number | null,
   error: string | null,
   throughputState: string | null
 ): AssetState {
   // Service assets have no count_sql/target_table by design — they are healthy
   // when registered + CURRENT. They must never fall through to the data-asset
-  // dormant/error logic below.
-  if (asset.asset_type === 'service') return 'service_ok'
+  // dormant/error logic below. Check both asset_type (L1/L2 legacy) and
+  // asset_kind (L3+ canonical) so new-layer service registrations are caught.
+  if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
   // §N.4: count_sql is authoritative for data presence. Rows present = lit,
@@ -85,7 +86,8 @@ async function fetchAssetStats(
   // not table-backed, so we never run SQL for them — a registered service is
   // healthy. (Health-probe execution is a follow-up; default to service_ok so a
   // correctly-registered service never renders as errored / missing_table.)
-  if (asset.asset_type === 'service') {
+  // Check both asset_type (L1/L2 legacy) and asset_kind (L3+ canonical).
+  if (asset.asset_type === 'service' || asset.asset_kind === 'service') {
     return {
       asset_id: asset.asset_id,
       actual_rows: null,

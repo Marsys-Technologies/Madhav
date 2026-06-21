@@ -22,6 +22,7 @@ from services.ka_sangam.engine import (
     independent_current_count,
     _date_to_jd,
 )
+from services.ka_dasha_kala.service import KaDashaKalaService
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,9 @@ class KaSangamWriter(WriterBase):
             logger.warning("ka_sangam: no predicates found for chart %s — zero rows written", chart_id)
             return WriterResult(asset_id='ka_sangam', rows_inserted=0)
 
+        # CF.L3.6: instantiate real dasha-prior service (read-only; never commits)
+        dasha_kala_service = KaDashaKalaService(conn)
+
         # Step 3: determine horizon (from today forward _HORIZON_YEARS years)
         from datetime import date, timedelta
         today = date.today()
@@ -108,13 +112,13 @@ class KaSangamWriter(WriterBase):
                 elif pred_dict.get(jf) is None:
                     pred_dict[jf] = {}
 
-            # Mode A
+            # Mode A (CF.L3.6: pass real KaDashaKalaService)
             try:
                 a_windows = mode_a_search(
                     predicate=pred_dict,
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
-                    dasha_kala_service=None,
+                    dasha_kala_service=dasha_kala_service,
                     gochara_service=None,
                     muhurta_service=None,
                     chart_id=chart_id,
@@ -196,7 +200,7 @@ class KaSangamWriter(WriterBase):
                         w.get('mode'),
                         w.get('peak_date'),
                         orb_s,
-                        None,   # rarity_years: computed by a downstream service
+                        w.get('rarity_years'),  # CF.L3.4: real planet-period rarity
                         cs,     # confidence_score mirrors convergence_score
                         c_label,
                         icc,

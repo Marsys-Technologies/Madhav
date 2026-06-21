@@ -18,15 +18,15 @@ class KaJivanaParvaWriter(WriterBase):
         # Read level-1 mahadashas from chart_dashas
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT dasha_planet, start_date, end_date
+                SELECT lord_graha, start_date, end_date
                 FROM chart_dashas
-                WHERE chart_id = %s AND level = 1
+                WHERE chart_id = %s AND level_n = 1
                 ORDER BY start_date
             """, (chart_id,))
             dashas = cur.fetchall()
 
         if not dashas:
-            return WriterResult(rows_written=0, warnings=['No mahadashas found in chart_dashas — check L1 build'])
+            return WriterResult(asset_id='ka_jivana_parva', rows_inserted=0, notes='No mahadashas found in chart_dashas — check L1 build')
 
         # Read convergence windows for density computation
         with conn.cursor() as cur:
@@ -87,7 +87,7 @@ class KaJivanaParvaWriter(WriterBase):
                     ) VALUES %s
                 """, rows)
 
-        return WriterResult(rows_written=len(rows))
+        return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
 
 
 def _assign_quality(idx: int, total: int, high_count: int, avg_score: float | None,

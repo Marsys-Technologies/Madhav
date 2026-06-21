@@ -26,7 +26,7 @@ class KaVighnakaraWriter(WriterBase):
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:
-            return WriterResult(rows_written=0, warnings=['No convergence windows — run ka_sangam first'])
+            return WriterResult(asset_id='ka_vighnakara', rows_inserted=0, notes='No convergence windows — run ka_sangam first')
 
         rows = []
         for conv_row in convergence_rows:
@@ -61,7 +61,7 @@ class KaVighnakaraWriter(WriterBase):
                     ) VALUES %s
                 """, rows)
 
-        return WriterResult(rows_written=len(rows))
+        return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
 
 
 # Malefic planets in classical Jyotish

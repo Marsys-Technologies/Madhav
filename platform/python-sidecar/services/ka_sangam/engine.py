@@ -170,6 +170,50 @@ def independent_current_count(currents: dict[str, Any]) -> int:
     return result
 
 
+# ── CF.L3.4: Planet synodic/sidereal rarity lookup ───────────────────────────
+
+# Approximate sidereal (synodic for inner) orbital periods in years.
+# Rarity_years for a given aspect ≈ period / (360 / aspect_deg), clamped to
+# the sidereal period for 0° (conjunction) and half-period for 180°.
+_PLANET_PERIOD_YR: dict[str, float] = {
+    'Sun':     1.00,
+    'Moon':    0.08,   # ~1 month
+    'Mercury': 0.24,
+    'Venus':   0.62,
+    'Mars':    1.88,
+    'Jupiter': 11.86,
+    'Saturn':  29.46,
+    'Uranus':  84.01,
+    'Neptune': 164.79,
+    'Pluto':   247.92,
+    'Rahu':    18.61,
+    'Ketu':    18.61,
+    'TrueNode': 18.61,
+    'MeanNode': 18.61,
+}
+
+
+def _rarity_years(planet: str, aspect_deg: float) -> float:
+    """
+    CF.L3.4 fix: compute approximate rarity of a transit event from the
+    planet's sidereal period and the aspect degree.
+
+    Approach: for a transit planet with period P years, a given aspect_deg
+    recurs roughly every P × |aspect_deg| / 360 years (minimum 1 year for
+    fast movers). Conjunctions (0°) and oppositions (180°) use half the
+    period so that a Saturn opposition (≈14.7yr) is distinguished from a
+    Saturn conjunction (≈29.5yr).
+    """
+    period = _PLANET_PERIOD_YR.get(planet, 12.0)
+    if aspect_deg <= 0.0:
+        aspect_deg = 360.0
+    # fraction of orbit between recurrences
+    fraction = aspect_deg / 360.0
+    rarity = period * fraction
+    # never report less than 0.5 yr or more than the full sidereal period
+    return round(max(0.5, min(rarity, period)), 2)
+
+
 # ── JD ↔ date helpers ────────────────────────────────────────────────────────
 
 def _jd_to_date(jd: float) -> date:
@@ -231,9 +275,46 @@ def mode_a_search(
     sig_class    = predicate.get('signature_class', 'UNKNOWN')
     signal_id    = predicate.get('signal_id')
     dignity_score = float(predicate.get('dignity_score', 0.5))
+    ayanamsha_id  = predicate.get('ayanamsha_id') or 'lahiri'
 
-    # Dasha eligibility score (soft prior — not a hard gate)
-    dasha_score = float(dasha_rule.get('eligibility_score', 0.5))
+    # CF.L3.6: real dasha prior — query KaDashaKalaService if provided.
+    # Fall back to the static eligibility_score from the predicate JSONB when
+    # the service is None (preserves old behavior for tests / dry-run).
+    static_dasha_score = float(dasha_rule.get('eligibility_score', 0.5))
+    eligible_windows: list[Any] = []  # EligibleWindow list from service
+    if dasha_kala_service is not None:
+        target_lords = set(dasha_rule.get('constituent_lords', []))
+        if target_lords:
+            try:
+                from datetime import timedelta
+                h_start = _jd_to_date(horizon_start_jd)
+                h_end   = _jd_to_date(horizon_end_jd)
+                result = dasha_kala_service.query(
+                    chart_id=chart_id,
+                    ayanamsha_id=ayanamsha_id,
+                    target_lords=target_lords,
+                    related_lords=set(),
+                    date_start=h_start,
+                    date_end=h_end,
+                    max_level=3,
+                )
+                eligible_windows = result.windows
+                logger.debug(
+                    "mode_a_search: dasha query returned %d eligible windows for lords=%s",
+                    len(eligible_windows), sorted(target_lords),
+                )
+            except Exception as exc:
+                logger.warning("mode_a_search: dasha_kala_service.query failed: %s", exc)
+
+    def _dasha_score_for_date(peak_date: Any) -> float:
+        """Return max eligibility_score of any dasha window overlapping peak_date."""
+        if not eligible_windows:
+            return static_dasha_score
+        best = 0.0
+        for ew in eligible_windows:
+            if ew.start_date <= peak_date <= ew.end_date:
+                best = max(best, ew.eligibility_score)
+        return best if best > 0.0 else static_dasha_score
 
     # Transit trigger params
     planet       = transit_trig.get('planet', 'Jupiter')
@@ -260,6 +341,15 @@ def mode_a_search(
         orb_s = orb_strength_score(
             ev.orb_at_event_deg, orb_deg, ev.applying_separating
         )
+        peak_dt = _jd_to_date(ev.event_jd)
+
+        # CF.L3.6: real per-event dasha score
+        dasha_score = _dasha_score_for_date(peak_dt)
+
+        # CF.L3.4: real rarity from planet period + aspect
+        aspect_used = float(ev.extra.get('aspect_deg', 0))
+        rarity = _rarity_years(planet, aspect_used)
+
         necessary = [dignity_score, orb_s]
         supporting = {
             'constituent_lord_transit': float(dasha_score),
@@ -271,7 +361,6 @@ def mode_a_search(
         }
         cscore = convergence_score(necessary, supporting)
 
-        peak_dt = _jd_to_date(ev.event_jd)
         # Window = ±15 days around peak
         try:
             from datetime import timedelta
@@ -288,9 +377,10 @@ def mode_a_search(
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
             'orb_strength': round(orb_s, 4),
+            'rarity_years': rarity,
             'constituent_factors': {
                 'planet': planet,
-                'aspect_deg': ev.extra.get('aspect_deg', 0),
+                'aspect_deg': aspect_used,
                 'sign': ev.sign,
                 'nakshatra': ev.nakshatra,
                 'applying_separating': ev.applying_separating,
@@ -379,6 +469,10 @@ def mode_b_sweep(
         cscore = convergence_score(necessary, supporting)
 
         peak_dt = _jd_to_date(ev.event_jd)
+        # CF.L3.4: rarity from orbital period
+        aspect_used = float(ev.extra.get('aspect_deg', 0))
+        rarity = _rarity_years(planet, aspect_used)
+
         try:
             from datetime import timedelta
             ws = peak_dt - timedelta(days=15)
@@ -394,9 +488,10 @@ def mode_b_sweep(
             'peak_date': peak_dt,
             'convergence_score': round(cscore, 4),
             'orb_strength': round(orb_s, 4),
+            'rarity_years': rarity,
             'constituent_factors': {
                 'planet': planet,
-                'aspect_deg': ev.extra.get('aspect_deg', 0),
+                'aspect_deg': aspect_used,
                 'sign': ev.sign,
                 'nakshatra': ev.nakshatra,
                 'applying_separating': ev.applying_separating,
@@ -426,4 +521,6 @@ __all__ = [
     'mode_b_sweep',
     '_jd_to_date',
     '_date_to_jd',
+    '_rarity_years',
+    '_PLANET_PERIOD_YR',
 ]

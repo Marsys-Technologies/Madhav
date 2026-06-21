@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.88
+version: 5.89
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,32 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.89 (2026-06-21, L3-KALA-PROD-BUILD-REMEDIATION):
+    **L3 Kāla prod build remediation COMPLETE. CF.L3.3–CF.L3.6 all RESOLVED. ka_tulana added.**
+    Seal v1.0 was premature — actual writers had never run against prod. This session fixed:
+    BUG-1 ($CHART_ID$ placeholder in count_sql; migration 250 applied to prod);
+    BUG-2 (stats route asset_kind dual-column blind spot; route.ts fixed);
+    BUG-3 (WriterResult wrong signature rows_written→rows_inserted in 5 writers);
+    BUG-4 (chart_dashas column dasha_planet→lord_graha, level→level_n in ka_jivana_parva);
+    BUG-5 (ka_kalasutra tuple unpack had 8 values after SELECT removed 1 column).
+    CF fixes: CF.L3.4 planet orbital period rarity (ka_sangam engine.py _rarity_years());
+    CF.L3.5 signal_type_id keyword domain inference (ka_bhavishya_lekha.py _infer_domain());
+    CF.L3.6 KaDashaKalaService wired into mode_a_search constituent_lords (ka_sangam writer+engine).
+    ka_tulana added: pure service, I-11 ratified weights (convergence=0.40, rarity=0.25,
+    confidence=0.20, proximity=0.15), 24/24 tests PASS.
+    Prod build completed (chart 482012f1): ka_yojaka=66,738; ka_sangam=660; ka_kalasutra=66,738;
+    ka_vighnakara=60; ka_kala_darshana=300; ka_jivana_parva=739; ka_bhavishya_lekha=50.
+    L3_KALA_CLOSE_v1_0.md bumped to v1.1. Branch: fix/l3-kala-prod-build-remediation.
+    L3 is NOW truly CLOSED (prod state matches sealed record).
+    last_session_id: L3-KALA-PROD-BUILD-REMEDIATION.
+    predecessor_session: L3-KALA-AUTONOMOUS.
+    next_session_objective: >
+      "L3 Kāla truly CLOSED (prod build verified 2026-06-21). Open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author
+      L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md. First L4 migration starts at 251
+      (250 used by L3 remediation). First migration SHOULD drop kala_timeline (CF.L3.2).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-21. file_updated_by_session: L3-KALA-PROD-BUILD-REMEDIATION.
   - v5.88 (2026-06-21, L3-KALA-AUTONOMOUS):
     **L3 Kāla (Temporal Projection) CLOSED. 9 ka_* assets. 8 migrations (242–249) on PROD. 197 tests PASS.**
     Sūtradhāra Conductor session executed full autonomous buildout: K0 (mig 242 asset_kind) → K1 (3 services:

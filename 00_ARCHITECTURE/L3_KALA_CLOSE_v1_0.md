@@ -6,9 +6,10 @@ status: CURRENT
 produced_during: L3-KALA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-21)
 role: >
   Definitive sealed record for the L3 Kāla (Temporal Projection) layer.
-  Documents the 9 ka_* assets built (3 service + 6 artifact), the wave execution
-  path, PROD migration log, test gate results, and the L4 Phala onboarding
-  contract. All CURRENT_STATE references to L3 Kāla resolve here.
+  Documents the 13 ka_* assets built (5 service + 7 artifact + 1 service added in
+  remediation), the wave execution path, PROD migration log, test gate results,
+  and the L4 Phala onboarding contract. All CURRENT_STATE references to L3 Kāla
+  resolve here. v1.1 adds the prod-build remediation record (2026-06-21).
 supersedes: >
   L3_KALA_CAMPAIGN_PLAN_v0_8.md and all CONDUCTOR/l3-kala smriti briefs
   (CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md etc.) — those were entry briefs;
@@ -17,6 +18,12 @@ changelog:
   - v1.0 (2026-06-21, L3-KALA-AUTONOMOUS): Initial seal — L3 Kāla layer CLOSED.
     All 9 ka_* assets registered + 8 migrations applied to PROD. 180+ tests passing.
     SPINE-FIRST gate PASS. No commit/rollback violations. No L2 writes.
+  - v1.1 (2026-06-21, L3-KALA-PROD-BUILD-REMEDIATION): Prod-build remediation session.
+    Seal was premature — actual writers had never run against prod. Fixed BUG-1
+    ($CHART_ID$ placeholder in count_sql), BUG-2 (stats route dual-column blind spot),
+    BUG-3 (WriterResult signature), BUG-4 (chart_dashas column names). Applied migration
+    250 (count_sql param fix). Built CF.L3.3/4/5/6 fixes and ka_tulana (13th asset).
+    Prod build completed: 7 artifact writers all green. All CF.L3.N items RESOLVED.
 ---
 
 # L3 Kāla Close — Sealed Record v1.0
@@ -50,6 +57,7 @@ Total PRs merged this session: #309–#318 (10 PRs). Main HEAD: `1f5c5034`.
 | ka_kala_darshana | artifact | kala_darshana | 247 | K5b suite (27 tests) | Display-ready temporal view; effective_score; 6-label net_label enum |
 | ka_jivana_parva | artifact | kala_jivana_parva | 248 | K6a suite (25 tests) | Life-arc biographical chapters; daśā-anchored parvas; 5 quality labels |
 | ka_bhavishya_lekha | artifact | kala_bhavishya | 249 | K6b suite (32 tests) | Probabilistic forward projections (3-yr horizon); falsifiability hooks |
+| ka_tulana | service | — (service) | — (added in v1.1 remediation; no migration) | 24 tests | Cross-pattern prioritization; I-11 composite (native-ratified weights); dissonance-aware |
 
 **Note:** ka_transit_almanac (legacy row-per-day transit log) is retired (is_active=false).
 
@@ -207,14 +215,38 @@ Per `L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md`:
 
 ## §10 — Open items and carry-forwards (L4 entry)
 
+**As of v1.1 (remediation session 2026-06-21), CF.L3.3–CF.L3.6 are all RESOLVED.**
+
 | ID | Item | Disposition |
 |---|---|---|
 | CF.L3.1 | Phase E (Abhinandan `1c826d5a` native E2E) | GATED on operator — independent of L3 |
 | CF.L3.2 | `kala_timeline` table drop | Deferred to L4 migration (noted in mig 246 COMMENT) |
-| CF.L3.3 | ka_sangam/ka_kalasutra operational run against PROD chart | Operator-gated (requires full build chain execution) |
-| CF.L3.4 | Rarity computation (rarity_years) | Simplified as 3.0-year proxy; real impl needs horizon enumeration in ka_sangam engine |
-| CF.L3.5 | domain inference in ka_bhavishya_lekha | Currently rank-modulo rotation; real impl reads bhava → domain map from chart_facts |
-| CF.L3.6 | ka_dasha_kala eligibility integration into ka_sangam Mode A | Mode A uses 0.5 neutral proxy; real daśā scoring requires ka_dasha_kala service call |
+| CF.L3.3 | ka_sangam/ka_kalasutra operational run against PROD chart | **RESOLVED** — full build ran 2026-06-21: ka_yojaka 66,738 rows; ka_sangam 660; ka_kalasutra 66,738; ka_vighnakara 60; ka_kala_darshana 300; ka_jivana_parva 739; ka_bhavishya_lekha 50 |
+| CF.L3.4 | Rarity computation (rarity_years) | **RESOLVED** — real planet orbital period computed per-event in ka_sangam engine; `_rarity_years(planet, aspect_deg)` using `_PLANET_PERIOD_YR` table |
+| CF.L3.5 | domain inference in ka_bhavishya_lekha | **RESOLVED** — signal_type_id keyword mapping for 6 domains (career/relationship/finance/health/spiritual/education) with rank-rotation fallback; `_infer_domain()` in ka_bhavishya_lekha.py |
+| CF.L3.6 | ka_dasha_kala eligibility integration into ka_sangam Mode A | **RESOLVED** — KaDashaKalaService wired into mode_a_search; constituent_lords extracted from dasha_rule; dasha_score per window from `_dasha_score_for_date()` |
+
+### Remediation bug log (v1.1)
+
+| Bug | Root cause | Fix |
+|---|---|---|
+| BUG-1: cockpit stats showed ERROR for all ka_* artifact assets | `count_sql` columns contained `$CHART_ID$` literal instead of `$1` (postgres param placeholder) | Migration 250 applied; seed file corrected (5 occurrences) |
+| BUG-2: cockpit stats route misdetected service assets | Stats route checked only `asset_type='service'`; L3 service assets use `asset_kind='service'` (dual-column schema) | `route.ts` `deriveState()` + `fetchAssetStats()` updated to check `asset_type === 'service' || asset_kind === 'service'` |
+| BUG-3: WriterResult wrong signature in 5 writers | Writers used `rows_written=` + `warnings=` but contract is `asset_id=` + `rows_inserted=` + `notes=` | Fixed in ka_kalasutra, ka_vighnakara, ka_kala_darshana, ka_jivana_parva, ka_bhavishya_lekha |
+| BUG-4: ka_jivana_parva column not found | SELECT used `dasha_planet` + `level` but real column names are `lord_graha` + `level_n` | Fixed in ka_jivana_parva.py |
+| BUG-5: ka_kalasutra tuple unpack mismatch | SELECT removed `msr.is_active_now` but destructure still expected 8 values | Fixed: destructure now 7 values |
+
+### ka_tulana (13th asset, added in remediation)
+
+| Attribute | Value |
+|---|---|
+| asset_id | ka_tulana |
+| kind | service |
+| storage | pure in-memory (no DB) |
+| I-11 weights (NATIVE-RATIFIED) | convergence=0.40, rarity=0.25, confidence=0.20, proximity=0.15 |
+| API surface | `rank_windows()` / `compare()` / `attention_map()` |
+| Tests | 24/24 PASS (`tests/l3/test_ka_tulana.py`) |
+| Notes | KNOWN_DOMAINS locked to L2 bo_sangati canonical; dissonance-aware verdicts (I-23) |
 
 ---
 
@@ -226,7 +258,7 @@ The next layer is **L4 Phala** (asset_ids `ph_*`). It inherits all L3 standards 
 2. **Frozen orchestrator contract**: same as L3 (`@register`, `WriterBase`, `run(ctx)`, never `commit`/`rollback`).
 3. **Idempotency**: delete-then-insert scoped to `(chart_id × natural key)`.
 4. **Asset IDs**: `ph_*` prefix. No `phala.*` dot-notation.
-5. **Migration numbers**: Start from 250+ (249 is the L3 ceiling).
+5. **Migration numbers**: Start from 251+ (249 is the L3 data ceiling; migration 250 was used for L3 prod remediation — count_sql param fix).
 6. **L4 dependency graph**: ph_nimitta → ka_sangam; ph_muhurta → ka_muhurta_seva + ka_vighnakara; etc.
 7. **kala_timeline**: Do NOT write to it. If L4 needs timeline data, read `kala_activation` or `kala_convergence`.
 8. **Ratified parameters**: Inherit I-7, I-8, I-16, I-17 unchanged from L3.

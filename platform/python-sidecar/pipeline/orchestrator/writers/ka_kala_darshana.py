@@ -28,7 +28,7 @@ class KaKalaDarshanaWriter(WriterBase):
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:
-            return WriterResult(rows_written=0, warnings=['No convergence windows — run ka_sangam first'])
+            return WriterResult(asset_id='ka_kala_darshana', rows_inserted=0, notes='No convergence windows — run ka_sangam first')
 
         # Read obstruction data grouped by convergence_id
         with conn.cursor() as cur:
@@ -106,7 +106,7 @@ class KaKalaDarshanaWriter(WriterBase):
                     ) VALUES %s
                 """, rows)
 
-        return WriterResult(rows_written=len(rows))
+        return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))
 
 
 def _compute_effective_score(convergence_score: float, obstructions: list) -> float:

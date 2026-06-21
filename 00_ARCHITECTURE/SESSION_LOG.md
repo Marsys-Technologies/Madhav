@@ -29028,7 +29028,35 @@ Open L3 Kāla campaign: read `L2_BODHA_CLOSE_v1_0.md §8` for the L3 onboarding 
 
 ---
 
-## Session: L3-KALA-AUTONOMOUS
+## L3-KALA-AUTONOMOUS — 2026-06-21
+
+```yaml
+session_open:
+  session_id: L3-KALA-AUTONOMOUS
+  session_type: autonomous_conductor
+  date: "2026-06-21"
+  branch: main
+  predecessor_session: L2-BODHA-WRITER-FIX-AND-SEAL
+  cowork_thread_name: "L3-Kāla-Autonomous-Build-Conductor-2026-06-21"
+  objective: >
+    Full autonomous buildout of L3 Kāla temporal projection layer (K0→K6+SEAL):
+    12 asset slots, 10 PRs (#309–#318), 8 migrations (242–249), 197 tests, seal
+    with L3_KALA_CLOSE_v1_0.md.
+  may_touch:
+    - "pipeline/orchestrator/writers/ka_*.py"
+    - "platform/python-sidecar/services/ka_*/**"
+    - "platform/migrations/24[2-9]_*.sql"
+    - "platform/scripts/seed/asset_registry_seed.ts"
+    - "00_ARCHITECTURE/L3_KALA_CLOSE_v1_0.md"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+  must_not_touch:
+    - "pipeline/orchestrator/writers/bo_*.py"
+    - "pipeline/orchestrator/writers/ga_*.py"
+    - "00_ARCHITECTURE/L2_BODHA_CLOSE_v1_0.md"
+    - "platform/migrations/[0-2][0-9][0-9]_*.sql"
+  red_team_due: false
+```
 
 **Cowork thread:** `L3-Kāla-Autonomous-Build-Conductor-2026-06-21`
 **Date:** 2026-06-21
