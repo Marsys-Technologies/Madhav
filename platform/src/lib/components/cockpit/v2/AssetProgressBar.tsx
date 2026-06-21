@@ -24,7 +24,7 @@ export function AssetProgressBar({ state, actualRows, targetVolume }: AssetProgr
   const colors = STATE_COLORS[state] ?? STATE_COLORS.dormant
   const pct = (actualRows !== null && targetVolume && targetVolume > 0)
     ? Math.min(100, Math.round((actualRows / targetVolume) * 100))
-    : 0
+    : (state === 'lit' && actualRows != null && actualRows > 0 ? 100 : 0)
 
   const numericText = (actualRows !== null && targetVolume)
     ? `${actualRows.toLocaleString()} / ${targetVolume.toLocaleString()}`

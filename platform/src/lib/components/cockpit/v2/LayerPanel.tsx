@@ -266,8 +266,8 @@ export function LayerPanel({
             </div>
             {[...assets].sort((a, b) => {
               // services first, then data assets; stable within each group
-              const aSvc = a.asset_type === 'service' ? 0 : 1
-              const bSvc = b.asset_type === 'service' ? 0 : 1
+              const aSvc = (a.asset_type === 'service' || a.asset_kind === 'service') ? 0 : 1
+              const bSvc = (b.asset_type === 'service' || b.asset_kind === 'service') ? 0 : 1
               return aSvc - bSvc
             }).map((asset, i) => {
               const assetRunActive = activeRun != null && (

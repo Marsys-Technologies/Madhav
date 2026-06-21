@@ -176,7 +176,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
 
       {/* Progress bar or service-health pill */}
       <div>
-        {asset.asset_type === 'service' ? (
+        {(asset.asset_type === 'service' || asset.asset_kind === 'service') ? (
           <ServiceHealthPill state={derivedState} hasError={hasError} errorMsg={stat?.error} />
         ) : (
           <>
