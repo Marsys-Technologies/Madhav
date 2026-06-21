@@ -64,6 +64,25 @@ const SERVICE_ASSET = {
   layer_index: 'L0',
 }
 
+// L3 service assets use asset_type='data' + asset_kind='service' (migration 242 pattern).
+// The ServiceHealthPill gate must check asset_kind, not just asset_type.
+const L3_SERVICE_ASSET = {
+  ...DATA_ASSET,
+  asset_id: 'ka_dasha_kala',
+  layer: 'kala',
+  sanskrit_name: 'Daśā-kāla',
+  english_name: 'Daśā Eligibility Service',
+  storage_type: 'service',
+  target_table: null,
+  count_sql: null,
+  target_floor: null,
+  scope: 'global',
+  asset_type: 'data' as const,
+  asset_kind: 'service' as const,
+  layer_name: 'Kāla',
+  layer_index: 'L3',
+}
+
 function statOf(partial: Partial<AssetStats>): AssetStats {
   return {
     asset_id: 'x',
@@ -157,5 +176,46 @@ describe('Cockpit Polish R2 — parent context (LayerPanel renders a service row
     )
     expect(screen.getByTitle('CURRENT · healthy')).toBeTruthy()
     expect(screen.queryByText(/degraded/)).toBeNull()
+  })
+})
+
+describe('L3 service asset dual-check (asset_kind fix)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+  })
+
+  it('renders ServiceHealthPill (LIVE) for L3 asset with asset_type=data + asset_kind=service', () => {
+    render(
+      <AssetRow
+        asset={L3_SERVICE_ASSET}
+        stat={statOf({ asset_id: 'ka_dasha_kala', state: 'service_ok', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    // Must show LIVE (ServiceHealthPill green), never NOT BUILT (AssetProgressBar dormant fallback)
+    expect(screen.getByText('LIVE')).toBeTruthy()
+    expect(screen.queryByText('NOT BUILT')).toBeNull()
+  })
+
+  it('renders full bar (LIVE pill) for lit artifact with null target_floor and rows > 0', () => {
+    render(
+      <AssetRow
+        asset={{ ...DATA_ASSET, target_floor: null }}
+        stat={statOf({ asset_id: 'ga_positions', state: 'lit', actual_rows: 66738 })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    // Bar should show LIVE, not NOT BUILT — null floor + rows present = fully built
+    expect(screen.getByText('LIVE')).toBeTruthy()
+    expect(screen.queryByText('NOT BUILT')).toBeNull()
+    // Row count displayed in bar numeric overlay
+    expect(screen.getByText('66,738')).toBeTruthy()
   })
 })
