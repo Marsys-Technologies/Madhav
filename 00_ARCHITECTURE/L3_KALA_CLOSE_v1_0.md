@@ -1,12 +1,12 @@
 ---
 artifact: L3_KALA_CLOSE_v1_0.md
 canonical_id: L3_KALA_CLOSE
-version: 1.1
+version: 1.2
 status: CURRENT
 produced_during: L3-KALA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-21)
 role: >
   Definitive sealed record for the L3 Kāla (Temporal Projection) layer.
-  Documents the 13 ka_* assets built (5 service + 8 artifact), the wave execution
+  Documents the 12 ka_* assets built (5 service + 7 artifact), the wave execution
   path, PROD migration log, test gate results, and the L4 Phala onboarding
   contract. All CURRENT_STATE references to L3 Kāla resolve here.
 supersedes: >
@@ -14,6 +14,13 @@ supersedes: >
   (CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md etc.) — those were entry briefs;
   this doc is the sealed closure record.
 changelog:
+  - v1.2 (2026-06-21, L3-CLOSEOUT-DOCS): Closeout documentation pass.
+    Fixed asset count 13→12 (ka_transit_almanac is retired/inactive, not a
+    built asset; correct count is 5 service + 7 artifact = 12). CF.L3.7
+    RESOLVED — StatusDot green fix committed (a299eee3 on main, PR #326 era;
+    service assets now render as "SERVICE · healthy" when service_health
+    non-null). CF.L3.8 RESOLVED on code side (orchestrator wired; reconcile
+    bypass scripts retired via PR #326 merged).
   - v1.1 (2026-06-21, L3-KALA-REMEDIATION): Premature-seal correction.
     v1.0 sealed on green tests but prod was NOT built (5 bugs blocked execution;
     ka_tulana absent; CF.L3.3–6 unresolved). Remediation (PR #319 + reconcile
@@ -27,7 +34,7 @@ changelog:
     (NOTE: this seal was PREMATURE — prod was not built; corrected in v1.1.)
 ---
 
-# L3 Kāla Close — Sealed Record v1.1
+# L3 Kāla Close — Sealed Record v1.2
 
 ## §0 — Premature-seal correction (v1.1 addendum)
 
@@ -54,7 +61,7 @@ changelog:
 
 **L3 Kāla (Temporal Projection) is CLOSED as of 2026-06-21 (genuinely prod-built, v1.1 corrected seal).**
 
-All 13 ka_* assets (5 service-kind + 8 artifact-kind) registered and all 9 schema
+All 12 ka_* assets (5 service-kind + 7 artifact-kind) registered and all 9 schema
 migrations (242–250) applied to PROD for chart `482012f1-710e-4a25-994a-93821f5871aa`
 (Abhisek Mohanty, 1984-02-05 10:43 IST, Bhubaneswar). SPINE-FIRST convergence gate:
 PASS (test_spine_e2e_one_signal). All contract checks clean: no `commit()`/`rollback()`
@@ -260,8 +267,8 @@ Per `L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md`:
 | CF.L3.4 | Rarity computation (rarity_years) | **RESOLVED** — real orbital-period rarity implemented in ka_sangam remediation (PR #319); flat 3.0-yr proxy retired |
 | CF.L3.5 | domain inference in ka_bhavishya_lekha | **RESOLVED** — signal_type_id domain map from chart_facts wired in PR #319; rank-modulo rotation retired |
 | CF.L3.6 | ka_dasha_kala eligibility integration into ka_sangam Mode A | **RESOLVED** — KaDashaKalaService call wired into Mode A soft funnel (PR #319); 0.5 neutral proxy retired; daśā prior is now real |
-| CF.L3.7 | UI cosmetic: service_ok assets render as "NOT BUILT" | OPEN (low priority) — service assets with null last_built_at display as "NOT BUILT" in the Nirmāṇa UI; correct API state is service_ok; render as "SERVICE · healthy" when service_health is non-null. Enhancement for L4 era |
-| CF.L3.8 | Build-state stamp via reconcile path (not orchestrator) | OPEN (process note) — the L3 build-state was stamped via one-shot reconcile_l3_build_state.py rather than the orchestrator's normal build-state write (§N.2). Future L3 rebuilds must go through the orchestrator click-Build path. Reconcile was a one-time fix; not a pattern |
+| CF.L3.7 | UI cosmetic: service_ok assets render as "NOT BUILT" | **RESOLVED** — StatusDot fix committed on main (commit a299eee3, PR #326 era). `DRAFT·healthy` StatusDot now renders green. Service assets with non-null `service_health` now display "SERVICE · healthy" instead of "NOT BUILT". Render family addressed. |
+| CF.L3.8 | Build-state stamp via reconcile path (not orchestrator) | **RESOLVED** (code side) — orchestrator wired for future L3 rebuilds (§N.2 path). Reconcile bypass scripts (`reconcile_l3_build_state.py` and standalone `run_ka_*_prod.py`) retired via PR #326 merged. Future L3 rebuilds go through the orchestrator click-Build path only. |
 
 ---
 
