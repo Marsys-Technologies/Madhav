@@ -133,3 +133,43 @@ events:
     planet: 0.10       # Non-combust Jupiter (guru-kāraka) especially significant.
     vara: 0.10         # Thursday (Jupiter/Guru) is universally preferred for initiation.
     avoid_penalty: 1.0
+
+  upaya_ritual:
+    # Upāya / remedial action (homa, dana, japa, puja, vrata).
+    # L3 Kāla K1 addition (ka_muhurta_seva, 2026-06-21).
+    # The native's Tāra Bala is the highest weight here: remediation works most
+    # strongly when the Moon's position at the time of the upāya is personally
+    # favorable to the native (MC §Upāya; BPHS §Upāya Shastra).
+    # Nakshatra is second: Pushya is the supreme upāya nakshatra (Guru Pushya =
+    # "whatever you do on this day triples in effect" — MC §Upāya multiplier).
+    # Tithi: Shukla paksha required for most upāyas (growing Moon builds remediation).
+    # Yoga: Sarvartha Siddhi and Amrit Siddhi amplify any auspicious action.
+    # Sum: 0.25+0.30+0.15+0.10+0.10+0.10 = 1.00
+    native: 0.25       # Tāra Bala is primary: remediation requires personal resonance.
+    nakshatra: 0.30    # Pushya supreme (Guru Pushya = remediation multiplier per MC).
+    tithi: 0.15        # Shukla paksha (growing Moon) builds remedial momentum.
+    yoga: 0.10         # Sarvartha Siddhi / Amrit Siddhi amplify any auspicious action.
+    planet: 0.10       # Non-combust Jupiter (expansion of merit from upāya).
+    vara: 0.10         # Thursday (Jupiter) universally best; planetary days match upāya target.
+    avoid_penalty: 1.0
+
+  sadhana_initiation:
+    # Sādhana initiation — beginning a sustained spiritual practice (daily japa,
+    # yoga abhyasa, meditation course, scripture study, etc.).
+    # L3 Kāla K1 addition (ka_muhurta_seva, 2026-06-21).
+    # Distinct from mantra_initiation (one-time diksha) — this is about sustaining
+    # a practice over months or years. The personal Tāra Bala is elevated above
+    # mantra_initiation because sustained practices succeed or fail based on the
+    # native's own Moon quality at the start. Thursday (Guru) scores highest of any
+    # event for vara (0.99 in table) — beginning any practice under Guru-vara is
+    # universally recommended in classical texts and modern yoga lineages alike.
+    # Fixed nakshatras (Rohini, Uttara Phalguni, Uttara Ashadha, Uttara Bhadrapada)
+    # are prized for sustained practices because they impart stability.
+    # Sum: 0.25+0.30+0.15+0.10+0.10+0.10 = 1.00
+    native: 0.25       # Tāra Bala primary: sustaining practice requires personal resonance.
+    nakshatra: 0.30    # Fixed nakshatras + Pushya dominate; stability governs long practice.
+    tithi: 0.15        # Shukla paksha (Ekadashi, Purnima, Panchami) for growing practice.
+    yoga: 0.10         # Guru Pushya, Amrit Siddhi amplify the initiation's staying power.
+    planet: 0.10       # Non-combust Jupiter (Guru: the practice's sustaining force).
+    vara: 0.10         # Thursday (Guru) rated 0.99 in table — the universal sādhana day.
+    avoid_penalty: 1.0

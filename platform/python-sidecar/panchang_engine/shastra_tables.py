@@ -985,6 +985,132 @@ MANTRA_INITIATION_QUALITY: dict = {
 }
 
 # ---------------------------------------------------------------------------
+# §22.7 — UPĀYA RITUAL (Remedial action: homa, dana, japa, puja, vrata) quality table
+# L3 Kāla K1 addition (ka_muhurta_seva, 2026-06-21)
+# Source: MC §Upāya; Brihat Parashara Hora Shastra §Upāya Shastra; DP convention
+# ---------------------------------------------------------------------------
+UPAYA_RITUAL_QUALITY: dict = {
+    "tithi": {
+        # Source: MC §Upāya; BPHS §Upāya Shastra
+        # Shukla paksha strongly preferred (building energy for remediation)
+        1: 0.80,   # Shukla Pratipada — auspicious (new beginning; ideal for starting vrata)
+        3: 0.90,   # Shukla Tritiya — highly auspicious (Akshaya Tritiya energy; Goddess)
+        5: 0.90,   # Shukla Panchami — auspicious (Saraswati; mantra-related upāya)
+        7: 0.85,   # Shukla Saptami — auspicious (Surya upāya; Aditya homa)
+        10: 0.85,  # Shukla Dashami — auspicious (Dharma tithi; navagraha homa)
+        11: 0.95,  # Shukla Ekadashi — best (Vishnu; fasting + Vishnu-related upāya)
+        12: 0.90,  # Shukla Dvadashi — auspicious (Vishnu energy continues)
+        13: 0.85,  # Shukla Trayodashi — auspicious (Shiva; Rudrabhisheka)
+        14: 0.70,  # Shukla Chaturdashi — acceptable (Shiva Chaturdashi; Shivaratri-adjacent)
+        15: 0.90,  # Purnima — highly auspicious (full Moon; homas maximally effective)
+        # Krishna paksha acceptable for Saturn/Ketu/Rahu upāya (karmic dissolution)
+        24: 0.75,  # Krishna Navami — acceptable for Durga/Kali upāya
+        26: 0.80,  # Krishna Ekadashi — acceptable (Vishnu still relevant)
+        # AVOID for upāya (these tithis resist remediation)
+        4: 0.10,   # Chaturthi — avoid (Vighna; obstacles block remediation)
+        8: 0.20,   # Ashtami — caution (Kali/Mars energy; use only for Mars upāya)
+        9: 0.30,   # Navami — caution (Durga; Shakti upāya acceptable)
+        30: 0.20,  # Amavasya — avoid for most (pitru; use ONLY for pitru tarpana/upāya)
+    },
+    "nakshatra": {
+        # Source: MC §Upāya; BPHS §Upāya Shastra
+        # Pushya reigns supreme for any upāya (Brihaspati/Guru energy amplifies all remediation)
+        8: 0.99,   # Pushya — supreme for upāya (Guru Pushya = best upāya muhurta)
+        4: 0.90,   # Rohini — auspicious (Brahma; wealth/prosperity upāya)
+        7: 0.90,   # Punarvasu — auspicious (Aditi; renewal; removing afflictions)
+        12: 0.90,  # Uttara Phalguni — auspicious (Aryaman; contractual karmas)
+        13: 0.85,  # Hasta — auspicious (Savitri; skill-related upāya)
+        17: 0.85,  # Anuradha — auspicious (Mitra; relationship upāya)
+        22: 0.85,  # Shravana — auspicious (Vishnu; Vishnu-related upāya)
+        25: 0.80,  # Purva Bhadrapada — auspicious (Aja Ekapad; depth of remediation)
+        26: 0.85,  # Uttara Bhadrapada — auspicious (Ahir Budhnya; Saturn upāya)
+        27: 0.90,  # Revati — auspicious (Pushan; journey upāya; completion)
+        21: 0.85,  # Uttara Ashadha — auspicious (Vishvedevas; universal upāya)
+        # AVOID for upāya
+        6: 0.00,   # Ardra — AVOID (Rudra; intensifies affliction instead of remediating)
+        9: 0.00,   # Ashlesha — AVOID (Sarpa; deception impedes remediation)
+        19: 0.00,  # Moola — AVOID (dissolution; upāya can backfire)
+        2: 0.10,   # Bharani — AVOID (Yama; mortality energy)
+    },
+    "vara": {
+        # Source: MC §Upāya; DP convention
+        # Planetary days align with the upāya's planetary target
+        5: 0.95,   # Thursday — best universal upāya day (Jupiter: amplification)
+        2: 0.90,   # Monday — auspicious (Moon/Shiva upāya; Rudrabhisheka)
+        6: 0.90,   # Friday — auspicious (Venus/Lakshmi upāya; wealth remediation)
+        4: 0.85,   # Wednesday — auspicious (Mercury; business/education upāya)
+        1: 0.80,   # Sunday — auspicious (Surya upāya; Aditya Hridayam)
+        7: 0.80,   # Saturday — auspicious FOR Saturn upāya specifically (Shani)
+        3: 0.60,   # Tuesday — acceptable for Mars/Hanuman upāya (Mangala)
+    },
+}
+
+# ---------------------------------------------------------------------------
+# §22.8 — SĀDHANA INITIATION (beginning a sustained spiritual practice) quality table
+# L3 Kāla K1 addition (ka_muhurta_seva, 2026-06-21)
+# Source: MC §Diksha + §Upāya; Yoga Shastra tradition; DP convention
+# Note: Distinct from mantra_initiation (one-time diksha) — this is for beginning
+# an ongoing practice (daily japa, yoga abhyasa, meditation course, etc.)
+# ---------------------------------------------------------------------------
+SADHANA_INITIATION_QUALITY: dict = {
+    "tithi": {
+        # Source: MC §Diksha; Yoga tradition; DP convention
+        # Shukla paksha strongly preferred (growing phase builds the sādhana)
+        1: 0.80,   # Shukla Pratipada — excellent (new cycle; beginning amplified)
+        2: 0.80,   # Shukla Dvitiya — auspicious
+        3: 0.85,   # Shukla Tritiya — auspicious (Akshaya Tritiya quality)
+        5: 0.90,   # Shukla Panchami — auspicious (Saraswati; knowledge-based sādhana)
+        7: 0.85,   # Shukla Saptami — auspicious (Sun; solar practices)
+        10: 0.85,  # Shukla Dashami — auspicious (Dharma tithi)
+        11: 0.95,  # Shukla Ekadashi — premier (fasting + tapas initiation)
+        12: 0.90,  # Shukla Dvadashi — auspicious (post-Ekadashi discipline)
+        13: 0.85,  # Shukla Trayodashi — auspicious (Shiva; Shaiva sādhana)
+        15: 0.95,  # Purnima — premier (Guru Purnima; completeness; sādhana peaks)
+        # AVOID
+        4: 0.00,   # Chaturthi — AVOID (Vighna; obstacles to sustained practice)
+        8: 0.20,   # Ashtami — caution
+        9: 0.30,   # Navami — caution
+        14: 0.30,  # Chaturdashi — caution (Shivaratri exception via special_yogas)
+        30: 0.10,  # Amavasya — AVOID for beginnings
+    },
+    "nakshatra": {
+        # Source: MC §Diksha; BS §Diksha; Yoga tradition
+        # Fixed (sthira) nakshatras are especially prized for sustained practice
+        # because the Moon's stability supports long-term discipline
+        4: 0.95,   # Rohini — premier (Brahma/Prajapati: steady creation; sthira)
+        12: 0.90,  # Uttara Phalguni — auspicious (Aryaman: steady; sthira)
+        21: 0.90,  # Uttara Ashadha — auspicious (Vishvedevas: universal practice; sthira)
+        26: 0.90,  # Uttara Bhadrapada — auspicious (Ahir Budhnya: depth; sthira)
+        8: 0.95,   # Pushya — premier for sādhana (Brihaspati: all spiritual practices)
+        7: 0.90,   # Punarvasu — highly auspicious (Aditi: renewal and growth)
+        22: 0.90,  # Shravana — auspicious (Vishnu: Vaishnava/bhakti practices)
+        17: 0.85,  # Anuradha — auspicious (Mitra: devotion, consistent relationship)
+        27: 0.90,  # Revati — auspicious (Pushan: nurturing; gentle practices)
+        5: 0.80,   # Mrigashira — auspicious (Moon: lunar practices, soma)
+        13: 0.85,  # Hasta — auspicious (Savitri: yoga asana especially)
+        25: 0.85,  # Purva Bhadrapada — auspicious (Aja Ekapad: depth of practice)
+        10: 0.85,  # Magha — auspicious (Pitrs: ancestral lineage practices)
+        # AVOID for sādhana initiation
+        6: 0.00,   # Ardra — AVOID (Rudra: instability; destroys sustained effort)
+        9: 0.00,   # Ashlesha — AVOID (Sarpa: subtle toxicity in long-term practice)
+        19: 0.00,  # Moola — AVOID (dissolution of roots; prevents stability)
+        18: 0.10,  # Jyeshtha — AVOID (Indra's pride interrupts humility of sādhana)
+        2: 0.10,   # Bharani — AVOID (Yama: completion rather than beginning)
+    },
+    "vara": {
+        # Source: MC §Diksha; Yoga tradition; DP convention
+        # Thursday (Guru) is universally the best day to begin any sādhana
+        5: 0.99,   # Thursday — supreme for sādhana initiation (Guru/Jupiter)
+        2: 0.85,   # Monday — auspicious (Moon/Shiva; Shaiva/lunar practices)
+        6: 0.85,   # Friday — auspicious (Venus/Shakti; bhakti, arts-based sādhana)
+        4: 0.85,   # Wednesday — auspicious (Mercury; mantra, study-based sādhana)
+        1: 0.80,   # Sunday — auspicious (Sun; solar practices, Surya Namaskara)
+        7: 0.75,   # Saturday — acceptable for Saturn-aligned sādhana (Shani; tapas)
+        3: 0.50,   # Tuesday — acceptable for Hanuman/Mars practices only (MC 8.1)
+    },
+}
+
+# ---------------------------------------------------------------------------
 # §23 — EVENT → TABLE mapping (central dispatch for score_muhurat)
 # ---------------------------------------------------------------------------
 EVENT_TABLES: dict = {
@@ -994,6 +1120,9 @@ EVENT_TABLES: dict = {
     "yatra":               YATRA_QUALITY,
     "property_purchase":   PROPERTY_PURCHASE_QUALITY,
     "mantra_initiation":   MANTRA_INITIATION_QUALITY,
+    # L3 Kāla K1 additions (ka_muhurta_seva, 2026-06-21)
+    "upaya_ritual":        UPAYA_RITUAL_QUALITY,
+    "sadhana_initiation":  SADHANA_INITIATION_QUALITY,
 }
 
 # ---------------------------------------------------------------------------
