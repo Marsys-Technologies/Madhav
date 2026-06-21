@@ -23,8 +23,7 @@ class KaKalasutraWriter(WriterBase):
                     kap.dasha_eligibility_rule_jsonb,
                     kap.transit_trigger_jsonb,
                     kap.strength_affliction_hook_jsonb,
-                    COALESCE(msr.deterministic_strength, 0.5) as strength,
-                    msr.is_active_now
+                    COALESCE(msr.deterministic_strength, 0.5) as strength
                 FROM kala_activation_predicates kap
                 LEFT JOIN bodha_msr_signals msr ON kap.signal_id = msr.signal_id
                 WHERE kap.chart_id = %s
@@ -33,7 +32,7 @@ class KaKalasutraWriter(WriterBase):
             predicates = cur.fetchall()
         
         if not predicates:
-            return WriterResult(rows_written=0, warnings=['No predicates — run ka_yojaka first'])
+            return WriterResult(asset_id='ka_kalasutra', rows_inserted=0, notes='No predicates — run ka_yojaka first')
         
         # Read convergence windows for cross-reference
         with conn.cursor() as cur:
@@ -59,7 +58,7 @@ class KaKalasutraWriter(WriterBase):
         # Build activation rows
         rows = []
         for pred in predicates:
-            signal_id, ayanamsha_id, sig_class, dasha_rule, transit_rule, strength_hook, strength, is_active_now = pred
+            signal_id, ayanamsha_id, sig_class, dasha_rule, transit_rule, strength_hook, strength = pred
             sig_id_str = str(signal_id)
             
             # L2 null hooks: filled here at L3 (NEVER by writing bodha_msr_signals)
@@ -106,7 +105,7 @@ class KaKalasutraWriter(WriterBase):
                     ) VALUES %s
                 """, rows)
         
-        return WriterResult(rows_written=len(rows))
+        return WriterResult(asset_id='ka_kalasutra', rows_inserted=len(rows))
 
 
 def _derive_dasha_periods(dasha_rule: dict) -> list:
