@@ -47,6 +47,8 @@ interface AssetDef {
   provides_apis?: Record<string, unknown>[] | null
   health_probe?: Record<string, unknown> | null
   catalog_status?: 'CURRENT' | 'DRAFT'     // L0 = CURRENT; L1–L5 = DRAFT
+  // Migration 242 fields (L3 service/artifact asset kinds)
+  asset_kind?: 'data' | 'service' | 'artifact'  // defaults to 'data'
 }
 
 interface CoefficientDef {
@@ -1222,7 +1224,57 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
-  // ── KALA (4) ──────────────────────────────────────────────────────────────
+  // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
+  {
+    asset_id: 'ka_graha_sancara',
+    layer: 'kala', sort_order: 100,
+    sanskrit_name: 'Graha-sañcara',
+    english_name: 'Ephemeris service',
+    english_description: 'Ephemeris-at-T service: sidereal positions for all 9 grahas at any datetime. Two read paths: bg_ephemeris (1900–2150) and live swisseph fallback. Per-call memo cache keyed on (T, ayanamsha). TRUE_NODE throughout.',
+    storage_type: 'service',
+    target_table: null, count_sql: null, size_sql: null,
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Service asset — no stored rows; returns computed positions on demand',
+    depends_on: ['bg_ephemeris'],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'service', catalog_status: 'DRAFT',
+  },
+  {
+    asset_id: 'ka_dasha_kala',
+    layer: 'kala', sort_order: 101,
+    sanskrit_name: 'Daśā-kāla',
+    english_name: 'Daśā Eligibility Service',
+    english_description: 'Lazy-pruning tree-walk over chart_dashas (level-4 Sookshma) with cross-system agreement scoring. Serves all 7 daśā systems; KP as Vimśottarī sub-level via kp_sublevel column. Nārāyaṇa absent.',
+    storage_type: 'service',
+    target_table: null, count_sql: null, size_sql: null,
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Service asset — no stored rows; eligibility bands computed on demand from chart_dashas',
+    depends_on: ['chart_dashas'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'service', catalog_status: 'DRAFT',
+  },
+  {
+    asset_id: 'ka_muhurta_seva',
+    layer: 'kala', sort_order: 102,
+    sanskrit_name: 'Muhūrta-sevā',
+    english_name: 'Panchāṅga-Muhūrta Service',
+    english_description: 'Deterministic panchāṅga/muhūrta scoring service. Wraps panchang_engine; Tāra Bala native-chart overlay wired (birth_nakshatra_id=25 Purva Bhadrapada). Location mandatory — no silent Bhubaneswar default. 8 event classes including upaya_ritual and sadhana_initiation.',
+    storage_type: 'service',
+    target_table: null, count_sql: null, size_sql: null,
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Service asset — no stored rows; panchāṅga computed live per (date, location)',
+    depends_on: ['ka_graha_sancara'],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'service', catalog_status: 'DRAFT',
+  },
+
+  // ── KALA (4) — artifact placeholders; updated per wave ────────────────────
   {
     asset_id: 'ka_kalasutra',
     layer: 'kala', sort_order: 1,
@@ -1682,6 +1734,7 @@ async function main(): Promise<void> {
       kala: 'L3', phala: 'L4', mimamsa: 'L5',
     }
     const assetType = asset.asset_type ?? 'data'
+    const assetKind = asset.asset_kind ?? 'data'
     const layerName = asset.layer_name ?? layerNames[asset.layer] ?? asset.layer
     const layerIndex = asset.layer_index ?? layerIndices[asset.layer] ?? null
     const catalogStatus = asset.catalog_status ?? (asset.layer === 'brahmagyan' ? 'CURRENT' : 'DRAFT')
@@ -1692,9 +1745,10 @@ async function main(): Promise<void> {
         storage_type, target_table, count_sql, size_sql, target_floor,
         expected_volume_formula, expected_volume_inputs, volume_explanation,
         depends_on, scope, is_active, estimated_seconds,
-        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status
+        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
+        asset_kind
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
       ) ON CONFLICT (asset_id) DO UPDATE SET
         layer = EXCLUDED.layer,
         sort_order = EXCLUDED.sort_order,
@@ -1717,7 +1771,8 @@ async function main(): Promise<void> {
         layer_index = EXCLUDED.layer_index,
         provides_apis = EXCLUDED.provides_apis,
         health_probe = EXCLUDED.health_probe,
-        catalog_status = EXCLUDED.catalog_status`,
+        catalog_status = EXCLUDED.catalog_status,
+        asset_kind = EXCLUDED.asset_kind`,
       [
         asset.asset_id, asset.layer, asset.sort_order,
         asset.sanskrit_name, asset.english_name, asset.english_description,
@@ -1730,6 +1785,7 @@ async function main(): Promise<void> {
         asset.provides_apis ? JSON.stringify(asset.provides_apis) : null,
         asset.health_probe ? JSON.stringify(asset.health_probe) : null,
         catalogStatus,
+        assetKind,
       ],
     )
     console.log(`  ${asset.is_active ? '✓' : '⚠'} ${asset.asset_id}`)

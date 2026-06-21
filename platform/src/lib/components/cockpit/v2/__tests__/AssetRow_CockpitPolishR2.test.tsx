@@ -40,6 +40,12 @@ const DATA_ASSET = {
   provides_apis: null,
   health_probe: null,
   catalog_status: 'CURRENT' as const,
+  // Migration 242 service/artifact kind fields
+  asset_kind: 'data' as const,
+  service_health: null,
+  last_invoked_at: null,
+  last_selftest_at: null,
+  selftest_detail: null,
 }
 
 const SERVICE_ASSET = {
@@ -69,6 +75,8 @@ function statOf(partial: Partial<AssetStats>): AssetStats {
     state: 'dormant',
     last_built_at: null,
     build_state_stale: false,
+    service_health: null,
+    last_invoked_at: null,
     ...partial,
   }
 }

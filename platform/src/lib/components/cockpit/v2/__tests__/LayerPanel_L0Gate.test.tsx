@@ -37,6 +37,12 @@ const ASSET_BASE = {
   provides_apis: null,
   health_probe: null,
   catalog_status: 'CURRENT' as const,
+  // Migration 242 service/artifact kind fields
+  asset_kind: 'data' as const,
+  service_health: null,
+  last_invoked_at: null,
+  last_selftest_at: null,
+  selftest_detail: null,
 }
 
 describe('LayerPanel — L0 BuildActionButton gate', () => {
