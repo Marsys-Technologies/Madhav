@@ -71,6 +71,8 @@ changelog:
     ka_vighnakara=60; ka_kala_darshana=300; ka_jivana_parva=739; ka_bhavishya_lekha=50.
     L3_KALA_CLOSE_v1_0.md bumped to v1.1. Branch: fix/l3-kala-prod-build-remediation.
     L3 is NOW truly CLOSED (prod state matches sealed record).
+    Cockpit independently verified on BOTH prod (revision amjis-web-00664-xc6) AND
+    localhost:3002 (route fix synced; zero error/missing_table in L3 block confirmed).
     last_session_id: L3-KALA-PROD-BUILD-REMEDIATION.
     predecessor_session: L3-KALA-AUTONOMOUS.
     next_session_objective: >
