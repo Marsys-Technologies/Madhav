@@ -1,15 +1,16 @@
 """
-test_u3_convergence_currents.py — U3 acceptance tests: 6 new convergence currents (C7-C12).
+test_u3_convergence_currents.py — U3 acceptance tests: 7 new convergence currents (C7-C13).
 
-Covers:
-  - SUPPORTING_WEIGHTS: 11 keys, sum == 1.0, C13 slot absent (reserved)
+Covers (U3 pass-1: C7-C12, pass-2: C13):
+  - SUPPORTING_WEIGHTS: 12 keys, sum == 1.0, C13 school_consensus live
   - convergence_score stays ∈ [0,1] with new currents
   - C8 eclipse + C10 station raise score (intra-new-system direction test)
   - C11 vedha_cancellation suppresses score (necessary-side veto)
   - C7 ashtakavarga_potency raises score with high bindus
   - C12 tajika raises score when varṣeśa matches domain lord
+  - C13 school_consensus: domain prefix mapping, empty/None safety, raises score
   - EnrichmentContext: default-empty context leaves new currents at 0.0 (no crash)
-  - independent_current_count: C7–C12 coupling rules
+  - independent_current_count: C7–C13 coupling rules
   - No writes to L1/L3 tables (anti-drift)
 """
 from __future__ import annotations
@@ -59,18 +60,19 @@ def empty_ctx():
 # ── SUPPORTING_WEIGHTS integrity ─────────────────────────────────────────────
 
 class TestWeights:
-    def test_11_keys(self):
+    def test_12_keys(self):
         from services.ka_sangam.engine import SUPPORTING_WEIGHTS
-        assert len(SUPPORTING_WEIGHTS) == 11, "U3-pass1 should have 11 keys (C13 reserved)"
+        assert len(SUPPORTING_WEIGHTS) == 12, "U3-pass2 should have 12 keys (C13 now live)"
 
     def test_sum_equals_one(self):
         from services.ka_sangam.engine import SUPPORTING_WEIGHTS
         assert abs(sum(SUPPORTING_WEIGHTS.values()) - 1.0) < 1e-4
 
-    def test_c13_absent(self):
+    def test_c13_present(self):
         from services.ka_sangam.engine import SUPPORTING_WEIGHTS
-        assert 'school_consensus' not in SUPPORTING_WEIGHTS, \
-            "C13 school_consensus reserved for U3-pass2 (post-U4)"
+        assert 'school_consensus' in SUPPORTING_WEIGHTS, \
+            "C13 school_consensus must be present (U3 pass-2 activated)"
+        assert SUPPORTING_WEIGHTS['school_consensus'] == pytest.approx(0.10, rel=0.01)
 
     def test_vedha_absent(self):
         from services.ka_sangam.engine import SUPPORTING_WEIGHTS
@@ -363,6 +365,69 @@ class TestAntiDrift:
                     'INSERT INTO kala_activation_predicates', 'INSERT INTO kala_convergence'):
             assert bad not in src, f"engine.py must not write to {bad}"
 
-    def test_supporting_weights_no_c13(self):
+    def test_supporting_weights_c13_weight_in_range(self):
         from services.ka_sangam.engine import SUPPORTING_WEIGHTS
-        assert 'school_consensus' not in SUPPORTING_WEIGHTS
+        w = SUPPORTING_WEIGHTS.get('school_consensus', 0.0)
+        assert 0.07 <= w <= 0.13, "C13 school_consensus weight must be in spec bound [0.07, 0.13]"
+
+
+# ── C13 school_consensus current (U3 pass-2) ────────────────────────────────
+
+class TestC13SchoolConsensus:
+    def test_six_of_seven_returns_correct_score(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain={'CAREER': 6})
+        score = _c13_school_consensus_score('CAREER_PEAK', ctx)
+        assert score == pytest.approx(6 / 7.0, rel=0.01)
+
+    def test_seven_of_seven_capped_at_one(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain={'HEALTH': 7})
+        score = _c13_school_consensus_score('HEALTH_RISK', ctx)
+        assert score == pytest.approx(1.0)
+
+    def test_unknown_signature_class_returns_zero(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain={'CAREER': 5})
+        score = _c13_school_consensus_score('COSMIC_UNKNOWN', ctx)
+        assert score == pytest.approx(0.0), "Unmappable signature class → 0.0"
+
+    def test_empty_context_returns_zero(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        score = _c13_school_consensus_score('CAREER_PEAK', EnrichmentContext.empty())
+        assert score == pytest.approx(0.0)
+
+    def test_none_school_consensus_by_domain_returns_zero(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain=None)
+        score = _c13_school_consensus_score('SPIRITUAL_PEAK', ctx)
+        assert score == pytest.approx(0.0)
+
+    def test_domain_prefix_mapping_all_five(self):
+        from services.ka_sangam.engine import _c13_school_consensus_score, EnrichmentContext
+        ctx = EnrichmentContext(school_consensus_by_domain={
+            'CAREER': 4, 'HEALTH': 5, 'RELATIONSHIP': 3, 'SPIRITUAL': 6, 'PSYCHOLOGICAL': 7,
+        })
+        for sig_prefix, domain, n in [
+            ('CAREER_PEAK', 'CAREER', 4),
+            ('HEALTH_RISK', 'HEALTH', 5),
+            ('RELATIONSHIP_PEAK', 'RELATIONSHIP', 3),
+            ('SPIRITUAL_PEAK', 'SPIRITUAL', 6),
+            ('PSYCHOLOGICAL_CRISIS', 'PSYCHOLOGICAL', 7),
+        ]:
+            expected = min(1.0, n / 7.0)
+            got = _c13_school_consensus_score(sig_prefix, ctx)
+            assert got == pytest.approx(expected, rel=0.01), \
+                f"{sig_prefix} → expected {expected:.4f}, got {got:.4f}"
+
+    def test_c13_raises_convergence_score(self, dignity, orb_s, base_supporting):
+        from services.ka_sangam.engine import (
+            convergence_score, _c13_school_consensus_score, EnrichmentContext
+        )
+        ctx = EnrichmentContext(school_consensus_by_domain={'CAREER': 6})
+        c13 = _c13_school_consensus_score('CAREER_PEAK', ctx)
+        nec = [dignity, orb_s, 1.0]
+        score_without = convergence_score(nec, dict(base_supporting, school_consensus=0.0))
+        score_with = convergence_score(nec, dict(base_supporting, school_consensus=c13))
+        assert score_with > score_without, \
+            "C13 school_consensus should raise convergence_score when schools agree"

@@ -10,10 +10,13 @@ Implements ratified invariants:
 Also provides Mode A (daśā-prior soft funnel + transit search) and
 Mode B (un-gated long-horizon anomaly sweep, flagged is_off_dasha_discovery=True).
 
-U3 enrichment (2026-06-22): 6 new supporting currents (C7–C12) added; C13 school_consensus
-  reserved (weight slot 0.10) pending U4. Weights re-normalized to 1.0 without C13.
+U3 pass-1 (2026-06-22): 6 new supporting currents (C7–C12) added; C13 reserved.
+U3 pass-2 (2026-06-22): C13 school_consensus activated (post-U4). All 12 currents now
+  live at their original spec weights (sum = 1.0). The 11 pass-1 currents are scaled ×0.90
+  to make room for C13=0.10.
   vedha_cancellation (C11) enters the NECESSARY side multiplicatively — not supporting.
-  EnrichmentContext carries pre-fetched DB data (ashtakavarga, vedha, tajika) from the writer.
+  EnrichmentContext carries pre-fetched DB data (ashtakavarga, vedha, tajika,
+  school_consensus_by_domain) from the writer.
 
 NEVER calls conn.commit() or conn.rollback() — caller owns the transaction.
 NEVER writes to any bodha_* table.
@@ -28,23 +31,24 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 # ── Ratified supporting-factor weights (I-16, sum = 1.0) ──────────────────────
-# U3 pass-1: 11 currents (C13 school_consensus reserved weight = 0.10 pending U4;
-#   remaining 11 re-normalized to 1.0). Tuning bounds from U3 spec §3.1 satisfied.
+# U3 pass-2 (2026-06-22): 12 currents (C13 school_consensus now live at 0.10).
+# Pass-1 weights (11 currents) scaled ×0.90 to make room for C13.
+# Tuning bounds from U3 spec §3.1 satisfied for all 12 keys.
 # C11 vedha_cancellation is NOT here — it enters the NECESSARY side multiplicatively.
 
 SUPPORTING_WEIGHTS: dict[str, float] = {
-    'constituent_lord_transit':    0.200,   # was 0.30; re-normed without C13
-    'ashtakavarga_transit_potency': 0.133,  # C7 NEW: "does the transit deliver?"
-    'cross_dasha_agreement':        0.133,  # was 0.18 (U1 surfaced; U3 re-normed)
-    'benefic_dristi':               0.111,  # was 0.20
-    'transit_to_transit':           0.089,  # C9 NEW: outer-planet cycles
-    'panchanga_quality':            0.078,  # was 0.12
-    'tara_bala':                    0.067,  # was 0.12
-    'eclipse_proximity':            0.067,  # C8 NEW: eclipse on sensitive point
-    'nakshatra_subsystem':          0.056,  # was 0.08
-    'station_retrograde':           0.033,  # C10 NEW: planet stationing on trigger
-    'tajika_annual_reinforcement':  0.033,  # C12 NEW: annual chart varṣeśa/muntha
-    # C13 school_consensus: weight 0.10 reserved; activates in U3 pass-2 (post-U4)
+    'constituent_lord_transit':     0.180,  # spec 0.18, bound [0.14, 0.24] ✓
+    'ashtakavarga_transit_potency': 0.120,  # C7, spec 0.12, bound [0.08, 0.16] ✓
+    'cross_dasha_agreement':        0.120,  # spec 0.12, bound [0.09, 0.16] ✓
+    'benefic_dristi':               0.100,  # spec 0.10, bound [0.07, 0.13] ✓
+    'transit_to_transit':           0.080,  # C9, spec 0.08, bound [0.05, 0.11] ✓
+    'panchanga_quality':            0.070,  # spec 0.07, bound [0.05, 0.10] ✓
+    'tara_bala':                    0.060,  # spec 0.06, bound [0.04, 0.09] ✓
+    'eclipse_proximity':            0.060,  # C8, spec 0.06, bound [0.03, 0.09] ✓
+    'nakshatra_subsystem':          0.050,  # spec 0.05, bound [0.03, 0.07] ✓
+    'station_retrograde':           0.030,  # C10, spec 0.03, bound [0.01, 0.05] ✓
+    'tajika_annual_reinforcement':  0.030,  # C12, spec 0.03, bound [0.01, 0.05] ✓
+    'school_consensus':             0.100,  # C13, spec 0.10, bound [0.07, 0.13] ✓
 }
 
 # Verify sum ≈ 1.0 at import (hard-fail if someone edits weights carelessly)
@@ -56,16 +60,19 @@ assert abs(_SW_SUM - 1.0) < 1e-4, f"SUPPORTING_WEIGHTS must sum to 1.0, got {_SW
 
 class EnrichmentContext:
     """
-    Pre-fetched DB data needed by the new U3 currents (C7, C11, C12).
+    Pre-fetched DB data needed by U3 currents (C7, C11, C12, C13).
     Passed in by the ka_sangam writer to avoid passing db_conn into engine.py.
 
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
         Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
         Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
-    vedha_rules: list of dicts with keys {planet, transit_to_house, vedha_house}
+    vedha_rules: list of dicts with keys {graha, transit_to_house, vedha_house}
         Sourced from bg_transit_rules WHERE rule_type='vedha'.
     tajika_year_lords: list of dicts with keys {varsha_year, varshesha, muntha}
         Sourced from l1_tajik_varsha_year_lords for the current chart.
+    school_consensus_by_domain: {domain: schools_agreeing (0-7)}
+        Sourced from convergence_scores (populated by POST /api/build/school-consensus).
+        C13 score = schools_agreeing / 7.0.
     """
 
     def __init__(
@@ -73,10 +80,12 @@ class EnrichmentContext:
         ashtakavarga_bindu: Optional[dict[str, dict[int, int]]] = None,
         vedha_rules: Optional[list[dict]] = None,
         tajika_year_lords: Optional[list[dict]] = None,
+        school_consensus_by_domain: Optional[dict[str, int]] = None,
     ):
         self.ashtakavarga_bindu = ashtakavarga_bindu or {}
         self.vedha_rules = vedha_rules or []
         self.tajika_year_lords = tajika_year_lords or []
+        self.school_consensus_by_domain = school_consensus_by_domain or {}
 
     @classmethod
     def empty(cls) -> 'EnrichmentContext':
@@ -224,6 +233,37 @@ def _c11_vedha_factor(
         if rule_planet == planet and to_house == transit_house and vedha_h:
             return 0.3  # vedha present → strongly damp
     return 1.0
+
+
+def _c13_school_consensus_score(
+    signature_class: str,
+    ctx: EnrichmentContext,
+) -> float:
+    """
+    C13: school_consensus (U3 pass-2, post-U4) — 7-school inter-tradition agreement.
+    Score = schools_agreeing / 7.0.  Floor 0.0, ceiling 1.0.
+    Domain inference: signature_class → domain (e.g. 'CAREER_PEAK' → 'CAREER').
+    Sourced from convergence_scores.schools_agreeing (populated by school-consensus build).
+    Returns 0.0 when school_consensus_by_domain is empty (pre-U4 safe default).
+    """
+    if not ctx.school_consensus_by_domain:
+        return 0.0
+    # Map signature_class prefix to domain
+    domain: Optional[str] = None
+    for prefix, mapped in (
+        ('CAREER', 'CAREER'),
+        ('HEALTH', 'HEALTH'),
+        ('RELATIONSHIP', 'RELATIONSHIP'),
+        ('SPIRITUAL', 'SPIRITUAL'),
+        ('PSYCHOLOGICAL', 'PSYCHOLOGICAL'),
+    ):
+        if signature_class.upper().startswith(prefix):
+            domain = mapped
+            break
+    if domain is None:
+        return 0.0
+    n_of_7 = ctx.school_consensus_by_domain.get(domain, 0)
+    return min(1.0, max(0.0, n_of_7 / 7.0))
 
 
 def _c12_tajika_score(
@@ -638,6 +678,7 @@ def mode_a_search(
         transit_house = transit_sign  # house ≈ sign for transits in this model
         vedha_factor  = _c11_vedha_factor(planet, transit_house, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
+        c13 = _c13_school_consensus_score(sig_class, ctx)
 
         # Necessary conditions: dignity × orb × vedha_factor (1.0 = no vedha)
         necessary = [dignity_score, orb_s, vedha_factor]
@@ -653,6 +694,7 @@ def mode_a_search(
             'nakshatra_subsystem':          0.0,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
+            'school_consensus':             c13,   # C13 (U3 pass-2, post-U4)
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -680,6 +722,7 @@ def mode_a_search(
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
+                'c13_school_consensus': round(c13, 4),
             },
             'source_citation': (
                 f"mode_a/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -775,6 +818,7 @@ def mode_b_sweep(
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
         vedha_factor = _c11_vedha_factor(planet, transit_sign, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
+        c13 = _c13_school_consensus_score(sig_class, ctx)
 
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
@@ -789,6 +833,7 @@ def mode_b_sweep(
             'nakshatra_subsystem':          0.0,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
+            'school_consensus':             c13,
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -815,6 +860,7 @@ def mode_b_sweep(
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
+                'c13_school_consensus': round(c13, 4),
             },
             'source_citation': (
                 f"mode_b/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"

@@ -179,12 +179,14 @@ class KaSangamWriter(WriterBase):
                     'panchanga': False,
                     'benefic_dristi': False,
                     'cross_dasha_agreement': bool(cf.get('cross_dasha_agreement', 0) > 0.0),
-                    # U3 new currents
+                    # U3 C7-C12 currents
                     'ashtakavarga_transit_potency': bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0),
                     'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
                     'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
                     'station_retrograde': bool(cf.get('c10_station_retrograde', 0) > 0.0),
                     'tajika_annual_reinforcement': bool(cf.get('c12_tajika_reinforcement', 0) > 0.0),
+                    # U3 C13 school_consensus (post-U4)
+                    'school_consensus': bool(cf.get('c13_school_consensus', 0) > 0.0),
                 }
                 icc = independent_current_count(currents)
 
