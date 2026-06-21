@@ -228,7 +228,7 @@ describe('CF.L3.7 — RETIRED placeholder rendering', () => {
 
   const RETIRED_ASSET = {
     ...DATA_ASSET,
-    asset_id: 'ka_transit_almanac',
+    asset_id: 'ka_test_retired_placeholder',
     layer: 'kala',
     sanskrit_name: 'Transit Almanac',
     english_name: 'Transit Almanac',
@@ -270,5 +270,23 @@ describe('CF.L3.7 — RETIRED placeholder rendering', () => {
     // Color should NOT be the red error color
     const style = (dot as HTMLElement)?.style?.background ?? ''
     expect(style).not.toContain('220,80,80')
+  })
+})
+
+// ── Seed governance: Kāla layer must have exactly 12 assets after hard-removal of ka_transit_almanac ──
+describe('Asset seed governance — Kāla layer', () => {
+  it('has exactly 12 kala assets in the seed (ka_transit_almanac removed)', () => {
+    const { readFileSync } = require('fs')
+    const { resolve } = require('path')
+    const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
+    const kalaMatches = seedContent.match(/layer:\s*'kala'/g) ?? []
+    expect(kalaMatches).toHaveLength(12)
+  })
+
+  it('contains no ka_transit_almanac entry in the seed', () => {
+    const { readFileSync } = require('fs')
+    const { resolve } = require('path')
+    const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
+    expect(seedContent).not.toContain("'ka_transit_almanac'")
   })
 })
