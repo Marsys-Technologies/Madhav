@@ -29,7 +29,7 @@ export interface AssetRow {
   layer_index: string | null
   provides_apis: Record<string, unknown>[] | null
   health_probe: Record<string, unknown> | null
-  catalog_status: 'CURRENT' | 'DRAFT' | null
+  catalog_status: 'CURRENT' | 'DRAFT' | 'RETIRED' | null
   // Migration 242+ L3 Kāla service-asset-type fields
   asset_kind: 'data' | 'service' | 'artifact' | null
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
