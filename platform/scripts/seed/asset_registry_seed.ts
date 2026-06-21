@@ -1359,8 +1359,26 @@ const ASSETS: AssetDef[] = [
     depends_on: ['bg_ephemeris', 'ka_kalasutra'],
     scope: 'per_chart', is_active: false, estimated_seconds: null,
   },
+  {
+    asset_id: 'ka_yojaka',
+    layer: 'kala', sort_order: 5,
+    sanskrit_name: 'Yojaka',
+    english_name: 'Activation bridge',
+    english_description: 'Classifies each L2 signal into a signature_class, binds the RATIFIED class template, stores concrete activation predicates for ka_sangam/ka_vighnakara to search. NEVER writes into L2 tables. Per-chart artifact; delete-then-insert idempotency.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_activation_predicates',
+    count_sql: 'SELECT count(*) FROM kala_activation_predicates WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('kala_activation_predicates')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One predicate per L2 signal per ayanamsha; total ≈ 66,738 for native chart',
+    depends_on: ['bo_laksana', 'bg_transit_rules', 'chart_dashas'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'artifact', catalog_status: 'DRAFT',
+  },
 
-  // ── PHALA (5) ─────────────────────────────────────────────────────────────
+  // ── PHALA (5) ────────────────────────────────────────────────────────────────────────────
   {
     asset_id: 'ph_nimitta',
     layer: 'phala', sort_order: 1,
