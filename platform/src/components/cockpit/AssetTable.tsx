@@ -25,6 +25,7 @@ import {
   type LayerKey,
 } from '@/lib/jyotish/asset_names'
 import { CascadePreviewModal } from './CascadePreviewModal'
+import { ServiceHealthBadge, ServiceLastInvokedLabel } from './ServiceHealthBadge'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,10 @@ export interface AssetRow {
   rowCount: number
   progress?: number // 0-1
   lastUpdated?: string
+  // Service-kind fields (populated for service assets; undefined for data assets)
+  assetKind?: 'data' | 'service' | 'artifact' | null
+  serviceHealth?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
+  lastInvokedAt?: string | null
 }
 
 interface Props {
@@ -203,6 +208,8 @@ function LayerSection({
         const progress = row?.progress
         const rowCount = row?.rowCount ?? 0
 
+        const isService = row?.assetKind === 'service' || row?.status === 'service_ok'
+
         return (
           <div
             key={key}
@@ -250,17 +257,24 @@ function LayerSection({
             {/* Progress bar */}
             <MiniProgressBar progress={progress} />
 
-            {/* Row count */}
-            <span
-              style={{
-                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                fontSize: 11,
-                color: 'var(--text-secondary, #888373)',
-                textAlign: 'right',
-              }}
-            >
-              {rowCount > 0 ? rowCount.toLocaleString() : '—'}
-            </span>
+            {/* Row count — or service health badge for service-kind assets */}
+            {isService ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                <ServiceHealthBadge health={row?.serviceHealth ?? null} compact lastInvokedAt={row?.lastInvokedAt} />
+                <ServiceLastInvokedLabel lastInvokedAt={row?.lastInvokedAt} />
+              </div>
+            ) : (
+              <span
+                style={{
+                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                  fontSize: 11,
+                  color: 'var(--text-secondary, #888373)',
+                  textAlign: 'right',
+                }}
+              >
+                {rowCount > 0 ? rowCount.toLocaleString() : '—'}
+              </span>
+            )}
 
             {/* Status pill */}
             <StatusPill status={status} />
