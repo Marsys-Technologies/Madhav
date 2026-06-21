@@ -1224,6 +1224,22 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
 
+  {
+    asset_id: 'ka_gochara',
+    layer: 'kala', sort_order: 103,
+    sanskrit_name: 'Gocara',
+    english_name: 'Transit-search service',
+    english_description: 'Live-compute transit-event search service (K2 wave). Finds aspect crossings, conjunctions, ingresses, returns, stations, eclipse proximity, multi-planet confluence, and transit-to-transit events using pyswisseph TRUE_NODE. Coarse-to-fine long-horizon search for 50-year windows. Lahiri sidereal throughout.',
+    storage_type: 'service',
+    target_table: null, count_sql: null, size_sql: null,
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Service asset — no stored rows; transit events computed on demand via pyswisseph',
+    depends_on: ['bg_ephemeris', 'ka_graha_sancara'],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'service', catalog_status: 'DRAFT',
+  },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
   {
     asset_id: 'ka_graha_sancara',
@@ -1341,7 +1357,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: 'Days with active major-aspect transits out of the full ephemeris range; coefficient TRANSITS_PER_DAY measured on first build',
     depends_on: ['bg_ephemeris', 'ka_kalasutra'],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
   },
 
   // ── PHALA (5) ─────────────────────────────────────────────────────────────
