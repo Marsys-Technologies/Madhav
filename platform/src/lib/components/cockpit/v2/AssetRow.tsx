@@ -138,7 +138,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
   // so a transient proxy restart doesn't falsely mark healthy assets as FAILED.
   const throughputState = stat?.state
   const derivedState: string = !isActive
-    ? 'not_migrated'
+    ? (asset.catalog_status === 'RETIRED' ? 'retired' : 'not_migrated')
     : isDataPlaneDown
       ? 'reconnecting'
       : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
@@ -181,7 +181,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         ) : (
           <>
             <AssetProgressBar
-              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting'}
+              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting' | 'retired'}
               actualRows={stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
             />

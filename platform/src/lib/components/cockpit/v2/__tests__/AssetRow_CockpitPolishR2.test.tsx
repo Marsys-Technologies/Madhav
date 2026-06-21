@@ -219,3 +219,56 @@ describe('L3 service asset dual-check (asset_kind fix)', () => {
     expect(screen.getByText('66,738')).toBeTruthy()
   })
 })
+
+describe('CF.L3.7 — RETIRED placeholder rendering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+  })
+
+  const RETIRED_ASSET = {
+    ...DATA_ASSET,
+    asset_id: 'ka_transit_almanac',
+    layer: 'kala',
+    sanskrit_name: 'Transit Almanac',
+    english_name: 'Transit Almanac',
+    is_active: false,
+    catalog_status: 'RETIRED' as const,
+    asset_kind: 'data' as const,
+    target_floor: null,
+  }
+
+  it('renders RETIRED pill (grey) not NOT MIGRATED (red) for is_active=false + catalog_status=RETIRED', () => {
+    render(
+      <AssetRow
+        asset={RETIRED_ASSET}
+        stat={null}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    expect(screen.getByText('RETIRED')).toBeTruthy()
+    expect(screen.queryByText('NOT MIGRATED')).toBeNull()
+  })
+
+  it('status dot for RETIRED asset is neutral (not red — no isRed state)', () => {
+    const { container } = render(
+      <AssetRow
+        asset={RETIRED_ASSET}
+        stat={null}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    // Dot title shows 'retired' state — not 'not_migrated'
+    const dot = container.querySelector('[title*="retired"]')
+    expect(dot).toBeTruthy()
+    // Color should NOT be the red error color
+    const style = (dot as HTMLElement)?.style?.background ?? ''
+    expect(style).not.toContain('220,80,80')
+  })
+})

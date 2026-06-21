@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface AssetProgressBarProps {
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting'
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting' | 'retired'
   actualRows: number | null
   targetVolume: number | null
 }
@@ -18,6 +18,7 @@ const STATE_COLORS: Record<string, {
   error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
   not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.3)',     pill: 'NOT MIGRATED',  pillColor: 'rgba(120,110,90,0.7)' },
   reconnecting: { fill: 'rgba(236,197,106,0.1)',   stroke: 'rgba(236,197,106,0.4)', pill: 'RECONNECTING',  pillColor: 'rgba(236,197,106,0.9)' },
+  retired:      { fill: 'rgba(80,80,80,0.0)',       stroke: 'rgba(110,110,110,0.3)', pill: 'RETIRED',       pillColor: 'rgba(150,150,150,0.65)' },
 }
 
 export function AssetProgressBar({ state, actualRows, targetVolume }: AssetProgressBarProps) {

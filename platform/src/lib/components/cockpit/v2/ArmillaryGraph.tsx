@@ -17,6 +17,20 @@ const LAYER_NAMES: Record<string, string> = {
   brahmagyan: 'Brahma Jñāna', ganita: 'Gaṇita', bodha: 'Bodha',
   kala: 'Kāla', phala: 'Phala', mimamsa: 'Mīmāṃsā',
 }
+
+function stateLabel(state: string): string {
+  switch (state) {
+    case 'lit':          return 'current'
+    case 'service_ok':   return 'service healthy'
+    case 'building':     return 'building'
+    case 'stale':        return 'stale'
+    case 'error':        return 'error'
+    case 'not_migrated': return 'not migrated'
+    case 'reconnecting': return 'reconnecting'
+    case 'retired':      return 'retired'
+    default:             return state
+  }
+}
 // radius (fraction of the pane's short side), 3-D ring tilt, and the planet's
 // fixed seat-angle on its ring so the six bodies are spread, not aligned.
 const RING: Record<string, { frac: number; tx: number; tz: number; seat: number }> = {
@@ -160,7 +174,7 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     // halo beads (one per asset, hidden until its layer blooms)
     const bmap = new Map<string, BeadRefs>()
     for (const a of assetsRef.current) {
-      const g = make('g', { cursor: 'pointer', tabindex: 0, role: 'button', 'aria-label': `${a.english_name}, ${a.state}` }) as SVGGElement
+      const g = make('g', { cursor: 'pointer', tabindex: 0, role: 'button', 'aria-label': `${a.english_name}, ${stateLabel(a.state)}` }) as SVGGElement
       const main = make('circle', { r: 1, 'stroke-width': 1, opacity: 0 }) as SVGCircleElement
       const spec = make('circle', { r: 1, fill: 'rgba(255,255,255,0.5)', opacity: 0 }) as SVGCircleElement
       const hit = make('circle', { r: 1, fill: 'transparent' }) as SVGCircleElement
@@ -186,7 +200,7 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     st.textContent = text.state; st.style.color = text.color
     tip.style.opacity = '1'
   }
-  const stateColor = (s: string) => s === 'lit' ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : '#7C725B'
+  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : '#7C725B'
   function applyAssetHover(id: string | null) {
     const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
     hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }
