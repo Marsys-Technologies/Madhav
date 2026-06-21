@@ -23,6 +23,7 @@ from services.ka_sangam.engine import (
     _date_to_jd,
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
+from services.ka_gochara.service import KaGocharaService
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,14 @@ class KaSangamWriter(WriterBase):
         # CF.L3.6: instantiate real dasha-prior service (read-only; never commits)
         dasha_kala_service = KaDashaKalaService(conn)
 
+        # U3: instantiate gochara service for C8/C9/C10 current computation
+        try:
+            import swisseph as swe
+            gochara_service = KaGocharaService(swe)
+        except Exception as exc:
+            logger.warning("ka_sangam: could not instantiate KaGocharaService: %s — C8/C9/C10 currents will be 0.0", exc)
+            gochara_service = None
+
         # Step 3: determine horizon (from today forward _HORIZON_YEARS years)
         from datetime import date, timedelta
         today = date.today()
@@ -112,14 +121,14 @@ class KaSangamWriter(WriterBase):
                 elif pred_dict.get(jf) is None:
                     pred_dict[jf] = {}
 
-            # Mode A (CF.L3.6: pass real KaDashaKalaService)
+            # Mode A (CF.L3.6: real dasha service; U3: real gochara service)
             try:
                 a_windows = mode_a_search(
                     predicate=pred_dict,
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
                     dasha_kala_service=dasha_kala_service,
-                    gochara_service=None,
+                    gochara_service=gochara_service,
                     muhurta_service=None,
                     chart_id=chart_id,
                 )
@@ -127,14 +136,14 @@ class KaSangamWriter(WriterBase):
             except Exception as exc:
                 logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
 
-            # Mode B
+            # Mode B (U3: real gochara service for C8/C9/C10)
             try:
                 b_windows = mode_b_sweep(
                     signal_id=sig_id,
                     predicate=pred_dict,
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
-                    gochara_service=None,
+                    gochara_service=gochara_service,
                     magnitude_threshold=0.3,
                 )
                 all_windows.extend(b_windows)
@@ -161,7 +170,7 @@ class KaSangamWriter(WriterBase):
                 orb_s = w.get('orb_strength')
                 c_label = confidence_label(cs)
 
-                # Compute independent_current_count from constituent_factors
+                # Compute independent_current_count from constituent_factors (U3: C7-C12)
                 cf = w.get('constituent_factors', {})
                 currents = {
                     'dasha': bool(cf.get('dasha_score', 0) > 0.3),
@@ -169,7 +178,13 @@ class KaSangamWriter(WriterBase):
                     'transit': True,  # transit always present in both modes
                     'panchanga': False,
                     'benefic_dristi': False,
-                    'cross_dasha_agreement': False,
+                    'cross_dasha_agreement': bool(cf.get('cross_dasha_agreement', 0) > 0.0),
+                    # U3 new currents
+                    'ashtakavarga_transit_potency': bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0),
+                    'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
+                    'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
+                    'station_retrograde': bool(cf.get('c10_station_retrograde', 0) > 0.0),
+                    'tajika_annual_reinforcement': bool(cf.get('c12_tajika_reinforcement', 0) > 0.0),
                 }
                 icc = independent_current_count(currents)
 

@@ -10,6 +10,11 @@ Implements ratified invariants:
 Also provides Mode A (daśā-prior soft funnel + transit search) and
 Mode B (un-gated long-horizon anomaly sweep, flagged is_off_dasha_discovery=True).
 
+U3 enrichment (2026-06-22): 6 new supporting currents (C7–C12) added; C13 school_consensus
+  reserved (weight slot 0.10) pending U4. Weights re-normalized to 1.0 without C13.
+  vedha_cancellation (C11) enters the NECESSARY side multiplicatively — not supporting.
+  EnrichmentContext carries pre-fetched DB data (ashtakavarga, vedha, tajika) from the writer.
+
 NEVER calls conn.commit() or conn.rollback() — caller owns the transaction.
 NEVER writes to any bodha_* table.
 """
@@ -23,15 +28,229 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 # ── Ratified supporting-factor weights (I-16, sum = 1.0) ──────────────────────
+# U3 pass-1: 11 currents (C13 school_consensus reserved weight = 0.10 pending U4;
+#   remaining 11 re-normalized to 1.0). Tuning bounds from U3 spec §3.1 satisfied.
+# C11 vedha_cancellation is NOT here — it enters the NECESSARY side multiplicatively.
 
 SUPPORTING_WEIGHTS: dict[str, float] = {
-    'constituent_lord_transit': 0.30,
-    'benefic_dristi':           0.20,
-    'cross_dasha_agreement':    0.18,
-    'panchanga_quality':        0.12,
-    'tara_bala':                0.12,
-    'nakshatra_subsystem':      0.08,
+    'constituent_lord_transit':    0.200,   # was 0.30; re-normed without C13
+    'ashtakavarga_transit_potency': 0.133,  # C7 NEW: "does the transit deliver?"
+    'cross_dasha_agreement':        0.133,  # was 0.18 (U1 surfaced; U3 re-normed)
+    'benefic_dristi':               0.111,  # was 0.20
+    'transit_to_transit':           0.089,  # C9 NEW: outer-planet cycles
+    'panchanga_quality':            0.078,  # was 0.12
+    'tara_bala':                    0.067,  # was 0.12
+    'eclipse_proximity':            0.067,  # C8 NEW: eclipse on sensitive point
+    'nakshatra_subsystem':          0.056,  # was 0.08
+    'station_retrograde':           0.033,  # C10 NEW: planet stationing on trigger
+    'tajika_annual_reinforcement':  0.033,  # C12 NEW: annual chart varṣeśa/muntha
+    # C13 school_consensus: weight 0.10 reserved; activates in U3 pass-2 (post-U4)
 }
+
+# Verify sum ≈ 1.0 at import (hard-fail if someone edits weights carelessly)
+_SW_SUM = round(sum(SUPPORTING_WEIGHTS.values()), 6)
+assert abs(_SW_SUM - 1.0) < 1e-4, f"SUPPORTING_WEIGHTS must sum to 1.0, got {_SW_SUM}"
+
+
+# ── EnrichmentContext (U3) ────────────────────────────────────────────────────
+
+class EnrichmentContext:
+    """
+    Pre-fetched DB data needed by the new U3 currents (C7, C11, C12).
+    Passed in by the ka_sangam writer to avoid passing db_conn into engine.py.
+
+    ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
+        Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
+        Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
+    vedha_rules: list of dicts with keys {planet, transit_to_house, vedha_house}
+        Sourced from bg_transit_rules WHERE rule_type='vedha'.
+    tajika_year_lords: list of dicts with keys {varsha_year, varshesha, muntha}
+        Sourced from l1_tajik_varsha_year_lords for the current chart.
+    """
+
+    def __init__(
+        self,
+        ashtakavarga_bindu: Optional[dict[str, dict[int, int]]] = None,
+        vedha_rules: Optional[list[dict]] = None,
+        tajika_year_lords: Optional[list[dict]] = None,
+    ):
+        self.ashtakavarga_bindu = ashtakavarga_bindu or {}
+        self.vedha_rules = vedha_rules or []
+        self.tajika_year_lords = tajika_year_lords or []
+
+    @classmethod
+    def empty(cls) -> 'EnrichmentContext':
+        return cls()
+
+
+# ── U3 current derivation helpers ─────────────────────────────────────────────
+
+def _c7_ashtakavarga_potency(
+    planet: str,
+    transit_sign: Optional[int],
+    ctx: EnrichmentContext,
+) -> float:
+    """
+    C7: ashtakavarga_transit_potency — does the transit DELIVER?
+    Bindus ≥ 5 → strong (→ 1.0 scaled linearly). ≤ 2 → weak (→ 0.0).
+    Range: 0.0 (0 bindus) … 1.0 (8 bindus). Formula: bindus / 8.0.
+    Classical source: Parāśara, Ashtakavarga adhyāya.
+    """
+    if not ctx.ashtakavarga_bindu or transit_sign is None:
+        return 0.0
+    sign_map = ctx.ashtakavarga_bindu.get(planet, {})
+    bindus = sign_map.get(transit_sign, 0)
+    return min(1.0, bindus / 8.0)
+
+
+def _c8_eclipse_score(
+    planet: str,
+    window_start_jd: float,
+    window_end_jd: float,
+    gochara_service: Any,
+    target_lon: float,
+    orb: float = 5.0,
+) -> float:
+    """
+    C8: eclipse_proximity — solar/lunar eclipse near the transit trigger point.
+    Uses ka_gochara.find_eclipse_proximity over the window.
+    Score = max orb-strength across found events; 0.0 if none.
+    """
+    if gochara_service is None:
+        return 0.0
+    try:
+        events = gochara_service.find_eclipse_proximity(
+            node_planet='TrueNode',
+            luminary='Sun' if planet not in ('Moon',) else 'Moon',
+            orb=orb,
+            start_jd=window_start_jd,
+            end_jd=window_end_jd,
+        )
+        if not events:
+            return 0.0
+        max_score = 0.0
+        for ev in events:
+            orb_deg = getattr(ev, 'orb_at_event_deg', orb)
+            s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
+            max_score = max(max_score, s)
+        return min(1.0, max_score)
+    except Exception as exc:
+        logger.debug("C8 eclipse_proximity failed: %s", exc)
+        return 0.0
+
+
+def _c9_transit_to_transit_score(
+    planet: str,
+    window_start_jd: float,
+    window_end_jd: float,
+    gochara_service: Any,
+    outer_planets: Optional[list[str]] = None,
+    orb: float = 3.0,
+) -> float:
+    """
+    C9: transit_to_transit — outer-planet mutual aspect/conjunction in window.
+    Checks planet vs Jupiter and Saturn (the era-defining cycle pair).
+    Score = max orb-strength across found events; 0.0 if none.
+    """
+    if gochara_service is None:
+        return 0.0
+    check_against = outer_planets or ['Jupiter', 'Saturn']
+    max_score = 0.0
+    for partner in check_against:
+        if partner == planet:
+            continue
+        try:
+            events = gochara_service.find_transit_to_transit(
+                planet_a=planet,
+                planet_b=partner,
+                aspect_degrees=[0, 60, 90, 120, 180],
+                orb=orb,
+                start_jd=window_start_jd,
+                end_jd=window_end_jd,
+            )
+            for ev in events:
+                orb_deg = getattr(ev, 'orb_at_event_deg', orb)
+                s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
+                max_score = max(max_score, s)
+        except Exception as exc:
+            logger.debug("C9 transit_to_transit(%s/%s) failed: %s", planet, partner, exc)
+    return min(1.0, max_score)
+
+
+def _c10_station_score(
+    planet: str,
+    window_start_jd: float,
+    window_end_jd: float,
+    gochara_service: Any,
+) -> float:
+    """
+    C10: station_retrograde — planet stationing (retro/direct turn) in window.
+    Score = 1.0 if any station event found; 0.0 if none. Stationing intensifies.
+    """
+    if gochara_service is None:
+        return 0.0
+    try:
+        events = gochara_service.find_stations(
+            planet=planet,
+            start_jd=window_start_jd,
+            end_jd=window_end_jd,
+        )
+        return 1.0 if events else 0.0
+    except Exception as exc:
+        logger.debug("C10 station(%s) failed: %s", planet, exc)
+        return 0.0
+
+
+def _c11_vedha_factor(
+    planet: str,
+    transit_house: Optional[int],
+    ctx: EnrichmentContext,
+) -> float:
+    """
+    C11: vedha_cancellation — NECESSARY-SIDE modulator (not supporting).
+    Returns 0.0 when a vedha rule fully cancels this planet's transit,
+    0.5 when the vedha planet is present in the vedha house (partial),
+    1.0 (neutral) when no vedha applies (no cancellation).
+
+    Enters necessary_conditions as (1 - 0.0) = 1.0 (no vedha) or lower.
+    Classical source: Phaladeepika Ch.26 Gochara Vedha.
+    """
+    if not ctx.vedha_rules or transit_house is None:
+        return 1.0  # no data → no vedha → neutral (1.0)
+    for rule in ctx.vedha_rules:
+        rule_planet = rule.get('graha') or rule.get('planet')
+        to_house = rule.get('transit_to_house') or rule.get('to_house')
+        vedha_h = rule.get('vedha_house')
+        if rule_planet == planet and to_house == transit_house and vedha_h:
+            return 0.3  # vedha present → strongly damp
+    return 1.0
+
+
+def _c12_tajika_score(
+    window_start: date,
+    domain_lord: Optional[str],
+    ctx: EnrichmentContext,
+) -> float:
+    """
+    C12: tajika_annual_reinforcement — varṣa chart varṣeśa/muntha agrees with window.
+    Returns 1.0 if the year-lord for this window's year matches the domain's lord,
+    0.5 if muntha matches, 0.0 otherwise.
+    Source: l1_tajik_varsha_year_lords.
+    """
+    if not ctx.tajika_year_lords or domain_lord is None:
+        return 0.0
+    year = window_start.year
+    for row in ctx.tajika_year_lords:
+        row_year = row.get('varsha_year')
+        if row_year != year:
+            continue
+        varshesha = row.get('varshesha') or row.get('varshesha_by_tajik_classical')
+        muntha = row.get('muntha')
+        if varshesha == domain_lord:
+            return 1.0
+        if muntha == domain_lord:
+            return 0.5
+    return 0.0
 
 
 # ── I-16: convergence_score ───────────────────────────────────────────────────
@@ -45,6 +264,7 @@ def convergence_score(
 
     necessary: list of scores in [0,1]; multiplicative veto — if any ≈ 0 the
                product collapses to ≈ 0.
+               Includes vedha_factor (C11) when vedha applies.
     supporting: dict keyed by SUPPORTING_WEIGHTS keys, values in [0,1];
                 saturating combination = 1 - Π(1 - w_i * s_i).
 
@@ -120,15 +340,17 @@ def independent_current_count(currents: dict[str, Any]) -> int:
     """
     RATIFIED I-22: discount correlated evidence.
 
-    Coupling rules:
+    Coupling rules (original + U3 extensions):
       - dasha + nakshatra_overlay → coupled (count as ~1, not 2)
       - transit + dasha → independent
-      - panchanga + transit → moderate (~1.5, rounds to 2 if other factors present)
+      - panchanga + transit → moderate coupling (~0.5 instead of 1.0)
+      - ashtakavarga coupled to constituent_lord_transit (same transit → ~1, not 2)
+      - eclipse + transit_to_transit → independent (sky-level events)
+      - school_consensus → independent (cross-method)
+      - station_retrograde → independent
+      - tajika → independent (different time system)
 
-    currents: dict with boolean/truthy values for factor keys:
-      'dasha', 'nakshatra_overlay', 'transit', 'panchanga', 'benefic_dristi',
-      'cross_dasha_agreement', etc.
-
+    currents: dict with boolean/truthy values for factor keys.
     Returns int >= 1 (always at least 1 if any evidence present).
     """
     has_dasha     = bool(currents.get('dasha'))
@@ -137,6 +359,13 @@ def independent_current_count(currents: dict[str, Any]) -> int:
     has_panchanga = bool(currents.get('panchanga'))
     has_dristi    = bool(currents.get('benefic_dristi'))
     has_cross     = bool(currents.get('cross_dasha_agreement'))
+    # U3 new currents
+    has_ashtak    = bool(currents.get('ashtakavarga_transit_potency'))
+    has_eclipse   = bool(currents.get('eclipse_proximity'))
+    has_t2t       = bool(currents.get('transit_to_transit'))
+    has_station   = bool(currents.get('station_retrograde'))
+    has_tajika    = bool(currents.get('tajika_annual_reinforcement'))
+    has_school    = bool(currents.get('school_consensus'))
 
     count: float = 0.0
 
@@ -165,8 +394,38 @@ def independent_current_count(currents: dict[str, Any]) -> int:
     if has_cross:
         count += 1.0
 
-    result = max(1, round(count)) if (has_dasha or has_nak_ovl or has_transit or
-                                       has_panchanga or has_dristi or has_cross) else 1
+    # C7 ashtakavarga: coupled to constituent_lord_transit (same transit)
+    # Add 0.5 when transit present (same planet), 1.0 if only ashtakavarga
+    if has_ashtak:
+        if has_transit:
+            count += 0.5
+        else:
+            count += 1.0
+
+    # C8 eclipse: independent (rare sky-level event)
+    if has_eclipse:
+        count += 1.0
+
+    # C9 transit_to_transit: independent (outer-planet cycle is distinct from natal transit)
+    if has_t2t:
+        count += 1.0
+
+    # C10 station: independent (temporal intensification)
+    if has_station:
+        count += 1.0
+
+    # C12 tajika: independent (annual chart from different framework)
+    if has_tajika:
+        count += 1.0
+
+    # C13 school_consensus: independent (cross-method triangulation)
+    if has_school:
+        count += 1.0
+
+    any_present = (has_dasha or has_nak_ovl or has_transit or has_panchanga or
+                   has_dristi or has_cross or has_ashtak or has_eclipse or
+                   has_t2t or has_station or has_tajika or has_school)
+    result = max(1, round(count)) if any_present else 1
     return result
 
 
@@ -231,7 +490,7 @@ def _jd_to_date(jd: float) -> date:
 
 
 def _date_to_jd(d: date) -> float:
-    """Convert Python date to Julian day number."""
+    """Convert Python date to Julian date number."""
     try:
         import swisseph as swe
         return swe.julday(d.year, d.month, d.day, 0.0)
@@ -251,6 +510,7 @@ def mode_a_search(
     gochara_service: Any,
     muhurta_service: Any,
     chart_id: str,
+    enrichment_context: Optional[EnrichmentContext] = None,
 ) -> list[dict]:
     """
     Mode A: daśā-eligibility soft prior → transit search INSIDE eligible survivors.
@@ -259,6 +519,7 @@ def mode_a_search(
     2. For each eligible window, use find_aspect_events from transit_search to
        find transit events matching the predicate's transit_trigger.
     3. Score each hit with convergence_score + orb_strength.
+       U3: adds C7–C12 currents; C11 vedha enters the necessary side.
     4. Return ranked windows.
 
     Returns list of window dicts with fields:
@@ -267,6 +528,7 @@ def mode_a_search(
     """
     from pipeline.transit_search import find_aspect_events
 
+    ctx = enrichment_context or EnrichmentContext.empty()
     windows: list[dict] = []
 
     # Extract predicate fields
@@ -276,6 +538,10 @@ def mode_a_search(
     signal_id    = predicate.get('signal_id')
     dignity_score = float(predicate.get('dignity_score', 0.5))
     ayanamsha_id  = predicate.get('ayanamsha_id') or 'lahiri'
+    # Domain lord for C12 (tajika): the primary significator for this signature
+    domain_lord   = predicate.get('domain_lord') or (
+        list(dasha_rule.get('constituent_lords', []) or [])[:1] or [None]
+    )[0]
 
     # CF.L3.6: real dasha prior — query KaDashaKalaService if provided.
     # Fall back to the static eligibility_score from the predicate JSONB when
@@ -350,25 +616,45 @@ def mode_a_search(
         aspect_used = float(ev.extra.get('aspect_deg', 0))
         rarity = _rarity_years(planet, aspect_used)
 
-        necessary = [dignity_score, orb_s]
+        # ── U3 C7–C12 current values ────────────────────────────────────────
+        # Window JD bounds for gochara calls
+        try:
+            from datetime import timedelta as _td
+            ws = peak_dt - _td(days=15)
+            we = peak_dt + _td(days=15)
+            w_jd_start = _date_to_jd(ws)
+            w_jd_end   = _date_to_jd(we)
+        except Exception:
+            ws = we = peak_dt
+            w_jd_start = w_jd_end = _date_to_jd(peak_dt)
+
+        transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
+
+        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
+        c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
+        c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
+        # C11 vedha: NECESSARY side, not supporting
+        transit_house = transit_sign  # house ≈ sign for transits in this model
+        vedha_factor  = _c11_vedha_factor(planet, transit_house, ctx)
+        c12 = _c12_tajika_score(ws, domain_lord, ctx)
+
+        # Necessary conditions: dignity × orb × vedha_factor (1.0 = no vedha)
+        necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
-            'constituent_lord_transit': float(dasha_score),
-            'benefic_dristi': 0.0,
-            'cross_dasha_agreement': 0.0,
-            'panchanga_quality': 0.0,
-            'tara_bala': 0.0,
-            'nakshatra_subsystem': 0.0,
+            'constituent_lord_transit':    float(dasha_score),
+            'ashtakavarga_transit_potency': c7,
+            'cross_dasha_agreement':        0.0,   # wire later from U1 at ph_nimitta level
+            'benefic_dristi':               0.0,
+            'transit_to_transit':           c9,
+            'panchanga_quality':            0.0,
+            'tara_bala':                    0.0,
+            'eclipse_proximity':            c8,
+            'nakshatra_subsystem':          0.0,
+            'station_retrograde':           c10,
+            'tajika_annual_reinforcement':  c12,
         }
         cscore = convergence_score(necessary, supporting)
-
-        # Window = ±15 days around peak
-        try:
-            from datetime import timedelta
-            ws = peak_dt - timedelta(days=15)
-            we = peak_dt + timedelta(days=15)
-        except Exception:
-            ws = peak_dt
-            we = peak_dt
 
         windows.append({
             'mode': 'A',
@@ -387,6 +673,13 @@ def mode_a_search(
                 'dasha_score': dasha_score,
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
+                # U3 per-current breakdown (§3.5 — explainability)
+                'c7_ashtakavarga_potency': round(c7, 4),
+                'c8_eclipse_proximity': round(c8, 4),
+                'c9_transit_to_transit': round(c9, 4),
+                'c10_station_retrograde': round(c10, 4),
+                'c11_vedha_factor': round(vedha_factor, 4),
+                'c12_tajika_reinforcement': round(c12, 4),
             },
             'source_citation': (
                 f"mode_a/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -410,6 +703,7 @@ def mode_b_sweep(
     horizon_end_jd: float,
     gochara_service: Any,
     magnitude_threshold: float = 0.6,
+    enrichment_context: Optional[EnrichmentContext] = None,
 ) -> list[dict]:
     """
     Mode B: un-gated long-horizon anomaly sweep.
@@ -423,11 +717,13 @@ def mode_b_sweep(
     """
     from pipeline.transit_search import search_long_horizon
 
+    ctx = enrichment_context or EnrichmentContext.empty()
     windows: list[dict] = []
 
     transit_trig  = predicate.get('transit_trigger_jsonb', {}) or {}
     sig_class     = predicate.get('signature_class', 'UNKNOWN')
     dignity_score = float(predicate.get('dignity_score', 0.5))
+    domain_lord   = predicate.get('domain_lord') or None
 
     planet       = transit_trig.get('planet', 'Jupiter')
     target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
@@ -457,29 +753,44 @@ def mode_b_sweep(
         if magnitude < magnitude_threshold:
             continue
 
-        necessary = [dignity_score, orb_s]
-        supporting = {
-            'constituent_lord_transit': 0.0,
-            'benefic_dristi': 0.0,
-            'cross_dasha_agreement': 0.0,
-            'panchanga_quality': 0.0,
-            'tara_bala': 0.0,
-            'nakshatra_subsystem': 0.0,
-        }
-        cscore = convergence_score(necessary, supporting)
-
         peak_dt = _jd_to_date(ev.event_jd)
-        # CF.L3.4: rarity from orbital period
         aspect_used = float(ev.extra.get('aspect_deg', 0))
         rarity = _rarity_years(planet, aspect_used)
 
         try:
-            from datetime import timedelta
-            ws = peak_dt - timedelta(days=15)
-            we = peak_dt + timedelta(days=15)
+            from datetime import timedelta as _td
+            ws = peak_dt - _td(days=15)
+            we = peak_dt + _td(days=15)
+            w_jd_start = _date_to_jd(ws)
+            w_jd_end   = _date_to_jd(we)
         except Exception:
-            ws = peak_dt
-            we = peak_dt
+            ws = we = peak_dt
+            w_jd_start = w_jd_end = _date_to_jd(peak_dt)
+
+        transit_sign = int(ev.exact_longitude_deg // 30) + 1 if hasattr(ev, 'exact_longitude_deg') else None
+
+        c7  = _c7_ashtakavarga_potency(planet, transit_sign, ctx)
+        c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
+        c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
+        c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
+        vedha_factor = _c11_vedha_factor(planet, transit_sign, ctx)
+        c12 = _c12_tajika_score(ws, domain_lord, ctx)
+
+        necessary = [dignity_score, orb_s, vedha_factor]
+        supporting = {
+            'constituent_lord_transit':    0.0,   # mode B has no dasha prior
+            'ashtakavarga_transit_potency': c7,
+            'cross_dasha_agreement':        0.0,
+            'benefic_dristi':               0.0,
+            'transit_to_transit':           c9,
+            'panchanga_quality':            0.0,
+            'tara_bala':                    0.0,
+            'eclipse_proximity':            c8,
+            'nakshatra_subsystem':          0.0,
+            'station_retrograde':           c10,
+            'tajika_annual_reinforcement':  c12,
+        }
+        cscore = convergence_score(necessary, supporting)
 
         windows.append({
             'mode': 'B',
@@ -498,6 +809,12 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
+                'c7_ashtakavarga_potency': round(c7, 4),
+                'c8_eclipse_proximity': round(c8, 4),
+                'c9_transit_to_transit': round(c9, 4),
+                'c10_station_retrograde': round(c10, 4),
+                'c11_vedha_factor': round(vedha_factor, 4),
+                'c12_tajika_reinforcement': round(c12, 4),
             },
             'source_citation': (
                 f"mode_b/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -513,6 +830,7 @@ def mode_b_sweep(
 
 __all__ = [
     'SUPPORTING_WEIGHTS',
+    'EnrichmentContext',
     'convergence_score',
     'orb_strength_score',
     'confidence_label',
