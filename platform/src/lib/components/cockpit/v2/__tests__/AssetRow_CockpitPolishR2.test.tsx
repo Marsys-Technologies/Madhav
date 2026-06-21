@@ -273,6 +273,66 @@ describe('CF.L3.7 — RETIRED placeholder rendering', () => {
   })
 })
 
+// ── CF.L3.8 — DRAFT·healthy StatusDot must be GREEN, not red ────────────────
+describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy runtime state', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+  })
+
+  it('DRAFT + lit state renders green dot (not red)', () => {
+    const { container } = render(
+      <AssetRow
+        asset={{ ...DATA_ASSET, catalog_status: 'DRAFT' as const }}
+        stat={statOf({ state: 'lit' })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    const dot = container.querySelector('[title*="healthy"]')
+    expect(dot).toBeTruthy()
+    const bg = (dot as HTMLElement)?.style?.background ?? ''
+    expect(bg).not.toMatch(/220,?\s*80,?\s*80/)
+    expect(bg).toMatch(/83,?\s*200,?\s*100/)
+  })
+
+  it('DRAFT + service_ok state renders green dot (not red)', () => {
+    const { container } = render(
+      <AssetRow
+        asset={{ ...L3_SERVICE_ASSET, catalog_status: 'DRAFT' as const }}
+        stat={statOf({ state: 'service_ok' })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    const dot = container.querySelector('[title*="healthy"]')
+    expect(dot).toBeTruthy()
+    const bg = (dot as HTMLElement)?.style?.background ?? ''
+    expect(bg).not.toMatch(/220,?\s*80,?\s*80/)
+  })
+
+  it('DRAFT + dormant state renders red dot (not yet built)', () => {
+    const { container } = render(
+      <AssetRow
+        asset={{ ...DATA_ASSET, catalog_status: 'DRAFT' as const }}
+        stat={statOf({ state: 'dormant' })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    const dot = container.querySelector('[title*="DRAFT"]')
+    expect(dot).toBeTruthy()
+    const bg = (dot as HTMLElement)?.style?.background ?? ''
+    expect(bg).toMatch(/220,?\s*80,?\s*80/)
+  })
+})
+
 // ── Seed governance: Kāla layer must have exactly 12 assets after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
   it('has exactly 12 kala assets in the seed (ka_transit_almanac removed)', () => {

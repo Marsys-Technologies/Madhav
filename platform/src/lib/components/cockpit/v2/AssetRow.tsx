@@ -84,8 +84,8 @@ function ServiceHealthPill({
 }
 
 // Per-asset status dot — collapses the repeated "CURRENT" text chip into a
-// single colored circle. green = CURRENT + healthy/lit; amber = building/stale/
-// dormant-but-current; red = error / not_migrated / catalog DRAFT.
+// single colored circle. green = healthy/lit regardless of catalog status;
+// amber = building/stale/dormant; red = error / not_migrated / DRAFT·unhealthy.
 function StatusDot({
   catalogStatus,
   state,
@@ -96,7 +96,8 @@ function StatusDot({
   const isDraft = catalogStatus === 'DRAFT'
   const isHealthy = state === 'lit' || state === 'service_ok'
   const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
-  const isRed = state === 'error' || state === 'not_migrated' || isDraft
+  // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
+  const isRed = state === 'error' || state === 'not_migrated' || (isDraft && !isHealthy)
 
   const color = isRed
     ? 'rgba(220,80,80,0.95)'
