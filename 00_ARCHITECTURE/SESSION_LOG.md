@@ -29025,3 +29025,90 @@ Open L3 Kāla campaign: read `L2_BODHA_CLOSE_v1_0.md §8` for the L3 onboarding 
 `L3_KALA_CAMPAIGN_HANDOFF_v1_0.md`, and begin the L3 Kāla (temporal projection) layer build.
 
 *End of L2-BODHA-WRITER-FIX-AND-SEAL entry — 2026-06-21.*
+
+---
+
+## Session: L3-KALA-AUTONOMOUS
+
+**Cowork thread:** `L3-Kāla-Autonomous-Build-Conductor-2026-06-21`
+**Date:** 2026-06-21
+**Role:** Sūtradhāra Conductor (fully autonomous)
+**Main HEAD at close:** `1f5c5034`
+**Branch:** main (10 PRs merged: #309–#318)
+
+### Session objective
+
+Execute the full L3 Kāla (Temporal Projection) layer autonomous buildout: waves K0→K6 plus SEAL.
+
+### Deliverables
+
+- **K0:** Migration 242 — `asset_kind TEXT CHECK ('data'|'service'|'artifact')` on `asset_registry`.
+  TypeScript test fixture fixes for 5 new fields (asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail).
+- **K1:** 3 service assets registered: `ka_graha_sancara` (ephemeris-at-T, PATH-A/B, TRUE_NODE),
+  `ka_dasha_kala` (level-4 daśā tree-walk, 7 systems), `ka_muhurta_seva` (panchāṅga/8-event-class).
+- **CS1:** Seed reconciliation — all K1 rows + ka_gochara in one post-wave commit.
+- **K2:** `ka_gochara` — transit search engine (`pipeline/transit_search.py`, 853 lines, TRUE_NODE); PR #311.
+- **K3:** `ka_yojaka` — activation-predicate bridge (migration 243, `kala_activation_predicates`);
+  classifier + binder; ayanamsha_id fix (true_chitra); PR #312.
+- **K4a:** `ka_sangam` — convergence engine (migration 244, extends `kala_convergence`);
+  Mode A + Mode B; I-16 convergence function (ratified); I-17 orb-strength (ratified);
+  **SPINE-FIRST GATE PASS** (43 tests); PR #313.
+- **K4b:** `ka_kalasutra` — bounded activation artifact (migration 246, `kala_activation`);
+  fills L2 null hooks; deprecates kala_timeline (not dropped); 22 tests; PR #314.
+- **K5a:** `ka_vighnakara` — obstruction detector (migration 245, `kala_obstruction`);
+  7 types, severity + override_score; 31 tests; PR #315.
+- **K5b:** `ka_kala_darshana` — display-ready temporal view (migration 247, `kala_darshana`);
+  effective_score = convergence × (1 − max_override); 6-label net_label; 27 tests; PR #316.
+- **K6 (parallel):** `ka_jivana_parva` (migration 248, `kala_jivana_parva`, life-arc chapters, 25 tests, PR #317)
+  + `ka_bhavishya_lekha` (migration 249, `kala_bhavishya`, probabilistic projections + falsifiability hooks, 32 tests, PR #318).
+- **SEAL:** Eval gate ✓ (7 L3 tables, 0 DRAFT remaining); DRAFT→CURRENT promotion; seed run (72 assets, 71 active);
+  `L3_KALA_CLOSE_v1_0.md` authored; CURRENT_STATE v5.88.
+
+### Session close block
+
+```yaml
+session_close:
+  session_id: L3-KALA-AUTONOMOUS
+  close_date: 2026-06-21
+  session_type: autonomous_conductor
+  layer: L3_KALA
+  waves_executed: [K0, K1, CS1, K2, K3, K4a, K4b, K5a, K5b, K6, SEAL]
+  prs_merged: ["#309", "#310", "#311", "#312", "#313", "#314", "#315", "#316", "#317", "#318"]
+  main_head: "1f5c5034"
+  migrations_applied:
+    - 242_l3_service_asset_type.sql
+    - 243_l3_ka_yojaka.sql
+    - 244_l3_ka_sangam.sql
+    - 245_l3_ka_vighnakara.sql
+    - 246_l3_ka_kalasutra.sql
+    - 247_l3_ka_kala_darshana.sql
+    - 248_l3_ka_jivana_parva.sql
+    - 249_l3_ka_bhavishya_lekha.sql
+  tests_total: 197
+  tests_result: ALL_PASS
+  spine_first_gate: PASS
+  contract_violations: 0
+  l3_tables_on_prod: [kala_activation_predicates, kala_convergence, kala_activation, kala_obstruction, kala_darshana, kala_jivana_parva, kala_bhavishya]
+  seed_run: "72 assets, 71 active (ka_transit_almanac retired)"
+  catalog_status_after: CURRENT (all ka_* promoted from DRAFT)
+  seal_artifact: 00_ARCHITECTURE/L3_KALA_CLOSE_v1_0.md
+  seal_artifact_version: "1.0"
+  current_state_updated: true
+  current_state_version: 5.88
+  session_log_appended: true
+  red_team_pass: "n/a — autonomous build session; eval gate discharged via structural checks (tables+tests+grep)"
+  next_session_objective: >
+    L3 Kāla CLOSED. Open L4 Phala campaign: read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding
+    contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md. First L4 migration drops kala_timeline (CF.L3.2).
+    Phase E (Abhinandan 1c826d5a) still GATED — independent.
+```
+
+### Next session objective
+
+**L3 Kāla CLOSED.** All 9 ka_* assets sealed. 197 tests PASS. SPINE-FIRST gate PASS.
+
+Open L4 Phala campaign: read `L3_KALA_CLOSE_v1_0.md §11` for the L4 onboarding contract,
+author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`, and begin the L4 Phala layer build.
+First L4 migration must drop `kala_timeline` (CF.L3.2).
+
+*End of L3-KALA-AUTONOMOUS entry — 2026-06-21.*

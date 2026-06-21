@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.87
+version: 5.88
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.88 (2026-06-21, L3-KALA-AUTONOMOUS):
+    **L3 Kāla (Temporal Projection) CLOSED. 9 ka_* assets. 8 migrations (242–249) on PROD. 197 tests PASS.**
+    Sūtradhāra Conductor session executed full autonomous buildout: K0 (mig 242 asset_kind) → K1 (3 services:
+    ka_graha_sancara + ka_dasha_kala + ka_muhurta_seva) → CS1 seed reconciliation → K2 (ka_gochara: transit
+    search engine, TRUE_NODE) → K3 (ka_yojaka: mig 243, kala_activation_predicates, 66,738 predicates) →
+    K4a (ka_sangam: SPINE-FIRST GATE PASS, mig 244, I-16 convergence, I-17 orb-strength, Mode A+B) →
+    K4b (ka_kalasutra: mig 246, kala_activation, fills L2 null hooks) →
+    K5a (ka_vighnakara: mig 245, kala_obstruction, 7 obstruction types) →
+    K5b (ka_kala_darshana: mig 247, kala_darshana, effective_score, 6-label net_label) →
+    K6 parallel (ka_jivana_parva: mig 248, kala_jivana_parva, life-arc chapters;
+    ka_bhavishya_lekha: mig 249, kala_bhavishya, probabilistic projections + falsifiability hooks) →
+    SEAL (L3_KALA_CLOSE_v1_0.md, DRAFT→CURRENT for all ka_*, seed run: 72 assets 71 active).
+    PRs #309–#318 (10 PRs). Main HEAD: 1f5c5034. Contract violations: 0 (no commit/rollback, no L2 writes).
+    Carry-forwards: CF.L3.1 (Phase E), CF.L3.2 (kala_timeline drop), CF.L3.3–CF.L3.6 (see L3_KALA_CLOSE §10).
+    last_session_id: L3-KALA-AUTONOMOUS.
+    predecessor_session: L2-BODHA-WRITER-FIX-AND-SEAL.
+    next_session_objective: >
+      "L3 Kāla CLOSED (2026-06-21). All 9 ka_* assets sealed. Open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      First L4 migration must drop kala_timeline (CF.L3.2). Phase E (Abhinandan 1c826d5a) still GATED."
+    file_updated_at: 2026-06-21. file_updated_by_session: L3-KALA-AUTONOMOUS.
   - v5.87 (2026-06-21, L2-BODHA-WRITER-FIX-AND-SEAL):
     **L2 Bodha VERIFIED-WHOLE. Two pre-existing writer bugs remediated; B6 harness hardened.**
     Bug 1 — bo_anveshana: (a) _fetch_dict was doing zip(cols, row) against dict_row factory rows,
@@ -5559,6 +5580,13 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    L3 Kāla CLOSED (2026-06-21, L3-KALA-AUTONOMOUS). 9 ka_* assets. 8 migrations (242–249) on PROD.
+    197 tests PASS. SPINE-FIRST gate PASS. Seal: L3_KALA_CLOSE_v1_0.md. CURRENT_STATE v5.88.
+    Next: (1) open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract;
+    (2) author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md; (3) first L4 migration drops kala_timeline (CF.L3.2).
+    Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    G-MAG + G-RUN are STANDING SEAL REQUIREMENTS for every layer close.
+    === Predecessor next_session_objective (L2-BODHA-WRITER-FIX-AND-SEAL, superseded) ===
     L2 Bodha VERIFIED-WHOLE (2026-06-21, L2-BODHA-WRITER-FIX-AND-SEAL). All 10 bo_* assets lit.
     Two writer bugs fixed: bo_anveshana _fetch_dict dict_row mismatch + silent embedding fallback;
     bo_pramana_mapa Dockerfile.pipeline missing COPY. B6 G-MAG + G-RUN gates added and GREEN (3/3).
