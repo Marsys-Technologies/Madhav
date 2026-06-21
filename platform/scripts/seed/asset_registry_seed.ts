@@ -1380,6 +1380,24 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
+  {
+    asset_id: 'ka_kala_darshana',
+    layer: 'kala', sort_order: 6,
+    sanskrit_name: 'Kāla-darśana',
+    english_name: 'Display-ready temporal view',
+    english_description: 'Display-ready temporal view. Synthesizes kala_convergence + kala_obstruction into effective_score (convergence × obstruction discount), net_label, and structured narrative. Serve-time layer for UI.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_darshana',
+    count_sql: 'SELECT count(*) FROM kala_darshana WHERE chart_id = $$CHART_ID$$',
+    size_sql: "SELECT pg_total_relation_size('kala_darshana')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One display row per convergence window (up to 300 per chart); count depends on ka_sangam output',
+    depends_on: ['ka_sangam', 'ka_vighnakara', 'ka_kalasutra'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'artifact', catalog_status: 'DRAFT',
+  },
 
   // ── PHALA (5) ────────────────────────────────────────────────────────────────────────────
   {
