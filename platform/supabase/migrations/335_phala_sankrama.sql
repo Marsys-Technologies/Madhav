@@ -1,0 +1,3 @@
+-- Migration 335: ph_sankrama — Cross-domain Spillover table (L4 Phala wave 4 parallel)
+-- STUB: actual DDL written by ph_sankrama implementation (P4)
+-- [PLACEHOLDER — P4 ph_sankrama writer will fill this in]

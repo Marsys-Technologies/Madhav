@@ -1,0 +1,3 @@
+-- Migration 333: ph_sodhana — Rectification Candidates table (L4 Phala wave 4 parallel)
+-- STUB: actual DDL written by ph_sodhana implementation (P4)
+-- [PLACEHOLDER — P4 ph_sodhana writer will fill this in]

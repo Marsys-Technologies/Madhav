@@ -1,0 +1,4 @@
+-- Migration 334: ph_suddha_sodhana — Best Rectification table (L4 Phala wave 5)
+-- NO-AUTO-OVERRIDE gate: this writer STAGES chart revision for one-click native adoption; never auto-applies
+-- STUB: actual DDL written by ph_suddha_sodhana implementation (P5)
+-- [PLACEHOLDER — P5 ph_suddha_sodhana writer will fill this in]

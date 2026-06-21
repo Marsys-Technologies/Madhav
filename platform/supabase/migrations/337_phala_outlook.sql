@@ -1,0 +1,4 @@
+-- Migration 337: ph_phaladesa — Delivered Outlook table (L4 Phala wave 7)
+-- B.11 + DETERMINISTIC-FIRST gate: deterministic scaffold; serve-time narration via Gemini/DeepSeek
+-- STUB: actual DDL written by ph_phaladesa implementation (P7)
+-- [PLACEHOLDER — P7 ph_phaladesa writer will fill this in]

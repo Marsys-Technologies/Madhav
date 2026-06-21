@@ -1,0 +1,4 @@
+-- Migration 336: ph_pramana — Falsifiability Scaffolding table (L4 Phala wave 6)
+-- NO-SCORING gate: ph_pramana is strictly non-scoring; L5 owns ALL calibration
+-- STUB: actual DDL written by ph_pramana implementation (P6)
+-- [PLACEHOLDER — P6 ph_pramana writer will fill this in]

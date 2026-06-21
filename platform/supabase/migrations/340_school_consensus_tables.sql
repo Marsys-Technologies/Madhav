@@ -1,0 +1,3 @@
+-- Migration 340: U4 enabler — school consensus tables (057-060 schema, renumbered + chart-scoped)
+-- STUB: actual DDL written by U4 school consensus activation implementation (P1)
+-- [PLACEHOLDER — P1 U4 writer will fill this in]

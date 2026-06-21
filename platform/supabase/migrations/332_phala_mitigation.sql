@@ -1,0 +1,3 @@
+-- Migration 332: ph_pratikara — Mitigation/Remedy table (L4 Phala wave 4 parallel)
+-- STUB: actual DDL written by ph_pratikara implementation (P4)
+-- [PLACEHOLDER — P4 ph_pratikara writer will fill this in]

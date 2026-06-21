@@ -1,0 +1,3 @@
+-- Migration 338: U2 enabler — add horizon_tier column to kala_convergence
+-- STUB: actual DDL written by U2 lifetime-prana implementation (P2)
+-- [PLACEHOLDER — P2 U2 writer will fill this in]

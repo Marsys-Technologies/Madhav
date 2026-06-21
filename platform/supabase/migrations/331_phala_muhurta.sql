@@ -1,0 +1,3 @@
+-- Migration 331: ph_muhurta — Auspicious Windows table (L4 Phala wave 4 parallel)
+-- STUB: actual DDL written by ph_muhurta implementation (P4)
+-- [PLACEHOLDER — P4 ph_muhurta writer will fill this in]
