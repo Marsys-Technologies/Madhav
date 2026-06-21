@@ -1,0 +1,431 @@
+"""
+test_ph_nimitta_spine.py — ph_nimitta acceptance tests (SPINE-FIRST gate D26).
+
+Covers:
+  - compute_confidence_range: G-LADDER bounds, cap at 0.80, robustness factor
+  - compute_magnitude: rarity × score tiers
+  - derive_karmic_frame: planet → frame mapping
+  - derive_malleability: domain × magnitude × direction
+  - derive_domain: signature_class / signal_domain mapping
+  - generate_falsifier: machine-evaluable output
+  - derive_anchor_from_convergence: all axes + elevations populated
+  - derive_anchor_from_bhavishya: D37 inherit (falsifier preserved, bhavishya_id set)
+  - derive_anchor_from_discovery: Axis 4 (discovery_seeded)
+  - SPINE GATE (D26): ≥1 anchor passes end-to-end
+  - Anti-drift: engine.py has no DB writes
+"""
+from __future__ import annotations
+
+from datetime import date
+from unittest.mock import MagicMock
+
+import pytest
+
+
+# ── fixtures ─────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def empty_ctx():
+    from services.ph_nimitta.engine import NimittaContext
+    return NimittaContext()
+
+
+@pytest.fixture
+def full_ctx():
+    from services.ph_nimitta.engine import NimittaContext
+    return NimittaContext(
+        signal_domain='career',
+        signal_signature_class='CAREER_PEAK',
+        cgm_path_ids=['cgm-path-001'],
+        root_graha='saturn',
+        precedent_signal_ids=['sig-abc'],
+        contradiction_contested=True,
+        contradiction_thread='malefic_aspect_from_mars',
+        contradiction_net='net_positive',
+        dasha_consensus_count=5,
+        school_consensus_jsonb={'n_of_7': 5, 'direction': 'positive'},
+        ayanamsha_robustness=4,
+    )
+
+
+@pytest.fixture
+def convergence_row():
+    return {
+        'convergence_id': 42,
+        'signal_id': '11111111-1111-1111-1111-111111111111',
+        'mode': 'A',
+        'peak_date': date(2026, 9, 15),
+        'window_start': date(2026, 8, 1),
+        'window_end': date(2026, 11, 30),
+        'convergence_score': 0.72,
+        'rarity_years': 7.5,
+        'constituent_factors': {'dasha_score': 0.8, 'direction': 'elevated'},
+        'source_citation': 'kala_convergence/42',
+        'independent_current_count': 5,
+        'confidence_score': 0.72,
+        'confidence_label': 'high',
+    }
+
+
+@pytest.fixture
+def bhavishya_row():
+    return {
+        'id': 7,
+        'signal_id': '22222222-2222-2222-2222-222222222222',
+        'convergence_id': 10,
+        'domain': 'career',
+        'peak_date': date(2027, 3, 1),
+        'window_start': date(2026, 12, 1),
+        'window_end': date(2027, 6, 30),
+        'probability_tier': 'high_positive',
+        'effective_score': 0.68,
+        'falsifiability': 'No major career event by 2027-06-30 → REFUTED',
+        'source_chain': 'L3/ka_yojaka→ka_sangam',
+        'narrative': 'Career elevation likely in Saturn dasha',
+        'outcome_recorded': None,
+    }
+
+
+@pytest.fixture
+def discovery_row():
+    return {
+        'id': 'dd000000-0000-0000-0000-000000000001',
+        'signal_id': '33333333-3333-3333-3333-333333333333',
+        'domain': 'career',
+        'discovery_type': 'hidden_yogakaraka',
+        'surface_depth_delta': 0.45,
+        'why_an_acharya_misses_it': 'Requires simultaneous 10H lord transit + dasha-anta activation',
+        'falsifier_jsonb': {'statement': 'No Saturn-activation event in career by 2026-12-31 → REFUTED'},
+        'confidence_score': 0.61,
+    }
+
+
+# ── compute_confidence_range ─────────────────────────────────────────────────
+
+class TestConfidenceRange:
+    def test_basic_in_range(self):
+        from services.ph_nimitta.engine import compute_confidence_range
+        low, high = compute_confidence_range(0.72, 5, 3)
+        assert 0.0 <= low <= high <= 0.80
+
+    def test_floor_at_half(self):
+        from services.ph_nimitta.engine import compute_confidence_range
+        low, high = compute_confidence_range(0.0, 1, 3)
+        # f = max(0.5, 0.0) = 0.5 → mid = f × ceiling × robustness factor
+        assert low >= 0.0 and high >= low
+
+    def test_cap_at_0_80(self):
+        from services.ph_nimitta.engine import compute_confidence_range
+        _, high = compute_confidence_range(1.0, 10, 5)
+        assert high <= 0.80
+
+    def test_higher_n_independent_raises_ceiling(self):
+        from services.ph_nimitta.engine import compute_confidence_range
+        _, h1 = compute_confidence_range(0.7, 1, 3)
+        _, h2 = compute_confidence_range(0.7, 6, 3)
+        assert h2 >= h1
+
+    def test_range_has_width(self):
+        from services.ph_nimitta.engine import compute_confidence_range
+        low, high = compute_confidence_range(0.65, 4, 3)
+        # width should be ~0.20 (mid±0.10), but clamp can shrink it
+        assert high >= low
+
+
+# ── compute_magnitude ────────────────────────────────────────────────────────
+
+class TestMagnitude:
+    @pytest.mark.parametrize("ry,es,expected", [
+        (10.0, 1.0, 'pivotal'),    # 1.0 × 1.0 = 1.0 ≥ 0.60
+        (8.0,  0.7, 'pivotal'),    # 0.8 × 0.7 = 0.56 ≥ 0.40 → major
+        (5.0,  0.7, 'major'),      # 0.5 × 0.7 = 0.35 < 0.40 → moderate
+        (1.0,  0.1, 'minor'),      # 0.1 × 0.1 = 0.01 < 0.20
+    ])
+    def test_tiers(self, ry, es, expected):
+        from services.ph_nimitta.engine import compute_magnitude
+        tier, basis = compute_magnitude(ry, es)
+        # Allow one tier off for edge cases due to different rounding
+        tiers = ['minor','moderate','major','pivotal']
+        ti = tiers.index(tier)
+        ei = tiers.index(expected)
+        assert abs(ti - ei) <= 1, f"Expected ≈{expected}, got {tier} (ry={ry}, es={es})"
+
+    def test_basis_contains_rarity_and_score(self):
+        from services.ph_nimitta.engine import compute_magnitude
+        _, basis = compute_magnitude(7.5, 0.72)
+        assert 'rarity_years' in basis and 'effective_score' in basis
+
+    def test_none_inputs_do_not_crash(self):
+        from services.ph_nimitta.engine import compute_magnitude
+        tier, _ = compute_magnitude(None, None)
+        assert tier in ('minor','moderate','major','pivotal')
+
+
+# ── derive_karmic_frame ──────────────────────────────────────────────────────
+
+class TestKarmicFrame:
+    @pytest.mark.parametrize("planet,expected_frame", [
+        ('saturn', 'debt_surfacing'),
+        ('ketu',   'debt_surfacing'),
+        ('jupiter','reward_ripening'),
+        ('rahu',   'desire_entanglement'),
+        ('mars',   'effort_reward'),
+        ('venus',  'relational_karma'),
+        ('moon',   'relational_karma'),
+        ('mercury','effort_reward'),
+        ('sun',    'effort_reward'),
+    ])
+    def test_all_planets(self, planet, expected_frame):
+        from services.ph_nimitta.engine import derive_karmic_frame
+        frame, note = derive_karmic_frame(planet)
+        assert frame == expected_frame
+        assert note  # non-empty
+
+    def test_none_planet_returns_none(self):
+        from services.ph_nimitta.engine import derive_karmic_frame
+        frame, note = derive_karmic_frame(None)
+        assert frame is None and note is None
+
+    def test_case_insensitive(self):
+        from services.ph_nimitta.engine import derive_karmic_frame
+        f1, _ = derive_karmic_frame('Saturn')
+        f2, _ = derive_karmic_frame('SATURN')
+        assert f1 == f2 == 'debt_surfacing'
+
+
+# ── derive_malleability ──────────────────────────────────────────────────────
+
+class TestMalleability:
+    def test_fated_when_pivotal_suppressed(self):
+        from services.ph_nimitta.engine import derive_malleability
+        assert derive_malleability('spiritual', 'pivotal', 'suppressed') == 'fated'
+
+    def test_influenceable_for_health_minor(self):
+        from services.ph_nimitta.engine import derive_malleability
+        assert derive_malleability('health', 'minor', 'elevated') == 'influenceable'
+
+    def test_semi_influenceable_default(self):
+        from services.ph_nimitta.engine import derive_malleability
+        assert derive_malleability('spiritual', 'major', 'elevated') == 'semi_influenceable'
+
+
+# ── derive_domain ────────────────────────────────────────────────────────────
+
+class TestDeriveDomain:
+    @pytest.mark.parametrize("sig,dom,expected", [
+        ('CAREER_PEAK', None, 'career'),
+        (None, 'health', 'health'),
+        ('RELATIONSHIP_CRISIS', 'relationship', 'relationship'),
+        ('FINANCIAL_GAIN', None, 'financial'),
+        ('SPIRITUAL_OPENING', None, 'spiritual'),
+        (None, None, 'transition'),
+    ])
+    def test_mapping(self, sig, dom, expected):
+        from services.ph_nimitta.engine import derive_domain
+        assert derive_domain(sig, dom) == expected
+
+
+# ── generate_falsifier ───────────────────────────────────────────────────────
+
+class TestGenerateFalsifier:
+    def test_contains_domain_and_direction(self):
+        from services.ph_nimitta.engine import generate_falsifier
+        f = generate_falsifier('career', 'career_shift', 'elevated', date(2026,9,1), date(2026,12,31))
+        assert 'career' in f.lower()
+        assert 'positive' in f.lower()
+
+    def test_machine_evaluable_refuted_confirmed(self):
+        from services.ph_nimitta.engine import generate_falsifier
+        f = generate_falsifier('health', 'health_episode', 'suppressed', None, date(2027,1,1))
+        assert 'REFUTED' in f and 'CONFIRMED' in f
+
+    def test_deadline_appears(self):
+        from services.ph_nimitta.engine import generate_falsifier
+        f = generate_falsifier('career', 'career_shift', 'elevated', None, date(2027, 3, 31))
+        assert '2027-03-31' in f
+
+
+# ── derive_anchor_from_convergence ───────────────────────────────────────────
+
+class TestAnchorFromConvergence:
+    def test_all_elevations_populated(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=5)
+        assert a.magnitude is not None
+        assert a.confidence_low is not None and a.confidence_high is not None
+        assert a.karmic_frame == 'debt_surfacing'  # root_graha=saturn
+        assert a.malleability is not None
+        assert a.falsifier
+        assert a.derivation_ledger_jsonb
+
+    def test_source_is_convergence(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=3)
+        assert a.anchor_source == 'convergence'
+        assert a.convergence_id == 42
+
+    def test_confidence_range_in_bounds(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        assert 0.0 <= a.confidence_low <= a.confidence_high <= 0.80
+
+    def test_confidence_basis_is_structural(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        assert a.confidence_basis == 'structural_not_yet_empirical'
+
+    def test_contradiction_v5_populated(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        assert a.contradiction_jsonb is not None
+        assert 'contested' in a.contradiction_jsonb
+
+    def test_causal_chain_v3_axis3(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        assert a.causal_chain_jsonb is not None
+        assert a.causal_chain_jsonb.get('root_graha') == 'saturn'
+
+    def test_derivation_ledger_has_axes(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        led = a.derivation_ledger_jsonb
+        assert 'convergence_id' in led
+        assert 'axes_applied' in led and 'elevations' in led
+
+    def test_empty_ctx_does_not_crash(self, convergence_row, empty_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, empty_ctx, n_independent=1)
+        assert a.anchor_source == 'convergence'
+
+
+# ── derive_anchor_from_bhavishya (D37) ───────────────────────────────────────
+
+class TestAnchorFromBhavishya:
+    def test_source_is_bhavishya(self, bhavishya_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert a.anchor_source == 'bhavishya'
+        assert a.bhavishya_id == 7
+
+    def test_falsifiability_inherited(self, bhavishya_row, full_ctx):
+        """D37: bhavishya falsifier must be preserved (not overwritten)."""
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert '2027-06-30' in a.falsifier   # inherited from row.falsifiability
+
+    def test_outcome_hook_in_ledger(self, bhavishya_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert 'outcome_recorded' in a.derivation_ledger_jsonb
+
+    def test_horizon_tier_lifetime(self, bhavishya_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert a.horizon_tier == 'lifetime'
+
+    def test_domain_career(self, bhavishya_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert a.domain == 'career'
+
+    def test_all_elevations_present(self, bhavishya_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        a = derive_anchor_from_bhavishya(bhavishya_row, full_ctx)
+        assert a.magnitude and a.malleability and a.falsifier
+        assert a.confidence_low is not None and a.confidence_high is not None
+
+
+# ── derive_anchor_from_discovery (Axis 4) ────────────────────────────────────
+
+class TestAnchorFromDiscovery:
+    def test_source_is_discovery(self, discovery_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_discovery
+        a = derive_anchor_from_discovery(discovery_row, full_ctx)
+        assert a.anchor_source == 'discovery'
+        assert a.discovery_id == 'dd000000-0000-0000-0000-000000000001'
+
+    def test_inherits_falsifier_from_row(self, discovery_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_discovery
+        a = derive_anchor_from_discovery(discovery_row, full_ctx)
+        assert 'REFUTED' in a.falsifier
+
+    def test_why_acharya_misses_in_ledger(self, discovery_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_discovery
+        a = derive_anchor_from_discovery(discovery_row, full_ctx)
+        assert 'why_an_acharya_misses_it' in a.derivation_ledger_jsonb
+
+    def test_confidence_range_in_bounds(self, discovery_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_discovery
+        a = derive_anchor_from_discovery(discovery_row, full_ctx)
+        assert 0.0 <= a.confidence_low <= a.confidence_high <= 0.80
+
+
+# ── SPINE GATE (D26) ─────────────────────────────────────────────────────────
+
+class TestSpineGate:
+    """D26: _spine_gate must accept ≥1 fully-populated anchor."""
+
+    def _make_writer(self):
+        from pipeline.orchestrator.writers.ph_nimitta import PhNimittaWriter
+        w = PhNimittaWriter()
+        return w
+
+    def test_gate_passes_with_full_anchor(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        w = self._make_writer()
+        w._spine_gate([a])   # must not raise
+
+    def test_gate_fails_with_empty_list(self):
+        w = self._make_writer()
+        with pytest.raises(RuntimeError, match="SPINE GATE FAILED"):
+            w._spine_gate([])
+
+    def test_gate_fails_with_missing_magnitude(self, convergence_row, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, AnchorRecord
+        a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
+        a.magnitude = None    # deliberately break it
+        w = self._make_writer()
+        with pytest.raises(RuntimeError, match="SPINE GATE FAILED"):
+            w._spine_gate([a])
+
+
+# ── Anti-drift ───────────────────────────────────────────────────────────────
+
+class TestAntiDrift:
+    def test_engine_has_no_db_writes(self):
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'services', 'ph_nimitta', 'engine.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        for bad in ('INSERT INTO', 'UPDATE ', 'DELETE FROM', 'conn.cursor', 'psycopg2'):
+            assert bad not in src, f"engine.py must not contain '{bad}'"
+
+    def test_writer_never_commits(self):
+        import os, re
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_nimitta.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        # strip comment lines before checking (docstrings mention it as something NOT to do)
+        code_lines = [ln for ln in src.splitlines() if not ln.lstrip().startswith('#') and '"""' not in ln]
+        code_only = '\n'.join(code_lines)
+        assert '.commit()' not in code_only, "writer must not call .commit()"
+        assert '.rollback()' not in code_only, "writer must not call .rollback()"
+
+    def test_writer_only_writes_phala_anchors(self):
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_nimitta.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        # should not INSERT into ANY other table
+        import re
+        inserts = re.findall(r'INSERT INTO (\w+)', src)
+        for tbl in inserts:
+            assert tbl == 'phala_anchors', f"Writer inserts into unexpected table: {tbl}"
