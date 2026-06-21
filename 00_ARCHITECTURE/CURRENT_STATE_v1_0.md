@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.89
+version: 5.90
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.90 (2026-06-21, L3-CLOSEOUT-DOCS):
+    **L3 Kāla closeout documentation complete. State pointer: L3 SEALED + closed-out; NEXT = L4 Phala.**
+    Sealed tip: `e2ef4d72` (almanac hard-removal 13→12 assets, migs 328/329, StatusDot CF.L3.8 green fix).
+    L3 closure audit complete (L3_KALA_CLOSURE_AUDIT_v1_0.md reviewed; all items dispositioned).
+    CF.L3.7 RESOLVED — StatusDot green fix (commit a299eee3 on main).
+    CF.L3.8 RESOLVED — orchestrator wired; bypass scripts retired (PR #326 merged).
+    CI fail-loud fix merged (PR #325). L3_KALA_CLOSE_v1_0.md bumped to v1.2 (12-asset count,
+    CF dispositions). Stale duplicate platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json confirmed
+    not git-tracked (CI build artifact only; deploy.yml generates it at build time); no git rm needed.
+    last_session_id: L3-CLOSEOUT-DOCS.
+    predecessor_session: L3-KALA-PROD-BUILD-REMEDIATION.
+    next_session_objective: >
+      "L3 SEALED + closed-out (2026-06-21). Open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author
+      L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md. First L4 migration starts at 251.
+      First migration SHOULD drop kala_timeline (CF.L3.2).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-21. file_updated_by_session: L3-CLOSEOUT-DOCS.
   - v5.89 (2026-06-21, L3-KALA-PROD-BUILD-REMEDIATION):
     **L3 Kāla prod build remediation COMPLETE. CF.L3.3–CF.L3.6 all RESOLVED. ka_tulana added.**
     Seal v1.0 was premature — actual writers had never run against prod. This session fixed:
@@ -5608,6 +5626,14 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
+    L3 SEALED + closed-out (2026-06-21). CURRENT_STATE v5.90. NEXT = L4 Phala.
+    L3_KALA_CLOSE_v1_0.md v1.2 sealed (12 assets: 5 service + 7 artifact; CF.L3.7 + CF.L3.8 RESOLVED).
+    CI fail-loud (PR #325) + bypass script retirement (PR #326) merged. Closure audit complete.
+    Next: (1) open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract;
+    (2) author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md; (3) first L4 migration starts at 251, SHOULD drop
+    kala_timeline (CF.L3.2). Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    G-MAG + G-RUN are STANDING SEAL REQUIREMENTS for every layer close.
+    === Predecessor next_session_objective (L3-KALA-PROD-BUILD-REMEDIATION, superseded) ===
     L3 Kāla CLOSED (2026-06-21, L3-KALA-AUTONOMOUS). 9 ka_* assets. 8 migrations (242–249) on PROD.
     197 tests PASS. SPINE-FIRST gate PASS. Seal: L3_KALA_CLOSE_v1_0.md. CURRENT_STATE v5.88.
     Next: (1) open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract;
@@ -6671,6 +6697,12 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **L3-CLOSEOUT-DOCS (2026-06-21) — L3 SEALED + closed-out; NEXT = L4 Phala**:
+
+**Layer state.** **L3 Kāla is SEALED and fully closed-out as of 2026-06-21.** Sealed tip: `e2ef4d72` (ka_transit_almanac hard-removal 13→12 assets; migrations 328/329; StatusDot CF.L3.8 green fix). L3_KALA_CLOSE_v1_0.md bumped to v1.2: asset count corrected to 12 (5 service + 7 artifact; ka_transit_almanac is retired/inactive, not a built asset), CF.L3.7 and CF.L3.8 marked RESOLVED. CI fail-loud fix merged (PR #325). Bypass scripts retired (PR #326). L3 closure audit reviewed (L3_KALA_CLOSURE_AUDIT_v1_0.md); all items dispositioned. Stale duplicate `platform/00_ARCHITECTURE/CAPABILITY_MANIFEST.json` confirmed not git-tracked (CI build artifact; deploy.yml generates it at build time). **NEXT = L4 Phala.** Read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md; first L4 migration at 251+ should drop kala_timeline (CF.L3.2).
+
+*(Below: retained narrative from prior session L3-KALA-PROD-BUILD-REMEDIATION for audit trail.)*
 
 At the close of **M4-B-S6-CLOSE (2026-05-03) — M4-B SUB-PHASE CLOSED (sealing artifact M4_B_CLOSE_v1_0.md sealed; IS.8(b)-class red-team conducted)**:
 
