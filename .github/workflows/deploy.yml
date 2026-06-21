@@ -133,7 +133,8 @@ jobs:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "SKIP: PROD_DATABASE_URL secret not set — migrations must be run manually via start_db_proxy.sh"
+            echo "::error::PROD_DATABASE_URL secret not set — migrations NOT applied. Failing build."
+            exit 1
           else
             cd platform && npx tsx scripts/migrate.ts
           fi
