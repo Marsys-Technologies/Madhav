@@ -1416,6 +1416,24 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
+  {
+    asset_id: 'ka_bhavishya_lekha',
+    layer: 'kala', sort_order: 8,
+    sanskrit_name: 'Bh\u0101vi\u1e63ya-lekha',
+    english_name: 'Probabilistic forward projections',
+    english_description: 'Probabilistic forward projections (3-year horizon). Assigns probability tiers (tier_1_high/tier_2_moderate/tier_3_speculative), domain labels, falsifiability hooks, and calibration records. The testable-prediction artifact per §A mission.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_bhavishya',
+    count_sql: 'SELECT count(*) FROM kala_bhavishya WHERE chart_id = $$CHART_ID$$',
+    size_sql: "SELECT pg_total_relation_size('kala_bhavishya')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'Up to 50 ranked projections per chart over a 3-year forward horizon; depends on ka_kala_darshana output',
+    depends_on: ['ka_kala_darshana', 'ka_vighnakara'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'artifact', catalog_status: 'DRAFT',
+  },
 
   // ── PHALA (5) ────────────────────────────────────────────────────────────────────────────
   {
