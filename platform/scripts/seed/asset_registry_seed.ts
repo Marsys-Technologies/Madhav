@@ -1398,6 +1398,24 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
+  {
+    asset_id: 'ka_jivana_parva',
+    layer: 'kala', sort_order: 7,
+    sanskrit_name: 'Jīvana-parva',
+    english_name: 'Life-arc biographical chapter',
+    english_description: 'Life-arc biographical chapter artifact. Segments native life into daśā-anchored parvas with theme keywords, quality labels (building/peak/consolidating/receding/transitional), and convergence density. Historical characterization, not prediction.',
+    storage_type: 'postgres_table',
+    target_table: 'kala_jivana_parva',
+    count_sql: 'SELECT count(*) FROM kala_jivana_parva WHERE chart_id = $$CHART_ID$$',
+    size_sql: "SELECT pg_total_relation_size('kala_jivana_parva')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per mahadasha (typically 9 for a full Vimshottari cycle)',
+    depends_on: ['ka_kala_darshana', 'ka_dasha_kala'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'artifact', catalog_status: 'DRAFT',
+  },
 
   // ── PHALA (5) ────────────────────────────────────────────────────────────────────────────
   {
