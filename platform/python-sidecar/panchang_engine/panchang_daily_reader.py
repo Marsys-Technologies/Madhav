@@ -13,6 +13,14 @@ to engine-direct compute_panchang(). This is intentional: cache miss ≠ error.
 
 Performance goal: single SELECT replaces 90 × compute_panchang() calls for the
 native (Bhubaneswar) use case. Per F1_MUHURAT_OVERLOAD_BRIEF_v1_0.md Option A.
+
+IMPORTANT — L3 Kāla layer note (added ka_muhurta_seva K1, 2026-06-21):
+  This module is a panchang_engine infrastructure helper, NOT a ka_* layer asset.
+  It must NEVER be registered in the orchestrator registry (@register / asset_registry)
+  as a ka_* service. The ka_* layer asset is ka_muhurta_seva (services/ka_muhurta_seva/).
+  The cache here is an internal optimisation path; its use is optional (callers fall back
+  to engine-direct compute_panchang() on any failure). The fenced Bhubaneswar cache is
+  demoted to a pure read-optimisation — do not elevate it to a required dependency.
 """
 from __future__ import annotations
 

@@ -7,6 +7,9 @@ Scoring/judgement lives here. panchang_engine/ holds only the deterministic core
 6-event MVP set settled 2026-05-19 (D2 decision):
   vivah, griha_pravesh, vyapara, yatra, property_purchase, mantra_initiation
 
+L3 Kāla K1 extension (ka_muhurta_seva, 2026-06-21) — 2 intervention/remedial event classes:
+  upaya_ritual, sadhana_initiation
+
 Scoring rubric:
   score = sum(weight[factor] * quality[factor]) across tithi/nakshatra/vara/yoga/planet/native
   Knockout: if _in_inauspicious(), score = 0.0
@@ -28,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # MVP event set — locked in 4C-1-S2; 4C.6 scores all 6
+# Extended in L3 Kāla K1 (ka_muhurta_seva, 2026-06-21) with 2 remedial event classes
 # ---------------------------------------------------------------------------
 EVENTS_MVP: list[str] = [
     "vivah",              # Marriage
@@ -36,6 +40,9 @@ EVENTS_MVP: list[str] = [
     "yatra",              # Journey / travel
     "property_purchase",  # Property / vehicle purchase
     "mantra_initiation",  # Mantra diksha / initiation
+    # L3 Kāla K1 additions (ka_muhurta_seva, 2026-06-21) — intervention/remedial
+    "upaya_ritual",       # Upāya / remedial action (homa, dana, japa, puja, vrata)
+    "sadhana_initiation", # Sādhana initiation — beginning a sustained spiritual practice
 ]
 
 
