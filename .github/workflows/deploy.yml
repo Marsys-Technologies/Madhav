@@ -125,8 +125,7 @@ jobs:
           curl -fsSL \
             "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
             -o cloud-sql-proxy && chmod +x cloud-sql-proxy
-          sudo mkdir -p /cloudsql
-          ./cloud-sql-proxy --unix-socket /cloudsql \
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
             madhav-astrology:asia-south1:amjis-postgres &
           sleep 5
 
