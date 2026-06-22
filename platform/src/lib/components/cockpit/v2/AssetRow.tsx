@@ -11,6 +11,8 @@ import { PlanModal } from './PlanModal'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
 import { Zap } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
+import { deriveBuildStage } from './buildStage'
+import type { SubstepInfo } from './buildStage'
 import { useUserRole } from '@/hooks/useUserRole'
 
 interface Props {
@@ -144,6 +146,20 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       ? 'reconnecting'
       : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
 
+  // Derive build stage from substep + state data.
+  // isQueued: asset appears as building in polled stats but no SSE state event has
+  // arrived yet (substep overlay is absent) — treat as queued in the run plan.
+  const substepData: SubstepInfo | undefined = (substep && substep.substep_total > 0)
+    ? { index: substep.substep_index, total: substep.substep_total, label: substep.substep_label }
+    : undefined
+  const isQueued = derivedState === 'building' && substep == null
+  const buildStage = deriveBuildStage({
+    polledState: derivedState,
+    substepIndex: substepData?.index,
+    substepTotal: substepData?.total,
+    isQueued,
+  })
+
   return (
     <div
       data-asset-id={asset.asset_id}
@@ -182,21 +198,13 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         ) : (
           <>
             <AssetProgressBar
-              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting' | 'retired'}
+              state={derivedState}
               actualRows={stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
+              stage={buildStage}
+              substep={substepData}
+              isQueued={isQueued}
             />
-            {/* Live substep progress — visible only during building when orchestrator emits asset.substep */}
-            {derivedState === 'building' && substep != null && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '3px', fontFamily: 'var(--mono-stack)', fontSize: '9px', color: 'rgba(255,255,255,0.45)', lineHeight: 1 }}>
-                {substep.actual_rows > 0 && (
-                  <span>{substep.actual_rows.toLocaleString()} rows</span>
-                )}
-                {substep.substep_total > 0 && (
-                  <span>Step {substep.substep_index} / {substep.substep_total}</span>
-                )}
-              </div>
-            )}
             {/* build-state stale badge: data present but throughput record is stale/absent */}
             {stat?.build_state_stale && (
               <div style={{ fontSize: '9px', color: 'rgba(236,197,106,0.65)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
