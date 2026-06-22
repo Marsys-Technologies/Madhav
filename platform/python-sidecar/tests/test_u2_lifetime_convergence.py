@@ -225,9 +225,11 @@ class TestRowAccounting:
 class TestScores:
     def test_scores_in_unit_interval(self, store, patched_engine):
         _, _, _ = _run(store)
-        # convergence_score is param index 3 in the INSERT tuple
+        # INSERT tuple positional layout: (chart_id=0, window_start=1, window_end=2,
+        # convergence_score=3, ...).  Index 3 = convergence_score.
+        # If the INSERT column order ever changes, update this index accordingly.
         for ins in store['inserts']:
-            cs = ins['params'][3]
+            cs = ins['params'][3]  # index 3 = convergence_score
             assert 0.0 <= cs <= 1.0
 
 

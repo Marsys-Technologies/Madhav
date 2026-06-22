@@ -150,6 +150,20 @@ class KaSangamWriter(WriterBase):
                     len(lifetime_deduped), chart_id)
 
         # ── Step 5: insert both tiers into kala_convergence ──────────────────────
+        # Design intent: near and lifetime tiers intentionally coexist in
+        # kala_convergence and MAY overlap for windows that fall within the
+        # 5-year forward horizon.  This is not a data error — the two tiers
+        # answer different questions:
+        #   • 'near'     — continuous calendar sweep over [now, now+5y]; high
+        #                  temporal resolution; suited for short-term guidance.
+        #   • 'lifetime' — dāśā-boundary-anchored; spans the native's full life;
+        #                  suited for arc-level context and long-range planning.
+        # The `horizon_tier` column is the discriminator.  Consumers MUST filter
+        # by horizon_tier when they need tier-specific data, e.g.:
+        #   WHERE horizon_tier = 'near'     -- short-term precision
+        #   WHERE horizon_tier = 'lifetime' -- arc-level context
+        # Returning all rows without a tier filter will intentionally include
+        # both sets; deduplication between tiers is the consumer's responsibility.
         rows_inserted = 0
         with conn.cursor() as cur:
             rows_inserted += self._insert_windows(cur, chart_id, near_deduped, 'near')
