@@ -150,7 +150,6 @@ class PhSankramaWriter(WriterBase):
                 FROM phala_anchors
                 WHERE chart_id = %s
                 ORDER BY confidence_high DESC NULLS LAST
-                LIMIT 100
                 """,
                 (chart_id,),
             )
