@@ -41,23 +41,24 @@ def _build_ascendant_fn():
     Imports PyJHora lazily so the module imports cleanly even where the native
     ephemeris is unavailable (e.g. lint-only environments); the orchestrator
     always runs with PyJHora present.
+
+    JD convention: drik.ascendant expects a LOCAL-time Julian Day (see
+    compute.py docstring). Using swe.julday with UTC hours (05:13) gives
+    Capricorn instead of Aries — a 9-sign error caused by the 5.5h IST offset.
+    We build the base JD from LOCAL birth time (10:43 IST) via
+    utils.julian_day_number and shift candidates via JD arithmetic.
     """
-    import swisseph as swe  # type: ignore
+    from jhora import utils
+    from jhora.panchanga import drik as _drik
     from pyjhora_adapter.houses import compute_ascendant  # type: ignore
 
-    # Recorded birth: 1984-02-05 05:13:00 UTC. ut_hour for swe.julday.
-    y, m, d = RECORDED_BIRTH_UTC.year, RECORDED_BIRTH_UTC.month, RECORDED_BIRTH_UTC.day
-    base_ut_hours = (
-        RECORDED_BIRTH_UTC.hour
-        + RECORDED_BIRTH_UTC.minute / 60.0
-        + RECORDED_BIRTH_UTC.second / 3600.0
-    )
+    # Local birth: 1984-02-05 10:43:00 IST (= RECORDED_BIRTH_UTC + NATIVE_TZ h).
+    _base_jd = utils.julian_day_number(_drik.Date(1984, 2, 5), (10, 43, 0))
 
     def fn(offset_minutes: int, ayanamsha_id: str) -> dict:
-        ut_hours = base_ut_hours + offset_minutes / 60.0
-        jd_ut = swe.julday(y, m, d, ut_hours)
+        jd = _base_jd + offset_minutes / 1440.0  # 1440 min per JD day
         asc = compute_ascendant(
-            jd_ut, ayanamsha_id, lat=NATIVE_LAT, lon=NATIVE_LON, tz=NATIVE_TZ
+            jd, ayanamsha_id, lat=NATIVE_LAT, lon=NATIVE_LON, tz=NATIVE_TZ
         )
         return {
             "sign": asc["sign"],

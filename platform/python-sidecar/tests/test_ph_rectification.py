@@ -4,9 +4,9 @@ test_ph_rectification.py — R4 birth-time rectification (L4 Phala remediation).
 DB-free tests for services.ph_rectification.engine + writer-contract AST checks.
 A deterministic stub ascendant function is injected so these tests are fully
 PyJHora-independent (no swisseph, no DB). The stub mirrors the real adapter's
-behavior near the recorded birth: the lagna sign is stable for offsets ≥ -5 and
-shifts to the previous sign for offsets < -5 (matching the empirical PyJHora
-scan: Capricorn near 10:43, Sagittarius at ≈ -10 min and earlier).
+behavior near the recorded birth: the lagna sign is stable for offsets ≥ -40 and
+shifts to Pisces for earlier offsets (matching the empirical PyJHora LOCAL-JD
+scan: Aries near 10:43, Pisces at ≈ -45 min and earlier, Taurus at ≈ +70 min and later).
 
 Constraints exercised:
   - 37 candidate offsets (±90 min, 5-min steps)
@@ -46,9 +46,9 @@ WRITER_PATH = os.path.join(
 )
 
 # ── Stub ascendant ───────────────────────────────────────────────────────────
-# Mirrors the empirical PyJHora scan: Capricorn for offsets ≥ -5, Sagittarius
-# earlier. degree advances ~0.26 deg/min so the longitude is monotonic.
-_BASE_DEG = 272.1  # Capricorn ~2.1 deg at offset 0 (sidereal long 9*30+2.1, lahiri)
+# Mirrors the empirical PyJHora scan (LOCAL JD): Aries ~12.4° at offset 0,
+# Pisces at ≈ -45 min and earlier, Taurus at ≈ +70 min and later.
+_BASE_DEG = 12.421  # Aries ~12.4 deg at offset 0 (sidereal long 0*30+12.4, lahiri)
 
 
 def _stub_ascendant(offset_minutes: int, ayanamsha_id: str) -> dict:
@@ -116,7 +116,7 @@ def test_lagna_stable_near_recorded_time():
     rows = run_rectification(_stub_ascendant)
     near = [r for r in rows if r.offset_minutes == 0]
     assert all(r.lagna_stable for r in near)
-    assert all(r.lagna_sign == "Capricorn" for r in near)
+    assert all(r.lagna_sign == "Aries" for r in near)
 
 
 def test_lagna_unstable_at_extreme_early_offset():
@@ -124,7 +124,7 @@ def test_lagna_unstable_at_extreme_early_offset():
     early = [r for r in rows if r.offset_minutes == -90]
     assert all(not r.lagna_stable for r in early)
     # sign has shifted away from the recorded-time sign
-    assert all(r.lagna_sign != "Capricorn" for r in early)
+    assert all(r.lagna_sign != "Aries" for r in early)
 
 
 def test_unstable_candidate_has_no_fit_score():
