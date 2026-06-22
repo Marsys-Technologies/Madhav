@@ -1,8 +1,8 @@
 ---
 artifact: L3_KALA_CLOSE_v1_0.md
 canonical_id: L3_KALA_CLOSE
-version: 1.2
-status: CURRENT
+version: 1.3
+status: CURRENT (re-sealed U2)
 produced_during: L3-KALA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-21)
 role: >
   Definitive sealed record for the L3 Kāla (Temporal Projection) layer.
@@ -14,6 +14,12 @@ supersedes: >
   (CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md etc.) — those were entry briefs;
   this doc is the sealed closure record.
 changelog:
+  - v1.3 (2026-06-22, R3 U2 REMEDIATION): Re-sealed for U2 lifetime
+    convergence. horizon_tier column added to kala_convergence (mig 338);
+    lifetime convergence tier implemented in ka_sangam (dāśā-boundary-anchored,
+    ≤13k rows); kala_jivana_parva.avg_effective_score now non-null once
+    lifetime data present (D27). Prāṇa (level-5) DROPPED (D29) — N4 boundary
+    preserved (max_level ≤ 4; no chart_dashas_prana). Decision authority: D27.
   - v1.2 (2026-06-21, L3-CLOSEOUT-DOCS): Closeout documentation pass.
     Fixed asset count 13→12 (ka_transit_almanac is retired/inactive, not a
     built asset; correct count is 5 service + 7 artifact = 12). CF.L3.7
@@ -34,7 +40,43 @@ changelog:
     (NOTE: this seal was PREMATURE — prod was not built; corrected in v1.1.)
 ---
 
-# L3 Kāla Close — Sealed Record v1.2
+# L3 Kāla Close — Sealed Record v1.3
+
+## U2 Re-seal (R3 remediation)
+
+> **Re-sealed 2026-06-22 for U2 lifetime convergence (R3 remediation; decision authority D27).**
+>
+> The v1.2 seal left `kala_jivana_parva.avg_effective_score` NULL across all 739
+> parvas: the convergence engine (`ka_sangam`) searched only a 5-year forward
+> horizon, but the parvas span the native's entire life (birth 1984 → ~2084),
+> so no convergence windows fell inside the parva spans to average. The scoring
+> in `ka_jivana_parva` was correct and complete — it simply had no lifetime data.
+>
+> **R3 changes (this re-seal):**
+> - **`horizon_tier` column** added to `kala_convergence` (migration 338;
+>   `text NOT NULL DEFAULT 'near' CHECK (horizon_tier IN ('near','lifetime'))`,
+>   indexed `(chart_id, horizon_tier)`).
+> - **Lifetime convergence tier** implemented in `ka_sangam`: the existing
+>   5-year sweep is retained unchanged and tagged `horizon_tier='near'`; a new
+>   **dāśā-boundary-anchored** tier runs the SAME Mode A + Mode B engine over each
+>   parva span queried from `kala_jivana_parva`, tagged `horizon_tier='lifetime'`.
+>   Row budget capped at ≤ 13,000 lifetime rows (predicate budget tightened to 24,
+>   highest-scoring windows retained on overflow). Falls back to a single
+>   birth→birth+100y span when no parvas exist yet (first build).
+> - **`kala_jivana_parva.avg_effective_score` now non-null** once lifetime data is
+>   present (D27): `ka_jivana_parva` reads ALL `kala_convergence` rows (no
+>   `horizon_tier` filter), so a parva-span convergence join now finds windows.
+>   No code change to `ka_jivana_parva.py` was required.
+> - **Prāṇa (level-5) DROPPED (D29):** lifetime = horizon of convergence windows
+>   over the EXISTING N1–N4 parvas only. No `chart_dashas_prana`, no level-5
+>   persistence anywhere — the `max_level ≤ 4` invariant is preserved (N4 boundary).
+> - Idempotency preserved: the existing `DELETE FROM kala_convergence WHERE
+>   chart_id = %s` covers both tiers; `WriterResult.rows_inserted` reports
+>   near + lifetime total.
+> - Anti-drift: `ka_sangam` still writes only `kala_convergence`; no `phala_*`
+>   or `bodha_*` writes; frozen contract intact (no `commit()`/`close()`).
+
+---
 
 ## §0 — Premature-seal correction (v1.1 addendum)
 
