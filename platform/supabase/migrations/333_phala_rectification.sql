@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS phala_rectification (
     lel_fit_score           numeric(6,4),      -- normalized [0,1]; higher = better LEL fit
     lel_events_matched      integer,
     lel_events_tested       integer,
-    lagna_stable            boolean NOT NULL DEFAULT true,  -- false if lagna shifts from Aries
+    lagna_stable            boolean NOT NULL DEFAULT true,  -- false if lagna shifts sign from the recorded-time reference
     scored_at               timestamptz NOT NULL DEFAULT NOW(),
     CONSTRAINT phala_rectification_chart_offset_ayan
         UNIQUE (chart_id, offset_minutes, ayanamsha_id)

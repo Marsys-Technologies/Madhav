@@ -30,6 +30,22 @@ score against training LEL events by checking:
 
 D43 NO-AUTO-OVERRIDE: this engine NEVER mutates a chart. auto_action is always
 'stage_for_review'. The canonical chart 482012f1 is never auto-revised.
+
+## Sign-level scan vs. full D41 whole-instrument scoring
+The current implementation is a SIGN-LEVEL scan: within the ±90-minute window, the
+lagna sign typically stays constant (all stable candidates share the same lagna sign
+and therefore the same whole-sign house placements for dasha lords). This makes
+lel_fit_score uniform across stable candidates — deliberately so. The tiebreaker
+(abs(offset)) correctly selects the recorded birth time when no discriminating
+evidence exists, and confidence_label='unresolved' is the CORRECT B.10-compliant
+output (not a defect).
+
+Sub-degree discrimination (bhava cusps, navamsa, dasha sub-period alignment, the
+full D41 tiered whole-instrument scorer) is a FUTURE layer that builds on this
+foundation. The sign-level scan's value is: (a) verifying lagna sign stability
+across all 5 ayanamshas for the ±90-min window, and (b) establishing the
+candidate table + NO-AUTO-OVERRIDE staging infrastructure for when sub-degree
+scoring is added. Appending sub-degree logic requires only extending `_score_dasha_match`.
 """
 from __future__ import annotations
 
@@ -411,6 +427,11 @@ def select_best(candidates: list[RectificationCandidate]) -> BestRectification:
         }
         for (score, stable, off, grp) in scored[:3]
     ]
+
+    if AUTO_ACTION != "stage_for_review":
+        raise RuntimeError(
+            f"D43 gate violation: auto_action must be 'stage_for_review', got {AUTO_ACTION!r}"
+        )
 
     return BestRectification(
         best_candidate=rep,

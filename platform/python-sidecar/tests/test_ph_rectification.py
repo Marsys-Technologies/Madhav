@@ -190,6 +190,30 @@ def test_domain_houses_dual_tag_union():
     assert set(houses) >= set(domain_significator_houses("residential"))
 
 
+# ── Sign-level scan behavior (documented limitation) ─────────────────────────
+def test_uniform_scores_within_stable_window_is_expected():
+    """Sign-level scan: all stable candidates share the same lagna sign
+    → same dasha-lord house → same fit score. This is by design.
+    The tiebreaker (abs(offset)=0) selects the recorded birth time.
+    confidence_label='unresolved' is the honest B.10-compliant output."""
+    rows = run_rectification(_stub_ascendant)
+    # verify all stable candidates have the same fit score
+    stable_scores = {r.lel_fit_score for r in rows if r.lagna_stable and r.lel_fit_score is not None}
+    assert len(stable_scores) == 1, (
+        f"Expected exactly one unique fit score across stable candidates (sign-level scan), "
+        f"got {stable_scores}"
+    )
+    # verify best_offset == 0 (recorded time selected as tiebreaker)
+    best = select_best(rows)
+    assert best.offset_minutes == 0, (
+        f"Expected tiebreaker to select recorded birth time (offset=0), got {best.offset_minutes}"
+    )
+    # verify confidence_label == 'unresolved' (zero win margin → honest output)
+    assert best.confidence_label == "unresolved", (
+        f"Expected 'unresolved' when all stable candidates score equally, got {best.confidence_label!r}"
+    )
+
+
 # ── Determinism ──────────────────────────────────────────────────────────────
 def test_engine_is_deterministic():
     a = select_best(run_rectification(_stub_ascendant))
