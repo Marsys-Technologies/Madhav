@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_suddha_sodhana.engine import (
@@ -119,18 +119,18 @@ class PhSuddhaSodhanaWriter(WriterBase):
         return WriterResult(asset_id='ph_suddha_sodhana', rows_inserted=rows_inserted)
 
     def _load_anchor_ids(self, conn, chart_id: str) -> list[str]:
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 "SELECT anchor_id FROM phala_anchors WHERE chart_id = %s ORDER BY anchor_id",
                 (chart_id,),
             )
-            return [str(row[0]) for row in cur.fetchall()]
+            return [str(row["anchor_id"]) for row in cur.fetchall()]
 
     def _load_flags_grouped(self, conn, chart_id: str) -> dict[str, FlagSummary]:
         """Load phala_sodhana rows grouped by anchor_id."""
         result: dict[str, FlagSummary] = {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT sodhana_id, anchor_id, anomaly_type, anomaly_severity,

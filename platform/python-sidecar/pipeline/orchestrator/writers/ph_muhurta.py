@@ -14,7 +14,7 @@ import json
 import logging
 from datetime import datetime, timedelta, date
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_muhurta.engine import (
@@ -157,7 +157,7 @@ class PhMuhurtaWriter(WriterBase):
         return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT anchor_id, domain, malleability, peak_date, window_start, window_end
@@ -171,10 +171,16 @@ class PhMuhurtaWriter(WriterBase):
             return cur.fetchall()
 
     def _load_obstruction_windows(self, conn, chart_id: str) -> dict:
-        """Load ka_vighnakara obstruction windows as {(start,end): id}."""
+        """Load ka_vighnakara obstruction windows as {(start,end): id}.
+
+        ka_vighnakara is built by L3 Kāla — may not exist yet. Uses a SAVEPOINT
+        so a missing-table SQL error does not abort the outer transaction.
+        """
         result: dict = {}
         try:
-            with conn.cursor() as cur:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_obs")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT id, obstruction_start, obstruction_end
@@ -184,13 +190,20 @@ class PhMuhurtaWriter(WriterBase):
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    s = row[1]
-                    e = row[2]
+                    s = row["obstruction_start"]
+                    e = row["obstruction_end"]
                     if s and e:
                         s = s if isinstance(s, date) else date.fromisoformat(str(s))
                         e = e if isinstance(e, date) else date.fromisoformat(str(e))
-                        result[(s, e)] = row[0]
+                        result[(s, e)] = row["id"]
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_obs")
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_obs")
+            except Exception:
+                pass
             logger.debug("ph_muhurta: ka_vighnakara load skipped: %s", exc)
         return result
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import logging
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_sankrama.engine import (
@@ -143,7 +143,7 @@ class PhSankramaWriter(WriterBase):
         return WriterResult(asset_id='ph_sankrama', rows_inserted=rows_inserted)
 
     def _load_anchors(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT anchor_id, domain, confidence_high, window_start, window_end, peak_date
@@ -158,7 +158,7 @@ class PhSankramaWriter(WriterBase):
 
     def _load_cdlm_cells(self, conn, chart_id: str) -> list[CdlmCell]:
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT cell_id, domain_row, domain_col,

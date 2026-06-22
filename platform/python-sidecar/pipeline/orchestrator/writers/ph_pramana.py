@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import date
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_pramana.engine import (
@@ -123,7 +123,7 @@ class PhPramanaWriter(WriterBase):
                 )
 
     def _load_anchors(self, conn, chart_id: str) -> list[AnchorForPramana]:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT anchor_id, domain, anchor_source,
@@ -159,9 +159,15 @@ class PhPramanaWriter(WriterBase):
             return rows
 
     def _load_lel(self, conn, chart_id: str) -> list[LelEntry]:
-        """Load life_event_log entries for this chart_id."""
+        """Load life_event_log entries for this chart_id.
+
+        life_event_log may not exist (table is seeded separately from L4 build).
+        Uses SAVEPOINT so a missing-table error does not abort the outer transaction.
+        """
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_pramana_lel")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT id, event_date, domain_primary, event_summary,
@@ -183,7 +189,14 @@ class PhPramanaWriter(WriterBase):
                         lel_jsonb={'id': int(r['id']), 'event_date': str(r['event_date']),
                                    'summary': str(r.get('event_summary') or '')},
                     ))
-                return entries
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_pramana_lel")
+            return entries
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_pramana_lel")
+            except Exception:
+                pass
             logger.debug("ph_pramana: LEL load skipped: %s", exc)
             return []

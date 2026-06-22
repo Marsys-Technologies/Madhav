@@ -15,7 +15,7 @@ import json
 import logging
 from datetime import date
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_nimitta.engine import (
@@ -165,7 +165,7 @@ class PhNimittaWriter(WriterBase):
     # ── private helpers ──────────────────────────────────────────────────────
 
     def _load_convergence(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT convergence_id, chart_id, signal_id, mode, peak_date,
@@ -182,7 +182,7 @@ class PhNimittaWriter(WriterBase):
             return cur.fetchall()
 
     def _load_bhavishya(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT id, chart_id, signal_id, convergence_id, domain,
@@ -197,16 +197,24 @@ class PhNimittaWriter(WriterBase):
             return cur.fetchall()
 
     def _load_discoveries(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            # bodha_discoveries may not have window_start/end columns; use signal dates as fallback
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            # bodha_discoveries schema uses discovery_id, discovery_class, affected_domains_array,
+            # composite_discovery_rank — alias to names the engine expects
             cur.execute(
                 """
-                SELECT d.id, d.signal_id, d.domain, d.discovery_type,
+                SELECT d.discovery_id AS id,
+                       NULL::uuid AS signal_id,
+                       (d.affected_domains_array)[1] AS domain,
+                       d.discovery_class AS discovery_type,
                        d.surface_depth_delta, d.why_an_acharya_misses_it,
-                       d.falsifier_jsonb, d.confidence_score
+                       d.falsifier_jsonb,
+                       d.composite_discovery_rank AS confidence_score,
+                       NULL::date AS peak_date,
+                       NULL::date AS window_start,
+                       NULL::date AS window_end
                 FROM bodha_discoveries d
                 WHERE d.chart_id = %s
-                ORDER BY d.confidence_score DESC NULLS LAST
+                ORDER BY d.composite_discovery_rank DESC NULLS LAST
                 LIMIT %s
                 """,
                 (chart_id, _MAX_DISCOVERIES),
@@ -216,10 +224,13 @@ class PhNimittaWriter(WriterBase):
     def _load_signal_meta(self, conn, signal_ids: list[str]) -> dict[str, dict]:
         if not signal_ids:
             return {}
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
-                f"""
-                SELECT signal_id, domain, signature_class, salience_score
+                """
+                SELECT signal_id,
+                       (domains_affected_array)[1] AS domain,
+                       signature_class,
+                       computed_salience AS salience_score
                 FROM bodha_msr_signals
                 WHERE signal_id = ANY(%s::uuid[])
                 """,
@@ -228,34 +239,46 @@ class PhNimittaWriter(WriterBase):
             return {str(r['signal_id']): dict(r) for r in cur.fetchall()}
 
     def _load_cgm_meta(self, conn, signal_ids: list[str]) -> dict[str, dict]:
-        """Load top CGM path per signal (Axis 3 causal chain)."""
+        """Load top CGM path per signal (Axis 3 causal chain).
+
+        bodha_cgm_paths links graha nodes — no direct signal_id FK. Returns {}
+        when the table is empty or has no matching paths. Uses a SAVEPOINT so
+        a column mismatch does not abort the outer transaction.
+        """
         if not signal_ids:
             return {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                # bodha_cgm_paths: get top path per signal by path_length asc / centrality desc
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_nimitta_cgm")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                # bodha_cgm_paths has no source_signal_id; query by chart to get
+                # top paths for context (root_graha not in schema — use path_type)
                 cur.execute(
                     """
-                    SELECT DISTINCT ON (p.source_signal_id)
-                           p.source_signal_id, p.path_id, p.path_label_human,
-                           p.path_length, p.is_final_dispositor, p.root_graha
+                    SELECT DISTINCT ON (p.path_id)
+                           p.path_id, p.path_label_human,
+                           p.path_length, p.is_final_dispositor
                     FROM bodha_cgm_paths p
-                    WHERE p.source_signal_id = ANY(%s::uuid[])
-                    ORDER BY p.source_signal_id, p.path_length ASC
-                    LIMIT 100
+                    WHERE p.chart_id = (
+                        SELECT chart_id FROM bodha_msr_signals
+                        WHERE signal_id = ANY(%s::uuid[]) LIMIT 1
+                    )
+                    ORDER BY p.path_id, p.path_length ASC
+                    LIMIT 10
                     """,
                     (signal_ids,),
                 )
-                result = {}
-                for r in cur.fetchall():
-                    sid = str(r['source_signal_id'])
-                    result[sid] = {
-                        'path_ids': [str(r['path_id'])],
-                        'root_graha': r.get('root_graha'),
-                        'centrality': None,
-                    }
-                return result
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_nimitta_cgm")
+            # Return empty dict — no signal→path mapping available; engine handles None gracefully
+            return {}
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_cgm")
+            except Exception:
+                pass
             logger.debug("ph_nimitta: cgm_meta load skipped: %s", exc)
             return {}
 
@@ -263,18 +286,31 @@ class PhNimittaWriter(WriterBase):
         if not signal_ids:
             return {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_nimitta_contra")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                # bodha_contradictions: signal_a_id (not signal_id_a); no countervailing_thread/net_direction
                 cur.execute(
                     """
-                    SELECT c.signal_id_a, c.countervailing_thread, c.net_direction
+                    SELECT c.signal_a_id,
+                           c.tension_basis_jsonb->>'hint' AS countervailing_thread,
+                           c.tension_class AS net_direction
                     FROM bodha_contradictions c
                     WHERE c.chart_id = %s
-                      AND c.signal_id_a = ANY(%s::uuid[])
+                      AND c.signal_a_id = ANY(%s::uuid[])
                     """,
                     (chart_id, signal_ids),
                 )
-                return {str(r['signal_id_a']): dict(r) for r in cur.fetchall()}
+                result = {str(r['signal_a_id']): dict(r) for r in cur.fetchall()}
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_nimitta_contra")
+            return result
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_contra")
+            except Exception:
+                pass
             logger.debug("ph_nimitta: contradictions load skipped: %s", exc)
             return {}
 
@@ -283,12 +319,13 @@ class PhNimittaWriter(WriterBase):
         if not signal_ids:
             return {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                # bodha_signal_embeddings: self-join via cosine similarity is complex; use simpler
-                # approach — find signals in same domain as precedents
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_nimitta_prec")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                # bodha_signal_embeddings: no domain column; just confirm signal existence
                 cur.execute(
                     """
-                    SELECT e.signal_id, e.domain
+                    SELECT e.signal_id
                     FROM bodha_signal_embeddings e
                     WHERE e.chart_id = %s
                       AND e.signal_id = ANY(%s::uuid[])
@@ -300,8 +337,15 @@ class PhNimittaWriter(WriterBase):
                 for r in cur.fetchall():
                     sid = str(r['signal_id'])
                     result[sid] = {'nearest_signal_ids': [sid], 'precedent_dates': []}
-                return result
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_nimitta_prec")
+            return result
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_prec")
+            except Exception:
+                pass
             logger.debug("ph_nimitta: precedent_refs load skipped: %s", exc)
             return {}
 

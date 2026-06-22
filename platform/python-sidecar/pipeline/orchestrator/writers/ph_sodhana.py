@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_sodhana.engine import (
@@ -92,7 +92,7 @@ class PhSodhanaWriter(WriterBase):
         return WriterResult(asset_id='ph_sodhana', rows_inserted=rows_inserted)
 
     def _load_anchors(self, conn, chart_id: str) -> list[AnchorRow]:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT anchor_id, anchor_source, domain,

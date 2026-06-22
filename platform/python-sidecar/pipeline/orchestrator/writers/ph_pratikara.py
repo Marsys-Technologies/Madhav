@@ -13,7 +13,7 @@ import json
 import logging
 from datetime import date
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_pratikara.engine import (
@@ -133,8 +133,11 @@ class PhPratikaraWriter(WriterBase):
         return WriterResult(asset_id='ph_pratikara', rows_inserted=rows_inserted)
 
     def _load_obstructions(self, conn, chart_id: str) -> list:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            try:
+        """ka_vighnakara is built by L3 Kāla — may not exist yet. Returns [] gracefully."""
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_pratikara_obs")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT id, afflicting_graha, obstruction_type,
@@ -145,14 +148,22 @@ class PhPratikaraWriter(WriterBase):
                     """,
                     (chart_id,),
                 )
-                return cur.fetchall()
-            except Exception as exc:
-                logger.debug("ph_pratikara: ka_vighnakara load skipped: %s", exc)
-                return []
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_pratikara_obs")
+            return rows
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_pratikara_obs")
+            except Exception:
+                pass
+            logger.debug("ph_pratikara: ka_vighnakara load skipped: %s", exc)
+            return []
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> dict[str, list]:
         result: dict[str, list] = {}
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT anchor_id, domain, magnitude, malleability
@@ -173,7 +184,9 @@ class PhPratikaraWriter(WriterBase):
         """Load bodha_rm_remedy_prescriptions grouped by afflicting_graha."""
         result: dict[str, list[RemedyPrescription]] = {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_pratikara_presc")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT prescription_id, tradition, sub_tradition, remedy_category,
@@ -207,6 +220,13 @@ class PhPratikaraWriter(WriterBase):
                         classical_citation=str(row.get('classical_citation_text') or ''),
                     )
                     result.setdefault(graha_key, []).append(p)
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_pratikara_presc")
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_pratikara_presc")
+            except Exception:
+                pass
             logger.debug("ph_pratikara: prescriptions load skipped: %s", exc)
         return result

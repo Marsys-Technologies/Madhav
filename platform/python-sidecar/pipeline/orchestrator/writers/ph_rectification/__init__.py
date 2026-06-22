@@ -127,7 +127,7 @@ class PhRectificationWriter(WriterBase):
                         c.lagna_stable,
                     ),
                 )
-                new_id = cur.fetchone()[0]
+                new_id = cur.fetchone()["id"]
                 id_by_offset_ayan[(c.offset_minutes, c.ayanamsha_id)] = new_id
                 rows_inserted += 1
 

@@ -11,7 +11,7 @@ import json
 import logging
 from datetime import date
 
-import psycopg2.extras
+import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_sangam.engine import (
@@ -63,7 +63,7 @@ class KaSangamWriter(WriterBase):
         logger.info("ka_sangam: deleted existing kala_convergence rows for %s", chart_id)
 
         # Step 2: load top predicates from kala_activation_predicates
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,

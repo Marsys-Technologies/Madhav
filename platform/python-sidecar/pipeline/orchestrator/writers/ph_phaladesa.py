@@ -21,9 +21,17 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from datetime import date
 
-import psycopg2.extras
+import psycopg
+
+
+class _UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return super().default(obj)
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_phaladesa.engine import (
@@ -152,15 +160,15 @@ class PhPhaladesakWriter(WriterBase):
                             rec.top_anchor_id,
                             rec.prediction_window_start, rec.prediction_window_end, rec.peak_date,
                             rec.magnitude, rec.confidence_low, rec.confidence_high, rec.malleability,
-                            json.dumps(rec.spillover_domains_jsonb) if rec.spillover_domains_jsonb else None,
+                            json.dumps(rec.spillover_domains_jsonb, cls=_UUIDEncoder) if rec.spillover_domains_jsonb else None,
                             rec.incoming_spillover_count,
                             rec.mitigation_available, rec.muhurta_available,
                             rec.pramana_window_status, rec.evidence_type,
-                            json.dumps(rec.precedent_refs_jsonb) if rec.precedent_refs_jsonb else None,
-                            json.dumps(rec.contradiction_summary_jsonb) if rec.contradiction_summary_jsonb else None,
-                            json.dumps(rec.derivation_summary_jsonb),
+                            json.dumps(rec.precedent_refs_jsonb, cls=_UUIDEncoder) if rec.precedent_refs_jsonb else None,
+                            json.dumps(rec.contradiction_summary_jsonb, cls=_UUIDEncoder) if rec.contradiction_summary_jsonb else None,
+                            json.dumps(rec.derivation_summary_jsonb, cls=_UUIDEncoder),
                             rec.narration_status,
-                            json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                            json.dumps(rec.derivation_ledger_jsonb, cls=_UUIDEncoder), rec.source_citation,
                         ),
                     )
                     rows_inserted += 1
@@ -174,27 +182,37 @@ class PhPhaladesakWriter(WriterBase):
         """B.11: pre-fetch Bodha MSR + CDLM + CGM before any derivation."""
         bctx = BodhaSynthesisContext()
         try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_phaladesa_bodha")
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT COUNT(*) FROM bodha_msr_signals WHERE chart_id = %s",
                     (chart_id,),
                 )
-                count = cur.fetchone()[0]
+                count = cur.fetchone()["count"]
                 bctx.bodha_consulted = count > 0
 
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT signal_domain_primary, AVG(convergence_score) AS score
+                    SELECT (domains_affected_array)[1] AS signal_domain_primary,
+                           AVG(computed_salience) AS score
                     FROM bodha_msr_signals WHERE chart_id = %s
-                    GROUP BY signal_domain_primary
+                    GROUP BY (domains_affected_array)[1]
                     """,
                     (chart_id,),
                 )
                 for r in cur.fetchall():
-                    if r[0]:
-                        bctx.msr_domain_scores[str(r[0]).lower()] = float(r[1] or 0.0)
+                    if r["signal_domain_primary"]:
+                        bctx.msr_domain_scores[str(r["signal_domain_primary"]).lower()] = float(r["score"] or 0.0)
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_phaladesa_bodha")
         except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_phaladesa_bodha")
+            except Exception:
+                pass
             logger.debug("ph_phaladesa: Bodha load skipped: %s", exc)
         return bctx
 
@@ -202,7 +220,7 @@ class PhPhaladesakWriter(WriterBase):
         """Load phala_anchors + suddha_sodhana disposition + pramana status per domain."""
         summaries: dict[str, DomainAnchorSummary] = {}
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
                     SELECT
