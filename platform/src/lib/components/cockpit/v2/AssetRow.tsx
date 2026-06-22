@@ -224,6 +224,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
   })
 
   return (
+    <>
     <div
       data-asset-id={asset.asset_id}
       style={{
@@ -341,16 +342,17 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         )}
       </div>
 
-      <CascadePreviewModal
-        isOpen={pendingCascade !== null}
-        isLoading={planLoading}
-        onClose={() => setPendingCascade(null)}
-        onConfirm={handleCascadeConfirm}
-        rootAssetId={asset.asset_id}
-        rootAssetLabel={asset.english_name ?? asset.asset_id}
-        plan={pendingCascade?.plan ?? []}
-        estimatedSeconds={pendingCascade?.estimatedSeconds}
-      />
     </div>
+    <CascadePreviewModal
+      isOpen={pendingCascade !== null}
+      isLoading={planLoading}
+      onClose={() => setPendingCascade(null)}
+      onConfirm={handleCascadeConfirm}
+      rootAssetId={asset.asset_id}
+      rootAssetLabel={asset.english_name ?? asset.asset_id}
+      plan={pendingCascade?.plan ?? []}
+      estimatedSeconds={pendingCascade?.estimatedSeconds}
+    />
+    </>
   )
 }
