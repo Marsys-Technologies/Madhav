@@ -88,7 +88,7 @@ class FakeConn:
         self.closed = False
         self.rolled_back = False
 
-    def cursor(self, cursor_factory=None):
+    def cursor(self, cursor_factory=None, row_factory=None):
         return FakeCursor(self._store)
 
     def commit(self):
