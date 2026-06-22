@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ClearConfirmModal } from './ClearConfirmModal'
+import { CascadePreviewModal } from '@/components/cockpit/CascadePreviewModal'
 
 interface ClearPreview {
   tables: { table: string; rows: number; error?: string }[]
@@ -25,6 +26,11 @@ interface Props {
 export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSuccess }: Props) {
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<ClearPreview | null>(null)
+  // Post-clear cascade offer state
+  const [downstreamAssets, setDownstreamAssets] = useState<string[] | null>(null)
+  const [cascadeLoading, setCascadeLoading] = useState(false)
+  const [cascadePlan, setCascadePlan] = useState<string[]>([])
+  const [showCascadeModal, setShowCascadeModal] = useState(false)
 
   async function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
@@ -50,6 +56,66 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
       toast.error(err instanceof Error ? err.message : 'Failed to load clear preview')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Called by ClearConfirmModal after a successful delete
+  async function handleAfterClear(downstream: string[]) {
+    setPreview(null)
+    onSuccess?.()
+    if (downstream.length === 0) return
+    // Offer cascade rebuild: fetch plan for the cleared scope
+    setDownstreamAssets(downstream)
+    setCascadeLoading(true)
+    setShowCascadeModal(true)
+    setCascadePlan([])
+    try {
+      const r = await fetch('/api/cockpit/plan', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null, action: 'cascade' }),
+      })
+      const body = await r.json().catch(() => null)
+      if (r.ok && body?.data?.plan) {
+        setCascadePlan(body.data.plan as string[])
+      } else {
+        // Fallback: just show downstream assets as the plan
+        setCascadePlan(downstream)
+      }
+    } catch {
+      setCascadePlan(downstream)
+    } finally {
+      setCascadeLoading(false)
+    }
+  }
+
+  async function handleCascadeConfirm() {
+    setShowCascadeModal(false)
+    try {
+      const r = await fetch('/api/cockpit/runs', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chart_id: chartId,
+          scope,
+          scope_target: scopeTarget ?? null,
+          action: 'cascade',
+        }),
+      })
+      const body = await r.json().catch(() => null)
+      if (!r.ok) {
+        toast.error(body?.error ?? 'Failed to start cascade rebuild')
+        return
+      }
+      toast.success('Cascade rebuild started')
+      onSuccess?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start cascade rebuild')
+    } finally {
+      setDownstreamAssets(null)
+      setCascadePlan([])
     }
   }
 
@@ -109,11 +175,31 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
           preview={preview}
           onClose={() => setPreview(null)}
           onSuccess={() => {
-            setPreview(null)
-            onSuccess?.()
+            const downstream = preview.downstream_stale_assets ?? []
+            handleAfterClear(downstream)
           }}
         />
       )}
+
+      {/* Post-clear cascade rebuild offer */}
+      <CascadePreviewModal
+        isOpen={showCascadeModal}
+        isLoading={cascadeLoading}
+        onClose={() => {
+          setShowCascadeModal(false)
+          setDownstreamAssets(null)
+          setCascadePlan([])
+        }}
+        onConfirm={handleCascadeConfirm}
+        rootAssetId={scopeTarget ?? scope}
+        rootAssetLabel={
+          downstreamAssets
+            ? `${downstreamAssets.length} stale downstream asset${downstreamAssets.length !== 1 ? 's' : ''}`
+            : undefined
+        }
+        plan={cascadePlan}
+        isClearCascade
+      />
     </>
   )
 }

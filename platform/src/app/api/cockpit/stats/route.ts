@@ -52,6 +52,9 @@ export interface AssetStats {
   // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
   // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
   build_state_stale: boolean
+  // Live rows written during an active build — sourced from asset_throughput.rows_written.
+  // Only populated when the asset is in 'building' state; null otherwise.
+  rows_written?: number
   // Service-asset health fields (populated for asset_type='service'; null for data assets)
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
@@ -266,10 +269,10 @@ export async function GET(req: NextRequest) {
     const assets = registryResult.rows
 
     // Batch-fetch throughput state+last_built_at for this chart
-    const throughputMap = new Map<string, { state: string; last_built_at: string | null }>()
+    const throughputMap = new Map<string, { state: string; last_built_at: string | null; rows_written: number | null }>()
     if (chartId) {
-      const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null }>(
-        `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at
+      const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null; rows_written: number | null }>(
+        `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at, rows_written
            FROM asset_throughput
           WHERE chart_id = $1 OR chart_id IS NULL
           ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST, last_built_at DESC NULLS LAST`,
@@ -310,6 +313,9 @@ export async function GET(req: NextRequest) {
         state: derivedState,
         last_built_at: tp?.last_built_at ?? null,
         build_state_stale: buildStateStale,
+        rows_written: (tp?.rows_written != null && derivedState === 'building')
+          ? tp.rows_written
+          : undefined,
       }
     })
 

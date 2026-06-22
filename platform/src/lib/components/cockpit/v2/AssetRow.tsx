@@ -1,17 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { AssetRow as AssetRowType } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
 import type { SubstepOverlay } from './DataAssetsView'
 import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
-import { PlanModal } from './PlanModal'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
 import { Zap } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
+import { deriveBuildStage } from './buildStage'
+import type { SubstepInfo } from './buildStage'
 import { useUserRole } from '@/hooks/useUserRole'
+import { CascadePreviewModal } from '@/components/cockpit/CascadePreviewModal'
 
 interface Props {
   asset: AssetRowType
@@ -126,9 +129,71 @@ function StatusDot({
   )
 }
 
+interface CascadePending {
+  assetId: string
+  action: 'build' | 'rebuild'
+  plan: string[]
+  estimatedSeconds?: number | null
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, substep, onRunStarted }: Props) {
-  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [pendingCascade, setPendingCascade] = useState<CascadePending | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
   const { isSuperAdmin } = useUserRole()
+
+  async function handleRebuildClick() {
+    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    setPlanLoading(true)
+    // open modal in loading state immediately
+    setPendingCascade({ assetId: asset.asset_id, action, plan: [], estimatedSeconds: null })
+    try {
+      const r = await fetch('/api/cockpit/plan', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chart_id: chartId, scope: 'asset', scope_target: asset.asset_id, action }),
+      })
+      const body = await r.json().catch(() => null)
+      if (!r.ok || !body?.data) {
+        toast.error(body?.error ?? 'Failed to resolve build plan')
+        setPendingCascade(null)
+        return
+      }
+      const { plan, estimated_seconds } = body.data as { plan: string[]; estimated_seconds: number | null }
+      setPendingCascade({ assetId: asset.asset_id, action, plan, estimatedSeconds: estimated_seconds })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to fetch plan')
+      setPendingCascade(null)
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  async function handleCascadeConfirm() {
+    if (!pendingCascade) return
+    try {
+      const r = await fetch('/api/cockpit/runs', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chart_id: chartId,
+          scope: 'asset',
+          scope_target: pendingCascade.assetId,
+          action: pendingCascade.action,
+        }),
+      })
+      const body = await r.json().catch(() => null)
+      if (!r.ok) {
+        toast.error(body?.error ?? 'Failed to start build')
+        return
+      }
+      setPendingCascade(null)
+      onRunStarted()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start build')
+    }
+  }
   const isActive = asset.is_active
   const isDataPlaneDown = stat?.error_class === 'dataplane'
   // Suppress red-error display when the failure is a transient data-plane blip
@@ -144,7 +209,22 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       ? 'reconnecting'
       : throughputState ?? (stat?.actual_rows ? 'lit' : 'dormant')
 
+  // Derive build stage from substep + state data.
+  // isQueued: asset appears as building in polled stats but no SSE state event has
+  // arrived yet (substep overlay is absent) — treat as queued in the run plan.
+  const substepData: SubstepInfo | undefined = (substep && substep.substep_total > 0)
+    ? { index: substep.substep_index, total: substep.substep_total, label: substep.substep_label }
+    : undefined
+  const isQueued = derivedState === 'building' && substep == null
+  const buildStage = deriveBuildStage({
+    polledState: derivedState,
+    substepIndex: substepData?.index,
+    substepTotal: substepData?.total,
+    isQueued,
+  })
+
   return (
+    <>
     <div
       data-asset-id={asset.asset_id}
       style={{
@@ -182,21 +262,13 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         ) : (
           <>
             <AssetProgressBar
-              state={derivedState as 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'reconnecting' | 'retired'}
+              state={derivedState}
               actualRows={stat?.actual_rows ?? null}
               targetVolume={asset.target_floor ?? null}
+              stage={buildStage}
+              substep={substepData}
+              isQueued={isQueued}
             />
-            {/* Live substep progress — visible only during building when orchestrator emits asset.substep */}
-            {derivedState === 'building' && substep != null && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '3px', fontFamily: 'var(--mono-stack)', fontSize: '9px', color: 'rgba(255,255,255,0.45)', lineHeight: 1 }}>
-                {substep.actual_rows > 0 && (
-                  <span>{substep.actual_rows.toLocaleString()} rows</span>
-                )}
-                {substep.substep_total > 0 && (
-                  <span>Step {substep.substep_index} / {substep.substep_total}</span>
-                )}
-              </div>
-            )}
             {/* build-state stale badge: data present but throughput record is stale/absent */}
             {stat?.build_state_stale && (
               <div style={{ fontSize: '9px', color: 'rgba(236,197,106,0.65)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
@@ -234,7 +306,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
             {!activeRunId && (isSuperAdmin || asset.layer !== 'brahmagyan') && (
               <button
                 title={derivePrimaryLabel(derivedState === 'dormant')}
-                onClick={() => setShowPlanModal(true)}
+                onClick={handleRebuildClick}
                 className="w-[22px] h-[22px] flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors"
               >
                 <Zap size={12} />
@@ -270,21 +342,17 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         )}
       </div>
 
-      {showPlanModal && (
-        <PlanModal
-          chartId={chartId}
-          scope="asset"
-          scopeTarget={asset.asset_id}
-          action={derivedState === 'dormant' ? 'build' : 'rebuild'}
-          label={derivePrimaryLabel(derivedState === 'dormant')}
-          assets={allAssets}
-          onClose={() => setShowPlanModal(false)}
-          onRunStarted={(_runId) => {
-            setShowPlanModal(false)
-            onRunStarted?.()
-          }}
-        />
-      )}
     </div>
+    <CascadePreviewModal
+      isOpen={pendingCascade !== null}
+      isLoading={planLoading}
+      onClose={() => setPendingCascade(null)}
+      onConfirm={handleCascadeConfirm}
+      rootAssetId={asset.asset_id}
+      rootAssetLabel={asset.english_name ?? asset.asset_id}
+      plan={pendingCascade?.plan ?? []}
+      estimatedSeconds={pendingCascade?.estimatedSeconds}
+    />
+    </>
   )
 }
