@@ -60,9 +60,10 @@ describe('ASSET_NAMES', () => {
     }
   })
 
-  it('contains all 5 L4 Phala prediction assets', () => {
+  it('contains all 9 L4 Phala prediction assets', () => {
     const l4Keys: AssetKey[] = [
-      'ph_anchors', 'ph_mitigation', 'ph_rectification', 'ph_muhurta', 'ph_outlook',
+      'ph_nimitta', 'ph_muhurta', 'ph_sodhana', 'ph_pratikara',
+      'ph_suddha_sodhana', 'ph_sankrama', 'ph_pramana', 'ph_phaladesa', 'ph_rectification',
     ]
     for (const k of l4Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L4')
@@ -155,8 +156,8 @@ describe('assetsByLayer', () => {
     expect(assetsByLayer('L3').length).toBe(4)
   })
 
-  it('returns 5 L4 Phala assets', () => {
-    expect(assetsByLayer('L4').length).toBe(5)
+  it('returns 9 L4 Phala assets', () => {
+    expect(assetsByLayer('L4').length).toBe(9)
   })
 
   it('returns 6 L5 Mīmāṃsā assets', () => {

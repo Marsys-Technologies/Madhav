@@ -21,7 +21,7 @@ const COMPLETE_NODES: GraphNode[] = [
   { asset_id: 'ga_dashas',    layer: 'L1', status: 'complete' },
 ]
 const PENDING_NODES: GraphNode[] = [
-  { asset_id: 'ph_anchors', layer: 'L4', status: 'pending' },
+  { asset_id: 'ph_nimitta', layer: 'L4', status: 'pending' },
 ]
 const FAILED_NODES: GraphNode[] = [
   { asset_id: 'bo_graph', layer: 'L2', status: 'failed' },

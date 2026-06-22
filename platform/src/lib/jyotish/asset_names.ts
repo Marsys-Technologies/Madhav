@@ -63,11 +63,15 @@ export const ASSET_NAMES = {
   ka_temporal:     { sanskrit: 'Kālavyūha',      english: 'Temporal Bundle',   subtitle: 'Composite temporal fabric for a date range',      layer: 'L3' },
 
   // ── L4 Phala — Prediction ─────────────────────────────────────────────────
-  ph_anchors:      { sanskrit: 'Nimitta',        english: 'Event Anchors',     subtitle: 'Falsifiable, probabilistic event predictions',    layer: 'L4' },
-  ph_mitigation:   { sanskrit: 'Parihāra',       english: 'Mitigation',        subtitle: 'Mitigation map — L0/L2 remediation citations',   layer: 'L4' },
-  ph_rectification:{ sanskrit: 'Sūkṣmasaṃśodhana', english: 'Rectification',  subtitle: 'Birth-time rectification with train/test split',  layer: 'L4' },
-  ph_muhurta:      { sanskrit: 'Muhūrta',        english: 'Electional',        subtitle: 'Best windows for action — inverts Phala',        layer: 'L4' },
-  ph_outlook:      { sanskrit: 'Bhavitavya',     english: 'Outlook',           subtitle: 'Predictive picture for a horizon',               layer: 'L4' },
+  ph_nimitta:        { sanskrit: 'Nimitta',          english: 'Predictive anchors',          subtitle: 'Falsifiable event predictions — 8 derivation axes + 5 elevations',          layer: 'L4' },
+  ph_muhurta:        { sanskrit: 'Muhūrta',          english: 'Auspicious windows',          subtitle: 'Chart-strength + transit-scored electional windows, prediction-fused',      layer: 'L4' },
+  ph_sodhana:        { sanskrit: 'Śodhana',          english: 'Anomaly detection',           subtitle: '5 deterministic detectors — confidence inflation, magnitude drift, etc.',   layer: 'L4' },
+  ph_pratikara:      { sanskrit: 'Pratīkāra',        english: 'Mitigation',                  subtitle: 'Managed remedy program — economics/feasibility tiers, muhūrta-timed',      layer: 'L4' },
+  ph_suddha_sodhana: { sanskrit: 'Śuddha-śodhana',  english: 'Cleansed anchor disposition', subtitle: 'One row per anchor — clean/flagged/staged_revision; D43 safety rail',       layer: 'L4' },
+  ph_sankrama:       { sanskrit: 'Saṅkrama',         english: 'Cross-domain spillover',      subtitle: 'Multi-hop cross-domain dynamics with lag, A→B→C cascades, conflicts',      layer: 'L4' },
+  ph_pramana:        { sanskrit: 'Pramāṇa',          english: 'Falsifiability scaffolding',  subtitle: 'Machine-evaluable falsifiers + L5 onboarding contract; non-scoring',       layer: 'L4' },
+  ph_phaladesa:      { sanskrit: 'Phaladeśa',        english: 'Domain result declaration',   subtitle: '7 domains × 1 row; B.11-compliant; narration via Gemini/DeepSeek only',    layer: 'L4' },
+  ph_rectification:  { sanskrit: 'Jananakāla-śuddhi', english: 'Birth-time rectification',  subtitle: 'PyJHora ascendant scan ±90 min; D43 no-auto-override; staged for review',  layer: 'L4' },
 
   // ── L5 Mīmāṃsā — Learning ────────────────────────────────────────────────
   mi_lel_intake:   { sanskrit: 'Jīvanaghaṭanā',  english: 'Life Event Log',    subtitle: '57 events — held-out, isolated from generation',  layer: 'L5' },
