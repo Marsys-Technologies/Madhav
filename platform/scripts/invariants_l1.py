@@ -8,8 +8,10 @@ import json
 sys.path.append(str(Path(__file__).parent))
 import corpus_common
 
-MSR_V3 = "/Users/Dev/Vibe-Coding/Apps/Madhav/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
-FORENSIC_V8 = "/Users/Dev/Vibe-Coding/Apps/Madhav/99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md"
+# platform/scripts/invariants_l1.py → parents[2] = repo root
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+MSR_V3 = str(_REPO_ROOT / "025_HOLISTIC_SYNTHESIS" / "MSR_v3_0.md")
+FORENSIC_V8 = str(_REPO_ROOT / "99_ARCHIVE" / "01_FACTS_LAYER" / "FORENSIC_DATA_v8_0_SUPPLEMENT.md")
 
 def run_l1_verification():
     results = {}
@@ -168,7 +170,7 @@ def run_l1_verification():
 
     # --- Final Report ---
 
-    report_path = "/Users/Dev/Vibe-Coding/Apps/Madhav/verification_artifacts/L1_REPORT.json"
+    report_path = str(_REPO_ROOT / "verification_artifacts" / "L1_REPORT.json")
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(results, f, indent=2)

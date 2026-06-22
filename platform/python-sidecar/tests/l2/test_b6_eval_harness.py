@@ -628,6 +628,10 @@ class TestWriterRunnability:
         """Each writer module must be importable without ModuleNotFoundError."""
         import subprocess
         import sys
+        from pathlib import Path
+        # platform/python-sidecar/tests/l2/test_b6_eval_harness.py → parents[4] = repo root
+        _REPO_ROOT = Path(__file__).resolve().parents[4]
+        _SIDECAR = str(_REPO_ROOT / "platform" / "python-sidecar")
 
         failures = []
         for module in self.BO_WRITER_MODULES:
@@ -635,8 +639,8 @@ class TestWriterRunnability:
                 [sys.executable, "-c", f"import {module}"],
                 capture_output=True,
                 text=True,
-                cwd="/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar",
-                env={**__import__("os").environ, "PYTHONPATH": "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar"},
+                cwd=_SIDECAR,
+                env={**__import__("os").environ, "PYTHONPATH": _SIDECAR},
             )
             if result.returncode != 0:
                 stderr = result.stderr.strip()
@@ -651,6 +655,12 @@ class TestWriterRunnability:
         import inspect
         import sys
         import importlib
+        from pathlib import Path
+        # platform/python-sidecar/tests/l2/test_b6_eval_harness.py → parents[4] = repo root
+        _REPO_ROOT = Path(__file__).resolve().parents[4]
+        _BO_ANVESHANA = str(
+            _REPO_ROOT / "platform" / "python-sidecar" / "pipeline" / "orchestrator" / "writers" / "bo_anveshana.py"
+        )
 
         # Ensure fresh import from the correct path
         if "pipeline.orchestrator.writers.bo_anveshana" in sys.modules:
@@ -659,11 +669,11 @@ class TestWriterRunnability:
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "bo_anveshana",
-            "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py",
+            _BO_ANVESHANA,
         )
         mod = importlib.util.module_from_spec(spec)
         # Don't exec (would trigger side effects) — just read the source
-        with open("/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py") as f:
+        with open(_BO_ANVESHANA) as f:
             src = f.read()
 
         assert "return [], None" not in src, (

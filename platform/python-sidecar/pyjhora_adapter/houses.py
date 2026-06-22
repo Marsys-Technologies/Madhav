@@ -26,6 +26,9 @@ def compute_ascendant(
     lon: float = 0.0,
     tz: float = 0.0,
 ) -> dict[str, Any]:
+    # jd_ut MUST be a LOCAL-time Julian Day (utils.julian_day_number(date, local_tob)).
+    # Passing a UTC-based JD (swe.julday with UT hours) gives a ~9-sign error for IST
+    # births because drik.ascendant does its own UT conversion using the Place timezone.
     mode, _sidm = resolve_mode(ayanamsha_id)
     drik.set_ayanamsa_mode(mode)
     place = _place(lat, lon, tz)

@@ -9,7 +9,7 @@ Root cause: ga_sensitive never received a throughput record; ga_strength has a
 stale partial-run record (rows_written=1,330 vs actual 2,184).
 
 Usage (Cloud SQL proxy must be running on port 5433):
-  cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform
+  cd <repo-root>/platform
   python -m scripts.rebuild_ga_sensitive_ga_strength
 
 Verify after:

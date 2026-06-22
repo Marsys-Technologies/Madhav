@@ -6,7 +6,7 @@ Phase 2 of CLAUDECODE_BRIEF_NADI_CORPUS_EXPANSION_v1_0 (v2.0):
   untouched; only bhrigu_nandi_nadi + nadi_navamsa_patel are chunked + embedded.
 
 Usage:
-  cd /Users/Dev/Vibe-Coding/Apps/Madhav/platform
+  cd <repo-root>/platform
   python -m scripts.run_bg_texts_additive
 
 Requires: DATABASE_URL env var (or .env.local), GCP credentials for Vertex AI.

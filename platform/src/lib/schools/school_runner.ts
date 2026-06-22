@@ -1,10 +1,17 @@
 /**
- * M9 School Runner — orchestrates all 7 school engines in parallel.
+ * School Runner — orchestrates all 7 school engines in parallel.
  * Returns MultiSchoolResult per domain with convergence scores.
- * M9-B-S1 (2026-05-14).
+ *
+ * U4 (2026-06-22): accepts liveSignals map so each engine receives real L2 signals
+ * rather than hitting defaultSignals. The caller (build route or test fixture) pre-builds
+ * the signals map via buildSchoolSignals() from chart_data_adapter.ts.
+ * When liveSignals is absent for a school, the engine falls back to defaultSignals
+ * (FALLBACK-OF-LAST-RESORT — logs a warning).
+ *
+ * DB calls live in the build route, NOT here. This module stays DB-free.
  */
 
-import type { ChartData, Domain, MultiSchoolResult, SchoolResult } from './types'
+import type { ChartData, Domain, MultiSchoolResult, SchoolResult, SchoolName, SignalScore } from './types'
 import { parashari_engine } from './parashari_engine'
 import { jaimini_engine } from './jaimini_engine'
 import { tajika_engine } from './tajika_engine'
@@ -13,6 +20,7 @@ import { nadi_engine } from './nadi_engine'
 import { bnn_engine } from './bnn_engine'
 import { yogini_engine } from './yogini_engine'
 import { computeConvergence, buildConvergenceNarrative, detectDivergence } from './convergence_calculator'
+import { DOMAIN_AUTHORITY_WEIGHTS } from './chart_data_adapter'
 
 const ALL_ENGINES = [
   parashari_engine,
@@ -29,19 +37,29 @@ const ALL_DOMAINS: Domain[] = ['CAREER', 'HEALTH', 'RELATIONSHIP', 'SPIRITUAL', 
 export interface SchoolRunOptions {
   domains?: Domain[]
   includeNarratives?: boolean
+  /** Pre-fetched live signals per school. If absent for a school, engine falls back to defaultSignals. */
+  liveSignals?: Partial<Record<SchoolName, SignalScore[]>>
 }
 
 /**
  * Runs all 7 school engines against the given chart for a single domain.
  * All 7 engines execute in parallel.
+ *
+ * U4: passes liveSignals[engine.school] to each engine so the engine never
+ * hits defaultSignals for a chart that has L2 signal coverage.
  */
 export async function runSchoolsForDomain(
   chartData: ChartData,
   domain: Domain,
   options: SchoolRunOptions = {}
 ): Promise<MultiSchoolResult> {
+  const { liveSignals } = options
   const results: SchoolResult[] = await Promise.all(
-    ALL_ENGINES.map(engine => engine.analyze(chartData, domain))
+    ALL_ENGINES.map(engine => {
+      const signals = liveSignals?.[engine.school as SchoolName]
+      // Pass signals if present; engine.analyze falls back to defaultSignals (with warning) when absent.
+      return engine.analyze(chartData, domain, signals)
+    })
   )
 
   const convergence = computeConvergence(results, domain)
@@ -51,12 +69,29 @@ export async function runSchoolsForDomain(
     convergence.convergenceNarrative = buildConvergenceNarrative(convergence, divergence)
   }
 
+  // E2: compute per-domain authority-weighted consensus score
+  const domainWeights = DOMAIN_AUTHORITY_WEIGHTS[domain]
+  let weightedSum = 0
+  let weightedSchoolsAgreeing = 0
+  const perSchoolWeighted: Partial<Record<SchoolName, number>> = {}
+  for (const r of results) {
+    const w = domainWeights[r.school as SchoolName] ?? (1 / 7)
+    const ws = r.domainScore * w
+    perSchoolWeighted[r.school as SchoolName] = ws
+    weightedSum += ws
+    if (r.domainScore >= 3.0) weightedSchoolsAgreeing++
+  }
+
   return {
     chartId: chartData.chartId,
     runDate: new Date().toISOString().split('T')[0],
     domain,
     schoolResults: results,
     convergence,
+    // E2/E3 extensions (carried through to persistence)
+    weightedMeanScore: Math.round(weightedSum * 1000) / 1000,
+    perSchoolWeighted,
+    weightedSchoolsAgreeing,
   }
 }
 

@@ -4,6 +4,11 @@ V1.3 Production Gate — verifies prod state matches the claimed instrument stat
 Per CLAUDECODE_BRIEF_V1_3_PRODUCTION_ACTIVATION_v1_0.md §1 + §5.
 """
 import subprocess, sys, os
+from pathlib import Path
+
+# platform/scripts/governance/v13_production_gate.py → parents[3] = repo root
+# TODO: repo-root-relative path (pre-L4 script)
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 PW  = os.environ.get("DB_PASSWORD", "50mii04kTKDUUu54CAKdS4Bv2gx1IoWy")
 HOST = "127.0.0.1"
@@ -106,7 +111,7 @@ tag_check = subprocess.run(
     ["git", "tag", "-l",
      "v13-prod-triage-complete", "v13-prod-migrations-applied",
      "v13-prod-data-populated", "v13-prod-portal-verified", "v13-prod-lel-ingested"],
-    capture_output=True, text=True, cwd="/Users/Dev/Vibe-Coding/Apps/Madhav"
+    capture_output=True, text=True, cwd=str(_REPO_ROOT)
 ).stdout.strip().split()
 check("gate:stream_tags", PASS if len(tag_check) == 5 else FAIL,
       f"{len(tag_check)}/5 tags", "5/5 tags", str(tag_check))

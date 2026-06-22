@@ -37,6 +37,11 @@ COPY platform/python-sidecar/pyjhora_adapter/ ./platform/python-sidecar/pyjhora_
 # comes from requirements.txt.
 COPY platform/python-sidecar/ga_writers/ ./platform/python-sidecar/ga_writers/
 COPY platform/python-sidecar/bodha_writers/ ./platform/python-sidecar/bodha_writers/
+# L3 + L4 service-engine modules (ka_* and ph_* writers import `from services.<asset>.engine`).
+# services/ is NOT in the pipeline/ tree, so it needs its own COPY.
+# Without this line, Cloud Run job → ModuleNotFoundError → silent IN_PROGRESS hang.
+# See L4_PHALA_ORCHESTRATOR_READINESS_v1_0.md §2 (the one real latent infra gap).
+COPY platform/python-sidecar/services/ ./platform/python-sidecar/services/
 # Panchang engine (ga_panchanga + ga_pyjhora_engine health probe). Required since
 # ga_panchanga_writer imports panchang_engine at build time.
 COPY platform/python-sidecar/panchang_engine/ ./platform/python-sidecar/panchang_engine/

@@ -13,13 +13,13 @@ fetch fresh state via GCS HTTPS.
 Usage:
   # Default — write top-level JSON:
   python3 platform/scripts/governance/serialize_build_state.py \\
-      --repo-root /Users/Dev/Vibe-Coding/Apps/Madhav \\
+      --repo-root <repo-root> \\
       --session-id Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 \\
       --output build_state.json
 
   # With shards (per-session + per-phase detail files):
   python3 platform/scripts/governance/serialize_build_state.py \\
-      --repo-root /Users/Dev/Vibe-Coding/Apps/Madhav \\
+      --repo-root <repo-root> \\
       --session-id Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 \\
       --output build_state.json \\
       --emit-shards \\
@@ -27,7 +27,7 @@ Usage:
 
   # With GCS upload (uploads top-level + shards if --emit-shards):
   python3 platform/scripts/governance/serialize_build_state.py \\
-      --repo-root /Users/Dev/Vibe-Coding/Apps/Madhav \\
+      --repo-root <repo-root> \\
       --session-id Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 \\
       --output build_state.json \\
       --upload-to-gcs gs://marsys-jis-build-state/build-state.json \\
@@ -35,7 +35,7 @@ Usage:
 
   # Validate-only (does not write):
   python3 platform/scripts/governance/serialize_build_state.py \\
-      --repo-root /Users/Dev/Vibe-Coding/Apps/Madhav \\
+      --repo-root <repo-root> \\
       --session-id Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 \\
       --validate-only
 
@@ -1698,7 +1698,7 @@ def _upload_to_gcs(
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--repo-root", default=None,
-                    help="Project root (e.g. /Users/Dev/Vibe-Coding/Apps/Madhav); "
+                    help="Project root (e.g. /path/to/repo); "
                          "required unless --version is used")
     ap.add_argument("--session-id", default="unknown",
                     help="Session ID writing this snapshot")

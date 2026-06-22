@@ -3,7 +3,8 @@ import re
 from pathlib import Path
 import json
 
-ROOT = "/Users/Dev/Vibe-Coding/Apps/Madhav"
+# platform/scripts/citation_graph_builder.py → parents[2] = repo root
+ROOT = str(Path(__file__).resolve().parents[2])
 MSR_V3 = f"{ROOT}/025_HOLISTIC_SYNTHESIS/MSR_v3_0.md"
 UCN_V4 = f"{ROOT}/025_HOLISTIC_SYNTHESIS/UCN_v4_0.md"
 CDLM_V1 = f"{ROOT}/025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md"
