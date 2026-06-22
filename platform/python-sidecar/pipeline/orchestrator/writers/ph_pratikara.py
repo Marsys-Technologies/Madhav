@@ -4,7 +4,7 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 NEVER commits or rolls back (orchestrator owns the transaction).
 NEVER writes outside phala_mitigation.
 
-Reads: ka_vighnakara · phala_anchors (influenceable) · bodha_rm_remedy_prescriptions (bo_upaya)
+Reads: kala_obstruction · kala_convergence (bridge: graha + window) · phala_anchors (influenceable) · bodha_rm_remedy_prescriptions (bo_upaya)
 Writes: phala_mitigation (delete-then-insert per chart_id)
 """
 from __future__ import annotations
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 @register('ph_pratikara')
 class PhPratikaraWriter(WriterBase):
     """
-    Builds phala_mitigation: for each ka_vighnakara obstruction window,
-    assembles a P1-P5 managed remedy program from bodha_rm prescriptions.
+    Builds phala_mitigation: for each kala_obstruction row (bridged with kala_convergence
+    for window + graha), assembles a P1-P5 managed remedy program from bodha_rm prescriptions.
     """
     asset_id = 'ph_pratikara'
 
@@ -49,14 +49,22 @@ class PhPratikaraWriter(WriterBase):
             len(obstructions), sum(len(v) for v in anchors_by_domain.values()),
         )
 
+        # Map kala_obstruction severity vocab → engine's (low/medium/high) for P4 proportionality
+        _SEVERITY_MAP = {'mild': 'low', 'moderate': 'medium', 'severe': 'high'}
+
         rows_inserted = 0
         with conn.cursor() as cur:
             for obs in obstructions:
                 obs_id     = obs['id']
-                graha      = str(obs.get('afflicting_graha') or '').lower()
-                severity   = str(obs.get('obstruction_type') or 'medium').lower()
-                obs_start  = obs.get('obstruction_start')
-                obs_end    = obs.get('obstruction_end')
+                # graha bridged from kala_convergence.constituent_factors->>'planet'; may be None
+                graha      = str(obs.get('afflicting_graha') or '').lower() or None
+                # severity from kala_obstruction.severity (mild/moderate/severe); map for engine
+                raw_sev    = str(obs.get('severity') or 'mild').lower()
+                severity   = _SEVERITY_MAP.get(raw_sev, 'low')
+                # window bridged from kala_convergence
+                obs_start  = obs.get('window_start')
+                obs_end    = obs.get('window_end')
+                obs_type   = str(obs.get('obstruction_type') or '')
 
                 # Find the highest-magnitude influenceable anchor in any domain
                 linked_anchor_id = None
@@ -67,9 +75,14 @@ class PhPratikaraWriter(WriterBase):
                             linked_anchor_id = str(a['anchor_id'])
                             anchor_magnitude = a.get('magnitude', 'moderate')
 
-                prescriptions = prescriptions_by_graha.get(graha, [])
+                # Prescription lookup: by graha if available; by obstruction_type if not; then jupiter generic
+                prescriptions = []
+                if graha:
+                    prescriptions = prescriptions_by_graha.get(graha, [])
+                if not prescriptions and obs_type:
+                    # obstruction_type-keyed fallback (e.g. combustion, gandanta → general propitiation)
+                    prescriptions = prescriptions_by_graha.get(obs_type, [])
                 if not prescriptions:
-                    # fallback to generic Jupiter prescriptions
                     prescriptions = prescriptions_by_graha.get('jupiter', [])
 
                 mctx = MitigationContext(
@@ -77,7 +90,7 @@ class PhPratikaraWriter(WriterBase):
                     obstruction_severity=severity,
                     obstruction_window_start=obs_start,
                     obstruction_window_end=obs_end,
-                    afflicting_graha=graha or None,
+                    afflicting_graha=graha,
                     linked_anchor_id=linked_anchor_id,
                     anchor_magnitude=anchor_magnitude,
                     prescriptions=prescriptions,
@@ -133,33 +146,33 @@ class PhPratikaraWriter(WriterBase):
         return WriterResult(asset_id='ph_pratikara', rows_inserted=rows_inserted)
 
     def _load_obstructions(self, conn, chart_id: str) -> list:
-        """ka_vighnakara is built by L3 Kāla — may not exist yet. Returns [] gracefully."""
-        try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_pratikara_obs")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT id, afflicting_graha, obstruction_type,
-                           obstruction_start, obstruction_end
-                    FROM ka_vighnakara
-                    WHERE chart_id = %s
-                    ORDER BY obstruction_start
-                    """,
-                    (chart_id,),
-                )
-                rows = cur.fetchall()
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_pratikara_obs")
-            return rows
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_pratikara_obs")
-            except Exception:
-                pass
-            logger.debug("ph_pratikara: ka_vighnakara load skipped: %s", exc)
-            return []
+        """
+        Load kala_obstruction rows bridged with kala_convergence for window + graha.
+        Graha is extracted from kala_convergence.constituent_factors->>'planet'.
+        Fails loud on query errors — kala_obstruction exists; silent suppression is the bug pattern.
+        """
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                """
+                SELECT
+                    o.id,
+                    o.convergence_id,
+                    o.obstruction_type,
+                    o.severity,
+                    o.severity_score,
+                    o.override_score,
+                    o.obstruction_detail,
+                    c.window_start,
+                    c.window_end,
+                    c.constituent_factors->>'planet' AS afflicting_graha
+                FROM kala_obstruction o
+                LEFT JOIN kala_convergence c ON o.convergence_id = c.convergence_id
+                WHERE o.chart_id = %s
+                ORDER BY o.severity_score DESC
+                """,
+                (chart_id,),
+            )
+            return cur.fetchall()
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> dict[str, list]:
         result: dict[str, list] = {}

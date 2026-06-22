@@ -503,3 +503,168 @@ class TestDeriveSpillover:
         assert 'lag_days' not in src, "SK1: lag must be derived from activation windows, not a formula"
         assert '90' not in src or 'MAX_CASCADE' in src, \
             "SK1: no hardcoded 90-day lag (D44 RETIRES the D23 formula)"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PH_PRATIKARA WRITER — schema contract guard (regression for the ka_vighnakara bug)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestPratikaraWriterSchemaGuard:
+    """
+    Guard tests that would have caught the ka_vighnakara silent-fail bug.
+
+    Root cause: writer queried non-existent ka_vighnakara; SAVEPOINT/ROLLBACK
+    swallowed the UndefinedTable exception; returned []; inserted 0 rows silently.
+    The fix: query kala_obstruction JOIN kala_convergence; fail loud on errors.
+
+    These tests verify:
+      1. The writer source does NOT reference ka_vighnakara (anti-drift source guard).
+      2. The writer sources kala_obstruction with the real column names.
+      3. The writer produces > 0 rows when given non-empty kala_obstruction data.
+    """
+
+    def _writer_source(self) -> str:
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_pratikara.py'
+        )
+        with open(path) as f:
+            return f.read()
+
+    def test_no_ka_vighnakara_reference(self):
+        """Writer must not reference the non-existent ka_vighnakara table."""
+        src = self._writer_source()
+        assert 'ka_vighnakara' not in src, (
+            "ph_pratikara writer still references ka_vighnakara — this table does not exist; "
+            "the correct table is kala_obstruction"
+        )
+
+    def test_queries_kala_obstruction(self):
+        """Writer must query kala_obstruction (the real L3 table)."""
+        src = self._writer_source()
+        assert 'kala_obstruction' in src, (
+            "ph_pratikara writer must query kala_obstruction"
+        )
+
+    def test_joins_kala_convergence_for_window(self):
+        """Writer must join kala_convergence to bridge window_start/window_end."""
+        src = self._writer_source()
+        assert 'kala_convergence' in src, (
+            "ph_pratikara writer must join kala_convergence to bridge window dates and graha"
+        )
+
+    def test_no_silent_savepoint_swallow(self):
+        """Writer must not use SAVEPOINT to silently swallow table-not-found errors."""
+        src = self._writer_source()
+        assert 'sp_pratikara_obs' not in src, (
+            "ph_pratikara writer must not silently swallow kala_obstruction query errors via SAVEPOINT"
+        )
+
+    def test_writer_produces_rows_from_obstruction_data(self):
+        """
+        With 3 mock kala_obstruction rows (bridged via convergence), the writer must
+        produce > 0 phala_mitigation rows. This would have caught the 0-row silent bug.
+        """
+        import uuid
+        from datetime import date
+        from unittest.mock import MagicMock, patch, call
+        import psycopg
+
+        chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+
+        # Mock obstruction rows as returned by the bridged JOIN query
+        mock_obstruction_rows = [
+            {
+                'id': 1, 'convergence_id': 125, 'obstruction_type': 'panchanga_obstruction',
+                'severity': 'mild', 'severity_score': 0.25, 'override_score': 0.0,
+                'obstruction_detail': {'panchanga_element': 'rikta_tithi_proxy'},
+                'window_start': date(2027, 1, 9), 'window_end': date(2027, 2, 8),
+                'afflicting_graha': 'Jupiter',
+            },
+            {
+                'id': 2, 'convergence_id': 124, 'obstruction_type': 'panchanga_obstruction',
+                'severity': 'moderate', 'severity_score': 0.50, 'override_score': 0.1,
+                'obstruction_detail': {'panchanga_element': 'rikta_tithi_proxy'},
+                'window_start': date(2029, 8, 9), 'window_end': date(2029, 9, 8),
+                'afflicting_graha': 'Jupiter',
+            },
+            {
+                'id': 3, 'convergence_id': 123, 'obstruction_type': 'panchanga_obstruction',
+                'severity': 'severe', 'severity_score': 0.75, 'override_score': 0.2,
+                'obstruction_detail': {'panchanga_element': 'rikta_tithi_proxy'},
+                'window_start': date(2029, 3, 14), 'window_end': date(2029, 4, 13),
+                'afflicting_graha': None,  # null graha → must not drop the row
+            },
+        ]
+
+        # Mock influenceable anchors
+        mock_anchor_rows = [
+            {'anchor_id': uuid.uuid4(), 'domain': 'career', 'magnitude': 'major', 'malleability': 'influenceable'},
+        ]
+
+        # Build the writer and mock its sub-methods
+        from pipeline.orchestrator.writers.ph_pratikara import PhPratikaraWriter
+        writer = PhPratikaraWriter()
+
+        with (
+            patch.object(writer, '_load_obstructions', return_value=mock_obstruction_rows),
+            patch.object(writer, '_load_influenceable_anchors', return_value={'career': mock_anchor_rows}),
+            patch.object(writer, '_load_prescriptions', return_value={}),
+        ):
+            conn = MagicMock()
+            cur = MagicMock()
+            cur.__enter__ = MagicMock(return_value=cur)
+            cur.__exit__ = MagicMock(return_value=False)
+            conn.cursor.return_value = cur
+
+            ctx = MagicMock()
+            ctx.db_conn = conn
+            ctx.config = {'chart_id': chart_id}
+
+            result = writer.run(ctx)
+
+        # All 3 obstruction rows (including null-graha one) must produce a row
+        assert result.rows_inserted == 3, (
+            f"Expected 3 rows from 3 obstructions (including null-graha), got {result.rows_inserted}"
+        )
+
+    def test_null_graha_obstruction_does_not_drop_row(self):
+        """
+        When afflicting_graha is None (no planet in constituent_factors),
+        the writer must still produce a row using obstruction_type as fallback key.
+        """
+        import uuid
+        from datetime import date
+        from unittest.mock import MagicMock, patch
+
+        chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+        null_graha_row = [{
+            'id': 99, 'convergence_id': None, 'obstruction_type': 'combustion',
+            'severity': 'severe', 'severity_score': 0.9, 'override_score': 0.3,
+            'obstruction_detail': {}, 'window_start': None, 'window_end': None,
+            'afflicting_graha': None,
+        }]
+
+        from pipeline.orchestrator.writers.ph_pratikara import PhPratikaraWriter
+        writer = PhPratikaraWriter()
+
+        with (
+            patch.object(writer, '_load_obstructions', return_value=null_graha_row),
+            patch.object(writer, '_load_influenceable_anchors', return_value={}),
+            patch.object(writer, '_load_prescriptions', return_value={}),
+        ):
+            conn = MagicMock()
+            cur = MagicMock()
+            cur.__enter__ = MagicMock(return_value=cur)
+            cur.__exit__ = MagicMock(return_value=False)
+            conn.cursor.return_value = cur
+
+            ctx = MagicMock()
+            ctx.db_conn = conn
+            ctx.config = {'chart_id': chart_id}
+
+            result = writer.run(ctx)
+
+        assert result.rows_inserted == 1, (
+            f"Null-graha obstruction must still produce a row; got {result.rows_inserted}"
+        )
