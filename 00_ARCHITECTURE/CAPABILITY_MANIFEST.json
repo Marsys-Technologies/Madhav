@@ -1129,9 +1129,14 @@
       "status": "CURRENT",
       "layer": "L4",
       "expose_to_chat": false,
-      "representations": ["migration"],
+      "representations": [
+        "migration"
+      ],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_sodhana \u2014 anomaly registry (confidence inflation, magnitude drift, falsifier absent, ledger gap, layer leakage)"
+      "rebase_note": "Brahma DB table: phala_sodhana \u2014 anomaly registry (confidence inflation, magnitude drift, falsifier absent, ledger gap, layer leakage)",
+      "fingerprint_sha256": "3180f0cabb47ebdb86e4c2be24b37580f797f528958477f1f1349a29335b3e19",
+      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
+      "last_verified_on": "2026-06-22"
     },
     {
       "canonical_id": "PHALA_SUDDHA_SODHANA_DB",
@@ -1140,9 +1145,14 @@
       "status": "CURRENT",
       "layer": "L4",
       "expose_to_chat": false,
-      "representations": ["migration"],
+      "representations": [
+        "migration"
+      ],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_suddha_sodhana \u2014 cleansed anchor disposition (D43 safety rail)"
+      "rebase_note": "Brahma DB table: phala_suddha_sodhana \u2014 cleansed anchor disposition (D43 safety rail)",
+      "fingerprint_sha256": "ee2d1b1683fba57e7e16776fb3351a0a2ab3a060ebfa8915cbbde636dad72976",
+      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
+      "last_verified_on": "2026-06-22"
     },
     {
       "canonical_id": "PHALA_SANKRAMA_DB",
@@ -1151,9 +1161,14 @@
       "status": "CURRENT",
       "layer": "L4",
       "expose_to_chat": false,
-      "representations": ["migration"],
+      "representations": [
+        "migration"
+      ],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_sankrama \u2014 cross-domain spillover (SK1-SK4)"
+      "rebase_note": "Brahma DB table: phala_sankrama \u2014 cross-domain spillover (SK1-SK4)",
+      "fingerprint_sha256": "5e321ee9b662f9bf92be88f45eaefbdec9c89b0f94e87e9ee3e3b33dde0dfef2",
+      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
+      "last_verified_on": "2026-06-22"
     },
     {
       "canonical_id": "PHALA_PRAMANA_DB",
@@ -1162,9 +1177,14 @@
       "status": "CURRENT",
       "layer": "L4",
       "expose_to_chat": false,
-      "representations": ["migration"],
+      "representations": [
+        "migration"
+      ],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_pramana \u2014 falsifiability evidence registry (D5 non-scoring)"
+      "rebase_note": "Brahma DB table: phala_pramana \u2014 falsifiability evidence registry (D5 non-scoring)",
+      "fingerprint_sha256": "b21c1eb65e358f4035bb3def780c101b3c9be64b59c974066053ff6d61b29c94",
+      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
+      "last_verified_on": "2026-06-22"
     },
     {
       "canonical_id": "PHALA_PHALADESA_DB",
@@ -1173,9 +1193,14 @@
       "status": "CURRENT",
       "layer": "L4",
       "expose_to_chat": false,
-      "representations": ["migration"],
+      "representations": [
+        "migration"
+      ],
       "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_phaladesa \u2014 domain result declaration (7 domains; narration_model CHECK excludes Anthropic)"
+      "rebase_note": "Brahma DB table: phala_phaladesa \u2014 domain result declaration (7 domains; narration_model CHECK excludes Anthropic)",
+      "fingerprint_sha256": "183e4e7d5647ddb518a802e786ebc569fc8f083962fb7379accc7f2bf5114bf8",
+      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
+      "last_verified_on": "2026-06-22"
     },
     {
       "canonical_id": "LEL_SCHEMA",
