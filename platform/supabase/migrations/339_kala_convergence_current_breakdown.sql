@@ -1,3 +1,0 @@
--- Migration 339: U3 enabler — per-current breakdown (optional §3.5 of U3 spec)
--- STUB: actual DDL written by U3 convergence currents implementation (P1/P2)
--- [PLACEHOLDER — P1/P2 U3 writer will fill this in]
