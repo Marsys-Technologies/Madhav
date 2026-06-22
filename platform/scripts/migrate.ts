@@ -65,16 +65,19 @@ export async function runMigrations(
   const { dryRun = false, target } = options
 
   await client.query(TRACKER_DDL)
-  const applied = await getApplied(client)
   const files = collectMigrationFiles(dirs)
-  const pending = files.filter(f => !applied.has(f.name))
 
   if (dryRun) {
-    return pending.map(f => f.name)
+    const applied = await getApplied(client)
+    return files.filter(f => !applied.has(f.name)).map(f => f.name)
   }
 
   const ran: string[] = []
-  for (const file of pending) {
+  for (const file of files) {
+    // Re-query per file so seed migrations that bulk-insert into _migrations_applied
+    // are reflected before we decide whether to apply subsequent files.
+    const applied = await getApplied(client)
+    if (applied.has(file.name)) continue
     const sql = fs.readFileSync(path.join(file.dir, file.name), 'utf8')
     const sha256 = crypto.createHash('sha256').update(sql).digest('hex')
 
