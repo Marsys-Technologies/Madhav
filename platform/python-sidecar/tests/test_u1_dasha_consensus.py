@@ -131,9 +131,11 @@ class TestServiceOnlyPath:
 
     def test_no_chart_dashas_direct_import(self):
         """AC3/AC7: dasha_consensus must not re-derive a dāśā tree-walk."""
-        path = (
-            "/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/MadhavL4Phala"
-            "/platform/python-sidecar/services/ph_nimitta/dasha_consensus.py"
+        from pathlib import Path
+        # platform/python-sidecar/tests/test_u1_dasha_consensus.py → parents[3] = repo root
+        _REPO_ROOT = Path(__file__).resolve().parents[3]
+        path = str(
+            _REPO_ROOT / "platform" / "python-sidecar" / "services" / "ph_nimitta" / "dasha_consensus.py"
         )
         with open(path) as f:
             source = f.read()
