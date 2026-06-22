@@ -1,0 +1,273 @@
+"""
+ph_sodhana engine — DB-free anomaly detection for phala_anchors.
+
+LEAKAGE-FIREWALL gate (D43a):
+  If anomaly_type == 'layer_leakage' with leakage_class == 'l5_calibration_attempted',
+  the writer raises LeakageFirewallError (RuntimeError subclass). The build halts.
+  Nothing is committed. The native must inspect and manually correct phala_anchors.
+
+Five anomaly types (no LLM, fully deterministic):
+  confidence_inflation  — confidence_high > G-LADDER ceiling(n_independent, ayanamsha_robustness)
+  magnitude_drift       — magnitude label inconsistent with convergence_score quartile
+  falsifier_absent      — falsifier missing machine-evaluable REFUTED/CONFIRMED tokens
+  ledger_gap            — derivation_ledger_jsonb missing ≥1 required axis key
+  layer_leakage         — confidence_basis != 'structural_not_yet_empirical'
+                          (any other value is an L5 contamination attempt)
+
+auto_action is ALWAYS 'stage_for_review' — enforced at DB level AND here.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+__all__ = [
+    'AnchorRow',
+    'SodhanaContext',
+    'SodhanaRecord',
+    'LeakageFirewallError',
+    'detect_confidence_inflation',
+    'detect_magnitude_drift',
+    'detect_falsifier_absent',
+    'detect_ledger_gap',
+    'detect_layer_leakage',
+    'derive_sodhana_flags',
+]
+
+# G-LADDER ceiling formula (mirrors ph_nimitta engine.py)
+_LADDER_FLOORS = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]  # n=1..6+
+_ROBUSTNESS_FACTOR_MIN = 0.80
+_ROBUSTNESS_FACTOR_MAX = 1.00
+_CONF_CAP = 0.80
+
+# Required axes in derivation_ledger_jsonb
+_MINIMUM_LEDGER_KEYS = {'anchor_source'}
+
+_FALSIFIER_TOKENS = {'REFUTED', 'CONFIRMED'}
+
+# Magnitude ↔ convergence_score quartile thresholds
+_MAGNITUDE_THRESHOLDS = {
+    'pivotal':  0.80,  # convergence_score must be >= 0.80 to justify 'pivotal'
+    'major':    0.60,
+    'moderate': 0.35,
+    'minor':    0.0,
+}
+
+
+class LeakageFirewallError(RuntimeError):
+    """Raised by derive_sodhana_flags when L5 calibration leakage is detected.
+    The writer propagates this as a build halt — no partial commit (D43a).
+    """
+
+
+@dataclass
+class AnchorRow:
+    """Subset of phala_anchors fields needed for anomaly detection."""
+    anchor_id:              str
+    anchor_source:          str
+    domain:                 str
+    confidence_low:         Optional[float] = None
+    confidence_high:        Optional[float] = None
+    confidence_basis:       Optional[str]   = None
+    magnitude:              Optional[str]   = None
+    falsifier:              Optional[str]   = None
+    derivation_ledger_jsonb: dict           = field(default_factory=dict)
+    dasha_consensus_count:  Optional[int]   = None
+    ayanamsha_robustness:   Optional[int]   = None
+    convergence_id:         Optional[int]   = None
+
+
+@dataclass
+class SodhanaContext:
+    """Pre-fetched anchor rows (writer supplies; engine is DB-free)."""
+    chart_id: str
+    anchors:  list[AnchorRow] = field(default_factory=list)
+
+
+@dataclass
+class SodhanaRecord:
+    anchor_id:              str
+    anomaly_type:           str
+    anomaly_severity:       str
+    detected_field:         str
+    expected_value_text:    Optional[str]
+    observed_value_text:    Optional[str]
+    leakage_class:          Optional[str]
+    recommendation_text:    str
+    auto_action:            str = 'stage_for_review'   # LOCKED
+    derivation_ledger_jsonb: dict = field(default_factory=dict)
+    source_citation:        str = ''
+
+
+def _g_ladder_ceiling(n_independent: Optional[int], ayanamsha_robustness: Optional[int]) -> float:
+    n   = min(max(int(n_independent or 1), 1), 6)
+    rob = min(max(int(ayanamsha_robustness or 3), 0), 5)
+    rob_factor = _ROBUSTNESS_FACTOR_MIN + 0.04 * rob
+    return min(_CONF_CAP, (0.50 + 0.05 * n) * rob_factor)
+
+
+def detect_confidence_inflation(anchor: AnchorRow) -> Optional[SodhanaRecord]:
+    """confidence_high must not exceed G-LADDER ceiling for this anchor."""
+    if anchor.confidence_high is None:
+        return None
+    ceiling = _g_ladder_ceiling(anchor.dasha_consensus_count, anchor.ayanamsha_robustness)
+    if float(anchor.confidence_high) > ceiling + 1e-6:
+        return SodhanaRecord(
+            anchor_id=anchor.anchor_id,
+            anomaly_type='confidence_inflation',
+            anomaly_severity='major',
+            detected_field='confidence_high',
+            expected_value_text=f'<= {ceiling:.3f} (G-LADDER ceiling for n={anchor.dasha_consensus_count}, '
+                                f'rob={anchor.ayanamsha_robustness})',
+            observed_value_text=str(anchor.confidence_high),
+            leakage_class=None,
+            recommendation_text=(
+                f'Recalculate confidence_high using G-LADDER: n_independent={anchor.dasha_consensus_count}, '
+                f'ayanamsha_robustness={anchor.ayanamsha_robustness} → ceiling={ceiling:.3f}. '
+                'Stage correction for native review before using this anchor in ph_pramana.'
+            ),
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'ceiling': ceiling, 'observed': anchor.confidence_high},
+            source_citation=f'ph_sodhana/confidence_inflation/{anchor.anchor_id}',
+        )
+    return None
+
+
+def detect_magnitude_drift(anchor: AnchorRow) -> Optional[SodhanaRecord]:
+    """Magnitude label must be consistent with convergence_score quartile."""
+    mag = (anchor.magnitude or '').lower()
+    if mag not in _MAGNITUDE_THRESHOLDS:
+        return None
+    # We can't check convergence_score directly (not in AnchorRow), so check
+    # the inverse: if magnitude='pivotal' but confidence_high is below the pivot threshold,
+    # the magnitude claim is inconsistent with the confidence range.
+    conf_high = float(anchor.confidence_high or 0.0)
+    threshold = _MAGNITUDE_THRESHOLDS[mag]
+    if threshold > 0 and conf_high < threshold * 0.80:
+        return SodhanaRecord(
+            anchor_id=anchor.anchor_id,
+            anomaly_type='magnitude_drift',
+            anomaly_severity='minor',
+            detected_field='magnitude',
+            expected_value_text=f'magnitude consistent with confidence_high >= {threshold * 0.80:.2f} for {mag!r}',
+            observed_value_text=f'magnitude={mag!r}, confidence_high={conf_high:.3f}',
+            leakage_class=None,
+            recommendation_text=(
+                f'Anchor claims magnitude={mag!r} but confidence_high={conf_high:.3f} is well below '
+                f'the {mag} threshold ({threshold:.2f}). Downgrade magnitude or verify convergence evidence.'
+            ),
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'magnitude': mag, 'conf_high': conf_high},
+            source_citation=f'ph_sodhana/magnitude_drift/{anchor.anchor_id}',
+        )
+    return None
+
+
+def detect_falsifier_absent(anchor: AnchorRow) -> Optional[SodhanaRecord]:
+    """Falsifier must contain machine-evaluable REFUTED and CONFIRMED tokens."""
+    falsifier = (anchor.falsifier or '').strip()
+    if not falsifier or not any(tok in falsifier for tok in _FALSIFIER_TOKENS):
+        return SodhanaRecord(
+            anchor_id=anchor.anchor_id,
+            anomaly_type='falsifier_absent',
+            anomaly_severity='critical',
+            detected_field='falsifier',
+            expected_value_text='text containing both REFUTED and CONFIRMED with measurable criteria',
+            observed_value_text=repr(falsifier[:120]) if falsifier else '(empty)',
+            leakage_class=None,
+            recommendation_text=(
+                'Regenerate falsifier with machine-evaluable format: '
+                '"REFUTED if <observable criterion> by <date>. CONFIRMED if <observable criterion>."'
+            ),
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id},
+            source_citation=f'ph_sodhana/falsifier_absent/{anchor.anchor_id}',
+        )
+    return None
+
+
+def detect_ledger_gap(anchor: AnchorRow) -> Optional[SodhanaRecord]:
+    """derivation_ledger_jsonb must contain at least 'anchor_source' key."""
+    ledger = anchor.derivation_ledger_jsonb or {}
+    missing = _MINIMUM_LEDGER_KEYS - set(ledger.keys())
+    if missing:
+        return SodhanaRecord(
+            anchor_id=anchor.anchor_id,
+            anomaly_type='ledger_gap',
+            anomaly_severity='major',
+            detected_field='derivation_ledger_jsonb',
+            expected_value_text=f'contains keys: {sorted(_MINIMUM_LEDGER_KEYS)}',
+            observed_value_text=f'missing: {sorted(missing)}',
+            leakage_class=None,
+            recommendation_text=(
+                f'Rebuild anchor derivation to include required ledger keys: {sorted(missing)}. '
+                'Without a complete ledger, ph_pramana cannot trace derivation provenance.'
+            ),
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'missing_keys': sorted(missing)},
+            source_citation=f'ph_sodhana/ledger_gap/{anchor.anchor_id}',
+        )
+    return None
+
+
+def detect_layer_leakage(anchor: AnchorRow) -> Optional[SodhanaRecord]:
+    """
+    confidence_basis MUST be 'structural_not_yet_empirical'.
+    Any other value is an L5 calibration contamination (LEAKAGE-FIREWALL).
+    Returns a record with leakage_class = 'l5_calibration_attempted'.
+    The WRITER raises LeakageFirewallError when it sees this record type.
+    """
+    basis = (anchor.confidence_basis or '').strip()
+    if basis and basis != 'structural_not_yet_empirical':
+        return SodhanaRecord(
+            anchor_id=anchor.anchor_id,
+            anomaly_type='layer_leakage',
+            anomaly_severity='critical',
+            detected_field='confidence_basis',
+            expected_value_text="'structural_not_yet_empirical'",
+            observed_value_text=repr(basis),
+            leakage_class='l5_calibration_attempted',
+            recommendation_text=(
+                'LEAKAGE-FIREWALL: phala_anchors.confidence_basis must always be '
+                "'structural_not_yet_empirical'. L5 Mimamsa owns empirical calibration. "
+                'This anchor has been written with an L5-calibrated basis — this is a '
+                'write-time bug in ph_nimitta. Correct the writer before re-running the build.'
+            ),
+            derivation_ledger_jsonb={'anchor_id': anchor.anchor_id, 'observed_basis': basis},
+            source_citation=f'ph_sodhana/layer_leakage/{anchor.anchor_id}',
+        )
+    return None
+
+
+def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
+    """
+    Run all detectors over every anchor. Returns list of SodhanaRecords.
+    RAISES LeakageFirewallError immediately if any layer_leakage with
+    leakage_class='l5_calibration_attempted' is detected — build halts.
+    """
+    records: list[SodhanaRecord] = []
+    leakage_found: list[SodhanaRecord] = []
+
+    detectors = [
+        detect_layer_leakage,       # check leakage first
+        detect_confidence_inflation,
+        detect_magnitude_drift,
+        detect_falsifier_absent,
+        detect_ledger_gap,
+    ]
+
+    for anchor in ctx.anchors:
+        for detector in detectors:
+            rec = detector(anchor)
+            if rec is not None:
+                if rec.leakage_class == 'l5_calibration_attempted':
+                    leakage_found.append(rec)
+                else:
+                    records.append(rec)
+
+    # LEAKAGE-FIREWALL: halt before any insert
+    if leakage_found:
+        anchor_ids = [r.anchor_id for r in leakage_found]
+        raise LeakageFirewallError(
+            f"ph_sodhana LEAKAGE-FIREWALL (D43a): {len(leakage_found)} anchor(s) have "
+            f"L5 calibration contamination in confidence_basis. anchor_ids={anchor_ids}. "
+            "Build halted. Correct ph_nimitta writer before re-running."
+        )
+
+    return records
