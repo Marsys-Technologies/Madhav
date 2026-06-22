@@ -93,3 +93,6 @@ ANTIGRAVITY_PASTE_*.md
 
 # Test result output directories (regenerated on demand — not source artifacts)
 test-results/
+
+# Git worktrees
+.worktrees/
