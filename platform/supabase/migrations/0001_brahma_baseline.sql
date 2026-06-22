@@ -6187,5 +6187,3 @@ ALTER TABLE public.charts ENABLE ROW LEVEL SECURITY;
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict EPmua133s5L3PBhQnzV5i9MXzwWPHPLlZtMhAX3nquQfJOLHH9bS15qQQyuxYRp
