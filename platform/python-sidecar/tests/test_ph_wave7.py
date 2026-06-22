@@ -238,7 +238,7 @@ class TestPhaladeskAntiDrift:
         """DB CHECK values for narration_model must contain no Anthropic model IDs."""
         import os, re
         path = os.path.join(
-            os.path.dirname(__file__), '..', '..', 'supabase', 'migrations', '337_phala_phaladesa.sql'
+            os.path.dirname(__file__), '..', '..', 'supabase', 'migrations', '339_phala_phaladesa.sql'
         )
         with open(path) as f:
             src = f.read()

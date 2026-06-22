@@ -1146,7 +1146,7 @@
     },
     {
       "canonical_id": "PHALA_SANKRAMA_DB",
-      "path": "platform/supabase/migrations/335_phala_sankrama.sql",
+      "path": "platform/supabase/migrations/337_phala_sankrama.sql",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L4",
@@ -1157,7 +1157,7 @@
     },
     {
       "canonical_id": "PHALA_PRAMANA_DB",
-      "path": "platform/supabase/migrations/336_phala_pramana.sql",
+      "path": "platform/supabase/migrations/338_phala_pramana.sql",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L4",
@@ -1168,7 +1168,7 @@
     },
     {
       "canonical_id": "PHALA_PHALADESA_DB",
-      "path": "platform/supabase/migrations/337_phala_phaladesa.sql",
+      "path": "platform/supabase/migrations/339_phala_phaladesa.sql",
       "version": "1.0",
       "status": "CURRENT",
       "layer": "L4",

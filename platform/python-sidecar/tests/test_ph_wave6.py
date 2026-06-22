@@ -252,7 +252,7 @@ class TestPramanaAntiDrift:
         """D5: verify CREATE TABLE block has no scoring column *definitions* (ignoring comments)."""
         import os, re
         path = os.path.join(
-            os.path.dirname(__file__), '..', '..', 'supabase', 'migrations', '336_phala_pramana.sql'
+            os.path.dirname(__file__), '..', '..', 'supabase', 'migrations', '338_phala_pramana.sql'
         )
         with open(path) as f:
             src = f.read()
@@ -265,4 +265,4 @@ class TestPramanaAntiDrift:
         ct_body = ct_match.group(1).lower() if ct_match else ''
         for col in ['calibration_score', 'posterior_probability', 'accuracy_rate', 'brier_score']:
             assert col not in ct_body, \
-                f"D5 VIOLATION: '{col}' column definition found in migration 336 CREATE TABLE"
+                f"D5 VIOLATION: '{col}' column definition found in migration 338 CREATE TABLE"

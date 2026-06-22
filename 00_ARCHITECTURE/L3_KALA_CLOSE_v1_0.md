@@ -15,7 +15,7 @@ supersedes: >
   this doc is the sealed closure record.
 changelog:
   - v1.3 (2026-06-22, R3 U2 REMEDIATION): Re-sealed for U2 lifetime
-    convergence. horizon_tier column added to kala_convergence (mig 338);
+    convergence. horizon_tier column added to kala_convergence (mig 340);
     lifetime convergence tier implemented in ka_sangam (dāśā-boundary-anchored,
     ≤13k rows); kala_jivana_parva.avg_effective_score now non-null once
     lifetime data present (D27). Prāṇa (level-5) DROPPED (D29) — N4 boundary
@@ -53,7 +53,7 @@ changelog:
 > in `ka_jivana_parva` was correct and complete — it simply had no lifetime data.
 >
 > **R3 changes (this re-seal):**
-> - **`horizon_tier` column** added to `kala_convergence` (migration 338;
+> - **`horizon_tier` column** added to `kala_convergence` (migration 340;
 >   `text NOT NULL DEFAULT 'near' CHECK (horizon_tier IN ('near','lifetime'))`,
 >   indexed `(chart_id, horizon_tier)`).
 > - **Lifetime convergence tier** implemented in `ka_sangam`: the existing
