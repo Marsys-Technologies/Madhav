@@ -1,0 +1,103 @@
+# L4 PHALA REMEDIATION — Conductor queue
+# canonical_id: L4_PHALA_REMEDIATION_QUEUE | version: 1.0 | authored: Cowork 2026-06-22
+# native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+# operates_on: feature/l4-phala-autonomous @ cf4089f4 (PR #328) — REMEDIATE IN PLACE, do not rebuild
+# source_audit: L4_PHALA_CODE_AUDIT_REMEDIATION_v1_0.md
+# MODE: FULLY AUTONOMOUS — zero synchronous human gates. ONE kickoff → remediate → CI-green → visual seal.
+
+meta:
+  mode: "fully_autonomous — no human gates; reuse existing branch; parallel where file-disjoint"
+  budget_ceiling_usd: 5000          # the only Tier-3 (synchronous-native) event
+  n4_boundary: "HARD — level-4 (Sukshma) max. NO Prana, NO chart_dashas_prana, NO level-5 anywhere."
+  do_not_touch:                      # the audit §1 SOLID set — leave alone
+    - "ph_nimitta / ph_muhurta / ph_pratikara / ph_sankrama / ph_pramana / ph_phaladesa writers + tables"
+    - "ph_sodhana + ph_suddha_sodhana ANOMALY REGISTRY (333_phala_sodhana, 334_phala_suddha_sodhana)"
+    - "U1 dasha_consensus / U3 currents logic / U4 school engines (de-hardcoded) + 340"
+    - "registry rows, CAPABILITY_MANIFEST entries, Dockerfile services/ COPY, deploy.yml"
+
+locked_decisions:
+  D_R1: "ph_sodhana = KEEP BOTH. Registry ratified as-is. ADD birth-time rectification as a separate capability (fill 333/334 rectification stubs + writer)."
+  D_R2: "U3 §3.5 = DROPPED. Delete 339 stub. Currents logic stays."
+  N4:   "L4 + U2 bounded at Sukshma. No Prana / level-5 / chart_dashas_prana — anywhere."
+
+phase_0_provisioning:
+  role: Sthapati
+  steps:
+    - id: SETUP-1
+      action: "Reuse worktree MadhavL4Phala + branch feature/l4-phala-autonomous (already exists). Pull latest."
+    - id: SETUP-2
+      action: "Per-task sub-branches for the parallel Band A (R3/R4/R5 are file-disjoint)."
+    - id: SETUP-3
+      action: "CI health: confirm the 3 known main failures are quarantined as known_residuals; nothing new red."
+    - id: SETUP-4
+      action: "prod==main alignment check; Cloud SQL proxy up (port 5433); deps + secrets; PyJHora importable (needed for R4)."
+    - id: GATE-0
+      action: "All SETUP pass → fan out Band A. SETUP failure unresolved after the 6-attempt deep-fix ladder → Tier-2 park + Smriti (native halt ONLY on $5k Tier-3)."
+
+waves:
+  - wave: BAND_A
+    parallel: true          # R3 (Python ka_sangam/L3) ‖ R4 (rectification writer+migs) ‖ R5 (path fixes) — file-disjoint
+    tasks:
+      - id: R3_u2_lifetime
+        severity: BLOCKER
+        spec: "CLAUDECODE_BRIEF_U2_LIFETIME_PRANA_v1_0.md"
+        do: >
+          Extend ka_sangam convergence horizon 5y→lifetime (COARSE grain; cap kala_convergence ~13k per §3.1).
+          Re-run ka_jivana_parva scoring → kala_jivana_parva.avg_effective_score non-null across all 739 parvas.
+          Fill 338_kala_convergence_horizon_tier.sql with real DDL (ADD COLUMN horizon_tier CHECK IN ('near','lifetime')).
+          Re-seal L3 (version-bump L3_KALA_CLOSE; authority D27).
+        n4_guard: "NO new dasha levels. Lifetime = horizon of convergence windows over EXISTING N1–N4 parvas only."
+        verify: "[verify: prod] kala_jivana_parva.avg_effective_score IS NOT NULL for all parvas."
+      - id: R4_rectification
+        severity: MAJOR_NEW_BUILD
+        spec: "L4_PHALA_DECISIONS_LEDGER §D41 + D43; audit §4 D-R1"
+        do: >
+          Fill 333_phala_rectification.sql + 334_phala_rectification_best.sql with real DDL (candidate table + best table).
+          Build rectification writer(s): PyJHora compute_ascendant per candidate birth time around 10:43 IST;
+          score each candidate vs LEL life events (whole-instrument fit); LEAKAGE-FIREWALL (no post-disclosure data);
+          confidence interval; NO-AUTO-OVERRIDE (stage best candidate for one-click native adopt; NEVER UPDATE canonical chart 482012f1).
+          Register the rectification asset(s) with $1 count_sql; verify Dockerfile.pipeline COPY covers the new service dir.
+        guard: "B.10 — canonical chart immutable without native sign-off. Anomaly registry (333_phala_sodhana) UNTOUCHED."
+        verify: "[verify: prod] rectification tables populated; canonical chart UNCHANGED; firewall holds (no future-event leakage in fit)."
+      - id: R5_ci_paths
+        severity: MAJOR_CI
+        do: >
+          Replace /Users/Dev/Vibe-Coding/... absolute paths with repo-root-relative resolver in:
+          tests/test_u1_dasha_consensus.py, tests/l2/test_b6_eval_harness.py, and the 6 scripts in audit MAJOR-4.
+          Pre-existing governance scripts: fix if trivial else log known_residual.
+        verify: "grep -r '/Users/Dev/Vibe-Coding' platform/**/*.py returns zero L4-touched source files."
+
+  - wave: CLEANUP
+    parallel: false
+    blocked_by: [R3_u2_lifetime, R4_rectification]
+    tasks:
+      - id: R6_stub_cleanup
+        do: "Delete 337_phala_outlook.sql + 339_kala_convergence_current_breakdown.sql. Confirm 333/334 filled (R4), 338 filled (R3). End: one real file per migration number, zero dead stubs, zero duplicate-number collisions."
+      - id: R7_rename_test
+        do: "Rename test_phala_outlook.py → test_phala_phaladesa.py; repoint to phala_phaladesa table."
+
+  - wave: CI_GREEN
+    parallel: false
+    blocked_by: [R5_ci_paths, R6_stub_cleanup, R7_rename_test]
+    tasks:
+      - id: R8_ci_green
+        severity: MERGE_GATE
+        do: >
+          Run full deploy.yml PR-build-check: both images build, ga_writers import-guard passes,
+          migrate.ts applies 330–340 cleanly on a fresh DB, full pytest passes. Reconcile + report the REAL test count.
+        verify: "CI green on head SHA. No FileNotFoundError. Migration apply clean."
+
+  - wave: SEAL
+    parallel: false
+    blocked_by: [R8_ci_green]
+    tasks:
+      - id: R9_visual_seal
+        severity: SEAL_GATE
+        do: >
+          Merge + deploy. HARD VISUAL gate: Cloud Run revision == merge SHA; LIVE cockpit Phala panel shows
+          all assets lit with real counts (8 ph_* + rectification asset(s)); rectification tables populated;
+          kala_jivana_parva scores non-null; ZERO error/missing_table — on prod AND localhost.
+          Then: anti-drift final audit; PROD-VERIFY every AC; FORENSIC 7/7; canonical chart NOT mutated;
+          promote DRAFT→CURRENT; target_floor = achieved count; author L4_PHALA_CLOSE_v1_0.md;
+          update CURRENT_STATE + SESSION_LOG; final Vimarsaka audit (temporal + anti-drift).
+        false_positives: "Green JSON / a DONE report / an unmerged-branch fix are NOT the seal. Only the live visual cockpit is."

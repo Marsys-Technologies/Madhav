@@ -1,0 +1,162 @@
+# =============================================================================
+# L4 PHALA — CONDUCTOR SESSION QUEUE  (the Sūtradhāra walks this top-to-bottom)
+# canonical_id: L4_PHALA_SESSION_QUEUE  | version: 2.0  | authored: Cowork 2026-06-22
+# native_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+# Governing design: L4_PHALA_CAMPAIGN_PLAN_v2_0.md + L4_PHALA_AUTONOMOUS_EXECUTION_v2_0.md
+# Inputs: 12 briefs (CLAUDECODE_BRIEF_U1–U4 + CLAUDECODE_BRIEF_L4_PH_*),
+#         L4_PHALA_REGISTRY_AND_WIRING_SPEC_v1_0.md, L4_PHALA_DECISIONS_LEDGER_v1_0.md (D20–D46),
+#         L4_PHALA_HOLISTIC_REVIEW_v1_0.md (F1/F3/F5).
+# Framework: AUTONOMY_RESILIENCE_PATTERN + BUILD_GUARANTOR_SWARM_CHARTER (reuse, do not reinvent).
+# MODE: FULLY AUTONOMOUS — zero synchronous human gates. ONE kickoff → env-self-setup → parallel build → seal.
+# =============================================================================
+
+meta:
+  layer: phala
+  asset_prefix: ph_
+  table_prefix: phala_
+  mode: "fully_autonomous — no human gates; isolated worktree; maximal parallelization"
+  model_policy: "Gemini/DeepSeek (Anthropic banned). ph_phaladesa narration: Gemini Pro, DeepSeek fallback."
+  orchestrator_contract: "FROZEN — @register/WriterBase, never commit ctx.db_conn, never write asset_throughput, WriterResult(asset_id=, rows_inserted=), delete-then-insert, $1 count_sql"
+  reuse_rule: "READ-asset → CALL-service → RECOMPUTE-PyJHora-ONLY-if-absent (D10). PyJHora computes only in ph_sodhana + tājaka 49+."
+  native_input: "ONLY the $5k Tier-3 catastrophic ceiling (async) + the chart-revision flag (async, staged, non-blocking). Nothing else pauses."
+  legacy_naming: "'M9' is DEAD (D34). The school engine is U4 / School Consensus Activation."
+
+# ---- PHASE 0 — AUTONOMOUS ENVIRONMENT PROVISIONING (the Sthāpati role; replaces the human pre-flight) ----
+# All Tier-1/Tier-2 (no native gate). Absorbs the former OP1–OP5 operator gates.
+phase_0_provisioning:
+  owner: "Sthāpati (15th role — environment-provisioner)"
+  steps:
+    - id: SETUP-1
+      action: "Create isolated git worktree 'MadhavL4Phala' off origin/main (build never touches the user's main checkout). Reuse CONDUCTOR/SETUP_WORKTREES_*.sh."
+    - id: SETUP-2
+      action: "Branch feature/l4-phala-autonomous + per-asset sub-branches for parallel agents."
+    - id: SETUP-3
+      action: "CI health: run the suite; quarantine the 3 known pre-existing main failures as known_residuals (exit-code-3 whitelist) if unrelated to L4; deep-fix any L4-blocking failure. CI-green must be a reliable signal before merges."
+    - id: SETUP-4
+      action: "Apply pre-req migrations 326–329 to prod via the migrate runner (the A7 gate). Verify in _migrations_applied. Smṛti-logged (Tier-2)."
+    - id: SETUP-5
+      action: "prod==main: verify deployed Cloud Run revision == origin/main HEAD; if main is ahead, deploy to align. Confirm L3 kala_* lit on the LIVE cockpit."
+    - id: SETUP-6
+      action: "Cloud SQL Auth Proxy up (5433); npm ci + pip install in the worktree; confirm env (DATABASE_URL, GCS, Gemini/DeepSeek keys)."
+    - id: SETUP-6b
+      action: "INFRA GAP FIX (orchestrator-readiness §2; BLOCKING): add `COPY platform/python-sidecar/services/ ./platform/python-sidecar/services/` to Dockerfile.pipeline (next to the other writer COPYs). ALL L3 ka_* + L4 ph_* writers import `from services.<asset>`; services/ is in NO Dockerfile → ModuleNotFoundError + silent job hang. L3 masked this via the reconcile path (CF.L3.8); L4 uses the orchestrator click-Build path so it WILL fire. Also verify the web Dockerfile builds src/lib/schools/ (U4) + the build-run plan-builder topo-sorts the new ph_* assets. Rebuild the pipeline image after the COPY."
+    - id: SETUP-7
+      action: "Pre-fan-out: pre-allocate migs 330–340 (two-174 trap — confirm global max across BOTH dirs first; 330 also DROPs kala_timeline); pin ratified params (I-7/8/11/16/17 + U3 bounds D33 + G-LADDER D21); register the 3 new assets + update the 5 existing (CS1)."
+    - id: GATE-0
+      action: "Green-to-build: all SETUP pass → fan out the parallel DAG. A SETUP failure unresolved after the 6-attempt deep-fix ladder → Tier-2 park + Smṛti (native halt ONLY on Tier-3 budget)."
+      blocking: true
+
+# ---- THE WAVE QUEUE ----
+# ---- THE PARALLEL DAG (maximally parallel; each band runs in isolated worktree sub-branches) ----
+# Only 3 genuine serial points: the ka_sangam touchpoints (P2), the ph_nimitta spine (P3), the tail (P6→P7).
+waves:
+  - wave: P1
+    parallel: true   # U1 + U4-dehardcode + U3-pass1 run TOGETHER — file-disjoint (TS engines vs Python ka_sangam vs wire-only)
+    assets:
+      - id: u1_dasha_consensus
+        brief: CLAUDECODE_BRIEF_U1_MULTI_DASHA_CONSENSUS_v1_0.md
+        note: "WIRE ONLY (D20a/D30): zero new storage; surface dasha_consensus_count via concurrent_system_lords_jsonb → KaDashaKalaService → ph_nimitta Axis 6 + U4 Yoginī. Independent of all else."
+      - id: u4_school_consensus_activation
+        brief: CLAUDECODE_BRIEF_U4_SCHOOL_CONSENSUS_ACTIVATION_v1_0.md
+        soft_needs: [u1_dasha_consensus]   # Yoginī engine reads yogini dāśā (data already in prod; U1 only confirms the path)
+        hard_internal_gate: "CHART-GENERALITY GATE (D28): a synthetic fixture chart MUST yield DIFFERENT school scores than the native BEFORE persist/wire. + Task A.0: populate school_signal_coverage first."
+        note: "De-hardcode 7 TS engines (read live L1–L3), resolve Tājika/BNN flags, persist (340), wire; disagreement-intelligence + per-domain authority-weighting (D36). FILE-DISJOINT from U3's Python ka_sangam edit → parallel."
+      - id: u3_convergence_currents_pass1
+        brief: CLAUDECODE_BRIEF_U3_CONVERGENCE_CURRENTS_ENRICHMENT_v1_0.md
+        note: "Add the 6 currents (ashtakavarga/eclipse/t2t/station/vedha/tājika) to I-16; re-normalize weights (D33 bounds); spine re-derivation gate ([0,1] preserved). Owns the ka_sangam edit."
+
+  - wave: P2
+    internal_order: "SERIALIZED on ka_sangam (F3): U3-school-current → U2-lifetime → re-seal L3"
+    assets:
+      - id: u3_convergence_currents_pass2
+        brief: CLAUDECODE_BRIEF_U3_CONVERGENCE_CURRENTS_ENRICHMENT_v1_0.md
+        blocked_by: [u4_school_consensus_activation, u3_convergence_currents_pass1]
+        note: "Add the school_consensus current (C13) now U4 exists; re-normalize."
+      - id: u2_lifetime
+        brief: CLAUDECODE_BRIEF_U2_LIFETIME_PRANA_v1_0.md
+        blocked_by: [u3_convergence_currents_pass2]
+        note: "Lifetime horizon tier (horizon_tier col, mig 338) on the ENRICHED currents; re-run ka_jivana_parva → null scores resolved. Prāṇa DROPPED (D29)."
+    gate_before_next: "RE-SEAL L3 (version-bump L3_KALA_CLOSE, D27): the enriched convergence + lifetime + school tables recorded. PROD-verified."
+
+  - wave: P3
+    runs_alone: true   # the SPINE — the one unavoidable serial gate
+    assets:
+      - id: ph_nimitta
+        brief: CLAUDECODE_BRIEF_L4_PH_NIMITTA_v1_0.md
+        migration: 330
+        hard_internal_gate: "SPINE-FIRST (D26): prove ONE anchor end-to-end across ALL 8 axes + 5 elevations (real source → derived domain → magnitude + ranged confidence + causal chain + dāśā+school consensus + karmic-arc + actionability + contradiction → cites real ids → anti-drift clean) BEFORE P4 fans out. Failure → deep-fix ladder, not native."
+        note: "Inherits kala_bhavishya (D37, 50 projections); mig 330 DROPs kala_timeline."
+
+  - wave: P4
+    parallel: true   # ALL FOUR parallel — each depends only on ph_nimitta; ph_sodhana joins the band (was serial W5)
+    seed_edit_policy: "SERIALIZE asset_registry_seed.ts (CS1) — one post-band commit"
+    assets:
+      - id: ph_muhurta
+        brief: CLAUDECODE_BRIEF_L4_PH_MUHURTA_v1_0.md
+        migration: 331
+        note: "REUSE ka_muhurta_seva/panchang_engine (no panchāṅga reimpl). M1 personalize + M2 personal-danger + M3 prediction-fuse + M4 honest-verdict."
+      - id: ph_pratikara
+        brief: CLAUDECODE_BRIEF_L4_PH_PRATIKARA_v1_0.md
+        migration: 332
+        soft_needs: [ph_muhurta]   # P3 remedy-init borrows muhūrta windows; degrade gracefully if muhūrta not yet merged
+        note: "CONSUME bodha_rm store (no remedy authoring). P1 economics + P2 program + P3 muhūrta-init + P4 proportionality/loop + P5 cross-tradition. Acharya-review remedies SURFACED-with-flag, never auto-prescribed."
+      - id: ph_sankrama
+        brief: CLAUDECODE_BRIEF_L4_PH_SANKRAMA_v1_0.md
+        migration: 335
+        note: "Grounded lag (formula RETIRED, D44) from CDLM activation windows + graph bridge; multi-hop cascades (≤3); conflicts; trajectory + mitigation-route."
+      - id: ph_sodhana
+        brief: CLAUDECODE_BRIEF_L4_PH_SODHANA_v1_0.md
+        migration: 333
+        hard_internal_gate: "LEAKAGE FIREWALL (D41): a test MUST prove no post-2020/late-disclosed event contributes to the fit (validation-only) BEFORE any verdict. + tiered cost-guard (cheap filter → full-machinery on survivors). Canonical chart NOT mutated."
+        note: "PyJHora compute_ascendant per candidate; whole-instrument scoring; body-witness + consensus cross-check; confidence interval. INDEPENDENT of muhurta/pratikara/sankrama → parallel."
+
+  - wave: P5
+    assets:
+      - id: ph_suddha_sodhana
+        brief: CLAUDECODE_BRIEF_L4_PH_SUDDHA_SODHANA_v1_0.md
+        migration: 334
+        blocked_by: [ph_sodhana]
+        hard_internal_gate: "NO-AUTO-OVERRIDE (D43/B.10): a test MUST prove the writer NEVER UPDATEs charts/chart_facts — it only FLAGS + STAGES a revision for one-click native adoption (async, non-blocking)."
+        note: "Decisiveness verdict + self-correcting verification loop + hypotheses-ledger + self-falsifier."
+
+  - wave: P6
+    assets:
+      - id: ph_pramana
+        brief: CLAUDECODE_BRIEF_L4_PH_PRAMANA_v1_0.md
+        migration: 336
+        blocked_by: [ph_nimitta, ph_muhurta, ph_pratikara, ph_sankrama, ph_sodhana, ph_suddha_sodhana]
+        hard_internal_gate: "NO-SCORING (D5): a test MUST prove zero hit/miss/calibration computed — every row outcome_status='pending'; the engine does no LEL scoring (only stages)."
+        note: "Unify falsifiers (machine-evaluable) across all prediction assets; author the L5 onboarding contract; evaluation-staging; portfolio + reverse-calibration channel."
+
+  - wave: P7
+    assets:
+      - id: ph_phaladesa
+        brief: CLAUDECODE_BRIEF_L4_PH_PHALADESA_v1_0.md
+        migration: 337
+        hard_internal_gate: "B.11 GATE: compose ALL sub-assets present in the horizon + store composed_sub_asset_ids. + DETERMINISTIC-FIRST GATE: the LLM narrates only the fixed scaffold; a test asserts no narrative claim lacks a composed-item + trace."
+        note: "CONSUME bodha_chart_gestalt (no duplication). Narrative weave + apex item + honest registers + multi-horizon/lens/person-anchor/traceability. + F5 cross-links (reads ph_pramana tiers; surfaces ph_suddha revision flag)."
+
+# ---- SEAL (autonomous, AI-assessed) — the HARD VISUAL gate is FIRST ----
+seal:
+  - "HARD VISUAL COCKPIT GATE (#1 L3 lesson): deployed Cloud Run revision == merge SHA; the LIVE cockpit Phala panel shows 8 assets lit with real counts + zero error/missing_table; verify on prod AND localhost. Green JSON / 'SEALED' report / unmerged-branch fix are ALL false positives."
+  - "Anti-drift final audit: every ph_* writer → zero non-phala writes + zero .commit()/.rollback(); ledgers resolve. Canonical chart 482012f1 UNCHANGED (ph_sodhana hypothesis-only)."
+  - "PROD-VERIFY every AC against prod. FORENSIC 7/7."
+  - "Promote all ph_* DRAFT→CURRENT; set every target_floor = achieved count. Re-seal L3 (U2/U3/U4)."
+  - "Author L4_PHALA_CLOSE_v1_0.md + the L5 Mīmāṃsā onboarding contract (drafted by ph_pramana); update CURRENT_STATE + SESSION_LOG; merge + push (CI-green gate); final Vimarśaka audit (temporal + anti-drift)."
+
+# ---- AUTONOMOUS EXECUTION (every band; no human gate) ----
+autonomous_execution:
+  - "Each Śilpī agent runs in an ISOLATED worktree sub-branch off feature/l4-phala-autonomous; parallel bands = parallel sub-branches, merged at the band gate."
+  - "Per asset: write code+tests → run the asset's hard gate (if any) → commit → Vimarśaka audit → merge to band → at band gate merge to feature → CI-green → DEPLOY (migrate runner applies the migration; Cloud Run sidecar rebuilds) → BUILD/DATA-GEN (orchestrator click-Build runs the writer for 482012f1 → rows in phala_*) → PROD-VERIFY ACs. ALL autonomous."
+  - "Failures: the deep-fix ladder (B.1 — 6 attempts, escalating to multi-model-parallel) resolves without a native halt; destructive ops via the disposition classifier (B.2); Tier-2 decisions Smṛti-logged."
+  - "The chart-revision flag (ph_suddha_sodhana D43): STAGED + async-notified; does NOT block the build (build completes on the recorded chart; adoption is a post-seal one-click native action)."
+
+# ---- CROSS-CUTTING GATES (every asset) ----
+per_asset_gates:
+  - "Frozen contract: grep writer for ctx.db_conn.commit()/.rollback() → ZERO. WriterResult(asset_id=, rows_inserted=)."
+  - "Anti-drift: references kala_*/bodha_*/ga_* ids + L1 fact_ids; never restates; ZERO writes outside phala_*."
+  - "count_sql: $1 binding (never $$CHART_ID$$). Dockerfile.pipeline COPYs the new ph_* writer + service dirs (silent-hang gotcha)."
+  - "PROD-VERIFY: ACs verify against prod (Cloud SQL Auth Proxy), not a worktree DB (Brahma V1.3 lesson)."
+  - "FORENSIC: the 7 birth anchors hold; only chart 482012f1 (+ the synthetic fixture for the U4 generality gate)."
+  - "Build-state: orchestrator is the SOLE asset_throughput writer; L4 builds go through the click-Build path (CF.L3.8)."
+  - "Vimarśaka post-merge audit (temporal + anti-drift) on each wave branch; auto-revert on RED."

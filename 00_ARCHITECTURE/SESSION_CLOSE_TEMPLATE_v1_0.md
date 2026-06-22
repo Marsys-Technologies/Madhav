@@ -552,6 +552,31 @@ python3 platform/scripts/governance/schema_validator.py --session-log 00_ARCHITE
 
 ---
 
+## §7.9 — Layer-seal live-deployment guard (added 2026-06-22)
+
+**Applies to any session that claims a LAYER seal (L1–L5).** A layer is NOT sealed by a green branch, a
+green local build, or a "DONE" report — only by the LIVE deployed instance showing the layer's assets.
+Before a layer-seal close-checklist validates, assert against the **RUNNING API** (the prod URL, and
+localhost if that is the verification surface) — NOT the branch source files:
+
+```
+# Replace <base>/<layer>/<prefix>/<chartId> per the sealing layer (e.g. phala / ph / 9 assets).
+curl -s <base>/api/cockpit/registry \
+  | jq '[.data.assets[]|select(.layer=="<layer>")]|length'                    # must equal the expected count (e.g. phala == 9)
+curl -s "<base>/api/cockpit/stats?chartId=<chartId>" \
+  | jq '[.data.assets[]|select(.asset_id|startswith("<prefix>_"))|select(.state!="lit")]'   # must be []  (all lit)
+gcloud run services describe amjis-web --region=asia-south1 \
+  --format='value(status.traffic[0].revisionName)'                           # must correspond to the merge SHA
+```
+
+Rationale: the L4 cockpit-out-of-sync incident (2026-06-22) — the build was branch/worktree-complete but
+`main`/prod/localhost served the OLD 5-asset registry, and the cockpit faithfully rendered stale data.
+This guard makes "the live registry shows N assets lit, on the deployed revision" a hard close-gate,
+closing the worktree-complete-≠-deployed trap (see `feedback_ac_must_verify_target_environment`). A
+layer-seal close-checklist that cannot produce these three green assertions HALTS and does not claim the seal.
+
+---
+
 ## §8 — Related artifacts
 
 - `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §G` — authoritative spec this template implements
