@@ -5,6 +5,15 @@
 -- ── DROP legacy placeholder (CF.L3.2) ────────────────────────────────────────
 DROP TABLE IF EXISTS kala_timeline;
 
+-- ── DROP legacy draft phala_ tables (pre-migration draft run; all 0 rows) ────
+-- These were created by an earlier manual run with a different schema.
+-- All empty; DROP before the real schema migration runs (idempotent).
+DROP TABLE IF EXISTS phala_anchors CASCADE;
+DROP TABLE IF EXISTS phala_muhurta CASCADE;
+DROP TABLE IF EXISTS phala_mitigation_staging CASCADE;
+DROP TABLE IF EXISTS phala_mitigation CASCADE;
+DROP TABLE IF EXISTS phala_rectification CASCADE;
+
 -- ── phala_anchors — the predictive anchor spine ───────────────────────────────
 CREATE TABLE IF NOT EXISTS phala_anchors (
     anchor_id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
