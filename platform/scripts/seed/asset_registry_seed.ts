@@ -1581,6 +1581,24 @@ const ASSETS: AssetDef[] = [
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
+  {
+    asset_id: 'ph_rectification',
+    layer: 'phala', sort_order: 9,
+    sanskrit_name: 'Jananakāla-śuddhi',
+    english_name: 'Birth-time rectification',
+    english_description: 'Birth-time rectification via PyJHora ascendant scan (±90 min, 5-min steps, 5 ayanamshas) scored against pre-2020 LEL events. LEAKAGE-FIREWALL: post-2020 + LEL v1.7 M5-A-S1 enrichment events held out. NO-AUTO-OVERRIDE (D43): auto_action=stage_for_review only; canonical chart never auto-mutated. Best candidate staged for native adoption.',
+    storage_type: 'postgres_table',
+    target_table: 'phala_rectification',
+    count_sql: 'SELECT count(*) FROM phala_rectification WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('phala_rectification')",
+    target_floor: null,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: 'One row per (candidate offset × ayanamsha): 37 offsets × 5 ayanamshas = 185 rows; plus one staged-best row in phala_rectification_best',
+    depends_on: ['ph_nimitta'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    asset_kind: 'artifact', catalog_status: 'DRAFT',
+  },
 
   // ── MIMAMSA (6) ───────────────────────────────────────────────────────────
   {
