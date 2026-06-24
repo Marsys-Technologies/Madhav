@@ -26,6 +26,7 @@ if _SIDECAR not in sys.path:
 
 from services.ka_sangam.engine import (
     SUPPORTING_WEIGHTS,
+    HIGH_CONFIDENCE_ORB_THRESHOLD,
     convergence_score,
     orb_strength_score,
     confidence_label,
@@ -34,6 +35,7 @@ from services.ka_sangam.engine import (
     mode_b_sweep,
     _jd_to_date,
     _date_to_jd,
+    _resolve_transit_planet,
 )
 
 
@@ -316,10 +318,11 @@ class TestModeB:
         return {
             'signal_id': 'aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             'signature_class': 'DIGNITY',
+            'graha_name': 'Saturn',   # required — _resolve_transit_planet reads this for DIGNITY
             'dignity_score': dignity_score,
             'dasha_eligibility_rule_jsonb': {'eligibility_score': 0.5},
             'transit_trigger_jsonb': {
-                'planet': 'Saturn',
+                # 'planet' key intentionally absent — resolver owns planet selection now
                 'target_longitude_deg': 0.0,   # Aries 0°
                 'aspect_degrees': [0, 60, 90, 120, 180],
                 'orb_deg': 5.0,
@@ -534,4 +537,155 @@ class TestAntiDriftAndContract:
             src = f.read()
         assert 'INSERT INTO bodha_' not in src
         assert 'UPDATE bodha_' not in src
+
+    def test_no_jupiter_hardcoded_fallback(self):
+        """Engine must not contain the old transit_trig.get('planet', 'Jupiter') fallback."""
+        with open(self._engine_path) as f:
+            src = f.read()
+        assert "get('planet', 'Jupiter')" not in src, (
+            "Hardcoded Jupiter fallback found in engine — should use _resolve_transit_planet"
+        )
+
+    def test_no_event_cap_constant(self):
+        """Engine must not contain a max_events cap constant (gate, not cap)."""
+        with open(self._engine_path) as f:
+            src = f.read()
+        # no per-predicate event cap — the design uses an inline orb threshold, not a truncation
+        assert '_MAX_EVENTS' not in src
+        assert 'max_events' not in src
+
+
+# ─── Per-signature planet resolver ────────────────────────────────────────────
+
+class TestPerSignaturePlanet:
+    """
+    Validates _resolve_transit_planet routing (design §4.6) and the
+    HIGH_CONFIDENCE_ORB_THRESHOLD constant from I-21.
+    """
+
+    def test_dosha_resolves_to_saturn(self):
+        assert _resolve_transit_planet({'signature_class': 'DOSHA'}) == 'Saturn'
+
+    def test_dosha_case_insensitive(self):
+        assert _resolve_transit_planet({'signature_class': 'dosha'}) == 'Saturn'
+
+    def test_yoga_resolves_to_jupiter(self):
+        assert _resolve_transit_planet({'signature_class': 'YOGA'}) == 'Jupiter'
+
+    def test_subsystem_returns_none(self):
+        assert _resolve_transit_planet({'signature_class': 'SUBSYSTEM'}) is None
+
+    def test_subsystem_variant_returns_none(self):
+        assert _resolve_transit_planet({'signature_class': 'KP_SUBSYSTEM'}) is None
+
+    def test_dignity_with_graha_name_resolves(self):
+        pred = {'signature_class': 'DIGNITY', 'graha_name': 'Mercury'}
+        assert _resolve_transit_planet(pred) == 'Mercury'
+
+    def test_dignity_without_graha_name_returns_none(self):
+        """DIGNITY with no graha_name → unresolvable → None (writer enrichment missing)."""
+        pred = {'signature_class': 'DIGNITY'}
+        assert _resolve_transit_planet(pred) is None
+
+    def test_dignity_graha_name_none_returns_none(self):
+        pred = {'signature_class': 'DIGNITY', 'graha_name': None}
+        assert _resolve_transit_planet(pred) is None
+
+    def test_dispositor_with_lord_resolves(self):
+        pred = {'signature_class': 'DISPOSITOR_RELATIONAL', 'dispositor_lord': 'Mars'}
+        assert _resolve_transit_planet(pred) == 'Mars'
+
+    def test_dispositor_without_lord_returns_none(self):
+        pred = {'signature_class': 'DISPOSITOR_RELATIONAL'}
+        assert _resolve_transit_planet(pred) is None
+
+    def test_unknown_class_returns_none(self):
+        assert _resolve_transit_planet({'signature_class': 'MYSTERY_TYPE'}) is None
+
+    def test_empty_predicate_returns_none(self):
+        assert _resolve_transit_planet({}) is None
+
+    def test_high_confidence_threshold_value(self):
+        """HIGH_CONFIDENCE_ORB_THRESHOLD must equal 0.45 (I-21 moderate floor)."""
+        assert HIGH_CONFIDENCE_ORB_THRESHOLD == 0.45
+
+    def test_subsystem_mode_a_returns_empty(self):
+        """SUBSYSTEM predicate must short-circuit mode_a — no sky scan."""
+        pred = {
+            'signal_id': 'bbbbbbbb-0000-0000-0000-000000000000',
+            'signature_class': 'SUBSYSTEM',
+            'dignity_score': 0.9,
+            'dasha_eligibility_rule_jsonb': {'eligibility_score': 0.8},
+            'transit_trigger_jsonb': {'target_longitude_deg': 180.0, 'orb_deg': 5.0},
+            'strength_affliction_hook_jsonb': {},
+            'derivation_ledger_jsonb': {},
+        }
+        start_jd = _date_to_jd(date(2024, 1, 1))
+        end_jd   = _date_to_jd(date(2026, 1, 1))
+        result = mode_a_search(
+            predicate=pred,
+            horizon_start_jd=start_jd,
+            horizon_end_jd=end_jd,
+            dasha_kala_service=None,
+            gochara_service=None,
+            muhurta_service=None,
+            chart_id='482012f1-710e-4a25-994a-93821f5871aa',
+        )
+        assert result == [], "SUBSYSTEM predicate must return [] from mode_a (no transit scan)"
+
+    def test_subsystem_mode_b_returns_empty(self):
+        """SUBSYSTEM predicate must short-circuit mode_b — no sky scan."""
+        pred = {
+            'signal_id': 'bbbbbbbb-0000-0000-0000-000000000001',
+            'signature_class': 'SUBSYSTEM',
+            'dignity_score': 0.9,
+            'dasha_eligibility_rule_jsonb': {'eligibility_score': 0.8},
+            'transit_trigger_jsonb': {'target_longitude_deg': 180.0, 'orb_deg': 5.0},
+            'strength_affliction_hook_jsonb': {},
+            'derivation_ledger_jsonb': {},
+        }
+        start_jd = _date_to_jd(date(2024, 1, 1))
+        end_jd   = _date_to_jd(date(2026, 1, 1))
+        result = mode_b_sweep(
+            signal_id='bbbbbbbb-0000-0000-0000-000000000001',
+            predicate=pred,
+            horizon_start_jd=start_jd,
+            horizon_end_jd=end_jd,
+            gochara_service=None,
+            magnitude_threshold=0.1,
+        )
+        assert result == [], "SUBSYSTEM predicate must return [] from mode_b (no transit scan)"
+
+    def test_planet_in_constituent_factors_matches_resolver(self):
+        """
+        Windows produced by mode_b for a DOSHA predicate must have
+        constituent_factors['planet'] == 'Saturn' (not 'Jupiter').
+        """
+        pred = {
+            'signal_id': 'cccccccc-0000-0000-0000-000000000000',
+            'signature_class': 'DOSHA',
+            'dignity_score': 0.9,
+            'dasha_eligibility_rule_jsonb': {'eligibility_score': 0.8},
+            'transit_trigger_jsonb': {
+                'target_longitude_deg': 270.0,
+                'aspect_degrees': [0, 60, 90, 120, 180],
+                'orb_deg': 8.0,
+            },
+            'strength_affliction_hook_jsonb': {},
+            'derivation_ledger_jsonb': {},
+        }
+        start_jd = _date_to_jd(date(2024, 1, 1))
+        end_jd   = _date_to_jd(date(2029, 1, 1))
+        windows = mode_b_sweep(
+            signal_id='cccccccc-0000-0000-0000-000000000000',
+            predicate=pred,
+            horizon_start_jd=start_jd,
+            horizon_end_jd=end_jd,
+            gochara_service=None,
+            magnitude_threshold=0.1,
+        )
+        for w in windows:
+            assert w['constituent_factors']['planet'] == 'Saturn', (
+                f"DOSHA window must have planet='Saturn', got {w['constituent_factors']['planet']!r}"
+            )
 

@@ -491,6 +491,11 @@ _PLANET_PERIOD_YR: dict[str, float] = {
     'MeanNode': 18.61,
 }
 
+# Inline confidence gate: I-21 moderate floor (orb_strength_score ≥ 0.45 required).
+# Applied per-event inside the transit scan loops so sub-threshold events are
+# discarded as found and never accumulate in RAM (prevents Moon/Mercury explosion).
+HIGH_CONFIDENCE_ORB_THRESHOLD: float = 0.45
+
 
 def _rarity_years(planet: str, aspect_deg: float) -> float:
     """
@@ -511,6 +516,33 @@ def _rarity_years(planet: str, aspect_deg: float) -> float:
     rarity = period * fraction
     # never report less than 0.5 yr or more than the full sidereal period
     return round(max(0.5, min(rarity, period)), 2)
+
+
+def _resolve_transit_planet(predicate: dict) -> Optional[str]:
+    """
+    Per-signature transit planet resolver (design §4.6).
+    Returns the graha to scan for this predicate, or None when no sky scan applies.
+
+    DOSHA              → Saturn  (malefic_transit_over_afflicted_point)
+    YOGA               → Jupiter (benefic_transit_to_kendra_trikona)
+    DIGNITY            → the signal's own graha (graha_activation;
+                         writer populates via predicate['graha_name'])
+    DISPOSITOR_RELATIONAL → the house lord (lord_transits_other_bhava;
+                         writer populates via predicate['dispositor_lord'])
+    SUBSYSTEM          → None  (subsystem_trigger: no transit scan)
+    """
+    sig_class = (predicate.get('signature_class') or '').upper()
+    if 'SUBSYSTEM' in sig_class:
+        return None
+    if 'DOSHA' in sig_class:
+        return 'Saturn'
+    if 'YOGA' in sig_class:
+        return 'Jupiter'
+    if 'DIGNITY' in sig_class:
+        return predicate.get('graha_name') or None
+    if 'DISPOSITOR_RELATIONAL' in sig_class:
+        return predicate.get('dispositor_lord') or None
+    return None
 
 
 # ── JD ↔ date helpers ────────────────────────────────────────────────────────
@@ -622,8 +654,10 @@ def mode_a_search(
                 best = max(best, ew.eligibility_score)
         return best if best > 0.0 else static_dasha_score
 
-    # Transit trigger params
-    planet       = transit_trig.get('planet', 'Jupiter')
+    # Transit trigger params — per-signature resolver (§4.6); no hardcoded fallback
+    planet = _resolve_transit_planet(predicate)
+    if planet is None:
+        return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
     target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
@@ -647,6 +681,8 @@ def mode_a_search(
         orb_s = orb_strength_score(
             ev.orb_at_event_deg, orb_deg, ev.applying_separating
         )
+        if orb_s < HIGH_CONFIDENCE_ORB_THRESHOLD:
+            continue  # discard sub-threshold events as found — never accumulate in RAM
         peak_dt = _jd_to_date(ev.event_jd)
 
         # CF.L3.6: real per-event dasha score
@@ -768,7 +804,9 @@ def mode_b_sweep(
     dignity_score = float(predicate.get('dignity_score', 0.5))
     domain_lord   = predicate.get('domain_lord') or None
 
-    planet       = transit_trig.get('planet', 'Jupiter')
+    planet = _resolve_transit_planet(predicate)
+    if planet is None:
+        return windows  # SUBSYSTEM or unresolvable: skip sky scan entirely
     target_lon   = float(transit_trig.get('target_longitude_deg', 0.0))
     aspect_degs  = transit_trig.get('aspect_degrees', [0, 60, 90, 120, 180])
     orb_deg      = float(transit_trig.get('orb_deg', 5.0))
@@ -792,6 +830,8 @@ def mode_b_sweep(
         orb_s = orb_strength_score(
             ev.orb_at_event_deg, orb_deg, ev.applying_separating
         )
+        if orb_s < HIGH_CONFIDENCE_ORB_THRESHOLD:
+            continue  # discard sub-threshold events as found — never accumulate in RAM
         magnitude = dignity_score * orb_s
         if magnitude < magnitude_threshold:
             continue
@@ -876,6 +916,7 @@ def mode_b_sweep(
 
 __all__ = [
     'SUPPORTING_WEIGHTS',
+    'HIGH_CONFIDENCE_ORB_THRESHOLD',
     'EnrichmentContext',
     'convergence_score',
     'orb_strength_score',
@@ -887,4 +928,5 @@ __all__ = [
     '_date_to_jd',
     '_rarity_years',
     '_PLANET_PERIOD_YR',
+    '_resolve_transit_planet',
 ]

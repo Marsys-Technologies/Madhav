@@ -1,6 +1,6 @@
 """ka_vighnakara writer — obstruction/counter-indicator detector."""
 import json
-from psycopg2.extras import execute_values
+import psycopg
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 @register('ka_vighnakara')
@@ -13,8 +13,8 @@ class KaVighnakaraWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s", (chart_id,))
 
-        # Read convergence windows for this chart
-        with conn.cursor() as cur:
+        # Read convergence windows for this chart (tuple_row so positional unpacking works)
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT convergence_id, signal_id, mode, peak_date,
                        convergence_score, orb_strength, window_start, window_end
@@ -53,13 +53,14 @@ class KaVighnakaraWriter(WriterBase):
 
         if rows:
             with conn.cursor() as cur:
-                execute_values(cur, """
-                    INSERT INTO kala_obstruction (
+                cur.executemany(
+                    """INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
                         obstruction_detail, source_citation
-                    ) VALUES %s
-                """, rows)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    rows,
+                )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
 

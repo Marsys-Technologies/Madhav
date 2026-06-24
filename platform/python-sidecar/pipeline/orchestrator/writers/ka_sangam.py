@@ -13,7 +13,7 @@ from datetime import date
 
 import psycopg
 
-from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_sangam.engine import (
     mode_a_search,
     mode_b_sweep,
@@ -26,6 +26,18 @@ from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 
 logger = logging.getLogger(__name__)
+
+# Classical sign-lord table (1=Aries … 12=Pisces) for DISPOSITOR_RELATIONAL house-lord resolution.
+_SIGN_LORDS: dict[int, str] = {
+    1: 'Mars', 2: 'Venus', 3: 'Mercury', 4: 'Moon',
+    5: 'Sun',  6: 'Mercury', 7: 'Venus', 8: 'Mars',
+    9: 'Jupiter', 10: 'Saturn', 11: 'Saturn', 12: 'Jupiter',
+}
+_LAGNA_SIGN_NUM: dict[str, int] = {
+    'Aries': 1, 'Taurus': 2, 'Gemini': 3, 'Cancer': 4,
+    'Leo': 5, 'Virgo': 6, 'Libra': 7, 'Scorpio': 8,
+    'Sagittarius': 9, 'Capricorn': 10, 'Aquarius': 11, 'Pisces': 12,
+}
 
 # Horizon: 5-year forward window (near tier)
 _HORIZON_YEARS = 5
@@ -47,22 +59,22 @@ class KaSangamWriter(WriterBase):
     """
     Convergence engine: Mode A (daśā-prior funnel) + Mode B (off-daśā sweep).
     Inserts into kala_convergence with full rigor-stratum columns.
+
+    HEAVY writer: one 'near' substep + one 'lifetime:N' substep per lifetime predicate.
+    Each substep heartbeats independently so the 15-min orphan watchdog is never hit.
     """
     asset_id = 'ka_sangam'
+    has_substeps = True
 
-    def run(self, ctx) -> WriterResult:
-        conn = ctx.db_conn  # orchestrator owns the transaction; writer NEVER commits
-        chart_id = ctx.config['chart_id']
+    # ── plan ─────────────────────────────────────────────────────────────────
 
-        # Step 1: delete existing rows for this chart (delete-then-insert idempotency §N.3)
-        with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM kala_convergence WHERE chart_id = %s",
-                (chart_id,),
-            )
-        logger.info("ka_sangam: deleted existing kala_convergence rows for %s", chart_id)
+    def plan_substeps(self, ctx) -> list[SubStep]:
+        """Load predicates + services once; store on self for run_substep."""
+        conn      = ctx.db_conn
+        chart_id  = ctx.config['chart_id']
+        self._chart_id = chart_id
 
-        # Step 2: load top predicates from kala_activation_predicates
+        # Load top predicates
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
@@ -71,6 +83,7 @@ class KaSangamWriter(WriterBase):
                        strength_affliction_hook_jsonb, derivation_ledger_jsonb
                 FROM kala_activation_predicates
                 WHERE chart_id = %s
+                  AND signature_class != 'SUBSYSTEM'
                 ORDER BY (dasha_eligibility_rule_jsonb->>'eligibility_score')::float DESC NULLS LAST
                 LIMIT %s
                 """,
@@ -80,107 +93,172 @@ class KaSangamWriter(WriterBase):
 
         logger.info("ka_sangam: loaded %d predicates for chart %s", len(predicates), chart_id)
 
-        if not predicates:
-            logger.warning("ka_sangam: no predicates found for chart %s — zero rows written", chart_id)
-            return WriterResult(asset_id='ka_sangam', rows_inserted=0)
-
-        # CF.L3.6: instantiate real dasha-prior service (read-only; never commits)
-        dasha_kala_service = KaDashaKalaService(conn)
-
-        # U3: instantiate gochara service for C8/C9/C10 current computation
+        # Services
+        self._dks = KaDashaKalaService(conn)
         try:
             import swisseph as swe
-            gochara_service = KaGocharaService(swe)
+            self._gs = KaGocharaService(swe)
         except Exception as exc:
-            logger.warning("ka_sangam: could not instantiate KaGocharaService: %s — C8/C9/C10 currents will be 0.0", exc)
-            gochara_service = None
+            logger.warning("ka_sangam: KaGocharaService unavailable: %s", exc)
+            self._gs = None
 
-        # Load dignity_score from bodha_msr_signals for each predicate
+        # Signal enrichment maps
         signal_ids = list({str(p['signal_id']) for p in predicates if p['signal_id']})
-        dignity_map: dict[str, float] = {}
+        dignity_map:    dict[str, float]    = {}
+        graha_name_map: dict[str, str|None] = {}
+        house_num_map:  dict[str, int|None] = {}
         if signal_ids:
             with conn.cursor() as cur:
                 placeholders = ','.join(['%s'] * len(signal_ids))
                 cur.execute(
-                    f"SELECT signal_id, dignity_score FROM bodha_msr_signals WHERE signal_id IN ({placeholders})",
+                    f"SELECT signal_id, dignity_score, "
+                    f"configuration_jsonb->>'fact_value_text' AS graha_name, "
+                    f"(configuration_jsonb->>'fact_value_num')::numeric::int AS house_num "
+                    f"FROM bodha_msr_signals WHERE signal_id IN ({placeholders})",
                     signal_ids,
                 )
                 for row in cur.fetchall():
-                    dignity_map[str(row[0])] = float(row[1]) if row[1] is not None else 0.5
+                    sid = str(row['signal_id'])
+                    dignity_map[sid]    = float(row['dignity_score']) if row['dignity_score'] is not None else 0.5
+                    graha_name_map[sid] = row['graha_name']
+                    house_num_map[sid]  = row['house_num']
 
-        # Normalise predicate dicts once (dignity + JSON coercion) for reuse across tiers
+        # Build normalised pred_dicts
         pred_dicts: list[dict] = []
         for pred in predicates:
-            pred_dict = dict(pred)
-            sig_id = pred_dict.get('signal_id')
-            pred_dict['dignity_score'] = dignity_map.get(str(sig_id), 0.5) if sig_id else 0.5
+            pd = dict(pred)
+            sig_id = pd.get('signal_id')
+            pd['dignity_score'] = dignity_map.get(str(sig_id), 0.5) if sig_id else 0.5
             for jf in ('dasha_eligibility_rule_jsonb', 'transit_trigger_jsonb',
                        'strength_affliction_hook_jsonb', 'derivation_ledger_jsonb'):
-                if isinstance(pred_dict.get(jf), str):
-                    pred_dict[jf] = json.loads(pred_dict[jf])
-                elif pred_dict.get(jf) is None:
-                    pred_dict[jf] = {}
-            pred_dicts.append(pred_dict)
+                if isinstance(pd.get(jf), str):
+                    pd[jf] = json.loads(pd[jf])
+                elif pd.get(jf) is None:
+                    pd[jf] = {}
+            pred_dicts.append(pd)
 
-        # ── Step 3: NEAR tier — 5y forward calendar sweep (unchanged logic) ──────
-        from datetime import date, timedelta
-        today = date.today()
-        horizon_end = date(today.year + _HORIZON_YEARS, today.month, today.day)
+        house_lord_map = self._build_house_lord_map(conn, chart_id)
+        for pd in pred_dicts:
+            sid = str(pd.get('signal_id') or '')
+            sc  = (pd.get('signature_class') or '').upper()
+            if 'DIGNITY' in sc:
+                pd['graha_name'] = graha_name_map.get(sid)
+            if 'DISPOSITOR_RELATIONAL' in sc:
+                hn = house_num_map.get(sid)
+                pd['dispositor_lord'] = house_lord_map.get(hn) if hn else None
+
+        self._pred_dicts = pred_dicts
+        self._lt_preds   = pred_dicts[:_LIFETIME_MAX_PREDICATES]
+
+        # Birth year for lifetime horizon
+        self._birth_year = self._derive_birth_year(conn, chart_id)
+
+        # Substep list: one near + one per lifetime predicate
+        steps = [SubStep(key='near', label='Near tier (5yr)')]
+        for i, p in enumerate(self._lt_preds):
+            sc = p.get('signature_class', '')
+            steps.append(SubStep(key=f'lifetime:{i}', label=f'Lifetime pred {i} ({sc})'))
+        return steps
+
+    # ── dispatch ─────────────────────────────────────────────────────────────
+
+    def run_substep(self, ctx, step: SubStep) -> WriterResult:
+        conn     = ctx.db_conn
+        chart_id = self._chart_id
+        dry_run  = getattr(ctx, 'dry_run', False)
+
+        if step.key == 'near':
+            return self._substep_near(conn, chart_id, dry_run)
+
+        idx = int(step.key.split(':', 1)[1])
+        return self._substep_lifetime(conn, chart_id, idx, dry_run)
+
+    # ── substep implementations ───────────────────────────────────────────────
+
+    def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
+        # Idempotency: replace near tier
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
+                        (chart_id,))
+
+        today        = date.today()
+        horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
+        def _keepalive():
+            with conn.cursor() as _cur:
+                _cur.execute("SELECT 1")
+
         near_windows = self._generate_windows(
-            pred_dicts=pred_dicts,
-            horizon_start=today,
-            horizon_end=horizon_end,
-            dasha_kala_service=dasha_kala_service,
-            gochara_service=gochara_service,
-            chart_id=chart_id,
+            pred_dicts        = self._pred_dicts,
+            horizon_start     = today,
+            horizon_end       = horizon_end,
+            dasha_kala_service= self._dks,
+            gochara_service   = self._gs,
+            chart_id          = chart_id,
+            keepalive         = _keepalive,
         )
         near_deduped = self._dedup(near_windows)
-        logger.info("ka_sangam: NEAR tier — %d windows after dedup for chart %s",
-                    len(near_deduped), chart_id)
+        logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
 
-        # ── Step 4: LIFETIME tier — dāśā-boundary-anchored, full-life horizon ────
-        lifetime_deduped = self._generate_lifetime_windows(
-            conn=conn,
-            pred_dicts=pred_dicts,
-            dasha_kala_service=dasha_kala_service,
-            gochara_service=gochara_service,
-            chart_id=chart_id,
-        )
-        logger.info("ka_sangam: LIFETIME tier — %d windows after dedup for chart %s",
-                    len(lifetime_deduped), chart_id)
+        rows = 0
+        if not dry_run:
+            with conn.cursor() as cur:
+                rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
-        # ── Step 5: insert both tiers into kala_convergence ──────────────────────
-        # Design intent: near and lifetime tiers intentionally coexist in
-        # kala_convergence and MAY overlap for windows that fall within the
-        # 5-year forward horizon.  This is not a data error — the two tiers
-        # answer different questions:
-        #   • 'near'     — continuous calendar sweep over [now, now+5y]; high
-        #                  temporal resolution; suited for short-term guidance.
-        #   • 'lifetime' — dāśā-boundary-anchored; spans the native's full life;
-        #                  suited for arc-level context and long-range planning.
-        # The `horizon_tier` column is the discriminator.  Consumers MUST filter
-        # by horizon_tier when they need tier-specific data, e.g.:
-        #   WHERE horizon_tier = 'near'     -- short-term precision
-        #   WHERE horizon_tier = 'lifetime' -- arc-level context
-        # Returning all rows without a tier filter will intentionally include
-        # both sets; deduplication between tiers is the consumer's responsibility.
-        rows_inserted = 0
+    def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
+        pred      = self._lt_preds[idx]
+        signal_id = pred.get('signal_id')
+
+        # Idempotency: on first lifetime substep clear all lifetime rows (handles
+        # stale rows from previous builds with different predicates); subsequent
+        # substeps scope the delete to this signal only.
         with conn.cursor() as cur:
-            rows_inserted += self._insert_windows(cur, chart_id, near_deduped, 'near')
-            rows_inserted += self._insert_windows(cur, chart_id, lifetime_deduped, 'lifetime')
+            if idx == 0:
+                cur.execute(
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
+                    (chart_id,),
+                )
+            elif signal_id:
+                cur.execute(
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
+                    (chart_id, str(signal_id)),
+                )
 
-        logger.info(
-            "ka_sangam: inserted %d rows into kala_convergence for chart %s "
-            "(near=%d, lifetime=%d)",
-            rows_inserted, chart_id, len(near_deduped), len(lifetime_deduped),
+        horizon_start = date(self._birth_year, 1, 1)
+        horizon_end   = date(self._birth_year + _LIFETIME_HORIZON_YEARS, 12, 31)
+        def _keepalive():
+            with conn.cursor() as _cur:
+                _cur.execute("SELECT 1")
+
+        windows       = self._generate_windows(
+            pred_dicts        = [pred],
+            horizon_start     = horizon_start,
+            horizon_end       = horizon_end,
+            dasha_kala_service= self._dks,
+            gochara_service   = self._gs,
+            chart_id          = chart_id,
+            keepalive         = _keepalive,
         )
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows_inserted)
+        deduped = self._dedup(windows)
+        logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
+                    idx, len(self._lt_preds) - 1, len(deduped), chart_id)
+
+        rows = 0
+        if not dry_run:
+            with conn.cursor() as cur:
+                rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
     def _generate_windows(self, pred_dicts, horizon_start, horizon_end,
-                          dasha_kala_service, gochara_service, chart_id) -> list[dict]:
-        """Run Mode A + Mode B for every predicate over [horizon_start, horizon_end]."""
+                          dasha_kala_service, gochara_service, chart_id,
+                          keepalive=None) -> list[dict]:
+        """Run Mode A + Mode B for every predicate over [horizon_start, horizon_end].
+
+        keepalive: optional callable issued after each mode call to prevent
+        idle-in-transaction timeout on long-running Swiss Ephemeris scans.
+        """
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
         all_windows: list[dict] = []
@@ -198,6 +276,8 @@ class KaSangamWriter(WriterBase):
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
+            if keepalive:
+                keepalive()
             try:
                 all_windows.extend(mode_b_sweep(
                     signal_id=sig_id,
@@ -209,79 +289,21 @@ class KaSangamWriter(WriterBase):
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode B failed for signal %s: %s", sig_id, exc)
+            if keepalive:
+                keepalive()
         return all_windows
 
-    def _generate_lifetime_windows(self, conn, pred_dicts, dasha_kala_service,
-                                   gochara_service, chart_id) -> list[dict]:
-        """
-        Lifetime tier: anchor convergence search at parva spans from
-        kala_jivana_parva (one parva per dāśā-system boundary). Each parva span
-        is searched with the SAME Mode A + Mode B engine, so the parvas gain the
-        convergence data they previously lacked (avg_effective_score was NULL).
-
-        Falls back to a single birth→birth+100y span if no parvas exist yet
-        (e.g. first build, before ka_jivana_parva has run). Row-budget capped at
-        _LIFETIME_MAX_ROWS; predicate budget tightened to _LIFETIME_MAX_PREDICATES.
-        """
-        from datetime import date
-
-        # Parva boundaries (start_year/end_year) for this chart
-        spans: list[tuple[date, date]] = []
+    def _derive_birth_year(self, conn, chart_id: str) -> int:
+        """Derive birth year from the earliest MD start in chart_dashas."""
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT start_year, end_year
-                FROM kala_jivana_parva
-                WHERE chart_id = %s
-                ORDER BY start_year
-                """,
+                "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
                 (chart_id,),
             )
-            for start_y, end_y in cur.fetchall():
-                if start_y is None:
-                    continue
-                s = date(int(start_y), 1, 1)
-                e = date(int(end_y), 12, 31) if end_y is not None else date(int(start_y) + 20, 12, 31)
-                if e > s:
-                    spans.append((s, e))
-
-        if not spans:
-            # Fallback: derive lifetime horizon from birth date in chart_dashas
-            birth_year = None
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT MIN(start_date) FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
-                    (chart_id,),
-                )
-                row = cur.fetchone()
-                if row and row[0]:
-                    birth_year = row[0].year
-            birth_year = birth_year or 1984
-            spans = [(date(birth_year, 1, 1), date(birth_year + _LIFETIME_HORIZON_YEARS, 12, 31))]
-            logger.info("ka_sangam: no parvas found — lifetime tier falls back to single %d-year span", _LIFETIME_HORIZON_YEARS)
-
-        # Tighten predicate budget for the lifetime tier to stay under the row ceiling
-        lt_preds = pred_dicts[:_LIFETIME_MAX_PREDICATES]
-
-        all_windows: list[dict] = []
-        for span_start, span_end in spans:
-            all_windows.extend(self._generate_windows(
-                pred_dicts=lt_preds,
-                horizon_start=span_start,
-                horizon_end=span_end,
-                dasha_kala_service=dasha_kala_service,
-                gochara_service=gochara_service,
-                chart_id=chart_id,
-            ))
-
-        deduped = self._dedup(all_windows)
-        if len(deduped) > _LIFETIME_MAX_ROWS:
-            logger.warning(
-                "ka_sangam: lifetime tier produced %d windows — capping to %d highest-scoring",
-                len(deduped), _LIFETIME_MAX_ROWS,
-            )
-            deduped = deduped[:_LIFETIME_MAX_ROWS]
-        return deduped
+            row = cur.fetchone()
+            if row and row['birth_date']:
+                return row['birth_date'].year
+        return 1984
 
     @staticmethod
     def _dedup(all_windows: list[dict]) -> list[dict]:
@@ -360,3 +382,28 @@ class KaSangamWriter(WriterBase):
                 )
                 rows_inserted += 1
         return rows_inserted
+
+    def _build_house_lord_map(self, conn, chart_id: str) -> dict[int, str]:
+        """
+        Build {house_num: lord_name} for DISPOSITOR_RELATIONAL predicate enrichment.
+        Derives lords from lagna sign via classical whole-sign house assignment.
+        Falls back to Aries (this native's lagna) on any query failure.
+        """
+        lagna_sign = 'Aries'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT fact_value_text FROM chart_facts "
+                    "WHERE chart_id = %s AND fact_subject = 'LAGNA' AND fact_key = 'sign' LIMIT 1",
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+                if row and row['fact_value_text']:
+                    lagna_sign = row['fact_value_text']
+        except Exception as exc:
+            logger.warning("ka_sangam: could not fetch lagna sign for %s: %s", chart_id, exc)
+        lagna_num = _LAGNA_SIGN_NUM.get(lagna_sign, 1)
+        return {
+            house: _SIGN_LORDS[(lagna_num + house - 2) % 12 + 1]
+            for house in range(1, 13)
+        }
