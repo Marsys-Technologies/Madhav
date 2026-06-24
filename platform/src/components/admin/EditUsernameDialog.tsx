@@ -35,7 +35,7 @@ function EditUsernameForm({
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error ?? 'Update failed.')
+        toast.error(body?.error?.message ?? 'Update failed.')
         setSubmitting(false)
         return
       }

@@ -12,7 +12,7 @@ import type React from 'react'
 
 interface MobileNavSheetProps {
   user: { uid: string; email?: string; name?: string }
-  profile: { role: 'super_admin' | 'admin' | 'guest'; status?: string }
+  profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
 // Lunar crescent SVG icon for Panchang — matches AppShellRail
@@ -36,13 +36,13 @@ const NAV_ITEMS: {
   icon: LucideIcon | React.ComponentType<{ className?: string }>
   roles: readonly string[]
 }[] = [
-  { href: '/dashboard', label: 'Jātakas',    icon: LayoutGrid,  roles: ['super_admin', 'admin', 'guest'] },
-  { href: '/panchang',  label: 'Panchang',   icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'guest'] },
+  { href: '/dashboard', label: 'Jātakas',    icon: LayoutGrid,  roles: ['super_admin', 'guest'] },
+  { href: '/panchang',  label: 'Panchang',   icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
   { href: '/cockpit',   label: 'Cockpit',    icon: Gauge,       roles: ['super_admin'] },
   { href: '/audit',     label: 'Audit',      icon: FileSearch,  roles: ['super_admin'] },
   { href: '/aiops',     label: 'AIOps',      icon: Bot,         roles: ['super_admin'] },
   { href: '/performance', label: 'Performance', icon: ChartColumn, roles: ['super_admin'] },
-  { href: '/admin',     label: 'Admin',      icon: Settings2,   roles: ['super_admin', 'admin'] },
+  { href: '/admin',     label: 'Admin',      icon: Settings2,   roles: ['super_admin'] },
 ]
 
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {

@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { adminAuth } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
+import { writeAuditLog } from '@/lib/admin/audit'
 
 // Generates a Firebase password-reset link for the target user. Returns the
 // link to the admin UI for copy-paste.
@@ -36,6 +37,7 @@ export async function POST(
 
   try {
     const link = await adminAuth.generatePasswordResetLink(profile.email)
+    await writeAuditLog(auth.user.uid, 'reset_password', id, { email: profile.email })
     return NextResponse.json({ ok: true, reset_link: link })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Could not generate reset link.'

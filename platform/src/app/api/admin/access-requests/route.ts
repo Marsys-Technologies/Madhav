@@ -16,9 +16,25 @@ export async function GET() {
       status: string
       requested_at: string
       reviewed_at: string | null
-    }>(
-      'SELECT id, full_name, email, reason, status, requested_at, reviewed_at FROM access_requests ORDER BY requested_at DESC'
-    )
+      approved_user_id: string | null
+      approved_username: string | null
+      approved_name: string | null
+    }>(`
+      SELECT
+        ar.id,
+        ar.full_name,
+        ar.email,
+        ar.reason,
+        ar.status,
+        ar.requested_at,
+        ar.reviewed_at,
+        ar.approved_user_id,
+        p.username AS approved_username,
+        p.name     AS approved_name
+      FROM access_requests ar
+      LEFT JOIN profiles p ON p.id = ar.approved_user_id
+      ORDER BY ar.requested_at DESC
+    `)
     return NextResponse.json({ requests: rows })
   } catch (err) {
     console.error('[admin/access-requests] query failed', err)

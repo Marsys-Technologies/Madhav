@@ -4,6 +4,7 @@ import { adminAuth } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { validateUsername } from '@/lib/auth/username'
 import { res } from '@/lib/errors'
+import { writeAuditLog } from '@/lib/admin/audit'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
       [uid, role, 'active', fullName, username, email, auth.user.uid]
     )
     const resetLink = await adminAuth.generatePasswordResetLink(email).catch(() => null)
+    await writeAuditLog(auth.user.uid, 'create_user', uid, { name: fullName, email, role })
     return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink, user: inserted[0] })
   } catch (err) {
     await adminAuth.deleteUser(uid).catch(() => {})

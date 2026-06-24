@@ -58,7 +58,7 @@ export function UsersTable({
   const [newUserOpen, setNewUserOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [confirmAction, setConfirmAction] = useState<
-    | { user: AdminUser; kind: 'disable' | 'enable' | 'delete' }
+    | { user: AdminUser; kind: 'disable' | 'enable' | 'delete' | 'promote' | 'demote' }
     | null
   >(null)
   const [working, setWorking] = useState(false)
@@ -80,7 +80,7 @@ export function UsersTable({
       const res = await fetch(`/api/admin/users/${user.id}/send-reset`, { method: 'POST' })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error ?? 'Could not generate reset link.')
+        toast.error(body?.error?.message ?? 'Could not generate reset link.')
         return
       }
       setResetLink(body?.reset_link ?? null)
@@ -97,6 +97,12 @@ export function UsersTable({
       let res: Response
       if (kind === 'delete') {
         res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+      } else if (kind === 'promote' || kind === 'demote') {
+        res = await fetch(`/api/admin/users/${user.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: kind === 'promote' ? 'super_admin' : 'guest' }),
+        })
       } else {
         res = await fetch(`/api/admin/users/${user.id}`, {
           method: 'PATCH',
@@ -106,15 +112,16 @@ export function UsersTable({
       }
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error ?? 'Action failed.')
+        toast.error(body?.error?.message ?? 'Action failed.')
       } else {
-        toast.success(
-          kind === 'delete'
-            ? 'User deleted.'
-            : kind === 'disable'
-              ? 'User disabled.'
-              : 'User enabled.',
-        )
+        const successMsg: Record<typeof kind, string> = {
+          delete:  'User deleted.',
+          disable: 'User disabled.',
+          enable:  'User enabled.',
+          promote: 'Promoted to super admin.',
+          demote:  'Demoted to guest.',
+        }
+        toast.success(successMsg[kind])
         setConfirmAction(null)
         onMutated()
       }
@@ -142,7 +149,11 @@ export function UsersTable({
       </header>
 
       {filtered.length === 0 ? (
-        <p className="px-6 py-8 text-center text-sm text-muted-foreground">No users.</p>
+        <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+          {search.trim()
+            ? `No users match "${search.trim()}".`
+            : 'No users yet — create the first one above.'}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -195,6 +206,20 @@ export function UsersTable({
                               Send password reset link
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            {u.role === 'guest' ? (
+                              <DropdownMenuItem
+                                onClick={() => setConfirmAction({ user: u, kind: 'promote' })}
+                              >
+                                Promote to super admin
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => setConfirmAction({ user: u, kind: 'demote' })}
+                              >
+                                Demote to guest
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
                             {u.status === 'active' ? (
                               <DropdownMenuItem
                                 onClick={() => setConfirmAction({ user: u, kind: 'disable' })}
@@ -242,11 +267,11 @@ export function UsersTable({
           if (!open) setConfirmAction(null)
         }}
         title={
-          confirmAction?.kind === 'delete'
-            ? 'Delete user?'
-            : confirmAction?.kind === 'disable'
-              ? 'Disable user?'
-              : 'Enable user?'
+          confirmAction?.kind === 'delete'  ? 'Delete user?'              :
+          confirmAction?.kind === 'disable' ? 'Disable user?'             :
+          confirmAction?.kind === 'enable'  ? 'Enable user?'              :
+          confirmAction?.kind === 'promote' ? 'Promote to super admin?'   :
+                                              'Demote to guest?'
         }
         description={
           confirmAction
@@ -254,17 +279,21 @@ export function UsersTable({
               ? `Permanently delete ${confirmAction.user.username ?? confirmAction.user.email}? This removes their Firebase account, profile, and all linked data. This cannot be undone.`
               : confirmAction.kind === 'disable'
                 ? `Disable ${confirmAction.user.username ?? confirmAction.user.email}? They will not be able to sign in until re-enabled.`
-                : `Re-enable ${confirmAction.user.username ?? confirmAction.user.email}?`
+                : confirmAction.kind === 'enable'
+                  ? `Re-enable ${confirmAction.user.username ?? confirmAction.user.email}?`
+                  : confirmAction.kind === 'promote'
+                    ? `Grant ${confirmAction.user.username ?? confirmAction.user.email} super admin access? They will be able to manage all users and access all admin surfaces.`
+                    : `Remove super admin access from ${confirmAction.user.username ?? confirmAction.user.email}? They will be demoted to guest.`
             : ''
         }
         confirmLabel={
-          confirmAction?.kind === 'delete'
-            ? 'Delete'
-            : confirmAction?.kind === 'disable'
-              ? 'Disable'
-              : 'Enable'
+          confirmAction?.kind === 'delete'  ? 'Delete'   :
+          confirmAction?.kind === 'disable' ? 'Disable'  :
+          confirmAction?.kind === 'enable'  ? 'Enable'   :
+          confirmAction?.kind === 'promote' ? 'Promote'  :
+                                              'Demote'
         }
-        destructive={confirmAction?.kind !== 'enable'}
+        destructive={confirmAction?.kind === 'delete' || confirmAction?.kind === 'disable' || confirmAction?.kind === 'demote'}
         loading={working}
         onConfirm={handleConfirm}
       />

@@ -55,16 +55,12 @@ interface NavItem {
 
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
-  profile: { role: 'super_admin' | 'admin' | 'guest'; status?: string }
+  profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
-// Aligned with components/nav/role-gates.NAV_ITEMS (single source of truth for
-// visibility). Roles here are the legacy union including 'admin' + 'client'
-// for backwards-compat with profile.role values still in flight during 2c
-// cutover; runtime normalization collapses 'client' → 'guest'.
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Jātakas',     icon: LayoutGrid,       roles: ['super_admin', 'admin', 'client', 'guest'] },
-  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'admin', 'client', 'guest'] },
+  { href: '/dashboard',   label: 'Jātakas',     icon: LayoutGrid,       roles: ['super_admin', 'guest'] },
+  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
   { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
   { href: '/audit',       label: 'Audit',       icon: FileSearch,       roles: ['super_admin'] },
   { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },

@@ -39,7 +39,7 @@ function ApproveForm({
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error ?? 'Approve failed.')
+        toast.error(body?.error?.message ?? 'Approve failed.')
         setSubmitting(false)
         return
       }
