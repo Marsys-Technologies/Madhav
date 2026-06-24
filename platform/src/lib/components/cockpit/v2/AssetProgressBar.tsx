@@ -41,6 +41,7 @@ function stageLabel(stage: BuildStage, substep?: SubstepInfo, actualRows?: numbe
 export function AssetProgressBar({ state, sseState, actualRows, stage, substep, isQueued }: AssetProgressBarProps) {
   // Prefer-reduced-motion check (safe for SSR — only evaluated client-side)
   const prefersReducedMotion = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const effectiveState = sseState ?? state
