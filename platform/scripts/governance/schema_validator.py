@@ -485,9 +485,13 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                           "Top-level `session_open:` key missing",
                           "Wrap the block in `session_open:`.")]
     so = data["session_open"]
+    # Back-compat (2026-06-22 layer-model migration): accept either the legacy
+    # `step_number_or_macro_phase` key OR the new canonical `step_number_or_layer` key.
+    # Once all sessions migrate, Step 5 of the governance migration removes this alias.
+    _STEP_FIELD_ALIASES = ("step_number_or_layer", "step_number_or_macro_phase")
     required = [
         "session_id", "cowork_thread_name", "agent_name", "agent_version",
-        "step_number_or_macro_phase", "predecessor_session",
+        "predecessor_session",
         "mandatory_reading_confirmation", "canonical_artifact_fingerprint_check",
         "declared_scope", "mirror_pair_freshness_check", "native_directive_obligations",
         "red_team_due",
@@ -501,6 +505,15 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                 evidence=f"Required field `{key}` not present",
                 suggested_remediation="Add the field per SESSION_OPEN_TEMPLATE_v1_0.md §2",
             ))
+    # Step-position field: require exactly one of the two aliases
+    if not any(k in so for k in _STEP_FIELD_ALIASES):
+        violations.append(Violation(
+            rule="handshake_field_missing[step_number_or_layer]",
+            severity="CRITICAL",
+            path="<handshake>",
+            evidence="Neither `step_number_or_layer` nor `step_number_or_macro_phase` present",
+            suggested_remediation="Add `step_number_or_layer` per SESSION_OPEN_TEMPLATE_v1_0.md §2",
+        ))
     scope = so.get("declared_scope", {}) or {}
     if not scope.get("must_not_touch"):
         violations.append(Violation(
