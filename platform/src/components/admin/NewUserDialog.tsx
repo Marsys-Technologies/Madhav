@@ -36,7 +36,7 @@ function NewUserForm({
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error?.message ?? 'Could not create user.')
+        toast.error(body?.error?.detail ?? body?.error?.message ?? 'Could not create user.')
         setSubmitting(false)
         return
       }

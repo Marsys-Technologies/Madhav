@@ -80,7 +80,7 @@ export function UsersTable({
       const res = await fetch(`/api/admin/users/${user.id}/send-reset`, { method: 'POST' })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error?.message ?? 'Could not generate reset link.')
+        toast.error(body?.error?.detail ?? body?.error?.message ?? 'Could not generate reset link.')
         return
       }
       setResetLink(body?.reset_link ?? null)
@@ -112,7 +112,7 @@ export function UsersTable({
       }
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error?.message ?? 'Action failed.')
+        toast.error(body?.error?.detail ?? body?.error?.message ?? 'Action failed.')
       } else {
         const successMsg: Record<typeof kind, string> = {
           delete:  'User deleted.',

@@ -53,7 +53,7 @@ export function PendingRequestsTable({
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(body?.error?.message ?? 'Reject failed.')
+        toast.error(body?.error?.detail ?? body?.error?.message ?? 'Reject failed.')
       } else {
         toast.success('Request rejected.')
         setRejecting(null)

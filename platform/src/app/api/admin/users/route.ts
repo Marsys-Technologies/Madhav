@@ -103,6 +103,7 @@ export async function POST(request: Request) {
     insertedUser = inserted[0]
     resetLink = await adminAuth.generatePasswordResetLink(email).catch(() => null)
   } catch (err) {
+    console.error('[admin/users] POST profile INSERT failed', err)
     await adminAuth.deleteUser(uid).catch(() => {})
     const message = err instanceof Error ? err.message : 'Could not create profile.'
     return res.internal(message)
