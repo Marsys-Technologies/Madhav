@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
@@ -54,6 +55,7 @@ export function UsersTable({
   currentUserId: string
   onMutated: () => void
 }) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [newUserOpen, setNewUserOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
@@ -204,6 +206,11 @@ export function UsersTable({
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleSendReset(u)}>
                               Send password reset link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/admin?tab=charts&guest=${u.id}`)}
+                            >
+                              ✦ Manage chart access
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {u.role === 'guest' ? (
