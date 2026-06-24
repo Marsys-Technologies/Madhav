@@ -68,9 +68,14 @@ NAKSHATRA_BOUNDARY_ARCSEC = 2880.0
 SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
          "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
 
-# Populated from L0 (reference_signs, reference_nakshatras) before build.
-# Never define inline — L0 is the single source of truth.
-_SIGN_LORDS: dict[str, str] = {}  # sign_name → lord (Title case)
+# Populated from L0 before build; _load_l0_refs() overwrites from reference_signs.
+# Fallback = correct Parashari classics so unit tests without a DB still work.
+_SIGN_LORDS: dict[str, str] = {
+    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury",
+    "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury",
+    "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter",
+    "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
+}
 
 NAKSHATRAS = [
     "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
@@ -80,7 +85,9 @@ NAKSHATRAS = [
     "Purva Bhadrapada","Uttara Bhadrapada","Revati",
 ]
 
-_NAK_LORDS: list[str] = []  # 9-element vimshottari cycle (Title case), populated from L0
+# Populated from L0 before build; _load_l0_refs() overwrites from reference_nakshatras.
+# Fallback = correct Parashari vimshottari cycle so unit tests without a DB still work.
+_NAK_LORDS: list[str] = ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"]
 
 # Nakshatra span: 360/27 = 13.333... deg
 NAK_SPAN_DEG = 360.0 / 27.0  # ~13.333

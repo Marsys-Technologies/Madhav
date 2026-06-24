@@ -67,9 +67,11 @@ VIMSHOTTARI_SEQUENCE = [
 ]
 VIMSHOTTARI_TOTAL_YEARS = 120
 
-# Populated from L0 (reference_nakshatras) before build — index 0 = "".
-# Never define inline — L0 is the single source of truth.
-_NAKSHATRA_LORDS_1BASED: list[str] = []
+# Populated from L0 before build; _load_nakshatra_lords_l0() overwrites from reference_nakshatras.
+# Fallback = correct Parashari vimshottari cycle (28-element, index 0 unused) so unit tests
+# without a DB still work. L0 is the authority; this matches what reference_nakshatras holds.
+_CLASSICAL_CYCLE = ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"]
+_NAKSHATRA_LORDS_1BASED: list[str] = [""] + [_CLASSICAL_CYCLE[(i - 1) % 9] for i in range(1, 28)]
 
 def _load_nakshatra_lords_l0(conn: Any) -> None:
     """Populate _NAKSHATRA_LORDS_1BASED (28-element, index 0='') from reference_nakshatras."""
