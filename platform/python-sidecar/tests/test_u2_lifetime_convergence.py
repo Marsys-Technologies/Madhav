@@ -74,7 +74,7 @@ class FakeCursor:
         elif 'kala_jivana_parva' in low:
             self._result = self._store['parvas']
         elif 'chart_dashas' in low:
-            self._result = [(date(1984, 2, 5),)]
+            self._result = [{'birth_date': date(1984, 2, 5)}]
         else:
             self._result = []
 
