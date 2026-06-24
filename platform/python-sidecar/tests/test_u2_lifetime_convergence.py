@@ -66,7 +66,11 @@ class FakeCursor:
         elif 'kala_activation_predicates' in low:
             self._result = self._store['predicates']
         elif 'bodha_msr_signals' in low:
-            self._result = self._store['dignity']
+            # plan_substeps expects 4-col dict rows: signal_id, dignity_score, graha_name, house_num
+            self._result = [
+                {'signal_id': sig, 'dignity_score': score, 'graha_name': None, 'house_num': None}
+                for sig, score in self._store['dignity']
+            ]
         elif 'kala_jivana_parva' in low:
             self._result = self._store['parvas']
         elif 'chart_dashas' in low:

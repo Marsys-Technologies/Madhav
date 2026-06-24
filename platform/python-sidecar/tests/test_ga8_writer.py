@@ -1256,8 +1256,9 @@ class TestVargaNodeRelationships:
                         and r["fact_subject"] == "D9_RAH_MEAN")
         assert rahu_row["fact_value_text"] == "vargottama"
 
-    def test_rahu_node_dignity_is_exalted_in_gemini(self):
-        # EXALTATION_SIGNS["Rahu"] = "Gemini" — Rahu in Gemini is exalted
+    def test_rahu_node_dignity_in_gemini_is_neutral(self):
+        # L0 seal 2026-06-24: Rahu exaltation = Taurus (Parashari mainstream).
+        # Mock varga state places Rahu in Gemini → dignity must be "neutral".
         rows = sut._build_varga_relationship_rows(
             "D9", self._make_varga_state(), MOCK_CHART_OUTPUT,
             CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
@@ -1266,8 +1267,8 @@ class TestVargaNodeRelationships:
                              if r["fact_category"] == "graha_dignity_per_varga"
                              and r["fact_subject"] == "D9_RAH_MEAN"]
         assert len(rahu_dignity_rows) == 1
-        # Rahu in Gemini should be "exalted" per EXALTATION_SIGNS constant
-        assert rahu_dignity_rows[0]["fact_value_text"] == "exalted"
+        # Rahu in Gemini is "neutral" — exaltation is Taurus per L0 seal
+        assert rahu_dignity_rows[0]["fact_value_text"] == "neutral"
 
     def test_classical_grahas_still_have_all_per_varga_facts(self):
         rows = sut._build_varga_relationship_rows(
