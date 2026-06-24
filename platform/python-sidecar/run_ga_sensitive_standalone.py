@@ -1,26 +1,21 @@
 """
-Standalone runner for ga_sensitive enrichment build.
-Bypasses the orchestrator watchdog by using the writer's own connection.
-Run from platform/python-sidecar with enrichment branch checked out.
+SUPERSEDED — use run_heavy_writer_standalone.py instead.
+
+  DATABASE_URL=... python run_heavy_writer_standalone.py ga_sensitive
+
+WHY SUPERSEDED: This script called build_ga_sensitive(conn=None) directly,
+bypassing the orchestrator completely. That means asset_throughput was never
+updated — the asset stayed in state='error' even after a successful run.
+
+The new script calls _run_data_writer directly which:
+  - Never sets state='building' (TypeScript watchdog never fires)
+  - Commits per-substep via _drive_substeps (durable on crash)
+  - Sets state='lit' with correct rows_written on success
+  - Marks downstream assets stale automatically
+
+See run_heavy_writer_standalone.py for the full documented pattern.
 """
-import os
 import sys
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
-
-DATABASE_URL = os.environ["DATABASE_URL"]
-
-sys.path.insert(0, os.path.dirname(__file__))
-
-from ga_writers.ga_sensitive_writer import build_ga_sensitive
-
-CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-
-logging.info("Starting standalone ga_sensitive build for chart %s", CHART_ID)
-result = build_ga_sensitive(
-    chart_id=CHART_ID,
-    build_id=None,   # standalone: writer opens its own conn, fetches birth_params
-    conn=None,       # standalone mode — writer commits its own transaction
-)
-logging.info("ga_sensitive standalone complete: %s", result)
+print(__doc__)
+print("Run: DATABASE_URL=... python run_heavy_writer_standalone.py ga_sensitive")
+sys.exit(1)
