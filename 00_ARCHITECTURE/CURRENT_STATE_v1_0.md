@@ -865,10 +865,10 @@ changelog:
     file_updated_at: 2026-05-20T18:30:00+05:30. file_updated_by_session: PANCHANG-ENRICH-GOVCLOSE.
   - v5.26 (2026-05-20, 4C-9):
     **CONCURRENT WORKSTREAM 4C-9 CLOSED. Wave 1 close: polish pass, Observatory panels, IS.8(b) red-team 5/5 PASS, CLAUDE.md v2.7, Phase 4C close artifact, PANCHANG_DAILY CURRENT_ENGINE_DIRECT, queue closed.**
-    Key outcomes: (1) AC.4C9.1 PASS — polish pass (h-8→h-10 touch targets; deferred items in PHASE_4C_FOLLOWUPS_v1_0.md). (2) AC.4C9.2 PASS — PanchangLatencyPanel + PanchangCachePanel added to Observatory dashboard; 151 TS tests PASS. (3) AC.4C9.3 PASS — IS.8(b) red-team 5/5: RT.4C.1 WARN-acceptable (minor UI formatting, not engine logic); RT.4C.2-5 PASS; finding docs at 00_ARCHITECTURE/RED_TEAM/RT_4C_*_FINDING.md. (4) AC.4C9.4 PASS — all validators exit 0: schema_validator, drift_detector, mirror_enforcer, validate_queue.py. (5) AC.4C9.5 PASS — CLAUDE.md v2.7: Conductor added as sixth concurrent workstream; "Five workstreams" → "Six workstreams"; Phase 4C status updated to WAVE_1_COMPLETE_PENDING_PR; MP.1 mirror to .geminirules propagated same-session; mirror_enforcer exit 0. (6) AC.4C9.6 PASS — PHASE_4C_CLOSE_v1_0.md authored (432 total tests; 30/30 Drik parity; RT 5/5; deferred items; sub-phase commit index). (7) AC.4C9.7 PASS — PANCHANG_DAILY_v1_0 status IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT in CAPABILITY_MANIFEST.json; MP.2 mirror to .gemini/project_state.md propagated. (8) AC.4C9.8 PASS — CURRENT_STATE v5.26; Wave 1 close summary; next_session_objective = native opens split PR per HANDOFF_WAVE_1.md. (9) AC.4C9.9 PASS — SESSION_LOG appended. (10) AC.4C9.10 PASS — session_queue.yaml: 4C-9 → passed; Wave 1 closing marker added. (11) AC.4C9.11 PASS — HANDOFF_WAVE_1.md authored at worktree root. (12) AC.4C9.12 PASS — brief flipped COMPLETE; FINAL_SUMMARY emitted.
+    Key outcomes: (1) AC.4C9.1 PASS — polish pass (h-8→h-10 touch targets; deferred items in PHASE_4C_FOLLOWUPS_v1_0.md). (2) AC.4C9.2 PASS — PanchangLatencyPanel + PanchangCachePanel added to Observatory dashboard; 151 TS tests PASS. (3) AC.4C9.3 PASS — IS.8(b) red-team 5/5: RT.4C.1 WARN-acceptable (minor UI formatting, not engine logic); RT.4C.2-5 PASS; finding docs at 00_ARCHITECTURE/RED_TEAM/RT_4C_*_FINDING.md. (4) AC.4C9.4 PASS — all validators exit 0: schema_validator, drift_detector, mirror_enforcer, validate_queue.py. (5) AC.4C9.5 PASS — CLAUDE.md v2.7: Conductor added as sixth concurrent workstream; "Five workstreams" → "Six workstreams"; Phase 4C status updated to WAVE_1_COMPLETE_PENDING_PR; MP.1 mirror to .geminirules propagated same-session; mirror_enforcer exit 0. (6) AC.4C9.6 PASS — PHASE_4C_CLOSE_v1_0.md authored (432 total tests; 30/30 Drik parity; RT 5/5; deferred items; sub-phase commit index). (7) AC.4C9.7 PASS — PANCHANG_DAILY_v1_0 status IN_DEVELOPMENT → CURRENT_ENGINE_DIRECT in CAPABILITY_MANIFEST.json; MP.2 mirror to .gemini/project_state.md propagated. (8) AC.4C9.8 PASS — CURRENT_STATE v5.26; Wave 1 close summary; next_session_objective = native opens split PR per 99_ARCHIVE/pre_r7_sessions/HANDOFF_WAVE_1.md. (9) AC.4C9.9 PASS — SESSION_LOG appended. (10) AC.4C9.10 PASS — session_queue.yaml: 4C-9 → passed; Wave 1 closing marker added. (11) AC.4C9.11 PASS — HANDOFF_WAVE_1.md authored at worktree root. (12) AC.4C9.12 PASS — brief flipped COMPLETE; FINAL_SUMMARY emitted.
     phase_4c_sub_phase_status: 4C.0 CLOSED | 4C.1 CLOSED | 4C.2 GATED | 4C.3 CLOSED | 4C.4 CLOSED | 4C.5 CLOSED | 4C.6 CLOSED | 4C.7 CLOSED | 4C.8 CLOSED | 4C.9 CLOSED — WAVE 1 COMPLETE.
-    last_session_id (4C stream): 4C-9. next_session_id (4C stream): N/A — Wave 1 queue complete. Native action required: split-PR per HANDOFF_WAVE_1.md.
-    next_session_objective: Native opens split PR per HANDOFF_WAVE_1.md (cherry-pick Conductor → main as PR 1; Phase 4C close as PR 2). Wave 2 queue (M5-A, 4B, 4D) opens after PR 1 merges.
+    last_session_id (4C stream): 4C-9. next_session_id (4C stream): N/A — Wave 1 queue complete. Native action required: split-PR per 99_ARCHIVE/pre_r7_sessions/HANDOFF_WAVE_1.md.
+    next_session_objective: Native opens split PR per 99_ARCHIVE/pre_r7_sessions/HANDOFF_WAVE_1.md (cherry-pick Conductor → main as PR 1; Phase 4C close as PR 2). Wave 2 queue (M5-A, 4B, 4D) opens after PR 1 merges.
     file_updated_at: 2026-05-20T06:20:00+05:30. file_updated_by_session: 4C-9.
   - v5.25 (2026-05-20, 4C-8):
     **CONCURRENT WORKSTREAM 4C-8 CLOSED. Ask-Madhav prompt deep links + Panchang context block injection. 167/167 tests PASS. tsc 0 errors.**
@@ -1366,7 +1366,7 @@ changelog:
     interface) `bfbc0ac` (rebased onto main, merged cleanly). Lint fix for
     vitest.smoke.config.ts (require()→ESM import) `a13d093`. Gate IV W1 nav
     cleanup (added /performance to AppShellRail + MobileNavSheet) `451a21a`.
-    CLOSE_REPORT_GATE_IV.md authored and committed `63eb16e`.
+    99_ARCHIVE/pre_r7_sessions/CLOSE_REPORT_GATE_IV.md authored and committed `63eb16e`.
     Gate IV AC results: 6/8 PASS. AC.IV.1–5 PASS; AC.IV.8 PASS.
     AC.IV.6 PARTIAL (recall=0.9355 vs bar ≥0.97 — pre-existing gap, no
     regression; precision improved 0.8981→0.9235). AC.IV.7 UNABLE (no 7-day
@@ -4829,7 +4829,7 @@ current_state:
     # === Predecessor Cowork-M5-S1-PLAN-AUTHORING-2026-05-13 preserved for audit ===
     # Pre-M5-Final-Autonomous-2026-05-13 (2026-05-13). Autonomous overnight pre-M5
     # gate sequence close. Merged Gates II.5 (5337fc4), I (c4a40cc), III (bfbc0ac)
-    # to main. Gate IV AC 6/8 PASS. CLOSE_REPORT_GATE_IV.md authored (63eb16e).
+    # to main. Gate IV AC 6/8 PASS. 99_ARCHIVE/pre_r7_sessions/CLOSE_REPORT_GATE_IV.md authored (63eb16e).
     # Nav cleanup /performance item added (451a21a). CURRENT_STATE v3.8 → v3.9.
     # Not an M5 substantive session — red_team_counter unchanged at 0.
     # === Predecessor Pipeline-Transform-S1 preserved for audit trail ===
@@ -7185,7 +7185,7 @@ notes: msr_signals updated via ALTER ADD COLUMN IF NOT EXISTS (028);
   Pipeline-Transform-S1 (2026-05-11), but the step still emits in production.
 
 Any earlier session note or document that equates these two steps is incorrect.
-Canonical reference: DISCOVERY_REPORT.md §F (Gate II.5 worktree, commit 5463702).
+Canonical reference: 99_ARCHIVE/pre_r7_sessions/DISCOVERY_REPORT.md §F (Gate II.5 worktree, commit 5463702).
 Follow-up action documented in POST_GATE_II_FOLLOWUPS.md FU.3.
 
 The DEF-2 entry in Pipeline-Transform-S1's deferred_items ("compose_bundle() 0-tool
