@@ -138,14 +138,14 @@ ALL_30_VARGAS = SHODASHA_VARGAS + SUPPLEMENTARY_11 + NADI_3
 EXALTATION_SIGNS = {
     "Sun": "Aries", "Moon": "Taurus", "Mars": "Capricorn",
     "Mercury": "Virgo", "Jupiter": "Cancer", "Venus": "Pisces", "Saturn": "Libra",
-    "Rahu": "Gemini", "Ketu": "Sagittarius",
+    "Rahu": "Taurus", "Ketu": "Scorpio",  # Parashari mainstream — L0 sealed 2026-06-24
 }
 
 # Debilitation signs
 DEBILITATION_SIGNS = {
     "Sun": "Libra", "Moon": "Scorpio", "Mars": "Cancer",
     "Mercury": "Pisces", "Jupiter": "Capricorn", "Venus": "Virgo", "Saturn": "Aries",
-    "Rahu": "Sagittarius", "Ketu": "Gemini",
+    "Rahu": "Scorpio", "Ketu": "Taurus",  # Parashari mainstream — L0 sealed 2026-06-24
 }
 
 # Own signs per planet (classical)

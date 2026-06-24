@@ -117,21 +117,21 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
     },
     {
         "graha": "Rahu",
-        "exaltation_sign": "Gemini",       "exaltation_degree": None,
-        "debilitation_sign": "Sagittarius","debilitation_degree": None,
+        "exaltation_sign": "Taurus",       "exaltation_degree": None,
+        "debilitation_sign": "Scorpio",    "debilitation_degree": None,
         "moolatrikona_sign": None,         "moolatrikona_from": None, "moolatrikona_to": None,
         "own_signs": [],
-        "classical_citation": "BPHS Ch.3; tradition varies between Gemini/Taurus exaltation",
-        "notes": "Some authorities place Rahu exaltation in Taurus; Gemini followed here per Parashara majority",
+        "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — Parashari consensus: Taurus",
+        "notes": "Taurus exaltation per Parashari mainstream (BPHS/Phaladeepika/Saravali/JH/PL); Gemini is a minority Kerala school position",
     },
     {
         "graha": "Ketu",
-        "exaltation_sign": "Sagittarius",  "exaltation_degree": None,
-        "debilitation_sign": "Gemini",     "debilitation_degree": None,
+        "exaltation_sign": "Scorpio",      "exaltation_degree": None,
+        "debilitation_sign": "Taurus",     "debilitation_degree": None,
         "moolatrikona_sign": None,         "moolatrikona_from": None, "moolatrikona_to": None,
         "own_signs": [],
-        "classical_citation": "BPHS Ch.3; tradition varies",
-        "notes": "Some authorities place Ketu exaltation in Scorpio; Sagittarius followed as reverse of Rahu",
+        "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu",
+        "notes": "Scorpio exaltation per Parashari mainstream; Sagittarius is a minority Kerala school position",
     },
 ]
 
@@ -366,8 +366,8 @@ _MOTION_STATE_THRESHOLDS: list[dict[str, Any]] = [
     # Mercury (4 rows)
     {"graha": "Mercury", "motion_state": "vakra",    "speed_threshold_low": None, "speed_threshold_high": 0,    "threshold_type": "below",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Retrograde"},
     {"graha": "Mercury", "motion_state": "anuvakra", "speed_threshold_low": 0,    "speed_threshold_high": 0.1,  "threshold_type": "range",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Station / slow"},
-    {"graha": "Mercury", "motion_state": "sama",     "speed_threshold_low": 0.1,  "speed_threshold_high": 2.5,  "threshold_type": "range",  "typical_speed_dps": 1.383, "classical_citation": _SS, "notes": "Normal range"},
-    {"graha": "Mercury", "motion_state": "atichara", "speed_threshold_low": 2.5,  "speed_threshold_high": None, "threshold_type": "above",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Fast"},
+    {"graha": "Mercury", "motion_state": "sama",     "speed_threshold_low": 0.1,  "speed_threshold_high": 2.0,  "threshold_type": "range",  "typical_speed_dps": 1.383, "classical_citation": _SS, "notes": "Normal range"},
+    {"graha": "Mercury", "motion_state": "atichara", "speed_threshold_low": 2.0,  "speed_threshold_high": None, "threshold_type": "above",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Fast (observed max ~2.2°/day; 2.5 was unreachable)"},
     # Jupiter (4 rows)
     {"graha": "Jupiter", "motion_state": "vakra",    "speed_threshold_low": None, "speed_threshold_high": 0,    "threshold_type": "below",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Retrograde"},
     {"graha": "Jupiter", "motion_state": "anuvakra", "speed_threshold_low": 0,    "speed_threshold_high": 0.05, "threshold_type": "range",  "typical_speed_dps": None,  "classical_citation": _SS, "notes": "Station / slow"},

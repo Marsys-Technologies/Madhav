@@ -100,12 +100,12 @@ _FORMULA_WEIGHTS = {
 _EXALTATION: dict[str, str] = {
     "Sun": "Aries", "Moon": "Taurus", "Mars": "Capricorn",
     "Mercury": "Virgo", "Jupiter": "Cancer", "Venus": "Pisces", "Saturn": "Libra",
-    "Rahu": "Gemini", "Ketu": "Sagittarius",
+    "Rahu": "Taurus", "Ketu": "Scorpio",  # Parashari mainstream — L0 sealed 2026-06-24
 }
 _DEBILITATION: dict[str, str] = {
     "Sun": "Libra", "Moon": "Scorpio", "Mars": "Cancer",
     "Mercury": "Pisces", "Jupiter": "Capricorn", "Venus": "Virgo", "Saturn": "Aries",
-    "Rahu": "Sagittarius", "Ketu": "Gemini",
+    "Rahu": "Scorpio", "Ketu": "Taurus",  # Parashari mainstream — L0 sealed 2026-06-24
 }
 _OWN_SIGNS: dict[str, list[str]] = {
     "Sun": ["Leo"], "Moon": ["Cancer"],
@@ -535,7 +535,7 @@ def compute_motion_state(graha: str, speed: float) -> str:
     # Classical planets: Mars, Mercury, Jupiter, Venus, Saturn
     _THRESHOLDS: dict[str, dict[str, Any]] = {
         "Mars":    {"vakra": 0, "anuvakra_hi": 0.1, "manda_hi": 0.5, "sama_hi": 0.8},
-        "Mercury": {"vakra": 0, "anuvakra_hi": 0.1, "sama_hi": 2.5},
+        "Mercury": {"vakra": 0, "anuvakra_hi": 0.1, "sama_hi": 2.0},  # sealed at L0 2026-06-24
         "Jupiter": {"vakra": 0, "anuvakra_hi": 0.05, "sama_hi": 0.15},
         "Venus":   {"vakra": 0, "anuvakra_hi": 0.05, "sama_hi": 1.3},
         "Saturn":  {"vakra": 0, "anuvakra_hi": 0.02, "sama_hi": 0.13},
@@ -584,6 +584,28 @@ def _load_dignity_ref(conn: Any) -> dict[str, dict]:
             }
     except Exception as exc:
         logger.warning("[ga_condition_writer] bg_dignity_reference not available: %s", exc)
+        return {}
+
+
+def _load_motion_thresholds(conn: Any) -> dict[str, dict]:
+    """Load bg_motion_state_thresholds from L0. Returns {graha: {motion_state: (low, high, kind)}}."""
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute("""
+                SELECT graha, motion_state, speed_threshold_low, speed_threshold_high, threshold_type
+                FROM bg_motion_state_thresholds
+            """)
+            rows = cur.fetchall()
+        result: dict[str, dict] = {}
+        for graha, state, low, high, kind in rows:
+            result.setdefault(graha, {})[state] = (
+                float(low) if low is not None else None,
+                float(high) if high is not None else None,
+                kind or "above",
+            )
+        return result
+    except Exception as exc:
+        logger.warning("[ga_condition_writer] bg_motion_state_thresholds unavailable: %s", exc)
         return {}
 
 
@@ -1058,9 +1080,10 @@ def build_ga_condition_substep(
     computed_at = datetime.now(timezone.utc).isoformat()
 
     # ── Load reference data ────────────────────────────────────────────────────
-    dignity_ref     = _load_dignity_ref(conn)
-    combustion_orbs = _load_combustion_orbs(conn)
-    naisargika_db   = _load_naisargika_friendships(conn)
+    dignity_ref       = _load_dignity_ref(conn)
+    combustion_orbs   = _load_combustion_orbs(conn)
+    naisargika_db     = _load_naisargika_friendships(conn)
+    motion_thresholds = _load_motion_thresholds(conn)  # L0 authority; not yet threaded into _classify_motion_state
 
     # ── Load positions ─────────────────────────────────────────────────────────
     position_list = _load_graha_positions(conn, chart_id, ayanamsha_id)

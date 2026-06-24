@@ -98,20 +98,20 @@ VALUES
      NULL),
 
     ('Rahu',
-     'Gemini',      NULL,
-     'Sagittarius', NULL,
+     'Taurus',      NULL,
+     'Scorpio',     NULL,
      NULL,          NULL, NULL,
      ARRAY[]::TEXT[],
-     'BPHS Ch.3; tradition varies between Gemini/Taurus exaltation',
-     'Some authorities place Rahu exaltation in Taurus; Gemini followed here per Parashara majority'),
+     'BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — Parashari consensus: Taurus',
+     'Taurus exaltation per Parashari mainstream (BPHS/Phaladeepika/Saravali/JH/PL); Gemini is a minority Kerala school position'),
 
     ('Ketu',
-     'Sagittarius', NULL,
-     'Gemini',      NULL,
+     'Scorpio',     NULL,
+     'Taurus',      NULL,
      NULL,          NULL, NULL,
      ARRAY[]::TEXT[],
-     'BPHS Ch.3; tradition varies',
-     'Some authorities place Ketu exaltation in Scorpio; Sagittarius followed as reverse of Rahu')
+     'BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu',
+     'Scorpio exaltation per Parashari mainstream; Sagittarius is a minority Kerala school position')
 ON CONFLICT (graha) DO UPDATE SET
     exaltation_sign     = EXCLUDED.exaltation_sign,
     exaltation_degree   = EXCLUDED.exaltation_degree,
@@ -444,8 +444,8 @@ VALUES
     -- Mercury
     ('Mercury', 'vakra',    NULL,  0,   'below',  NULL,   'SS / Saravali', 'Retrograde'),
     ('Mercury', 'anuvakra', 0,     0.1, 'range',  NULL,   'SS / Saravali', 'Station / slow'),
-    ('Mercury', 'sama',     0.1,   2.5, 'range',  1.383,  'SS / Saravali', 'Normal range'),
-    ('Mercury', 'atichara', 2.5,   NULL,'above',  NULL,   'SS / Saravali', 'Fast'),
+    ('Mercury', 'sama',     0.1,   2.0, 'range',  1.383,  'SS / Saravali', 'Normal range'),
+    ('Mercury', 'atichara', 2.0,   NULL,'above',  NULL,   'SS / Saravali', 'Fast (observed max ~2.2°/day; 2.5 was unreachable)'),
 
     -- Jupiter
     ('Jupiter', 'vakra',    NULL,  0,    'below',  NULL,  'SS / Saravali', 'Retrograde'),
