@@ -33,6 +33,56 @@ import logging
 import time
 from typing import Any
 
+# ── Variant-traditions disclosure data ────────────────────────────────────────
+# SOURCE-AUTHORITY-WEIGHTED model: the canonical exaltation_sign is the BPHS-
+# primary value at full confidence (1.0). variant_traditions records documented
+# alternative positions with explicit authority tagging so downstream consumers
+# can display the disagreement without diluting the BPHS reading.
+# Populated only for Rahu/Ketu — the only grahas with documented tradition
+# disagreement on exaltation sign.
+
+_RAHU_VARIANT_TRADITIONS = json.dumps([
+    {
+        "sign": "Taurus",
+        "source": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali",
+        "authority": "primary",
+        "label": "Parashari mainstream",
+    },
+    {
+        "sign": "Gemini",
+        "source": "Kerala Jyotish tradition (commentators in the Harihara / Prashna Marga lineage)",
+        "authority": "minority",
+        "label": "Kerala school",
+    },
+    {
+        "sign": None,
+        "source": "Some modern scholars omit nodal exaltation doctrine entirely",
+        "authority": "minority",
+        "label": "Exclusionist position",
+    },
+])
+
+_KETU_VARIANT_TRADITIONS = json.dumps([
+    {
+        "sign": "Scorpio",
+        "source": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu",
+        "authority": "primary",
+        "label": "Parashari mainstream",
+    },
+    {
+        "sign": "Sagittarius",
+        "source": "Kerala Jyotish tradition — reverse of Gemini-Rahu position",
+        "authority": "minority",
+        "label": "Kerala school",
+    },
+    {
+        "sign": None,
+        "source": "Some modern scholars omit nodal exaltation doctrine entirely",
+        "authority": "minority",
+        "label": "Exclusionist position",
+    },
+])
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     WriterBase,
@@ -66,6 +116,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Leo",        "moolatrikona_from": 0,  "moolatrikona_to": 20,
         "own_signs": ["Leo"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Moon",
@@ -74,6 +125,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Taurus",     "moolatrikona_from": 4,  "moolatrikona_to": 30,
         "own_signs": ["Cancer"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Mars",
@@ -82,6 +134,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Aries",      "moolatrikona_from": 0,  "moolatrikona_to": 12,
         "own_signs": ["Aries", "Scorpio"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Mercury",
@@ -90,6 +143,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Virgo",      "moolatrikona_from": 16, "moolatrikona_to": 20,
         "own_signs": ["Gemini", "Virgo"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Jupiter",
@@ -98,6 +152,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Sagittarius","moolatrikona_from": 0,  "moolatrikona_to": 10,
         "own_signs": ["Sagittarius", "Pisces"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Venus",
@@ -106,6 +161,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Libra",      "moolatrikona_from": 0,  "moolatrikona_to": 15,
         "own_signs": ["Taurus", "Libra"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Saturn",
@@ -114,6 +170,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "moolatrikona_sign": "Aquarius",   "moolatrikona_from": 0,  "moolatrikona_to": 20,
         "own_signs": ["Capricorn", "Aquarius"],
         "classical_citation": _BPHS_CH3,  "notes": None,
+        "variant_traditions": None,
     },
     {
         "graha": "Rahu",
@@ -123,6 +180,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "own_signs": [],
         "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — Parashari consensus: Taurus",
         "notes": "Taurus exaltation per Parashari mainstream (BPHS/Phaladeepika/Saravali/JH/PL); Gemini is a minority Kerala school position",
+        "variant_traditions": _RAHU_VARIANT_TRADITIONS,
     },
     {
         "graha": "Ketu",
@@ -132,6 +190,7 @@ _DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "own_signs": [],
         "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu",
         "notes": "Scorpio exaltation per Parashari mainstream; Sagittarius is a minority Kerala school position",
+        "variant_traditions": _KETU_VARIANT_TRADITIONS,
     },
 ]
 
@@ -489,12 +548,13 @@ class BgDignityReferenceWriter(WriterBase):
                   (graha, exaltation_sign, exaltation_degree,
                    debilitation_sign, debilitation_degree,
                    moolatrikona_sign, moolatrikona_from, moolatrikona_to,
-                   own_signs, classical_citation, notes)
+                   own_signs, classical_citation, notes, variant_traditions)
                 VALUES
                   (%(graha)s, %(exaltation_sign)s, %(exaltation_degree)s,
                    %(debilitation_sign)s, %(debilitation_degree)s,
                    %(moolatrikona_sign)s, %(moolatrikona_from)s, %(moolatrikona_to)s,
-                   %(own_signs)s, %(classical_citation)s, %(notes)s)
+                   %(own_signs)s, %(classical_citation)s, %(notes)s,
+                   %(variant_traditions)s::jsonb)
                 ON CONFLICT (graha) DO UPDATE SET
                   exaltation_sign     = EXCLUDED.exaltation_sign,
                   exaltation_degree   = EXCLUDED.exaltation_degree,
@@ -505,7 +565,8 @@ class BgDignityReferenceWriter(WriterBase):
                   moolatrikona_to     = EXCLUDED.moolatrikona_to,
                   own_signs           = EXCLUDED.own_signs,
                   classical_citation  = EXCLUDED.classical_citation,
-                  notes               = EXCLUDED.notes
+                  notes               = EXCLUDED.notes,
+                  variant_traditions  = EXCLUDED.variant_traditions
                 """,
                 row,
             )
