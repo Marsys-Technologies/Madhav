@@ -16,6 +16,7 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { NextResponse } from 'next/server'
+import { writeAuditLog } from '@/lib/admin/audit'
 
 async function requireSuperAdmin() {
   const user = await getServerUser()
@@ -72,7 +73,7 @@ export async function POST(
   }
 
   // Confirm the chart exists first — yields 404 distinct from 400.
-  const chartCheck = await query<{ id: string }>('SELECT id FROM charts WHERE id=$1', [id])
+  const chartCheck = await query<{ id: string; name: string }>('SELECT id, name FROM charts WHERE id=$1', [id])
   if (!chartCheck.rows[0]) {
     return NextResponse.json({ error: 'chart_not_found' }, { status: 404 })
   }
@@ -85,6 +86,10 @@ export async function POST(
      RETURNING id, chart_id, principal_id, permission, granted_by, granted_at`,
     [id, principalId, auth.user!.uid]
   )
+  await writeAuditLog(auth.user!.uid, 'chart_grant', principalId, {
+    chart_id: id,
+    chart_name: chartCheck.rows[0].name,
+  })
   return NextResponse.json({ grant: rows[0] }, { status: 201 })
 }
 
@@ -102,6 +107,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'principal_id_required' }, { status: 400 })
   }
 
+  const { rows: chartMeta } = await query<{ name: string }>(
+    'SELECT name FROM charts WHERE id=$1', [id]
+  )
+
   const { rows } = await query<{ id: string }>(
     'DELETE FROM chart_grants WHERE chart_id=$1 AND principal_id=$2 RETURNING id',
     [id, principalId]
@@ -109,5 +118,9 @@ export async function DELETE(
   if (rows.length === 0) {
     return NextResponse.json({ error: 'grant_not_found' }, { status: 404 })
   }
+  await writeAuditLog(auth.user!.uid, 'chart_revoke', principalId, {
+    chart_id: id,
+    chart_name: chartMeta[0]?.name ?? null,
+  })
   return NextResponse.json({ revoked: rows[0].id })
 }
