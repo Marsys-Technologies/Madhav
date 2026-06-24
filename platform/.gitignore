@@ -58,3 +58,4 @@ storageState.json
 # (scripts/eval/*_BASELINE_*.json). Pattern added 2026-05-17 after da140c8.
 scripts/eval/sla_probe_planner_blind_tools_*Z.json
 scripts/eval/planner_blind_fix_smoke_*Z.json
+venv/

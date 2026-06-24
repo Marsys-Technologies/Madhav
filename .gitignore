@@ -102,3 +102,4 @@ console-full.txt
 platform/python-sidecar/run_l1_fast4_rebuild.py
 platform/python-sidecar/run_l1_fix_rebuild.py
 platform/python-sidecar/verify_l1_fixes.py
+python-sidecar/venv/

@@ -48,6 +48,7 @@ rules:
       - GOOGLE_REDIRECT_URI
       - GOOGLE_OAUTH_CLIENT_ID
       - GOOGLE_OAUTH_CLIENT_SECRET
+      - GOOGLE_MAPS_API_KEY
     forbidden_prefixes:
       - "GCP_"
     scan_globs:

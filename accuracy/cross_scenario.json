@@ -1,85 +1,12 @@
 {
-  "run_at": "2026-05-27T19:54:11.809Z",
-  "git_sha": "394d4b76",
+  "run_at": "2026-05-30T17:29:35.378Z",
+  "git_sha": "96728d98",
   "test": "chart_summary_D1_vs_query_chart_facts_per_category",
-  "claims_path_a": 0,
+  "claims_path_a": 18,
   "claims_path_b": 18,
-  "agreement_pct": 0,
+  "agreement_pct": 100,
   "total_compared": 18,
-  "matching": 0,
-  "disagreements": [
-    {
-      "path": "birth_metadata|birth_date|equals",
-      "b": "1984-02-05"
-    },
-    {
-      "path": "birth_metadata|lagna|equals",
-      "b": "Aries"
-    },
-    {
-      "path": "planet|Sun|placed_in",
-      "b": "Capricorn 10H"
-    },
-    {
-      "path": "planet|Moon|placed_in",
-      "b": "Aquarius 11H"
-    },
-    {
-      "path": "planet|Saturn|placed_in",
-      "b": "Libra 7H"
-    },
-    {
-      "path": "house|1H|in_sign",
-      "b": "Aries"
-    },
-    {
-      "path": "house|1H|lorded_by",
-      "b": "Mars"
-    },
-    {
-      "path": "house|7H|in_sign",
-      "b": "Libra"
-    },
-    {
-      "path": "house|7H|lorded_by",
-      "b": "Venus"
-    },
-    {
-      "path": "house|10H|in_sign",
-      "b": "Capricorn"
-    },
-    {
-      "path": "house|10H|lorded_by",
-      "b": "Saturn"
-    },
-    {
-      "path": "yoga|Hamsa Yoga|is_active",
-      "b": "true"
-    },
-    {
-      "path": "yoga|Bhadra Yoga|is_active",
-      "b": "false"
-    },
-    {
-      "path": "arudha|AL|falls_in_house",
-      "b": "1"
-    },
-    {
-      "path": "arudha|A7|falls_in_house",
-      "b": "7"
-    },
-    {
-      "path": "dasha_vimshottari|MD-Moon|active_from",
-      "b": "2024-01-15"
-    },
-    {
-      "path": "dasha_vimshottari|MD-Moon|active_to",
-      "b": "2034-01-15"
-    },
-    {
-      "path": "sensitive_point|Rahu|placed_in",
-      "b": "Gemini 3H"
-    }
-  ],
-  "verdict": "accuracy_regression"
+  "matching": 18,
+  "disagreements": [],
+  "verdict": "pass"
 }

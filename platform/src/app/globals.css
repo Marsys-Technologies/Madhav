@@ -72,6 +72,30 @@
   --color-brand-vellum:      var(--brand-vellum);
   --color-brand-cream:       var(--brand-cream);
 
+  /* ── Obsidian+Gold design-system tokens (Phase B) ──────────────────────────
+     bg-brand-bg, bg-brand-surface, border-brand-border, text-brand-text-1, etc.
+     Gold scale: gold-1=base, gold-2=lighter, gold-3=highlight, gold-4=pressed.
+     Status: ok=success-green, warn=warning-amber, err=error-red.              */
+  --color-brand-bg:      #08070a;
+  --color-brand-surface: #0d0c10;
+  --color-brand-border:  #1a1820;
+  --color-brand-gold-1:  #d4a648;
+  --color-brand-gold-2:  #e8c878;
+  --color-brand-gold-3:  #f8e6a8;
+  --color-brand-gold-4:  #c4932a;
+  --color-brand-text-1:  #f5f0e8;
+  --color-brand-text-2:  #c8bfb0;
+  --color-brand-text-3:  #8a8070;
+  --color-brand-text-4:  #5a5550;
+  --color-brand-ok:      #4a8c5c;
+  --color-brand-warn:    #c8842a;
+  --color-brand-err:     #9c3a2a;
+
+  /* Font family CSS custom properties */
+  --font-serif: var(--font-serif);
+  --font-sans:  var(--font-sans);
+  --font-mono:  var(--font-mono);
+
   /* Status color utilities */
   --color-status-warn:       var(--status-warn);
   --color-status-halt:       var(--status-halt);
