@@ -6,7 +6,7 @@
   "rebase_to": "Brahma-L0-L5",
   "rebase_date": "2026-06-05",
   "rebase_authorized_by": "CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIVATION_v1_0.md",
-  "entry_count": 120,
+  "entry_count": 137,
   "entries": [
     {
       "canonical_id": "BRAHMAGYAN_CLASSICAL_TEXTS",
@@ -1825,6 +1825,154 @@
       "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
       "last_verified_on": "2026-06-24",
       "last_verified_session": "L0FR-stream-c-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_SUTRAVALI_EXTRACTOR",
+      "path": "platform/python-sidecar/brahmagyan/l0_sutravali_extractor.py",
+      "version": "3.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: Sutravali regex extractor \u2014 pure Python, zero LLM; populates sutravali_rules + sutravali_review",
+      "fingerprint": "569b368122604f19ceef7cc6193c047d3ccae44bb7910c13dba7f4670a41f924",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_SUTRAVALI_ROUTER",
+      "path": "platform/python-sidecar/routers/sutravali.py",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: FastAPI router for sutravali query endpoints \u2014 SQL-only",
+      "fingerprint": "e13173c0fb40bed796e628781f29be47578cd438186ffbec103909dd07666d13",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_QUERY_RULES_TOOL",
+      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "retrieval_tool"
+      ],
+      "interface_version": "1.0",
+      "tool_name": "query_rules",
+      "channel": "portal",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: query_rules \u2014 flexible JSONB antecedent filter over sutravali_rules",
+      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_QUERY_RULES_FOR_PLANET_TOOL",
+      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "retrieval_tool"
+      ],
+      "interface_version": "1.0",
+      "tool_name": "query_rules_for_planet",
+      "channel": "portal",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: query_rules_for_planet \u2014 planet + optional house filter over sutravali_rules",
+      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_READ_RULE_TOOL",
+      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "retrieval_tool"
+      ],
+      "interface_version": "1.0",
+      "tool_name": "read_rule",
+      "channel": "portal",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: read_rule \u2014 single sutravali rule lookup by UUID",
+      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_LIST_RULES_BY_TEXT_TOOL",
+      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "retrieval_tool"
+      ],
+      "interface_version": "1.0",
+      "tool_name": "list_rules_by_text",
+      "channel": "portal",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: list_rules_by_text \u2014 paginated sutravali rules by source text_id",
+      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_SUTRAVALI_MCP_RESOURCE_BY_PLANET",
+      "path": "platform-mcp/src/resources/sutravali_resource.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "mcp_resource_template"
+      ],
+      "interface_version": "1.0",
+      "resource_uri_template": "marsys://resource/sutravali/all-by-planet/{planet}",
+      "channel": "mcp",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: MCP resource \u2014 all sutravali rules for a given planet",
+      "fingerprint": "c0f95ba71e77abf7823e1c80aaa63592cea9fc3b20e22ce0149a22f6b96adf2f",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
+    },
+    {
+      "canonical_id": "BRAHMAGYAN_SUTRAVALI_MCP_RESOURCE_BY_HOUSE",
+      "path": "platform-mcp/src/resources/sutravali_resource.ts",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L0",
+      "expose_to_chat": true,
+      "representations": [
+        "mcp_resource_template"
+      ],
+      "interface_version": "1.0",
+      "resource_uri_template": "marsys://resource/sutravali/all-by-house/{n}",
+      "channel": "mcp",
+      "stream": "D",
+      "rebase_note": "L0FR Stream D: MCP resource \u2014 all sutravali rules for a given house number",
+      "fingerprint": "c0f95ba71e77abf7823e1c80aaa63592cea9fc3b20e22ce0149a22f6b96adf2f",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-d-ci-fix"
     }
   ],
   "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3"
