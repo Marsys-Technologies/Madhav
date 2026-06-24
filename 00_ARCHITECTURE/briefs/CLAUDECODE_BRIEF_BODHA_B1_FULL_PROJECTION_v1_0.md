@@ -376,15 +376,23 @@ drops the score (proving the harness measures real retrieval). **Only then does 
 ---
 
 ## §FINAL — Whole-arc acceptance
-- [ ] **B1 (the spine):** bo_laksana is a FULL projection — constituent_facts_array resolves for every
-      signal (zero unresolved); MSR signal count tracks the ga_structural fact count (parity, not a
-      curated subset, not a predicate catalog); FORENSIC anchors inherit L1 values; weak tail present;
-      idempotent. **Proven on bo_laksana ALONE before any fan-out.**
+- [ ] **B1 (the spine):** bo_laksana is a FULL projection of the chart_facts signal population (all 5 L1
+      writers, NOT just ga_structural) — constituent_facts_array resolves for every signal (zero
+      unresolved); MSR count == the pinned chart_facts signal-population count (parity); FORENSIC anchors
+      inherit L1 values; weak tail present; idempotent. **Proven on bo_laksana ALONE before any fan-out.**
+- [ ] **B1.5 (L0 bridge):** every named-yoga/dosha signal carries a resolvable classical_sources_array
+      (catalog id + citation + rule/verse where matchable); deterministic; unmatched raw signals empty
+      (not faked); coverage ratio reported.
 - [ ] **B2:** convergence + contradiction first-class ROWS; CGM graph built deepest (centrality / paths
-      / final-dispositor); embeddings 1:1 (placeholder flagged); UCD read surface live.
+      / final-dispositor); embeddings 1:1; UCD read surface live.
 - [ ] **B3/B4:** RM grounded to L0 corpus (every remedy cited); scorecard + standing Trap-1 audit.
 - [ ] **B5:** one orchestrator run builds the layer in DAG order; cockpit/Atlas true; Bodha retrieval
-      tools + CI gate; DRAFT→CURRENT; L2_BODHA_CLOSE sealed with L3 onboarding; CURRENT_STATE/SESSION_LOG.
+      tools + CI gate; DRAFT→CURRENT; CURRENT_STATE/SESSION_LOG updated.
+- [ ] **E-phases:** E2 lossless summary text; E1 real (pinned) embeddings; E3 convergence/contradiction
+      tools; E4 deep-digest tool; E5 provenance contract test; E6 path tool; E7 cross-ayanamsha; E8
+      weak-tail reachability proof.
+- [ ] **B6 (SEAL GATE):** semantic-completeness eval harness exists, runs live, meets the native's
+      recall+provenance threshold. **L2_BODHA_CLOSE seals ONLY after B6 passes** (with the L3 onboarding contract).
 - [ ] Ran continuously phase-by-phase — no human gate fired (dependency gates + Tier-3 rails only).
 - [ ] Migration numbers fresh (no collisions); surgical apply + post-apply readback held.
 
