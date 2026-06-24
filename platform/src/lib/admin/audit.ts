@@ -9,6 +9,8 @@ export type AuditAction =
   | 'delete_user'
   | 'role_change'
   | 'reset_password'
+  | 'chart_grant'
+  | 'chart_revoke'
 
 export async function writeAuditLog(
   actorId: string,

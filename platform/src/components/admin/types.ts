@@ -21,3 +21,26 @@ export interface AdminUser {
   created_at: string
   approved_at: string | null
 }
+
+export interface AdminChart {
+  id: string
+  name: string
+  subject_name: string | null
+  birth_date: string
+  birth_place: string
+  owner_id: string
+  owner_username: string | null
+  owner_name: string | null
+  grant_count: number
+}
+
+export interface AdminChartGrant {
+  id: string
+  subject_name: string | null
+  birth_date: string
+  birth_place: string
+  owner_id: string
+  owner_username: string | null
+  is_own: boolean
+  granted: boolean
+}
