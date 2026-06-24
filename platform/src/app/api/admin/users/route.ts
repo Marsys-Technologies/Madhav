@@ -93,17 +93,24 @@ export async function POST(request: Request) {
   }
 
   const uid = firebaseUser.uid
+  let insertedUser: Record<string, unknown> | undefined
+  let resetLink: string | null = null
   try {
     const { rows: inserted } = await query(
       'INSERT INTO profiles (id, role, status, name, username, email, approved_at, approved_by) VALUES ($1,$2,$3,$4,$5,$6,now(),$7) RETURNING *',
       [uid, role, 'active', fullName, username, email, auth.user.uid]
     )
-    const resetLink = await adminAuth.generatePasswordResetLink(email).catch(() => null)
-    await writeAuditLog(auth.user.uid, 'create_user', uid, { name: fullName, email, role })
-    return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink, user: inserted[0] })
+    insertedUser = inserted[0]
+    resetLink = await adminAuth.generatePasswordResetLink(email).catch(() => null)
   } catch (err) {
     await adminAuth.deleteUser(uid).catch(() => {})
     const message = err instanceof Error ? err.message : 'Could not create profile.'
     return res.internal(message)
   }
+
+  // Audit write is outside the Firebase-cleanup try/catch so a missing
+  // admin_audit_log table (migration not yet run) never causes a 500 or
+  // triggers spurious Firebase user deletion.
+  await writeAuditLog(auth.user.uid, 'create_user', uid, { name: fullName, email, role })
+  return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink, user: insertedUser })
 }

@@ -35,12 +35,14 @@ export async function POST(
     return res.notFound('User has no email on file.')
   }
 
+  let link: string
   try {
-    const link = await adminAuth.generatePasswordResetLink(profile.email)
-    await writeAuditLog(auth.user.uid, 'reset_password', id, { email: profile.email })
-    return NextResponse.json({ ok: true, reset_link: link })
+    link = await adminAuth.generatePasswordResetLink(profile.email)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Could not generate reset link.'
     return res.internal(message)
   }
+
+  await writeAuditLog(auth.user.uid, 'reset_password', id, { email: profile.email })
+  return NextResponse.json({ ok: true, reset_link: link })
 }
