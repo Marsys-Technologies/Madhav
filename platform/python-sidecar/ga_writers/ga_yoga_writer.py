@@ -198,14 +198,22 @@ class ChartState:
 
         self._parse(facts)
 
+    # Maps abbreviated fact_subject values → full planet names used in yoga catalog
+    _SUBJECT_NORM: dict[str, str] = {
+        "sun": "sun", "moon": "moon", "mar": "mars", "mer": "mercury",
+        "jup": "jupiter", "ven": "venus", "sat": "saturn",
+        "rah_mean": "rahu", "ket_mean": "ketu", "lagna": "lagna",
+    }
+
     def _parse(self, facts: list[dict]) -> None:
         for f in facts:
-            subj = (f.get("fact_subject") or "").lower()
+            raw_subj = (f.get("fact_subject") or "").lower()
+            subj = self._SUBJECT_NORM.get(raw_subj, raw_subj)  # normalize abbreviations
             cat = (f.get("fact_category") or "")
             key = (f.get("fact_key") or "")
 
             # Graha position rows — category graha_position or planet_position
-            if cat in ("graha_position", "planet_position") and key == "house":
+            if cat in ("graha_position", "planet_position") and key == "house_d1":  # FIX: was "house"
                 planet = subj
                 house_num = f.get("fact_value_num")
                 if house_num is not None:
@@ -223,6 +231,8 @@ class ChartState:
                 if sign:
                     self.planet_sign[planet] = sign
                     self.sign_planets.setdefault(sign, []).append(planet)
+                    if planet == "lagna":  # FIX: lagna sign stored under graha_position
+                        self.lagna_sign = sign
 
             if cat in ("graha_position", "planet_position") and key in ("degree_absolute", "longitude"):
                 planet = subj
@@ -233,7 +243,7 @@ class ChartState:
                     except (TypeError, ValueError):
                         pass
 
-            # Lagna
+            # Lagna (legacy category fallback)
             if cat in ("lagna", "ascendant") and key in ("sign", "sign_name"):
                 self.lagna_sign = (f.get("fact_value_text") or "").lower()
 
