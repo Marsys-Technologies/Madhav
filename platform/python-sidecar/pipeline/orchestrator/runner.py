@@ -122,6 +122,7 @@ def execute_run(run_id: str) -> None:
         sys.exit(2)
 
     chart_id: str = run["chart_id"]
+    action: str = run["action"]
     plan: list[str] = run["plan"]
 
     # Preload asset scopes so global assets (scope='global') are always dispatched with
@@ -160,7 +161,7 @@ def execute_run(run_id: str) -> None:
             # so run_asset() targets the `WHERE chart_id IS NULL` partial index.
             effective_chart_id = None if _asset_scopes.get(asset_id) == "global" else chart_id
 
-            if is_asset_complete(cur, effective_chart_id, asset_id):
+            if action != "rebuild" and is_asset_complete(cur, effective_chart_id, asset_id):
                 logger.info("[orchestrator] skip %s (already lit)", asset_id)
                 continue
 

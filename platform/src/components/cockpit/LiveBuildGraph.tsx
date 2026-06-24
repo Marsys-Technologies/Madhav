@@ -86,30 +86,13 @@ export function LiveBuildGraph({ buildId, chartId }: Props) {
     }))
   }, [])
 
+  // Live SSE for the build graph was removed when /api/build/events/[buildId]
+  // was decommissioned (HTTP 410). The v2 cockpit (Nirmāṇa) uses useCockpitSSE
+  // + Pub/Sub for live monitoring. This component renders a static snapshot only.
   useEffect(() => {
     if (!buildId) return
-
-    const es = new EventSource(`/api/build/events/${buildId}`)
-    esRef.current = es
-    setConnected(true)
-
-    es.addEventListener('node_added', (e: MessageEvent) => {
-      try { addNode(JSON.parse(e.data) as GraphNode) } catch {}
-    })
-    es.addEventListener('edge_added', (e: MessageEvent) => {
-      try { addEdge(JSON.parse(e.data) as GraphEdge) } catch {}
-    })
-    es.addEventListener('status_changed', (e: MessageEvent) => {
-      try {
-        const { id, status } = JSON.parse(e.data) as { id: string; status: NodeStatus }
-        updateNodeStatus(id, status)
-      } catch {}
-    })
-    es.addEventListener('complete', () => { setConnected(false); es.close() })
-    es.addEventListener('error', () => { setConnected(false); es.close() })
-
-    return () => { es.close(); setConnected(false) }
-  }, [buildId, addNode, addEdge, updateNodeStatus])
+    setConnected(false)
+  }, [buildId])
 
   const handleNodeClick = useCallback((node: unknown) => {
     setSelectedNode(node as GraphNode)

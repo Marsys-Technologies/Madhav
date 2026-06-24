@@ -95,6 +95,7 @@ export function LayerPanel({
     return !s?.actual_rows && !s?.error
   }).length
   const staleCount = 0 // populated by throughput state in Phase 9
+  const errorCount = activeAssets.filter(a => stats.get(a.asset_id)?.state === 'error').length
 
   // Active run overlaps this layer if scope is global or scope_target matches this layer
   const layerRunActive = activeRun != null && (
@@ -184,6 +185,14 @@ export function LayerPanel({
             <span style={{ minWidth: '88px', textAlign: 'right', color: 'var(--on-dark-mut)' }}>
               {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
             </span>
+            {errorCount > 0 && (
+              <>
+                <span aria-hidden style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.14)' }} />
+                <span style={{ color: '#ff6b6b', fontFamily: 'var(--mono-stack)', fontSize: '11px', minWidth: '60px', textAlign: 'right' }}>
+                  {errorCount} error{errorCount > 1 ? 's' : ''}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}

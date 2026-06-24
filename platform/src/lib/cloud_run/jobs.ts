@@ -1,4 +1,4 @@
-import { ExecutionsClient } from '@google-cloud/run'
+import { ExecutionsClient, JobsClient } from '@google-cloud/run'
 
 const REGION = 'asia-south1'
 const PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
@@ -7,10 +7,34 @@ const PROJECT = process.env.GCP_PROJECT ?? 'madhav-astrology'
 // not exist (Orchestrator Convergence Phase 1, 2026-06-12).
 const JOB = process.env.BUILD_JOB_NAME ?? 'brahma-build-pipeline-job'
 
-let _client: ExecutionsClient | null = null
+let _execClient: ExecutionsClient | null = null
 function client() {
-  if (!_client) _client = new ExecutionsClient()
-  return _client
+  if (!_execClient) _execClient = new ExecutionsClient()
+  return _execClient
+}
+
+let _jobsClient: JobsClient | null = null
+function jobsClient() {
+  if (!_jobsClient) _jobsClient = new JobsClient()
+  return _jobsClient
+}
+
+/**
+ * Returns the image tag currently deployed on the Cloud Run Job, e.g.
+ * "gcr.io/project/brahma-build-pipeline-job:abc1234". Used to surface
+ * stale-image risk before a build is started.
+ * Returns null if the API is unreachable or the job doesn't exist.
+ */
+export async function getJobImageTag(): Promise<string | null> {
+  try {
+    const name = `projects/${PROJECT}/locations/${REGION}/jobs/${JOB}`
+    const [job] = await jobsClient().getJob({ name })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const image = (job?.template as any)?.containers?.[0]?.image ?? null
+    return (image as string | null)
+  } catch {
+    return null
+  }
 }
 
 /**

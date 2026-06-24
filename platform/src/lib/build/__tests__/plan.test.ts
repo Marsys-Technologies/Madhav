@@ -167,3 +167,112 @@ describe('resolveBuildPlan — cycle detection', () => {
     })).toThrow(/Cycle detected/)
   })
 })
+
+// ── §VERIFY: Layer-Build Reliability ──────────────────────────────────────────
+
+describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
+  // Synthetic L1 (ganita) fixture: mirrors the ga_* writer DAG shape.
+  // ga_positions + ga_panchanga + ga_nakshatra are roots; ga_structural depends on
+  // ga_condition + ga_nakshatra; ga_dashas depends on ga_structural; ga_yoga depends
+  // on ga_structural + ga_dashas. Mirrors the real L1 dependency order.
+  const L1_GANITA = [
+    reg('ga_positions',  'ganita', []),
+    reg('ga_panchanga',  'ganita', []),
+    reg('ga_nakshatra',  'ganita', []),
+    reg('ga_condition',  'ganita', ['ga_positions', 'ga_nakshatra']),
+    reg('ga_structural', 'ganita', ['ga_condition', 'ga_nakshatra']),
+    reg('ga_dashas',     'ganita', ['ga_structural']),
+    reg('ga_yoga',       'ganita', ['ga_structural', 'ga_dashas']),
+  ]
+
+  it('layer rebuild includes every asset in the layer', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'ganita', action: 'rebuild',
+      registry: L1_GANITA, throughput: new Map(),
+    })
+    const expected = L1_GANITA.map(r => r.asset_id)
+    expect(result.plan).toHaveLength(expected.length)
+    for (const id of expected) expect(result.plan).toContain(id)
+  })
+
+  it('topo order: roots before dependents (ga_structural after ga_condition + ga_nakshatra)', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'ganita', action: 'rebuild',
+      registry: L1_GANITA, throughput: new Map(),
+    })
+    const idx = (id: string) => result.plan.indexOf(id)
+    expect(idx('ga_condition')).toBeLessThan(idx('ga_structural'))
+    expect(idx('ga_nakshatra')).toBeLessThan(idx('ga_structural'))
+    expect(idx('ga_structural')).toBeLessThan(idx('ga_dashas'))
+    expect(idx('ga_dashas')).toBeLessThan(idx('ga_yoga'))
+  })
+
+  it('rebuild forces ALL assets into plan even when all are lit (E5 fix: skip gate is runner responsibility)', () => {
+    // The plan builder always includes all assets for rebuild — lit or not.
+    // The orchestrator skip gate (runner.py) now respects action='rebuild'.
+    const allLit = new Map(L1_GANITA.map(r => [r.asset_id, { asset_id: r.asset_id, state: 'lit' as const }]))
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'ganita', action: 'rebuild',
+      registry: L1_GANITA, throughput: allLit,
+    })
+    expect(result.plan).toHaveLength(L1_GANITA.length)
+  })
+
+  it('layer build (not rebuild) skips lit assets', () => {
+    const allLit = new Map(L1_GANITA.map(r => [r.asset_id, { asset_id: r.asset_id, state: 'lit' as const }]))
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'ganita', action: 'build',
+      registry: L1_GANITA, throughput: allLit,
+    })
+    expect(result.plan).toHaveLength(0)
+  })
+})
+
+describe('RELIABILITY — layer-scope generalises to L2/L3/L4', () => {
+  const L2_BODHA = [
+    reg('bo_laksana',   'bodha', []),
+    reg('bo_bimba',     'bodha', ['bo_laksana']),
+    reg('bo_karanajala','bodha', ['bo_laksana']),
+    reg('bo_sangati',   'bodha', ['bo_laksana']),
+    reg('bo_upaya',     'bodha', ['bo_bimba', 'bo_karanajala', 'bo_sangati']),
+    reg('bo_pramana_mapa','bodha', ['bo_upaya']),
+  ]
+  const MIXED = [...L2_BODHA, reg('ga_structural', 'ganita', []), reg('ga_yoga', 'ganita', ['ga_structural'])]
+
+  it('layer=bodha returns only bo_* assets', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'bodha', action: 'rebuild',
+      registry: MIXED, throughput: new Map(),
+    })
+    expect(result.plan.every(id => id.startsWith('bo_'))).toBe(true)
+    expect(result.plan).not.toContain('ga_structural')
+  })
+
+  it('bo_laksana (root) is before bo_upaya (dependent)', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'bodha', action: 'rebuild',
+      registry: L2_BODHA, throughput: new Map(),
+    })
+    expect(result.plan.indexOf('bo_laksana')).toBeLessThan(result.plan.indexOf('bo_upaya'))
+    expect(result.plan.indexOf('bo_upaya')).toBeLessThan(result.plan.indexOf('bo_pramana_mapa'))
+  })
+})
+
+describe('RELIABILITY — DAG source authority', () => {
+  it('plan builder reads asset_registry.depends_on (not build_dependencies table)', () => {
+    // The TypeScript plan builder uses the RegistryEntry.depends_on field, which is
+    // populated from asset_registry.depends_on in runs/route.ts. The build_dependencies
+    // table is only used by cascade-preview and data-readiness routes.
+    // This test proves the plan builder is self-contained and correct from its inputs.
+    const registry = [
+      reg('A', 'test', []),
+      reg('B', 'test', ['A']),
+      reg('C', 'test', ['B']),
+    ]
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'test', action: 'rebuild',
+      registry, throughput: new Map(),
+    })
+    expect(result.plan).toEqual(['A', 'B', 'C'])
+  })
+})

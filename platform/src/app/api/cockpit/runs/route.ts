@@ -3,6 +3,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
+import { getJobImageTag } from '@/lib/cloud_run/jobs'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
   const [registryResult, throughputResult] = await Promise.all([
     query<RegistryEntryWithScope>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds, scope
-       FROM asset_registry ORDER BY layer, sort_order`
+       FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
       `SELECT asset_id, state FROM asset_throughput WHERE chart_id=$1`,
@@ -115,6 +116,9 @@ export async function POST(req: NextRequest) {
   )
   await Promise.all(assetInserts)
 
+  // Fetch the currently deployed job image tag (best-effort; null if GCP unreachable)
+  const jobImageTag = await getJobImageTag().catch(() => null)
+
   // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
   try {
     await invokeRunJob(runId)
@@ -135,5 +139,5 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length } }, { status: 201 })
+  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag } }, { status: 201 })
 }

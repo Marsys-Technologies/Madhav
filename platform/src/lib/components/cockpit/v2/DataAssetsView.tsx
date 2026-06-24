@@ -108,7 +108,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header }: Props) {
       refreshRun()
       // On run end, clear all overlays so polled stats become the single source of truth,
       // then force an immediate re-poll so the cleared overlay is backfilled at once.
-      const RUN_DONE = ['complete', 'failed', 'stopped', 'cancelled'].includes(e.state)
+      const RUN_DONE = ['completed', 'failed', 'stopped'].includes(e.state)
       if (RUN_DONE) {
         setSseOverlay(new Map())
         setSubstepOverlay(new Map())

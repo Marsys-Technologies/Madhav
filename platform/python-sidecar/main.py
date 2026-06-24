@@ -6,12 +6,7 @@ from routers import ephemeris, events, sade_sati, jaimini, v7_additions
 from routers import panchang as panchang_router
 from routers import pyhora as pyhora_router
 from routers import prashna as prashna_router
-from routers import muhurat as muhurat_router
 from routers import brahmagyan_almanac as almanac_router
-from rag.routers.rag_retrieve import router as rag_retrieve_router
-from rag.routers.rag_router import router as rag_router_router
-from rag.routers.rag_synthesize import router as rag_synthesize_router
-
 load_dotenv()
 
 app = FastAPI(title="MARSYS-JIS Compute Sidecar", version="1.0.0")
