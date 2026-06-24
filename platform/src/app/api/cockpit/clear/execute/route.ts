@@ -4,6 +4,7 @@ import { query, getPool } from '@/lib/db/client'
 import { computeDownstreamClosure, type RegistryEntry } from '@/lib/build/plan'
 import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
+import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 
 interface RegistryRow extends RegistryEntry {
   scope: string
@@ -101,17 +102,9 @@ export async function POST(req: NextRequest) {
   const downstreamAssets = Array.from(downstreamSet)
 
   // Execute: delete data + reset throughput + mark downstream stale
-  const clearableAssets = scopeAssets.filter(r => r.target_table)
-
-  // Validate table names before interpolation (defense-in-depth)
-  for (const asset of clearableAssets) {
-    if (asset.target_table && !TABLE_NAME_RE.test(asset.target_table)) {
-      return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
-    }
-  }
-
   // Delete in reverse topo order (downstream-first for FK safety)
-  const reversedAssets = [...clearableAssets].reverse()
+  // No pre-filter by target_table — every scope asset must either clear or report failure
+  const reversedAssets = [...scopeAssets].reverse()
 
   let cleared_table_count = 0
   let cleared_rows_total = 0
@@ -122,34 +115,65 @@ export async function POST(req: NextRequest) {
   try {
     await client.query('BEGIN')
 
-    const seen = new Set<string>()
     let spIdx = 0
     for (const asset of reversedAssets) {
-      if (!asset.target_table || seen.has(asset.target_table)) continue
-      seen.add(asset.target_table)
+      // Resolve the clear operations for this asset
+      let ops: Array<{ sql: string; params: unknown[] }> | null = null
 
-      // Use a SAVEPOINT per DELETE so a single table failure rolls back only
-      // that statement, not the whole transaction (PostgreSQL marks the txn
-      // aborted on any error — without SAVEPOINT every subsequent statement
-      // would fail with "current transaction is aborted").
-      const sp = `clr_${spIdx++}`
-      await client.query(`SAVEPOINT ${sp}`)
-      try {
+      if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
+        const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
+        if (explicitOps === null) continue  // no data rows, skip cleanly
+        ops = explicitOps.map(op => ({
+          sql: op.sql,
+          params: op.sql.includes('$1') ? [chart_id] : [],
+        }))
+      } else if (asset.count_sql) {
+        const deleteSql = deriveDeleteSqlFromCountSql(asset.count_sql)
+        if (deleteSql) {
+          ops = [{ sql: deleteSql, params: deleteSql.includes('$1') ? [chart_id] : [] }]
+        }
+      }
+
+      // Fallback to target_table for assets without count_sql
+      if (!ops && asset.target_table) {
+        if (!TABLE_NAME_RE.test(asset.target_table)) {
+          return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
+        }
         const sql = asset.scope === 'global'
           ? `DELETE FROM ${asset.target_table}`
           : `DELETE FROM ${asset.target_table} WHERE chart_id = $1`
-        const params = asset.scope === 'global' ? [] : [chart_id]
-        const result = await client.query(sql, params)
-        await client.query(`RELEASE SAVEPOINT ${sp}`)
-        cleared_table_count++
-        cleared_rows_total += result.rowCount ?? 0
-      } catch (err) {
-        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
-        await client.query(`RELEASE SAVEPOINT ${sp}`)
+        ops = [{ sql, params: asset.scope === 'global' ? [] : [chart_id] }]
+      }
+
+      if (!ops) {
+        // No clear spec resolved — surface as failure (no silent skips)
         failed_tables.push({
-          table: asset.target_table,
-          error: ((err as Error).message ?? 'unknown').substring(0, 200),
+          table: asset.asset_id,
+          error: 'no clear spec: target_table and count_sql both null',
         })
+        continue
+      }
+
+      // Use a SAVEPOINT per op so a single failure rolls back only
+      // that statement, not the whole transaction (PostgreSQL marks the txn
+      // aborted on any error — without SAVEPOINT every subsequent statement
+      // would fail with "current transaction is aborted").
+      for (const op of ops) {
+        const sp = `clr_${spIdx++}`
+        await client.query(`SAVEPOINT ${sp}`)
+        try {
+          const result = await client.query(op.sql, op.params)
+          await client.query(`RELEASE SAVEPOINT ${sp}`)
+          cleared_table_count++
+          cleared_rows_total += result.rowCount ?? 0
+        } catch (err) {
+          await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
+          await client.query(`RELEASE SAVEPOINT ${sp}`)
+          failed_tables.push({
+            table: asset.asset_id,
+            error: ((err as Error).message ?? 'unknown').substring(0, 200),
+          })
+        }
       }
     }
 
