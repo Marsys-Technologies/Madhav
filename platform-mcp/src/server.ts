@@ -45,6 +45,8 @@ import {
 import { registerL0BrahmagyanTools } from './tools/l0_brahmagyan.js'
 // L0FR Stream B: L0 Ephemeris capabilities (ephemeris_daily 1900-2150)
 import { registerEphemerisTools } from './tools/l0_ephemeris.js'
+// L0FR Stream F: Remedy Corpus retrieval tools
+import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
 
 const app = express()
 app.use(express.json())
@@ -119,6 +121,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerHolisticBundleTool(server, principal)
   registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (l2-bodha-scaffold)
   registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (l3-kala)
+  // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
+  registerRemedyTools(server)
   // L4 Phala tools
   registerPhalaEventAnchorsTool(server)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

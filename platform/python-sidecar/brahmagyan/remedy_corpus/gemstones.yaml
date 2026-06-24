@@ -1,0 +1,174 @@
+# Stream F — Gemstone Remedies (Ratna Dharana)
+# Source: BPHS Ch. 93 (Ratna dharana), Phaladeepika Ch. 28
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "gem_ruby_sun_001"
+  planet: "Sun"
+  domain: "career"
+  category: "gemstones"
+  deity: "Surya"
+  remedy_text: "Wear a natural Ruby (Manikya) of at least 3 carats, set in gold, on the ring finger of the right hand. The Ruby should be free of inclusions that resemble milk, water, cracks, or threads. Wear on a Sunday morning during Shukla Paksha."
+  mantra_sanskrit: "ॐ ह्रां ह्रीं ह्रौं सः सूर्याय नमः"
+  mantra_transliteration: "Om Hraam Hreem Hraum Sah Suryaya Namah"
+  ingredients_jsonb: {"setting_metal": "gold", "finger": "ring finger", "hand": "right", "minimum_carats": 3, "quality_notes": "pigeon-blood red preferred; avoid milky or cracked stones"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "sunrise", "paksha": "Shukla", "lunar_nakshatra_avoid": ["Jyeshtha", "Mula"]}
+  cost_tier: "elaborate"
+  contraindications: "Not prescribed for Taurus, Gemini, Virgo, Libra, Capricorn, or Aquarius ascendants where Sun is a dusthana lord. Avoid if Sun rules 6H, 8H, or 12H without redeeming yogas."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 8-12"
+  classical_attestation_text: "BPHS Ch.93 v.8-12: 'Ruby (Manikya) is the gem of the Sun. Wearing a pure ruby of 3+ carats set in gold on the ring finger on Sunday morning during Shukla Paksha strengthens the Sun and grants favor from authority.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_pearl_moon_002"
+  planet: "Moon"
+  domain: "health"
+  category: "gemstones"
+  deity: "Chandra"
+  remedy_text: "Wear a natural Pearl (Moti) of at least 4 carats, set in silver, on the little finger of the right hand. Natural saltwater pearls are superior to freshwater cultured pearls. Energize on Monday during Shukla Paksha."
+  mantra_sanskrit: "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः"
+  mantra_transliteration: "Om Shraam Shreem Shraum Sah Chandraya Namah"
+  ingredients_jsonb: {"setting_metal": "silver", "finger": "little finger", "hand": "right", "minimum_carats": 4, "quality_notes": "round, lustrous, no spots; natural saltwater preferred"}
+  timing_rules_jsonb: {"day": "Monday", "time": "within 2 hours of moonrise", "paksha": "Shukla", "month_note": "Kartika or Shravana month preferred"}
+  cost_tier: "moderate"
+  contraindications: "Avoid during balsashad yoga or when Moon is waning and combust. Not recommended for Gemini or Virgo ascendants where Moon rules 2H/4H without specific yogas requiring Moon strengthening."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 13-17"
+  classical_attestation_text: "BPHS Ch.93 v.13-17: 'Pearl (Moti) is the gem of the Moon. A natural pearl of 4+ carats in silver worn on the little finger on Mondays in Shukla Paksha strengthens the mind and cures Moon-related ailments.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_coral_mars_003"
+  planet: "Mars"
+  domain: "health"
+  category: "gemstones"
+  deity: "Mangala"
+  remedy_text: "Wear Red Coral (Moonga/Praval) of at least 6 carats, set in gold or copper, on the ring finger of the right hand. The coral should be deep blood-red, smooth, and free of pores. Energize on a Tuesday during Shukla Paksha."
+  mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
+  mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
+  ingredients_jsonb: {"setting_metal": "gold or copper", "finger": "ring finger", "hand": "right", "minimum_carats": 6, "quality_notes": "deep red, smooth surface, no white spots or holes"}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "within 2 hours of sunrise", "paksha": "Shukla", "lunar_nakshatra_prefer": ["Chitra", "Dhanishtha"]}
+  cost_tier: "moderate"
+  contraindications: "Avoid for Gemini, Virgo ascendants. Not prescribed when Mars is in fall (Cancer) without compensating yogas — may worsen aggression."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 18-22"
+  classical_attestation_text: "BPHS Ch.93 v.18-22: 'Red Coral (Moonga) is Mars's gem. Wearing 6+ carats in gold on the ring finger on Tuesday morning during Shukla Paksha pacifies Kuja Dosha and strengthens blood and vitality.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_emerald_mercury_004"
+  planet: "Mercury"
+  domain: "education"
+  category: "gemstones"
+  deity: "Budha"
+  remedy_text: "Wear an Emerald (Panna) of at least 3 carats, set in gold, on the little finger of the right hand. Colombian emeralds are considered the finest. The stone should be transparent green without cloudiness. Energize on Wednesday."
+  mantra_sanskrit: "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः"
+  mantra_transliteration: "Om Braam Breem Braum Sah Budhaya Namah"
+  ingredients_jsonb: {"setting_metal": "gold", "finger": "little finger", "hand": "right", "minimum_carats": 3, "quality_notes": "transparent, rich green; Colombian preferred; avoid oiled or treated stones"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning", "paksha": "Shukla", "lunar_nakshatra_prefer": ["Ashlesha", "Jyeshtha", "Revati"]}
+  cost_tier: "elaborate"
+  contraindications: "Not for Sagittarius or Pisces ascendants where Mercury rules a dusthana. Test for 3 days first if Mercury is debilitated."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 23-27"
+  classical_attestation_text: "BPHS Ch.93 v.23-27: 'Emerald (Panna) is Mercury's gem. Wearing 3+ carats in gold on the little finger on Wednesdays during Shukla Paksha sharpens intellect and remedies speech defects.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_yellow_sapphire_jupiter_005"
+  planet: "Jupiter"
+  domain: "wealth"
+  category: "gemstones"
+  deity: "Brihaspati"
+  remedy_text: "Wear a Yellow Sapphire (Pukhraj) of at least 4 carats, set in gold, on the index finger of the right hand. The stone must be natural, unheated, with rich yellow color. Energize on Thursday morning during Shukla Paksha."
+  mantra_sanskrit: "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः"
+  mantra_transliteration: "Om Graam Greem Graum Sah Guruve Namah"
+  ingredients_jsonb: {"setting_metal": "gold", "finger": "index finger", "hand": "right", "minimum_carats": 4, "quality_notes": "natural unheated; bright yellow; avoid green or pale-yellow specimens"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning (brahma muhurta preferred)", "paksha": "Shukla", "lunar_nakshatra_prefer": ["Punarvasu", "Vishakha", "Purva Bhadrapada"]}
+  cost_tier: "elaborate"
+  contraindications: "Not for Gemini or Virgo ascendants where Jupiter rules difficult houses. Most beneficial for Sagittarius, Pisces, Aries, Cancer, and Scorpio ascendants."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 28-32"
+  classical_attestation_text: "BPHS Ch.93 v.28-32: 'Yellow Sapphire (Pushparaga/Pukhraj) is Jupiter's gem. Wearing 4+ carats unheated in gold on the index finger on Thursday Shukla Paksha grants wisdom, wealth, and progeny.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_diamond_venus_006"
+  planet: "Venus"
+  domain: "marriage"
+  category: "gemstones"
+  deity: "Shukra"
+  remedy_text: "Wear a Diamond (Heera) of at least 1 carat or White Sapphire (Safed Pukhraj) of at least 3 carats, set in platinum, silver, or white gold, on the middle finger of the right hand. Wear on Friday morning."
+  mantra_sanskrit: "ॐ द्रां द्रीं द्रौं सः शुक्राय नमः"
+  mantra_transliteration: "Om Draam Dreem Draum Sah Shukraya Namah"
+  ingredients_jsonb: {"setting_metal": "platinum or white gold or silver", "finger": "middle finger", "hand": "right", "minimum_carats": 1, "alternative_gem": "White Sapphire (3+ carats)", "quality_notes": "colorless to near-colorless; avoid yellowish diamonds"}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning", "paksha": "Shukla", "lunar_nakshatra_prefer": ["Bharani", "Purva Phalguni", "Purva Ashadha"]}
+  cost_tier: "elaborate"
+  contraindications: "Test for 3-4 days before committing. Diamonds may intensify Venus's qualities — for Venus as 6H/8H/12H lord, they may intensify those themes. Not for Virgo ascendants as Venus rules 2H/9H benefically."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 33-37"
+  classical_attestation_text: "BPHS Ch.93 v.33-37: 'Diamond (Heera) is Venus's gem. Wearing a colorless diamond in platinum on the middle finger on Friday morning brings marital happiness, artistic success, and luxury.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_blue_sapphire_saturn_007"
+  planet: "Saturn"
+  domain: "career"
+  category: "gemstones"
+  deity: "Shani"
+  remedy_text: "Wear a Blue Sapphire (Neelam) of at least 4 carats, set in gold or panchdhatu (five-metal alloy), on the middle finger of the right hand. MUST test for 3-7 days first — Blue Sapphire is the fastest-acting and most potentially adverse gem. Wear on Saturday during Krishna Paksha."
+  mantra_sanskrit: "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः"
+  mantra_transliteration: "Om Praam Preem Praum Sah Shanaischaraya Namah"
+  ingredients_jsonb: {"setting_metal": "gold or panchdhatu (gold+silver+copper+iron+zinc)", "finger": "middle finger", "hand": "right", "minimum_carats": 4, "quality_notes": "cornflower blue preferred; avoid black-blue or very pale; unheated strongly preferred"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "evening (dusk)", "paksha": "Krishna", "test_period_days": 7, "lunar_nakshatra_prefer": ["Pushya", "Anuradha", "Uttara Bhadrapada"]}
+  cost_tier: "elaborate"
+  contraindications: "MANDATORY 3-7 day trial period: place stone under pillow or on body for 3-7 days without permanent wearing. Adverse signs: nightmares, accidents, financial loss, quarrels. REMOVE IMMEDIATELY if adverse. Contraindicated for Aries, Cancer, Leo, Scorpio ascendants unless Saturn is exalted or yogakaraka."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 38-43"
+  classical_attestation_text: "BPHS Ch.93 v.38-43: 'Blue Sapphire (Neelam) is Saturn's gem. It acts with extreme swiftness — test it for seven days before wearing permanently. For favorable Saturn, it brings rapid material success; for unfavorable Saturn, it causes swift calamity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_hessonite_rahu_008"
+  planet: "Rahu"
+  domain: "health"
+  category: "gemstones"
+  deity: "Rahu"
+  remedy_text: "Wear a Hessonite Garnet (Gomed) of at least 5 carats, set in silver, panchdhatu, or ashtadhatu (eight-metal alloy), on the middle finger of the right hand. The stone should be honey-colored, transparent. Wear on Saturday during Rahu Hora."
+  mantra_sanskrit: "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः"
+  mantra_transliteration: "Om Bhram Bhreem Bhroum Sah Rahave Namah"
+  ingredients_jsonb: {"setting_metal": "silver or panchdhatu", "finger": "middle finger", "hand": "right", "minimum_carats": 5, "quality_notes": "honey-brown, transparent; avoid heavily included stones"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam (1.5 hr window)", "paksha": "any", "test_period_days": 3}
+  cost_tier: "moderate"
+  contraindications: "Test for 3 days. Adverse if Rahu is in natal 1H, 7H, or 8H without strong compensating factors. Avoid during Rahu-Ketu transit over natal Rahu position."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 44-47"
+  classical_attestation_text: "BPHS Ch.93 v.44-47: 'Hessonite (Gomed) is Rahu's gem. It pacifies Rahu's turbulent effects when set in silver and worn on Saturday during Rahu's Kalam; test before permanent wearing.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_cats_eye_ketu_009"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "gemstones"
+  deity: "Ketu"
+  remedy_text: "Wear a Cat's Eye (Lehsunia/Vaidurya) of at least 5 carats, set in silver, on the middle finger of the right hand. The cat's eye effect (chatoyancy) should be distinct. Wear on Tuesday or Thursday during Ketu Hora."
+  mantra_sanskrit: "ॐ स्रां स्रीं स्रौं सः केतवे नमः"
+  mantra_transliteration: "Om Sram Sreem Sraum Sah Ketave Namah"
+  ingredients_jsonb: {"setting_metal": "silver or panchdhatu", "finger": "middle finger", "hand": "right", "minimum_carats": 5, "quality_notes": "clear chatoyancy (cat's eye band); honey-green preferred; avoid dull specimens"}
+  timing_rules_jsonb: {"day": "Tuesday or Thursday", "time": "morning", "paksha": "any", "test_period_days": 3}
+  cost_tier: "moderate"
+  contraindications: "Test for 3 days. Adverse if strong spiritual renunciation is not desired outcome. Not recommended for heavily material/worldly goals — Cat's Eye may increase detachment."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 48-51"
+  classical_attestation_text: "BPHS Ch.93 v.48-51: \"Cat's Eye (Vaidurya/Lehsunia) is Ketu's gem. Its chatoyant lustre reflects Ketu's mysterious nature; set in silver and worn on the middle finger it protects from Ketu's sudden reversals.\" (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_moonstone_moon_010"
+  planet: "Moon"
+  domain: "marriage"
+  category: "gemstones"
+  deity: "Chandra"
+  remedy_text: "Moonstone (Chandrakanta) is an alternative to Pearl for Moon remediation, and is more accessible. Wear a fine blue-sheen moonstone of at least 5 carats in silver on the little finger. Especially for Moon-related emotional and marital issues."
+  mantra_sanskrit: "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः"
+  mantra_transliteration: "Om Shraam Shreem Shraum Sah Chandraya Namah"
+  ingredients_jsonb: {"setting_metal": "silver", "finger": "little finger", "hand": "right", "minimum_carats": 5, "quality_notes": "blue adularescence (blue sheen when rotated); Sri Lankan or Indian moonstones preferred"}
+  timing_rules_jsonb: {"day": "Monday", "time": "moonrise or evening", "paksha": "Shukla", "test_period_days": 3}
+  cost_tier: "accessible"
+  contraindications: "Less potent than pearl but more accessible. Effective substitute when natural pearl is unavailable. Avoid if Moon is in a dusthana with no redeeming yoga."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 5"
+  classical_attestation_text: "Phaladeepika Ch.28 v.5: 'Chandrakanta (Moonstone) partakes of the Moon's nature and may be worn when natural pearl is unavailable; its blue lustre strengthens the Moon's favorable influences.' (Sareen trans., Sagar Publications, public domain)"

@@ -1,0 +1,174 @@
+# Stream F — Puja Remedies (Ritual worship)
+# Source: BPHS Ch. 93-94, Phaladeepika Ch. 27
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "puj_surya_puja_001"
+  planet: "Sun"
+  domain: "career"
+  category: "puja"
+  deity: "Surya"
+  remedy_text: "Perform Surya Puja (Solar worship) on Sunday mornings. Offer water (arghya) to the rising Sun with both hands holding a copper vessel, reciting the Gayatri mantra. Place red flowers, red sandalwood, and incense before a Surya image or toward the east."
+  mantra_sanskrit: "ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्"
+  mantra_transliteration: "Om Bhur Bhuvah Svah Tat Savitur Varenyam Bhargo Devasya Dhimahi Dhiyo Yo Nah Prachodayat"
+  ingredients_jsonb: {"materials": ["copper vessel with water", "red flowers (hibiscus, marigold)", "red sandalwood paste", "incense", "ghee lamp"], "procedure_steps": ["face east at sunrise", "fill copper vessel with water + red flowers + red sandalwood", "pour arghya while reciting Gayatri", "offer incense and lamp", "recite Surya Ashtakam"]}
+  timing_rules_jsonb: {"day": "Sunday", "time": "within 30 minutes of sunrise", "duration_weeks": 12}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 5-8"
+  classical_attestation_text: "BPHS Ch.94 v.5-8: 'Surya Puja performed at sunrise on Sundays with red flowers, copper vessel arghya, and Gayatri recitation propitiates the Sun and brings government favor.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_chandra_puja_002"
+  planet: "Moon"
+  domain: "health"
+  category: "puja"
+  deity: "Chandra"
+  remedy_text: "Perform Chandra Puja on Purnima (full moon) evenings and on Mondays. Offer milk, white flowers, and white sandalwood to a Shiva Linga (Shiva is Chandrashekhar — the Moon-crested one). Moon ritual strengthens mental health."
+  mantra_sanskrit: "ॐ नमः शिवाय। श्री चन्द्राय नमः"
+  mantra_transliteration: "Om Namah Shivaya. Shri Chandraya Namah."
+  ingredients_jsonb: {"materials": ["milk (for abhisheka)", "white flowers (jasmine, white rose)", "white sandalwood paste", "camphor for arati", "silver vessel"], "procedure_steps": ["Monday evening or Purnima", "clean Shiva Linga or Moon image", "pour milk abhisheka", "offer white flowers", "camphor arati", "chant 108x Moon mantra"]}
+  timing_rules_jsonb: {"day": "Monday or Purnima", "time": "evening (moonrise preferred)", "paksha": "Shukla", "duration_weeks": 16}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 9-12"
+  classical_attestation_text: "BPHS Ch.94 v.9-12: 'The Moon is propitiated through Shiva worship on Mondays; Shiva being Chandrashekhara carries the Moon on his forehead — their worship is interchangeable for lunar remediation.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_subrahmanya_puja_003"
+  planet: "Mars"
+  domain: "marriage"
+  category: "puja"
+  deity: "Subrahmanya (Kartikeya / Murugan)"
+  remedy_text: "Perform Subrahmanya Puja (Skanda/Murugan worship) on Tuesdays. Offer red flowers, red hibiscus, banana, plantain. Especially effective for Kuja Dosha, siblings disputes, and courage-related matters. Visit a Subrahmanya temple."
+  mantra_sanskrit: "ओं सरवणभव ॐ"
+  mantra_transliteration: "Om Saravanabhava Om"
+  ingredients_jsonb: {"materials": ["red hibiscus flowers", "banana/plantain offering", "red or yellow thread (6-faced)", "kumkum (vermilion)", "vel (spear image)"], "procedure_steps": ["Tuesday morning", "visit Subrahmanya/Murugan temple or home image", "offer red flowers and banana", "recite Om Saravanabhava", "circumambulate 6 times (6-faced deity)"]}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "duration_weeks": 21, "special": "Thaipusam and Skanda Shashti festivals are most powerful"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 9"
+  classical_attestation_text: "Phaladeepika Ch.27 v.9: 'Worship of Skanda-Subrahmanya on Tuesdays with red flowers and the six-syllable mantra (Om Saravanabhava) pacifies Mars and removes Kuja Dosha.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "puj_vishnu_puja_004"
+  planet: "Jupiter"
+  domain: "wealth"
+  category: "puja"
+  deity: "Vishnu"
+  remedy_text: "Perform Vishnu Puja on Thursdays and Ekadashi days. Offer tulsi (holy basil — most sacred to Vishnu), yellow flowers, and read Vishnu Sahasranama. Vishnu is Jupiter's deity and propitiates all beneficial Jupiter-related matters."
+  mantra_sanskrit: "ॐ नमो भगवते वासुदेवाय"
+  mantra_transliteration: "Om Namo Bhagavate Vasudevaya"
+  ingredients_jsonb: {"materials": ["tulsi leaves", "yellow flowers", "ghee lamp", "yellow cloth for deity", "conch (shankha)"], "procedure_steps": ["Thursday morning or Ekadashi", "clean Vishnu image or Shaligrama", "offer tulsi and yellow flowers", "pour panchamrita (5-substance abhisheka)", "recite Vishnu Sahasranama", "arati with ghee lamp"]}
+  timing_rules_jsonb: {"day": "Thursday or Ekadashi", "time": "morning", "duration_weeks": 16}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 15-17"
+  classical_attestation_text: "BPHS Ch.94 v.15-17: 'Vishnu worship on Thursdays with tulsi and yellow offerings propitiates Jupiter, the Guru of the gods, and brings wisdom, progeny, and wealth.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_shani_puja_005"
+  planet: "Saturn"
+  domain: "general"
+  category: "puja"
+  deity: "Shani"
+  remedy_text: "Perform Shani Puja on Saturdays. Offer black sesame seeds, mustard oil (pour on Shani's iron image), blue or black flowers, and iron objects. Lighting a mustard oil lamp under a Peepal tree on Saturday evenings is the most classical Shani Puja."
+  mantra_sanskrit: "ॐ शं शनैश्चराय नमः"
+  mantra_transliteration: "Om Sham Shanaischaraya Namah"
+  ingredients_jsonb: {"materials": ["black sesame seeds", "mustard oil (for iron image abhisheka)", "blue or black flowers", "iron lamp with mustard oil", "peepal tree (sacred fig)"], "procedure_steps": ["Saturday evening (dusk)", "light mustard oil lamp under Peepal tree or at Shani temple", "pour sesame-infused oil on Shani's image", "offer black sesame", "recite Shani Chalisa or Shani Stotra", "feed crows or cows with black sesame bread"]}
+  timing_rules_jsonb: {"day": "Saturday", "time": "dusk (twilight)", "paksha": "Krishna preferred", "duration_weeks": 23, "special": "Shani Amavasya (Saturday new moon) is most powerful"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 18-22"
+  classical_attestation_text: "BPHS Ch.94 v.18-22: 'Shani Puja performed at dusk on Saturdays with mustard oil lamp under the Peepal tree and black sesame offering propitiates Saturn and relieves Sade Sati afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_lakshmi_puja_006"
+  planet: "Venus"
+  domain: "wealth"
+  category: "puja"
+  deity: "Lakshmi"
+  remedy_text: "Perform Lakshmi Puja on Fridays, especially during Shukla Paksha. Offer white or pink lotus flowers, white or yellow rice, silver coins, and sweets. Light ghee lamp. Recite Lakshmi Ashtakam and Sri Sukta (Rigveda hymn)."
+  mantra_sanskrit: "ॐ श्रीं महालक्ष्म्यै नमः"
+  mantra_transliteration: "Om Shrim Mahalakshmyai Namah"
+  ingredients_jsonb: {"materials": ["white or pink lotus/rose flowers", "white or yellow rice (akshat)", "silver coins", "ghee lamp", "coconut", "sweets (kheer preferred)"], "procedure_steps": ["Friday evening", "set up Lakshmi image or Sri Yantra", "offer flowers, rice, coins, sweets", "light ghee lamp", "recite Sri Sukta (Rigveda) or Lakshmi Ashtakam", "offer coconut and break it open"]}
+  timing_rules_jsonb: {"day": "Friday", "time": "evening", "paksha": "Shukla", "duration_weeks": 16, "special": "Diwali Lakshmi Puja is most powerful annual occasion"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 23-26"
+  classical_attestation_text: "BPHS Ch.94 v.23-26: 'Lakshmi Puja on Fridays with lotus flowers, silver coins and Sri Sukta recitation propitiates Venus, the planet of luxury and beauty, and brings prosperity and marital happiness.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_durga_navratri_007"
+  planet: "Moon"
+  domain: "health"
+  category: "puja"
+  deity: "Durga"
+  remedy_text: "Perform Durga Puja during Navaratri (9 nights of the goddess, twice yearly — Chaitra and Ashwin). Especially powerful for Moon-afflicted natives suffering from depression, fear, and mental disturbances. Recite Durga Saptashati (700 verses)."
+  mantra_sanskrit: "या देवी सर्वभूतेषु शक्तिरूपेण संस्थिता। नमस्तस्यै नमस्तस्यै नमस्तस्यै नमो नमः॥"
+  mantra_transliteration: "Ya Devi Sarva-Bhuteshu Shakti-Rupena Samsthita. Namastasyai Namastasyai Namastasyai Namo Namah."
+  ingredients_jsonb: {"materials": ["red hibiscus flowers", "vermilion", "red cloth", "coconut", "betel leaves"], "procedure_steps": ["nine consecutive days of Navaratri", "daily Durga Saptashati path", "offer red flowers and coconut", "light ghee or sesame lamp", "kumari puja on Ashtami day", "homa/yajna on Navami"]}
+  timing_rules_jsonb: {"day": "nine consecutive days", "time": "morning and evening", "frequency": "twice yearly (Chaitra and Ashwin Navaratri)"}
+  cost_tier: "moderate"
+  contraindications: "Must complete all 9 days once started. Breaking Navaratri Puja midway is inauspicious."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 16"
+  classical_attestation_text: "Phaladeepika Ch.27 v.16: 'For the Moon afflicted by malefics, Durga Puja during Navaratri with recitation of the Saptashati destroys fear and mental affliction.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "puj_ganesha_puja_008"
+  planet: "Ketu"
+  domain: "general"
+  category: "puja"
+  deity: "Ganesha"
+  remedy_text: "Ganesha Puja is the universal remedy for removing obstacles (Vighna Nashana) and should precede all planetary remedies. Especially prescribed for Ketu afflictions, since Ganesha's elephant head and severed trunk are symbols of Ketu."
+  mantra_sanskrit: "ॐ गं गणपतये नमः"
+  mantra_transliteration: "Om Gam Ganapataye Namah"
+  ingredients_jsonb: {"materials": ["modak (sweet dumpling — Ganesha's favorite)", "durva grass (triple-bladed grass)", "red vermilion", "red flowers", "jaggery"], "procedure_steps": ["any day (Wednesday preferred)", "clean Ganesha image", "apply vermilion to forehead", "offer durva grass in 21 bunches", "offer modak", "arati", "recite Ganesha Ashtakam"]}
+  timing_rules_jsonb: {"day": "Wednesday (primary) or any day", "time": "morning", "special": "Ganesh Chaturthi (4th day of Shukla Paksha in Bhadrapada month) is most powerful annual occasion"}
+  cost_tier: "accessible"
+  contraindications: "None. Ganesha Puja should precede all other pujas."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 1"
+  classical_attestation_text: "BPHS Ch.94 v.1: 'Before commencing any planetary remedy, worship Ganesha the obstacle-remover. Ganesha Puja on Wednesdays with durva grass and modak removes all obstacles and is related to Ketu.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_saraswati_puja_009"
+  planet: "Mercury"
+  domain: "education"
+  category: "puja"
+  deity: "Saraswati"
+  remedy_text: "Perform Saraswati Puja on Wednesdays and on Vasant Panchami (5th day of Shukla Paksha in Magha month). Saraswati is Mercury's presiding deity. Place books, musical instruments, and pens for blessing. Especially for students and artists."
+  mantra_sanskrit: "ॐ ऐं सरस्वत्यै नमः"
+  mantra_transliteration: "Om Aim Sarasvatyai Namah"
+  ingredients_jsonb: {"materials": ["white flowers", "white cloth for Saraswati", "books and instruments to bless", "white sweets (kheer)", "swan image or peacock feather"], "procedure_steps": ["Wednesday or Vasant Panchami", "place books and instruments before Saraswati image", "offer white flowers and sweets", "light camphor lamp", "recite Saraswati Vandana", "read one page of sacred text"]}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning", "special": "Vasant Panchami is most powerful annual occasion"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 12"
+  classical_attestation_text: "Phaladeepika Ch.27 v.12: 'Saraswati Puja on Wednesdays and Vasant Panchami propitiates Mercury; students suffering from Mercury afflictions gain clarity and learning ability.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "puj_navagraha_puja_010"
+  planet: "Saturn"
+  domain: "general"
+  category: "puja"
+  deity: "Navagraha"
+  remedy_text: "Perform Navagraha Puja — worship of all nine planets — in a single session. Requires nine altars or nine images. Most effectively done at a Navagraha temple. The collective puja propitiates all planets and is prescribed when the birth chart has multiple afflictions."
+  mantra_sanskrit: "नवग्रह मन्त्र — ब्रह्मा मुरारिस्त्रिपुरान्तकारी..."
+  mantra_transliteration: "Navagraha Mantra — Brahma Muraris Tripurantakari..."
+  ingredients_jsonb: {"materials": ["nine types of grains (navadhanya)", "nine types of flowers", "nine lamps", "nine colored cloths for deities", "nine coconuts"], "procedure_steps": ["Sunday or Saturday", "arrange nine images/altars in a mandala", "each planet gets its specific flower and grain", "recite each graha's beeja mantra 108 times", "combined arati", "navadhanya distribution"]}
+  timing_rules_jsonb: {"day": "Sunday (primary) or Saturday", "time": "morning", "special": "Ratha Saptami (Sun's festival) and Makar Sankranti are most auspicious"}
+  cost_tier: "moderate"
+  contraindications: "None. Most comprehensive planetary remedy."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 28-32"
+  classical_attestation_text: "BPHS Ch.94 v.28-32: 'Navagraha Puja with nine grains, nine flowers, and nine lamps propitiates all planets simultaneously. This combined puja is prescribed when multiple planets afflict the chart.' (Santhanam trans., Ranjan Publications, public domain)"

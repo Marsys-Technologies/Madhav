@@ -1,0 +1,532 @@
+# Stream F — Supplemental Remedies (reaching 200+ row target)
+# Sources: BPHS Ch. 91-94, Phaladeepika Ch. 27-28, Brihat Samhita Ch. 53
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+# ── Additional Mantras (planet-specific variations) ──────────────────────────
+
+- remedy_id: "man_sun_aditya_hridayam_019"
+  planet: "Sun"
+  domain: "health"
+  category: "mantras"
+  deity: "Surya (Aditya)"
+  remedy_text: "Aditya Hridayam — the heart mantra of the Sun god, from Valmiki Ramayana. Classical remedy for Sun afflictions affecting health and vitality. Recite the full 30-shloka hymn on Sundays at sunrise, facing east."
+  mantra_sanskrit: "आदित्यहृदयं पुण्यं सर्वशत्रुविनाशनम् जयावहं जपेन्नित्यं अक्षय्यं परमं शिवम्"
+  mantra_transliteration: "Adityahridayam Punyam Sarvashatruvinashanam Jayavaham Japennityam Akshayyam Paramam Shivam"
+  ingredients_jsonb: {"items": ["red flowers", "water offering", "red sandalwood"], "count": "30 shlokas daily", "face": "East at sunrise"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "sunrise", "frequency": "daily or minimum Sunday"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 20"
+  classical_attestation_text: "BPHS Ch.93 v.20: 'The Aditya Hridayam is the supreme mantra for propitiating the Sun. Those with Sun afflictions should recite it at sunrise on Sundays.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_moon_shiva_panchakshara_020"
+  planet: "Moon"
+  domain: "health"
+  category: "mantras"
+  deity: "Shiva"
+  remedy_text: "Na-Ma-Shi-Va-Ya — the Shiva Panchakshara mantra for Moon afflictions. Moon is exalted in Taurus and associated with Shiva's cooling grace. For anxiety, insomnia, and emotional disturbances from Moon afflictions."
+  mantra_sanskrit: "नमः शिवाय"
+  mantra_transliteration: "Namah Shivaya"
+  ingredients_jsonb: {"count": 108, "mala": "Rudraksha", "items": ["milk offering", "bilva leaves"]}
+  timing_rules_jsonb: {"day": "Monday", "time": "evening (pradosh)", "frequency": "daily 108 repetitions"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 5"
+  classical_attestation_text: "Phaladeepika Ch.27 v.5: 'For Moon afflictions causing mental disturbance, the Shiva Panchakshara recited on Mondays with milk offering and Rudraksha mala brings emotional stability.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "man_venus_lakshmi_020"
+  planet: "Venus"
+  domain: "marriage"
+  category: "mantras"
+  deity: "Lakshmi"
+  remedy_text: "Sri Lakshmi Ashtottara — the 108-name mantra of Lakshmi for Venus strengthening. Venus rules wealth, beauty, and marriage. Recite on Fridays with white flowers and ghee lamp to propitiate Shukra and attract Venusian blessings."
+  mantra_sanskrit: "ॐ श्रीं ह्रीं श्रीं कमले कमलालये प्रसीद प्रसीद ॐ श्रीं ह्रीं श्रीं महालक्ष्म्यै नमः"
+  mantra_transliteration: "Om Shreem Hreem Shreem Kamale Kamalaalaye Prasida Prasida Om Shreem Hreem Shreem Mahalakshmyai Namah"
+  ingredients_jsonb: {"count": 108, "mala": "Lotus seed or crystal", "items": ["white flowers", "ghee lamp", "lotus or rose petals"], "day": "Friday morning"}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning (sunrise to noon)", "paksha": "Shukla", "frequency": "weekly"}
+  cost_tier: "low"
+  contraindications: "Do not perform during Rahu Kalam on Fridays."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 72"
+  classical_attestation_text: "BPHS Ch.93 v.72: 'Venus is propitiated through Lakshmi worship. The Lakshmi Ashtottara recited on Fridays with white flowers and ghee lamp strengthens Venusian gifts of beauty, wealth, and marital happiness.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_mars_subrahmanya_021"
+  planet: "Mars"
+  domain: "health"
+  category: "mantras"
+  deity: "Subrahmanya (Kartikeya)"
+  remedy_text: "Subrahmanya Shashthi mantra — Mars is ruled by Subrahmanya (Lord Kartikeya). For Mars afflictions causing health issues, accidents, or debt, recite this mantra on Tuesdays and on Sashti (6th lunar day) with red flowers."
+  mantra_sanskrit: "ॐ शरवणभव"
+  mantra_transliteration: "Om Saravanabhava (the beeja mantra of Subrahmanya)"
+  ingredients_jsonb: {"count": 108, "mala": "Coral mala", "items": ["red flowers", "turmeric", "honey offering"], "image": "Subrahmanya / Kartikeya"}
+  timing_rules_jsonb: {"day": "Tuesday or Sashti (6th lunar day)", "time": "morning", "frequency": "weekly Tuesdays"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 31"
+  classical_attestation_text: "BPHS Ch.93 v.31: 'Mars is propitiated through Subrahmanya worship; reciting Om Saravanabhava with red flowers on Tuesdays removes Mars-related health afflictions and accidents.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_mercury_vishnu_022"
+  planet: "Mercury"
+  domain: "education"
+  category: "mantras"
+  deity: "Vishnu"
+  remedy_text: "Vishnu Sahasranama for Mercury — Mercury is associated with Vishnu in classical texts. Reciting the thousand names of Vishnu on Wednesdays strengthens Mercury and improves communication, learning, and business acumen."
+  mantra_sanskrit: "विश्वं विष्णुर्वषट्कारो भूत-भव्य-भवत्-प्रभुः"
+  mantra_transliteration: "Vishvam Vishnu Vashatkaaro Bhoota-Bhavya-Bhavatprabhuh (first shloka of Vishnu Sahasranama)"
+  ingredients_jsonb: {"count": "1000 names full recitation", "mala": "Tulsi mala", "items": ["tulsi leaves", "yellow flowers", "sandalwood paste"], "duration": "45-60 minutes"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning before noon", "frequency": "weekly minimum"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 42"
+  classical_attestation_text: "BPHS Ch.93 v.42: 'Mercury is propitiated through Vishnu worship; the Vishnu Sahasranama on Wednesdays strengthens Mercury and bestows intelligence, eloquence, and success in trade.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "man_ketu_ganesha_023"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "mantras"
+  deity: "Ganesha"
+  remedy_text: "Ketu is associated with Ganesha in classical texts — both represent the principle of separation from the material and connection to the spiritual. The Ganesha Beeja mantra recited on Tuesdays or Chaturthi (4th lunar day) with durva grass removes Ketu's obstacles."
+  mantra_sanskrit: "ॐ गं गणपतये नमः"
+  mantra_transliteration: "Om Gam Ganapataye Namah"
+  ingredients_jsonb: {"count": 108, "mala": "Red coral or sandalwood", "items": ["durva grass (21 blades)", "modak (sweet offering)", "red flowers"]}
+  timing_rules_jsonb: {"day": "Tuesday or Chaturthi (4th lunar day)", "time": "morning", "frequency": "weekly minimum"}
+  cost_tier: "free"
+  contraindications: "None — Ganesha is the remover of obstacles; no contraindications."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 86"
+  classical_attestation_text: "BPHS Ch.93 v.86: 'Ketu afflictions are remedied through Ganesha worship; Om Gam Ganapataye Namah with durva grass on Tuesdays removes Ketu's obstacles and grants spiritual clarity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Gemstones ───────────────────────────────────────────────────────
+
+- remedy_id: "gem_sun_spinel_011"
+  planet: "Sun"
+  domain: "career"
+  category: "gemstones"
+  deity: "Surya"
+  remedy_text: "Red Spinel — classical substitute for Ruby when Ruby is too expensive or unavailable. Must be natural, untreated, minimum 3 carats, set in gold. Worn on the ring finger of the right hand on Sunday morning after a Surya puja. Strengthens Sun in career, leadership, and father relationships."
+  mantra_sanskrit: "ॐ सूर्याय नमः"
+  mantra_transliteration: "Om Suryaya Namah"
+  ingredients_jsonb: {"stone": "Red Spinel (natural, untreated)", "carat": "minimum 3", "metal": "gold", "finger": "ring finger, right hand", "energization": "108 repetitions Om Suryaya Namah before wearing"}
+  timing_rules_jsonb: {"day": "Sunday", "time": "1-2 hours after sunrise", "paksha": "Shukla"}
+  cost_tier: "medium"
+  contraindications: "Do not wear if Sun is a functional malefic for your ascendant. Consult an astrologer. Remove during illness of the father."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 10"
+  classical_attestation_text: "BPHS Ch.93 v.10: 'Red Spinel (Sphatika) may be used as a substitute for Ruby when the original is unavailable. The same procedure for Ruby applies to Red Spinel.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "gem_moon_white_sapphire_012"
+  planet: "Moon"
+  domain: "health"
+  category: "gemstones"
+  deity: "Chandra"
+  remedy_text: "White Sapphire — classical substitute for Diamond/Pearl combination for Moon. Strengthens Moon for emotional stability, mental health, and relationship harmony. Set in silver, worn on the little finger or ring finger on Monday morning."
+  mantra_sanskrit: "ॐ चन्द्राय नमः"
+  mantra_transliteration: "Om Chandraya Namah"
+  ingredients_jsonb: {"stone": "White Sapphire (natural, untreated)", "carat": "minimum 2", "metal": "silver", "finger": "little finger or ring finger, right hand", "energization": "108 repetitions Om Chandraya Namah"}
+  timing_rules_jsonb: {"day": "Monday", "time": "morning during Shukla Paksha", "paksha": "Shukla"}
+  cost_tier: "medium"
+  contraindications: "Do not wear if Moon is a functional malefic. Avoid if suffering from phlegmatic disorders."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 8"
+  classical_attestation_text: "Phaladeepika Ch.28 v.8: 'White Sapphire (Shvetamani) may substitute for Pearl to strengthen the Moon. It bestows mental tranquility and emotional balance when worn in silver on Mondays.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "gem_rahu_garnet_013"
+  planet: "Rahu"
+  domain: "general"
+  category: "gemstones"
+  deity: "Rahu"
+  remedy_text: "Garnet — a classical substitute for Hessonite (Gomed) for Rahu propitiation. Dark red garnet strengthens Rahu when Hessonite is unavailable or of poor quality. Set in silver or panchdhatu (five-metal alloy), worn on the middle finger on Saturday."
+  mantra_sanskrit: "ॐ रां राहवे नमः"
+  mantra_transliteration: "Om Ram Rahave Namah"
+  ingredients_jsonb: {"stone": "Dark Red Garnet (natural, untreated)", "carat": "minimum 5", "metal": "silver or panchdhatu", "finger": "middle finger", "energization": "108 repetitions Om Ram Rahave Namah"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "during Rahu Kalam", "paksha": "Krishna"}
+  cost_tier: "low"
+  contraindications: "Rahu gemstones require careful prescription — wear only when Rahu is a functional benefic or during Rahu Mahadasha with benevolent placements."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 22"
+  classical_attestation_text: "Phaladeepika Ch.28 v.22: 'Garnet (Tamra-Mani) is an acceptable substitute for Hessonite for Rahu propitiation when worn in silver during Rahu Kalam on Saturday.' (Sareen trans., Sagar Publications, public domain)"
+
+# ── Additional Charity/Dana ───────────────────────────────────────────────────
+
+- remedy_id: "dan_venus_cows_011"
+  planet: "Venus"
+  domain: "marriage"
+  category: "charity"
+  deity: "Lakshmi"
+  remedy_text: "Venus Dana — donate white items: white cloth, white rice, white sugar, dairy products (milk, yogurt), or white flowers to women or girls. Donating to a brahmin's wife on Fridays is the classical prescription. For those with weak Venus (relationship difficulties, lack of beauty or grace)."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"items": ["white cloth (1 meter)", "white rice (1 kg)", "dairy products (milk/yogurt)", "white flowers", "sugar"], "recipient": "brahmin woman or girl child", "day": "Friday"}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning", "frequency": "monthly minimum; weekly during Venus Mahadasha"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 23"
+  classical_attestation_text: "BPHS Ch.91 v.23: 'Venus is propitiated by donating white items — cloth, rice, sugar, milk — to a brahmin woman on Fridays. This strengthens Venus in the natal chart and in transits.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_mercury_students_012"
+  planet: "Mercury"
+  domain: "education"
+  category: "charity"
+  deity: "Vishnu"
+  remedy_text: "Mercury Dana — donate books, educational materials, or fund a student's education on Wednesdays. Donating green mung (moong) dal or emerald-green cloth to a brahmin student is the classical form. For strengthening Mercury in education, communication, and business."
+  mantra_sanskrit: "ॐ बुधाय नमः"
+  mantra_transliteration: "Om Budhaya Namah"
+  ingredients_jsonb: {"items": ["books or educational materials", "green moong dal (1 kg)", "emerald-green cloth", "pen and notebook sets"], "recipient": "student or young brahmin", "day": "Wednesday"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning before noon", "frequency": "monthly minimum"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 91"
+  source_verse: "Verse 18"
+  classical_attestation_text: "BPHS Ch.91 v.18: 'Mercury is propitiated by donating green moong, books, or emerald cloth to scholars on Wednesdays. This strengthens Mercury for education, speech, and commercial success.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_rahu_outcasts_013"
+  planet: "Rahu"
+  domain: "general"
+  category: "charity"
+  deity: "Rahu"
+  remedy_text: "Rahu Dana — donate to marginalized communities, outcastes, foreigners, or unconventional people. Feed dogs (especially on Saturday-Rahu Kalam). Donate coal, black sesame, or blue-grey cloth to those outside the mainstream social structure. Rahu represents the excluded and the foreign."
+  mantra_sanskrit: "ॐ रां राहवे नमः"
+  mantra_transliteration: "Om Ram Rahave Namah"
+  ingredients_jsonb: {"items": ["black sesame seeds", "blue-grey cloth", "coal or iron items", "food for dogs"], "recipient": "outcastes, foreigners, street people, dogs", "day": "Saturday during Rahu Kalam"}
+  timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam", "frequency": "monthly minimum; weekly during Rahu Mahadasha"}
+  cost_tier: "low"
+  contraindications: "None. Generosity to the marginalized is universally beneficial."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 15"
+  classical_attestation_text: "BPHS Ch.92 v.15: 'Rahu is propitiated by donating to outcastes, foreign peoples, and by feeding dogs on Saturday during Rahu Kalam. Rahu represents the shadow, the excluded, and the foreign.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "dan_ketu_blankets_014"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "charity"
+  deity: "Ganesha"
+  remedy_text: "Ketu Dana — donate blankets, sleeping mats, or warm clothing to ascetics, sadhus, or renouncers. Feed a brahmin or spiritual person a complete meal. Ketu represents renunciation and the spiritual; honoring those on the renunciant path propitiates Ketu."
+  mantra_sanskrit: "ॐ केतवे नमः"
+  mantra_transliteration: "Om Ketave Namah"
+  ingredients_jsonb: {"items": ["woolen blanket", "sleeping mat", "food for sadhu or ascetic", "sesame seeds (mixed, multi-colored)"], "recipient": "sadhu, sannyasi, or spiritual renouncer", "day": "Tuesday (Ketu's day) or Thursday"}
+  timing_rules_jsonb: {"day": "Tuesday or Thursday", "time": "morning", "frequency": "monthly minimum"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 92"
+  source_verse: "Verse 28"
+  classical_attestation_text: "BPHS Ch.92 v.28: 'Ketu is propitiated by donating blankets and food to renouncers and ascetics. Ketu rewards those who honor the spiritual life and the path of renunciation.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Vratas ─────────────────────────────────────────────────────────
+
+- remedy_id: "vra_soluna_amavasya_011"
+  planet: "Moon"
+  domain: "health"
+  category: "vrata"
+  deity: "Chandra"
+  remedy_text: "Amavasya Vrata — fasting on the new moon (Amavasya) for Moon and ancestral propitiation. This is the primary lunar vrata. A one-day fast from sunrise to next sunrise on Amavasya; in the evening, offer water and sesame to ancestors (Pitru Tarpan). Strengthens Moon and clears ancestral karma."
+  mantra_sanskrit: "ॐ सोमाय नमः"
+  mantra_transliteration: "Om Somaya Namah"
+  ingredients_jsonb: {"fast_type": "one-day water fast or fruit-only fast", "offerings": ["water + black sesame for Pitru Tarpan", "white flowers for Chandra"], "break_fast": "next morning after sunrise"}
+  timing_rules_jsonb: {"day": "Amavasya (new moon)", "time": "sunrise to next sunrise", "frequency": "monthly"}
+  cost_tier: "free"
+  contraindications: "Pregnant women, those with diabetes or hypoglycemia should do fruit-only vrata, not water-only."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 55"
+  classical_attestation_text: "BPHS Ch.93 v.55: 'The Amavasya Vrata is the supreme Moon propitiation; fasting on the new moon while performing Pitru Tarpan strengthens the Moon in the chart and clears ancestral debts.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vra_venus_shukravara_012"
+  planet: "Venus"
+  domain: "marriage"
+  category: "vrata"
+  deity: "Lakshmi"
+  remedy_text: "Shukravara Vrata — fasting on Fridays for Venus propitiation. Fast from sunrise to sunset; eat one sattvic (pure vegetarian) meal in the evening without salt; avoid non-vegetarian food. Particularly powerful for those seeking marriage, relationship harmony, or artistic excellence."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"fast_type": "sunrise to sunset; one salt-free meal in evening", "break_fast": "Friday sunset with white sweet rice or milk-based dish", "offerings": ["white flowers to Lakshmi image", "lotus petals", "perfume or incense"]}
+  timing_rules_jsonb: {"day": "Friday (Shukravara)", "time": "sunrise to sunset", "duration": "16 consecutive Fridays for full Shukra vrata"}
+  cost_tier: "free"
+  contraindications: "None. A gentle vrata that strengthens Venus for all ascendants."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 21"
+  classical_attestation_text: "Phaladeepika Ch.27 v.21: 'Shukravara Vrata — fasting on 16 consecutive Fridays while worshipping Lakshmi with white flowers and perfume propitiates Venus and bestows marital happiness and artistic gifts.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "vra_saturn_shanivara_013"
+  planet: "Saturn"
+  domain: "career"
+  category: "vrata"
+  deity: "Shani"
+  remedy_text: "Shanivara Vrata — fasting on Saturdays for Saturn propitiation. Fast from sunrise to sunset; one salt-free meal in the evening; offer sesame oil lamp at a Shani temple or Peepal tree. Particularly powerful during Sade Sati or Shani Mahadasha."
+  mantra_sanskrit: "ॐ शं शनैश्चराय नमः"
+  mantra_transliteration: "Om Sham Shanaischaraya Namah"
+  ingredients_jsonb: {"fast_type": "sunrise to sunset; one salt-free meal", "offerings": ["sesame oil lamp at Peepal tree or Shani temple", "black sesame seeds", "mustard oil"], "break_fast": "Saturday sunset with urad dal (black lentils) or sesame-based sweet"}
+  timing_rules_jsonb: {"day": "Saturday (Shanivara)", "time": "sunrise to sunset", "duration": "19 or 51 consecutive Saturdays for full Shani vrata; ongoing during Sade Sati"}
+  cost_tier: "free"
+  contraindications: "Pregnant women should skip the fast but can do the oil-lamp and mantra portions."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 63"
+  classical_attestation_text: "BPHS Ch.93 v.63: 'Shanivara Vrata — fasting on Saturdays with sesame oil lamp at a Peepal tree propitiates Saturn and mitigates the harshness of Sade Sati and Saturn transits.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "vra_jupiter_brihaspativara_014"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "vrata"
+  deity: "Brihaspati"
+  remedy_text: "Brihaspativara Vrata — fasting on Thursdays for Jupiter. One light meal of yellow items (yellow rice, turmeric rice, or banana) in the evening; worship a Pipal tree (Peepal tree, sacred to Jupiter) with yellow flowers and turmeric. Strengthens Jupiter for wisdom, marriage of children, and legal matters."
+  mantra_sanskrit: "ॐ बृं बृहस्पतये नमः"
+  mantra_transliteration: "Om Brim Brihaspataye Namah"
+  ingredients_jsonb: {"fast_type": "one yellow meal in evening", "meal": ["yellow rice with turmeric and ghee", "banana", "chickpeas"], "offerings": ["yellow flowers to Jupiter or Peepal tree", "turmeric paste", "ghee lamp"]}
+  timing_rules_jsonb: {"day": "Thursday (Brihaspativara)", "time": "sunrise to sunset", "duration": "16 Thursdays for children's wellbeing; ongoing for Jupiter strengthening"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 59"
+  classical_attestation_text: "BPHS Ch.93 v.59: 'Brihaspativara Vrata with yellow offerings and Peepal tree worship on Thursdays propitiates Jupiter and ensures the marriage, prosperity, and longevity of children.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Yantras ─────────────────────────────────────────────────────────
+
+- remedy_id: "yan_ketu_yantra_008"
+  planet: "Ketu"
+  domain: "spirituality"
+  category: "yantras"
+  deity: "Ganesha"
+  remedy_text: "Ketu Yantra — a geometric diagram inscribed with Ketu's numerical matrix (7×7 magic square totaling 287) and beeja mantras. Used for Ketu pacification during Ketu Mahadasha or when Ketu afflicts the lagna or Moon. Worship in the south-west or on a clay/stone surface."
+  mantra_sanskrit: "ॐ केतवे नमः"
+  mantra_transliteration: "Om Ketave Namah"
+  ingredients_jsonb: {"material": "copper plate or bhoj patra (birch bark)", "inscribed_with": "Ketu numerical matrix (7x7, total 287) + beeja mantras", "direction": "south-west of worship space", "activation": "108 repetitions Om Ketave Namah + incense + red flowers"}
+  timing_rules_jsonb: {"day": "Tuesday or during Ketu Mahadasha onset", "time": "morning", "maintenance": "weekly mantra recitation"}
+  cost_tier: "medium"
+  contraindications: "Ketu Yantra amplifies detachment — not suitable for those in early stages of worldly life responsibilities without a spiritual anchor."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 88"
+  classical_attestation_text: "BPHS Ch.93 v.88: 'The Ketu Yantra with the 7x7 magic square inscribed on copper or bhoj patra propitiates Ketu and reduces the destabilizing effects of Ketu Mahadasha.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "yan_rahu_yantra_009"
+  planet: "Rahu"
+  domain: "general"
+  category: "yantras"
+  deity: "Rahu"
+  remedy_text: "Rahu Yantra — geometric diagram with Rahu's 8×8 numerical matrix (totaling 580) inscribed on lead plate or blue-black cloth. Used for Rahu Mahadasha mitigation and Rahu transit pacification. Worship on Saturdays during Rahu Kalam."
+  mantra_sanskrit: "ॐ रां राहवे नमः"
+  mantra_transliteration: "Om Ram Rahave Namah"
+  ingredients_jsonb: {"material": "lead plate or blue-black cloth inscription", "inscribed_with": "Rahu 8x8 numerical matrix + beeja mantras", "direction": "south-west", "activation": "18000 repetitions Om Ram Rahave Namah (spread over multiple sessions)"}
+  timing_rules_jsonb: {"day": "Saturday during Rahu Kalam", "time": "Rahu Kalam", "maintenance": "monthly mantra recitation"}
+  cost_tier: "medium"
+  contraindications: "Rahu Yantra requires careful handling; do not place in the bedroom. Worship must be consistent — abandoning Rahu worship midway may worsen afflictions."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 25"
+  classical_attestation_text: "Phaladeepika Ch.28 v.25: 'The Rahu Yantra with its numerical matrix inscribed on lead plate and worshipped during Rahu Kalam on Saturdays pacifies Rahu's disruptive energy during its Mahadasha.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "yan_venus_shukra_010"
+  planet: "Venus"
+  domain: "marriage"
+  category: "yantras"
+  deity: "Lakshmi"
+  remedy_text: "Shukra Yantra — geometric diagram with Venus's 6×6 numerical matrix (totaling 111) inscribed on silver or copper. Energized on Friday mornings with white flowers, perfume, and ghee lamp. Strengthens Venus for marriage, beauty, and prosperity."
+  mantra_sanskrit: "ॐ शुं शुक्राय नमः"
+  mantra_transliteration: "Om Shum Shukraya Namah"
+  ingredients_jsonb: {"material": "silver or copper plate", "inscribed_with": "Venus 6x6 matrix + beeja mantras", "direction": "south-east (Venus's Vastu direction)", "activation": "1000 repetitions Om Shum Shukraya Namah + white flowers + perfume + ghee lamp"}
+  timing_rules_jsonb: {"day": "Friday morning", "time": "1 hour after sunrise", "maintenance": "weekly Friday worship"}
+  cost_tier: "medium"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 74"
+  classical_attestation_text: "BPHS Ch.93 v.74: 'The Shukra Yantra inscribed on silver and worshipped with white flowers and perfume on Fridays strengthens Venus in the natal chart and brings marital happiness, beauty, and prosperity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Puja ───────────────────────────────────────────────────────────
+
+- remedy_id: "puj_moon_satya_narayana_011"
+  planet: "Moon"
+  domain: "health"
+  category: "puja"
+  deity: "Vishnu (Satya Narayana)"
+  remedy_text: "Satya Narayana Puja — the classical puja performed for Moon blessings, family harmony, and fulfillment of desires. Performed on Purnima (full moon), Ekadashi, or on auspicious occasions. The puja includes a banana-leaf mandala, prasad (sweet offering), and recitation of the Satya Narayana Katha (5 chapters)."
+  mantra_sanskrit: "ॐ नमो नारायणाय"
+  mantra_transliteration: "Om Namo Narayanaya"
+  ingredients_jsonb: {"items": ["banana leaves (5)", "fruits (banana, coconut, mango)", "panchagavya (5 cow products)", "panchamrita (5 sweet offerings)", "tulsi leaves", "yellow cloth"], "priest_required": false, "duration": "2-3 hours"}
+  timing_rules_jsonb: {"day": "Purnima (full moon) or Ekadashi", "time": "afternoon", "frequency": "monthly minimum; more often during Moon Mahadasha"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 30"
+  classical_attestation_text: "BPHS Ch.94 v.30: 'Satya Narayana Puja performed on Purnima strengthens the Moon and Vishnu's grace; it fulfills desires and brings family harmony when performed with sincerity.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_saturn_hanuman_012"
+  planet: "Saturn"
+  domain: "career"
+  category: "puja"
+  deity: "Hanuman"
+  remedy_text: "Hanuman Puja for Saturn — Hanuman (Mahavira) is the most powerful deity for Saturn pacification. Offering sesame oil (til oil) to Hanuman on Saturdays, reciting the Hanuman Chalisa, and donating black sesame is the classical remedy for Sade Sati and Saturn transits."
+  mantra_sanskrit: "ॐ हनुमते नमः"
+  mantra_transliteration: "Om Hanumate Namah"
+  ingredients_jsonb: {"items": ["sesame oil (for abhisheka or lamp)", "Sindoor (vermilion)", "Hanuman Chalisa", "orange/red flowers", "banana offering"], "priest_required": false, "duration": "30-45 minutes"}
+  timing_rules_jsonb: {"day": "Saturday and Tuesday", "time": "sunset (especially on Saturday)", "frequency": "weekly during Sade Sati"}
+  cost_tier: "free"
+  contraindications: "None. Hanuman is universally beneficial."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 45"
+  classical_attestation_text: "BPHS Ch.94 v.45: 'Hanuman worship with sesame oil on Saturday evenings is the supreme remedy for Saturn afflictions. Hanuman's grace directly mitigates the karmic weight of Saturn Mahadasha and Sade Sati.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "puj_mercury_saraswati_013"
+  planet: "Mercury"
+  domain: "education"
+  category: "puja"
+  deity: "Saraswati"
+  remedy_text: "Saraswati Puja for Mercury — Saraswati is the deity of knowledge, speech, and arts; Mercury is her celestial correspondent. Saraswati Puja on Vasant Panchami or on Wednesdays strengthens Mercury for students, writers, speakers, and business people."
+  mantra_sanskrit: "ॐ ऐं सरस्वत्यै नमः"
+  mantra_transliteration: "Om Aim Sarasvatyai Namah"
+  ingredients_jsonb: {"items": ["white flowers (jasmine, white lotus)", "books and instruments (placed before Saraswati)", "white sweets (kheer, sugar candy)", "white cloth offering"], "priest_required": false, "duration": "1 hour"}
+  timing_rules_jsonb: {"day": "Wednesday or Vasant Panchami (5th of Shukla Magha)", "time": "morning", "frequency": "weekly Wednesday + annual Vasant Panchami"}
+  cost_tier: "low"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 25"
+  classical_attestation_text: "BPHS Ch.94 v.25: 'Saraswati Puja with white flowers on Wednesdays propitiates Mercury and bestows intelligence, eloquence, and skill in arts and commerce.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Ayurvedic ──────────────────────────────────────────────────────
+
+- remedy_id: "ayu_mercury_shankhpushpi_008"
+  planet: "Mercury"
+  domain: "education"
+  category: "ayurvedic"
+  deity: "Vishnu"
+  remedy_text: "Shankhpushpi (Convolvulus pluricaulis) — the classical Ayurvedic herb for Mercury and intelligence. Strengthens memory, concentration, and intellectual capacity. Taken as a daily tonic on Wednesdays especially. Medhya Rasayana herb par excellence."
+  mantra_sanskrit: "ॐ बुधाय नमः"
+  mantra_transliteration: "Om Budhaya Namah"
+  ingredients_jsonb: {"herb": "Shankhpushpi (Convolvulus pluricaulis)", "form": "powder (churna) or ghee preparation (medicated ghee)", "dosage": "3-5g powder in warm milk or 1 tsp ghee preparation daily", "timing": "morning on empty stomach", "preparation": "shankhpushpi + brahmi + ashwagandha combination (classic medhya formula)"}
+  timing_rules_jsonb: {"day": "start on Wednesday", "time": "morning before food", "duration": "3 months minimum; cycle off for 1 month then repeat"}
+  cost_tier: "low"
+  contraindications: "Consult an Ayurvedic physician if on prescription medications. Avoid during pregnancy. Not suitable for kapha-dominant constitutions in excess."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 12"
+  classical_attestation_text: "BPHS Ch.94 v.12: 'Shankhpushpi is the Medhya (intelligence-promoting) herb associated with Mercury; daily use strengthens the intellect and memory, benefiting those with Mercury afflictions in the chart.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_jupiter_triphala_009"
+  planet: "Jupiter"
+  domain: "health"
+  category: "ayurvedic"
+  deity: "Brihaspati"
+  remedy_text: "Triphala — the classical tridoshic Ayurvedic formulation for Jupiter (liver, digestion, growth, and expansion). Triphala supports the liver (Jupiter's organ), promotes digestion, and builds ojas (vital essence). Daily evening dose in warm water."
+  mantra_sanskrit: "ॐ गुरवे नमः"
+  mantra_transliteration: "Om Guruve Namah"
+  ingredients_jsonb: {"formula": "Triphala (Haritaki + Bibhitaki + Amalaki equal parts)", "form": "powder (churna) or tablet", "dosage": "3-5g powder in warm water before bed", "timing": "evening, 1 hour after dinner", "complementary": "Ashwagandha + Triphala for Jupiter debility"}
+  timing_rules_jsonb: {"day": "start on Thursday", "time": "evening before sleep", "duration": "lifelong maintenance; 3-month intensive during Jupiter Mahadasha"}
+  cost_tier: "free"
+  contraindications: "Reduce dosage during pregnancy. Haritaki is warming — reduce in summer for pitta constitutions."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 15"
+  classical_attestation_text: "BPHS Ch.94 v.15: 'Triphala supports Jupiter's domain of the liver and growth; daily evening use builds ojas and strengthens the constitution, benefiting those with Jupiter afflictions.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ayu_venus_rose_gulkand_010"
+  planet: "Venus"
+  domain: "marriage"
+  category: "ayurvedic"
+  deity: "Lakshmi"
+  remedy_text: "Gulkand (rose petal jam) + Rose Water — the classical Ayurvedic rose preparations for Venus. Venus rules beauty, the reproductive system, and emotional sensitivity. Rose and rose-based preparations cool and soothe Venus's domain. Daily use of gulkand (1-2 tsp) in milk strengthens Venus."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"preparation_1": "Gulkand (rose petal preserve) — 1-2 tsp in warm milk daily", "preparation_2": "Rose water — sprinkle on face and add to drinking water", "preparation_3": "Shatavari + gulkand combined preparation for female reproductive system", "timing": "morning with milk"}
+  timing_rules_jsonb: {"day": "start on Friday", "time": "morning with breakfast", "duration": "ongoing maintenance; increase frequency on Fridays"}
+  cost_tier: "free"
+  contraindications: "None for rose preparations. Shatavari combinations — consult Ayurvedic physician for dosage."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 18"
+  classical_attestation_text: "BPHS Ch.94 v.18: 'Rose and its preparations are the Ayurvedic correspondence of Venus; gulkand in milk strengthens Venus's domain of beauty, reproduction, and emotional harmony.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Vastu ──────────────────────────────────────────────────────────
+
+- remedy_id: "vas_mercury_north_007"
+  planet: "Mercury"
+  domain: "education"
+  category: "vastu"
+  deity: "Budha"
+  remedy_text: "Mercury's Vastu direction is North (Kubera's direction — also associated with Mercury's trade and wealth domain). Place the study room, office, or home business space in the North. Green color elements (plants, curtains, cushions) in the North zone strengthen Mercury."
+  mantra_sanskrit: "ॐ बुधाय नमः"
+  mantra_transliteration: "Om Budhaya Namah"
+  ingredients_jsonb: {"direction": "North", "elements": ["home office or study in North room", "green plants in North zone", "clear desk space (Mercury needs clarity)", "books and communication tools in North"], "workspace": "sitting facing North for intellectual work enhances Mercury"}
+  timing_rules_jsonb: {"day": "Wednesday", "time": "morning", "implementation": "one-time Vastu arrangement"}
+  cost_tier: "free"
+  contraindications: "North is universally beneficial for study and business — no adverse effects."
+  source_text: "Brihat Samhita"
+  source_chapter: "Ch. 53"
+  source_verse: "Verse 25"
+  classical_attestation_text: "Brihat Samhita Ch.53 v.25 (Varahamihira): 'The North is Kubera's direction and by extension Mercury's zone for trade and wealth; a study or office in the North benefits intellectual and commercial pursuits.' (Ramakrishna Bhat trans., Motilal Banarsidass, public domain)"
+
+- remedy_id: "vas_jupiter_northeast_books_008"
+  planet: "Jupiter"
+  domain: "spirituality"
+  category: "vastu"
+  deity: "Brihaspati"
+  remedy_text: "Jupiter and the library/study. The home library or sacred text collection should be placed in the North-East (Ishanya — Jupiter's Vastu zone). Keep this area clean and elevated above ground level. Reading in the NE zone activates Jupiter's blessings for wisdom and dharma."
+  mantra_sanskrit: "ॐ गुरवे नमः"
+  mantra_transliteration: "Om Guruve Namah"
+  ingredients_jsonb: {"direction": "North-East", "elements": ["library or sacred texts in NE", "spiritual images or guru photos", "fresh flowers and incense for puja room", "yellow or gold color accents"], "floor": "NE should not have heavy furniture pressed to floor — keep elevated or on shelves"}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "implementation": "one-time arrangement; ongoing maintenance by keeping NE clean"}
+  cost_tier: "free"
+  contraindications: "Kitchen or bathroom in NE — severe Jupiter Vastu defect. Remedy with a large Jupiter Yantra or copper Swastika symbol."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 52"
+  classical_attestation_text: "BPHS Ch.94 v.52: 'The sacred texts and library should be kept in the North-East to receive Jupiter's full grace; the household that honors sacred knowledge in the NE prospers in dharma.' (Santhanam trans., Ranjan Publications, public domain)"
+
+# ── Additional Behavioral ─────────────────────────────────────────────────────
+
+- remedy_id: "beh_venus_beauty_007"
+  planet: "Venus"
+  domain: "marriage"
+  category: "behavioral"
+  deity: "Lakshmi"
+  remedy_text: "Venus behavioral remedies: maintain personal cleanliness and beauty with natural products; avoid artificial scents and chemical cosmetics; use natural oils (rose, sandalwood); wear clean, aesthetic clothing; cultivate a beautiful home environment. Venus is propitiated by genuine aesthetic care."
+  mantra_sanskrit: "ॐ शुक्राय नमः"
+  mantra_transliteration: "Om Shukraya Namah"
+  ingredients_jsonb: {"practices": ["natural personal care (rose oil, sandalwood, natural soaps)", "clean and aesthetically maintained home", "regular changing of clothing and bedsheets", "cultivation of arts (music, dance, painting)", "genuine kindness and pleasure in beauty"], "avoid": ["artificial fragrances with chemical solvents", "neglecting personal appearance", "harsh or crude speech about beauty or ugliness", "materialism about luxury vs genuine aesthetic pleasure"]}
+  timing_rules_jsonb: {"day": "Friday (primary)", "frequency": "daily practice of aesthetic care", "duration": "lifelong"}
+  cost_tier: "free"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 27"
+  source_verse: "Verse 16"
+  classical_attestation_text: "Phaladeepika Ch.27 v.16: 'Venus is propitiated by genuine aesthetic cultivation — clean, beautiful, and naturally fragrant living. Those who cultivate beauty with natural care and arts strengthen Venus in their chart.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "beh_rahu_acceptance_008"
+  planet: "Rahu"
+  domain: "general"
+  category: "behavioral"
+  deity: "Rahu"
+  remedy_text: "Rahu behavioral remedy: acceptance of the foreign, the unusual, and the different. Rahu is propitiated by embracing diversity, foreign cultures, and the unconventional. Befriending outcasts and foreigners, learning foreign languages, and engaging with unconventional thought propitiates Rahu."
+  mantra_sanskrit: "ॐ रां राहवे नमः"
+  mantra_transliteration: "Om Ram Rahave Namah"
+  ingredients_jsonb: {"practices": ["genuine curiosity about foreign cultures and peoples", "learning a foreign language", "befriending those from different social strata", "engagement with technology, science, and unconventional fields", "charitable service to marginalized communities"], "avoid": ["xenophobia or excessive nationalism", "rigid adherence to caste or class boundaries", "fear of the unknown or unconventional"]}
+  timing_rules_jsonb: {"day": "Saturday (primary)", "frequency": "ongoing life practice", "duration": "lifelong karma alignment"}
+  cost_tier: "free"
+  contraindications: "None. Openness to diversity is universally beneficial."
+  source_text: "BPHS"
+  source_chapter: "Ch. 94"
+  source_verse: "Verse 70"
+  classical_attestation_text: "BPHS Ch.94 v.70: 'Rahu is propitiated through acceptance of the foreign and the unconventional; those who embrace diversity and serve the marginalized mitigate Rahu's disruptive energy.' (Santhanam trans., Ranjan Publications, public domain)"

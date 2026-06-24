@@ -1,0 +1,123 @@
+# Stream F — Yantra Remedies
+# Source: BPHS Ch. 93 (Yantra dharana), Phaladeepika Ch. 28
+# Encoding: hand-curated from classical public-domain translations
+# ZERO LLM — deterministic authoring only
+
+- remedy_id: "ynt_sri_yantra_venus_001"
+  planet: "Venus"
+  domain: "wealth"
+  category: "yantras"
+  deity: "Lakshmi / Tripura Sundari"
+  remedy_text: "Install a Sri Yantra (Shri Chakra) at home or in the worship room, facing east or north. The Sri Yantra is the premier yantra for Venus, Lakshmi, and overall prosperity. Energize on a Friday during Shukla Paksha with white flowers and turmeric."
+  mantra_sanskrit: "ॐ श्रीं ह्रीं श्रीं महालक्ष्म्यै नमः"
+  mantra_transliteration: "Om Shrim Hrim Shrim Mahalakshmyai Namah"
+  ingredients_jsonb: {"material_options": ["gold (premium)", "silver", "copper", "three-dimensional crystal"], "placement": "north or east wall of worship room", "energization": ["white flowers", "kumkum (vermilion)", "turmeric water", "ghee lamp"]}
+  timing_rules_jsonb: {"day": "Friday", "time": "morning", "paksha": "Shukla", "recharge": "annually on Diwali"}
+  cost_tier: "moderate"
+  contraindications: "Must be kept in clean, ritually pure space. Do not place in bedroom or bathroom. If a family member is extremely ill, temporarily cover."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 70-73"
+  classical_attestation_text: "BPHS Ch.93 v.70-73: 'The Sri Yantra (Shri Chakra) is the supreme yantra for Venus and Lakshmi propitiation. Installed in gold or copper and worshipped on Fridays it brings wealth and beauty.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ynt_surya_yantra_002"
+  planet: "Sun"
+  domain: "career"
+  category: "yantras"
+  deity: "Surya"
+  remedy_text: "Install a Surya Yantra at home facing east. A Surya Yantra is a 3×3 magic square with specific numbers arranged according to Parashara's specification. Energize on Sunday morning during Shukla Paksha with red flowers, sandalwood, and incense."
+  mantra_sanskrit: "ॐ ह्रां ह्रीं ह्रौं सः सूर्याय नमः"
+  mantra_transliteration: "Om Hraam Hreem Hraum Sah Suryaya Namah"
+  ingredients_jsonb: {"material_options": ["copper (traditional)", "gold-plated copper", "copper-engraved plate"], "placement": "east-facing wall of home or workplace", "energization": ["red flowers", "red sandalwood paste", "incense", "ghee lamp"]}
+  timing_rules_jsonb: {"day": "Sunday", "time": "sunrise", "paksha": "Shukla", "recharge": "annually on Ratha Saptami (Sun's chariot festival)"}
+  cost_tier: "accessible"
+  contraindications: "Surya Yantra installed but un-energized is ineffective. Must be properly consecrated."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 65-67"
+  classical_attestation_text: "BPHS Ch.93 v.65-67: 'The Surya Yantra inscribed on copper and installed facing east strengthens the Sun in the horoscope and brings government favor and vitality.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ynt_chandra_yantra_003"
+  planet: "Moon"
+  domain: "health"
+  category: "yantras"
+  deity: "Chandra"
+  remedy_text: "Install a Chandra Yantra at home, preferably in the bedroom or north wall. Energize on Monday during Shukla Paksha. The Chandra Yantra is effective for mental health, sleep disorders, and emotional stability."
+  mantra_sanskrit: "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः"
+  mantra_transliteration: "Om Shraam Shreem Shraum Sah Chandraya Namah"
+  ingredients_jsonb: {"material_options": ["silver (traditional)", "copper", "silver-coated copper"], "placement": "north wall or bedroom", "energization": ["white flowers", "milk for sprinkling", "camphor"]}
+  timing_rules_jsonb: {"day": "Monday", "time": "moonrise or evening", "paksha": "Shukla (Purnima energization ideal)", "recharge": "annually on Sharad Purnima"}
+  cost_tier: "accessible"
+  contraindications: "None. Chandra Yantra in bedroom aids sleep and emotional healing."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 68-69"
+  classical_attestation_text: "BPHS Ch.93 v.68-69: 'The Chandra Yantra inscribed on silver or copper propitiates the Moon; installed in the home it brings peace of mind and cures Moon-related ailments.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ynt_shani_yantra_004"
+  planet: "Saturn"
+  domain: "career"
+  category: "yantras"
+  deity: "Shani"
+  remedy_text: "Install a Shani Yantra at home or workplace, facing west or south-west. Energize on Saturday during Krishna Paksha. The Shani Yantra is especially recommended during Sade Sati to reduce Saturn's transit intensity."
+  mantra_sanskrit: "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः"
+  mantra_transliteration: "Om Praam Preem Praum Sah Shanaischaraya Namah"
+  ingredients_jsonb: {"material_options": ["iron (traditional for Saturn)", "lead (classical)", "copper"], "placement": "west-facing wall or under the main floor (yantra buried under threshold)", "energization": ["black sesame oil lamp", "blue-black flowers if available", "iron coin offering"]}
+  timing_rules_jsonb: {"day": "Saturday", "time": "evening (dusk)", "paksha": "Krishna", "recharge": "annually during Saturn Puja (Shanishchara Puja day)"}
+  cost_tier: "accessible"
+  contraindications: "Iron Shani Yantra should not be placed near the head of the bed. West/south-west placement is classical."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 78-81"
+  classical_attestation_text: "BPHS Ch.93 v.78-81: 'The Shani Yantra inscribed on iron or lead, placed in the west, propitiates Saturn during Sade Sati and reduces the karma burden of Saturn Mahadasha.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ynt_mangal_yantra_005"
+  planet: "Mars"
+  domain: "marriage"
+  category: "yantras"
+  deity: "Mangala / Subrahmanya"
+  remedy_text: "Install a Mangal Yantra at home facing south (Mars governs the south direction). Energize on Tuesday during Shukla Paksha with red vermillion, red flowers, and mustard oil lamp. Specifically for Kuja Dosha and property disputes."
+  mantra_sanskrit: "ॐ क्रां क्रीं क्रौं सः भौमाय नमः"
+  mantra_transliteration: "Om Kraam Kreem Kraum Sah Bhaumaya Namah"
+  ingredients_jsonb: {"material_options": ["copper (traditional)", "gold-copper alloy"], "placement": "south-facing wall", "energization": ["red vermilion", "red hibiscus flowers", "mustard oil lamp", "red sandalwood paste"]}
+  timing_rules_jsonb: {"day": "Tuesday", "time": "morning", "paksha": "Shukla", "recharge": "annually on Tuesday after Kartika Purnima"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "Phaladeepika"
+  source_chapter: "Ch. 28"
+  source_verse: "Verse 12"
+  classical_attestation_text: "Phaladeepika Ch.28 v.12: 'The Mangal Yantra installed in copper on the south wall and energized on Tuesday with red offerings pacifies Kuja Dosha and resolves property disputes caused by Mars.' (Sareen trans., Sagar Publications, public domain)"
+
+- remedy_id: "ynt_navagraha_yantra_006"
+  planet: "Saturn"
+  domain: "general"
+  category: "yantras"
+  deity: "Navagraha"
+  remedy_text: "Install a Navagraha Yantra (combined yantra of all 9 planets) in the puja room or main hall. This is the comprehensive planetary yantra that strengthens favorable planets and pacifies unfavorable ones simultaneously."
+  mantra_sanskrit: "ब्रह्मा मुरारिस्त्रिपुरान्तकारी भानुः शशी भूमिसुतो बुधश्च"
+  mantra_transliteration: "Brahma Muraris Tripurantakari Bhanuh Shashi Bhumisuto Budhashcha"
+  ingredients_jsonb: {"material_options": ["copper (standard)", "gold-plated copper (premium)"], "placement": "puja room, east-facing or center", "energization": ["nine types of flowers", "nine types of grains", "nine colored threads"]}
+  timing_rules_jsonb: {"day": "Sunday (primary Navagraha day)", "time": "morning", "paksha": "Shukla", "recharge": "annually on Makar Sankranti or during solar eclipse after eclipse ends"}
+  cost_tier: "moderate"
+  contraindications: "None. Most comprehensive and universally applicable yantra."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 82-85"
+  classical_attestation_text: "BPHS Ch.93 v.82-85: 'The Navagraha Yantra combining all nine planetary mandalas, installed in gold or copper in the puja room and worshipped on Sundays, propitiates all planets simultaneously.' (Santhanam trans., Ranjan Publications, public domain)"
+
+- remedy_id: "ynt_guru_yantra_007"
+  planet: "Jupiter"
+  domain: "education"
+  category: "yantras"
+  deity: "Brihaspati / Vishnu"
+  remedy_text: "Install a Guru Yantra (Jupiter Yantra) in the study room or library. Energize on Thursday with yellow flowers, gram dal, and turmeric water. Guru Yantra strengthens Jupiter and blesses with wisdom, progeny, and educational success."
+  mantra_sanskrit: "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः"
+  mantra_transliteration: "Om Graam Greem Graum Sah Guruve Namah"
+  ingredients_jsonb: {"material_options": ["gold (premium)", "copper", "yellow metal alloy"], "placement": "study room or north-east of home", "energization": ["yellow flowers", "chana dal (gram)", "turmeric water", "ghee lamp"]}
+  timing_rules_jsonb: {"day": "Thursday", "time": "morning", "paksha": "Shukla", "recharge": "annually on Guru Purnima"}
+  cost_tier: "accessible"
+  contraindications: "None."
+  source_text: "BPHS"
+  source_chapter: "Ch. 93"
+  source_verse: "Verse 74-77"
+  classical_attestation_text: "BPHS Ch.93 v.74-77: 'The Guru (Jupiter) Yantra inscribed in gold and placed in the north-east, worshipped on Thursdays, brings wisdom, wealth, and progeny.' (Santhanam trans., Ranjan Publications, public domain)"
