@@ -68,12 +68,9 @@ NAKSHATRA_BOUNDARY_ARCSEC = 2880.0
 SIGNS = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo",
          "Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"]
 
-SIGN_LORDS = {
-    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury",
-    "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury",
-    "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter",
-    "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter",
-}
+# Populated from L0 (reference_signs, reference_nakshatras) before build.
+# Never define inline — L0 is the single source of truth.
+_SIGN_LORDS: dict[str, str] = {}  # sign_name → lord (Title case)
 
 NAKSHATRAS = [
     "Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra",
@@ -83,12 +80,31 @@ NAKSHATRAS = [
     "Purva Bhadrapada","Uttara Bhadrapada","Revati",
 ]
 
-NAK_LORDS = ["Ketu","Venus","Sun","Moon","Mars","Rahu","Jupiter","Saturn","Mercury"]
+_NAK_LORDS: list[str] = []  # 9-element vimshottari cycle (Title case), populated from L0
 
 # Nakshatra span: 360/27 = 13.333... deg
 NAK_SPAN_DEG = 360.0 / 27.0  # ~13.333
 # Pada span: NAK_SPAN_DEG / 4
 PADA_SPAN_DEG = NAK_SPAN_DEG / 4.0
+
+
+def _load_l0_refs(conn: Any) -> None:
+    """Populate _SIGN_LORDS and _NAK_LORDS from L0 reference tables.
+    Must be called before any computation that uses these lookups."""
+    global _SIGN_LORDS, _NAK_LORDS
+    import psycopg.rows as _pr
+    try:
+        with conn.cursor(row_factory=_pr.tuple_row) as cur:
+            cur.execute("SELECT canonical_name_en, lord FROM reference_signs ORDER BY sign_id")
+            _SIGN_LORDS = {row[0]: row[1].capitalize() for row in cur.fetchall()}
+        with conn.cursor(row_factory=_pr.tuple_row) as cur:
+            cur.execute("SELECT lord FROM reference_nakshatras ORDER BY nakshatra_id LIMIT 9")
+            _NAK_LORDS = [row[0].capitalize() for row in cur.fetchall()]
+        logger.info("[ga_sensitive] L0 refs loaded: %d sign lords, %d nak lords",
+                    len(_SIGN_LORDS), len(_NAK_LORDS))
+    except Exception as exc:
+        logger.error("[ga_sensitive] Failed to load L0 refs — abort build: %s", exc)
+        raise
 
 # ── Hadda 60-zone classical lookup table (A5 §9.7)
 # 5 zones per sign × 12 signs = 60 zones
@@ -233,7 +249,7 @@ def _long_to_nakshatra_pada(long_deg: float) -> tuple[str, str, int]:
     pada = int((long_norm - nak_idx * NAK_SPAN_DEG) / PADA_SPAN_DEG) + 1
     pada = min(pada, 4)
     nak_lord_idx = nak_idx % 9
-    return NAKSHATRAS[nak_idx], NAK_LORDS[nak_lord_idx], pada
+    return NAKSHATRAS[nak_idx], _NAK_LORDS[nak_lord_idx], pada
 
 
 def _is_near_sign_boundary(long_deg: float) -> bool:
@@ -392,7 +408,7 @@ def _long_rows(
     """
     sign, sign_idx, deg_in_sign = _long_to_sign_deg(longitude_sidereal)
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(longitude_sidereal)
-    sign_lord = SIGN_LORDS[sign]
+    sign_lord = _SIGN_LORDS[sign]
     near_sign = _is_near_sign_boundary(longitude_sidereal)
     near_nak = _is_near_nakshatra_boundary(longitude_sidereal)
     varg = _is_vargottama(longitude_sidereal)
@@ -1338,9 +1354,9 @@ def _build_kp_ruling_planets_rows(
     day_lord = "Sun"  # Ravivara (Sunday) confirmed FORENSIC anchor
 
     rp_map = {
-        "RP_ASC_LORD": (SIGN_LORDS[lagna_sign], lagna),
+        "RP_ASC_LORD": (_SIGN_LORDS[lagna_sign], lagna),
         "RP_ASC_SUB_LORD": (asc_sub_lord, lagna),
-        "RP_MOON_SIGN_LORD": (SIGN_LORDS[moon_sign], moon),
+        "RP_MOON_SIGN_LORD": (_SIGN_LORDS[moon_sign], moon),
         "RP_MOON_STAR_LORD": (moon_nak_lord, moon),
         "RP_DAY_LORD": (day_lord, 0.0),
     }
@@ -1390,7 +1406,7 @@ def _build_kp_cuspal_rows(
 
             # Significators: planets in house + ruling planets (simplified)
             # For atomic compliance: significators stored as JSONB (irreducible composite — variable-length array)
-            significators = [cusp_nak_lord, SIGN_LORDS[cusp_sign]]
+            significators = [cusp_nak_lord, _SIGN_LORDS[cusp_sign]]
 
             near_sign = _is_near_sign_boundary(cusp_long)
             near_nak = _is_near_nakshatra_boundary(cusp_long)
@@ -1406,7 +1422,7 @@ def _build_kp_cuspal_rows(
 
             rows.extend([
                 _make_row("kp_cuspal_significators", subj, "sign_lord",
-                          None, SIGN_LORDS[cusp_sign], None,
+                          None, _SIGN_LORDS[cusp_sign], None,
                           chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
                 _make_row("kp_cuspal_significators", subj, "star_lord",
                           None, cusp_nak_lord, None,
@@ -1545,7 +1561,7 @@ def _build_triraashipathi_rows(
     # Triraashipathi: lord of sign containing Sun in the annual chart
     # For natal: lord of Sun's sign
     sun_sign, _, _ = _long_to_sign_deg(sun)
-    sun_lord = SIGN_LORDS[sun_sign]
+    sun_lord = _SIGN_LORDS[sun_sign]
 
     rows = [
         _make_row("tajik_triraashipathi", "TRIRAASHIPATHI", "lord",
@@ -2356,6 +2372,9 @@ def build_ga_sensitive_for_ayanamsha(
     """Compute and persist chart_facts for one ayanamsha. conn is caller-owned;
     does NOT commit — the orchestrator's _drive_substeps commits after this returns.
     Returns inserted row count."""
+    # Ensure L0 refs are loaded (idempotent — no-op if already populated)
+    if not _SIGN_LORDS or not _NAK_LORDS:
+        _load_l0_refs(conn)
     rows = _build_all_sensitive_rows_for_ayanamsha(
         ayanamsha_key=ayanamsha_key,
         ayanamsha_id=ayanamsha_id,
@@ -2446,6 +2465,13 @@ def build_ga_sensitive(
 
     logger.info("[ga_sensitive] Prerequisites: G14=%s G44=%s G41=%s",
                 prereqs["G14_SAHAM"], prereqs["G44_NADI"], prereqs["G41_LAL_KITAB"])
+
+    # Load L0 sign lords and nakshatra lords before computation
+    if conn is not None:
+        _load_l0_refs(conn)
+    else:
+        with _conn() as _c:
+            _load_l0_refs(_c)
 
     # ── Compute all ayanamshas ────────────────────────────────────────────────
     all_rows: list[dict[str, Any]] = []

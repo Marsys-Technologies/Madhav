@@ -67,12 +67,19 @@ VIMSHOTTARI_SEQUENCE = [
 ]
 VIMSHOTTARI_TOTAL_YEARS = 120
 
-# Nakshatra lords (1-based, 1=Ashwini..27=Revati) — Vimshottari cycle
-_NAK_LORD_CYCLE = [
-    "Ketu", "Venus", "Sun", "Moon", "Mars",
-    "Rahu", "Jupiter", "Saturn", "Mercury",
-]
-NAKSHATRA_LORDS_1BASED = [""] + [_NAK_LORD_CYCLE[(i - 1) % 9] for i in range(1, 28)]
+# Populated from L0 (reference_nakshatras) before build — index 0 = "".
+# Never define inline — L0 is the single source of truth.
+_NAKSHATRA_LORDS_1BASED: list[str] = []
+
+def _load_nakshatra_lords_l0(conn: Any) -> None:
+    """Populate _NAKSHATRA_LORDS_1BASED (28-element, index 0='') from reference_nakshatras."""
+    global _NAKSHATRA_LORDS_1BASED
+    import psycopg.rows as _pr
+    with conn.cursor(row_factory=_pr.tuple_row) as cur:
+        cur.execute("SELECT lord FROM reference_nakshatras ORDER BY nakshatra_id")
+        lords = [row[0].capitalize() for row in cur.fetchall()]
+    _NAKSHATRA_LORDS_1BASED = [""] + lords  # 1-based; index 0 unused
+
 
 # FORENSIC: Purva Bhadrapada is nak 25 (1-based), lord = Jupiter
 FORENSIC_MOON_NAK_NAME = "Purva Bhadrapada"
@@ -271,7 +278,7 @@ def _get_moon_nakshatra_lord(moon_sid_lon: float) -> tuple[int, str, str]:
     if nak_idx_1 > 27:
         nak_idx_1 = 27
     nak_name = NAKSHATRA_NAMES[nak_idx_1] if nak_idx_1 < len(NAKSHATRA_NAMES) else f"Nak{nak_idx_1}"
-    lord = NAKSHATRA_LORDS_1BASED[nak_idx_1] if nak_idx_1 < len(NAKSHATRA_LORDS_1BASED) else "Unknown"
+    lord = _NAKSHATRA_LORDS_1BASED[nak_idx_1] if nak_idx_1 < len(_NAKSHATRA_LORDS_1BASED) else "Unknown"
     return nak_idx_1, nak_name, lord
 
 
@@ -318,7 +325,7 @@ def _find_cycle_start_for_window(
     # Compute balance at birth
     nak_span = 360.0 / 27
     nak_idx_0 = int(moon_sid / nak_span)
-    nak_lord = NAKSHATRA_LORDS_1BASED[nak_idx_0 + 1]
+    nak_lord = _NAKSHATRA_LORDS_1BASED[nak_idx_0 + 1]
     nak_progress = (moon_sid - nak_idx_0 * nak_span) / nak_span
     balance_years = years_map[nak_lord] * (1.0 - nak_progress)
 
@@ -660,7 +667,7 @@ def compute_vimshottari(
     nak_span = 360.0 / 27
     nak_idx_0 = int(moon_sid / nak_span)
     nak_idx_1 = nak_idx_0 + 1  # 1-based
-    nak_lord = NAKSHATRA_LORDS_1BASED[min(nak_idx_1, 27)]
+    nak_lord = _NAKSHATRA_LORDS_1BASED[min(nak_idx_1, 27)]
     nak_progress = (moon_sid - nak_idx_0 * nak_span) / nak_span
     balance_years = VIMSHOTTARI_YEARS[nak_lord] * (1.0 - nak_progress)
 
@@ -2248,6 +2255,11 @@ def build_system(
     from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    # Ensure L0 nakshatra lords are loaded (idempotent — skips if already populated)
+    if not _NAKSHATRA_LORDS_1BASED:
+        with (_conn() if conn is None else nullcontext(conn)) as _nc:
+            _load_nakshatra_lords_l0(_nc)
 
     logger.info(
         "[ga_dashas] Building system=%s ayanamsha=%s chart_id=%s",
