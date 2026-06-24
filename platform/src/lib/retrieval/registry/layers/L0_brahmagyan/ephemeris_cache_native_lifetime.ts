@@ -41,7 +41,7 @@ export const ephemerisCacheNativeLifetimeCapability: ResourceCapability = {
     },
     result_max_kb: 4,
   },
-  async loader(_ctx) {
+  async loader(_ctx?: unknown) {
     try {
       const params = new URLSearchParams({
         start_date: NATIVE_LIFETIME_START,

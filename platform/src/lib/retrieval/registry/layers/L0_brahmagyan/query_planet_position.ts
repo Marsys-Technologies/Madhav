@@ -65,7 +65,7 @@ export const queryPlanetPositionCapability: ToolCapability = {
     },
     result_max_kb: 8,
   },
-  async handler(args: Record<string, unknown>, _ctx) {
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const date = args['date'] as string
     const planet = args['planet'] as string | undefined
 

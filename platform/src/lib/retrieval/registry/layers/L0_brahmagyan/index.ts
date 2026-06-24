@@ -9,6 +9,7 @@
  * Wave 3 R2 — 4 corpus query tools (yoga/dosha/remedy/classical texts)
  */
 import { registerCapability } from '../../index'
+import type { CapabilityDescriptor } from '../../types'
 
 import { assetRegistryL0Capability }  from './asset_registry_l0'
 import { assetRegistryAllCapability } from './asset_registry_all'
@@ -51,7 +52,7 @@ export const L0_CAPABILITIES = [
 export function registerL0Capabilities(): void {
   for (const cap of L0_CAPABILITIES) {
     try {
-      registerCapability(cap)
+      registerCapability(cap as unknown as CapabilityDescriptor)
     } catch (e) {
       // Ignore duplicate registration (idempotent)
       if (e instanceof Error && e.message.includes('Duplicate URI')) {

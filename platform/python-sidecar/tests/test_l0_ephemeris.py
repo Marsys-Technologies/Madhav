@@ -113,11 +113,14 @@ class TestCheckVolume:
 
         sun_row = (sun_lon,) if sun_lon is not None else None
 
+        from datetime import date as _date
         cursor.fetchone.side_effect = [
-            (row_count,),      # COUNT(*)
-            sun_row,           # Sun row for birth date
-            (null_citation,),  # null citation count
-            (null_ayanamsha,), # null ayanamsha count
+            (row_count,),                          # COUNT(*)
+            sun_row,                               # Sun row for birth date
+            (350.0,),                              # Saturn on 2050-01-01
+            (null_citation,),                      # null citation count
+            (null_ayanamsha,),                     # null ayanamsha count
+            (_date(1900, 1, 1), _date(2150, 12, 31)),  # date range MIN/MAX
         ]
         return conn
 

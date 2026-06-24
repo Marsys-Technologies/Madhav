@@ -49,12 +49,12 @@ logger = logging.getLogger(__name__)
 SOURCE_CITATION = "pyswisseph + Swiss Ephemeris .se1"
 AYANAMSHA_ID = "tropical"
 
-VOLUME_FLOOR = 821_250  # 1900-2150 × 9 bodies floor
+VOLUME_FLOOR = 825_084  # 1900-2150 × 9 bodies: 91,676 days × 9 = 825,084 rows
 
 # Native birth — Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
 NATIVE_BIRTH_DATE = date(1984, 2, 5)
-NATIVE_LAT = 20.2735
-NATIVE_LON = 85.8334
+NATIVE_LAT = 20.2961
+NATIVE_LON = 85.8245
 
 # Build period: 1900-01-01 to 2150-12-31
 BUILD_START = date(1900, 1, 1)
@@ -289,6 +289,10 @@ def _algorithmic_fallback_date(d: date) -> list[dict[str, Any]]:
             "computed_at": now_ts,
         })
     return rows
+
+
+# Public alias used by tests and external callers
+_algorithmic_fallback = _algorithmic_fallback_date
 
 
 # ── Bulk build (COPY-based fast path) ────────────────────────────────────────

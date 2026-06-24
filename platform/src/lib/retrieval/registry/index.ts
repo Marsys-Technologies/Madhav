@@ -30,7 +30,9 @@ export function registerCapability(descriptor: CapabilityDescriptor): void {
   if (!descriptor.uri) {
     throw new Error('[registry] descriptor.uri is required')
   }
-  if (!descriptor.handler || typeof descriptor.handler !== 'function') {
+  // Resources use 'loader' instead of 'handler'; accept either.
+  const callable = descriptor.handler ?? (descriptor as unknown as Record<string, unknown>)['loader']
+  if (!callable || typeof callable !== 'function') {
     throw new Error(`[registry] capability ${descriptor.uri} has no handler function`)
   }
   _registry.set(descriptor.uri, descriptor)

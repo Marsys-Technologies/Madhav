@@ -158,3 +158,44 @@ export interface CapabilityFilter {
   layer?: Layer
   name_prefix?: string
 }
+
+// ── L0FR Stream B: narrowed capability descriptor types ──────────────────────
+
+interface L0FRLLMHints {
+  agentic?: {
+    cost_class?: 'cheap' | 'medium' | 'expensive'
+    always_prefetch?: boolean
+    latency_ms_p50?: number
+  }
+  bulk_context?: {
+    pre_fetch_priority?: number
+    always_include?: boolean
+    result_size_kb_p50?: number
+  }
+  result_max_kb?: number
+}
+
+/** Narrowed descriptor for capabilities with primitive_type = 'tool' */
+export interface ToolCapability {
+  uri: CapabilityUri
+  primitive_type: 'tool'
+  layer: Layer
+  name: string
+  description: string
+  input_schema?: Record<string, unknown>
+  output_schema?: Record<string, unknown>
+  llm_hints?: L0FRLLMHints
+  handler: (args: Record<string, unknown>, ctx?: CapabilityContext) => Promise<unknown>
+}
+
+/** Narrowed descriptor for capabilities with primitive_type = 'resource' */
+export interface ResourceCapability {
+  uri: CapabilityUri
+  primitive_type: 'resource'
+  layer: Layer
+  name: string
+  description: string
+  mime_type?: string
+  llm_hints?: L0FRLLMHints
+  loader: (ctx?: CapabilityContext) => Promise<unknown>
+}

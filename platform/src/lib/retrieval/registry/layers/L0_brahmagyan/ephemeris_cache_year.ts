@@ -37,7 +37,7 @@ export const ephemerisCacheYearCapability: ResourceCapability = {
     },
     result_max_kb: 256,
   },
-  async loader(ctx) {
+  async loader(ctx?: unknown) {
     // Extract year from context or default to current year
     const year = (ctx as { year?: number })?.year ?? new Date().getFullYear()
     const start = `${year}-01-01`

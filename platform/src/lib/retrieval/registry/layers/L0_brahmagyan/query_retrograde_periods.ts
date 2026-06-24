@@ -66,7 +66,7 @@ export const queryRetrogradePeriodsCapability: ToolCapability = {
     },
     result_max_kb: 16,
   },
-  async handler(args: Record<string, unknown>, _ctx) {
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const planet = args['planet'] as string
     const start_date = args['start_date'] as string
     const end_date = args['end_date'] as string

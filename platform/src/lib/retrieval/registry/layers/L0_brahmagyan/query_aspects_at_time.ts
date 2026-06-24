@@ -60,7 +60,7 @@ export const queryAspectsAtTimeCapability: ToolCapability = {
     },
     result_max_kb: 8,
   },
-  async handler(args: Record<string, unknown>, _ctx) {
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const date = args['date'] as string
     const orb_degrees = (args['orb_degrees'] as number | undefined) ?? 1.0
 
