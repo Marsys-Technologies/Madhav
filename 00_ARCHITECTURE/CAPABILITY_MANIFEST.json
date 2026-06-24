@@ -326,8 +326,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "30c306b80f6010e3e3443efb99837374a2f0e73d78151114ca5a0ef493633927",
-      "rebase_note": "Retrieval tool: Brahmagyan classical text search"
+      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
+      "rebase_note": "Retrieval tool: Brahmagyan classical text search",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     },
     {
       "canonical_id": "BRAHMAGYAN_CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
@@ -1676,7 +1678,10 @@
           "query"
         ]
       },
-      "rebase_note": "L0FR Stream C \u2014 classical text semantic search"
+      "rebase_note": "L0FR Stream C \u2014 classical text semantic search",
+      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     },
     {
       "canonical_id": "L0FR_CAPABILITY_READ_CHAPTER",
@@ -1712,7 +1717,10 @@
           "chapter"
         ]
       },
-      "rebase_note": "L0FR Stream C \u2014 fetch full chapter from classical text"
+      "rebase_note": "L0FR Stream C \u2014 fetch full chapter from classical text",
+      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     },
     {
       "canonical_id": "L0FR_CAPABILITY_LIST_CLASSICAL_TEXTS",
@@ -1733,7 +1741,10 @@
         "properties": {},
         "required": []
       },
-      "rebase_note": "L0FR Stream C \u2014 list all ingested classical texts"
+      "rebase_note": "L0FR Stream C \u2014 list all ingested classical texts",
+      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     },
     {
       "canonical_id": "L0FR_CAPABILITY_FIND_VERSES_ABOUT",
@@ -1770,7 +1781,10 @@
           "topic"
         ]
       },
-      "rebase_note": "L0FR Stream C \u2014 topic-based verse discovery across classical corpus"
+      "rebase_note": "L0FR Stream C \u2014 topic-based verse discovery across classical corpus",
+      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     },
     {
       "canonical_id": "L0FR_CAPABILITY_SEARCH_CLASSICAL_TEXTS",
@@ -1807,7 +1821,10 @@
           "query"
         ]
       },
-      "rebase_note": "L0FR Stream C \u2014 alias for read_classical_text with FTS+vector combined"
+      "rebase_note": "L0FR Stream C \u2014 alias for read_classical_text with FTS+vector combined",
+      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
+      "last_verified_on": "2026-06-24",
+      "last_verified_session": "L0FR-stream-c-ci-fix"
     }
   ],
   "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3"
