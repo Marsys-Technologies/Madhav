@@ -38,6 +38,8 @@ trap. L5 inherits the shape AND the skepticism.
 | **P3** | **Per-asset specs** | This document's §3, hardened against ground truth + the sealed `ph_pramana` contract | Native sign-off on the corrected DAG |
 | **P4** | **Wire to frozen contract** | 6 `@register('mi_*')` `WriterBase` writers; migrations (next free number after L4's 341 — confirm at open); idempotency; count_sql `$1` | Auto-discovery imports clean; pkgutil hard-fails on any import error |
 | **P5** | **Retrieval + Whole-Chart-Read** | `L5_mimamsa` retrieval lit; calibration view added to B.11 | Retrieval registry green |
+| **P5.5** | **Contribution control (user governance)** | The per-channel toggle framework per `L5_CONTRIBUTION_CONTROL_v1_0.md`: shared channel registry + resolver, per-user preference store, the two serve-time gate points, portal toggles, MCP tool args, `contribution_state` metadata, **parity-gate extension** | `learning_influence` OFF == pre-L5 baseline (tested); portal/MCP parity CI green |
+| **P5.6** | **Learning propagation (overlay + dedup)** | The L1→L4 overlay mechanism per `L5_LEARNING_PROPAGATION_v1_0.md`: the 4 `mimamsa_*_adjustment` tables, single-origin attribution + dedup ledger, bounded+evidence-scaled transform, effective-value read path, L0-untouched guard | OFF==baseline invariant test; double-count path test; no-L0-touch test; bounds + min-n enforced |
 | **P6** | **Clean seal** | `L5_MIMAMSA_CLOSE_v1_0.md`; **live-deployment guard** asserts `mimamsa == N lit` against running prod API; red-team (IS.8(b) macro-close cadence) | Seal against LIVE cockpit, never branch |
 
 **Execution model:** per native precedent (L4 D47), L5 can run fully autonomous via the Conductor + the
@@ -190,7 +192,10 @@ exact traps L3/L4 hit:
 4. The **reverse channel** exists and is exercised in shadow (staged write-backs visible, promotion
    native-gated).
 5. **No fabricated numbers** — any unfillable score is `[EXTERNAL_COMPUTATION_REQUIRED]`, not invented.
-6. `L5_MIMAMSA_CLOSE_v1_0.md` written with **live-prod endpoint JSON evidence** + IS.8(b) red-team
+6. **Contribution control functional** (`L5_CONTRIBUTION_CONTROL_v1_0.md`): both channels toggle per
+   request through portal AND MCP; `learning_influence` OFF provably yields the un-modulated L1–L4
+   baseline; `contribution_state` metadata present on responses; portal/MCP parity CI green.
+7. `L5_MIMAMSA_CLOSE_v1_0.md` written with **live-prod endpoint JSON evidence** + IS.8(b) red-team
    discharged + `CURRENT_STATE` flipped (and a note that L4's missing seal was resolved upstream).
 
 ---

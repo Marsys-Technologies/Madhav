@@ -108,6 +108,18 @@ the instrument's own synthesis answers (`mi_pariksha`), and keeps an auditable l
 (`mi_vistara`) so that what leaves the instrument is traceable. This is the epistemic-hygiene pillar —
 the instrument holding itself to its own acharya-grade standard (`CLAUDE.md §J`).
 
+### Pillar 6 — BE GOVERNABLE BY THE USER (contribution control)
+L5's influence on any response is **under the user's control, per channel** — not all-or-nothing, and
+not the engineer's call. The engine **always computes** (calibration runs, multipliers derive, LEL
+logs); the user decides, **per request**, how much of that reaches the answer. Two channels are lit:
+**`lel_citation`** (are the native's lived events cited in the reading?) and **`learning_influence`**
+(does adaptive calibration modulate confidences, or is this a *pure classical reading*?). Default both
+ON (full power); user opts out; works identically through the **portal and MCP** (parity-gated). This
+is why a user can ask for a pure L1–L4 reading one moment and a calibration-enhanced reading the next.
+Full design: **`L5_CONTRIBUTION_CONTROL_v1_0.md`** (the toggle framework) + **`L5_LEARNING_PROPAGATION_v1_0.md`**
+(how the learning the toggle governs actually reaches L1–L4 — overlay, dedup, bounds) — both native-ruled
+2026-06-22. This pillar makes L5 a *servant* of the reading, never an unasked-for filter on it.
+
 ---
 
 ## §4 — The honesty problem is the whole problem (n=1, leakage, held-out)
