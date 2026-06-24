@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
   // No pre-filter by target_table — every scope asset must either clear or report failure
   const reversedAssets = [...scopeAssets].reverse()
 
-  let cleared_table_count = 0
+  let cleared_op_count = 0
   let cleared_rows_total = 0
   const failed_tables: { table: string; error: string }[] = []
 
@@ -154,26 +154,35 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Use a SAVEPOINT per op so a single failure rolls back only
-      // that statement, not the whole transaction (PostgreSQL marks the txn
-      // aborted on any error — without SAVEPOINT every subsequent statement
-      // would fail with "current transaction is aborted").
+      // Use a SAVEPOINT per ASSET so all ops for an asset are atomic.
+      // If any op fails, the entire asset's changes are rolled back, preventing
+      // partial-clear inconsistency (e.g., ga_condition_composite cleared but
+      // chart_facts avastha rows still present).
+      const assetSp = `clr_${spIdx++}`
+      await client.query(`SAVEPOINT ${assetSp}`)
+      let assetFailed = false
+      let assetRows = 0
+      let assetOps = 0
       for (const op of ops) {
-        const sp = `clr_${spIdx++}`
-        await client.query(`SAVEPOINT ${sp}`)
         try {
           const result = await client.query(op.sql, op.params)
-          await client.query(`RELEASE SAVEPOINT ${sp}`)
-          cleared_table_count++
-          cleared_rows_total += result.rowCount ?? 0
+          assetRows += result.rowCount ?? 0
+          assetOps++
         } catch (err) {
-          await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
-          await client.query(`RELEASE SAVEPOINT ${sp}`)
+          await client.query(`ROLLBACK TO SAVEPOINT ${assetSp}`)
+          await client.query(`RELEASE SAVEPOINT ${assetSp}`)
           failed_tables.push({
             table: asset.asset_id,
             error: ((err as Error).message ?? 'unknown').substring(0, 200),
           })
+          assetFailed = true
+          break
         }
+      }
+      if (!assetFailed) {
+        await client.query(`RELEASE SAVEPOINT ${assetSp}`)
+        cleared_op_count += assetOps
+        cleared_rows_total += assetRows
       }
     }
 
@@ -216,7 +225,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     cleared: {
       assets: affectedAssetIds.length,
-      tables: cleared_table_count,
+      ops: cleared_op_count,
       rows: cleared_rows_total,
       downstream_stale: downstreamAssets.length,
     },

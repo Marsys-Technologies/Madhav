@@ -16,7 +16,6 @@ export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
     'DELETE FROM'
   )
   if (transformed === sql) return null
-  if (!transformed.trimStart().startsWith('DELETE FROM')) return null
   return transformed
 }
 
