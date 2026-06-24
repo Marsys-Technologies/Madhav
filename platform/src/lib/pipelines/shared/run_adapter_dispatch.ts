@@ -133,6 +133,13 @@ export interface RunAdapterDispatchCtx {
 
   /** MSR snippet resolver — closure over the route's `query` */
   fetchMsrSnippets: (ids: string[]) => Promise<Map<string, string>>
+
+  /**
+   * [PHASE-D-06] Optional data-readiness note injected into the system prompt.
+   * Set by the consult route when chart build is partial.
+   * Format: pre-composed NOTE string ready for concatenation.
+   */
+  dataReadinessNote?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +175,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     nextSeq,
     pendingStreamWriter,
     fetchMsrSnippets,
+    dataReadinessNote,
   } = ctx
 
   const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
@@ -200,6 +208,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   const systemContent = [
     bundleSystemContent,
     plan.synthesis_guidance ? `SYNTHESIS GUIDANCE:\n${plan.synthesis_guidance}` : '',
+    dataReadinessNote ?? '',
   ].filter(Boolean).join('\n\n---\n\n') || undefined
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
   const adapter = getAdapter(adapterId)
