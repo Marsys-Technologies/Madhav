@@ -1,11 +1,22 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { PendingRequestsTable } from './PendingRequestsTable'
 import { UsersTable } from './UsersTable'
 import { AuditLogPanel } from './AuditLogPanel'
+import { ChartsTab } from './ChartsTab'
 import type { AdminAccessRequest, AdminUser } from './types'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
+
+type Tab = 'pending' | 'users' | 'charts' | 'audit'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'pending', label: 'Pending Requests' },
+  { id: 'users',   label: 'Users' },
+  { id: 'charts',  label: 'Charts' },
+  { id: 'audit',   label: 'Audit Log' },
+]
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
@@ -14,10 +25,17 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export function AdminClient({ currentUserId }: { currentUserId: string }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTab = (searchParams.get('tab') as Tab | null) ?? 'pending'
+
+  function setTab(tab: Tab) {
+    router.push(`/admin?tab=${tab}`, { scroll: false })
+  }
+
   const requestsQuery = useQuery({
     queryKey: ['admin', 'access-requests'],
-    queryFn: () =>
-      fetchJson<{ requests: AdminAccessRequest[] }>('/api/admin/access-requests'),
+    queryFn: () => fetchJson<{ requests: AdminAccessRequest[] }>('/api/admin/access-requests'),
   })
   const usersQuery = useQuery({
     queryKey: ['admin', 'users'],
@@ -34,46 +52,84 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
     auditQuery.refetch()
   }
 
+  const pendingCount = (requestsQuery.data?.requests ?? []).filter(r => r.status === 'pending').length
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl font-medium tracking-wide text-brand-gold-cream">
-          User management
+          Administration
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pending access requests and active accounts.
+          Manage users, chart access, and platform activity.
         </p>
       </div>
 
-      {requestsQuery.isError ? (
-        <p className="text-sm text-red-400">Could not load access requests — check DB proxy.</p>
-      ) : (
-        <PendingRequestsTable
-          requests={requestsQuery.data?.requests ?? []}
-          onMutated={refetchAll}
-        />
+      {/* Tab bar */}
+      <div className="flex border-b border-[rgba(var(--brand-gold-rgb),0.18)]">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setTab(tab.id)}
+            className={[
+              'relative px-5 py-3 text-[11px] uppercase tracking-[0.14em] transition-colors',
+              activeTab === tab.id
+                ? 'text-brand-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-brand-gold'
+                : 'text-muted-foreground hover:text-brand-gold-cream',
+            ].join(' ')}
+          >
+            {tab.label}
+            {tab.id === 'pending' && pendingCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-amber-950/60 border border-amber-700/40 px-1.5 py-0.5 text-[10px] text-amber-400">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab panels */}
+      {activeTab === 'pending' && (
+        requestsQuery.isError ? (
+          <p className="text-sm text-red-400">Could not load access requests — check DB proxy.</p>
+        ) : (
+          <PendingRequestsTable
+            requests={requestsQuery.data?.requests ?? []}
+            onMutated={refetchAll}
+          />
+        )
       )}
 
-      {usersQuery.isError ? (
-        <p className="text-sm text-red-400">Could not load users — check DB proxy.</p>
-      ) : (
-        <UsersTable
-          users={usersQuery.data?.users ?? []}
-          currentUserId={currentUserId}
-          onMutated={refetchAll}
-        />
+      {activeTab === 'users' && (
+        usersQuery.isError ? (
+          <p className="text-sm text-red-400">Could not load users — check DB proxy.</p>
+        ) : (
+          <UsersTable
+            users={usersQuery.data?.users ?? []}
+            currentUserId={currentUserId}
+            onMutated={refetchAll}
+          />
+        )
       )}
 
-      <div>
-        <h2 className="mb-3 text-lg font-medium tracking-wide text-brand-gold-cream">
-          Recent admin activity
-        </h2>
-        {auditQuery.isError ? (
+      {activeTab === 'charts' && (
+        usersQuery.isError ? (
+          <p className="text-sm text-red-400">Could not load guests — check DB proxy.</p>
+        ) : (
+          <ChartsTab
+            users={usersQuery.data?.users ?? []}
+            onGrantMutated={auditQuery.refetch}
+          />
+        )
+      )}
+
+      {activeTab === 'audit' && (
+        auditQuery.isError ? (
           <p className="text-sm text-red-400">Could not load audit log.</p>
         ) : (
           <AuditLogPanel entries={auditQuery.data?.entries ?? []} />
-        )}
-      </div>
+        )
+      )}
     </div>
   )
 }

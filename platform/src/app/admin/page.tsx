@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { redirect } from 'next/navigation'
 import { AdminClient } from '@/components/admin/AdminClient'
@@ -7,5 +8,9 @@ import { AdminClient } from '@/components/admin/AdminClient'
 export default async function AdminPage() {
   const ctx = await getServerUserWithProfile()
   if (!ctx) redirect('/login')
-  return <AdminClient currentUserId={ctx.user.uid} />
+  return (
+    <Suspense>
+      <AdminClient currentUserId={ctx.user.uid} />
+    </Suspense>
+  )
 }
