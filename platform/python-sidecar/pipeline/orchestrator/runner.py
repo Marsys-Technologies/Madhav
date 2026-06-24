@@ -124,6 +124,16 @@ def execute_run(run_id: str) -> None:
     chart_id: str = run["chart_id"]
     plan: list[str] = run["plan"]
 
+    # Preload asset scopes so global assets (scope='global') are always dispatched with
+    # chart_id=None — they are singletons independent of any chart.  Passing a non-None
+    # chart_id to run_asset() for a global asset creates a spurious chart-scoped
+    # asset_throughput row that shadows the correct global row in the stats query.
+    cur.execute(
+        "SELECT asset_id, scope FROM asset_registry WHERE asset_id = ANY(%s)",
+        (plan,),
+    )
+    _asset_scopes: dict[str, str] = {r["asset_id"]: r["scope"] for r in cur.fetchall()}
+
     if not acquire_chart_lock(cur, chart_id):
         logger.warning("[orchestrator] chart %s locked by another run — deferring", chart_id)
         conn.close()
@@ -146,11 +156,15 @@ def execute_run(run_id: str) -> None:
                 emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
                 return
 
-            if is_asset_complete(cur, chart_id, asset_id):
+            # Global assets are chart-independent singletons; run with chart_id=None
+            # so run_asset() targets the `WHERE chart_id IS NULL` partial index.
+            effective_chart_id = None if _asset_scopes.get(asset_id) == "global" else chart_id
+
+            if is_asset_complete(cur, effective_chart_id, asset_id):
                 logger.info("[orchestrator] skip %s (already lit)", asset_id)
                 continue
 
-            run_asset(conn, cur, run_id, chart_id, asset_id, position)
+            run_asset(conn, cur, run_id, effective_chart_id, asset_id, position)
 
         mark_run_state(conn, cur, run_id, "completed", ended_at=True)
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "completed"})
