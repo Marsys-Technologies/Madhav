@@ -1,5 +1,10 @@
-// classical_text_search stubbed in WS-0C-2 (classical_chunks/classical_texts dropped WS-0).
-import { describe, it, expect } from 'vitest'
+// classical_text_search — unit test; DB calls are mocked so CI has no real connection.
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+vi.mock('@/lib/db/client', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [] }),
+}))
 
 import { classical_text_search } from '@/lib/tools/classical_text_search'
 

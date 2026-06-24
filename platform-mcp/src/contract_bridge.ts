@@ -20,6 +20,7 @@
  * Order is the canonical order (matches catalog generation).
  */
 export const MCP_CONTRACT_TOOL_NAMES: string[] = [
+  // Pre-existing contracts (Unit 2b)
   'query_chart_facts',
   'query_panchanga',
   'query_dasha_periods',
@@ -27,7 +28,12 @@ export const MCP_CONTRACT_TOOL_NAMES: string[] = [
   'query_kp_ruling_planets',
   'kp_query',
   'query_ephemeris',
+  // L0FR Stream C — classical text corpus (2026-06-07)
   'read_classical_text',
+  'read_chapter',
+  'list_classical_texts',
+  'find_verses_about',
+  'search_classical_texts',
 ]
 
 /**
