@@ -32,38 +32,43 @@ Nothing in the grant or authorization layer needs to change.
 **`GET /api/admin/charts`** — super_admin only  
 Returns all charts on the platform with owner display name and total grant count.
 
+Both new routes use `requireSuperAdmin` from `@/lib/auth/access-control` (not the inline version in the existing grants route). Guard pattern: `if (auth instanceof NextResponse) return auth`. All non-2xx responses use `res.*` from `@/lib/errors`.
+
 ```ts
 // Response shape
 {
   charts: Array<{
     id: string           // charts.id (UUID)
     name: string         // charts.name
-    subject_name: string | null  // charts.preferred_name ?? charts.subject_name ?? charts.name
+    subject_name: string | null  // COALESCE(preferred_name, subject_name, name)
     birth_date: string   // charts.birth_date (ISO date)
     birth_place: string  // charts.birth_place
-    lagna: string | null // from chart_facts if available, else null
     owner_id: string
     owner_username: string | null
     owner_name: string | null
     grant_count: number  // total distinct principals granted
   }>
+  // Note: lagna is omitted from the MVP. The fact_key path in chart_facts requires
+  // verification against live ga_* writer output before it can be safely queried.
+  // Add in a follow-up once the exact fact_category/fact_key values are confirmed.
 }
 ```
 
-SQL sketch:
+SQL:
 ```sql
 SELECT
   c.id, c.name,
   COALESCE(c.preferred_name, c.subject_name, c.name) AS subject_name,
   c.birth_date, c.birth_place,
   c.owner_id,
+  p.id       AS owner_profile_id,
   p.username AS owner_username,
   p.name     AS owner_name,
   COUNT(g.id)::int AS grant_count
 FROM charts c
 LEFT JOIN profiles p ON p.id = c.owner_id
 LEFT JOIN chart_grants g ON g.chart_id = c.id
-GROUP BY c.id, p.username, p.name
+GROUP BY c.id, p.id, p.username, p.name   -- p.id in GROUP BY makes username/name functionally dependent
 ORDER BY c.created_at DESC
 ```
 
@@ -80,12 +85,12 @@ Returns all platform charts annotated with whether the specified user (`[id]`) h
     subject_name: string | null
     birth_date: string
     birth_place: string
-    lagna: string | null
     owner_id: string
     owner_username: string | null
     is_own: boolean      // owner_id === [id] — shown greyed out, no grant button
     granted: boolean     // chart_grants row exists for (chart_id, principal_id=[id])
-    grant_id: string | null  // chart_grants.id — used for DELETE
+    // grant_id is omitted: the existing DELETE endpoint takes ?principal_id=<uid>,
+    // not a grant UUID — see §3.1 note below
   }>
 }
 ```
@@ -99,15 +104,17 @@ SELECT
   c.owner_id,
   p.username AS owner_username,
   (c.owner_id = $1) AS is_own,
-  (g.id IS NOT NULL) AS granted,
-  g.id AS grant_id
+  (g.id IS NOT NULL) AS granted   -- grant_id not selected; DELETE uses ?principal_id, not a UUID
 FROM charts c
 LEFT JOIN profiles p ON p.id = c.owner_id
 LEFT JOIN chart_grants g ON g.chart_id = c.id AND g.principal_id = $1
 ORDER BY granted DESC, c.created_at DESC
 ```
 
-Grant / revoke calls reuse the **existing** `/api/clients/[chartId]/grants` POST + DELETE endpoints.
+**Grant / revoke call contract:**
+- **Grant:** `POST /api/clients/[chartId]/grants` with body `{ principal_id: guestUid }`
+- **Revoke:** `DELETE /api/clients/[chartId]/grants?principal_id=<guestUid>`  
+  The DELETE endpoint identifies the row by `(chart_id, principal_id)`, not by a grant UUID. The `grant_id` field is therefore not returned by the read endpoint and not needed by the UI.
 
 ---
 
@@ -153,10 +160,14 @@ Split-panel component mounted as the fourth tab in `AdminClient.tsx`.
 
 ### 3.3 Audit logging
 
-Grant and revoke actions are already routed through the existing `/api/clients/[id]/grants` endpoints. Add `writeAuditLog` calls to those endpoints:
+Grant and revoke actions are already routed through the existing `/api/clients/[id]/grants` endpoints. Add `writeAuditLog` calls to those endpoints.
 
-- Grant: `action = 'chart_grant'`, `detail = { chart_id, chart_name, grantee_id }`
-- Revoke: `action = 'chart_revoke'`, `detail = { chart_id, chart_name, grantee_id }`
+> **Auth note for implementer:** The grants route uses its own locally-defined `requireSuperAdmin` that returns `{ error: NextResponse | null, user }` — guard with `if (auth.error) return auth.error`. Do **not** import from `@/lib/auth/access-control` into that file. This differs from the two new `/api/admin/` routes (which use the canonical helper).
+
+- Grant: `writeAuditLog(actorId, 'chart_grant', granteeId, { chart_id, chart_name })`
+- Revoke: `writeAuditLog(actorId, 'chart_revoke', granteeId, { chart_id, chart_name })`
+
+`targetUserId` (third argument) is the **grantee's** user ID — the guest gaining or losing access. `detail` carries chart identification. This mirrors the pattern used by `role_change` and `disable_user`.
 
 Add both action strings to the `AuditAction` type in `src/lib/admin/audit.ts`.
 
@@ -177,6 +188,7 @@ Add both action strings to the `AuditAction` type in `src/lib/admin/audit.ts`.
 
 | State | What the user sees |
 |---|---|
+| Guest list fails to load | Left panel: "Could not load guests." with a retry hint; right panel hidden |
 | No guests exist yet | Left panel: "No guests yet — create one in the Users tab." Right panel: hidden |
 | No guest selected | Right panel: centred placeholder "Select a guest to manage their chart access." |
 | Guest has access to all charts | Right panel shows all rows green; subtitle "All charts shared" |
