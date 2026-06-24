@@ -207,11 +207,13 @@ export function UsersTable({
                             <DropdownMenuItem onClick={() => handleSendReset(u)}>
                               Send password reset link
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/admin?tab=charts&guest=${u.id}`)}
-                            >
-                              ✦ Manage chart access
-                            </DropdownMenuItem>
+                            {u.role === 'guest' && (
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/admin?tab=charts&guest=${u.id}`)}
+                              >
+                                ✦ Manage chart access
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             {u.role === 'guest' ? (
                               <DropdownMenuItem

@@ -231,7 +231,7 @@ function ChartAccessPanel({
     )
   }, [localCharts, search])
 
-  const grantedCount = localCharts.filter(c => c.granted).length
+  const grantedCount = localCharts.filter(c => c.granted && !c.is_own).length
   const totalCount = localCharts.filter(c => !c.is_own).length
 
   return (
