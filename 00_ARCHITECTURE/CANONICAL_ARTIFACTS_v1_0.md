@@ -717,6 +717,27 @@ notes: "Admitted at R0 Foundation close (2026-04-29). LIVING — updated at ever
 
 Mirror-pair inventory (MP.1–MP.8) RETIRED 2026-05-27 per native directive (ND.1 close-out). Gemini collaboration declared inactive. The historical inventory and §3 aggregate asymmetry declarations have been removed from this file. See `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §K` close-out note and `NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md §1 ND.1` for the retirement record. Historical mirror-related entries in audit-trail artifacts (SESSION_LOG, archived briefs) remain unchanged.
 
+#### MCPT_V310_CLOSE
+
+```yaml
+canonical_id: MCPT_V310_CLOSE
+path: 00_ARCHITECTURE/MCPT_V310_CLOSE.md
+version: "1.0"
+status: CLOSED
+fingerprint_sha256: ROTATED_v310_S6_2026-05-22
+mirror_obligations:
+  claude_side: 00_ARCHITECTURE/MCPT_V310_CLOSE.md
+  gemini_side: null
+  mirror_mode: claude_only
+  authoritative_side: claude
+  asymmetries: "MCP Transformation sealing artifact; Claude-resident governance record. Gemini-side aware via .gemini/project_state.md MCP Transformation workstream entry (MP.2 adapted parity)."
+last_verified_session: v3.1.0-S6
+last_verified_on: 2026-05-22
+notes: "Foundation phase sealing artifact for MCP Transformation v3.1.0. Per-sub-phase AC evidence table (S1–S6 all PASS). Migration number audit (072–077). House-rules finalization (no corrections needed). v3.2 entry conditions. Red-team scheduling note (discharges at v3.4-S2). Mirror propagation evidence for MP.1 + MP.2. Admitted 2026-05-22 at v3.1.0-S6 close."
+```
+
+MCP Transformation v3.1.0 Foundation phase close. All 6 sub-sessions (S1–S6) CLOSED with full AC evidence. feature/mcpt-foundation merged to feature/mcpt-final. MARSYS_FLAG_MCP_V3_ENABLED default true. 6 migrations (072–077) in MCPT reserved range. Worktree A (MadhavMCPT-FDN) wave contribution complete.
+
 ---
 
 ## §4 — Future-agent admission protocol

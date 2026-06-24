@@ -1975,5 +1975,23 @@
       "last_verified_session": "L0FR-stream-d-ci-fix"
     }
   ],
-  "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3"
+  "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3",
+  "mcpt_v310_foundation": {
+    "phase": "v3.1.0",
+    "status": "CLOSED",
+    "sealed_on": "2026-05-22",
+    "sealed_by_session": "v3.1.0-S6",
+    "branch": "feature/mcpt-foundation",
+    "merged_to": "feature/mcpt-final",
+    "migrations": ["072_mcp_bundle_cache", "073_perf_log_extensions", "074_audit_findings", "075_prediction_outcomes", "076_data_source_expected_and_caveats", "077_mcp_alerts_config_and_tool_registry"],
+    "tools_registered": ["holistic_bundle", "multi_school_bundle", "tool_health", "data_coverage"],
+    "resources_registered": ["marsys://chart-overview", "marsys://house-rules", "marsys://active-dashas", "marsys://capabilities", "marsys://chart-snapshot"],
+    "feature_flag": "MCP_V3_ENABLED",
+    "feature_flag_default": true,
+    "sealing_artifact": "00_ARCHITECTURE/MCPT_V310_CLOSE.md",
+    "notes": "Foundation phase of MCP Transformation (pure-MCP v3.1 rebuild). S1: code fixes; S2: bundles+SSE; S3: 5 resources+house-rules; S4: perf system+audit; S5: operator dashboard; S6: sealing+flag+merge."
+  },
+  "last_updated_by": "v3.1.0-S6",
+  "last_session": "v3.1.0-S6-feature/mcpt-foundation",
+  "last_updated": "2026-05-22"
 }
