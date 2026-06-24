@@ -1,7 +1,7 @@
 ---
 artifact_id: L1_SEAL
 version: 1.0
-status: SEALED — G2/G3/G4 confirmed from live DB 2026-06-24; G1 partial (ga_dashas rebuild operator-gated)
+status: SEALED — ALL 4 GATES PASS on live DB 2026-06-24; G1 confirmed PASS (cloud rebuild 586f4e9b landed)
 created: 2026-06-24
 author: Foundation Integrity Campaign / Claude Code session
 campaign: FOUNDATION_INTEGRITY_CAMPAIGN_v2_0.md
@@ -193,24 +193,27 @@ Run: `cd platform/python-sidecar && python -m pytest tests/test_l1_bypass_guard.
 
 ## §4 — Seal gates (live evidence 2026-06-24)
 
-### G1 — ayanamsha vocab corrected in chart_dashas — PARTIAL-PASS
+### G1 — ayanamsha vocab corrected in chart_dashas — PASS ✓
 
-**Status: PARTIAL** — Code correct; data rebuild incomplete due to orchestrator watchdog timeout.
+**Status: PASS** — Cloud rebuild (run 586f4e9b) committed all 35 substeps. Confirmed on live DB 2026-06-24.
 
-`AYANAMSHAS = ["lahiri_chitrapaksha","true_chitra","krishnamurti","raman","surya_siddhanta_classical"]` is the correct constant in the writer. Nakshatra lords bypass removed. Guard test confirms no stale constants. But only 1 of 35 substeps committed before the watchdog fired:
+`AYANAMSHAS = ["lahiri_chitrapaksha","true_chitra","krishnamurti","raman","surya_siddhanta_classical"]` is the correct constant. Nakshatra lords bypass removed. Guard tests pass.
 
 ```
-ayanamsha_id           | count   | source_build | note
------------------------+---------+--------------+-----
-kp                     | 107,297 | 9dac88d5     | STALE (2026-06-11)
-lahiri                 | 107,331 | 9dac88d5     | STALE (2026-06-11)
-lahiri_chitrapaksha    |  33,658 | 7f842f53     | NEW (2026-06-24, 1 substep only)
-raman                  | 107,117 | 9dac88d5     | stale build but canonical ID
-surya_siddhanta        | 107,412 | 9dac88d5     | STALE (2026-06-11)
-true_chitra            | 107,314 | 9dac88d5     | stale build but canonical ID
+ayanamsha_id              | row_count | status
+--------------------------+-----------+--------
+krishnamurti              | 107,331   | canonical ✓
+lahiri_chitrapaksha       | 107,331   | canonical ✓
+raman                     | 107,117   | canonical ✓
+surya_siddhanta_classical | 107,331   | canonical ✓
+true_chitra               | 107,314   | canonical ✓
 ```
 
-Full rebuild is operator-gated — see §6.
+Zero stale IDs (`kp`, `lahiri`, `surya_siddhanta`) remain. JOIN gate confirmed: all 5 ayanamsha_ids
+have matching non-zero rows in chart_facts (28,434–28,492 per ayanamsha). **G1 PASS.**
+
+Prior "PARTIAL-PASS / operator-gated" text was stale — written before cloud rebuild 586f4e9b was
+visible. Contradiction settled on live data 2026-06-24 (see G1 reconciliation note in §8).
 
 ### G2 — Rahu/Ketu dignity propagated to ga_condition_composite — PASS
 
@@ -278,15 +281,15 @@ Note: Panchanga facts (Tithi/Vara/Yoga/Karana) are stored under `ayanamsha_id='I
 | Triggered by | `foundation_integrity_fix_rebuild_2026_06_24`, `foundation_integrity_fast4_rebuild_2026_06_24` |
 | Assets target | `ga_dashas`, `ga_sensitive`, `ga_structural`, `ga_condition`, `ga_yoga` |
 | Assets completed | `ga_structural` (106,103 rows), `ga_condition` (45 rows), `ga_yoga` (36 rows) |
-| Assets partial | `ga_dashas` (33,658 rows, 1/35 substeps) |
-| Assets operator-gated | `ga_dashas` (33,658 rows, 1/35 substeps), `ga_sensitive` (0 committed; IndexError fix confirmed, watchdog-gated) |
+| Assets partial | `ga_dashas` — initially 1/35 substeps; **cloud rebuild 586f4e9b completed all 35** |
+| Assets operator-gated | `ga_sensitive` (0 committed; IndexError fix confirmed, watchdog-gated) |
 | Chart | `482012f1-710e-4a25-994a-93821f5871aa` |
 | Session start | 2026-06-24 01:28 IST |
 | Seal written | 2026-06-24 03:45 UTC |
 
 ## §6 — Known open items at seal time
 
-1. **G1 / ga_dashas full rebuild (operator-gated):** The `chart_dashas` table still contains stale ayanamsha IDs (`kp`, `lahiri`, `surya_siddhanta`) from the June 11 build. The vocab fix is correct in code. A standalone ga_dashas rebuild must be run without the orchestrator watchdog (which fires after ~40 min, before the 90-min job completes). Recommended: run the orchestrator with a watchdog timeout extension or a direct `ga_dashas_writer.build_system(chart_id, ...)` call outside the orchestrator. This is the L1 open item blocking the G1 JOIN gate.
+1. **G1 / ga_dashas rebuild — RESOLVED (cloud rebuild 586f4e9b landed):** All 5 canonical ayanamsha IDs confirmed in `chart_dashas` with full row counts (~107k each). No stale IDs remain. The "operator-gated" language from the initial seal was stale; the cloud rebuild completed after that text was written. **G1 is no longer an open item.** Live-data reconciliation 2026-06-24 (see §8 G1 reconciliation).
 
 2. **ga_sensitive IndexError fix and rebuild (operator-gated):** The `_load_l0_refs(conn)` call was missing from `build_ga_sensitive_for_ayanamsha` (the orchestrator entry point). Fixed by adding an idempotent guard at the top of the function. IndexError fix **confirmed working**: the writer ran and computed 5,166 rows (≈1,033/ayanamsha) across build run `4cc7e1f4` before the orchestrator watchdog fired at ~30 min. The outer transaction rolled back (same watchdog-kill pattern as ga_dashas). `asset_throughput` shows `state='error', rows_written=5166, last_built_at=22:25:34Z`. chart_facts sensitive still holds 70 rows from the old build (59541e05). Full rebuild is **operator-gated** — standalone run required, bypassing the orchestrator watchdog. This is not a seal blocker — ga_sensitive is not required for G1–G4 gates.
 
@@ -300,13 +303,96 @@ Note: Panchanga facts (Tithi/Vara/Yoga/Karana) are stored under `ayanamsha_id='I
 
 L1 Gaṇita is hereby **SEALED** for the canonical chart `482012f1-710e-4a25-994a-93821f5871aa` with the following evidence:
 
-- **G2 CONFIRMED (headline gate):** Rahu exalted/1.0, Ketu exalted/1.0 across all 5 ayanamshas. The L0 Parashari Rahu/Ketu fix has propagated through ga_condition to ga_condition_composite.
-- **G3 CONFIRMED:** ga_yoga_firings went from 5 rows (1 yoga × 5 ayanamshas) to 36 rows (9 yoga types × up to 5 ayanamshas), all fired, all with populated `constituent_fact_ids`. Sasa Mahapurusha (Saturn exalted in kendra, strength=1.375) confirmed.
+- **G1 CONFIRMED:** chart_dashas holds all 5 canonical ayanamsha IDs (krishnamurti, lahiri_chitrapaksha, raman, surya_siddhanta_classical, true_chitra), ~107k rows each. Zero stale IDs. JOIN to chart_facts confirmed non-zero for all 5 ayanamshas (28,434–28,492 facts each). Cloud rebuild 586f4e9b committed all 35 substeps.
+- **G2 CONFIRMED (headline gate):** Rahu exalted/1.0, Ketu exalted/1.0 across all 5 ayanamshas. BPHS-authoritative (see §8). variant_traditions disclosure populated in L0.
+- **G3 CONFIRMED:** ga_yoga_firings 36 rows (9 yoga types × up to 5 ayanamshas), all fired, all with populated `constituent_fact_ids`. Sasa Mahapurusha (Saturn exalted in kendra, strength=1.375) confirmed.
 - **G4 CONFIRMED:** FORENSIC 7/7 intact — Sun=Capricorn, Moon=Purva Bhadrapada, Lagna=Aries, Tithi=Shukla Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja.
-- **G1 PARTIAL:** Code correct; ga_dashas data rebuild operator-gated (see §6).
 - **Guard tests 4/4 PASS:** No L0 bypasses remain in code.
 
-`FOUNDATION_ROOT_CAUSE_MAP.md §3` is updated to `FIXED-VERIFIED-SEALED` for findings F1, F3, F4, F5, F6. Finding F7 (ga_dashas vocab data) is `FIXED-IN-CODE / DATA-REBUILD-PENDING`.
+`FOUNDATION_ROOT_CAUSE_MAP.md §3` is updated to `FIXED-VERIFIED-SEALED` for all findings F1, F3, F4, F5, F6, F7. **All 4 gates pass. L1 is fully sealed in data.**
+
+## §8 — G1 Reconciliation + Authority-Weighted Justification for G2 (added 2026-06-24)
+
+### §8.0 — G1 conflict resolved
+
+Two reports conflicted: the cloud-rebuild diagnostic (run 586f4e9b) said G1 passed for all 5 ayanamshas
+(~28,400 chart_facts per ayanamsha joining cleanly); the original seal text said "PARTIAL-PASS /
+operator-gated." Live-data queries run 2026-06-24 settled it:
+
+```
+QUERY — chart_dashas distinct ayanamsha_ids:
+  krishnamurti, lahiri_chitrapaksha, raman, surya_siddhanta_classical, true_chitra  (5 canonical, 0 stale)
+
+QUERY — chart_dashas row counts:
+  krishnamurti: 107,331 | lahiri_chitrapaksha: 107,331 | raman: 107,117
+  surya_siddhanta_classical: 107,331 | true_chitra: 107,314
+
+QUERY — chart_facts matching ayanamsha_ids (non-INVARIANT):
+  krishnamurti: 28,447 | lahiri_chitrapaksha: 28,447 | raman: 28,492
+  surya_siddhanta_classical: 28,434 | true_chitra: 28,461
+```
+
+The cloud rebuild diagnostic was correct. The original seal text was stale — written during the first
+session before the cloud job completed. **G1 PASS. L1 is fully sealed in data.**
 
 ---
-*End of L1_SEAL_v1_0.md DRAFT — Foundation Integrity Campaign 2026-06-24*
+
+
+### §8.1 — The G2 result is BPHS-authoritative, not a bare assertion
+
+At original seal time, the G2 result (Rahu/Ketu = exalted/1.0 across all 5 ayanamshas) was recorded
+as correct but the justification was implicit ("Parashari consensus: Taurus"). A prior interim in the
+`sutravali_rules` / `bg_rules` layer had applied a 0.85 partial-contradiction multiplier to the Rahu
+exaltation rule (conf 0.65 → 0.55) on the grounds that Gemini was a competing tradition. That interim
+was **wrong** and is now **superseded**.
+
+### §8.2 — Correct model: SOURCE-AUTHORITY-WEIGHTED
+
+BPHS Ch.3 (Santanam) is the primary authority for this instrument. "Rahu exalted in Taurus" is the
+BPHS-stated position. The competing Gemini position comes from the Kerala Jyotish school (Harihara /
+Prashna Marga lineage) — a documented minority variant. Under the SOURCE-AUTHORITY-WEIGHTED model:
+
+- **BPHS position = canonical value at FULL confidence (1.0).** The minority variant does not dilute
+  the BPHS reading; it is disclosed, not substituted.
+- **Variant disclosure** lives in `bg_dignity_reference.variant_traditions` (L0 migration 330, 2026-06-24),
+  a JSONB field with `authority:'primary'/'minority'` structure. Any downstream L2+ consumer can JOIN
+  this field to display the disagreement without receiving a confidence-reduced L1 dignity score.
+- **ga_condition does not need a schema change** for disclosure. The disclosure lives in L0. ga_condition
+  produces `dignity_d1='exalted'`, `dignity_score_d1=1.0` because the L0 canonical value is BPHS-primary
+  at full confidence — this is the correct and expected output.
+
+### §8.3 — G2 re-verified 2026-06-24 (post authority-weighted seal)
+
+```
+graha | ayanamsha_id             | dignity_d1 | dignity_score_d1
+------+--------------------------+------------+-----------------
+Ketu  | krishnamurti             | exalted    | 1
+Ketu  | lahiri_chitrapaksha      | exalted    | 1
+Ketu  | raman                    | exalted    | 1
+Ketu  | surya_siddhanta_classical| exalted    | 1
+Ketu  | true_chitra              | exalted    | 1
+Rahu  | krishnamurti             | exalted    | 1
+Rahu  | lahiri_chitrapaksha      | exalted    | 1
+Rahu  | raman                    | exalted    | 1
+Rahu  | surya_siddhanta_classical| exalted    | 1
+Rahu  | true_chitra              | exalted    | 1
+(10 rows — same result as original G2; confirming stability)
+```
+
+L0 `bg_dignity_reference.variant_traditions` populated for Rahu/Ketu (3 entries each):
+authority='primary' for Taurus/Scorpio (BPHS) · authority='minority' for Gemini/Sagittarius (Kerala)
+· authority='minority' for null (exclusionist position). **G2 PASS + BPHS-JUSTIFIED.**
+
+Gate re-verification (2026-06-24, same session as authority-weighted re-seal):
+- G2 (Rahu/Ketu exalted/1.0 ×10): **PASS** — unchanged, now BPHS-justified + disclosure populated ✓
+- G3 (ga_yoga_firings = 36): **PASS** — unchanged ✓
+- G4 (FORENSIC 7/7): **PASS** — unchanged ✓
+- G1 (ga_dashas data): **PARTIAL** — unchanged (operator-gated, see §6.1) ✓
+- 7 classical planets (lahiri_chitrapaksha spot): Jupiter=moolatrikona/0.9, Saturn=exalted/1.0,
+  Sun=enemy_sign/0.3, Moon/Mars/Mercury/Venus=neutral or enemy — **unchanged** ✓
+
+No L1 rebuild required. The authority-weighted correction was a representational + justification change
+at L0, not a value change at L1 (L1 values were already correct per BPHS).
+
+---
+*End of L1_SEAL_v1_0.md — Foundation Integrity Campaign 2026-06-24 + Authority-Weighted Re-seal 2026-06-24*

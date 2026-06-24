@@ -2,7 +2,7 @@
 artifact: L0_SEAL_v1_0.md
 canonical_id: L0_SEAL
 version: 1.0
-status: SEALED + INTRA-CONSISTENCY-SWEEP-CLEAN 2026-06-24
+status: SEALED + INTRA-CONSISTENCY-SWEEP-CLEAN 2026-06-24 + AUTHORITY-WEIGHTED-DISCLOSURE 2026-06-24
 authored_by: Claude Code (Sonnet 4.6) 2026-06-24
 session: L0 Fix-Rebuild-Seal + L0 Final Closure
 scope: L0 Brahmagyan — all 22 bg_* assets
@@ -282,3 +282,69 @@ mention sign names for human-readability only — they are not parsed for comput
 | Consistency sweep | §8 — all 12 duplicated-constant pairs checked; CLEAN |
 | Guard expansion | 3 → 6 tests; covers all C1–C8 duplicated constant pairs |
 | Next step | FOUNDATION_ROOT_CAUSE_MAP.md updated to v1.1; L0 truly done; STOP before L1 |
+
+---
+
+## §10 — Authority-Weighted Disclosure Model (added 2026-06-24)
+
+### §10.1 — Correction of prior interim approach
+
+A prior interim approach ("reduce confidence for the nodes") was applied in `sutravali_rules`/`bg_rules`
+level: Rahu exaltation carrying a 0.85 partial-contradiction multiplier (conf 0.65 → 0.55) on the grounds
+that Gemini was a competing position. **This was wrong.** Treating a minority variant as a
+confidence-reducer on the primary text inverts the source-authority structure. BPHS Ch.3 (Santanam) is
+the dominant text this instrument is grounded in. Minority traditions do not dilute the BPHS reading —
+they are documented alternatives that a downstream consumer may wish to show, but they carry no authority
+over the canonical value.
+
+### §10.2 — SOURCE-AUTHORITY-WEIGHTED model (correct model)
+
+**Canonical value:** `exaltation_sign` = the BPHS-primary position, stored at full confidence (1.0).
+The cross-table guard (§8 C1–C2) governs the canonical sign — it must agree with `reference_planets`.
+
+**Disclosure field:** `bg_dignity_reference.variant_traditions JSONB` (migration 330, 2026-06-24) carries
+the structured alternative-tradition inventory with explicit authority tagging:
+
+```
+Rahu variant_traditions (live DB post-rebuild):
+  [
+    {"sign":"Taurus",  "authority":"primary", "label":"Parashari mainstream",
+     "source":"BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali"},
+    {"sign":"Gemini",  "authority":"minority", "label":"Kerala school",
+     "source":"Kerala Jyotish tradition (Harihara / Prashna Marga lineage)"},
+    {"sign":null,      "authority":"minority", "label":"Exclusionist position",
+     "source":"Some modern scholars omit nodal exaltation doctrine entirely"}
+  ]
+
+Ketu variant_traditions:
+  [
+    {"sign":"Scorpio",    "authority":"primary", "label":"Parashari mainstream",
+     "source":"BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu"},
+    {"sign":"Sagittarius","authority":"minority", "label":"Kerala school",
+     "source":"Kerala Jyotish tradition — reverse of Gemini-Rahu position"},
+    {"sign":null,         "authority":"minority", "label":"Exclusionist position",
+     "source":"Some modern scholars omit nodal exaltation doctrine entirely"}
+  ]
+```
+
+**Confidence model:** BPHS position = full confidence (1.0). The variant_traditions field DISCLOSES
+alternatives without altering the canonical confidence. Confidence should only be reduced if the
+DOMINANT source (BPHS for Parashari) is itself ambiguous or explicitly conditional — which it is not
+for Rahu/Ketu exaltation (the "according to some scholars" qualifier in BPHS Ch.3 Santanam refers to
+internal variants within the Parashari school, not to a split between dominant and minority schools).
+
+**Guard scope:** The existing cross-table guard in `test_bg_dignity_reference.py` governs
+`exaltation_sign` (canonical value), not `variant_traditions`. The guard is correct and does not need
+updating.
+
+### §10.3 — What the L0 seal now asserts
+
+- Rahu: `exaltation_sign='Taurus'`, authority=primary (BPHS), confidence=1.0, `variant_traditions`
+  populated (3 entries including Kerala minority + exclusionist).
+- Ketu: `exaltation_sign='Scorpio'`, authority=primary (BPHS), confidence=1.0, `variant_traditions`
+  populated (3 entries).
+- Migration 330 applied 2026-06-24. Writer rebuild: 151 rows upserted.
+- ga_condition_composite: Rahu/Ketu `dignity_d1='exalted'`, `dignity_score_d1=1.0` ×5 ayanamshas — PASS.
+- The prior "reduce-confidence" interim is **SUPERSEDED** by this authority-weighted model.
+- For the general SOURCE-AUTHORITY-WEIGHTED disclosure model across the instrument, see:
+  `00_ARCHITECTURE/SOURCE_AUTHORITY_WEIGHTED_MODEL_v1_0.md`.

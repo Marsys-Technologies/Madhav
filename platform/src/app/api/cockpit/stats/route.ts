@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPool } from '@/lib/db/client'
 import { query } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
@@ -74,183 +73,144 @@ interface RegistryAsset {
   last_invoked_at: string | null
 }
 
-// Mutable reference so the timeout callback can reach the pool client acquired
-// inside fetchAssetStats and destroy it (see fetchAssetStatsWithTimeout).
-type ClientRef = { value: import('pg').PoolClient | null }
+type ThroughputEntry = { state: string; last_built_at: string | null; rows_written: number | null }
 
-async function fetchAssetStats(
-  asset: RegistryAsset,
-  chartId: string | null,
-  clientRef?: ClientRef
-): Promise<AssetStats> {
-  const now = new Date().toISOString()
-
-  // Service assets carry count_sql:null / target_table:null by design. They are
-  // not table-backed, so we never run SQL for them — a registered service is
-  // healthy. (Health-probe execution is a follow-up; default to service_ok so a
-  // correctly-registered service never renders as errored / missing_table.)
-  // Check both asset_type (L1/L2 legacy) and asset_kind (L3+ canonical).
-  if (asset.asset_type === 'service' || asset.asset_kind === 'service') {
-    return {
-      asset_id: asset.asset_id,
-      actual_rows: null,
-      volume: null,
-      size_bytes: null,
-      last_updated: now,
-      error: null,
-      state: 'service_ok' as const,
-      last_built_at: null,
-      build_state_stale: false,
-      service_health: asset.service_health ?? null,
-      last_invoked_at: asset.last_invoked_at ?? null,
-    }
-  }
-
-  if (!asset.count_sql) {
-    return {
-      asset_id: asset.asset_id,
-      actual_rows: null,
-      volume: null,
-      size_bytes: null,
-      last_updated: now,
-      error: 'missing_table',
-      error_class: 'query' as const,
-      state: 'error' as const,
-      last_built_at: null,
-      build_state_stale: false,
-      service_health: null,
-      last_invoked_at: null,
-    }
-  }
-
-  const pool = await getPool()
-  const client = await pool.connect()
-  if (clientRef) clientRef.value = client
-  try {
-    await client.query('BEGIN')
-    await client.query("SET LOCAL statement_timeout = '2s'")
-
-    const countParams = /\$1/.test(asset.count_sql) ? [chartId] : []
-    const countResult = await client.query<{ count: string }>(asset.count_sql, countParams)
-    const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
-
-    let size_bytes: number | null = null
-    if (asset.size_sql) {
-      const sizeResult = await client.query<{ size: string }>(asset.size_sql, [])
-      const raw = sizeResult.rows[0]?.size
-      size_bytes = raw != null ? parseInt(raw, 10) : null
-    }
-
-    await client.query('COMMIT')
-
-    return {
-      asset_id: asset.asset_id,
-      actual_rows,
-      volume: actual_rows,
-      size_bytes,
-      last_updated: now,
-      error: null,
-      state: 'dormant' as const,
-      last_built_at: null,
-      build_state_stale: false,
-      service_health: null,
-      last_invoked_at: null,
-    }
-  } catch (err) {
-    try { await client.query('ROLLBACK') } catch {}
-    const msg = (err as Error).message ?? ''
-    const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
-    const isDataPlane = msg.includes('ECONNREFUSED') || msg.includes('connection refused') ||
-      msg.includes('ETIMEDOUT') || msg.includes('Connection terminated') ||
-      msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo')
-    return {
-      asset_id: asset.asset_id,
-      actual_rows: null,
-      volume: null,
-      size_bytes: null,
-      last_updated: now,
-      error: isTimeout ? 'timeout' : msg.slice(0, 120),
-      error_class: isDataPlane ? 'dataplane' as const : 'query' as const,
-      state: 'error' as const,
-      last_built_at: null,
-      build_state_stale: false,
-      service_health: null,
-      last_invoked_at: null,
-    }
-  } finally {
-    // Only release if the timeout hasn't already destroyed this client.
-    // clientRef.value is set to null by the timeout before calling release(true).
-    if (!clientRef || clientRef.value === client) {
-      client.release()
-      if (clientRef) clientRef.value = null
-    }
-  }
-}
-
-// Per-asset wall-clock timeout.
+// Fetch asset counts for the cockpit stats view.
 //
-// Problem: Promise.race alone is not enough. When the timeout fires and the
-// outer race resolves, fetchAssetStats is still running and still holds its
-// pool.connect() slot. On a half-open TCP connection (e.g. after a Cloud SQL
-// proxy restart) pool.connect() or the first query hangs for 30-60 s waiting
-// for the kernel TCP timeout (macOS keepidle = 7200 s, so OS keepalive is
-// useless here). With batchSize=6 stale connections, all 6 pool slots stay
-// occupied for 30-60 s — any concurrent request that needs a connection hits
-// connectionTimeoutMillis and crashes (the "Something went wrong" page).
+// Strategy: use asset_throughput.rows_written as the primary count source.
+// The L1/L2 writers set rows_written during the build — it is the authoritative
+// count from the last run and avoids expensive live COUNT queries.
 //
-// Fix: pass a clientRef into fetchAssetStats so we can call client.release(true)
-// (destroy = close the TCP socket immediately) when the timeout fires. This
-// frees the pool slot within 3.5 s instead of 30-60 s.
-const ASSET_TIMEOUT_MS = 3_500
-
-function fetchAssetStatsWithTimeout(
-  asset: RegistryAsset,
-  chartId: string | null
-): Promise<AssetStats> {
-  const timeoutResult: AssetStats = {
-    asset_id: asset.asset_id,
-    actual_rows: null,
-    volume: null,
-    size_bytes: null,
-    last_updated: new Date().toISOString(),
-    error: 'conn_timeout',
-    error_class: 'dataplane' as const,
-    state: 'error' as const,
-    last_built_at: null,
-    build_state_stale: false,
-    service_health: null,
-    last_invoked_at: null,
-  }
-  const clientRef: ClientRef = { value: null }
-  const timeout = new Promise<AssetStats>((resolve) =>
-    setTimeout(() => {
-      // Destroy the hanging connection to free the pool slot immediately.
-      const c = clientRef.value
-      if (c) {
-        clientRef.value = null
-        try { c.release(true) } catch { /* already destroyed */ }
-      }
-      resolve(timeoutResult)
-    }, ASSET_TIMEOUT_MS)
-  )
-  return Promise.race([fetchAssetStats(asset, chartId, clientRef), timeout])
-}
-
-// Run asset fetches in batches to avoid saturating the pg pool (default max=10).
-// batchSize=6 → ceil(N/6) rounds × max(ASSET_TIMEOUT_MS, ~600ms) per round.
-async function fetchAssetStatsBatched(
+// Live count_sql is only executed for assets where rows_written is null (these
+// are global bg_* reference tables whose writers predate the rows_written
+// convention; they have no chart_id filter so their counts are fast).
+//
+// Prior perf history:
+// - Per-asset pool.connect() (v1): 76 TLS handshakes on cold pool → 26s
+// - Single connection + SAVEPOINTs (v2): 3 round-trips each × 76 assets → 73-92s
+// - Pure parallel pool.query() (v3): connectionTimeout on tail queries → 8-13s
+// - rows_written shortcut + live fallback (v4, this): ~200ms
+async function fetchAllCounts(
   assets: RegistryAsset[],
   chartId: string | null,
-  batchSize = 6
-): Promise<PromiseSettledResult<AssetStats>[]> {
-  const all: PromiseSettledResult<AssetStats>[] = []
-  for (let i = 0; i < assets.length; i += batchSize) {
-    const batch = await Promise.allSettled(
-      assets.slice(i, i + batchSize).map(a => fetchAssetStatsWithTimeout(a, chartId))
-    )
-    all.push(...batch)
+  throughputMap: Map<string, ThroughputEntry>
+): Promise<AssetStats[]> {
+  const now = new Date().toISOString()
+
+  const fetchOne = async (asset: RegistryAsset): Promise<AssetStats> => {
+    if (asset.asset_type === 'service' || asset.asset_kind === 'service') {
+      return {
+        asset_id: asset.asset_id,
+        actual_rows: null,
+        volume: null,
+        size_bytes: null,
+        last_updated: now,
+        error: null,
+        state: 'service_ok' as const,
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: asset.service_health ?? null,
+        last_invoked_at: asset.last_invoked_at ?? null,
+      }
+    }
+
+    // If this asset has a throughput row WITH a concrete rows_written count, use it — no live DB call.
+    // When rows_written is null (legacy bg_ writers that predate the convention, or a build that
+    // completed without recording rows_written), fall through to the live count_sql below so the
+    // cockpit never shows a blank bar for a built asset.
+    const tp = throughputMap.get(asset.asset_id)
+    if (tp != null && tp.rows_written != null) {
+      return {
+        asset_id: asset.asset_id,
+        actual_rows: tp.rows_written,
+        volume: tp.rows_written,
+        size_bytes: null,
+        last_updated: now,
+        error: null,
+        state: 'dormant' as const,  // overridden by deriveState in GET handler
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: null,
+        last_invoked_at: null,
+      }
+    }
+
+    // No throughput row, OR throughput row exists but rows_written is null (legacy entry without
+    // count tracking) → fall back to live count_sql to get the real row count.
+    if (!asset.count_sql) {
+      return {
+        asset_id: asset.asset_id,
+        actual_rows: null,
+        volume: null,
+        size_bytes: null,
+        last_updated: now,
+        error: 'missing_table',
+        error_class: 'query' as const,
+        state: 'error' as const,
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: null,
+        last_invoked_at: null,
+      }
+    }
+
+    try {
+      const countParams = /\$1/.test(asset.count_sql) ? [chartId] : []
+      const countResult = await query<{ count: string }>(asset.count_sql, countParams)
+      const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
+
+      let size_bytes: number | null = null
+      if (asset.size_sql) {
+        const sizeResult = await query<{ size: string }>(asset.size_sql)
+        const raw = sizeResult.rows[0]?.size
+        size_bytes = raw != null ? parseInt(raw, 10) : null
+      }
+
+      return {
+        asset_id: asset.asset_id,
+        actual_rows,
+        volume: actual_rows,
+        size_bytes,
+        last_updated: now,
+        error: null,
+        state: 'dormant' as const,
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: null,
+        last_invoked_at: null,
+      }
+    } catch (err) {
+      const msg = (err as Error).message ?? ''
+      const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
+      const isDataPlane = msg.includes('ECONNREFUSED') || msg.includes('connection refused') ||
+        msg.includes('ETIMEDOUT') || msg.includes('Connection terminated') ||
+        msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo')
+      return {
+        asset_id: asset.asset_id,
+        actual_rows: null,
+        volume: null,
+        size_bytes: null,
+        last_updated: now,
+        error: isTimeout ? 'timeout' : msg.slice(0, 120),
+        error_class: isDataPlane ? 'dataplane' as const : 'query' as const,
+        state: 'error' as const,
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: null,
+        last_invoked_at: null,
+      }
+    }
   }
-  return all
+
+  // Batch 8 at a time — only the fallback count_sql assets need DB calls now,
+  // so this loop completes in one or two fast batches.
+  const CONCURRENCY = 8
+  const results: AssetStats[] = []
+  for (let i = 0; i < assets.length; i += CONCURRENCY) {
+    const batch = await Promise.all(assets.slice(i, i + CONCURRENCY).map(fetchOne))
+    results.push(...batch)
+  }
+  return results
 }
 
 export async function GET(req: NextRequest) {
@@ -269,7 +229,7 @@ export async function GET(req: NextRequest) {
     const assets = registryResult.rows
 
     // Batch-fetch throughput state+last_built_at for this chart
-    const throughputMap = new Map<string, { state: string; last_built_at: string | null; rows_written: number | null }>()
+    const throughputMap = new Map<string, ThroughputEntry>()
     if (chartId) {
       const { rows: tpRows } = await query<{ asset_id: string; state: string; last_built_at: string | null; rows_written: number | null }>(
         `SELECT DISTINCT ON (asset_id) asset_id, state, last_built_at, rows_written
@@ -281,26 +241,27 @@ export async function GET(req: NextRequest) {
       for (const r of tpRows) throughputMap.set(r.asset_id, r)
     }
 
-    const settled = await fetchAssetStatsBatched(assets, chartId)
+    const rawStats = await fetchAllCounts(assets, chartId, throughputMap)
 
-    const assetStats: AssetStats[] = settled.map((result, i) => {
-      const asset = assets[i]
+    // Build a lookup map so we can correlate rawStats back to assets and throughput
+    // regardless of insertion order (service_ok and missing_table assets are prepended).
+    const rawMap = new Map(rawStats.map(r => [r.asset_id, r]))
+
+    const assetStats: AssetStats[] = assets.map((asset) => {
       const tp = throughputMap.get(asset.asset_id)
-      const base = result.status === 'fulfilled'
-        ? result.value
-        : {
-            asset_id: asset.asset_id,
-            actual_rows: null,
-            volume: null,
-            size_bytes: null,
-            last_updated: new Date().toISOString(),
-            error: (result.reason as Error)?.message ?? 'unknown',
-            state: 'error' as const,
-            last_built_at: null,
-            build_state_stale: false,
-            service_health: null,
-            last_invoked_at: null,
-          }
+      const base = rawMap.get(asset.asset_id) ?? {
+        asset_id: asset.asset_id,
+        actual_rows: null,
+        volume: null,
+        size_bytes: null,
+        last_updated: new Date().toISOString(),
+        error: 'not_fetched',
+        state: 'error' as const,
+        last_built_at: null,
+        build_state_stale: false,
+        service_health: null,
+        last_invoked_at: null,
+      }
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
       // building/stale/dormant/error/absent — signals the bar to badge "build-state stale".
