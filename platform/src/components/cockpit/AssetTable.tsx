@@ -144,11 +144,10 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
 
       {cascadeAsset && (
         <CascadePreviewModal
-          open={true}
+          isOpen={true}
           onClose={() => setCascadeAsset(null)}
-          assetId={cascadeAsset}
-          buildId={buildId}
-          chartId={chartId}
+          rootAssetId={cascadeAsset}
+          plan={[cascadeAsset]}
           onConfirm={() => setCascadeAsset(null)}
         />
       )}

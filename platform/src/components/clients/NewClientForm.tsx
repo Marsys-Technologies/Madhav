@@ -6,23 +6,25 @@
  * [PHASE-C-01]
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
+import { useJsApiLoader } from '@react-google-maps/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { type PlacesResult } from './usePlacesAutocomplete'
 
 // ─── Ayanamsha options ────────────────────────────────────────────────────────
 
 export const AYANAMSHA_OPTIONS = [
-  { id: 'lahiri',        label: 'Lahiri (Chitrapaksha)' },
-  { id: 'raman',         label: 'B.V. Raman' },
-  { id: 'kp',            label: 'KP (Krishnamurti Paddhati)' },
-  { id: 'yukteshwar',    label: 'Yukteshwar' },
-  { id: 'fagan_bradley', label: 'Fagan-Bradley' },
+  { id: 'lahiri',        label: 'Lahiri',          sub: 'Chitrapaksha' },
+  { id: 'raman',         label: 'B.V. Raman',      sub: 'Raman Ayanamsha' },
+  { id: 'kp',            label: 'KP',               sub: 'Krishnamurti Paddhati' },
+  { id: 'yukteshwar',    label: 'Yukteshwar',       sub: 'Sri Yukteshwar' },
+  { id: 'fagan_bradley', label: 'Fagan-Bradley',    sub: 'Western Sidereal' },
 ] as const
 
 export type AyanamshaId = (typeof AYANAMSHA_OPTIONS)[number]['id']

@@ -1,156 +1,242 @@
 'use client'
 
-/**
- * CascadePreviewModal — shows affected descendants before a rebuild
- * [PHASE-C-05]
- */
+import { useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DUR, EASE } from '@/lib/components/cockpit/v2/motion'
 
-import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
-import { getAssetDisplayName } from '@/lib/build/asset_names'
-
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CascadeData {
-  target: string
-  descendants: string[]
-  count: number
-}
-
-interface Props {
-  open: boolean
+export interface CascadePreviewModalProps {
+  isOpen: boolean
   onClose: () => void
-  assetId: string
-  buildId: string
-  chartId: string
   onConfirm: () => void
+  rootAssetId: string
+  rootAssetLabel?: string
+  plan: string[]           // asset IDs in topo order (root first)
+  estimatedSeconds?: number | null
+  isLoading?: boolean      // true while fetching plan
+  isClearCascade?: boolean // true = "Clear & Rebuild" mode
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function formatSeconds(s: number): string {
+  if (s < 60) return `${Math.round(s)}s`
+  const m = Math.floor(s / 60)
+  const rem = Math.round(s % 60)
+  return rem > 0 ? `${m}m ${rem}s` : `${m}m`
+}
 
-export function CascadePreviewModal({ open, onClose, assetId, buildId, chartId, onConfirm }: Props) {
-  const [cascade, setCascade] = useState<CascadeData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [confirming, setConfirming] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
+export function CascadePreviewModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  rootAssetId,
+  rootAssetLabel,
+  plan,
+  estimatedSeconds,
+  isLoading,
+  isClearCascade,
+}: CascadePreviewModalProps) {
+  // Close on Escape
   useEffect(() => {
-    if (!open) return
-    setLoading(true)
-    setError(null)
-    fetch(`/api/build/cascade-preview?asset_id=${encodeURIComponent(assetId)}`)
-      .then((r) => r.json())
-      .then((d: CascadeData) => setCascade(d))
-      .catch(() => setError('Failed to load cascade preview.'))
-      .finally(() => setLoading(false))
-  }, [open, assetId])
-
-  if (!open) return null
-
-  // Build mini graph data
-  const graphNodes = cascade
-    ? [
-        { id: cascade.target, label: cascade.target, color: '#9c3a2a' },
-        ...cascade.descendants.map((d) => ({ id: d, label: d, color: '#d4a648' })),
-      ]
-    : []
-  const graphLinks = cascade
-    ? cascade.descendants.map((d) => ({ source: cascade.target, target: d }))
-    : []
-
-  async function handleConfirm() {
-    setConfirming(true)
-    try {
-      await fetch('/api/build/rebuild', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ asset_id: assetId, build_id: buildId, chart_id: chartId }),
-      })
-      onConfirm()
-    } finally {
-      setConfirming(false)
+    if (!isOpen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
     }
-  }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isOpen, onClose])
+
+  const label = rootAssetLabel ?? rootAssetId
+  const title = isClearCascade ? `Clear & Rebuild ${label}?` : `Rebuild ${label}?`
+  const downstream = plan.slice(1) // everything after root
+
+  const confirmDisabled = isLoading || plan.length === 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div
-        className="bg-[#0d0c10] border border-[#1a1820] rounded-xl p-6 w-[520px] max-h-[80vh] overflow-y-auto shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif text-base text-[#d4a648]">Cascade Preview</h3>
-          <button onClick={onClose} className="text-[#5a5550] hover:text-[#c8bfb0] text-lg leading-none">×</button>
-        </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="cascade-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: DUR.modal, ease: EASE.out }}
+          role="presentation"
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(8,7,10,0.82)',
+          }}
+        >
+          <motion.div
+            key="cascade-modal"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: DUR.modal, ease: EASE.out }}
+            role="dialog"
+            aria-modal="true"
+            data-testid="cascade-preview-modal"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--obsidian-surface, #0f0d12)',
+              border: '1px solid var(--obsidian-border, #1f1c17)',
+              borderRadius: 8,
+              padding: '24px 28px',
+              minWidth: 400,
+              maxWidth: 560,
+              width: '90vw',
+              fontFamily: 'var(--ui-stack, Inter, sans-serif)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+            }}
+          >
+            {/* Title */}
+            <h2
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--text-primary, #f5f0e8)',
+                marginBottom: 4,
+                lineHeight: 1.4,
+              }}
+            >
+              {title}
+            </h2>
 
-        {loading && (
-          <p className="text-[#5a5550] text-sm py-8 text-center">Loading cascade…</p>
-        )}
+            {/* Body */}
+            {isLoading ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginTop: 16,
+                  marginBottom: 20,
+                  color: 'var(--text-secondary, #888373)',
+                  fontSize: 12,
+                }}
+              >
+                {/* Spinner */}
+                <svg
+                  width={14}
+                  height={14}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  style={{ animation: 'spin 0.9s linear infinite', flexShrink: 0 }}
+                >
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+                Resolving plan…
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: 14,
+                  marginBottom: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                {/* Root asset */}
+                {plan.length > 0 && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--text-primary, #f5f0e8)',
+                      fontWeight: 600,
+                      fontFamily: 'var(--mono-stack, monospace)',
+                    }}
+                  >
+                    {plan[0]}
+                  </div>
+                )}
 
-        {error && (
-          <p className="text-[#9c3a2a] text-sm">{error}</p>
-        )}
-
-        {!loading && cascade && (
-          <>
-            {/* Mini force graph */}
-            <div style={{ height: 300 }} className="rounded-lg overflow-hidden border border-[#1a1820] mb-4">
-              <ForceGraph2D
-                graphData={{ nodes: graphNodes, links: graphLinks } as unknown as { nodes: object[]; links: object[] }}
-                nodeId="id"
-                nodeColor={(n) => (n as { color: string }).color}
-                nodeRelSize={5}
-                linkColor={() => '#2a2830'}
-                backgroundColor="#08070a"
-                width={468}
-                height={300}
-              />
-            </div>
-
-            <p className="text-sm text-[#c8bfb0] mb-3">
-              Rebuilding{' '}
-              <span className="text-[#d4a648] font-medium">
-                {getAssetDisplayName(cascade.target)}
-              </span>{' '}
-              will recompute{' '}
-              <span className="text-[#d4a648] font-medium">{cascade.descendants.length}</span>{' '}
-              downstream asset{cascade.descendants.length !== 1 ? 's' : ''}:
-            </p>
-
-            {cascade.descendants.length > 0 && (
-              <ul className="mb-4 space-y-1 text-sm text-[#8a8070]">
-                {cascade.descendants.map((d) => (
-                  <li key={d} className="flex items-center gap-2">
-                    <span className="text-[#d4a648]/50">→</span>
-                    {getAssetDisplayName(d)}
-                  </li>
+                {/* Downstream assets */}
+                {downstream.map(id => (
+                  <div
+                    key={id}
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--text-secondary, #888373)',
+                      fontFamily: 'var(--mono-stack, monospace)',
+                      paddingLeft: 4,
+                    }}
+                  >
+                    <span style={{ opacity: 0.5 }}>→ </span>
+                    {id}
+                  </div>
                 ))}
-              </ul>
+
+                {/* Empty state */}
+                {plan.length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #888373)' }}>
+                    No assets in plan.
+                  </div>
+                )}
+
+                {/* Estimated time */}
+                {estimatedSeconds != null && plan.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      fontSize: 11,
+                      color: 'rgba(212,166,72,0.75)',
+                      fontFamily: 'var(--mono-stack, monospace)',
+                    }}
+                  >
+                    Estimated time: {formatSeconds(estimatedSeconds)}
+                  </div>
+                )}
+              </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-4">
+            {/* Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm text-[#8a8070] hover:text-[#c8bfb0] transition-colors"
+                style={{
+                  padding: '6px 16px',
+                  fontSize: 13,
+                  color: 'var(--text-secondary, #888373)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--ui-stack, Inter, sans-serif)',
+                }}
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirm}
-                disabled={confirming}
-                className="px-4 py-2 rounded-lg text-sm bg-[#d4a648] text-[#08070a] hover:bg-[#e8c878] font-medium disabled:opacity-50 transition-colors"
+                onClick={onConfirm}
+                disabled={confirmDisabled}
+                style={{
+                  padding: '6px 20px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: confirmDisabled ? 'rgba(0,0,0,0.4)' : 'var(--obsidian-bg, #08070a)',
+                  background: confirmDisabled ? 'rgba(212,166,72,0.35)' : 'var(--gold-primary, #d4a648)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: confirmDisabled ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                  fontFamily: 'var(--ui-stack, Inter, sans-serif)',
+                }}
               >
-                {confirming
-                  ? 'Starting…'
-                  : `Rebuild ${cascade.descendants.length + 1} asset${cascade.descendants.length !== 0 ? 's' : ''}`
-                }
+                {isClearCascade ? 'Clear & Rebuild' : 'Confirm rebuild'}
               </button>
             </div>
-          </>
-        )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
