@@ -88,8 +88,39 @@ export async function POST(request: Request) {
       displayName: fullName,
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Could not create user account.'
-    return res.internal(message)
+    // Firebase "email already exists" can mean either a real duplicate or an
+    // orphaned Firebase account (profile INSERT previously failed after createUser
+    // succeeded, leaving Firebase holding the email with no profile row).
+    // Detect the orphan case: if Firebase owns the email but profiles doesn't,
+    // delete the dangling Firebase account and retry.
+    const code = (err as Record<string, unknown>)?.code
+    if (code === 'auth/email-already-exists') {
+      try {
+        const { rows: existing } = await query<{ id: string }>(
+          'SELECT id FROM profiles WHERE lower(email)=lower($1) LIMIT 1',
+          [email]
+        )
+        if (existing.length === 0) {
+          // Orphaned Firebase account — delete it and retry
+          const orphan = await adminAuth.getUserByEmail(email)
+          await adminAuth.deleteUser(orphan.uid)
+          firebaseUser = await adminAuth.createUser({
+            email,
+            emailVerified: false,
+            displayName: fullName,
+          })
+        } else {
+          return res.conflict('A user with that email already exists.')
+        }
+      } catch (retryErr: unknown) {
+        const message = retryErr instanceof Error ? retryErr.message : 'Could not create user account.'
+        console.error('[admin/users] POST Firebase retry failed', retryErr)
+        return res.internal(message)
+      }
+    } else {
+      const message = err instanceof Error ? err.message : 'Could not create user account.'
+      return res.internal(message)
+    }
   }
 
   const uid = firebaseUser.uid
