@@ -70,22 +70,25 @@ def test_resolve_non_native_empty_dict_raises():
 
 
 def test_no_raw_native_birth_fallback():
-    """Ensure no writer uses `birth_params or NATIVE_BIRTH` (silent fallback pattern)."""
+    """Ensure no writer uses `= birth_params or NATIVE_BIRTH` (silent fallback assignment)."""
+    # Pattern matches the vulnerable assignment form (e.g. `bp = birth_params or NATIVE_BIRTH`)
+    # but NOT comments or docstrings that mention the pattern by name.
     result = subprocess.run(
         [
             "grep",
             "-rn",
-            "birth_params or NATIVE_BIRTH",
+            "= birth_params or NATIVE_BIRTH",
             str(_PROJECT_ROOT / "platform" / "python-sidecar"),
             "--include=*.py",
             "--exclude-dir=venv",
             "--exclude-dir=__pycache__",
+            "--exclude=test_contamination_guard.py",
         ],
         capture_output=True,
         text=True,
         cwd=str(_PROJECT_ROOT),
     )
     assert result.stdout == "", (
-        f"Found VULNERABLE pattern 'birth_params or NATIVE_BIRTH' in:\n{result.stdout}\n"
+        f"Found VULNERABLE assignment 'birth_params or NATIVE_BIRTH' in:\n{result.stdout}\n"
         "Use resolve_birth_params() instead."
     )
