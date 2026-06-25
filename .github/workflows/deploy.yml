@@ -100,6 +100,62 @@ jobs:
           docker run --rm --entrypoint python brahma-pipeline:pr-check \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
 
+  # ── Path-change detection — sets sidecar/mcp/pipeline outputs ───────────────
+  # Runs only on workflow_run success or manual dispatch (same guard as deploy
+  # jobs). pull_request events never reach this job. Fallback: if HEAD~1
+  # doesn't exist (first commit / shallow root), all three outputs default to
+  # 'true' so gated jobs deploy safely rather than silently skip.
+  changes:
+    name: Detect changed paths
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      sidecar: ${{ steps.diff.outputs.sidecar }}
+      mcp: ${{ steps.diff.outputs.mcp }}
+      pipeline: ${{ steps.diff.outputs.pipeline }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed paths
+        id: diff
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          echo "=== Changed files ==="
+          printf '%s\n' "$CHANGED"
+          echo "====================="
+
+          sidecar=false
+          mcp=false
+          pipeline=false
+
+          if printf '%s\n' "$CHANGED" | grep -q '^platform/python-sidecar/'; then
+            sidecar=true
+          fi
+
+          if printf '%s\n' "$CHANGED" | grep -q '^platform-mcp/'; then
+            mcp=true
+          fi
+
+          if printf '%s\n' "$CHANGED" | grep -qE \
+            '^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'; then
+            pipeline=true
+          fi
+
+          {
+            echo "sidecar=$sidecar"
+            echo "mcp=$mcp"
+            echo "pipeline=$pipeline"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "=== Outputs ==="
+          echo "sidecar=$sidecar  mcp=$mcp  pipeline=$pipeline"
+  # ── /Path-change detection ───────────────────────────────────────────────────
+
   deploy-web:
     name: Build & Deploy Web
     # Only deploy on workflow_run (CI passed on main) or manual dispatch.
