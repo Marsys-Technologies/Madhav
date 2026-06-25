@@ -33,6 +33,7 @@ $$ LANGUAGE plpgsql;
 
 -- Fire on INSERT and on any UPDATE that touches chart_id (SET chart_id = ...).
 -- Using FOR EACH ROW so we check every affected row individually.
+DROP TRIGGER IF EXISTS trg_asset_throughput_no_chart_scoped_global ON asset_throughput;
 CREATE TRIGGER trg_asset_throughput_no_chart_scoped_global
 BEFORE INSERT OR UPDATE OF chart_id ON asset_throughput
 FOR EACH ROW
