@@ -972,8 +972,8 @@ def _build_karaka_rows(
 ) -> list[dict[str, Any]]:
     """
     Category 17: karaka_chara_position — 8-karaka system
-    Two schools: Parashari (Rahu excluded) + KN Rao (Rahu included)
-    AK divergence → halt build.
+    Two schools: Parashari (Rahu excluded) + KN Rao (Rahu included, reverse-degree reckoning for Rahu)
+    AK divergence → warning (non-fatal); both schools' rows emitted.
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -996,24 +996,31 @@ def _build_karaka_rows(
         return long % 30.0
 
     parashari_sorted = sorted(grahas_7.items(), key=lambda x: _deg_in_sign(x[1]), reverse=True)
-    knrao_sorted = sorted(grahas_8.items(), key=lambda x: _deg_in_sign(x[1]), reverse=True)
+    # KN Rao reckons Rāhu retrograde: sort key = 30 − (long % 30); raw longitude stored unchanged.
+    # Source: GA_SENSITIVE_AK_DIVERGENCE_INVESTIGATION_v1_0.md §2
+    knrao_sorted = sorted(
+        grahas_8.items(),
+        key=lambda x: (30.0 - x[1] % 30.0) if x[0] == "Rahu" else _deg_in_sign(x[1]),
+        reverse=True,
+    )
 
     # 8 karakas: Atma, Amatya, Bhratri, Matri, Putra, Gnati, Dara, Stri
     karaka_names = ["ATMAKARAKA","AMATYAKARAKA","BHRATRIKARAKA","MATRIKARAKA",
                     "PUTRAKARAKA","GNATIKARAKA","DARAKARAKA","STRIKARAKA"]
 
-    # AK divergence check
-    if parashari_sorted[0][0] != knrao_sorted[0][0]:
-        # Halt: Atmakaraka differs between schools
+    # AK divergence check — log as warning, do not halt.
+    # Divergence between Parashari (Rahu-excluded) and KN Rao (Rahu-included) is
+    # valid for charts where Rahu holds the highest degree in a sign; both schools'
+    # rows are still emitted so the divergence is captured in chart_facts.
+    ak_divergent = parashari_sorted[0][0] != knrao_sorted[0][0]
+    if ak_divergent:
         msg = (
-            f"GA5 HALT: AK divergence detected. "
+            f"GA5 AK divergence (non-fatal): "
             f"Parashari AK = {parashari_sorted[0][0]}, "
             f"KN Rao AK = {knrao_sorted[0][0]}. "
             f"chart_id={chart_id} ayanamsha={ayanamsha_id}"
         )
-        logger.error("[GA5] %s", msg)
-        _write_halt_log("AK_DIVERGENCE", msg)
-        raise ValueError(msg)
+        logger.warning("[GA5] %s", msg)
 
     # Emit both schools for all 8 karakas
     for school, sorted_list, school_key in [
@@ -1079,6 +1086,7 @@ def _build_karakamsa_rows(
         "Saturn": all_longs.get("SAT", 0.0),
     }
     ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
+    # NOTE: Parāśarī-only by current design — native decision pending (AK reckoning fix §2.3)
     ak_long = grahas_7[ak_graha]
 
     # Karakamsa = D9 sign of AK

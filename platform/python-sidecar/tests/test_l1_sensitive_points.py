@@ -211,3 +211,81 @@ class TestArudhas:
     def test_all_have_house_lord(self, arudhas):
         for name, data in arudhas.items():
             assert "house_lord" in data, f"{name} missing house_lord"
+
+
+# ── KN Rao Ātmakāraka reckoning (BUG B regression) ───────────────────────────
+
+class TestKNRaoAtmakarakaReckoning:
+    """Regression for BUG B: KN Rao must rank Rāhu by reversed degree (30 − deg_in_sign).
+    Fixture degrees match 1c826d5a (Rāhu ~28° raw late Aries, Mercury ~27.5°)."""
+
+    # Minimal all_longs dicts — only the keys _build_karaka_rows consumes.
+    _LONGS_RAHU_LATE = {
+        "SUN": 300.0,      # deg_in_sign = 0
+        "MOON": 330.0,     # deg_in_sign = 0
+        "MAR": 45.0,       # deg_in_sign = 15
+        "MER": 27.5,       # deg_in_sign = 27.5  ← Parāśarī AK
+        "JUP": 200.0,      # deg_in_sign = 20
+        "VEN": 15.0,       # deg_in_sign = 15
+        "SAT": 100.0,      # deg_in_sign = 10
+        "RAH_MEAN": 28.0,  # raw = 28, knrao_key = 30−28 = 2  ← loses
+        "LAGNA": 12.4,
+    }
+    _LONGS_RAHU_EARLY = {
+        "SUN": 300.0,
+        "MOON": 330.0,
+        "MAR": 45.0,
+        "MER": 27.5,       # deg_in_sign = 27.5 ← Parāśarī AK
+        "JUP": 200.0,
+        "VEN": 15.0,
+        "SAT": 100.0,
+        "RAH_MEAN": 1.0,   # raw = 1, knrao_key = 30−1 = 29 ← genuinely wins
+        "LAGNA": 12.4,
+    }
+
+    def _call(self, all_longs):
+        from ga_writers.ga_sensitive_writer import _build_karaka_rows
+        return _build_karaka_rows(
+            all_longs=all_longs,
+            chart_id="test-chart-knrao",
+            ayanamsha_id="LAHIRI",
+            build_id="test-build",
+            eng_ver="test",
+            halt_log_path="/tmp/test_halt_knrao.log",
+        )
+
+    def _kn_rao_ak(self, rows):
+        for row in rows:
+            if (row["fact_subject"] == "ATMAKARAKA"
+                    and row["fact_key"] == "assigned_graha"
+                    and row["formula_id"] == "kn_rao_rahu_included"):
+                return row["fact_value_text"]
+        return None
+
+    def test_rahu_late_degrees_mercury_is_kn_rao_ak(self):
+        """Rāhu at 28° raw → knrao_key = 2 → Mercury (27.5°) is unambiguous KN Rao AK."""
+        rows = self._call(self._LONGS_RAHU_LATE)
+        assert self._kn_rao_ak(rows) == "Mercury", (
+            "With Rāhu in late degrees, KN Rao AK must be Mercury, not Rāhu"
+        )
+
+    def test_rahu_late_degrees_no_ak_divergence(self, caplog):
+        """No [GA5] AK divergence warning when Rāhu is correctly ranked last."""
+        import logging
+        with caplog.at_level(logging.WARNING):
+            self._call(self._LONGS_RAHU_LATE)
+        assert not any("AK divergence" in r.message for r in caplog.records), (
+            "AK divergence warning must not fire when Rāhu is correctly ranked by reverse-degree"
+        )
+
+    def test_rahu_early_degrees_genuine_divergence_fires(self, caplog):
+        """Rāhu at 1° raw → knrao_key = 29 → Rāhu is genuine KN Rao AK → warning fires."""
+        import logging
+        with caplog.at_level(logging.WARNING):
+            rows = self._call(self._LONGS_RAHU_EARLY)
+        assert self._kn_rao_ak(rows) == "Rahu", (
+            "Rāhu at 1° raw (knrao_key = 29°) should be KN Rao AK"
+        )
+        assert any("AK divergence" in r.message for r in caplog.records), (
+            "AK divergence warning must fire when Rāhu is genuinely highest under reversed reckoning"
+        )
