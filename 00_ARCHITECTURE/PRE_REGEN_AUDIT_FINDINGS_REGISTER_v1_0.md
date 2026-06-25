@@ -1,7 +1,7 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.1
+version: 1.2
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
@@ -11,6 +11,10 @@ purpose: >
 waves_complete: W0
 waves_pending: W1, W2, W3, W4, W5
 changelog:
+  - version: 1.2
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 0 widened guard results — 9-site authoritative vulnerable list added; fetch_birth_params docstring fix noted.
   - version: 1.1
     date: 2026-06-26
     author: Claude (Cowork)
@@ -136,6 +140,17 @@ Ordered by severity:
    the key is absent, masking a missing-birth-params bug and potentially using
    wrong data for non-native charts.
 
+   > **Note (Wave 2 widened guard):** The full vulnerable site count across the
+   > codebase is **9 sites** (7 `or NATIVE_BIRTH` or-fallback assignments + 2
+   > `CANONICAL_CHART_ID` signature defaults in `ga_tajaka_writer.py`). See the
+   > "Widened Guard — Vulnerable Site List" section below for the authoritative list.
+
+**[MAJOR]** `pipeline/orchestrator/birth_params.py` + `tests/test_ga_writer_generalization.py` (Wave 0 follow-on):  
+   `fetch_birth_params` absent-row raise (Wave 0 ✅ DONE) was shipped without
+   updating the corresponding unit test (`test_missing_row_returns_none` asserted
+   `is None`; now fixed to assert `ValueError`) and without updating the module
+   docstring. Both corrected on branch.
+
 5. **[MINOR]** `build_ephemeris_1900_2150.py`  
    Remove hardcoded DB credentials from lines 26–29. Replace with environment
    variable lookups (`os.environ["DB_HOST"]` etc.) or a shared config helper.
@@ -145,6 +160,44 @@ Ordered by severity:
    to `(chart_id × natural key)` per §N.3. Wrap writer in a `WriterBase` subclass
    with the `@register` decorator and `run(ctx) -> WriterResult` interface per the
    FROZEN orchestrator contract.
+
+---
+
+### Wave 0 Widened Guard — Complete Vulnerable Site List (Wave 2 Work List)
+
+### Widened Guard — Vulnerable Site List (Wave 2 remediation targets)
+
+Captured by the extended `test_no_raw_native_birth_fallback` guard (5-pattern, Wave 2 extended).
+Groups 2 (ternary), 3 (dict.get) found 0 hits — patterns are proactive guards for future writers.
+
+**Group 1 — or-fallback assignments** (`= (birth_params|bp) or NATIVE_`) — 7 sites:
+
+| file | line | pattern |
+|------|------|---------|
+| `ga_writers/ga_tajaka_writer.py` | 179 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_tajaka_writer.py` | 206 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_tajaka_writer.py` | 593 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_panchanga_writer.py` | 1247 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_structural_writer.py` | 4589 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_structural_writer.py` | 5787 | `bp = birth_params or NATIVE_BIRTH` |
+| `ga_writers/ga_strength_writer.py` | 1525 | `bp = birth_params or NATIVE_BIRTH` |
+
+**Group 2 — ternary forms** (`(birth_params|bp) if ... else NATIVE_`) — 0 hits (proactive guard)
+
+**Group 3 — dict.get defaults** (`.get(..., NATIVE_BIRTH)`) — 0 hits (proactive guard)
+
+**Group 4 — signature defaults** (`def ... chart_id ... = CANONICAL_CHART_ID`) — 2 sites (NEW — not in prior count):
+
+| file | line | pattern |
+|------|------|---------|
+| `ga_writers/ga_tajaka_writer.py` | 544 | `def compute_varsha(chart_id: str = CANONICAL_CHART_ID, ...)` |
+| `ga_writers/ga_tajaka_writer.py` | 568 | `def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID, ...)` |
+
+**Group 5 — generic** (`(=|return).*or NATIVE_BIRTH`) — 7 sites (fully overlapping with Group 1, no additional sites)
+
+**Total unique vulnerable sites: 9** (7 Group 1 + 2 Group 4)
+
+Note: Group 1 and Group 5 fully overlap — all `or NATIVE_BIRTH` occurrences are already the `= bp or NATIVE_BIRTH` assignment form.
 
 ---
 

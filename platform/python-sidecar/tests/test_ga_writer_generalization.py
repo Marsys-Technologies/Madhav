@@ -3,7 +3,8 @@
 Proves:
   A. birth_params provider: native → None (writer uses NATIVE_BIRTH); a non-native
      charts row → NATIVE_BIRTH-shaped dict (tz from IANA timezone_id); missing data
-     → loud ValueError (never a silently-wrong chart); no row → None.
+     → loud ValueError (never a silently-wrong chart); no row → ValueError (non-native
+     chart with no charts row raises rather than silently falling back to native).
   B. ga_dashas birth threading: _birth_jd_utc / _get_moon_position honor an injected
      birth; the native default is unchanged.
   C. FORENSIC native-guard: the native-anchored gate halts for the NATIVE chart but
@@ -68,8 +69,10 @@ def test_non_native_row_maps_to_birth_params():
     }
 
 
-def test_missing_row_returns_none():
-    assert fetch_birth_params(_Conn(None), 'no-such-chart') is None
+def test_non_native_missing_row_raises():
+    """Non-native chart_id with no row in public.charts raises ValueError (no silent native fallback)."""
+    with pytest.raises(ValueError, match="no charts row found"):
+        fetch_birth_params(_Conn(None), "no-such-chart")
 
 
 @pytest.mark.parametrize('missing', ['birth_date', 'birth_time', 'birth_lat', 'birth_lng', 'timezone_id'])

@@ -14,8 +14,10 @@ Design:
 - Any other chart → fetched from public.charts, matched on `id` OR `chart_id`
   (both unique uuids — robust to which column the orchestrator's chart_id maps to).
   tz_offset_hours is derived from the chart's IANA `timezone_id` at the birth instant.
-- Chart row absent → None (writer falls back to NATIVE_BIRTH; a no-row build is a
-  CLI/test path, not a real client).
+- Chart row absent (non-native chart_id) → raises ValueError; insert birth data
+  into public.charts before building.
+- Chart row absent (native CANONICAL_CHART_ID) → None (writers use their NATIVE_BIRTH
+  constant).
 - A non-native row missing the data needed for a CORRECT chart (date/time/lat/lng/
   timezone) raises — a loud halt is safer than silently building a wrong chart.
 """
