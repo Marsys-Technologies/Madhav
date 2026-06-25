@@ -74,6 +74,6 @@ export async function GET(request: Request) {
 }
 
 // Test helper — clears the per-instance cache.
-export function __resetSuggestionsCache(): void {
+function __resetSuggestionsCache(): void {
   _cache.clear()
 }

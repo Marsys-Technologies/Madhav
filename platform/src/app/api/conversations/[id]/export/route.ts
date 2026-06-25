@@ -96,7 +96,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // Returns 501 if PDF generation is unavailable in this deployment.
     try {
       // Attempt dynamic import of html-pdf-node (optional dependency)
-      const { default: pdf } = await import('html-pdf-node' as string) as { default: { generatePdf: (file: { content: string }, opts: Record<string, unknown>) => Promise<Buffer> } }
+      // @ts-expect-error — html-pdf-node is optional; not in node_modules in all deployments
+      const { default: pdf } = await import(/* webpackIgnore: true */ 'html-pdf-node') as { default: { generatePdf: (file: { content: string }, opts: Record<string, unknown>) => Promise<Buffer> } }
       const mdBody = toMarkdown(id, messages)
       const html = `<html><body style="font-family:sans-serif;padding:2em;max-width:800px"><pre style="white-space:pre-wrap">${mdBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`
       const buffer = await pdf.generatePdf({ content: html }, { format: 'A4' })

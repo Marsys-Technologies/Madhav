@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DEFAULT_AYANAMSHAS, VALID_AYANAMSHAS } from '../route'
+import { DEFAULT_AYANAMSHAS, VALID_AYANAMSHAS } from '@/lib/ayanamsha'
 
 // ─── Hoist mocks ─────────────────────────────────────────────────────────────
 

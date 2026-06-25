@@ -17,21 +17,10 @@
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { VALID_AYANAMSHAS, DEFAULT_AYANAMSHAS } from '@/lib/ayanamsha'
+import type { Ayanamsha } from '@/lib/ayanamsha'
 
 export const dynamic = 'force-dynamic'
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-export const VALID_AYANAMSHAS = [
-  'lahiri',
-  'true_chitra',
-  'kp',
-  'raman',
-  'surya_siddhanta',
-] as const
-
-export type Ayanamsha = (typeof VALID_AYANAMSHAS)[number]
-export const DEFAULT_AYANAMSHAS: Ayanamsha[] = [...VALID_AYANAMSHAS]
 
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_SECONDS = 3600 // 1 hour

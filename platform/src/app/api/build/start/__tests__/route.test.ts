@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DEFAULT_AYANAMSHAS, VALID_AYANAMSHAS } from '@/app/api/clients/create/route'
+import { DEFAULT_AYANAMSHAS, VALID_AYANAMSHAS } from '@/lib/ayanamsha'
 
 const DAG_ASSETS = [
   'A1_engine', 'A2_positions', 'A3_divisionals', 'A4_vargas', 'A5_panchanga',
