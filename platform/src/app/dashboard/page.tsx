@@ -8,7 +8,7 @@ import type { Chart } from '@/lib/db/types'
 import { fetchConsumedTodayCount } from '@/lib/roster/stats'
 import type { ChartWithMeta, RosterStats } from '@/lib/roster/types'
 import { Navagraha } from '@/components/brand/Navagraha'
-import { BRAHMA_LAYER_ORDER, PYRAMID_TO_BRAHMA } from '@/lib/brahma/lexicon'
+import { BRAHMA_LAYER_ORDER } from '@/lib/brahma/lexicon'
 import { ChartCreatedToast } from '@/components/brahma/ChartCreatedToast'
 
 /**
@@ -62,10 +62,16 @@ export default async function DashboardPage() {
 
   // Pyramid layers, active builds, and consumed-today all depend on chartIds
   // but are independent of each other — run in parallel.
-  const [layersResult, buildsResult, consumedToday] = await Promise.all([
+  // throughputResult: per-chart asset build state from asset_throughput (the orchestrator's
+  // authoritative source). This replaces the legacy pyramid_layers query which was never
+  // updated by the modern build system and caused the progress bar to be stale/incorrect.
+  const [throughputResult, buildsResult, consumedToday] = await Promise.all([
     chartIds.length > 0
-      ? query<{ chart_id: string; layer: string; sublayer: string; status: string; updated_at: string }>(
-          'SELECT chart_id, layer, sublayer, status, updated_at FROM pyramid_layers WHERE chart_id = ANY($1::uuid[])',
+      ? query<{ chart_id: string; asset_id: string; state: string; rows_written: number | null; last_built_at: string | null }>(
+          `SELECT at.chart_id, at.asset_id, at.state, at.rows_written, at.last_built_at
+           FROM asset_throughput at
+           JOIN asset_registry ar ON ar.asset_id = at.asset_id AND ar.is_active = true
+           WHERE at.chart_id = ANY($1::uuid[])`,
           [chartIds]
         )
       : Promise.resolve({ rows: [] }),
@@ -120,31 +126,55 @@ export default async function DashboardPage() {
     })
   }
 
-  for (const chart of charts) {
-    const rows = layersResult.rows.filter((r) => r.chart_id === chart.id)
+  // Map asset_id prefix → Brahma layer (ga_→ganita, bo_→bodha, ka_→kala, ph_→phala, mi_→mimamsa).
+  // brahmagyan (L0) is global infrastructure with no per-chart throughput entries — always lit.
+  const assetToBrahmaLayer = (assetId: string): string | null => {
+    if (assetId.startsWith('ga_')) return 'ganita'
+    if (assetId.startsWith('bo_')) return 'bodha'
+    if (assetId.startsWith('ka_')) return 'kala'
+    if (assetId.startsWith('ph_')) return 'phala'
+    if (assetId.startsWith('mi_')) return 'mimamsa'
+    return null
+  }
 
-    const timestamps = rows.map((r) => r.updated_at).filter(Boolean)
+  for (const chart of charts) {
+    const rows = throughputResult.rows.filter((r) => r.chart_id === chart.id)
+
+    // Last activity = max last_built_at across all assets for this chart.
+    const timestamps = rows.map((r) => r.last_built_at).filter(Boolean) as string[]
     if (timestamps.length > 0) {
       const latest = timestamps.reduce((a, b) => (a > b ? a : b))
       lastActivityMap.set(chart.id, latest)
     }
 
-    if (rows.some((r) => r.status === 'in_progress')) {
+    // In active build = any asset currently in 'building' state.
+    if (rows.some((r) => r.state === 'building')) {
       inActiveBuildSet.add(chart.id)
     }
 
-    // Build layer pips using the "best" matching row per Brahma layer.
-    // Both legacy L-prefix keys (L1:facts) and orchestrator keys (build:positions)
-    // are covered by PYRAMID_TO_BRAHMA — multiple sublayers may map to the same
-    // Brahma layer; pick the most-complete one.
+    // Aggregate per-Brahma-layer presence from asset_throughput.
+    // A layer has data if any of its active assets has rows_written > 0 OR state = 'lit'
+    // (state='lit' with rows_written=0 is valid for zero-row-by-design assets like ga_prashna).
+    // Stale assets with rows count as lit — data exists even if rebuild is pending.
+    const layerDataMap = new Map<string, { hasData: boolean; isBuilding: boolean }>()
+    for (const row of rows) {
+      const brahmaLayer = assetToBrahmaLayer(row.asset_id)
+      if (!brahmaLayer) continue
+      const current = layerDataMap.get(brahmaLayer) ?? { hasData: false, isBuilding: false }
+      layerDataMap.set(brahmaLayer, {
+        hasData: current.hasData || (row.rows_written != null && row.rows_written > 0) || row.state === 'lit',
+        isBuilding: current.isBuilding || row.state === 'building',
+      })
+    }
+
+    // Build layer pips from asset_throughput — reflects true orchestrator build state.
+    // brahmagyan is always lit (L0 global infra, provisioned at platform setup).
     const pips: import('@/lib/roster/types').LayerPip[] = BRAHMA_LAYER_ORDER.map((brahmaLayer) => {
-      const matching = rows.filter((r) => PYRAMID_TO_BRAHMA[`${r.layer}:${r.sublayer}`] === brahmaLayer)
-      const best = matching.find((r) => r.status === 'complete')
-        ?? matching.find((r) => r.status === 'in_progress')
-        ?? matching[0]
-      if (!best) return { layer: brahmaLayer, state: 'dim' as const }
-      if (best.status === 'complete') return { layer: brahmaLayer, state: 'lit' as const }
-      if (best.status === 'in_progress') return { layer: brahmaLayer, state: 'building' as const }
+      if (brahmaLayer === 'brahmagyan') return { layer: brahmaLayer, state: 'lit' as const }
+      const entry = layerDataMap.get(brahmaLayer)
+      if (!entry) return { layer: brahmaLayer, state: 'dim' as const }
+      if (entry.hasData) return { layer: brahmaLayer, state: 'lit' as const }
+      if (entry.isBuilding) return { layer: brahmaLayer, state: 'building' as const }
       return { layer: brahmaLayer, state: 'dim' as const }
     })
     layerPipsMap.set(chart.id, pips)
