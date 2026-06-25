@@ -313,10 +313,9 @@ jobs:
 
   # ── 4.edge_and_infra_hygiene ──
   # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF
-  # (acceptance §6: deploy.yml is sole orchestrator). Image still builds via
-  # platform-mcp/cloudbuild.yaml or Docker here; trigger is GH Actions only.
-  # Image is pinned to Artifact Registry (asia-south1-docker.pkg.dev/...),
-  # not legacy gcr.io.
+  # (acceptance §6: deploy.yml is sole orchestrator). Image builds via Docker
+  # here; trigger is GH Actions only. Image is pinned to Artifact Registry
+  # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Build & Deploy MCP
