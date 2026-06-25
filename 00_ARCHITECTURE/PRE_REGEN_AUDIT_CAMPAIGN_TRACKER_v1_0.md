@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.0
+version: 1.1
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.1
+    date: 2026-06-26
+    change: "Wave 1 complete — 18 bg_* L0 assets audited; 2 majors + 1 minor"
   - version: 1.0
     date: 2026-06-26
     change: "Initial tracker — Wave 0 complete"
@@ -19,11 +22,11 @@ changelog:
 | Wave | Layer | Scope | Status | Session | Findings register ref |
 |------|-------|-------|--------|---------|----------------------|
 | W0 | Shared compute + harness | pyjhora_adapter/compute.py, birth_params.py, panchanga_writer.py, pyhora.py, L0 files, jaimini engine/router, orchestrator adapters | ✅ COMPLETE | 2026-06-26 | §W0 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W1 | L0 Brahmagyan (~22 bg_ assets) | bg_* writers, reference data, dignity/medical mappings | ⏳ PENDING | — | — |
-| W2 | L1 Gaṇita (~16 ga_ assets) | ga_* writers (re-audit all), orchestrator adapters | ⏳ PENDING | — | — |
-| W3 | L2 Bodha (~11 bo_ assets) | bo_* writers, synthesis layer | ⏳ PENDING | — | — |
-| W4 | L3 Kāla (~11 ka_ assets) | ka_* writers, temporal layer | ⏳ PENDING | — | — |
-| W5 | L4 Phala (~11 ph_ assets) | ph_* writers, applied/prediction layer | ⏳ PENDING | — | — |
+| W1 | L0 Brahmagyan (18 bg_* assets) | All bg_* orchestrator writers + l0_* source modules | ✅ COMPLETE | 2026-06-26 | §W1 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W2 | L1 Gaṇita (~16 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites) | ⏳ PENDING | — | — |
+| W3 | L2 Bodha (~11 bo_* assets) | bo_* writers, synthesis layer | ⏳ PENDING | — | — |
+| W4 | L3 Kāla (~10 ka_* assets) + L4 Phala (~9 ph_* assets) | ka_* + ph_* writers | ⏳ PENDING | — | — |
+| W5 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
 
 ## Wave 0 deliverables (complete)
 
@@ -48,18 +51,33 @@ changelog:
 
 ## Structural guard status
 
-`resolve_birth_params()` is live in `pipeline/orchestrator/birth_params.py`. Every writer should call it instead of inline native-fallback logic. The 7 remaining vulnerable sites (4 ga_writers) will be remediated in Wave 2. The CI test (`test_contamination_guard.py`) will stay red until they are fixed.
+`resolve_birth_params()` is live in `pipeline/orchestrator/birth_params.py`. Every writer should call it instead of inline native-fallback logic. The **9 remaining vulnerable sites** (7 or-fallback assignments + 2 signature defaults in ga_* writers) will be remediated in Wave 2. The CI test (`test_contamination_guard.py`) will stay red until they are all fixed.
+
+## Wave 1 key findings
+
+### Majors (2)
+1. `l0_rules.py` line 1286 — `conn.rollback()` in exception handler (A3: FROZEN orchestrator contract violation; silently unwinds orchestrator transaction if bg_rules raises during a multi-asset build)
+2. `l0_transit.py` — Venus gochara rules missing 6 of 9 BPHS Ch.29 favourable houses (C1 fail; L2 Bodha Venus transit synthesis will be materially incomplete)
+
+### Minors (1)
+3. `bg_dignity_reference` — no asset_registry entry in any migration; cockpit stats route cannot count this asset's rows (B1 fail)
+
+### Review-Needed (non-blocking, 1)
+4. `bg_remedies` — count_sql for brahma_remedy_corpus not confirmed in examined migrations; verify separately
+
+### Clean (15/18)
+All 18 bg_* assets pass A1 (CHART-INDEPENDENT — zero contamination risk). Zero generative LLM use anywhere in L0. §N.4 Deterministic-First upheld.
 
 ## Gate: regeneration pre-conditions
 
 Regeneration (all layers, all charts) requires ALL of the following:
 - [ ] All BLOCKER + MAJOR code findings fixed, committed, CI green
 - [ ] Contamination structural guard live (✅ resolve_birth_params helper done)
-- [ ] Grep CI test passes (currently 7 FAIL sites — Wave 2 must fix them)
-- [ ] All waves W1–W5 findings registers complete and native-reviewed
+- [ ] Grep CI test passes (currently 9 FAIL sites — Wave 2 must fix them)
+- [ ] All waves W2–W5 findings registers complete and native-reviewed
 - [ ] Fix Plan authored from consolidated register
 - [ ] main == prod verified (web + job image == main HEAD, all fixes ancestral)
 
 ## Next session
 
-Wave 1 — L0 Brahmagyan (~22 bg_ assets). Audit all bg_* writers on all 3 axes. Focus: Axis B (data integrity of reference corpora), Axis C (classical-source fidelity of dignity/medical mappings).
+Wave 2 — L1 Gaṇita. Two tracks: (A) fix all 9 contamination sites from Wave 0 widened guard (turns CI test green); (B) full Axis A + B1 + C1 audit of all remaining ga_* writers not covered in Wave 0.

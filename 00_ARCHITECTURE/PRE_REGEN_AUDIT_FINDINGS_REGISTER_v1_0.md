@@ -1,16 +1,20 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.2
+version: 1.3
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
   Per-asset findings register for the Pre-Regeneration Full Audit Campaign (L0–L4).
   One row per audited file × 3 axes × PASS/FAIL. Becomes the fix plan when all
   waves complete.
-waves_complete: W0
-waves_pending: W1, W2, W3, W4, W5
+waves_complete: W0, W1
+waves_pending: W2, W3, W4, W5
 changelog:
+  - version: 1.3
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 1 complete — 18 bg_* L0 Brahmagyan assets audited; 2 majors + 1 minor found.
   - version: 1.2
     date: 2026-06-26
     author: Claude (Cowork)
@@ -201,23 +205,126 @@ Note: Group 1 and Group 5 fully overlap — all `or NATIVE_BIRTH` occurrences ar
 
 ---
 
-## Wave 1 — Pending
+## Wave 1 — L0 Brahmagyan Audit (2026-06-26)
 
-*Pending — scheduled for Wave 1 session.*
+**Scope:** All 18 `bg_*` orchestrator writer adapters + their corresponding `l0_*`
+source modules. Axis A (code correctness + contract conformance) + Axis C (classical
+rule fidelity). Axis B (SQL data checks) deferred — all B2–B7 require live DB.
 
-Planned scope: L1 Gaṇita writer deep-dive (remaining `ga_*` writers not covered
-in Wave 0: `ga_ashtakavarga`, `ga_bhava`, `ga_dasha`, `ga_divisionals`,
-`ga_yoga`, plus `ga_chart_service`). Axis A + C static; Axis B SQL checks
-on native chart (482012f1) once DB is confirmed accessible.
+**Key A1 finding:** All 18 L0 assets are correctly CHART-INDEPENDENT. Zero native-birth
+contamination risk in L0. All writers operate on global reference tables only.
+
+**Key A6 finding:** Zero generative LLM use in any L0 writer. All data is deterministic
+Python constants or deterministic transforms (embeddings via Vertex AI). §N.4
+Deterministic-First upheld across all 18 assets.
+
+### Wave 1 Findings Table
+
+<!-- Wave 1 note: A4/A5 N/A (L0 writers carry no chart-scoped fact_ids or DERIVATION_LEDGER entries). B2–B7 deferred to Wave 2 (live DB required). C2–C5 N/A (L0 is reference data, not per-native interpretive content). -->
+
+| asset_id / file | layer | A1 | A2 | A3 | A4 | A5 | A6 | A7 | B1 | C1 | VERDICT | severity | fix summary | fix_owner_phase |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `bg_reference` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_nakshatra` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_dasha_systems` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_dignity_reference` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | **FAIL** | PASS | **FIX-REQUIRED** | minor | No asset_registry entry in any migration; docstring cites migration 250 which does not exist (250 = l3_count_sql_param_fix.sql). Add migration with `count_sql = 'SELECT count(*) FROM bg_dignity_reference'`. | Fix Plan (post-W5) |
+| `bg_rules` | L0 | CHART-INDEPENDENT | PASS | **FAIL** | N/A | N/A | PASS | PASS | PASS | N/A | **FIX-REQUIRED** | major | `l0_rules.py` line 1286: direct `conn.rollback()` in exception handler — violates FROZEN orchestrator contract. Orchestrator owns all transaction boundaries. Remove rollback; re-raise or log+continue. | Wave 2 |
+| `bg_yogas` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_texts` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | Latent: `l0_texts.seed_texts()` has bare `conn.commit()` but is NOT called by orchestrator writer (writer imports TEXTS constant only). Hygiene-clean in follow-up pass. | — |
+| `bg_text_index` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | N/A | **PASS** | none | count_sql intentionally measures DISTINCT topic_tag coverage, not row count — documented and correct. | — |
+| `bg_compendium_index` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | N/A | **PASS** | none | None | — |
+| `bg_ontology` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | `l0_ontology.seed_ontology()` defaults `autocommit=True` — writer correctly passes `False`; default is a latent trap for standalone callers. Hygiene-clean in follow-up pass. | — |
+| `bg_medical_mappings` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_remedies` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | REVIEW-NEEDED | PASS | **PASS** | minor | B1 unconfirmed: count_sql for `bg_remedies` not found in examined migrations; verify `count_sql = 'SELECT COUNT(*) FROM brahma_remedy_corpus'` is registered. `l0_remedy_corpus.seed_remedy_corpus()` also defaults `autocommit=True` — same latent trap as bg_ontology. | Fix Plan (post-W5) |
+| `bg_ephemeris` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | WARN | PASS | PASS | N/A | **PASS** | minor | A6 WARN: `computed_at` uses `datetime.now()` per row — does not affect domain correctness but means computed_at varies across partial rebuilds. Replace with build-epoch timestamp from ctx if reproducibility matters. | — |
+| `bg_transit_rules` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | **FAIL** | **FIX-REQUIRED** | major | Venus gochara rules missing 6 of 9 BPHS Ch.29 favourable houses — only 1/2/3 present; 4/5/8/9/11/12 with correct vedha pairs absent. Will cause L2 Bodha Venus transit synthesis to be materially incomplete. Add missing houses to `BG_TRANSIT_RULES`. | Wave 2 |
+| `bg_prashna_rules` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_doshas` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | WARN | PASS | PASS | **PASS** | none | A7 WARN: `cur.fetchone()['count']` dict-style table-existence check safe on orchestrator path (psycopg v3 dict_row) but would break on plain psycopg2 cursor in standalone use. Not a blocker. | — |
+| `bg_vastu_directions` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None | — |
+| `bg_concordance` | L0 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | N/A | **PASS** | none | `source_chunk_ids` stored as empty BIGINT[] due to schema mismatch — tracked in file header as known debt. | — |
+
+> **B2–B7 (Axis B data checks):** All Wave 1 assets: deferred — require live DB. Will be folded into Wave 2 SQL sweep.
+> **A4/A5:** N/A for all L0 assets — no per-chart fact_ids or DERIVATION_LEDGER entries at L0.
+> **C2–C5:** N/A for all L0 assets — C2–C5 apply to L2+ interpretation and native-specific derivation.
+
+### Wave 1 Summary
+
+- **Assets audited:** 18 (all bg_* orchestrator writers + source modules)
+- **PASS:** 15
+- **FIX-REQUIRED:** 3
+- **REVIEW-NEEDED:** 0
+- **A1 (contamination) clean:** 18/18 — all correctly CHART-INDEPENDENT
+- **Blockers:** 0
+- **Majors:** 2
+  - `bg_rules` / `l0_rules.py` — `conn.rollback()` in exception handler (A3 orchestrator contract violation; silently unwinds orchestrator transaction)
+  - `bg_transit_rules` / `l0_transit.py` — Venus gochara rules materially incomplete (6 of 9 BPHS Ch.29 favourable houses missing; C1 fail)
+- **Minors:** 1
+  - `bg_dignity_reference` — no asset_registry entry in any migration; cockpit stats route cannot count rows (B1 fail)
+- **REVIEW-NEEDED (non-blocking):** 1
+  - `bg_remedies` — B1 count_sql not confirmed in examined migrations; needs targeted check
+
+### Wave 1 Fix List
+
+Ordered by severity:
+
+1. **[MAJOR]** `l0_rules.py` line 1286  
+   Remove `conn.rollback()` from the exception handler. Replace with:
+   ```python
+   except Exception as exc:
+       logger.warning("[l0_rules] rule processing error: %s", exc)
+       continue  # or raise — do NOT rollback; orchestrator owns the transaction
+   ```
+   Must be fixed before any multi-asset orchestrator build that includes bg_rules.
+
+2. **[MAJOR]** `l0_transit.py` — Venus gochara rules  
+   Expand `BG_TRANSIT_RULES` Venus entries to cover the full BPHS Ch.29 set.
+   Missing houses with correct vedha pairs (BPHS Ch.29):
+   - house=4, vedha=10
+   - house=5, vedha=9
+   - house=8, vedha=1
+   - house=9, vedha=2
+   - house=11, vedha=3
+   - house=12, vedha=6
+   Also evaluate adding Rahu/Ketu basic gochara rules or document the exclusion.
+   Must be fixed before L2 Bodha Venus gochara synthesis.
+
+3. **[MINOR]** `bg_dignity_reference` — missing asset_registry migration  
+   Create a migration (next available number) adding bg_dignity_reference to asset_registry:
+   ```sql
+   INSERT INTO asset_registry (asset_id, layer, target_table, count_sql, scope, is_active)
+   VALUES ('bg_dignity_reference', 'brahmagyan', 'bg_dignity_reference',
+           'SELECT count(*) FROM bg_dignity_reference', 'global', true)
+   ON CONFLICT (asset_id) DO NOTHING;
+   ```
+   Update writer docstring to reference the actual migration number.
+
+4. **[REVIEW-NEEDED]** `bg_remedies` — confirm count_sql  
+   Locate the migration registering bg_remedies in asset_registry. Verify
+   `count_sql = 'SELECT COUNT(*) FROM brahma_remedy_corpus'` is present and correct.
+   If missing or pointing at `asset_throughput`, treat as minor + add to fix list.
 
 ---
 
-## Wave 2 — Pending
+## Wave 2 — L1 Gaṇita Audit (Pending)
 
 *Pending — scheduled for Wave 2 session.*
 
-Planned scope: Axis B (SQL data-correctness) sweep of all L1 tables for the
-native chart. Use B1–B7 templates from `PRE_REGEN_AUDIT_HARNESS_v1_0.md §2`.
+Planned scope: All `ga_*` orchestrator writer adapters + corresponding `ga_writers/*`
+source modules. Two parallel tracks:
+
+**Track A — Contamination fixes (Wave 0 debt):** Fix all 9 vulnerable sites from the
+Wave 0 widened guard (7 `or NATIVE_BIRTH` or-fallback assignments + 2 `CANONICAL_CHART_ID`
+signature defaults). All in `ga_writers/ga_tajaka_writer.py`,
+`ga_writers/ga_panchanga_writer.py`, `ga_writers/ga_structural_writer.py`,
+`ga_writers/ga_strength_writer.py` plus the `ga_nakshatra.py` wrong-fallback bug.
+When all 9 are fixed, `test_no_raw_native_birth_fallback` should turn green.
+
+**Track B — Full ga_* code + data audit:** Axis A (code correctness, contract),
+Axis B B1 (count_sql checks), Axis C C1 (classical fidelity spot-checks) for all
+remaining `ga_*` assets not covered in Wave 0. Use B1–B7 templates from
+`PRE_REGEN_AUDIT_HARNESS_v1_0.md §2` for any DB checks against the native chart.
+
+**Wave 2 entry point:** `audit/pre-regen-wave0` branch.
 
 ---
 
