@@ -47,12 +47,16 @@ jobs:
           cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
           cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build web image (no push)
         uses: docker/build-push-action@v6
         with:
           context: ./platform
           file: ./platform/Dockerfile
           push: false
+          cache-from: type=gha,scope=amjis-web
           build-args: |
             NEXT_PUBLIC_FIREBASE_API_KEY=ci-placeholder
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci-placeholder
@@ -89,6 +93,7 @@ jobs:
           push: false
           load: true
           tags: brahma-pipeline:pr-check
+          cache-from: type=gha,scope=brahma-pipeline
 
       - name: Verify ga_writers is importable in the pipeline image
         run: |
@@ -159,6 +164,9 @@ jobs:
           cp -r 025_HOLISTIC_SYNTHESIS platform/025_HOLISTIC_SYNTHESIS
           cp -r 035_DISCOVERY_LAYER platform/035_DISCOVERY_LAYER
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:
@@ -168,6 +176,8 @@ jobs:
           tags: |
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:latest
+          cache-from: type=gha,scope=amjis-web
+          cache-to: type=gha,mode=max,scope=amjis-web
           build-args: |
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -287,6 +297,9 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push sidecar image
         uses: docker/build-push-action@v6
         with:
@@ -296,6 +309,8 @@ jobs:
           tags: |
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:latest
+          cache-from: type=gha,scope=amjis-sidecar
+          cache-to: type=gha,mode=max,scope=amjis-sidecar
 
       - name: Deploy sidecar to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -342,6 +357,9 @@ jobs:
           cp 00_ARCHITECTURE/CAPABILITY_MANIFEST.json platform-mcp/00_ARCHITECTURE/CAPABILITY_MANIFEST.json || true
           cp -r 01_FACTS_LAYER platform-mcp/01_FACTS_LAYER || true
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push MCP image (Artifact Registry, not gcr.io)
         uses: docker/build-push-action@v6
         with:
@@ -351,6 +369,8 @@ jobs:
           tags: |
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:latest
+          cache-from: type=gha,scope=amjis-mcp
+          cache-to: type=gha,mode=max,scope=amjis-mcp
 
       - name: Deploy MCP to Cloud Run (IAM-gated, least-priv SA)
         uses: google-github-actions/deploy-cloudrun@v2
@@ -393,6 +413,9 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push pipeline job image
         uses: docker/build-push-action@v6
         with:
@@ -402,6 +425,8 @@ jobs:
           tags: |
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
+          cache-from: type=gha,scope=brahma-pipeline
+          cache-to: type=gha,mode=max,scope=brahma-pipeline
 
       - name: Re-point Cloud Run Job at the new image
         run: |
