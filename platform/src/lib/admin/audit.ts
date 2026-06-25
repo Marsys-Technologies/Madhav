@@ -9,6 +9,7 @@ export type AuditAction =
   | 'delete_user'
   | 'role_change'
   | 'reset_password'
+  | 'set_password'
   | 'chart_grant'
   | 'chart_revoke'
 

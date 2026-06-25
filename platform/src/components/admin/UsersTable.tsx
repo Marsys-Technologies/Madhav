@@ -13,6 +13,7 @@ import {
 import { ConfirmDialog } from './ConfirmDialog'
 import { EditUsernameDialog } from './EditUsernameDialog'
 import { NewUserDialog } from './NewUserDialog'
+import { SetPasswordDialog } from './SetPasswordDialog'
 import {
   adminCard,
   adminGhostBtn,
@@ -65,6 +66,7 @@ export function UsersTable({
   >(null)
   const [working, setWorking] = useState(false)
   const [resetLink, setResetLink] = useState<string | null>(null)
+  const [settingPwUser, setSettingPwUser] = useState<AdminUser | null>(null)
 
   const filtered = users.filter((u) => {
     const q = search.trim().toLowerCase()
@@ -204,6 +206,9 @@ export function UsersTable({
                             <DropdownMenuItem onClick={() => setEditingUser(u)}>
                               Edit username
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSettingPwUser(u)}>
+                              Set password
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleSendReset(u)}>
                               Send password reset link
                             </DropdownMenuItem>
@@ -262,6 +267,14 @@ export function UsersTable({
       )}
 
       <NewUserDialog open={newUserOpen} onOpenChange={setNewUserOpen} onCreated={onMutated} />
+      <SetPasswordDialog
+        user={settingPwUser}
+        open={settingPwUser !== null}
+        onOpenChange={(open) => {
+          if (!open) setSettingPwUser(null)
+        }}
+        onSaved={onMutated}
+      />
       <EditUsernameDialog
         user={editingUser}
         open={editingUser !== null}
