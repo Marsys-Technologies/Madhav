@@ -1,8 +1,9 @@
 """
 Tests for ga_nakshatra — no DB connection required.
-Tests compute algorithms and writer registration.
+Tests compute algorithms, writer registration, and dict_row resilience.
 """
 import pytest
+from unittest.mock import MagicMock, patch, call
 from ga_writers.ga_nakshatra_compute import (
     compute_kp_lords, compute_gandanta, compute_tara,
     compute_dispositor_chain, compute_center_of_gravity,
@@ -181,3 +182,48 @@ class TestWriterRegistration:
     def test_has_substeps_flag_is_true(self):
         from pipeline.orchestrator.writers.ga_nakshatra import NakshatraWriter
         assert NakshatraWriter.has_substeps is True
+
+
+class TestDictRowResilience:
+    """Regression: _check_bg_nakshatra_present must handle dict_row connections.
+
+    The orchestrator's psycopg connection may have row_factory=dict_row set at
+    the connection level, causing conn.cursor() to return dict rows where
+    integer indexing (row[0]) raises KeyError: 0. These tests lock in the fix
+    so it cannot regress silently a third time.
+    """
+
+    def _make_conn(self, count_value: int):
+        """Mock connection whose cursor returns a dict-like row for COUNT(*)."""
+        row = {"count": count_value}
+        cur = MagicMock()
+        cur.__enter__ = MagicMock(return_value=cur)
+        cur.__exit__ = MagicMock(return_value=False)
+        cur.fetchone.return_value = row
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+        return conn
+
+    def test_check_present_dict_row_sufficient(self):
+        """Returns True when COUNT returns dict row with count >= 27."""
+        from pipeline.orchestrator.writers.ga_nakshatra import _check_bg_nakshatra_present
+        conn = self._make_conn(27)
+        assert _check_bg_nakshatra_present(conn) is True
+
+    def test_check_present_dict_row_insufficient(self):
+        """Returns False when COUNT returns dict row with count < 27."""
+        from pipeline.orchestrator.writers.ga_nakshatra import _check_bg_nakshatra_present
+        conn = self._make_conn(0)
+        assert _check_bg_nakshatra_present(conn) is False
+
+    def test_check_present_tuple_row_still_works(self):
+        """Tuple rows (non-dict_row cursor) continue to work — no regression."""
+        from pipeline.orchestrator.writers.ga_nakshatra import _check_bg_nakshatra_present
+        row = (27,)
+        cur = MagicMock()
+        cur.__enter__ = MagicMock(return_value=cur)
+        cur.__exit__ = MagicMock(return_value=False)
+        cur.fetchone.return_value = row
+        conn = MagicMock()
+        conn.cursor.return_value = cur
+        assert _check_bg_nakshatra_present(conn) is True

@@ -157,3 +157,78 @@ def test_yogi_system_all_two_pass_verified():
         ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     for r in rows:
         assert r.get("verification_pass_status") == "two_pass_verified"
+
+
+# ---------------------------------------------------------------------------
+# Regression: AK divergence must NOT halt the writer (ValueError → warning)
+# ---------------------------------------------------------------------------
+# Scenario mirrors Abhinandan Mohanty 1c826d5a: Parashari AK = Mercury,
+# KN Rao AK = Rahu (Rahu's reverse-degree > Mercury's degree in sign).
+# Previously _build_karaka_rows raised ValueError on divergence; that halt
+# was removed in cf38e029. These tests lock in the non-fatal behaviour.
+
+from ga_writers.ga_sensitive_writer import _build_karaka_rows
+
+_AK_DIV_LONGS = {
+    # Mercury at 29.0° in sign → Parashari AK (highest non-Rahu degree)
+    "MER": 29.0,
+    # Rahu at 0.5° in sign → reverse-degree = 30 - 0.5 = 29.5° → KN Rao AK
+    "RAH_MEAN": 0.5,
+    # All other grahas well below Mercury
+    "SUN": 10.0,
+    "MOON": 12.0,
+    "MAR": 5.0,
+    "JUP": 8.0,
+    "VEN": 15.0,
+    "SAT": 3.0,
+    "KET_MEAN": 180.5,
+    "LAGNA": 10.0,
+}
+
+
+def test_ak_divergence_does_not_raise():
+    """AK divergence (Parashari ≠ KN Rao) must log a warning, never raise."""
+    rows = _build_karaka_rows(
+        _AK_DIV_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, halt_log_path="/dev/null"
+    )
+    assert len(rows) > 0, "Expected karaka rows even with AK divergence"
+
+
+def test_ak_divergence_emits_both_schools():
+    """Both Parashari and KN Rao schools are emitted when AK diverges."""
+    rows = _build_karaka_rows(
+        _AK_DIV_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, halt_log_path="/dev/null"
+    )
+    schools = {r.get("formula_id") for r in rows}
+    assert "parashari_rahu_excluded" in schools
+    assert "kn_rao_rahu_included" in schools
+
+
+def test_ak_divergence_parashari_ak_is_mercury():
+    """Parashari AK is Mercury (highest degree in sign excluding Rahu)."""
+    rows = _build_karaka_rows(
+        _AK_DIV_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, halt_log_path="/dev/null"
+    )
+    parashari_ak = [
+        r for r in rows
+        if r.get("formula_id") == "parashari_rahu_excluded"
+        and r.get("fact_subject") == "ATMAKARAKA"
+        and r.get("fact_key") == "assigned_graha"
+    ]
+    assert len(parashari_ak) == 1
+    assert parashari_ak[0]["fact_value_text"] == "Mercury"
+
+
+def test_ak_divergence_knrao_ak_is_rahu():
+    """KN Rao AK is Rahu (reverse-degree reckoning gives Rahu the highest effective degree)."""
+    rows = _build_karaka_rows(
+        _AK_DIV_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, halt_log_path="/dev/null"
+    )
+    knrao_ak = [
+        r for r in rows
+        if r.get("formula_id") == "kn_rao_rahu_included"
+        and r.get("fact_subject") == "ATMAKARAKA"
+        and r.get("fact_key") == "assigned_graha"
+    ]
+    assert len(knrao_ak) == 1
+    assert knrao_ak[0]["fact_value_text"] == "Rahu"

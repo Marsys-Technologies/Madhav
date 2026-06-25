@@ -93,7 +93,8 @@ def _enrich_rows(rows: list[dict], eng_ver: str, computed_at: str) -> list[dict]
 
 def _fetch_bg_nakshatra(conn: Any) -> tuple[dict[int, dict], dict[tuple, dict]]:
     """Fetch reference_nakshatra and reference_nakshatra_pada for JOIN."""
-    with conn.cursor() as cur:
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.dict_row) as cur:
         cur.execute("""
             SELECT nakshatra_id, name_en, vimshottari_lord, presiding_deity,
                    gana, nadi, yoni_en, yoni_sex, varna, tatva, guna, pakshi,
@@ -101,19 +102,14 @@ def _fetch_bg_nakshatra(conn: Any) -> tuple[dict[int, dict], dict[tuple, dict]]:
             FROM reference_nakshatra
             ORDER BY nakshatra_id
         """)
-        cols = ["nakshatra_id","name_en","vimshottari_lord","presiding_deity",
-                "gana","nadi","yoni_en","yoni_sex","varna","tatva","guna","pakshi",
-                "shakti","motivation","symbol"]
-        nak_rows = {r[0]: dict(zip(cols, r)) for r in cur.fetchall()}
+        nak_rows = {r["nakshatra_id"]: dict(r) for r in cur.fetchall()}
 
         cur.execute("""
             SELECT nakshatra_id, pada_number, pada_akshara, pada_navamsa_sign, pada_lord
             FROM reference_nakshatra_pada
             ORDER BY nakshatra_id, pada_number
         """)
-        pada_rows = {(r[0], r[1]): dict(zip(
-            ["nakshatra_id","pada_number","pada_akshara","pada_navamsa_sign","pada_lord"], r))
-            for r in cur.fetchall()}
+        pada_rows = {(r["nakshatra_id"], r["pada_number"]): dict(r) for r in cur.fetchall()}
 
     return nak_rows, pada_rows
 
@@ -121,7 +117,9 @@ def _fetch_bg_nakshatra(conn: Any) -> tuple[dict[int, dict], dict[tuple, dict]]:
 def _check_bg_nakshatra_present(conn: Any) -> bool:
     with conn.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM reference_nakshatra")
-        return cur.fetchone()[0] >= 27
+        row = cur.fetchone()
+        count = row['count'] if isinstance(row, dict) else row[0]
+        return count >= 27
 
 
 def _build_nak_lord_map(grahas_plus_lagna: list[dict], nak_rows: dict) -> dict[str, str]:
@@ -268,7 +266,8 @@ class NakshatraWriter(WriterBase):
             build_id    = ctx.build_id
             computed_at = datetime.now(timezone.utc).isoformat()
 
-            with ctx.db_conn.cursor() as cur:
+            import psycopg.rows as _rows
+            with ctx.db_conn.cursor(row_factory=_rows.dict_row) as cur:
                 cur.execute("""
                     SELECT fact_subject, fact_value_num
                     FROM chart_facts
@@ -279,7 +278,8 @@ class NakshatraWriter(WriterBase):
                 results = cur.fetchall()
 
             body_naks: dict[str, list[float]] = {}
-            for subj, val_num in results:
+            for r in results:
+                subj, val_num = r["fact_subject"], r["fact_value_num"]
                 if val_num is not None:
                     body_naks.setdefault(subj, []).append(float(val_num))
 
