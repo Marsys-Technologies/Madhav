@@ -1,3 +1,4 @@
+# This test runs as part of the standard pytest suite: pytest platform/python-sidecar/
 """
 CI guard: NATIVE_BIRTH contamination class.
 
@@ -8,6 +9,9 @@ Tests that:
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]  # tests/ → python-sidecar/ → platform/ → project root
 
 import pytest
 
@@ -72,14 +76,14 @@ def test_no_raw_native_birth_fallback():
             "grep",
             "-rn",
             "birth_params or NATIVE_BIRTH",
-            "platform/python-sidecar",
+            str(_PROJECT_ROOT / "platform" / "python-sidecar"),
             "--include=*.py",
             "--exclude-dir=venv",
             "--exclude-dir=__pycache__",
         ],
         capture_output=True,
         text=True,
-        cwd="/Users/Dev/Vibe-Coding/Apps/Madhav",
+        cwd=str(_PROJECT_ROOT),
     )
     assert result.stdout == "", (
         f"Found VULNERABLE pattern 'birth_params or NATIVE_BIRTH' in:\n{result.stdout}\n"

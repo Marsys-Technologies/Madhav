@@ -1,7 +1,7 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.0
+version: 1.1
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
@@ -11,6 +11,10 @@ purpose: >
 waves_complete: W0
 waves_pending: W1, W2, W3, W4, W5
 changelog:
+  - version: 1.1
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Schema corrected to match §3 spec — added A3/A4/A5 and fix_owner_phase columns; B2-B7 and C2-C5 noted as N/A with deferred rationale.
   - version: 1.0
     date: 2026-06-26
     author: Claude (Cowork)
@@ -39,24 +43,30 @@ Axis B (SQL data checks) deferred to Wave 2 (requires live DB).
 
 ### Wave 0 Findings Table
 
-| asset_id / file | layer | A1 classification | A2 | A6 | A7 | B1 | C1 | VERDICT | severity | fix summary |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `pyjhora_adapter/compute.py` | shared_compute | CHART-INDEPENDENT | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None |
-| `pipeline/orchestrator/birth_params.py` | orchestrator | CORRECTLY-GUARDED | N/A | PASS | WARN | N/A | N/A | **FIX-REQUIRED** | major | "no row" path for non-native must RAISE not return None |
-| `pipeline/writers/panchanga_writer.py` | L1 writer | CHART-INDEPENDENT | FAIL | PASS | PASS | N/A | PASS | **FIX-REQUIRED** | minor | Convert ON CONFLICT DO UPDATE → delete-then-insert; wrap in WriterBase adapter |
-| `routers/pyhora.py` | shared_compute | CHART-INDEPENDENT | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None |
-| `brahmagyan/l0_ephemeris.py` | L0 | CHART-INDEPENDENT | PASS | PASS | PASS | N/A | PASS | **PASS** | none | None |
-| `brahmagyan/ephemeris_routes.py` | L0 router | CHART-INDEPENDENT | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None |
-| `brahmagyan/ganita/engine.py` | L1 engine | CHART-INDEPENDENT | PASS | PASS | PASS | N/A | PASS | **PASS** | none | None |
-| `build_ephemeris_1900_2150.py` | L0 script | NATIVE-ONLY-BY-DESIGN | N/A | PASS | WARN | N/A | N/A | **REVIEW-NEEDED** | minor | Remove hardcoded DB credentials (lines 26–29) |
-| `pipeline/orchestrator/writers/ga_positions.py` | L1 orchestrator | CORRECTLY-GUARDED | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None — reference correct pattern |
-| `pipeline/orchestrator/writers/ga_sensitive.py` | L1 orchestrator | CORRECTLY-GUARDED | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None — reference correct pattern |
-| `pipeline/orchestrator/writers/ga_nakshatra.py` | L1 orchestrator | VULNERABLE (major) | N/A | PASS | PASS | N/A | N/A | **FIX-REQUIRED** | major | Change `ctx.config.get("birth_params", ctx.config)` → `ctx.config.get("birth_params")` |
-| `pipeline/orchestrator/writers/ga_transit_anchors.py` | L1 orchestrator | CHART-INDEPENDENT | PASS | PASS | PASS | N/A | N/A | **PASS** | none | None |
-| `pipeline/orchestrator/writers/ka_graha_sancara.py` | L3 orchestrator | NATIVE-ONLY-BY-DESIGN | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None |
-| `pipeline/orchestrator/writers/ph_rectification/__init__.py` | L4 orchestrator | NATIVE-ONLY-BY-DESIGN | PASS | PASS | PASS | N/A | N/A | **PASS** | none | None |
-| `panchang_engine/jaimini_chara.py` | shared_compute | VULNERABLE | N/A | FAIL | FAIL | N/A | N/A | **FIX-REQUIRED** | blocker | Remove NATIVE_FALLBACK_LONGITUDES / NATIVE_LAGNA_RASHI_INDEX fallbacks; make params required |
-| `routers/jaimini.py` | shared_compute | VULNERABLE | N/A | FAIL | FAIL | N/A | N/A | **FIX-REQUIRED** | blocker | Guard: non-native birth_date must raise HTTPException(400) until ephemeris lookup is wired |
+<!-- Spec schema (§3): asset_id | layer | A1 | A2..A7 | B1..B7 | C1..C5 | VERDICT | severity | fix summary | fix_owner_phase -->
+<!-- Wave 0 note: B2–B7 require live DB query (harness §2 templates); all N/A here. C2–C5 apply to L2+ interpretation assets; all N/A for Wave 0 shared-compute files. Columns included in full for Waves 1–5. -->
+
+| asset_id / file | layer | A1 | A2 | A3 | A4 | A5 | A6 | A7 | B1 | C1 | VERDICT | severity | fix summary | fix_owner_phase |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `pyjhora_adapter/compute.py` | shared_compute | CHART-INDEPENDENT | N/A | N/A | N/A | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None | — |
+| `pipeline/orchestrator/birth_params.py` | orchestrator | CORRECTLY-GUARDED | N/A | N/A | N/A | N/A | PASS | WARN | N/A | N/A | **FIX-REQUIRED** | major | "no row" path for non-native must RAISE not return None | Wave 0 ✅ DONE |
+| `pipeline/writers/panchanga_writer.py` | L1 writer | CHART-INDEPENDENT | FAIL | FAIL | N/A | N/A | PASS | PASS | N/A | PASS | **FIX-REQUIRED** | minor | Convert ON CONFLICT DO UPDATE → delete-then-insert; wrap in WriterBase adapter | Fix Plan (post-W5) |
+| `routers/pyhora.py` | shared_compute | CHART-INDEPENDENT | N/A | N/A | N/A | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None | — |
+| `brahmagyan/l0_ephemeris.py` | L0 | CHART-INDEPENDENT | PASS | N/A | N/A | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None | — |
+| `brahmagyan/ephemeris_routes.py` | L0 router | CHART-INDEPENDENT | N/A | N/A | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None | — |
+| `brahmagyan/ganita/engine.py` | L1 engine | CHART-INDEPENDENT | PASS | N/A | N/A | N/A | PASS | PASS | N/A | PASS | **PASS** | none | None | — |
+| `build_ephemeris_1900_2150.py` | L0 script | NATIVE-ONLY-BY-DESIGN | N/A | N/A | N/A | N/A | PASS | WARN | N/A | N/A | **REVIEW-NEEDED** | minor | Remove hardcoded DB credentials (lines 26–29) | Fix Plan (post-W5) |
+| `pipeline/orchestrator/writers/ga_positions.py` | L1 orchestrator | CORRECTLY-GUARDED | N/A | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None — reference correct pattern | — |
+| `pipeline/orchestrator/writers/ga_sensitive.py` | L1 orchestrator | CORRECTLY-GUARDED | N/A | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None — reference correct pattern | — |
+| `pipeline/orchestrator/writers/ga_nakshatra.py` | L1 orchestrator | VULNERABLE (major) | N/A | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **FIX-REQUIRED** | major | Change `ctx.config.get("birth_params", ctx.config)` → `ctx.config.get("birth_params")` | Wave 2 |
+| `pipeline/orchestrator/writers/ga_transit_anchors.py` | L1 orchestrator | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None | — |
+| `pipeline/orchestrator/writers/ka_graha_sancara.py` | L3 orchestrator | NATIVE-ONLY-BY-DESIGN | N/A | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None | — |
+| `pipeline/orchestrator/writers/ph_rectification/__init__.py` | L4 orchestrator | NATIVE-ONLY-BY-DESIGN | PASS | PASS | N/A | N/A | PASS | PASS | N/A | N/A | **PASS** | none | None | — |
+| `panchang_engine/jaimini_chara.py` | shared_compute | VULNERABLE | N/A | N/A | N/A | N/A | FAIL | FAIL | N/A | N/A | **FIX-REQUIRED** | blocker | Remove NATIVE_FALLBACK_LONGITUDES / NATIVE_LAGNA_RASHI_INDEX fallbacks; make params required | Fix Plan (post-W5) |
+| `routers/jaimini.py` | shared_compute | VULNERABLE | N/A | N/A | N/A | N/A | FAIL | FAIL | N/A | N/A | **FIX-REQUIRED** | blocker | Guard: non-native birth_date must raise HTTPException(400) until ephemeris lookup is wired | Fix Plan (post-W5) |
+
+> **B2–B7 (Axis B data checks):** All Wave 0 files: N/A — static code audit only; SQL data checks require live DB (harness templates §2). Columns will be populated for all assets in Waves 1–5.
+> **C2–C5 (Axis C additional):** All Wave 0 files: N/A — C2–C5 apply to L2+ interpretation assets (classical-source fidelity, FORENSIC cross-check, spot re-derivation). Waves 1–5 will populate these.
 
 ### Wave 0 Summary
 
