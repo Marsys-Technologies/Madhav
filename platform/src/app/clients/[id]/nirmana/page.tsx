@@ -32,8 +32,7 @@ export default async function BuildPage({
   const access = await resolveChartPageAccess(id)
   if (!access) redirect('/login')
 
-  // Build is owner/super_admin only. View-only grantees are explicitly NOT
-  // allowed in (per Unit 3.consult_nav AC.1 — granted chart shows no Build).
+  // Deny access only to users with no permission on this chart.
   if (!access.canBuild) redirect(`/clients/${id}`)
 
   // Prefetch chart metadata server-side so CockpitShell doesn't show "Loading chart…"

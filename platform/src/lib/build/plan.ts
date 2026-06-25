@@ -125,7 +125,7 @@ export function resolveBuildPlan({
   if (action === 'build') {
     candidates = scopeAssets.filter(id => {
       const t = throughput.get(id)
-      return !t || t.state === 'dormant'
+      return !t || t.state === 'dormant' || t.state === 'error'
     })
   } else if (action === 'update') {
     const stale = scopeAssets.filter(id => throughput.get(id)?.state === 'stale')

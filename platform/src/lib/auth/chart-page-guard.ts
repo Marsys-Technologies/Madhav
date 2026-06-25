@@ -47,6 +47,6 @@ export async function resolveChartPageAccess(
     user,
     role,
     permission,
-    canBuild: permission === 'all',
+    canBuild: permission !== 'deny',
   }
 }
