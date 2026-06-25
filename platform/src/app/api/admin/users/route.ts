@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { adminAuth } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { validateUsername } from '@/lib/auth/username'
+import { validatePassword } from '@/lib/auth/password'
 import { res } from '@/lib/errors'
 import { writeAuditLog } from '@/lib/admin/audit'
 
@@ -13,6 +14,7 @@ interface CreateBody {
   email?: string
   username?: string
   role?: 'super_admin' | 'guest'
+  password?: string
 }
 
 export async function GET() {
@@ -54,6 +56,9 @@ export async function POST(request: Request) {
   const email = (body.email ?? '').trim().toLowerCase()
   const username = (body.username ?? '').trim().toLowerCase()
   const role = body.role === 'super_admin' ? 'super_admin' : 'guest'
+  const password = typeof body.password === 'string' && body.password.length > 0
+    ? body.password
+    : undefined
 
   if (!fullName || fullName.length > 100) {
     return res.badRequest('Full name is required.')
@@ -63,6 +68,10 @@ export async function POST(request: Request) {
   }
   const usernameError = validateUsername(username)
   if (usernameError) return res.badRequest(usernameError)
+  if (password !== undefined) {
+    const pwError = validatePassword(password)
+    if (pwError) return res.badRequest(pwError)
+  }
 
   // Duplicate email/username check
   let dupRows: { id: string }[]
@@ -86,6 +95,7 @@ export async function POST(request: Request) {
       email,
       emailVerified: false,
       displayName: fullName,
+      ...(password !== undefined ? { password } : {}),
     })
   } catch (err: unknown) {
     // Firebase "email already exists" can mean either a real duplicate or an
@@ -108,6 +118,7 @@ export async function POST(request: Request) {
             email,
             emailVerified: false,
             displayName: fullName,
+            ...(password !== undefined ? { password } : {}),
           })
         } else {
           return res.conflict('A user with that email already exists.')
@@ -143,6 +154,6 @@ export async function POST(request: Request) {
   // Audit write is outside the Firebase-cleanup try/catch so a missing
   // admin_audit_log table (migration not yet run) never causes a 500 or
   // triggers spurious Firebase user deletion.
-  await writeAuditLog(auth.user.uid, 'create_user', uid, { name: fullName, email, role })
-  return NextResponse.json({ ok: true, user_id: uid, reset_link: resetLink, user: insertedUser })
+  await writeAuditLog(auth.user.uid, 'create_user', uid, { name: fullName, email, role, password_set: Boolean(password) })
+  return NextResponse.json({ ok: true, user_id: uid, reset_link: password ? null : resetLink, user: insertedUser })
 }
