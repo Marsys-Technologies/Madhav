@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import type { BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
@@ -34,6 +35,10 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   const [planData, setPlanData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState<'plan' | 'run' | null>('plan')
   const [error, setError] = useState<string | null>(null)
+  // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
+  // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   // Fetch plan on first render
   useState(() => {
@@ -82,10 +87,12 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
       ? `~${planData.estimated_seconds}s`
       : `~${Math.ceil(planData.estimated_seconds / 60)}m`
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <motion.div
       style={{
-        position: 'fixed', inset: 0, zIndex: 200,
+        position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.7)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
@@ -196,6 +203,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           </>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }

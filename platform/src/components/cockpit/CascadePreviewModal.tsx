@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DUR, EASE } from '@/lib/components/cockpit/v2/motion'
 
@@ -34,6 +35,11 @@ export function CascadePreviewModal({
   isLoading,
   isClearCascade,
 }: CascadePreviewModalProps) {
+  // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
+  // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return
@@ -50,7 +56,9 @@ export function CascadePreviewModal({
 
   const confirmDisabled = isLoading || plan.length === 0
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -89,6 +97,11 @@ export function CascadePreviewModal({
               minWidth: 400,
               maxWidth: 560,
               width: '90vw',
+              // Cap height to the viewport and lay out as a column so the title and
+              // action buttons stay on-screen; the asset list scrolls internally.
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
               fontFamily: 'var(--ui-stack, Inter, sans-serif)',
               boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
             }}
@@ -143,6 +156,11 @@ export function CascadePreviewModal({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 4,
+                  // Scroll the (potentially long) plan list internally so the card
+                  // never grows past the viewport and hides the action buttons.
+                  overflowY: 'auto',
+                  minHeight: 0,
+                  flex: '1 1 auto',
                 }}
               >
                 {/* Root asset */}
@@ -213,7 +231,7 @@ export function CascadePreviewModal({
                   fontFamily: 'var(--ui-stack, Inter, sans-serif)',
                 }}
               >
-                Cancel
+                {isClearCascade ? 'Skip rebuild' : 'Cancel'}
               </button>
               <button
                 onClick={onConfirm}
@@ -237,6 +255,7 @@ export function CascadePreviewModal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

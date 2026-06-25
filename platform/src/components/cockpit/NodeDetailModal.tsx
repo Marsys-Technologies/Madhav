@@ -5,6 +5,9 @@
  * [PHASE-C-03 sub]
  */
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 interface GraphNode {
   id: string
   label: string
@@ -19,7 +22,13 @@ interface Props {
 }
 
 export function NodeDetailModal({ node, onClose }: Props) {
-  return (
+  // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
+  // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
         className="bg-[#0d0c10] border border-[#1a1820] rounded-xl p-6 w-80 shadow-2xl"
@@ -49,6 +58,7 @@ export function NodeDetailModal({ node, onClose }: Props) {
           </div>
         </dl>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
