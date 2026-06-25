@@ -1,0 +1,156 @@
+---
+# Six-Subsystem Build — Live Queue Status
+# Conductor: Sūtradhāra | Updated: 2026-06-17 (continuation)
+# Source-of-truth for which subsystems are in-flight, done, or blocked.
+
+wave: six-subsystem-build
+conductor_started: 2026-06-17
+main_head_at_start: bddb1931  # PR #279 merged (chore/brief-archive)
+nakshatra_branch: feature/bg-nakshatra-l0  # building separately, not a dependency for Wave-1
+
+subsystems:
+
+  yoga:
+    branch: feature/subsystem-yoga
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavYoga
+    gate: 3
+    status: MERGED
+    pr: 284
+    merged_commit: d0aaa693
+    commits:
+      - 6507b321  # Śilpī Gate-1 build (41 tests)
+      - 0b9e86d7  # spec-review gap fixes (has_substeps, FORENSIC test, autocommit)
+    spec_review: SPEC_COMPLIANT_MINOR_GAPS → RESOLVED
+    depends_on: []
+    notes: |
+      MERGED to main at d0aaa693.
+      Gate-3: surgical apply 239,240 → cockpit-lit (operator).
+
+  dignity:
+    branch: feature/subsystem-dignity
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavDignity
+    gate: 3
+    status: MERGED
+    pr: 286
+    merged_commit: 96f6cc1e
+    commits:
+      - 35a8ed43  # Śilpī Gate-1 build (2251 lines, 6 files)
+      - a67fc400  # spec-review gap fixes (6 gaps: citations, type bug, FORENSIC, test)
+      - f61d6a20  # moolatrikona priority fix before exaltation sign check
+    spec_review: SPEC_COMPLIANT_MINOR_GAPS → RESOLVED
+    depends_on: []
+    notes: |
+      MERGED to main at 96f6cc1e.
+      Gate-3: surgical apply 250,251,252 → cockpit-lit (operator).
+
+  prashna_l0:
+    branch: feature/subsystem-prashna
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPrashna
+    gate: 3
+    status: MERGED
+    pr: 283
+    merged_commit: 55d754ba
+    commits:
+      - e6be7384  # count_sql fix (all 5 tables, 36 rows)
+    spec_review: SPEC_COMPLIANT_MINOR_GAPS → RESOLVED
+    depends_on: []
+    scope: bg_prashna_rules ONLY (static horary rules)
+    notes: |
+      MERGED to main at 55d754ba.
+      CRITICAL FIX: Migration 262 used nonexistent display_name column.
+      Fix merged as PR #287 (fix/migration-262-display-name, commit 92c28760).
+      Gate-3: surgical apply 261,262 (corrected) → cockpit-lit (no chart compute).
+
+  transit:
+    branch: feature/subsystem-transit
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavTransit
+    gate: 3
+    status: MERGED
+    pr: 288
+    merged_commit: TBD  # fetching after merge
+    commits:
+      - 1114f7c4  # Śilpī Gate-1 build (7 files, 19 tests)
+      - acbe28c5  # spec-review gap fixes (4 gaps: ON CONFLICT, FORENSIC, dry_run)
+    spec_review: SPEC_COMPLIANT_MINOR_GAPS → RESOLVED
+    depends_on: [dignity]
+    notes: |
+      MERGED to main (PR #288). Transit = ON-DEMAND SERVICE ONLY.
+      Gate-3: surgical apply 266,267,268 → cockpit-lit (operator).
+      FORENSIC: Moon=Aquarius for chart 482012f1.
+
+  astrovastu:
+    branch: feature/subsystem-astrovastu
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavAstrovastu
+    gate: 3
+    status: MERGED
+    pr: 289
+    merged_commit: a72315c7
+    commits:
+      - 5b1784bc  # Śilpī Gate-1 build (9 files, 24 tests)
+      - 85c89b2c  # spec-review gap fixes (5 gaps)
+    spec_review: SPEC_COMPLIANT_MINOR_GAPS → RESOLVED
+    depends_on: [dignity]
+    notes: |
+      MERGED to main at a72315c7.
+      Gate-3: surgical apply 284,285,286,287 → cockpit-lit (operator).
+      FORENSIC: Sun/East=weakened, Saturn/West=strengthened.
+
+  medical:
+    branch: feature/subsystem-medical
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavMedical
+    gate: 3
+    status: MERGED
+    pr: 290
+    merged_commit: 453e194e
+    commits:
+      - 5aeeae54  # Śilpī Gate-1 build (10 files, 38 tests)
+      - 75737782  # spec-review gap fixes (6 gaps: SPEC_VIOLATION → resolved)
+    spec_review: SPEC_VIOLATION → RESOLVED
+    depends_on: [dignity, yoga]
+    notes: |
+      MERGED to main at 453e194e.
+      Gate-3: surgical apply 276,277,278,279,280 → cockpit-lit (operator).
+      FORENSIC: Sun=debilitated→strong, Saturn=exalted→mild, Moon=PurvaBhadrapada→left_side.
+
+  prashna_ga:
+    branch: feature/subsystem-prashna
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPrashna
+    gate: 3
+    status: MERGED
+    pr: 291
+    merged_commit: 2039aa25
+    commits:
+      - 88174749  # Śilpī Gate-1 build (18 tests, migrations 288-291)
+      - 6d3c6433  # spec-review gap fix (CANONICAL_AYANAMSHAS single source)
+      - d4121e54  # RED [3]+[4] fix (cursor safety + empty-positions warning)
+    depends_on: [prashna_l0, yoga, dignity, transit, medical, astrovastu]
+    all_deps_merged: true
+    notes: |
+      Wave-4 LAST — ga_prashna: judgment writer + prashna_charts table.
+      MERGED to main at 2039aa25. 18/18 tests pass.
+      RED [3]+[4] from Vimarśaka red-team resolved in commit d4121e54.
+      Gate-3: ga_prashna_judgment has 0 rows for 482012f1 (expected — natal build).
+
+  yoga_fix:
+    branch: fix/yoga-red-team-forensic-idempotency
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavYoga
+    gate: 3
+    status: MERGED
+    pr: 292
+    merged_commit: b3c9a7fc
+    commits:
+      - 4ad28250  # RED [1]+[2] fix (remove ON CONFLICT; raise AssertionError in FORENSIC)
+    depends_on: []
+    notes: |
+      Fixes 2 RED findings from Vimarśaka red-team on main (yoga was in main at d0aaa693).
+      MERGED to main at b3c9a7fc. 42/42 yoga tests pass.
+
+rails_enforced:
+  - orchestrator-native frozen contract (HALT if change needed)
+  - computed-and-cited HARD GATE (uncited -> floor null+marked, never fabricate)
+  - 3-category split (Transit = on-demand service, nothing stored across time)
+  - reuse-dont-recompute (Sambandha verifies vs merged assets)
+  - surgical migrations only
+  - build via orchestrator POST /api/cockpit/runs for 482012f1 only
+  - epistemic tiers marked (Medical=indication+disclaimer, Astrovastu=remedial-tradition)
+  - validate-as-you-go; seal-layers-once-at-end (NOT now)

@@ -1,0 +1,128 @@
+---
+# Six-Subsystem Autonomous Build — Session Queue
+# Conductor: Sūtradhāra | Mode: AUTONOMOUS_MODE (no human gates) | Authored: 2026-06-10
+# Governs: SIX_SUBSYSTEM_AUTONOMOUS_BUILD_PLAN_v1_0.md + the 6 master plans
+# Pattern: L1 conductor template, extended for PARALLEL multi-worktree dispatch.
+
+wave: six-subsystem-build
+mode: AUTONOMOUS_MODE
+governing_principle: maximal enrichment; computed-and-cited HARD GATE; velocity via dependency-gated parallelism
+canonical_chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+max_fix_attempts: 5
+parallel: true                       # multiple worktrees in flight, gated by depends_on
+human_gates: none                    # fully autonomous; native reviews ONCE at end
+seal_layers: false                   # subsystems validate-as-you-go; layers seal once at the very end
+
+rails:
+  - orchestrator-native (@register WriterBase, FROZEN contract; HALT if a contract change seems needed)
+  - computed-and-cited HARD GATE (uncited datum → floor null+marked, NEVER fabricate)
+  - "STANDING RULE (native 2026-06-10, all 6 subsystems): CANONICAL-computed-and-cited OR floored NULL+reason — NEVER substitute a different-but-computable method that LOOKS like the cited rule. A value computed by a non-canonical method (e.g. graha-yuddha by longitude when the rule is latitude) FAILS the hard gate = fabricating CONFORMANCE. If the actual classical criterion isn't computable from available data, FLOOR the field (NULL+reason) and open a real fix to add the needed data. Pramāṇa verifies each computed value uses the CITED rule's actual method, not a proxy."
+  - "FORMULA WEIGHTS / VERSIONED-FORMULA PARAMETERS are NATIVE judgments, not agent conveniences: an agent must NOT change weights/thresholds for arithmetic tidiness. If a sum needs normalizing, NORMALIZE (preserve relative weights) — do not re-pick. A weight change is a formula-version decision → HALT for native sign-off (do not just document-and-proceed)."
+  - 3-category split: static→L0 ON-CONFLICT, per-chart→L1 delete-then-insert, time-varying→L0 SERVICE (nothing stored across time)
+  - reuse-don't-recompute (Sambandha verifies cross-subsystem refs resolve to MERGED assets, not worktree-only)
+  - surgical migrations only (never deploy.yml-auto / bulk migrate.ts)
+  - build via orchestrator (POST /api/cockpit/runs), not hand-run; only 482012f1; merge-verify before done
+  - epistemic tiers marked (Medical=indication+disclaimer; Astrovastu=remedial-tradition; Prashna=own namespace)
+
+gates_per_subsystem:                 # the charter's Gate 0→3, all by sub-agents
+  - gate0: Nirīkṣaka audit (reuse-map) + Racayitā AUTHORS per-asset briefs from the master plan
+  - gate1: Śilpī builds (L0 ref + L1 writer + migrations + seed + tests), sourcing→bg_texts, cited
+  - gate2: PR → CI green → merge-verify → deploy (surgical migrations)
+  - gate3: build via orchestrator for 482012f1 → Pramāṇa (cited-gate, two-pass, atomic, tiers) + FORENSIC + Sambandha (refs resolve) + cockpit-lit + idempotent double-run
+
+subsystems:
+
+  - id: yoga
+    master_plan: 00_ARCHITECTURE/YOGA_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavYoga
+    branch: feature/subsystem-yoga
+    depends_on: []                   # independent — START IMMEDIATELY (parallel)
+    status: pending
+    assets: [bg_yogas (enrich), ga_yoga/ga_structural-extend, L2 bo_ extensions (flag for sign-off)]
+    acceptance: |
+      Every yoga (all sources incl. 32 Nabhasa) with formation/cancellation/bhanga/strength-gradient/
+      activation/interaction, computed-and-cited (uncited strength=null); per-chart firings with constituent
+      fact_id decomposition; FORENSIC native yogas reproduce; orchestrator-built; cockpit-lit; idempotent.
+
+  - id: dignity
+    master_plan: 00_ARCHITECTURE/DIGNITY_AVASTHA_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavDignity
+    branch: feature/subsystem-dignity
+    depends_on: []                   # independent — START IMMEDIATELY (parallel with yoga)
+    status: pending
+    assets: [bg dignity/avastha refs, ga_condition, L2 node-weight extensions]
+    acceptance: |
+      Unified ga_condition (condition_formula_v1) per graha: dignity across all 16+ vargas + all 5 avasthas
+      + motion/combustion/graha-yuddha + tatkalika/panchadha + condition-trajectory through dashas;
+      computed-and-cited; FORENSIC native dignities reproduce; orchestrator-built; cockpit-lit; idempotent.
+    notes: the CONDITION SUBSTRATE — Transit/Medical/Astrovastu/Yoga-strength reuse it. High-priority parallel.
+
+  - id: prashna_l0
+    master_plan: 00_ARCHITECTURE/PRASHNA_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPrashna
+    branch: feature/subsystem-prashna
+    depends_on: []                   # the STATIC horary rules are independent — START EARLY (parallel)
+    status: pending
+    scope: bg_prashna_rules ONLY (the static rule layer); ga_prashna deferred to prashna_ga (needs all)
+    acceptance: |
+      bg_prashna_rules: all Prashna-Lagna methods + full Tajik horary ruleset + significator map +
+      fructification rules, computed-and-cited into bg_texts. (Static; no chart compute yet.)
+
+  - id: transit
+    master_plan: 00_ARCHITECTURE/TRANSIT_GOCHARA_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavTransit
+    branch: feature/subsystem-transit
+    depends_on: [dignity]            # transit-planet condition; starts when dignity MERGES
+    status: pending
+    assets: [bg_transit_engine (L0 SERVICE - on demand), bg_transit_rules, ga_transit_anchors, L2 extensions]
+    acceptance: |
+      bg_transit_engine = on-demand service (transit_positions_at / next_transit_event / transit_window) —
+      NOTHING stored across time; bg_transit_rules maximal (Gochara both-reckonings, Vedha, Ashtakavarga-
+      Kakshya, all-planet special-cycles, station, every-sensitive-point) cited; ga_transit_anchors small
+      per-chart; service health-probe GREEN; cockpit shows the service + rules + anchors.
+
+  - id: astrovastu
+    master_plan: 00_ARCHITECTURE/ASTROVASTU_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavAstrovastu
+    branch: feature/subsystem-astrovastu
+    depends_on: [dignity]            # weak-planet→direction join; starts when dignity MERGES (parallel w/ transit)
+    status: pending
+    assets: [bg_vastu_directions (16-dir+45-devata mandala+marma), thin L1 join, bo_upaya tiered tradition]
+    acceptance: |
+      bg_vastu_directions complete + cited (also backs Dik-Bala/Disha-Shul); thin per-chart weak-planet→
+      direction join (reuses ga_condition); Astrovastu remedies in bo_upaya marked remedial-tradition tier
+      (NOT deterministic fact). Small; cockpit-lit.
+
+  - id: medical
+    master_plan: 00_ARCHITECTURE/MEDICAL_AYURVEDIC_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavMedical
+    branch: feature/subsystem-medical
+    depends_on: [dignity, yoga]      # body-system strength (condition) + disease-yogas; (+ nakshatra, building separately)
+    status: pending
+    assets: [bg_medical_mappings, ga_medical, L2 health-domain extensions]
+    acceptance: |
+      bg_medical_mappings complete (graha→dosha/dhatu/organ, sign/nakshatra/drekkana/D6→body-part,
+      house→health) cited; ga_medical (dosha-balance, afflicted-parts, disease-yoga firings reusing Yoga,
+      body-system strengths reusing ga_condition); EVERY output INDICATION-tier + not-medical-advice
+      disclaimer; orchestrator-built; cockpit-lit.
+
+  - id: prashna_ga
+    master_plan: 00_ARCHITECTURE/PRASHNA_SUBSYSTEM_MASTER_PLAN_v1_0.md
+    worktree: /Users/Dev/Vibe-Coding/Apps/MadhavPrashna
+    branch: feature/subsystem-prashna
+    depends_on: [prashna_l0, yoga, dignity, transit, medical, astrovastu]  # reuses ALL on the prashna chart
+    status: pending
+    scope: the question-chart entry-point (prashna_charts) + ga_prashna (significators, Ithasala, fructification)
+    acceptance: |
+      prashna_charts entry-point casts a question-moment chart reusing the full pipeline + all subsystems;
+      ga_prashna: Prashna-Lagna (all methods), querent/quesited significators, Ithasala/Eesarpha (will-it-
+      happen), fructification window; prashna namespace ISOLATED from natal facts; orchestrator-built.
+
+  - id: red-team-and-close
+    depends_on: [yoga, dignity, transit, medical, astrovastu, prashna_ga]
+    status: pending
+    role: Vimarśaka + Pramāṇa + Smṛti
+    scope: |
+      IS.8(b) full-instrument red-team across the 6 subsystems; emit SIX_SUBSYSTEM_BUILD_CLOSE.md with
+      per-subsystem evidence (assets, counts, gate results, hard-gate compliance, tier markings). Do NOT seal
+      L0/L1 (layers seal once at the very end of the whole program). Present to native for the SINGLE end-review.
