@@ -257,7 +257,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header }: Props) {
                 chartId={chartId}
                 activeRun={activeRun}
                 substepOverlay={substepOverlay}
-                onRunStarted={refreshRun}
+                onRunStarted={() => { refreshRun(); refetchStats() }}
               />
             </div>
           )

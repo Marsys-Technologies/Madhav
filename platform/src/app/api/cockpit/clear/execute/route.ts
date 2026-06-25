@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
     if (affectedAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
-         SET state='dormant', last_built_at=NULL,
+         SET state='dormant', last_built_at=NULL, rows_written=NULL,
              built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
              last_error=NULL
          WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,

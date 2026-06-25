@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { DUR, EASE } from './motion'
 
@@ -16,11 +17,19 @@ interface LayerSummaryItem {
   asset_count: number
 }
 
+interface LabeledAsset {
+  id: string
+  label: string
+}
+
 interface ClearPreview {
   tables: TableCount[]
   total_rows: number
   affected_assets: string[]
+  not_clearable_assets?: LabeledAsset[]
   downstream_stale_assets: string[]
+  downstream_stale_assets_labeled?: LabeledAsset[]
+  scope_label?: string | null
   preview_hash: string
   requires_typed_confirmation?: string
   layer_summary?: LayerSummaryItem[]
@@ -76,6 +85,11 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
   const [typed, setTyped] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Portal mount guard: document is unavailable during SSR. Mounting to <body>
+  // lifts the modal out of the cockpit's nested stacking contexts so the
+  // constellation SVG (own stacking context) can no longer overpaint it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const config = SCOPE_LABELS[scope]
   const isGlobal = scope === 'global'
@@ -133,7 +147,9 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
     }
   }
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <motion.div
       style={overlay}
       onClick={onClose}
@@ -150,7 +166,7 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
       >
         {/* Title */}
         <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--marsys-error)', marginBottom: '16px' }}>
-          {config.title(scopeTarget)}
+          {config.title(preview.scope_label ?? scopeTarget)}
         </div>
 
         {/* Table / layer breakdown */}
@@ -199,11 +215,20 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           </div>
         )}
 
+        {/* Not-clearable assets: no clear spec resolved — surfaced explicitly, never silently omitted */}
+        {preview.not_clearable_assets && preview.not_clearable_assets.length > 0 && (
+          <div style={{ fontSize: '12px', color: 'rgba(255,200,60,0.75)', marginBottom: '4px' }}>
+            {preview.not_clearable_assets.length} asset{preview.not_clearable_assets.length !== 1 ? 's' : ''} not clearable (no clear spec):{' '}
+            {preview.not_clearable_assets.map(a => a.label).join(', ')}
+          </div>
+        )}
+
         {/* Downstream stale note */}
         {preview.downstream_stale_assets.length > 0 && (
           <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', marginBottom: '12px' }}>
-            Mark {preview.downstream_stale_assets.length} downstream asset{preview.downstream_stale_assets.length !== 1 ? 's' : ''} stale:{' '}
-            {preview.downstream_stale_assets.slice(0, 3).join(', ')}
+            {preview.downstream_stale_assets.length} built asset{preview.downstream_stale_assets.length !== 1 ? 's' : ''} that depend on this will need rebuilding:{' '}
+            {(preview.downstream_stale_assets_labeled ?? preview.downstream_stale_assets.map(id => ({ id, label: id })))
+              .slice(0, 3).map(a => a.label).join(', ')}
             {preview.downstream_stale_assets.length > 3 ? '…' : ''}
           </div>
         )}
@@ -286,6 +311,7 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }

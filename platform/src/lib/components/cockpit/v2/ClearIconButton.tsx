@@ -9,6 +9,7 @@ interface ClearPreview {
   tables: { table: string; rows: number; error?: string }[]
   total_rows: number
   affected_assets: string[]
+  not_clearable_assets?: { id: string; label: string }[]
   downstream_stale_assets: string[]
   preview_hash: string
   requires_typed_confirmation?: string
@@ -77,10 +78,10 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
         body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null, action: 'cascade' }),
       })
       const body = await r.json().catch(() => null)
-      if (r.ok && body?.data?.plan) {
+      if (r.ok && Array.isArray(body?.data?.plan) && body.data.plan.length > 0) {
         setCascadePlan(body.data.plan as string[])
       } else {
-        // Fallback: just show downstream assets as the plan
+        // Fallback: show downstream assets as plan (empty-array response is falsy-equivalent)
         setCascadePlan(downstream)
       }
     } catch {

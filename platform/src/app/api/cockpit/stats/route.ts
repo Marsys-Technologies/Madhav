@@ -114,12 +114,13 @@ async function fetchAllCounts(
       }
     }
 
-    // If this asset has a throughput row WITH a concrete rows_written count, use it — no live DB call.
-    // When rows_written is null (legacy bg_ writers that predate the convention, or a build that
-    // completed without recording rows_written), fall through to the live count_sql below so the
-    // cockpit never shows a blank bar for a built asset.
+    // rows_written shortcut: use the build-recorded count only for global/bg_ assets whose
+    // tables are large and have no chart_id filter (live COUNT would be expensive).
+    // For per_chart assets the count_sql is indexed by chart_id and fast — always run it
+    // live so the header, preview, and stats all read the same on-disk truth and can never
+    // diverge after a partial build or schema migration.
     const tp = throughputMap.get(asset.asset_id)
-    if (tp != null && tp.rows_written != null) {
+    if (tp != null && tp.rows_written != null && asset.scope !== 'per_chart') {
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,
@@ -264,10 +265,11 @@ export async function GET(req: NextRequest) {
       }
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
-      // building/stale/dormant/error/absent — signals the bar to badge "build-state stale".
+      // stale/dormant/error/absent — signals the bar to badge "build-state stale".
+      // Excludes 'building': an actively-building asset with committed substep rows is not stale.
       const buildStateStale = derivedState === 'lit'
         && (base.actual_rows != null && base.actual_rows > 0)
-        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'building' || tp?.state === 'error' || tp == null)
+        && (tp?.state === 'stale' || tp?.state === 'dormant' || tp?.state === 'error' || tp == null)
       return {
         ...base,
         volume: base.actual_rows,
