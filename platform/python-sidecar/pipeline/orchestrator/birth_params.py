@@ -53,11 +53,10 @@ def fetch_birth_params(conn: Any, chart_id: str) -> dict[str, Any] | None:
     ).fetchone()
 
     if not row:
-        logger.warning(
-            "[birth_params] no charts row for chart_id=%s; writer falls back to NATIVE_BIRTH",
-            chart_id,
+        raise ValueError(
+            f"[fetch_birth_params] no charts row found for non-native chart_id={chart_id}; "
+            "insert birth data into public.charts before building"
         )
-        return None
 
     missing = [k for k in _REQUIRED if row.get(k) in (None, "")]
     if missing:
@@ -66,6 +65,28 @@ def fetch_birth_params(conn: Any, chart_id: str) -> dict[str, Any] | None:
             f"{missing}; cannot build a correct chart. Populate public.charts first."
         )
     return _to_birth_params(row)
+
+
+def resolve_birth_params(chart_id: str, birth_params) -> dict | None:
+    """3-way guard: raise for non-native charts with no birth_params.
+
+    - birth_params is truthy (non-None, non-empty dict) → return as-is.
+    - birth_params is falsy AND chart_id == CANONICAL_CHART_ID → return None
+      (signal for writer to use its own hard-coded NATIVE_BIRTH constant).
+    - birth_params is falsy AND chart_id != CANONICAL_CHART_ID → raise ValueError.
+
+    Writers should call this at the top of their run() before any computation
+    that depends on birth_params, replacing any 'birth_params or NATIVE_BIRTH'
+    silent-fallback pattern.
+    """
+    if birth_params:
+        return birth_params
+    if chart_id == CANONICAL_CHART_ID:
+        return None
+    raise ValueError(
+        f"[resolve_birth_params] non-native chart {chart_id} has no usable birth_params"
+        " — refusing NATIVE_BIRTH fallback; ensure birth data is in public.charts before building"
+    )
 
 
 def _to_birth_params(row: dict[str, Any]) -> dict[str, Any]:
