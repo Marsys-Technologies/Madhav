@@ -142,6 +142,7 @@ describe('/api/clients/[id]/grants DELETE', () => {
     mockGetServerUser.mockResolvedValue({ uid: 'admin', email: 'a@test' })
     mockQuery
       .mockResolvedValueOnce({ rows: [{ role: 'super_admin' }] })
+      .mockResolvedValueOnce({ rows: [{ name: 'Test Chart' }] }) // SELECT name FROM charts (audit log)
       .mockResolvedValueOnce({ rows: [{ id: 'g1' }] }) // DELETE … RETURNING
     const { DELETE } = await import('@/app/api/clients/[id]/grants/route')
     const r = await DELETE(makeRequest('DELETE', '?principal_id=guest-1'), { params })
@@ -149,7 +150,7 @@ describe('/api/clients/[id]/grants DELETE', () => {
     const body = await r.json()
     expect(body.revoked).toBe('g1')
 
-    const deleteCall = mockQuery.mock.calls[1]
+    const deleteCall = mockQuery.mock.calls[2]
     expect(deleteCall[0]).toMatch(/DELETE FROM chart_grants/)
     expect(deleteCall[1]).toEqual(['chart-1', 'guest-1'])
   })
@@ -158,6 +159,7 @@ describe('/api/clients/[id]/grants DELETE', () => {
     mockGetServerUser.mockResolvedValue({ uid: 'admin', email: 'a@test' })
     mockQuery
       .mockResolvedValueOnce({ rows: [{ role: 'super_admin' }] })
+      .mockResolvedValueOnce({ rows: [{ name: 'Test Chart' }] }) // SELECT name FROM charts (audit log)
       .mockResolvedValueOnce({ rows: [] })
     const { DELETE } = await import('@/app/api/clients/[id]/grants/route')
     const r = await DELETE(makeRequest('DELETE', '?principal_id=guest-x'), { params })
