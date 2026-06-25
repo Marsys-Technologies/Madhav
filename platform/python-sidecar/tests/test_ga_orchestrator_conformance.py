@@ -235,10 +235,43 @@ def _neuter_positions_compute(monkeypatch):
     return gpw, telem
 
 
+# Minimal NATIVE_BIRTH-shaped dict for non-native build paths in these tests.
+_DUMMY_BIRTH = {
+    "datetime_iso": "1990-06-15T14:30:00",
+    "latitude_deg": 12.97,
+    "longitude_deg": 77.59,
+    "tz_offset_hours": 5.5,
+    "place_name": "Test City",
+    "subject_label": "Test Subject",
+}
+
+
+def test_non_native_without_birth_params_refuses_native_fallback(monkeypatch):
+    """Contamination guard: a non-native chart_id with no birth_params must raise,
+    never silently build the native (the ga_positions contamination bug)."""
+    gpw, _ = _neuter_positions_compute(monkeypatch)
+    conn = _RecordingConn()
+    import pytest
+    with pytest.raises(ValueError, match="refusing to fall back to NATIVE_BIRTH"):
+        gpw.build_ga_positions(chart_id='some-non-native-uuid', build_id='b', conn=conn)
+
+
+def test_native_without_birth_params_uses_native_default(monkeypatch):
+    """The native chart_id is still allowed to use NATIVE_BIRTH when no birth_params
+    are passed (it is the FORENSIC-guarded ground-truth chart)."""
+    gpw, _ = _neuter_positions_compute(monkeypatch)
+    conn = _RecordingConn()
+    # Must NOT raise; native default permitted.
+    gpw.build_ga_positions(chart_id=gpw.CANONICAL_CHART_ID, build_id='b', conn=conn)
+
+
 def test_injected_conn_does_not_commit_close_or_write_throughput(monkeypatch):
     gpw, telem = _neuter_positions_compute(monkeypatch)
     conn = _RecordingConn()
-    gpw.build_ga_positions(chart_id='chart-C', build_id='b', conn=conn)
+    # Non-native chart_id requires explicit birth_params (post-contamination-fix:
+    # the writer refuses to fall back to NATIVE_BIRTH for a non-native chart).
+    gpw.build_ga_positions(chart_id='chart-C', build_id='b', conn=conn,
+                           birth_params=_DUMMY_BIRTH)
     assert conn.commits == 0          # orchestrator owns the commit
     assert conn.closed is False       # caller owns the connection
     assert telem['n'] == 0            # orchestrator is the sole throughput writer
@@ -248,6 +281,7 @@ def test_owned_conn_commits_and_writes_throughput(monkeypatch):
     gpw, telem = _neuter_positions_compute(monkeypatch)
     owned = _RecordingConn()
     monkeypatch.setattr(gpw, '_conn', lambda: owned)   # legacy CLI path opens its own
-    gpw.build_ga_positions(chart_id='chart-C', build_id='b')  # conn=None
+    gpw.build_ga_positions(chart_id='chart-C', build_id='b',  # conn=None
+                           birth_params=_DUMMY_BIRTH)
     assert owned.commits == 1         # legacy path commits
     assert telem['n'] == 1            # legacy path writes throughput

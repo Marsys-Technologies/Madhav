@@ -21,10 +21,17 @@ class GaPositionsWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         from ga_writers.ga_positions_writer import build_ga_positions
 
+        # Pass the per-chart birth params the orchestrator already fetched
+        # (asset_runner → fetch_birth_params → ctx.config['birth_params']).
+        # It is None for the native (writer uses its FORENSIC-guarded NATIVE_BIRTH)
+        # and a real dict for every other chart. Dropping it here was the
+        # contamination bug: build_ga_positions then fell back to NATIVE_BIRTH and
+        # stored the native's positions under a non-native chart_id.
         s = build_ga_positions(
             chart_id=ctx.config['chart_id'],
             build_id=ctx.build_id,
             conn=ctx.db_conn,
+            birth_params=ctx.config.get('birth_params'),
         )
         return WriterResult(
             asset_id=self.asset_id,

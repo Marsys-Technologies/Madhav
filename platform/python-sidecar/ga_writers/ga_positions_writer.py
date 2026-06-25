@@ -429,7 +429,7 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
 # ── Main build function ───────────────────────────────────────────────────────
 
 def build_ga_positions(
-    chart_id: str = CANONICAL_CHART_ID,
+    chart_id: str,
     build_id: str | None = None,
     *,
     conn: Any = None,
@@ -455,7 +455,23 @@ def build_ga_positions(
         build_id = str(uuid.uuid4())
 
     owns_conn = conn is None
-    bp = birth_params or NATIVE_BIRTH
+    # Birth-param resolution (chart-identity safety — see GA_POSITIONS_CONTAMINATION_BRIEF):
+    # NATIVE_BIRTH is ONLY valid for the native chart. For any other chart_id, falling back
+    # to NATIVE_BIRTH stores the native's positions under the wrong chart_id (the contamination
+    # bug). So: explicit birth_params always win; otherwise NATIVE_BIRTH is permitted ONLY when
+    # chart_id is the native; a non-native chart with no birth_params is a loud halt, never a
+    # silent native build.
+    if birth_params is not None:
+        bp = birth_params
+    elif chart_id == CANONICAL_CHART_ID:
+        bp = NATIVE_BIRTH
+    else:
+        raise ValueError(
+            f"[ga_positions_writer] no birth_params for non-native chart_id={chart_id}; "
+            f"refusing to fall back to NATIVE_BIRTH (would contaminate this chart with the "
+            f"native's positions). The orchestrator must pass ctx.config['birth_params'] from "
+            f"fetch_birth_params(); populate public.charts if the row is missing."
+        )
     computed_at = datetime.now(timezone.utc).isoformat()
 
     summary: dict[str, Any] = {
