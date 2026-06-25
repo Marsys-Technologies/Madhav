@@ -22,6 +22,9 @@ vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
 const mockInvokeRunJob = vi.fn()
 vi.mock('@/lib/build/jobInvoker', () => ({ invokeRunJob: mockInvokeRunJob }))
 
+// GCP SDK must be mocked to prevent GoogleAuth from trying to load credentials in CI.
+vi.mock('@/lib/cloud_run/jobs', () => ({ getJobImageTag: vi.fn().mockResolvedValue(null) }))
+
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 
 const USER = { uid: 'user-123' }
