@@ -289,3 +289,87 @@ class TestKNRaoAtmakarakaReckoning:
         assert any("AK divergence" in r.message for r in caplog.records), (
             "AK divergence warning must fire when Rāhu is genuinely highest under reversed reckoning"
         )
+
+
+# ── Esoteric-AK dual-school (Phase 3 of NIRMANA_REMAINING_THREADS) ────────────
+
+class TestEsotericAKDualSchool:
+    """_build_brahma_vishnu_shiva_rows must emit both Parāśarī + KN Rao schools,
+    mirroring karaka_chara_position. Uses same fixtures as TestKNRaoAtmakarakaReckoning."""
+
+    # Same fixtures as TestKNRaoAtmakarakaReckoning so behaviour is cross-checked.
+    _LONGS_RAHU_LATE = {
+        "SUN": 300.0, "MOON": 330.0, "MAR": 45.0, "MER": 27.5,
+        "JUP": 200.0, "VEN": 15.0, "SAT": 100.0,
+        "RAH_MEAN": 28.0,  # knrao_key = 2 → loses to Mercury (27.5)
+        "LAGNA": 12.4,
+    }
+    _LONGS_RAHU_EARLY = {
+        "SUN": 300.0, "MOON": 330.0, "MAR": 45.0, "MER": 27.5,
+        "JUP": 200.0, "VEN": 15.0, "SAT": 100.0,
+        "RAH_MEAN": 1.0,   # knrao_key = 29 → Rāhu is KN Rao AK
+        "LAGNA": 12.4,
+    }
+
+    def _call(self, all_longs):
+        from ga_writers.ga_sensitive_writer import _build_brahma_vishnu_shiva_rows
+        return _build_brahma_vishnu_shiva_rows(
+            all_longs=all_longs,
+            chart_id="test-chart-esoteric",
+            ayanamsha_id="LAHIRI",
+            build_id="test-build",
+            eng_ver="test",
+        )
+
+    def _school_rows(self, rows, school_key, category):
+        return [r for r in rows if r["formula_id"] == school_key and r["fact_category"] == category]
+
+    def _assigned_graha(self, rows, school_key):
+        for r in rows:
+            if (r["formula_id"] == school_key
+                    and r["fact_category"] == "esoteric_point_brahma"
+                    and r["fact_key"] == "assigned_graha"):
+                return r["fact_value_text"]
+        return None
+
+    def test_both_schools_emitted(self):
+        rows = self._call(self._LONGS_RAHU_LATE)
+        formula_ids = {r["formula_id"] for r in rows}
+        assert "parashari_rahu_excluded" in formula_ids
+        assert "kn_rao_rahu_included" in formula_ids
+
+    def test_all_three_categories_per_school(self):
+        rows = self._call(self._LONGS_RAHU_LATE)
+        for school in ("parashari_rahu_excluded", "kn_rao_rahu_included"):
+            for cat in ("esoteric_point_brahma", "esoteric_point_vishnu", "esoteric_point_shiva"):
+                assert self._school_rows(rows, school, cat), (
+                    f"{cat} missing for school={school}"
+                )
+
+    def test_same_ak_both_schools_rahu_late(self):
+        """1c826d5a fixture: Rāhu at 28° loses under KN Rao reckoning → Mercury is AK for both schools."""
+        rows = self._call(self._LONGS_RAHU_LATE)
+        assert self._assigned_graha(rows, "parashari_rahu_excluded") == "Mercury"
+        assert self._assigned_graha(rows, "kn_rao_rahu_included") == "Mercury"
+
+    def test_divergent_ak_rahu_early(self):
+        """Rāhu at 1° (knrao_key=29°): Parāśarī AK = Mercury, KN Rao AK = Rahu → different points."""
+        rows = self._call(self._LONGS_RAHU_EARLY)
+        assert self._assigned_graha(rows, "parashari_rahu_excluded") == "Mercury"
+        assert self._assigned_graha(rows, "kn_rao_rahu_included") == "Rahu"
+
+    def test_esoteric_longitudes_differ_on_divergence(self):
+        """When AK differs between schools, Brahma/Vishnu/Shiva longitudes must differ."""
+        rows = self._call(self._LONGS_RAHU_EARLY)
+
+        def _longitude(school, cat):
+            for r in rows:
+                if (r["formula_id"] == school and r["fact_category"] == cat
+                        and r["fact_key"] == "longitude_sidereal"):
+                    return r["fact_value_num"]
+            return None
+
+        p_brahma = _longitude("parashari_rahu_excluded", "esoteric_point_brahma")
+        k_brahma = _longitude("kn_rao_rahu_included", "esoteric_point_brahma")
+        assert p_brahma is not None and k_brahma is not None
+        assert p_brahma != k_brahma, "Divergent AK must produce different Brahma longitudes"

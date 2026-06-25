@@ -863,16 +863,17 @@ def _build_brahma_vishnu_shiva_rows(
     """
     Categories 13+14+15: esoteric_point_brahma, esoteric_point_vishnu, esoteric_point_shiva
     Jaimini Sutram formulas:
-    Brahma = 5th lord from 5th house Atmakaraka position
-    Vishnu = 9th from Atmakaraka
-    Shiva = Atmakaraka in D9 sign (= Karakamsa)
-    Simplified derivation from AK position.
+    Brahma = 5th from AK trikona (AK + 120°)
+    Vishnu = 9th from AK trikona (AK + 240°)
+    Shiva = AK position
+    Two schools emitted: parashari_rahu_excluded + kn_rao_rahu_included, mirroring
+    karaka_chara_position. KN Rao uses Rāhu reversed-degree reckoning (30 − long%30),
+    identical to _build_karaka_rows. Source: GA_SENSITIVE_AK_DIVERGENCE_INVESTIGATION_v1_0.md §2.3
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
 
-    # Get Atmakaraka — planet with highest degree in sign (excluding Rahu)
-    grahas = {
+    grahas_7 = {
         "Sun": all_longs.get("SUN", 0.0),
         "Moon": all_longs.get("MOON", 0.0),
         "Mars": all_longs.get("MAR", 0.0),
@@ -881,32 +882,45 @@ def _build_brahma_vishnu_shiva_rows(
         "Venus": all_longs.get("VEN", 0.0),
         "Saturn": all_longs.get("SAT", 0.0),
     }
+    rahu_long = all_longs.get("RAH_MEAN", 0.0)
+    grahas_8 = {**grahas_7, "Rahu": rahu_long}
 
-    # Atmakaraka = highest degree in sign among 7 grahas
-    ak_graha = max(grahas, key=lambda g: grahas[g] % 30.0)
-    ak_long = grahas[ak_graha]
+    # Parāśarī AK: highest degree-in-sign among 7 classical grahas (Rahu excluded)
+    parashari_ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
+    parashari_ak_long = grahas_7[parashari_ak_graha]
 
-    brahma_long = (ak_long + 120.0) % 360.0
-    vishnu_long = (ak_long + 240.0) % 360.0
-    shiva_long = ak_long
+    # KN Rao AK: 8 grahas, Rāhu ranked by 30 − (long % 30) — identical to _build_karaka_rows
+    knrao_ak_graha, knrao_ak_long = max(
+        grahas_8.items(),
+        key=lambda item: (30.0 - item[1] % 30.0) if item[0] == "Rahu" else (item[1] % 30.0),
+    )
 
-    for cat, subj, long_val, prov in [
-        ("esoteric_point_brahma", "BRAHMA_POINT", brahma_long,
-         "Jaimini Sutram: Brahma = 5th from Atmakaraka trikona (AK + 120°)"),
-        ("esoteric_point_vishnu", "VISHNU_POINT", vishnu_long,
-         "Jaimini Sutram: Vishnu = 9th from Atmakaraka trikona (AK + 240°)"),
-        ("esoteric_point_shiva", "SHIVA_POINT", shiva_long,
-         "Jaimini Sutram: Shiva = Atmakaraka position"),
+    for school_key, ak_graha, ak_long in [
+        ("parashari_rahu_excluded", parashari_ak_graha, parashari_ak_long),
+        ("kn_rao_rahu_included", knrao_ak_graha, knrao_ak_long),
     ]:
-        r = _long_rows(cat, subj, long_val,
-                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                       formula_provenance_text=prov, tolerance_arcsec=30.0)
-        # Add assigned_graha for Brahma
-        if cat == "esoteric_point_brahma":
-            r.append(_make_row(cat, subj, "assigned_graha", None, ak_graha, None,
-                               chart_id, ayanamsha_id, build_id, eng_ver,
-                               formula_provenance_text=prov, tolerance_arcsec=30.0))
-        rows.extend(r)
+        brahma_long = (ak_long + 120.0) % 360.0
+        vishnu_long = (ak_long + 240.0) % 360.0
+        shiva_long = ak_long
+
+        for cat, subj, long_val, prov in [
+            ("esoteric_point_brahma", "BRAHMA_POINT", brahma_long,
+             f"Jaimini Sutram: Brahma = 5th from AK trikona (AK + 120°), {school_key}"),
+            ("esoteric_point_vishnu", "VISHNU_POINT", vishnu_long,
+             f"Jaimini Sutram: Vishnu = 9th from AK trikona (AK + 240°), {school_key}"),
+            ("esoteric_point_shiva", "SHIVA_POINT", shiva_long,
+             f"Jaimini Sutram: Shiva = AK position, {school_key}"),
+        ]:
+            r = _long_rows(cat, subj, long_val,
+                           chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+                           formula_id=school_key,
+                           formula_provenance_text=prov, tolerance_arcsec=30.0)
+            if cat == "esoteric_point_brahma":
+                r.append(_make_row(cat, subj, "assigned_graha", None, ak_graha, None,
+                                   chart_id, ayanamsha_id, build_id, eng_ver,
+                                   formula_id=school_key,
+                                   formula_provenance_text=prov, tolerance_arcsec=30.0))
+            rows.extend(r)
     return rows
 
 
@@ -1086,7 +1100,6 @@ def _build_karakamsa_rows(
         "Saturn": all_longs.get("SAT", 0.0),
     }
     ak_graha = max(grahas_7, key=lambda g: grahas_7[g] % 30.0)
-    # NOTE: Parāśarī-only by current design — native decision pending (AK reckoning fix §2.3)
     ak_long = grahas_7[ak_graha]
 
     # Karakamsa = D9 sign of AK

@@ -30,7 +30,7 @@ class GaSensitiveWriter(WriterBase):
             CANONICAL_AYANAMSHAS,
         )
         chart_id = ctx.config['chart_id']
-        birth_params = ctx.config.get('birth_params') or {}
+        birth_params = ctx.config.get('birth_params')  # None for native → writer uses NATIVE_BIRTH
         aya_key = step.key.split(':', 1)[1]
         aya_id = CANONICAL_AYANAMSHAS[aya_key]
         prereqs, eng_ver = get_ga_sensitive_context(birth_params, conn=ctx.db_conn)
