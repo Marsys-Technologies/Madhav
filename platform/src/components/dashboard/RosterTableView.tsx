@@ -133,13 +133,26 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
               </td>
               <td className="px-3 py-2">
                 <div className="flex gap-1.5">
-                  <Link
-                    href={`/clients/${c.id}/nirmana`}
-                    className={cn(GHOST_BTN)}
-                    aria-label={`Nirmāṇa (build) — ${c.name}`}
-                  >
-                    Nirmāṇa
-                  </Link>
+                  {c.canBuild ? (
+                    <Link
+                      href={`/clients/${c.id}/nirmana`}
+                      className={cn(GHOST_BTN)}
+                      aria-label={`Nirmāṇa (build) — ${c.name}`}
+                    >
+                      Nirmāṇa
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      aria-label={`Nirmāṇa (build) — ${c.name} — view-only`}
+                      title="View-only — build restricted"
+                      data-testid="nirmana-disabled"
+                      className={cn(GHOST_BTN, 'cursor-not-allowed opacity-35')}
+                    >
+                      Nirmāṇa
+                    </button>
+                  )}
                   <Link
                     href={`/clients/${c.id}/consume`}
                     className={cn(GHOST_BTN)}

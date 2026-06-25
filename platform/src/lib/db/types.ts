@@ -19,6 +19,7 @@ export interface Profile {
 export interface Chart {
   id: string
   client_id: string
+  owner_id: string | null
   native_id: string
   name: string
   birth_date: string

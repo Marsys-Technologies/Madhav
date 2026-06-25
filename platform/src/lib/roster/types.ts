@@ -29,6 +29,8 @@ export interface ChartWithMeta extends Chart {
   lastLayerActivity: string | null
   buildState: ChartBuildState | null
   layerPips: LayerPip[]
+  /** True only when the current user is owner or super_admin — not for view-grantees. */
+  canBuild: boolean
 }
 
 export interface FilterState {

@@ -253,13 +253,26 @@ export function ClientCard({ chart }: Props) {
 
         {/* Action row: Nirmāṇa (build) · Vimarśa (analyze) */}
         <div className="flex gap-2 items-center">
-          <Link
-            href={`/clients/${chart.id}/nirmana`}
-            aria-label={`Nirmāṇa (build) — ${chart.name}`}
-            className={vimarsaPrimary ? GHOST_BTN : FILLED_BTN}
-          >
-            Nirmāṇa
-          </Link>
+          {chart.canBuild ? (
+            <Link
+              href={`/clients/${chart.id}/nirmana`}
+              aria-label={`Nirmāṇa (build) — ${chart.name}`}
+              className={vimarsaPrimary ? GHOST_BTN : FILLED_BTN}
+            >
+              Nirmāṇa
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-label={`Nirmāṇa (build) — ${chart.name} — view-only`}
+              title="View-only — build restricted"
+              data-testid="nirmana-disabled"
+              className={cn(vimarsaPrimary ? GHOST_BTN : FILLED_BTN, 'cursor-not-allowed opacity-35')}
+            >
+              Nirmāṇa
+            </button>
+          )}
           <Link
             href={`/clients/${chart.id}/consume`}
             aria-label={`Vimarśa (analyze) — ${chart.name}`}

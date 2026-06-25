@@ -190,6 +190,8 @@ export default async function DashboardPage() {
     lastLayerActivity: lastActivityMap.get(c.id) ?? null,
     buildState: buildStateMap.get(c.id) ?? null,
     layerPips: layerPipsMap.get(c.id) ?? BRAHMA_LAYER_ORDER.map((layer) => ({ layer, state: 'dim' as const })),
+    // BUILD = owner/super_admin only (Phase 2B). View-grantees get canBuild=false → disabled affordance.
+    canBuild: role === 'super_admin' || c.owner_id === user.uid,
   }))
 
   const stats: RosterStats = {
