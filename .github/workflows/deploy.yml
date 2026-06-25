@@ -333,7 +333,8 @@ jobs:
 
   deploy-sidecar:
     name: Build & Deploy Sidecar
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: [changes]
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.sidecar == 'true')
     runs-on: ubuntu-latest
 
     permissions:
@@ -388,7 +389,8 @@ jobs:
   # here; trigger is GH Actions only. Image is pinned to Artifact Registry
   # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: [changes]
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:
@@ -451,7 +453,8 @@ jobs:
   # Context is the repo root (Dockerfile.pipeline COPYs repo-root paths).
   deploy-pipeline-job:
     name: Build & Deploy Pipeline Job Image
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: [changes]
+    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
