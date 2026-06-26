@@ -119,14 +119,13 @@ def compute_yoga_strength_v1(
 
 def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]:
     """Load all chart_facts rows for (chart_id, ayanamsha_id)."""
-    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+    with conn.cursor() as cur:
         cur.execute("""
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text,
                    fact_value_num, fact_value_jsonb
             FROM chart_facts
             WHERE chart_id = %s AND ayanamsha_id = %s
         """, (chart_id, ayanamsha_id))
-        # conn uses dict_row factory; fetchall() already returns dicts — convert to plain dict.
         return [dict(r) for r in cur.fetchall()]
 
 
