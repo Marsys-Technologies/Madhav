@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
 /**
  * Pub/Sub-backed SSE — creates an ephemeral subscription filtered to chart_id,
  * forwards messages as SSE data frames, cleans up on disconnect.
+ *
+ * Subscription creation is attempted BEFORE the stream opens so that a failure
+ * can fall back to pollingStream immediately (no dead heartbeat-only state).
  */
 async function pubsubStream(
   req: NextRequest,
@@ -51,10 +54,26 @@ async function pubsubStream(
   const suffix = Math.random().toString(36).slice(2, 8)
   const subName = `cockpit-sse-${hostname}-${Date.now()}-${suffix}`
 
-  let subRef: ReturnType<typeof client.subscription> | null = null
+  // Create subscription before opening the stream so a failure falls back cleanly.
+  let sub: ReturnType<typeof client.subscription>
+  try {
+    const topic = client.topic(PUBSUB_TOPIC)
+    const [created] = await topic.createSubscription(subName, {
+      expirationPolicy: { ttl: { seconds: 86400 } },
+      filter: `attributes.chart_id = "${chartId}"`,
+      messageRetentionDuration: { seconds: 600 },
+    })
+    sub = created
+  } catch (err) {
+    console.error(
+      '[sse/PUBSUB_FALLBACK] Pub/Sub subscription creation failed — falling back to 5s pollingStream.' +
+      ' Check GOOGLE_CLOUD_PROJECT + PUBSUB_TOPIC env. Error:', (err as Error).message
+    )
+    return pollingStream(req, chartId, encoder)
+  }
 
   const stream = new ReadableStream({
-    async start(controller) {
+    start(controller) {
       const enqueue = (data: string) => {
         try { controller.enqueue(encoder.encode(data)) } catch { /* closed */ }
       }
@@ -63,43 +82,23 @@ async function pubsubStream(
 
       const heartbeat = setInterval(() => enqueue(`: hb\n\n`), 30_000)
 
-      try {
-        const topic = client.topic(PUBSUB_TOPIC)
-        const [sub] = await topic.createSubscription(subName, {
-          expirationPolicy: { ttl: { seconds: 86400 } },
-          filter: `attributes.chart_id = "${chartId}"`,
-          messageRetentionDuration: { seconds: 600 },
-        })
-        subRef = sub
+      sub.on('message', (message) => {
+        try {
+          enqueue(`data: ${message.data.toString()}\n\n`)
+          message.ack()
+        } catch {
+          message.nack()
+        }
+      })
 
-        sub.on('message', (message) => {
-          try {
-            enqueue(`data: ${message.data.toString()}\n\n`)
-            message.ack()
-          } catch {
-            message.nack()
-          }
-        })
-
-        sub.on('error', (err) => {
-          console.error('[sse] pubsub error:', err.message)
-        })
-      } catch (err) {
-        console.error(
-          '[sse/PUBSUB_FALLBACK] Pub/Sub subscription failed — degrading to heartbeat-only mode.' +
-          ' Build events will NOT stream in real-time; run-completion detection falls back to the' +
-          ' 5s active-run poll in pollingStream. Check GOOGLE_CLOUD_PROJECT + PUBSUB_TOPIC env.' +
-          ' Error:', (err as Error).message
-        )
-        // pollingStream handles completion detection without Pub/Sub (C1-Step1)
-      }
+      sub.on('error', (err) => {
+        console.error('[sse] pubsub error:', err.message)
+      })
 
       req.signal.addEventListener('abort', async () => {
         clearInterval(heartbeat)
-        if (subRef) {
-          subRef.removeAllListeners()
-          await subRef.delete().catch(() => {})
-        }
+        sub.removeAllListeners()
+        await sub.delete().catch(() => {})
         try { controller.close() } catch { /* already closed */ }
       })
     },
