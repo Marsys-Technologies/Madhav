@@ -29306,3 +29306,84 @@ session_close:
 **Nirmāṇa build-tracker hardening is SEALED.** All 10 ACs confirmed (9 live, 1 code-verified). 8 workstream commits + 2 bug fixes on main, CI green, deployed. Continue the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for the L4 onboarding contract and author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **344**. Phase E still GATED. D2 (Pub/Sub SSE) is a follow-up operational item independent of L4.
 
 *End of NIRMANA-TRACKER-HARDENING-VERIFY entry — 2026-06-26.*
+
+---
+
+## D2-PUBSUB-SSE-APPLY — 2026-06-26
+
+```yaml
+session_open:
+  session_id: D2-PUBSUB-SSE-APPLY
+  cowork_thread_name: D2-Pub-Sub-SSE-Apply-2026-06-26
+  opened_on: 2026-06-26
+  role: Claude Code — ops execution (verify → plan → apply → verify)
+  active_layer_campaign: L4 Phala (UNCHANGED — parallel infra-ops track)
+  objective: >
+    Execute the D2 SSE Pub/Sub fix operator sequence: verify pipeline-job SA,
+    plan IAM module, apply (topic + bindings), merge env-var commit, confirm
+    live revision, verify SSE data: frames on non-native chart 1c826d5a-41cb.
+  may_touch:
+    - infra/iam/main.tf
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch:
+    - any chart_* or *_signals data on native 482012f1
+    - platform/python-sidecar/pipeline/orchestrator/**
+  red_team_due: false
+
+session_body:
+  step1_sa_check: amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com (NOT amjis-sidecar-runtime as anticipated)
+  step1_iac_fix: added web_runtime_cockpit_events_publisher IAM block alongside sidecar block (commit 62db0977)
+  step2_plan_blocker: iac-apply.yml GH Actions SA (github-actions@) lacks storage.objects.list on madhav-astrology-tf-state bucket; bootstrap gap — all prior IAM applies were local
+  step2_resolution: ran terraform plan locally (owner creds); 4 adds (topic import → 3 adds + 1 change), 0 destroys
+  step3_apply: cockpit-events topic pre-existed (created out-of-band); imported into TF state; applied 3 IAM bindings + message_retention_duration=600s; success
+  step4_env_deploy: >-
+    CI failed on 62db0977 push — SESSION_LOG heading format regression from 980bac98
+    ("Session:" prefix broke _SESSION_LOG_HEADING_RE colon not in char class) + YAML parse error
+    (embedded double-quotes in list item); fixed in commit 94f33a7f; CI green (schema_validator
+    exit=3, 12 pre-existing tolerated); deploy succeeded to amjis-web-00687-n8x
+  step4_pipeline_job_env: deploy-pipeline-job step path-filtered (python-sidecar/* not changed); applied PUBSUB_TOPIC=cockpit-events + GCP_PROJECT=madhav-astrology directly via gcloud
+  step5_infra_verified:
+    - cockpit-events topic present with 600s retention
+    - amjis-web-runtime roles/pubsub.editor on topic (create/delete/consume subscriptions)
+    - amjis-web-runtime roles/pubsub.publisher on topic (pipeline job SA)
+    - amjis-sidecar-runtime roles/pubsub.publisher on topic (forward-compat)
+    - GOOGLE_CLOUD_PROJECT=madhav-astrology on live revision amjis-web-00687-n8x
+    - PUBSUB_TOPIC=cockpit-events on brahma-build-pipeline-job
+    - PUBSUB_DISABLED absent from amjis-web
+    - pubsubEnabled() will return true on live revision
+  step5_functional_incomplete: browser MCPs (chrome-devtools-mcp + playwright-mcp) both have stale profile locks; no active build run on 1c826d5a-41cb; SSE data-frame verification deferred
+  commits:
+    - 62db0977 fix(iam) add pubsub.publisher binding for amjis-web-runtime SA
+    - 94f33a7f fix(governance) repair SESSION_LOG heading format + YAML for CI
+  side_discoveries:
+    - iac-apply.yml GH Actions SA (github-actions@) needs roles/storage.objectAdmin on madhav-astrology-tf-state + pubsub.admin to run TF via CI; currently all IAM TF is applied locally
+    - 1c826d5a full UUID is 1c826d5a-41cb-4450-b4dc-59d440e5f75a (exists in build_runs, not in charts table)
+    - Most recent build run 472fac36 on 1c826d5a-41cb is in failed state (2026-06-26T11:47Z)
+
+session_close:
+  session_id: D2-PUBSUB-SSE-APPLY
+  closed_on: 2026-06-26
+  outcome: INFRASTRUCTURE APPLIED; functional SSE verification deferred (browser MCP locks)
+  contract_violations: 0
+  open_gates:
+    - SSE data-frame verification: kill browser MCP lock files, trigger build on 1c826d5a-41cb, probe /api/cockpit/sse
+    - iac-apply.yml GH Actions SA bootstrap gap not fixed (low urgency — local apply works)
+  active_layer_campaign_after: L4 Phala (UNCHANGED)
+  current_state_updated: true
+  current_state_version: 5.94
+  session_log_appended: true
+  red_team_pass: "n/a — ops/infra session; no data build, no layer work"
+  next_session_objective: >
+    D2 infra APPLIED and code-path verified. Functional SSE verification:
+    kill chrome-devtools-mcp lock (~/.cache/chrome-devtools-mcp/chrome-profile/SingletonLock)
+    and playwright lock (~/Library/Caches/ms-playwright-mcp/mcp-chrome-783ac21/SingletonLock),
+    then trigger build on 1c826d5a-41cb-4450-b4dc-59d440e5f75a and probe /api/cockpit/sse
+    for data: frames (PASS) vs :hb only (FAIL). After SSE verified, open L4 Phala campaign.
+```
+
+### Next session objective
+
+**D2 Pub/Sub SSE infrastructure is fully applied and code-path verified.** Functional verification (data: frames on the SSE stream) requires triggering a live build. Browser MCP profile locks need to be cleared first (`~/.cache/chrome-devtools-mcp/chrome-profile/SingletonLock` and `~/Library/Caches/ms-playwright-mcp/mcp-chrome-783ac21/SingletonLock`). After clearing, trigger a build on chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a` and confirm the SSE stream shows `data: {...}` event frames. Once confirmed, open the **L4 Phala campaign**.
+
+*End of D2-PUBSUB-SSE-APPLY entry — 2026-06-26.*

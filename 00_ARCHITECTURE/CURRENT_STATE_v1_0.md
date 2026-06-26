@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.91
+version: 5.94
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,48 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.94 (2026-06-26, D2-PUBSUB-SSE-APPLY):
+    **D2 Pub/Sub SSE APPLIED and infrastructure-verified.** Full operator sequence executed:
+    Step 1 — Pipeline job SA confirmed amjis-web-runtime (not amjis-sidecar-runtime as anticipated);
+    added second `google_pubsub_topic_iam_member.web_runtime_cockpit_events_publisher` block alongside sidecar binding.
+    Step 2/3 — iac-apply.yml GH Actions SA lacks GCS state-bucket access (pre-existing bootstrap gap; prior IAM applies were always local);
+    ran TF plan+apply locally (owner creds). cockpit-events topic already existed out-of-band → imported into state.
+    Applied: 3 IAM bindings added + topic message_retention_duration set to 600s (1 change). Zero destroys. Zero unrelated diffs.
+    Step 4 — CI regression from 980bac98 (governance seal commit): SESSION_LOG headings for NIRMANA-TRACKER-HARDENING-PLAN/VERIFY used
+    "## Session: <id> —" format which doesn't match _SESSION_LOG_HEADING_RE regex (colon breaks char class) →
+    session content merged into L3-KALA-AUTONOMOUS body → session_id mismatch violations (exit=2).
+    Also: YAML in NIRMANA-TRACKER-HARDENING-PLAN block had embedded double-quotes in list item → YAMLError → YAML blocks silently skipped → CRITICAL violations.
+    Fixed heading format (strip "Session: " prefix) + YAML quote (commit 94f33a7f). CI green (exit=3, 12 pre-existing tolerated). Deploy triggered.
+    Live revision amjis-web-00687-n8x confirmed: GOOGLE_CLOUD_PROJECT=madhav-astrology, PUBSUB_TOPIC=cockpit-events, PUBSUB_DISABLED absent.
+    Pipeline job env-var step skipped (path filter: python-sidecar/* not changed); applied directly via gcloud:
+    GCP_PROJECT=madhav-astrology, PUBSUB_TOPIC=cockpit-events on brahma-build-pipeline-job.
+    Step 5 — SSE functional verification (data: frames vs heartbeat-only) INCOMPLETE: both browser MCPs (chrome-devtools + playwright)
+    have stale profile locks; no active build run on SAFE chart (1c826d5a-41cb-4450-b4dc-59d440e5f75a).
+    Infrastructure fully verified: topic exists, IAM correct, env vars set on both services, PUBSUB_DISABLED absent, pubsubEnabled()=true.
+    Functional verification requires: kill stale browser lock → navigate to cockpit → trigger build on 1c826d5a-41cb → probe /api/cockpit/sse → confirm data: frames.
+    last_session_id: D2-PUBSUB-SSE-APPLY. predecessor_session: D2-PUBSUB-SSE-FIX.
+    next_session_objective: >
+      "D2 infra APPLIED. Functional SSE verification pending (browser MCP lock issue). To verify:
+      kill chrome-devtools-mcp lock at ~/.cache/chrome-devtools-mcp/chrome-profile and playwright lock at
+      ~/Library/Caches/ms-playwright-mcp/mcp-chrome-783ac21, then trigger build on 1c826d5a-41cb-4450-b4dc-59d440e5f75a
+      and probe /api/cockpit/sse for data: frames (not : hb only). After SSE verified, open L4 Phala campaign.
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-26. file_updated_by_session: D2-PUBSUB-SSE-APPLY.
+  - v5.93 (2026-06-26, D2-PUBSUB-SSE-FIX):
+    **D2 operational gap RESOLVED (IaC-staged, pending operator apply).** SSE was heartbeat-only on BOTH ends, not just the subscriber:
+    subscriber gap = amjis-web missing `GOOGLE_CLOUD_PROJECT` (the only var `pubsubEnabled()` checks; `GCP_PROJECT` was present but is not what the SSE route reads);
+    publisher gap = brahma-build-pipeline-job missing `PUBSUB_TOPIC` → `events.py:18` silently stdout-only on every build event.
+    Fix: deploy.yml +`GOOGLE_CLOUD_PROJECT=madhav-astrology` on amjis-web (~L280); pipeline job +`GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events` (~L494);
+    new IaC topic `google_pubsub_topic.cockpit_events` (messageRetentionDuration 600s, expirationPolicy.ttl 86400s) + `amjis-web-runtime`→roles/pubsub.editor (topic-scoped, ephemeral per-request subs)
+    + `amjis-sidecar-runtime`→roles/pubsub.publisher.
+    OPEN (operator, pre-apply): pipeline job was created out-of-band without --service-account — verify its SA via
+    `gcloud run jobs describe brahma-build-pipeline-job --region=asia-south1 --format='value(template.serviceAccount)'`; if not amjis-sidecar-runtime, bind publisher IAM to the actual SA (noted in infra/iam/main.tf).
+    Operator seq: verify job SA → iac-apply iam plan → apply (creates topic+IAM) → merge (CI sets env vars) → verify SSE streams `data:` frames not `: hb` on 1c826d5a.
+    last_session_id: D2-PUBSUB-SSE-FIX. predecessor_session: NIRMANA-TRACKER-HARDENING-VERIFY.
+    next_session_objective: >
+      "D2 SSE fix IaC-staged — operator runs the apply sequence (verify pipeline-job SA → iac-apply iam → merge → verify data: frames on 1c826d5a).
+      Then open L4 Phala campaign (first migration 344). Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-26. file_updated_by_session: D2-PUBSUB-SSE-FIX.
   - v5.92 (2026-06-26, NIRMANA-TRACKER-HARDENING-VERIFY):
     **Nirmāṇa build-tracker hardening VERIFIED and SEALED. All 10 UI ACs confirmed. 8 hardening commits + 2 bug fixes on main.**
     Verify-then-commit pass: ran vitest + typecheck (PASS), committed 8 workstream commits (A1 DAG upstream-closure + L0 exclusion, A2 catalog reconciliation, A3 retire build_dependencies, C1/C2/C3 SSE refetch + hybrid counts + refresh cache-bust, E1 reconciling clear summary, E2 named cascade tree, B1/B2 per-asset bars + global progress bar, D1 plan-seeded DAG, F1 service/data icons, F2 gold palette). Two additional bug fixes: migration 342 FK constraint reorder (3ce92f34) + /cockpit page builds→build_runs try/catch (596c1118). CI green on all commits. Deployed to Cloud Run (amjis-web-qm256lasva-el.a.run.app). Chrome MCP probe on non-native 1c826d5a confirmed: F1 ✓ (icons), F2 ✓ (gold palette), E1 ✓ (reconciling modal arithmetic), E2 ✓ (named layer-grouped tree), C3 ✓ (no-store cache-bust), B2 ✓ (global progress bar gold), D1 ✓ (ArmillaryGraph plan-seeded beads), B1 ✓ (per-asset bars update). C1/C2 code-verified (useActiveRun poll → onCompleted → refetchStats within 5s; stats API hybrid per_chart always count_sql, global bg_* count_sql on ?mode=live). D2 operational gap: SSE is heartbeat-only (GOOGLE_CLOUD_PROJECT absent from Cloud Run amjis-web env; action item for follow-up — does not block tracker functionality). Native chart 482012f1 NEVER touched.
