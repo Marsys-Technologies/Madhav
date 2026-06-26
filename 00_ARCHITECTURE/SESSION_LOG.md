@@ -29485,3 +29485,100 @@ session_close:
 **D2 SSE fully verified (2026-06-26).** Three writer fixes (psycopg3 ports, bo_samskara scope), `google-cloud-pubsub` dependency, migration 344 applied to prod, Pub/Sub IAM gap fixed (`roles/pubsub.editor`), SSE stream confirmed delivering real `data:` frames on safe chart. Open the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for onboarding contract, author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **345**. Phase E (Abhinandan `1c826d5a`) still GATED on operator.
 
 *End of D2-SSE-VERIFY entry — 2026-06-26.*
+
+---
+
+## S2379-ORPHAN-CLOSE — 2026-06-26
+
+```yaml
+session_open:
+  session_id: S2379-ORPHAN-CLOSE
+  cowork_thread_name: S2379-Orphan-Close-2026-06-26
+  opened_on: 2026-06-26
+  role: Claude Code — recovery + validation + commit of S2379 orphaned working-tree changes
+  active_layer_campaign: L4 Phala (UNCHANGED)
+  objective: >
+    Recover, review, validate and commit the 4 orphaned working-tree files left over from
+    session S2379 (fix/pre-regen-blockers-sweep) when its context ran out. Investigate
+    alleged migration 342 collision and ka_gochara ruling contradiction before committing.
+  may_touch:
+    - 00_ARCHITECTURE/CONDUCTOR/CONDUCTOR_HALT_LOG.md
+    - 00_ARCHITECTURE/CONDUCTOR/l1-ganita-build/CONDUCTOR_HALT_LOG.md
+    - 00_ARCHITECTURE/L5_MIMAMSA_INDEX_v1_0.md
+    - 00_ARCHITECTURE/L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK_v1_0.md
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch:
+    - any chart_* or *_signals data on native 482012f1
+    - any writer/route production logic beyond committing what S2379 already fixed
+  red_team_due: false
+
+session_body:
+  discovery_all_fixes_already_committed: >
+    Investigation showed: ALL substantive S2379 fixes (FIX 1-5) were already on origin/main
+    via commits 4878925b (fix branch) + 31e6d2b7 (merge to main). bo_laksana/drishti/sangati
+    _fetch_dict, ka_jivana_parva/ka_bhavishya_lekha dict_row unpack, ga_yoga_writer,
+    asset_runner backstop, ka_gochara shim, plan/runs route has_writer filter, and
+    supabase migration 342 — ALL committed and pushed. Working-tree diff vs HEAD for these
+    files: 0 bytes.
+  migration_collision_verdict: >
+    NO COLLISION. platform/migrations/342_retire_ga_pyjhora_engine.sql and
+    platform/supabase/migrations/342_asset_registry_writer_flags.sql are in SEPARATE migration
+    dirs serving separate runners. has_writer boolean column confirmed present in prod DB.
+    No renumbering required.
+  ka_gochara_verdict: >
+    CONSISTENT WITH SERVICE RULING. writers/ka_gochara.py is a pure import shim (17 lines):
+    imports KaGocharaWriter from services/ka_gochara/writer.py (re-export only), no WriterBase
+    subclass here, no data-writing. Docstring explicitly states rows_inserted=0. This enables
+    discover_all() to find the service writer so it appears in the DAG — consistent with
+    ka_gochara staying asset_kind=service with live consumers.
+  route_l0_exclusion_check: >
+    plan/route.ts: SELECT FROM asset_registry WHERE has_writer = true — filters all phantom
+    assets (ka_tulana, mi_*, ph_* unimplemented) from build plan. L0 exclusion is handled by
+    bg_* assets having is_active=false on safe chart; the has_writer filter adds a second gate.
+    runs/route.ts: same has_writer filter on build plan assembly. No regress of A1/A3 hardening.
+  asset_runner_check: >
+    asset_runner.py diff: adds chart_id=None backstop (global-scope writers get birth_params={})
+    and writer-aware service routing (ka_graha_sancara, ka_muhurta_seva go through
+    _run_data_writer instead of health-probe path). Both consistent with FIX 3 intent.
+  validation:
+    test_dict_row_fixes: "7/7 PASS (0.03s)"
+    psycopg2_grep: "0 occurrences of execute_values or psycopg2 in writers/"
+    ts_typecheck_errors: "pre-existing in AssetTable.test.tsx + budget.test.ts fixtures; not
+      introduced by S2379 (same errors on clean HEAD)"
+  remaining_orphaned_files:
+    - CONDUCTOR_HALT_LOG.md: 7 FORENSIC_GATE FAIL entries from 16:15 and 16:17 UTC test runs
+      on safe chart 1c826d5a (expected — non-native chart Sun=Aries, Moon=Ashwini, Lagna=Scorpio
+      ≠ FORENSIC anchors for 482012f1)
+    - l1-ganita-build/CONDUCTOR_HALT_LOG.md: 14 additional entries same cause
+    - L5_MIMAMSA_INDEX_v1_0.md: +1 row (entry 5f) for L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK
+    - L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK_v1_0.md: new 99-line Cowork doc confirming
+      ph_pramana→L5 contract holds; staged-honest-ceiling culture already present in L4;
+      degenerate-distribution guard (P6.13/GAP RL-6) catches a SYSTEMIC 6-asset pattern
+  commit: 6d5f759e pushed to origin/main
+
+session_close:
+  session_id: S2379-ORPHAN-CLOSE
+  closed_on: 2026-06-26
+  outcome: COMPLETE — all S2379 orphaned docs committed; all substantive fixes confirmed on main
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L4 Phala (UNCHANGED)
+  current_state_updated: true
+  current_state_version: 5.96
+  session_log_appended: true
+  red_team_pass: "n/a — doc recovery + validation session; no data build"
+  next_session_objective: >
+    S2379 fully closed (2026-06-26). Open L4 Phala campaign:
+    read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract;
+    author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+    First L4 migration starts at 345 (344 consumed by bo_samskara scope fix;
+    supabase/342 consumed by has_writer column).
+    Phase E (Abhinandan 1c826d5a) still GATED on operator.
+```
+
+### Next session objective
+
+**S2379 pre-regen blocker sweep fully closed (2026-06-26).** All code fixes committed. No migration collision. `ka_gochara.py` is a service-consistent import shim. L0-exclusion not regressed. 7/7 tests pass. Orphaned docs committed at `6d5f759e`. Open the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for the onboarding contract, author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **345**. Phase E (Abhinandan `1c826d5a`) still GATED.
+
+*End of S2379-ORPHAN-CLOSE entry — 2026-06-26.*

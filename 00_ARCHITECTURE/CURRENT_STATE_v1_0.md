@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.95
+version: 5.96
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,30 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.96 (2026-06-26, S2379-ORPHAN-CLOSE):
+    **S2379 orphaned docs committed. All substantive pre-regen fixes confirmed on main.**
+    S2379 (fix/pre-regen-blockers-sweep) had merged all code fixes (4878925b + 31e6d2b7) before its context ran out,
+    leaving 4 doc files uncommitted: CONDUCTOR_HALT_LOG (×2, 7 forensic-gate entries from test runs on safe chart),
+    L5_MIMAMSA_INDEX_v1_0.md (entry 5f for crosscheck doc), L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK_v1_0.md (new).
+    Investigation findings:
+    (a) No migration collision — 342_asset_registry_writer_flags.sql lives in supabase/migrations/ (not platform/migrations/);
+        has_writer column confirmed present in prod.
+    (b) ka_gochara.py is a pure import shim (re-exports KaGocharaWriter from services/ka_gochara/writer.py; rows_inserted=0);
+        consistent with the service ruling (live consumer; no data-writing).
+    (c) asset_runner.py / plan/route.ts / runs/route.ts diffs don't regress L0-exclusion or upstream-pull:
+        plan/route.ts filters has_writer=true; runs/route.ts adds same filter; asset_runner adds global-scope backstop
+        (chart_id=None→birth_params={}) and writer-aware service routing — both consistent with A1/A3 hardening.
+    (d) 7/7 test_dict_row_fixes.py: PASS. psycopg2/execute_values: 0 occurrences in writers/.
+    (e) TS typecheck errors are pre-existing (AssetTable.test.tsx + budget.test.ts fixtures); not introduced by S2379.
+    Commit 6d5f759e on main. CI running (exit=3 expected, known residuals).
+    last_session_id: S2379-ORPHAN-CLOSE. predecessor_session: D2-SSE-VERIFY.
+    next_session_objective: >
+      "S2379 fully closed (2026-06-26). Open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      First L4 migration starts at 345 (344 consumed by bo_samskara scope fix;
+      supabase/342 consumed by has_writer column).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-26. file_updated_by_session: S2379-ORPHAN-CLOSE.
   - v5.95 (2026-06-26, D2-SSE-VERIFY):
     **D2 Pub/Sub SSE functionally verified. Writer psycopg3 ports + migration 344 applied to prod.**
     Fix 1 — ka_kala_darshana.py ported off psycopg2 execute_values → psycopg3 cur.executemany (11-col INSERT; was BLOCKER on every build).
