@@ -1283,7 +1283,6 @@ def seed_rules(
                                 rows_skipped_conflict += 1
                         except Exception as e:
                             logger.warning("[rules] insert error chunk %s: %s", chunk["verse_ref"], e)
-                            conn.rollback()
                             continue
 
                     chunks_processed += 1

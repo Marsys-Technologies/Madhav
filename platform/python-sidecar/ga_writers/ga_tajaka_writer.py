@@ -46,6 +46,7 @@ from pyjhora_adapter.positions import compute_positions
 
 from ga_writers._idempotency import replace_prior_tajik_varsha
 from ga_writers._telemetry import update_asset_throughput
+from pipeline.orchestrator.birth_params import resolve_birth_params
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,10 @@ def _sun_longitude(dt_local: datetime, aya_adapter: str,
                    birth_params: dict | None = None) -> float:
     """Sidereal Sun longitude (deg, 0..360) at a local-wallclock instant under
     `aya_adapter`, via the lightweight position engine (no full chart)."""
-    bp = birth_params or NATIVE_BIRTH
+    if birth_params is None:
+        bp = NATIVE_BIRTH
+    else:
+        bp = birth_params
     dob = drik.Date(dt_local.year, dt_local.month, dt_local.day)
     tob = (dt_local.hour, dt_local.minute, dt_local.second)
     jd = utils.julian_day_number(dob, tob)
@@ -203,7 +207,10 @@ def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
     (birth_year + varsha_year - 1) where the sidereal Sun returns to
     `natal_sun_long`. Bisection on the signed Sun-longitude difference within a
     ±2-day bracket around the birthday anniversary (widened to ±5 if needed)."""
-    bp = birth_params or NATIVE_BIRTH
+    if birth_params is None:
+        bp = NATIVE_BIRTH
+    else:
+        bp = birth_params
     iso = str(bp["datetime_iso"])
     cal_year = int(iso[:4]) + varsha_year - 1
     birth_month = int(iso[5:7])
@@ -381,8 +388,9 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     instant_iso = instant.replace(microsecond=0).isoformat() + "+05:30"
     next_iso = next_instant.replace(microsecond=0).isoformat() + "+05:30"
 
+    _birth_base = birth if birth is not None else NATIVE_BIRTH
     annual = compute_chart(
-        {**(birth or NATIVE_BIRTH),
+        {**_birth_base,
          "datetime_iso": instant.replace(microsecond=0).isoformat()},
         ayanamsha_id=aya_adapter,
     )
@@ -541,7 +549,7 @@ def _insert_rows(conn: Any, rows: list[dict]) -> int:
 
 # ── On-demand callable (A7 hybrid: retrieval tool computes a missing varsha) ──
 
-def compute_varsha(chart_id: str = CANONICAL_CHART_ID,
+def compute_varsha(chart_id: str,
                    ayanamsha_id: str = "lahiri_chitrapaksha",
                    varsha_year: int = 1,
                    *, persist: bool = False,
@@ -565,7 +573,7 @@ def compute_varsha(chart_id: str = CANONICAL_CHART_ID,
 
 # ── Build (precompute window) ─────────────────────────────────────────────────
 
-def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
+def build_ga_tajaka(chart_id: str,
                     build_id: str | None = None,
                     *, conn: Any = None,
                     birth_params: dict[str, Any] | None = None,
@@ -590,7 +598,9 @@ def build_ga_tajaka(chart_id: str = CANONICAL_CHART_ID,
     owns_conn = conn is None
     # Per-chart birth (Phase 3B): None → native; a non-native chart passes its
     # birth so the natal + annual (Varṣaphal) charts compute from its real data.
-    bp = birth_params or NATIVE_BIRTH
+    bp = resolve_birth_params(chart_id, birth_params)
+    if bp is None:
+        bp = NATIVE_BIRTH
     birth_year = int(str(bp["datetime_iso"])[:4])
     current_varsha = reference_year - birth_year + 1
     if max_varsha is None:
