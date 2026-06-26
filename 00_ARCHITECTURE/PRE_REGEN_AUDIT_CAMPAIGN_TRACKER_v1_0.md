@@ -1,0 +1,200 @@
+---
+artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
+canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
+version: 1.6
+status: ACTIVE
+authored_by: Claude (Cowork) 2026-06-26
+purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
+related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
+changelog:
+  - version: 1.6
+    date: 2026-06-26
+    change: "Wave 6 COMPLETE — Fix Plan executed; 6/6 MAJOR findings FIXED; 22/22 tests GREEN; deferred minors folded as known-non-blocking; branch ready for merge"
+  - version: 1.5
+    date: 2026-06-26
+    change: "Wave 5 complete — L4 Phala 8 ph_* assets + l4_anchors; 0 blockers, 3 majors, 2 minors; CLEAN A1 across all 8 writers; l4_anchors chart_id guard not implemented"
+  - version: 1.4
+    date: 2026-06-26
+    change: "Wave 4 complete — L3 Kāla 10 ka_* assets audited; 1 blocker + 4 majors + 5 minors; D9 dismissal confirmed with DB data; grep guard widened (Group 8)"
+  - version: 1.3
+    date: 2026-06-26
+    change: "Wave 3 complete — 10 bo_* L2 Bodha assets audited; 0 blockers/majors; 2 FIX-REQUIRED + 4 REVIEW-NEEDED (all minor); 5 cross-cutting findings F-W3-001 through F-W3-005"
+  - version: 1.2
+    date: 2026-06-26
+    change: "Wave 2 complete — 13 ga_* L1 assets audited; contamination fixes committed; 4 majors + 3 minors; 4 carry-over fixes for next session"
+  - version: 1.1
+    date: 2026-06-26
+    change: "Wave 1 complete — 18 bg_* L0 assets audited; 2 majors + 1 minor"
+  - version: 1.0
+    date: 2026-06-26
+    change: "Initial tracker — Wave 0 complete"
+---
+
+# Pre-Regeneration Audit Campaign Tracker
+
+## Campaign status
+
+| Wave | Layer | Scope | Status | Session | Findings register ref |
+|------|-------|-------|--------|---------|----------------------|
+| W0 | Shared compute + harness | pyjhora_adapter/compute.py, birth_params.py, panchanga_writer.py, pyhora.py, L0 files, jaimini engine/router, orchestrator adapters | ✅ COMPLETE | 2026-06-26 | §W0 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W1 | L0 Brahmagyan (18 bg_* assets) | All bg_* orchestrator writers + l0_* source modules | ✅ COMPLETE | 2026-06-26 | §W1 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W2 | L1 Gaṇita (13 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites → all committed; 4 carry-over fixes remain) | ✅ COMPLETE (carry-overs pending) | 2026-06-26 | §W2 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W3 | L2 Bodha (10 bo_* assets) | bo_* writers, synthesis layer | ✅ COMPLETE | 2026-06-26 | §W3 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W4 | L3 Kāla (10 ka_* assets) | ka_* writers | ✅ COMPLETE | 2026-06-26 | §W4 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W5 | L4 Phala (8 ph_* assets + l4_anchors) | ph_* writers + brahmagyan/phala/l4_anchors.py | ✅ COMPLETE | 2026-06-26 | §W5 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W6 | Fix Plan execution | 6 MAJOR fixes (F-W5-001/002/003, F-W4-002/004/005) + proof-tests; deferred minors folded | ✅ COMPLETE | 2026-06-26 | §W6 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+
+## Wave 0 deliverables (complete)
+
+- ✅ `PRE_REGEN_AUDIT_HARNESS_v1_0.md` — SQL query templates B1–B7, A1 grep command, contamination taxonomy, per-asset verdict template
+- ✅ `PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md` — Wave 0 findings: 16 files × 3 axes (11 PASS, 4 FIX-REQUIRED, 1 REVIEW-NEEDED)
+- ✅ `pipeline/orchestrator/birth_params.py` — structural guard: `resolve_birth_params()` helper added; "absent row" non-native path now raises instead of silent-None return
+- ✅ `tests/test_contamination_guard.py` — CI grep gate: 5/6 tests pass; `test_no_raw_native_birth_fallback` intentionally red (7 remaining vulnerable sites in Wave 2 ga_writers scope)
+
+## Wave 0 key findings
+
+### Blockers (2)
+1. `panchang_engine/jaimini_chara.py` — VULNERABLE: `NATIVE_FALLBACK_LONGITUDES` / `NATIVE_LAGNA_RASHI_INDEX` silent fallback for non-native charts
+2. `routers/jaimini.py` — VULNERABLE: `/chara_dasha` endpoints accept non-native birth_date but always pass `planet_longitudes=None` → silently uses native longitudes
+
+### Majors (2)
+3. `pipeline/orchestrator/birth_params.py` — "absent row" path returned None silently for non-native → **FIXED in this wave** (raises ValueError now)
+4. `pipeline/orchestrator/writers/ga_nakshatra.py` — wrong fallback pattern `ctx.config.get("birth_params", ctx.config)` instead of `ctx.config.get("birth_params")` → fix in Wave 2
+
+### Minors (2)
+5. `build_ephemeris_1900_2150.py` — hardcoded DB credentials
+6. `pipeline/writers/panchanga_writer.py` — ON CONFLICT DO UPDATE instead of delete-then-insert (§N.3 deviation)
+
+## Structural guard status
+
+`resolve_birth_params()` is live in `pipeline/orchestrator/birth_params.py`. Every writer should call it instead of inline native-fallback logic. The **9 remaining vulnerable sites** (7 or-fallback assignments + 2 signature defaults in ga_* writers) will be remediated in Wave 2. The CI test (`test_contamination_guard.py`) will stay red until they are all fixed.
+
+## Wave 1 key findings
+
+### Majors (2)
+1. `l0_rules.py` line 1286 — `conn.rollback()` in exception handler (A3: FROZEN orchestrator contract violation; silently unwinds orchestrator transaction if bg_rules raises during a multi-asset build)
+2. `l0_transit.py` — Venus gochara rules missing 6 of 9 BPHS Ch.29 favourable houses (C1 fail; L2 Bodha Venus transit synthesis will be materially incomplete)
+
+### Minors (1)
+3. `bg_dignity_reference` — no asset_registry entry in any migration; cockpit stats route cannot count this asset's rows (B1 fail)
+
+### Review-Needed (non-blocking, 1)
+4. `bg_remedies` — count_sql for brahma_remedy_corpus not confirmed in examined migrations; verify separately
+
+### Clean (15/18)
+All 18 bg_* assets pass A1 (CHART-INDEPENDENT — zero contamination risk). Zero generative LLM use anywhere in L0. §N.4 Deterministic-First upheld.
+
+## Gate: regeneration pre-conditions
+
+Regeneration (all layers, all charts) requires ALL of the following:
+- [ ] All BLOCKER + MAJOR code findings fixed, committed, CI green
+- [ ] Contamination structural guard live (✅ resolve_birth_params helper done)
+- [ ] Grep CI test passes (currently 9 FAIL sites — Wave 2 must fix them)
+- [ ] All waves W2–W5 findings registers complete and native-reviewed
+- [ ] Fix Plan authored from consolidated register
+- [ ] main == prod verified (web + job image == main HEAD, all fixes ancestral)
+
+## Wave 2 key findings
+
+### Blocker (pre-regen, 1)
+1. `ga_vargas_writer.py` C1 — D9 Navamsha uses wrong formula (`_compute_general_varga()` instead of `_compute_divisional_sign()` trikona-start); incorrect varga assignments corrupt all downstream Bodha varga analysis
+
+### Majors (3)
+2. `ga_dashas_writer.py` A1 — NATIVE_BIRTH via local alias constants (`BIRTH_IST/LAT/LON`) — evades grep guard; functionally identical contamination class; `resolve_birth_params()` not called before `_get_moon_position()`
+3. `ga_tajaka_writer.py` A1 — `compute_varsha()` unconditional `{**NATIVE_BIRTH}` hardcoding (unresolved after fix set 1; non-or-fallback form)
+4. `ga_vargas_writer.py` A2/A3 — INVARIANT sentinel row accretion + telemetry violation in source module
+
+### Minors (3)
+5. `ga_sade_sati_writer.py` A3 — commit + asset_throughput in source module (guarded on orchestrator path)
+6. `ga_yoga_writer.py` A7/C1 — silent per-row error swallowing + subject-norm coupling with no guard
+7. `brahmagyan/ganita/engine.py` A7 — `write_positions()` returns phantom count
+
+### Contamination carry-overs (extend grep guard)
+The Wave 2 grep guard is green BUT `ga_dashas_writer.py` uses local-alias NATIVE_BIRTH constants. Widen `test_no_raw_native_birth_fallback` to also catch `or BIRTH_IST`, `or BIRTH_LAT`, `or BIRTH_LON` variants.
+
+## Wave 3 key findings
+
+### Blockers: none
+### Majors: none
+
+### FIX-REQUIRED (minor, 2)
+1. `bo_bimba` A4/A5 — msr_signal_id NULL for graha nodes; derivation chain (CGM node → MSR signal → L1 fact) cannot be traversed
+2. `bo_drishti` A5/C1 — QUESTION_TYPE_CONFIG domain mappings uncited (bare code comments, no bg_rules FK or classical text reference)
+
+### REVIEW-NEEDED (minor, 4)
+3. `bo_karanajala` A7 — silent empty-upstream degradation; bodha_contradictions ownership split across writers confusing
+4. `bo_samskara` A7 — empty-signals silent skip
+5. `bo_upaya` A5 — constituent_facts_array never populated on bodha_rm_resonances (COUPLED to F-W3-003/F-W3-004)
+6. `bo_pramana_mapa` A5/A7 — trap2 hardcoded 0 (governance theater); MV refresh failures silently swallowed
+
+### PASS (4)
+bo_laksana, bo_sangati, bo_samvada, bo_anveshana
+
+### Clean facts
+All 10 bo_* assets: A1 CHART-INDEPENDENT-of-birth (zero contamination risk), A3 PASS (FROZEN contract), A2 PASS (L2 delete-then-insert idempotency), A6 PASS (no generative LLM at build time).
+
+## Next session
+
+Wave 4: L3 Kāla (ka_* writers) + L4 Phala (ph_* writers). HIGH-RISK for A1 contamination — ka_* assets take birth-time inputs (temporal computations), like ga_dashas/ga_tajaka escapes. Expect grep-invisible contamination. Read each writer by hand (not grep-trust). After Wave 4: Wave 5 cross-wave synthesis + Fix Plan.
+
+Wave 3 fixes (F-W3-001 through F-W3-005) are non-blocking for Wave 4 — can be executed alongside or after. F-W3-003 (bo_upaya constituent_facts_array) is the highest-priority fix as it corrupts the governance metric in bo_pramana_mapa.
+
+## Wave 4 key findings
+
+### D9 data-confirm: CONFIRMED
+F-W2-001 dismissal validated with actual DB data. 3 planets across all 3 modalities match both formula and classical trikona-start rule. D9 closed.
+
+### Blockers (1, FIXED)
+1. `ka_yojaka` A3 — `psycopg2.extras.execute_values` against psycopg3 orchestrator connection → runtime crash on any build. FIXED.
+
+### Majors (4, 2 fixed)
+2. `ka_sangam` C1 — `EnrichmentContext` never populated; U3 currents (vedha/ashtakavarga/tajika/school_consensus) silently dead; convergence scores systematically biased. OPEN.
+3. `ka_bhavishya_lekha` C1/ethical — domain rotation for unclassified signals → false-precision labels (career/health/etc.). FIXED → 'general'.
+4. `ka_vighnakara` C1 — permanent gandanta/papakartari stubs; expired Saturn transit window updated to 2030-2032 placeholder. Partially fixed.
+5. `ka_dasha_kala` A3 — conn.execute() psycopg3 API mismatch; chart_id ignored in run(). OPEN.
+
+### Minors / REVIEW-NEEDED (5)
+6. `ka_kalasutra` A4/A5 — silent L2 dependency gap; window-width rules uncited
+7. `ka_graha_sancara` — dead _BIRTH_LAT/_BIRTH_LON removed. FIXED.
+8. `ka_jivana_parva` — `else 1984` NULL-guard removed. FIXED.
+9. `ka_muhurta_seva` — stale NATIVE_ACTIVE_DASHA_LORD constant
+10. `ka_kala_darshana` — minor A5/A7 notes
+
+### A1 contamination result
+**Zero VULNERABLE sites across all 10 ka_* writers.** New evasion shape (`else/return 1984`) found, fixed, grep guard widened (Group 8).
+
+## Next session (after Wave 4)
+
+Wave 5: L4 Phala (8 ph_* writers + l4_anchors classification). Same high-risk contamination class. After Wave 5: Wave 6 cross-wave synthesis + Fix Plan.
+
+Wave 5 scope note: `ph_rectification` listed in campaign plan does not exist as a writer file — verify asset_registry and adjust scope at audit time.
+
+## Wave 5 key findings
+
+### A1 contamination result: CLEAN
+Zero VULNERABLE sites across all 8 ph_* writers. No new evasion shapes. l4_anchors is NATIVE-ONLY-BY-DESIGN but the documented chart_id guard is not implemented — de-native candidate.
+
+### Blockers: 0
+
+### Majors (3, all OPEN)
+1. `l4_anchors` — `query_phala_anchors()` lacks chart_id guard; returns native anchors for any chart_id
+2. `l4_anchors` — `strip_lel_citations()` regex gap; "LEL EVT.2019" leaks into public API notes field
+3. `ph_muhurta` — `ACTION_GRAHA_MAP` bakes native Aries-lagna 10th-lord (Saturn) as module constant; wrong for all non-native charts
+
+### Minors/cosmetic (2)
+4. `ph_phaladesa` A7 — silent zero-count domain declarations if phala_anchors load fails
+5. `ph_pramana` — lel_entry_jsonb stores raw event text without strip guard (internal only)
+
+### Exemplary implementations
+- ph_sodhana D43a leakage firewall, ph_pramana D5 boundary gate, ph_nimitta SPINE-FIRST gate — all halt-correctly on violation
+
+## Campaign status
+
+All audit waves (W0–W5) covering L0 Brahmagyan through L4 Phala are COMPLETE.
+
+Wave 6 (cross-wave synthesis + Fix Plan) is next: consolidate all open blocker/major CODE findings into the Fix Plan artifact for native review before any code fix or rebuild begins.
+
+Open findings requiring Fix Plan attention:
+- F-W5-001, F-W5-002, F-W5-003 (major, L4)
+- F-W4-002, F-W4-004, F-W4-005 (major, L3)
+- (All L0/L1/L2 blockers/majors from Waves 0–3 already documented in §W0–§W3)

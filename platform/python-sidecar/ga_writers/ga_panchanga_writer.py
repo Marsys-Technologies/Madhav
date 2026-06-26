@@ -34,6 +34,7 @@ from typing import Any, Optional
 
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
+from pipeline.orchestrator.birth_params import resolve_birth_params
 
 logger = logging.getLogger(__name__)
 
@@ -1244,7 +1245,9 @@ def build_ga_panchanga(
     from contextlib import nullcontext
     owns_conn = conn is None
 
-    bp = birth_params or NATIVE_BIRTH
+    bp = resolve_birth_params(chart_id, birth_params)
+    if bp is None:
+        bp = NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
 
     summary: dict[str, Any] = {

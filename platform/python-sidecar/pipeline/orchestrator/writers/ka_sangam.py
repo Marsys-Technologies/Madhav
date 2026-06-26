@@ -21,6 +21,7 @@ from services.ka_sangam.engine import (
     confidence_label,
     independent_current_count,
     _date_to_jd,
+    EnrichmentContext,
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
@@ -150,6 +151,9 @@ class KaSangamWriter(WriterBase):
         self._pred_dicts = pred_dicts
         self._lt_preds   = pred_dicts[:_LIFETIME_MAX_PREDICATES]
 
+        # Build U3 enrichment context (C7/C11/C12/C13 currents)
+        self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
+
         # Birth year for lifetime horizon
         self._birth_year = self._derive_birth_year(conn, chart_id)
 
@@ -195,6 +199,7 @@ class KaSangamWriter(WriterBase):
             gochara_service   = self._gs,
             chart_id          = chart_id,
             keepalive         = _keepalive,
+            enrichment_context= self._enrichment_ctx,
         )
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
@@ -238,6 +243,7 @@ class KaSangamWriter(WriterBase):
             gochara_service   = self._gs,
             chart_id          = chart_id,
             keepalive         = _keepalive,
+            enrichment_context= self._enrichment_ctx,
         )
         deduped = self._dedup(windows)
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
@@ -253,11 +259,12 @@ class KaSangamWriter(WriterBase):
 
     def _generate_windows(self, pred_dicts, horizon_start, horizon_end,
                           dasha_kala_service, gochara_service, chart_id,
-                          keepalive=None) -> list[dict]:
+                          keepalive=None, enrichment_context=None) -> list[dict]:
         """Run Mode A + Mode B for every predicate over [horizon_start, horizon_end].
 
         keepalive: optional callable issued after each mode call to prevent
         idle-in-transaction timeout on long-running Swiss Ephemeris scans.
+        enrichment_context: EnrichmentContext for C7/C11/C12/C13 current scoring.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
@@ -273,6 +280,7 @@ class KaSangamWriter(WriterBase):
                     gochara_service=gochara_service,
                     muhurta_service=None,
                     chart_id=chart_id,
+                    enrichment_context=enrichment_context,
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
@@ -286,6 +294,7 @@ class KaSangamWriter(WriterBase):
                     horizon_end_jd=horizon_end_jd,
                     gochara_service=gochara_service,
                     magnitude_threshold=0.3,
+                    enrichment_context=enrichment_context,
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode B failed for signal %s: %s", sig_id, exc)
@@ -293,8 +302,8 @@ class KaSangamWriter(WriterBase):
                 keepalive()
         return all_windows
 
-    def _derive_birth_year(self, conn, chart_id: str) -> int:
-        """Derive birth year from the earliest MD start in chart_dashas."""
+    def _derive_birth_year(self, conn, chart_id: str) -> int | None:
+        """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
@@ -303,7 +312,7 @@ class KaSangamWriter(WriterBase):
             row = cur.fetchone()
             if row and row['birth_date']:
                 return row['birth_date'].year
-        return 1984
+        return None
 
     @staticmethod
     def _dedup(all_windows: list[dict]) -> list[dict]:
@@ -382,6 +391,134 @@ class KaSangamWriter(WriterBase):
                 )
                 rows_inserted += 1
         return rows_inserted
+
+    def _build_enrichment_context(self, conn, chart_id: str) -> 'EnrichmentContext':
+        """Pre-fetch U3 enrichment data from DB for C7/C11/C12/C13 currents.
+
+        All fetches are SAVEPOINT-guarded soft dependencies — partial context
+        is better than empty. Returns EnrichmentContext.empty() if all fail.
+        """
+        ashtakavarga_bindu: dict[str, dict[int, int]] = {}
+        vedha_rules: list[dict] = []
+        tajika_year_lords: list[dict] = []
+        # school_consensus_by_domain: pre-U4 default — not yet built; stays empty
+
+        # C7: ashtakavarga bindus from chart_facts
+        # Schema: fact_category='ashtakavarga_bindu', fact_subject='<Planet>-HOUSE_<N>',
+        # fact_key='bindus', fact_value_num=bindu_count, ayanamsha_id='lahiri'
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_ashtak")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_subject, fact_value_num
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND fact_category = 'ashtakavarga_bindu'
+                      AND ayanamsha_id = 'lahiri'
+                      AND fact_key = 'bindus'
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    # fact_subject like 'Sun-HOUSE_3' or 'SARVA-HOUSE_3'
+                    subj = row[0] or ''
+                    if '-HOUSE_' not in subj:
+                        continue
+                    parts = subj.rsplit('-HOUSE_', 1)
+                    if len(parts) != 2:
+                        continue
+                    planet, house_str = parts
+                    try:
+                        house_num = int(house_str)
+                        bindus = int(row[1]) if row[1] is not None else 0
+                        if planet not in ashtakavarga_bindu:
+                            ashtakavarga_bindu[planet] = {}
+                        ashtakavarga_bindu[planet][house_num] = bindus
+                    except (ValueError, TypeError):
+                        continue
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_ashtak")
+        except Exception as exc:
+            logger.debug("ka_sangam: ashtakavarga fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_ashtak")
+            except Exception:
+                pass
+
+        # C11: vedha rules from bg_transit_rules
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_vedha")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT graha, transit_to_house, vedha_house
+                    FROM bg_transit_rules
+                    WHERE rule_type = 'vedha'
+                    """
+                )
+                for row in cur.fetchall():
+                    vedha_rules.append({
+                        'graha': row[0],
+                        'transit_to_house': row[1],
+                        'vedha_house': row[2],
+                    })
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_vedha")
+        except Exception as exc:
+            logger.debug("ka_sangam: vedha_rules fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_vedha")
+            except Exception:
+                pass
+
+        # C12: tajika year lords (may not exist yet — pre-L3 builds)
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_enrichment_tajika")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT varsha_year, varshesha, muntha
+                    FROM l1_tajik_varsha_year_lords
+                    WHERE chart_id = %s
+                    ORDER BY varsha_year
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    tajika_year_lords.append({
+                        'varsha_year': row[0],
+                        'varshesha': row[1],
+                        'muntha': row[2],
+                    })
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_enrichment_tajika")
+        except Exception as exc:
+            logger.debug("ka_sangam: tajika_year_lords fetch skipped: %s", exc)
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_enrichment_tajika")
+            except Exception:
+                pass
+
+        if ashtakavarga_bindu or vedha_rules or tajika_year_lords:
+            logger.info(
+                "ka_sangam: EnrichmentContext built — ashtak_planets=%d, vedha_rules=%d, tajika_years=%d",
+                len(ashtakavarga_bindu), len(vedha_rules), len(tajika_year_lords),
+            )
+        else:
+            logger.warning("ka_sangam: EnrichmentContext is empty — C7/C11/C12 will score 0.0")
+
+        return EnrichmentContext(
+            ashtakavarga_bindu=ashtakavarga_bindu if ashtakavarga_bindu else None,
+            vedha_rules=vedha_rules if vedha_rules else None,
+            tajika_year_lords=tajika_year_lords if tajika_year_lords else None,
+        )
 
     def _build_house_lord_map(self, conn, chart_id: str) -> dict[int, str]:
         """

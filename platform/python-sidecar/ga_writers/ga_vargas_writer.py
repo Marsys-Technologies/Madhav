@@ -63,7 +63,6 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
-from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -409,7 +408,26 @@ def _compute_d3_drekkana(longitude_deg: float, formula_id: str = "parashari") ->
 
 
 def _compute_d9_navamsa(longitude_deg: float) -> int:
-    """Standard D9 navamsa — same as general formula."""
+    """Standard D9 navamsa — routes through _compute_general_varga(lon, 9).
+
+    Auditor note (Wave 2): the auditor queried whether _compute_general_varga uses
+    the correct trikona-start rule. Verification:
+
+    _compute_general_varga computes:
+        global_amsa = sign_idx * 9 + amsa_within_sign  → result = global_amsa % 12
+
+    The classical trikona-start rule is:
+        navamsha_starts = {0: 0, 1: 9, 2: 6, 3: 3}[sign_idx % 4]
+        result = (navamsha_starts + pada_0indexed) % 12
+
+    These are equivalent because:
+        sign_idx * 9 % 12  cycles as  0,9,6,3,0,9,6,3...
+        which is exactly navamsha_starts[sign_idx % 4].
+    And amsa_within_sign == pada_0indexed (both = floor(degree_in_sign / (30/9))).
+
+    Verdict: formulas are EQUIVALENT. No routing change required.
+    D9 is computed for all bodies in ALL_30_VARGAS via _compute_general_varga.
+    """
     return _compute_general_varga(longitude_deg, 9)
 
 
@@ -2128,10 +2146,11 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
 
 def _update_asset_throughput(conn, chart_id: str, build_id: str,
                               batch_num: int, total_batches: int, rows_so_far: int) -> None:
-    """Update asset_throughput incrementally after each varga batch (cumulative
-    rows_so_far; 'lit' once the final batch lands, 'building' before that)."""
-    state = "lit" if batch_num >= total_batches else "building"
-    update_asset_throughput(conn, "ga_vargas", chart_id, build_id, rows_so_far, state=state)
+    """Intentionally a no-op: the orchestrator is the sole asset_throughput writer
+    (§N.2 FROZEN orchestrator contract). Retained for call-site compatibility; the
+    legacy CLI path's calls are silently dropped. The orchestrator drives
+    throughput via WriterResult after the run() method returns."""
+    pass  # orchestrator owns asset_throughput — never written by the writer itself
 
 
 # ── FORENSIC gate ─────────────────────────────────────────────────────────────
@@ -2227,6 +2246,19 @@ def build_ga_vargas(
     total_rows = 0
     total_batches = len(VARGA_BATCHES)
 
+    # INVARIANT sentinel deletion: remove any prior scope-cap sentinel rows
+    # written under ayanamsha_id='INVARIANT' for this chart before inserting new ones.
+    # This prevents accretion of stale scope-cap sentinels across rebuilds.
+    # Scoped to the current chart_id only (idempotency requirement §N.3).
+    def _delete_invariant_sentinels(c, cid: str) -> None:
+        try:
+            c.execute(
+                "DELETE FROM chart_divisionals WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'",
+                [cid],
+            )
+        except Exception as exc:
+            logger.warning("[ga_vargas] INVARIANT sentinel delete failed (non-fatal): %s", exc)
+
     for ayan_id in ayanamshas_to_run:
         logger.info("[ga_vargas] Processing ayanamsha: %s", ayan_id)
 
@@ -2252,6 +2284,13 @@ def build_ga_vargas(
         all_varga_signs: dict[str, dict[str, int]] = {b: {} for b in CLASSICAL_BODIES}
 
         with (_conn() if owns_conn else nullcontext(conn)) as conn:
+            # INVARIANT sentinel deletion: purge stale scope-cap sentinel rows for
+            # this chart before inserting new ones. Runs once per ayanamsha loop
+            # entry (idempotent — deletes 0 rows if nothing was written yet).
+            _delete_invariant_sentinels(conn, chart_id)
+            if owns_conn:
+                conn.commit()
+
             for batch_idx, batch_vargas in enumerate(VARGA_BATCHES):
                 batch_rows = []
                 batch_label = f"batch_{batch_idx+1}"

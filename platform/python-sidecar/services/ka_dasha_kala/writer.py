@@ -88,16 +88,17 @@ def _update_registry_health(conn, ok: bool, detail: str) -> None:
     """Update asset_registry service_health + selftest_detail for ka_dasha_kala."""
     health = "healthy" if ok else "degraded"
     now = datetime.now(timezone.utc)
-    conn.execute(
-        """
-        UPDATE asset_registry
-        SET service_health    = %s,
-            last_selftest_at  = %s,
-            selftest_detail   = %s
-        WHERE asset_id = 'ka_dasha_kala'
-        """,
-        [health, now, detail],
-    )
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE asset_registry
+            SET service_health    = %s,
+                last_selftest_at  = %s,
+                selftest_detail   = %s
+            WHERE asset_id = 'ka_dasha_kala'
+            """,
+            [health, now, detail],
+        )
     logger.info("[ka_dasha_kala writer] service_health=%s", health)
 
 
@@ -128,6 +129,14 @@ def _build_writer_class():
                     asset_id=self.asset_id,
                     rows_inserted=0,
                     notes="dry_run=True",
+                )
+
+            build_chart_id = ctx.config.get('chart_id', '')
+            if build_chart_id and build_chart_id != _CANONICAL_CHART_ID:
+                logger.warning(
+                    "[ka_dasha_kala writer] build chart_id=%s is not the canonical chart; "
+                    "self-test runs against %s and health reflects only that chart",
+                    build_chart_id, _CANONICAL_CHART_ID,
                 )
 
             ok, detail = _run_selftest(conn)

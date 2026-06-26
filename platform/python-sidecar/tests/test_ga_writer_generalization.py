@@ -3,7 +3,8 @@
 Proves:
   A. birth_params provider: native → None (writer uses NATIVE_BIRTH); a non-native
      charts row → NATIVE_BIRTH-shaped dict (tz from IANA timezone_id); missing data
-     → loud ValueError (never a silently-wrong chart); no row → None.
+     → loud ValueError (never a silently-wrong chart); no row → ValueError (non-native
+     chart with no charts row raises rather than silently falling back to native).
   B. ga_dashas birth threading: _birth_jd_utc / _get_moon_position honor an injected
      birth; the native default is unchanged.
   C. FORENSIC native-guard: the native-anchored gate halts for the NATIVE chart but
@@ -68,8 +69,10 @@ def test_non_native_row_maps_to_birth_params():
     }
 
 
-def test_missing_row_returns_none():
-    assert fetch_birth_params(_Conn(None), 'no-such-chart') is None
+def test_non_native_missing_row_raises():
+    """Non-native chart_id with no row in public.charts raises ValueError (no silent native fallback)."""
+    with pytest.raises(ValueError, match="no charts row found"):
+        fetch_birth_params(_Conn(None), "no-such-chart")
 
 
 @pytest.mark.parametrize('missing', ['birth_date', 'birth_time', 'birth_lat', 'birth_lng', 'timezone_id'])
@@ -119,11 +122,26 @@ def test_forensic_halts_for_native_chart():
 
 
 def test_forensic_does_not_halt_for_non_native_chart():
-    """Non-native chart + 'wrong' Moon ⇒ NO halt (no native anchor to assert) ⇒ build proceeds."""
+    """Non-native chart + 'wrong' Moon ⇒ NO halt (no native anchor to assert) ⇒ build proceeds.
+
+    Fix 1.2 (Wave 2 carryover): non-native charts must supply birth_params so that
+    resolve_birth_params() does not raise ValueError. The test now passes a minimal
+    valid birth_params dict — this mirrors the real orchestrator path where
+    birth_params is always injected for non-native charts.
+    """
     gdw = _dashas()
     wrong_moon = 2.0
+    non_native_birth = {
+        "datetime_iso": "1990-06-15T08:00:00",
+        "latitude_deg": 28.6,
+        "longitude_deg": 77.2,
+        "tz_offset_hours": 5.5,
+        "place_name": "Delhi, India",
+        "subject_label": "Test Chart",
+    }
     with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth=None: (wrong_moon, gdw._birth_jd_utc())):
         result = gdw.build_system('vimshottari', 'lahiri_chitrapaksha',
-                                  chart_id='non-native-chart-xyz', skip_db=True)
+                                  chart_id='non-native-chart-xyz', skip_db=True,
+                                  birth_params=non_native_birth)
     assert result['status'] == 'PASS'
     assert result['rows_computed'] > 0

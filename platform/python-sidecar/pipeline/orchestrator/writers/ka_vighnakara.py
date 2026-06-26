@@ -29,6 +29,7 @@ class KaVighnakaraWriter(WriterBase):
             return WriterResult(asset_id='ka_vighnakara', rows_inserted=0, notes='No convergence windows — run ka_sangam first')
 
         rows = []
+        _emitted_stub_types: set[str] = set()
         for conv_row in convergence_rows:
             conv_id, signal_id, mode, peak_date, conv_score, orb_str, win_start, win_end = conv_row
 
@@ -39,6 +40,12 @@ class KaVighnakaraWriter(WriterBase):
             )
 
             for obs in obstructions:
+                # Deduplicate stub rows: emit at most one per type per chart run
+                if obs['detail'].get('stub'):
+                    stub_type = obs['detail'].get('stub_type', obs['obstruction_type'])
+                    if stub_type in _emitted_stub_types:
+                        continue
+                    _emitted_stub_types.add(stub_type)
                 rows.append((
                     chart_id,
                     conv_id,
@@ -126,9 +133,11 @@ def _check_malefic_transit(peak_date) -> dict | None:
     if isinstance(peak_date, str):
         peak_date = date.fromisoformat(peak_date)
 
-    # Saturn in Aquarius (approx): 2023-01-17 to 2025-03-29
-    saturn_aq_start = date(2023, 1, 17)
-    saturn_aq_end = date(2025, 3, 29)
+    # Saturn transit window placeholder — previous window (Aquarius, 2023-01-17 to
+    # 2025-03-29) expired. Updated to approximate Saturn in Gemini window;
+    # source dynamically from ka_graha_sancara in future L3 rebuild.
+    saturn_aq_start = date(2030, 4, 1)   # approx Saturn enters Gemini
+    saturn_aq_end = date(2032, 6, 30)    # approx Saturn exits Gemini
 
     if saturn_aq_start <= peak_date <= saturn_aq_end:
         severity_score = 0.45
@@ -178,25 +187,58 @@ def _check_panchanga_obstruction(peak_date) -> dict | None:
 def _check_gandanta(peak_date) -> dict | None:
     """
     Gandanta check: last 3°20' of Cancer/Scorpio/Pisces → first 3°20' of Leo/Sagittarius/Aries.
-    Simplified proxy: flag peak dates near solstice/equinox (sign changes).
+    Requires Moon's longitude at peak_date (from ka_graha_sancara — not available at write time).
+    Citation: Phaladeepika ch.2; Muhurta-Chintamani §Gandanta.
+
+    Returns a stub dict (severity='not_implemented') so the coverage gap is explicit
+    in kala_obstruction rather than silently absent.
     """
     from datetime import date
+    if peak_date is None:
+        return None
     if isinstance(peak_date, str):
         peak_date = date.fromisoformat(peak_date)
-
-    # Approximate: sign change around 14-16th of most months (not accurate; proxy only)
-    # Real impl would check Moon's position via ka_graha_sancara
-    # For now: no hits from proxy → return None to avoid false positives
-    return None
+    return {
+        'obstruction_type': 'gandanta',
+        'severity': 'not_implemented',
+        'severity_score': 0.0,
+        'override_score': 0.0,
+        'detail': {
+            'stub': True,
+            'stub_type': 'gandanta',
+            'requires': 'moon_longitude_at_peak_date from ka_graha_sancara',
+            'citation': 'Phaladeepika ch.2 — last 3°20\' of Cancer/Scorpio/Pisces junction',
+            'peak_date': str(peak_date),
+        },
+    }
 
 
 def _check_papakartari(peak_date) -> dict | None:
     """
-    Papakartari (scissors-yoga): lagna/yoga bhava hemmed between malefics.
-    Complex check requiring chart positions — simplified to None for now.
-    Real impl would read kala_activation + chart_facts lagna.
+    Papakartari (scissors-yoga): lagna/yoga bhava hemmed between malefics in adjacent houses.
+    Requires chart positions (lagna sign + adjacent-house grahas from chart_facts + ka_graha_sancara).
+    Citation: BPHS Ch. Papakartari Dosha; Phaladeepika §Papakartari.
+
+    Returns a stub dict (severity='not_implemented') so the coverage gap is explicit.
     """
-    return None
+    from datetime import date
+    if peak_date is None:
+        return None
+    if isinstance(peak_date, str):
+        peak_date = date.fromisoformat(peak_date)
+    return {
+        'obstruction_type': 'papakartari',
+        'severity': 'not_implemented',
+        'severity_score': 0.0,
+        'override_score': 0.0,
+        'detail': {
+            'stub': True,
+            'stub_type': 'papakartari',
+            'requires': 'lagna_sign + adjacent_house_graha_positions from chart_facts + ka_graha_sancara',
+            'citation': 'BPHS — papakartari dosha: bhava hemmed between malefics in H(n-1) and H(n+1)',
+            'peak_date': str(peak_date),
+        },
+    }
 
 
 # Stubs for future obstruction types (all referenced in CHECK constraint):

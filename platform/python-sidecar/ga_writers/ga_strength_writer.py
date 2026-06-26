@@ -40,6 +40,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
+from pipeline.orchestrator.birth_params import resolve_birth_params
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -1499,7 +1500,7 @@ def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
 # ── Main build function ───────────────────────────────────────────────────────
 
 def build_ga_strength(
-    chart_id: str = CANONICAL_CHART_ID,
+    chart_id: str,
     build_id: str | None = None,
     *,
     conn: Any = None,
@@ -1522,7 +1523,9 @@ def build_ga_strength(
     from contextlib import nullcontext
     owns_conn = conn is None
 
-    bp = birth_params or NATIVE_BIRTH
+    bp = resolve_birth_params(chart_id, birth_params)
+    if bp is None:
+        bp = NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
     eng_ver = ENGINE_VERSION
 
