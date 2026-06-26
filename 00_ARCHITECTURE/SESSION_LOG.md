@@ -29578,3 +29578,120 @@ session_close:
 **S2379 pre-regen blocker sweep fully closed (2026-06-26).** All code fixes committed. No migration collision. `ka_gochara.py` is a service-consistent import shim. L0-exclusion not regressed. 7/7 tests pass. Orphaned docs committed at `6d5f759e`. Open the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for the onboarding contract, author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **345**. Phase E (Abhinandan `1c826d5a`) still GATED.
 
 *End of S2379-ORPHAN-CLOSE entry — 2026-06-26.*
+
+---
+
+## L5-MI-W9W8-BUILD-VERIFY (2026-06-27)
+
+**Cowork thread name:** L5-MI-W9W8-BUILD-VERIFY
+**Environment:** Claude Code (CLI, `/Users/Dev/Vibe-Coding/Apps/Madhav`)
+**Branch:** chore/l3-final-seal-docs
+**Commit:** 0420c5a9
+**Scope:** L5 Mīmāṃsā first live build — W9 pre-flight + W8 seal gates
+**chart_id:** 482012f1-710e-4a25-994a-93821f5871aa
+
+```yaml
+session_open:
+  session_id: L5-MI-W9W8-BUILD-VERIFY
+  opened_on: 2026-06-27
+  predecessor_session: L3-KALA-FINAL-CLOSE
+  active_layer_campaign: L5 Mimamsa (build verification)
+  may_touch:
+    - platform/migrations/** (fix-only)
+    - platform/python-sidecar/pipeline/orchestrator/writers/mi_*.py (fix-only)
+    - platform/scripts/seed/asset_registry_seed.ts (fix-only)
+    - 00_ARCHITECTURE/**
+  must_not_touch:
+    - any L0-L4 writer (bg_*/ga_*/bo_*/ka_*/ph_*)
+    - orchestrator contract (writers/__init__.py WriterBase) — FROZEN
+  red_team_due: false
+  handshake_valid: true
+```
+
+### Session objective
+
+Execute ANTIGRAVITY W9/W8 runbook: take L5 Mīmāṃsā from "code written, committed" to
+"verified the Build button generates the entire dataset uninterrupted." First live execution —
+zero `mimamsa_*` rows at session start.
+
+### Artifacts produced
+
+- `platform/migrations/346a_drop_legacy_mimamsa.sql` — drops 6 brahma-era tables that blocked migration 347 (all had 0 rows; incompatible schemas)
+- `platform/migrations/357_mimamsa_has_writer.sql` — sets `has_writer=true` for 10 L5 data writers; without this the plan route returned empty for the mimamsa layer
+- 5 writer bug fixes (`mi_jivanaghatana`, `mi_bhavisya`, `mi_adhilepa`, `mi_pariksha`, `mi_vistara`)
+- `00_ARCHITECTURE/L5_W9_W8_VERIFICATION_REPORT_v1_0.md` — full W9+W8 gate log
+
+### Build log summary
+
+| Build run | Action | Result |
+|---|---|---|
+| 24365f09 | build (pre-fix) | 5 lit / 5 error |
+| a5089671 | build | 7 lit / 3 error |
+| 16793e25 | build | 10/10 lit ✓ |
+| 62f33d65 | rebuild (idempotency) | 10/10 lit ✓ |
+
+### Writer bugs fixed
+
+5 writers had 6 distinct sub-bugs, all in the `run()`/`plan_substeps()` methods (no
+import-time failures). Root cause for bugs 4+5: `db.py` opens the connection with
+`row_factory=dict_row`; any `conn.cursor()` without explicit `row_factory` inherits this,
+so `r[0]` fails on a dict row.
+
+| Writer | Bug | Fix |
+|---|---|---|
+| mi_jivanaghatana | `ORDER BY chart_id` — column absent in `life_events` | `ORDER BY event_id` |
+| mi_jivanaghatana | `ev.get("chart_id")` always `""` | `ctx.config.get("chart_id")` |
+| mi_bhavisya | `SELECT signal_key, composite_strength` — columns absent | `SELECT signal_id` only |
+| mi_bhavisya | UUID key in `msr_signals` → JSON serialize fail | `str(r["signal_id"])` |
+| mi_adhilepa | `SELECT family_id` — column absent | `SELECT signal_id`; `family_id=sig["signal_id"]` |
+| mi_adhilepa | `chart_facts.category` — column is `fact_category` | Updated query + row access |
+| mi_pariksha | `ctx.config["chart_id"]` is UUID; `chart_id[:8]` fails | `str(...)` in `plan_substeps` |
+| mi_pariksha | `conn.cursor()` inherits `dict_row`; `r[0]` → KeyError | `row_factory=tuple_row` |
+| mi_vistara | Same dict_row `r[0]` on COUNT(*) cursor | `import psycopg.rows`; `tuple_row` |
+
+### W8 gate results
+
+| Gate | Result |
+|---|---|
+| W8.1 Row counts | PASS — 8 tables with data; 14 zero-count explained by upstream |
+| W8.2 Build completion | PASS — 3/3 recent runs completed |
+| W8.3 count_sql coverage | PASS — all 10 writers have count_sql |
+| W8.4 Idempotency | **PASS — pre=96 == post=96** |
+| W8.5 No orphaned runs | PASS — 0 active runs |
+| W8.6 asset_throughput state | PASS — 10/10 LIT |
+
+### Known gap
+
+mi_adhilepa's `count_sql` points to `mimamsa_signal_adjustment` (0 rows), but the writer
+correctly produced 655 rows across `anchor_adjustment` (150), `convergence_adjustment` (500),
+`load_bearing` (5). Cockpit will display 0 for this asset. Deferred to L5 close.
+
+```yaml
+session_close:
+  session_id: L5-MI-W9W8-BUILD-VERIFY
+  closed_on: 2026-06-27
+  outcome: COMPLETE — W9+W8 PASS; L5 Mīmāṃsā click-Build operational
+  contract_violations: 0
+  native_chart_touched: true (native chart built — 482012f1)
+  active_layer_campaign_after: L5 Mimamsa (build-ready; calibration cycle pending)
+  current_state_updated: true
+  current_state_version: 5.98
+  session_log_appended: true
+  red_team_pass: "n/a — build verification session"
+  next_session_objective: >
+    L5 Mīmāṃsā build-ready (2026-06-27). NEXT priorities:
+    (a) Open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+    First L4 platform/ migration: 358+ (357 consumed). First L4 supabase/ migration: 346+.
+    (b) Native clicks Rebuild→Kāla on tracker to clear stale badges on ka_vighnakara/ka_yojaka.
+    Phase E (Abhinandan 1c826d5a) still GATED on operator.
+```
+
+### Next session objective
+
+**L5 Mīmāṃsā build-ready (2026-06-27).** 10/10 data writers LIT; W9+W8 PASS; idempotency confirmed.
+Next priorities: **(a)** open **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for onboarding
+contract, author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`; first L4 platform/ migration is **358**; first
+L4 supabase/ migration is **346**. **(b)** Native clicks Rebuild→Kāla on tracker to clear stale
+`ka_vighnakara`/`ka_yojaka` badges. Phase E (Abhinandan `1c826d5a`) still GATED on operator.
+
+*End of L5-MI-W9W8-BUILD-VERIFY entry — 2026-06-27.*
