@@ -154,7 +154,7 @@ function evalFileCount(path: string, marker: string): number {
 
 // ── Asset definitions ─────────────────────────────────────────────────────────
 
-const ASSETS: AssetDef[] = [
+export const ASSETS: AssetDef[] = [
   // ── BRAHMAGYAN (8) — canonical bg_* IDs per migration 174 ───────────────
   {
     asset_id: 'bg_ephemeris',
@@ -357,7 +357,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: '9,538 index entries = honest count from actual build. Per design §3.12.',
-    depends_on: ['bg_texts', 'reference_topic_tags'],
+    depends_on: ['bg_texts', 'bg_reference'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -1269,7 +1269,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Service asset — no stored rows; eligibility bands computed on demand from chart_dashas',
-    depends_on: ['chart_dashas'],
+    depends_on: ['ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'service', catalog_status: 'DRAFT',
   },
@@ -1359,7 +1359,7 @@ const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One predicate per L2 signal per ayanamsha; total ≈ 66,738 for native chart',
-    depends_on: ['bo_laksana', 'bg_transit_rules', 'chart_dashas'],
+    depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2031,7 +2031,9 @@ async function main(): Promise<void> {
   console.log()
 }
 
-main().catch(err => {
-  console.error('\nSeed failed:', err.message)
-  process.exit(1)
-})
+if (process.env.NODE_ENV !== 'test') {
+  main().catch(err => {
+    console.error('\nSeed failed:', err.message)
+    process.exit(1)
+  })
+}

@@ -24,7 +24,6 @@ export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
  * null means the asset has no data rows to clear (skip cleanly, not an error).
  */
 export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
-  ga_pyjhora_engine: null,
   ga_condition: [
     { sql: 'DELETE FROM ga_condition_composite WHERE chart_id = $1' },
     { sql: "DELETE FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga'" },
