@@ -1063,7 +1063,8 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: 'ACTUAL(bo_laksana) * EDGE_DENSITY',
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count ≥300 (edges + paths) per L2 build (chart 482012f1). Sub-graphs, motifs, topology rows excluded per migration 326 narrowing.',
-    depends_on: ['bo_laksana'],
+    // Migration 356: bo_bimba added — karanajala reads bodha_cgm_nodes (bo_bimba output)
+    depends_on: ['bo_laksana', 'bo_bimba'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

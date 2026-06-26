@@ -371,6 +371,13 @@ class BoKaranajalaWriter(WriterBase):
                             aya, len(signals), len(node_map))
                 continue
 
+            if not node_map:
+                raise RuntimeError(
+                    f"[bo_karanajala] G3: chart_id={chart_id} ayanamsha={aya} — "
+                    "node_map is empty (bodha_cgm_nodes has 0 rows for this chart/aya); "
+                    "bo_bimba must run and succeed before bo_karanajala"
+                )
+
             edges, contradictions = _build_edges_and_contradictions(
                 chart_id, aya, build_id, signals, node_map, now
             )

@@ -112,6 +112,11 @@ class BoPramanaMapa(WriterBase):
 
         # ── Row counts ────────────────────────────────────────────────────────
         msr_count  = _count_one(conn, "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = %s", [chart_id])
+        if msr_count == 0:
+            raise RuntimeError(
+                f"[bo_pramana_mapa] G3: chart_id={chart_id} — bodha_msr_signals is empty; "
+                "upstream Bodha writers (bo_laksana) must succeed before scorecard can run"
+            )
         cdlm_count = _count_one(conn, "SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = %s", [chart_id])
         node_count = _count_one(conn, "SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = %s", [chart_id])
         edge_count = _count_one(conn, "SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = %s", [chart_id])
@@ -198,11 +203,18 @@ class BoPramanaMapa(WriterBase):
         conn.execute(_SCORECARD_INSERT, scorecard)
         logger.info("[bo_pramana_mapa] scorecard written: trap1=%d msr=%d", trap1_count, msr_count)
 
-        # ── Materialised view refresh ─────────────────────────────────────────
+        # ── Materialised view refresh (G5: all 8 Bodha MVs) ─────────────────
         for mv in [
+            # MSR MVs (3)
             "mv_msr_top_signals_per_chart",
             "mv_msr_recurring_patterns_per_chart",
             "mv_msr_domain_summary",
+            # CDLM MVs (5) — previously not refreshed; added by G5 fix
+            "mv_cdlm_static_summary",
+            "mv_cdlm_top_K_links_per_chart",
+            "mv_cdlm_per_tradition_summary",
+            "mv_cdlm_dasha_window_lookup",
+            "mv_cdlm_pattern_summary",
         ]:
             _refresh_mv(conn, mv)
 

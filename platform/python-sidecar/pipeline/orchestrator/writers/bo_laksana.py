@@ -968,8 +968,10 @@ class BoLaksanaWriter(WriterBase):
         logger.info("[bo_laksana] %s — fetched %d fact rows", ayanamsha, len(fact_rows))
 
         if not fact_rows:
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes=f"no facts for ayanamsha={ayanamsha}")
+            raise RuntimeError(
+                f"[bo_laksana] G3: chart_id={chart_id} ayanamsha={ayanamsha} — "
+                "chart_facts is empty; L1 (Gaṇita) must be built before Bodha"
+            )
 
         # Build signal rows
         signal_rows: list[dict] = []
@@ -990,8 +992,10 @@ class BoLaksanaWriter(WriterBase):
         logger.info("[bo_laksana] %s — built %d rows (%d skipped)", ayanamsha, len(signal_rows), skipped)
 
         if not signal_rows:
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes=f"all facts skipped for ayanamsha={ayanamsha}")
+            raise RuntimeError(
+                f"[bo_laksana] G3: chart_id={chart_id} ayanamsha={ayanamsha} — "
+                f"all {len(fact_rows)} facts were skipped; no MSR signals produced"
+            )
 
         # Post-processing: rank + normalize
         _set_top_k_ranks(signal_rows)

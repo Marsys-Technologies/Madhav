@@ -38,6 +38,14 @@ const REGISTRY_WITH_L0 = [
 
 const REGISTRY_GANITA_ONLY = REGISTRY_WITH_L0.filter(r => r.scope === 'per_chart')
 
+// Bodha registry: includes bo_* assets for G4 precondition gate tests
+const REGISTRY_BODHA = [
+  { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
+  { asset_id: 'bo_laksana',    layer: 'bodha',  scope: 'per_chart', depends_on: [],              estimated_seconds: 60 },
+  { asset_id: 'bo_bimba',      layer: 'bodha',  scope: 'per_chart', depends_on: ['bo_laksana'],  estimated_seconds: 60 },
+  { asset_id: 'bo_pramana_mapa', layer: 'bodha', scope: 'per_chart', depends_on: ['bo_bimba'],   estimated_seconds: 30 },
+]
+
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/runs', {
     method: 'POST',
@@ -201,6 +209,122 @@ describe('POST /api/cockpit/runs — client + scope=global (silent L0 drop)', ()
   })
 })
 
+// ─── G4: L1/L0 precondition gate — Bodha builds verify upstream before creating run ─
+
+/**
+ * Query order for a Bodha layer rebuild:
+ *   1. getUserRole
+ *   2. 409 gate (no active run)
+ *   3. asset_registry
+ *   4. asset_throughput
+ *   5-7. Promise.all: chart_facts count · ga_structural state · remedy_corpus count
+ *   8. INSERT build_runs RETURNING id
+ *   9+. INSERT build_run_assets (per asset)
+ */
+
+describe('G4 — Bodha build precondition gate', () => {
+  function seedBodhaBuildWithPreconditions(
+    chartFactsCount: number,
+    gaStructuralState: string | null,
+    remedyCorpusCount: number,
+  ) {
+    // All assets dormant (so rebuild plan includes them all)
+    const throughput: { asset_id: string; state: string }[] = []
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_BODHA, rowCount: REGISTRY_BODHA.length })   // asset_registry
+      .mockResolvedValueOnce({ rows: throughput, rowCount: 0 })                            // asset_throughput
+      // Promise.all x3 preconditions (order matches Promise.all array in route.ts)
+      .mockResolvedValueOnce({ rows: [{ count: String(chartFactsCount) }], rowCount: 1 }) // chart_facts count
+      .mockResolvedValueOnce({ rows: gaStructuralState ? [{ state: gaStructuralState }] : [], rowCount: gaStructuralState ? 1 : 0 }) // ga_structural
+      .mockResolvedValueOnce({ rows: [{ count: String(remedyCorpusCount) }], rowCount: 1 }) // remedy_corpus count
+      .mockResolvedValue({ rows: [{ id: 'run-bo-001' }], rowCount: 1 })                   // INSERT build_runs + assets
+    mockInvokeRunJob.mockResolvedValue(undefined)
+  }
+
+  it('RED — chart_facts empty: returns 422 PRECONDITION_FAILED (was 201 before guard)', async () => {
+    seedRole('super_admin')
+    seedBodhaBuildWithPreconditions(0, 'lit', 500)  // chart_facts=0 → precondition fails
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'bodha', action: 'rebuild' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PRECONDITION_FAILED')
+    expect(body.missing).toEqual(expect.arrayContaining([expect.stringContaining('chart_facts is empty')]))
+  })
+
+  it('RED — ga_structural not lit: returns 422 PRECONDITION_FAILED', async () => {
+    seedRole('super_admin')
+    seedBodhaBuildWithPreconditions(27000, null, 500)  // ga_structural missing → precondition fails
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'bodha', action: 'rebuild' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PRECONDITION_FAILED')
+    expect(body.missing).toEqual(expect.arrayContaining([expect.stringContaining('ga_structural is not lit')]))
+  })
+
+  it('RED — remedy corpus empty: returns 422 PRECONDITION_FAILED', async () => {
+    seedRole('super_admin')
+    seedBodhaBuildWithPreconditions(27000, 'lit', 0)  // remedy_corpus=0 → precondition fails
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'bodha', action: 'rebuild' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PRECONDITION_FAILED')
+    expect(body.missing).toEqual(expect.arrayContaining([expect.stringContaining('brahma_remedy_corpus is empty')]))
+  })
+
+  it('GREEN — all preconditions met: returns 201 and creates build_run', async () => {
+    seedRole('super_admin')
+    seedBodhaBuildWithPreconditions(27554, 'lit', 500)  // all OK
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'bodha', action: 'rebuild' }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toContain('bo_laksana')
+    expect(body.data.plan).toContain('bo_pramana_mapa')
+    expect(body.code).toBeUndefined()
+  })
+
+  it('GREEN — multiple failures reported together in missing array', async () => {
+    seedRole('super_admin')
+    seedBodhaBuildWithPreconditions(0, null, 0)  // all 3 fail
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'bodha', action: 'rebuild' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PRECONDITION_FAILED')
+    expect(body.missing).toHaveLength(3)
+  })
+
+  it('GREEN — non-Bodha plan skips precondition gate entirely', async () => {
+    // A ganita-only plan must never trigger the Bodha precondition queries
+    seedRole('super_admin')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // throughput
+      .mockResolvedValue({ rows: [{ id: 'run-ga-001' }], rowCount: 1 })                      // INSERT
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'rebuild' }))
+    expect(res.status).toBe(201)
+    // Confirm only 4 queries (role + 409 + registry + throughput + insert chain); no precondition queries
+    // The key signal: no PRECONDITION_FAILED in response
+    const body = await res.json()
+    expect(body.code).toBeUndefined()
+    expect(body.data.plan).not.toContain('bo_laksana')
+  })
+})
+
 // ─── 7. client per_chart L1 build — scope=asset + per_chart asset ─────────────
 
 describe('POST /api/cockpit/runs — client + scope=asset + per_chart asset', () => {
@@ -217,5 +341,49 @@ describe('POST /api/cockpit/runs — client + scope=asset + per_chart asset', ()
     const body = await res.json()
     expect(body.data.plan).toContain('ga_positions')
     expect(body.data.plan).not.toContain('bg_ephemeris')
+  })
+})
+
+// ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
+
+describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () => {
+  it('RED — action=build on all-lit layer returns 422 with generic error (before G1 fix)', async () => {
+    // Demonstrates the pre-G1 behavior: 422 with no actionable guidance.
+    // After G1 the response now includes code=ALL_LIT + hint pointing to Rebuild.
+    // This test documents the distinction by asserting the new behavior is richer.
+    seedRole('client')
+    const allLitThroughput = REGISTRY_GANITA_ONLY.map(r => ({ asset_id: r.asset_id, state: 'lit' }))
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                          // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
+      .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    // GREEN assertion: after G1 the response is actionable
+    expect(body.code).toBe('ALL_LIT')
+    expect(body.hint).toContain('Rebuild')
+    expect(body.error).toContain('already lit')
+  })
+
+  it('GREEN — action=rebuild on lit layer bypasses ALL_LIT and creates the run', async () => {
+    seedRole('client')
+    const allLitThroughput = REGISTRY_GANITA_ONLY.map(r => ({ asset_id: r.asset_id, state: 'lit' }))
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                          // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
+      .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
+      .mockResolvedValue({ rows: [{ id: 'run-rebuild-001' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'rebuild' }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    // rebuild always includes all assets regardless of lit state
+    expect(body.data.plan).toContain('ga_positions')
+    expect(body.code).toBeUndefined()
   })
 })

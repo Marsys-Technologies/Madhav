@@ -293,6 +293,12 @@ class BoDrishtiWriter(WriterBase):
             total += _batch_insert(conn, aya_rows)
             logger.info("[bo_drishti] %s — %d lenses inserted", aya, len(aya_rows))
 
+        if total == 0:
+            raise RuntimeError(
+                f"[bo_drishti] G3: chart_id={chart_id} — 0 question-lenses produced across "
+                f"{len(CANONICAL_AYAS)} ayanamshas × {len(QUESTION_TYPE_CONFIG)} question types; "
+                "all per-lens builds failed (check bodha_msr_signals upstream)"
+            )
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=total,

@@ -302,6 +302,11 @@ class BoBimbaWriter(WriterBase):
                 continue
 
             signals = _fetch_msr_signals(conn, chart_id, aya)
+            if not signals:
+                raise RuntimeError(
+                    f"[bo_bimba] G3: chart_id={chart_id} ayanamsha={aya} — "
+                    "bodha_msr_signals is empty; bo_laksana must have failed or produced 0 rows"
+                )
             nodes   = _build_nodes_for_aya(chart_id, aya, build_id, signals, now)
 
             deleted = replace_prior_cgm_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
