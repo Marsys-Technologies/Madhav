@@ -1101,7 +1101,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_inputs: null,
     volume_explanation: 'One embedding per signal — 1:1 with Lakṣaṇa count; sealed at 66,738 per L2 build (chart 482012f1).',
     depends_on: ['bo_laksana'],
-    scope: 'global', is_active: true, estimated_seconds: null,
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
     asset_id: 'bo_sangati',

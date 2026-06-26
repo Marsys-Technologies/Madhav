@@ -1,6 +1,5 @@
 """ka_kalasutra writer — bounded activation artifact builder."""
 import json
-from psycopg2.extras import execute_values
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 @register('ka_kalasutra')
@@ -95,15 +94,16 @@ class KaKalasutraWriter(WriterBase):
         
         if rows:
             with conn.cursor() as cur:
-                execute_values(cur, """
-                    INSERT INTO kala_activation (
+                cur.executemany(
+                    """INSERT INTO kala_activation (
                         chart_id, signal_id, ayanamsha_id, signature_class,
                         active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
                         dasha_activation_proximity_score,
                         activation_start, activation_end, activation_peak_date,
                         orb_strength, convergence_score, source_citation
-                    ) VALUES %s
-                """, rows)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    rows,
+                )
         
         return WriterResult(asset_id='ka_kalasutra', rows_inserted=len(rows))
 

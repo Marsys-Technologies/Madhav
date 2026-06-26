@@ -1,6 +1,5 @@
 """ka_kala_darshana writer — display-ready temporal view synthesizer."""
 import json
-from psycopg2.extras import execute_values
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 @register('ka_kala_darshana')
@@ -98,13 +97,14 @@ class KaKalaDarshanaWriter(WriterBase):
 
         if rows:
             with conn.cursor() as cur:
-                execute_values(cur, """
-                    INSERT INTO kala_darshana (
+                cur.executemany(
+                    """INSERT INTO kala_darshana (
                         chart_id, convergence_id, signal_id,
                         effective_score, net_label, peak_date, window_start, window_end,
                         obstruction_summary, narrative, source_citation
-                    ) VALUES %s
-                """, rows)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    rows,
+                )
 
         return WriterResult(asset_id='ka_kala_darshana', rows_inserted=len(rows))
 
