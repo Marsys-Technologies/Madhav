@@ -230,6 +230,43 @@ resource "google_service_account_iam_member" "wif_impersonates_builder" {
   member             = var.github_wif_principal
 }
 
+// ── Pub/Sub: cockpit-events (SSE real-time build events) ─────────────────────
+//
+// amjis-web (subscriber) creates an ephemeral subscription per SSE request, filtered
+// by chart_id. brahma-build-pipeline-job (publisher) emits asset.state_change /
+// asset.progress / asset.substep / run.state_change events during a build run.
+//
+// Publisher SA verification: the pipeline job was originally created out-of-band
+// without an explicit --service-account. Before applying, confirm with:
+//   gcloud run jobs describe brahma-build-pipeline-job \
+//     --region=asia-south1 --format='value(template.serviceAccount)'
+// If the result is NOT amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com,
+// duplicate the sidecar_cockpit_events_publisher block below with the actual SA.
+
+resource "google_pubsub_topic" "cockpit_events" {
+  name = "cockpit-events"
+  // 10-minute retention matches the ephemeral subscription TTL in the SSE route.
+  message_retention_duration = "600s"
+}
+
+// amjis-web-runtime creates + deletes ephemeral per-request subscriptions on this
+// topic; roles/pubsub.editor at topic scope grants the minimum required permissions:
+// attachSubscription, createSubscription, deleteSubscription, consume.
+resource "google_pubsub_topic_iam_member" "web_cockpit_events_editor" {
+  topic  = google_pubsub_topic.cockpit_events.name
+  role   = "roles/pubsub.editor"
+  member = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
+// brahma-build-pipeline-job publishes build events. The job container descends from
+// the python-sidecar codebase; amjis-sidecar-runtime is the expected runtime SA.
+// Verify with gcloud (see comment above) and add an extra binding if different.
+resource "google_pubsub_topic_iam_member" "sidecar_cockpit_events_publisher" {
+  topic  = google_pubsub_topic.cockpit_events.name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
+}
+
 // ── Outputs ──────────────────────────────────────────────────────────────────
 
 output "web_runtime_sa" {

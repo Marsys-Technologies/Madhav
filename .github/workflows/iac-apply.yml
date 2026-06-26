@@ -13,6 +13,7 @@ on:
         type: choice
         options:
           - cloud_scheduler
+          - iam
       action:
         description: 'plan (safe, default) or apply'
         required: true

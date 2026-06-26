@@ -277,6 +277,7 @@ jobs:
             DB_USER=amjis_app
             DB_NAME=amjis
             GCP_PROJECT=madhav-astrology
+            GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
@@ -493,6 +494,7 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
             --task-timeout=86400 \
+            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
             --quiet
 
       - name: Verify ga_writers is importable in the pushed image
