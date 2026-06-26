@@ -229,12 +229,13 @@ describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
 })
 
 describe('RELIABILITY — layer-scope generalises to L2/L3/L4', () => {
+  // Post-fix fixture: bo_karanajala.depends_on includes bo_bimba (Migration 356 / G2 fix)
   const L2_BODHA = [
-    reg('bo_laksana',   'bodha', []),
-    reg('bo_bimba',     'bodha', ['bo_laksana']),
-    reg('bo_karanajala','bodha', ['bo_laksana']),
-    reg('bo_sangati',   'bodha', ['bo_laksana']),
-    reg('bo_upaya',     'bodha', ['bo_bimba', 'bo_karanajala', 'bo_sangati']),
+    reg('bo_laksana',     'bodha', []),
+    reg('bo_bimba',       'bodha', ['bo_laksana']),
+    reg('bo_karanajala',  'bodha', ['bo_laksana', 'bo_bimba']),  // G2 fix: bo_bimba added
+    reg('bo_sangati',     'bodha', ['bo_laksana']),
+    reg('bo_upaya',       'bodha', ['bo_bimba', 'bo_karanajala', 'bo_sangati']),
     reg('bo_pramana_mapa','bodha', ['bo_upaya']),
   ]
   const MIXED = [...L2_BODHA, reg('ga_structural', 'ganita', []), reg('ga_yoga', 'ganita', ['ga_structural'])]
@@ -255,6 +256,59 @@ describe('RELIABILITY — layer-scope generalises to L2/L3/L4', () => {
     })
     expect(result.plan.indexOf('bo_laksana')).toBeLessThan(result.plan.indexOf('bo_upaya'))
     expect(result.plan.indexOf('bo_upaya')).toBeLessThan(result.plan.indexOf('bo_pramana_mapa'))
+  })
+})
+
+// ── §G2: Hidden DAG edge — bo_karanajala reads bo_bimba output ───────────────
+// RED: before the fix, depends_on=['bo_laksana'] lets topo-sort schedule karanajala
+//      before bimba → empty node_map → 0 CGM edges, silently green.
+// GREEN: after the fix, depends_on=['bo_laksana','bo_bimba'] forces bimba first always.
+
+describe('G2 DAG edge fix — bo_bimba must precede bo_karanajala (Migration 356)', () => {
+  // RED fixture: old (broken) depends_on — karanajala placed before bimba in registry
+  // so the topo-sort (which visits registry order) produces karanajala before bimba.
+  const BODHA_OLD_BROKEN = [
+    reg('bo_laksana',    'bodha', []),
+    reg('bo_karanajala', 'bodha', ['bo_laksana']),   // OLD: omits bo_bimba dependency
+    reg('bo_bimba',      'bodha', ['bo_laksana']),
+  ]
+
+  it('RED — old depends_on: topo-sort CAN place bo_karanajala before bo_bimba', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'bodha', action: 'rebuild',
+      registry: BODHA_OLD_BROKEN, throughput: new Map(),
+    })
+    // In the old DAG there is no ordering constraint between karanajala and bimba.
+    // When karanajala appears first in registry, topo visits it first → it lands first.
+    const idxKara = result.plan.indexOf('bo_karanajala')
+    const idxBimba = result.plan.indexOf('bo_bimba')
+    // This assertion PASSES (proves broken state): karanajala < bimba is possible.
+    expect(idxKara).toBeLessThan(idxBimba)
+  })
+
+  // GREEN fixture: new (fixed) depends_on — karanajala declares bo_bimba as dep
+  const BODHA_NEW_FIXED = [
+    reg('bo_laksana',    'bodha', []),
+    reg('bo_karanajala', 'bodha', ['bo_laksana', 'bo_bimba']),  // FIXED: bo_bimba added
+    reg('bo_bimba',      'bodha', ['bo_laksana']),
+  ]
+
+  it('GREEN — fixed depends_on: bo_bimba always before bo_karanajala regardless of registry order', () => {
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'bodha', action: 'rebuild',
+      registry: BODHA_NEW_FIXED, throughput: new Map(),
+    })
+    const idxBimba = result.plan.indexOf('bo_bimba')
+    const idxKara  = result.plan.indexOf('bo_karanajala')
+    expect(idxBimba).toBeLessThan(idxKara)
+  })
+
+  it('GREEN — acyclicity: adding bo_bimba to karanajala.depends_on introduces no cycle', () => {
+    // If a cycle existed this would throw.
+    expect(() => resolveBuildPlan({
+      scope: 'layer', scope_target: 'bodha', action: 'rebuild',
+      registry: BODHA_NEW_FIXED, throughput: new Map(),
+    })).not.toThrow()
   })
 })
 

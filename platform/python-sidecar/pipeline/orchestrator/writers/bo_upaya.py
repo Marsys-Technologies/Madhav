@@ -503,5 +503,10 @@ class BoUpayaWriter(WriterBase):
             total_res   += _batch_insert(conn, clean_res, _RESONANCE_INSERT)
             total_presc += _batch_insert(conn, prescriptions, _PRESCRIPTION_INSERT)
 
+        if not ctx.dry_run and total_presc == 0:
+            raise RuntimeError(
+                f"[bo_upaya] G3: chart_id={chart_id} — 0 remedy prescriptions written; "
+                "brahma_remedy_corpus may be empty (L0 Brahmagyan corpus must be seeded)"
+            )
         return WriterResult(asset_id=self.asset_id, rows_inserted=total_res + total_presc,
                             notes=f"resonances={total_res} prescriptions={total_presc}")

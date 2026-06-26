@@ -161,6 +161,7 @@ class BoSamskaraWriter(WriterBase):
         conn     = ctx.db_conn
         now      = datetime.now(timezone.utc).isoformat()
         total    = 0
+        total_signals_seen = 0
 
         for aya in CANONICAL_AYAS:
             signals = _fetch_signals(conn, chart_id, aya)
@@ -168,6 +169,8 @@ class BoSamskaraWriter(WriterBase):
             if ctx.dry_run:
                 logger.info("[bo_samskara dry_run] %s — %d signals", aya, len(signals))
                 continue
+
+            total_signals_seen += len(signals)
 
             # Build (signal, summary) pairs first
             signal_summaries: list[tuple[dict, str]] = [
@@ -198,4 +201,9 @@ class BoSamskaraWriter(WriterBase):
             logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
             total += _batch_insert(conn, rows)
 
+        if not ctx.dry_run and total_signals_seen > 0 and total == 0:
+            raise RuntimeError(
+                f"[bo_samskara] G3: chart_id={chart_id} — {total_signals_seen} signals found "
+                "but 0 embeddings written; all Vertex AI embedding batches failed"
+            )
         return WriterResult(asset_id=self.asset_id, rows_inserted=total)

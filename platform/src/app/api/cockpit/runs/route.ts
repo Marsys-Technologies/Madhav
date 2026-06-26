@@ -100,10 +100,50 @@ export async function POST(req: NextRequest) {
   const { plan, blocked_assets } = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
 
   if (plan.length === 0) {
+    const allLit = blocked_assets.length === 0
     const detail = blocked_assets.length > 0
       ? { blocked: blocked_assets, hint: 'Build the Brahmagyan layer first, then retry.' }
-      : {}
-    return NextResponse.json({ error: 'No assets to build for this scope/action combination', ...detail }, { status: 422 })
+      : { hint: 'All assets in scope are already built. Use Rebuild to force a full rebuild.' }
+    const errMsg = allLit
+      ? 'Nothing to build: all assets are already lit. Use action=rebuild to force a rebuild.'
+      : 'No assets to build for this scope/action combination'
+    return NextResponse.json({ error: errMsg, code: allLit ? 'ALL_LIT' : 'NO_ASSETS', ...detail }, { status: 422 })
+  }
+
+  // G4: L1/L0 precondition gate — if plan includes any bo_* assets verify upstream is ready.
+  if (plan.some(id => id.startsWith('bo_'))) {
+    const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
+      query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM chart_facts WHERE chart_id=$1',
+        [chart_id]
+      ),
+      query<{ state: string }>(
+        `SELECT state FROM asset_throughput WHERE chart_id=$1 AND asset_id='ga_structural'`,
+        [chart_id]
+      ),
+      query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM brahma_remedy_corpus'
+      ),
+    ])
+
+    const missingPreconditions: string[] = []
+    if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
+      missingPreconditions.push('chart_facts is empty — build L1 (Gaṇita) layer first')
+    }
+    if (gaStructuralRes.rows[0]?.state !== 'lit') {
+      missingPreconditions.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
+    }
+    if (parseInt(remedyCorpusRes.rows[0]?.count ?? '0', 10) === 0) {
+      missingPreconditions.push('brahma_remedy_corpus is empty — build L0 (Brahmagyan) layer first')
+    }
+
+    if (missingPreconditions.length > 0) {
+      return NextResponse.json({
+        error: 'Bodha build blocked: upstream preconditions not met',
+        code: 'PRECONDITION_FAILED',
+        missing: missingPreconditions,
+      }, { status: 422 })
+    }
   }
 
   // Create build_run in 'planned' state — orchestrator transitions to 'running'
