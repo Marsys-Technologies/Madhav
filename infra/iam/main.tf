@@ -267,6 +267,15 @@ resource "google_pubsub_topic_iam_member" "sidecar_cockpit_events_publisher" {
   member = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
 }
 
+// brahma-build-pipeline-job confirmed SA: amjis-web-runtime (not amjis-sidecar-runtime).
+// Verified 2026-06-26 via: gcloud run jobs describe brahma-build-pipeline-job --format='value(template.serviceAccount)'
+// Binding alongside sidecar binding so both SAs can publish if the job SA ever changes.
+resource "google_pubsub_topic_iam_member" "web_runtime_cockpit_events_publisher" {
+  topic  = google_pubsub_topic.cockpit_events.name
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
 // ── Outputs ──────────────────────────────────────────────────────────────────
 
 output "web_runtime_sa" {
