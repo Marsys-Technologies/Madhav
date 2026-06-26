@@ -62,14 +62,28 @@ router = APIRouter()
 # ── Privacy guard: strip LEL citations from public notes field (C2-002) ───────
 
 def strip_lel_citations(text: str) -> str:
-    """Remove 'per LEL' citation patterns from public-facing notes fields.
+    """Remove LEL citation patterns from public-facing notes fields.
 
     C2-002: LEL data is isolated in mimamsa.lel_events and must not leak
     into the retrieval API surface via the notes field.
+
+    Patterns caught:
+      - '(LEL EVT.YYYY ...)' parenthetical blocks
+      - 'per LEL...' phrases up to period
+      - bare 'LEL EVT.YYYY' fragments
+      - any remaining sentence/clause containing 'LEL' (catch-all)
     """
     if not text:
         return text
-    cleaned = re.sub(r'\bper LEL\b.*?(?:\.|$)', '', text, flags=re.IGNORECASE)
+    # Strip '(LEL EVT...)' parenthetical blocks
+    cleaned = re.sub(r'\(LEL\s+EVT[^)]*\)', '', text, flags=re.IGNORECASE)
+    # Strip 'per LEL...' up to period
+    cleaned = re.sub(r'\bper LEL\b[^.]*\.?', '', cleaned, flags=re.IGNORECASE)
+    # Strip bare 'LEL EVT.XXXX' fragments not already caught
+    cleaned = re.sub(r'\bLEL\s+EVT\.[^\s,;)]+', '', cleaned, flags=re.IGNORECASE)
+    # Catch-all: remove any remaining clause/sentence still containing 'LEL'
+    cleaned = re.sub(r'[^.]*\bLEL\b[^.]*(?:\.|$)', '', cleaned, flags=re.IGNORECASE)
+    # Collapse multiple spaces
     return re.sub(r'  +', ' ', cleaned).strip()
 
 
@@ -962,6 +976,26 @@ def query_phala_anchors(
         raise ValueError(
             f"Invalid domain '{domain}'. Valid: {sorted(VALID_DOMAINS)}"
         )
+
+    # chart_id guard: this catalog is native-specific.
+    # Non-native chart_ids receive an explicit empty response (not the native's data).
+    if chart_id != NATIVE_CHART_ID:
+        return {
+            "ok": True,
+            "chart_id": chart_id,
+            "query_window": {
+                "start": date_range.get("start", ""),
+                "end": date_range.get("end", ""),
+            },
+            "anchors": [],
+            "anchor_count": 0,
+            "volume_floor_met": len(ANCHOR_CATALOG) >= VOLUME_FLOOR,
+            "confidence_distribution": {"high_ge_0.70": 0, "mid_0.55_to_0.70": 0, "low_lt_0.55": 0},
+            "provenance_envelope": {
+                "source": "phala.anchors.v2",
+                "note": "chart_id is not the native chart — no anchors available",
+            },
+        }
 
     # Parse date range
     try:

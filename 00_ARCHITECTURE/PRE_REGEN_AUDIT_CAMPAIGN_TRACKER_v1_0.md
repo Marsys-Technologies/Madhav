@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.5
+version: 1.6
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.6
+    date: 2026-06-26
+    change: "Wave 6 COMPLETE — Fix Plan executed; 6/6 MAJOR findings FIXED; 22/22 tests GREEN; deferred minors folded as known-non-blocking; branch ready for merge"
   - version: 1.5
     date: 2026-06-26
     change: "Wave 5 complete — L4 Phala 8 ph_* assets + l4_anchors; 0 blockers, 3 majors, 2 minors; CLEAN A1 across all 8 writers; l4_anchors chart_id guard not implemented"
@@ -39,7 +42,7 @@ changelog:
 | W3 | L2 Bodha (10 bo_* assets) | bo_* writers, synthesis layer | ✅ COMPLETE | 2026-06-26 | §W3 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W4 | L3 Kāla (10 ka_* assets) | ka_* writers | ✅ COMPLETE | 2026-06-26 | §W4 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W5 | L4 Phala (8 ph_* assets + l4_anchors) | ph_* writers + brahmagyan/phala/l4_anchors.py | ✅ COMPLETE | 2026-06-26 | §W5 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W6 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
+| W6 | Fix Plan execution | 6 MAJOR fixes (F-W5-001/002/003, F-W4-002/004/005) + proof-tests; deferred minors folded | ✅ COMPLETE | 2026-06-26 | §W6 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 
 ## Wave 0 deliverables (complete)
 

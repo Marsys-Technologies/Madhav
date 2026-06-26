@@ -55,6 +55,14 @@ class PhMuhurtaWriter(WriterBase):
         # Load chart condition scores (M1) for the relevant grahas
         condition_scores = self._load_condition_scores(conn, chart_id)
 
+        # F-W5-003: derive chart's actual 10th-house lord to override native-lagna assumption
+        career_lord = self._resolve_career_lord(conn, chart_id)
+        action_graha_overrides: dict[str, str] = {
+            'start_business': career_lord,
+            'career_launch':  career_lord,
+            'new_venture':    career_lord,
+        }
+
         rows_inserted = 0
         with conn.cursor() as cur:
             for anchor in anchors:
@@ -66,7 +74,7 @@ class PhMuhurtaWriter(WriterBase):
 
                 # Map domain → best action class for M3 fusion
                 domain_action = _DOMAIN_TO_ACTION.get(domain, 'new_venture')
-                relevant_graha = ACTION_GRAHA_MAP.get(domain_action, 'saturn')
+                relevant_graha = action_graha_overrides.get(domain_action) or ACTION_GRAHA_MAP.get(domain_action, 'saturn')
 
                 # Build a single representative candidate for this anchor's window
                 # (full engine would iterate candidate timestamptz slots; we emit one per anchor)
@@ -225,6 +233,45 @@ class PhMuhurtaWriter(WriterBase):
         except Exception as exc:
             logger.debug("ph_muhurta: condition_scores load skipped: %s", exc)
         return result
+
+    # Classical sign lords (1=Aries..12=Pisces) for 10th-lord derivation
+    _SIGN_LORDS: dict[int, str] = {
+        1: 'mars',  2: 'venus',   3: 'mercury', 4: 'moon',
+        5: 'sun',   6: 'mercury', 7: 'venus',   8: 'mars',
+        9: 'jupiter', 10: 'saturn', 11: 'saturn', 12: 'jupiter',
+    }
+    _LAGNA_SIGN_NUM: dict[str, int] = {
+        'Aries': 1, 'Taurus': 2, 'Gemini': 3, 'Cancer': 4,
+        'Leo': 5, 'Virgo': 6, 'Libra': 7, 'Scorpio': 8,
+        'Sagittarius': 9, 'Capricorn': 10, 'Aquarius': 11, 'Pisces': 12,
+    }
+
+    def _resolve_career_lord(self, conn, chart_id: str) -> str:
+        """Derive the chart's 10th-house lord from chart_facts lagna sign.
+
+        Falls back to 'saturn' (classical career archetype) if data unavailable.
+        """
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text FROM chart_facts
+                    WHERE chart_id = %s
+                      AND fact_subject = 'LAGNA'
+                      AND fact_key = 'sign'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    lagna_sign = row[0]
+                    lagna_num = self._LAGNA_SIGN_NUM.get(lagna_sign, 1)
+                    h10_sign_num = ((lagna_num - 1 + 9) % 12) + 1
+                    return self._SIGN_LORDS.get(h10_sign_num, 'saturn')
+        except Exception as exc:
+            logger.debug("ph_muhurta: could not derive career_lord for %s: %s", chart_id, exc)
+        return 'saturn'
 
 
 _DOMAIN_TO_ACTION: dict[str, str] = {

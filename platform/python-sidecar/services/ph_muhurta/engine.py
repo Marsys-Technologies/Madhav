@@ -20,8 +20,8 @@ __all__ = [
 
 # M1: which graha governs each action class
 ACTION_GRAHA_MAP: dict[str, str] = {
-    'start_business':       'saturn',   # 10th-lord = Saturn (Capricorn lagna)
-    'career_launch':        'saturn',
+    'start_business':       'saturn',   # default: writer overrides with chart's actual 10th lord
+    'career_launch':        'saturn',   # default: writer overrides with chart's actual 10th lord
     'contract_signing':     'mercury',
     'marriage':             'venus',
     'partnership':          'venus',
@@ -34,7 +34,7 @@ ACTION_GRAHA_MAP: dict[str, str] = {
     'ceremony':             'jupiter',
     'property_purchase':    'mars',
     'vehicle_purchase':     'venus',
-    'new_venture':          'saturn',
+    'new_venture':          'saturn',   # default: writer overrides with chart's actual 10th lord
     'charity':              'jupiter',
 }
 
