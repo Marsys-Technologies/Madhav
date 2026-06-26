@@ -55,7 +55,16 @@ A6. **Determinism** — build-time construction is deterministic (Python over LL
 A7. **Error handling** — failure is a loud halt or a recorded error, never silent garbage or a
     plausible-but-wrong constant (the degenerate-distribution / `dict.get(k, default)` trap).
 
-### Axis B — DATA CORRECTNESS (data-engineering)
+### Axis B — DATA CORRECTNESS (data-engineering) — POST-REGEN ONLY (native amendment 2026-06-26)
+**SCOPE CHANGE:** the existing/stale data is being fully WIPED and regenerated on the fixed code, so
+auditing the about-to-be-discarded data pre-regeneration is wasted effort. Therefore Axis B is NOT run
+per-asset pre-regen. Instead it becomes the **post-regeneration acceptance checklist** — the same B1–B7
+checks run ONCE against the freshly-regenerated data to confirm the clean build is actually clean.
+CONSEQUENCE: with no pre-regen data backstop, Axis A (code) is now the SOLE guarantee against
+re-contamination — so the Axis A contamination guard MUST be exhaustive (full bug-class, not one
+literal string). A missed vulnerable writer = silently re-contaminated data at regen with nothing to
+catch it. The B7 isolation check is additionally kept as a mandatory POST-REGEN spot-check (see §4).
+
 B1. **Cockpit-count truth** — asset_registry.count_sql is chart-scoped and correct; the displayed
     count == a live COUNT of the asset's actual rows.
 B2. **Row-count sanity** — actual rows vs target_floor / expected order of magnitude; not silently
@@ -85,8 +94,10 @@ C5. **Spot re-derivation** — for each asset, hand-verify at least 1–2 repres
     against the source. Acharya-grade: would a senior Jyotiṣa reviewer accept this value?
 
 ## §2 — Wave structure (layer by layer; gated)
-Each wave = one layer, audited asset-by-asset on all 3 axes, producing that layer's findings register.
-Native reviews each wave's register before the next wave starts.
+Each wave = one layer, audited asset-by-asset on **Axis A (code) + Axis C (astrology) only** — Axis B
+data checks are POST-REGEN (see Axis B banner + §4), since the stale data is being discarded. The
+per-wave focus notes below that say "heavy on B" now mean: that B-dimension is a POST-REGEN acceptance
+priority for that layer, NOT pre-regen work. Native reviews each wave's register before the next.
 
 - **Wave 0 — Shared compute + harness (do FIRST).** Audit the cross-cutting compute every layer
   depends on: `pyjhora_adapter/compute.py`, `panchanga_writer.py`, `birth_params.py`,
@@ -127,10 +138,18 @@ its fix plan).
    place; CI green; Cloud Run job image rebuilt to carry all fixes.
 3. RE-PROVE main==prod (web + job image == main HEAD, all fix commits ancestors).
 4. ONLY THEN regenerate all layers for all charts on the proven image. Data-only defects need no
-   pre-fix — they vanish in the clean rebuild; but verify post-regen they're actually gone (the
-   register's B/C rows become the post-regen acceptance checklist).
+   pre-fix — they vanish in the clean rebuild.
+5. POST-REGEN acceptance (Axis B runs HERE, once, on the fresh data): run the B1–B7 checks against the
+   regenerated data. MANDATORY among these is the **B7 per-chart isolation spot-check** — confirm a
+   non-native chart's regenerated rows carry ITS OWN values, not the native's (e.g. Abhinandan's Sun =
+   his ~318° Aquarius, NOT the native's 292° Capricorn), on at least one asset per layer. This is the
+   end-to-end proof that "fix code → regenerate → clean data" actually held. A B7 failure here means a
+   vulnerable writer was MISSED by Axis A → halt, find it, fix, regenerate the affected asset.
 GATE: regeneration does not start until every blocker/major CODE finding is fixed + verified live and
-the contamination structural guard is in place.
+the contamination structural guard is in place AND EXHAUSTIVE (full bug-class, not one literal pattern).
+RATIONALE: with the pre-regen data audit dropped (native amendment — stale data is discarded), Axis A
+is the SOLE pre-regen guarantee against re-contamination; the post-regen B7 spot-check (step 5) is the
+only backstop, so it is mandatory, not optional.
 
 ## §5 — Pacing + governance
 - This is a multi-session campaign. Each session = one wave (or a sub-wave for the big layers). Open a
