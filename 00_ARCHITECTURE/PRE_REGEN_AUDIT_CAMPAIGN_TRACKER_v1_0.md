@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.2
+version: 1.3
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.3
+    date: 2026-06-26
+    change: "Wave 3 complete — 10 bo_* L2 Bodha assets audited; 0 blockers/majors; 2 FIX-REQUIRED + 4 REVIEW-NEEDED (all minor); 5 cross-cutting findings F-W3-001 through F-W3-005"
   - version: 1.2
     date: 2026-06-26
     change: "Wave 2 complete — 13 ga_* L1 assets audited; contamination fixes committed; 4 majors + 3 minors; 4 carry-over fixes for next session"
@@ -27,7 +30,7 @@ changelog:
 | W0 | Shared compute + harness | pyjhora_adapter/compute.py, birth_params.py, panchanga_writer.py, pyhora.py, L0 files, jaimini engine/router, orchestrator adapters | ✅ COMPLETE | 2026-06-26 | §W0 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W1 | L0 Brahmagyan (18 bg_* assets) | All bg_* orchestrator writers + l0_* source modules | ✅ COMPLETE | 2026-06-26 | §W1 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W2 | L1 Gaṇita (13 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites → all committed; 4 carry-over fixes remain) | ✅ COMPLETE (carry-overs pending) | 2026-06-26 | §W2 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W3 | L2 Bodha (~11 bo_* assets) | bo_* writers, synthesis layer | ⏳ PENDING | — | — |
+| W3 | L2 Bodha (10 bo_* assets) | bo_* writers, synthesis layer | ✅ COMPLETE | 2026-06-26 | §W3 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W4 | L3 Kāla (~10 ka_* assets) + L4 Phala (~9 ph_* assets) | ka_* + ph_* writers | ⏳ PENDING | — | — |
 | W5 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
 
@@ -99,10 +102,29 @@ Regeneration (all layers, all charts) requires ALL of the following:
 ### Contamination carry-overs (extend grep guard)
 The Wave 2 grep guard is green BUT `ga_dashas_writer.py` uses local-alias NATIVE_BIRTH constants. Widen `test_no_raw_native_birth_fallback` to also catch `or BIRTH_IST`, `or BIRTH_LAT`, `or BIRTH_LON` variants.
 
+## Wave 3 key findings
+
+### Blockers: none
+### Majors: none
+
+### FIX-REQUIRED (minor, 2)
+1. `bo_bimba` A4/A5 — msr_signal_id NULL for graha nodes; derivation chain (CGM node → MSR signal → L1 fact) cannot be traversed
+2. `bo_drishti` A5/C1 — QUESTION_TYPE_CONFIG domain mappings uncited (bare code comments, no bg_rules FK or classical text reference)
+
+### REVIEW-NEEDED (minor, 4)
+3. `bo_karanajala` A7 — silent empty-upstream degradation; bodha_contradictions ownership split across writers confusing
+4. `bo_samskara` A7 — empty-signals silent skip
+5. `bo_upaya` A5 — constituent_facts_array never populated on bodha_rm_resonances (COUPLED to F-W3-003/F-W3-004)
+6. `bo_pramana_mapa` A5/A7 — trap2 hardcoded 0 (governance theater); MV refresh failures silently swallowed
+
+### PASS (4)
+bo_laksana, bo_sangati, bo_samvada, bo_anveshana
+
+### Clean facts
+All 10 bo_* assets: A1 CHART-INDEPENDENT-of-birth (zero contamination risk), A3 PASS (FROZEN contract), A2 PASS (L2 delete-then-insert idempotency), A6 PASS (no generative LLM at build time).
+
 ## Next session
 
-Wave 2 carry-overs (4 fixes) then Wave 3 (L2 Bodha bo_* writers). Carry-overs:
-1. Fix `ga_dashas_writer.py` local-alias contamination + widen grep guard
-2. Fix `ga_tajaka_writer.py` `compute_varsha()` unconditional NATIVE_BIRTH + conn injection
-3. Fix `ga_vargas_writer.py` D9 formula + INVARIANT sentinel + telemetry removal
-4. Fix `ga_vargas_writer.py` INVARIANT sentinel accretion
+Wave 4: L3 Kāla (ka_* writers) + L4 Phala (ph_* writers). HIGH-RISK for A1 contamination — ka_* assets take birth-time inputs (temporal computations), like ga_dashas/ga_tajaka escapes. Expect grep-invisible contamination. Read each writer by hand (not grep-trust). After Wave 4: Wave 5 cross-wave synthesis + Fix Plan.
+
+Wave 3 fixes (F-W3-001 through F-W3-005) are non-blocking for Wave 4 — can be executed alongside or after. F-W3-003 (bo_upaya constituent_facts_array) is the highest-priority fix as it corrupts the governance metric in bo_pramana_mapa.

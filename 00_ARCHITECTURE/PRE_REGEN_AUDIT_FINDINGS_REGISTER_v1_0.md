@@ -1,16 +1,20 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.4
+version: 1.5
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
   Per-asset findings register for the Pre-Regeneration Full Audit Campaign (L0–L4).
   One row per audited file × 3 axes × PASS/FAIL. Becomes the fix plan when all
   waves complete.
-waves_complete: W0, W1, W2
-waves_pending: W3, W4, W5
+waves_complete: W0, W1, W2, W3
+waves_pending: W4, W5
 changelog:
+  - version: 1.5
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 3 complete — 10 bo_* L2 Bodha assets audited; 0 blockers/majors; 2 FIX-REQUIRED + 4 REVIEW-NEEDED (all minor); 5 cross-cutting findings F-W3-001 through F-W3-005.
   - version: 1.4
     date: 2026-06-26
     author: Claude (Cowork)
@@ -413,13 +417,56 @@ Ordered by severity:
 
 ---
 
-## Wave 3 — Pending
+## §W3 — Wave 3: L2 Bodha (10 bo_* assets)
 
-*Pending — scheduled for Wave 3 session.*
+Wave date: 2026-06-26  
+Auditor: Claude (Cowork) — 3 parallel audit groups  
+Scope: All 10 bo_* orchestrator writers (pipeline/orchestrator/writers/bo_*.py) + source modules  
+Axes: Axis A (A1–A5, A7), Axis C (C1); Axis B deferred (POST-REGEN ONLY — stale data being discarded)
 
-Planned scope: L2 Bodha writers (`bo_*` assets) — Axis A + C static checks.
-L2 is pre-build so no Axis B SQL checks yet; focus on contamination guards
-and WriterBase conformance before first L2 build.
+### Summary
+
+All 10 bo_* assets are CHART-INDEPENDENT-of-birth at A1 — zero native-birth contamination risk in L2.
+All assets conform to the FROZEN orchestrator contract (A3). L2 idempotency (delete-then-insert, §N.3) is correctly implemented across all writers (A2 PASS). No LLM generative calls at build time (A6 PASS).
+
+2 assets require fixes (minor). 4 assets are REVIEW-NEEDED (minor, non-blocking). 4 assets are clean PASS.
+
+**No blockers. No majors.**
+
+### Per-asset findings
+
+| asset_id | layer | A1 | A2 | A3 | A4 | A5 | A6 | A7 | C1 | VERDICT | severity | fix summary |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| bo_laksana | L2 | CHART-IND | PASS | PASS | PASS | PASS | PASS | PASS† | PASS | PASS | none | † nested SAVEPOINT/ROLLBACK in writer is cursor-scoped, acceptable; add clarifying comment |
+| bo_bimba | L2 | CHART-IND | PASS | PASS | PARTIAL | PARTIAL | PASS | WARN | PASS | FIX-REQUIRED | minor | Populate msr_signal_id for graha nodes (max-salience signal driving strength_score/dignity_state); add empty-signals WARNING guard |
+| bo_karanajala | L2 | CHART-IND | PASS | PASS | PASS | PASS† | PASS | WARN | PASS | REVIEW-NEEDED | minor | Add empty-signals + empty-node-map WARNING guards; add comment explaining bodha_contradictions written here but counted in bo_sangati count_sql |
+| bo_sangati | L2 | CHART-IND | PASS | PASS | PASS | PASS | PASS | WARN† | PASS | PASS | none | † _fetch_contradiction_domains exception catch returns empty set silently; upgrade to WARNING |
+| bo_samvada | L2 | CHART-IND | N/A | PASS | N/A | N/A | PASS | WARN† | N/A | PASS | none | DDL-only (VIEW); † stale TODO comment in docstring; remove |
+| bo_samskara | L2 | CHART-IND | PASS† | PASS | PASS | PASS | PASS | WARN | N/A | REVIEW-NEEDED | minor | Add empty-signals WARNING; † ON CONFLICT DO UPDATE after delete-then-insert is redundant — document or remove |
+| bo_drishti | L2 | CHART-IND | PASS | PASS | PASS | FAIL | PASS | WARN | FAIL | FIX-REQUIRED | minor | A5/C1: QUESTION_TYPE_CONFIG domain-question mappings use bare code comments; replace with L0 bg_rules references or explicit classical text citations (BPHS chapter); A7: add post-loop assertion if total==0 |
+| bo_anveshana | L2 | CHART-IND | PASS† | PASS | PASS | PASS | PASS | PASS | PASS | PASS | none | † inline DELETEs (no shared _idempotency helpers); add replace_prior_discoveries / replace_prior_anomalies to bodha_writers/_idempotency.py for consistency |
+| bo_upaya | L2 | CHART-IND | PASS | PASS | PASS† | FAIL | PASS | WARN | PASS† | REVIEW-NEEDED | minor | A5: constituent_facts_array never populated on bodha_rm_resonances (inflates bo_pramana_mapa trap1 count); A7: dual cursor pattern (conn.cursor() vs conn.execute()) fragile; C1†: debility_score=0.3 for neutral dignity is non-BPHS |
+| bo_pramana_mapa | L2 | CHART-IND | PASS† | PASS | PASS | PASS† | PASS | WARN | N/A | REVIEW-NEEDED | minor | A5†: trap2_narration_leak_count hardcoded 0 (no detection logic — governance theater); A2†: scorecard accretes per build_id (history-retention vs replace — decide and document); A7: MV refresh failures silently swallowed |
+
+### Cross-cutting findings
+
+**F-W3-001 (minor) — bo_bimba A4/A5:** `msr_signal_id` is NULL for ALL node types in bodha_cgm_nodes. The derivation chain from CGM node → MSR signal → L1 chart_facts cannot be traversed. Fix: populate msr_signal_id for graha nodes using the signal_id of the max-salience MSR signal that determined strength_score + dignity_state.
+
+**F-W3-002 (minor) — bo_drishti A5/C1:** `QUESTION_TYPE_CONFIG` domain-question mappings (progeny→career+relationship, foreign_travel→spirituality, property→wealth, education→character+spirituality, siblings→character) encode classical house-rulership correspondences as bare inline comments. `citation_ref` is a self-referential path, not an L0 bg_rules FK. Fix: add L0 bg_rules citation or named classical text reference (BPHS chapter) per mapping.
+
+**F-W3-003 (minor) — bo_upaya + bo_pramana_mapa COUPLED:** bo_upaya never populates `constituent_facts_array` on bodha_rm_resonances rows (it is absent from the INSERT SQL). This directly inflates bo_pramana_mapa's `trap1_authority_inversion_count` to 45 (all resonance rows × 5 ayanamshas), making the trap-1 metric useless as a governance signal. Fix both together: add constituent_facts_array to bo_upaya's _RESONANCE_INSERT (populated from the fact_ids consumed for each graha), then verify bo_pramana_mapa trap1 count drops.
+
+**F-W3-004 (minor) — bo_pramana_mapa trap-2 dead metric:** `trap2_narration_leak_count` is hardcoded to 0 in bo_pramana_mapa — there is no detection logic. The column exists and the INSERT writes it, but it always reports 0 regardless of actual narrative-contamination state. This is governance theater for the MSR_UCN_CONTAMINATION_AUDIT's Trap-2 protection. Fix: implement a proxy detection query (e.g., count bodha_msr_signals rows where computed_salience IS NULL or signal_type_class not in known deterministic set).
+
+**F-W3-005 (minor, systemic) — A7 empty-upstream silent degradation (8/10 assets):** bo_bimba, bo_karanajala, bo_sangati, bo_samskara, bo_drishti, bo_anveshana, bo_upaya, bo_pramana_mapa all produce 0-row or degraded output silently when upstream bo_laksana / bodha_msr_signals is empty. None raise a WARNING-level signal that would surface to the orchestrator. This makes it impossible to distinguish a correct empty-upstream build failure from a legitimate "this chart has no signals." Fix: each writer should call `logger.warning("[bo_X] no MSR signals for aya=%s — upstream bo_laksana may not have run", aya)` when signals is empty, and return early rather than silently producing skeleton rows.
+
+### Wave 3 fix list (ordered by priority)
+
+1. **F-W3-003** (coupled): Add `constituent_facts_array` to bo_upaya `_RESONANCE_INSERT` + verify bo_pramana_mapa trap1 drops.
+2. **F-W3-004**: Implement trap2 proxy detection in bo_pramana_mapa.
+3. **F-W3-001**: Populate `msr_signal_id` in bo_bimba graha nodes.
+4. **F-W3-002**: Add L0/classical citations to bo_drishti QUESTION_TYPE_CONFIG.
+5. **F-W3-005** (systemic): Add empty-upstream WARNING guards across all 8 affected writers.
 
 ---
 
