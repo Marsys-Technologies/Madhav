@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.98
+version: 5.99
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.99 (2026-06-27, L5-MI-RECONCILE-SEAL):
+    **L5 Mīmāṃsā SEALED — branch reconciled, W8 15/15 PASS, merged to main (334d6976).**
+    ANTIGRAVITY JOB 1: cherry-picked only L5 commits (0420c5a9 + 33e445ed) onto clean
+    l5/reconcile-seal branch off origin/main (excluded L3 seal commit 3a916ee6 which
+    contaminated chore/l3-final-seal-docs). Conflict-resolved CURRENT_STATE took v5.98.
+    Two additional fixes: mi_seva/mi_abhilekha count_sql→null (catalog_reconciliation gate);
+    SESSION_LOG heading em-dash format (schema_validator G15). JOB 2: G1–G15 all PASS.
+    JOB 3: STRUCTURAL mode confirmed — 9/9 multipliers prior_only, evidence_grade=structural_no_calibration,
+    no honesty bug. JOB 3.5: cockpit counts verified, migration ledger confirmed, LIG.L5.1 documented
+    (L5 retrieval capabilities not imported in Consume Chat bootstrap — non-blocking post-seal gap).
+    JOB 4: merged to main --no-ff, pushed origin/main (auto-deploy triggered). Seal report:
+    L5_SEAL_AND_SHIP_REPORT_v1_0.md.
+    last_session_id: L5-MI-RECONCILE-SEAL. predecessor_session: L5-MI-W9W8-BUILD-VERIFY.
+    next_session_objective: >
+      "L5 Mīmāṃsā SEALED (2026-06-27). NEXT: open L4 Phala campaign.
+      (1) Read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract.
+      (2) Author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      (3) First L4 platform/ migration: 358+ (357 consumed by mi_has_writer).
+          First L4 supabase/ migration: 346+ (345 consumed by ka_* back-fill).
+      (4) Native clicks Rebuild→Kāla on cockpit tracker (clears ka_* stale badges).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator.
+      L5 structural→empirical calibration activates after L4 seals + first mi_pariksha harness cycle."
+    file_updated_at: 2026-06-27. file_updated_by_session: L5-MI-RECONCILE-SEAL.
   - v5.98 (2026-06-27, L5-MI-W9W8-BUILD-VERIFY):
     **L5 Mīmāṃsā W9+W8 PASS — click-Build now plans all 10 mi_* data writers and completes clean.**
     Session executed the ANTIGRAVITY W9/W8 runbook end-to-end. Starting from zero mimamsa_* rows and
@@ -4925,7 +4948,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: S2379-ORPHAN-CLOSE  # 2026-06-26: S2379 orphaned docs committed; all pre-regen fixes confirmed on main. Predecessor D2-SSE-VERIFY. (prev: L2-BODHA-POSTSEAL-CLOSEOUT 2026-06-20)
+  last_session_id: L5-MI-RECONCILE-SEAL  # 2026-06-27: L5 Mīmāṃsā SEALED — branch reconciled, W8 15/15 PASS, merged to main (334d6976). Predecessor L5-MI-W9W8-BUILD-VERIFY. (prev: S2379-ORPHAN-CLOSE 2026-06-26)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
@@ -5781,13 +5804,18 @@ current_state:
   # Next-session commitment (single committed objective per SESSION_LOG_SCHEMA §4)
   # ------------------------------------------------------------------
   next_session_objective: >
-    L3 SEALED + closed-out (2026-06-21). CURRENT_STATE v5.90. NEXT = L4 Phala.
-    L3_KALA_CLOSE_v1_0.md v1.2 sealed (12 assets: 5 service + 7 artifact; CF.L3.7 + CF.L3.8 RESOLVED).
-    CI fail-loud (PR #325) + bypass script retirement (PR #326) merged. Closure audit complete.
-    Next: (1) open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract;
-    (2) author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md; (3) first L4 migration starts at 251, SHOULD drop
-    kala_timeline (CF.L3.2). Phase E (Abhinandan `1c826d5a`) still GATED — independent.
-    G-MAG + G-RUN are STANDING SEAL REQUIREMENTS for every layer close.
+    L5 Mīmāṃsā SEALED (2026-06-27, L5-MI-RECONCILE-SEAL). CURRENT_STATE v5.99. NEXT = L4 Phala.
+    W8 15/15 PASS. Merged to main (334d6976). Seal report: L5_SEAL_AND_SHIP_REPORT_v1_0.md.
+    Structural mode: 9 multipliers prior_only; empirical calibration activates after L4 seals.
+    LIG.L5.1: L5 retrieval capabilities not in Consume Chat bootstrap (post-seal gap, non-blocking).
+    Next: (1) read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract;
+    (2) author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md;
+    (3) first L4 platform/ migration 358+; first L4 supabase/ migration 346+.
+    Native: click Rebuild→Kāla to clear ka_vighnakara/ka_yojaka/ka_kalasutra/ka_kala_darshana stale badges.
+    Phase E (Abhinandan `1c826d5a`) still GATED — independent.
+    === Predecessor next_session_objective (L3-KALA-FINAL-CLOSE, superseded) ===
+    L3 SEALED + closed-out (2026-06-27). CURRENT_STATE v5.97+. NEXT = L4 Phala.
+    L3_KALA_CLOSE_v1_0.md v1.4: CF.L3.8 RESOLVED (12/12 buildable). click-Build plans all 12/12 ka_*.
     === Predecessor next_session_objective (L3-KALA-PROD-BUILD-REMEDIATION, superseded) ===
     L3 Kāla CLOSED (2026-06-21, L3-KALA-AUTONOMOUS). 9 ka_* assets. 8 migrations (242–249) on PROD.
     197 tests PASS. SPINE-FIRST gate PASS. Seal: L3_KALA_CLOSE_v1_0.md. CURRENT_STATE v5.88.

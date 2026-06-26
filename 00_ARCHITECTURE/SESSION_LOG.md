@@ -29695,3 +29695,91 @@ L4 supabase/ migration is **346**. **(b)** Native clicks Rebuild→Kāla on trac
 `ka_vighnakara`/`ka_yojaka` badges. Phase E (Abhinandan `1c826d5a`) still GATED on operator.
 
 *End of L5-MI-W9W8-BUILD-VERIFY entry — 2026-06-27.*
+
+---
+
+## L5-MI-RECONCILE-SEAL — 2026-06-27
+
+**Session type:** L5 Mīmāṃsā reconcile-seal-and-ship (ANTIGRAVITY)
+**Predecessor session:** L5-MI-W9W8-BUILD-VERIFY (2026-06-27)
+**chart_id:** `482012f1-710e-4a25-994a-93821f5871aa`
+
+### Work performed
+
+**JOB 1 — Branch reconciliation:** Input branch `chore/l3-final-seal-docs` was contaminated
+(L3 seal commit `3a916ee6` mixed with L5 commits). Cherry-picked only `0420c5a9` (L5 writer
+fixes) and `33e445ed` (L5 docs) onto clean `l5/reconcile-seal` off `origin/main`. Conflict in
+`CURRENT_STATE_v1_0.md` resolved: took v5.98 content. Two additional fixes applied:
+- `mi_seva` + `mi_abhilekha` `count_sql` → `null` (catalog_reconciliation gate, commit `42738be0`)
+- `SESSION_LOG.md` heading `(2026-06-27)` → `— 2026-06-27` em-dash format (commit `1aae41f2`)
+
+**JOB 2 — W8 seal-gate sweep G1–G15:** 15/15 PASS. Prod DB (Cloud SQL Auth Proxy port 5433).
+All 10 data writers lit, idempotency pre=96==post=96, schema_validator exits 3 (pre-existing only),
+drift_detector exits 3 (pre-existing only), catalog_reconciliation 4630/4630 PASS.
+
+**JOB 3 — L4-dependency + honesty label:** STRUCTURAL mode confirmed. 9/9 multipliers
+`prior_only`. `evidence_grade=structural_no_calibration`. No honesty bug. Correct behavior
+for L4-not-yet-sealed state.
+
+**JOB 3.5 — Catch-all sweep:**
+- count_sql: all 10 data assets verified ✓
+- Stale badges: ka_vighnakara/ka_yojaka/ka_kalasutra/ka_kala_darshana state='stale' — requires
+  native Rebuild→Kāla click (non-blocking)
+- Migration ledger: 346a + 357 both in `_migrations_applied` ✓
+- LIG.L5.1 documented: L5 retrieval capabilities not imported in Consume Chat bootstrap
+  (parity_check.ts L5 coverage gap — non-blocking post-seal task)
+- mi_darshana views: 0 rows expected (joins with native-input tables, seeded at serve time) ✓
+
+**JOB 4 — Ship:** Merged `l5/reconcile-seal` to `main` (--no-ff, commit `334d6976`). Pushed
+`origin/main`. 11 files changed, 509 insertions. Auto-deploy triggered.
+
+**JOB 5 — Report + close:** `L5_SEAL_AND_SHIP_REPORT_v1_0.md` authored. `CURRENT_STATE_v1_0.md`
+bumped to v5.99. This SESSION_LOG entry appended.
+
+### Artifacts produced
+
+- `00_ARCHITECTURE/L5_SEAL_AND_SHIP_REPORT_v1_0.md` v1.0 SEALED
+- `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` bumped to v5.99
+- Merge commit `334d6976` on `main`
+
+### Gate summary
+
+| Gate | Result |
+|---|---|
+| JOB 1 branch reconcile | PASS |
+| JOB 2 W8 G1–G15 | 15/15 PASS |
+| JOB 3 honesty label | PASS (STRUCTURAL) |
+| JOB 3.5 catch-all | PASS (all items ✓ or documented) |
+| JOB 4 ship | SHIPPED (334d6976 → origin/main) |
+
+```yaml
+session_close:
+  session_id: L5-MI-RECONCILE-SEAL
+  closed_on: 2026-06-27
+  outcome: COMPLETE — L5 Mīmāṃsā sealed + shipped; W8 15/15 PASS; merged to main (334d6976)
+  contract_violations: 0
+  native_chart_touched: false (build not re-run in this session; prod state from W9W8 session intact)
+  active_layer_campaign_after: L5 Mimamsa SEALED (structural mode); L4 Phala = NEXT
+  current_state_updated: true
+  current_state_version: 5.99
+  session_log_appended: true
+  red_team_pass: "n/a — reconcile-seal-ship session"
+  next_session_objective: >
+    L5 Mīmāṃsā SEALED (2026-06-27). NEXT: open L4 Phala campaign.
+    (1) Read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract.
+    (2) Author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+    (3) First L4 platform/ migration: 358+; first L4 supabase/ migration: 346+.
+    Native: click Rebuild→Kāla to clear ka_vighnakara/ka_yojaka/ka_kalasutra/ka_kala_darshana stale badges.
+    Phase E (Abhinandan 1c826d5a) still GATED on operator.
+    L5 structural→empirical calibration activates after L4 seals + first mi_pariksha harness cycle.
+```
+
+### Next session objective
+
+**L5 Mīmāṃsā SEALED (2026-06-27).** All 12 `mi_*` assets sealed. W8 15/15 PASS. Structural mode.
+Next: **(1)** read `L3_KALA_CLOSE_v1_0.md §11` for L4 onboarding contract; **(2)** author
+`L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`; **(3)** first L4 platform/ migration **358**+; first L4
+supabase/ migration **346**+. **Native:** click Rebuild→Kāla to clear stale L3 badges.
+Phase E (Abhinandan `1c826d5a`) still GATED.
+
+*End of L5-MI-RECONCILE-SEAL entry — 2026-06-27.*
