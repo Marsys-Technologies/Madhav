@@ -29143,7 +29143,7 @@ First L4 migration must drop `kala_timeline` (CF.L3.2).
 
 ---
 
-## Session: NIRMANA-TRACKER-HARDENING-PLAN — 2026-06-26
+## NIRMANA-TRACKER-HARDENING-PLAN — 2026-06-26
 
 ```yaml
 session_open:
@@ -29173,7 +29173,7 @@ session_body:
     - bg_dignity_reference is NOT an orphan (writer + registry row mig 298 + cited mig 250 all exist)
     - F-W1-001 bg_rules conn.rollback() does NOT exist — ZERO FROZEN-contract violations across 60+ writers
     - orchestrator DOES publish asset.state_change/progress/substep Pub/Sub events
-    - "L0 excluded from global" is role-conditional, not absolute (super_admin global included L0 — now changed by ruling)
+    - L0 excluded from global is role-conditional, not absolute (super_admin global included L0 — now changed by ruling)
     - committing stage = 93% (not 88); SunNode is inline in CockpitHeader; registry SELECT had a duplicate line
   native_rulings_binding:
     - L0 EXCLUDED from global build/rebuild — bg_* only via explicit super_admin L0-layer/asset trigger; A1 auto-pull must not pull L0; dormant bg_ dep → downstream BLOCKED
@@ -29218,7 +29218,7 @@ session_close:
 
 ---
 
-## Session: NIRMANA-TRACKER-HARDENING-VERIFY — 2026-06-26
+## NIRMANA-TRACKER-HARDENING-VERIFY — 2026-06-26
 
 ```yaml
 session_open:
