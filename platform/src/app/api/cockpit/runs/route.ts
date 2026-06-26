@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   const [registryResult, throughputResult] = await Promise.all([
     query<RegistryEntryWithScope>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds, scope
-       FROM asset_registry WHERE is_active = true ORDER BY layer, sort_order`
+       FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
       `SELECT asset_id, state FROM asset_throughput WHERE chart_id=$1`,

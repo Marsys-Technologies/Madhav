@@ -1,7 +1,7 @@
 """
 ka_yojaka writer — activation-predicate bridge (L3 K3)
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
-NEVER calls ctx.db_conn.commit() or .rollback()
+Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table
 """
 import json

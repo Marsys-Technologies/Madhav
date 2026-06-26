@@ -42,7 +42,11 @@ class KaJivanaParvaWriter(WriterBase):
             conv_windows = cur.fetchall()
 
         rows = []
-        for idx, (planet, start_dt, end_dt) in enumerate(dashas):
+        for idx, dasha in enumerate(dashas):
+            # dashas is list[dict] (dict_row cursor); unpack by key not position
+            planet = dasha['lord_graha']
+            start_dt = dasha['start_date']
+            end_dt = dasha['end_date']
             start_y = start_dt.year if start_dt else None
             if start_y is None:
                 logger.warning("ka_jivana_parva: skipping dasha row idx=%d planet=%s — NULL start_date in chart_dashas", idx, planet)
@@ -50,14 +54,14 @@ class KaJivanaParvaWriter(WriterBase):
             end_y = end_dt.year if end_dt else None
             end_dt_actual = end_dt or date(2100, 1, 1)
 
-            # Windows within this mahadasha span
+            # Windows within this mahadasha span (conv_windows also list[dict])
             span_windows = [
                 w for w in conv_windows
-                if w[0] and start_dt and end_dt_actual and start_dt <= w[0] <= end_dt_actual
+                if w['peak_date'] and start_dt and end_dt_actual and start_dt <= w['peak_date'] <= end_dt_actual
             ]
 
-            high_conv_count = sum(1 for w in span_windows if (w[2] or 0) >= 0.5)
-            avg_score = (sum(w[2] or 0 for w in span_windows) / len(span_windows)) if span_windows else None
+            high_conv_count = sum(1 for w in span_windows if (w['effective_score'] or 0) >= 0.5)
+            avg_score = (sum(w['effective_score'] or 0 for w in span_windows) / len(span_windows)) if span_windows else None
 
             # Parva quality
             quality = _assign_quality(idx, len(dashas), high_conv_count, avg_score, start_y, end_y)

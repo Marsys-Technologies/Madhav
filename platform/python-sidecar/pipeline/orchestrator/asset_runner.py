@@ -373,11 +373,15 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
         return False
 
     writer = writer_cls()
-    try:
-        birth_params = fetch_birth_params(conn, chart_id)
-    except Exception as exc:
-        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
-        return False
+    if chart_id is None:
+        # Global-scope asset: no chart_id → no birth_params needed (writer must not use them).
+        birth_params = {}
+    else:
+        try:
+            birth_params = fetch_birth_params(conn, chart_id)
+        except Exception as exc:
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"birth_params: {exc}")
+            return False
 
     ctx = ContextSpec(
         asset_id=asset_id, build_id=run_id, db_conn=conn,
@@ -533,7 +537,15 @@ def run_asset(
         return
 
     if is_service:
-        # Service "build" = run health probe (no rebuild policy → today's behaviour).
+        # Service assets with a registered WriterBase writer (e.g. ka_graha_sancara,
+        # ka_muhurta_seva) use the writer's run() for their self-test — they are
+        # "service writers", not legacy health-probe-spec services. Route through
+        # _run_data_writer which now safely handles chart_id=None (global-scope backstop).
+        discover_all()
+        if get_writer(asset_id) is not None:
+            _run_data_writer(conn, cur, run_id, chart_id, asset_id)
+            return
+        # Legacy health-probe path (bg_* assets with health_probe JSONB spec).
         _run_service_health_probe(conn, cur, run_id, chart_id, asset_id,
                                   registry_row.get("health_probe"))
         return

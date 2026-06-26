@@ -431,9 +431,9 @@ def _signature_tier(computed_salience: float) -> str:
 # ── Lookup builders ───────────────────────────────────────────────────────────
 
 def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
+    # conn uses dict_row factory; fetchall() already returns dicts — convert to plain dict.
     cur = conn.execute(sql, params)
-    cols = [d[0] for d in cur.description]
-    return [dict(zip(cols, row)) for row in cur.fetchall()]
+    return [dict(r) for r in cur.fetchall()]
 
 
 def _build_strength_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, float]:

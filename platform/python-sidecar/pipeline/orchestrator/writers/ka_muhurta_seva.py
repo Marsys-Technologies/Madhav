@@ -11,7 +11,7 @@ All implementation logic lives in:
 Contract compliance (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE §2):
   - @register('ka_muhurta_seva') → WriterBase subclass
   - run(ctx) → WriterResult(rows_inserted=0, rows_updated=0)
-  - NEVER calls ctx.db_conn.commit() / rollback() / close()
+  - Orchestrator owns the transaction — writer must NOT commit, rollback, or close db_conn
   - NEVER writes asset_throughput
   - Honors ctx.dry_run
 
