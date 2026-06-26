@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.94
+version: 5.95
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,26 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.95 (2026-06-26, D2-SSE-VERIFY):
+    **D2 Pub/Sub SSE functionally verified. Writer psycopg3 ports + migration 344 applied to prod.**
+    Fix 1 — ka_kala_darshana.py ported off psycopg2 execute_values → psycopg3 cur.executemany (11-col INSERT; was BLOCKER on every build).
+    Fix 2 — ka_kalasutra.py same port (13-col INSERT).
+    Fix 3 — bo_samskara registry scope corrected global→per_chart in seed + migration 344 (cleared clear-preview 0-vs-66,738 contradiction).
+    google-cloud-pubsub>=2.21.0 added to python-sidecar/requirements.txt (missing; events.py pubsub_v1 import was silently failing on every pipeline job).
+    Migration 344 applied surgically to prod via Cloud SQL Auth Proxy (port 5433): bo_samskara.scope=per_chart confirmed.
+    IAM root cause found and fixed: amjis-web-runtime had roles/pubsub.subscriber (does NOT include pubsub.subscriptions.create —
+    subscriber role only allows consuming existing subs, not creating them); SSE route creates ephemeral subscriptions per-request.
+    Fix: roles/pubsub.editor granted project-level to amjis-web-runtime.
+    D2 SSE PASS — 3 real data: frames confirmed on SAFE chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a:
+    asset.state_change (ga_dashas→building), run.state_change (4db0b9ec→running), asset.substep (vimshottari×lahiri_chitrapaksha, 11,242 rows).
+    Native chart 482012f1 never touched.
+    last_session_id: D2-SSE-VERIFY. predecessor_session: D2-PUBSUB-SSE-APPLY.
+    next_session_objective: >
+      "D2 SSE fully verified (2026-06-26). Open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      First L4 migration starts at 345 (344 consumed by bo_samskara scope fix).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-26. file_updated_by_session: D2-SSE-VERIFY.
   - v5.94 (2026-06-26, D2-PUBSUB-SSE-APPLY):
     **D2 Pub/Sub SSE APPLIED and infrastructure-verified.** Full operator sequence executed:
     Step 1 — Pipeline job SA confirmed amjis-web-runtime (not amjis-sidecar-runtime as anticipated);

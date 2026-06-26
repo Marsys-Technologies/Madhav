@@ -29387,3 +29387,101 @@ session_close:
 **D2 Pub/Sub SSE infrastructure is fully applied and code-path verified.** Functional verification (data: frames on the SSE stream) requires triggering a live build. Browser MCP profile locks need to be cleared first (`~/.cache/chrome-devtools-mcp/chrome-profile/SingletonLock` and `~/Library/Caches/ms-playwright-mcp/mcp-chrome-783ac21/SingletonLock`). After clearing, trigger a build on chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a` and confirm the SSE stream shows `data: {...}` event frames. Once confirmed, open the **L4 Phala campaign**.
 
 *End of D2-PUBSUB-SSE-APPLY entry — 2026-06-26.*
+
+---
+
+## D2-SSE-VERIFY — 2026-06-26
+
+```yaml
+session_open:
+  session_id: D2-SSE-VERIFY
+  cowork_thread_name: D2-SSE-Verify-2026-06-26
+  opened_on: 2026-06-26
+  role: Claude Code — writer fixes + IAM fix + SSE functional verification
+  active_layer_campaign: L4 Phala (UNCHANGED — parallel infra-ops + fix track)
+  objective: >
+    Three surgical code fixes (psycopg3 ports + bo_samskara scope) +
+    google-cloud-pubsub dependency + push/deploy + migration 344 to prod +
+    D2 SSE functional verification (data: frames on /api/cockpit/sse).
+  may_touch:
+    - platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py
+    - platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py
+    - platform/scripts/seed/asset_registry_seed.ts
+    - platform/migrations/344_bo_samskara_scope_per_chart.sql
+    - platform/python-sidecar/requirements.txt
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch:
+    - any chart_* or *_signals data on native 482012f1
+    - orchestrator contract (FROZEN)
+  red_team_due: false
+
+session_body:
+  fix_1:
+    file: platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py
+    change: removed psycopg2.extras execute_values import; replaced with cur.executemany 11-col INSERT
+    reason: BLOCKER — orchestrator passes psycopg3 connection; execute_values is psycopg2-only
+  fix_2:
+    file: platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py
+    change: same psycopg2→psycopg3 port; 13-col INSERT
+    reason: latent twin of Fix 1
+  fix_3:
+    seed_file: platform/scripts/seed/asset_registry_seed.ts
+    migration: platform/migrations/344_bo_samskara_scope_per_chart.sql
+    change: bo_samskara scope global→per_chart
+    reason: clear-preview showed 0 rows (no chart_id param); stats header showed 66,738 (global count)
+  dependency_fix:
+    file: platform/python-sidecar/requirements.txt
+    change: added google-cloud-pubsub>=2.21.0
+    reason: events.py imports pubsub_v1 from google.cloud; package was missing; silent failure on every pipeline job
+  migration_344_prod:
+    applied_via: Cloud SQL Auth Proxy port 5433
+    result: bo_samskara.scope=per_chart confirmed
+  iam_fix:
+    root_cause: >
+      amjis-web-runtime had roles/pubsub.subscriber which only grants consume/get/list/seek.
+      SSE route calls topic.createSubscription() per-request — requires pubsub.subscriptions.create
+      which is NOT in subscriber role. Every SSE connection attempt got PERMISSION_DENIED 7.
+    fix: gcloud projects add-iam-policy-binding madhav-astrology --member=serviceAccount:amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com --role=roles/pubsub.editor
+    result: IAM effective within ~65s; no redeploy needed
+  sse_verification:
+    chart: 1c826d5a-41cb-4450-b4dc-59d440e5f75a
+    mode_confirmed: pubsub (first frame was ": hello 1c826d5a-41cb-4450-b4dc-59d440e5f75a")
+    data_frames_received:
+      - "asset.state_change: ga_dashas null→building"
+      - "run.state_change: 4db0b9ec→running"
+      - "asset.substep: vimshottari×lahiri_chitrapaksha index=1/36 rows_written=11242"
+    verdict: PASS
+  stale_run_cleanup:
+    run_id: da372c0f-94c9-4ff2-848f-053199fed419
+    action: manually set state=failed (Cloud Run Job execution qpqpp had already failed with FK violation on chart_dashas asset_id)
+  side_finding: >
+    chart_dashas and ka_dasha_kala are NOT in asset_registry (FK violation on asset_throughput).
+    These are dependency-resolved IDs that the build planner includes but which lack registry rows.
+    The SSE test used ga_dashas (rebuild) which resolved a plan including these unregistered IDs;
+    ga_dashas itself ran successfully before the plan hit the FK wall.
+
+session_close:
+  session_id: D2-SSE-VERIFY
+  closed_on: 2026-06-26
+  outcome: COMPLETE — all fixes landed, migration 344 applied, D2 SSE functionally verified (PASS)
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L4 Phala (UNCHANGED)
+  current_state_updated: true
+  current_state_version: 5.95
+  session_log_appended: true
+  red_team_pass: "n/a — fix + ops verification session; no data build"
+  next_session_objective: >
+    D2 SSE fully verified (2026-06-26). Open L4 Phala campaign:
+    read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract;
+    author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+    First L4 migration starts at 345 (344 consumed by bo_samskara scope fix).
+    Phase E (Abhinandan 1c826d5a) still GATED on operator.
+```
+
+### Next session objective
+
+**D2 SSE fully verified (2026-06-26).** Three writer fixes (psycopg3 ports, bo_samskara scope), `google-cloud-pubsub` dependency, migration 344 applied to prod, Pub/Sub IAM gap fixed (`roles/pubsub.editor`), SSE stream confirmed delivering real `data:` frames on safe chart. Open the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for onboarding contract, author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **345**. Phase E (Abhinandan `1c826d5a`) still GATED on operator.
+
+*End of D2-SSE-VERIFY entry — 2026-06-26.*
