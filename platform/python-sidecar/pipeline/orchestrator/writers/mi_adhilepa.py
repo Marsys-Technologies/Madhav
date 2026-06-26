@@ -129,14 +129,14 @@ class MiAdhilepaWriter(WriterBase):
         if _table_exists(conn, "bodha_msr_signals"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT signal_id, family_id FROM bodha_msr_signals WHERE chart_id = %s",
+                    "SELECT signal_id FROM bodha_msr_signals WHERE chart_id = %s",
                     (chart_id,),
                 )
                 signals = cur.fetchall()
 
             sig_rows = []
             for sig in signals:
-                family_id = sig.get("family_id") or sig.get("signal_id")
+                family_id = sig["signal_id"]
                 mult = multipliers.get(str(family_id))
                 if not mult:
                     continue
@@ -154,15 +154,15 @@ class MiAdhilepaWriter(WriterBase):
         if _table_exists(conn, "chart_facts"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT fact_id, category FROM chart_facts WHERE chart_id = %s "
-                    "AND category IN ('graha', 'yoga') LIMIT 200",
+                    "SELECT fact_id, fact_category FROM chart_facts WHERE chart_id = %s "
+                    "AND fact_category IN ('graha', 'yoga') LIMIT 200",
                     (chart_id,),
                 )
                 facts = cur.fetchall()
 
             fact_rows = []
             for fact in facts:
-                mult = multipliers.get("fam_graha_natal" if fact["category"] == "graha" else "fam_yoga")
+                mult = multipliers.get("fam_graha_natal" if fact["fact_category"] == "graha" else "fam_yoga")
                 if not mult:
                     continue
                 fact_rows.append(_overlay_row(

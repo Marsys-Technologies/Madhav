@@ -17,6 +17,8 @@ from __future__ import annotations
 import logging
 import time
 
+import psycopg.rows
+
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
@@ -50,7 +52,7 @@ class MiVistaraWriter(WriterBase):
                 "mimamsa_export_log table not found — ensure migration 355 has been applied"
             )
 
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("SELECT COUNT(*) FROM mimamsa_export_log")
             r = cur.fetchone()
             count = r[0] if r else 0
