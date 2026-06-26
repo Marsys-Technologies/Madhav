@@ -19,7 +19,12 @@ interface ClearPreview {
   tables: { table: string; rows: number; error?: string }[]
   total_rows: number
   affected_assets: string[]
+  not_clearable_assets?: { id: string; label: string }[]
   downstream_stale_assets: string[]
+  downstream_stale_assets_labeled?: { id: string; label: string; layer?: string; sanskrit_name?: string }[]
+  assets_clearable?: { id: string; label: string; rows: number }[]
+  assets_reset_only?: { id: string; label: string }[]
+  scope_label?: string | null
   preview_hash: string
   requires_typed_confirmation?: string
   layer_summary?: { layer: string; rows: number; asset_count: number }[]
@@ -42,7 +47,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   const { chartName, birthDate, birthTime, birthPlace } = useChartContext(chartId, initialChartMeta)
 
   // Asset state summary — populated by DataAssetsView via onAssetsReady
-  const [assetStates, setAssetStates] = useState<{ state: string }[]>([])
+  const [assetStates, setAssetStates] = useState<{ asset_id: string; state: string }[]>([])
 
   // Global clear modal state
   const [clearPreview, setClearPreview] = useState<ClearPreview | null>(null)
@@ -52,7 +57,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   const [rebuildMode, setRebuildMode] = useState(false)
 
   const handleAssetsReady = useCallback((assets: AssetWithState[]) => {
-    setAssetStates(assets.map(a => ({ state: a.state })))
+    setAssetStates(assets.map(a => ({ asset_id: a.asset_id, state: a.state })))
   }, [])
 
   // Fetch a global clear preview and open the modal
@@ -109,6 +114,10 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   const [proMode, setProMode] = useState(false)
 
+  // Incrementing this key triggers DataAssetsView to re-fetch all live data.
+  const [refreshKey, setRefreshKey] = useState(0)
+  const handleRefreshed = useCallback(() => setRefreshKey(k => k + 1), [])
+
   // The chart identity + telemetry + actions, compact — rides at the top of the
   // scrolling ledger column (no full-width header card; graph gets the height).
   const headerEl = (
@@ -124,7 +133,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
       onProModeToggle={() => setProMode(p => !p)}
       onGlobalClear={clearLoading ? undefined : handleGlobalClear}
       onGlobalRebuild={clearLoading ? undefined : handleGlobalRebuild}
-      onRefreshed={() => {}}
+      onRefreshed={handleRefreshed}
     />
   )
 
@@ -164,7 +173,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
           transition={{ duration: DUR.micro }}
           style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
-          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} header={headerEl} />
+          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} header={headerEl} refreshKey={refreshKey} />
         </motion.div>
       )}
       {activeTab === 'workflow' && proMode && (

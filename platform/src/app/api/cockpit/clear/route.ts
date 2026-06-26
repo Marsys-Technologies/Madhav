@@ -10,6 +10,8 @@ interface RegistryRow extends RegistryEntry {
   scope: string
   target_table: string | null
   count_sql: string | null
+  english_name?: string
+  sanskrit_name?: string
 }
 
 async function requireUser() {
@@ -68,15 +70,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Load registry
-  const { rows: registry } = await query<RegistryRow & { english_name?: string }>(
+  // Load registry (including names + layer for E1/E2 structured display)
+  const { rows: registry } = await query<RegistryRow>(
     `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-            scope, target_table, count_sql, english_name
+            scope, target_table, count_sql, english_name, sanskrit_name
      FROM asset_registry ORDER BY layer, sort_order`
   )
-  // Build id→English name lookup for UI display
+  // Build id→meta lookup for UI display (E1/E2)
+  const assetMetaMap = new Map<string, { label: string; layer: string; sanskrit_name: string }>(
+    registry.map(r => [r.asset_id, {
+      label: r.english_name ?? r.asset_id,
+      layer: r.layer,
+      sanskrit_name: r.sanskrit_name ?? r.asset_id,
+    }])
+  )
   const assetLabelMap = new Map<string, string>(
-    registry.map(r => [r.asset_id, (r as RegistryRow & { english_name?: string }).english_name ?? r.asset_id])
+    [...assetMetaMap.entries()].map(([id, m]) => [id, m.label])
   )
 
   // Determine scope assets — respect role-based allowed scopes
@@ -222,11 +231,21 @@ export async function POST(req: NextRequest) {
     asset_count: layerAssetCountMap.get(layer) ?? 0,
   }))
 
-  // Build downstream list with human labels for display
-  const downstreamStaleAssets = downstreamAssets.map(id => ({
-    id,
-    label: assetLabelMap.get(id) ?? id,
-  }))
+  // Build downstream list with human labels + layer for E2 structured tree display
+  const downstreamStaleAssets = downstreamAssets.map(id => {
+    const meta = assetMetaMap.get(id)
+    return { id, label: meta?.label ?? id, layer: meta?.layer ?? '', sanskrit_name: meta?.sanskrit_name ?? id }
+  })
+
+  // E1: reconciling asset breakdown — assets_clearable (rows deleted) vs assets_reset_only (0-row / no spec)
+  // Arithmetic: assets_clearable.length + assets_reset_only.length = affected_assets.length
+  const assetsClearable = clearableResults
+    .filter(a => a.rows > 0)
+    .map(a => ({ id: a.asset_id, label: assetLabelMap.get(a.asset_id) ?? a.asset_id, rows: a.rows }))
+  const assetsResetOnly = [
+    ...clearableResults.filter(a => a.rows === 0).map(a => a.asset_id),
+    ...notClearableResults.map(a => a.asset_id),
+  ].map(id => ({ id, label: assetLabelMap.get(id) ?? id }))
 
   // For asset scope, provide the human label of the asset being cleared
   const scope_label = scope === 'asset' && scope_target
@@ -239,7 +258,10 @@ export async function POST(req: NextRequest) {
     affected_assets: affectedAssetIds,
     not_clearable_assets: notClearableAssetsList,        // assets with no resolvable clear spec
     downstream_stale_assets: downstreamAssets,           // kept as string[] for backward compat
-    downstream_stale_assets_labeled: downstreamStaleAssets, // new: [{id, label}]
+    downstream_stale_assets_labeled: downstreamStaleAssets, // E2: [{id, label, layer, sanskrit_name}]
+    // E1: reconciling asset breakdown (arithmetic: clearable + reset_only = affected_assets.length)
+    assets_clearable: assetsClearable,     // [{id, label, rows}] — rows will be deleted
+    assets_reset_only: assetsResetOnly,    // [{id, label}] — 0-row or no-spec; reset to dormant only
     scope_label,
     preview_hash,
     layer_summary,

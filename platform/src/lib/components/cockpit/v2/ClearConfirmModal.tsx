@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { DUR, EASE } from './motion'
 
 interface TableCount {
@@ -20,6 +20,9 @@ interface LayerSummaryItem {
 interface LabeledAsset {
   id: string
   label: string
+  layer?: string
+  sanskrit_name?: string
+  rows?: number
 }
 
 interface ClearPreview {
@@ -29,10 +32,102 @@ interface ClearPreview {
   not_clearable_assets?: LabeledAsset[]
   downstream_stale_assets: string[]
   downstream_stale_assets_labeled?: LabeledAsset[]
+  // E1: reconciling breakdown
+  assets_clearable?: LabeledAsset[]
+  assets_reset_only?: LabeledAsset[]
   scope_label?: string | null
   preview_hash: string
   requires_typed_confirmation?: string
   layer_summary?: LayerSummaryItem[]
+}
+
+const LAYER_LABELS: Record<string, string> = {
+  brahmagyan: 'Brahma Jñāna (L0)',
+  ganita: 'Gaṇita (L1)',
+  bodha: 'Bodha (L2)',
+  kala: 'Kāla (L3)',
+  phala: 'Phala (L4)',
+  mimamsa: 'Mīmāṃsā (L5)',
+}
+
+const LAYER_ORDER = ['brahmagyan', 'ganita', 'bodha', 'kala', 'phala', 'mimamsa']
+
+/** Layer-grouped list of named assets — used for downstream stale tree (E2) */
+function DownstreamTree({ assets }: { assets: LabeledAsset[] }) {
+  const [expanded, setExpanded] = useState(false)
+  if (assets.length === 0) return null
+
+  const PREVIEW_LIMIT = 3
+  const grouped = new Map<string, LabeledAsset[]>()
+  for (const a of assets) {
+    const layer = a.layer ?? 'unknown'
+    if (!grouped.has(layer)) grouped.set(layer, [])
+    grouped.get(layer)!.push(a)
+  }
+  const sortedLayers = [...grouped.keys()].sort(
+    (a, b) => (LAYER_ORDER.indexOf(a) ?? 99) - (LAYER_ORDER.indexOf(b) ?? 99)
+  )
+
+  const showExpander = assets.length > PREVIEW_LIMIT
+
+  return (
+    <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', marginBottom: '12px' }}>
+      <div style={{ marginBottom: '6px' }}>
+        {assets.length} built asset{assets.length !== 1 ? 's' : ''} that depend on this will need rebuilding:
+      </div>
+      <AnimatePresence initial={false}>
+        {(expanded || !showExpander) && (
+          <motion.div
+            key="tree"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            style={{ overflow: 'hidden' }}
+          >
+            {sortedLayers.map(layer => (
+              <div key={layer} style={{ marginBottom: '6px' }}>
+                <div style={{ color: 'rgba(236,197,106,0.6)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>
+                  {LAYER_LABELS[layer] ?? layer}
+                </div>
+                {grouped.get(layer)!.map(a => (
+                  <div key={a.id} style={{ paddingLeft: '10px', paddingBottom: '2px', display: 'flex', gap: '6px' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>•</span>
+                    <span>
+                      <span style={{ color: 'var(--on-dark-mut)' }}>{a.sanskrit_name ?? a.label}</span>
+                      {a.sanskrit_name && a.label !== a.sanskrit_name && (
+                        <span style={{ color: 'rgba(255,255,255,0.3)', marginLeft: '4px' }}>— {a.label}</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {!expanded && showExpander && (
+        <div style={{ paddingLeft: '10px', color: 'rgba(255,255,255,0.3)' }}>
+          {assets.slice(0, PREVIEW_LIMIT).map(a => a.sanskrit_name ?? a.label).join(', ')} +{assets.length - PREVIEW_LIMIT} more…
+          {' '}
+          <button
+            onClick={() => setExpanded(true)}
+            style={{ background: 'none', border: 'none', color: 'rgba(236,197,106,0.6)', cursor: 'pointer', padding: 0, fontSize: '12px', textDecoration: 'underline' }}
+          >
+            show all
+          </button>
+        </div>
+      )}
+      {expanded && showExpander && (
+        <button
+          onClick={() => setExpanded(false)}
+          style={{ background: 'none', border: 'none', color: 'rgba(236,197,106,0.6)', cursor: 'pointer', padding: '4px 0 0', fontSize: '11px', textDecoration: 'underline' }}
+        >
+          collapse
+        </button>
+      )}
+    </div>
+  )
 }
 
 interface Props {
@@ -98,20 +193,16 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
   const confirmTarget = preview.requires_typed_confirmation ?? ''
   const typedMatch = !requiresTypedConfirmation || typed === confirmTarget
 
-  // Limit table display (show top 5, collapse rest)
-  const SHOW = 5
-  const visibleTables = preview.tables.slice(0, SHOW)
-  const remaining = preview.tables.length - SHOW
+  // E1: use reconciling fields when present; fall back to legacy for older API responses
+  const assetsClearable = preview.assets_clearable ?? []
+  const assetsResetOnly = preview.assets_reset_only ?? []
+  const hasReconcilingData = preview.assets_clearable != null
 
-  const showLayerSummary = scope === 'global' && Array.isArray(preview.layer_summary) && preview.layer_summary.length > 0
-  const LAYER_LABELS: Record<string, string> = {
-    brahmagyan: 'Brahma Jñāna (L0)',
-    ganita: 'Gaṇita (L1)',
-    bodha: 'Bodha (L2)',
-    kala: 'Kāla (L3)',
-    phala: 'Phala (L4)',
-    mimamsa: 'Mīmāṃsā (L5)',
-  }
+  // Layer summary — always show when present (global or layer scope)
+  const showLayerSummary = Array.isArray(preview.layer_summary) && preview.layer_summary.length > 0
+
+  // E2: downstream tree — use enriched list with layer+names when available
+  const downstreamList = preview.downstream_stale_assets_labeled ?? preview.downstream_stale_assets.map(id => ({ id, label: id }))
 
   async function handleConfirm() {
     setLoading(true)
@@ -169,69 +260,51 @@ export function ClearConfirmModal({ chartId, scope, scopeTarget, preview, onClos
           {config.title(preview.scope_label ?? scopeTarget)}
         </div>
 
-        {/* Table / layer breakdown */}
-        <div style={{ marginBottom: '12px' }}>
-          {showLayerSummary ? (
-            <>
-              {preview.layer_summary!.map(ls => (
-                <div key={ls.layer} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--on-dark-mut)' }}>
-                    {LAYER_LABELS[ls.layer] ?? ls.layer}{' '}
-                    <span style={{ color: 'var(--on-dark-faint)', fontSize: '11px' }}>({ls.asset_count} assets)</span>
-                  </span>
-                  <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{ls.rows.toLocaleString()} rows</span>
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: '13px', fontWeight: 600 }}>
-                <span style={{ color: 'var(--on-dark-mut)' }}>{preview.affected_assets.length} assets total</span>
-                <span style={{ color: 'var(--on-dark)' }}>{preview.total_rows.toLocaleString()} rows</span>
-              </div>
-            </>
+        {/* E1: Unified reconciling summary — same layout for asset/layer/global scope */}
+        <div style={{ marginBottom: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.07)', padding: '12px 14px', background: 'rgba(255,255,255,0.02)' }}>
+          {/* Per-layer row count breakdown */}
+          {showLayerSummary && (
+            <div style={{ marginBottom: '8px' }}>
+              {[...preview.layer_summary!]
+                .sort((a, b) => (LAYER_ORDER.indexOf(a.layer) ?? 99) - (LAYER_ORDER.indexOf(b.layer) ?? 99))
+                .map(ls => (
+                  <div key={ls.layer} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '12px' }}>
+                    <span style={{ color: 'var(--on-dark-mut)' }}>
+                      {LAYER_LABELS[ls.layer] ?? ls.layer}{' '}
+                      <span style={{ color: 'var(--on-dark-faint)', fontSize: '10px' }}>({ls.asset_count} assets)</span>
+                    </span>
+                    <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{ls.rows.toLocaleString()} rows</span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Total row count */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
+            <span style={{ color: 'var(--on-dark-mut)' }}>Total rows deleted</span>
+            <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{preview.total_rows.toLocaleString()}</span>
+          </div>
+
+          {/* E1: reconciling asset counts — arithmetic visible */}
+          {hasReconcilingData ? (
+            <div style={{ fontSize: '11px', color: 'var(--on-dark-faint)', lineHeight: '1.7' }}>
+              <span style={{ color: 'var(--on-dark-mut)' }}>{assetsClearable.length}</span> assets cleared (rows deleted)
+              {' · '}
+              <span style={{ color: 'var(--on-dark-mut)' }}>{assetsResetOnly.length}</span> reset to dormant (0 rows)
+              {' · '}
+              <span style={{ color: 'var(--on-dark-mut)' }}>{preview.tables.length}</span> table{preview.tables.length !== 1 ? 's' : ''} touched
+            </div>
           ) : (
-            <>
-              {visibleTables.map(t => (
-                <div key={t.table} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--on-dark-mut)', fontFamily: 'var(--mono-stack)' }}>{t.table}</span>
-                  <span style={{ color: 'var(--on-dark)', fontFamily: 'var(--mono-stack)' }}>{t.rows.toLocaleString()} rows</span>
-                </div>
-              ))}
-              {remaining > 0 && (
-                <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', paddingTop: '4px' }}>
-                  and {remaining} more table{remaining > 1 ? 's' : ''}
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: '13px', fontWeight: 600 }}>
-                <span style={{ color: 'var(--on-dark-mut)' }}>{preview.tables.length} tables total</span>
-                <span style={{ color: 'var(--on-dark)' }}>{preview.total_rows.toLocaleString()} rows</span>
-              </div>
-            </>
+            <div style={{ fontSize: '11px', color: 'var(--on-dark-faint)' }}>
+              {preview.affected_assets.length} asset{preview.affected_assets.length !== 1 ? 's' : ''} reset to dormant
+              {' · '}
+              {preview.tables.length} table{preview.tables.length !== 1 ? 's' : ''} touched
+            </div>
           )}
         </div>
 
-        {/* Asset reset note */}
-        {preview.affected_assets.length > 0 && (
-          <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', marginBottom: '4px' }}>
-            Reset {preview.affected_assets.length} asset{preview.affected_assets.length !== 1 ? 's' : ''} to dormant.
-          </div>
-        )}
-
-        {/* Not-clearable assets: no clear spec resolved — surfaced explicitly, never silently omitted */}
-        {preview.not_clearable_assets && preview.not_clearable_assets.length > 0 && (
-          <div style={{ fontSize: '12px', color: 'rgba(255,200,60,0.75)', marginBottom: '4px' }}>
-            {preview.not_clearable_assets.length} asset{preview.not_clearable_assets.length !== 1 ? 's' : ''} not clearable (no clear spec):{' '}
-            {preview.not_clearable_assets.map(a => a.label).join(', ')}
-          </div>
-        )}
-
-        {/* Downstream stale note */}
-        {preview.downstream_stale_assets.length > 0 && (
-          <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', marginBottom: '12px' }}>
-            {preview.downstream_stale_assets.length} built asset{preview.downstream_stale_assets.length !== 1 ? 's' : ''} that depend on this will need rebuilding:{' '}
-            {(preview.downstream_stale_assets_labeled ?? preview.downstream_stale_assets.map(id => ({ id, label: id })))
-              .slice(0, 3).map(a => a.label).join(', ')}
-            {preview.downstream_stale_assets.length > 3 ? '…' : ''}
-          </div>
-        )}
+        {/* E2: Downstream stale tree — layer-grouped, named, expandable */}
+        <DownstreamTree assets={downstreamList as LabeledAsset[]} />
 
         {/* Warning */}
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: requiresTypedConfirmation ? '16px' : '20px' }}>

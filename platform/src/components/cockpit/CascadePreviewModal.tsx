@@ -5,6 +5,13 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DUR, EASE } from '@/lib/components/cockpit/v2/motion'
 
+export interface PlanAssetInfo {
+  asset_id: string
+  layer: string
+  english_name: string
+  sanskrit_name: string
+}
+
 export interface CascadePreviewModalProps {
   isOpen: boolean
   onClose: () => void
@@ -12,10 +19,21 @@ export interface CascadePreviewModalProps {
   rootAssetId: string
   rootAssetLabel?: string
   plan: string[]           // asset IDs in topo order (root first)
+  planInfo?: PlanAssetInfo[] // enriched per-asset info for structured display (E2)
   estimatedSeconds?: number | null
   isLoading?: boolean      // true while fetching plan
   isClearCascade?: boolean // true = "Clear & Rebuild" mode
 }
+
+const LAYER_LABELS: Record<string, string> = {
+  brahmagyan: 'Brahma Jñāna (L0)',
+  ganita: 'Gaṇita (L1)',
+  bodha: 'Bodha (L2)',
+  kala: 'Kāla (L3)',
+  phala: 'Phala (L4)',
+  mimamsa: 'Mīmāṃsā (L5)',
+}
+const LAYER_ORDER = ['brahmagyan', 'ganita', 'bodha', 'kala', 'phala', 'mimamsa']
 
 function formatSeconds(s: number): string {
   if (s < 60) return `${Math.round(s)}s`
@@ -31,6 +49,7 @@ export function CascadePreviewModal({
   rootAssetId,
   rootAssetLabel,
   plan,
+  planInfo,
   estimatedSeconds,
   isLoading,
   isClearCascade,
@@ -53,6 +72,21 @@ export function CascadePreviewModal({
   const label = rootAssetLabel ?? rootAssetId
   const title = isClearCascade ? `Clear & Rebuild ${label}?` : `Rebuild ${label}?`
   const downstream = plan.slice(1) // everything after root
+
+  // E2: build layer-grouped structure when planInfo is available
+  const grouped = planInfo ? (() => {
+    const infoMap = new Map(planInfo.map(a => [a.asset_id, a]))
+    const groupMap = new Map<string, PlanAssetInfo[]>()
+    for (const id of plan) {
+      const info = infoMap.get(id)
+      if (!info) continue
+      if (!groupMap.has(info.layer)) groupMap.set(info.layer, [])
+      groupMap.get(info.layer)!.push(info)
+    }
+    return [...groupMap.entries()].sort(
+      ([a], [b]) => (LAYER_ORDER.indexOf(a) ?? 99) - (LAYER_ORDER.indexOf(b) ?? 99)
+    )
+  })() : null
 
   const confirmDisabled = isLoading || plan.length === 0
 
@@ -163,35 +197,40 @@ export function CascadePreviewModal({
                   flex: '1 1 auto',
                 }}
               >
-                {/* Root asset */}
-                {plan.length > 0 && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-primary, #f5f0e8)',
-                      fontWeight: 600,
-                      fontFamily: 'var(--mono-stack, monospace)',
-                    }}
-                  >
-                    {plan[0]}
-                  </div>
+                {/* E2: Layer-grouped structured tree (when planInfo available) */}
+                {grouped ? (
+                  grouped.map(([layer, assets]) => (
+                    <div key={layer} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, color: 'rgba(236,197,106,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                        {LAYER_LABELS[layer] ?? layer}{' '}
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>({assets.length})</span>
+                      </div>
+                      {assets.map(a => (
+                        <div key={a.asset_id} style={{ display: 'flex', gap: 6, paddingLeft: 8, paddingBottom: 3 }}>
+                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>•</span>
+                          <span>
+                            <span style={{ fontSize: 12, color: 'var(--text-primary, #f5f0e8)' }}>{a.sanskrit_name}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary, #888373)', marginLeft: 6 }}>— {a.english_name}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    {/* Fallback: flat raw-id list */}
+                    {plan.length > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--text-primary, #f5f0e8)', fontWeight: 600, fontFamily: 'var(--mono-stack, monospace)' }}>
+                        {plan[0]}
+                      </div>
+                    )}
+                    {downstream.map(id => (
+                      <div key={id} style={{ fontSize: 12, color: 'var(--text-secondary, #888373)', fontFamily: 'var(--mono-stack, monospace)', paddingLeft: 4 }}>
+                        <span style={{ opacity: 0.5 }}>→ </span>{id}
+                      </div>
+                    ))}
+                  </>
                 )}
-
-                {/* Downstream assets */}
-                {downstream.map(id => (
-                  <div
-                    key={id}
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-secondary, #888373)',
-                      fontFamily: 'var(--mono-stack, monospace)',
-                      paddingLeft: 4,
-                    }}
-                  >
-                    <span style={{ opacity: 0.5 }}>→ </span>
-                    {id}
-                  </div>
-                ))}
 
                 {/* Empty state */}
                 {plan.length === 0 && (
