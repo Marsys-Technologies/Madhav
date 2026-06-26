@@ -96,14 +96,14 @@ class KaBhavishyaLekhaWriter(WriterBase):
 
         if rows:
             with conn.cursor() as cur:
-                execute_values(cur, """
+                cur.executemany("""
                     INSERT INTO kala_bhavishya (
                         chart_id, projection_rank, probability_tier, domain,
                         peak_date, window_start, window_end,
                         convergence_id, signal_id, effective_score,
                         falsifiability, source_chain, narrative,
                         outcome_recorded, outcome_notes, source_citation
-                    ) VALUES %s
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, rows)
 
         return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=len(rows))

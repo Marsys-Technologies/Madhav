@@ -1,16 +1,20 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.5
+version: 1.6
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
   Per-asset findings register for the Pre-Regeneration Full Audit Campaign (L0–L4).
   One row per audited file × 3 axes × PASS/FAIL. Becomes the fix plan when all
   waves complete.
-waves_complete: W0, W1, W2, W3
-waves_pending: W4, W5
+waves_complete: W0, W1, W2, W3, W4
+waves_pending: W5
 changelog:
+  - version: 1.6
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 4 complete — L3 Kāla 10 ka_* assets; 1 blocker + 4 majors + 5 minors; D9 dismissal confirmed with DB data; grep guard widened (Group 8).
   - version: 1.5
     date: 2026-06-26
     author: Claude (Cowork)
@@ -470,12 +474,70 @@ All assets conform to the FROZEN orchestrator contract (A3). L2 idempotency (del
 
 ---
 
-## Wave 4 — Pending
+## §W4 — Wave 4: L3 Kāla (10 ka_* assets)
 
-*Pending — scheduled for Wave 4 session.*
+Wave date: 2026-06-26
+Auditor: Claude (Cowork) — 3 parallel audit groups + D9 data-confirm
+Scope: All ka_* orchestrator writers (pipeline/orchestrator/writers/ka_*.py) + source modules
+Axes: Axis A (A1 HUMAN-GRADE, A2–A7), Axis C (C1); Axis B deferred POST-REGEN ONLY
 
-Planned scope: L3 Kāla (`ka_*`) and L4 Phala (`ph_*`) writer static checks
-plus any shared compute files not yet covered.
+### D9 data-confirm (F-W2-001 dismissal)
+
+Verified against actual DB data (native chart `482012f1`, Lahiri ayanamsha) for 3 planets spanning all 3 sign modalities:
+
+- Sun: lon=291.9626° → Capricorn (movable, sign_idx=9), pada=6. Method A: (9×9+6)%12=87%12=3=Cancer. Method B (trikona-start, movable→same sign): (9+6)%12=3=Cancer. DB: sign_number=4=Cancer (1-indexed). MATCH.
+- Moon: lon=327.0552° → Aquarius (fixed, sign_idx=10), pada=8. Method A: (10×9+8)%12=98%12=2=Gemini. Method B (9th from Aquarius=Libra=6): (6+8)%12=2=Gemini. DB: sign_number=3=Gemini. MATCH.
+- Jupiter: lon=249.7875° → Sagittarius (dual, sign_idx=8), pada=2. Method A: (8×9+2)%12=74%12=2=Gemini. Method B (5th from Sagittarius=Aries=0): (0+2)%12=2=Gemini. DB: sign_number=3=Gemini. MATCH.
+- Saturn (bonus): lon=202.4320° → Libra (movable, sign_idx=6), pada=6. Both methods: 0=Aries. DB: sign_number=1=Aries. MATCH.
+
+**F-W2-001 dismissal CONFIRMED. D9 formula `(sign_idx×9+pada)%12` is algebraically equivalent to the classical trikona-start rule. D9 is closed.**
+
+### A1 contamination summary
+
+**Zero VULNERABLE A1 sites across all 10 L3 Kāla writers.** All chart-scoped writers are CHART-INDEPENDENT (DB reads scoped to chart_id, no native birth-param fallbacks in computation paths). Service health-check writers (ka_dasha_kala, ka_graha_sancara, ka_muhurta_seva) are NATIVE-ONLY-BY-DESIGN (intentional fixture testing against the native chart — not a contamination risk).
+
+New evasion shapes found and fixed:
+- `else 1984` / `return 1984` — native birth year as NULL-guard fallback (ka_jivana_parva, ka_sangam). Fixed → `None`. Grep guard Group 8 added.
+- Dead `_BIRTH_LAT`, `_BIRTH_LON` module-level constants (ka_graha_sancara). Not in any logic path but latent trap. Removed.
+- Also discovered: `psycopg2.extras.execute_values` in ka_yojaka and ka_bhavishya_lekha against psycopg3 orchestrator connection — runtime crash (A3 BLOCKER). Fixed → `cur.executemany()`.
+
+### Per-asset findings
+
+| asset_id | layer | A1 | A2 | A3 | A4 | A5 | A6 | A7 | C1 | VERDICT | severity | fix summary |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ka_kala_darshana | L3 | CHART-IND | PASS | PASS | PASS | WARN | PASS | WARN | PASS | PASS | none | A5: source_citation self-path only; A7: no warn on empty obstruction upstream |
+| ka_kalasutra | L3 | CHART-IND | PASS | PASS | WARN | WARN | PASS | WARN | PASS | PASS | minor | A4: silent L2 strength=0.5 COALESCE for missing signals; A5: 7/14/5-day window-width rules uncited |
+| ka_dasha_kala | L3 | NATIVE-ONLY | N/A | FAIL | PASS | PASS | PASS | WARN | PASS | FIX-REQUIRED | major | A3: conn.execute() psycopg3 API against psycopg2 connection (runtime AttributeError); run() ignores ctx.config['chart_id'] — add NATIVE-ONLY assertion or raise |
+| ka_graha_sancara | L3 | NATIVE-ONLY | N/A | PASS | N/A | N/A | PASS | WARN | WARN | REVIEW-NEEDED | minor | Dead _BIRTH_LAT/_BIRTH_LON constants removed (FIXED); add loud unhealthy-status propagation |
+| ka_sangam | L3 | CHART-IND | PASS | PASS | PASS | PASS | PASS | WARN | WARN | FIX-REQUIRED | major | EnrichmentContext never populated → C7/C11/C12/C13 silently dead; convergence scores biased; return 1984 birth-year fallback removed (FIXED → None) |
+| ka_yojaka | L3 | CHART-IND | WARN | FAIL→FIXED | PASS | PASS | PASS | WARN | WARN | FIX-REQUIRED | blocker→fixed | psycopg2.extras.execute_values → psycopg3 executemany (FIXED); ON CONFLICT DO UPDATE → DO NOTHING |
+| ka_jivana_parva | L3 | CHART-IND | PASS | PASS | PASS | WARN | PASS | WARN | WARN | REVIEW-NEEDED | minor | else 1984 NULL-guard removed (FIXED → None + warning); A5: partial L1 fact_id citation only |
+| ka_bhavishya_lekha | L3 | CHART-IND | PASS | FAIL→FIXED | PASS | WARN | PASS | WARN | WARN | FIX-REQUIRED | major | psycopg2 import removed; C1: domain rotation _DOMAINS[rank%N] → 'general' for unclassified signals (FIXED — ethical framework violation) |
+| ka_vighnakara | L3 | CHART-IND | PASS | WARN | PASS | FAIL | WARN | PASS | WARN | FIX-REQUIRED | major | psycopg v3 row_factory on possible psycopg2 connection; gandanta+papakartari permanent stubs (never fire); Saturn transit expiry 2025-03-29 updated to 2030-2032 placeholder (FIXED) |
+| ka_muhurta_seva | L3 | NATIVE-ONLY | N/A | PASS | N/A | PASS | PASS | PASS | PASS | REVIEW-NEEDED | minor | NATIVE_ACTIVE_DASHA_LORD="Jupiter" stale static constant; BIRTH_LOCATION dict dead code |
+
+### Cross-cutting findings
+
+**F-W4-001 (blocker, FIXED) ka_yojaka A3:** `psycopg2.extras.execute_values` against psycopg3 orchestrator connection — runtime crash on any build attempt. Fixed: replaced with `cur.executemany()` + standard `%s` placeholders.
+
+**F-W4-002 (major, OPEN) ka_sangam C1/functional:** `EnrichmentContext` never populated before `mode_a_search()` / `mode_b_sweep()` calls. U3 currents C7 (ashtakavarga), C11 (vedha), C12 (tajika), C13 (school_consensus) always score 0.0. Convergence scores systematically biased for every chart. Requires pre-fetching vedha rules, ashtakavarga bindus, tajika year lords from DB.
+
+**F-W4-003 (major, FIXED) ka_bhavishya_lekha C1/ethical:** Domain rotation `_DOMAINS[rank % len(_DOMAINS)]` for unclassified signals produces false-precision domain labels violating MACRO_PLAN ethical framework. Fixed → `'general'`.
+
+**F-W4-004 (major, partially fixed) ka_vighnakara C1:** Permanent stubs for gandanta and papakartari (two of four checks always return None). Saturn transit check expired 2025-03-29 — updated to 2030-2032 placeholder. Stubs still need proper implementation or explicit removal.
+
+**F-W4-005 (major, OPEN) ka_dasha_kala A3:** `conn.execute()` psycopg3 API in `_update_registry_health()` against psycopg2 connection. Also: `run(ctx)` ignores `ctx.config['chart_id']` entirely — silent mismatch in multi-chart builds.
+
+**F-W4-006 (evasion shape, FIXED) `else 1984` / `return 1984` NULL-guards:** Native birth year hardcoded as display default for NULL upstream rows. ka_jivana_parva line 44 (else 1984) + ka_sangam line 306 (return 1984). Both fixed → None. Grep guard Group 8 added: catches `(else\s+1984\b|return\s+1984\b)`.
+
+### Wave 4 fix list
+
+Fixed in this session: F-W4-001 (ka_yojaka psycopg3), F-W4-003 (ka_bhavishya_lekha domain), F-W4-006 (1984 fallbacks), ka_graha_sancara dead constants, ka_vighnakara Saturn date.
+
+Open (non-blocking for Wave 5 since A1 is clean):
+- F-W4-002: ka_sangam EnrichmentContext population (major — affects every chart's convergence quality)
+- F-W4-005: ka_dasha_kala conn.execute() + chart_id isolation (major)
+- F-W4-004 partial: ka_vighnakara stub implementation (gandanta, papakartari)
 
 ---
 
@@ -483,9 +545,10 @@ plus any shared compute files not yet covered.
 
 *Pending — scheduled for Wave 5 session.*
 
-Planned scope: Cross-wave synthesis. Consolidate all FIX-REQUIRED and
-REVIEW-NEEDED items, assign owners, produce the ordered fix backlog, and
-declare the campaign COMPLETE once all blockers and majors are resolved.
+Planned scope: L4 Phala (ph_* writers) static checks plus cross-wave synthesis.
+Consolidate all FIX-REQUIRED and REVIEW-NEEDED items, assign owners, produce
+the ordered fix backlog, and declare the campaign COMPLETE once all blockers
+and majors are resolved.
 
 ---
 

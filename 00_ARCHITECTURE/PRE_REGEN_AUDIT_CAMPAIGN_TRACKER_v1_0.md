@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.3
+version: 1.4
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.4
+    date: 2026-06-26
+    change: "Wave 4 complete — L3 Kāla 10 ka_* assets audited; 1 blocker + 4 majors + 5 minors; D9 dismissal confirmed with DB data; grep guard widened (Group 8)"
   - version: 1.3
     date: 2026-06-26
     change: "Wave 3 complete — 10 bo_* L2 Bodha assets audited; 0 blockers/majors; 2 FIX-REQUIRED + 4 REVIEW-NEEDED (all minor); 5 cross-cutting findings F-W3-001 through F-W3-005"
@@ -31,7 +34,7 @@ changelog:
 | W1 | L0 Brahmagyan (18 bg_* assets) | All bg_* orchestrator writers + l0_* source modules | ✅ COMPLETE | 2026-06-26 | §W1 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W2 | L1 Gaṇita (13 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites → all committed; 4 carry-over fixes remain) | ✅ COMPLETE (carry-overs pending) | 2026-06-26 | §W2 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W3 | L2 Bodha (10 bo_* assets) | bo_* writers, synthesis layer | ✅ COMPLETE | 2026-06-26 | §W3 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W4 | L3 Kāla (~10 ka_* assets) + L4 Phala (~9 ph_* assets) | ka_* + ph_* writers | ⏳ PENDING | — | — |
+| W4 | L3 Kāla (10 ka_* assets) | ka_* writers | ✅ COMPLETE | 2026-06-26 | §W4 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W5 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
 
 ## Wave 0 deliverables (complete)
@@ -128,3 +131,33 @@ All 10 bo_* assets: A1 CHART-INDEPENDENT-of-birth (zero contamination risk), A3 
 Wave 4: L3 Kāla (ka_* writers) + L4 Phala (ph_* writers). HIGH-RISK for A1 contamination — ka_* assets take birth-time inputs (temporal computations), like ga_dashas/ga_tajaka escapes. Expect grep-invisible contamination. Read each writer by hand (not grep-trust). After Wave 4: Wave 5 cross-wave synthesis + Fix Plan.
 
 Wave 3 fixes (F-W3-001 through F-W3-005) are non-blocking for Wave 4 — can be executed alongside or after. F-W3-003 (bo_upaya constituent_facts_array) is the highest-priority fix as it corrupts the governance metric in bo_pramana_mapa.
+
+## Wave 4 key findings
+
+### D9 data-confirm: CONFIRMED
+F-W2-001 dismissal validated with actual DB data. 3 planets across all 3 modalities match both formula and classical trikona-start rule. D9 closed.
+
+### Blockers (1, FIXED)
+1. `ka_yojaka` A3 — `psycopg2.extras.execute_values` against psycopg3 orchestrator connection → runtime crash on any build. FIXED.
+
+### Majors (4, 2 fixed)
+2. `ka_sangam` C1 — `EnrichmentContext` never populated; U3 currents (vedha/ashtakavarga/tajika/school_consensus) silently dead; convergence scores systematically biased. OPEN.
+3. `ka_bhavishya_lekha` C1/ethical — domain rotation for unclassified signals → false-precision labels (career/health/etc.). FIXED → 'general'.
+4. `ka_vighnakara` C1 — permanent gandanta/papakartari stubs; expired Saturn transit window updated to 2030-2032 placeholder. Partially fixed.
+5. `ka_dasha_kala` A3 — conn.execute() psycopg3 API mismatch; chart_id ignored in run(). OPEN.
+
+### Minors / REVIEW-NEEDED (5)
+6. `ka_kalasutra` A4/A5 — silent L2 dependency gap; window-width rules uncited
+7. `ka_graha_sancara` — dead _BIRTH_LAT/_BIRTH_LON removed. FIXED.
+8. `ka_jivana_parva` — `else 1984` NULL-guard removed. FIXED.
+9. `ka_muhurta_seva` — stale NATIVE_ACTIVE_DASHA_LORD constant
+10. `ka_kala_darshana` — minor A5/A7 notes
+
+### A1 contamination result
+**Zero VULNERABLE sites across all 10 ka_* writers.** New evasion shape (`else/return 1984`) found, fixed, grep guard widened (Group 8).
+
+## Next session
+
+Wave 5: L4 Phala (8 ph_* writers + l4_anchors classification). Same high-risk contamination class. After Wave 5: Wave 6 cross-wave synthesis + Fix Plan.
+
+Wave 5 scope note: `ph_rectification` listed in campaign plan does not exist as a writer file — verify asset_registry and adjust scope at audit time.
