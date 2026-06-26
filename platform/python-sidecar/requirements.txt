@@ -21,6 +21,7 @@ python-dotenv==1.0.1
 # RAG stack — added Madhav 17 B.0 per PHASE_B_PLAN §G B.0 Task 6
 # Voyage replaced by Vertex AI (text-multilingual-embedding-002) at B.3 migration.
 google-cloud-aiplatform>=1.60.0
+google-cloud-pubsub>=2.21.0
 anthropic>=0.25.0
 openai>=1.30.0
 tiktoken>=0.7.0
