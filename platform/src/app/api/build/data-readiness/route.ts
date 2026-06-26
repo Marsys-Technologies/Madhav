@@ -4,7 +4,7 @@
  * Returns the build readiness state for a given chart.
  *
  * Algorithm:
- *   1. Find all known asset_ids from build_dependencies (authoritative DAG)
+ *   1. Find all known active data asset_ids from asset_registry (authoritative DAG)
  *   2. Find the latest build_id for the chart from build_events
  *   3. Find all build_checkpoints with status='success' for that build_id
  *   4. Classify assets as ready vs missing
@@ -44,18 +44,16 @@ export async function GET(req: NextRequest): Promise<Response> {
   const chartId = req.nextUrl.searchParams.get('chart_id')
   if (!chartId) return NextResponse.json({ error: 'chart_id required' }, { status: 400 })
 
-  // ── 1. Get all known asset_ids from build_dependencies ──────────────────────
+  // ── 1. Get all known active data asset_ids from asset_registry ──────────────
+  // asset_registry.depends_on is the authoritative DAG source; build_dependencies
+  // (A1..A22 scheme) is retired from this route.
   const depsResult = await query<{ asset_id: string }>(
-    `SELECT asset_id FROM build_dependencies ORDER BY sort_order ASC`,
+    `SELECT asset_id FROM asset_registry
+      WHERE is_active = true AND (asset_type IS NULL OR asset_type != 'service')
+        AND (asset_kind IS NULL OR asset_kind != 'service')
+      ORDER BY sort_order ASC`,
   )
-  const knownAssets = depsResult.rows.map(r => r.asset_id).filter(Boolean)
-
-  // Fallback to hard-coded list when build_dependencies is empty (not yet migrated)
-  const assetList = knownAssets.length > 0 ? knownAssets : [
-    'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7',
-    'A8', 'A9', 'A10', 'A11', 'A12', 'A13',
-    'A15', 'A16', 'A17', 'A18', 'A19', 'A20', 'A21', 'A22',
-  ]
+  const assetList = depsResult.rows.map(r => r.asset_id).filter(Boolean)
 
   // ── 2. Find latest build_id for this chart ──────────────────────────────────
   const buildResult = await query<{ build_id: string }>(

@@ -19,9 +19,9 @@ const mockQuery = vi.mocked(query)
 
 // Three-node chain: A1 ← A2 ← A3 (A2 depends on A1, A3 depends on A2)
 const THREE_NODE_ROWS = [
-  { asset_id: 'A1', depends_on: [],     display_name: 'Alpha', sort_order: 1, layer: 'L1' },
-  { asset_id: 'A2', depends_on: ['A1'], display_name: 'Beta',  sort_order: 2, layer: 'L1' },
-  { asset_id: 'A3', depends_on: ['A2'], display_name: 'Gamma', sort_order: 3, layer: 'L1' },
+  { asset_id: 'A1', depends_on: [],     english_name: 'Alpha', sort_order: 1, layer: 'L1' },
+  { asset_id: 'A2', depends_on: ['A1'], english_name: 'Beta',  sort_order: 2, layer: 'L1' },
+  { asset_id: 'A3', depends_on: ['A2'], english_name: 'Gamma', sort_order: 3, layer: 'L1' },
 ]
 
 function makeRequest(params: Record<string, string>) {
@@ -52,8 +52,8 @@ describe('GET /api/build/cascade', () => {
     expect(body.error).toContain('asset_id')
   })
 
-  // ── Test 3: empty downstream when no build_dependencies rows ─────────────
-  it('returns empty downstream when build_dependencies has no rows', async () => {
+  // ── Test 3: empty downstream when asset_registry returns no rows ──────────
+  it('returns empty downstream when asset_registry has no rows', async () => {
     mockQuery.mockResolvedValue({ rows: [] } as never)
     const res = await GET(makeRequest({ asset_id: 'A1', chart_id: 'chart-123' }))
     expect(res.status).toBe(200)
