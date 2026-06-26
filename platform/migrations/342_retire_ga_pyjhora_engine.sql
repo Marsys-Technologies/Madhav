@@ -7,9 +7,10 @@
 
 BEGIN;
 
-DELETE FROM asset_registry WHERE asset_id = 'ga_pyjhora_engine';
-
--- Also clear any stale asset_throughput entry (migration 317 left it in error state)
+-- Delete throughput first (FK asset_throughput_asset_id_fkey references asset_registry.asset_id;
+-- deleting asset_registry before throughput violates the FK at statement level)
 DELETE FROM asset_throughput WHERE asset_id = 'ga_pyjhora_engine';
+
+DELETE FROM asset_registry WHERE asset_id = 'ga_pyjhora_engine';
 
 COMMIT;
