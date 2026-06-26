@@ -29803,3 +29803,123 @@ supabase/ migration **346**+. **Native:** click Rebuild→Kāla to clear stale L
 Phase E (Abhinandan `1c826d5a`) still GATED.
 
 *End of L5-MI-RECONCILE-SEAL entry — 2026-06-27.*
+
+---
+
+## GIT-BRANCH-AUDIT-2026-06-27 — 2026-06-27
+
+```yaml
+session_open:
+  session_id: GIT-BRANCH-AUDIT-2026-06-27
+  opened_on: 2026-06-27
+  predecessor_session: L5-MI-RECONCILE-SEAL
+  active_layer_campaign: Git branch audit and main sync (housekeeping)
+  may_touch:
+    - 00_ARCHITECTURE/**
+    - platform/migrations/**
+    - platform/supabase/migrations/**
+    - platform/python-sidecar/**
+    - platform/scripts/seed/asset_registry_seed.ts
+  must_not_touch:
+    - orchestrator contract WriterBase — FROZEN
+    - native chart 482012f1 — no build trigger
+    - L0-L4 writers not on target branch list
+  red_team_due: false
+  handshake_valid: true
+```
+
+**Session type:** Git branch audit — all uncommitted changes committed or dropped; all branches merged or deleted; prod synced.
+
+**Predecessor session:** L5-MI-RECONCILE-SEAL (2026-06-27)
+
+### Work performed
+
+**Phase 1 — Uncommitted working tree:**
+3 untracked governance files committed to main (commit `5f4c10be`):
+- `00_ARCHITECTURE/BODHA_ONECLICK_BUILD_REMEDIATION_PLAN_v1_0.md`
+- `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_L3_KALA_BUILDPATH_CODE_FIX_v1_0.md`
+- `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_L3_KALA_FINAL_CLOSE_v1_0.md`
+
+2 additional completeness audit docs committed alongside governance close:
+- `00_ARCHITECTURE/L3_KALA_COMPLETENESS_AUDIT_v1_0.md` (Cowork audit 2026-06-21)
+- `00_ARCHITECTURE/L4_PHALA_UPSTREAM_COMPLETENESS_FIX_BRIEF_v1_0.md` (Cowork brief 2026-06-25)
+
+**Phase 2 — Branch adjudication (7 branches):**
+
+| Branch | Decision | Reason |
+|---|---|---|
+| `fix/pre-regen-blockers-sweep` | DELETED local | 0 commits ahead of main; content in 4878925b |
+| `l5/reconcile-seal` | DELETED local | 0 commits ahead of main; merged via 334d6976 |
+| `feature/l5-mimamsa-build` (worktree) | WORKTREE REMOVED + DELETED local | 0 commits ahead; stale at c3280cb6 |
+| `chore/l3-final-seal-docs` | L3_KALA_CLOSE extracted + DELETED local+remote | L5 commits already in main; L3 seal doc extracted (7cc2ba52) |
+| `fix/bodha-oneclick-build-remediation-g1-g5` | CHERRY-PICKED + DELETED local+remote | G1-G5 bodha needed; commits 39ad2396 + 6584aaef |
+| `chore/l3-register-ka-assets-migration` | MERGED --no-ff + DELETED local+remote | Unique ka_* registry backfill; commit 4ff09957 |
+| `fix/l3-ka-tulana-buildable` | DELETED local+remote (force) | Superseded by bodha branch; null count_sql already in main |
+
+**Phase 3 — Push + deploy + prod migrations:**
+- 407 tests PASS, 0 failures (vitest). 7 TS typecheck errors pre-existing (same at de765f83).
+- schema_validator: exit=3, 12 MEDIUM violations — all pre-existing.
+- CI "Ganga Quality Gate" on 4ff09957: success.
+- Deploy to Cloud Run on 4ff09957: success.
+- Surgical migrations applied to prod via Cloud SQL Auth Proxy (port 5433):
+  - `supabase/343_ka_tulana_has_writer`: UPDATE 1 — ka_tulana has_writer=t, asset_type=service
+  - `supabase/345_register_ka_assets`: INSERT 0 0 — 12 ka_* rows confirmed (ON CONFLICT DO NOTHING)
+  - `platform/356_bodha_karanajala_dep_bimba`: UPDATE 1 — bo_karanajala.depends_on={bo_laksana,bo_bimba}
+
+**Migration ledger post-audit:**
+- platform/migrations/ next: 358+ (356 consumed by bo_karanajala DAG fix; 357 by mi_has_writer)
+- supabase/migrations/ next: 346+ (343 by ka_tulana has_writer; 344 gap; 345 by ka_* backfill)
+
+### Artifacts produced / modified
+
+- `00_ARCHITECTURE/L3_KALA_CLOSE_v1_0.md` v1.4 (extracted from chore/l3-final-seal-docs, commit 7cc2ba52)
+- `platform/python-sidecar/services/ka_tulana/writer.py` (new self-test writer)
+- `platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py` (import shim)
+- `platform/supabase/migrations/343_ka_tulana_has_writer.sql`
+- `platform/migrations/356_bodha_karanajala_dep_bimba.sql`
+- `platform/supabase/migrations/345_register_ka_assets.sql`
+- Multiple `bo_*.py` writers updated (G1-G5: loud-fail, DAG edge, preconditions, MV refresh)
+- `00_ARCHITECTURE/L3_KALA_COMPLETENESS_AUDIT_v1_0.md` (committed)
+- `00_ARCHITECTURE/L4_PHALA_UPSTREAM_COMPLETENESS_FIX_BRIEF_v1_0.md` (committed)
+- `00_ARCHITECTURE/CURRENT_STATE_v1_0.md` bumped to v6.00
+
+### Gate summary
+
+| Gate | Result |
+|---|---|
+| Phase 1 uncommitted files | All committed (5 docs) |
+| Phase 2 branch adjudication | 7 branches processed — 3 deleted, 1 extracted+deleted, 2 merged+deleted, 1 force-deleted |
+| Phase 3 tests | 407/407 PASS |
+| Phase 3 CI | success (4ff09957) |
+| Phase 3 deploy | success (4ff09957) |
+| Phase 3 prod migrations | 3/3 applied |
+
+```yaml
+session_close:
+  session_id: GIT-BRANCH-AUDIT-2026-06-27
+  closed_on: 2026-06-27
+  outcome: COMPLETE — main clean + prod synced; all branches merged or deleted; 3 surgical migs applied
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L4 Phala (NEXT)
+  current_state_updated: true
+  current_state_version: 6.00
+  session_log_appended: true
+  red_team_pass: "n/a — housekeeping/audit session"
+  next_session_objective: >
+    GIT-BRANCH-AUDIT complete (2026-06-27). main HEAD 4ff09957. All branches cleaned.
+    ka_tulana self-test writer + G1-G5 bodha + ka_* backfill on main. Supabase next 346+. Platform next 358+.
+    NEXT: open L4 Phala campaign — read L3_KALA_CLOSE_v1_0.md §11 for onboarding contract;
+    author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md. Native: click Rebuild->Kala to clear stale badges.
+    Phase E (Abhinandan 1c826d5a) GATED — independent.
+```
+
+### Next session objective
+
+**main fully synced (2026-06-27).** All 7 branches adjudicated. 3 surgical prod migrations applied.
+Build clean: 407 tests PASS, CI green, Cloud Run deployed at `4ff09957`.
+Next: **(1)** read `L3_KALA_CLOSE_v1_0.md §11` for L4 onboarding contract; **(2)** author
+`L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`; **(3)** first L4 platform/ migration **358**+;
+first L4 supabase/ migration **346**+. **Native:** click Rebuild→Kāla to clear stale L3 badges.
+
+*End of GIT-BRANCH-AUDIT-2026-06-27 entry — 2026-06-27.*

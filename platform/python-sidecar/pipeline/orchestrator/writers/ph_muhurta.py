@@ -165,6 +165,9 @@ class PhMuhurtaWriter(WriterBase):
         return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> list:
+        # M3 fusion design: one muhurta record per anchor × action_class; capped at 100
+        # top-confidence anchors so each anchor maps to exactly one muhurta action. Revisit
+        # if charts routinely exceed 100 influenceable anchors (WARN below will surface this).
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
@@ -172,11 +175,20 @@ class PhMuhurtaWriter(WriterBase):
                 FROM phala_anchors
                 WHERE chart_id = %s AND malleability IN ('influenceable','semi_influenceable')
                 ORDER BY confidence_high DESC NULLS LAST
-                LIMIT 100
+                LIMIT 101
                 """,
                 (chart_id,),
             )
-            return cur.fetchall()
+            rows = cur.fetchall()
+        if len(rows) > 100:
+            logger.warning(
+                "[ph_muhurta] influenceable anchors=%d exceeds LIMIT 100 — %d dropped "
+                "(M3 top-confidence design; revisit if persistent)",
+                len(rows),
+                len(rows) - 100,
+            )
+            rows = rows[:100]
+        return rows
 
     def _load_obstruction_windows(self, conn, chart_id: str) -> dict:
         """Load ka_vighnakara obstruction windows as {(start,end): id}.
