@@ -254,17 +254,55 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
       const unit = Math.min(W, H)
       const FOC = unit * 1.05
 
+      // D1: Plan-seeded state overlay — assets in the active run plan are revealed as
+      // building (current) or queued (ahead) regardless of the 1s polled window.
+      const planStateOverride = new Map<string, 'building' | 'queued'>()
+      if (run?.plan?.length) {
+        const currentId = run.current_asset_id
+        let seenCurrent = currentId == null // if no current, treat the first unlit as building
+        for (const pid of run.plan) {
+          const a = A.find(x => x.asset_id === pid)
+          if (!a || a.state === 'lit' || a.state === 'service_ok') continue
+          if (!seenCurrent) {
+            if (pid === currentId) {
+              planStateOverride.set(pid, 'building')
+              seenCurrent = true
+            }
+          } else {
+            if (pid === currentId) {
+              planStateOverride.set(pid, 'building')
+            } else {
+              planStateOverride.set(pid, 'queued')
+            }
+          }
+        }
+      }
+
       // group assets by layer + aggregate
       const byLayer = new Map<Layer, AssetWithState[]>()
       for (const L of LAYER_ORDER) byLayer.set(L, [])
       for (const a of A) { const arr = byLayer.get(a.layer as Layer); if (arr) arr.push(a) }
       const aggOf = new Map<Layer, LayerAgg>()
-      for (const L of LAYER_ORDER) aggOf.set(L, aggregate(byLayer.get(L)!))
+      for (const L of LAYER_ORDER) {
+        const members = byLayer.get(L)!
+        // augment aggregation with plan-seeded state
+        const agg = aggregate(members)
+        if (agg.state !== 'building' && members.some(a => planStateOverride.get(a.asset_id) === 'building')) {
+          aggOf.set(L, { ...agg, state: 'building' })
+        } else {
+          aggOf.set(L, agg)
+        }
+      }
 
-      // which layers should bloom: hovered layer + layers with a building asset
+      // which layers should bloom: hovered layer + layers with a building/queued asset (plan-seeded)
       const hov = hoverRef.current
       const buildingLayers = new Set<Layer>()
-      for (const L of LAYER_ORDER) if (byLayer.get(L)!.some(a => a.state === 'building')) buildingLayers.add(L)
+      for (const L of LAYER_ORDER) {
+        const members = byLayer.get(L)!
+        if (members.some(a => a.state === 'building' || planStateOverride.has(a.asset_id))) {
+          buildingLayers.add(L)
+        }
+      }
       // ease bloom toward target
       for (const L of LAYER_ORDER) {
         const target = (hov.layer === L || buildingLayers.has(L)) ? 1 : 0
@@ -374,17 +412,22 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
         const bx = planet.x + Math.cos(ang) * haloR
         const by = planet.y + Math.sin(ang) * haloR
         const isFocused = a.asset_id === hov.assetId
-        const beadR = (unit * 0.011) * planet.s * (0.5 + 0.5 * bloom) * (isFocused ? 1.6 : 1)
-        const isDormant = a.state === 'dormant' || a.state === 'not_migrated'
-        const isBuilding = a.state === 'building'
-        const fill = isDormant ? 'none' : isBuilding ? 'url(#armBuild)' : 'url(#armBead)'
-        const stroke = isDormant ? 'rgba(107,78,24,0.7)' : a.state === 'stale' ? 'rgba(166,108,52,0.8)' : isBuilding ? '#E8C878' : '#C49A3E'
+        // F1: service vs data distinction — smaller bead + dimmer stroke for services
+        const isService = a.asset_type === 'service' || a.asset_kind === 'service'
+        const beadR = (unit * 0.011) * planet.s * (0.5 + 0.5 * bloom) * (isFocused ? 1.6 : 1) * (isService ? 0.85 : 1)
+        const planOverrideState = planStateOverride.get(a.asset_id)
+        const effectiveBeadState = planOverrideState ?? a.state
+        const isDormant = effectiveBeadState === 'dormant' || effectiveBeadState === 'not_migrated'
+        const isBuilding = effectiveBeadState === 'building'
+        const isQueued = effectiveBeadState === 'queued'
+        const fill = isDormant ? 'none' : isBuilding ? 'url(#armBuild)' : isQueued ? 'url(#armBuild)' : 'url(#armBead)'
+        const stroke = isDormant ? 'rgba(107,78,24,0.7)' : effectiveBeadState === 'stale' ? 'rgba(166,108,52,0.8)' : isBuilding ? '#E8C878' : isQueued ? 'rgba(212,166,72,0.45)' : isService ? 'rgba(180,150,60,0.6)' : '#C49A3E'
         const dimOther = hov.assetId && !isFocused
         const op = (isDormant ? 0.6 : 1) * bloom * (dimOther ? 0.4 : 1)
         n.main.setAttribute('cx', bx.toFixed(2)); n.main.setAttribute('cy', by.toFixed(2)); n.main.setAttribute('r', beadR.toFixed(2))
         n.main.setAttribute('fill', fill); n.main.setAttribute('stroke', stroke); n.main.setAttribute('opacity', String(op))
         n.main.setAttribute('filter', isBuilding ? 'url(#armGlow)' : '')
-        const showSpec = (a.state === 'lit' || isBuilding)
+        const showSpec = (effectiveBeadState === 'lit' || effectiveBeadState === 'service_ok' || isBuilding)
         n.spec.setAttribute('cx', (bx - beadR * 0.3).toFixed(2)); n.spec.setAttribute('cy', (by - beadR * 0.3).toFixed(2))
         n.spec.setAttribute('r', (beadR * 0.28).toFixed(2)); n.spec.setAttribute('opacity', String(showSpec ? op * 0.8 : 0))
         n.hit.setAttribute('cx', bx.toFixed(2)); n.hit.setAttribute('cy', by.toFixed(2)); n.hit.setAttribute('r', (beadR + 6).toFixed(2))

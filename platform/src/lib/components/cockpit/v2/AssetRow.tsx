@@ -9,12 +9,12 @@ import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
-import { Zap } from 'lucide-react'
+import { Zap, Database, Cpu } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
 import { deriveBuildStage } from './buildStage'
 import type { SubstepInfo } from './buildStage'
 import { useUserRole } from '@/hooks/useUserRole'
-import { CascadePreviewModal } from '@/components/cockpit/CascadePreviewModal'
+import { CascadePreviewModal, type PlanAssetInfo } from '@/components/cockpit/CascadePreviewModal'
 
 interface Props {
   asset: AssetRowType
@@ -49,9 +49,10 @@ function ServiceHealthPill({
 
   // Same block geometry as AssetProgressBar (full-width 22px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
-  const fill = isGreen ? 'rgba(83,180,95,0.55)' : isRunning ? 'rgba(168,124,48,0.7)' : isError ? 'rgba(232,108,108,0.55)' : 'rgba(122,86,24,0.0)'
-  const stroke = isGreen ? 'rgba(83,180,95,0.7)' : isRunning ? 'rgba(200,154,70,0.75)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
-  const pillColor = isGreen ? 'rgba(140,210,140,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
+  // Gold brand palette for lit/service_ok (F2: revert green→gold, native ruling 2026-06-26)
+  const fill = isGreen ? 'rgba(176,137,58,0.92)' : isRunning ? 'rgba(168,124,48,0.7)' : isError ? 'rgba(232,108,108,0.55)' : 'rgba(122,86,24,0.0)'
+  const stroke = isGreen ? 'rgba(212,166,72,0.9)' : isRunning ? 'rgba(200,154,70,0.75)' : isError ? 'rgba(232,108,108,0.85)' : 'rgba(122,86,24,0.4)'
+  const pillColor = isGreen ? 'rgba(236,197,106,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
   const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isError ? 'FAILED' : 'DORMANT'
 
   return (
@@ -133,6 +134,7 @@ interface CascadePending {
   assetId: string
   action: 'build' | 'rebuild'
   plan: string[]
+  planInfo?: PlanAssetInfo[]
   estimatedSeconds?: number | null
 }
 
@@ -160,7 +162,19 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         return
       }
       const { plan, estimated_seconds } = body.data as { plan: string[]; estimated_seconds: number | null }
-      setPendingCascade({ assetId: asset.asset_id, action, plan, estimatedSeconds: estimated_seconds })
+      // E2: enrich plan with names + layer from allAssets for structured modal display
+      const planInfo: PlanAssetInfo[] | undefined = allAssets
+        ? plan.map(id => {
+            const a = allAssets.find(r => r.asset_id === id)
+            return {
+              asset_id: id,
+              layer: a?.layer ?? '',
+              english_name: a?.english_name ?? id,
+              sanskrit_name: a?.sanskrit_name ?? id,
+            }
+          })
+        : undefined
+      setPendingCascade({ assetId: asset.asset_id, action, plan, planInfo, estimatedSeconds: estimated_seconds })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to fetch plan')
       setPendingCascade(null)
@@ -240,11 +254,16 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
         transition: 'background 0.4s ease, box-shadow 0.4s ease',
       }}
     >
-      {/* Asset name — bilingual two-line + status dot */}
+      {/* Asset name — bilingual two-line + status dot + type icon */}
       <div style={{ minWidth: 0 }} title={asset.asset_id}>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
             <StatusDot catalogStatus={asset.catalog_status} state={derivedState} />
+            {/* F1: service vs data glyph — keyed off asset_type / asset_kind */}
+            {(asset.asset_type === 'service' || asset.asset_kind === 'service')
+              ? <Cpu size={10} style={{ color: 'rgba(212,166,72,0.55)', flexShrink: 0 }} aria-label="service" />
+              : <Database size={10} style={{ color: 'rgba(212,166,72,0.35)', flexShrink: 0 }} aria-label="data" />
+            }
             <div className="text-[18px] leading-tight font-serif font-medium text-[#C4942A]">
               {asset.sanskrit_name}
             </div>
@@ -351,6 +370,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
       rootAssetId={asset.asset_id}
       rootAssetLabel={asset.english_name ?? asset.asset_id}
       plan={pendingCascade?.plan ?? []}
+      planInfo={pendingCascade?.planInfo}
       estimatedSeconds={pendingCascade?.estimatedSeconds}
     />
     </>

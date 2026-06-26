@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date'
 import { useActiveRun } from '@/hooks/useActiveRun'
@@ -41,7 +42,7 @@ interface Props {
   birthDate?: string | null
   birthTime?: string | null
   birthPlace?: string | null
-  assets?: { state: string }[]
+  assets?: { asset_id: string; state: string }[]
   proMode?: boolean
   onProModeToggle?: () => void
   onGlobalClear?: () => void
@@ -95,6 +96,14 @@ export function CockpitHeader({
 
   const dormantCount = assets.filter(a => a.state === 'dormant' || a.state === 'not_migrated').length
   const staleCount = assets.filter(a => a.state === 'stale').length
+
+  // B2: global progress bar — only shown during an active run
+  const assetStateMap = new Map(assets.map(a => [a.asset_id, a.state]))
+  const planIds = activeRun?.plan ?? []
+  const planTotal = planIds.length
+  const planLit = planIds.filter(id => assetStateMap.get(id) === 'lit').length
+  const globalProgressPct = planTotal > 0 ? Math.min((planLit / planTotal) * 100, 100) : 0
+  const showGlobalBar = globalRunId != null && planTotal > 0
 
   // Subtitle: date · time · place — only show parts that are available
   const datePart = formatDate(birthDate) || null
@@ -281,6 +290,39 @@ export function CockpitHeader({
           )
         })}
       </div>
+
+      {/* B2: Overall run progress bar — visible only during an active build run */}
+      <AnimatePresence>
+        {showGlobalBar && (
+          <motion.div
+            key="global-progress"
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginTop: 10 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ position: 'relative', height: '6px', borderRadius: '3px', background: 'rgba(122,86,24,0.25)', border: '1px solid rgba(122,86,24,0.3)', overflow: 'hidden' }}>
+              <motion.div
+                style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: 'rgba(176,137,58,0.85)', borderRadius: '3px' }}
+                animate={{ width: `${globalProgressPct}%` }}
+                transition={{ type: 'spring', stiffness: 60, damping: 18 }}
+              />
+              {/* Shimmer while building (not 100%) */}
+              {globalProgressPct < 100 && (
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
+                  animation: 'shimmer 2.2s linear infinite',
+                }} />
+              )}
+            </div>
+            <div style={{ marginTop: '3px', fontSize: '10px', color: 'rgba(212,166,72,0.75)', fontFamily: 'var(--mono-stack)', letterSpacing: '0.05em' }}>
+              {planLit} / {planTotal} assets complete
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

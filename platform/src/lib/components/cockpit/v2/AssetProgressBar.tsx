@@ -7,8 +7,8 @@ import { stageFill } from './buildStage'
 interface AssetProgressBarProps {
   state: string                     // polled asset state
   sseState?: string                 // live SSE state override
-  actualRows?: number | null        // for display when lit
-  targetVolume?: number | null      // for display when lit (unused in fill; kept for API compat)
+  actualRows?: number | null        // live rows_written from SSE / stats
+  targetVolume?: number | null      // target_floor from asset_registry
   stage?: BuildStage                // derived stage (passed from AssetRow)
   substep?: SubstepInfo             // substep data (passed from AssetRow)
   isQueued?: boolean                // true if in run plan but not yet started
@@ -19,7 +19,7 @@ const STATE_COLORS: Record<string, {
 }> = {
   dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.4)',    pill: 'NOT BUILT',     pillColor: 'rgba(155,131,80,0.8)' },
   building:     { fill: 'rgba(168,124,48,0.7)',    stroke: 'rgba(200,154,70,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(236,197,106,0.95)' },
-  lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(140,210,140,0.95)' },
+  lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(236,197,106,0.95)' },
   stale:        { fill: 'rgba(166,108,52,0.7)',    stroke: 'rgba(196,128,64,0.75)',  pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
   error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
   not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.3)',     pill: 'NOT MIGRATED',  pillColor: 'rgba(120,110,90,0.7)' },
@@ -38,7 +38,7 @@ function stageLabel(stage: BuildStage, substep?: SubstepInfo, actualRows?: numbe
   }
 }
 
-export function AssetProgressBar({ state, sseState, actualRows, stage, substep, isQueued }: AssetProgressBarProps) {
+export function AssetProgressBar({ state, sseState, actualRows, targetVolume, stage, substep, isQueued }: AssetProgressBarProps) {
   // Prefer-reduced-motion check (safe for SSR — only evaluated client-side)
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -50,10 +50,22 @@ export function AssetProgressBar({ state, sseState, actualRows, stage, substep, 
   const isError = effectiveState === 'error'
   const colors = STATE_COLORS[state] ?? STATE_COLORS.dormant
 
-  // Stage-based fill during building; row-count-independent
+  // B1: fill computation — row-count-proportional when target known, stage-based otherwise.
+  // The monotonic guard ensures the bar never goes backward: stageFloor provides a minimum
+  // that advances with the build lifecycle even when actualRows lags or has no target.
   let fillPct: number
   if (isBuilding && stage) {
-    fillPct = stageFill(stage, substep)
+    const stageFloor = stageFill(stage, substep)
+    // B1-Step1: row-proportional fill blended with stage floor
+    const hasTarget = targetVolume != null && targetVolume > 0
+    const hasRows = actualRows != null && actualRows > 0
+    if (hasTarget && hasRows) {
+      const rowsFill = Math.min((actualRows! / targetVolume!) * 100, 99) // never reach 100 while still building
+      fillPct = Math.max(stageFloor, rowsFill)
+    } else {
+      // B1-Step2: no target_floor → fall back to stage/substep fill
+      fillPct = stageFloor
+    }
   } else if (isLit) {
     fillPct = 100
   } else if (isError) {
@@ -72,12 +84,8 @@ export function AssetProgressBar({ state, sseState, actualRows, stage, substep, 
   const label = stageLabel(currentStage, substep, actualRows)
   const showLabel = isBuilding && label !== ''
 
-  // Fill color: amber while building, green for lit, red for error
-  const fillColor = isError
-    ? 'rgba(232,108,108,0.55)'
-    : isLit
-      ? 'rgba(83,180,95,0.55)'
-      : colors.fill
+  // Fill color: falls through to STATE_COLORS (gold for lit, amber for building, red for error)
+  const fillColor = isError ? 'rgba(232,108,108,0.55)' : colors.fill
 
   return (
     <div className="relative h-[22px] w-full">
