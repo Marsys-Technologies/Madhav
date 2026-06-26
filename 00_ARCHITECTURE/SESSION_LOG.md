@@ -29446,7 +29446,7 @@ session_body:
     result: IAM effective within ~65s; no redeploy needed
   sse_verification:
     chart: 1c826d5a-41cb-4450-b4dc-59d440e5f75a
-    mode_confirmed: pubsub (first frame was ": hello 1c826d5a-41cb-4450-b4dc-59d440e5f75a")
+    mode_confirmed: "pubsub (first frame was ': hello 1c826d5a-41cb-4450-b4dc-59d440e5f75a')"
     data_frames_received:
       - "asset.state_change: ga_dashas null→building"
       - "run.state_change: 4db0b9ec→running"
