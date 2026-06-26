@@ -78,10 +78,12 @@ describe('POST /api/cockpit/runs — auth gate', () => {
   })
 })
 
-// ─── 2. super_admin CAN build L0 at scope='global' ───────────────────────────
+// ─── 2. super_admin global build excludes L0 (native ruling 2026-06-26) ──────
+// L0 is NEVER included in global scope for ANY role.
+// super_admin triggers L0 only via scope='layer'/brahmagyan or scope='asset'/bg_*.
 
 describe('POST /api/cockpit/runs — super_admin global build', () => {
-  it('creates build_run with L0 assets in plan when super_admin + scope=global', async () => {
+  it('creates build_run WITHOUT L0 assets when super_admin + scope=global (native ruling)', async () => {
     seedRole('super_admin')
     seedSuccessfulBuild(REGISTRY_WITH_L0)
 
@@ -89,9 +91,10 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
     expect(res.status).toBe(201)
     const body = await res.json()
-    // Plan must include L0 assets (bg_ephemeris, bg_ontology)
-    expect(body.data.plan).toContain('bg_ephemeris')
-    expect(body.data.plan).toContain('bg_ontology')
+    // L0 assets must NOT be in the global plan (excluded for all roles)
+    expect(body.data.plan).not.toContain('bg_ephemeris')
+    expect(body.data.plan).not.toContain('bg_ontology')
+    // Per-chart L1+ assets are included as usual
     expect(body.data.plan).toContain('ga_positions')
   })
 })

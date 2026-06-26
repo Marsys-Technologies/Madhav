@@ -89,11 +89,21 @@ export async function POST(req: NextRequest) {
   // Filter registry to allowed scopes — non-super-admin silently excludes L0/global assets
   const allowedRegistry = registryResult.rows.filter(r => allowedScopes.includes(r.scope))
 
+  // L0 GATE (native ruling 2026-06-26): global Build/Rebuild NEVER includes L0 (brahmagyan),
+  // regardless of role. L0 is built ONLY via an explicit layer='brahmagyan' trigger or
+  // an individual bg_* asset trigger, and only by super_admin.
+  const planRegistry = scope === 'global'
+    ? allowedRegistry.filter(r => r.layer !== 'brahmagyan')
+    : allowedRegistry
+
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const { plan } = resolveBuildPlan({ scope, scope_target, action, registry: allowedRegistry, throughput })
+  const { plan, blocked_assets } = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
 
   if (plan.length === 0) {
-    return NextResponse.json({ error: 'No assets to build for this scope/action combination' }, { status: 422 })
+    const detail = blocked_assets.length > 0
+      ? { blocked: blocked_assets, hint: 'Build the Brahmagyan layer first, then retry.' }
+      : {}
+    return NextResponse.json({ error: 'No assets to build for this scope/action combination', ...detail }, { status: 422 })
   }
 
   // Create build_run in 'planned' state — orchestrator transitions to 'running'
@@ -139,5 +149,5 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag } }, { status: 201 })
+  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, blocked_assets } }, { status: 201 })
 }

@@ -19,6 +19,8 @@ export interface BuildPlan {
   plan: AssetId[]
   includes_upstream_count: number
   estimated_seconds: number | null
+  /** Assets excluded from the plan because a dormant L0 (bg_*) dep blocks them. */
+  blocked_assets: { asset_id: string; reason: string }[]
 }
 
 interface ResolveBuildPlanArgs {
@@ -154,6 +156,65 @@ export function resolveBuildPlan({
       .filter(id => scopeAssets.includes(id))
   }
 
+  const blockedAssets: { asset_id: string; reason: string }[] = []
+
+  // For build/rebuild at non-global scope, pull in dormant/error/missing upstream
+  // dependencies that fall outside the literal scope. Without this, building a
+  // downstream asset whose cross-layer upstream is dormant fails silently because
+  // the orchestrator walks the plan in order and the source table is absent.
+  // Global scope is safe: all assets are already candidates.
+  //
+  // L0 EXCLUSION (native ruling 2026-06-26): bg_* (brahmagyan) assets are NEVER
+  // auto-pulled. If a candidate transitively depends on a dormant L0 asset, it is
+  // marked blocked (not built) and excluded from the plan. The caller surfaces the
+  // blocked list so the UI can say "run the Brahmagyan layer first".
+  if ((action === 'build' || action === 'rebuild') && scope !== 'global' && candidates.length > 0) {
+    const upstreamAll = computeUpstreamClosure(candidates, registry)
+    const regMap = new Map(registry.map(r => [r.asset_id, r]))
+
+    // Pull in non-L0 dormant/error upstream only
+    for (const upId of upstreamAll) {
+      const upEntry = regMap.get(upId)
+      if (upEntry?.layer === 'brahmagyan') continue  // never auto-pull L0
+      if (!candidates.includes(upId)) {
+        const t = throughput.get(upId)
+        // Skip already-lit upstream: pulling in lit upstream would unexpectedly redo work.
+        if (!t || t.state === 'dormant' || t.state === 'error') {
+          candidates.push(upId)
+        }
+      }
+    }
+
+    // Detect candidates blocked by dormant L0 transitive deps and remove from plan
+    const l0Dormant = new Set(
+      registry
+        .filter(r => r.layer === 'brahmagyan')
+        .filter(r => { const t = throughput.get(r.asset_id); return !t || t.state === 'dormant' || t.state === 'error' })
+        .map(r => r.asset_id)
+    )
+
+    if (l0Dormant.size > 0) {
+      const candidateSet = new Set(candidates)
+      const blockedSet = new Set<string>()
+      for (const id of candidates) {
+        const transitiveUp = computeUpstreamClosure([id], registry)
+        // Only block if the dormant L0 dep is NOT already being built in this same plan.
+        // When scope=layer/brahmagyan, all L0 assets are candidates and will be topo-ordered first.
+        const blockerDep = [...transitiveUp].find(up => l0Dormant.has(up) && !candidateSet.has(up))
+        if (blockerDep) {
+          blockedSet.add(id)
+          blockedAssets.push({
+            asset_id: id,
+            reason: `L0 dependency '${blockerDep}' not built — run the Brahmagyan layer first`,
+          })
+        }
+      }
+      if (blockedSet.size > 0) {
+        candidates = candidates.filter(id => !blockedSet.has(id))
+      }
+    }
+  }
+
   const sorted = topoSort(candidates, registry)
 
   const upstreamCount = sorted.filter(id => !scopeAssets.includes(id)).length
@@ -168,5 +229,5 @@ export function resolveBuildPlan({
     estimated = (estimated ?? 0) + entry.estimated_seconds
   }
 
-  return { plan: sorted, includes_upstream_count: upstreamCount, estimated_seconds: estimated }
+  return { plan: sorted, includes_upstream_count: upstreamCount, estimated_seconds: estimated, blocked_assets: blockedAssets }
 }
