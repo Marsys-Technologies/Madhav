@@ -36,6 +36,7 @@ from typing import Any, Generator
 
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
+from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as _BP_CANONICAL_CHART_ID, resolve_birth_params
 
 logger = logging.getLogger(__name__)
 
@@ -206,10 +207,17 @@ def _conn() -> Generator:
 
 def _birth_jd_utc(birth: dict | None = None) -> float:
     """Birth Julian Day (UT). Defaults to the native (BIRTH_*) when birth is None;
-    a non-native chart passes its birth_params (Phase 3B writer generalization)."""
+    a non-native chart passes its birth_params (Phase 3B writer generalization).
+    When birth is None the native BIRTH_IST/BIRTH_TZ_OFFSET constants are used —
+    this is correct because resolve_birth_params() in build_system() ensures that
+    non-native charts always supply a non-None birth dict before reaching here."""
     import swisseph as swe
-    iso = (birth or {}).get("datetime_iso") or BIRTH_IST
-    tz = float((birth or {}).get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    if birth:
+        iso = birth["datetime_iso"]
+        tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    else:
+        iso = BIRTH_IST
+        tz = BIRTH_TZ_OFFSET
     dt_local = datetime.fromisoformat(iso)
     dt_utc = dt_local - timedelta(hours=tz)
     return swe.julday(
@@ -248,9 +256,14 @@ def _get_moon_position(ayanamsha_id: str, birth: dict | None = None) -> tuple[fl
     from pyjhora_adapter._ayanamsha import resolve_mode
     from pyjhora_adapter._jhora import drik
 
-    lat = float((birth or {}).get("latitude_deg", BIRTH_LAT))
-    lon = float((birth or {}).get("longitude_deg", BIRTH_LON))
-    tz = float((birth or {}).get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    if birth:
+        lat = float(birth["latitude_deg"])
+        lon = float(birth["longitude_deg"])
+        tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
+    else:
+        lat = BIRTH_LAT
+        lon = BIRTH_LON
+        tz = BIRTH_TZ_OFFSET
 
     jd = _birth_jd_utc(birth)
     mode, _ = resolve_mode(ayanamsha_id)
@@ -2257,6 +2270,19 @@ def build_system(
     from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
+
+    # Contamination guard (Phase 3B / Fix 1.2): resolve birth params to prevent
+    # native BIRTH_* constants from silently leaking into non-native chart builds.
+    # - native chart + None/{}  → None  → downstream .get() fallbacks to BIRTH_* are correct
+    # - non-native chart + dict → returns the dict (passes it through to callers)
+    # - non-native chart + None/{} → raises ValueError (no silent native fallback)
+    resolved_birth = resolve_birth_params(chart_id, birth_params)
+    # Re-assign birth_params to the resolved value so all downstream .get() calls
+    # inside _birth_jd_utc / _get_moon_position use the correct chart's data.
+    # For the native chart resolved_birth is None, and the existing BIRTH_* fallbacks
+    # inside _birth_jd_utc / _get_moon_position remain correct.
+    if resolved_birth is not None:
+        birth_params = resolved_birth
 
     # Ensure L0 nakshatra lords are loaded (idempotent — skips if already populated)
     if not _NAKSHATRA_LORDS_1BASED:

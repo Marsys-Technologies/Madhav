@@ -77,7 +77,7 @@ def test_resolve_non_native_empty_dict_raises():
 # Test files (tests/) are scanned because a test helper that hard-codes NATIVE_BIRTH
 # as a default parameter is itself a contamination vector.
 #
-# Pattern coverage (Wave 2 extended guard):
+# Pattern coverage (Wave 2 extended guard + Wave 2 carryover):
 #
 #   Group 1 — or-fallback assignments:
 #     `= birth_params or NATIVE_*`   e.g. bp = birth_params or NATIVE_BIRTH
@@ -99,6 +99,18 @@ def test_resolve_non_native_empty_dict_raises():
 #   Group 5 — generic fallback to NATIVE_BIRTH in any assignment or return:
 #     `(= | return) ... or NATIVE_BIRTH`
 #     Catches any remaining form not already covered by groups 1/2/3.
+#
+#   Group 6 — local-alias native birth fallback in .get() default or or-expression:
+#     `.get("datetime_iso") or BIRTH_IST`
+#     `.get("latitude_deg", BIRTH_LAT)` / `.get("longitude_deg", BIRTH_LON)`
+#     Matches only when BIRTH_* appears as a .get() default or after `or`.
+#     Does NOT match legitimate positional args like panchanga_instant(..., BIRTH_LAT, ...).
+#     These patterns let native constants silently leak into non-native builds.
+#
+#   Group 7 — unconditional NATIVE_BIRTH spread:
+#     `{**NATIVE_BIRTH}` — spreads the native birth dict without chart_id routing.
+#     Must be replaced with `resolve_birth_params(chart_id, birth_params) or NATIVE_BIRTH`
+#     (the `or NATIVE_BIRTH` here is in the solution module, not writer code).
 
 _SIDECAR_DIR = _PROJECT_ROOT / "platform" / "python-sidecar"
 
@@ -144,6 +156,25 @@ VULNERABLE_PATTERNS = [
         "Any `or NATIVE_BIRTH` fallback in an assignment or return is a silent native contamination. "
         "Use resolve_birth_params() instead.",
     ),
+    # Group 6 — local-alias native birth fallback in .get() default or or-expression
+    # Matches patterns like:
+    #   .get("key", BIRTH_LAT)  / .get("key", BIRTH_LON)  / .get("key") or BIRTH_IST
+    # Does NOT match positional-argument calls like panchanga_instant(..., BIRTH_LAT, ...)
+    # because those use BIRTH_LAT without .get() context and the pattern requires
+    # the `or` keyword or the `.get(` prefix on the same line.
+    (
+        "local-alias native birth fallback (BIRTH_IST/LAT/LON in .get or or-expr)",
+        True,
+        r"(\.get\([^)]*,\s*BIRTH_(LAT|LON|IST)|or BIRTH_(IST|LAT|LON))",
+        "Replace local-alias native-birth fallback with resolve_birth_params().",
+    ),
+    # Group 7 — unconditional native birth spread
+    (
+        "unconditional NATIVE_BIRTH spread",
+        True,
+        r"\{\*\*NATIVE_BIRTH\}",
+        "Unconditional {**NATIVE_BIRTH} spread ignores chart_id routing; use resolve_birth_params() instead.",
+    ),
 ]
 
 
@@ -159,7 +190,7 @@ def _run_grep(use_extended: bool, pattern: str) -> subprocess.CompletedProcess:
 
 def test_no_raw_native_birth_fallback():
     """
-    CI guard: NATIVE_BIRTH contamination class — extended Wave 2 pattern set.
+    CI guard: NATIVE_BIRTH contamination class — extended Wave 2 + carryover pattern set.
 
     Scans all .py files under platform/python-sidecar/ (excluding venv, __pycache__,
     this test file, and birth_params.py which is the approved implementation).
@@ -170,6 +201,8 @@ def test_no_raw_native_birth_fallback():
       Group 3 — dict.get() defaults      (.get('birth_params', NATIVE_BIRTH))
       Group 4 — signature defaults       (def f(chart_id = CANONICAL_CHART_ID))
       Group 5 — generic or NATIVE_BIRTH  ((=|return).*or NATIVE_BIRTH)
+      Group 6 — local-alias BIRTH_IST/LAT/LON fallbacks (dict.get with native constants)
+      Group 7 — unconditional {**NATIVE_BIRTH} spread (ignores chart_id routing)
 
     Every hit is a bug requiring remediation via resolve_birth_params() or an
     explicit chart_id argument — never a silent fallback to native birth data.

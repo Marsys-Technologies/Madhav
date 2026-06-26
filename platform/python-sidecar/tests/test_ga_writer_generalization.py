@@ -122,11 +122,26 @@ def test_forensic_halts_for_native_chart():
 
 
 def test_forensic_does_not_halt_for_non_native_chart():
-    """Non-native chart + 'wrong' Moon ⇒ NO halt (no native anchor to assert) ⇒ build proceeds."""
+    """Non-native chart + 'wrong' Moon ⇒ NO halt (no native anchor to assert) ⇒ build proceeds.
+
+    Fix 1.2 (Wave 2 carryover): non-native charts must supply birth_params so that
+    resolve_birth_params() does not raise ValueError. The test now passes a minimal
+    valid birth_params dict — this mirrors the real orchestrator path where
+    birth_params is always injected for non-native charts.
+    """
     gdw = _dashas()
     wrong_moon = 2.0
+    non_native_birth = {
+        "datetime_iso": "1990-06-15T08:00:00",
+        "latitude_deg": 28.6,
+        "longitude_deg": 77.2,
+        "tz_offset_hours": 5.5,
+        "place_name": "Delhi, India",
+        "subject_label": "Test Chart",
+    }
     with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth=None: (wrong_moon, gdw._birth_jd_utc())):
         result = gdw.build_system('vimshottari', 'lahiri_chitrapaksha',
-                                  chart_id='non-native-chart-xyz', skip_db=True)
+                                  chart_id='non-native-chart-xyz', skip_db=True,
+                                  birth_params=non_native_birth)
     assert result['status'] == 'PASS'
     assert result['rows_computed'] > 0

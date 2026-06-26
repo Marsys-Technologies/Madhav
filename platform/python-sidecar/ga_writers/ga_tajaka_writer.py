@@ -45,7 +45,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.positions import compute_positions
 
 from ga_writers._idempotency import replace_prior_tajik_varsha
-from ga_writers._telemetry import update_asset_throughput
+from ga_writers._telemetry import update_asset_throughput  # legacy CLI path only; orchestrator never calls this
 from pipeline.orchestrator.birth_params import resolve_birth_params
 
 logger = logging.getLogger(__name__)
@@ -553,17 +553,29 @@ def compute_varsha(chart_id: str,
                    ayanamsha_id: str = "lahiri_chitrapaksha",
                    varsha_year: int = 1,
                    *, persist: bool = False,
-                   build_id: str | None = None) -> dict[str, Any]:
+                   build_id: str | None = None,
+                   birth_params: dict | None = None) -> dict[str, Any]:
     """Compute (and optionally persist) one varsha row live — the hybrid
     on-demand path for varshas outside the precomputed window. Returns the row
-    dict (sans internal `_*` keys when persisted)."""
+    dict (sans internal `_*` keys when persisted).
+
+    `birth_params` (Phase 3B): None → native chart (uses NATIVE_BIRTH);
+    non-native chart must pass its real birth dict. Routed via resolve_birth_params()
+    — a non-native chart with None birth_params raises ValueError (no silent fallback).
+    """
     aya_adapter = CANONICAL_AYANAMSHAS.get(ayanamsha_id, "lahiri")
     bid = build_id or str(uuid.uuid4())
+    # Contamination guard: resolve birth params before any chart computation.
+    # resolve_birth_params returns None for native (→ use NATIVE_BIRTH below),
+    # returns the dict for non-native, and raises for non-native + None.
+    bp = resolve_birth_params(chart_id, birth_params)
+    if bp is None:
+        bp = NATIVE_BIRTH
     with _conn() as conn:
-        natal = compute_chart({**NATIVE_BIRTH}, ayanamsha_id=aya_adapter)
+        natal = compute_chart({**bp}, ayanamsha_id=aya_adapter)
         natal_sun = float(next(g for g in natal["grahas"] if g["name"] == "Sun")["longitude"]) % 360.0
         row = _compute_one(conn, chart_id, ayanamsha_id, aya_adapter,
-                           varsha_year, natal, natal_sun, bid)
+                           varsha_year, natal, natal_sun, bid, birth=bp)
         if persist:
             replace_prior_tajik_varsha(conn, [row])
             _insert_rows(conn, [row])
