@@ -29140,3 +29140,78 @@ author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`, and begin the L4 Phala layer build.
 First L4 migration must drop `kala_timeline` (CF.L3.2).
 
 *End of L3-KALA-AUTONOMOUS entry — 2026-06-21.*
+
+---
+
+## Session: NIRMANA-TRACKER-HARDENING-PLAN — 2026-06-26
+
+```yaml
+session_open:
+  session_id: NIRMANA-TRACKER-HARDENING-PLAN
+  cowork_thread_name: "Nirmāṇa Build Tracker — Full-System Hardening"
+  opened_on: 2026-06-26
+  role: Cowork (planning/audit/governance) — implementation delegated to Claude Code (Antigravity)
+  active_layer_campaign: L4 Phala (UNCHANGED — this is the parallel build-SYSTEM track)
+  objective: >
+    Full re-verification audit of the Nirmāṇa build tracker (orchestrator, asset catalog,
+    build/rebuild/refresh/delete at global+layer+asset scope, DAG sequencing + live wiring,
+    stale numbers, delete-modal reconciliation, live progress bars + DAG, service/data
+    distinction, brand-theme green→gold regression). Author a superpowers plan; Claude Code
+    implements.
+  may_touch:
+    - "platform/docs/superpowers/plans/**"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+  must_not_touch:
+    - "platform/python-sidecar/pipeline/orchestrator/** (FROZEN contract — audit read-only)"
+    - "any chart_* or *_signals data on native 482012f1"
+  red_team_due: false
+
+session_body:
+  audit_method: 6 parallel re-verification subagents; every handoff file:line claim checked vs main b4b3c764
+  handoff_corrections:
+    - bg_dignity_reference is NOT an orphan (writer + registry row mig 298 + cited mig 250 all exist)
+    - F-W1-001 bg_rules conn.rollback() does NOT exist — ZERO FROZEN-contract violations across 60+ writers
+    - orchestrator DOES publish asset.state_change/progress/substep Pub/Sub events
+    - "L0 excluded from global" is role-conditional, not absolute (super_admin global included L0 — now changed by ruling)
+    - committing stage = 93% (not 88); SunNode is inline in CockpitHeader; registry SELECT had a duplicate line
+  native_rulings_binding:
+    - L0 EXCLUDED from global build/rebuild — bg_* only via explicit super_admin L0-layer/asset trigger; A1 auto-pull must not pull L0; dormant bg_ dep → downstream BLOCKED
+    - counts HYBRID — global bg_* show rows_written on idle poll, live count_sql on explicit Refresh + post-build-completion
+    - ka_gochara + ka_tulana = asset_kind='service' (live consumers — ka_sangam imports KaGocharaService, ph_muhurta reads ka_gochara, ka_tulana query-time service); do NOT retire
+    - StatusDot health dot stays GREEN (semantic health signal); only progress paths reverted to gold
+  plan_authored: platform/docs/superpowers/plans/2026-06-26-nirmana-build-tracker-hardening.md
+  workstreams: [A1 DAG upstream-closure, A2 catalog reconciliation, A3 retire build_dependencies, C1-C3 stale numbers, E1 clear reconcile, E2 cascade tree, B1/B2 live bars, D1 live DAG, F1 service/data icons, F2 green→gold]
+  implementation_by: Claude Code (Antigravity) — on working tree, UNCOMMITTED
+  files_modified: 24
+  migrations_authored: [342_retire_ga_pyjhora_engine.sql, 343_retire_build_dependencies_ts_routes.sql]
+  tests_authored: [plan.upstream.test.ts, catalog_reconciliation.test.ts]
+  f2_status: DONE (progress paths gold; StatusDot green retained per ruling)
+
+session_close:
+  session_id: NIRMANA-TRACKER-HARDENING-PLAN
+  closed_on: 2026-06-26
+  outcome: PLAN COMPLETE + IMPLEMENTED-ON-WORKING-TREE; NOT committed/verified/sealed
+  contract_violations: 0
+  open_gates:
+    - nothing committed (dirty working tree)
+    - NO prod verification on non-native 1c826d5a
+    - D2 prod Pub/Sub env unconfirmed
+    - verification+commit prompt issued to Claude Code
+  active_layer_campaign_after: L4 Phala (UNCHANGED)
+  current_state_updated: true
+  current_state_version: 5.91
+  session_log_appended: true
+  red_team_pass: "n/a — planning/audit/governance session; no data build, no merge"
+  next_session_objective: >
+    Verify the Nirmāṇa tracker hardening on prod 1c826d5a (tests green → Chrome-MCP ACs →
+    per-workstream commits → PR), confirm D2 Pub/Sub env, then seal the build-tracker
+    workstream. L4 Phala remains the active layer campaign (independent). Phase E (Abhinandan
+    1c826d5a) still GATED on operator.
+```
+
+### Next session objective
+
+**Nirmāṇa build-tracker hardening is planned + implemented on the working tree, but NOT committed or prod-verified.** Next: run the verification+commit prompt — tests green, then prod ACs on non-native `1c826d5a` (build/clear/refresh/DAG/gold-bars/reconciling-modal), confirm D2 Pub/Sub env, stage per-workstream commits, open PR, then seal. The active layer campaign remains **L4 Phala** (this build-SYSTEM track is parallel and does not move the layer pointer).
+
+*End of NIRMANA-TRACKER-HARDENING-PLAN entry — 2026-06-26.*

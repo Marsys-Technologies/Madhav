@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.90
+version: 5.91
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,22 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.91 (2026-06-26, NIRMANA-TRACKER-HARDENING-PLAN):
+    **Nirmāṇa build-tracker full-system hardening: audited + planned (Cowork) + implemented-on-working-tree (Claude Code); NOT YET committed/verified/sealed.**
+    Cowork ran a full re-verification audit (6 parallel workstreams, every handoff file:line claim re-checked vs main `b4b3c764`) and authored the superpowers plan
+    `platform/docs/superpowers/plans/2026-06-26-nirmana-build-tracker-hardening.md`. Audit CORRECTED the v2.0 handoff on 4 headline claims
+    (bg_dignity_reference NOT an orphan; F-W1-001 bg_rules rollback does NOT exist — ZERO writer contract violations; orchestrator DOES emit asset-level Pub/Sub; L0-exclusion is role-conditional).
+    Native rulings (binding, plan §0a): (1) L0 EXCLUDED from global build/rebuild — bg_* only via explicit super_admin L0-layer/asset trigger; A1 auto-pull must not pull L0 (dormant bg_ dep → downstream BLOCKED);
+    (2) counts HYBRID — global bg_* show rows_written on idle, live count_sql on explicit Refresh + post-build; (3) ka_gochara + ka_tulana = asset_kind='service' (live consumers; do NOT retire).
+    Claude Code (Antigravity) implemented A1/A2/A3, C1-C3, E1/E2, B1/B2, D1, F1, F2 on the working tree (uncommitted): 24 files modified, migs 342/343 (retire ga_pyjhora_engine + build_dependencies routes),
+    new tests plan.upstream + catalog_reconciliation. F2 green→gold revert DONE (progress paths gold; StatusDot stays green per native ruling). 
+    OPEN (gates seal): nothing committed; NO prod verification on 1c826d5a; D2 prod Pub/Sub env unconfirmed. Verification+commit prompt issued to Claude Code.
+    This is the build-SYSTEM track, PARALLEL to the L4 Phala campaign + PRE_REGEN data-audit campaign — it does NOT change the active layer pointer (still L4 Phala open).
+    last_session_id: NIRMANA-TRACKER-HARDENING-PLAN. predecessor_session: L3-CLOSEOUT-DOCS.
+    next_session_objective: >
+      "Verify the Nirmāṇa tracker hardening on prod chart 1c826d5a (tests green → Chrome-MCP ACs → per-workstream commits → PR), confirm D2 Pub/Sub env,
+      then seal the build-tracker workstream. Active layer campaign remains L4 Phala (independent). Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-26. file_updated_by_session: NIRMANA-TRACKER-HARDENING-PLAN.
   - v5.90 (2026-06-21, L3-CLOSEOUT-DOCS):
     **L3 Kāla closeout documentation complete. State pointer: L3 SEALED + closed-out; NEXT = L4 Phala.**
     Sealed tip: `e2ef4d72` (almanac hard-removal 13→12 assets, migs 328/329, StatusDot CF.L3.8 green fix).
