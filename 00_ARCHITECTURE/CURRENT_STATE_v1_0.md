@@ -4888,7 +4888,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: L2-BODHA-POSTSEAL-CLOSEOUT  # 2026-06-20: L2 Bodha post-seal closeout. C1 (mig 327 is_active), C2 (66,738 real Vertex embeddings), C4 (5/6 writers re-verified; bo_upaya FK fix), C3 (PR #302 merged 864288f2), C5 (deferred tracked). L2_BODHA_CLOSE v1.2. Predecessor L2-BODHA-AUTONOMOUS.
+  last_session_id: S2379-ORPHAN-CLOSE  # 2026-06-26: S2379 orphaned docs committed; all pre-regen fixes confirmed on main. Predecessor D2-SSE-VERIFY. (prev: L2-BODHA-POSTSEAL-CLOSEOUT 2026-06-20)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===

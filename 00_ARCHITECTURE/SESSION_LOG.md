@@ -29547,14 +29547,10 @@ session_body:
     ts_typecheck_errors: "pre-existing in AssetTable.test.tsx + budget.test.ts fixtures; not
       introduced by S2379 (same errors on clean HEAD)"
   remaining_orphaned_files:
-    - CONDUCTOR_HALT_LOG.md: 7 FORENSIC_GATE FAIL entries from 16:15 and 16:17 UTC test runs
-      on safe chart 1c826d5a (expected — non-native chart Sun=Aries, Moon=Ashwini, Lagna=Scorpio
-      ≠ FORENSIC anchors for 482012f1)
-    - l1-ganita-build/CONDUCTOR_HALT_LOG.md: 14 additional entries same cause
-    - L5_MIMAMSA_INDEX_v1_0.md: +1 row (entry 5f) for L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK
-    - L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK_v1_0.md: new 99-line Cowork doc confirming
-      ph_pramana→L5 contract holds; staged-honest-ceiling culture already present in L4;
-      degenerate-distribution guard (P6.13/GAP RL-6) catches a SYSTEMIC 6-asset pattern
+    - "CONDUCTOR_HALT_LOG.md: 7 FORENSIC_GATE FAIL entries from 16:15+16:17 UTC on safe chart 1c826d5a (non-native Sun=Aries/Moon=Ashwini/Lagna=Scorpio ≠ 482012f1 FORENSIC anchors)"
+    - "l1-ganita-build/CONDUCTOR_HALT_LOG.md: 14 additional entries same cause"
+    - "L5_MIMAMSA_INDEX_v1_0.md: +1 row (entry 5f) for L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK"
+    - "L5_DESIGN_VS_LIVE_INSTRUMENT_CROSSCHECK_v1_0.md: new 99-line Cowork doc confirming ph_pramana→L5 contract holds; staged-honest-ceiling culture already in L4; degenerate-distribution guard (P6.13/GAP RL-6) catches SYSTEMIC 6-asset pattern"
   commit: 6d5f759e pushed to origin/main
 
 session_close:
