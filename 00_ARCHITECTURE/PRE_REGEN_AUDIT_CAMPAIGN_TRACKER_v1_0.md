@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.1
+version: 1.2
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.2
+    date: 2026-06-26
+    change: "Wave 2 complete — 13 ga_* L1 assets audited; contamination fixes committed; 4 majors + 3 minors; 4 carry-over fixes for next session"
   - version: 1.1
     date: 2026-06-26
     change: "Wave 1 complete — 18 bg_* L0 assets audited; 2 majors + 1 minor"
@@ -23,7 +26,7 @@ changelog:
 |------|-------|-------|--------|---------|----------------------|
 | W0 | Shared compute + harness | pyjhora_adapter/compute.py, birth_params.py, panchanga_writer.py, pyhora.py, L0 files, jaimini engine/router, orchestrator adapters | ✅ COMPLETE | 2026-06-26 | §W0 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W1 | L0 Brahmagyan (18 bg_* assets) | All bg_* orchestrator writers + l0_* source modules | ✅ COMPLETE | 2026-06-26 | §W1 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W2 | L1 Gaṇita (~16 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites) | ⏳ PENDING | — | — |
+| W2 | L1 Gaṇita (13 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites → all committed; 4 carry-over fixes remain) | ✅ COMPLETE (carry-overs pending) | 2026-06-26 | §W2 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W3 | L2 Bodha (~11 bo_* assets) | bo_* writers, synthesis layer | ⏳ PENDING | — | — |
 | W4 | L3 Kāla (~10 ka_* assets) + L4 Phala (~9 ph_* assets) | ka_* + ph_* writers | ⏳ PENDING | — | — |
 | W5 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
@@ -78,6 +81,28 @@ Regeneration (all layers, all charts) requires ALL of the following:
 - [ ] Fix Plan authored from consolidated register
 - [ ] main == prod verified (web + job image == main HEAD, all fixes ancestral)
 
+## Wave 2 key findings
+
+### Blocker (pre-regen, 1)
+1. `ga_vargas_writer.py` C1 — D9 Navamsha uses wrong formula (`_compute_general_varga()` instead of `_compute_divisional_sign()` trikona-start); incorrect varga assignments corrupt all downstream Bodha varga analysis
+
+### Majors (3)
+2. `ga_dashas_writer.py` A1 — NATIVE_BIRTH via local alias constants (`BIRTH_IST/LAT/LON`) — evades grep guard; functionally identical contamination class; `resolve_birth_params()` not called before `_get_moon_position()`
+3. `ga_tajaka_writer.py` A1 — `compute_varsha()` unconditional `{**NATIVE_BIRTH}` hardcoding (unresolved after fix set 1; non-or-fallback form)
+4. `ga_vargas_writer.py` A2/A3 — INVARIANT sentinel row accretion + telemetry violation in source module
+
+### Minors (3)
+5. `ga_sade_sati_writer.py` A3 — commit + asset_throughput in source module (guarded on orchestrator path)
+6. `ga_yoga_writer.py` A7/C1 — silent per-row error swallowing + subject-norm coupling with no guard
+7. `brahmagyan/ganita/engine.py` A7 — `write_positions()` returns phantom count
+
+### Contamination carry-overs (extend grep guard)
+The Wave 2 grep guard is green BUT `ga_dashas_writer.py` uses local-alias NATIVE_BIRTH constants. Widen `test_no_raw_native_birth_fallback` to also catch `or BIRTH_IST`, `or BIRTH_LAT`, `or BIRTH_LON` variants.
+
 ## Next session
 
-Wave 2 — L1 Gaṇita. Two tracks: (A) fix all 9 contamination sites from Wave 0 widened guard (turns CI test green); (B) full Axis A + B1 + C1 audit of all remaining ga_* writers not covered in Wave 0.
+Wave 2 carry-overs (4 fixes) then Wave 3 (L2 Bodha bo_* writers). Carry-overs:
+1. Fix `ga_dashas_writer.py` local-alias contamination + widen grep guard
+2. Fix `ga_tajaka_writer.py` `compute_varsha()` unconditional NATIVE_BIRTH + conn injection
+3. Fix `ga_vargas_writer.py` D9 formula + INVARIANT sentinel + telemetry removal
+4. Fix `ga_vargas_writer.py` INVARIANT sentinel accretion

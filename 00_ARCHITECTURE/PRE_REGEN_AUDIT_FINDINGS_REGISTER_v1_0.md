@@ -1,16 +1,20 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.3
+version: 1.4
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
   Per-asset findings register for the Pre-Regeneration Full Audit Campaign (L0–L4).
   One row per audited file × 3 axes × PASS/FAIL. Becomes the fix plan when all
   waves complete.
-waves_complete: W0, W1
-waves_pending: W2, W3, W4, W5
+waves_complete: W0, W1, W2
+waves_pending: W3, W4, W5
 changelog:
+  - version: 1.4
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 2 complete — 13 ga_* L1 Gaṇita assets audited; contamination fixes committed (dce44b91); 4 majors + 3 minors found.
   - version: 1.3
     date: 2026-06-26
     author: Claude (Cowork)
@@ -305,26 +309,107 @@ Ordered by severity:
 
 ---
 
-## Wave 2 — L1 Gaṇita Audit (Pending)
+## Wave 2 — L1 Gaṇita Audit (2026-06-26)
 
-*Pending — scheduled for Wave 2 session.*
+**Scope:** All `ga_*` orchestrator writer adapters + `ga_writers/*` source modules.
+Two parallel tracks executed in this session:
 
-Planned scope: All `ga_*` orchestrator writer adapters + corresponding `ga_writers/*`
-source modules. Two parallel tracks:
+**Track A — Contamination fixes (Wave 0 debt):** All 9 vulnerable sites from Wave 0
+widened guard + 2 Wave 1 source fixes committed at `dce44b91`.
+`test_no_raw_native_birth_fallback` is now **GREEN** (all 6/6 contamination guard tests pass).
 
-**Track A — Contamination fixes (Wave 0 debt):** Fix all 9 vulnerable sites from the
-Wave 0 widened guard (7 `or NATIVE_BIRTH` or-fallback assignments + 2 `CANONICAL_CHART_ID`
-signature defaults). All in `ga_writers/ga_tajaka_writer.py`,
-`ga_writers/ga_panchanga_writer.py`, `ga_writers/ga_structural_writer.py`,
-`ga_writers/ga_strength_writer.py` plus the `ga_nakshatra.py` wrong-fallback bug.
-When all 9 are fixed, `test_no_raw_native_birth_fallback` should turn green.
+**Track B — Full ga_* audit:** Axis A + B1 + C1 for all 13 `ga_*` writers.
 
-**Track B — Full ga_* code + data audit:** Axis A (code correctness, contract),
-Axis B B1 (count_sql checks), Axis C C1 (classical fidelity spot-checks) for all
-remaining `ga_*` assets not covered in Wave 0. Use B1–B7 templates from
-`PRE_REGEN_AUDIT_HARNESS_v1_0.md §2` for any DB checks against the native chart.
+**Key meta-finding:** `ga_dashas_writer.py` contains a NATIVE_BIRTH contamination via
+local alias constants (`BIRTH_IST`, `BIRTH_LAT`, `BIRTH_LON`) using the pattern
+`(birth or {}).get(...) or BIRTH_IST`. This evades the structural grep guard (which
+searches for `NATIVE_BIRTH` literally). The bug class is identical but the name differs.
+Wave 2 carry-over: fix ga_dashas + widen grep guard to catch local-alias patterns.
 
-**Wave 2 entry point:** `audit/pre-regen-wave0` branch.
+**Wave 2 contamination fixes (committed at `dce44b91`):**
+- `ga_tajaka_writer.py`: 3 or-fallback sites (179, 206, 593) + 2 signature defaults (544, 568) → `resolve_birth_params()` + `if bp is None: bp = NATIVE_BIRTH`
+- `ga_panchanga_writer.py`: 1 or-fallback site (1247) → `resolve_birth_params()`
+- `ga_structural_writer.py`: 2 or-fallback sites (4589, 5787) + 1 additional signature default on `build_ga_structural` → fixed
+- `ga_strength_writer.py`: 1 or-fallback site (1525) → `resolve_birth_params()`
+- `pipeline/orchestrator/writers/ga_nakshatra.py`: wrong fallback `ctx.config.get("birth_params", ctx.config)` → `ctx.config.get("birth_params")`
+- `brahmagyan/l0_rules.py`: `conn.rollback()` at line 1286 → removed (Wave 1 carry-over)
+- `brahmagyan/l0_transit.py`: Venus gochara 6 missing houses (BPHS Ch.29) → added (Wave 1 carry-over)
+
+### Wave 2 Findings Table
+
+<!-- A4/A5 N/A: L1 writers do not carry per-row DERIVATION_LEDGER entries at the writer level (derivation ledger is L2+ Bodha). B2–B7 deferred: require live DB with native chart data. C2–C5 N/A: apply to L2+ interpretation only. -->
+
+| asset_id / file | layer | A1 | A2 | A3 | A4 | A5 | A6 | A7 | B1 | C1 | VERDICT | severity | fix summary | fix_owner_phase |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `ga_writers/ga_condition_writer.py` | L1 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | N/A† | PASS | **PASS** | none | None. B1 must be verified against asset_registry separately. | — |
+| `ga_writers/ga_dashas_writer.py` | L1 | **VULNERABLE** | PASS | WARN | N/A | N/A | PASS | PASS | N/A† | PASS | **FIX-REQUIRED** | major | A1: `build_system()` uses `(birth or {}).get(...) or BIRTH_IST/LAT/LON` — local-alias NATIVE_BIRTH pattern evades structural grep guard. Non-native with birth_params=None silently computes native's Vimshottari. Fix: add `resolve_birth_params(chart_id, birth_params)` before `_get_moon_position()`. Secondary (A3): extract `conn.commit()` + `_update_asset_throughput()` from source module to CLI wrapper. | Wave 2 carry-over |
+| `ga_writers/ga_medical_writer.py` | L1 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | N/A† | PASS | **PASS** | none | None. | — |
+| `ga_writers/ga_prashna_writer.py` | L1 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | WARN | N/A† | PASS | **PASS** | none | A7 WARN: if prashna chart exists but chart_facts absent (DAG order violated), emits 0 rows + WARNING instead of raising. Not a blocker for production DAG; harden in future. | — |
+| `ga_writers/ga_sade_sati_writer.py` | L1 | CHART-INDEPENDENT | PASS | **FAIL** | N/A | N/A | PASS | PASS | N/A† | PASS | **FIX-REQUIRED** | minor | A3: `conn.commit()` + `_update_asset_throughput()` in source module (guarded by `owns_conn=False` on orchestrator path — safe in production but structural contract violation). Extract to CLI wrapper. Also: `moon_pada` fallback to `NATIVE_MOON_PADA` for non-native charts — replace with neutral default (1). | Fix Plan (post-W5) |
+| `ga_writers/ga_panchanga_writer.py` | L1 | VULNERABLE → **FIXED** | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | A1 fix: line 1247 → `resolve_birth_params()` (committed `dce44b91`). | Wave 2 ✅ DONE |
+| `ga_writers/ga_strength_writer.py` | L1 | VULNERABLE → **FIXED** | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | A1 fix: line 1525 → `resolve_birth_params()` (committed `dce44b91`). C1 depth gaps noted (simplified Kala bala; no Mooltrikona distinction) — pre-existing, backlog. | Wave 2 ✅ DONE |
+| `ga_writers/ga_structural_writer.py` | L1 | VULNERABLE → **FIXED** | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | A1 fixes: lines 4589 + 5787 + build_ga_structural signature default → `resolve_birth_params()` (committed `dce44b91`). Legacy `build_ga_structural()` `ay_conn.commit()` at line 4738 not on orchestrator path — cleanup backlog. | Wave 2 ✅ DONE |
+| `ga_writers/ga_tajaka_writer.py` | L1 | VULNERABLE → PARTIALLY FIXED | PASS | **FAIL** | N/A | N/A | **FAIL** | WARN | PASS | PASS | **FIX-REQUIRED** | major | A1 or-fallback sites (179, 206, 593) + signature defaults (544, 568) fixed (`dce44b91`). **NEW unresolved site:** `compute_varsha()` line ~555 unconditionally uses `{**NATIVE_BIRTH}` regardless of chart — not an or-fallback form; requires adding `birth_params` param + `resolve_birth_params()` call. A3: `compute_varsha()` opens its own `_conn()` instead of accepting injected conn (design gap; companion fix to A1). | Wave 2 carry-over |
+| `ga_writers/ga_vargas_writer.py` | L1 | CORRECTLY-GUARDED | **FAIL** | **FAIL** | N/A | N/A | PASS | PASS | PASS | **FAIL** | **FIX-REQUIRED** | major | A2: INVARIANT sentinel rows not in DELETE scope — accretion risk across rebuilds (add explicit DELETE for `ayanamsha_id='INVARIANT'` rows at build start). A3: `_telemetry` import + `_update_asset_throughput()` in source module (guarded `owns_conn=False`; structural violation — extract to CLI wrapper). **C1 CRITICAL:** D9 Navamsha uses `_compute_general_varga()` instead of correct `_compute_divisional_sign()` (trikona-start rule) — analytically significant error for all downstream Bodha varga analysis. | pre-regen blocker |
+| `ga_writers/ga_vastu_writer.py` | L1 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | PASS | PASS | PASS | **PASS** | none | None. | — |
+| `ga_writers/ga_yoga_writer.py` | L1 | CHART-INDEPENDENT | PASS | PASS | N/A | N/A | PASS | WARN | PASS | WARN | **REVIEW-NEEDED** | minor | A7 WARN: per-row INSERT failures silently swallowed — partial yoga set passes FORENSIC. Add suppressed-error counter with threshold assertion. C1 WARN: `ChartState._SUBJECT_NORM` coupling to `ga_positions_writer.PLANET_TO_SUBJECT` has no enforcement guard — drift would silently drop planets from yoga detection. Add test or assertion. | pre-regen |
+| `brahmagyan/ganita/engine.py` (ga_chart_service) | L1 service | CORRECTLY-GUARDED | N/A | N/A | N/A | N/A | N/A | WARN | N/A | PASS | **REVIEW-NEEDED** | minor | A7 WARN: `write_positions()` stub returns `len(positions)` as phantom count (table dropped). Fix: return 0. Not an orchestrator writer — no WriterBase contract applies. Confirm in CAPABILITY_MANIFEST.json that absence of orchestrator writer is intentional. | pre-regen |
+
+> **B1 (†):** B1 count_sql for ga_condition, ga_dashas, ga_medical, ga_prashna, ga_sade_sati could not be confirmed from source files; requires querying asset_registry directly. These 5 assets' count_sql must be verified against the live DB before regeneration.
+> **B2–B7:** All Wave 2 assets: deferred (live DB required). B2–B7 are post-regen correctness checks.
+> **A4/A5:** N/A — these apply to L2+ DERIVATION_LEDGER entries, not L1 raw writers.
+> **C2–C5:** N/A — apply to L2+ native-specific interpretive derivations.
+
+### Wave 2 Summary
+
+- **Assets audited:** 13 ga_* writers
+- **PASS:** 6 (ga_condition, ga_medical, ga_prashna, ga_panchanga✅, ga_strength✅, ga_structural✅, ga_vastu)
+- **FIX-REQUIRED:** 5
+- **REVIEW-NEEDED:** 2
+- **A1 contamination — structural guard now GREEN:** `test_no_raw_native_birth_fallback` passes after `dce44b91`
+- **A1 contamination — carry-overs (evade grep guard):** 2 sites
+  - `ga_dashas_writer.py` — local alias `BIRTH_IST/LAT/LON` pattern (different constant name, same bug class)
+  - `ga_tajaka_writer.py` `compute_varsha()` — unconditional `{**NATIVE_BIRTH}` hardcoding (not an or-fallback form)
+- **Blockers (pre-regen):** 1
+  - `ga_vargas_writer.py` C1: D9 Navamsha wrong formula — incorrect varga assignments corrupt all downstream Bodha varga analysis
+- **Majors:** 3
+  - `ga_dashas_writer.py` — NATIVE_BIRTH via local alias (evades grep guard; same contamination class)
+  - `ga_tajaka_writer.py` — `compute_varsha()` unconditional NATIVE_BIRTH (unresolved after fix set 1)
+  - `ga_vargas_writer.py` — INVARIANT accretion + telemetry violation + D9 wrong formula
+- **Minors:** 3
+  - `ga_sade_sati_writer.py` — commit + asset_throughput in source module (orchestrator-path safe)
+  - `ga_yoga_writer.py` — silent error swallowing + subject-norm coupling drift
+  - `brahmagyan/ganita/engine.py` — phantom count from stub
+
+### Wave 2 Fix List (Remaining — carry-overs to next session)
+
+Ordered by severity:
+
+1. **[BLOCKER → C1]** `ga_vargas_writer.py` — D9 Navamsha formula  
+   Change D9 routing from `_compute_general_varga()` to `_compute_divisional_sign()`
+   (trikona-start rule). Audit all 24 `PYJHORA_NAMED_VARGAS` to verify correct routing.
+   This must be fixed before any regeneration run — incorrect D9 placements corrupt
+   all varga-based analysis in L2 Bodha synthesis.
+
+2. **[MAJOR → A1]** `ga_dashas_writer.py` — local-alias contamination  
+   Add `resolve_birth_params(chart_id, birth_params)` before `_get_moon_position()`.
+   The `(birth or {}).get(...) or BIRTH_IST/LAT/LON` pattern is functionally identical
+   to `bp = birth_params or NATIVE_BIRTH` but uses locally-named constants.
+   Also widen `test_no_raw_native_birth_fallback` grep guard to catch `or BIRTH_IST`,
+   `or BIRTH_LAT`, `or BIRTH_LON`, `or BIRTH_LON_E` (local NATIVE_BIRTH aliases).
+
+3. **[MAJOR → A1]** `ga_tajaka_writer.py` `compute_varsha()` — unconditional NATIVE_BIRTH  
+   Add `birth_params: dict | None = None` parameter; replace unconditional
+   `{**NATIVE_BIRTH}` at line ~555 with `resolve_birth_params(chart_id, birth_params) or NATIVE_BIRTH`.
+   Companion: add `conn` parameter injection to eliminate internal `_conn()` call (A3 fix).
+
+4. **[MAJOR → A2/A3]** `ga_vargas_writer.py` — INVARIANT accretion + telemetry  
+   (a) Add `DELETE FROM chart_divisionals WHERE chart_id=%s AND ayanamsha_id='INVARIANT'`
+   at build start to prevent sentinel-row accretion.
+   (b) Remove `_telemetry` import and all `_update_asset_throughput` calls from source
+   module; move to CLI wrapper.
+
+---
 
 ---
 
