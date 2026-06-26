@@ -126,8 +126,8 @@ def _load_chart_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]
             FROM chart_facts
             WHERE chart_id = %s AND ayanamsha_id = %s
         """, (chart_id, ayanamsha_id))
-        cols = [d[0] for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        # conn uses dict_row factory; fetchall() already returns dicts — convert to plain dict.
+        return [dict(r) for r in cur.fetchall()]
 
 
 def _load_yoga_catalog(conn: Any) -> list[dict]:

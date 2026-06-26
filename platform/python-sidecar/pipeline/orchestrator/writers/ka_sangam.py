@@ -1,7 +1,7 @@
 """
 ka_sangam — Convergence engine (L3 K4-a).
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
-NEVER calls ctx.db_conn.commit() or .rollback()
+Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table.
 
 Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B

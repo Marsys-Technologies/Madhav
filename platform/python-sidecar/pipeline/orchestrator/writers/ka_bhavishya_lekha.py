@@ -37,7 +37,8 @@ class KaBhavishyaLekhaWriter(WriterBase):
             return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
 
         # CF.L3.5: batch-fetch signal_type_id for domain mapping
-        signal_ids_seen = [str(r[1]) for r in darshana_rows if r[1]]
+        # darshana_rows is list[dict] (dict_row cursor); use key access throughout
+        signal_ids_seen = [str(r['signal_id']) for r in darshana_rows if r['signal_id']]
         signal_type_map: dict[str, str] = {}
         if signal_ids_seen:
             placeholders = ','.join(['%s'] * len(signal_ids_seen))
@@ -46,15 +47,24 @@ class KaBhavishyaLekhaWriter(WriterBase):
                     f"SELECT signal_id, signal_type_id FROM bodha_msr_signals WHERE signal_id IN ({placeholders})",
                     signal_ids_seen,
                 )
-                for sig_id, type_id in cur.fetchall():
-                    if type_id:
-                        signal_type_map[str(sig_id)] = str(type_id)
+                for sig_row in cur.fetchall():
+                    if sig_row['signal_type_id']:
+                        signal_type_map[str(sig_row['signal_id'])] = str(sig_row['signal_type_id'])
 
         rows = []
         for rank, row in enumerate(darshana_rows, start=1):
-            (conv_id, signal_id, net_label, eff_score,
-             peak_date, win_start, win_end,
-             narrative, obs_summary, conf_label, rarity, mode) = row
+            conv_id = row['convergence_id']
+            signal_id = row['signal_id']
+            net_label = row['net_label']
+            eff_score = row['effective_score']
+            peak_date = row['peak_date']
+            win_start = row['window_start']
+            win_end = row['window_end']
+            narrative = row['narrative']
+            obs_summary = row['obstruction_summary']
+            conf_label = row['confidence_label']
+            rarity = row['rarity_years']
+            mode = row['mode']
 
             # Probability tier
             tier = _assign_tier(eff_score, net_label)

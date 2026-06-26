@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const [registryResult, throughputResult] = await Promise.all([
     query<RegistryEntry>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-       FROM asset_registry ORDER BY layer, sort_order`
+       FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
       `SELECT asset_id, state FROM asset_throughput WHERE chart_id=$1`,

@@ -111,10 +111,10 @@ _BATCH_SIZE = 50
 
 
 def _fetch_dict(conn, sql: str, params: list) -> list[dict]:
+    # conn uses dict_row factory; fetchall() already returns dicts — convert to plain dict.
     with conn.cursor() as cur:
         cur.execute(sql, params)
-        cols = [d.name for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(r) for r in cur.fetchall()]
 
 
 def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
