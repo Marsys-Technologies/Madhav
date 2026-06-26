@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 5.96
+version: 5.98
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,43 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.98 (2026-06-27, L5-MI-W9W8-BUILD-VERIFY):
+    **L5 Mīmāṃsā W9+W8 PASS — click-Build now plans all 10 mi_* data writers and completes clean.**
+    Session executed the ANTIGRAVITY W9/W8 runbook end-to-end. Starting from zero mimamsa_* rows and
+    five crashing writers. Fixed 5 writer bugs (6 sub-bugs): mi_jivanaghatana ORDER BY + chart_id source;
+    mi_bhavisya signal_key/composite_strength absent + UUID JSON; mi_adhilepa family_id absent +
+    chart_facts.category→fact_category; mi_pariksha UUID[:8] subscript + dict_row r[0]; mi_vistara
+    dict_row r[0]. Root cause: db.py opens connection with dict_row; any cursor() without explicit
+    row_factory inherits it. Two new migrations: 346a (drop 6 brahma-era conflicting tables) +
+    357 (has_writer=true for 10 data writers). Four consecutive clean builds. W8 IDEMPOTENCY PASS
+    (pre=96 == post=96 across 6 per-chart tables). Commit 0420c5a9. Report: L5_W9_W8_VERIFICATION_REPORT_v1_0.md.
+    last_session_id: L5-MI-W9W8-BUILD-VERIFY. predecessor_session: L3-KALA-FINAL-CLOSE.
+    next_session_objective: >
+      "L5 Mīmāṃsā build-ready (2026-06-27) — W9+W8 PASS. NEXT priorities:
+      (a) Open L4 Phala campaign: read L3_KALA_CLOSE_v1_0.md §11; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      First L4 platform/ migration: 358+ (357 consumed by mi_has_writer). First L4 supabase/ migration: 346+.
+      (b) Native clicks Rebuild→Kāla on tracker to clear stale badges on ka_vighnakara/ka_yojaka.
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-27. file_updated_by_session: L5-MI-W9W8-BUILD-VERIFY.
+  - v5.97 (2026-06-27, L3-KALA-FINAL-CLOSE):
+    **L3 Kāla PERFECTLY CLOSED — 12/12 buildable, registry reproducible, CI fail-loud.**
+    Three PRs merged: PR #347 (ka_tulana self-test writer + has_writer flag, mig 344 supabase/),
+    PR #349 (ka_* registry back-fill mig 345 supabase/ — all 12 rows + depends_on in source control;
+    ON CONFLICT DO NOTHING; fresh-DB reproducibility), PR #350 (seal docs v1.4 + this CURRENT_STATE).
+    L3_KALA_CLOSE_v1_0.md bumped to v1.4: CF.L3.8 fully RESOLVED operationally — click-Build now
+    plans all 12/12 ka_* (was 11; ka_tulana was silently excluded). Pending: native clicks
+    Rebuild→Kāla on tracker; stale badges on ka_vighnakara/ka_yojaka clear via orchestrator
+    asset_throughput stamp.
+    mi_seva + mi_abhilekha seed count_sql nulled (service assets; catalog_reconciliation test fixed).
+    last_session_id: L3-KALA-FINAL-CLOSE. predecessor_session: S2379-ORPHAN-CLOSE.
+    next_session_objective: >
+      "L3 Kāla fully closed (2026-06-27). NEXT: native clicks Rebuild→Kāla on tracker to
+      operationally prove 12/12 (Step 5 of brief). Then open L4 Phala campaign:
+      read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+      First L4 platform/ migration: 356+ (355 last used for L5 mimamsa_vistara).
+      First L4 supabase/ migration: 346+ (345 consumed by ka_* back-fill).
+      Phase E (Abhinandan 1c826d5a) still GATED on operator."
+    file_updated_at: 2026-06-27. file_updated_by_session: L3-KALA-FINAL-CLOSE.
   - v5.96 (2026-06-26, S2379-ORPHAN-CLOSE):
     **S2379 orphaned docs committed. All substantive pre-regen fixes confirmed on main.**
     S2379 (fix/pre-regen-blockers-sweep) had merged all code fixes (4878925b + 31e6d2b7) before its context ran out,

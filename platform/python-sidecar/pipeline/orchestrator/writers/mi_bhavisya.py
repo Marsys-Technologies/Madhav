@@ -87,12 +87,12 @@ class MiBhavisyaWriter(WriterBase):
         if _table_exists(conn, "bodha_msr_signals"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT signal_id, signal_key, composite_strength "
+                    "SELECT signal_id "
                     "FROM bodha_msr_signals WHERE chart_id = %s",
                     (chart_id,),
                 )
                 for r in cur.fetchall():
-                    msr_signals[r["signal_id"]] = dict(r)
+                    msr_signals[str(r["signal_id"])] = dict(r)
 
         emitted_at = datetime.utcnow()
         emitted_str = emitted_at.isoformat()
@@ -126,11 +126,10 @@ class MiBhavisyaWriter(WriterBase):
             conf_low = float(anchor.get("confidence_low") or 0.4)
             conf_high = float(anchor.get("confidence_high") or 0.7)
 
-            # Driving signals: references to MSR signals in same domain
+            # Driving signals: first 5 MSR signals for this chart (domain filter deferred)
             driving = [
-                {"signal_id": sid, "strength": d["composite_strength"]}
-                for sid, d in msr_signals.items()
-                if "domain" in d and d.get("domain") == domain
+                {"signal_id": sid, "strength": 1.0}
+                for sid in list(msr_signals.keys())
             ][:5]
 
             falsifier = anchor.get("falsifier_spec") or anchor.get("falsifier") or {}

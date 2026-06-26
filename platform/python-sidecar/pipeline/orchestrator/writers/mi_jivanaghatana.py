@@ -68,7 +68,7 @@ class MiJivanaghatanaWriter(WriterBase):
 
         # Load all life events
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute("SELECT * FROM life_events ORDER BY chart_id, event_id")
+            cur.execute("SELECT * FROM life_events ORDER BY event_id")
             events = cur.fetchall()
 
         logger.info("[mi_jivanaghatana] loaded %d life_events rows", len(events))
@@ -87,7 +87,7 @@ class MiJivanaghatanaWriter(WriterBase):
             event_id = str(ev.get("event_id") or ev.get("id") or "")
             if not event_id:
                 continue
-            chart_id = str(ev.get("chart_id") or "")
+            chart_id = str(ctx.config.get("chart_id") or "")
 
             # Safely extract date field (try multiple common column names)
             event_date = (

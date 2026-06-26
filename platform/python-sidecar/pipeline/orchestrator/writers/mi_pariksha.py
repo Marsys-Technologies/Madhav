@@ -46,7 +46,7 @@ class MiParikshaWriter(WriterBase):
     has_substeps = True
 
     def plan_substeps(self, ctx) -> list[SubStep]:
-        self._chart_id = ctx.config["chart_id"]
+        self._chart_id = str(ctx.config["chart_id"])
         return [
             SubStep(key="attribution", label="signal credit/blame attribution"),
             SubStep(key="neg_control", label="negative-control QA harness"),
@@ -172,7 +172,7 @@ class MiParikshaWriter(WriterBase):
                                 notes="no negative controls defined — 0 QA rows")
 
         # Compute observed baseline score (mean calibration score or 0.5 if none)
-        with conn.cursor() as cur:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute(
                 "SELECT AVG(composite_score) FROM mimamsa_calibration WHERE chart_id = %s",
                 (chart_id,),
