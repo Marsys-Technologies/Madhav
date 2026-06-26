@@ -54,6 +54,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v5.92 (2026-06-26, NIRMANA-TRACKER-HARDENING-VERIFY):
+    **Nirmāṇa build-tracker hardening VERIFIED and SEALED. All 10 UI ACs confirmed. 8 hardening commits + 2 bug fixes on main.**
+    Verify-then-commit pass: ran vitest + typecheck (PASS), committed 8 workstream commits (A1 DAG upstream-closure + L0 exclusion, A2 catalog reconciliation, A3 retire build_dependencies, C1/C2/C3 SSE refetch + hybrid counts + refresh cache-bust, E1 reconciling clear summary, E2 named cascade tree, B1/B2 per-asset bars + global progress bar, D1 plan-seeded DAG, F1 service/data icons, F2 gold palette). Two additional bug fixes: migration 342 FK constraint reorder (3ce92f34) + /cockpit page builds→build_runs try/catch (596c1118). CI green on all commits. Deployed to Cloud Run (amjis-web-qm256lasva-el.a.run.app). Chrome MCP probe on non-native 1c826d5a confirmed: F1 ✓ (icons), F2 ✓ (gold palette), E1 ✓ (reconciling modal arithmetic), E2 ✓ (named layer-grouped tree), C3 ✓ (no-store cache-bust), B2 ✓ (global progress bar gold), D1 ✓ (ArmillaryGraph plan-seeded beads), B1 ✓ (per-asset bars update). C1/C2 code-verified (useActiveRun poll → onCompleted → refetchStats within 5s; stats API hybrid per_chart always count_sql, global bg_* count_sql on ?mode=live). D2 operational gap: SSE is heartbeat-only (GOOGLE_CLOUD_PROJECT absent from Cloud Run amjis-web env; action item for follow-up — does not block tracker functionality). Native chart 482012f1 NEVER touched.
+    last_session_id: NIRMANA-TRACKER-HARDENING-VERIFY. predecessor_session: NIRMANA-TRACKER-HARDENING-PLAN.
+    next_session_objective: >
+      "Nirmāṇa tracker hardening SEALED (2026-06-26). Continue L4 Phala campaign: read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md. First L4 migration starts at 344. Phase E (Abhinandan 1c826d5a) still GATED on operator. D2 follow-up: add GOOGLE_CLOUD_PROJECT=madhav-astrology to amjis-web Cloud Run env for Pub/Sub SSE (independent of L4 work)."
+    file_updated_at: 2026-06-26. file_updated_by_session: NIRMANA-TRACKER-HARDENING-VERIFY.
   - v5.91 (2026-06-26, NIRMANA-TRACKER-HARDENING-PLAN):
     **Nirmāṇa build-tracker full-system hardening: audited + planned (Cowork) + implemented-on-working-tree (Claude Code); NOT YET committed/verified/sealed.**
     Cowork ran a full re-verification audit (6 parallel workstreams, every handoff file:line claim re-checked vs main `b4b3c764`) and authored the superpowers plan

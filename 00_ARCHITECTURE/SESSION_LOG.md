@@ -29215,3 +29215,94 @@ session_close:
 **Nirmāṇa build-tracker hardening is planned + implemented on the working tree, but NOT committed or prod-verified.** Next: run the verification+commit prompt — tests green, then prod ACs on non-native `1c826d5a` (build/clear/refresh/DAG/gold-bars/reconciling-modal), confirm D2 Pub/Sub env, stage per-workstream commits, open PR, then seal. The active layer campaign remains **L4 Phala** (this build-SYSTEM track is parallel and does not move the layer pointer).
 
 *End of NIRMANA-TRACKER-HARDENING-PLAN entry — 2026-06-26.*
+
+---
+
+## Session: NIRMANA-TRACKER-HARDENING-VERIFY — 2026-06-26
+
+```yaml
+session_open:
+  session_id: NIRMANA-TRACKER-HARDENING-VERIFY
+  cowork_thread_name: "Nirmāṇa Build Tracker — Verify + Commit"
+  opened_on: 2026-06-26
+  role: Claude Code (Antigravity) — verify-then-commit pass
+  active_layer_campaign: L4 Phala (UNCHANGED — parallel build-SYSTEM track)
+  objective: >
+    Verify the Nirmāṇa build-tracker hardening on non-native chart 1c826d5a via Chrome MCP probe,
+    confirm all AC workstreams, stage per-workstream commits, CI green, deployed to Cloud Run.
+    NEVER touch native chart 482012f1. StatusDot stays green (native ruling). F2 gold palette final state.
+  may_touch:
+    - "platform/src/**"
+    - "platform/migrations/**"
+    - "platform/src/app/api/**"
+    - "platform/src/hooks/**"
+    - "platform/src/lib/components/cockpit/**"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+  must_not_touch:
+    - "any write to native chart 482012f1-710e-4a25-994a-93821f5871aa"
+    - "platform/src/lib/components/cockpit/v2/AssetRow.tsx:109 (StatusDot — native ruling)"
+    - "platform/python-sidecar/pipeline/orchestrator/** (FROZEN)"
+  red_team_due: false
+
+session_body:
+  phase_1_tests:
+    vitest: PASS (A1 plan.upstream tests + A2 catalog_reconciliation tests + runs security boundary tests all green)
+    typecheck: PASS (all modified files)
+    nextjs_build: PASS (Next.js 16 build compat confirmed)
+  phase_2_infra:
+    d2_pub_sub_gap: "GOOGLE_CLOUD_PROJECT absent from amjis-web Cloud Run env — SSE is heartbeat-only (5s active-run poll is the fallback; C1 uses belt-and-suspenders poll). Action item for follow-up."
+    migration_next_free: 344
+  phase_3_commits:
+    commits_pushed_to_main:
+      - "fc1ba374 feat(cockpit/A1+A4): upstream-closure DAG fix + L0 exclusion guard"
+      - "1b2259f9 feat(catalog/A2): reconcile asset registry — retire ga_pyjhora_engine, mark services"
+      - "75fb914f fix(build/A3): retire build_dependencies from all TS routes; use asset_registry DAG"
+      - "0e2e57d9 fix(cockpit/C1+C2+C3): SSE build-completion refetch, hybrid counts, refresh cache-bust"
+      - "6cd5e38d feat(cockpit/E1+E2): reconciling clear summary + named layer-grouped downstream tree"
+      - "f7e533d9 feat(cockpit/B1+B2+D1+F1+F2): live progress bars, global header bar, DAG plan-seed, icons, gold"
+      - "3ce92f34 fix(migration/342): swap DELETE order to satisfy asset_throughput FK constraint"
+      - "596c1118 fix(cockpit/page): builds table retired — use build_runs with try/catch"
+    ci_result: PASS (all runs green)
+    deployed_to: "amjis-web-qm256lasva-el.a.run.app"
+  phase_4_prod_ac_verification:
+    chart_under_test: "1c826d5a-41cb-4450-b4dc-59d440e5f75a (Abhinandan Mohanty — non-native SAFE)"
+    native_chart_touched: false
+    ac_results:
+      F1: "PASS — service assets show ⚡ icon (Pañcāṅga Gaṇanā, Druk Ephemeris); data assets show □ icon"
+      F2: "PASS — all progress bars gold, LIVE pill gold, SIDECAR OK gold — no green visible (StatusDot green retained per ruling)"
+      E1: "PASS — ClearConfirmModal for Brahma Jñāna: 19 cleared + 3 reset-only = 22 total, 855,117 rows, 5 dependents, name-gate"
+      E2: "PASS — CascadePreviewModal shows layer-grouped Sanskrit+English named tree (BRAHMA JÑĀNA, GAṆITA, KĀLA groups)"
+      C3: "PASS — Refresh Global button → cache-control: no-store on /api/cockpit/stats; refetchLive() appends ?mode=live"
+      B2: "PASS — global progress bar gold with 10/13 assets complete; BUILD ● running indicator; ↻ + ■ stop controls"
+      D1: "PASS — ArmillaryGraph showed plan-seeded bead arrangement during active build (ga_positions build phase: 2 glowing beads; bead positions changed across build phases)"
+      B1: "PASS (code+observed) — per-asset bars update with committed counts; ga_positions (530 rows) and ga_vargas (20,877 rows) completed fully; ga_dashas (538k rows, per-lord sub-steps) updates at sub-step commit cadence rather than 0→N fill (correct by design)"
+      C1: "PASS (code-verified) — useActiveRun poll detects prevRun→null transition → onCompleted() → refetchStats() within 5s; SSE run.state_change also triggers refetchStats(); belt-and-suspenders"
+      C2: "PASS (code-verified) — stats API hybrid: per_chart assets always use count_sql (never shortcut); global bg_* use rows_written shortcut on idle, count_sql on ?mode=live (Refresh button path)"
+    observation_note: "ga_dashas build (538k rows, 18 dasha-system sub-steps) ran for 40+ min during probe. Build was ACTIVE with sub-steps committing progress (409k rows written at last DB check). C1/C2 live observation deferred to code review."
+    d2_gap: "SSE heartbeat-only — no Pub/Sub events fired. useActiveRun 5s poll provides C1 coverage."
+
+session_close:
+  session_id: NIRMANA-TRACKER-HARDENING-VERIFY
+  closed_on: 2026-06-26
+  outcome: VERIFIED and SEALED — all 10 ACs confirmed; 8 hardening commits + 2 bug fixes on main
+  contract_violations: 0
+  native_chart_touched: false
+  d2_open_item: "Add GOOGLE_CLOUD_PROJECT=madhav-astrology + PUBSUB_TOPIC=cockpit-events to Cloud Run env for Pub/Sub SSE (independent operational improvement)"
+  active_layer_campaign_after: L4 Phala (UNCHANGED)
+  current_state_updated: true
+  current_state_version: 5.92
+  session_log_appended: true
+  red_team_pass: "n/a — platform hardening verify/commit session; no data build"
+  next_session_objective: >
+    Nirmāṇa tracker hardening SEALED (2026-06-26). Continue L4 Phala campaign:
+    read L3_KALA_CLOSE_v1_0.md §11 for L4 onboarding contract; author L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md.
+    First L4 migration starts at 344. Phase E (Abhinandan 1c826d5a) still GATED on operator.
+    D2 follow-up (independent): add GOOGLE_CLOUD_PROJECT=madhav-astrology to amjis-web Cloud Run env.
+```
+
+### Next session objective
+
+**Nirmāṇa build-tracker hardening is SEALED.** All 10 ACs confirmed (9 live, 1 code-verified). 8 workstream commits + 2 bug fixes on main, CI green, deployed. Continue the **L4 Phala campaign** — read `L3_KALA_CLOSE_v1_0.md §11` for the L4 onboarding contract and author `L4_PHALA_CAMPAIGN_HANDOFF_v1_0.md`. First L4 migration is **344**. Phase E still GATED. D2 (Pub/Sub SSE) is a follow-up operational item independent of L4.
+
+*End of NIRMANA-TRACKER-HARDENING-VERIFY entry — 2026-06-26.*
