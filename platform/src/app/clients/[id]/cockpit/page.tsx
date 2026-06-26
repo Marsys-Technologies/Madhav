@@ -28,18 +28,23 @@ export default async function CockpitPage({
   const chart = chartRows[0]
   if (!chart) redirect(`/clients`)
 
-  // Latest build
-  const { rows: buildRows } = await query<{
-    build_id: string
-    status: string
-    created_at: string
-    ayanamshas: string[]
-  }>(
-    `SELECT id AS build_id, status, created_at, ayanamshas
-     FROM builds WHERE chart_id=$1 ORDER BY created_at DESC LIMIT 1`,
-    [id],
-  )
-  const latestBuild = buildRows[0] ?? null
+  // Latest build — `builds` was retired; graceful null if table absent
+  let latestBuild: { build_id: string; status: string; created_at: string; ayanamshas: string[] } | null = null
+  try {
+    const { rows: buildRows } = await query<{
+      build_id: string
+      status: string
+      created_at: string
+      ayanamshas: string[]
+    }>(
+      `SELECT id AS build_id, state AS status, created_at, '{}'::text[] AS ayanamshas
+       FROM build_runs WHERE chart_id=$1 ORDER BY created_at DESC LIMIT 1`,
+      [id],
+    )
+    latestBuild = buildRows[0] ?? null
+  } catch {
+    // build_runs unavailable — CockpitShell degrades gracefully with latestBuild=null
+  }
 
   return (
     <CockpitShell
