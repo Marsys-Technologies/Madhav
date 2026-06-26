@@ -57,38 +57,39 @@ def test_severity_severe():
 # --- malefic transit tests ---
 
 def test_malefic_transit_saturn_aq_in_window():
-    result = _check_malefic_transit(date(2024, 6, 15))
+    # Window updated to Saturn/Gemini approx 2030-04-01..2032-06-30 (wave4 update)
+    result = _check_malefic_transit(date(2031, 6, 15))
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_saturn_aq_outside_window_before():
-    result = _check_malefic_transit(date(2022, 1, 1))
+    result = _check_malefic_transit(date(2028, 1, 1))
     assert result is None
 
 
 def test_malefic_transit_saturn_aq_end_boundary():
-    # 2025-03-30 is AFTER the window (end is 2025-03-29)
-    result = _check_malefic_transit(date(2025, 3, 30))
+    # 2032-07-01 is AFTER the window (end is 2032-06-30)
+    result = _check_malefic_transit(date(2032, 7, 1))
     assert result is None
 
 
 def test_malefic_transit_saturn_aq_start_boundary():
-    # 2023-01-17 is the START of the window (inclusive)
-    result = _check_malefic_transit(date(2023, 1, 17))
+    # 2030-04-01 is the START of the window (inclusive)
+    result = _check_malefic_transit(date(2030, 4, 1))
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_saturn_aq_end_inclusive():
-    # 2025-03-29 is still IN the window (inclusive end)
-    result = _check_malefic_transit(date(2025, 3, 29))
+    # 2032-06-30 is still IN the window (inclusive end)
+    result = _check_malefic_transit(date(2032, 6, 30))
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
 
 def test_malefic_transit_accepts_string_date():
-    result = _check_malefic_transit('2024-06-15')
+    result = _check_malefic_transit('2031-06-15')
     assert result is not None
     assert result['obstruction_type'] == 'malefic_transit'
 
@@ -230,16 +231,20 @@ def test_obstruction_type_set_complete():
         assert otype in content, f"obstruction_type '{otype}' not referenced in writer"
 
 
-# --- gandanta and papakartari return None (by design at v1.0) ---
+# --- gandanta and papakartari return explicit stub dicts (v1.1 — silent None replaced) ---
 
-def test_gandanta_returns_none():
+def test_gandanta_returns_stub_dict():
     result = _check_gandanta(date(2024, 6, 15))
-    assert result is None
+    assert result is not None, "_check_gandanta must return stub dict, not None"
+    assert result['obstruction_type'] == 'gandanta'
+    assert result['detail']['stub'] is True
 
 
-def test_papakartari_returns_none():
+def test_papakartari_returns_stub_dict():
     result = _check_papakartari(date(2024, 6, 15))
-    assert result is None
+    assert result is not None, "_check_papakartari must return stub dict, not None"
+    assert result['obstruction_type'] == 'papakartari'
+    assert result['detail']['stub'] is True
 
 
 # --- MALEFICS set test ---

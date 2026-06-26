@@ -72,10 +72,15 @@ def test_assign_tier_neutral_high_score():
 # _infer_domain tests
 # ---------------------------------------------------------------------------
 
-def test_infer_domain_rotates():
-    """rank 0-6 should produce 7 different domains"""
+def test_infer_domain_no_rotation_unclassified():
+    """Unclassified signals (no signal_type_id keyword match) return 'general'.
+    Domain rotation was removed (F-W4-003) — false-precision domain labels
+    violated MACRO_PLAN ethical framework (calibrated/falsifiable outputs).
+    """
     domains = [_infer_domain(r, 'any') for r in range(7)]
-    assert len(set(domains)) == 7
+    assert set(domains) == {'general'}, (
+        f"Unclassified signals must all map to 'general', got: {set(domains)}"
+    )
 
 
 def test_infer_domain_valid_enum():
@@ -85,9 +90,11 @@ def test_infer_domain_valid_enum():
         assert _infer_domain(rank, 'label') in valid
 
 
-def test_infer_domain_wraps_correctly():
-    """rank 7 should produce same domain as rank 0"""
-    assert _infer_domain(0, 'x') == _infer_domain(7, 'x')
+def test_infer_domain_keyword_match_overrides_general():
+    """signal_type_id keyword match produces correct domain (not 'general')."""
+    assert _infer_domain(0, 'any', signal_type_id='raja_yoga_career') == 'career'
+    assert _infer_domain(0, 'any', signal_type_id='kalatra_seventh') == 'relationship'
+    assert _infer_domain(0, 'any', signal_type_id='dhana_wealth') == 'finance'
 
 
 # ---------------------------------------------------------------------------

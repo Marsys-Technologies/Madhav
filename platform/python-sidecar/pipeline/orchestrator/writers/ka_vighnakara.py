@@ -206,6 +206,7 @@ def _check_gandanta(peak_date) -> dict | None:
         'detail': {
             'stub': True,
             'stub_type': 'gandanta',
+            'reason': 'stub — moon_longitude at peak_date required from ka_graha_sancara',
             'requires': 'moon_longitude_at_peak_date from ka_graha_sancara',
             'citation': 'Phaladeepika ch.2 — last 3°20\' of Cancer/Scorpio/Pisces junction',
             'peak_date': str(peak_date),
@@ -234,6 +235,7 @@ def _check_papakartari(peak_date) -> dict | None:
         'detail': {
             'stub': True,
             'stub_type': 'papakartari',
+            'reason': 'stub — lagna + adjacent-house graha positions required from chart_facts + ka_graha_sancara',
             'requires': 'lagna_sign + adjacent_house_graha_positions from chart_facts + ka_graha_sancara',
             'citation': 'BPHS — papakartari dosha: bhava hemmed between malefics in H(n-1) and H(n+1)',
             'peak_date': str(peak_date),
