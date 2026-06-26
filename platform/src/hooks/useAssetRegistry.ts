@@ -26,12 +26,15 @@ export function useAssetRegistry(): {
     setIsLoading(true)
     ;(async () => {
       try {
-        console.log('[AR] fetching /api/cockpit/registry')
-        const r = await fetch('/api/cockpit/registry', {
+        // On manual refresh (tick > 0), append a cache-buster so the ISR cache key
+        // is unique and Next.js returns a fresh response rather than the 60s stale one.
+        const url = tick > 0 ? `/api/cockpit/registry?_t=${Date.now()}` : '/api/cockpit/registry'
+        console.log('[AR] fetching', url)
+        const r = await fetch(url, {
           credentials: 'include',
           signal: controller.signal,
         })
-        console.log('[AR] fetch returned, ok=', r.ok, 'status=', r.status, 'cancelled=', cancelled)
+        console.log('[AR] response ok=', r.ok, 'status=', r.status, 'cancelled=', cancelled)
         if (cancelled) { console.log('[AR] cancelled after fetch'); return }
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         const body = await r.json()

@@ -47,14 +47,38 @@ interface Props {
   onAssetsReady?: (assets: AssetWithState[]) => void
   /** Optional content rendered at the top of the scrolling ledger column (chart identity + telemetry + actions). */
   header?: React.ReactNode
+  /** Incrementing this triggers a full re-fetch of registry + stats + active run (C3). */
+  refreshKey?: number
 }
 
-export function DataAssetsView({ chartId, onAssetsReady, header }: Props) {
-  const { assets, isLoading, error } = useAssetRegistry()
-  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: Props) {
+  const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
+  // Stable ref so useActiveRun's onCompleted can call refetchStats without
+  // being declared after it (avoids hook-ordering circular dependency).
+  const refetchStatsRef = useRef<() => void>(() => {})
+  // Wire onCompleted so that when the active run transitions to nil (terminal),
+  // we immediately refetch stats — belt-and-suspenders for heartbeat-only SSE mode (C1-Step2).
+  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId, {
+    onCompleted: () => refetchStatsRef.current(),
+  })
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
-  const { stats, refetch: refetchStats } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  const { stats, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  // Keep ref in sync with the stable refetchStats callback (used by onCompleted belt-and-suspenders).
+  refetchStatsRef.current = refetchStats
+
+  // C3: When the global Refresh button is pressed, CockpitShell increments refreshKey.
+  // Fire all three re-fetches so counts, states, and registry meta are all fresh.
+  // Use refetchLive so global bg_* assets show live count_sql rather than cached rows_written (C2).
+  // Guard on refreshKey > 0 so the initial mount (key=0) is a no-op.
+  useEffect(() => {
+    if (!refreshKey) return
+    refetchRegistry()
+    refetchLive()
+    refreshRun()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey])
+
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
   // Bidirectional bond: which asset is hovered anywhere (row or bead). Shared
   // so hovering a row lights the matching bead and vice versa.

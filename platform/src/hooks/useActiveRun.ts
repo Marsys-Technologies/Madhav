@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 export interface ActiveRunAsset {
   asset_id: string
@@ -31,9 +31,15 @@ interface UseActiveRunResult {
   refresh: () => void
 }
 
-export function useActiveRun(chartId: string): UseActiveRunResult {
+export function useActiveRun(
+  chartId: string,
+  options?: { onCompleted?: () => void }
+): UseActiveRunResult {
   const [run, setRun] = useState<ActiveRun | null>(null)
   const [assets, setAssets] = useState<ActiveRunAsset[]>([])
+  const prevRunRef = useRef<ActiveRun | null>(null)
+  const onCompletedRef = useRef(options?.onCompleted)
+  onCompletedRef.current = options?.onCompleted
 
   const fetch_ = useCallback(async () => {
     try {
@@ -43,7 +49,15 @@ export function useActiveRun(chartId: string): UseActiveRunResult {
       })
       if (!r.ok) return
       const body = await r.json()
-      setRun(body.data?.run ?? null)
+      const newRun: ActiveRun | null = body.data?.run ?? null
+      // Belt-and-suspenders: when an active run transitions to null (terminal),
+      // trigger an immediate stats refetch so counts update within the 5s poll
+      // cadence even when Pub/Sub SSE is not available (C1-Step2).
+      if (prevRunRef.current !== null && newRun === null) {
+        onCompletedRef.current?.()
+      }
+      prevRunRef.current = newRun
+      setRun(newRun)
       setAssets(body.data?.assets ?? [])
     } catch {
       // network error — keep last known state

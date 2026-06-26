@@ -48,7 +48,6 @@ export async function GET() {
         expected_volume_inputs, volume_explanation, depends_on,
         scope, is_active, estimated_seconds, created_at,
         asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
-        asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail,
         asset_kind, service_health, last_invoked_at, last_selftest_at, selftest_detail
       FROM asset_registry
       ORDER BY

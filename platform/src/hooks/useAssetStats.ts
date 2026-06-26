@@ -16,6 +16,7 @@ export function useAssetStats({
   lastFetched: Date | null
   error: string | null
   refetch: () => void
+  refetchLive: () => void
 } {
   const [stats, setStats] = useState<Map<string, AssetStats>>(new Map())
   const [lastFetched, setLastFetched] = useState<Date | null>(null)
@@ -23,13 +24,14 @@ export function useAssetStats({
   const inFlightRef = useRef(false)
 
   const fetchStats = useCallback(
-    async (signal: AbortSignal) => {
+    async (signal: AbortSignal, liveMode = false) => {
       if (inFlightRef.current) { console.log('[AS] skipping — in flight'); return }
       inFlightRef.current = true
-      console.log('[AS] fetching stats for chartId=', chartId)
+      const modeParam = liveMode ? '&mode=live' : ''
+      console.log('[AS] fetching stats for chartId=', chartId, liveMode ? '(live)' : '')
       try {
         const r = await fetch(
-          `/api/cockpit/stats?chart_id=${encodeURIComponent(chartId)}`,
+          `/api/cockpit/stats?chart_id=${encodeURIComponent(chartId)}${modeParam}`,
           { credentials: 'include', signal }
         )
         console.log('[AS] fetch returned, ok=', r.ok, 'aborted=', signal.aborted)
@@ -80,5 +82,12 @@ export function useAssetStats({
     fetchStats(controller.signal)
   }, [fetchStats])
 
-  return { stats, lastFetched, error, refetch }
+  // Live-mode refetch: bypasses the rows_written shortcut for global assets so count_sql runs.
+  // Used by the global Refresh path (C2 native ruling — live count on explicit Refresh).
+  const refetchLive = useCallback(() => {
+    const controller = new AbortController()
+    fetchStats(controller.signal, true)
+  }, [fetchStats])
+
+  return { stats, lastFetched, error, refetch, refetchLive }
 }

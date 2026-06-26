@@ -85,8 +85,13 @@ async function pubsubStream(
           console.error('[sse] pubsub error:', err.message)
         })
       } catch (err) {
-        console.error('[sse] subscription create failed:', (err as Error).message)
-        // Fall back to heartbeat-only; orchestrator events won't stream but client won't hang
+        console.error(
+          '[sse/PUBSUB_FALLBACK] Pub/Sub subscription failed — degrading to heartbeat-only mode.' +
+          ' Build events will NOT stream in real-time; run-completion detection falls back to the' +
+          ' 5s active-run poll in pollingStream. Check GOOGLE_CLOUD_PROJECT + PUBSUB_TOPIC env.' +
+          ' Error:', (err as Error).message
+        )
+        // pollingStream handles completion detection without Pub/Sub (C1-Step1)
       }
 
       req.signal.addEventListener('abort', async () => {
@@ -110,10 +115,15 @@ async function pubsubStream(
   })
 }
 
+const TERMINAL_STATES = new Set(['completed', 'failed', 'stopped'])
+const ACTIVE_STATES = new Set(['planned', 'running', 'paused'])
+
 /**
- * Fallback: in-memory heartbeat-only stream used in local dev when
- * PUBSUB_DISABLED is set or GOOGLE_CLOUD_PROJECT is absent.
- * The cockpit polls /api/cockpit/runs/active for state updates in this mode.
+ * Fallback: heartbeat + run-state poll used when Pub/Sub is disabled.
+ * Polls build_runs every 5s (matching the active-build client poll cadence)
+ * and emits a synthetic run.state_change frame when the run reaches a
+ * terminal state — so DataAssetsView's completion-triggered refetchStats()
+ * fires within ~5s even without Pub/Sub (C1-Step1).
  */
 function pollingStream(
   req: NextRequest,
@@ -128,10 +138,46 @@ function pollingStream(
 
       enqueue(`data: ${JSON.stringify({ type: 'hello', chart_id: chartId })}\n\n`)
 
+      let lastRunId: string | null = null
+      let lastState: string | null = null
+
+      const pollRun = async () => {
+        try {
+          const { rows } = await query<{ id: string; state: string }>(
+            `SELECT id, state FROM build_runs
+              WHERE chart_id=$1
+              ORDER BY created_at DESC LIMIT 1`,
+            [chartId]
+          )
+          const row = rows[0] ?? null
+          const runId = row?.id ?? null
+          const state = row?.state ?? null
+
+          // Track same run across polls so a new run doesn't look like completion
+          if (runId !== lastRunId) {
+            lastRunId = runId
+            lastState = state
+            return
+          }
+
+          // Emit run.state_change when an active run reaches a terminal state
+          if (lastState && ACTIVE_STATES.has(lastState) && state && TERMINAL_STATES.has(state)) {
+            enqueue(`data: ${JSON.stringify({ type: 'run.state_change', run_id: runId, state, chart_id: chartId })}\n\n`)
+          }
+          lastState = state
+        } catch {
+          // db error — skip this tick
+        }
+      }
+
       const heartbeat = setInterval(() => enqueue(`: hb\n\n`), 30_000)
+      const poll = setInterval(pollRun, 5_000)
+      // Prime on first connect so we know the current run id
+      pollRun()
 
       req.signal.addEventListener('abort', () => {
         clearInterval(heartbeat)
+        clearInterval(poll)
         try { controller.close() } catch { /* already closed */ }
       })
     },

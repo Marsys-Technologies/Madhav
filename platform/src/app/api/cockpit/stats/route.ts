@@ -85,6 +85,10 @@ type ThroughputEntry = { state: string; last_built_at: string | null; rows_writt
 // are global bg_* reference tables whose writers predate the rows_written
 // convention; they have no chart_id filter so their counts are fast).
 //
+// C2 HYBRID (native ruling 2026-06-26): when ?mode=live is set (explicit Refresh or
+// post-build refetch), the rows_written shortcut is bypassed for global assets so
+// count_sql runs live. On the idle/poll path, rows_written is used as before.
+//
 // Prior perf history:
 // - Per-asset pool.connect() (v1): 76 TLS handshakes on cold pool → 26s
 // - Single connection + SAVEPOINTs (v2): 3 round-trips each × 76 assets → 73-92s
@@ -93,7 +97,8 @@ type ThroughputEntry = { state: string; last_built_at: string | null; rows_writt
 async function fetchAllCounts(
   assets: RegistryAsset[],
   chartId: string | null,
-  throughputMap: Map<string, ThroughputEntry>
+  throughputMap: Map<string, ThroughputEntry>,
+  liveMode: boolean,
 ): Promise<AssetStats[]> {
   const now = new Date().toISOString()
 
@@ -119,8 +124,10 @@ async function fetchAllCounts(
     // For per_chart assets the count_sql is indexed by chart_id and fast — always run it
     // live so the header, preview, and stats all read the same on-disk truth and can never
     // diverge after a partial build or schema migration.
+    // On ?mode=live (explicit Refresh / post-build refetch), bypass the shortcut so global
+    // assets also get a live count_sql value (C2 native ruling 2026-06-26).
     const tp = throughputMap.get(asset.asset_id)
-    if (tp != null && tp.rows_written != null && asset.scope !== 'per_chart') {
+    if (!liveMode && tp != null && tp.rows_written != null && asset.scope !== 'per_chart') {
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,
@@ -216,6 +223,8 @@ async function fetchAllCounts(
 
 export async function GET(req: NextRequest) {
   const chartId = req.nextUrl.searchParams.get('chart_id')
+  // C2: ?mode=live bypasses the rows_written shortcut for global assets (used by Refresh path + post-build refetch)
+  const liveMode = req.nextUrl.searchParams.get('mode') === 'live'
 
   try {
     // Load active assets that have count_sql
@@ -242,7 +251,7 @@ export async function GET(req: NextRequest) {
       for (const r of tpRows) throughputMap.set(r.asset_id, r)
     }
 
-    const rawStats = await fetchAllCounts(assets, chartId, throughputMap)
+    const rawStats = await fetchAllCounts(assets, chartId, throughputMap, liveMode)
 
     // Build a lookup map so we can correlate rawStats back to assets and throughput
     // regardless of insertion order (service_ok and missing_table assets are prepended).
