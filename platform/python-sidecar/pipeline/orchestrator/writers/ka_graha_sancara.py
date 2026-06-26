@@ -35,9 +35,9 @@ from pipeline.orchestrator.writers import (
 logger = logging.getLogger(__name__)
 
 # FORENSIC birth parameters (CLAUDE.md §B, FORENSIC 7/7 PASS)
+# _BIRTH_LAT and _BIRTH_LON removed: never loaded (only stored); latent contamination trap.
+# Coordinates are sourced from ctx.config['birth_params'] at runtime via the orchestrator.
 _BIRTH_DT_ISO = "1984-02-05T10:43:00"
-_BIRTH_LAT = 20.2961
-_BIRTH_LON = 85.8245
 _IST = timezone(timedelta(hours=5, minutes=30))
 
 # FORENSIC anchor: Moon must be in Aquarius (sidereal Lahiri)

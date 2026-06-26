@@ -175,6 +175,18 @@ VULNERABLE_PATTERNS = [
         r"\{\*\*NATIVE_BIRTH\}",
         "Unconditional {**NATIVE_BIRTH} spread ignores chart_id routing; use resolve_birth_params() instead.",
     ),
+    # Group 8 — hardcoded native birth year as NULL-guard fallback
+    # Catches: `else 1984` or `return 1984` used as a fallback when upstream data is None.
+    # Shape found in Wave 4 (ka_jivana_parva line 44): `start_y = start_dt.year if start_dt else 1984`
+    # silently substitutes the native birth year for non-native charts with NULL dasha rows.
+    # Does NOT catch comparison operators (>= 1984, <= 1984) or tuple unpacking (Y, M, D = 1984, 2, 5).
+    (
+        "hardcoded native birth year as NULL-guard fallback (else/return 1984)",
+        True,
+        r"(else\s+1984\b|return\s+1984\b)",
+        "Replace hardcoded native birth year 1984 with None/unknown; "
+        "never silently substitute native birth year for non-native charts.",
+    ),
 ]
 
 
@@ -203,6 +215,7 @@ def test_no_raw_native_birth_fallback():
       Group 5 — generic or NATIVE_BIRTH  ((=|return).*or NATIVE_BIRTH)
       Group 6 — local-alias BIRTH_IST/LAT/LON fallbacks (dict.get with native constants)
       Group 7 — unconditional {**NATIVE_BIRTH} spread (ignores chart_id routing)
+      Group 8 — hardcoded native birth year 1984 as NULL-guard fallback (else/or/= 1984)
 
     Every hit is a bug requiring remediation via resolve_birth_params() or an
     explicit chart_id argument — never a silent fallback to native birth data.

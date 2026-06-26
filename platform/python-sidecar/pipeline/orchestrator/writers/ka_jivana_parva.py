@@ -1,8 +1,10 @@
 """ka_jivana_parva writer — life-arc biographical chapter artifact."""
 import json
+import logging
 from datetime import date
-from psycopg2.extras import execute_values
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+
+logger = logging.getLogger(__name__)
 
 
 @register('ka_jivana_parva')
@@ -41,7 +43,10 @@ class KaJivanaParvaWriter(WriterBase):
 
         rows = []
         for idx, (planet, start_dt, end_dt) in enumerate(dashas):
-            start_y = start_dt.year if start_dt else 1984
+            start_y = start_dt.year if start_dt else None
+            if start_y is None:
+                logger.warning("ka_jivana_parva: skipping dasha row idx=%d planet=%s — NULL start_date in chart_dashas", idx, planet)
+                continue
             end_y = end_dt.year if end_dt else None
             end_dt_actual = end_dt or date(2100, 1, 1)
 
@@ -78,13 +83,13 @@ class KaJivanaParvaWriter(WriterBase):
 
         if rows:
             with conn.cursor() as cur:
-                execute_values(cur, """
+                cur.executemany("""
                     INSERT INTO kala_jivana_parva (
                         chart_id, parva_index, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
                         source_citation
-                    ) VALUES %s
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, rows)
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))

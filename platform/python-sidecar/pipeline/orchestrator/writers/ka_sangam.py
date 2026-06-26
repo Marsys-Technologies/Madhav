@@ -293,8 +293,8 @@ class KaSangamWriter(WriterBase):
                 keepalive()
         return all_windows
 
-    def _derive_birth_year(self, conn, chart_id: str) -> int:
-        """Derive birth year from the earliest MD start in chart_dashas."""
+    def _derive_birth_year(self, conn, chart_id: str) -> int | None:
+        """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
@@ -303,7 +303,7 @@ class KaSangamWriter(WriterBase):
             row = cur.fetchone()
             if row and row['birth_date']:
                 return row['birth_date'].year
-        return 1984
+        return None
 
     @staticmethod
     def _dedup(all_windows: list[dict]) -> list[dict]:

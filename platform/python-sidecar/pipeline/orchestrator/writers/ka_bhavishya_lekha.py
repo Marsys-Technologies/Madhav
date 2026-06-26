@@ -1,7 +1,6 @@
 """ka_bhavishya_lekha writer — probabilistic forward projection artifact."""
 import json
 from datetime import date
-from psycopg2.extras import execute_values
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 
@@ -150,7 +149,9 @@ def _infer_domain(rank: int, net_label: str, signal_type_id: str | None = None) 
         for domain, keywords in _DOMAIN_KEYWORDS:
             if any(kw in tid_lower for kw in keywords):
                 return domain
-    return _DOMAINS[rank % len(_DOMAINS)]
+    # Domain rotation removed: produces false-precision labels violating MACRO_PLAN ethical
+    # framework (calibrated/falsifiable outputs). Unclassified signals use 'general'.
+    return 'general'
 
 
 def _build_falsifiability(tier: str, domain: str, peak_date, eff_score: float) -> dict:

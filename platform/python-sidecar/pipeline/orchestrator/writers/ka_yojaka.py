@@ -6,8 +6,6 @@ NEVER writes to any bodha_* table
 """
 import json
 
-from psycopg2.extras import execute_values
-
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
@@ -66,25 +64,18 @@ class KaYojakaWriter(WriterBase):
             ))
 
         # Step 4: batch insert (1000 rows per batch)
+        # psycopg3 executemany: standard VALUES (%s, ...) form, delete-then-insert idempotency per §N.3
+        _INSERT_SQL = """
+            INSERT INTO kala_activation_predicates
+                (chart_id, ayanamsha_id, signal_id, signature_class,
+                 dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                 strength_affliction_hook_jsonb, derivation_ledger_jsonb)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+        """
         with conn.cursor() as cur:
             for i in range(0, len(rows), 1000):
                 batch = rows[i:i + 1000]
-                execute_values(
-                    cur,
-                    """
-                    INSERT INTO kala_activation_predicates
-                        (chart_id, ayanamsha_id, signal_id, signature_class,
-                         dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                         strength_affliction_hook_jsonb, derivation_ledger_jsonb)
-                    VALUES %s
-                    ON CONFLICT (chart_id, signal_id, ayanamsha_id) DO UPDATE SET
-                        signature_class = EXCLUDED.signature_class,
-                        dasha_eligibility_rule_jsonb = EXCLUDED.dasha_eligibility_rule_jsonb,
-                        transit_trigger_jsonb = EXCLUDED.transit_trigger_jsonb,
-                        strength_affliction_hook_jsonb = EXCLUDED.strength_affliction_hook_jsonb,
-                        derivation_ledger_jsonb = EXCLUDED.derivation_ledger_jsonb
-                    """,
-                    batch,
-                )
+                cur.executemany(_INSERT_SQL, batch)
 
         return WriterResult(asset_id='ka_yojaka', rows_inserted=len(rows))

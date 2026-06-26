@@ -126,9 +126,11 @@ def _check_malefic_transit(peak_date) -> dict | None:
     if isinstance(peak_date, str):
         peak_date = date.fromisoformat(peak_date)
 
-    # Saturn in Aquarius (approx): 2023-01-17 to 2025-03-29
-    saturn_aq_start = date(2023, 1, 17)
-    saturn_aq_end = date(2025, 3, 29)
+    # Saturn transit window placeholder — previous window (Aquarius, 2023-01-17 to
+    # 2025-03-29) expired. Updated to approximate Saturn in Gemini window;
+    # source dynamically from ka_graha_sancara in future L3 rebuild.
+    saturn_aq_start = date(2030, 4, 1)   # approx Saturn enters Gemini
+    saturn_aq_end = date(2032, 6, 30)    # approx Saturn exits Gemini
 
     if saturn_aq_start <= peak_date <= saturn_aq_end:
         severity_score = 0.45
