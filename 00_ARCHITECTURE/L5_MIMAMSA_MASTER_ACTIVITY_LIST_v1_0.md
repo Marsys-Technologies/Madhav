@@ -100,7 +100,8 @@ Run the already-authored `ANTIGRAVITY_PASTE_L5_MIMAMSA_GROUND_AUDIT.md`.
 | P3.2 | Migrations: the **4 overlay tables** (`mimamsa_fact/signal/convergence/anchor_adjustment`) | CC | LEARNING_PROPAGATION §3 |
 | P3.3 | Migrations: the **signal-family registry** + **per-user preference store** + **contribution channel** tables | CC | CONTRIBUTION_CONTROL + ELEVATION C |
 | P3.4 | Migrations: the **prediction-bundle** schema (frozen bundle incl. `manifestation_set[]`, `driving_signals[]`, `base_rate`, `emitted_at`) + **scorecard** columns (timing/magnitude/domain/falsifier/manifestation + composite + recorded-channel) | CC | CALIBRATION_COMPARISON_MODEL |
-| P3.5 | Fix the 6 `mi_*` registry rows: corrected `depends_on` (→ `phala_*`), chart-scoped `count_sql` ($1), multi-chart-keyed | CC | seed + manifest |
+| P3.5 | Fix/add ALL registry rows per `L5_BUILD_READINESS_AUDIT §6`: corrected `depends_on` in **ASSET-ID form** (`ph_pramana`/`ph_nimitta`/`ph_phaladesa`, NOT table names — audit BLOCKER 1), add the 6 missing assets (`mi_kula`/`mi_adhilepa`/`mi_seva`/`mi_abhilekha`/`mi_sambandha`/`mi_darshana` — audit BLOCKER 2), chart-scoped `count_sql` ($1), scope correctness, services as `asset_kind:service`, health_probes, DAG edges, manifest sync | CC | seed + manifest |
+| P3.7 | **Pre-build pre-flight gate** (`L5_BUILD_READINESS_AUDIT §7`): assert registry resolves (no dangling edges), acyclic, writers present + `discover_all()` clean, tables exist, count_sql valid, upstream built, services excluded from spine, pgvector present | CC | guarantees press-Build runs uninterrupted |
 | P3.6 | Register all `mimamsa_*` tables with `drift_detector` + `schema_validator` (integrity substrate) | CC | GAP RL-5 |
 
 **GATE P3:** migrations applied to prod (via push-to-main auto-migrate), ledger-reconciled, tables exist + registered.
