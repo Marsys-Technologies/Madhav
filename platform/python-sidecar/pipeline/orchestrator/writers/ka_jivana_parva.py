@@ -1,6 +1,13 @@
-"""ka_jivana_parva writer — life-arc biographical chapter artifact."""
+"""
+ka_jivana_parva writer — life-arc biographical chapter artifact.
+
+D7 (Kāla completeness v2): extended from MD-only to MD + AD sub-chapters.
+Also populates dominant_signal_class via frequency-count of signature_class
+across convergence windows in each MD span.
+"""
 import json
 import logging
+from collections import Counter
 from datetime import date
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
@@ -17,24 +24,38 @@ class KaJivanaParvaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_jivana_parva WHERE chart_id = %s", (chart_id,))
 
-        # Read level-1 mahadashas from chart_dashas
+        # Read level-1 (MD) and level-2 (AD) dashas from chart_dashas
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT lord_graha, start_date, end_date
+                SELECT lord_graha, start_date, end_date, level_n,
+                       ancestor_lord_1
                 FROM chart_dashas
-                WHERE chart_id = %s AND level_n = 1
-                ORDER BY start_date
+                WHERE chart_id = %s AND level_n IN (1, 2)
+                ORDER BY start_date, level_n
             """, (chart_id,))
-            dashas = cur.fetchall()
+            all_dashas = cur.fetchall()
 
-        if not dashas:
-            return WriterResult(asset_id='ka_jivana_parva', rows_inserted=0, notes='No mahadashas found in chart_dashas — check L1 build')
+        if not all_dashas:
+            return WriterResult(
+                asset_id='ka_jivana_parva', rows_inserted=0,
+                notes='No mahadashas found in chart_dashas — check L1 build',
+            )
 
-        # Read convergence windows for density computation
+        # Separate MD and AD rows
+        md_dashas = [d for d in all_dashas if d['level_n'] == 1]
+        ad_dashas  = [d for d in all_dashas if d['level_n'] == 2]
+
+        if not md_dashas:
+            return WriterResult(
+                asset_id='ka_jivana_parva', rows_inserted=0,
+                notes='No level_n=1 mahadashas in chart_dashas',
+            )
+
+        # Read convergence windows with signature_class for dominant_signal_class computation
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT kc.peak_date, kc.convergence_score,
-                       COALESCE(kd.effective_score, kc.convergence_score) as effective_score
+                SELECT kc.peak_date, kc.convergence_score, kc.signature_class,
+                       COALESCE(kd.effective_score, kc.convergence_score) AS effective_score
                 FROM kala_convergence kc
                 LEFT JOIN kala_darshana kd ON kc.convergence_id = kd.convergence_id
                 WHERE kc.chart_id = %s AND kc.peak_date IS NOT NULL
@@ -42,48 +63,110 @@ class KaJivanaParvaWriter(WriterBase):
             conv_windows = cur.fetchall()
 
         rows = []
-        for idx, dasha in enumerate(dashas):
-            # dashas is list[dict] (dict_row cursor); unpack by key not position
-            planet = dasha['lord_graha']
-            start_dt = dasha['start_date']
-            end_dt = dasha['end_date']
-            start_y = start_dt.year if start_dt else None
-            if start_y is None:
-                logger.warning("ka_jivana_parva: skipping dasha row idx=%d planet=%s — NULL start_date in chart_dashas", idx, planet)
-                continue
-            end_y = end_dt.year if end_dt else None
-            end_dt_actual = end_dt or date(2100, 1, 1)
+        parva_index = 0
 
-            # Windows within this mahadasha span (conv_windows also list[dict])
-            span_windows = [
+        for md_idx, md in enumerate(md_dashas):
+            md_planet  = md['lord_graha']
+            md_start   = md['start_date']
+            md_end     = md['end_date']
+            md_start_y = md_start.year if md_start else None
+            if md_start_y is None:
+                logger.warning(
+                    "ka_jivana_parva: skipping MD idx=%d planet=%s — NULL start_date",
+                    md_idx, md_planet,
+                )
+                continue
+            md_end_y      = md_end.year if md_end else None
+            md_end_actual = md_end or date(2100, 1, 1)
+
+            # Convergence windows within this MD span
+            md_windows = [
                 w for w in conv_windows
-                if w['peak_date'] and start_dt and end_dt_actual and start_dt <= w['peak_date'] <= end_dt_actual
+                if w['peak_date'] and md_start and md_start <= w['peak_date'] <= md_end_actual
             ]
 
-            high_conv_count = sum(1 for w in span_windows if (w['effective_score'] or 0) >= 0.5)
-            avg_score = (sum(w['effective_score'] or 0 for w in span_windows) / len(span_windows)) if span_windows else None
+            # dominant_signal_class: most frequent signature_class in this span (by count)
+            class_counter: Counter = Counter(
+                w['signature_class'] for w in md_windows
+                if w.get('signature_class') and w['signature_class'] not in ('SUBSYSTEM', 'CLASSIFY_RESIDUAL')
+            )
+            dominant_class = class_counter.most_common(1)[0][0] if class_counter else None
 
-            # Parva quality
-            quality = _assign_quality(idx, len(dashas), high_conv_count, avg_score, start_y, end_y)
+            high_conv_count = sum(1 for w in md_windows if (w['effective_score'] or 0) >= 0.5)
+            avg_score = (
+                sum(w['effective_score'] or 0 for w in md_windows) / len(md_windows)
+            ) if md_windows else None
 
-            # Theme and narrative
-            theme_keywords = _derive_theme(planet, quality)
-            narrative = _build_parva_narrative(planet, start_y, end_y, quality, high_conv_count, avg_score)
+            quality       = _assign_quality(md_idx, len(md_dashas), high_conv_count, avg_score, md_start_y, md_end_y)
+            theme_keywords = _derive_theme(md_planet, quality)
+            narrative      = _build_parva_narrative(md_planet, md_start_y, md_end_y, quality, high_conv_count, avg_score)
 
+            parva_index += 1
             rows.append((
                 chart_id,
-                idx + 1,
-                start_y,
-                end_y,
-                str(planet),
-                None,  # dominant_signal_class: would need frequency analysis; stub as None
+                parva_index,
+                md_start_y,
+                md_end_y,
+                str(md_planet),
+                dominant_class,
                 quality,
                 theme_keywords,
                 json.dumps(narrative),
                 high_conv_count,
                 avg_score,
-                f"ka_jivana_parva:v1.0:dasha={planet}",
+                f"ka_jivana_parva:v2.0:MD={md_planet}",
             ))
+
+            # D7: AD sub-chapters — antardashas whose start_date falls within this MD span
+            md_ad_rows = [
+                d for d in ad_dashas
+                if d['start_date'] and md_start
+                and md_start <= d['start_date'] <= md_end_actual
+            ]
+            for ad_idx, ad in enumerate(md_ad_rows):
+                ad_planet  = ad['lord_graha']
+                ad_start   = ad['start_date']
+                ad_end     = ad['end_date']
+                ad_start_y = ad_start.year if ad_start else None
+                if ad_start_y is None:
+                    continue
+                ad_end_y      = ad_end.year if ad_end else None
+                ad_end_actual = ad_end or date(2100, 1, 1)
+
+                ad_windows = [
+                    w for w in md_windows
+                    if w['peak_date'] and ad_start and ad_start <= w['peak_date'] <= ad_end_actual
+                ]
+                ad_class_counter: Counter = Counter(
+                    w['signature_class'] for w in ad_windows
+                    if w.get('signature_class') and w['signature_class'] not in ('SUBSYSTEM', 'CLASSIFY_RESIDUAL')
+                )
+                ad_dominant  = ad_class_counter.most_common(1)[0][0] if ad_class_counter else dominant_class
+                ad_high_cnt  = sum(1 for w in ad_windows if (w['effective_score'] or 0) >= 0.5)
+                ad_avg_score = (
+                    sum(w['effective_score'] or 0 for w in ad_windows) / len(ad_windows)
+                ) if ad_windows else None
+                ad_quality   = _assign_quality(ad_idx, len(md_ad_rows), ad_high_cnt, ad_avg_score, ad_start_y, ad_end_y)
+                ad_theme     = _derive_theme(ad_planet, ad_quality)
+                ad_narrative = _build_parva_narrative(
+                    f"{md_planet}/{ad_planet}", ad_start_y, ad_end_y, ad_quality, ad_high_cnt, ad_avg_score
+                )
+
+                parva_index += 1
+                rows.append((
+                    chart_id,
+                    parva_index,
+                    ad_start_y,
+                    ad_end_y,
+                    str(ad_planet),
+                    ad_dominant,
+                    ad_quality,
+                    ad_theme,
+                    json.dumps(ad_narrative),
+                    ad_high_cnt,
+                    ad_avg_score,
+                    f"ka_jivana_parva:v2.0:MD={md_planet}:AD={ad_planet}",
+                ))
 
         if rows:
             with conn.cursor() as cur:

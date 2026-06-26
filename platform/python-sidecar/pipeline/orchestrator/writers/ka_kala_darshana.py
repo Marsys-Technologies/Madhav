@@ -22,7 +22,7 @@ class KaKalaDarshanaWriter(WriterBase):
                 FROM kala_convergence kc
                 WHERE kc.chart_id = %s
                 ORDER BY kc.convergence_score DESC NULLS LAST
-                LIMIT 300
+                LIMIT 750
             """, (chart_id,))
             convergence_rows = cur.fetchall()
 

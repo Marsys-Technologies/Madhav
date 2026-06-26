@@ -17,6 +17,7 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, reg
 from services.ka_sangam.engine import (
     mode_a_search,
     mode_b_sweep,
+    mode_c_subsystem_period,
     convergence_score,
     confidence_label,
     independent_current_count,
@@ -25,6 +26,15 @@ from services.ka_sangam.engine import (
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
+from services.ka_muhurta_seva.service import KaMuhurtaSevaService
+
+# Native birth location (Bhubaneswar, Odisha) — required by muhurta/panchanga service.
+# lat/lon from FORENSIC data; tz_offset_minutes = 330 (IST = UTC+5:30).
+_NATIVE_LOCATION: dict = {
+    'lat': 20.2961,
+    'lon': 85.8245,
+    'tz_offset_minutes': 330,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -40,19 +50,16 @@ _LAGNA_SIGN_NUM: dict[str, int] = {
     'Sagittarius': 9, 'Capricorn': 10, 'Aquarius': 11, 'Pisces': 12,
 }
 
-# Horizon: 5-year forward window (near tier)
-_HORIZON_YEARS = 5
-_MAX_PREDICATES = 60  # top 60 by dignity_score
+# Horizon: 7-year forward window (near tier).
+# Raised from 5y → 7y: provides ~40% more actionable near-term windows while
+# remaining within the 15-min orphan watchdog budget.
+_HORIZON_YEARS = 7
+_MAX_PREDICATES = 200  # raised from 60: covers ~0.3% of 66,738 signals at full breadth
 
 # U2 lifetime tier: dāśā-boundary-anchored convergence over the native's full life.
-# Anchored at parva spans from kala_jivana_parva (one parva per dāśā-system
-# boundary). The near tier sweeps a continuous 5y calendar; the lifetime tier
-# instead runs the SAME Mode A + Mode B engine over each parva span, so the
-# parvas finally have convergence data to average (kala_jivana_parva.
-# avg_effective_score was NULL throughout because no lifetime data existed).
 _LIFETIME_HORIZON_YEARS = 100   # birth_date → birth_date + 100y
-_LIFETIME_MAX_PREDICATES = 24   # tighter predicate budget per span keeps rows ≤ ~13k
-_LIFETIME_MAX_ROWS = 13_000     # row-budget ceiling for the lifetime tier
+_LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
+_LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 
 @register('ka_sangam')
@@ -84,7 +91,6 @@ class KaSangamWriter(WriterBase):
                        strength_affliction_hook_jsonb, derivation_ledger_jsonb
                 FROM kala_activation_predicates
                 WHERE chart_id = %s
-                  AND signature_class != 'SUBSYSTEM'
                 ORDER BY (dasha_eligibility_rule_jsonb->>'eligibility_score')::float DESC NULLS LAST
                 LIMIT %s
                 """,
@@ -102,6 +108,11 @@ class KaSangamWriter(WriterBase):
         except Exception as exc:
             logger.warning("ka_sangam: KaGocharaService unavailable: %s", exc)
             self._gs = None
+        try:
+            self._muhurta = KaMuhurtaSevaService()
+        except Exception as exc:
+            logger.warning("ka_sangam: KaMuhurtaSevaService unavailable: %s", exc)
+            self._muhurta = None
 
         # Signal enrichment maps
         signal_ids = list({str(p['signal_id']) for p in predicates if p['signal_id']})
@@ -200,6 +211,7 @@ class KaSangamWriter(WriterBase):
             chart_id          = chart_id,
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
+            muhurta_service   = self._muhurta,
         )
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
@@ -244,6 +256,7 @@ class KaSangamWriter(WriterBase):
             chart_id          = chart_id,
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
+            muhurta_service   = self._muhurta,
         )
         deduped = self._dedup(windows)
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
@@ -259,18 +272,39 @@ class KaSangamWriter(WriterBase):
 
     def _generate_windows(self, pred_dicts, horizon_start, horizon_end,
                           dasha_kala_service, gochara_service, chart_id,
-                          keepalive=None, enrichment_context=None) -> list[dict]:
-        """Run Mode A + Mode B for every predicate over [horizon_start, horizon_end].
+                          keepalive=None, enrichment_context=None,
+                          muhurta_service=None) -> list[dict]:
+        """Run Mode A + Mode B (or Mode C for SUBSYSTEM) for every predicate.
 
-        keepalive: optional callable issued after each mode call to prevent
-        idle-in-transaction timeout on long-running Swiss Ephemeris scans.
-        enrichment_context: EnrichmentContext for C7/C11/C12/C13 current scoring.
+        SUBSYSTEM predicates are routed to mode_c_subsystem_period (sign-ingress
+        trigger) instead of the aspect-based Mode A/B engine.
+        keepalive: optional callable to prevent idle-in-transaction timeout.
+        enrichment_context: EnrichmentContext for U3 current scoring.
+        muhurta_service: KaMuhurtaSevaService for panchanga_quality + tara_bala.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
         all_windows: list[dict] = []
         for pred_dict in pred_dicts:
-            sig_id = pred_dict.get('signal_id')
+            sig_id    = pred_dict.get('signal_id')
+            sig_class = (pred_dict.get('signature_class') or '').upper()
+
+            # Route SUBSYSTEM predicates to Mode C (period-based ingress trigger)
+            if 'SUBSYSTEM' in sig_class:
+                try:
+                    all_windows.extend(mode_c_subsystem_period(
+                        predicate=pred_dict,
+                        horizon_start_jd=horizon_start_jd,
+                        horizon_end_jd=horizon_end_jd,
+                        gochara_service=gochara_service,
+                        enrichment_context=enrichment_context,
+                    ))
+                except Exception as exc:
+                    logger.warning("ka_sangam: Mode C failed for signal %s: %s", sig_id, exc)
+                if keepalive:
+                    keepalive()
+                continue
+
             try:
                 all_windows.extend(mode_a_search(
                     predicate=pred_dict,
@@ -278,9 +312,10 @@ class KaSangamWriter(WriterBase):
                     horizon_end_jd=horizon_end_jd,
                     dasha_kala_service=dasha_kala_service,
                     gochara_service=gochara_service,
-                    muhurta_service=None,
+                    muhurta_service=muhurta_service,
                     chart_id=chart_id,
                     enrichment_context=enrichment_context,
+                    native_location=_NATIVE_LOCATION,
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
@@ -295,6 +330,8 @@ class KaSangamWriter(WriterBase):
                     gochara_service=gochara_service,
                     magnitude_threshold=0.3,
                     enrichment_context=enrichment_context,
+                    muhurta_service=muhurta_service,
+                    native_location=_NATIVE_LOCATION,
                 ))
             except Exception as exc:
                 logger.warning("ka_sangam: Mode B failed for signal %s: %s", sig_id, exc)
@@ -332,22 +369,25 @@ class KaSangamWriter(WriterBase):
                 orb_s = w.get('orb_strength')
                 c_label = confidence_label(cs)
 
-                # Compute independent_current_count from constituent_factors (U3: C7-C12)
-                cf = w.get('constituent_factors', {})
+                # Compute independent_current_count from constituent_factors
+                cf   = w.get('constituent_factors', {})
+                mode = w.get('mode', 'A')
                 currents = {
                     'dasha': bool(cf.get('dasha_score', 0) > 0.3),
                     'nakshatra_overlay': 'nakshatra' in cf,
-                    'transit': True,  # transit always present in both modes
-                    'panchanga': False,
-                    'benefic_dristi': False,
-                    'cross_dasha_agreement': bool(cf.get('cross_dasha_agreement', 0) > 0.0),
+                    # Mode C (SUBSYSTEM) has no transit point; Mode A/B always do
+                    'transit': mode in ('A', 'B'),
+                    # Newly wired currents
+                    'panchanga': bool(cf.get('c_panchanga_quality', 0) > 0.0),
+                    'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
+                    'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
+                    'nakshatra_subsystem': bool(cf.get('c_nakshatra_subsystem', 0) > 0.0),
                     # U3 C7-C12 currents
                     'ashtakavarga_transit_potency': bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0),
                     'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
                     'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
                     'station_retrograde': bool(cf.get('c10_station_retrograde', 0) > 0.0),
                     'tajika_annual_reinforcement': bool(cf.get('c12_tajika_reinforcement', 0) > 0.0),
-                    # U3 C13 school_consensus (post-U4)
                     'school_consensus': bool(cf.get('c13_school_consensus', 0) > 0.0),
                 }
                 icc = independent_current_count(currents)

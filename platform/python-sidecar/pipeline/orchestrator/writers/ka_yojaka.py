@@ -3,12 +3,20 @@ ka_yojaka writer — activation-predicate bridge (L3 K3)
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table
+
+D6 (Kāla completeness v2): reads bodha_cgm_nodes pagerank centrality and
+bodha_cdlm_cells domain-link strength to enrich each predicate's
+dasha_eligibility_rule with a cgm_centrality_weight field. This allows
+ka_sangam to prioritize predicates whose primary graha is a graph hub.
 """
 import json
+import logging
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
+
+logger = logging.getLogger(__name__)
 
 
 @register('ka_yojaka')
@@ -36,6 +44,13 @@ class KaYojakaWriter(WriterBase):
             )
             signals = cur.fetchall()
 
+        # D6: pre-fetch CGM centrality (pagerank) by node_subject for this chart.
+        # Used to add cgm_centrality_weight to each predicate's dasha_eligibility_rule.
+        cgm_pagerank: dict[str, float] = self._fetch_cgm_pagerank(conn, chart_id)
+
+        # D6: pre-fetch CDLM domain strengths for this chart (domain → link_strength).
+        cdlm_domain_strength: dict[str, float] = self._fetch_cdlm_domain_strength(conn, chart_id)
+
         # Step 3: classify + bind each signal
         rows = []
         for sig in signals:
@@ -52,6 +67,19 @@ class KaYojakaWriter(WriterBase):
             }
             sc = classify_signal(signal_dict)
             pred = build_predicate(signal_dict, sc)
+
+            # D6: enrich dasha_eligibility_rule with CGM centrality weight.
+            # Primary graha is the planet most likely to be the graph node subject.
+            primary_graha = _extract_primary_graha(signal_dict)
+            cgm_weight = cgm_pagerank.get(primary_graha, 0.5) if primary_graha else 0.5
+            pred['dasha_eligibility_rule']['cgm_centrality_weight'] = round(cgm_weight, 4)
+
+            # D6: enrich with CDLM domain strength for the signal's inferred domain.
+            domain = _infer_signal_domain(signal_dict)
+            pred['dasha_eligibility_rule']['cdlm_domain_strength'] = round(
+                cdlm_domain_strength.get(domain, 0.5), 4
+            )
+
             rows.append((
                 str(sig[1]),  # chart_id
                 str(sig[2]),  # ayanamsha_id
@@ -79,3 +107,94 @@ class KaYojakaWriter(WriterBase):
                 cur.executemany(_INSERT_SQL, batch)
 
         return WriterResult(asset_id='ka_yojaka', rows_inserted=len(rows))
+
+    def _fetch_cgm_pagerank(self, conn, chart_id: str) -> dict[str, float]:
+        """
+        Fetch CGM node pagerank scores keyed by node_subject (graha name / bhava label).
+        Normalizes scores to [0, 1] relative to the chart's max pagerank.
+        Returns empty dict on failure (soft dependency — CGM may not be built yet).
+        """
+        result: dict[str, float] = {}
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT node_subject, COALESCE(pagerank_score::float, 0.5) AS pgr
+                    FROM bodha_cgm_nodes
+                    WHERE chart_id = %s AND pagerank_score IS NOT NULL
+                    ORDER BY pagerank_score DESC
+                    """,
+                    (chart_id,),
+                )
+                rows = cur.fetchall()
+            if not rows:
+                return result
+            max_pgr = max(float(r[1]) for r in rows) or 1.0
+            for subject, pgr in rows:
+                result[str(subject)] = min(1.0, float(pgr) / max_pgr)
+            logger.debug("ka_yojaka: CGM centrality loaded — %d nodes", len(result))
+        except Exception as exc:
+            logger.debug("ka_yojaka: CGM pagerank fetch skipped: %s", exc)
+        return result
+
+    def _fetch_cdlm_domain_strength(self, conn, chart_id: str) -> dict[str, float]:
+        """
+        Fetch average CDLM link strength per domain from bodha_cdlm_cells.
+        Returns {domain_name: avg_strength} for use in predicate enrichment.
+        """
+        result: dict[str, float] = {}
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT domain_a, AVG(link_strength::float) AS avg_strength
+                    FROM bodha_cdlm_cells
+                    WHERE chart_id = %s AND link_strength IS NOT NULL
+                    GROUP BY domain_a
+                    """,
+                    (chart_id,),
+                )
+                for domain, avg_s in cur.fetchall():
+                    result[str(domain).lower()] = min(1.0, max(0.0, float(avg_s)))
+            logger.debug("ka_yojaka: CDLM domain strengths loaded — %d domains", len(result))
+        except Exception as exc:
+            logger.debug("ka_yojaka: CDLM domain strength fetch skipped: %s", exc)
+        return result
+
+
+# ── D6 helpers (module-level) ─────────────────────────────────────────────────
+
+def _extract_primary_graha(signal_dict: dict) -> str | None:
+    """Extract the primary graha name from a signal's configuration_jsonb."""
+    cfg = signal_dict.get('configuration_jsonb') or {}
+    if isinstance(cfg, str):
+        import json as _json
+        try:
+            cfg = _json.loads(cfg)
+        except Exception:
+            return None
+    # Try common keys where planet name appears
+    for key in ('fact_value_text', 'primary_graha', 'graha', 'planet', 'lord'):
+        val = cfg.get(key)
+        if val and isinstance(val, str):
+            return val
+    return None
+
+
+_SIGNAL_DOMAIN_KEYWORDS: dict[str, list[str]] = {
+    'career':       ['raja', 'karma', 'tenth', 'arudha', 'amatyakaraka', 'profession'],
+    'relationship': ['kalatra', 'seventh', 'navamsha', 'spouse', 'venus', 'upapada'],
+    'finance':      ['dhana', 'second', 'eleventh', 'wealth', 'lakshmi', 'artha'],
+    'health':       ['ayur', 'sixth', 'eighth', 'maraka', 'vitality', 'disease'],
+    'spiritual':    ['dharma', 'ninth', 'twelfth', 'moksha', 'guru', 'liberation'],
+    'education':    ['vidya', 'fourth', 'fifth', 'mercury', 'saraswati', 'learning'],
+}
+
+
+def _infer_signal_domain(signal_dict: dict) -> str:
+    """Infer a signal's domain from signal_type_id for CDLM strength lookup."""
+    stid = (signal_dict.get('signal_type_id') or '').lower()
+    for domain, keywords in _SIGNAL_DOMAIN_KEYWORDS.items():
+        if any(kw in stid for kw in keywords):
+            return domain
+    return 'general'

@@ -235,6 +235,162 @@ def _c11_vedha_factor(
     return 1.0
 
 
+# ── Nakshatra / tara helpers (C5 nakshatra_subsystem, C_tara_bala) ────────────
+
+# 27 nakshatras in sidereal order (0-indexed, matches pipeline.transit_search.NAKSHATRAS)
+_NAKSHATRAS_ORDERED = (
+    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira",
+    "Ardra", "Punarvasu", "Pushya", "Ashlesha",
+    "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta",
+    "Chitra", "Swati", "Vishakha", "Anuradha",
+    "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha",
+    "Shravana", "Dhanishta", "Shatabhisha",
+    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
+)
+_NAK_NAME_TO_IDX: dict[str, int] = {n: i for i, n in enumerate(_NAKSHATRAS_ORDERED)}
+
+# Native's janma nakshatra: Purva Bhadrapada = index 24 (0-based)
+_NATIVE_JANMA_NAK_IDX: int = 24
+
+# Classical Tara Bala scores (1=Janma, 2=Sampat, … 9=Param-Mitra)
+# Auspicious: 2, 4, 6, 8, 9.  Malefic: 3, 5, 7.  Mixed: 1.
+_TARA_SCORES: dict[int, float] = {
+    1: 0.4,  # Janma — mixed/intense
+    2: 1.0,  # Sampat — wealth/prosperity
+    3: 0.0,  # Vipat — danger
+    4: 0.9,  # Kshema — safety/nourishment
+    5: 0.1,  # Pratyak — obstacles
+    6: 0.8,  # Sadhaka — achievement
+    7: 0.0,  # Naidhana — destruction
+    8: 0.9,  # Mitra — friends/support
+    9: 1.0,  # Param-Mitra — great friend
+}
+
+
+def _tara_score_for_nakshatra(nakshatra_name: str) -> float:
+    """Return Tara Bala score (0–1) for a nakshatra relative to native's janma nakshatra."""
+    idx = _NAK_NAME_TO_IDX.get(nakshatra_name, -1)
+    if idx < 0:
+        return 0.0
+    tara_pos = ((idx - _NATIVE_JANMA_NAK_IDX) % 9) + 1  # 1–9
+    return _TARA_SCORES.get(tara_pos, 0.0)
+
+
+def _c_nakshatra_subsystem(transit_nakshatra: str) -> float:
+    """
+    C5: nakshatra_subsystem — tara bala of the transit planet's nakshatra
+    against the native's janma nakshatra (Purva Bhadrapada).
+    Classical source: Parāśara Tara-Bala adhyāya.
+    """
+    return _tara_score_for_nakshatra(transit_nakshatra)
+
+
+def _c_tara_bala_for_jd(peak_jd: float) -> float:
+    """
+    C_tara_bala: tara bala of the Moon's nakshatra at peak_jd relative to
+    native's janma nakshatra (Purva Bhadrapada).  Requires pyswisseph.
+    """
+    try:
+        import swisseph as swe
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        moon_pos, _ = swe.calc_ut(peak_jd, swe.MOON, swe.FLG_SIDEREAL)
+        lon = moon_pos[0] % 360.0
+        nak_idx = int(lon / (360.0 / 27.0)) % 27
+        return _tara_score_for_nakshatra(_NAKSHATRAS_ORDERED[nak_idx])
+    except Exception as exc:
+        logger.debug("_c_tara_bala_for_jd failed at jd=%.1f: %s", peak_jd, exc)
+        return 0.0
+
+
+# ── C4: benefic_dristi helper ─────────────────────────────────────────────────
+
+def _c_benefic_dristi(
+    target_lon: float,
+    w_jd_start: float,
+    w_jd_end: float,
+    gochara_service: Any,
+    orb: float = 5.0,
+) -> float:
+    """
+    C4: benefic_dristi — Jupiter or Venus aspecting the activation longitude
+    within the window.  Classical: benefic dṛṣṭi bestows full grace on the
+    aspected point; trines and conjunctions are strongest.
+
+    Score = max( orb_strength × aspect_weight ) across Jupiter + Venus events.
+    """
+    if gochara_service is None:
+        return 0.0
+    # Classical aspect weights for benefic planets:
+    #   conjunction 1.0, trine 1.0, sextile 0.7, opposition 0.5, square 0.2
+    _ASP_WEIGHT: dict[int, float] = {0: 1.0, 60: 0.7, 90: 0.2, 120: 1.0, 180: 0.5}
+    max_score = 0.0
+    for benefic in ('Jupiter', 'Venus'):
+        try:
+            events = gochara_service.find_aspects(
+                transit_planet=benefic,
+                target_lon=target_lon,
+                aspect_degrees=[0, 60, 90, 120, 180],
+                orb=orb,
+                start_jd=w_jd_start,
+                end_jd=w_jd_end,
+            )
+            for ev in events:
+                orb_deg = getattr(ev, 'orb_at_event_deg', orb)
+                base = orb_strength_score(
+                    orb_deg, orb, getattr(ev, 'applying_separating', 'applying')
+                )
+                asp = int(round(abs(float((ev.extra or {}).get('aspect_deg', 0)))))
+                asp_weight = _ASP_WEIGHT.get(asp, 0.5)
+                max_score = max(max_score, base * asp_weight)
+        except Exception as exc:
+            logger.debug("_c_benefic_dristi(%s) failed: %s", benefic, exc)
+    return min(1.0, max_score)
+
+
+# ── C6: cross_dasha_agreement helper ─────────────────────────────────────────
+
+def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> float:
+    """
+    C6: cross_dasha_agreement — how many dasha systems agree at peak_date.
+
+    Uses the cross_dasha_agreement.count on EligibleWindow (already computed
+    by KaDashaKalaService across 7 dasha systems).
+    Score = max(count across overlapping windows) / 7.0, capped at 1.0.
+    Mode B callers pass empty list → 0.0 (correct: no dasha prior in mode B).
+    """
+    if not eligible_windows:
+        return 0.0
+    best = 0
+    for ew in eligible_windows:
+        if ew.start_date <= peak_date <= ew.end_date:
+            agreement = getattr(ew, 'cross_dasha_agreement', None)
+            count = agreement.count if agreement is not None else 0
+            best = max(best, count)
+    return min(1.0, best / 7.0)
+
+
+# ── C_panchanga_quality helper ────────────────────────────────────────────────
+
+def _c_panchanga_quality(
+    peak_date: Any,
+    muhurta_service: Any,
+    native_location: Optional[dict],
+) -> float:
+    """
+    C_panchanga: muhurta score for peak_date at native's birth location.
+    Returns 0.0 if muhurta_service is None or location is unavailable.
+    Score normalized from 0-100 service scale to 0-1.
+    """
+    if muhurta_service is None or native_location is None:
+        return 0.0
+    try:
+        raw = muhurta_service.score(peak_date, native_location, event='general')
+        return min(1.0, max(0.0, float(raw) / 100.0))
+    except Exception as exc:
+        logger.debug("_c_panchanga_quality failed for %s: %s", peak_date, exc)
+        return 0.0
+
+
 def _c13_school_consensus_score(
     signature_class: str,
     ctx: EnrichmentContext,
@@ -583,6 +739,7 @@ def mode_a_search(
     muhurta_service: Any,
     chart_id: str,
     enrichment_context: Optional[EnrichmentContext] = None,
+    native_location: Optional[dict] = None,
 ) -> list[dict]:
     """
     Mode A: daśā-eligibility soft prior → transit search INSIDE eligible survivors.
@@ -716,21 +873,28 @@ def mode_a_search(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # ── Newly wired currents (formerly 0.0) ──────────────────────────────
+        c_cross   = _c_cross_dasha_agreement(peak_dt, eligible_windows)
+        c_dristi  = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
+        c_pancha  = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
+        c_tara    = _c_tara_bala_for_jd(ev.event_jd)
+        c_nak     = _c_nakshatra_subsystem(ev.nakshatra)
+
         # Necessary conditions: dignity × orb × vedha_factor (1.0 = no vedha)
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
             'ashtakavarga_transit_potency': c7,
-            'cross_dasha_agreement':        0.0,   # wire later from U1 at ph_nimitta level
-            'benefic_dristi':               0.0,
+            'cross_dasha_agreement':        c_cross,
+            'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            0.0,
-            'tara_bala':                    0.0,
+            'panchanga_quality':            c_pancha,
+            'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
-            'nakshatra_subsystem':          0.0,
+            'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
-            'school_consensus':             c13,   # C13 (U3 pass-2, post-U4)
+            'school_consensus':             c13,
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -759,6 +923,12 @@ def mode_a_search(
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
                 'c13_school_consensus': round(c13, 4),
+                # Newly wired currents
+                'c_cross_dasha_agreement': round(c_cross, 4),
+                'c_benefic_dristi': round(c_dristi, 4),
+                'c_panchanga_quality': round(c_pancha, 4),
+                'c_tara_bala': round(c_tara, 4),
+                'c_nakshatra_subsystem': round(c_nak, 4),
             },
             'source_citation': (
                 f"mode_a/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -783,6 +953,8 @@ def mode_b_sweep(
     gochara_service: Any,
     magnitude_threshold: float = 0.6,
     enrichment_context: Optional[EnrichmentContext] = None,
+    muhurta_service: Any = None,
+    native_location: Optional[dict] = None,
 ) -> list[dict]:
     """
     Mode B: un-gated long-horizon anomaly sweep.
@@ -860,17 +1032,23 @@ def mode_b_sweep(
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
+        # Newly wired currents (mode B: cross_dasha = 0.0 — no dasha prior in un-gated sweep)
+        c_dristi = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
+        c_pancha = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
+        c_tara   = _c_tara_bala_for_jd(ev.event_jd)
+        c_nak    = _c_nakshatra_subsystem(ev.nakshatra)
+
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
             'ashtakavarga_transit_potency': c7,
-            'cross_dasha_agreement':        0.0,
-            'benefic_dristi':               0.0,
+            'cross_dasha_agreement':        0.0,  # no dasha context in mode B
+            'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            0.0,
-            'tara_bala':                    0.0,
+            'panchanga_quality':            c_pancha,
+            'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
-            'nakshatra_subsystem':          0.0,
+            'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
             'tajika_annual_reinforcement':  c12,
             'school_consensus':             c13,
@@ -901,6 +1079,10 @@ def mode_b_sweep(
                 'c11_vedha_factor': round(vedha_factor, 4),
                 'c12_tajika_reinforcement': round(c12, 4),
                 'c13_school_consensus': round(c13, 4),
+                'c_benefic_dristi': round(c_dristi, 4),
+                'c_panchanga_quality': round(c_pancha, 4),
+                'c_tara_bala': round(c_tara, 4),
+                'c_nakshatra_subsystem': round(c_nak, 4),
             },
             'source_citation': (
                 f"mode_b/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -909,6 +1091,111 @@ def mode_b_sweep(
             'is_off_dasha_discovery': True,
             'signal_id': signal_id,
         })
+
+    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    return windows
+
+
+# ── Mode C: SUBSYSTEM period-based activation ─────────────────────────────────
+
+# Native Moon sign: Aquarius = sign 11 (1-indexed). Sade Sati runs over the
+# 12th sign before (Capricorn=10), Moon sign (Aquarius=11), and 2nd after (Pisces=12).
+_SADE_SATI_SIGNS = ('Capricorn', 'Aquarius', 'Pisces')
+_SADE_SATI_SEVERITY = {'Capricorn': 0.70, 'Aquarius': 1.00, 'Pisces': 0.70}
+
+# Medical/āyur: malefic (Saturn or Mars) transiting the 6th/8th from Aries lagna
+_AYUR_SIGNS_SATURN = ('Virgo', 'Scorpio')          # 6th and 8th from Aries
+_AYUR_SIGNS_MARS   = ('Virgo', 'Scorpio', 'Libra') # 6th, 8th, 7th for Mars
+
+# Vāstu directional: Sun in dusthāna signs or Saturn in lagna
+_VASTU_SIGNS = ('Virgo', 'Scorpio', 'Pisces')  # 6th, 8th, 12th from lagna
+
+
+def mode_c_subsystem_period(
+    predicate: dict,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+    gochara_service: Any,
+    enrichment_context: Optional[EnrichmentContext] = None,
+) -> list[dict]:
+    """
+    Mode C: SUBSYSTEM period-based activation (§T7 template).
+
+    Finds when the relevant planetary condition (e.g. Saturn entering sade-sati
+    signs, Mars entering āyur-stress signs) is active over the horizon.
+    Returns one window per ingress, spanning the sign-transit period.
+
+    SUBSYSTEM predicates have no point-based transit_trigger — they activate on
+    sign-level transit periods rather than longitude-to-longitude aspects.
+    is_off_dasha_discovery = False (subsystem periods are dasha-independent by design).
+    """
+    ctx = enrichment_context or EnrichmentContext.empty()
+    transit_trig = predicate.get('transit_trigger_jsonb', {}) or {}
+    sig_class     = predicate.get('signature_class', 'UNKNOWN')
+    dignity_score = float(predicate.get('dignity_score', 0.5))
+    signal_id     = predicate.get('signal_id')
+    subsystem     = (transit_trig.get('subsystem') or sig_class).lower()
+
+    if gochara_service is None:
+        return []
+
+    # Determine trigger planet + target signs + per-sign severity
+    if any(kw in subsystem for kw in ('sade', 'sati', 'saturn', 'dosha', 'yoga')):
+        trigger_planet = 'Saturn'
+        trigger_signs  = _SADE_SATI_SIGNS
+        severity_map   = _SADE_SATI_SEVERITY
+    elif any(kw in subsystem for kw in ('medical', 'ayur', 'health', 'mars')):
+        trigger_planet = 'Mars'
+        trigger_signs  = _AYUR_SIGNS_MARS
+        severity_map   = {s: 0.85 for s in _AYUR_SIGNS_MARS}
+    else:
+        # Generic subsystem: Saturn in major dusthāna signs
+        trigger_planet = 'Saturn'
+        trigger_signs  = _SADE_SATI_SIGNS
+        severity_map   = _SADE_SATI_SEVERITY
+
+    # Approx sign-transit duration (sidereal period / 12 signs)
+    period_days = _PLANET_PERIOD_YR.get(trigger_planet, 1.0) * 365.25 / 12.0
+
+    windows: list[dict] = []
+    for sign in trigger_signs:
+        try:
+            ingresses = gochara_service.find_ingresses(
+                planet=trigger_planet,
+                target_sign=sign,
+                start_jd=horizon_start_jd,
+                end_jd=horizon_end_jd,
+            )
+            for ingress_ev in ingresses:
+                ws = _jd_to_date(ingress_ev.event_jd)
+                we = _jd_to_date(ingress_ev.event_jd + period_days)
+                severity = severity_map.get(sign, 0.70)
+                cscore   = round(dignity_score * severity, 4)
+                windows.append({
+                    'mode': 'C',
+                    'window_start': ws,
+                    'window_end':   we,
+                    'peak_date':    ws,
+                    'convergence_score': cscore,
+                    'orb_strength': 1.0,
+                    'rarity_years': _rarity_years(trigger_planet, 30.0),
+                    'constituent_factors': {
+                        'planet': trigger_planet,
+                        'sign': sign,
+                        'subsystem': subsystem,
+                        'dignity_score': dignity_score,
+                        'severity_score': severity,
+                        'signature_class': sig_class,
+                        'mode': 'C',
+                    },
+                    'source_citation': (
+                        f"mode_c/{sig_class}/{trigger_planet}@{sign}/{ws}"
+                    ),
+                    'is_off_dasha_discovery': False,
+                    'signal_id': signal_id,
+                })
+        except Exception as exc:
+            logger.debug("mode_c_subsystem: %s/%s/%s failed: %s", subsystem, trigger_planet, sign, exc)
 
     windows.sort(key=lambda w: w['convergence_score'], reverse=True)
     return windows
@@ -924,6 +1211,7 @@ __all__ = [
     'independent_current_count',
     'mode_a_search',
     'mode_b_sweep',
+    'mode_c_subsystem_period',
     '_jd_to_date',
     '_date_to_jd',
     '_rarity_years',

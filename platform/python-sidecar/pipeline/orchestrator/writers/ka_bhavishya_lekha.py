@@ -29,8 +29,8 @@ class KaBhavishyaLekhaWriter(WriterBase):
                   AND kd.peak_date <= %s
                   AND kd.net_label NOT IN ('obstructed_severe')
                 ORDER BY kd.effective_score DESC NULLS LAST
-                LIMIT 50
-            """, (chart_id, today, date(today.year + 3, today.month, today.day)))
+                LIMIT 100
+            """, (chart_id, today, date(today.year + 5, today.month, today.day)))
             darshana_rows = cur.fetchall()
 
         if not darshana_rows:
