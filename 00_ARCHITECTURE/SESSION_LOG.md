@@ -29700,6 +29700,26 @@ L4 supabase/ migration is **346**. **(b)** Native clicks Rebuild→Kāla on trac
 
 ## L5-MI-RECONCILE-SEAL — 2026-06-27
 
+```yaml
+session_open:
+  session_id: L5-MI-RECONCILE-SEAL
+  opened_on: 2026-06-27
+  predecessor_session: L5-MI-W9W8-BUILD-VERIFY
+  active_layer_campaign: L5 Mimamsa (reconcile-seal-and-ship)
+  may_touch:
+    - platform/migrations/** (fix-only)
+    - platform/python-sidecar/pipeline/orchestrator/writers/mi_*.py (fix-only)
+    - platform/scripts/seed/asset_registry_seed.ts (fix-only)
+    - 00_ARCHITECTURE/**
+    - tests/l5/**
+  must_not_touch:
+    - any L0-L4 writer (bg_*/ga_*/bo_*/ka_*/ph_*)
+    - orchestrator contract (writers/__init__.py WriterBase) — FROZEN
+    - do not seal L4
+  red_team_due: false
+  handshake_valid: true
+```
+
 **Session type:** L5 Mīmāṃsā reconcile-seal-and-ship (ANTIGRAVITY)
 **Predecessor session:** L5-MI-W9W8-BUILD-VERIFY (2026-06-27)
 **chart_id:** `482012f1-710e-4a25-994a-93821f5871aa`
