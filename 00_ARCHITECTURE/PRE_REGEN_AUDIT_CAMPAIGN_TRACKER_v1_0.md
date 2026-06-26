@@ -1,12 +1,15 @@
 ---
 artifact: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_CAMPAIGN_TRACKER
-version: 1.4
+version: 1.5
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: Wave-by-wave status tracker for the Pre-Regeneration Full Audit Campaign. Updated at each wave close. Source of truth for campaign progress.
 related: PRE_REGEN_FULL_AUDIT_CAMPAIGN_v1_0, PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0, PRE_REGEN_AUDIT_HARNESS_v1_0
 changelog:
+  - version: 1.5
+    date: 2026-06-26
+    change: "Wave 5 complete — L4 Phala 8 ph_* assets + l4_anchors; 0 blockers, 3 majors, 2 minors; CLEAN A1 across all 8 writers; l4_anchors chart_id guard not implemented"
   - version: 1.4
     date: 2026-06-26
     change: "Wave 4 complete — L3 Kāla 10 ka_* assets audited; 1 blocker + 4 majors + 5 minors; D9 dismissal confirmed with DB data; grep guard widened (Group 8)"
@@ -35,7 +38,8 @@ changelog:
 | W2 | L1 Gaṇita (13 ga_* assets) | ga_* writers + contamination fixes (9 W0 sites → all committed; 4 carry-over fixes remain) | ✅ COMPLETE (carry-overs pending) | 2026-06-26 | §W2 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W3 | L2 Bodha (10 bo_* assets) | bo_* writers, synthesis layer | ✅ COMPLETE | 2026-06-26 | §W3 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
 | W4 | L3 Kāla (10 ka_* assets) | ka_* writers | ✅ COMPLETE | 2026-06-26 | §W4 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
-| W5 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
+| W5 | L4 Phala (8 ph_* assets + l4_anchors) | ph_* writers + brahmagyan/phala/l4_anchors.py | ✅ COMPLETE | 2026-06-26 | §W5 of PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0 |
+| W6 | Cross-wave synthesis | Consolidate all findings; Fix Plan; campaign close | ⏳ PENDING | — | — |
 
 ## Wave 0 deliverables (complete)
 
@@ -156,8 +160,38 @@ F-W2-001 dismissal validated with actual DB data. 3 planets across all 3 modalit
 ### A1 contamination result
 **Zero VULNERABLE sites across all 10 ka_* writers.** New evasion shape (`else/return 1984`) found, fixed, grep guard widened (Group 8).
 
-## Next session
+## Next session (after Wave 4)
 
 Wave 5: L4 Phala (8 ph_* writers + l4_anchors classification). Same high-risk contamination class. After Wave 5: Wave 6 cross-wave synthesis + Fix Plan.
 
 Wave 5 scope note: `ph_rectification` listed in campaign plan does not exist as a writer file — verify asset_registry and adjust scope at audit time.
+
+## Wave 5 key findings
+
+### A1 contamination result: CLEAN
+Zero VULNERABLE sites across all 8 ph_* writers. No new evasion shapes. l4_anchors is NATIVE-ONLY-BY-DESIGN but the documented chart_id guard is not implemented — de-native candidate.
+
+### Blockers: 0
+
+### Majors (3, all OPEN)
+1. `l4_anchors` — `query_phala_anchors()` lacks chart_id guard; returns native anchors for any chart_id
+2. `l4_anchors` — `strip_lel_citations()` regex gap; "LEL EVT.2019" leaks into public API notes field
+3. `ph_muhurta` — `ACTION_GRAHA_MAP` bakes native Aries-lagna 10th-lord (Saturn) as module constant; wrong for all non-native charts
+
+### Minors/cosmetic (2)
+4. `ph_phaladesa` A7 — silent zero-count domain declarations if phala_anchors load fails
+5. `ph_pramana` — lel_entry_jsonb stores raw event text without strip guard (internal only)
+
+### Exemplary implementations
+- ph_sodhana D43a leakage firewall, ph_pramana D5 boundary gate, ph_nimitta SPINE-FIRST gate — all halt-correctly on violation
+
+## Campaign status
+
+All audit waves (W0–W5) covering L0 Brahmagyan through L4 Phala are COMPLETE.
+
+Wave 6 (cross-wave synthesis + Fix Plan) is next: consolidate all open blocker/major CODE findings into the Fix Plan artifact for native review before any code fix or rebuild begins.
+
+Open findings requiring Fix Plan attention:
+- F-W5-001, F-W5-002, F-W5-003 (major, L4)
+- F-W4-002, F-W4-004, F-W4-005 (major, L3)
+- (All L0/L1/L2 blockers/majors from Waves 0–3 already documented in §W0–§W3)

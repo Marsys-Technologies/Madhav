@@ -1,16 +1,20 @@
 ---
 artifact: PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md
 canonical_id: PRE_REGEN_AUDIT_FINDINGS_REGISTER
-version: 1.6
+version: 1.7
 status: ACTIVE
 authored_by: Claude (Cowork) 2026-06-26
 purpose: >
   Per-asset findings register for the Pre-Regeneration Full Audit Campaign (L0–L4).
   One row per audited file × 3 axes × PASS/FAIL. Becomes the fix plan when all
   waves complete.
-waves_complete: W0, W1, W2, W3, W4
-waves_pending: W5
+waves_complete: W0, W1, W2, W3, W4, W5
+waves_pending: W6 (cross-wave synthesis + Fix Plan)
 changelog:
+  - version: 1.7
+    date: 2026-06-26
+    author: Claude (Cowork)
+    note: Wave 5 complete — L4 Phala 8 ph_* assets + l4_anchors; 0 blockers, 3 majors, 2 minors; CLEAN A1 across all 8 writers; l4_anchors NATIVE-ONLY-BY-DESIGN guard not implemented.
   - version: 1.6
     date: 2026-06-26
     author: Claude (Cowork)
@@ -541,14 +545,80 @@ Open (non-blocking for Wave 5 since A1 is clean):
 
 ---
 
-## Wave 5 — Pending
+## §W5 — Wave 5: L4 Phala (8 ph_* assets + l4_anchors classification)
 
-*Pending — scheduled for Wave 5 session.*
+Wave date: 2026-06-26
+Auditor: Claude (Cowork) — 2 parallel audit groups
+Scope: All ph_* orchestrator writers (pipeline/orchestrator/writers/ph_*.py) + brahmagyan/phala/ source modules + l4_anchors classification
+Axes: Axis A (A1 HUMAN-GRADE, A2–A7), Axis C (C1); LEL-citation discipline (C2-002 class); Axis B deferred POST-REGEN ONLY
 
-Planned scope: L4 Phala (ph_* writers) static checks plus cross-wave synthesis.
-Consolidate all FIX-REQUIRED and REVIEW-NEEDED items, assign owners, produce
-the ordered fix backlog, and declare the campaign COMPLETE once all blockers
-and majors are resolved.
+### Scope note
+
+`ph_rectification` listed in the campaign plan does NOT exist as a writer file. 8 ph_* writers audited: ph_nimitta, ph_pratikara, ph_phaladesa, ph_suddha_sodhana, ph_sankrama, ph_sodhana, ph_pramana, ph_muhurta. `brahmagyan/phala/l4_anchors.py` classified separately (not a @register orchestrated asset).
+
+### A1 contamination summary
+
+**Zero VULNERABLE A1 sites across all 8 ph_* orchestrator writers.** All writers are CHART-INDEPENDENT — chart_id from ctx.config, no birth date/time/lat/lon access, no NATIVE_BIRTH/BIRTH_IST/BIRTH_LAT/BIRTH_LON literals, no `else 1984`/`return 1984` NULL-guard evasion shapes. No new evasion shapes found.
+
+`l4_anchors.py` is NATIVE-ONLY-BY-DESIGN (entire ANCHOR_CATALOG is native-specific by construction). However, the chart_id guard is documented but not implemented — `query_phala_anchors()` never checks `chart_id == NATIVE_CHART_ID` before returning native anchors. Tagged as de-native candidate (see F-W5-001).
+
+### LEL-citation discipline
+
+ph_pramana stores raw event summary text in `phala_pramana.lel_entry_jsonb` (internal DB column). Not a C2-002 violation today (not served by any public endpoint), but no enforcement strip guard exists.
+
+`l4_anchors.py` `strip_lel_citations()` has a regex gap: catches `per LEL` but not `LEL EVT.*` — `ANC.CAREER.2027.01` leaks "LEL EVT.2019 approximate" into public endpoint notes field (see F-W5-002).
+
+### Per-asset findings
+
+| asset_id | A1 | A2–A7 | C1 | LEL-check | VERDICT | severity |
+|---|---|---|---|---|---|---|
+| ph_nimitta | CHART-IND | ALL PASS | PASS | PASS | PASS | none |
+| ph_pratikara | CHART-IND | ALL PASS | PASS | PASS | PASS | none |
+| ph_phaladesa | CHART-IND | A7 WARN | PASS | PASS | PASS | minor |
+| ph_suddha_sodhana | CHART-IND | ALL PASS | N/A | PASS | PASS | none |
+| ph_sankrama | CHART-IND | ALL PASS | PASS | PASS | PASS | none |
+| ph_sodhana | CHART-IND | ALL PASS | N/A | PASS | PASS | none |
+| ph_pramana | CHART-IND | ALL PASS | PASS | WARN (internal only) | PASS | none |
+| ph_muhurta | CHART-IND | A5 WARN | PASS | PASS | REVIEW-NEEDED | major |
+| l4_anchors | NATIVE-ONLY (guard not impl.) | N/A | N/A | WARN (regex gap) | FIX-REQUIRED | major |
+
+### Cross-cutting findings
+
+**F-W5-001 (major, OPEN) l4_anchors — chart_id guard not implemented:**
+`NATIVE_CHART_ID` is declared (`os.environ.get("NATIVE_CHART_ID", "482012f1-...")`) and the docstring states "only chart_id=NATIVE_CHART_ID returns results; others return empty." But `query_phala_anchors()` never checks `chart_id == NATIVE_CHART_ID` before returning the full native anchor catalog. Any non-native `chart_id` receives native anchors via `POST /phala/query_phala_anchors`. Fix: add `if chart_id != NATIVE_CHART_ID: return empty_response(chart_id)` at the top of the function body.
+
+**F-W5-002 (major, OPEN) l4_anchors — strip_lel_citations() regex gap:**
+Current regex `r'\bper LEL\b.*?(?:\.|$)'` does not match `LEL EVT.*` patterns. `ANC.CAREER.2027.01` notes field contains "to native's US move (LEL EVT.2019 approximate; exact date in LEL gap register)." — the "LEL EVT.2019" fragment survives the strip and leaks into the public API response `notes` field. Fix: extend regex to cover `r'\b(?:per LEL|LEL EVT\.\S+)\b.*?(?:\.|$)'` or equivalent; re-run against all ANCHOR_CATALOG notes strings.
+
+**F-W5-003 (major, OPEN) ph_muhurta — ACTION_GRAHA_MAP native-chart 10th-lord assumption:**
+`ACTION_GRAHA_MAP` in `services/ph_muhurta/engine.py` hardcodes `'start_business': 'saturn'` with comment `# 10th-lord = Saturn (Capricorn lagna)`. This is semantically equivalent to a native birth-param assumption baked into a module-level constant shared across all chart_ids. For a non-native chart with a different lagna, the `personalization_graha` for `start_business`, `career_launch`, and related action classes will be wrong. Fix: derive the relevant house lords per chart_id from `ga_condition_composite` or a dedicated lagna-lord table at write time; remove the `(Capricorn lagna)` comment entirely.
+
+**F-W5-004 (minor, OPEN) ph_phaladesa — A7 silent zero-count emission:**
+`_load_domain_summaries()` exception handler uses `logger.debug` (line ~269). If `phala_anchors` is missing or misconfigured, ph_phaladesa silently emits 7 zero-count domain declarations rather than halting or warning. Fix: elevate log level to `logger.warning` and add an all-zero-anchor safeguard check. Downstream synthesis consuming these declarations may not distinguish "genuine zero" from "upstream build failure."
+
+**F-W5-005 (cosmetic, informational) ph_pramana — lel_entry_jsonb strip gap:**
+`phala_pramana.lel_entry_jsonb` stores raw `event_summary` text from `life_event_log` with no strip guard applied. Not a current C2-002 violation (column is not served by any known public endpoint). Informational only: if this column is ever added to a public endpoint response, a strip pass must be added before serving.
+
+### Wave 5 quality notes
+
+**Exemplary implementations found:**
+- ph_sodhana D43a Leakage Firewall: `LeakageFirewallError` raised (not caught) if any record carries `confidence_basis != 'structural_not_yet_empirical'`. Build halts with no partial commit.
+- ph_pramana D5 boundary gate: `_D5_FORBIDDEN_COLUMNS` set checked per-record before INSERT; `D5ViolationError` propagates. `PramanaRecord` has no scoring fields.
+- ph_phaladesa narration ban: `BANNED_MODEL_PREFIXES` enforced at build time; `narration_status = 'pending'` / `narration_model = None` deferred correctly.
+- ph_nimitta SPINE-FIRST gate (D26): raises `RuntimeError` if zero anchors survive the 5-elevation check — halts rather than silently emitting zero rows.
+
+### Open findings carried into Fix Plan
+
+- F-W5-001: l4_anchors chart_id guard (major)
+- F-W5-002: l4_anchors strip_lel_citations regex (major)
+- F-W5-003: ph_muhurta ACTION_GRAHA_MAP native assumption (major)
+- F-W5-004: ph_phaladesa silent zero emission (minor)
+- F-W5-005: ph_pramana lel_entry_jsonb strip gap (cosmetic)
+
+Open from Wave 4 also carried:
+- F-W4-002: ka_sangam EnrichmentContext population (major)
+- F-W4-005: ka_dasha_kala conn.execute() psycopg3 (major)
+- F-W4-004: ka_vighnakara stub implementation (major)
 
 ---
 
