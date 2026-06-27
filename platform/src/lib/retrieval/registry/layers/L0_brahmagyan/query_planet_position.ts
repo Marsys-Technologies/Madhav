@@ -23,7 +23,7 @@ export const queryPlanetPositionCapability: ToolCapability = {
     'Returns longitude_deg, sign_number, nakshatra_number, is_retrograde, speed_dps ' +
     'for one or all 9 Jyotish bodies (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu). ' +
     'Use for natal chart checks, transit lookup, or any date-specific position query. ' +
-    'Source: pyswisseph DE441 / Swiss Ephemeris .se1 files. Native birth date: 1984-02-05.',
+    'Source: pyswisseph DE441 / Swiss Ephemeris .se1 files. Date range: 1900-01-01 to 2150-12-31.',
   input_schema: {
     type: 'object',
     properties: {
@@ -52,6 +52,13 @@ export const queryPlanetPositionCapability: ToolCapability = {
       ayanamsha_id: { type: 'string' },
     },
   },
+  required_inputs: [],
+  scope: 'global',
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

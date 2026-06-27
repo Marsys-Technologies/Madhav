@@ -34,6 +34,12 @@ export const listEntitiesCapability: CapabilityDescriptor = {
     },
   },
   required_inputs: [],
+  scope: 'global',
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

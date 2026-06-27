@@ -61,6 +61,13 @@ export const queryInsightsCapability: CapabilityDescriptor = {
   },
 
   required_inputs: ['chart_id'],
+  scope: 'per_chart',
+  archetype: 'calibration',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'quality',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: true,
 
   llm_hints: {
     agentic: {

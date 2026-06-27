@@ -27,6 +27,12 @@ export const resolveEntityCapability: CapabilityDescriptor = {
     },
   },
   required_inputs: ['name'],
+  scope: 'global',
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

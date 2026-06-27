@@ -24,6 +24,12 @@ export const ephemerisCacheYearCapability: ResourceCapability = {
     'Returns up to 3,285 rows (9 bodies × ~365 days). ' +
     'Use for bulk-context pre-fetch when querying a whole year of transits.',
   mime_type: 'application/json',
+  scope: 'global',
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'medium',

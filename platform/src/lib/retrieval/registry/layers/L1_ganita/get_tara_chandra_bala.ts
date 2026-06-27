@@ -27,6 +27,13 @@ export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
     limit:  { type: 'number', default: 200 },
   },
   required_inputs: ['chart_id'],
+  scope: 'per_chart',
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'leaf',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },

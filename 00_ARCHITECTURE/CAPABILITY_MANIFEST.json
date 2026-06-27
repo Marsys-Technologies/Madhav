@@ -1,596 +1,78 @@
 {
-  "generated_at": "2026-06-05T01:35:46.594444Z",
-  "generator_version": "wsmisc-rebase-1.0",
-  "schema_version": "2.0-brahma",
-  "rebase_from": "legacy-A1-A22+META-DAG",
-  "rebase_to": "Brahma-L0-L5",
-  "rebase_date": "2026-06-05",
-  "rebase_authorized_by": "CLAUDECODE_BRIEF_WSMISC_AUTONOMOUS_ACTIVATION_v1_0.md",
-  "entry_count": 137,
+  "generated_at": "2026-06-27T18:27:38.035Z",
+  "generator_version": "1.0",
+  "entry_count": 112,
+  "fingerprint": "2fff19900d8d46f3451534de786835451b30333766bb1f05ab5b71efdca01892",
   "entries": [
     {
-      "canonical_id": "BRAHMAGYAN_CLASSICAL_TEXTS",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/",
-      "version": "1.0",
+      "canonical_id": "CGP_AUDIT_v1_0",
+      "path": "01_FACTS_LAYER/CGP_AUDIT_v1_0.md",
+      "version": "1",
       "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "folder"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Rebase from L8 \u2192 Brahmagyan L0 classical texts substrate"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_PROCUREMENT_MAP",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/PROCUREMENT_MAP_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "ca88d98eb9a038d01c12a2296cd1f47524b6ea7307c62cd941296b9bb7f31c71",
-      "rebase_note": "Rebase from L8"
+      "fingerprint": "223f04bb9b3e755298cd0d2759a028d336f89793860c57952c6deb367f8f35cf",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_CLASSICAL_ATTRIBUTION_REGISTRY",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.json",
-      "version": "1.0",
+      "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+      "path": "01_FACTS_LAYER/EXTERNAL_COMPUTATION_SPEC_v2_0.md",
+      "version": "2",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "e348536b13a076e7ab9c61dda74479c7c1e0a7416ac5f32e06df82c849c0fc2d",
-      "rebase_note": "Rebase from L8"
+      "fingerprint": "3db9b40bbbfe695f3e17cc4450c6bde0a11b34f2adf73d0375e7468cd3f109aa",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_CLASSICAL_ATTRIBUTION_REGISTRY_MD",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/CLASSICAL_ATTRIBUTION_REGISTRY_v1_0.md",
-      "version": "1.0",
+      "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+      "path": "01_FACTS_LAYER/JH_EXPORT_SCHEDULE_v1_0.md",
+      "version": "1",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "dc14a76a3c33e0d0df955b1f46ae5af88548ed6968404ac27c9b885e37c1e86c",
-      "rebase_note": "Rebase from L8"
+      "fingerprint": "1aa95969cc1a9f27ff1cc17dd284242bf7146df265d6567e797a95acac3ed10d",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_INGEST_BPHS",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_bphs.py",
-      "version": "1.0",
+      "canonical_id": "LEL_HELD_OUT_PARTITION",
+      "path": "01_FACTS_LAYER/LEL_HELD_OUT_PARTITION_v1_0.md",
+      "version": "1",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "5c8682f93c999077492ef2edb2d7fb15d10d84096bfc570284b575b4db18ce8e",
-      "rebase_note": "Rebase from L8 ingestion scripts"
+      "fingerprint": "53e9424d398fe5ab2da8fd9a7916639ce43944ff4a6c4d729860440114404179",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_INGEST_PHALADEEPIKA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_phaladeepika.py",
-      "version": "1.0",
+      "canonical_id": "LEL_FACTS_ONLY",
+      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md",
+      "version": "unknown",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "3d849df60567924688be327cf6637fd63c2ddcc6e213801f0658ddef8f22d6b0",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_SARAVALI",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_saravali.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a7b4822cf4d1cb020066738aea521c548a950ef60903ca84a61f5935d365ec5e",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_JAIMINI_SUTRA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_jaimini_sutra.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "3fcb9d70bbe2def81dfa9a9477d08ff2a576c1e5be786a204e825214c607fa1d",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_KP_TEXTS",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_kp_texts.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "072137efdfd539d7d7a130d7e1fbba46970a677a5f321f10180c8c09230eedbe",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_HORA_SARA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_hora_sara.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "3a7aaf85e7770c634d8c81f840e080a53224b72de7258bd0cbf5c7396ef44fe7",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_UTTARA_KALAMRITA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_uttara_kalamrita.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "b50ee7dcb6ab658a8868c8533f96b950a2ffaef4947b3d275484a68fe6bef373",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_BRIHAT_JATAKA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_brihat_jataka.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "587abf550dffb56c64ee1dd62b5062ca53113ede2b6e84d563a35d145144c28d",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_BRIHAT_SAMHITA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_brihat_samhita.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a52b16321bada0f3958f241cc3775bc0848e51096a2ccc090877fdb08c566157",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_PRASHNA_MARGA",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_prashna_marga.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "71ca842b13a7638193e658c8434a3a7b59e012ec5f231d35477ab80cb75b3e2d",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_BHRIGU_NANDI_NADI",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_bhrigu_nandi_nadi.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2623ad600ff93b3c16553140f9c2156cedb6052f1f17b33411c2afe331b71d64",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_CHANDRA_KALA_NADI",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_chandra_kala_nadi.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "1717f95b772092b107f6a260e517a33c0f3cd4cd189260e89d8636b6e7b18b3a",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_INGEST_DHRUVA_NADI_SAMPLER",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/ingest_dhruva_nadi_sampler.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "fcaac8b2345a2a93727cf6f1c64e15a03520a3905baf6d735b48fcb85cd8e26f",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_RUN_ATTRIBUTION_PASS",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/run_attribution_pass.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "b15e3ee46b98e18ac4e69f1965f9a1f123ca1f3f2131eed912f0711638f7aff3",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_BUILD_REGISTRY_FROM_DB",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/build_registry_from_db.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "1b455c2eebae9f3571e46dc33b9c73887af757cf67174f2036159359c69b4269",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_RUN_NADI_SIGNAL_EXTRACTION",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/corpus/ingestion/scripts/run_nadi_signal_extraction.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a9d1574dbb9f001866bfa800907d4f0b3d7d081a595f173bda21648e88d0674e",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_BNN_SIGNAL_EXTRACTION",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/BNN_SIGNAL_EXTRACTION_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "33301a723994c899116afc98aef64a8408ccc486bca5094255a050e3b4ee5f8e",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_NADI_SIGNAL_EXTRACTION",
-      "path": "08_CLASSICAL_CROSS_REFERENCE/NADI_SIGNAL_EXTRACTION_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "1ac56ed9d720077f88675555860e9f5c27af15c56f905f29f92ed5f1b95ef300",
-      "rebase_note": "Rebase from L8"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_CLASSICAL_TEXT_SEARCH_TOOL",
-      "path": "platform/src/lib/tools/classical_text_search.ts",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
-      "rebase_note": "Retrieval tool: Brahmagyan classical text search",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_CLASSICAL_ATTRIBUTION_LOOKUP_TOOL",
-      "path": "platform/src/lib/tools/classical_attribution_lookup.ts",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2ec1bb16714fb9026b8d6f4a6d06b003a11c1a7c178e9c3e12f130b3891e10d3",
-      "rebase_note": "Retrieval tool: Brahmagyan attribution lookup"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_MULTI_SCHOOL_TRIANGULATION",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "folder"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Rebase from L9 \u2192 Brahmagyan L0 multi-school concordance substrate"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_SCHOOL_COVERAGE_AUDIT",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/SCHOOL_COVERAGE_AUDIT_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "6cafe2556eaeb678652ba6ca0bba4747ebe80a7d293cf3a745cd0d22d1590975"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_MULTI_SCHOOL_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/MULTI_SCHOOL_ANALYSIS_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "0dcd6bcb4f0550f8da862d5ad987ea797821d856c752ac62b464bf6331fec770"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_PARASHARI_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/parashari_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2d880a1a922588e92982bd9e569acbe82e81f6309158afc8561faef623c2a831"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_JAIMINI_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/jaimini_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "30724889a199e7032e44cd6324aa582fcab58fe92e7e1f2a3d91cff08a0d0d23"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_TAJIKA_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/tajika_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "ebbc5636899b59574c85f906445ca7bce76be88f4ec8017cf5ac58ca4937f534"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_KP_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/kp_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2694d2b006f26f4d080834aa172400d5bcd24987aad34055b3f7abe6cc731fe6"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_NADI_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/nadi_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "bbc191cb339891e375235eacb2befa6adae2eeee4894910607eb283abacd1bd9"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_BNN_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/bnn_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "1243d77f4b3f51d3a73788e335ef1b49edc6c17d8622115bd5a930df66135fc5"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_YOGINI_ANALYSIS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/yogini_analysis.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a7dcb368ac5cbae7eb130d2e1433b7430bd633a8f63133cb182a3fc367d3fff9"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_CONVERGENCE_SCORES",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/convergence/convergence_scores.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "935747fdc744c3d3758d9c6a65243c61ed3dff987671de1e6a3c199c377c296a"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_SCHOOL_DISAGREEMENT_REGISTER",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/disagreements/school_disagreement_register.json",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "dc7b6a621c490fc535278eead2f82c84b425bfcdaf6ecc909aa16d843dbc5c03"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_MULTI_SCHOOL_SIGNAL_LOOKUP_TOOL",
-      "path": "platform/src/lib/tools/multi_school_signal_lookup.ts",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "ae04ea4b4378ece16eca8b5630afabb18f10ee921a185b1a88c8deb185d8a54a"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_CONVERGENCE_SCORE_LOOKUP_TOOL",
-      "path": "platform/src/lib/tools/convergence_score_lookup.ts",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "9669545cae06c72230e21c9be88fadff062c1ad4db78510fe4c33dd5c9aa8d9f"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_CONVERGENCE_METRICS",
-      "path": "09_MULTI_SCHOOL_TRIANGULATION/CONVERGENCE_METRICS_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "273d1fc2997a62bfb39d5e1eedf089654dc0bc0be1250556183e6a1719406038"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_COMPUTE_CONVERGENCE_SCRIPT",
-      "path": "platform/scripts/m9/compute_convergence.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "41aa27bcd499df40f03b317e65cc8bb5222ef148056a1fcb31af87b54470ab51"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_RUN_MULTI_SCHOOL_ANALYSIS",
-      "path": "platform/scripts/m9/run_multi_school_analysis.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "d36a05a0f1f07a50e4a184fd6544b32b5827ef26ca1385660d1a4c366a9ffc22"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_BUILD_DISAGREEMENT_REGISTER",
-      "path": "platform/scripts/m9/build_disagreement_register.py",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "b724e6ff171480234a3f4088761a554528f193d8d3aa1558cf7ce97c6d7cb989"
-    },
-    {
-      "canonical_id": "BRAHMAGYAN_REMEDIAL_CODEX",
-      "path": "04_REMEDIAL_CODEX/REMEDIAL_CODEX_v2_0_PART1.md",
-      "version": "2.0",
-      "status": "SUPERSEDED",
-      "layer": "L0",
-      "expose_to_chat": "Rebase from old L4 \u2192 Brahmagyan L0 remedy corpus; file is legacy predecessor to Brahma bodha_remediation",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "56e2312c0e18c56b5cd56731aa44bf823efaebe6c6222d8b0c9b8c66f8717a0d"
+      "fingerprint": "6352754e7deb7dc54083c90cd1861be6cacf206fb5ead1fc63f330f7d23b4000",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "LEL",
@@ -603,1395 +85,1517 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "8221b3cb92c1ca4a206435d5c3647610a5840e8ae6bfcba8ecdc4dbd949c410e"
-    },
-    {
-      "canonical_id": "FORENSIC",
-      "path": "99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md",
-      "version": "8.0",
-      "status": "ARCHIVED",
-      "layer": "L1",
-      "fingerprint_sha256": "0b2f383b7b7448d4dc9f4b8825e3f3929765e66b26da82acab08d84b921a7ed9",
-      "expose_to_chat": "FORENSIC v8.0 markdown deleted from 01_FACTS_LAYER/ in PR #187 Legacy Teardown; cold benchmark copy at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md. LIVE source = chart_facts DB table via platform/src/lib/ganita/forensic_render.ts (canonical_id FORENSIC maps to chart_facts_query in provenance_assembler.ts).",
-      "representations": [
-        "file"
+      "fingerprint": "8221b3cb92c1ca4a206435d5c3647610a5840e8ae6bfcba8ecdc4dbd949c410e",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "factual",
+        "temporal",
+        "retrodictive"
       ],
-      "interface_version": "1.0"
+      "cost_weight": 0.8
     },
     {
-      "canonical_id": "CGP_AUDIT_v1_0",
-      "path": "01_FACTS_LAYER/CGP_AUDIT_v1_0.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
+      "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+      "path": "01_FACTS_LAYER/PPL_RETROACTIVE_PROTOCOL_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
       "layer": "L1",
-      "expose_to_chat": "Legacy audit artifact, superseded by Brahma Ganita (ganita_positions DB table)",
+      "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "223f04bb9b3e755298cd0d2759a028d336f89793860c57952c6deb367f8f35cf"
-    },
-    {
-      "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
-      "path": "01_FACTS_LAYER/EXTERNAL_COMPUTATION_SPEC_v2_0.md",
-      "version": "2.0",
-      "status": "SUPERSEDED",
-      "layer": "L1",
-      "expose_to_chat": "External computation spec superseded by PyJHora engine in Brahma build",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "3db9b40bbbfe695f3e17cc4450c6bde0a11b34f2adf73d0375e7468cd3f109aa"
+      "fingerprint": "9429905ee94f1a26133691926e042c009815d1b04907aa215c39239598a08e70",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "SADE_SATI_CYCLES_ALL",
       "path": "01_FACTS_LAYER/SADE_SATI_CYCLES_ALL.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
+      "version": "unknown",
+      "status": "CURRENT",
       "layer": "L1",
-      "expose_to_chat": "Superseded by Brahma kala_timeline table",
+      "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "716bcb8c8830324e1f6d8cd36e0682ca0b39e1df0840380c37746359e16ad808"
+      "fingerprint": "716bcb8c8830324e1f6d8cd36e0682ca0b39e1df0840380c37746359e16ad808",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "EVENT_CHART_STATES_v1_0",
       "path": "01_FACTS_LAYER/SOURCES/EVENT_CHART_STATES_v1_0.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
+      "version": "1",
+      "status": "CURRENT",
       "layer": "L1",
-      "expose_to_chat": "Superseded by Brahma mimamsa_predictions + LEL integration",
+      "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "957e58bbd523d981ac08a6c9a525987b787d3cca066ec78104e8e703fbd1c343"
+      "fingerprint": "957e58bbd523d981ac08a6c9a525987b787d3cca066ec78104e8e703fbd1c343",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
       "path": "01_FACTS_LAYER/SOURCES/JHORA_TRANSCRIPTION_v8_0_SOURCE.md",
-      "version": "8.0",
-      "status": "SUPERSEDED",
+      "version": "8.0-source",
+      "status": "CURRENT",
       "layer": "L1",
-      "expose_to_chat": "Legacy JHora transcription; Brahma builds from PyJHora engine directly",
+      "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "29dd7839ff5fbbbebd704e8703e26fb75db94c31317587c0a3b1516ed23668ba"
-    },
-    {
-      "canonical_id": "PANCHANG_DAILY",
-      "path": "03_DERIVATIONS/PANCHANG_DAILY_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L1",
-      "expose_to_chat": true,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "af68f246c795adc15639879efbd150b835c3eadb6411e1c3d22c89f9bcfdc69c",
-      "rebase_note": "Rebase from L1.5 \u2192 L1 Ganita; panchanga is a chart fact (L0 almanac feeds L1 panchanga)"
-    },
-    {
-      "canonical_id": "GANITA_POSITIONS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L1",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: ganita_positions \u2014 per-chart PyJHora computed positions"
-    },
-    {
-      "canonical_id": "GANITA_DASHAS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L1",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: ganita_dashas \u2014 per-chart dasha timeline"
+      "fingerprint": "29dd7839ff5fbbbebd704e8703e26fb75db94c31317587c0a3b1516ed23668ba",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "CDLM",
       "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
       "version": "1.3",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. CDLM is a legacy synthesis artifact; Brahma Bodha (bodha_signals/bodha_graph) supersedes it",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "614e2be87cd9cebb46aa975421af549cfa20cc4e8de4b5c7ee457f7483c40b72"
+      "fingerprint": "614e2be87cd9cebb46aa975421af549cfa20cc4e8de4b5c7ee457f7483c40b72",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "discovery"
+      ],
+      "cost_weight": 0.7
     },
     {
       "canonical_id": "CGM",
       "path": "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md",
-      "version": "9.0",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. CGM superseded by Brahma bodha_graph / bodha_graph_edges",
+      "version": "9.1",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a"
+      "fingerprint": "1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "holistic"
+      ],
+      "cost_weight": 1,
+      "always_required": true
     },
     {
       "canonical_id": "MSR",
       "path": "025_HOLISTIC_SYNTHESIS/MSR_v5_0.md",
-      "version": "5.0",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. MSR 573 signals are grounded inputs to Brahma bodha_signals",
+      "version": "5.1",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "6984c65c70decdf4ea70aa1485c3fa76fb50496ea2c01cfa944b5390ff55b71c"
+      "fingerprint": "6984c65c70decdf4ea70aa1485c3fa76fb50496ea2c01cfa944b5390ff55b71c",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "factual",
+        "interpretive",
+        "cross_domain"
+      ],
+      "cost_weight": 0.9
     },
     {
       "canonical_id": "RM",
       "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
       "version": "2.2",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. RM superseded by Brahma bodha_resonance table",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "d64408e16856e10c7c1c3c28ed304ee2f58377ba9ebd68fad69f1e15097595c6"
+      "fingerprint": "d64408e16856e10c7c1c3c28ed304ee2f58377ba9ebd68fad69f1e15097595c6",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "resonance",
+        "cross_domain"
+      ],
+      "cost_weight": 0.6
     },
     {
       "canonical_id": "UCN",
       "path": "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md",
       "version": "4.1",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L2.5 \u2192 L2 Bodha. UCN superseded by Brahma bodha_domain_links",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "397cb6d488c411053f3ad0640f1eb9a7efc7d8149246d542ffb07929b38ea3f7"
-    },
-    {
-      "canonical_id": "BODHA_SIGNALS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_signals \u2014 per-chart signal activations"
-    },
-    {
-      "canonical_id": "BODHA_GRAPH_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_graph + bodha_graph_edges \u2014 signal relationship graph"
-    },
-    {
-      "canonical_id": "BODHA_RESONANCE_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_resonance \u2014 cross-domain resonance scores"
-    },
-    {
-      "canonical_id": "BODHA_DOMAIN_LINKS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_domain_links \u2014 domain concordance links"
-    },
-    {
-      "canonical_id": "BODHA_REMEDIATION_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_remediation + bodha_remediation_staging \u2014 Remediation asset per v2.1 \u00a7F"
-    },
-    {
-      "canonical_id": "BODHA_SIGNAL_EMBEDDINGS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: bodha_signal_embeddings \u2014 vector embeddings for semantic search"
-    },
-    {
-      "canonical_id": "BODHA_CLUSTER_ATLAS",
-      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L3.5 \u2192 L2 Bodha. Discovery registers superseded by Brahma bodha_graph",
-      "representations": [
-        "file"
+      "fingerprint": "397cb6d488c411053f3ad0640f1eb9a7efc7d8149246d542ffb07929b38ea3f7",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "cross_domain",
+        "holistic"
       ],
-      "interface_version": "1.0",
-      "fingerprint": "56b141a8a3c82688356e17e07d82ee416913a7c78ae5b2ca24fb2c200749c142"
+      "cost_weight": 0.8
     },
     {
-      "canonical_id": "BODHA_CONTRADICTION_REGISTER",
-      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L2",
+      "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+      "path": "03_DOMAIN_REPORTS/CROSS_REPORT_COHERENCE_AUDIT_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "01f50f9b6602832db1d68f4321cb792e9dab0266ae4d055b778cc1f05ac0db13"
+      "fingerprint": "f05867f4a868bf11b352d8296a90977d4e823de3071838b88bea85ce13ac3a95",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BODHA_PATTERN_REGISTER",
-      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "3354d4c628bfd209c19ff7cb9e6dadeade9d20916c87640d09247948761f2064"
-    },
-    {
-      "canonical_id": "BODHA_RESONANCE_REGISTER",
-      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L2",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "6e6530a56ebfc8f480327ce27c49f6d7eb861ca7dd77f01f5c24fc40fcf9387c"
-    },
-    {
-      "canonical_id": "BODHA_DECISION_SUPPORT_PLAYBOOK",
-      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/DECISION_SUPPORT_PLAYBOOK_v1_0.md",
-      "version": "1.0",
+      "canonical_id": "RED_TEAM_L3_v1_0",
+      "path": "03_DOMAIN_REPORTS/RED_TEAM_L3_v1_0.md",
+      "version": "1",
       "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": "Rebase from L3.5 \u2192 L2 Bodha. Query taxonomy still valid for Brahma Bodha retrieval",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "5ca2c1cac4b0932ef230d70613d72c3514ab41a0fb69d3809d33ac0f8ff704ce"
-    },
-    {
-      "canonical_id": "BODHA_QUERY_PROMPT_LIBRARY",
-      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/QUERY_PROMPT_LIBRARY_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L2",
+      "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "7da8bb2bc252f3b4e056bec545b3c5e9705f6019297e65491bac3f37f920a545"
+      "fingerprint": "edeb13c2c56efb8b0b9ec2fd763187893ea4382b3b96fc405c384ac1f5856b65",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_REPORT_CAREER_DHARMA",
+      "canonical_id": "REPORT_CAREER_DHARMA_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "647d9a17581894ddd07a384c511e510682d66cff694fa7e2b337d16d101dc706",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
       "path": "03_DOMAIN_REPORTS/REPORT_CAREER_DHARMA_v1_1.md",
       "version": "1.1",
-      "status": "SUPERSEDED",
+      "status": "CURRENT",
       "layer": "L3",
-      "expose_to_chat": "Rebase from old L3 domain reports \u2192 Brahma Kala L3; domain reports are legacy synthetic outputs, superseded by Brahma kala_convergence + kala_timeline",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "cdf52ee4041791753cd6d931890fdb213004b00d31e722d04256740d79e564ef"
-    },
-    {
-      "canonical_id": "KALA_REPORT_FINANCIAL",
-      "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md",
-      "version": "2.1",
-      "status": "SUPERSEDED",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
+      "fingerprint": "cdf52ee4041791753cd6d931890fdb213004b00d31e722d04256740d79e564ef",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "career",
+        "domain_specific"
       ],
-      "interface_version": "1.0",
-      "fingerprint": "215e54b7394d2bbfb8dc4b4a1660660dc16511d81225f25f8f9442f667afc39c"
+      "cost_weight": 0.7
     },
     {
-      "canonical_id": "KALA_REPORT_HEALTH",
-      "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
+      "canonical_id": "REPORT_CHILDREN_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
       "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "c722d9f2a0305e687814b8db398815a15ca1f2e85d3e4abbf0829a88e94e2623"
+      "fingerprint": "17b651aa36a1539c496eaaa75623140dde71b36af9ff4905cdf1a7efe38a1301",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_REPORT_RELATIONSHIPS",
-      "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "97d285b3562b76c61772afaa88742ec315e61fee8edcb84f5e113078a9a77c34"
-    },
-    {
-      "canonical_id": "KALA_REPORT_PARENTS",
-      "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_1.md",
-      "version": "1.1",
-      "status": "SUPERSEDED",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "06f938f059c0c971c03b70fb64cbaf91b25509dd90e66c73437fd122598b3478"
-    },
-    {
-      "canonical_id": "KALA_REPORT_CHILDREN",
+      "canonical_id": "REPORT_CHILDREN_v1_1",
       "path": "03_DOMAIN_REPORTS/REPORT_CHILDREN_v1_1.md",
       "version": "1.1",
-      "status": "SUPERSEDED",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d47d8f5ddd16c22d7ea7bce83653a588411aa778d967bc358e332e1e0e62299c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_FINANCIAL_v2_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_0.md",
+      "version": "2",
+      "status": "PREDECESSOR",
       "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "d47d8f5ddd16c22d7ea7bce83653a588411aa778d967bc358e332e1e0e62299c"
+      "fingerprint": "c2218ec25cb7637b35b327a6602ea17b3d9864fb9778f895ec1749769f13d75d",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_REPORT_PSYCHOLOGY_MIND",
+      "canonical_id": "REPORT_FINANCIAL_v2_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_FINANCIAL_v2_1.md",
+      "version": "2.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "215e54b7394d2bbfb8dc4b4a1660660dc16511d81225f25f8f9442f667afc39c",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "financial",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b6fa182c4bcde906a218796328a81c5f227852d9dcb2cf3ca2c851b8a5b7bbc6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_HEALTH_LONGEVITY_v1_1.md",
+      "version": "1.2",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c722d9f2a0305e687814b8db398815a15ca1f2e85d3e4abbf0829a88e94e2623",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "health",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_PARENTS_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3e18ccb5a39d49d2b7d04072c50a2f7cdf933e86147cf47c515896f918d7f523",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PARENTS_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_PARENTS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "06f938f059c0c971c03b70fb64cbaf91b25509dd90e66c73437fd122598b3478",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "36d60c229c0e4e8cde85d483eb42977bc6ebd0a6e564762592b662f60dd7954f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
       "path": "03_DOMAIN_REPORTS/REPORT_PSYCHOLOGY_MIND_v1_1.md",
       "version": "1.1",
-      "status": "SUPERSEDED",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "053d414ef88f719a0514eab372ee1b83c424666b01ebcd48652c0f4e896dd871",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
       "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "053d414ef88f719a0514eab372ee1b83c424666b01ebcd48652c0f4e896dd871"
+      "fingerprint": "c86effd31f547660b28706e046a08d613b67d826797ad795e55193168d2747ab",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_REPORT_SPIRITUAL",
+      "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+      "path": "03_DOMAIN_REPORTS/REPORT_RELATIONSHIPS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "97d285b3562b76c61772afaa88742ec315e61fee8edcb84f5e113078a9a77c34",
+      "native_id": "abhisek",
+      "preferred_for": [
+        "interpretive",
+        "relationships",
+        "domain_specific"
+      ],
+      "cost_weight": 0.7
+    },
+    {
+      "canonical_id": "REPORT_SPIRITUAL_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6a0505ff8923d5ab73f6ad7a4853fd1be3db12a723dc33c4e93c235b4ab0c683",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_SPIRITUAL_v1_1",
       "path": "03_DOMAIN_REPORTS/REPORT_SPIRITUAL_v1_1.md",
       "version": "1.1",
-      "status": "SUPERSEDED",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "103edbb5927c9cd874f30c9b7daa9bbaf20c6aaab7d0eff21857db659013da27",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REPORT_TRAVEL_v1_0",
+      "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_0.md",
+      "version": "1.0.1",
+      "status": "PREDECESSOR",
       "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "103edbb5927c9cd874f30c9b7daa9bbaf20c6aaab7d0eff21857db659013da27"
+      "fingerprint": "2652762e82ab9ae772983f3dc6aeef8d76edd3f2c51e79ea1596226559568cd2",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_REPORT_TRAVEL",
+      "canonical_id": "REPORT_TRAVEL_v1_1",
       "path": "03_DOMAIN_REPORTS/REPORT_TRAVEL_v1_1.md",
       "version": "1.1",
-      "status": "SUPERSEDED",
+      "status": "CURRENT",
       "layer": "L3",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "964a1951ce70b550065c9e83d73d8bf80f32dff8554a3aecb6f81636a59620be"
+      "fingerprint": "964a1951ce70b550065c9e83d73d8bf80f32dff8554a3aecb6f81636a59620be",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "KALA_LIFETIME_TIMELINE",
-      "path": "05_TEMPORAL_ENGINES/LIFETIME_TIMELINE_v1_0.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
-      "layer": "L3",
-      "expose_to_chat": "Rebase from old L5 temporal engines \u2192 Brahma Kala L3; superseded by Brahma kala_timeline + kala_convergence DB tables",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "176a2dc6706866239b731e611c2c58cd1bb472427b043daf7703e96c115b91eb"
-    },
-    {
-      "canonical_id": "KALA_TIMELINE_DB",
-      "path": "",
-      "version": "1.0",
+      "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/DECISION_SUPPORT_PLAYBOOK_v1_0.md",
+      "version": "1",
       "status": "CURRENT",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: kala_timeline \u2014 temporal event timeline per chart"
-    },
-    {
-      "canonical_id": "KALA_CONVERGENCE_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: kala_convergence + kala_convergence_staging"
-    },
-    {
-      "canonical_id": "KALA_OBSTRUCTION_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L3",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: kala_obstruction \u2014 obstruction overlaps"
-    },
-    {
-      "canonical_id": "PHALA_ANCHORS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_anchors \u2014 calibrated event anchors"
-    },
-    {
-      "canonical_id": "PHALA_MUHURTA_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_muhurta \u2014 Muhurta/Electional engine (new asset per v2.1 \u00a7F)"
-    },
-    {
-      "canonical_id": "PHALA_MITIGATION_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_mitigation + phala_mitigation_staging"
-    },
-    {
-      "canonical_id": "PHALA_SODHANA_DB",
-      "path": "platform/supabase/migrations/333_phala_sodhana.sql",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [
-        "migration"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_sodhana \u2014 anomaly registry (confidence inflation, magnitude drift, falsifier absent, ledger gap, layer leakage)",
-      "fingerprint_sha256": "3180f0cabb47ebdb86e4c2be24b37580f797f528958477f1f1349a29335b3e19",
-      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
-      "last_verified_on": "2026-06-22"
-    },
-    {
-      "canonical_id": "PHALA_SUDDHA_SODHANA_DB",
-      "path": "platform/supabase/migrations/334_phala_suddha_sodhana.sql",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [
-        "migration"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_suddha_sodhana \u2014 cleansed anchor disposition (D43 safety rail)",
-      "fingerprint_sha256": "ee2d1b1683fba57e7e16776fb3351a0a2ab3a060ebfa8915cbbde636dad72976",
-      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
-      "last_verified_on": "2026-06-22"
-    },
-    {
-      "canonical_id": "PHALA_SANKRAMA_DB",
-      "path": "platform/supabase/migrations/337_phala_sankrama.sql",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [
-        "migration"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_sankrama \u2014 cross-domain spillover (SK1-SK4)",
-      "fingerprint_sha256": "5e321ee9b662f9bf92be88f45eaefbdec9c89b0f94e87e9ee3e3b33dde0dfef2",
-      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
-      "last_verified_on": "2026-06-22"
-    },
-    {
-      "canonical_id": "PHALA_PRAMANA_DB",
-      "path": "platform/supabase/migrations/338_phala_pramana.sql",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [
-        "migration"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_pramana \u2014 falsifiability evidence registry (D5 non-scoring)",
-      "fingerprint_sha256": "b21c1eb65e358f4035bb3def780c101b3c9be64b59c974066053ff6d61b29c94",
-      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
-      "last_verified_on": "2026-06-22"
-    },
-    {
-      "canonical_id": "PHALA_PHALADESA_DB",
-      "path": "platform/supabase/migrations/339_phala_phaladesa.sql",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L4",
-      "expose_to_chat": false,
-      "representations": [
-        "migration"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: phala_phaladesa \u2014 domain result declaration (7 domains; narration_model CHECK excludes Anthropic)",
-      "fingerprint_sha256": "183e4e7d5647ddb518a802e786ebc569fc8f083962fb7379accc7f2bf5114bf8",
-      "last_verified_session": "L4_PHALA_MERGE_SYNC_2026-06-22",
-      "last_verified_on": "2026-06-22"
-    },
-    {
-      "canonical_id": "LEL_SCHEMA",
-      "path": "06_LEARNING_LAYER/SCHEMAS/two_pass_events_schema_v0_1.json",
-      "version": "0.1",
-      "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": "Rebase from L6 \u2192 L5 Mimamsa. Schema still governs LEL intake",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36"
-    },
-    {
-      "canonical_id": "PREDICTION_SCHEMA",
-      "path": "06_LEARNING_LAYER/SCHEMAS/prediction_schema_v0_1.json",
-      "version": "0.1",
-      "status": "CURRENT",
-      "layer": "L5",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654"
+      "fingerprint": "5ca2c1cac4b0932ef230d70613d72c3514ab41a0fb69d3809d33ac0f8ff704ce",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "PATTERN_SCHEMA",
+      "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/QUERY_PROMPT_LIBRARY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7da8bb2bc252f3b4e056bec545b3c5e9705f6019297e65491bac3f37f920a545",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7a86a7abf83a9ee84a803bb8d90283cb6119be265d1bfa87f2bac9b72aa4c6c0",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "plans_v1_0",
+      "path": "035_DISCOVERY_LAYER/QUERY_TAXONOMY/plans_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "56605639e0441e2bfade2d8308bb4f9b40593df391cb689889373a54738afd01",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CLUSTER_ATLAS_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d3d406cc5f18d7d3673d35b133be6af3cd71aba0e012ecb8f4cdd33923605a27",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CLUSTER_ATLAS_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "56b141a8a3c82688356e17e07d82ee416913a7c78ae5b2ca24fb2c200749c142",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CONTRADICTION_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf438daf50ef8a600dfc20660936b7ddba31b729d7b75a08a5e92a508e5a46cf",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "01f50f9b6602832db1d68f4321cb792e9dab0266ae4d055b778cc1f05ac0db13",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8161302972d47ad349b013e2953f5bcdf1bd51110b218cfce3e2026b94fd1469",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3354d4c628bfd209c19ff7cb9e6dadeade9d20916c87640d09247948761f2064",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RESONANCE_REGISTER_v1_0",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.md",
+      "version": "1",
+      "status": "PREDECESSOR",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "499ba93f83f0242b7fad32ca2fef6974039e33bd27c72c7a1c8a5b8dcac71b41",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RESONANCE_REGISTER_v1_1",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6e6530a56ebfc8f480327ce27c49f6d7eb861ca7dd77f01f5c24fc40fcf9387c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+      "path": "035_DISCOVERY_LAYER/SCHEMAS/chunker_spec_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L3.5",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1fee971c9f607b7f81691639da69e5796b880f488cad8bd95cfdf2746d070453",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+      "path": "06_LEARNING_LAYER/L1_TRUTH_INDEX_REPORT_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ad747fc87da4316fd56b9009b262b8ac45bdeede1a454e0cc4f80101efcc4af6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_CLOSE",
+      "path": "06_LEARNING_LAYER/M4_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "1378f4f9d3a85a1893fd4e95df02f6c2efa4cc6fb10675f9b9ebdad57dbd3f11",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_CLOSE",
+      "path": "06_LEARNING_LAYER/M5_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5b8a7d4729cd20437bfa72b51b472c14b3234523265587b22fcc88393c2386f0",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "CI_REPORTING_POLICY",
+      "path": "06_LEARNING_LAYER/NAP_M5_3_CI_REPORTING_POLICY_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "2ccb6ad248b8748042d63769b4108f3e03ca4dd572b6ed338aabd8885b5260f1",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+      "path": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0.md",
+      "version": "1.0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "4e3512c83012d1d93b10d1d57a0a5d8d1caef1d95f27b0deff05c8186ebf2292",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "93eb7d2b3bb6e0e7f9724ecd729408adc1fec92fa5ba559ddea81bbde65c5157",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5f3f5f37eb5a7e01998bccb9aa6ec23b7ee9d5b04eff4321c6b0ef91e925b348",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "406c95be36e88dc85a0952cfb16ff87d19a35c0ed8c92f6695cb5f198721bb90",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e7b3f2ccc200f45942bf28794fb0633685279429b6f0a3fc9adcd4cd5a57efd6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8a52703b570e6daf8e07d6d12c8a683fe5b4f7134dc70cc790e382452b8f2195",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "0a19c2bb18c7215cf03aaf7c75be551000fa016c4c194f820481a3c45f43de22",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "abdc78d968a7c7da7e307463c8537342824fe0b52c98e1c8107bb6fb2c81c9f2",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "19c6fbb7a314caad30f9d92c3b296c9e5012a2d37f80fc32f8a719e60f6ef4fa",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_B_CLOSE",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_B_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6c29ad0f05861f13ccd780b5c773254b72ae90fd0cf2688276d7876be268e0c1",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M4_C_CLOSE",
+      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/M4_C_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "89317368115eb91ca6004d5fb74e00cc6e12ccb0adc8a01d4be6611b77861adf",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "DBN_TOPOLOGY",
+      "path": "06_LEARNING_LAYER/dbn/DBN_TOPOLOGY_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "907b05f7e9abc6bada10736122243e930369c02d304a77948582e0d076fd9b7f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_C_CLOSE",
+      "path": "06_LEARNING_LAYER/dbn/M5_C_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c1abb1d045591c4132df6bcdae8f1386bf45112d93d01149c4df13ef74c34db8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "M5_D_CLOSE",
+      "path": "06_LEARNING_LAYER/dbn/M5_D_CLOSE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "94721418675d7121fc0b4dfedc64da8b6304bad46d06af2b872fe44c74f7c53e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PRIOR_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/PRIOR_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "dcacbfa8edffa82c2f7e8a6975955ef7a47d0d2ea675dfc07865cd835b17b807",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/LL8_EMBEDDING_REFIT_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "3278e27df12ca7f4181e818a95622da8e0a761aaa351036e755cd86ae662ee3c",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "REFIT_GATE",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/REFIT_GATE_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "025c9785f783e7b90d97b4ccc2080b9c04796e1c18ea9acd8b6bbb464f94996f",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "refit_procedure",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/refit_procedure.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "5466dadc4a25284da7fc02d9c294a243781ea71caff03e4710c01264d545e9a7",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "stability_report",
+      "path": "06_LEARNING_LAYER/dbn/embedding_refit/stability_report.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "59efdf6a6a9379bdf56b0d28e4a65c6057e4bc8a8f69f54dc525f34bc7a822a6",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "ll2_promotion_campaign_v1_0",
+      "path": "06_LEARNING_LAYER/dbn/ll2_promotion_campaign_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "479d807f199e85913d0431a3ba662bf152771dde275f0b84dafe023a89811b81",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL8_SPEC",
+      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+      "version": "1.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "LL9_SPEC",
+      "path": "06_LEARNING_LAYER/miss_registry/LL9_SPEC_v1_0.md",
+      "version": "1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "8226eeafeb135eb5fad8d7a4459001c05cfec3796606e10e05abfea30671c4a8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PATTERN_SCHEMA_v0_1",
       "path": "06_LEARNING_LAYER/SCHEMAS/pattern_schema_v0_1.json",
       "version": "0.1",
       "status": "CURRENT",
-      "layer": "L5",
+      "layer": "L6",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b"
+      "fingerprint": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "PREDICTION_LEDGER",
+      "canonical_id": "PREDICTION_SCHEMA_v0_1",
+      "path": "06_LEARNING_LAYER/SCHEMAS/prediction_schema_v0_1.json",
+      "version": "0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+      "path": "06_LEARNING_LAYER/SCHEMAS/two_pass_events_schema_v0_1.json",
+      "version": "0.1",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PROMPT_REGISTRY_INDEX",
+      "path": "06_LEARNING_LAYER/PROMPT_REGISTRY/INDEX.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L6",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ee986600a0eecf33e2b61645056a7b76dea88019981280980b7aa2d5d87c846b",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
+    },
+    {
+      "canonical_id": "PREDICTION_LEDGER_JSONL",
       "path": "06_LEARNING_LAYER/PREDICTION_LEDGER/prediction_ledger.jsonl",
       "version": "1.0",
       "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": true,
+      "layer": "L6",
+      "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
       "fingerprint": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
-      "rebase_note": "Rebase from L6 \u2192 L5 Mimamsa. Prediction ledger is the held-out prospective data store"
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "LL8_SPEC",
-      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/LL8_SPEC_v1_0.md",
+      "canonical_id": "PATTERN_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/PATTERN_REGISTER_v1_0.json",
       "version": "1.0",
       "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": "Rebase from L6 \u2192 L5 Mimamsa. Bayesian update spec",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "f3877f50c2fb7517a3908989b14376e407a7a219483b77a89d7b79a6509a8c0d"
-    },
-    {
-      "canonical_id": "LL8_PARAM_REGISTER",
-      "path": "06_LEARNING_LAYER/dbn/ll8_bayesian_update/parameter_register.json",
-      "version": "1.0",
-      "status": "LIVE",
-      "layer": "L5",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a463e98723bc51d31d56627af6dd792755ed45afc6605e7e3fe71dedd7e79971"
+      "fingerprint": "11ed5d57d48c23a4e3f9795df6107c9497cc6d988da2239ab3e5866cafd851fc",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "LL9_MISS_REGISTRY",
-      "path": "06_LEARNING_LAYER/miss_registry/miss_registry_stub.json",
-      "version": "0.1",
-      "status": "SCAFFOLD",
-      "layer": "L5",
+      "canonical_id": "RESONANCE_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/RESONANCE_REGISTER_v1_0.json",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "4a878e351c439859b78634800d69671fba16b1320c3bf85566481448ece922d7"
+      "fingerprint": "92a6cde8cb869ff0b525477667a423852917573f0f1ffe9af3223fea1250e6ef",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "MIMAMSA_PREDICTIONS_DB",
-      "path": "",
+      "canonical_id": "CONTRADICTION_REGISTER_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CONTRADICTION_REGISTER_v1_0.json",
       "version": "1.0",
       "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_predictions \u2014 prospective prediction store"
-    },
-    {
-      "canonical_id": "MIMAMSA_CALIBRATION_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_calibration \u2014 calibration metrics"
-    },
-    {
-      "canonical_id": "MIMAMSA_MULTIPLIERS_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_multipliers \u2014 learning multipliers (C5 mechanism)"
-    },
-    {
-      "canonical_id": "MIMAMSA_QA_EVAL_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_qa_eval \u2014 answer-quality eval (C1c)"
-    },
-    {
-      "canonical_id": "MIMAMSA_EXPORT_LOG_DB",
-      "path": "",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L5",
-      "expose_to_chat": false,
-      "representations": [],
-      "interface_version": "1.0",
-      "rebase_note": "Brahma DB table: mimamsa_export_log \u2014 BigQuery/Parquet OLAP export log (C3)"
-    },
-    {
-      "canonical_id": "LL1_TWO_PASS_APPROVAL",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
-      "layer": "L5",
-      "expose_to_chat": "Legacy M4-era learning spec. Superseded by Brahma Mimamsa learning multiplier (C5)",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "93eb7d2b3bb6e0e7f9724ecd729408adc1fec92fa5ba559ddea81bbde65c5157"
-    },
-    {
-      "canonical_id": "LL2_EDGE_WEIGHT_DESIGN",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "SUPERSEDED",
-      "layer": "L5",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "5f3f5f37eb5a7e01998bccb9aa6ec23b7ee9d5b04eff4321c6b0ef91e925b348"
+      "fingerprint": "11c551afab85e6272d9f5569551ed5425f893edc44ee52852774caad5710857f",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "LL5_DASHA_TRANSIT_DESIGN",
-      "path": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0.md",
+      "canonical_id": "CLUSTER_ATLAS_JSON",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/CLUSTER_ATLAS_v1_0.json",
       "version": "1.0",
-      "status": "SUPERSEDED",
-      "layer": "L5",
+      "status": "CURRENT",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "0a19c2bb18c7215cf03aaf7c75be551000fa016c4c194f820481a3c45f43de22"
+      "fingerprint": "fa1dbd13991f06f6980e54ce586d1f1b40dbe969517ba0c5e6101de60e9a18d4",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "MARSYS_MASTER_ARCHITECTURE",
-      "path": "00_ARCHITECTURE/MARSYS_MASTER_ARCHITECTURE_v2_0.md",
-      "version": "2.1",
+      "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+      "path": "035_DISCOVERY_LAYER/REGISTERS/INDEX.json",
+      "version": "1.0",
       "status": "CURRENT",
-      "layer": "governance",
+      "layer": "L3.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "345a69904899605f27547bd8cd5fe06f63f601feba22cae1f460f450c72722c0"
+      "fingerprint": "dd3eb54f70c2adb10ef91bca41b0ede2eeb955de1329b87e3f4dca38c832ad4e",
+      "native_id": "abhisek",
+      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
+      "last_verified_on": "2026-06-28"
     },
     {
-      "canonical_id": "BUILD_WORKFLOW_AND_TOOLING_DESIGN",
-      "path": "00_ARCHITECTURE/BUILD_WORKFLOW_AND_TOOLING_DESIGN_v2_0.md",
-      "version": "2.0",
+      "canonical_id": "RETRIEVAL_TOOL_msr_sql",
       "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "b26646370063d3126fec3924ff0423b207476e74e823cd0bdc2d10bf8e014602"
-    },
-    {
-      "canonical_id": "BRAHMA_BUILD_UX_SPEC",
-      "path": "00_ARCHITECTURE/BRAHMA_BUILD_UX_SPEC_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "2359f11465a71552e0f46d255aa657fbccfdd11996b7d1eee5133300b95d3a1d"
-    },
-    {
-      "canonical_id": "BUILD_GUARANTOR_SWARM_CHARTER",
-      "path": "00_ARCHITECTURE/BUILD_GUARANTOR_SWARM_CHARTER_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a49e182a10152a7e0aaed8ee4d7344f59bbc55a936ae9be42c390d1edb1b7f19"
-    },
-    {
-      "canonical_id": "BUILD_GUARANTOR_AUTONOMOUS_MODE",
-      "path": "00_ARCHITECTURE/BUILD_GUARANTOR_AUTONOMOUS_MODE_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "276e34ebcf31c6b1f3e8f663b45baa1d7c9fda82dbc6946cf87db6e6ef289719"
-    },
-    {
-      "canonical_id": "BRAHMA_COMPLETE",
-      "path": "00_ARCHITECTURE/BRAHMA_COMPLETE.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": "Build completion seal artifact",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "f9b3460df21f95c18542ecb17d0b719bb57a056c37b0fb69171cbbbc18d23d48"
-    },
-    {
-      "canonical_id": "VALIDATED_ASSET_REGISTRY",
-      "path": "00_ARCHITECTURE/VALIDATED_ASSET_REGISTRY_v1_0.json",
-      "version": "2.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": "Asset registry (wiped for clean-slate rebuild; rebuilt per layer)",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "9cf1eb13f25072890ba405980c1fa39318292a276d5f336aed6062e249fb7aa3"
-    },
-    {
-      "canonical_id": "LAYER_0_FOUNDATION_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_0_FOUNDATION_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "73e8bc025b30a2e0c6be7c86c4d753fadf295b3d882d4c9d6e597ad60a78bbfa"
-    },
-    {
-      "canonical_id": "LAYER_1_CHART_FACTS_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_1_CHART_FACTS_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "6a26ede070e6c7761b63cf8948d962176ade6e44987cd6d5107b2b27a4094782"
-    },
-    {
-      "canonical_id": "LAYER_2_CHART_INTELLIGENCE_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_2_CHART_INTELLIGENCE_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "dadf0885d372473094390522c583b691bb9fe2f50082c91cfed83ea49609014e"
-    },
-    {
-      "canonical_id": "LAYER_3_TEMPORAL_FABRIC_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_3_TEMPORAL_FABRIC_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "a08f77dbab6f8bc765e65322313ac00244b715ba066bdc53b1183ce8036750eb"
-    },
-    {
-      "canonical_id": "LAYER_4_PREDICTIVE_ENGINE_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_4_PREDICTIVE_ENGINE_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "49b35776255fe7f26e0aed26a2926a83a29b685da8d30cd2fd1229a4982368c0"
-    },
-    {
-      "canonical_id": "LAYER_5_LEARNING_DESIGN",
-      "path": "00_ARCHITECTURE/LAYER_5_LEARNING_DESIGN_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "0757174fdf9d0bf95729a08cee4ffffcaac51075b2f655fc1ef49e5a57f2d135"
-    },
-    {
-      "canonical_id": "LEL_v1_2",
-      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-      "version": "1.7",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": "Canonical LEL \u2014 also registered under L1; governance track",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "8221b3cb92c1ca4a206435d5c3647610a5840e8ae6bfcba8ecdc4dbd949c410e"
-    },
-    {
-      "canonical_id": "CAPABILITY_MANIFEST_REBASE_NOTE",
-      "path": "00_ARCHITECTURE/CONDUCTOR/wsmisc/smriti/gcs_purge_dryrun.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": "Rebase audit trail \u2014 WS-Misc conductor smriti",
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "9090f3dba880ce374760a58e50eda9e377e51861b50be85fdd90e70c28286627"
-    },
-    {
-      "canonical_id": "BG_PANCHANGA_ENGINE",
-      "asset_registry_id": "bg_panchanga",
-      "path": "platform/python-sidecar/panchang_engine/",
-      "version": "2.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "asset_type": "service",
-      "expose_to_chat": false,
-      "representations": [
-        "service",
-        "asset_registry"
-      ],
-      "interface_version": "1.0",
-      "provides_apis": [
-        "panchanga_instant",
-        "panchanga_day"
-      ],
-      "health_probe_type": "panchanga_engine",
-      "catalog_status": "CURRENT",
-      "note": "P3 registration 2026-06-09: L0 Brahmagyan service \u2014 deterministic panchang engine"
-    },
-    {
-      "canonical_id": "BG_EPHEMERIS_ENGINE",
-      "asset_registry_id": "bg_ephemeris_engine",
-      "path": "platform/python-sidecar/",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "asset_type": "service",
-      "expose_to_chat": false,
-      "representations": [
-        "service",
-        "asset_registry"
-      ],
-      "interface_version": "1.0",
-      "provides_apis": [
-        "swisseph.calc_ut",
-        "swisseph.houses_ex"
-      ],
-      "health_probe_type": "ephemeris_engine",
-      "catalog_status": "CURRENT",
-      "note": "P3 registration 2026-06-09: L0 Brahmagyan service \u2014 pyswisseph + DE441 ephemeris engine"
-    },
-    {
-      "canonical_id": "L1_L2_RELATIONSHIP_ARCHITECTURE_DECISION",
-      "path": "00_ARCHITECTURE/L1_L2_RELATIONSHIP_ARCHITECTURE_DECISION_v1_0.md",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "rebase_note": "Architecture decision: L1 ga_structural = exhaustive enumeration engine; L2 MSR = population-level enrichment. Purges predicate-firing model from MSR. Governing for L2 Bodha build.",
-      "fingerprint": "f6b363aca2792714499137438878851d3f238198534e65a19006560bb66ecbb2"
-    },
-    {
-      "canonical_id": "L0FR_CAPABILITY_READ_CLASSICAL_TEXT",
-      "tool_name": "read_classical_text",
-      "retrieval_tool": "read_classical_text",
-      "path": "platform/src/lib/tools/classical_text_search.ts",
-      "version": "1.0",
-      "status": "CURRENT",
-      "layer": "L0",
-      "channel": "both",
+      "layer": "L2.5",
       "expose_to_chat": true,
       "representations": [
-        "tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "query_schema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "Search query"
-          },
-          "schools": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "limit": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "query"
-        ]
-      },
-      "rebase_note": "L0FR Stream C \u2014 classical text semantic search",
-      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
+      "fingerprint": "b002f6ae74cfa0d8122a1abbf8156b82d25d1ade65cdbeb6bf018a9bbca1f1e0",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "L0FR_CAPABILITY_READ_CHAPTER",
-      "tool_name": "read_chapter",
-      "retrieval_tool": "read_chapter",
-      "path": "platform/src/lib/tools/classical_text_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_pattern_register",
       "status": "CURRENT",
-      "layer": "L0",
-      "channel": "both",
+      "layer": "L3.5",
       "expose_to_chat": true,
       "representations": [
-        "tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "query_schema": {
-        "type": "object",
-        "properties": {
-          "text_id": {
-            "type": "string",
-            "description": "Classical text identifier"
-          },
-          "chapter": {
-            "type": "integer",
-            "description": "Chapter number"
-          },
-          "limit": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "text_id",
-          "chapter"
-        ]
-      },
-      "rebase_note": "L0FR Stream C \u2014 fetch full chapter from classical text",
-      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
+      "fingerprint": "5ad6cd5cf93c9cc04160f06e0b4abb7cefdc6658ebc2d2aef7a29c5aee3d7500",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "L0FR_CAPABILITY_LIST_CLASSICAL_TEXTS",
-      "tool_name": "list_classical_texts",
-      "retrieval_tool": "list_classical_texts",
-      "path": "platform/src/lib/tools/classical_text_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_resonance_register",
       "status": "CURRENT",
-      "layer": "L0",
-      "channel": "both",
+      "layer": "L3.5",
       "expose_to_chat": true,
       "representations": [
-        "tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "query_schema": {
-        "type": "object",
-        "properties": {},
-        "required": []
-      },
-      "rebase_note": "L0FR Stream C \u2014 list all ingested classical texts",
-      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
+      "fingerprint": "a8578286c5b7139fd91ffea004b2bfa77059f184018338118da095ef424bed6f",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "L0FR_CAPABILITY_FIND_VERSES_ABOUT",
-      "tool_name": "find_verses_about",
-      "retrieval_tool": "find_verses_about",
-      "path": "platform/src/lib/tools/classical_text_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_cluster_atlas",
       "status": "CURRENT",
-      "layer": "L0",
-      "channel": "both",
+      "layer": "L3.5",
       "expose_to_chat": true,
       "representations": [
-        "tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "query_schema": {
-        "type": "object",
-        "properties": {
-          "topic": {
-            "type": "string",
-            "description": "Topic to search for"
-          },
-          "text_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "top_k": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "topic"
-        ]
-      },
-      "rebase_note": "L0FR Stream C \u2014 topic-based verse discovery across classical corpus",
-      "fingerprint": "ed9e9a3b78c344d8875993a78d2f7f48e9b05fb053ac6588f944f7ee5294829e",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
+      "fingerprint": "f1403db17e54f4c1c41d7506f4113361aed620f31941119827988083661ce37c",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "L0FR_CAPABILITY_SEARCH_CLASSICAL_TEXTS",
-      "tool_name": "search_classical_texts",
-      "retrieval_tool": "search_classical_texts",
-      "path": "platform/src/lib/tools/classical_text_search.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_contradiction_register",
       "status": "CURRENT",
-      "layer": "L0",
-      "channel": "both",
+      "layer": "L3.5",
       "expose_to_chat": true,
       "representations": [
-        "tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "query_schema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "Search query text"
-          },
-          "top_k": {
-            "type": "integer"
-          },
-          "schools": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "query"
-        ]
-      },
-      "rebase_note": "L0FR Stream C \u2014 alias for read_classical_text with FTS+vector combined",
-      "fingerprint": "eb4eb2bca9f128c25e5b155fe6d8ce097a00069727bb3f6e0228d6f0b4096ebd",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-c-ci-fix"
+      "fingerprint": "5479895b7e1a619eaeec2637ac69fdf5965425e11a473fc908110b699b4a5f19",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_SUTRAVALI_EXTRACTOR",
-      "path": "platform/python-sidecar/brahmagyan/l0_sutravali_extractor.py",
-      "version": "3.0",
+      "canonical_id": "RETRIEVAL_TOOL_temporal",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "da24a147aab45febeff564287353acb1618d63a536c33f7be02d433936969112",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_msr_aggregate",
+      "status": "CURRENT",
+      "layer": "L2.5",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: Sutravali regex extractor \u2014 pure Python, zero LLM; populates sutravali_rules + sutravali_review",
-      "fingerprint": "569b368122604f19ceef7cc6193c047d3ccae44bb7910c13dba7f4670a41f924",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "23d3422f686a9d2e63fff24956a21d438952c31dcb5ef6cc1871b05dc7aa6499",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_SUTRAVALI_ROUTER",
-      "path": "platform/python-sidecar/routers/sutravali.py",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_cgm_graph_walk",
       "status": "CURRENT",
-      "layer": "L0",
-      "expose_to_chat": false,
+      "layer": "L2.5",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: FastAPI router for sutravali query endpoints \u2014 SQL-only",
-      "fingerprint": "e13173c0fb40bed796e628781f29be47578cd438186ffbec103909dd07666d13",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "8d0e6b83d83ddb9b25e44f0acaf0205a4980af58dfba622c388a9545558fce7a",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_QUERY_RULES_TOOL",
-      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_manifest_query",
       "status": "CURRENT",
       "layer": "L0",
       "expose_to_chat": true,
       "representations": [
-        "retrieval_tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "tool_name": "query_rules",
-      "channel": "portal",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: query_rules \u2014 flexible JSONB antecedent filter over sutravali_rules",
-      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "4a6dc22707d99e6ad63f0ce95d5772393de3d50ef7c9b170d9b0e231b51b10a2",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_QUERY_RULES_FOR_PLANET_TOOL",
-      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_vector_search",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": true,
       "representations": [
-        "retrieval_tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "tool_name": "query_rules_for_planet",
-      "channel": "portal",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: query_rules_for_planet \u2014 planet + optional house filter over sutravali_rules",
-      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "a4ed9e132f82434a6426b647dd3bc020a4d333875765b2181f7ccb4174f52859",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_READ_RULE_TOOL",
-      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_kp_query",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": true,
       "representations": [
-        "retrieval_tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "tool_name": "read_rule",
-      "channel": "portal",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: read_rule \u2014 single sutravali rule lookup by UUID",
-      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "11afe90cb9c12aff20ae94b4978e375b864d41c0b8c7f36ccff6ddd425a5f74b",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_LIST_RULES_BY_TEXT_TOOL",
-      "path": "platform/src/lib/retrieve/sutravali_tools.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_saham_query",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": true,
       "representations": [
-        "retrieval_tool"
+        "file"
       ],
       "interface_version": "1.0",
-      "tool_name": "list_rules_by_text",
-      "channel": "portal",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: list_rules_by_text \u2014 paginated sutravali rules by source text_id",
-      "fingerprint": "e399f3411ba007d7485801c1bbc1509e52220602c63a3a914c6f35aeb40d66a1",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "d17069074123ea8b109a20cf5b18a5625655a7890333213efd482359bee1dc57",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_SUTRAVALI_MCP_RESOURCE_BY_PLANET",
-      "path": "platform-mcp/src/resources/sutravali_resource.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_divisional_query",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": true,
       "representations": [
-        "mcp_resource_template"
+        "file"
       ],
       "interface_version": "1.0",
-      "resource_uri_template": "marsys://resource/sutravali/all-by-planet/{planet}",
-      "channel": "mcp",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: MCP resource \u2014 all sutravali rules for a given planet",
-      "fingerprint": "c0f95ba71e77abf7823e1c80aaa63592cea9fc3b20e22ce0149a22f6b96adf2f",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "7805580461065d91a6cc4065b2b7d6ec665e67e5969fe662a6671027c50aac23",
+      "native_id": "abhisek"
     },
     {
-      "canonical_id": "BRAHMAGYAN_SUTRAVALI_MCP_RESOURCE_BY_HOUSE",
-      "path": "platform-mcp/src/resources/sutravali_resource.ts",
-      "version": "1.0",
+      "canonical_id": "RETRIEVAL_TOOL_chart_facts_query",
       "status": "CURRENT",
-      "layer": "L0",
+      "layer": "L1",
       "expose_to_chat": true,
       "representations": [
-        "mcp_resource_template"
+        "file"
       ],
       "interface_version": "1.0",
-      "resource_uri_template": "marsys://resource/sutravali/all-by-house/{n}",
-      "channel": "mcp",
-      "stream": "D",
-      "rebase_note": "L0FR Stream D: MCP resource \u2014 all sutravali rules for a given house number",
-      "fingerprint": "c0f95ba71e77abf7823e1c80aaa63592cea9fc3b20e22ce0149a22f6b96adf2f",
-      "last_verified_on": "2026-06-24",
-      "last_verified_session": "L0FR-stream-d-ci-fix"
+      "fingerprint": "5f7e09ad03a878fa149c6bc53fbd2b09d59c7ff3e927b24188a7bdb14ca6934d",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_cross_varga_dignity_query",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bf18c97752fea9d86ad37e562f4dc46d38d889d6d06585f9788902ae7d21177e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_domain_report_query",
+      "status": "CURRENT",
+      "layer": "L3",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "cf9bfde7aa74864b965c758ab0aee92f6e727434cf68c32a4ac78d1b77355c28",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_remedial_codex_query",
+      "status": "CURRENT",
+      "layer": "L4",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "715f1b40b5521653eda1c1d5f86e14790e346717bb6fbc7d1772e02c2e95ffca",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_timeline_query",
+      "status": "CURRENT",
+      "layer": "L5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7117a4c055feb5dcb14d9098af825fdc406d6057b112d34438a082d6460c57c8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_signal_state",
+      "status": "CURRENT",
+      "layer": "L2.5",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "346ff5f37a993c05f599ac1639544be2ada7a90011efa1a1ec9a9457124c5cbe",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_kp_ruling_planets",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "295003dae2cb1d23ce7b28382359412937d0d170b8f9877d537aa8ae043ad5e8",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_varshaphala",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "82b231a899057cf727ffdc576a958a1151fc924f1702001e88c529595792c243",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_ephemeris",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f9964e4750b34a5ea4a143047ff0e020fd2f7e0657f9f058523dc94ee70c3ef5",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_panchanga",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "00c72ae207a1d3ed180cfff1a8b8a64582471f703225c21d8f70b80ee0b96049",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_transit_event",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a9cb5f1576a7498835d8d411d6273726b3d3e473d2d32073b54c2cfe9414f126",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_dasha_periods",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9f7bd5d0161ecf06d51518b929aefbf099e760f83420dbfc74492708db0d1f92",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_muhurat",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "50f9546f0bce1f1561d113b6a2cd6e739b3adc9463e331fb1fd1845ceb29aaf9",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_jaimini_drishti",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6a13c0adbbdf87003800e7e3f4c6324ea1b6f33832415950e5733ccc619bbc3e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_query_v7_additions",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6d1280149c5a078f34bc1edee66fa85dc1378cf5c5af7dd590b1a657a2149c43",
+      "native_id": "abhisek"
     }
-  ],
-  "fingerprint": "de447fa5d711940e5eea086f391031620e3d6dc315cd400328305364dd8281d3",
-  "mcpt_v310_foundation": {
-    "phase": "v3.1.0",
-    "status": "CLOSED",
-    "sealed_on": "2026-05-22",
-    "sealed_by_session": "v3.1.0-S6",
-    "branch": "feature/mcpt-foundation",
-    "merged_to": "feature/mcpt-final",
-    "migrations": ["072_mcp_bundle_cache", "073_perf_log_extensions", "074_audit_findings", "075_prediction_outcomes", "076_data_source_expected_and_caveats", "077_mcp_alerts_config_and_tool_registry"],
-    "tools_registered": ["holistic_bundle", "multi_school_bundle", "tool_health", "data_coverage"],
-    "resources_registered": ["marsys://chart-overview", "marsys://house-rules", "marsys://active-dashas", "marsys://capabilities", "marsys://chart-snapshot"],
-    "feature_flag": "MCP_V3_ENABLED",
-    "feature_flag_default": true,
-    "sealing_artifact": "00_ARCHITECTURE/MCPT_V310_CLOSE.md",
-    "notes": "Foundation phase of MCP Transformation (pure-MCP v3.1 rebuild). S1: code fixes; S2: bundles+SSE; S3: 5 resources+house-rules; S4: perf system+audit; S5: operator dashboard; S6: sealing+flag+merge."
-  },
-  "last_updated_by": "v3.1.0-S6",
-  "last_session": "v3.1.0-S6-feature/mcpt-foundation",
-  "last_updated": "2026-05-22"
+  ]
 }
