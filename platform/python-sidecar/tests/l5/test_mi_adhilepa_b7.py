@@ -360,3 +360,98 @@ class TestMultipleSignalFamiliesOverlay:
         MiAdhilepaWriter().run(ctx)
         count = helper._count_signal_adjustment_inserts(ctx)
         assert count == 3, f"Three yoga signals → expect 3 rows, got {count}"
+
+
+# ── IMPORTANT-1: fam_transit routing for tajaka / sade_sati ──────────────────
+
+class TestTransitFamilyRouting:
+    """tajaka and sade_sati subsystems must route to fam_transit, not fam_msr_signal."""
+
+    def test_tajaka_maps_to_fam_transit(self):
+        _, fn = _import_writer()
+        assert fn(_sig("uuid-t1", source_subsystem="tajaka")) == "fam_transit"
+
+    def test_sade_sati_maps_to_fam_transit(self):
+        _, fn = _import_writer()
+        assert fn(_sig("uuid-t2", source_subsystem="sade_sati")) == "fam_transit"
+
+
+# ── IMPORTANT-2: _load_multipliers filters by target_kind='family' ────────────
+
+class TestLoadMultipliersFiltersByFamilyKind:
+    """
+    _load_multipliers must only return rows with target_kind='family'.
+    Mixed-kind rows with the same target_ref must not silently overwrite
+    the family row via the dict comprehension.
+    """
+
+    def test_load_multipliers_filters_by_family_kind(self):
+        """
+        Mock DB returns rows with target_kind in ('signal', 'family', 'edge').
+        Only the 'family' row must appear in the returned dict.
+        """
+        from pipeline.orchestrator.writers.mi_adhilepa import _load_multipliers
+
+        # Build a mock connection whose cursor returns mixed-kind rows
+        family_row = {
+            "target_ref": "fam_yoga",
+            "target_kind": "family",
+            "applied_multiplier": 1.1,
+            "raw_multiplier": 1.1,
+            "n_observations": 10,
+            "kill_switch_state": "active",
+        }
+        signal_row = {
+            "target_ref": "fam_yoga",   # same target_ref, different kind
+            "target_kind": "signal",
+            "applied_multiplier": 0.5,
+            "raw_multiplier": 0.5,
+            "n_observations": 2,
+            "kill_switch_state": "active",
+        }
+        edge_row = {
+            "target_ref": "fam_graha_natal",
+            "target_kind": "edge",
+            "applied_multiplier": 0.8,
+            "raw_multiplier": 0.8,
+            "n_observations": 5,
+            "kill_switch_state": "active",
+        }
+
+        # The SQL now carries AND target_kind = 'family', so the DB should only
+        # return family rows.  We verify that the query sent contains the filter.
+        captured_sql = []
+
+        def _make_cursor(row_factory=None):
+            cur = MagicMock()
+            cur.__enter__ = MagicMock(return_value=cur)
+            cur.__exit__ = MagicMock(return_value=False)
+
+            def _execute(sql, params=None):
+                captured_sql.append(sql)
+                # Simulate DB honouring the AND target_kind='family' filter:
+                # only return the family row
+                cur._result = [family_row]
+
+            cur.execute = MagicMock(side_effect=_execute)
+            cur.fetchall = MagicMock(side_effect=lambda: cur._result)
+            return cur
+
+        conn = MagicMock()
+        conn.cursor = MagicMock(side_effect=_make_cursor)
+
+        result = _load_multipliers(conn, "482012f1-0000-0000-0000-000000000000")
+
+        # 1. The emitted SQL must contain the target_kind filter
+        assert len(captured_sql) == 1
+        assert "target_kind = 'family'" in captured_sql[0], (
+            f"Expected AND target_kind = 'family' in query, got: {captured_sql[0]}"
+        )
+
+        # 2. Result dict contains only the family row
+        assert "fam_yoga" in result
+        assert result["fam_yoga"]["target_kind"] == "family"
+        assert float(result["fam_yoga"]["applied_multiplier"]) == 1.1
+
+        # 3. edge_row target_ref absent (DB filtered it; our mock confirms intent)
+        assert "fam_graha_natal" not in result

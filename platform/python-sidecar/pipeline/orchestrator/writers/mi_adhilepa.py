@@ -70,6 +70,8 @@ def _signal_family_key(sig: dict) -> str | None:
         return "fam_divisional"
     if subsystem in ("structural", "nakshatra", "sensitive", "panchanga"):
         return "fam_graha_natal"
+    if subsystem in ("tajaka", "sade_sati"):
+        return "fam_transit"
     if "positions" in asset:
         return "fam_graha_natal"
     if cls in ("dignity", "strength", "position", "magnitude"):
@@ -93,7 +95,7 @@ def _load_multipliers(conn, chart_id: str) -> dict[str, dict]:
         cur.execute(
             "SELECT target_ref, target_kind, applied_multiplier, raw_multiplier, "
             "       n_observations, kill_switch_state "
-            "FROM mimamsa_multipliers WHERE chart_id = %s",
+            "FROM mimamsa_multipliers WHERE chart_id = %s AND target_kind = 'family'",
             (chart_id,),
         )
         return {r["target_ref"]: dict(r) for r in cur.fetchall()}
