@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import collections
 import importlib.util
+import pathlib
 import sys
 import time
 import types
@@ -25,10 +26,11 @@ from unittest.mock import MagicMock, patch
 # Shared loader helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-_WORKTREE = (
-    "/Users/Dev/Vibe-Coding/Apps/Madhav/"
-    "platform/python-sidecar/pipeline/orchestrator/writers/"
+_WRITERS_DIR = str(
+    pathlib.Path(__file__).parent.parent / "pipeline" / "orchestrator" / "writers"
 )
+
+_WORKTREE = _WRITERS_DIR + "/"
 
 _PKG = "pipeline.orchestrator.writers"
 
@@ -36,9 +38,6 @@ FakeWriterResult = collections.namedtuple(
     "WriterResult", ["asset_id", "rows_inserted", "notes", "duration_seconds"],
     defaults=[None, 0, None, 0.0],
 )
-
-
-_WRITERS_DIR = "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers"
 
 
 def _ensure_writers_stub(extra_attrs: dict | None = None):
