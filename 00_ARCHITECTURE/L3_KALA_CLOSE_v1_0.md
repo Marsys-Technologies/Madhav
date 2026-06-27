@@ -1,8 +1,8 @@
 ---
 artifact: L3_KALA_CLOSE_v1_0.md
 canonical_id: L3_KALA_CLOSE
-version: 1.4
-status: CURRENT (perfectly closed — 12/12 buildable, registry reproducible)
+version: 1.3
+status: CURRENT (re-sealed U2)
 produced_during: L3-KALA-AUTONOMOUS (Sūtradhāra Conductor; 2026-06-21)
 role: >
   Definitive sealed record for the L3 Kāla (Temporal Projection) layer.
@@ -14,16 +14,6 @@ supersedes: >
   (CLAUDECODE_BRIEF_L3_KA_SANGAM_v1_0.md etc.) — those were entry briefs;
   this doc is the sealed closure record.
 changelog:
-  - v1.4 (2026-06-27, L3-KALA-FINAL-CLOSE): Build-path perfection pass.
-    ka_tulana self-test writer added (PR #347, migration 344): @register('ka_tulana')
-    WriterBase subclass mirrors ka_gochara pattern; _run_selftest() exercises real
-    KaTulanaService.rank_windows; has_writer=true flags ka_tulana in asset_registry;
-    click-Build now plans all 12/12 ka_* (was 11 — ka_tulana was silently excluded).
-    ka_* registry back-fill migration added (345_register_ka_assets.sql, PR #349):
-    all 12 ka_* rows + depends_on edges now in source control; ON CONFLICT DO NOTHING;
-    a fresh DB can reconstruct the L3 DAG without prod-seeded state.
-    CF.L3.8 fully RESOLVED operationally (native rebuild → 12/12 built, stale badges
-    cleared via orchestrator asset_throughput stamp — pending native click on tracker).
   - v1.3 (2026-06-22, R3 U2 REMEDIATION): Re-sealed for U2 lifetime
     convergence. horizon_tier column added to kala_convergence (mig 340);
     lifetime convergence tier implemented in ka_sangam (dāśā-boundary-anchored,
@@ -320,7 +310,7 @@ Per `L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md`:
 | CF.L3.5 | domain inference in ka_bhavishya_lekha | **RESOLVED** — signal_type_id domain map from chart_facts wired in PR #319; rank-modulo rotation retired |
 | CF.L3.6 | ka_dasha_kala eligibility integration into ka_sangam Mode A | **RESOLVED** — KaDashaKalaService call wired into Mode A soft funnel (PR #319); 0.5 neutral proxy retired; daśā prior is now real |
 | CF.L3.7 | UI cosmetic: service_ok assets render as "NOT BUILT" | **RESOLVED** — StatusDot fix committed on main (commit a299eee3, PR #326 era). `DRAFT·healthy` StatusDot now renders green. Service assets with non-null `service_health` now display "SERVICE · healthy" instead of "NOT BUILT". Render family addressed. |
-| CF.L3.8 | Build-state stamp via reconcile path (not orchestrator) | **RESOLVED** (fully — code + operational) — orchestrator wired for future L3 rebuilds (§N.2 path); bypass scripts retired (PR #326). ka_tulana self-test writer added (PR #347, migration 344): click-Build now plans all 12/12 ka_* (was 11). ka_* registry back-fill migration 345 closes the reproducibility gap. Pending: native clicks Rebuild→Kāla on tracker; once done, 12/12 built DAG-ordered, stale badges cleared via orchestrator asset_throughput stamp. |
+| CF.L3.8 | Build-state stamp via reconcile path (not orchestrator) | **RESOLVED** (code side) — orchestrator wired for future L3 rebuilds (§N.2 path). Reconcile bypass scripts (`reconcile_l3_build_state.py` and standalone `run_ka_*_prod.py`) retired via PR #326 merged. Future L3 rebuilds go through the orchestrator click-Build path only. |
 
 ---
 
