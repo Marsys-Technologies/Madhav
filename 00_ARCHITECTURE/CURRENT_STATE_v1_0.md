@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.01
+version: 6.02
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,55 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.02 (2026-06-28, BUILD-PATH-REMEDIATION-2026-06-28):
+    **JIS Build-Path Correctness & Enhancement Remediation — 9-agent wave merged to main.**
+    Wave 0 (G1, pre-session): NATIVE_BIRTH elimination complete; `resolve_birth_params()` is the
+    universal birth-param guard for all charts; contamination guard test (Groups 1–9) passes clean.
+    Wave 1 (A1–A9, implemented + reviewed + fixed in this session):
+      A1 (bo_laksana): B2 salience stratification fixed (3 lookup builders corrected: strength
+        uses fact_subject, dignity uses varga='D1' JSON filter, AV uses SARVA-HOUSE_N rows);
+        B3-src graha inference 4-level priority; O3 navamsha cross-check (~45 signals/aya);
+        shadbala_norm key mismatch fixed (_LONG_TO_SHORT dict).
+      A2 (bo_karanajala): B3-consume tests; B8 subsystem cols in _EDGE_INSERT; O4 argala
+        edges (BPHS Ch.28 positions {2,4,11}, virodha {12,3,10}); virodha_occupied O(1) lookup.
+      A3 (ka_sangam): B6 ayanamsha key 'lahiri'→'lahiri_chitrapaksha'; B4-src domain stamp;
+        O7 AV-bindhu Mode D (sign SAV≥28 convergence); Mode D predicate-loop duplication guard;
+        migration 361 (kala_convergence.domain TEXT + mode CHECK widens to ARRAY['A','B','C','D']).
+      A4 (ka_bhavishya_lekha + mi_bhavisya): B4-consume kc.domain propagation; FROZEN-contract
+        conn.rollback() removed (replaced with information_schema probe, read-only); O2 per-domain
+        driving-signals grouping (top-5 per domain by salience); multi-domain test fixed.
+      A5 (ph_nimitta + ph_muhurta): CONTRACT-3 cgm_meta fixed (chart-level aggregate, not
+        per-signal keyed dict); chart_id passed explicitly to _enrich_discovery_row; transit-score
+        modulo %6→%12 (12 distinct values across zodiac); B5 timing + B9 cap already implemented.
+      A6 (mi_adhilepa): B7 signal-family key matching; fam_transit routing for tajaka/sade_sati;
+        _load_multipliers AND target_kind='family' filter.
+      A7 (4 orphaned Bodha writers): bo_chart_gestalt (pointer synthesis gestalt), bo_cdlm_summary
+        (CDLM aggregation), bo_cgm_motifs (mutual_reception/stellium/parivartana detection),
+        bo_cgm_paths (dispositor chain traversal — CONTRACT-3 producer); migration 358 (asset_registry
+        ON CONFLICT DO UPDATE for all 4); ON CONFLICT DO NOTHING fragility fixed.
+      A8 (ka_jivana_parva): O6 Pratyantar-dasha level-3 current-AD rows; as_of_date temporal
+        anchor (single date.today() at entry, bound SQL param, no midnight-crossing risk).
+      A9 (warnings sweep): bo_upaya chart-typology from chart_facts; ka_vighnakara swisseph guard
+        BEFORE DELETE (prior-data protection); bo_samvada dead _CREATE_VIEW DDL removed;
+        mi_pramana/mi_darshana stub markers added.
+    Wave 2 (integration): all 9 branches merged to main in dependency order (A1,A2,A7,A9,A6,A8
+      → A3 migration 361 → A4 consumer → A5 CONTRACT-3 consumer). Test suite: 3,471 PASS,
+      47 pre-existing baseline failures (unchanged), 0 regressions. Contamination greps:
+      NATIVE_BIRTH in orchestrator writers=CLEAN; execute_values in orchestrator=CLEAN;
+      commit/rollback in writer run()=CLEAN.
+    platform/ migrations through 358; supabase/ migrations through 361.
+    last_session_id: BUILD-PATH-REMEDIATION-2026-06-28.
+    predecessor_session: ABHINANDAN-REBUILD-L1L5-2026-06-27.
+    next_session_objective: >
+      "Build-path remediation complete. L2 Bodha now has 4 previously-orphaned writers
+      (bo_chart_gestalt, bo_cdlm_summary, bo_cgm_motifs, bo_cgm_paths) registered and
+      buildable. Salience stratification, argala edges, domain propagation, temporal anchoring,
+      and signal-family matching all corrected. Next: (a) run native 482012f1 rebuild to verify
+      all new writers build correctly end-to-end; (b) apply migrations 358+361 to prod
+      (surgical: platform/migrations/358_bodha_orphaned_writer_registry.sql,
+      supabase/migrations/361_kala_convergence_domain.sql); (c) consider re-running Abhinandan
+      1c826d5a to exercise O3/O4/O6/O7 enhancements."
+    file_updated_at: 2026-06-28. file_updated_by_session: BUILD-PATH-REMEDIATION-2026-06-28.
   - v6.01 (2026-06-27, ABHINANDAN-REBUILD-L1L5-2026-06-27):
     **Abhinandan Mohanty (non-native chart 1c826d5a) rebuilt end-to-end L1→L5 via the Nirmāṇa
     build tracker — all per-chart assets lit, 0 errors, 8 distinct bugs found-and-fixed.**

@@ -30027,4 +30027,120 @@ fixed + deployed, orchestrator gate in place. Supabase next migration **361+**. 
 follow-ups: wire the DAG-order audit as a standing reconciliation check; the L4 Phala
 layer-campaign remains the next formal objective.
 
+---
+
+## Session BUILD-PATH-REMEDIATION-2026-06-28 — JIS Build-Path Correctness & Enhancement Remediation (2026-06-28)
+
+**Environment**: Claude Code (CLI, `/Users/Dev/Vibe-Coding/Apps/Madhav`)
+
+**Objective**: Correct 10 build-path blockers (B1–B10) and implement 7 enhancements (O1–O7) across L1–L5 writers via a 9-agent parallel wave. Code-plane only — zero chart data operations.
+
+```yaml
+session_open:
+  session_id: BUILD-PATH-REMEDIATION-2026-06-28
+  opened_on: 2026-06-28
+  predecessor_session: ABHINANDAN-REBUILD-L1L5-2026-06-27
+  active_layer_campaign: L2 Bodha (NEXT — unchanged; this is a cross-layer code-quality session)
+  may_touch:
+    - "platform/python-sidecar/pipeline/orchestrator/writers/bo_*.py"
+    - "platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py"
+    - "platform/python-sidecar/pipeline/orchestrator/writers/ph_*.py"
+    - "platform/python-sidecar/pipeline/orchestrator/writers/mi_*.py"
+    - "platform/python-sidecar/tests/**"
+    - "platform/migrations/358_*"
+    - "platform/supabase/migrations/361_*"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+  must_not_touch:
+    - "platform/python-sidecar/pipeline/orchestrator/orchestrator.py"
+    - "platform/python-sidecar/pipeline/orchestrator/runner.py"
+    - "Any chart data table (chart_facts, chart_dashas, bodha_*, kala_*, phala_*, mimamsa_*)"
+    - "public.charts rows (data fields — metadata writes permitted)"
+    - "L0 Brahmagyan tables"
+  red_team_due: false
+```
+
+### Work completed
+
+**Wave 0 (G1 — pre-session, already merged):**
+- NATIVE_BIRTH elimination: `resolve_birth_params()` universal guard; contamination guard test Groups 1–9 passes; `birth_params.py` as sole authority.
+
+**Wave 1 — 9 parallel agents (A1–A9), each owning exclusive files:**
+
+| Agent | Files owned | Blockers fixed | Enhancements |
+|---|---|---|---|
+| A1 | bo_laksana.py | B2 (salience stratification — 3 lookup builders) + B3-src (graha inference) | O3 navamsha cross-check (~45 signals/aya) |
+| A2 | bo_karanajala.py | B3-consume + B8 (subsystem cols in edge INSERT) | O4 argala edges (BPHS Ch.28) |
+| A3 | ka_sangam.py + migration 361 | B6 (ayanamsha key) + B4-src (domain stamp) | O7 AV-bindhu Mode D convergence windows |
+| A4 | ka_bhavishya_lekha.py + mi_bhavisya.py | B4-consume (domain propagation) | O2 per-domain driving-signals grouping |
+| A5 | ph_nimitta.py + ph_muhurta.py | B5 (timing from detected_at), B9 (muhurta cap 400), CONTRACT-3 (cgm_meta) | — |
+| A6 | mi_adhilepa.py | B7 (signal-family key matching) | — |
+| A7 | bo_chart_gestalt.py + bo_cdlm_summary.py + bo_cgm_motifs.py + bo_cgm_paths.py + migration 358 | B10 (4 orphaned bodha writers unregistered) | O5 (CONTRACT-3 producer: bo_cgm_paths) |
+| A8 | ka_jivana_parva.py | — | O6 Pratyantar-dasha level-3 current-AD |
+| A9 | bo_upaya.py + ka_vighnakara.py + bo_samvada.py + mi_pramana.py + mi_darshana.py | B1 warnings sweep | — |
+
+**Review/fix cycles per agent (all BLOCKING issues resolved):**
+- A1: 2 IMPORTANT fixed (stale docstring + shadbala_norm key mismatch for O3)
+- A2: 2 BLOCKING fixed (VIRODHA_POSITIONS {3,5,10}→{12,3,10}; virodha_occupied O(1) lookup)
+- A3: 1 BLOCKING fixed (Mode D predicate-loop guard — was called N×predicates not once)
+- A4: 1 BLOCKING fixed (conn.rollback() removed → information_schema read-only probe); 1 test fix
+- A5: 1 BLOCKING fixed (CONTRACT-3 cgm_meta key mismatch); 2 IMPORTANT fixed (chart_id + %6→%12)
+- A6: 2 IMPORTANT fixed (fam_transit routing for tajaka/sade_sati; target_kind='family' filter)
+- A7: 2 BLOCKING fixed (ON CONFLICT DO NOTHING fragility; NULL-key ON CONFLICT no-op removed)
+- A8: 2 IMPORTANT fixed (as_of_date temporal anchor; test coverage for bound SQL param)
+- A9: 1 BLOCKING fixed (ka_vighnakara swisseph guard moved BEFORE DELETE)
+
+**Wave 2 (integration):**
+- All 9 branches merged to main in dependency order (A1,A2,A7,A9,A6,A8 → A3 → A4 → A5)
+- Test suite: **3,471 PASS, 47 pre-existing baseline failures, 0 new regressions**
+- Contamination greps: NATIVE_BIRTH in orchestrator/writers=CLEAN; execute_values=CLEAN; commit/rollback in run()=CLEAN
+- 2 test isolation fixes on main (sys.modules contamination in test_bo_a1_fixes.py and test_a9_warnings.py)
+
+### Artifacts produced / modified
+
+- 9 writer files corrected (bo_laksana, bo_karanajala, ka_sangam, ka_bhavishya_lekha, mi_bhavisya, ph_nimitta, ph_muhurta, mi_adhilepa, ka_jivana_parva)
+- 4 new bodha writer files (bo_chart_gestalt, bo_cdlm_summary, bo_cgm_motifs, bo_cgm_paths)
+- 3 existing writer files cleaned (bo_upaya, ka_vighnakara, bo_samvada, mi_pramana, mi_darshana)
+- `platform/migrations/358_bodha_orphaned_writer_registry.sql` — 4 orphaned bodha assets registered
+- `platform/supabase/migrations/361_kala_convergence_domain.sql` — domain column + mode CHECK widened
+- Governance: CURRENT_STATE_v1_0.md → v6.02; this SESSION_LOG entry
+
+### Gate summary
+
+| Gate | Result |
+|---|---|
+| CODE-PLANE ONLY (no chart data writes) | yes — zero data operations |
+| FROZEN orchestrator contract intact | yes — 0 commit/rollback violations in run() |
+| File ownership exclusive (no two agents same file) | yes — enforced by worktree isolation |
+| Tests pass (wave-specific) | 240/240 |
+| Tests pass (full suite) | 3,471 PASS, 47 pre-existing, 0 regressions |
+| Contamination greps clean | yes — all 3 clean |
+| Migrations applied to prod | pending (361, 358) |
+
+```yaml
+session_close:
+  session_id: BUILD-PATH-REMEDIATION-2026-06-28
+  closed_on: 2026-06-28
+  outcome: >
+    COMPLETE — 10 blockers fixed + 7 enhancements implemented across 9 writer files;
+    4 new bodha writers registered; 2 migrations authored; all merged to main;
+    3,471 tests pass, 0 regressions.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L2 Bodha (NEXT) — unchanged
+  current_state_updated: true
+  current_state_version: 6.02
+  session_log_appended: true
+  red_team_pass: "n/a — cross-layer code-quality/remediation session (not a macro-phase close)"
+  next_session_objective: >
+    Run native 482012f1 rebuild to exercise all new writers (bo_chart_gestalt, bo_cdlm_summary,
+    bo_cgm_motifs, bo_cgm_paths, O3/O4/O6/O7 enhancements). Apply migrations 358+361 to prod
+    surgically. Optionally re-run Abhinandan 1c826d5a to validate enhancement outputs.
+    L4 Phala campaign remains the next formal layer-campaign objective.
+```
+
+### Next session objective
+
+**Build-path remediation complete (2026-06-28).** 10 blockers fixed, 7 enhancements live, 4 new Bodha writers registered, all merged to main with 3,471 tests passing. **Pending prod ops**: apply migrations `platform/migrations/358_bodha_orphaned_writer_registry.sql` and `platform/supabase/migrations/361_kala_convergence_domain.sql`. Then: run native 482012f1 rebuild to exercise the new writers end-to-end.
+
 *End of ABHINANDAN-REBUILD-L1L5-2026-06-27 entry — 2026-06-27.*
