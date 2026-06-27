@@ -52,11 +52,20 @@ class KaJivanaParvaWriter(WriterBase):
 
         # Read convergence windows with signature_class for dominant_signal_class computation
         with conn.cursor() as cur:
+            # signature_class is NOT on kala_convergence — it lives on the activation
+            # predicate for the window's signal. Join via signal_id (LATERAL LIMIT 1 so the
+            # per-ayanamsha predicate rows don't multiply each convergence window).
             cur.execute("""
-                SELECT kc.peak_date, kc.convergence_score, kc.signature_class,
+                SELECT kc.peak_date, kc.convergence_score, kap.signature_class,
                        COALESCE(kd.effective_score, kc.convergence_score) AS effective_score
                 FROM kala_convergence kc
                 LEFT JOIN kala_darshana kd ON kc.convergence_id = kd.convergence_id
+                LEFT JOIN LATERAL (
+                    SELECT signature_class
+                    FROM kala_activation_predicates kap
+                    WHERE kap.signal_id = kc.signal_id AND kap.chart_id = kc.chart_id
+                    LIMIT 1
+                ) kap ON true
                 WHERE kc.chart_id = %s AND kc.peak_date IS NOT NULL
             """, (chart_id,))
             conv_windows = cur.fetchall()
