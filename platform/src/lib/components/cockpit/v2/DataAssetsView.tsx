@@ -63,9 +63,10 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
   })
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
-  const { stats, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
-  // Keep ref in sync with the stable refetchStats callback (used by onCompleted belt-and-suspenders).
-  refetchStatsRef.current = refetchStats
+  const { stats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  // Keep ref in sync — use the LIVE refetch so a completed run's final counts (incl. global
+  // assets that bypass the rows_written cache) match the DB, not a stale build-time cache.
+  refetchStatsRef.current = refetchLive
 
   // C3: When the global Refresh button is pressed, CockpitShell increments refreshKey.
   // Fire all three re-fetches so counts, states, and registry meta are all fresh.
@@ -136,10 +137,10 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
       if (RUN_DONE) {
         setSseOverlay(new Map())
         setSubstepOverlay(new Map())
-        refetchStats()
+        refetchLive()
       }
     }
-  }, [refreshRun, refetchStats])
+  }, [refreshRun, refetchLive])
 
   useCockpitSSE(chartId, handleSSEEvent)
 
@@ -281,7 +282,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
                 chartId={chartId}
                 activeRun={activeRun}
                 substepOverlay={substepOverlay}
-                onRunStarted={() => { refreshRun(); refetchStats() }}
+                onRunStarted={() => { refreshRun(); refetchLive() }}
               />
             </div>
           )

@@ -24,8 +24,12 @@ export function useAssetStats({
   const inFlightRef = useRef(false)
 
   const fetchStats = useCallback(
-    async (signal: AbortSignal, liveMode = false) => {
-      if (inFlightRef.current) { console.log('[AS] skipping — in flight'); return }
+    async (signal: AbortSignal, liveMode = false, force = false) => {
+      // Idle polls coalesce (skip if one is already running) to avoid pile-ups, but an
+      // explicit refetch after a mutation (clear/build/run-complete) must NEVER be dropped —
+      // otherwise the tracker keeps showing pre-action numbers until the next poll. force=true
+      // bypasses the in-flight guard so post-action refreshes always reach the DB.
+      if (inFlightRef.current && !force) { console.log('[AS] skipping — in flight'); return }
       inFlightRef.current = true
       const modeParam = liveMode ? '&mode=live' : ''
       console.log('[AS] fetching stats for chartId=', chartId, liveMode ? '(live)' : '')
@@ -77,16 +81,20 @@ export function useAssetStats({
 
   // Expose a one-shot refetch for callers that need to force an immediate poll
   // (e.g. after a run ends so the cleared SSE overlay is backfilled at once).
+  // force=true so it is never dropped by the in-flight guard.
   const refetch = useCallback(() => {
     const controller = new AbortController()
-    fetchStats(controller.signal)
+    fetchStats(controller.signal, false, true)
   }, [fetchStats])
 
-  // Live-mode refetch: bypasses the rows_written shortcut for global assets so count_sql runs.
-  // Used by the global Refresh path (C2 native ruling — live count on explicit Refresh).
+  // Live-mode refetch: bypasses the rows_written shortcut for global assets so count_sql runs
+  // and the displayed counts match the live DB (a stale rows_written cache otherwise lingers,
+  // e.g. a global asset whose table was emptied out-of-band). Used by the global Refresh path
+  // AND every post-mutation refresh (clear/build/run-complete) so the tracker reflects the DB.
+  // force=true so it is never dropped by the in-flight guard.
   const refetchLive = useCallback(() => {
     const controller = new AbortController()
-    fetchStats(controller.signal, true)
+    fetchStats(controller.signal, true, true)
   }, [fetchStats])
 
   return { stats, lastFetched, error, refetch, refetchLive }

@@ -94,6 +94,16 @@ type ThroughputEntry = { state: string; last_built_at: string | null; rows_writt
 // - Single connection + SAVEPOINTs (v2): 3 round-trips each × 76 assets → 73-92s
 // - Pure parallel pool.query() (v3): connectionTimeout on tail queries → 8-13s
 // - rows_written shortcut + live fallback (v4, this): ~200ms
+//
+// v5 staleness fix: the rows_written shortcut is a build-time cache and can drift from
+// the live table (e.g. a global asset whose table is emptied out-of-band leaves a stale
+// non-zero rows_written, so the tracker shows phantom rows). The shortcut only EARNS its
+// keep on genuinely large tables where a live COUNT(*) is slow (e.g. ephemeris_daily,
+// ~825k rows). For everything below this threshold a live count is cheap (single-digit ms),
+// so we run it and the displayed number always matches the DB. This keeps the perf win for
+// the one or two bulk reference tables while making every small global asset accurate.
+const LARGE_COUNT_SHORTCUT_THRESHOLD = 50_000
+
 async function fetchAllCounts(
   assets: RegistryAsset[],
   chartId: string | null,
@@ -127,7 +137,13 @@ async function fetchAllCounts(
     // On ?mode=live (explicit Refresh / post-build refetch), bypass the shortcut so global
     // assets also get a live count_sql value (C2 native ruling 2026-06-26).
     const tp = throughputMap.get(asset.asset_id)
-    if (!liveMode && tp != null && tp.rows_written != null && asset.scope !== 'per_chart') {
+    if (
+      !liveMode &&
+      tp != null &&
+      tp.rows_written != null &&
+      tp.rows_written > LARGE_COUNT_SHORTCUT_THRESHOLD &&
+      asset.scope !== 'per_chart'
+    ) {
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,
