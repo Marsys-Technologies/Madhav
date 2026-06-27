@@ -98,11 +98,11 @@ export interface KalaSnapshot {
     pd_end: string
     days_elapsed: number
     days_remaining: number
-  }
+  } | null
   transit_state: { transits: unknown[]; source: string }
   active_convergences: ConvergenceWindow[]
   active_obstructions: ObstructionEntry[]
-  kala_readiness: { score: number; interpretation: string; breakdown: unknown }
+  kala_readiness: { score: number | null; interpretation: string; breakdown: unknown | null }
   kala_summary: string
   provenance_envelope: Record<string, unknown>
 }
@@ -151,186 +151,44 @@ async function fetchFromSidecar<T>(
 }
 
 // ── Algorithmic fallback data ─────────────────────────────────────────────────
-// When sidecar is unavailable, return pre-computed L3 data for the native.
-// All values are FORENSIC-grounded (FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §22).
+// REMEDIATION D7: native-specific FORENSIC data arrays REMOVED.
+// When sidecar is unavailable, we return graceful-empty arrays for the requested chart.
+// Returning native data for an arbitrary chart_id would be contamination.
+// The sidecar is required for real data; these constants are now empty.
+//
+// Original note: data was FORENSIC-grounded (FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §22)
+// for native chart 482012f1-... — NOT valid for any other chart.
 
-const FORENSIC_DASHA_PERIODS: TimelineRow[] = [
-  { row_type: 'dasha_period', md_lord: 'Jupiter', ad_lord: 'Venus', ad_start: '1984-02-05', ad_end: '1986-03-03', alignment_score: 0.73 },
-  { row_type: 'dasha_period', md_lord: 'Saturn',  ad_lord: 'Saturn',  ad_start: '1991-08-21', ad_end: '1994-08-24', alignment_score: 0.32 },
-  { row_type: 'dasha_period', md_lord: 'Saturn',  ad_lord: 'Mercury', ad_start: '1994-08-24', ad_end: '1997-05-03', alignment_score: 0.48 },
-  { row_type: 'dasha_period', md_lord: 'Saturn',  ad_lord: 'Venus',   ad_start: '1998-06-12', ad_end: '2001-08-12', alignment_score: 0.55 },
-  { row_type: 'dasha_period', md_lord: 'Saturn',  ad_lord: 'Jupiter', ad_start: '2008-02-09', ad_end: '2010-08-21', alignment_score: 0.62 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Mercury', ad_start: '2010-08-21', ad_end: '2013-01-18', alignment_score: 0.61 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Ketu',    ad_start: '2013-01-18', ad_end: '2014-01-15', alignment_score: 0.45 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Venus',   ad_start: '2014-01-15', ad_end: '2016-11-15', alignment_score: 0.67 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Sun',     ad_start: '2016-11-15', ad_end: '2017-09-21', alignment_score: 0.55 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Moon',    ad_start: '2017-09-21', ad_end: '2019-02-21', alignment_score: 0.52 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Rahu',    ad_start: '2020-02-18', ad_end: '2022-09-06', alignment_score: 0.44 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Jupiter', ad_start: '2022-09-06', ad_end: '2024-12-12', alignment_score: 0.72 },
-  { row_type: 'dasha_period', md_lord: 'Mercury', ad_lord: 'Saturn',  ad_start: '2024-12-12', ad_end: '2027-08-21', alignment_score: 0.52 },
-  { row_type: 'dasha_period', md_lord: 'Ketu',    ad_lord: 'Ketu',    ad_start: '2027-08-21', ad_end: '2028-01-18', alignment_score: 0.35 },
-]
-
-const FORENSIC_CONVERGENCE_WINDOWS: ConvergenceWindow[] = [
-  {
-    window_start: '2002-04-24', window_end: '2002-10-21', anchor_date: '2002-07-24',
-    convergence_score: 0.7133, indicator_count: 4, convergence_type: 'career_peak',
-    valence: 'favorable',
-    constituent_factors: [
-      { label: 'Dasha_start: Saturn/Moon (2002-07-24)', weight: 0.85, event_type: 'dasha_transition' },
-      { label: 'SIG.SATURN.MOON.AD.2002', weight: 0.75, event_type: 'signal_activation' },
-      { label: 'Dasha: Saturn/Moon (2002-07-24)', weight: 0.6, event_type: 'dasha_transition' },
-      { label: 'SIG.JUPITER.CANCER.EXALT.H4.2002', weight: 0.75, event_type: 'signal_activation' },
-    ],
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    window_start: '2022-06-08', window_end: '2022-12-05', anchor_date: '2022-09-06',
-    convergence_score: 0.7667, indicator_count: 3, convergence_type: 'career_peak',
-    valence: 'favorable',
-    constituent_factors: [
-      { label: 'SIG.MERCURY.JUPITER.AD.2022', weight: 0.85, event_type: 'signal_activation' },
-      { label: 'SIG.JUPITER.ARIES.LAGNA.2022', weight: 0.75, event_type: 'signal_activation' },
-      { label: 'Dasha_start: Mercury/Jupiter (2022-09-06)', weight: 0.85, event_type: 'dasha_transition' },
-    ],
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    window_start: '2024-09-13', window_end: '2025-03-10', anchor_date: '2024-12-12',
-    convergence_score: 0.7083, indicator_count: 4, convergence_type: 'career_peak',
-    valence: 'favorable',
-    constituent_factors: [
-      { label: 'SIG.MERCURY.SATURN.AD.2024', weight: 0.8, event_type: 'signal_activation' },
-      { label: 'Dasha_start: Mercury/Saturn (2024-12-12)', weight: 0.6, event_type: 'dasha_transition' },
-      { label: 'SIG.SATURN.PISCES.12H.2025', weight: 0.65, event_type: 'signal_activation' },
-      { label: 'SIG.JUPITER.CANCER.EXALT.4H.2025', weight: 0.8, event_type: 'signal_activation' },
-    ],
-    source_citation: SOURCE_CITATION,
-  },
-]
-
-const FORENSIC_OBSTRUCTIONS: ObstructionEntry[] = [
-  {
-    obstruction_id: 'OBS.SS.C1.RISING', obstruction_type: 'sade_sati',
-    start: '1990-01-26', end: '1993-01-25', severity: 0.65,
-    description: 'Sade Sati Cycle 1 — Rising phase: Saturn in Capricorn (12th from natal Moon Aquarius). Overlapping Saturn MD start 1991-08-21. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.SS.C1.PEAK', obstruction_type: 'sade_sati',
-    start: '1993-01-26', end: '1995-04-09', severity: 0.80,
-    description: 'Sade Sati Cycle 1 — Peak phase: Saturn exactly over natal Moon (Aquarius). Maximum emotional pressure. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.SS.C1.SETTING', obstruction_type: 'sade_sati',
-    start: '1995-04-10', end: '1998-04-14', severity: 0.60,
-    description: 'Sade Sati Cycle 1 — Setting phase: Saturn in Pisces (2nd from natal Moon). Resource pressure. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.MALDASH.SAT.SAT', obstruction_type: 'malefic_dasha',
-    start: '1991-08-21', end: '1994-08-24', severity: 0.75,
-    description: 'Saturn MD / Saturn AD (DSH.V.006): double Saturn affliction. Coincides with Sade Sati Cycle 1 peak. Source: FORENSIC §5.1.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.SS.C2.RISING', obstruction_type: 'sade_sati',
-    start: '2020-01-24', end: '2022-04-28', severity: 0.70,
-    description: 'Sade Sati Cycle 2 — Rising phase: Saturn in Capricorn. Concurrent Mercury-Rahu AD. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.SS.C2.PEAK', obstruction_type: 'sade_sati',
-    start: '2022-04-29', end: '2025-03-28', severity: 0.85,
-    description: 'Sade Sati Cycle 2 — Peak phase: Saturn over natal Moon. Concurrent Mercury-Jupiter/Saturn AD. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.SS.C2.SETTING', obstruction_type: 'sade_sati',
-    start: '2025-03-29', end: '2028-03-28', severity: 0.65,
-    description: 'Sade Sati Cycle 2 — Setting phase: Saturn in Pisces. MD transition Mercury→Ketu within window. Source: FORENSIC §22.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.MALDASH.MERC.RAHU', obstruction_type: 'malefic_dasha',
-    start: '2020-02-18', end: '2022-09-06', severity: 0.60,
-    description: 'Mercury MD / Rahu AD (DSH.V.021): Rahu amplification + Sade Sati rising. Digital disruption risk. Source: FORENSIC §5.1.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.MALDASH.KETU.KETU', obstruction_type: 'malefic_dasha',
-    start: '2027-08-21', end: '2028-01-18', severity: 0.70,
-    description: 'Ketu MD / Ketu AD (DSH.V.024): double Ketu. Most intense spiritual-karmic isolation. Source: FORENSIC §5.1.',
-    source_citation: SOURCE_CITATION,
-  },
-  {
-    obstruction_id: 'OBS.MALDASH.SAT.RAHU', obstruction_type: 'malefic_dasha',
-    start: '2005-04-03', end: '2008-02-09', severity: 0.75,
-    description: 'Saturn MD / Rahu AD (DSH.V.013): dual shadow-malefic confluence. Source: FORENSIC §5.1.',
-    source_citation: SOURCE_CITATION,
-  },
-]
+// REMEDIATION D7: Removed native-chart-specific FORENSIC data arrays.
+// These arrays contained dasha periods, convergence windows, and obstruction periods
+// specific to chart 482012f1-... — returning them for any arbitrary chart_id would
+// be cross-chart data contamination. Graceful-empty is the correct fallback.
+const FORENSIC_DASHA_PERIODS: TimelineRow[] = []
+const FORENSIC_CONVERGENCE_WINDOWS: ConvergenceWindow[] = []
+const FORENSIC_OBSTRUCTIONS: ObstructionEntry[] = []
 
 // REMEDIATION D7: FALLBACK_SNAPSHOT now uses a placeholder chart_id.
 // At runtime, the handler replaces 'CHART_ID_PLACEHOLDER' with the caller's chart_id.
+// REMEDIATION D7: FALLBACK_SNAPSHOT_TEMPLATE now contains graceful-empty data only.
+// Native-specific dasha periods, obstruction data, and kala_summary were removed.
+// The sidecar is the required data source; this template is returned only when unavailable.
 const FALLBACK_SNAPSHOT_TEMPLATE: Omit<KalaSnapshot, 'chart_id'> & { chart_id: string } = {
-  chart_id: 'CHART_ID_PLACEHOLDER',
+  chart_id: 'CHART_ID_PLACEHOLDER',  // replaced at runtime with caller's chart_id
   snapshot_date: DEFAULT_SNAPSHOT_DATE,
-  active_dasha: {
-    md_lord: 'Mercury',
-    ad_lord: 'Saturn',
-    ad_start: '2024-12-12',
-    ad_end: '2027-08-21',
-    days_elapsed: 540,
-    days_remaining: 807,
-  },
-  active_pratyantardasha: {
-    pd_lord: 'Sun',
-    pd_start: '2026-04-22',
-    pd_end: '2026-09-14',
-    days_elapsed: 44,
-    days_remaining: 101,
-  },
+  active_dasha: null,
+  active_pratyantardasha: null,
   transit_state: {
-    source: 'FORENSIC-grounded algorithmic (slow planets from known ingress dates)',
-    transits: [
-      { planet: 'Saturn', sign: 'Pisces', house_from_lagna: 12, note: 'Sade Sati Cycle 2 setting phase' },
-      { planet: 'Jupiter', sign: 'Cancer', house_from_lagna: 4, note: 'Jupiter exalted — emotional/home activation' },
-      { planet: 'Rahu', sign: 'Aquarius', house_from_lagna: 11, note: 'Rahu in H11 (natal Moon sign)' },
-      { planet: 'Ketu', sign: 'Leo', house_from_lagna: 5, note: 'Ketu in H5 — spiritual separation' },
-    ],
+    source: 'sidecar unavailable — no transit data',
+    transits: [],
   },
   active_convergences: [],
-  active_obstructions: [
-    {
-      obstruction_id: 'OBS.SS.C2.SETTING', obstruction_type: 'sade_sati',
-      start: '2025-03-29', end: '2028-03-28', severity: 0.65,
-      description: 'Sade Sati Cycle 2 — Setting phase (Saturn/Pisces). Source: FORENSIC §22.',
-      source_citation: SOURCE_CITATION,
-    },
-  ],
+  active_obstructions: [],
   kala_readiness: {
-    score: 49,
-    interpretation: 'NEUTRAL — mixed indicators; proceed with awareness',
-    breakdown: {
-      base: 50,
-      adjustments: [
-        { factor: 'Malefic AD lord (Saturn)', delta: -5 },
-        { factor: 'Benefic Jupiter in H4 (exalted)', delta: 4 },
-        { factor: 'Obstruction: OBS.SS.C2.SETTING', delta: -8 },
-        { factor: 'Benefic MD lord (Mercury)', delta: 8 },
-      ],
-      final: 49,
-    },
+    score: null,
+    interpretation: 'Sidecar unavailable — kala_readiness cannot be computed without live data',
+    breakdown: null,
   },
-  kala_summary: (
-    'On 2026-06-05: Mercury Mahadasha / Saturn Antardasha / Sun Pratyantardasha. ' +
-    'Saturn in Pisces (H12) — Sade Sati Cycle 2 setting phase continues through 2028. ' +
-    'Jupiter exalted in Cancer (H4) — emotional and home domain activated. ' +
-    'Kala readiness score: 49/100 (NEUTRAL). ' +
-    'Source: FORENSIC_ASTROLOGICAL_DATA_v8_0 §5.1 §22.'
-  ),
+  kala_summary: 'Sidecar unavailable. No Kāla data can be computed for this chart without the Python sidecar.',
   provenance_envelope: {
     asset: 'kala.snapshot',
     unit: 'KA-3-5',
@@ -338,8 +196,8 @@ const FALLBACK_SNAPSHOT_TEMPLATE: Omit<KalaSnapshot, 'chart_id'> & { chart_id: s
     source_citation: SOURCE_CITATION,
     layer: 'L3 Kāla',
     snapshot_date: DEFAULT_SNAPSHOT_DATE,
-    mode: 'fallback',
-    note: 'Sidecar unavailable — pre-computed FORENSIC-grounded fallback for native chart only',
+    mode: 'fallback_empty',
+    note: 'Sidecar unavailable — graceful-empty response (native data removed by D7 remediation)',
   },
 }
 
