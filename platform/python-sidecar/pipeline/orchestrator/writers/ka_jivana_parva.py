@@ -2,6 +2,9 @@
 ka_jivana_parva writer — life-arc biographical chapter artifact.
 
 D7 (Kāla completeness v2): extended from MD-only to MD + AD sub-chapters.
+O6 (Pratyantar-dasha level-3): additively appends PD rows for the CURRENT
+running Antardasha only (~9 rows). Uses CURRENT_DATE-scoped level_n=3 query
+so total row count stays far below smallint overflow (~247 vs 32767).
 Also populates dominant_signal_class via frequency-count of signature_class
 across convergence windows in each MD span.
 """
@@ -181,6 +184,82 @@ class KaJivanaParvaWriter(WriterBase):
                     ad_high_cnt,
                     ad_avg_score,
                     f"ka_jivana_parva:v2.0:MD={md_planet}:AD={ad_planet}",
+                ))
+
+        # O6: Pratyantar-dasha level-3 — additive, current AD only.
+        # Query level_n=3 rows whose date range spans CURRENT_DATE.  This naturally
+        # returns only the PD rows within the currently-running Antardasha (~9 rows)
+        # without any explicit AD-boundary join, because PDs are children of exactly
+        # one AD and only the current AD will have a PD spanning today.
+        # IMPORTANT: do NOT expand the main query above to include level_n=3 —
+        # that would recreate the smallint overflow (all PDs across all MDs × ADs).
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT lord_graha, start_date, end_date, level_n
+                FROM chart_dashas
+                WHERE chart_id = %s
+                  AND level_n = 3
+                  AND system_id = 'vimshottari'
+                  AND ayanamsha_id = 'lahiri_chitrapaksha'
+                  AND start_date <= CURRENT_DATE
+                  AND end_date >= CURRENT_DATE
+                ORDER BY start_date
+            """, (chart_id,))
+            pd_dashas = cur.fetchall()
+
+        if not pd_dashas:
+            logger.info(
+                "ka_jivana_parva: no level_n=3 (PD) rows found for chart_id=%s "
+                "(either level-3 data not built yet or no current AD running — "
+                "gracefully skipping PD section)",
+                chart_id,
+            )
+        else:
+            today = date.today()
+            for pd_idx, pd in enumerate(pd_dashas):
+                pd_planet  = pd['lord_graha']
+                pd_start   = pd['start_date']
+                pd_end     = pd['end_date']
+                pd_start_y = pd_start.year if pd_start else None
+                if pd_start_y is None:
+                    continue
+                pd_end_y      = pd_end.year if pd_end else None
+                pd_end_actual = pd_end or date(2100, 1, 1)
+
+                # Convergence windows within this PD span
+                pd_windows = [
+                    w for w in conv_windows
+                    if w['peak_date'] and pd_start and pd_start <= w['peak_date'] <= pd_end_actual
+                ]
+                pd_class_counter: Counter = Counter(
+                    w['signature_class'] for w in pd_windows
+                    if w.get('signature_class') and w['signature_class'] not in ('SUBSYSTEM', 'CLASSIFY_RESIDUAL')
+                )
+                pd_dominant  = pd_class_counter.most_common(1)[0][0] if pd_class_counter else None
+                pd_high_cnt  = sum(1 for w in pd_windows if (w['effective_score'] or 0) >= 0.5)
+                pd_avg_score = (
+                    sum(w['effective_score'] or 0 for w in pd_windows) / len(pd_windows)
+                ) if pd_windows else None
+                pd_quality   = _assign_quality(pd_idx, len(pd_dashas), pd_high_cnt, pd_avg_score, pd_start_y, pd_end_y)
+                pd_theme     = _derive_theme(pd_planet, pd_quality)
+                pd_narrative = _build_parva_narrative(
+                    str(pd_planet), pd_start_y, pd_end_y, pd_quality, pd_high_cnt, pd_avg_score
+                )
+
+                parva_index += 1
+                rows.append((
+                    chart_id,
+                    parva_index,
+                    pd_start_y,
+                    pd_end_y,
+                    str(pd_planet),
+                    pd_dominant,
+                    pd_quality,
+                    pd_theme,
+                    json.dumps(pd_narrative),
+                    pd_high_cnt,
+                    pd_avg_score,
+                    f"ka_jivana_parva:v2.0:PD={pd_planet}",
                 ))
 
         if rows:
