@@ -81,7 +81,13 @@ export async function POST(req: NextRequest) {
        FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
-      `SELECT asset_id, state FROM asset_throughput WHERE chart_id=$1`,
+      // Include global (chart_id IS NULL) rows alongside chart-scoped so built L0/global
+      // assets report 'lit' — otherwise the resolver blocks every layer/asset-scoped build
+      // that depends on a built L0 asset. DISTINCT ON prefers the chart-scoped row.
+      `SELECT DISTINCT ON (asset_id) asset_id, state
+         FROM asset_throughput
+        WHERE chart_id=$1 OR chart_id IS NULL
+        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
       [chart_id]
     ),
   ])

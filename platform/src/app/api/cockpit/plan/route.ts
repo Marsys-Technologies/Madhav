@@ -33,7 +33,15 @@ export async function POST(req: NextRequest) {
        FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
-      `SELECT asset_id, state FROM asset_throughput WHERE chart_id=$1`,
+      // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
+      // global assets (L0 bg_*, global services) report their real built state. Without the
+      // global rows the resolver treats every built L0 asset as "not built" and wrongly
+      // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
+      // build. DISTINCT ON prefers the chart-scoped row when both exist.
+      `SELECT DISTINCT ON (asset_id) asset_id, state
+         FROM asset_throughput
+        WHERE chart_id=$1 OR chart_id IS NULL
+        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
       [chart_id]
     ),
   ])
