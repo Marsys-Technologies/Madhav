@@ -22,6 +22,9 @@ class KaJivanaParvaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
+        # Single temporal anchor for the entire build — prevents midnight-crossing divergence
+        # and ensures two builds on the same logical day produce identical PD rows.
+        as_of_date = ctx.config.get('as_of_date') or date.today()
 
         # Idempotency
         with conn.cursor() as cur:
@@ -115,7 +118,7 @@ class KaJivanaParvaWriter(WriterBase):
                 sum(w['effective_score'] or 0 for w in md_windows) / len(md_windows)
             ) if md_windows else None
 
-            quality       = _assign_quality(md_idx, len(md_dashas), high_conv_count, avg_score, md_start_y, md_end_y)
+            quality       = _assign_quality(md_idx, len(md_dashas), high_conv_count, avg_score, md_start_y, md_end_y, today_y=as_of_date.year)
             theme_keywords = _derive_theme(md_planet, quality)
             narrative      = _build_parva_narrative(md_planet, md_start_y, md_end_y, quality, high_conv_count, avg_score)
 
@@ -164,7 +167,7 @@ class KaJivanaParvaWriter(WriterBase):
                 ad_avg_score = (
                     sum(w['effective_score'] or 0 for w in ad_windows) / len(ad_windows)
                 ) if ad_windows else None
-                ad_quality   = _assign_quality(ad_idx, len(md_ad_rows), ad_high_cnt, ad_avg_score, ad_start_y, ad_end_y)
+                ad_quality   = _assign_quality(ad_idx, len(md_ad_rows), ad_high_cnt, ad_avg_score, ad_start_y, ad_end_y, today_y=as_of_date.year)
                 ad_theme     = _derive_theme(ad_planet, ad_quality)
                 ad_narrative = _build_parva_narrative(
                     f"{md_planet}/{ad_planet}", ad_start_y, ad_end_y, ad_quality, ad_high_cnt, ad_avg_score
@@ -193,19 +196,19 @@ class KaJivanaParvaWriter(WriterBase):
         # one AD and only the current AD will have a PD spanning today.
         # IMPORTANT: do NOT expand the main query above to include level_n=3 —
         # that would recreate the smallint overflow (all PDs across all MDs × ADs).
-        with conn.cursor() as cur:
-            cur.execute("""
+        with conn.cursor() as cur_pd:
+            cur_pd.execute("""
                 SELECT lord_graha, start_date, end_date, level_n
                 FROM chart_dashas
                 WHERE chart_id = %s
                   AND level_n = 3
                   AND system_id = 'vimshottari'
                   AND ayanamsha_id = 'lahiri_chitrapaksha'
-                  AND start_date <= CURRENT_DATE
-                  AND end_date >= CURRENT_DATE
+                  AND start_date <= %s
+                  AND end_date >= %s
                 ORDER BY start_date
-            """, (chart_id,))
-            pd_dashas = cur.fetchall()
+            """, (chart_id, as_of_date, as_of_date))
+            pd_dashas = cur_pd.fetchall()
 
         if not pd_dashas:
             logger.info(
@@ -215,7 +218,6 @@ class KaJivanaParvaWriter(WriterBase):
                 chart_id,
             )
         else:
-            today = date.today()
             for pd_idx, pd in enumerate(pd_dashas):
                 pd_planet  = pd['lord_graha']
                 pd_start   = pd['start_date']
@@ -240,7 +242,7 @@ class KaJivanaParvaWriter(WriterBase):
                 pd_avg_score = (
                     sum(w['effective_score'] or 0 for w in pd_windows) / len(pd_windows)
                 ) if pd_windows else None
-                pd_quality   = _assign_quality(pd_idx, len(pd_dashas), pd_high_cnt, pd_avg_score, pd_start_y, pd_end_y)
+                pd_quality   = _assign_quality(pd_idx, len(pd_dashas), pd_high_cnt, pd_avg_score, pd_start_y, pd_end_y, today_y=as_of_date.year)
                 pd_theme     = _derive_theme(pd_planet, pd_quality)
                 pd_narrative = _build_parva_narrative(
                     str(pd_planet), pd_start_y, pd_end_y, pd_quality, pd_high_cnt, pd_avg_score
@@ -277,9 +279,17 @@ class KaJivanaParvaWriter(WriterBase):
 
 
 def _assign_quality(idx: int, total: int, high_count: int, avg_score: float | None,
-                    start_y: int, end_y: int | None) -> str:
-    """Assign parva quality based on position in life arc and convergence density."""
-    today_y = date.today().year
+                    start_y: int, end_y: int | None,
+                    today_y: int | None = None) -> str:
+    """Assign parva quality based on position in life arc and convergence density.
+
+    today_y: the year of the temporal anchor for this build. If not provided
+    (e.g. external callers), defaults to date.today().year. Always pass
+    as_of_date.year from run() to keep MD, AD, and PD quality scoring
+    on the same temporal anchor.
+    """
+    if today_y is None:
+        today_y = date.today().year
 
     # Is this period ongoing?
     is_ongoing = end_y is None or (end_y >= today_y)

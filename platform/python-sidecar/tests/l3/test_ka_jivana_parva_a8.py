@@ -44,9 +44,11 @@ def _make_dasha_row(lord_graha, start_date, end_date, level_n):
             'end_date': end_date, 'level_n': level_n}
 
 
-def _make_ctx(chart_id="482012f1-710e-4a25-994a-93821f5871aa"):
+def _make_ctx(chart_id="482012f1-710e-4a25-994a-93821f5871aa", as_of_date=None):
     ctx = MagicMock()
     ctx.config = {'chart_id': chart_id}
+    if as_of_date is not None:
+        ctx.config['as_of_date'] = as_of_date
     return ctx
 
 
@@ -91,32 +93,35 @@ def _build_cursor_sequence(conn, md_ad_rows, pd_rows, conv_rows=None):
 # ---------------------------------------------------------------------------
 
 def test_pratyantar_rows_produced_for_current_ad():
-    """O6: writer produces parva rows for PD (level_n=3) scoped to CURRENT_DATE.
+    """O6: writer produces parva rows for PD (level_n=3) scoped to as_of_date.
 
     Fail-before: writer only queried level_n IN (1, 2); PD mock rows were ignored.
     Pass-after:  writer queries level_n=3 and produces a row for each PD row returned.
+
+    The DB mock returns only the CURRENT PD row (as the real SQL bound-param filter
+    would — past and future PDs are excluded at the DB layer, not by the writer).
     """
     md_row = _make_dasha_row('Jupiter', date(2021, 1, 1), date(2037, 1, 1), 1)
     ad_row = _make_dasha_row('Venus',   date(2024, 1, 1), date(2026, 12, 31), 2)
-    # Three PD rows that span today — all within current AD
+    # DB returns only the single PD row whose date range spans as_of_date (2026-06-15).
+    # Past PD (ended 2026-01-31) and future PD (starts 2026-07-01) are excluded by SQL.
+    as_of = date(2026, 6, 15)
     pd_rows = [
-        _make_dasha_row('Sun',     date(2026, 1, 1),  date(2026, 6, 30),  3),
-        _make_dasha_row('Moon',    date(2026, 7, 1),  date(2026, 12, 31), 3),
-        _make_dasha_row('Mars',    date(2027, 1, 1),  date(2027, 6, 30),  3),
+        _make_dasha_row('Moon', date(2026, 2, 1), date(2026, 6, 30), 3),  # spans 2026-06-15
     ]
 
     conn = MagicMock()
     _build_cursor_sequence(conn, [md_row, ad_row], pd_rows)
 
-    ctx = _make_ctx()
+    ctx = _make_ctx(as_of_date=as_of)
     ctx.db_conn = conn
 
     writer = KaJivanaParvaWriter()
     result = writer.run(ctx)
 
-    # MD(1) + AD(1) + PD(3) = 5 rows total
-    assert result.rows_inserted == 5, (
-        f"Expected 5 rows (1 MD + 1 AD + 3 PD), got {result.rows_inserted}"
+    # MD(1) + AD(1) + PD(1) = 3 rows total
+    assert result.rows_inserted == 3, (
+        f"Expected 3 rows (1 MD + 1 AD + 1 PD), got {result.rows_inserted}"
     )
 
 
@@ -174,20 +179,29 @@ def test_md_and_ad_citations_unchanged():
 # ---------------------------------------------------------------------------
 
 def test_pd_rows_from_other_ad_periods_excluded():
-    """Only PDs spanning CURRENT_DATE are included; past/future PDs are excluded.
+    """Only PDs spanning as_of_date are included; past/future PDs are excluded at the DB layer.
 
-    The exclusion happens at the DB query level (start_date <= CURRENT_DATE AND
-    end_date >= CURRENT_DATE).  We verify the SQL passed to the cursor contains
-    both CURRENT_DATE conditions.
+    The exclusion happens via bound SQL parameters (start_date <= %s AND end_date >= %s)
+    with as_of_date passed as both values. We verify the writer uses bound params
+    (not a literal CURRENT_DATE) and that level_n = 3 is present.
     """
     with open(WRITER_PATH) as f:
         content = f.read()
 
-    # Must have CURRENT_DATE-scoped level_n=3 query
+    # Must have level_n=3 query
     assert 'level_n = 3' in content, "level_n = 3 filter missing from writer"
-    assert content.count('CURRENT_DATE') >= 2, (
-        "Expected at least 2 CURRENT_DATE references (start_date and end_date scope)"
+    # Writer SQL must NOT contain literal CURRENT_DATE in a query context.
+    # Allow CURRENT_DATE in comments/docstrings only — check the SQL string itself.
+    # The PD query must use bound params (%s) not a literal CURRENT_DATE.
+    assert 'start_date <= CURRENT_DATE' not in content, (
+        "PD SQL must not use literal 'start_date <= CURRENT_DATE' — use bound param %s instead"
     )
+    assert 'end_date >= CURRENT_DATE' not in content, (
+        "PD SQL must not use literal 'end_date >= CURRENT_DATE' — use bound param %s instead"
+    )
+    # The PD query must filter start_date and end_date via bound params
+    assert 'start_date <= %s' in content, "PD query must filter start_date <= %s (bound param)"
+    assert 'end_date >= %s' in content, "PD query must filter end_date >= %s (bound param)"
 
 
 def test_pd_query_does_not_use_in_1_2_3():
@@ -425,6 +439,60 @@ def test_writer_returns_writer_result():
 # Test: PD query structure (grep-based contract test)
 # ---------------------------------------------------------------------------
 
+def test_as_of_date_passed_as_bound_param():
+    """as_of_date from ctx.config is passed as a bound SQL param to the PD query.
+
+    Verifies IMPORTANT-1: the PD query uses %s placeholders with as_of_date as both
+    start_date and end_date params — not a literal CURRENT_DATE. Captures cursor.execute
+    call_args for the PD cursor (4th cursor in sequence) and checks params.
+    """
+    md_row = _make_dasha_row('Jupiter', date(2021, 1, 1), date(2037, 1, 1), 1)
+    ad_row = _make_dasha_row('Venus',   date(2024, 1, 1), date(2026, 12, 31), 2)
+    as_of = date(2026, 3, 15)
+    pd_rows = [_make_dasha_row('Sun', date(2026, 1, 1), date(2026, 6, 30), 3)]
+
+    conn = MagicMock()
+    cursors_used = []
+
+    # Track cursors in order so we can inspect the PD cursor specifically
+    original_side_effect_cursors = []
+    cur_delete   = MagicMock()
+    cur_md_ad    = MagicMock(); cur_md_ad.fetchall.return_value = [md_row, ad_row]
+    cur_conv     = MagicMock(); cur_conv.fetchall.return_value  = []
+    cur_pd       = MagicMock(); cur_pd.fetchall.return_value    = pd_rows
+    cur_insert   = MagicMock()
+    all_cursors = [cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
+    idx = [0]
+
+    def _new_cursor():
+        cm = MagicMock()
+        c = all_cursors[idx[0]] if idx[0] < len(all_cursors) else MagicMock()
+        idx[0] += 1
+        cm.__enter__ = MagicMock(return_value=c)
+        cm.__exit__  = MagicMock(return_value=False)
+        return cm
+
+    conn.cursor.side_effect = _new_cursor
+
+    ctx = _make_ctx(as_of_date=as_of)
+    ctx.db_conn = conn
+
+    KaJivanaParvaWriter().run(ctx)
+
+    # The PD cursor is the 4th cursor (index 3); check its execute call args
+    assert cur_pd.execute.called, "PD cursor execute was not called"
+    call_args = cur_pd.execute.call_args
+    params = call_args[0][1]  # positional: (sql, params)
+
+    # params should be (chart_id, as_of_date, as_of_date)
+    assert as_of in params, (
+        f"as_of_date={as_of} not found in PD query params: {params}"
+    )
+    assert params.count(as_of) == 2, (
+        f"as_of_date should appear twice (start_date and end_date), got: {params}"
+    )
+
+
 def test_pd_query_has_level_n_3():
     """Writer source contains a level_n = 3 query (not level_n IN (1, 2, 3))."""
     with open(WRITER_PATH) as f:
@@ -432,19 +500,19 @@ def test_pd_query_has_level_n_3():
     assert 'level_n = 3' in content, "O6 PD query missing level_n = 3 clause"
 
 
-def test_pd_query_scoped_with_current_date_start():
-    """PD query filters start_date <= CURRENT_DATE."""
+def test_pd_query_scoped_with_bound_param_start():
+    """PD query filters start_date via bound param (not literal CURRENT_DATE)."""
     with open(WRITER_PATH) as f:
         content = f.read()
-    assert 'start_date <= CURRENT_DATE' in content, (
-        "PD query must filter start_date <= CURRENT_DATE"
+    assert 'start_date <= %s' in content, (
+        "PD query must filter start_date <= %s (as_of_date bound param)"
     )
 
 
-def test_pd_query_scoped_with_current_date_end():
-    """PD query filters end_date >= CURRENT_DATE."""
+def test_pd_query_scoped_with_bound_param_end():
+    """PD query filters end_date via bound param (not literal CURRENT_DATE)."""
     with open(WRITER_PATH) as f:
         content = f.read()
-    assert 'end_date >= CURRENT_DATE' in content, (
-        "PD query must filter end_date >= CURRENT_DATE"
+    assert 'end_date >= %s' in content, (
+        "PD query must filter end_date >= %s (as_of_date bound param)"
     )
