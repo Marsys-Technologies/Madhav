@@ -27,6 +27,12 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
     limit:  { type: 'number', default: 20 },
   },
   required_inputs: [],
+  scope: 'global',
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'hybrid_retrieval',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: false },
     bulk_context: { pre_fetch_priority: 55, always_include: false },

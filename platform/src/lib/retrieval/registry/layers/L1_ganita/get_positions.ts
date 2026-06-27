@@ -19,7 +19,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
   input_schema: {
     chart_id: {
       type: 'string',
-      description: 'UUID of the chart (canonical native: 482012f1-710e-4a25-994a-93821f5871aa)',
+      description: 'UUID of the chart (<chart_uuid> from asset_registry)',
       required: true,
     },
     ayanamsha_id: {
@@ -35,6 +35,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
     limit:  { type: 'number', description: 'Rows per page (default 200, max 1000)', default: 200 },
   },
   required_inputs: ['chart_id'],
+  scope: 'per_chart',
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'leaf',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 90, always_include: true },

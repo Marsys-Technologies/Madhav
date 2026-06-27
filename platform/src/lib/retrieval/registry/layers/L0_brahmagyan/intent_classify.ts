@@ -47,6 +47,12 @@ export const intentClassifyCapability: CapabilityDescriptor = {
     },
   },
   required_inputs: ['query'],
+  scope: 'global',
+  archetype: 'orientation_digest',
+  traversal_level: 'L-ORIENT',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

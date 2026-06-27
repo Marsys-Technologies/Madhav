@@ -47,6 +47,13 @@ export const queryAspectsAtTimeCapability: ToolCapability = {
       count: { type: 'number' },
     },
   },
+  required_inputs: [],
+  scope: 'global',
+  archetype: 'temporal',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'temporal',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

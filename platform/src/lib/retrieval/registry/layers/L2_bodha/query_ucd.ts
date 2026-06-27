@@ -57,6 +57,18 @@ export const queryUcdCapability: CapabilityDescriptor = {
   },
 
   required_inputs: ['chart_id'],
+  scope: 'per_chart',
+  archetype: 'orientation_digest',
+  traversal_level: 'L-ORIENT',
+  tool_role: 'umbrella',
+  drill_children: [
+    'marsys://tool/L2/query_domain_reading',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L2/traverse_chart_graph',
+  ],
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: true,
 
   llm_hints: {
     agentic: {
