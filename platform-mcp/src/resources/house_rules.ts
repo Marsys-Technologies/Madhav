@@ -1,13 +1,12 @@
 /**
- * house_rules.ts — MCP resource: marsys://house-rules (rewrite for v3.1)
+ * house_rules.ts — MCP resource: marsys://house-rules
  *
- * Loads tier-conditioned house rules from variant markdown files:
- *   house_rules_variants/super_admin.md
- *   house_rules_variants/acharya.md
- *   house_rules_variants/client.md
+ * Loads the universal house rules from house_rules_variants/universal.md.
  *
- * MCPT v3.1.0-S3; public_redacted variant retired (Stream A 3.tier_excision 2026-05-28).
- * Audience-tier system excised; resource resolves to super_admin variant by default.
+ * D0.5 tier excision (2026-06-28): tier-conditioned variants (super_admin/acharya/client)
+ * collapsed to a single universal variant per §N.4 no-audience-tier principle.
+ * Prior: v3.1.0-S3 loaded 3 tier variants; Stream A 3.tier_excision 2026-05-28 had already
+ * removed audience_tier from Principal. This completes the MCP resource layer excision.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -19,35 +18,21 @@ import { join, dirname } from 'path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const VARIANTS_DIR = join(__dirname, 'house_rules_variants')
 
-// ── Load variant files ─────────────────────────────────────────────────────────
+// ── Load universal variant ─────────────────────────────────────────────────────
 
-function loadVariant(tier: string): string {
-  const validTiers = ['super_admin', 'acharya', 'client']
-  const safeTier = validTiers.includes(tier) ? tier : 'super_admin'
+function loadUniversalRules(): string {
   try {
-    return readFileSync(join(VARIANTS_DIR, `${safeTier}.md`), 'utf-8')
+    return readFileSync(join(VARIANTS_DIR, 'universal.md'), 'utf-8')
   } catch {
-    // Fallback: try super_admin
-    try {
-      return readFileSync(join(VARIANTS_DIR, 'super_admin.md'), 'utf-8')
-    } catch {
-      return `# MARSYS-JIS House Rules\n\n*Variant file unavailable. Default operating rules apply.*`
-    }
+    return `# MARSYS-JIS House Rules\n\n*House rules file unavailable. Default operating rules apply.*`
   }
 }
 
-// Pre-load all variants at server start
-const VARIANTS: Record<string, string> = {
-  super_admin: loadVariant('super_admin'),
-  acharya: loadVariant('acharya'),
-  client: loadVariant('client'),
-  // public_redacted retired (Stream A 3.tier_excision 2026-05-28).
-}
+const UNIVERSAL_RULES = loadUniversalRules()
 
 // ── Registration ───────────────────────────────────────────────────────────────
 
 export function registerHouseRules(server: McpServer): void {
-  // Default resource (super_admin content — most principals are acharya+)
   server.resource(
     'house-rules',
     new ResourceTemplate('marsys://house-rules', { list: undefined }),
@@ -56,14 +41,14 @@ export function registerHouseRules(server: McpServer): void {
         {
           uri: 'marsys://house-rules',
           mimeType: 'text/markdown',
-          text: VARIANTS['super_admin'] ?? '',
+          text: UNIVERSAL_RULES,
         },
       ],
     })
   )
 }
 
-/** Export for programmatic tier-specific access */
-export function getHouseRulesForTier(tier: string): string {
-  return VARIANTS[tier] ?? VARIANTS['super_admin'] ?? ''
+/** Export for programmatic access — returns universal rules regardless of input */
+export function getHouseRules(): string {
+  return UNIVERSAL_RULES
 }

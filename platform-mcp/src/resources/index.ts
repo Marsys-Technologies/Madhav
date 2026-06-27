@@ -4,14 +4,14 @@
  * Registers 5 MCP resources that Claude auto-loads at session attach (arch §4):
  *   - marsys://chart-snapshot    (~2.5k tokens, structured L1 facts, NEW in v3.1)
  *   - marsys://chart-overview    (~3k tokens, synthesis themes from L2.5)
- *   - marsys://house-rules       (tier-conditioned operating manual)
+ *   - marsys://house-rules       (universal operating manual)
  *   - marsys://capabilities      (tool + data coverage snapshot; S3=placeholder, S4=live)
  *   - marsys://school-conventions (~2.5k tokens, 4-school reference, static)
  *
  * MCPT v3.1.0-S3 (rewrites chart-overview + house-rules; adds 3 new resources)
  *
  * Prior: v1 registered chart-overview + house-rules as static markdown files
- * (2 resources). v3.1 registers 5 resources with dynamic generation + tier conditioning.
+ * (2 resources). v3.1 registers 5 resources with dynamic generation; D0.5 removed tier conditioning.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -44,9 +44,9 @@ export function registerResources(server: McpServer): void {
   //    Falls back to static markdown if dynamic generation fails.
   registerChartOverview(server)
 
-  // 3. house-rules: tier-conditioned operating manual
-  //    Loaded from house_rules_variants/{tier}.md at server start.
-  //    Defaults to super_admin variant for the resource endpoint.
+  // 3. house-rules: universal operating manual
+  //    Loaded from house_rules_variants/universal.md at server start.
+  //    Single variant — no tier conditioning (D0.5 excision 2026-06-28).
   registerHouseRules(server)
 
   // 4. capabilities: tool + data coverage snapshot
