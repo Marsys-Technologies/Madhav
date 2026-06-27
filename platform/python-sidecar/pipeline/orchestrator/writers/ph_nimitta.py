@@ -94,7 +94,7 @@ class PhNimittaWriter(WriterBase):
             try:
                 ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m)
                 # B5: enrich row with timing (window_start/end) + real domain before engine call
-                enriched_row = self._enrich_discovery_row(conn, dict(row))
+                enriched_row = self._enrich_discovery_row(conn, dict(row), chart_id)
                 a = derive_anchor_from_discovery(enriched_row, ctx_n)
                 anchors.append(a)
             except Exception as exc:
@@ -244,12 +244,13 @@ class PhNimittaWriter(WriterBase):
             )
             return {str(r['signal_id']): dict(r) for r in cur.fetchall()}
 
-    def _load_cgm_meta(self, conn, signal_ids: list[str]) -> dict[str, dict]:
-        """Load top CGM path per signal (Axis 3 causal chain).
+    def _load_cgm_meta(self, conn, signal_ids: list[str]) -> dict:
+        """Load chart-level CGM path metadata (Axis 3 causal chain).
 
-        bodha_cgm_paths links graha nodes — no direct signal_id FK. Returns {}
-        when the table is empty or has no matching paths. Uses a SAVEPOINT so
-        a column mismatch does not abort the outer transaction.
+        bodha_cgm_paths has no signal_id FK — paths are chart-level graha chains, not
+        per-signal. Returns a chart-level aggregate dict (not per-signal).
+        _build_ctx uses it as global context, not a per-signal lookup.
+        Uses a SAVEPOINT so a missing-table error does not abort the outer transaction.
         """
         if not signal_ids:
             return {}
@@ -257,8 +258,6 @@ class PhNimittaWriter(WriterBase):
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_nimitta_cgm")
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                # bodha_cgm_paths has no source_signal_id; query by chart to get
-                # top paths for context (root_graha not in schema — use path_type)
                 cur.execute(
                     """
                     SELECT DISTINCT ON (p.path_id)
@@ -277,10 +276,16 @@ class PhNimittaWriter(WriterBase):
                 rows = cur.fetchall()
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_nimitta_cgm")
-            # CONTRACT-3 (A7→A5): return actual fetched rows mapped by path_id.
-            # Engine accesses cgm_meta.get(sid, {}) where sid is a signal_id; paths
-            # have no signal_id FK so we map by path_id for context enrichment.
-            return {str(r['path_id']): dict(r) for r in rows}
+            # CONTRACT-3 (A7→A5 fix): bodha_cgm_paths has no signal_id FK so the old
+            # per-signal keyed dict (path_id → row) was never reachable via
+            # cgm_meta.get(signal_id, {}). Return a chart-level aggregate instead;
+            # _build_ctx passes it through as-is (chart-level, not per-signal).
+            return {
+                "path_count": len(rows),
+                "paths": [dict(r) for r in rows],
+                "has_final_dispositor": any(r['is_final_dispositor'] for r in rows),
+                "max_path_length": max((r['path_length'] for r in rows), default=0),
+            }
         except Exception as exc:
             try:
                 with conn.cursor() as sp:
@@ -381,7 +386,7 @@ class PhNimittaWriter(WriterBase):
         'money':         'financial',
     }
 
-    def _enrich_discovery_row(self, conn, row: dict) -> dict:
+    def _enrich_discovery_row(self, conn, row: dict, chart_id: str | None = None) -> dict:
         """B5: derive timing (window_start/end) + real domain for discovery-sourced rows.
 
         1. Domain: map discovery_subsystem / cross_subsystem_root → canonical domain;
@@ -390,6 +395,10 @@ class PhNimittaWriter(WriterBase):
         2. Timing: use detected_at as window_start; window_end = detected_at + 90 days.
            Also attempt to find nearest kala_convergence row within 90 days to set
            convergence_id and borrow its peak_date.
+
+        chart_id is passed explicitly from run() scope (IMPORTANT-1 fix: the discovery
+        SELECT does not include chart_id so row.get('chart_id') was always None, causing
+        the proximity lookup to be silently skipped 100% of the time).
         """
         # 1. Domain enrichment — avoid 'transition' when subsystem tells us better
         subsystem = (row.get('discovery_subsystem') or row.get('cross_subsystem_root') or '').lower()
@@ -417,11 +426,9 @@ class PhNimittaWriter(WriterBase):
                 with conn.cursor() as sp:
                     sp.execute("SAVEPOINT sp_nimitta_disc_conv")
                 with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                    chart_id = row.get('chart_id')
-                    # chart_id may not be in the row dict; it is passed separately to the
-                    # outer run() but not stored per-row. We skip the FK lookup gracefully
-                    # if chart_id is absent — timing enrichment (window_start/end) is the
-                    # primary B5 deliverable; convergence_id is best-effort.
+                    # chart_id is now passed explicitly as a parameter (IMPORTANT-1 fix).
+                    # The discovery SELECT does not include chart_id in its columns so
+                    # row.get('chart_id') is always None — we use the caller-supplied value.
                     if chart_id:
                         cur.execute(
                             """
@@ -454,7 +461,9 @@ class PhNimittaWriter(WriterBase):
     def _build_ctx(self, row: dict, signal_meta, cgm_meta, contradiction_m, precedent_m) -> NimittaContext:
         sid = str(row.get('signal_id') or '')
         sm   = signal_meta.get(sid, {})
-        cgm  = cgm_meta.get(sid, {})
+        # cgm_meta is a chart-level aggregate (not per-signal) — bodha_cgm_paths has no
+        # signal_id FK so per-signal lookup was always a miss. Use directly as chart context.
+        cgm  = cgm_meta  # type: dict (chart-level)
         cont = contradiction_m.get(sid, {})
         prec = precedent_m.get(sid, {})
 
@@ -462,9 +471,9 @@ class PhNimittaWriter(WriterBase):
             signal_domain=sm.get('domain'),
             signal_signature_class=sm.get('signature_class'),
             signal_salience=sm.get('salience_score'),
-            cgm_path_ids=cgm.get('path_ids', []),
-            cgm_centrality=cgm.get('centrality'),
-            root_graha=cgm.get('root_graha'),
+            cgm_path_ids=[p.get('path_id') for p in cgm.get('paths', [])],
+            cgm_centrality=cgm.get('max_path_length'),
+            root_graha=cgm.get('paths', [{}])[0].get('path_label_human') if cgm.get('paths') else None,
             precedent_signal_ids=prec.get('nearest_signal_ids', []),
             precedent_dates=prec.get('precedent_dates', []),
             contradiction_contested=bool(cont),

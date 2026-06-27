@@ -360,8 +360,10 @@ class PhMuhurtaWriter(WriterBase):
         if sign_num in _OWN_SIGNS.get(graha, set()):
             return 0.75
 
-        # Gentle variance: 0.55 base + 0.02 per sign position cycle offset (1–12 → [0, 0.22])
-        variance = round(0.55 + 0.02 * ((sign_num - 1) % 6), 3)
+        # Gentle variance: 0.55 base + 0.01 per sign position (1–12 → 12 distinct values [0.55, 0.66])
+        # IMPORTANT-2 fix: was % 6 (only 6 distinct values, pairing opposite signs);
+        # corrected to % 12 so each of the 12 zodiac signs gets a unique score.
+        variance = round(0.55 + 0.01 * ((sign_num - 1) % 12), 3)
         return variance
 
     # Classical sign lords (1=Aries..12=Pisces) for 10th-lord derivation

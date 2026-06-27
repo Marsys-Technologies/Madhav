@@ -58,8 +58,13 @@ class TestLoadCgmMeta:
         assert result == {}
         conn.cursor.assert_not_called()
 
-    def test_returns_fetched_rows_mapped_by_path_id(self):
-        """CONTRACT-3 pass: rows fetched from bodha_cgm_paths are returned mapped by path_id."""
+    def test_returns_chart_level_aggregate(self):
+        """CONTRACT-3 fix: _load_cgm_meta returns chart-level aggregate, not per-signal dict.
+
+        bodha_cgm_paths has no signal_id FK — the old per-signal lookup was always a miss.
+        The fixed version returns a chart-level aggregate with 'path_count', 'paths',
+        'has_final_dispositor', and 'max_path_length' keys.
+        """
         writer = self._make_writer()
 
         fake_rows = [
@@ -71,10 +76,14 @@ class TestLoadCgmMeta:
         result = writer._load_cgm_meta(conn, ['sig-uuid-1'])
 
         assert isinstance(result, dict), "result must be a dict"
-        assert 'path-001' in result, "path-001 must be a key in result"
-        assert 'path-002' in result, "path-002 must be a key in result"
-        assert result['path-001']['path_label_human'] == 'Saturn→10th→career'
-        assert result['path-002']['is_final_dispositor'] is False
+        assert result['path_count'] == 2, "path_count must be 2"
+        assert len(result['paths']) == 2, "paths list must have 2 entries"
+        assert result['has_final_dispositor'] is True, "has_final_dispositor must be True (path-001)"
+        assert result['max_path_length'] == 3, "max_path_length must be 3 (path-002)"
+        # paths list preserves full row dicts
+        labels = {p['path_label_human'] for p in result['paths']}
+        assert 'Saturn→10th→career' in labels
+        assert 'Jupiter→9th→dharma' in labels
 
     def test_returns_empty_on_db_exception_gracefully(self):
         """Exception during query → rollback savepoint, return {}, do not raise."""
@@ -185,6 +194,37 @@ class TestDiscoveryAnchorTimingAndDomain:
         }
         enriched = writer._enrich_discovery_row(conn, row)
         assert enriched['domain'] == 'health'
+
+    def test_enrich_discovery_row_uses_passed_chart_id(self):
+        """IMPORTANT-1 fix: chart_id is passed explicitly, not read from row.get('chart_id').
+
+        _load_discoveries does not SELECT chart_id, so row.get('chart_id') is always None.
+        The proximity lookup (SAVEPOINT sp_nimitta_disc_conv) must execute when chart_id is
+        passed explicitly as a parameter, even though the row dict has no chart_id key.
+        """
+        writer = self._make_writer()
+
+        # Simulate convergence proximity returning a matching row
+        fake_conv_row = {'convergence_id': 'conv-xyz', 'peak_date': date(2024, 7, 1), 'domain': 'career'}
+        conn, cur = _make_conn_with_savepoint(fetchall_returns=[], fetchone_return=fake_conv_row)
+
+        row = {
+            'id': 'disc-007',
+            'domain': 'transition',
+            'discovery_subsystem': 'career',
+            'cross_subsystem_root': None,
+            'detected_at': date(2024, 6, 1),
+            # NOTE: no 'chart_id' key — matches what _load_discoveries actually returns
+        }
+        # Pass chart_id explicitly (the fix)
+        enriched = writer._enrich_discovery_row(conn, row, chart_id='test-chart-uuid')
+
+        # The proximity lookup should have been attempted (cur.execute called with chart_id arg)
+        # and convergence_id should have been populated from the mocked return
+        assert enriched.get('convergence_id') == 'conv-xyz', (
+            "convergence_id must be populated when chart_id is passed explicitly"
+        )
+        assert enriched.get('peak_date') == date(2024, 7, 1)
 
     def test_enrich_no_detected_at_leaves_timing_null(self):
         """B5: if detected_at is NULL, timing is not fabricated."""
@@ -382,6 +422,34 @@ class TestMuhurtaTransitScoring:
         assert score_a != score_b, "transit_score must differ between different active transits (not constant 0.5)"
         assert score_a == 0.75, "own-sign (sign 10) must score 0.75"
         assert score_b != 0.5,  "non-own sign must not score exactly 0.5"
+
+    def test_transit_score_12_distinct_values_across_zodiac(self):
+        """IMPORTANT-2 fix: % 12 (not % 6) produces 12 distinct scores across the zodiac.
+
+        With % 6, signs 1 and 7 both yielded 0.55, signs 2 and 8 both yielded 0.57, etc.
+        (only 6 distinct values). With % 12 each of the 12 zodiac positions is unique.
+        """
+        writer = self._make_writer()
+        scores = set()
+        for sign_num in range(1, 13):
+            # Use a non-own, non-retro transit for each sign to exercise the variance path
+            gochara = {
+                'mercury': [{
+                    'sign_number': sign_num,
+                    'is_retrograde': False,
+                    'start_date': date(2024, 1, 1),
+                    'end_date': date(2024, 12, 31),
+                }]
+            }
+            score = writer._compute_transit_score(gochara, 'mercury', datetime(2024, 6, 15))
+            # skip own-sign scores (mercury own: 3, 6) — those return 0.75 not variance
+            if sign_num not in {3, 6}:
+                scores.add(score)
+
+        # Should have 10 distinct variance scores (signs 1,2,4,5,7,8,9,10,11,12 — 10 non-own signs)
+        assert len(scores) == 10, (
+            f"Expected 10 distinct non-own-sign scores (% 12 fix), got {len(scores)}: {sorted(scores)}"
+        )
 
     def test_no_active_transit_returns_default(self):
         """B9: no transit window covers candidate_start → returns 0.5."""
