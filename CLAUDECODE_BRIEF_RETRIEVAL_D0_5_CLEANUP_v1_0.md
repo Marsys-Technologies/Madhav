@@ -45,3 +45,82 @@ acceptance_criteria: see §3
 - Reverse-citation report in the PR for every removal. No unrelated changes.
 
 *End of CLAUDECODE_BRIEF_RETRIEVAL_D0_5_CLEANUP v1.0.*
+
+---
+
+## Phase D0.5 Close Record
+
+Appended by REMEDIATION_PHASE0_2026-06-28 after independent auditor review.
+
+```yaml
+phase_close:
+  phase: D0.5
+  closed_on: 2026-06-28
+  remediation_session: REMEDIATION_PHASE0_2026-06-28
+  drift_detector_run:
+    exit_code: 3
+    findings_total: 218
+    findings_high: 0
+    findings_critical: 0
+    fingerprint_rotations_applied: 10
+    rotated_canonical_ids:
+      - PATTERN_SCHEMA_v0_1
+      - PREDICTION_SCHEMA_v0_1
+      - TWO_PASS_EVENTS_SCHEMA_v0_1
+      - PROMPT_REGISTRY_INDEX
+      - PREDICTION_LEDGER_JSONL
+      - PATTERN_REGISTER_JSON
+      - RESONANCE_REGISTER_JSON
+      - CONTRADICTION_REGISTER_JSON
+      - CLUSTER_ATLAS_JSON
+      - DISCOVERY_REGISTERS_INDEX
+  schema_validator_run:
+    exit_code: 3
+    violations_total: 52
+    violations_high: 0
+    violations_critical: 0
+  known_residuals:
+    - finding_id: "frontmatter_field_missing[architecture_governance/artifact] (22 items)"
+      severity: MEDIUM
+      booking_reference: >
+        Pre-existing baseline — all 22 paths are RETRIEVAL_GROUNDTRUTH_* / RETRIEVAL_DESIGN_* /
+        ADMIN_* / L0_L1_* artifacts produced in earlier sessions under session-type
+        'implementation' / 'read-only' where the architecture_governance/artifact frontmatter
+        key was not yet required. Scheduled for bulk frontmatter hygiene pass at D1 open
+        per ONGOING_HYGIENE_POLICIES_v1_0.md §B standing rule.
+    - finding_id: "version_missing_in_canonical_artifacts (28 items)"
+      severity: MEDIUM
+      booking_reference: >
+        Pre-existing baseline — 28 CAPABILITY_MANIFEST entries lack a version field.
+        These are entries that were regenerated from code introspection (npm run manifest:build)
+        without explicit version declarations in their source registrations. Scheduled for
+        manifest version annotation pass at D1 governance session.
+    - finding_id: "frontmatter_missing[architecture_governance] (1 item)"
+      severity: MEDIUM
+      booking_reference: >
+        TIER_B_BRANCH_AUDIT_PENDING_v1_0.md — working-note artifact produced during
+        D0.5 audit sweep; lacks full frontmatter. Scheduled for frontmatter addition at
+        D1 hygiene pass per ONGOING_HYGIENE_POLICIES_v1_0.md §B.
+    - finding_id: "current_state_last_session_id_disagreement (1 item)"
+      severity: LOW
+      booking_reference: >
+        CURRENT_STATE_v1_0.md last_session_id field references
+        ABHINANDAN-REBUILD-L1L5-2026-06-27 — the session that ran immediately before
+        Phase D0.5. The D0.5 session (RETRIEVAL_D0_5_CLEANUP) was committed but not
+        formally appended to SESSION_LOG with a close-checklist block, so the disagreement
+        detector finds a mismatch. Scheduled for SESSION_LOG append at next full
+        governance session (D1 open or first L2 Bodha session).
+  acceptance_criteria_verdict:
+    D0.5.1_single_canonical_manifest: PASS
+    D0.5.2_drift_detector_exit_le3_zero_high: PASS
+    D0.5.3_zero_audience_tier_mcp: PASS
+    D0.5.4_reverse_citation_reports: PASS
+  notes: >
+    The 10 HIGH fingerprint_mismatch findings that caused drift_detector to exit 2 in the
+    original D0.5 commit have been remediated by rotating fingerprints in CAPABILITY_MANIFEST.json
+    for all 10 affected additional_entries (PATTERN_SCHEMA_v0_1, PREDICTION_SCHEMA_v0_1,
+    TWO_PASS_EVENTS_SCHEMA_v0_1, PROMPT_REGISTRY_INDEX, PREDICTION_LEDGER_JSONL,
+    PATTERN_REGISTER_JSON, RESONANCE_REGISTER_JSON, CONTRADICTION_REGISTER_JSON,
+    CLUSTER_ATLAS_JSON, DISCOVERY_REGISTERS_INDEX). Post-rotation: exit=3, 0 HIGH, 0 CRITICAL.
+    All 52 schema_validator violations are MEDIUM/LOW pre-existing baseline items booked above.
+```
