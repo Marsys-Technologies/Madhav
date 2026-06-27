@@ -18,6 +18,7 @@ from services.ka_sangam.engine import (
     mode_a_search,
     mode_b_sweep,
     mode_c_subsystem_period,
+    mode_d_av_bindhu,
     convergence_score,
     confidence_label,
     independent_current_count,
@@ -119,13 +120,16 @@ class KaSangamWriter(WriterBase):
         dignity_map:    dict[str, float]    = {}
         graha_name_map: dict[str, str|None] = {}
         house_num_map:  dict[str, int|None] = {}
+        # B4-src: domain map — primary domain from domains_affected_array[0]
+        domain_map:     dict[str, str|None] = {}
         if signal_ids:
             with conn.cursor() as cur:
                 placeholders = ','.join(['%s'] * len(signal_ids))
                 cur.execute(
                     f"SELECT signal_id, dignity_score, "
                     f"configuration_jsonb->>'fact_value_text' AS graha_name, "
-                    f"(configuration_jsonb->>'fact_value_num')::numeric::int AS house_num "
+                    f"(configuration_jsonb->>'fact_value_num')::numeric::int AS house_num, "
+                    f"domains_affected_array "
                     f"FROM bodha_msr_signals WHERE signal_id IN ({placeholders})",
                     signal_ids,
                 )
@@ -134,6 +138,9 @@ class KaSangamWriter(WriterBase):
                     dignity_map[sid]    = float(row['dignity_score']) if row['dignity_score'] is not None else 0.5
                     graha_name_map[sid] = row['graha_name']
                     house_num_map[sid]  = row['house_num']
+                    # B4-src: extract first domain from array; None when absent
+                    da = row['domains_affected_array']
+                    domain_map[sid] = da[0] if da else None
 
         # Build normalised pred_dicts
         pred_dicts: list[dict] = []
@@ -141,6 +148,8 @@ class KaSangamWriter(WriterBase):
             pd = dict(pred)
             sig_id = pd.get('signal_id')
             pd['dignity_score'] = dignity_map.get(str(sig_id), 0.5) if sig_id else 0.5
+            # B4-src: carry primary domain through to convergence row
+            pd['primary_domain'] = domain_map.get(str(sig_id)) if sig_id else None
             for jf in ('dasha_eligibility_rule_jsonb', 'transit_trigger_jsonb',
                        'strength_affliction_hook_jsonb', 'derivation_ledger_jsonb'):
                 if isinstance(pd.get(jf), str):
@@ -281,6 +290,7 @@ class KaSangamWriter(WriterBase):
         keepalive: optional callable to prevent idle-in-transaction timeout.
         enrichment_context: EnrichmentContext for U3 current scoring.
         muhurta_service: KaMuhurtaSevaService for panchanga_quality + tara_bala.
+        B4-src: stamps primary_domain onto every window dict produced.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
@@ -288,17 +298,22 @@ class KaSangamWriter(WriterBase):
         for pred_dict in pred_dicts:
             sig_id    = pred_dict.get('signal_id')
             sig_class = (pred_dict.get('signature_class') or '').upper()
+            # B4-src: primary domain from MSR signal (carried through plan_substeps)
+            primary_domain = pred_dict.get('primary_domain')
 
             # Route SUBSYSTEM predicates to Mode C (period-based ingress trigger)
             if 'SUBSYSTEM' in sig_class:
                 try:
-                    all_windows.extend(mode_c_subsystem_period(
+                    new_windows = mode_c_subsystem_period(
                         predicate=pred_dict,
                         horizon_start_jd=horizon_start_jd,
                         horizon_end_jd=horizon_end_jd,
                         gochara_service=gochara_service,
                         enrichment_context=enrichment_context,
-                    ))
+                    )
+                    for w in new_windows:
+                        w['primary_domain'] = primary_domain
+                    all_windows.extend(new_windows)
                 except Exception as exc:
                     logger.warning("ka_sangam: Mode C failed for signal %s: %s", sig_id, exc)
                 if keepalive:
@@ -306,7 +321,7 @@ class KaSangamWriter(WriterBase):
                 continue
 
             try:
-                all_windows.extend(mode_a_search(
+                new_windows_a = mode_a_search(
                     predicate=pred_dict,
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
@@ -316,13 +331,16 @@ class KaSangamWriter(WriterBase):
                     chart_id=chart_id,
                     enrichment_context=enrichment_context,
                     native_location=_NATIVE_LOCATION,
-                ))
+                )
+                for w in new_windows_a:
+                    w['primary_domain'] = primary_domain
+                all_windows.extend(new_windows_a)
             except Exception as exc:
                 logger.warning("ka_sangam: Mode A failed for signal %s: %s", sig_id, exc)
             if keepalive:
                 keepalive()
             try:
-                all_windows.extend(mode_b_sweep(
+                new_windows_b = mode_b_sweep(
                     signal_id=sig_id,
                     predicate=pred_dict,
                     horizon_start_jd=horizon_start_jd,
@@ -332,11 +350,36 @@ class KaSangamWriter(WriterBase):
                     enrichment_context=enrichment_context,
                     muhurta_service=muhurta_service,
                     native_location=_NATIVE_LOCATION,
-                ))
+                )
+                for w in new_windows_b:
+                    w['primary_domain'] = primary_domain
+                all_windows.extend(new_windows_b)
             except Exception as exc:
                 logger.warning("ka_sangam: Mode B failed for signal %s: %s", sig_id, exc)
             if keepalive:
                 keepalive()
+
+            # O7: Mode D — SAV-bindhu activation windows for strong signs
+            # Only run for the first predicate per horizon call to avoid duplicate windows.
+            # Mode D is sign-level and predicate-agnostic; running it for every predicate
+            # produces N×K duplicate windows with different signal_ids that bypass the dedup
+            # key check (which includes signal_id).
+            if pred_dicts and pred_dict is pred_dicts[0]:
+                try:
+                    new_windows_d = mode_d_av_bindhu(
+                        predicate=pred_dict,
+                        horizon_start_jd=horizon_start_jd,
+                        horizon_end_jd=horizon_end_jd,
+                        gochara_service=gochara_service,
+                        enrichment_context=enrichment_context,
+                    )
+                    for w in new_windows_d:
+                        w['primary_domain'] = primary_domain
+                    all_windows.extend(new_windows_d)
+                except Exception as exc:
+                    logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
+                if keepalive:
+                    keepalive()
         return all_windows
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
@@ -375,15 +418,19 @@ class KaSangamWriter(WriterBase):
                 currents = {
                     'dasha': bool(cf.get('dasha_score', 0) > 0.3),
                     'nakshatra_overlay': 'nakshatra' in cf,
-                    # Mode C (SUBSYSTEM) has no transit point; Mode A/B always do
+                    # Mode C (SUBSYSTEM) and Mode D (AV-bindhu) have no point transit;
+                    # Mode A/B always do
                     'transit': mode in ('A', 'B'),
                     # Newly wired currents
                     'panchanga': bool(cf.get('c_panchanga_quality', 0) > 0.0),
                     'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
                     'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
                     'nakshatra_subsystem': bool(cf.get('c_nakshatra_subsystem', 0) > 0.0),
-                    # U3 C7-C12 currents
-                    'ashtakavarga_transit_potency': bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0),
+                    # U3 C7-C12 currents (Mode D: ashtakavarga_transit_potency from sav_bindhu)
+                    'ashtakavarga_transit_potency': (
+                        bool(cf.get('c7_ashtakavarga_potency', 0) > 0.0)
+                        or (mode == 'D' and bool(cf.get('sav_bindhu', 0) >= 28))
+                    ),
                     'eclipse_proximity': bool(cf.get('c8_eclipse_proximity', 0) > 0.0),
                     'transit_to_transit': bool(cf.get('c9_transit_to_transit', 0) > 0.0),
                     'station_retrograde': bool(cf.get('c10_station_retrograde', 0) > 0.0),
@@ -400,14 +447,14 @@ class KaSangamWriter(WriterBase):
                         signal_id, mode, peak_date, orb_strength, rarity_years,
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
-                        horizon_tier
+                        horizon_tier, domain
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
                         %s, %s, %s, %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s
+                        %s, %s
                     )
                     """,
                     (
@@ -427,6 +474,8 @@ class KaSangamWriter(WriterBase):
                         icc,
                         w.get('is_off_dasha_discovery', False),
                         horizon_tier,
+                        # B4-src: domain from originating MSR signal's domains_affected_array[0]
+                        w.get('primary_domain'),
                     ),
                 )
                 rows_inserted += 1
@@ -445,7 +494,8 @@ class KaSangamWriter(WriterBase):
 
         # C7: ashtakavarga bindus from chart_facts
         # Schema: fact_category='ashtakavarga_bindu', fact_subject='<Planet>-HOUSE_<N>',
-        # fact_key='bindus', fact_value_num=bindu_count, ayanamsha_id='lahiri'
+        # fact_key='bindus', fact_value_num=bindu_count, ayanamsha_id='lahiri_chitrapaksha'
+        # B6 fix: stored value is 'lahiri_chitrapaksha', not bare 'lahiri'.
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_ashtak")
@@ -456,7 +506,7 @@ class KaSangamWriter(WriterBase):
                     FROM chart_facts
                     WHERE chart_id = %s
                       AND fact_category = 'ashtakavarga_bindu'
-                      AND ayanamsha_id = 'lahiri'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
                       AND fact_key = 'bindus'
                     """,
                     (chart_id,),

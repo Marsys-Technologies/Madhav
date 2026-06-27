@@ -1201,6 +1201,130 @@ def mode_c_subsystem_period(
     return windows
 
 
+# ── Mode D: Sarva-Ashtakavarga bindhu convergence sub-mode ───────────────────
+
+# Classical threshold: transit through a sign with SAV ≥ 28 bindhu = strong
+# activation window (Phaladeepika Ch.26; BPHS Ch.66 Gochara-Ashtakavarga).
+# SAV per sign ranges 0-56 (7 classical planets × 8 bindus each); 28 = midpoint.
+_SAV_STRONG_THRESHOLD: int = 28
+
+# Sign names indexed 1–12 (Aries … Pisces)
+_SIGN_NAMES: dict[int, str] = {
+    1: 'Aries', 2: 'Taurus', 3: 'Gemini', 4: 'Cancer',
+    5: 'Leo', 6: 'Virgo', 7: 'Libra', 8: 'Scorpio',
+    9: 'Sagittarius', 10: 'Capricorn', 11: 'Aquarius', 12: 'Pisces',
+}
+
+# Planets to scan for AV-bindhu activation windows (slow-moving have more timing weight)
+_AV_SCAN_PLANETS: tuple[str, ...] = ('Jupiter', 'Saturn', 'Mars')
+
+
+def mode_d_av_bindhu(
+    predicate: dict,
+    horizon_start_jd: float,
+    horizon_end_jd: float,
+    gochara_service: Any,
+    enrichment_context: Optional[EnrichmentContext] = None,
+    sav_threshold: int = _SAV_STRONG_THRESHOLD,
+) -> list[dict]:
+    """
+    Mode D: Sarva-Ashtakavarga (SAV) bindhu convergence sub-mode.
+
+    Classical basis: Phaladeepika Ch.26 + BPHS Ch.66.  A planet transiting a
+    sign with SAV ≥ threshold bindhu (default 28) is a strong activation window.
+    Only Jupiter, Saturn, and Mars are scanned — fast planets (Sun/Moon/Mercury/
+    Venus) produce too many events to be meaningful timing discriminants.
+
+    Algorithm:
+      1. Read SAV per sign from EnrichmentContext.ashtakavarga_bindu['SARVA'].
+      2. For each sign with SAV ≥ threshold, find planet ingresses (via
+         gochara_service.find_ingresses) in the horizon for each scan planet.
+      3. Emit one window per ingress, spanning the planet's sign-transit duration.
+      4. Convergence score = (sav / 56.0) × dignity_score.  Orb_strength = 1.0
+         (sign-level: no angular orb — the window is the full sign transit).
+
+    Returns windows with mode='D' and is_off_dasha_discovery=False.
+    Requires gochara_service; returns [] if unavailable.
+    """
+    if gochara_service is None:
+        return []
+    ctx = enrichment_context or EnrichmentContext.empty()
+
+    # SARVA bindhu map: {sign_number: sav_count}
+    sarva_map: dict[int, int] = ctx.ashtakavarga_bindu.get('SARVA', {})
+    if not sarva_map:
+        logger.debug("mode_d_av_bindhu: no SARVA data in EnrichmentContext — skipping")
+        return []
+
+    sig_class     = predicate.get('signature_class', 'UNKNOWN')
+    dignity_score = float(predicate.get('dignity_score', 0.5))
+    signal_id     = predicate.get('signal_id')
+
+    # Strong signs: SAV >= threshold
+    strong_signs: list[tuple[int, int]] = [
+        (sign_num, sav)
+        for sign_num, sav in sarva_map.items()
+        if sav >= sav_threshold
+    ]
+    if not strong_signs:
+        logger.debug("mode_d_av_bindhu: no signs meet SAV >= %d threshold", sav_threshold)
+        return []
+
+    windows: list[dict] = []
+    for planet in _AV_SCAN_PLANETS:
+        period_days = _PLANET_PERIOD_YR.get(planet, 12.0) * 365.25 / 12.0
+        for sign_num, sav in strong_signs:
+            sign_name = _SIGN_NAMES.get(sign_num, f'Sign{sign_num}')
+            try:
+                ingresses = gochara_service.find_ingresses(
+                    planet=planet,
+                    target_sign=sign_name,
+                    start_jd=horizon_start_jd,
+                    end_jd=horizon_end_jd,
+                )
+            except Exception as exc:
+                logger.debug("mode_d_av_bindhu: find_ingresses(%s, %s) failed: %s",
+                             planet, sign_name, exc)
+                ingresses = []
+
+            for ingress_ev in ingresses:
+                ws = _jd_to_date(ingress_ev.event_jd)
+                we = _jd_to_date(ingress_ev.event_jd + period_days)
+                # Score: SAV fraction × dignity  (SAV max = 56 for 7 classical planets)
+                sav_score  = min(1.0, sav / 56.0)
+                cscore     = round(dignity_score * sav_score, 4)
+                rarity     = _rarity_years(planet, 30.0)   # sign-ingress ≈ 30° transit
+
+                windows.append({
+                    'mode': 'D',
+                    'window_start': ws,
+                    'window_end':   we,
+                    'peak_date':    ws,
+                    'convergence_score': cscore,
+                    'orb_strength': 1.0,   # sign-level: no angular orb
+                    'rarity_years': rarity,
+                    'constituent_factors': {
+                        'planet': planet,
+                        'sign': sign_name,
+                        'sign_num': sign_num,
+                        'sav_bindhu': sav,
+                        'sav_threshold': sav_threshold,
+                        'sav_score': round(sav_score, 4),
+                        'dignity_score': dignity_score,
+                        'signature_class': sig_class,
+                        'mode': 'D',
+                    },
+                    'source_citation': (
+                        f"mode_d/av_bindhu/{planet}@{sign_name}/SAV={sav}/{ws}"
+                    ),
+                    'is_off_dasha_discovery': False,
+                    'signal_id': signal_id,
+                })
+
+    windows.sort(key=lambda w: w['convergence_score'], reverse=True)
+    return windows
+
+
 __all__ = [
     'SUPPORTING_WEIGHTS',
     'HIGH_CONFIDENCE_ORB_THRESHOLD',
@@ -1212,9 +1336,13 @@ __all__ = [
     'mode_a_search',
     'mode_b_sweep',
     'mode_c_subsystem_period',
+    'mode_d_av_bindhu',
     '_jd_to_date',
     '_date_to_jd',
     '_rarity_years',
     '_PLANET_PERIOD_YR',
     '_resolve_transit_planet',
+    '_SAV_STRONG_THRESHOLD',
+    '_AV_SCAN_PLANETS',
+    '_SIGN_NAMES',
 ]
