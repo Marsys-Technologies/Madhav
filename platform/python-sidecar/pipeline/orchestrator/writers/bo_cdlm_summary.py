@@ -73,9 +73,6 @@ INSERT INTO bodha_cdlm_chart_summary (
   %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s,
   %(computed_at)s
 )
-ON CONFLICT (chart_id, ayanamsha_id, build_id, snapshot_type,
-             dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id)
-DO NOTHING
 """
 
 

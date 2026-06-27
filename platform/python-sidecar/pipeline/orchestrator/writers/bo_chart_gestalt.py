@@ -84,7 +84,6 @@ INSERT INTO bodha_chart_gestalt (
   %(computed_at)s,
   %(engine_version)s
 )
-ON CONFLICT (chart_id, ayanamsha_id) DO NOTHING
 """
 
 
