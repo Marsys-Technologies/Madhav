@@ -13,6 +13,7 @@
     "etl:msr": "tsx src/scripts/etl/msr_etl.ts",
     "manifest:build": "tsx src/scripts/manifest/build.ts",
     "manifest:validate-parity": "tsx src/scripts/manifest/parity_validator.ts",
+    "registry:chart-agnostic-gate": "tsx src/lib/retrieval/registry/chart_agnostic_gate.ts",
     "pipeline:test": "tsx --conditions=react-server src/scripts/test/pipeline_smoke.ts",
     "pipeline:accuracy-test": "vitest run src/lib/router/__tests__",
     "pipeline:msr-sql-test": "tsx src/scripts/test/msr_sql_smoke.ts",

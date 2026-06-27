@@ -20,6 +20,12 @@ export const assetRegistryAllCapability: CapabilityDescriptor = {
     'Full asset_registry snapshot: all build assets across all layers (L0–L5). ' +
     'Includes asset_id, layer, sanskrit/english names, target_floor, scope, is_active. ' +
     'Use to understand available data assets before planning retrieval.',
+  scope: 'global',
+  archetype: 'orientation_digest',
+  traversal_level: 'L-ORIENT',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

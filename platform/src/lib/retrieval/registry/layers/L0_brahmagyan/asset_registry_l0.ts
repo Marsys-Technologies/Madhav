@@ -19,6 +19,12 @@ export const assetRegistryL0Capability: CapabilityDescriptor = {
     'L0 Brahmagyan asset_registry slice: all brahmagyan layer assets ' +
     '(shastra texts, sutravali rules, ontology, remedies, ephemeris, etc.). ' +
     'Includes current row counts and target_floor for each asset.',
+  scope: 'global',
+  archetype: 'orientation_digest',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',

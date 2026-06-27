@@ -103,6 +103,14 @@ export function registrySize(): number {
   return _registry.size
 }
 
+/**
+ * Get all registered capabilities as an array.
+ * Used by the chart-agnostic gate and other CI checks.
+ */
+export function getAllCapabilities(): CapabilityDescriptor[] {
+  return Array.from(_registry.values())
+}
+
 // Re-export types for convenience
 export type {
   CapabilityDescriptor,

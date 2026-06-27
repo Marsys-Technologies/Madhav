@@ -26,6 +26,12 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
     limit:  { type: 'number', default: 50 },
   },
   required_inputs: [],
+  scope: 'global',
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 68, always_include: false },

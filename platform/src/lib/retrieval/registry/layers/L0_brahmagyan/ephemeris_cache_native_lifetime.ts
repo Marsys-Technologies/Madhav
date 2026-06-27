@@ -28,6 +28,12 @@ export const ephemerisCacheNativeLifetimeCapability: ResourceCapability = {
     'Native: Abhisek Mohanty, born 1984-02-05 10:43 IST, Bhubaneswar, Odisha, India. ' +
     'Expected: ~157,266 rows (86 years × 365.25 days × 9 bodies).',
   mime_type: 'application/json',
+  scope: 'global',
+  archetype: 'orientation_digest',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
   llm_hints: {
     agentic: {
       cost_class: 'cheap',
