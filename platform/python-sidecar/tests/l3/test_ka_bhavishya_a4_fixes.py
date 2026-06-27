@@ -103,17 +103,20 @@ class TestB4ConsumeKaBhavishya:
         # Darshana row with kc.domain = 'relationship'
         darshana_row = self._make_darshana_row('relationship')
 
-        # Cursor sequence:
+        # Cursor sequence (writer order: DELETE first, then probe, then SELECT, then INSERT):
         # 1. DELETE kala_bhavishya  (idempotency)
-        # 2. SELECT darshana + convergence JOIN  -> returns our row with domain col
-        # 3. SELECT signal_type_id from bodha_msr_signals  -> machine code, no keyword match
-        # 4. INSERT kala_bhavishya
+        # 2. schema probe (information_schema.columns) -> domain col present
+        # 3. SELECT darshana + convergence JOIN  -> returns our row with domain col
+        # 4. SELECT signal_type_id from bodha_msr_signals  -> machine code, no keyword match
+        # 5. INSERT kala_bhavishya
         cur_delete = _make_cursor()
+        cur_probe = _make_cursor()
+        cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
         cur_darshana = _make_cursor([darshana_row])
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:gochara:0042'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_delete, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -145,13 +148,21 @@ class TestB4ConsumeKaBhavishya:
 
         darshana_row = self._make_darshana_row(None)  # domain IS NULL
 
+        # Cursor sequence (writer order: DELETE first, then probe, then SELECT, then INSERT):
+        # 1. DELETE kala_bhavishya
+        # 2. schema probe -> domain col present (but value in row is NULL, so keyword kicks in)
+        # 3. SELECT darshana + convergence JOIN
+        # 4. SELECT signal_type_id from bodha_msr_signals
+        # 5. INSERT kala_bhavishya
         cur_delete = _make_cursor()
+        cur_probe = _make_cursor()
+        cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
         cur_darshana = _make_cursor([darshana_row])
         # Signal type contains 'kalatra' -> keyword match -> 'relationship'
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'kalatra_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_delete, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -181,11 +192,13 @@ class TestB4ConsumeKaBhavishya:
             darshana_row = self._make_darshana_row(test_domain)
 
             cur_delete = _make_cursor()
+            cur_probe = _make_cursor()
+            cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
             cur_darshana = _make_cursor([darshana_row])
             cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:0001'}])
             cur_insert = _make_cursor()
 
-            conn = _make_conn(cur_delete, cur_darshana, cur_signals, cur_insert)
+            conn = _make_conn(cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
             ctx = SimpleNamespace(
                 db_conn=conn,
                 config={'chart_id': 'chart-abc', 'birth_params': {}},
@@ -201,24 +214,25 @@ class TestB4ConsumeKaBhavishya:
         assert 'relationship' in domains_seen
         assert 'spiritual' in domains_seen
 
-    def test_domain_col_absent_graceful_fallback(self):
+    def test_schema_probe_used_when_column_absent(self):
         """
-        If kc.domain column doesn't exist yet (pre-A3 migration), the writer falls
-        back to the no-domain query (fresh cursor after rollback) and keyword inference
-        without crashing.
+        BLOCKING-1 fix: when kc.domain column doesn't exist yet (pre-A3 migration),
+        the writer uses the information_schema.columns probe (fetchone returns None)
+        to select NULL AS domain, then falls back to keyword inference — WITHOUT
+        ever calling conn.rollback() (which violates the FROZEN orchestrator contract).
 
-        Cursor order in retry path:
-          1. DELETE (idempotency)
-          2. first darshana SELECT with domain col -> raises (column absent)
-          3. rollback is called on conn
-          4. retry darshana SELECT without domain col -> returns rows
-          5. SELECT signal_type_id from bodha_msr_signals
-          6. INSERT kala_bhavishya
+        Cursor sequence:
+          1. schema probe -> fetchone() returns None (column absent)
+          2. DELETE kala_bhavishya (idempotency)
+          3. SELECT darshana with NULL AS domain -> returns rows
+          4. SELECT signal_type_id from bodha_msr_signals
+          5. INSERT kala_bhavishya
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
             KaBhavishyaLekhaWriter,
         )
 
+        # Row does not have 'domain' key — simulates NULL AS domain from query
         darshana_row_no_domain = {
             'convergence_id': 'conv-001',
             'signal_id': 'sig-001',
@@ -232,23 +246,17 @@ class TestB4ConsumeKaBhavishya:
             'confidence_label': 'high',
             'rarity_years': 12.0,
             'mode': 'vimshottari',
-            # No 'domain' key — simulates pre-migration schema
+            'domain': None,  # NULL AS domain from probe-gated query
         }
 
         cur_delete = _make_cursor()
-
-        # Cursor 2: raises on execute (simulates column-absent error)
-        cur_failing = MagicMock()
-        cur_failing.__enter__ = lambda s: s
-        cur_failing.__exit__ = MagicMock(return_value=False)
-        cur_failing.execute = MagicMock(side_effect=Exception("column kc.domain does not exist"))
-
-        # Cursor 3 (retry path — fresh cursor opened after rollback)
-        cur_retry = _make_cursor([darshana_row_no_domain])
+        cur_probe = _make_cursor()
+        cur_probe.fetchone = MagicMock(return_value=None)  # column absent
+        cur_darshana = _make_cursor([darshana_row_no_domain])
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'raja_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_delete, cur_failing, cur_retry, cur_signals, cur_insert)
+        conn = _make_conn(cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -256,12 +264,11 @@ class TestB4ConsumeKaBhavishya:
         )
 
         writer = KaBhavishyaLekhaWriter()
-        # Should not raise — graceful fallback
         result = writer.run(ctx)
 
         assert result.rows_inserted == 1, f"Expected 1 row, got {result.rows_inserted}"
-        # conn.rollback() should have been called once (for the failed query)
-        conn.rollback.assert_called_once()
+        # CRITICAL: conn.rollback() must NEVER be called (FROZEN orchestrator contract)
+        conn.rollback.assert_not_called()
         # Domain should come from keyword inference ('raja_yoga_v1' -> 'career')
         inserted_rows = cur_insert.executemany.call_args[0][1]
         assert inserted_rows[0][3] == 'career', (
@@ -479,6 +486,12 @@ class TestO2MiBhavisyaDomainSignals:
         Regression: before O2 fix, ALL predictions got the same first-5 signals
         regardless of domain. Verify that no longer happens when domain-specific
         signals exist.
+
+        NOTE: when signals are exclusively single-domain, each domain's driving_signals
+        set will be fully distinct. Multi-domain signals (tagged to more than one domain)
+        LEGITIMATELY appear in multiple domain buckets — that is correct behavior, not
+        contamination. The separate test_multi_domain_signal_appears_in_both_buckets
+        validates that case.
         """
         anchors = [
             self._make_anchor('a1', 'career'),
@@ -486,7 +499,7 @@ class TestO2MiBhavisyaDomainSignals:
             self._make_anchor('a3', 'relationship'),
         ]
 
-        # Each domain gets its own exclusive signals
+        # Each domain gets its own exclusive single-domain signals
         msr_signals = (
             [self._make_msr_signal(f'career-sig-{i}', 0.9 - i * 0.1, ['career']) for i in range(3)]
             + [self._make_msr_signal(f'spiritual-sig-{i}', 0.8 - i * 0.1, ['spiritual']) for i in range(3)]
@@ -497,11 +510,54 @@ class TestO2MiBhavisyaDomainSignals:
 
         assert len(pred_rows) == 3
 
-        driving_career   = {d['signal_id'] for d in json.loads(pred_rows[0][13])}
+        driving_career    = {d['signal_id'] for d in json.loads(pred_rows[0][13])}
         driving_spiritual = {d['signal_id'] for d in json.loads(pred_rows[1][13])}
-        driving_rel      = {d['signal_id'] for d in json.loads(pred_rows[2][13])}
+        driving_rel       = {d['signal_id'] for d in json.loads(pred_rows[2][13])}
 
-        # All three sets should be distinct
-        assert driving_career != driving_spiritual, "career and spiritual domains share signals"
-        assert driving_career != driving_rel, "career and relationship domains share signals"
-        assert driving_spiritual != driving_rel, "spiritual and relationship domains share signals"
+        # With single-domain signals: all three sets must be distinct
+        assert driving_career != driving_spiritual, "career and spiritual domains share signals (unexpected for single-domain fixtures)"
+        assert driving_career != driving_rel, "career and relationship domains share signals (unexpected for single-domain fixtures)"
+        assert driving_spiritual != driving_rel, "spiritual and relationship domains share signals (unexpected for single-domain fixtures)"
+
+        # Each domain set contains ONLY signals tagged to that domain
+        assert all(s.startswith('career-sig-') for s in driving_career), f"Non-career signal in career bucket: {driving_career}"
+        assert all(s.startswith('spiritual-sig-') for s in driving_spiritual), f"Non-spiritual signal in spiritual bucket: {driving_spiritual}"
+        assert all(s.startswith('rel-sig-') for s in driving_rel), f"Non-relationship signal in relationship bucket: {driving_rel}"
+
+    def test_multi_domain_signal_appears_in_both_buckets(self):
+        """
+        BLOCKING-2 fix: a signal tagged domains_affected_array=['career', 'relationship']
+        correctly appears in BOTH the career and relationship driving_signals buckets.
+        This is valid behavior (not contamination) — the grouping logic is correct.
+        The old test name 'no_shared_generic_signals' incorrectly implied multi-domain
+        signals should be excluded from multiple buckets.
+        """
+        anchors = [
+            self._make_anchor('a1', 'career'),
+            self._make_anchor('a2', 'relationship'),
+        ]
+
+        msr_signals = [
+            # Multi-domain signal: tagged to BOTH career and relationship
+            self._make_msr_signal('sig-multi', 0.95, ['career', 'relationship']),
+            # Single-domain signals
+            self._make_msr_signal('sig-career-only', 0.80, ['career']),
+            self._make_msr_signal('sig-rel-only', 0.70, ['relationship']),
+        ]
+
+        result, pred_rows, _ = self._run_mi_bhavisya(anchors, msr_signals)
+
+        assert len(pred_rows) == 2
+
+        driving_career = {d['signal_id'] for d in json.loads(pred_rows[0][13])}
+        driving_rel    = {d['signal_id'] for d in json.loads(pred_rows[1][13])}
+
+        # Multi-domain signal MUST appear in BOTH buckets (correct behavior)
+        assert 'sig-multi' in driving_career, "Multi-domain signal missing from career bucket"
+        assert 'sig-multi' in driving_rel, "Multi-domain signal missing from relationship bucket"
+
+        # Single-domain signals appear only in their own bucket
+        assert 'sig-career-only' in driving_career
+        assert 'sig-career-only' not in driving_rel
+        assert 'sig-rel-only' in driving_rel
+        assert 'sig-rel-only' not in driving_career

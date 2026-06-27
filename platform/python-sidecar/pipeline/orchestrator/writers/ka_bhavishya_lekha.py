@@ -15,53 +15,38 @@ class KaBhavishyaLekhaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
 
-        # Read top-ranked darshana windows in the future (next 3 years)
+        # Read top-ranked darshana windows in the future (next 5 years).
         # B4-consume: also SELECT kc.domain (added by A3 migration 361).
-        # If the column doesn't exist yet (pre-A3 DB), we fall back gracefully via try/except.
-        with conn.cursor() as cur:
-            try:
-                cur.execute("""
-                    SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
-                           kd.peak_date, kd.window_start, kd.window_end,
-                           kd.narrative, kd.obstruction_summary,
-                           kc.confidence_label, kc.rarity_years, kc.mode,
-                           kc.domain
-                    FROM kala_darshana kd
-                    JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
-                    WHERE kd.chart_id = %s
-                      AND kd.peak_date >= %s
-                      AND kd.peak_date <= %s
-                      AND kd.net_label NOT IN ('obstructed_severe')
-                    ORDER BY kd.effective_score DESC NULLS LAST
-                    LIMIT 100
-                """, (chart_id, today, date(today.year + 5, today.month, today.day)))
-                darshana_rows = cur.fetchall()
-                _convergence_has_domain = True
-            except Exception:
-                # kc.domain column absent (pre-migration 361): rollback and retry
-                # without the domain column using a fresh cursor.
-                conn.rollback()
-                _convergence_has_domain = False
-                darshana_rows = None
+        # Pre-flight schema probe (read-only, no transaction impact) determines whether
+        # the domain column exists. This avoids conn.rollback() which violates the FROZEN
+        # orchestrator contract (writers NEVER commit, rollback, or close ctx.db_conn).
+        with conn.cursor() as probe_cur:
+            probe_cur.execute("""
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'kala_convergence' AND column_name = 'domain'
+                LIMIT 1
+            """)
+            _convergence_has_domain = probe_cur.fetchone() is not None
 
-        if darshana_rows is None:
-            # Retry path: open a new cursor after rollback
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
-                           kd.peak_date, kd.window_start, kd.window_end,
-                           kd.narrative, kd.obstruction_summary,
-                           kc.confidence_label, kc.rarity_years, kc.mode
-                    FROM kala_darshana kd
-                    JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
-                    WHERE kd.chart_id = %s
-                      AND kd.peak_date >= %s
-                      AND kd.peak_date <= %s
-                      AND kd.net_label NOT IN ('obstructed_severe')
-                    ORDER BY kd.effective_score DESC NULLS LAST
-                    LIMIT 100
-                """, (chart_id, today, date(today.year + 5, today.month, today.day)))
-                darshana_rows = cur.fetchall()
+        domain_select = "kc.domain," if _convergence_has_domain else "NULL AS domain,"
+
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
+                       kd.peak_date, kd.window_start, kd.window_end,
+                       kd.narrative, kd.obstruction_summary,
+                       kc.confidence_label, kc.rarity_years, kc.mode,
+                       {domain_select}
+                FROM kala_darshana kd
+                JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
+                WHERE kd.chart_id = %s
+                  AND kd.peak_date >= %s
+                  AND kd.peak_date <= %s
+                  AND kd.net_label NOT IN ('obstructed_severe')
+                ORDER BY kd.effective_score DESC NULLS LAST
+                LIMIT 100
+            """, (chart_id, today, date(today.year + 5, today.month, today.day)))
+            darshana_rows = cur.fetchall()
 
         if not darshana_rows:
             return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
