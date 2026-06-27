@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.00
+version: 6.01
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,44 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.01 (2026-06-27, ABHINANDAN-REBUILD-L1L5-2026-06-27):
+    **Abhinandan Mohanty (non-native chart 1c826d5a) rebuilt end-to-end L1→L5 via the Nirmāṇa
+    build tracker — all per-chart assets lit, 0 errors, 8 distinct bugs found-and-fixed.**
+    Final state: L1 Gaṇita 16/16, L2 Bodha 10/10, L3 Kāla 12/12, L4 Phala 9/9, L5 Mīmāṃsā 10/10.
+    Sample real data: chart_facts 130,212; chart_dashas 538,337; bodha_msr_signals 58,674;
+    kala_convergence 4,844; kala_jivana_parva 238; phala_anchors 400; mimamsa_predictions 300.
+    L0 Brahmagyan untouched throughout (855,158 rows intact). Native 482012f1 never touched.
+    8 bugs fixed (all committed to main + deployed; surgical migrations applied to prod):
+      (1) ka_yojaka _fetch_cdlm_domain_strength queried non-existent bodha_cdlm_cells columns
+          (domain_a/link_strength → domain_row/net_linkage_strength) — the swallowed query
+          aborted the txn → empty kala_activation_predicates → silent cascade. + SAVEPOINT guards.
+      (2) orchestrator UPSTREAM-SUCCESS GATE added (runner.py, native-approved): a failed/blocked
+          asset now BLOCKS its transitive downstream (state=error 'BLOCKED:…') instead of letting
+          them silently "complete" on empty upstream data. Tests: test_orchestrator_gate.py.
+      (3) kala_convergence_mode_check widened A,B → A,B,C (ka_sangam emits Mode C subsystem
+          convergence from the D-series audit) — migration 360.
+      (4) FK covering indexes on 11 unindexed FK columns (migration 359) — fixes a 5-minute
+          DELETE hang on bodha_msr_signals (full audit: 0 remaining unindexed FKs >1k rows).
+      (5) plan/runs resolver loaded throughput WHERE chart_id=$1 only → built global L0 assets
+          (chart_id IS NULL) read as "not built" and falsely BLOCKED every layer/asset-scoped
+          build ("run the Brahmagyan layer first"); fixed to chart_id=$1 OR chart_id IS NULL.
+      (6,7,8) ka_jivana_parva: removed bogus ancestor_lord_1; signature_class joined from
+          kala_activation_predicates (not kala_convergence); scoped to vimshottari + canonical
+          ayanamsha (was reading all 7 systems × 5 ayanamshas → smallint parva_index overflow).
+    UI/tracker fixes also shipped: L0-safe global Clear (excludes brahmagyan); L2/L5 clear
+    completeness (EXPLICIT_CLEAR_OPS, mig 358); tracker live-count accuracy (stats rows_written
+    cache threshold); Stop control scoped to building layer/asset; global-rebuild gate self-block.
+    DAG-consistency audit (native concern): ka_jivana_parva is a pure leaf (0 dependents); a
+    full last_built_at vs depends_on check found 0 ordering violations across L1-L5 — the
+    orchestrator builds in topological order, not layer-number order.
+    Supabase migrations now at 360. last_session_id: ABHINANDAN-REBUILD-L1L5-2026-06-27.
+    predecessor_session: GIT-BRANCH-AUDIT-2026-06-27.
+    next_session_objective: >
+      "Abhinandan 1c826d5a fully built + verified L1-L5 (this closes the Phase E non-native
+      E2E in practice for this chart). Supabase next mig 361+. Consider: (a) wire the
+      DAG-order audit query as a standing reconciliation check; (b) the 3 stale L0 build-order
+      timestamps are cosmetic/pre-existing, not this chart's concern."
+    file_updated_at: 2026-06-27. file_updated_by_session: ABHINANDAN-REBUILD-L1L5-2026-06-27.
   - v6.00 (2026-06-27, GIT-BRANCH-AUDIT-2026-06-27):
     **main branch fully audited and synced — all branches merged/deleted, 3 surgical migs applied to prod.**
     Phase 1: 3 governance docs committed (BODHA_ONECLICK_BUILD_REMEDIATION_PLAN, two L3/L4 briefs);

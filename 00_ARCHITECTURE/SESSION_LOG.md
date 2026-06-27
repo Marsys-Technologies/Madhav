@@ -29923,3 +29923,108 @@ Next: **(1)** read `L3_KALA_CLOSE_v1_0.md §11` for L4 onboarding contract; **(2
 first L4 supabase/ migration **346**+. **Native:** click Rebuild→Kāla to clear stale L3 badges.
 
 *End of GIT-BRANCH-AUDIT-2026-06-27 entry — 2026-06-27.*
+
+---
+
+## ABHINANDAN-REBUILD-L1L5-2026-06-27 — non-native chart full L1→L5 rebuild + 8 bug fixes
+
+```yaml
+session_open:
+  session_id: ABHINANDAN-REBUILD-L1L5-2026-06-27
+  opened_on: 2026-06-27
+  predecessor_session: GIT-BRANCH-AUDIT-2026-06-27
+  active_layer_campaign: >
+    Non-native chart (Abhinandan Mohanty, 1c826d5a-41cb-4450-b4dc-59d440e5f75a) end-to-end
+    L1-L5 delete → rebuild → audit → fix loop, driven through the Nirmāṇa build tracker.
+  may_touch:
+    - platform/python-sidecar/pipeline/orchestrator/**
+    - platform/python-sidecar/pipeline/orchestrator/writers/**
+    - platform/src/app/api/cockpit/**
+    - platform/src/lib/cockpit/**
+    - platform/src/lib/components/cockpit/v2/**
+    - platform/src/hooks/useAssetStats.ts
+    - platform/supabase/migrations/**
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+  must_not_touch:
+    - L0 Brahmagyan (bg_* / layer='brahmagyan') — never rebuilt, cleared, or modified
+    - native chart 482012f1 — no build/clear trigger
+    - orchestrator WriterBase contract — FROZEN (added a runner gate, not a contract change)
+  red_team_due: false
+  handshake_valid: true
+```
+
+**Session type:** Non-native chart rebuild + iterative bug-fix loop, triggered via the
+Nirmāṇa (Cockpit v2) build tracker on `localhost:3000` against the prod DB (Cloud SQL).
+
+**Predecessor session:** GIT-BRANCH-AUDIT-2026-06-27 (2026-06-27)
+
+### What was done
+
+Cleared and rebuilt Abhinandan Mohanty (1c826d5a) across **all five layers L1–L5** through the
+build tracker, fixing every error to completion. **L0 Brahmagyan untouched** (855,158 rows
+intact); **native 482012f1 never touched**. Final: L1 16/16 · L2 10/10 · L3 12/12 · L4 9/9 ·
+L5 10/10 lit, 0 errors. Real data e.g. chart_dashas 538,337; bodha_msr_signals 58,674;
+kala_convergence 4,844; kala_jivana_parva 238; mimamsa_predictions 300.
+
+### Bugs found and fixed (all on main + deployed)
+
+| # | Bug | Fix |
+|---|---|---|
+| 1 | `ka_yojaka` queried non-existent `bodha_cdlm_cells` cols → aborted txn → empty predicates → silent cascade | correct cols + max-normalize + SAVEPOINT guards (`b8511da3`) |
+| 2 | orchestrator had **no upstream-success gate** — failures cascaded as "empty but complete" | runner gate: blocks transitive downstream loudly; tests (`280be21f`) |
+| 3 | `kala_convergence_mode_check` rejected Mode C (subsystem convergence) | widen A,B→A,B,C (migration 360) |
+| 4 | 11 unindexed FK columns → 5-min `DELETE` hang on bodha_msr_signals | FK covering indexes (migration 359) |
+| 5 | plan/runs resolver read only chart-scoped throughput → built L0 globals looked "not built" → falsely blocked layer builds | `chart_id=$1 OR chart_id IS NULL` (`6236aa86`) |
+| 6–8 | `ka_jivana_parva`: bogus `ancestor_lord_1`; `signature_class` from wrong table; all-systems×all-ayanamsha read → smallint overflow | drop col; LATERAL join predicate; scope to vimshottari + canonical ayanamsha (`a5077c01`,`0a019baa`) |
+
+Plus UI/clear hardening: L0-safe global Clear (`810b37aa`); L2/L5 clear completeness +
+migration 358; tracker live-count accuracy (`9dc65b79`); Stop control scoped to building
+layer/asset (`35f30b73`); global-rebuild precondition self-block fix (`a4a42ee2`).
+
+### DAG-consistency audit (native concern)
+
+`ka_jivana_parva` is a **pure leaf** (0 dependents). A full `last_built_at` vs `depends_on`
+audit found **0 ordering violations across L1–L5** — the orchestrator builds in **topological
+(dependency) order, not layer-number order**, so a leaf in L3 can legitimately build after
+L4/L5 with no inconsistency. The only 3 flagged edges are pre-existing L0 build-order artifacts.
+
+### Gate summary
+
+| Gate | Result |
+|---|---|
+| L1–L5 all lit (per-chart) | 16/10/12/9/10 — yes, 0 non-lit |
+| Build errors at close | 0 |
+| L0 / native untouched | yes / yes |
+| DAG-order violations (L1–L5) | 0 |
+| Migrations applied to prod | 358, 359, 360 |
+
+```yaml
+session_close:
+  session_id: ABHINANDAN-REBUILD-L1L5-2026-06-27
+  closed_on: 2026-06-27
+  outcome: >
+    COMPLETE — Abhinandan 1c826d5a rebuilt L1-L5 (all per-chart assets lit, 0 errors); 8 bugs
+    fixed + deployed; orchestrator upstream-success gate added; DAG consistency verified.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L4 Phala (NEXT) — unchanged; this was a non-native build/fix session
+  current_state_updated: true
+  current_state_version: 6.01
+  session_log_appended: true
+  red_team_pass: "n/a — build-and-fix execution session (not a macro-phase close)"
+  next_session_objective: >
+    Abhinandan 1c826d5a fully built + verified L1-L5. Supabase next migration 361+.
+    Consider wiring the DAG-order audit query as a standing reconciliation check. The 3 stale
+    L0 build-order timestamps are cosmetic/pre-existing. L4 Phala campaign remains the next
+    layer-campaign objective.
+```
+
+### Next session objective
+
+**Abhinandan 1c826d5a fully built + verified (2026-06-27).** All L1–L5 lit, 0 errors, 8 bugs
+fixed + deployed, orchestrator gate in place. Supabase next migration **361+**. Optional
+follow-ups: wire the DAG-order audit as a standing reconciliation check; the L4 Phala
+layer-campaign remains the next formal objective.
+
+*End of ABHINANDAN-REBUILD-L1L5-2026-06-27 entry — 2026-06-27.*
