@@ -46,6 +46,14 @@ const REGISTRY_BODHA = [
   { asset_id: 'bo_pramana_mapa', layer: 'bodha', scope: 'per_chart', depends_on: ['bo_bimba'],   estimated_seconds: 30 },
 ]
 
+// Global/full registry: L1 Gaṇita builders AND L2 Bodha assets in one plan. A global
+// rebuild builds L1 before L2 (DAG order), so the L1 preconditions are satisfied in-plan.
+const REGISTRY_GLOBAL_FULL = [
+  { asset_id: 'ga_positions',  layer: 'ganita', scope: 'per_chart', depends_on: [],               estimated_seconds: 30 },
+  { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: ['ga_positions'], estimated_seconds: 30 },
+  { asset_id: 'bo_laksana',    layer: 'bodha',  scope: 'per_chart', depends_on: ['ga_structural'], estimated_seconds: 60 },
+]
+
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/runs', {
     method: 'POST',
@@ -302,6 +310,54 @@ describe('G4 — Bodha build precondition gate', () => {
     const body = await res.json()
     expect(body.code).toBe('PRECONDITION_FAILED')
     expect(body.missing).toHaveLength(3)
+  })
+
+  it('GREEN — global rebuild from empty L1: L1 preconditions satisfied IN-PLAN, build proceeds', async () => {
+    // The plan includes ga_positions + ga_structural ahead of bo_laksana, so chart_facts being
+    // empty and ga_structural not-yet-lit must NOT block — L1 builds first. Only L0 (remedy_corpus)
+    // is a true external precondition, and it is present here. Regression for the global-rebuild
+    // 422 where the gate fired against L1 the same plan was about to build.
+    seedRole('super_admin')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput (all dormant)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0 (empty)
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
+      .mockResolvedValueOnce({ rows: [{ count: '500' }], rowCount: 1 })                              // remedy_corpus present
+      .mockResolvedValue({ rows: [{ id: 'run-global-001' }], rowCount: 1 })                          // INSERT build_runs + assets
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'build' }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.code).toBeUndefined()
+    expect(body.data.plan).toContain('ga_positions')
+    expect(body.data.plan).toContain('bo_laksana')
+  })
+
+  it('RED — global plan still blocks when L0 remedy_corpus is empty', async () => {
+    // Even with L1 in-plan, a missing L0 prerequisite (remedy_corpus) must still block.
+    seedRole('super_admin')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // 409 gate
+      .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
+      .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // remedy_corpus EMPTY
+      .mockResolvedValue({ rows: [{ id: 'run-x' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'build' }))
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe('PRECONDITION_FAILED')
+    expect(body.missing).toEqual(expect.arrayContaining([expect.stringContaining('brahma_remedy_corpus is empty')]))
+    // L1 preconditions must NOT be listed — they are satisfied in-plan
+    expect(body.missing.some((m: string) => m.includes('chart_facts'))).toBe(false)
   })
 
   it('GREEN — non-Bodha plan skips precondition gate entirely', async () => {

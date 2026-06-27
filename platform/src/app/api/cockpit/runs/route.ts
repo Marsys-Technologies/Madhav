@@ -112,6 +112,14 @@ export async function POST(req: NextRequest) {
 
   // G4: L1/L0 precondition gate — if plan includes any bo_* assets verify upstream is ready.
   if (plan.some(id => id.startsWith('bo_'))) {
+    // Preconditions that will be satisfied by EARLIER assets in the SAME plan must not block.
+    // The plan is DAG-ordered (L1 Gaṇita before L2 Bodha), so a global / multi-layer rebuild
+    // that already includes the L1 builders will have chart_facts + ga_structural ready by the
+    // time Bodha runs. Only gate the L1 preconditions for a plan that does NOT build L1 itself
+    // (e.g. a Bodha-only layer/asset build against a chart whose L1 isn't lit). The L0
+    // brahma_remedy_corpus check always applies — L0 is never part of an L1–L5 plan.
+    const planBuildsL1 = plan.includes('ga_positions') && plan.includes('ga_structural')
+
     const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
       query<{ count: string }>(
         'SELECT count(*)::text AS count FROM chart_facts WHERE chart_id=$1',
@@ -127,11 +135,13 @@ export async function POST(req: NextRequest) {
     ])
 
     const missingPreconditions: string[] = []
-    if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
-      missingPreconditions.push('chart_facts is empty — build L1 (Gaṇita) layer first')
-    }
-    if (gaStructuralRes.rows[0]?.state !== 'lit') {
-      missingPreconditions.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
+    if (!planBuildsL1) {
+      if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
+        missingPreconditions.push('chart_facts is empty — build L1 (Gaṇita) layer first')
+      }
+      if (gaStructuralRes.rows[0]?.state !== 'lit') {
+        missingPreconditions.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
+      }
     }
     if (parseInt(remedyCorpusRes.rows[0]?.count ?? '0', 10) === 0) {
       missingPreconditions.push('brahma_remedy_corpus is empty — build L0 (Brahmagyan) layer first')
