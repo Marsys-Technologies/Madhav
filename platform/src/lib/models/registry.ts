@@ -1282,11 +1282,20 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
 }
 
 /**
- * The canonical CALL_TYPE_ROUTING alias — resolves to the NIM stack, which is
- * the default. Call sites that are not yet stack-aware can use this directly;
+ * The canonical CALL_TYPE_ROUTING alias — resolves to the DEFAULT_STACK_ID (gemini).
+ *
+ * D8 GOVERNANCE FIX (2026-06-28): Previously pointed at STACK_ROUTING['nim'], which
+ * contradicted DEFAULT_STACK_ID='gemini'. The ruling per D8 governance §3.1:
+ *   - Policy: Gemini-primary, DeepSeek-fallback. NIM is NOT the default.
+ *   - DEFAULT_STACK_ID='gemini' is the single source of truth.
+ *   - CALL_TYPE_ROUTING now derives from DEFAULT_STACK_ID so both agree.
+ *   - NIM was the old default (pre-2026-05-10) before NIM axum auth started
+ *     returning 500s; the comment was stale. Resolved here.
+ *
+ * Call sites that are not yet stack-aware can use this directly;
  * stack-aware call sites should use STACK_ROUTING[selectedStack][callType].
  */
-export const CALL_TYPE_ROUTING = STACK_ROUTING['nim']
+export const CALL_TYPE_ROUTING = STACK_ROUTING[DEFAULT_STACK_ID]
 
 /**
  * Return the primary and fallback model IDs for a given stack + call type.

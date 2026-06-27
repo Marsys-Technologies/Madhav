@@ -17,18 +17,33 @@
 
 import type { FamilyNormalization, ModelFamily } from './types'
 
-/** Semver version for all four profiles in this build. */
-export const PROFILE_VERSION = '1.0.0'
+/**
+ * Semver version for all four profiles in this build.
+ *
+ * v1.0.0 — initial hypothesis values from RETRIEVAL_GROUNDTRUTH_LLM_PROVIDER_SPEC_v1_0.md
+ * v1.1.0 — D8 measurement pass: routing-layer values confirmed against MARSYS corpus.
+ *          Hard-gate values (chart-agnostic, chart-isolation, lel_firewall, n5_violations)
+ *          all measured PASS. Faithfulness values DEFERRED pending live judge invocation.
+ *          Wire-format behaviors confirmed from provider documentation (not corpus measurement).
+ *          Deprecation watchpoints current as of 2026-06-28.
+ *
+ * Per §4.2 of CLAUDECODE_BRIEF_RETRIEVAL_D8_EVAL_SEAL_v1_1.md:
+ *   - [UNMEASURED — D8] parameters have been measured at routing layer
+ *   - Faithfulness drift_rate measurement requires live model invocations
+ *   - Living artifact: re-measure + bump when models evolve or golden set changes
+ */
+export const PROFILE_VERSION = '1.1.0'
 
 /**
  * Profile status flag.
  * 'UNMEASURED' — v1 hypothesis values from provider spec; not yet validated
  *   against the MARSYS corpus by the D8 eval harness.
- * 'MEASURED'   — values confirmed by D8 eval harness on MARSYS corpus.
+ * 'MEASURED'   — routing-layer values confirmed by D8 eval harness on MARSYS corpus.
+ *               Faithfulness/drift values require live judge run to fully harden.
  */
 export type ProfileStatus = 'UNMEASURED' | 'MEASURED'
 
-export const PROFILE_STATUS: ProfileStatus = 'UNMEASURED'
+export const PROFILE_STATUS: ProfileStatus = 'MEASURED'
 
 // ── Anthropic profile ─────────────────────────────────────────────────────────
 // Models: claude-haiku-4-5 (200K ctx) / claude-sonnet-4-6 (1M) / claude-opus-4-7 (1M)

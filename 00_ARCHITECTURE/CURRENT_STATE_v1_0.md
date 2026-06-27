@@ -54,6 +54,40 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.03 (2026-06-28, D8-EVAL-SEAL-2026-06-28):
+    **Retrieval System Design — SEALED.**
+    D8 eval + governance + red-team complete. All hard gates PASS.
+
+    RETRIEVAL_SYSTEM_SEAL:
+      status: SEALED
+      seal_artifact: 00_ARCHITECTURE/RETRIEVAL_SYSTEM_DESIGN_SEAL_v1_0.md
+      sealed_date: 2026-06-28
+      sealed_by: D8-EVAL-SEAL-2026-06-28
+      eval_harness: platform/src/lib/retrieval/eval/harness.ts (15 golden queries, 4 families)
+      eval_results: 00_ARCHITECTURE/RETRIEVAL_EVAL_RESULTS_v1_0.md
+      red_team: 00_ARCHITECTURE/RETRIEVAL_RED_TEAM_v1_0.md (14/14 principles PASS)
+      primitives_registry: 00_ARCHITECTURE/RETRIEVAL_PRIMITIVES_REGISTRY_v1_0.md (65 URIs)
+      profiles_version: 1.1.0 (MEASURED — routing layer confirmed)
+      governance_fixes:
+        - CALL_TYPE_ROUTING aligned to DEFAULT_STACK_ID=gemini (platform/src/lib/models/registry.ts)
+        - house_rules_variants/ confirmed ONLY universal.md (tier residue cleared)
+        - RETRIEVAL_PRIMITIVES_REGISTRY_v1_0.md added as drift_detector surface
+      hard_gates: chart_agnostic=PASS, contamination_count=0, chart_isolation=PASS, lel_firewall=PASS
+      open_items:
+        - OLD-MCP-REMEDIATION: platform-mcp/src/tools/retrieval/ native defaults (not registry layer)
+        - D7-CHAT-MIGRATION: lib/retrieve → lib/retrieval for /api/chat/consult
+        - faithfulness-live-run: live judge invocation against populated DB
+        - CAPABILITY_MANIFEST regeneration deferred (primitives_registry covers retrieval layer)
+        - deepseek-chat alias retires 2026-07-24 (26 days — DEPRECATION_WATCHLIST active)
+    last_session_id: D8-EVAL-SEAL-2026-06-28.
+    predecessor_session: BUILD-PATH-REMEDIATION-2026-06-28.
+    next_session_objective: >
+      "Retrieval system sealed. Next: (a) run live faithfulness eval with judge model against
+      populated DB; (b) author OLD-MCP-REMEDIATION brief (platform-mcp/src/tools/retrieval/
+      native defaults); (c) author D7-CHAT-MIGRATION brief; (d) migrate deepseek model IDs
+      before 2026-07-24 alias retirement; (e) regenerate CAPABILITY_MANIFEST to include
+      D1–D8 retrieval capabilities."
+    file_updated_at: 2026-06-28. file_updated_by_session: D8-EVAL-SEAL-2026-06-28.
   - v6.02 (2026-06-28, BUILD-PATH-REMEDIATION-2026-06-28):
     **JIS Build-Path Correctness & Enhancement Remediation — 9-agent wave merged to main.**
     Wave 0 (G1, pre-session): NATIVE_BIRTH elimination complete; `resolve_birth_params()` is the

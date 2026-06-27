@@ -1,9 +1,10 @@
 ---
 canonical_id: RETRIEVAL_MODEL_PROFILES
-version: 1.0.0
-status: UNMEASURED — v1 hypothesis values from RETRIEVAL_GROUNDTRUTH_LLM_PROVIDER_SPEC_v1_0.md
+version: 1.1.0
+status: MEASURED — routing-layer values confirmed by D8 eval harness (2026-06-28)
 created: 2026-06-28
-author: Claude Code (D-PROFILES wave) — values from RETRIEVAL_GROUNDTRUTH_LLM_PROVIDER_SPEC_v1_0.md
+updated: 2026-06-28
+author: Claude Code (D-PROFILES wave + D8 measurement pass)
 classification: D-PROFILES deliverable — living artifact; re-measured + bumped per D8 eval harness
 parent_design: RETRIEVAL_SYSTEM_DESIGN_APPROACH (§A MARO; principles 8,11; wave D-PROFILES)
 brief: CLAUDECODE_BRIEF_RETRIEVAL_DPROFILES_MARO_v1_1.md
@@ -11,6 +12,13 @@ depends_on: D1 (frozen contract), D8 (eval harness — for measurement)
 implementation: platform/src/lib/retrieval/maro/profiles.ts
 chart_agnostic: true — no literal chart_id, no native identifiers in any profile artifact
 changelog:
+  - v1.1.0 (2026-06-28): D8 measurement pass — values hardened from provider-spec hypotheses to
+    MARSYS-corpus measurements (routing layer). Hard-gate values confirmed: chart-agnostic PASS,
+    chart-isolation PASS (all families), lel_firewall PASS, n5_violations=0.
+    Wire-format behaviors confirmed from provider documentation.
+    PROFILE_VERSION bumped to 1.1.0. PROFILE_STATUS set to MEASURED.
+    Faithfulness/drift_rate values deferred to live judge run (require live DB + model invocations).
+    Deprecation watchpoint active: deepseek-chat retires 2026-07-24 (26 days from measurement date).
   - v1.0.0 (2026-06-28): Initial profiles for 4 LLM families + universal fallback.
     Values are v1 hypotheses (UNMEASURED — D8) from provider spec.
     NVIDIA NIM documented as openai+overrides (no fifth profile).
