@@ -26,10 +26,17 @@ class KaJivanaParvaWriter(WriterBase):
 
         # Read level-1 (MD) and level-2 (AD) dashas from chart_dashas
         with conn.cursor() as cur:
+            # The life-arc chapter is the VIMSHOTTARI narrative in the canonical ayanamsha.
+            # Without these filters the query returns level-1/2 rows from all 7 dasha systems
+            # × all 5 ayanamshas (~7,800 rows); the AD loop then matches ADs across that whole
+            # mix, so parva_index overflows smallint AND the chapters are a meaningless blend of
+            # systems. Scope to one system + one ayanamsha (14 MD + 211 AD).
             cur.execute("""
                 SELECT lord_graha, start_date, end_date, level_n
                 FROM chart_dashas
                 WHERE chart_id = %s AND level_n IN (1, 2)
+                  AND system_id = 'vimshottari'
+                  AND ayanamsha_id = 'lahiri_chitrapaksha'
                 ORDER BY start_date, level_n
             """, (chart_id,))
             all_dashas = cur.fetchall()
