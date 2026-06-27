@@ -28,4 +28,64 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: 'DELETE FROM ga_condition_composite WHERE chart_id = $1' },
     { sql: "DELETE FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga'" },
   ],
+
+  // ── L2 Bodha — multi-table writers ────────────────────────────────────────
+  // Each of these writers emits MORE than one table, but the asset's single
+  // target_table + un-derivable compound count_sql meant the clear deleted only
+  // the primary table and silently left the secondary tables behind (they then
+  // reappeared in the next preview — the "layer won't clear" bug). Every DELETE
+  // is chart-scoped; tables are ordered FK-child-first so deletes never violate
+  // a foreign key.
+  bo_karanajala: [
+    // bodha_contradictions is an FK child of bodha_msr_signals (cleared by
+    // bo_laksana, which runs later in the reverse-topo order) — delete it first.
+    { sql: 'DELETE FROM bodha_contradictions WHERE chart_id = $1' },
+    { sql: 'DELETE FROM bodha_cgm_edges WHERE chart_id = $1' },
+  ],
+  bo_sangati: [
+    { sql: 'DELETE FROM bodha_convergence WHERE chart_id = $1' },
+    { sql: 'DELETE FROM bodha_cdlm_cells WHERE chart_id = $1' },
+  ],
+  bo_upaya: [
+    // rm chain: resonances ← remedy_prescriptions ← dasha_windowed_prescriptions.
+    // Delete deepest child first.
+    { sql: 'DELETE FROM bodha_rm_dasha_windowed_prescriptions WHERE chart_id = $1' },
+    { sql: 'DELETE FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1' },
+    { sql: 'DELETE FROM bodha_rm_resonances WHERE chart_id = $1' },
+  ],
+  bo_anveshana: [
+    { sql: 'DELETE FROM bodha_anomalies WHERE chart_id = $1' },
+    { sql: 'DELETE FROM bodha_discoveries WHERE chart_id = $1' },
+  ],
+
+  // ── L5 Mīmāṃsā — per_chart multi-table writers + one mis-targeted asset ────
+  // Same multi-table-writer gap as L2. mi_adhilepa is additionally mis-specified:
+  // its registry target_table was mimamsa_signal_adjustment (a table it never
+  // writes), so its real output (mimamsa_load_bearing) was never cleared. No FK
+  // constraints exist among the mimamsa tables, so delete order is free.
+  mi_bhavisya: [
+    { sql: 'DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_predictions WHERE chart_id = $1' },
+  ],
+  mi_pramana: [
+    { sql: 'DELETE FROM mimamsa_reliability WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_calibration WHERE chart_id = $1' },
+  ],
+  mi_pariksha: [
+    { sql: 'DELETE FROM mimamsa_attribution WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_discoveries WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_qa_eval WHERE chart_id = $1' },
+  ],
+  mi_darshana: [
+    { sql: 'DELETE FROM mimamsa_insight_embeddings WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_insight_units WHERE chart_id = $1' },
+  ],
+  mi_adhilepa: [
+    { sql: 'DELETE FROM mimamsa_load_bearing WHERE chart_id = $1' },
+  ],
+
+  // bo_samvada's "table" is the vw_chart_digest VIEW (a derived projection over
+  // other bodha tables) — it owns no rows of its own and cannot be DELETEd from.
+  // null = nothing to clear, skip cleanly (avoids a spurious failed_tables entry).
+  bo_samvada: null,
 }
