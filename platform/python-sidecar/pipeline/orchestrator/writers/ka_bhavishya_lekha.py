@@ -16,25 +16,58 @@ class KaBhavishyaLekhaWriter(WriterBase):
             cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
 
         # Read top-ranked darshana windows in the future (next 3 years)
+        # B4-consume: also SELECT kc.domain (added by A3 migration 361).
+        # If the column doesn't exist yet (pre-A3 DB), we fall back gracefully via try/except.
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
-                       kd.peak_date, kd.window_start, kd.window_end,
-                       kd.narrative, kd.obstruction_summary,
-                       kc.confidence_label, kc.rarity_years, kc.mode
-                FROM kala_darshana kd
-                JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
-                WHERE kd.chart_id = %s
-                  AND kd.peak_date >= %s
-                  AND kd.peak_date <= %s
-                  AND kd.net_label NOT IN ('obstructed_severe')
-                ORDER BY kd.effective_score DESC NULLS LAST
-                LIMIT 100
-            """, (chart_id, today, date(today.year + 5, today.month, today.day)))
-            darshana_rows = cur.fetchall()
+            try:
+                cur.execute("""
+                    SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
+                           kd.peak_date, kd.window_start, kd.window_end,
+                           kd.narrative, kd.obstruction_summary,
+                           kc.confidence_label, kc.rarity_years, kc.mode,
+                           kc.domain
+                    FROM kala_darshana kd
+                    JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
+                    WHERE kd.chart_id = %s
+                      AND kd.peak_date >= %s
+                      AND kd.peak_date <= %s
+                      AND kd.net_label NOT IN ('obstructed_severe')
+                    ORDER BY kd.effective_score DESC NULLS LAST
+                    LIMIT 100
+                """, (chart_id, today, date(today.year + 5, today.month, today.day)))
+                darshana_rows = cur.fetchall()
+                _convergence_has_domain = True
+            except Exception:
+                # kc.domain column absent (pre-migration 361): rollback and retry
+                # without the domain column using a fresh cursor.
+                conn.rollback()
+                _convergence_has_domain = False
+                darshana_rows = None
+
+        if darshana_rows is None:
+            # Retry path: open a new cursor after rollback
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
+                           kd.peak_date, kd.window_start, kd.window_end,
+                           kd.narrative, kd.obstruction_summary,
+                           kc.confidence_label, kc.rarity_years, kc.mode
+                    FROM kala_darshana kd
+                    JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
+                    WHERE kd.chart_id = %s
+                      AND kd.peak_date >= %s
+                      AND kd.peak_date <= %s
+                      AND kd.net_label NOT IN ('obstructed_severe')
+                    ORDER BY kd.effective_score DESC NULLS LAST
+                    LIMIT 100
+                """, (chart_id, today, date(today.year + 5, today.month, today.day)))
+                darshana_rows = cur.fetchall()
 
         if not darshana_rows:
             return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
+
+        # Store flag on local scope so the loop can access it without a global
+        has_domain_col = _convergence_has_domain
 
         # CF.L3.5: batch-fetch signal_type_id for domain mapping
         # darshana_rows is list[dict] (dict_row cursor); use key access throughout
@@ -69,8 +102,13 @@ class KaBhavishyaLekhaWriter(WriterBase):
             # Probability tier
             tier = _assign_tier(eff_score, net_label)
 
-            # CF.L3.5: domain from signal_type_id keywords; rank rotation as fallback
-            domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
+            # B4-consume: prefer kc.domain (set by A3 migration 361) over keyword inference.
+            # Fall back to keyword inference only if convergence domain is NULL or absent.
+            conv_domain = row.get('domain') if has_domain_col else None
+            if conv_domain:
+                domain = conv_domain
+            else:
+                domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
 
             # Falsifiability hook
             falsifiability = _build_falsifiability(tier, domain, peak_date, eff_score)
