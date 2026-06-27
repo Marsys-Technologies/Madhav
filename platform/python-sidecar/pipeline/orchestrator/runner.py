@@ -84,6 +84,48 @@ def is_asset_complete(cur, chart_id, asset_id: str) -> bool:
 
 # ── Main entry ────────────────────────────────────────────────────────────────
 
+def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blocking_deps: list[str]) -> None:
+    """
+    Mark an asset BLOCKED because an upstream it depends on errored/was blocked.
+
+    Recorded as state='error' (the loud, surfaced state — red in the tracker, counted in
+    the run's error tally) with a 'BLOCKED:' message, rather than silently running the
+    writer on incomplete upstream data and marking it 'complete'. The asset is NOT executed.
+    """
+    msg = (
+        "BLOCKED: upstream dependency(ies) %s did not complete in this run; "
+        "skipped to avoid building on incomplete data"
+        % ", ".join(sorted(blocking_deps))
+    )
+    if chart_id is not None:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, %s, 'error', %s, NOW())
+               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, chart_id, msg),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, NULL, 'error', %s, NOW())
+               ON CONFLICT (asset_id) WHERE chart_id IS NULL
+               DO UPDATE SET state='error', last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, msg),
+        )
+    cur.execute(
+        """UPDATE build_run_assets SET state='error', error=%s, ended_at=NOW()
+           WHERE run_id=%s AND asset_id=%s""",
+        (msg[:2000], run_id, asset_id),
+    )
+    conn.commit()
+    emit_event({
+        "type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
+        "from_state": "queued", "to_state": "error", "error": msg[:500],
+    })
+    logger.warning("[orchestrator] BLOCKED %s — upstream not complete: %s", asset_id, blocking_deps)
+
+
 def execute_run(run_id: str) -> None:
     """
     Load build_run by run_id, acquire chart advisory lock, walk the asset plan.
@@ -130,10 +172,20 @@ def execute_run(run_id: str) -> None:
     # chart_id to run_asset() for a global asset creates a spurious chart-scoped
     # asset_throughput row that shadows the correct global row in the stats query.
     cur.execute(
-        "SELECT asset_id, scope FROM asset_registry WHERE asset_id = ANY(%s)",
+        "SELECT asset_id, scope, COALESCE(depends_on, '{}') AS depends_on "
+        "FROM asset_registry WHERE asset_id = ANY(%s)",
         (plan,),
     )
-    _asset_scopes: dict[str, str] = {r["asset_id"]: r["scope"] for r in cur.fetchall()}
+    _registry_rows = cur.fetchall()
+    _asset_scopes: dict[str, str] = {r["asset_id"]: r["scope"] for r in _registry_rows}
+    # Upstream-success gate (native-approved 2026-06-27): map each asset to its declared
+    # dependencies so a downstream asset is NOT run when an upstream it depends on errored or
+    # was itself blocked. Without this the runner walks the plan in DAG ORDER but never GATES
+    # on success — a single writer failure silently cascades "empty but complete" rows through
+    # the whole downstream chain (the ka_yojaka → Kāla/Phala/Mīmāṃsā incident).
+    _asset_deps: dict[str, list[str]] = {
+        r["asset_id"]: list(r["depends_on"] or []) for r in _registry_rows
+    }
 
     if not acquire_chart_lock(cur, chart_id):
         logger.warning("[orchestrator] chart %s locked by another run — deferring", chart_id)
@@ -141,6 +193,10 @@ def execute_run(run_id: str) -> None:
         sys.exit(3)
     # Lock acquired; commit the advisory lock transaction so it survives later commits
     conn.commit()
+
+    # Assets that errored OR were blocked during this run. Used by the upstream-success gate
+    # to stop a failure from cascading into "empty but complete" downstream rows.
+    failed_assets: set[str] = set()
 
     try:
         mark_run_state(conn, cur, run_id, "running", started_at=True)
@@ -165,8 +221,34 @@ def execute_run(run_id: str) -> None:
                 logger.info("[orchestrator] skip %s (already lit)", asset_id)
                 continue
 
+            # ── Upstream-success gate ──────────────────────────────────────────────
+            # Only deps that actually failed/blocked IN THIS run block a downstream asset;
+            # deps that are lit (succeeded, or already-built globals not re-run) never block.
+            # Blocking is transitive: a blocked asset joins failed_assets, so ITS downstream
+            # also blocks — the whole tainted subtree stops instead of building on empty data.
+            blocking_deps = [d for d in _asset_deps.get(asset_id, []) if d in failed_assets]
+            if blocking_deps:
+                _mark_asset_blocked(conn, cur, run_id, effective_chart_id, asset_id, blocking_deps)
+                failed_assets.add(asset_id)
+                continue
+
             run_asset(conn, cur, run_id, effective_chart_id, asset_id, position)
 
+            # Detect a per-asset failure (run_asset records 'error' but does not raise) so the
+            # gate can block this asset's downstream dependents.
+            cur.execute(
+                "SELECT state FROM build_run_assets WHERE run_id=%s AND asset_id=%s",
+                (run_id, asset_id),
+            )
+            _row = cur.fetchone()
+            if _row and _row["state"] == "error":
+                failed_assets.add(asset_id)
+
+        if failed_assets:
+            logger.warning(
+                "[orchestrator] run %s completed with %d failed/blocked asset(s): %s",
+                run_id, len(failed_assets), sorted(failed_assets),
+            )
         mark_run_state(conn, cur, run_id, "completed", ended_at=True)
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "completed"})
 
