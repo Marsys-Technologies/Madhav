@@ -11,9 +11,13 @@ const REGISTRY: RegistryRow[] = [
 ]
 
 describe('filterScopeAssets', () => {
-  it('super_admin global-scope: returns per_chart + global', () => {
+  it('super_admin global-scope: returns per_chart only, EXCLUDES L0 brahmagyan globals', () => {
+    // L0 GATE (native ruling 2026-06-26): a global clear never includes L0, even for
+    // super_admin. The bg_* brahmagyan globals must be absent — they are cleared only
+    // via explicit layer='brahmagyan' or individual bg_* asset scope.
     const result = filterScopeAssets(REGISTRY, 'global', null, ['per_chart', 'global'])
-    expect(result).toHaveLength(6)
+    expect(result.map(r => r.asset_id)).toEqual(['ga_positions', 'bo_signals', 'ka_transits'])
+    expect(result.some(r => r.layer === 'brahmagyan')).toBe(false)
   })
 
   it('non-super-admin global-scope: returns per_chart only', () => {

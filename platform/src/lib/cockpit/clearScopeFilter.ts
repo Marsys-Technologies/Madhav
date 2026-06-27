@@ -19,7 +19,13 @@ export function filterScopeAssets(
   allowedScopes: string[]
 ): RegistryRow[] {
   if (scope === 'global') {
-    return registry.filter(r => allowedScopes.includes(r.scope))
+    // L0 GATE (native ruling 2026-06-26): a global clear NEVER includes L0 (brahmagyan),
+    // regardless of role. This mirrors the global Build/Rebuild gate in /api/cockpit/runs.
+    // L0 is cleared ONLY via an explicit layer='brahmagyan' trigger or an individual bg_*
+    // asset trigger — never as a side effect of the global Clear/Rebuild button. Without
+    // this filter, a super_admin global clear would DELETE FROM each bg_* reference table
+    // (no chart_id scoping) and wipe shared L0 data for every chart.
+    return registry.filter(r => allowedScopes.includes(r.scope) && r.layer !== 'brahmagyan')
   } else if (scope === 'layer') {
     return registry.filter(r => r.layer === scopeTarget && allowedScopes.includes(r.scope))
   } else {
