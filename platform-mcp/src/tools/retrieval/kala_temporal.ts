@@ -30,8 +30,7 @@
  * Note: kala_temporal.ts (in parent dir) registers the standalone `temporal` tool.
  *       This file registers `kala_temporal_bundle` for the retrieval/ layer.
  *
- * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ * chart_id: required from caller — no default chart (chart_agnostic_gate RULE-1/4)
  *
  * BRAHMA-KA-3-COMPOSITE / l3-kala
  */
@@ -42,6 +41,8 @@ import { z } from 'zod'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
+// REMEDIATION D7: NATIVE_CHART_ID default removed. chart_id is now REQUIRED.
+// chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
 const PYTHON_SIDECAR_URL =
   process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
 const DEFAULT_SNAPSHOT_DATE = '2026-06-05'
@@ -271,8 +272,10 @@ const FORENSIC_OBSTRUCTIONS: ObstructionEntry[] = [
   },
 ]
 
-const FALLBACK_SNAPSHOT: KalaSnapshot = {
-  chart_id: '',
+// REMEDIATION D7: FALLBACK_SNAPSHOT now uses a placeholder chart_id.
+// At runtime, the handler replaces 'CHART_ID_PLACEHOLDER' with the caller's chart_id.
+const FALLBACK_SNAPSHOT_TEMPLATE: Omit<KalaSnapshot, 'chart_id'> & { chart_id: string } = {
+  chart_id: 'CHART_ID_PLACEHOLDER',
   snapshot_date: DEFAULT_SNAPSHOT_DATE,
   active_dasha: {
     md_lord: 'Mercury',
@@ -331,7 +334,7 @@ const FALLBACK_SNAPSHOT: KalaSnapshot = {
   provenance_envelope: {
     asset: 'kala.snapshot',
     unit: 'KA-3-5',
-    chart_id: '',
+    chart_id: 'CHART_ID_PLACEHOLDER',  // replaced at runtime with caller's chart_id
     source_citation: SOURCE_CITATION,
     layer: 'L3 Kāla',
     snapshot_date: DEFAULT_SNAPSHOT_DATE,
@@ -433,7 +436,15 @@ export async function computeKalaTemporalBundle(
     obstructions = filterByDateRange(FORENSIC_OBSTRUCTIONS, start, end)
   }
   if (includeSnapshot && snapshot === null) {
-    snapshot = { ...FALLBACK_SNAPSHOT, chart_id: chartId }
+    // REMEDIATION D7: replace CHART_ID_PLACEHOLDER with actual caller's chart_id
+    snapshot = {
+      ...FALLBACK_SNAPSHOT_TEMPLATE,
+      chart_id: chartId,
+      provenance_envelope: {
+        ...FALLBACK_SNAPSHOT_TEMPLATE.provenance_envelope,
+        chart_id: chartId,
+      },
+    }
   }
 
   return {
@@ -459,12 +470,17 @@ export async function computeKalaTemporalBundle(
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
+// REMEDIATION D7: chart_id is now REQUIRED (no .default(), no ?? NATIVE_CHART_ID).
+// chart_agnostic_gate RULE-1: per_chart scope → chart_id in required_inputs.
+// chart_agnostic_gate RULE-3: native identifiers removed from description.
+// chart_agnostic_gate RULE-4: no default on chart_id field.
+// chart_agnostic_gate RULE-5: no native UUID in chart_id description.
 const InputSchema = z.object({
   chart_id: z
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
+      'UUID of the chart to compute Kāla temporal bundle for. Required — no default chart.'
     ),
 
   date_range: z
@@ -474,15 +490,15 @@ const InputSchema = z.object({
     })
     .optional()
     .describe(
-      'Date range for the temporal bundle (default: 6 months before + after today). ' +
-        'For full native life arc: {start:"1984-01-01", end:"2040-12-31"}.'
+      'Date range for the temporal bundle (default: 6 months before + after current date). ' +
+        'For a full life arc, pass the chart subject\'s birth year through 2040-12-31.'
     ),
 
   include_snapshot: z
     .boolean()
     .default(true)
     .describe(
-      'Include the point-in-time kala.snapshot for today (2026-06-05). ' +
+      'Include the point-in-time kala.snapshot for the current date. ' +
         'Default true — always include for current Kala state.'
     ),
 })
@@ -491,13 +507,14 @@ const InputSchema = z.object({
 
 const TOOL_NAME = 'kala_temporal_bundle'
 
+// REMEDIATION D7 (RULE-3): native identifiers removed from LLM-visible description.
 const TOOL_DESCRIPTION = `\
 What it does: Returns the composite L3 Kāla temporal bundle — all four L3 Kāla assets \
-in one call:
-  • kala.timeline   (KA-3-1) — dasha×transit alignment rows (MD/AD periods with alignment scores)
+in one call for a given chart UUID:
+  • kala.timeline    (KA-3-1) — dasha×transit alignment rows (MD/AD periods with alignment scores)
   • kala.convergence (KA-3-2) — convergence windows (3+ indicators aligned within 90 days)
   • kala.obstruction (KA-3-3) — obstruction periods (Sade Sati, malefic dashas, double affliction)
-  • kala.snapshot   (KA-3-5) — current Kala state as of 2026-06-05 (MD/AD/PD + transits + score)
+  • kala.snapshot    (KA-3-5) — current Kala state (MD/AD/PD + transits + kala_readiness score)
 
 Output shape:
   {
@@ -508,15 +525,11 @@ Output shape:
     provenance_envelope: {...}
   }
 
-When to use: Use for any temporal or predictive query. Pair with holistic_bundle \
-(B.11 floor) for the full picture — holistic_bundle provides the L2 natal signal layer; \
-kala_temporal_bundle provides the L3 temporal animation layer.
+When to use: Use for any temporal or predictive query about a chart (<chart_uuid>). \
+Pair with holistic_bundle for the full picture — holistic_bundle provides the L2 natal \
+signal layer; kala_temporal_bundle provides the L3 temporal animation layer.
 
-FORENSIC anchors:
-  • Mercury MD active since 2010-08-21; ends 2027-08-21
-  • Mercury-Saturn AD: 2024-12-12 → 2027-08-21 (current as of 2026-06-05)
-  • Sade Sati Cycle 2 setting phase: 2025-03-29 → 2028-03-28
-  • Jupiter exalted Cancer (H4): 2025-05-15 → 2026-06-01
+Requires: chart_id (UUID) — must be provided by caller. No default chart.
 
 BRAHMA-KA-3-COMPOSITE | kala.temporal_bundle retrieval tool.`
 

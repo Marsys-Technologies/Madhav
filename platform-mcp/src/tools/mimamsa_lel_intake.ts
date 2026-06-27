@@ -1,7 +1,8 @@
 /**
  * mimamsa_lel_intake.ts — BRAHMA-MI-5-1: mimamsa.lel_intake
  *
- * L5 Mīmāṃsā: query the 57-event Life Event Log calibration corpus.
+ * L5 Mīmāṃsā: query the Life Event Log calibration corpus for a chart.
+ * chart_id is now required — scopes the query to a specific chart's events.
  *
  * Contract (BRAHMA MI-5-1):
  *   Tables: life_events + event_chart_state_index
@@ -17,8 +18,7 @@
  *   All source_citations are non-null (B.3 mandate).
  *   provenance_envelope is present on every response (B.3 mandate).
  *
- * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
- *   Source: LIFE_EVENT_LOG_v1_2.md (native-disclosed, v1.7, 57 events, confidence 0.89)
+ * chart_id: required from caller (chart_agnostic_gate RULE-1/4). No default chart.
  *
  * Wiring: registerMimamsaLelIntakeTool(server) → server.ts during L5 Mīmāṃsā registration.
  *
@@ -119,12 +119,16 @@ async function callSidecar<T>(
 // ── Tool registration ──────────────────────────────────────────────────────────
 
 export function registerMimamsaLelIntakeTool(server: McpServer): void {
+  // REMEDIATION D7 (RULE-3): scrubbed native name + event count from LLM-visible description.
+  // Also added required chart_id parameter (RULE-1: per_chart tools must have chart_id).
+  // The LEL corpus is per-chart calibration data — chart_id is required to scope it.
   server.tool(
     'lel_query',
     'Query the Life Event Log calibration corpus for a chart. '
     + 'Returns life events with Vimshottari dasha context and retrodictive match quality. '
     + 'Filter by chart_id, domain (e.g. career, health, spiritual, relationship, family, loss, finance) '
     + 'and/or date range. '
+    + 'Requires chart_id — corpus is scoped per chart. '
     + 'NO LEAKAGE: this corpus is for calibration only — must not feed prediction generation. '
     + 'All responses carry provenance_envelope with source_citation (B.3 mandate). '
     + 'BRAHMA-MI-5-1 | mimamsa.lel_intake',
@@ -132,7 +136,9 @@ export function registerMimamsaLelIntakeTool(server: McpServer): void {
       chart_id: z
         .string()
         .uuid()
-        .describe('UUID of the chart whose life events to query. Must be a valid chart UUID.'),
+        .describe(
+          'UUID of the chart whose Life Event Log to query. Required — no default chart.'
+        ),
       domain: z
         .string()
         .optional()
@@ -161,6 +167,12 @@ export function registerMimamsaLelIntakeTool(server: McpServer): void {
         .describe('Maximum number of events to return (default: 100, max: 200).'),
     },
     async (params) => {
+      if (!params.chart_id) {
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'chart_id is required', tool: 'lel_query' }, null, 2) }],
+          isError: true as const,
+        }
+      }
       try {
         const result = await callSidecar<LelQueryResult>('/brahma/mimamsa/lel_query', {
           chart_id: params.chart_id,
