@@ -64,14 +64,6 @@ CANONICAL_AYANAMSHAS: dict[str, str] = {
     "surya_siddhanta_classical": "surya_siddhanta",
 }
 
-NATIVE_BIRTH = {
-    "datetime_iso": "1984-02-05T10:43:00",
-    "latitude_deg": 20.27,
-    "longitude_deg": 85.84,
-    "tz_offset_hours": 5.5,
-    "place_name": "Bhubaneswar, Odisha, India",
-    "subject_label": "Abhisek Mohanty",
-}
 BIRTH_YEAR = 1984
 BIRTH_MONTH = 2
 BIRTH_DAY = 5
@@ -177,10 +169,12 @@ def _sun_longitude(dt_local: datetime, aya_adapter: str,
                    birth_params: dict | None = None) -> float:
     """Sidereal Sun longitude (deg, 0..360) at a local-wallclock instant under
     `aya_adapter`, via the lightweight position engine (no full chart)."""
-    if birth_params is None:
-        bp = NATIVE_BIRTH
-    else:
-        bp = birth_params
+    if not birth_params:
+        raise ValueError(
+            "[ga_tajaka_writer._sun_longitude] birth_params is required; "
+            "caller must pass real birth params, not None."
+        )
+    bp = birth_params
     dob = drik.Date(dt_local.year, dt_local.month, dt_local.day)
     tob = (dt_local.hour, dt_local.minute, dt_local.second)
     jd = utils.julian_day_number(dob, tob)
@@ -207,10 +201,12 @@ def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
     (birth_year + varsha_year - 1) where the sidereal Sun returns to
     `natal_sun_long`. Bisection on the signed Sun-longitude difference within a
     ±2-day bracket around the birthday anniversary (widened to ±5 if needed)."""
-    if birth_params is None:
-        bp = NATIVE_BIRTH
-    else:
-        bp = birth_params
+    if not birth_params:
+        raise ValueError(
+            "[ga_tajaka_writer._solar_return] birth_params is required; "
+            "caller must pass real birth params, not None."
+        )
+    bp = birth_params
     iso = str(bp["datetime_iso"])
     cal_year = int(iso[:4]) + varsha_year - 1
     birth_month = int(iso[5:7])
@@ -365,9 +361,10 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
                  build_id: str, birth: dict | None = None) -> dict[str, Any]:
     """Compute a single varsha row dict (annual chart) for one ayanamsha.
 
-    `birth` (Phase 3B) supplies the chart's place/tz for the annual chart compute;
-    None → native (NATIVE_BIRTH). The annual chart's instant comes from the solar
-    return; only its place/tz are taken from birth."""
+    `birth` supplies the chart's place/tz for the annual chart compute;
+    must be a non-empty dict (no fallback to any hardcoded constant).
+    The annual chart's instant comes from the solar return; only its place/tz
+    are taken from birth."""
     natal_lagna = natal_chart["ascendant"]
     natal_lagna_sign0 = int(natal_lagna["sign_id"]) - 1
     natal_lagna_deg = float(natal_lagna.get("degree_in_sign", 0.0))
@@ -388,7 +385,12 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     instant_iso = instant.replace(microsecond=0).isoformat() + "+05:30"
     next_iso = next_instant.replace(microsecond=0).isoformat() + "+05:30"
 
-    _birth_base = birth if birth is not None else NATIVE_BIRTH
+    if not birth:
+        raise ValueError(
+            "[ga_tajaka_writer._compute_one] birth params are required; "
+            "caller must pass real birth params, not None."
+        )
+    _birth_base = birth
     annual = compute_chart(
         {**_birth_base,
          "datetime_iso": instant.replace(microsecond=0).isoformat()},
@@ -559,18 +561,15 @@ def compute_varsha(chart_id: str,
     on-demand path for varshas outside the precomputed window. Returns the row
     dict (sans internal `_*` keys when persisted).
 
-    `birth_params` (Phase 3B): None → native chart (uses NATIVE_BIRTH);
-    non-native chart must pass its real birth dict. Routed via resolve_birth_params()
-    — a non-native chart with None birth_params raises ValueError (no silent fallback).
+    `birth_params`: required for every chart (native included). Must be a non-empty
+    dict from public.charts (via orchestrator fetch_birth_params). resolve_birth_params()
+    raises ValueError for any chart with falsy birth_params — no silent fallback.
     """
     aya_adapter = CANONICAL_AYANAMSHAS.get(ayanamsha_id, "lahiri")
     bid = build_id or str(uuid.uuid4())
-    # Contamination guard: resolve birth params before any chart computation.
-    # resolve_birth_params returns None for native (→ use NATIVE_BIRTH below),
-    # returns the dict for non-native, and raises for non-native + None.
+    # Contamination guard: every chart (native included) must have real birth_params
+    # from public.charts. resolve_birth_params raises for any chart with falsy params.
     bp = resolve_birth_params(chart_id, birth_params)
-    if bp is None:
-        bp = NATIVE_BIRTH
     with _conn() as conn:
         natal = compute_chart({**bp}, ayanamsha_id=aya_adapter)
         natal_sun = float(next(g for g in natal["grahas"] if g["name"] == "Sun")["longitude"]) % 360.0
@@ -608,11 +607,9 @@ def build_ga_tajaka(chart_id: str,
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
-    # Per-chart birth (Phase 3B): None → native; a non-native chart passes its
-    # birth so the natal + annual (Varṣaphal) charts compute from its real data.
+    # Every chart (native included) must have real birth_params from public.charts.
+    # resolve_birth_params raises for any chart with falsy params.
     bp = resolve_birth_params(chart_id, birth_params)
-    if bp is None:
-        bp = NATIVE_BIRTH
     birth_year = int(str(bp["datetime_iso"])[:4])
     current_varsha = reference_year - birth_year + 1
     if max_varsha is None:

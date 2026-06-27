@@ -1,8 +1,8 @@
 """
 ga_prashna_cast — Direct prashna chart build module.
 
-Bypasses the orchestrator adapter (which hardcodes NATIVE_BIRTH) and calls
-build_ga_positions(birth_params=question_params) directly for a question-moment chart.
+Calls build_ga_positions(birth_params=question_params) directly for a question-moment chart.
+The orchestrator adapter is bypassed; the caller supplies question-moment birth params directly.
 
 Does NOT commit — caller owns the transaction.
 """

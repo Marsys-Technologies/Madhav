@@ -92,7 +92,6 @@ from pipeline.orchestrator.birth_params import resolve_birth_params
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
-    NATIVE_BIRTH,
     PLANET_TO_SUBJECT,
     FORBIDDEN_PATTERNS,
     forensic_gate,
@@ -4588,8 +4587,6 @@ def build_ga_structural(
     owns_conn = conn is None
 
     bp = resolve_birth_params(chart_id, birth_params)
-    if bp is None:
-        bp = NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
     eng_ver = ENGINE_VERSION
 
@@ -5788,8 +5785,6 @@ def build_ga_structural_substep(
     yoga_catalog / dosha_catalog may be pre-loaded by the caller to avoid repeat DB queries.
     """
     bp = resolve_birth_params(chart_id, birth_params)
-    if bp is None:
-        bp = NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
     eng_ver = ENGINE_VERSION
 

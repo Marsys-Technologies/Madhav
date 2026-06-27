@@ -142,16 +142,6 @@ PADA_MODIFIER: dict[int, str] = {
     4: "moderate_pada4_shift",
 }
 
-# Native birth parameters
-NATIVE_BIRTH = {
-    "datetime_iso": "1984-02-05T10:43:00",
-    "latitude_deg": 20.27,
-    "longitude_deg": 85.84,
-    "tz_offset_hours": 5.5,
-    "place_name": "Bhubaneswar, Odisha, India",
-    "subject_label": "Abhisek Mohanty",
-}
-
 # Native Moon nakshatra pada at birth (FORENSIC anchor)
 NATIVE_MOON_NAKSHATRA = "Purva Bhadrapada"
 NATIVE_MOON_PADA = 4      # Pada 4 = Pisces side of Purva Bhadrapada

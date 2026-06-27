@@ -246,23 +246,18 @@ _DUMMY_BIRTH = {
 }
 
 
-def test_non_native_without_birth_params_refuses_native_fallback(monkeypatch):
-    """Contamination guard: a non-native chart_id with no birth_params must raise,
-    never silently build the native (the ga_positions contamination bug)."""
+def test_any_chart_without_birth_params_raises(monkeypatch):
+    """B1 elimination: any chart_id (native or non-native) with no birth_params must raise.
+    There is no NATIVE_BIRTH fallback anywhere in the stack."""
     gpw, _ = _neuter_positions_compute(monkeypatch)
     conn = _RecordingConn()
     import pytest
-    with pytest.raises(ValueError, match="refusing to fall back to NATIVE_BIRTH"):
+    # Non-native raises
+    with pytest.raises(ValueError):
         gpw.build_ga_positions(chart_id='some-non-native-uuid', build_id='b', conn=conn)
-
-
-def test_native_without_birth_params_uses_native_default(monkeypatch):
-    """The native chart_id is still allowed to use NATIVE_BIRTH when no birth_params
-    are passed (it is the FORENSIC-guarded ground-truth chart)."""
-    gpw, _ = _neuter_positions_compute(monkeypatch)
-    conn = _RecordingConn()
-    # Must NOT raise; native default permitted.
-    gpw.build_ga_positions(chart_id=gpw.CANONICAL_CHART_ID, build_id='b', conn=conn)
+    # Native also raises — no special case
+    with pytest.raises(ValueError):
+        gpw.build_ga_positions(chart_id=gpw.CANONICAL_CHART_ID, build_id='b', conn=conn)
 
 
 def test_injected_conn_does_not_commit_close_or_write_throughput(monkeypatch):

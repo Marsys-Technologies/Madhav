@@ -44,7 +44,6 @@ from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
-    NATIVE_BIRTH,
     FORBIDDEN_PATTERNS,
     forensic_gate,
     _conn,
@@ -2450,8 +2449,12 @@ def build_ga_sensitive(
 
     owns_conn = conn is None
 
-    if birth_params is None:
-        birth_params = NATIVE_BIRTH
+    if not birth_params:
+        raise ValueError(
+            f"[ga_sensitive_writer] no birth_params for chart_id={chart_id}; "
+            "orchestrator must populate ctx.config['birth_params'] from "
+            "fetch_birth_params() before calling this writer."
+        )
 
     started_at = datetime.now(timezone.utc).isoformat()
     eng_ver = ENGINE_VERSION

@@ -1,10 +1,11 @@
 """Orchestrator Convergence Phase 3B — per-chart writer generalization.
+Updated B1 elimination: native chart goes through public.charts, no NATIVE_BIRTH fallback.
 
 Proves:
-  A. birth_params provider: native → None (writer uses NATIVE_BIRTH); a non-native
-     charts row → NATIVE_BIRTH-shaped dict (tz from IANA timezone_id); missing data
-     → loud ValueError (never a silently-wrong chart); no row → ValueError (non-native
-     chart with no charts row raises rather than silently falling back to native).
+  A. birth_params provider: any chart (native included) fetches from public.charts;
+     a non-native charts row → birth-params dict (tz from IANA timezone_id); missing
+     data → loud ValueError (never a silently-wrong chart); no row (native OR non-native)
+     → ValueError (no hardcoded fallback for either).
   B. ga_dashas birth threading: _birth_jd_utc / _get_moon_position honor an injected
      birth; the native default is unchanged.
   C. FORENSIC native-guard: the native-anchored gate halts for the NATIVE chart but
@@ -21,15 +22,26 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from pipeline.orchestrator.birth_params import (  # noqa: E402
-    fetch_birth_params, CANONICAL_CHART_ID,
+    fetch_birth_params,
 )
+
+# Canonical native chart ID — hardcoded here only for test fixture purposes.
+CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 
 # ── Fakes ───────────────────────────────────────────────────────────────────────
 
 class _Cur:
+    """Mock cursor that returns the pre-set row as a dict (mimics dict_row factory)."""
     def __init__(self, row):
+        # If row is a plain dict already, use it. If None, leave as None.
         self._row = row
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        pass
 
     def execute(self, *a, **k):
         return self
@@ -45,6 +57,10 @@ class _Conn:
     def execute(self, *a, **k):
         return _Cur(self._row)
 
+    def cursor(self, *, row_factory=None):
+        """Support the cursor(row_factory=dict_row) call pattern used by fetch_birth_params."""
+        return _Cur(self._row)
+
 
 _ROW = {
     'birth_date': date(1990, 6, 15), 'birth_time': time(14, 30),
@@ -55,8 +71,10 @@ _ROW = {
 
 # ── A. birth_params provider ─────────────────────────────────────────────────────
 
-def test_native_returns_none():
-    assert fetch_birth_params(_Conn(None), CANONICAL_CHART_ID) is None
+def test_native_missing_row_raises():
+    """B1 elimination: native chart with no DB row now raises ValueError (no hardcoded fallback)."""
+    with pytest.raises(ValueError, match="no charts row found"):
+        fetch_birth_params(_Conn(None), CANONICAL_CHART_ID)
 
 
 def test_non_native_row_maps_to_birth_params():
@@ -112,13 +130,26 @@ def test_birth_jd_honors_injected_birth():
 
 
 def test_forensic_halts_for_native_chart():
-    """Native chart + wrong Moon ⇒ FORENSIC HALT still fires (regression guard intact)."""
+    """Native chart + wrong Moon ⇒ FORENSIC HALT still fires (regression guard intact).
+
+    B1 note: must now pass birth_params since resolve_birth_params raises for any
+    chart (native included) with falsy params.
+    """
     gdw = _dashas()
     wrong_moon = 2.0  # Ashwini → Ketu, not the native's Jupiter anchor
+    native_birth = {
+        "datetime_iso": "1984-02-05T10:43:00",
+        "latitude_deg": 20.27,
+        "longitude_deg": 85.84,
+        "tz_offset_hours": 5.5,
+        "place_name": "Bhubaneswar, Odisha, India",
+        "subject_label": "Abhisek Mohanty",
+    }
     with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth=None: (wrong_moon, gdw._birth_jd_utc())):
         with pytest.raises(ValueError, match='FORENSIC HALT'):
             gdw.build_system('vimshottari', 'lahiri_chitrapaksha',
-                             chart_id=CANONICAL_CHART_ID, skip_db=True)
+                             chart_id=CANONICAL_CHART_ID, skip_db=True,
+                             birth_params=native_birth)
 
 
 def test_forensic_does_not_halt_for_non_native_chart():
