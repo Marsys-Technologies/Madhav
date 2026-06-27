@@ -91,7 +91,13 @@ def _ensure_psycopg_stub():
 
 
 def _load_module(filename: str) -> types.ModuleType:
-    """Load a writer module by filename, fresh each call."""
+    """Load a writer module by filename, fresh each call.
+
+    Uses the stub's no-op ``register`` function while loading the module so
+    that re-loading a writer that was already registered by another test file
+    does not raise a duplicate-registration ValueError.
+    """
+    stub = _ensure_writers_stub()
     _ensure_psycopg_stub()
     key = f"{_PKG}.{filename.replace('.py', '')}"
     sys.modules.pop(key, None)
@@ -101,7 +107,19 @@ def _load_module(filename: str) -> types.ModuleType:
     mod = importlib.util.module_from_spec(spec)
     mod.__package__ = _PKG
     sys.modules[key] = mod
-    spec.loader.exec_module(mod)
+
+    # Temporarily replace the writers-package `register` with a no-op so that
+    # @register(…) decorators inside the loaded module don't fire on the real
+    # _REGISTRY — which would raise ValueError if the writer was already
+    # registered by a prior test file that imported it via the real package.
+    _noop_register = lambda asset_id: (lambda cls: cls)
+    original_register = getattr(stub, "register", _noop_register)
+    stub.register = _noop_register
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        stub.register = original_register
+
     return mod
 
 
