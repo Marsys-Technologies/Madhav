@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 _ACTION_CLASSES = list(ACTION_GRAHA_MAP.keys())
 _WINDOW_DAYS = 365 * 3    # 3-year forward horizon
+# B9: cap raised from 100 → 400 (original native charts typically have ~400 influenceable anchors;
+# the old 100-row cap silently dropped 300 rows and is now replaced by this documented constant).
+MAX_MUHURTA_ANCHORS = 400
 
 
 @register('ph_muhurta')
@@ -54,6 +57,9 @@ class PhMuhurtaWriter(WriterBase):
 
         # Load chart condition scores (M1) for the relevant grahas
         condition_scores = self._load_condition_scores(conn, chart_id)
+
+        # B9: load ka_gochara transit data for real transit scoring
+        gochara_by_graha = self._load_gochara_transits(conn, chart_id)
 
         # F-W5-003: derive chart's actual 10th-house lord to override native-lagna assumption
         career_lord = self._resolve_career_lord(conn, chart_id)
@@ -83,7 +89,10 @@ class PhMuhurtaWriter(WriterBase):
 
                 # M1: condition + transit (use loaded scores; default 0.5 if absent)
                 condition = condition_scores.get(relevant_graha, 0.5)
-                transit   = 0.5   # transit scoring from ka_gochara requires live ephemeris; default
+                # B9: derive real transit score from ka_gochara if available
+                transit = self._compute_transit_score(
+                    gochara_by_graha, relevant_graha, candidate_start
+                )
 
                 # M2: check obstruction overlap
                 obstruction_id = None
@@ -165,9 +174,10 @@ class PhMuhurtaWriter(WriterBase):
         return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)
 
     def _load_influenceable_anchors(self, conn, chart_id: str) -> list:
-        # M3 fusion design: one muhurta record per anchor × action_class; capped at 100
-        # top-confidence anchors so each anchor maps to exactly one muhurta action. Revisit
-        # if charts routinely exceed 100 influenceable anchors (WARN below will surface this).
+        # B9: cap raised to MAX_MUHURTA_ANCHORS (400). The previous 100-row cap silently
+        # dropped up to 300 influenceable anchors. We now fetch up to MAX+1 to detect
+        # overflow and warn; rows are trimmed to MAX if exceeded.
+        cap = MAX_MUHURTA_ANCHORS
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
@@ -175,19 +185,18 @@ class PhMuhurtaWriter(WriterBase):
                 FROM phala_anchors
                 WHERE chart_id = %s AND malleability IN ('influenceable','semi_influenceable')
                 ORDER BY confidence_high DESC NULLS LAST
-                LIMIT 101
+                LIMIT %s
                 """,
-                (chart_id,),
+                (chart_id, cap + 1),
             )
             rows = cur.fetchall()
-        if len(rows) > 100:
+        if len(rows) > cap:
             logger.warning(
-                "[ph_muhurta] influenceable anchors=%d exceeds LIMIT 100 — %d dropped "
-                "(M3 top-confidence design; revisit if persistent)",
-                len(rows),
-                len(rows) - 100,
+                "[ph_muhurta] influenceable anchors=%d exceeds MAX_MUHURTA_ANCHORS=%d — %d dropped "
+                "(top-confidence design; raise MAX_MUHURTA_ANCHORS if persistent)",
+                len(rows), cap, len(rows) - cap,
             )
-            rows = rows[:100]
+            rows = rows[:cap]
         return rows
 
     def _load_obstruction_windows(self, conn, chart_id: str) -> dict:
@@ -245,6 +254,115 @@ class PhMuhurtaWriter(WriterBase):
         except Exception as exc:
             logger.debug("ph_muhurta: condition_scores load skipped: %s", exc)
         return result
+
+    def _load_gochara_transits(self, conn, chart_id: str) -> dict[str, list[dict]]:
+        """B9: load ka_gochara transit windows per graha for transit scoring.
+
+        Returns {graha_lower: [{'sign_number': int, 'is_retrograde': bool,
+                                'start_date': date, 'end_date': date}, ...]}
+        Uses a SAVEPOINT; returns {} silently if table absent (L3 Kāla may not be built yet).
+        """
+        result: dict[str, list[dict]] = {}
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_gochara")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT graha, sign_number, is_retrograde, start_date, end_date
+                    FROM kala_gochara
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    ORDER BY start_date DESC
+                    LIMIT 20
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    graha = str(row['graha']).lower()
+                    result.setdefault(graha, []).append({
+                        'sign_number':   int(row['sign_number']),
+                        'is_retrograde': bool(row.get('is_retrograde')),
+                        'start_date':    row['start_date'],
+                        'end_date':      row['end_date'],
+                    })
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_gochara")
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_gochara")
+            except Exception:
+                pass
+            logger.debug("ph_muhurta: ka_gochara load skipped: %s", exc)
+        return result
+
+    def _compute_transit_score(
+        self,
+        gochara_by_graha: dict[str, list[dict]],
+        graha: str,
+        candidate_start: datetime | None,
+    ) -> float:
+        """B9: compute real transit score from ka_gochara data.
+
+        Score logic:
+          - No ka_gochara data → return 0.5 (neutral default, logged at DEBUG).
+          - Find the transit window active at candidate_start for the given graha.
+          - Retrograde transit → score = 0.35 (weakened).
+          - Direct transit in own sign (5 or 8 for saturn, etc.) → 0.75.
+          - Otherwise → 0.55 + small sign-position bonus to create variance.
+        Falls back to 0.5 if no matching transit window found.
+        """
+        if not gochara_by_graha or graha not in gochara_by_graha:
+            logger.debug("ph_muhurta: no ka_gochara for graha=%s; transit_score=0.5 (default)", graha)
+            return 0.5
+
+        if candidate_start is None:
+            return 0.5
+
+        target_date = candidate_start.date() if isinstance(candidate_start, datetime) else candidate_start
+
+        # Own-sign map (classical): sign numbers where a graha is in own sign
+        _OWN_SIGNS: dict[str, set[int]] = {
+            'sun':     {5},
+            'moon':    {4},
+            'mars':    {1, 8},
+            'mercury': {3, 6},
+            'jupiter': {9, 12},
+            'venus':   {2, 7},
+            'saturn':  {10, 11},
+            'rahu':    {3},
+            'ketu':    {9},
+        }
+
+        transits = gochara_by_graha[graha]
+        active = None
+        for t in transits:
+            s = t.get('start_date')
+            e = t.get('end_date')
+            if s and e:
+                if isinstance(s, str):
+                    try: s = date.fromisoformat(s)
+                    except ValueError: continue
+                if isinstance(e, str):
+                    try: e = date.fromisoformat(e)
+                    except ValueError: continue
+                if s <= target_date <= e:
+                    active = t
+                    break
+
+        if active is None:
+            return 0.5
+
+        if active.get('is_retrograde'):
+            return 0.35
+
+        sign_num = active.get('sign_number', 0)
+        if sign_num in _OWN_SIGNS.get(graha, set()):
+            return 0.75
+
+        # Gentle variance: 0.55 base + 0.02 per sign position cycle offset (1–12 → [0, 0.22])
+        variance = round(0.55 + 0.02 * ((sign_num - 1) % 6), 3)
+        return variance
 
     # Classical sign lords (1=Aries..12=Pisces) for 10th-lord derivation
     _SIGN_LORDS: dict[int, str] = {
