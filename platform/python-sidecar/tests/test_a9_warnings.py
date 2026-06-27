@@ -224,6 +224,11 @@ class TestW2SwissephUnavailable:
             "executemany was called even though swisseph was unavailable — "
             "silent stub rows were being inserted."
         )
+        # DELETE must NOT have been called (prior data must not be wiped before swisseph check)
+        delete_calls = [c for c in cm.execute.call_args_list if "DELETE" in str(c)]
+        assert not delete_calls, (
+            f"DELETE was called before swisseph check: {delete_calls}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
