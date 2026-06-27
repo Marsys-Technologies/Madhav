@@ -5052,7 +5052,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: GIT-BRANCH-AUDIT-2026-06-27  # 2026-06-27: Git branch audit — all branches merged/deleted, 3 surgical migs applied to prod, main HEAD 4ff09957. Predecessor L5-MI-RECONCILE-SEAL. (prev: L5-MI-RECONCILE-SEAL 2026-06-27)
+  last_session_id: BUILD-PATH-REMEDIATION-2026-06-28  # 2026-06-28: JIS build-path correctness+enhancement remediation — 9-agent wave, 10 blockers fixed, 7 enhancements, migrations 358+361 applied to prod. Predecessor ABHINANDAN-REBUILD-L1L5-2026-06-27. (prev: GIT-BRANCH-AUDIT-2026-06-27 2026-06-27)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
