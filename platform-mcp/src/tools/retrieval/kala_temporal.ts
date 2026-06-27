@@ -42,8 +42,6 @@ import { z } from 'zod'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
-const NATIVE_CHART_ID =
-  process.env['NATIVE_CHART_ID'] ?? '482012f1-710e-4a25-994a-93821f5871aa'
 const PYTHON_SIDECAR_URL =
   process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
 const DEFAULT_SNAPSHOT_DATE = '2026-06-05'
@@ -274,7 +272,7 @@ const FORENSIC_OBSTRUCTIONS: ObstructionEntry[] = [
 ]
 
 const FALLBACK_SNAPSHOT: KalaSnapshot = {
-  chart_id: NATIVE_CHART_ID,
+  chart_id: '',
   snapshot_date: DEFAULT_SNAPSHOT_DATE,
   active_dasha: {
     md_lord: 'Mercury',
@@ -333,12 +331,12 @@ const FALLBACK_SNAPSHOT: KalaSnapshot = {
   provenance_envelope: {
     asset: 'kala.snapshot',
     unit: 'KA-3-5',
-    chart_id: NATIVE_CHART_ID,
+    chart_id: '',
     source_citation: SOURCE_CITATION,
     layer: 'L3 Kāla',
     snapshot_date: DEFAULT_SNAPSHOT_DATE,
     mode: 'fallback',
-    note: 'Sidecar unavailable — pre-computed FORENSIC-grounded fallback',
+    note: 'Sidecar unavailable — pre-computed FORENSIC-grounded fallback for native chart only',
   },
 }
 
@@ -422,18 +420,23 @@ export async function computeKalaTemporalBundle(
     }
   }
 
-  // ── Fallback: use embedded FORENSIC-grounded data ────────────────────────
-  if (timeline.length === 0) {
+  // ── Fallback: embedded FORENSIC-grounded data for native chart only ──────
+  // These tables are seeded from native's birth data and MUST NOT be served
+  // for non-native charts. If sidecar is unavailable for a non-native chart,
+  // callers receive empty arrays and must retry with sidecar available.
+  const NATIVE_CHART_ID_CONST = '482012f1-710e-4a25-994a-93821f5871aa'
+  const isNativeChart = chartId === NATIVE_CHART_ID_CONST
+  if (timeline.length === 0 && isNativeChart) {
     timeline = filterByDateRange(FORENSIC_DASHA_PERIODS, start, end)
   }
-  if (convergenceWindows.length === 0) {
+  if (convergenceWindows.length === 0 && isNativeChart) {
     convergenceWindows = filterByDateRange(FORENSIC_CONVERGENCE_WINDOWS, start, end)
   }
-  if (obstructions.length === 0) {
+  if (obstructions.length === 0 && isNativeChart) {
     obstructions = filterByDateRange(FORENSIC_OBSTRUCTIONS, start, end)
   }
-  if (includeSnapshot && snapshot === null) {
-    snapshot = FALLBACK_SNAPSHOT
+  if (includeSnapshot && snapshot === null && isNativeChart) {
+    snapshot = { ...FALLBACK_SNAPSHOT, chart_id: chartId }
   }
 
   return {
@@ -463,10 +466,8 @@ const InputSchema = z.object({
   chart_id: z
     .string()
     .uuid()
-    .default(NATIVE_CHART_ID)
     .describe(
-      'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
 
   date_range: z
@@ -519,9 +520,6 @@ FORENSIC anchors:
   • Mercury-Saturn AD: 2024-12-12 → 2027-08-21 (current as of 2026-06-05)
   • Sade Sati Cycle 2 setting phase: 2025-03-29 → 2028-03-28
   • Jupiter exalted Cancer (H4): 2025-05-15 → 2026-06-01
-
-Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar.
-chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-KA-3-COMPOSITE | kala.temporal_bundle retrieval tool.`
 

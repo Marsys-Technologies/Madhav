@@ -121,15 +121,18 @@ async function callSidecar<T>(
 export function registerMimamsaLelIntakeTool(server: McpServer): void {
   server.tool(
     'lel_query',
-    'Query the 57-event Life Event Log calibration corpus for native Abhisek Mohanty. '
+    'Query the Life Event Log calibration corpus for a chart. '
     + 'Returns life events with Vimshottari dasha context and retrodictive match quality. '
-    + 'Filter by domain (e.g. career, health, spiritual, relationship, family, loss, finance) '
+    + 'Filter by chart_id, domain (e.g. career, health, spiritual, relationship, family, loss, finance) '
     + 'and/or date range. '
     + 'NO LEAKAGE: this corpus is for calibration only — must not feed prediction generation. '
     + 'All responses carry provenance_envelope with source_citation (B.3 mandate). '
-    + 'Source: LIFE_EVENT_LOG_v1_2.md (native-disclosed, v1.7, 57 events, confidence 0.89). '
     + 'BRAHMA-MI-5-1 | mimamsa.lel_intake',
     {
+      chart_id: z
+        .string()
+        .uuid()
+        .describe('UUID of the chart whose life events to query. Must be a valid chart UUID.'),
       domain: z
         .string()
         .optional()
@@ -160,6 +163,7 @@ export function registerMimamsaLelIntakeTool(server: McpServer): void {
     async (params) => {
       try {
         const result = await callSidecar<LelQueryResult>('/brahma/mimamsa/lel_query', {
+          chart_id: params.chart_id,
           domain: params.domain ?? null,
           date_from: params.date_from ?? null,
           date_to: params.date_to ?? null,

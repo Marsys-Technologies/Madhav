@@ -178,8 +178,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart. Must be a valid chart UUID from the charts table.'
     ),
 
   date_range: z
@@ -240,7 +239,6 @@ export function registerPhalaEventAnchorsTool(server: McpServer): void {
       '  contributing_signals  = MSR signal IDs from bodha_signals grounding this anchor\n' +
       '  source_citation       = L1 FORENSIC + MSR citations (non-null, B.3 compliant)\n\n' +
       'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari 2024-2030).\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa.\n' +
       'Dasha regime 2026-2030: Mercury MD/Saturn AD → Ketu MD (Ketu/Venus/Sun/Moon/Mars ADs).\n' +
       'BRAHMA-PH-4-1 | phala.anchors contract.',
     InputSchema.shape,

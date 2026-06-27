@@ -235,8 +235,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to query. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
   signal_ids: z
     .array(z.string())
@@ -300,7 +299,7 @@ export function registerGetCgmSubgraph(
       'All edges carry source_citation back to FORENSIC_v8_0. ' +
       'Use signal_ids to seed a BFS traversal across the signal relationship graph. ' +
       'No self-loops returned (CHECK constraint + runtime filter). ' +
-      '≥5 edges guaranteed for the native chart (Abhisek Mohanty, 1984-02-05). ' +
+      'Returns all edges for the given chart. ' +
       'Source: 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json (22 reconciled edges, batch 2). ' +
       'BRAHMA-BO-2-2 | bodha.graph contract.',
     InputSchema.shape,

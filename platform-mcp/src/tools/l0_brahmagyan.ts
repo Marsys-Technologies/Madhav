@@ -20,9 +20,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 
 const PLATFORM_URL = process.env['PLATFORM_URL'] ?? 'http://localhost:3000'
-const NATIVE_CHART_ID =
-  process.env['NATIVE_CHART_ID'] ?? '482012f1-710e-4a25-994a-93821f5871aa'
-
 // ── Helper: platform API call ─────────────────────────────────────────────────
 
 async function platformGet(path: string): Promise<unknown> {
@@ -215,7 +212,6 @@ export function registerIntentClassifyTool(server: McpServer): void {
             text: JSON.stringify({
               prompt: rendered,
               usage: 'Pass prompt to Gemini Flash-Lite for intent classification',
-              chart_id: NATIVE_CHART_ID,
             }, null, 2),
           },
         ],

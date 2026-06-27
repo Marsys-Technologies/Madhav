@@ -247,8 +247,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
   lens: LensSchema.optional().describe(
     'Lens to apply to the signal set:\n' +
@@ -329,9 +328,6 @@ export function registerBodhaLensesTool(server: McpServer): void {
       '  negative_space— computes absent/weak domains and grahas (what is NOT signalled)\n' +
       '  salience      — ranks by composite_salience = conf × salience × (1+reinforce/10) × domain_weight\n\n' +
       'Omit lens= for plain BO-2-1 signal list (salience DESC order).\n\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05): ' +
-      'expect ≥1 contradiction-hub in career/wealth domains ' +
-      '(Saturn-Ketu malefic vs. Jupiter benefic in 9H).\n\n' +
       'No new tables — computed over existing bodha_signals + bodha_graph.\n' +
       'BRAHMA-BO-2-5 | bodha.lenses contract.',
     InputSchema.shape,

@@ -53,7 +53,6 @@ function getPool(): pg.Pool | null {
 
 // ── Native canonical chart ─────────────────────────────────────────────────────
 
-const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -269,15 +268,15 @@ export function registerHolisticBundleRetrievalTool(server: McpServer): void {
   server.tool(
     'holistic_bundle_chart_facts',
     {
-      chart_id: z.string().uuid().optional().describe(
-        'Chart UUID. Defaults to native canonical chart if omitted.'
+      chart_id: z.string().uuid().describe(
+        'Chart UUID. Must be a valid chart UUID from the charts table.'
       ),
       include_graph: z.boolean().optional().default(false).describe(
         'Include bodha.graph (CGM edge set) in the bundle. Default: false.'
       ),
     },
     async ({ chart_id, include_graph = false }) => {
-      const targetChartId = chart_id ?? NATIVE_CHART_ID
+      const targetChartId = chart_id
       const queriedAt = new Date().toISOString()
       const pool = getPool()
 

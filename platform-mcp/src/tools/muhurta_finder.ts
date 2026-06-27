@@ -48,9 +48,7 @@ export const MuhurtaFinderInputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to find auspicious windows for. ' +
-      'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar): ' +
-      '482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to find auspicious windows for. Must be a valid chart UUID from the charts table.'
     ),
 
   action_type: z
@@ -176,7 +174,6 @@ export const MUHURTA_FINDER_DESCRIPTION =
   'signal_activation: MSR v5.0 signal ensemble for the action_type. ' +
   'B.3 mandate: source_citation NON-NULL on every window. ' +
   'provenance_envelope present on every response. ' +
-  'FORENSIC grounding: native chart Abhisek Mohanty 1984-02-05 10:43 IST Bhubaneswar. ' +
   'Education muhurta: Pushya nakshatra + Mercury/Thursday days most auspicious (BPHS ch.46 §vidya). ' +
   'Marriage muhurta: Rohini/Revati/Hasta + Monday/Thursday/Friday most auspicious. ' +
   'surgical: true — pure retrieval + pre-computed scoring, no LLM synthesis. ' +
@@ -300,8 +297,7 @@ export function registerMuhurtaFinder(
         .string()
         .uuid()
         .describe(
-          'UUID of the chart. ' +
-          'Native (Abhisek Mohanty 1984-02-05 10:43 IST Bhubaneswar): 482012f1-710e-4a25-994a-93821f5871aa'
+          'UUID of the chart. Must be a valid chart UUID from the charts table.'
         ),
       action_type: z
         .enum(['marriage', 'travel', 'business', 'medical', 'education', 'property', 'general'])

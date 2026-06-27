@@ -41,8 +41,7 @@ export const MitigationMapInputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to retrieve mitigations for. ' +
-      'Use the native chart ID (Abhisek Mohanty: 1984-02-05 10:43 IST Bhubaneswar).'
+      'UUID of the chart to retrieve mitigations for. Must be a valid chart UUID from the charts table.'
     ),
   anchor_id: z
     .string()
@@ -131,7 +130,7 @@ export const MITIGATION_MAP_DESCRIPTION =
   'Use mitigation_type to filter by remedy category. ' +
   'Response always includes a provenance_envelope with asset, build_tag, and computed_at. ' +
   'surgical: true — pure retrieval, no LLM synthesis. ' +
-  'FORENSIC ground: native chart Abhisek Mohanty 1984-02-05 10:43 IST Bhubaneswar.'
+  'surgical: true — pure retrieval, no LLM synthesis.'
 
 // ── Tool handler ───────────────────────────────────────────────────────────────
 
@@ -237,8 +236,7 @@ export function registerMitigationMapTool(
         .string()
         .uuid()
         .describe(
-          'UUID of the chart. ' +
-          'Use native chart ID for Abhisek Mohanty (1984-02-05 10:43 IST Bhubaneswar).'
+          'UUID of the chart. Must be a valid chart UUID from the charts table.'
         ),
       anchor_id: z
         .string()

@@ -60,8 +60,7 @@ export function registerQueryPlanetPositionTool(server: McpServer): void {
     'query_planet_position',
     'Query planetary positions from ephemeris_daily (1900-2150, tropical coordinates). ' +
     'Returns longitude_deg, sign_number, nakshatra_number, is_retrograde, speed_dps. ' +
-    'Subtract Lahiri ayanamsha (~23.87° at J2000) to get sidereal longitude. ' +
-    'Native birth date 1984-02-05: Sun tropical ~315.87° (sidereal Capricorn ~22°).',
+    'Subtract Lahiri ayanamsha (~23.87° at J2000) to get sidereal longitude.',
     QueryPlanetPositionInput.shape,
     async (params) => {
       const input = QueryPlanetPositionInput.parse(params)

@@ -154,9 +154,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar): ' +
-        '482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
 
   horizon_months: z
@@ -226,8 +224,6 @@ export function registerPhalaOutlookTool(server: McpServer): void {
       'No new DB table — pure API aggregation layer over the 4 L4 sub-tools.\n' +
       'All 4 subsystems degrade gracefully: if a sub-system is unavailable,\n' +
       'its slot is returned as empty list / empty dict + an error provenance.\n\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar):\n' +
-      '  chart_id = 482012f1-710e-4a25-994a-93821f5871aa\n\n' +
       'BRAHMA-PH-4-5 | phala.outlook contract.',
     InputSchema.shape,
     async (params) => {

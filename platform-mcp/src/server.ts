@@ -119,8 +119,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
-  registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (l2-bodha-scaffold)
-  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (l3-kala)
+  registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (L2 Bodha — chart-agnostic)
+  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-agnostic)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server)
   // L4 Phala tools

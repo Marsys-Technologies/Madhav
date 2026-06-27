@@ -234,7 +234,6 @@ export function registerMimamsaOutcomeTool(server: McpServer): void {
       'NO LEAKAGE: life_events feed only into calibration after outcome is observed —\n' +
       'never into prediction generation. Leakage guard enforced.\n\n' +
       'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 + LEL v1.7.\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa.\n' +
       'BRAHMA-MI-5-3 | mimamsa.outcome contract.',
     {
       prediction_id: z
@@ -275,8 +274,7 @@ export function registerMimamsaOutcomeTool(server: McpServer): void {
         .uuid()
         .optional()
         .describe(
-          'Chart UUID. Default: native chart ' +
-            '(Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa.'
+          'Chart UUID. Must be a valid chart UUID from the charts table.'
         ),
 
       outcome_note: z
@@ -345,7 +343,6 @@ export function registerMimamsaOutcomeTool(server: McpServer): void {
       'Calibration = mean((confidence - outcome_binary)²) per (technique, ayanamsha_id).\n' +
       'Uninformative baseline = 0.25 (equivalent to random 50/50 at 0.5 confidence).\n\n' +
       'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 + LEL v1.7.\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa.\n' +
       'BRAHMA-MI-5-3 | mimamsa.outcome contract.',
     {
       chart_id: z
@@ -353,8 +350,7 @@ export function registerMimamsaOutcomeTool(server: McpServer): void {
         .uuid()
         .optional()
         .describe(
-          'Chart UUID filter. Default: native chart ' +
-            '(Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa.'
+          'Chart UUID filter. Must be a valid chart UUID from the charts table.'
         ),
 
       technique: z

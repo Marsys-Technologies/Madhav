@@ -167,9 +167,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to rectify. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05, 10:43 IST): ' +
-        '482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to rectify. Must be a valid chart UUID from the charts table.'
     ),
   show_candidates: z
     .boolean()
@@ -211,8 +209,6 @@ export function registerPhalaRectificationTool(server: McpServer): void {
       '  Test split: LEL events 44–57 (25%, held-out — never used for selection)\n\n' +
       'B.10 compliance: dasha-level only; no Swiss Ephemeris re-run.\n' +
       'Source: FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1 + LIFE_EVENT_LOG_v1_2.md.\n\n' +
-      'Native chart (Abhisek Mohanty, 1984-02-05): ' +
-      'chart_id = 482012f1-710e-4a25-994a-93821f5871aa\n\n' +
       'Requires phala_rectification table to be seeded first:\n' +
       '  python -m brahmagyan.phala.rectification seed --chart-id <uuid>\n\n' +
       'BRAHMA-PH-4-3 | phala.rectification contract.',

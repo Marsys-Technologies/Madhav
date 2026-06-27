@@ -91,7 +91,7 @@ const ConvergenceWindowSchema = z.object({
 
   /**
    * Date range for the query. Both dates must be ISO 8601 strings (YYYY-MM-DD).
-   * Defaults to full native life range (1984-02-05 to 2035-12-31) if omitted.
+   * Defaults to 1900-01-01 to 2100-12-31 if omitted (full supported range).
    */
   date_range: z
     .object({
@@ -151,8 +151,8 @@ export async function queryConvergenceWindows(
   const client = await pool.connect()
 
   try {
-    const startDate = params.date_range?.start ?? '1984-02-05'
-    const endDate = params.date_range?.end ?? '2035-12-31'
+    const startDate = params.date_range?.start ?? '1900-01-01'
+    const endDate = params.date_range?.end ?? '2100-12-31'
     const minScore = params.min_score ?? 0.0
 
     // Query kala_convergence — windows overlapping [startDate, endDate]

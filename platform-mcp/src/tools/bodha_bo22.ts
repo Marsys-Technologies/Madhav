@@ -208,8 +208,7 @@ const InputSchema = z.object({
     .string()
     .uuid()
     .describe(
-      'UUID of the chart to query. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
   signal_ids: z
     .array(z.string())

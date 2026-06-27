@@ -36,7 +36,6 @@ const { Pool } = pg
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
-const NATIVE_CHART_ID = process.env['NATIVE_CHART_ID'] ?? '482012f1-710e-4a25-994a-93821f5871aa'
 
 // Vimshottari sequence
 const VIMSHOTTARI: Array<[string, number]> = [
@@ -568,10 +567,8 @@ const InputSchema = z.object({
   chart_id: z
     .string()
     .uuid()
-    .default(NATIVE_CHART_ID)
     .describe(
-      'UUID of the chart to query. ' +
-        'Native chart (Abhisek Mohanty, 1984-02-05): 482012f1-710e-4a25-994a-93821f5871aa'
+      'UUID of the chart to query. Must be a valid chart UUID from the charts table.'
     ),
 
   date_range: z
@@ -617,8 +614,6 @@ Output shape:
 When to use: Mandatory for any predictive / temporal query. Use when the user \
 asks about a date range, dasha period, life phase, or "when will X happen". \
 Pair with holistic_bundle (B.11 floor) and bodha signals for the full picture.
-
-Native chart: Abhisek Mohanty, 1984-02-05 — chart_id 482012f1-710e-4a25-994a-93821f5871aa
 
 BRAHMA-KA-3-4 | kala.temporal contract.`
 

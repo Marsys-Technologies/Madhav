@@ -34,7 +34,7 @@ export const QueryRemediationInputSchema = z.object({
     .uuid()
     .describe(
       'UUID of the chart to retrieve remediation for. ' +
-      'Use the native chart ID (Abhisek Mohanty: 1984-02-05 10:43 IST Bhubaneswar).'
+      'UUID of the chart to retrieve remediation for.'
     ),
   domain: z
     .string()
@@ -167,7 +167,7 @@ export function registerQueryRemediationTool(
     QUERY_REMEDIATION_DESCRIPTION,
     {
       chart_id: z.string().uuid().describe(
-        'UUID of the chart. Use native chart ID for Abhisek Mohanty (1984-02-05 10:43 IST Bhubaneswar).'
+        'UUID of the chart to retrieve remediation for. Must be a valid chart UUID from the charts table.'
       ),
       domain: z.string().optional().describe(
         'Jyotish domain filter: career | health | relationship | finance | dharma | …'
