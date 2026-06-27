@@ -12,10 +12,15 @@ Edge types created:
   'yoga_domain'  — yoga signal → domain node (positive)
   'dosha_domain' — dosha signal → domain node (antagonist)
   'sade_sati'    — Saturn → Moon / house 12 (transit-period)
+  'argala'       — B intervenes on A (BPHS Ch. 28: 2nd/4th/11th from A)
 
 Contradiction detection:
   - A yoga signal and a dosha signal share the same domain AND same graha
     → 'yoga_vs_dosha' contradiction pair
+
+Cross-subsystem columns (CONTRACT-4 with A7/bo_anveshana):
+  - is_cross_subsystem: True when from/to nodes span different traditions
+  - subsystem_from / subsystem_to: signal_tradition of each endpoint
 
 LIGHT writer.
 """
@@ -49,6 +54,7 @@ INSERT INTO bodha_cgm_edges (
   cancelled_flag, cancelled_by_jsonb, cross_ayanamsha_edge_stability_score,
   present_in_traditions_array, edge_betweenness, in_shortest_path_count,
   graph_compute_library, graph_compute_library_version,
+  is_cross_subsystem, subsystem_from, subsystem_to,
   verification_pass_status, citation_ref, citation_human, computed_at, engine_version
 ) VALUES (
   %(edge_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
@@ -60,6 +66,7 @@ INSERT INTO bodha_cgm_edges (
   %(cancelled_flag)s, NULL, NULL,
   %(present_in_traditions_array)s, NULL, NULL,
   %(graph_compute_library)s, %(graph_compute_library_version)s,
+  %(is_cross_subsystem)s, %(subsystem_from)s, %(subsystem_to)s,
   %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s,
   %(computed_at)s, %(engine_version)s
 )
@@ -94,6 +101,17 @@ KNOWN_DOMAINS = {
     "spirituality", "character", "general",
 }
 
+# ── Argala constants (BPHS Ch. 28) ───────────────────────────────────────────
+# Argala positions: B creates argala on A when B is in the 2nd, 4th, or 11th house FROM A
+ARGALA_POSITIONS = {2, 4, 11}
+# Virodha positions: a planet here can cancel argala (3rd, 5th, 10th from A)
+VIRODHA_POSITIONS = {3, 5, 10}
+
+MALEFIC_GRAHAS  = {"Saturn", "Mars", "Rahu", "Ketu"}
+BENEFIC_GRAHAS  = {"Jupiter", "Venus", "Moon", "Mercury"}
+
+_ARGALA_DEFAULT_SIGN_NUMBERS: dict[str, int] = {}  # populated at runtime from DB
+
 
 def _fetch_node_map(conn, chart_id: str, aya: str) -> dict[tuple[str, str], str]:
     """Returns {(node_type, node_subject): node_id}."""
@@ -127,6 +145,155 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
         "salience_formula_version", "signal_type_id",
     ]
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+
+
+def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
+    """Returns {graha_name: sign_number (1-12)} for argala computation.
+
+    Reads from chart_facts (L1 authority). sign_number is 1-based (Aries=1 … Pisces=12).
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_text
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_position'
+             AND fact_key = 'sign_number'""",
+        [chart_id, aya],
+    ).fetchall()
+    result: dict[str, int] = {}
+    for r in rows:
+        if isinstance(r, dict):
+            subject = r["fact_subject"]
+            val     = r["fact_value_text"]
+        else:
+            subject = str(r[0])
+            val     = str(r[1])
+        try:
+            result[subject] = int(val)
+        except (ValueError, TypeError):
+            pass
+    return result
+
+
+def _house_of_b_from_a(sign_a: int, sign_b: int) -> int:
+    """1-based house of B counted from A (A = house 1).
+
+    Example: A=Aries(1), B=Taurus(2) → house 2.
+    """
+    return ((sign_b - sign_a) % 12) + 1
+
+
+def _build_argala_edges(
+    chart_id: str, aya: str, build_id: str,
+    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str
+) -> list[dict]:
+    """Build argala edges per BPHS Ch. 28.
+
+    For each pair (A, B) of grahas:
+      - Compute house of B from A.
+      - If that house is in ARGALA_POSITIONS → B creates argala on A.
+      - Determine if virodha-argala (B is malefic) vs. benefic argala.
+      - Check virodha cancellation: if B is malefic, check if there is a
+        planet in the corresponding virodha position; if so, mark cancelled.
+    """
+    edges: list[dict] = []
+    grahas = [g for g in graha_signs if g in KNOWN_GRAHAS]
+
+    # Map: virodha_position_from_a → grahas occupying that position
+    # Built once per A to check cancellation
+    for graha_a in grahas:
+        sign_a = graha_signs[graha_a]
+        node_a = node_map.get(("graha", graha_a))
+        if not node_a:
+            continue
+
+        # For virodha cancellation: collect planets at virodha positions from A
+        virodha_occupied: set[int] = set()
+        for graha_x in grahas:
+            if graha_x == graha_a:
+                continue
+            h = _house_of_b_from_a(sign_a, graha_signs[graha_x])
+            if h in VIRODHA_POSITIONS:
+                virodha_occupied.add(h)
+
+        for graha_b in grahas:
+            if graha_b == graha_a:
+                continue
+            sign_b = graha_signs[graha_b]
+            node_b = node_map.get(("graha", graha_b))
+            if not node_b:
+                continue
+
+            house_b_from_a = _house_of_b_from_a(sign_a, sign_b)
+            if house_b_from_a not in ARGALA_POSITIONS:
+                continue
+
+            # Determine argala class
+            is_malefic = graha_b in MALEFIC_GRAHAS
+            relationship_class = "argala_virodha" if is_malefic else "argala_positive"
+
+            # Virodha cancellation: applies only to malefic (virodha-argala)
+            # The virodha position corresponding to each argala position:
+            #   argala 2  ↔  virodha 12 (but BPHS says 3rd cancels 11th, 12th cancels 2nd... )
+            #   BPHS: 2nd argala cancelled by 12th, 4th by 3rd (or 10th), 11th by 10th
+            #   We use the canonical mapping: argala_house → virodha_house
+            ARGALA_TO_VIRODHA = {2: 12, 4: 3, 11: 10}
+            cancelled = False
+            if is_malefic:
+                virodha_h = ARGALA_TO_VIRODHA.get(house_b_from_a)
+                # Check if the virodha house (from A) is occupied by any planet
+                for graha_x in grahas:
+                    if graha_x in (graha_a, graha_b):
+                        continue
+                    h = _house_of_b_from_a(sign_a, graha_signs[graha_x])
+                    if h == virodha_h:
+                        cancelled = True
+                        break
+
+            edges.append({
+                "edge_id": str(uuid.uuid4()),
+                "chart_id": chart_id,
+                "ayanamsha_id": aya,
+                "build_id": build_id,
+                "snapshot_type": SNAPSHOT_TYPE,
+                "edge_type": "argala",
+                "from_node_id": node_b,   # B is the argala-karaka (intervener)
+                "to_node_id": node_a,     # A is the argala-subject
+                "direction": "directed",
+                "computed_strength": 0.5,
+                "weight_formula_version": "edge_weight_v1.0",
+                "edge_properties_jsonb": json.dumps({
+                    "argala_subject": graha_a,
+                    "argala_karaka": graha_b,
+                    "house_of_karaka_from_subject": house_b_from_a,
+                    "argala_position": house_b_from_a,
+                }),
+                "relationship_class": relationship_class,
+                "semantic_path_class": "argala_intervention",
+                "active_duration_class": "natal_permanent",
+                "active_dasha_periods_jsonb": None,
+                "underlying_msr_signal_ids_array": [],
+                "cross_system_consensus_count": 1,
+                "cancelled_flag": cancelled,
+                "present_in_traditions_array": ["parashari"],
+                "graph_compute_library": GRAPH_LIB,
+                "graph_compute_library_version": GRAPH_LIB_VER,
+                "is_cross_subsystem": False,
+                "subsystem_from": "parashari",
+                "subsystem_to": "parashari",
+                "verification_pass_status": "documented_approximation",
+                "citation_ref": "BPHS_Ch28/argala",
+                "citation_human": (
+                    f"Argala: {graha_b} in {house_b_from_a}th from {graha_a} "
+                    f"({'virodha-argala' if is_malefic else 'argala'}"
+                    f"{', cancelled' if cancelled else ''})"
+                ),
+                "computed_at": now,
+                "engine_version": ENGINE_VERSION,
+            })
+
+    return edges
 
 
 def _parse_cfg(sig: dict) -> dict:
@@ -177,6 +344,8 @@ def _build_edges_and_contradictions(
             return node_map.get((ntype, subject))
 
         # ── Yoga → domain (positive edge) ────────────────────────────────────
+        # yoga/dosha→domain edges: graha node (tradition = signal's tradition)
+        # to domain node (tradition = "domain") → ALWAYS cross-subsystem
         if sig_class == "yoga" and graha:
             from_node = _get_node("graha", graha)
             for domain in domains:
@@ -205,6 +374,9 @@ def _build_edges_and_contradictions(
                         "present_in_traditions_array": [tradition],
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
+                        "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
+                        "subsystem_from": tradition,
+                        "subsystem_to": "domain",
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"Yoga→domain edge: {type_id}→{domain}",
@@ -243,6 +415,9 @@ def _build_edges_and_contradictions(
                         "present_in_traditions_array": [tradition],
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
+                        "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
+                        "subsystem_from": tradition,
+                        "subsystem_to": "domain",
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"Dosha→domain edge: {type_id}→{domain}",
@@ -253,6 +428,7 @@ def _build_edges_and_contradictions(
                 dosha_by_graha[graha] = sig
 
         # ── Aspect / conjunction / path edges ────────────────────────────────
+        # graha→graha edges: cross-subsystem only when the two signals differ in tradition
         elif sig_class == "composite_state" and graha:
             aspected_graha = (cfg.get("aspected_graha") or cfg.get("graha_b")
                               or cfg.get("to_graha"))
@@ -268,6 +444,9 @@ def _build_edges_and_contradictions(
                 to_node   = _get_node("graha", aspected_graha)
                 if from_node and to_node:
                     etype = "conjunction" if "conjunction" in type_id else "aspect"
+                    # For graha→graha edges, both endpoints share the same tradition
+                    # (the signal's tradition) — cross-subsystem only if tradition differs,
+                    # which for a single signal cannot happen; we record same→same here.
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -291,6 +470,9 @@ def _build_edges_and_contradictions(
                         "present_in_traditions_array": [tradition],
                         "graph_compute_library": GRAPH_LIB,
                         "graph_compute_library_version": GRAPH_LIB_VER,
+                        "is_cross_subsystem": False,
+                        "subsystem_from": tradition,
+                        "subsystem_to": tradition,
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"{etype}: {graha}→{aspected_graha}",
@@ -363,12 +545,15 @@ class BoKaranajalaWriter(WriterBase):
         total_c   = 0
 
         for aya in CANONICAL_AYAS:
-            signals  = _fetch_signals(conn, chart_id, aya)
-            node_map = _fetch_node_map(conn, chart_id, aya)
+            signals     = _fetch_signals(conn, chart_id, aya)
+            node_map    = _fetch_node_map(conn, chart_id, aya)
+            graha_signs = _fetch_graha_sign_numbers(conn, chart_id, aya)
 
             if ctx.dry_run:
-                logger.info("[bo_karanajala dry_run] %s — %d signals, %d nodes",
-                            aya, len(signals), len(node_map))
+                logger.info(
+                    "[bo_karanajala dry_run] %s — %d signals, %d nodes, %d graha_signs",
+                    aya, len(signals), len(node_map), len(graha_signs),
+                )
                 continue
 
             if not node_map:
@@ -382,10 +567,18 @@ class BoKaranajalaWriter(WriterBase):
                 chart_id, aya, build_id, signals, node_map, now
             )
 
+            argala_edges = _build_argala_edges(
+                chart_id, aya, build_id, graha_signs, node_map, now
+            )
+            edges.extend(argala_edges)
+
             replace_prior_cgm_edges(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_contradictions(conn, chart_id, aya)
 
-            logger.info("[bo_karanajala] %s — %d edges, %d contradictions", aya, len(edges), len(contradictions))
+            logger.info(
+                "[bo_karanajala] %s — %d edges (%d argala), %d contradictions",
+                aya, len(edges), len(argala_edges), len(contradictions),
+            )
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
 
