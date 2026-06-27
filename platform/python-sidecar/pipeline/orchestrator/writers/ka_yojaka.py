@@ -52,18 +52,19 @@ class KaYojakaWriter(WriterBase):
         cdlm_domain_strength: dict[str, float] = self._fetch_cdlm_domain_strength(conn, chart_id)
 
         # Step 3: classify + bind each signal
+        # Connection uses dict_row factory — access columns by name, not integer index.
         rows = []
         for sig in signals:
             signal_dict = {
-                'signal_id': sig[0],
-                'chart_id': sig[1],
-                'ayanamsha_id': sig[2],
-                'signal_type_class': sig[3],
-                'signal_type_id': sig[4],
-                'configuration_jsonb': sig[5],
-                'constituent_facts_array': sig[6],
-                'valence': sig[7],
-                'dignity_score': sig[8],
+                'signal_id': sig['signal_id'],
+                'chart_id': sig['chart_id'],
+                'ayanamsha_id': sig['ayanamsha_id'],
+                'signal_type_class': sig['signal_type_class'],
+                'signal_type_id': sig['signal_type_id'],
+                'configuration_jsonb': sig['configuration_jsonb'],
+                'constituent_facts_array': sig['constituent_facts_array'],
+                'valence': sig['valence'],
+                'dignity_score': sig['dignity_score'],
             }
             sc = classify_signal(signal_dict)
             pred = build_predicate(signal_dict, sc)
@@ -81,9 +82,9 @@ class KaYojakaWriter(WriterBase):
             )
 
             rows.append((
-                str(sig[1]),  # chart_id
-                str(sig[2]),  # ayanamsha_id
-                str(sig[0]),  # signal_id
+                str(sig['chart_id']),
+                str(sig['ayanamsha_id']),
+                str(sig['signal_id']),
                 sc,
                 json.dumps(pred['dasha_eligibility_rule']),
                 json.dumps(pred['transit_trigger']),
@@ -129,9 +130,9 @@ class KaYojakaWriter(WriterBase):
                 rows = cur.fetchall()
             if not rows:
                 return result
-            max_pgr = max(float(r[1]) for r in rows) or 1.0
-            for subject, pgr in rows:
-                result[str(subject)] = min(1.0, float(pgr) / max_pgr)
+            max_pgr = max(float(r['pgr']) for r in rows) or 1.0
+            for r in rows:
+                result[str(r['node_subject'])] = min(1.0, float(r['pgr']) / max_pgr)
             logger.debug("ka_yojaka: CGM centrality loaded — %d nodes", len(result))
         except Exception as exc:
             logger.debug("ka_yojaka: CGM pagerank fetch skipped: %s", exc)
@@ -154,8 +155,8 @@ class KaYojakaWriter(WriterBase):
                     """,
                     (chart_id,),
                 )
-                for domain, avg_s in cur.fetchall():
-                    result[str(domain).lower()] = min(1.0, max(0.0, float(avg_s)))
+                for r in cur.fetchall():
+                    result[str(r['domain_a']).lower()] = min(1.0, max(0.0, float(r['avg_strength'])))
             logger.debug("ka_yojaka: CDLM domain strengths loaded — %d domains", len(result))
         except Exception as exc:
             logger.debug("ka_yojaka: CDLM domain strength fetch skipped: %s", exc)

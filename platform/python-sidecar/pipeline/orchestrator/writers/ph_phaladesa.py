@@ -284,10 +284,10 @@ class PhPhaladesakWriter(WriterBase):
                 )
                 return [
                     SpilloverSummary(
-                        source_domain=str(r[0]),
-                        target_domain=str(r[1]),
-                        relationship_type=str(r[2]),
-                        spillover_confidence=float(r[3] or 0.0),
+                        source_domain=str(r['source_domain']),
+                        target_domain=str(r['target_domain']),
+                        relationship_type=str(r['relationship_type']),
+                        spillover_confidence=float(r['spillover_confidence'] or 0.0),
                     )
                     for r in cur.fetchall()
                 ]
@@ -321,7 +321,7 @@ class PhPhaladesakWriter(WriterBase):
                         """,
                         (chart_id,),
                     )
-                return {str(r[0]).lower() for r in cur.fetchall()}
+                return {str(r['domain']).lower() for r in cur.fetchall()}
         except Exception as exc:
             logger.debug("ph_phaladesa: %s domain coverage load skipped: %s", table, exc)
             return set()

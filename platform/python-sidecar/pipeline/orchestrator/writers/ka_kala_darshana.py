@@ -41,20 +41,28 @@ class KaKalaDarshanaWriter(WriterBase):
         # Group obstructions by convergence_id
         obs_by_conv = {}
         for obs_row in obstruction_rows:
-            conv_id = obs_row[0]
+            conv_id = obs_row['convergence_id']
             if conv_id not in obs_by_conv:
                 obs_by_conv[conv_id] = []
             obs_by_conv[conv_id].append({
-                'type': obs_row[1],
-                'severity': obs_row[2],
-                'override_score': obs_row[3],
-                'detail': obs_row[4],
+                'type': obs_row['obstruction_type'],
+                'severity': obs_row['severity'],
+                'override_score': obs_row['override_score'],
+                'detail': obs_row['obstruction_detail'],
             })
 
         rows = []
         for conv in convergence_rows:
-            (conv_id, signal_id, mode, peak_date, win_start, win_end,
-             conv_score, conf_label, orb_str, rarity) = conv
+            conv_id = conv['convergence_id']
+            signal_id = conv['signal_id']
+            mode = conv['mode']
+            peak_date = conv['peak_date']
+            win_start = conv['window_start']
+            win_end = conv['window_end']
+            conv_score = conv['convergence_score']
+            conf_label = conv['confidence_label']
+            orb_str = conv['orb_strength']
+            rarity = conv['rarity_years']
 
             # Get obstructions for this window
             obstructions = obs_by_conv.get(conv_id, [])

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical chart for self-test
 _CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-_CANONICAL_AYANAMSHA = "lahiri"
+_CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 _EXPECTED_SYSTEMS = frozenset({
     "vimshottari", "yogini", "ashtottari", "chara_karaka",
     "naisargika", "mudda", "kalachakra",
@@ -48,7 +48,7 @@ def _run_selftest(conn) -> tuple[bool, str]:
     sys_counts = svc.confirm_systems_present(_CANONICAL_CHART_ID, _CANONICAL_AYANAMSHA)
     missing = _EXPECTED_SYSTEMS - set(sys_counts.keys())
     if missing:
-        return False, f"Missing systems in chart_dashas: {sorted(missing)}"
+        return False, json.dumps({"error": f"Missing systems in chart_dashas: {sorted(missing)}"})
 
     # Assertion 2: Non-empty result for a known query window
     # Use Saturn/Rahu as target lords (they appear prominently in Vimshottari for this chart)
@@ -64,7 +64,7 @@ def _run_selftest(conn) -> tuple[bool, str]:
     )
 
     if not result.windows:
-        return False, "Self-test query returned 0 windows for Saturn/Rahu in 2010-2030"
+        return False, json.dumps({"error": "Self-test query returned 0 windows for Saturn/Rahu in 2010-2030"})
 
     # Assertion 3: All intervals have start < end
     invalid = [
@@ -72,7 +72,7 @@ def _run_selftest(conn) -> tuple[bool, str]:
         if w.start_date >= w.end_date
     ]
     if invalid:
-        return False, f"{len(invalid)} intervals have start_date >= end_date"
+        return False, json.dumps({"error": f"{len(invalid)} intervals have start_date >= end_date"})
 
     detail = json.dumps({
         "systems_found": sorted(sys_counts.keys()),

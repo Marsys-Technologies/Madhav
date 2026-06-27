@@ -45,19 +45,25 @@ class KaKalasutraWriter(WriterBase):
         # Build signal → best convergence window map
         convergence_map = {}
         for row in convergence_rows:
-            sig_id = str(row[0])
-            if sig_id not in convergence_map or (row[4] or 0) > (convergence_map[sig_id]['convergence_score'] or 0):
+            sig_id = str(row['signal_id'])
+            if sig_id not in convergence_map or (row['convergence_score'] or 0) > (convergence_map[sig_id]['convergence_score'] or 0):
                 convergence_map[sig_id] = {
-                    'mode': row[1],
-                    'peak_date': row[2],
-                    'orb_strength': row[3],
-                    'convergence_score': row[4],
+                    'mode': row['mode'],
+                    'peak_date': row['peak_date'],
+                    'orb_strength': row['orb_strength'],
+                    'convergence_score': row['convergence_score'],
                 }
-        
+
         # Build activation rows
         rows = []
         for pred in predicates:
-            signal_id, ayanamsha_id, sig_class, dasha_rule, transit_rule, strength_hook, strength = pred
+            signal_id = pred['signal_id']
+            ayanamsha_id = pred['ayanamsha_id']
+            sig_class = pred['signature_class']
+            dasha_rule = pred['dasha_eligibility_rule_jsonb']
+            transit_rule = pred['transit_trigger_jsonb']
+            strength_hook = pred['strength_affliction_hook_jsonb']
+            strength = pred['strength']
             sig_id_str = str(signal_id)
             
             # L2 null hooks: filled here at L3 (NEVER by writing bodha_msr_signals)

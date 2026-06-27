@@ -463,7 +463,7 @@ class KaSangamWriter(WriterBase):
                 )
                 for row in cur.fetchall():
                     # fact_subject like 'Sun-HOUSE_3' or 'SARVA-HOUSE_3'
-                    subj = row[0] or ''
+                    subj = row['fact_subject'] or ''
                     if '-HOUSE_' not in subj:
                         continue
                     parts = subj.rsplit('-HOUSE_', 1)
@@ -472,7 +472,7 @@ class KaSangamWriter(WriterBase):
                     planet, house_str = parts
                     try:
                         house_num = int(house_str)
-                        bindus = int(row[1]) if row[1] is not None else 0
+                        bindus = int(row['fact_value_num']) if row['fact_value_num'] is not None else 0
                         if planet not in ashtakavarga_bindu:
                             ashtakavarga_bindu[planet] = {}
                         ashtakavarga_bindu[planet][house_num] = bindus
@@ -502,9 +502,9 @@ class KaSangamWriter(WriterBase):
                 )
                 for row in cur.fetchall():
                     vedha_rules.append({
-                        'graha': row[0],
-                        'transit_to_house': row[1],
-                        'vedha_house': row[2],
+                        'graha': row['graha'],
+                        'transit_to_house': row['transit_to_house'],
+                        'vedha_house': row['vedha_house'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_vedha")
@@ -532,9 +532,9 @@ class KaSangamWriter(WriterBase):
                 )
                 for row in cur.fetchall():
                     tajika_year_lords.append({
-                        'varsha_year': row[0],
-                        'varshesha': row[1],
-                        'muntha': row[2],
+                        'varsha_year': row['varsha_year'],
+                        'varshesha': row['varshesha'],
+                        'muntha': row['muntha'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_tajika")
