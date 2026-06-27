@@ -45,15 +45,29 @@ def _register(asset_id):
     return decorator
 
 class _ContextSpec:
-    pass
+    """Minimal stub — accepts the same keyword args as the real ContextSpec dataclass
+    so that if another test file receives this stub (e.g. due to module-load ordering),
+    its ContextSpec(...) calls still succeed rather than raising TypeError."""
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 class _WriterResult:
+    """Stub WriterResult — stores all keyword args as attributes so that
+    cross-test access (e.g. result.rows_inserted) works correctly."""
     def __init__(self, **kwargs):
-        pass
+        # Defaults matching the real WriterResult dataclass
+        self.asset_id = kwargs.get("asset_id", "")
+        self.rows_inserted = kwargs.get("rows_inserted", 0)
+        self.rows_updated = kwargs.get("rows_updated", 0)
+        self.rows_skipped = kwargs.get("rows_skipped", 0)
+        self.duration_seconds = kwargs.get("duration_seconds", 0.0)
+        self.notes = kwargs.get("notes", "")
 
 class _SubStep:
     def __init__(self, **kwargs):
-        pass
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 # Build the stub package hierarchy that the relative import expects
 _pkg_pipeline = types.ModuleType("pipeline")
@@ -76,7 +90,9 @@ _pkg_pipeline.__path__ = [os.path.dirname(os.path.dirname(_WRITERS_DIR))]
 
 sys.modules.setdefault("pipeline", _pkg_pipeline)
 sys.modules.setdefault("pipeline.orchestrator", _pkg_orchestrator)
-sys.modules["pipeline.orchestrator.writers"] = _pkg_writers
+# Use setdefault so the real package (if already imported by another test) is
+# not overwritten with the stub — avoids cross-test ContextSpec contamination.
+sys.modules.setdefault("pipeline.orchestrator.writers", _pkg_writers)
 
 # Now load bo_laksana.py as part of that stub package
 _bo_laksana_path = os.path.join(_WRITERS_DIR, "bo_laksana.py")

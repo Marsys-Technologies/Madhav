@@ -26,7 +26,7 @@ from unittest.mock import MagicMock, patch
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WORKTREE = (
-    "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/a9-warnings/"
+    "/Users/Dev/Vibe-Coding/Apps/Madhav/"
     "platform/python-sidecar/pipeline/orchestrator/writers/"
 )
 
@@ -38,18 +38,40 @@ FakeWriterResult = collections.namedtuple(
 )
 
 
+_WRITERS_DIR = "/Users/Dev/Vibe-Coding/Apps/Madhav/platform/python-sidecar/pipeline/orchestrator/writers"
+
+
 def _ensure_writers_stub(extra_attrs: dict | None = None):
     """
     Ensure a pipeline.orchestrator.writers stub is in sys.modules.
     Rebuilds it fresh each call so tests don't bleed state between writer modules.
     Returns the stub.
+
+    The stub always includes ``__path__`` pointing at the real writers directory
+    so that subsequent tests can still do sub-module imports like
+    ``from pipeline.orchestrator.writers.ph_muhurta import …`` without
+    hitting "not a package" errors.
     """
+    existing = sys.modules.get(_PKG)
+    if existing is not None and hasattr(existing, "__file__"):
+        # Real package is loaded — patch it non-destructively; leave __path__ intact.
+        stub = existing
+        if extra_attrs:
+            for k, v in extra_attrs.items():
+                setattr(stub, k, v)
+        return stub
+
     stub = types.ModuleType(_PKG)
     stub.WriterBase = object
     stub.ContextSpec = object
     stub.WriterResult = FakeWriterResult
     stub.SubStep = MagicMock
     stub.register = lambda x: (lambda cls: cls)
+    # Must set __path__ so Python can still resolve sub-module imports after this
+    # stub is installed.  Without it, 'from pipeline.orchestrator.writers.X import …'
+    # raises "not a package" in any test that runs after A9.
+    stub.__path__ = [_WRITERS_DIR]
+    stub.__package__ = _PKG
     if extra_attrs:
         for k, v in extra_attrs.items():
             setattr(stub, k, v)
