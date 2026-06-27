@@ -118,15 +118,31 @@ def _dashas():
     return gdw
 
 
-def test_birth_jd_default_is_native():
+_NATIVE_BIRTH_JD_DICT = {
+    "datetime_iso": "1984-02-05T10:43:00",
+    "tz_offset_hours": 5.5,
+}
+
+
+def test_birth_jd_raises_without_birth():
+    """B1 elimination: _birth_jd_utc() requires a birth dict — no default fallback."""
     gdw = _dashas()
-    assert gdw._birth_jd_utc() == gdw._birth_jd_utc(None)
+    with pytest.raises((ValueError, TypeError)):
+        gdw._birth_jd_utc()
+
+
+def test_birth_jd_raises_for_none():
+    """B1 elimination: _birth_jd_utc(None) raises — native has no special-case path."""
+    gdw = _dashas()
+    with pytest.raises(ValueError):
+        gdw._birth_jd_utc(None)
 
 
 def test_birth_jd_honors_injected_birth():
+    """_birth_jd_utc honors an injected non-native dict and differs from native JD."""
     gdw = _dashas()
     other = {'datetime_iso': '1990-06-15T14:30:00', 'tz_offset_hours': 5.5}
-    assert gdw._birth_jd_utc(other) != gdw._birth_jd_utc(None)
+    assert gdw._birth_jd_utc(other) != gdw._birth_jd_utc(_NATIVE_BIRTH_JD_DICT)
 
 
 def test_forensic_halts_for_native_chart():
@@ -145,7 +161,8 @@ def test_forensic_halts_for_native_chart():
         "place_name": "Bhubaneswar, Odisha, India",
         "subject_label": "Abhisek Mohanty",
     }
-    with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth=None: (wrong_moon, gdw._birth_jd_utc())):
+    native_jd = gdw._birth_jd_utc(_NATIVE_BIRTH_JD_DICT)
+    with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth: (wrong_moon, native_jd)):
         with pytest.raises(ValueError, match='FORENSIC HALT'):
             gdw.build_system('vimshottari', 'lahiri_chitrapaksha',
                              chart_id=CANONICAL_CHART_ID, skip_db=True,
@@ -170,7 +187,8 @@ def test_forensic_does_not_halt_for_non_native_chart():
         "place_name": "Delhi, India",
         "subject_label": "Test Chart",
     }
-    with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth=None: (wrong_moon, gdw._birth_jd_utc())):
+    native_jd = gdw._birth_jd_utc(_NATIVE_BIRTH_JD_DICT)
+    with patch.object(gdw, '_get_moon_position', side_effect=lambda aya, birth: (wrong_moon, native_jd)):
         result = gdw.build_system('vimshottari', 'lahiri_chitrapaksha',
                                   chart_id='non-native-chart-xyz', skip_db=True,
                                   birth_params=non_native_birth)
