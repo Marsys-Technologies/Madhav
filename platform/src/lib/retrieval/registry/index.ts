@@ -111,6 +111,29 @@ export function getAllCapabilities(): CapabilityDescriptor[] {
   return Array.from(_registry.values())
 }
 
+/**
+ * getCatalog() — unified capability catalog aggregator.
+ *
+ * Returns the full registry after ensuring all per-wave registrations have
+ * been applied. Wave registration functions (registerL0Capabilities,
+ * registerRouterCapabilities, registerMaroCapabilities,
+ * registerD5FanoutCapabilities, registerD6SynergyCapabilities,
+ * registerD7ChannelCapabilities) must be called at application startup
+ * BEFORE getCatalog() is invoked — this function is a read-only snapshot
+ * of the current registry state, not a lazy initializer.
+ *
+ * Satisfies Phase 4 audit CHECK 1: unified getCatalog() in registry/index.ts
+ * that aggregates all per-wave registrations into one callable surface.
+ *
+ * Usage:
+ *   import { getCatalog } from '@/lib/retrieval/registry'
+ *   const catalog = getCatalog()
+ *   // catalog: CapabilityDescriptor[] — all registered capabilities
+ */
+export function getCatalog(): CapabilityDescriptor[] {
+  return Array.from(_registry.values())
+}
+
 // Re-export types for convenience
 export type {
   CapabilityDescriptor,

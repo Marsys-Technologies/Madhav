@@ -55,6 +55,14 @@ app.include_router(phala_outlook_router, prefix="/api/compute", dependencies=[De
 from brahmagyan.mimamsa.prediction_ledger import router as mimamsa_prediction_router
 app.include_router(mimamsa_prediction_router, prefix="/api/brahma", dependencies=[Depends(verify_api_key)])
 
+# BRAHMA MI-5-1 — Mīmāṃsā L5 LEL intake query (lel_query → /brahma/mimamsa/lel_query)
+# Resolves Phase 4 audit CHECK 5: MCP tool mimamsa_lel_intake.ts forwards chart_id
+# to POST /brahma/mimamsa/lel_query — this route was missing, causing a 404.
+# Route: POST /brahma/mimamsa/lel_query (full path after prefix)
+from brahmagyan.mimamsa.lel_intake import router as mimamsa_lel_router
+if mimamsa_lel_router is not None:
+    app.include_router(mimamsa_lel_router, prefix="/brahma/mimamsa", dependencies=[Depends(verify_api_key)])
+
 # BRAHMA Stream G — PyHora natal computation (graha_sthana, vimshottari_dasha, special_lagnas)
 app.include_router(pyhora_router.router, prefix="/api/pyhora", dependencies=[Depends(verify_api_key)])
 

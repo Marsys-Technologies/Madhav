@@ -1,6 +1,25 @@
 /**
  * classical_disclosure_filter.ts — Tier-gated disclosure filter for classical attributions
  *
+ * RETIRED / DEPRECATED — lib/retrieve layer (legacy chat-route pipeline)
+ * -----------------------------------------------------------------------
+ * This file is part of the legacy lib/retrieve layer. It is RETIRED in
+ * favour of the retrieval registry layer and MCP tool surface.
+ *
+ * Replacement registry capabilities (Gate C citation):
+ *   marsys://tool/L0/query_classical_texts — registered in
+ *     platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts
+ *   MCP surface: platform-mcp/src/tools/read_classical_text.ts
+ *   Disclosure/tier filtering at serve-time is now handled by the MCP auth
+ *   layer (platform-mcp/src/auth.ts) and the chat-route principal context —
+ *   no audience_tier gating is stored in capability descriptors per the
+ *   no-audience-tier build principle (§N.4 feedback-no-audience-tier).
+ *
+ * This file is retained for compatibility with any chat-route code that
+ * still calls applyDisclosureFilter(). Do NOT add new tier logic here —
+ * serve-time filtering belongs at the API/MCP boundary.
+ * -----------------------------------------------------------------------
+ *
  * Applies audience-tier filtering to ClassicalAttributionRecord objects before
  * they are serialized in a response. Only content fields are redacted; metadata
  * (confidence_tier, translation_cross_checked, attribution_type) is always emitted.

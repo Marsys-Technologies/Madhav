@@ -243,9 +243,8 @@ const EphemerisCacheNativeLifetimeInput = z.object({})
 export function registerEphemerisCacheNativeLifetimeTool(server: McpServer): void {
   server.tool(
     'ephemeris_cache_native_lifetime',
-    'Fetch ephemeris coverage statistics for the native\'s lifetime (1984-2070). ' +
-    'Native: Abhisek Mohanty, born 1984-02-05 10:43 IST, Bhubaneswar. ' +
-    'Returns row count, date range, and native birth chart context. ' +
+    'Fetch ephemeris coverage statistics for the native\'s lifetime window (1984-2070). ' +
+    'Returns row count, date range, and native birth chart context from the sidecar. ' +
     'Use as a sanity check before querying native-lifetime transits.',
     EphemerisCacheNativeLifetimeInput.shape,
     async (_params) => {

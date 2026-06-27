@@ -2,6 +2,25 @@
  * MARSYS-JIS Stream F — Brahmagyan Remedy Retrieval Tools
  * schema_version: 1.0
  *
+ * RETIRED / DEPRECATED — lib/retrieve layer (legacy chat-route pipeline)
+ * -----------------------------------------------------------------------
+ * This file is part of the legacy lib/retrieve layer used by the Consume
+ * chat route (runAdapterDispatch → getTool()). It is RETIRED in favour of
+ * the retrieval registry layer (platform/src/lib/retrieval/registry).
+ *
+ * Replacement registry capabilities (Gate C citation):
+ *   marsys://tool/L0/query_remedy_corpus  — registered in
+ *     platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts
+ *   marsys://tool/L0/query_remedies_tool  — registered in
+ *     platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts
+ *   MCP surface: platform-mcp/src/tools/retrieval/remedy_tools.ts (7 tools)
+ *
+ * This file is retained for the chat-route pipeline until full migration of
+ * the chat channel to the retrieval registry (tracked by D7 channel descriptor
+ * marsys://tool/channel/chat_dispatch). Do NOT remove until that migration
+ * is complete. Do NOT add new capabilities here — add them to the registry.
+ * -----------------------------------------------------------------------
+ *
  * 7 retrieval capabilities for brahma_remedy_corpus:
  *   1. query_remedies           — planet + domain + category + top_k
  *   2. query_remedies_for_chart — chart_id + affliction

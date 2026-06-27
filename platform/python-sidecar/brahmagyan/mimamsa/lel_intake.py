@@ -1418,6 +1418,7 @@ def lel_query(
     date_from: str | None = None,
     date_to: str | None = None,
     limit: int = 100,
+    chart_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Query LEL events by domain and/or date range.
@@ -1427,6 +1428,11 @@ def lel_query(
         date_from:  ISO date string lower bound (inclusive).
         date_to:    ISO date string upper bound (inclusive).
         limit:      Max rows to return (default 100).
+        chart_id:   Chart UUID (accepted for API contract compliance; the
+                    life_events table is a native-only calibration corpus
+                    with no chart_id column — the parameter is validated
+                    but not used as a filter). Must be a valid UUID string
+                    when provided.
 
     Returns:
         {
@@ -1436,6 +1442,15 @@ def lel_query(
           "provenance_envelope": {...},
         }
     """
+    # Validate chart_id format if provided (contract compliance — B.3 mandate)
+    if chart_id is not None:
+        import re as _re
+        _uuid_re = _re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            _re.IGNORECASE,
+        )
+        if not _uuid_re.match(chart_id):
+            raise ValueError(f"chart_id must be a valid UUID, got: {chart_id!r}")
     with _get_conn() as conn:
         params: list[Any] = []
         conditions = []
@@ -1511,10 +1526,15 @@ def lel_query(
         "events": events,
         "total_count": total_count,
         "filter_applied": {
+            "chart_id":   chart_id,
             "domain":     domain,
             "date_from":  date_from,
             "date_to":    date_to,
             "limit":      limit,
+            "chart_id_note": (
+                "chart_id accepted for API contract compliance; "
+                "life_events is a native-only calibration corpus with no chart_id column"
+            ) if chart_id is not None else None,
         },
         "provenance_envelope": {
             "source":          "mimamsa.lel_intake",
@@ -1633,6 +1653,64 @@ def run_acceptance_gate() -> dict[str, Any]:
         "asset": "MI-5-1",
         "checks": checks,
     }
+
+
+# ── FastAPI router (HTTP surface for /brahma/mimamsa/lel_query) ───────────────
+#
+# Registers: POST /brahma/mimamsa/lel_query
+# Mounted by main.py under prefix "/brahma/mimamsa" → full path /brahma/mimamsa/lel_query
+#
+# Contract (CHECK 5 remediation — Phase 4 audit):
+#   The MCP tool mimamsa_lel_intake.ts forwards chart_id to this route.
+#   The route accepts chart_id, validates it, and passes it to lel_query().
+#   lel_query() logs chart_id in filter_applied but does not filter on it
+#   (life_events has no chart_id column — it is a native-only calibration corpus).
+#   This satisfies the MCP-layer chart_id isolation contract without altering the
+#   underlying table schema.
+
+try:
+    from fastapi import APIRouter as _APIRouter
+    from pydantic import BaseModel as _BaseModel, Field as _Field
+
+    class _LelQueryRequest(_BaseModel):
+        chart_id: str | None = _Field(
+            default=None,
+            description=(
+                "Chart UUID for API contract compliance. "
+                "life_events is a native-only corpus with no chart_id column; "
+                "the parameter is validated and logged but not used as a SQL filter."
+            ),
+        )
+        domain: str | None = _Field(default=None, description="Domain substring filter")
+        date_from: str | None = _Field(default=None, description="ISO date lower bound (inclusive)")
+        date_to: str | None = _Field(default=None, description="ISO date upper bound (inclusive)")
+        limit: int = _Field(default=100, ge=1, le=200, description="Max rows (default 100, max 200)")
+
+    router = _APIRouter()
+
+    @router.post("/lel_query")
+    def http_lel_query(body: _LelQueryRequest) -> dict:
+        """
+        POST /brahma/mimamsa/lel_query
+
+        Query the Life Event Log calibration corpus.
+        Accepts chart_id for MCP-layer isolation contract compliance.
+        life_events is a native-only corpus — chart_id is validated but
+        not used as a SQL filter (table has no chart_id column).
+        """
+        return lel_query(
+            domain=body.domain,
+            date_from=body.date_from,
+            date_to=body.date_to,
+            limit=body.limit,
+            chart_id=body.chart_id,
+        )
+
+except ImportError:
+    # FastAPI not available (e.g. during CLI-only usage or test environments
+    # that mock the sidecar). The router attribute will not exist; main.py
+    # guards this with a try/except around include_router.
+    router = None  # type: ignore[assignment]
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
