@@ -35,7 +35,7 @@
  * D4 — GATE A compliant: new file only, no edits to registry/index.ts or types.ts.
  */
 
-import type { CapabilityDescriptor } from '../../types'
+import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ async function _neighborsMode(
   valenceFilter: string | undefined,
   crossSubsystemOnly: boolean,
   depth: number
-): Promise<{ content: unknown; is_error: boolean }> {
+): Promise<ToolResult> {
   const rawSeeds = (args['seed_node_ids'] as string[]) ?? []
   const semanticQuery = args['semantic_query'] as string | undefined
 
@@ -371,7 +371,7 @@ async function _pathsMode(
   args: Record<string, unknown>,
   ayanamshaId: string | undefined,
   snapshotType: string | undefined
-): Promise<{ content: unknown; is_error: boolean }> {
+): Promise<ToolResult> {
   const seedNodeIds = (args['seed_node_ids'] as string[]) ?? []
 
   if (seedNodeIds.length < 2) {
@@ -492,7 +492,7 @@ async function _convergenceMode(
   ayanamshaId: string | undefined,
   snapshotType: string | undefined,
   topK: number
-): Promise<{ content: unknown; is_error: boolean }> {
+): Promise<ToolResult> {
   const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
   let pIdx = params.length + 1
 
@@ -580,7 +580,7 @@ async function _convergenceMode(
 async function _contradictionsMode(
   chartId: string,
   ayanamshaId: string | undefined
-): Promise<{ content: unknown; is_error: boolean }> {
+): Promise<ToolResult> {
   const conds: string[] = ['chart_id = $1']
   const params: unknown[] = [chartId]
   let pIdx = 2
