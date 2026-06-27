@@ -51,11 +51,11 @@ AYANAMSHAS = ["lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman", "su
 WINDOW_START = date(1950, 1, 1)
 WINDOW_END = date(2100, 12, 31)
 
-# FORENSIC anchor birth params
-BIRTH_IST = "1984-02-05T10:43:00"
-BIRTH_LAT = 20.27
-BIRTH_LON = 85.84
+# BIRTH_TZ_OFFSET used as .get() fallback for tz in _birth_jd_utc / _get_moon_position
+# when the birth_params dict was built without an explicit tz_offset_hours field.
 BIRTH_TZ_OFFSET = 5.5  # IST = UTC+5:30
+# NOTE: BIRTH_IST / BIRTH_LAT / BIRTH_LON deleted (B1 elimination — every chart,
+# including the native, now sources birth params from public.charts via fetch_birth_params).
 
 # Vimshottari constants
 VIMSHOTTARI_YEARS = {
@@ -205,19 +205,14 @@ def _conn() -> Generator:
 
 # ── JD / date helpers ─────────────────────────────────────────────────────────
 
-def _birth_jd_utc(birth: dict | None = None) -> float:
-    """Birth Julian Day (UT). Defaults to the native (BIRTH_*) when birth is None;
-    a non-native chart passes its birth_params (Phase 3B writer generalization).
-    When birth is None the native BIRTH_IST/BIRTH_TZ_OFFSET constants are used —
-    this is correct because resolve_birth_params() in build_system() ensures that
-    non-native charts always supply a non-None birth dict before reaching here."""
+def _birth_jd_utc(birth: dict) -> float:
+    """Birth Julian Day (UT). Requires a non-None birth_params dict sourced from
+    public.charts via fetch_birth_params() — B1 elimination: no BIRTH_* fallback."""
     import swisseph as swe
-    if birth:
-        iso = birth["datetime_iso"]
-        tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
-    else:
-        iso = BIRTH_IST
-        tz = BIRTH_TZ_OFFSET
+    if not birth:
+        raise ValueError("[_birth_jd_utc] birth_params is falsy; every chart must supply DB-sourced birth params")
+    iso = birth["datetime_iso"]
+    tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
     dt_local = datetime.fromisoformat(iso)
     dt_utc = dt_local - timedelta(hours=tz)
     return swe.julday(
@@ -246,24 +241,22 @@ def _days_between(d1: date, d2: date) -> float:
 
 # ── Ayanamsha + Moon position ─────────────────────────────────────────────────
 
-def _get_moon_position(ayanamsha_id: str, birth: dict | None = None) -> tuple[float, float]:
+def _get_moon_position(ayanamsha_id: str, birth: dict) -> tuple[float, float]:
     """
-    Returns (moon_sidereal_lon, birth_jd_utc). Defaults to the native birth when
-    birth is None; a non-native chart passes its birth_params (Phase 3B).
+    Returns (moon_sidereal_lon, birth_jd_utc).
+    Requires a non-None birth_params dict sourced from public.charts —
+    B1 elimination: no BIRTH_* fallback for native or any other chart.
     Uses pyjhora_adapter engine.
     """
     from pyjhora_adapter.compute import compute_chart
     from pyjhora_adapter._ayanamsha import resolve_mode
     from pyjhora_adapter._jhora import drik
 
-    if birth:
-        lat = float(birth["latitude_deg"])
-        lon = float(birth["longitude_deg"])
-        tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
-    else:
-        lat = BIRTH_LAT
-        lon = BIRTH_LON
-        tz = BIRTH_TZ_OFFSET
+    if not birth:
+        raise ValueError("[_get_moon_position] birth_params is falsy; every chart must supply DB-sourced birth params")
+    lat = float(birth["latitude_deg"])
+    lon = float(birth["longitude_deg"])
+    tz = float(birth.get("tz_offset_hours", BIRTH_TZ_OFFSET))
 
     jd = _birth_jd_utc(birth)
     mode, _ = resolve_mode(ayanamsha_id)
@@ -2243,7 +2236,7 @@ def _assert_forensic_vimshottari(
 def build_system(
     system_id: str,
     ayanamsha_id: str,
-    chart_id: str = CANONICAL_CHART_ID,
+    chart_id: str,
     build_id: str | None = None,
     *,
     conn: Any = None,
@@ -2271,18 +2264,10 @@ def build_system(
     if build_id is None:
         build_id = str(uuid.uuid4())
 
-    # Contamination guard (Phase 3B / Fix 1.2): resolve birth params to prevent
-    # native BIRTH_* constants from silently leaking into non-native chart builds.
-    # - native chart + None/{}  → None  → downstream .get() fallbacks to BIRTH_* are correct
-    # - non-native chart + dict → returns the dict (passes it through to callers)
-    # - non-native chart + None/{} → raises ValueError (no silent native fallback)
-    resolved_birth = resolve_birth_params(chart_id, birth_params)
-    # Re-assign birth_params to the resolved value so all downstream .get() calls
-    # inside _birth_jd_utc / _get_moon_position use the correct chart's data.
-    # For the native chart resolved_birth is None, and the existing BIRTH_* fallbacks
-    # inside _birth_jd_utc / _get_moon_position remain correct.
-    if resolved_birth is not None:
-        birth_params = resolved_birth
+    # B1 elimination: resolve_birth_params() raises for ANY chart with falsy params
+    # (native included). Every chart must supply DB-sourced birth params via
+    # fetch_birth_params() before reaching here; the native has no special fallback.
+    birth_params = resolve_birth_params(chart_id, birth_params)
 
     # Ensure L0 nakshatra lords are loaded (idempotent — skips if already populated)
     if not _NAKSHATRA_LORDS_1BASED:
@@ -2400,7 +2385,7 @@ SYSTEMS = [
 
 
 def build_ga_dashas(
-    chart_id: str = CANONICAL_CHART_ID,
+    chart_id: str,
     build_id: str | None = None,
     *,
     systems: list[str] | None = None,

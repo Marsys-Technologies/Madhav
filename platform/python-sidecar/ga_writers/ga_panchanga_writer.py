@@ -51,15 +51,6 @@ CANONICAL_AYANAMSHAS: list[str] = [
     "surya_siddhanta_classical",
 ]
 
-# Birth parameters — canonical native
-NATIVE_BIRTH = {
-    "datetime_local": datetime(1984, 2, 5, 10, 43, 0),
-    "latitude_deg": 20.27,
-    "longitude_deg": 85.84,
-    "tz_offset_minutes": 330,   # IST = UTC+5:30 = 330 minutes
-    "tz_offset_hours": 5.5,
-}
-
 # FORENSIC expected values (invariant — ayanamsha does not affect angas)
 FORENSIC_EXPECTED = {
     "tithi_name": "Shukla Tritiya",
@@ -1246,8 +1237,6 @@ def build_ga_panchanga(
     owns_conn = conn is None
 
     bp = resolve_birth_params(chart_id, birth_params)
-    if bp is None:
-        bp = NATIVE_BIRTH
     computed_at = datetime.now(timezone.utc).isoformat()
 
     summary: dict[str, Any] = {
@@ -1265,11 +1254,21 @@ def build_ga_panchanga(
         chart_id, build_id,
     )
 
-    # Compute PanchangaInstant at birth
-    birth_dt = bp.get("datetime_local", datetime(1984, 2, 5, 10, 43, 0))
-    lat = bp.get("latitude_deg", 20.27)
-    lon = bp.get("longitude_deg", 85.84)
-    tz_min = bp.get("tz_offset_minutes", 330)
+    # Compute PanchangaInstant at birth.
+    # birth_params from the DB (via _to_birth_params) uses datetime_iso + tz_offset_hours.
+    # The panchanga_instant() call needs a datetime object and tz_offset_minutes.
+    # Normalise both key formats here.
+    if "datetime_local" in bp:
+        birth_dt = bp["datetime_local"]
+    else:
+        from datetime import datetime as _dt
+        birth_dt = _dt.fromisoformat(bp["datetime_iso"])
+    lat = bp["latitude_deg"]
+    lon = bp["longitude_deg"]
+    if "tz_offset_minutes" in bp:
+        tz_min = bp["tz_offset_minutes"]
+    else:
+        tz_min = int(round(bp["tz_offset_hours"] * 60))
 
     pi = panchanga_instant(birth_dt, lat, lon, tz_min)
 

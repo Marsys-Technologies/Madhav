@@ -64,16 +64,6 @@ PLANET_TO_SUBJECT: dict[str, str] = {
     "Lagna": "LAGNA",
 }
 
-# Birth parameters (canonical native — campaign §A.8)
-NATIVE_BIRTH = {
-    "datetime_iso": "1984-02-05T10:43:00",
-    "latitude_deg": 20.27,
-    "longitude_deg": 85.84,
-    "tz_offset_hours": 5.5,
-    "place_name": "Bhubaneswar, Odisha, India",
-    "subject_label": "Abhisek Mohanty",
-}
-
 # Forbidden narration patterns (A3 §17, brief §7)
 FORBIDDEN_PATTERNS = [
     "indicates", "suggests", "implies", "means", "denotes",
@@ -455,23 +445,18 @@ def build_ga_positions(
         build_id = str(uuid.uuid4())
 
     owns_conn = conn is None
-    # Birth-param resolution (chart-identity safety — see GA_POSITIONS_CONTAMINATION_BRIEF):
-    # NATIVE_BIRTH is ONLY valid for the native chart. For any other chart_id, falling back
-    # to NATIVE_BIRTH stores the native's positions under the wrong chart_id (the contamination
-    # bug). So: explicit birth_params always win; otherwise NATIVE_BIRTH is permitted ONLY when
-    # chart_id is the native; a non-native chart with no birth_params is a loud halt, never a
-    # silent native build.
-    if birth_params is not None:
-        bp = birth_params
-    elif chart_id == CANONICAL_CHART_ID:
-        bp = NATIVE_BIRTH
-    else:
+    # Birth-param resolution: every chart (native included) must arrive with real
+    # birth_params from public.charts via the orchestrator's fetch_birth_params().
+    # No hardcoded fallback — a missing birth_params is always a bug, never a
+    # legitimate path.
+    if not birth_params:
         raise ValueError(
-            f"[ga_positions_writer] no birth_params for non-native chart_id={chart_id}; "
-            f"refusing to fall back to NATIVE_BIRTH (would contaminate this chart with the "
-            f"native's positions). The orchestrator must pass ctx.config['birth_params'] from "
-            f"fetch_birth_params(); populate public.charts if the row is missing."
+            f"[ga_positions_writer] no birth_params for chart_id={chart_id}; "
+            f"orchestrator must populate ctx.config['birth_params'] from "
+            f"fetch_birth_params() before calling this writer. "
+            f"Ensure public.charts has a row for this chart."
         )
+    bp = birth_params
     computed_at = datetime.now(timezone.utc).isoformat()
 
     summary: dict[str, Any] = {

@@ -66,7 +66,6 @@ from ga_writers._idempotency import replace_prior_chart_divisionals
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
-    NATIVE_BIRTH,
     FORBIDDEN_PATTERNS,
     _conn,
     _write_halt_log,
@@ -2213,8 +2212,12 @@ def build_ga_vargas(
     started_at = datetime.now(timezone.utc).isoformat()
     logger.info("[ga_vargas] Build starting: chart_id=%s build_id=%s", chart_id, build_id)
 
-    if birth_params is None:
-        birth_params = NATIVE_BIRTH.copy()
+    if not birth_params:
+        raise ValueError(
+            f"[ga_vargas_writer] no birth_params for chart_id={chart_id}; "
+            "orchestrator must populate ctx.config['birth_params'] from "
+            "fetch_birth_params() before calling this writer."
+        )
 
     ayanamshas_to_run = list(CANONICAL_AYANAMSHAS.keys()) if ayanamsha_subset is None else ayanamsha_subset
 

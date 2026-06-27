@@ -3,8 +3,9 @@
 CI guard: NATIVE_BIRTH contamination class.
 
 Tests that:
-1. resolve_birth_params() correctly implements the 3-way guard.
-2. No writer file contains the vulnerable 'birth_params or NATIVE_BIRTH' silent-fallback pattern.
+1. resolve_birth_params() raises for ANY chart (native included) with falsy params.
+2. No writer file contains vulnerable NATIVE_BIRTH fallback patterns (bare assignment,
+   or-fallback, ternary, dict.get default, unconditional spread, etc.).
 """
 from __future__ import annotations
 
@@ -16,10 +17,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]  # tests/ → python-sidecar
 import pytest
 
 from pipeline.orchestrator.birth_params import (
-    CANONICAL_CHART_ID,
     resolve_birth_params,
 )
 
+# Canonical native chart ID — used only in this test fixture.
+_NATIVE = "482012f1-710e-4a25-994a-93821f5871aa"
 _NON_NATIVE = "00000000-0000-0000-0000-000000000001"
 _VALID_PARAMS = {
     "datetime_iso": "1990-01-01T12:00:00",
@@ -32,18 +34,26 @@ _VALID_PARAMS = {
 
 
 # ---------------------------------------------------------------------------
-# resolve_birth_params() unit tests
+# resolve_birth_params() unit tests (B1 elimination — native has no special case)
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_native_none_returns_none():
-    """Native chart + None birth_params → None (writer uses its NATIVE_BIRTH constant)."""
-    assert resolve_birth_params(CANONICAL_CHART_ID, None) is None
+def test_resolve_native_none_raises():
+    """B1: native chart + None birth_params → ValueError (no NATIVE_BIRTH fallback for anyone)."""
+    with pytest.raises(ValueError):
+        resolve_birth_params(_NATIVE, None)
 
 
-def test_resolve_native_empty_dict_returns_none():
-    """Native chart + empty dict → None (same signal)."""
-    assert resolve_birth_params(CANONICAL_CHART_ID, {}) is None
+def test_resolve_native_empty_dict_raises():
+    """B1: native chart + empty dict → ValueError (same rule as any other chart)."""
+    with pytest.raises(ValueError):
+        resolve_birth_params(_NATIVE, {})
+
+
+def test_resolve_native_valid_params_passthrough():
+    """Native chart + valid dict → returns the dict unchanged (DB-sourced params work normally)."""
+    result = resolve_birth_params(_NATIVE, _VALID_PARAMS)
+    assert result is _VALID_PARAMS
 
 
 def test_resolve_non_native_valid_params_passthrough():
@@ -54,13 +64,13 @@ def test_resolve_non_native_valid_params_passthrough():
 
 def test_resolve_non_native_none_raises():
     """Non-native chart + None → ValueError (no silent fallback)."""
-    with pytest.raises(ValueError, match="refusing NATIVE_BIRTH fallback"):
+    with pytest.raises(ValueError):
         resolve_birth_params(_NON_NATIVE, None)
 
 
 def test_resolve_non_native_empty_dict_raises():
     """Non-native chart + empty dict → ValueError (no silent fallback)."""
-    with pytest.raises(ValueError, match="refusing NATIVE_BIRTH fallback"):
+    with pytest.raises(ValueError):
         resolve_birth_params(_NON_NATIVE, {})
 
 
@@ -72,12 +82,12 @@ def test_resolve_non_native_empty_dict_raises():
 # grep_flag is either "-En" (extended regex) or "-Fn" (fixed string).
 # Files excluded from scanning:
 #   - test_contamination_guard.py : this file (contains patterns as string literals)
-#   - birth_params.py             : the SOLUTION module; legitimately references NATIVE_BIRTH
-#                                   in the guard implementation itself.
+#   - birth_params.py             : the solution module; may mention NATIVE_BIRTH in comments
+#                                   (not in executable code after B1 elimination).
 # Test files (tests/) are scanned because a test helper that hard-codes NATIVE_BIRTH
 # as a default parameter is itself a contamination vector.
 #
-# Pattern coverage (Wave 2 extended guard + Wave 2 carryover):
+# Pattern coverage (Wave 2 extended guard + Wave 2 carryover + Group 9 B1 elimination):
 #
 #   Group 1 — or-fallback assignments:
 #     `= birth_params or NATIVE_*`   e.g. bp = birth_params or NATIVE_BIRTH
@@ -109,8 +119,16 @@ def test_resolve_non_native_empty_dict_raises():
 #
 #   Group 7 — unconditional NATIVE_BIRTH spread:
 #     `{**NATIVE_BIRTH}` — spreads the native birth dict without chart_id routing.
-#     Must be replaced with `resolve_birth_params(chart_id, birth_params) or NATIVE_BIRTH`
-#     (the `or NATIVE_BIRTH` here is in the solution module, not writer code).
+#
+#   Group 8 — hardcoded native birth year 1984 as NULL-guard fallback:
+#     `else 1984` or `return 1984` — silently substitutes native birth year.
+#
+#   Group 9 — bare NATIVE_BIRTH reference (B1 elimination, added this PR):
+#     Any bare occurrence of the token `NATIVE_BIRTH` in writer / pipeline code,
+#     excluding NATIVE_BIRTH_DATE / NATIVE_BIRTH_IST / _LAT / _LON / _TIME / _NAKSHATRA
+#     / _LAGNA (L0 brahmagyan scalar constants that are not the birth-params dict).
+#     Tested by the SEPARATE function test_no_bare_native_birth_reference() because
+#     BSD grep (macOS) does not support negative lookaheads; exclusion is done in Python.
 
 _SIDECAR_DIR = _PROJECT_ROOT / "platform" / "python-sidecar"
 
@@ -187,6 +205,11 @@ VULNERABLE_PATTERNS = [
         "Replace hardcoded native birth year 1984 with None/unknown; "
         "never silently substitute native birth year for non-native charts.",
     ),
+    # Group 9 — bare NATIVE_BIRTH reference (B1 elimination) is tested by a SEPARATE
+    # function test_no_bare_native_birth_reference() below.  BSD grep on macOS does not
+    # support POSIX extended-regex negative lookaheads ((?!...)), so the exclusion of
+    # NATIVE_BIRTH_DATE / NATIVE_BIRTH_IST etc. is done in Python rather than in the
+    # grep pattern.  The entry is omitted here to prevent vacuous pass on macOS CI.
 ]
 
 
@@ -202,10 +225,10 @@ def _run_grep(use_extended: bool, pattern: str) -> subprocess.CompletedProcess:
 
 def test_no_raw_native_birth_fallback():
     """
-    CI guard: NATIVE_BIRTH contamination class — extended Wave 2 + carryover pattern set.
+    CI guard: NATIVE_BIRTH contamination class — Groups 1–8 (extended Wave 2 + carryover).
 
     Scans all .py files under platform/python-sidecar/ (excluding venv, __pycache__,
-    this test file, and birth_params.py which is the approved implementation).
+    this test file, and birth_params.py which may mention NATIVE_BIRTH in comments only).
 
     Covered shapes:
       Group 1 — or-fallback assignments  (= birth_params|bp or NATIVE_*)
@@ -216,9 +239,10 @@ def test_no_raw_native_birth_fallback():
       Group 6 — local-alias BIRTH_IST/LAT/LON fallbacks (dict.get with native constants)
       Group 7 — unconditional {**NATIVE_BIRTH} spread (ignores chart_id routing)
       Group 8 — hardcoded native birth year 1984 as NULL-guard fallback (else/or/= 1984)
+      Group 9 — bare NATIVE_BIRTH token (B1 elimination) — see test_no_bare_native_birth_reference()
 
-    Every hit is a bug requiring remediation via resolve_birth_params() or an
-    explicit chart_id argument — never a silent fallback to native birth data.
+    Every hit is a bug requiring remediation via resolve_birth_params() /
+    fetch_birth_params() — never a silent fallback to native birth data.
     """
     failures: list[str] = []
 
@@ -234,6 +258,81 @@ def test_no_raw_native_birth_fallback():
 
     assert not failures, (
         "Found VULNERABLE NATIVE_BIRTH / CANONICAL_CHART_ID contamination patterns.\n"
-        "Each site below must use resolve_birth_params() or accept chart_id explicitly:\n"
+        "Each site below must use fetch_birth_params() / resolve_birth_params() — "
+        "no hardcoded native-birth fallback anywhere in the stack (Groups 1-8):\n"
         + "\n".join(failures)
+    )
+
+
+def test_no_bare_native_birth_reference():
+    """
+    Group 9 (B1 elimination): bare NATIVE_BIRTH dict constant must not appear in writer code.
+
+    Uses fixed-string grep + Python-side filtering.  BSD grep on macOS does NOT support
+    POSIX extended-regex negative lookaheads ((?!...)); using -E with such a pattern
+    silently exits non-zero with empty stdout, causing the test to pass vacuously.
+    The exclusion of NATIVE_BIRTH_DATE / NATIVE_BIRTH_IST etc. is therefore done in Python.
+
+    What is excluded (legitimate):
+      - Lines where `NATIVE_BIRTH` is always followed by `_` (scalar aliases in brahmagyan/):
+        NATIVE_BIRTH_DATE, NATIVE_BIRTH_IST, NATIVE_BIRTH_NAKSHATRA, NATIVE_BIRTH_LAGNA, etc.
+      - Lines that are comments (the code fragment after filename:linenum starts with `#`).
+      - Lines in docstrings (code fragment starts with `\"\"\"` / `'''` or is inside one).
+      - Lines in test files (path contains /tests/ or /test_) — test fixtures may be named
+        NATIVE_BIRTH for clarity without constituting a contamination in writer code.
+
+    What is caught (genuine contamination):
+      - `NATIVE_BIRTH = {` as a dict constant in ga_writer / orchestrator / pipeline code.
+      - `import NATIVE_BIRTH` or `from ... import NATIVE_BIRTH`.
+      - `bp = NATIVE_BIRTH` or any assignment in non-test writer code.
+
+    Required DB state (confirmed 2026-06-28 by fix/b1-native-birth-elimination):
+      public.charts native row:     id=482012f1-..., birth_lat=20.27, birth_lng=85.84
+      public.charts Abhinandan row: id=1c826d5a-..., birth_lat=20.27, birth_lng=85.84
+    """
+    result = subprocess.run(
+        ["grep", "-Frn", "NATIVE_BIRTH", str(_SIDECAR_DIR)] + _GREP_COMMON_ARGS,
+        capture_output=True,
+        text=True,
+        cwd=str(_PROJECT_ROOT),
+    )
+
+    # Suffixes that turn NATIVE_BIRTH into a scalar constant (not the birth-params dict).
+    _FALSE_POSITIVE_SUFFIXES = (
+        "_DATE", "_IST", "_LAT", "_LON", "_TIME", "_NAKSHATRA", "_LAGNA",
+    )
+
+    hits = []
+    for line in result.stdout.splitlines():
+        # line format: <filepath>:<lineno>:<code>
+        parts = line.split(":", 2)
+        if len(parts) < 3:
+            continue
+        filepath, _lineno, code = parts[0], parts[1], parts[2]
+
+        # Exclude: scalar NATIVE_BIRTH_* aliases
+        if any(f"NATIVE_BIRTH{sfx}" in code for sfx in _FALSE_POSITIVE_SUFFIXES):
+            continue
+
+        # Exclude: comment lines (stripped code starts with #)
+        stripped = code.strip()
+        if stripped.startswith("#"):
+            continue
+
+        # Exclude: docstring lines (stripped code starts with """ or ''')
+        if stripped.startswith('"""') or stripped.startswith("'''"):
+            continue
+
+        # Exclude: test files (test fixtures named NATIVE_BIRTH are not writer contamination)
+        if "/tests/" in filepath or "/test_" in filepath:
+            continue
+
+        hits.append(line)
+
+    assert not hits, (
+        "Found bare NATIVE_BIRTH dict constant in writer/pipeline code (B1 elimination — zero tolerance).\n"
+        "Every chart (native included) must use fetch_birth_params() / resolve_birth_params().\n"
+        "Remove the constant definition and all assignment / import uses from ga_writer,\n"
+        "orchestrator shim, and rebuild script files.\n"
+        "Hits:\n" + "\n".join(f"  {h}" for h in hits)
     )

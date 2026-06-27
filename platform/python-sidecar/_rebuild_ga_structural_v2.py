@@ -2,12 +2,13 @@
 import uuid, sys, time
 
 sys.path.insert(0, ".")
-from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, CANONICAL_CHART_ID, NATIVE_BIRTH, _conn
+from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, CANONICAL_CHART_ID, _conn
 from ga_writers.ga_structural_writer import (
     build_ga_structural_substep,
     _load_yoga_catalog,
     _load_dosha_catalog,
 )
+from pipeline.orchestrator.birth_params import fetch_birth_params
 
 CHART_ID = CANONICAL_CHART_ID
 BUILD_ID = str(uuid.uuid4())
@@ -15,6 +16,7 @@ print(f"chart_id = {CHART_ID}")
 print(f"build_id = {BUILD_ID}")
 
 with _conn() as conn:
+    BIRTH_PARAMS = fetch_birth_params(conn, CHART_ID)
     yoga_catalog = _load_yoga_catalog(conn)
     dosha_catalog = _load_dosha_catalog(conn)
     conn.commit()
@@ -31,7 +33,7 @@ for ayanamsha_id in CANONICAL_AYANAMSHAS:
                     build_id=BUILD_ID,
                     ayanamsha_id=ayanamsha_id,
                     conn=conn,
-                    birth_params=NATIVE_BIRTH,
+                    birth_params=BIRTH_PARAMS,
                     yoga_catalog=yoga_catalog,
                     dosha_catalog=dosha_catalog,
                 )

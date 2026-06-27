@@ -1,25 +1,21 @@
 """
 Per-chart birth-parameter provider (Orchestrator Convergence Phase 3B — writer
-generalization).
+generalization; B1 elimination pass).
 
-The L1 Gaṇita writers were authored native-only: they default birth_params to the
-native and carry native-specific FORENSIC anchors. To let the orchestrator drive a
-build for ANY chart, the orchestrator must hand each writer that chart's real birth
-data via ctx.config['birth_params']. This module fetches it from public.charts.
+Every chart (native 482012f1 included) reads birth params from public.charts.
+There is no NATIVE_BIRTH constant to fall back to and no CANONICAL_CHART_ID
+special case. Contamination becomes structurally impossible.
 
 Design:
-- Native chart → returns None. The native is the verified ground-truth chart; its
-  writers keep their hard-coded NATIVE_BIRTH constant (zero risk of a charts-row
-  rounding difference perturbing the FORENSIC-guarded native build).
-- Any other chart → fetched from public.charts, matched on `id` OR `chart_id`
+- Any chart → fetched from public.charts, matched on `id` OR `chart_id`
   (both unique uuids — robust to which column the orchestrator's chart_id maps to).
   tz_offset_hours is derived from the chart's IANA `timezone_id` at the birth instant.
-- Chart row absent (non-native chart_id) → raises ValueError; insert birth data
-  into public.charts before building.
-- Chart row absent (native CANONICAL_CHART_ID) → None (writers use their NATIVE_BIRTH
-  constant).
-- A non-native row missing the data needed for a CORRECT chart (date/time/lat/lng/
-  timezone) raises — a loud halt is safer than silently building a wrong chart.
+- Chart row absent → raises ValueError; insert birth data into public.charts first.
+- A row missing the data needed for a CORRECT chart (date/time/lat/lng/timezone)
+  raises — a loud halt is safer than silently building a wrong chart.
+- resolve_birth_params(): if birth_params already truthy, return as-is (orchestrator
+  already pre-fetched). If falsy, raises ValueError for ANY chart — the native is no
+  longer exempt. Callers must pass real birth_params from fetch_birth_params().
 """
 from __future__ import annotations
 
@@ -29,34 +25,39 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Verified ground-truth chart (Abhisek Mohanty). Kept in sync with the writers'
-# CANONICAL_CHART_ID; the native build uses the writers' hard-coded NATIVE_BIRTH.
+# Canonical native chart ID — exported for writers that use it for FORENSIC-gating
+# (e.g. asserting native-specific anchors only on the native chart). NOT used for
+# birth-param routing — every chart (native included) now fetches from public.charts.
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 _REQUIRED = ("birth_date", "birth_time", "birth_lat", "birth_lng", "timezone_id")
 
 
-def fetch_birth_params(conn: Any, chart_id: str) -> dict[str, Any] | None:
-    """Return NATIVE_BIRTH-shaped birth params for chart_id, or None to signal the
-    writer should use its hard-coded native default. Raises ValueError when a
-    non-native chart row exists but lacks data required to build a correct chart."""
-    if chart_id == CANONICAL_CHART_ID:
-        return None
+def fetch_birth_params(conn: Any, chart_id: str) -> dict[str, Any]:
+    """Return a birth-params dict for chart_id fetched from public.charts.
 
-    row = conn.execute(
-        """
-        SELECT birth_date, birth_time, birth_lat, birth_lng, birth_place,
-               timezone_id, COALESCE(subject_name, preferred_name, name) AS label
-        FROM public.charts
-        WHERE id = %s OR chart_id = %s
-        LIMIT 1
-        """,
-        [chart_id, chart_id],
-    ).fetchone()
+    Raises ValueError when the charts row is absent or lacks data required to
+    build a correct chart. The native (482012f1) is treated exactly like any
+    other chart — no special case, no hardcoded fallback.
+    """
+    from psycopg.rows import dict_row  # psycopg v3 — always available
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT birth_date, birth_time, birth_lat, birth_lng, birth_place,
+                   timezone_id, COALESCE(subject_name, preferred_name, name) AS label
+            FROM public.charts
+            WHERE id = %s OR chart_id = %s
+            LIMIT 1
+            """,
+            [chart_id, chart_id],
+        )
+        row = cur.fetchone()
 
     if not row:
         raise ValueError(
-            f"[fetch_birth_params] no charts row found for non-native chart_id={chart_id}; "
+            f"[fetch_birth_params] no charts row found for chart_id={chart_id}; "
             "insert birth data into public.charts before building"
         )
 
@@ -69,25 +70,23 @@ def fetch_birth_params(conn: Any, chart_id: str) -> dict[str, Any] | None:
     return _to_birth_params(row)
 
 
-def resolve_birth_params(chart_id: str, birth_params) -> dict | None:
-    """3-way guard: raise for non-native charts with no birth_params.
+def resolve_birth_params(chart_id: str, birth_params) -> dict:
+    """Guard: return birth_params if truthy; raise for any chart with falsy params.
 
     - birth_params is truthy (non-None, non-empty dict) → return as-is.
-    - birth_params is falsy AND chart_id == CANONICAL_CHART_ID → return None
-      (signal for writer to use its own hard-coded NATIVE_BIRTH constant).
-    - birth_params is falsy AND chart_id != CANONICAL_CHART_ID → raise ValueError.
+    - birth_params is falsy → raise ValueError for ANY chart (native included).
 
-    Writers should call this at the top of their run() before any computation
-    that depends on birth_params, replacing any 'birth_params or NATIVE_BIRTH'
-    silent-fallback pattern.
+    Writers must call this at the top of their run(). The orchestrator always
+    pre-fetches from public.charts via fetch_birth_params() and passes the result
+    in ctx.config['birth_params']. A falsy birth_params means the orchestrator
+    failed to populate it — that is always a bug, never a legitimate fallback.
     """
     if birth_params:
         return birth_params
-    if chart_id == CANONICAL_CHART_ID:
-        return None
     raise ValueError(
-        f"[resolve_birth_params] non-native chart {chart_id} has no usable birth_params"
-        " — refusing NATIVE_BIRTH fallback; ensure birth data is in public.charts before building"
+        f"[resolve_birth_params] chart {chart_id} has no usable birth_params"
+        " — orchestrator must populate ctx.config['birth_params'] from"
+        " fetch_birth_params() before calling any writer"
     )
 
 
