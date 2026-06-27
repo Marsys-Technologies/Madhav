@@ -190,6 +190,24 @@ PASS/FAIL with any under-delete, over-delete, or UI-vs-DB-divergence called out.
    Both now `state=complete`, last_error=null, real rows (ga_nakshatra 1,813 across all 14 categories;
    ga_sensitive 1,050+ karaka categories). REGRESSION TESTS lock all three error shapes permanently
    (this was the 3rd break — the test is the durable fix). Commit if not already on main.
+8. **L4 Phala upstream-completeness audit DONE; fixes STAGED BEHIND L2 (2026-06-25).** Audit
+   (`L4_PHALA_UPSTREAM_COMPLETENESS_FIX_BRIEF_v1_0.md`): 6/9 ph_ assets SOUND; 2 NO + 1 borderline.
+   KEY REFRAME: L4 thinness is largely L2 damage propagating downstream — 3 of 4 fixes are GATED ON L2.
+   - DONE NOW (commit 6be29e10): ph_muhurta instrumented (LIMIT 100 = M3 design; WARN if >100 anchors).
+   - ph_pramana: NOT a bug — `life_event_log` table doesn't exist (real table `life_events` = L5
+     calibration corpus); SAVEPOINT is designed graceful degradation. Future-migration task: create
+     `life_event_log` with domain vocab aligned to phala_anchors.domain (career/health/relationship/
+     spiritual/transition). Not a code fix.
+   - STAGED (commit d5456ead, `L4_PHALA_STAGED_FIX_SPECS_v1_0.md`, BLOCKED-ON-L2): (B.1) ph_sankrama —
+     CONFIRMED vocab mismatch bodha_cdlm_cells.domain_row `spirituality`/`character` vs
+     phala_anchors.domain `spiritual`/`transition` (= the 96.5% career skew); fix at L2 source (CDLM
+     canonicalization), post-L2 gate SQL decides if ph_sankrama needs zero change or a thin shared-map
+     patch. (B.2) ph_nimitta Axis 3 CGM paths — loader discards data (`return {}`); fix = chart-level
+     top-20 path distribution (msr_signals has no graha_primary col). (B.3) ph_nimitta Axis 5 — real
+     HNSW nearest-neighbor join (index bse_embedding_hnsw on vector(768) confirmed) replacing
+     self-reference. APPLY §B as ONE L4 re-fix pass AFTER L2 CGM+embeddings+CDLM-vocab proven sound on
+     1c826d5a — applying earlier wires correct code to degenerate data. ⇒ **L2 remediation is the
+     unblock for L4 completeness; do L2 first.**
 
 ## §5 — Operating rules the new conversation must keep
 - Cowork plans/authors; Claude Code executes. Output pasteable prompts or committed .md.

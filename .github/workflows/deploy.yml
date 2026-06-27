@@ -142,7 +142,7 @@ jobs:
           fi
 
           if printf '%s\n' "$CHANGED" | grep -qE \
-            '^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'; then
+            '^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'; then
             pipeline=true
           fi
 
