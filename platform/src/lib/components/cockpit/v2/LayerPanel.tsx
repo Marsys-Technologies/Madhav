@@ -104,6 +104,11 @@ export function LayerPanel({
   )
   const layerRunId = layerRunActive ? activeRun!.id : null
   const layerRunPaused = layerRunActive && activeRun!.state === 'paused'
+  // Only the layer that owns the currently-building asset surfaces a Stop control. Without this
+  // a global run lights up Stop on every (idle) layer, which is misleading — every Stop just
+  // halts the whole run. The build advances one asset at a time, so scope to current_asset_id.
+  const buildingAssetId = activeRun?.current_asset_id ?? null
+  const layerOwnsBuildingAsset = buildingAssetId != null && activeAssets.some(a => a.asset_id === buildingAssetId)
 
   return (
     <div
@@ -228,7 +233,10 @@ export function LayerPanel({
           {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
             layerRunId ? (
-              <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
+              // Stop only on the layer actually building; idle layers during a run show nothing
+              layerOwnsBuildingAsset
+                ? <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
+                : null
             ) : (
               <ClearIconButton
                 chartId={chartId}
@@ -299,6 +307,7 @@ export function LayerPanel({
                     chartId={chartId}
                     activeRunId={assetRunActive ? activeRun!.id : null}
                     activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
+                    isActiveAsset={assetRunActive && activeRun!.current_asset_id === asset.asset_id}
                     highlighted={focusedAssetId === asset.asset_id || hoveredAssetId === asset.asset_id}
                     allAssets={allAssets}
                     substep={substepOverlay?.get(asset.asset_id) ?? null}

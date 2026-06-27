@@ -22,6 +22,9 @@ interface Props {
   chartId: string
   activeRunId: string | null
   activeRunPaused: boolean
+  /** True only for the single asset the run is currently building — gates the Stop control
+   *  so idle/queued/completed assets don't each show a (whole-run) Stop during a build. */
+  isActiveAsset?: boolean
   highlighted?: boolean
   allAssets?: AssetRowType[]
   substep?: SubstepOverlay | null
@@ -138,7 +141,7 @@ interface CascadePending {
   estimatedSeconds?: number | null
 }
 
-export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, highlighted, allAssets, substep, onRunStarted }: Props) {
+export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
   const [pendingCascade, setPendingCascade] = useState<CascadePending | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
   const { isSuperAdmin } = useUserRole()
@@ -343,10 +346,14 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, h
               />
             )}
 
-            {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
+            {/* Stop only on the asset actually building; idle/queued/completed assets during a
+                run show nothing (Stop everywhere is misleading — it just halts the whole run).
+                Delete shows only when no run is active. Role-gated for brahmagyan. */}
             {(isSuperAdmin || asset.layer !== 'brahmagyan') && (
               activeRunId ? (
-                <StopIconButton runId={activeRunId} size={22} onStopped={onRunStarted} />
+                isActiveAsset
+                  ? <StopIconButton runId={activeRunId} size={22} onStopped={onRunStarted} />
+                  : null
               ) : (
                 <ClearIconButton
                   chartId={chartId}
