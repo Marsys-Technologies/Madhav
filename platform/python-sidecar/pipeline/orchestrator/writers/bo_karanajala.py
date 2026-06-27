@@ -104,8 +104,9 @@ KNOWN_DOMAINS = {
 # ── Argala constants (BPHS Ch. 28) ───────────────────────────────────────────
 # Argala positions: B creates argala on A when B is in the 2nd, 4th, or 11th house FROM A
 ARGALA_POSITIONS = {2, 4, 11}
-# Virodha positions: a planet here can cancel argala (3rd, 5th, 10th from A)
-VIRODHA_POSITIONS = {3, 5, 10}
+# Virodha positions: a planet here can cancel argala (BPHS Ch.28: 12th, 3rd, 10th from A)
+# 12th cancels 2nd argala, 3rd cancels 4th argala, 10th cancels 11th argala
+VIRODHA_POSITIONS = {12, 3, 10}
 
 MALEFIC_GRAHAS  = {"Saturn", "Mars", "Rahu", "Ketu"}
 BENEFIC_GRAHAS  = {"Jupiter", "Venus", "Moon", "Mercury"}
@@ -234,22 +235,14 @@ def _build_argala_edges(
             relationship_class = "argala_virodha" if is_malefic else "argala_positive"
 
             # Virodha cancellation: applies only to malefic (virodha-argala)
-            # The virodha position corresponding to each argala position:
-            #   argala 2  ↔  virodha 12 (but BPHS says 3rd cancels 11th, 12th cancels 2nd... )
-            #   BPHS: 2nd argala cancelled by 12th, 4th by 3rd (or 10th), 11th by 10th
-            #   We use the canonical mapping: argala_house → virodha_house
+            # The virodha position corresponding to each argala position (BPHS Ch.28):
+            #   2nd argala cancelled by 12th, 4th by 3rd, 11th by 10th
             ARGALA_TO_VIRODHA = {2: 12, 4: 3, 11: 10}
             cancelled = False
             if is_malefic:
                 virodha_h = ARGALA_TO_VIRODHA.get(house_b_from_a)
-                # Check if the virodha house (from A) is occupied by any planet
-                for graha_x in grahas:
-                    if graha_x in (graha_a, graha_b):
-                        continue
-                    h = _house_of_b_from_a(sign_a, graha_signs[graha_x])
-                    if h == virodha_h:
-                        cancelled = True
-                        break
+                # O(1) lookup into the prebuilt virodha_occupied set
+                cancelled = virodha_h in virodha_occupied if virodha_h else False
 
             edges.append({
                 "edge_id": str(uuid.uuid4()),

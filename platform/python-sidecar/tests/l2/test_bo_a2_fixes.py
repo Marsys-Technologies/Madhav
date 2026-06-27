@@ -23,6 +23,7 @@ from pipeline.orchestrator.writers.bo_karanajala import (
     _graha_from_cfg,
     _parse_cfg,
     ARGALA_POSITIONS,
+    VIRODHA_POSITIONS,
     MALEFIC_GRAHAS,
     BENEFIC_GRAHAS,
     KNOWN_GRAHAS,
@@ -304,6 +305,20 @@ class TestB8CrossSubsystemColumns:
 
 class TestO4ArgalaEdges:
     """O4: argala edges emitted with correct direction, class, and cancellation logic."""
+
+    def test_virodha_positions_constant_value(self):
+        """BLOCKING-1: VIRODHA_POSITIONS must be {12, 3, 10} per BPHS Ch.28.
+
+        12th cancels 2nd-house argala, 3rd cancels 4th-house argala,
+        10th cancels 11th-house argala. The old value {3, 5, 10} was wrong:
+        5th is not a virodha position in BPHS; 12th was missing.
+        """
+        assert VIRODHA_POSITIONS == {12, 3, 10}, (
+            f"VIRODHA_POSITIONS is {VIRODHA_POSITIONS!r} — expected {{12, 3, 10}} per BPHS Ch.28. "
+            "12th cancels 2nd argala, 3rd cancels 4th argala, 10th cancels 11th argala."
+        )
+        assert 12 in VIRODHA_POSITIONS, "12th position (cancels 2nd argala) must be in VIRODHA_POSITIONS"
+        assert 5 not in VIRODHA_POSITIONS, "5th position is NOT a virodha per BPHS; must not be in VIRODHA_POSITIONS"
 
     def test_house_of_b_from_a_basic(self):
         """_house_of_b_from_a: Aries(1)→Taurus(2) = house 2."""
