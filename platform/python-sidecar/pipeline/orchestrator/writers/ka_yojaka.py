@@ -116,6 +116,12 @@ class KaYojakaWriter(WriterBase):
         Returns empty dict on failure (soft dependency — CGM may not be built yet).
         """
         result: dict[str, float] = {}
+        # SAVEPOINT so a query failure (e.g. a schema drift) rolls back ONLY this soft
+        # lookup. Without it, a failed SELECT aborts the writer's whole transaction and the
+        # later batch INSERT dies with InFailedSqlTransaction (the bug that left
+        # kala_activation_predicates empty and cascaded through all of Kāla/Phala/Mīmāṃsā).
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_cgm")
         try:
             with conn.cursor() as cur:
                 cur.execute(
@@ -128,6 +134,8 @@ class KaYojakaWriter(WriterBase):
                     (chart_id,),
                 )
                 rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_cgm")
             if not rows:
                 return result
             max_pgr = max(float(r['pgr']) for r in rows) or 1.0
@@ -135,30 +143,43 @@ class KaYojakaWriter(WriterBase):
                 result[str(r['node_subject'])] = min(1.0, float(r['pgr']) / max_pgr)
             logger.debug("ka_yojaka: CGM centrality loaded — %d nodes", len(result))
         except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_cgm")
             logger.debug("ka_yojaka: CGM pagerank fetch skipped: %s", exc)
         return result
 
     def _fetch_cdlm_domain_strength(self, conn, chart_id: str) -> dict[str, float]:
         """
-        Fetch average CDLM link strength per domain from bodha_cdlm_cells.
-        Returns {domain_name: avg_strength} for use in predicate enrichment.
+        Fetch average CDLM net linkage strength per domain from bodha_cdlm_cells,
+        normalized to [0, 1] relative to the strongest domain. Returns
+        {domain_name: weight} for predicate enrichment. SAVEPOINT-guarded soft lookup.
         """
         result: dict[str, float] = {}
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_cdlm")
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT domain_a, AVG(link_strength::float) AS avg_strength
+                    SELECT domain_row AS domain, AVG(net_linkage_strength::float) AS avg_strength
                     FROM bodha_cdlm_cells
-                    WHERE chart_id = %s AND link_strength IS NOT NULL
-                    GROUP BY domain_a
+                    WHERE chart_id = %s AND net_linkage_strength IS NOT NULL
+                    GROUP BY domain_row
                     """,
                     (chart_id,),
                 )
-                for r in cur.fetchall():
-                    result[str(r['domain_a']).lower()] = min(1.0, max(0.0, float(r['avg_strength'])))
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_cdlm")
+            if not rows:
+                return result
+            max_strength = max(float(r['avg_strength']) for r in rows) or 1.0
+            for r in rows:
+                result[str(r['domain']).lower()] = min(1.0, max(0.0, float(r['avg_strength']) / max_strength))
             logger.debug("ka_yojaka: CDLM domain strengths loaded — %d domains", len(result))
         except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_cdlm")
             logger.debug("ka_yojaka: CDLM domain strength fetch skipped: %s", exc)
         return result
 

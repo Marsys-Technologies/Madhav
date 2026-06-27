@@ -27,8 +27,7 @@ class KaJivanaParvaWriter(WriterBase):
         # Read level-1 (MD) and level-2 (AD) dashas from chart_dashas
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT lord_graha, start_date, end_date, level_n,
-                       ancestor_lord_1
+                SELECT lord_graha, start_date, end_date, level_n
                 FROM chart_dashas
                 WHERE chart_id = %s AND level_n IN (1, 2)
                 ORDER BY start_date, level_n
