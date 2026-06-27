@@ -45,7 +45,7 @@ CANONICAL_AYANAMSHAS = [
     "true_chitra",
 ]
 
-ENGINE_VERSION = "bo_laksana_v2.0"
+ENGINE_VERSION = "bo_laksana_v2.1"
 
 # ── L1 asset inference from source_calculation prefix ────────────────────────
 
@@ -437,51 +437,193 @@ def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
 
 
 def _build_strength_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, float]:
-    """graha → normalized shadbala (total / 390 virupas)."""
+    """graha → normalized shadbala (total virupas / 390).
+
+    B2-fix: graha lives in fact_subject (e.g. 'SUN', 'MOON', 'MAR', …).
+    The fact_key is always 'rupa' — splitting on ':' in fact_key was wrong.
+    Normalization: 1 rupa = typical minimum requirement; 2+ rupas = strong.
+    We divide by 390 virupas (= 1 rupa; shadbala unit).  Values are already
+    in rupas so we divide by the classical minimum-required range (~1 rupa)
+    to get a 0–2 clamped ratio.
+    """
     rows = _fetch_dict(conn,
-        """SELECT fact_key, fact_value_num FROM chart_facts
+        """SELECT fact_subject, fact_value_num FROM chart_facts
            WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_shadbala_total'""",
         [chart_id, ayanamsha_id])
     lookup: dict[str, float] = {}
     for r in rows:
-        graha = str(r["fact_key"] or "").split(":")[0]
-        raw = float(r.get("fact_value_num") or 390.0)
-        lookup[graha] = min(raw / 390.0, 2.0)
+        # fact_subject e.g. 'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT',
+        # 'RAH_MEAN', 'KET_MEAN' — use as-is (callers match via tags/dignity keys)
+        graha = str(r.get("fact_subject") or "").strip()
+        if not graha:
+            continue
+        raw = float(r.get("fact_value_num") or 0.0)
+        # fact_value_num is already in rupas (1 rupa = 390 virupas).
+        # Classical minimum needed ≈ 1 rupa for each planet; normalise to that.
+        lookup[graha] = min(raw / 1.0, 2.0)  # clamp at 2× minimum
     return lookup
 
 
 def _build_dignity_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
-    """graha → dignity state string (D1 only)."""
+    """graha → dignity state string (D1 only).
+
+    B2-fix: the old filter used fact_key LIKE '%:D1' / '%_D1' which returns
+    ZERO rows.  Actual schema: fact_key = 'dignity_state', varga stored in
+    fact_value_jsonb->>'varga', graha in fact_subject as 'D1_SUN', 'D1_MOON',
+    'D1_MAR' etc.  Filter on jsonb varga = 'D1' and strip the 'D1_' prefix.
+    """
     rows = _fetch_dict(conn,
-        """SELECT fact_key, fact_value_text FROM chart_facts
+        """SELECT fact_subject, fact_value_text FROM chart_facts
            WHERE chart_id=%s AND ayanamsha_id=%s
              AND fact_category='graha_dignity_per_varga'
-             AND (fact_key LIKE '%%:D1' OR fact_key LIKE '%%_D1')""",
+             AND fact_value_jsonb->>'varga' = 'D1'""",
         [chart_id, ayanamsha_id])
     lookup: dict[str, str] = {}
     for r in rows:
-        key = str(r.get("fact_key", ""))
-        graha = key.split(":")[0].split("_")[0]
+        subject = str(r.get("fact_subject") or "")
+        # fact_subject pattern: 'D1_SUN', 'D1_MOON', 'D1_MAR', 'D1_RAH_MEAN' …
+        graha = subject.removeprefix("D1_")
+        if not graha or graha == subject:
+            # fallback: skip rows that don't have D1_ prefix
+            continue
         state = str(r.get("fact_value_text") or "neutral").lower()
-        lookup[graha] = state
+        if graha not in lookup:  # first row wins (avoid overwriting with duplicates)
+            lookup[graha] = state
     return lookup
 
 
 def _build_av_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[int, int]:
-    """house → sarva ashtakavarga bindus (D1)."""
+    """house → sarva ashtakavarga bindus (D1).
+
+    B2-fix: the old query used ashtakavarga_pinda_sarva with fact_key='total'
+    (graha totals — no house dimension) and tried to parse a house from 'total',
+    which always failed → house defaulted to 1 → every signal got the same AV
+    multiplier.
+
+    Correct source: ashtakavarga_bindu, fact_subject = 'SARVA-HOUSE_N',
+    fact_key = 'bindus', fact_value_num = sarva bindus for house N.
+    """
     rows = _fetch_dict(conn,
-        """SELECT fact_key, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='ashtakavarga_pinda_sarva'""",
+        """SELECT fact_subject, fact_value_num FROM chart_facts
+           WHERE chart_id=%s AND ayanamsha_id=%s
+             AND fact_category='ashtakavarga_bindu'
+             AND fact_subject LIKE 'SARVA-HOUSE_%%'""",
         [chart_id, ayanamsha_id])
     lookup: dict[int, int] = {}
     for r in rows:
-        key = str(r.get("fact_key", ""))
+        subject = str(r.get("fact_subject") or "")
+        # pattern: 'SARVA-HOUSE_1' … 'SARVA-HOUSE_12'
         try:
-            house = int(key.split(":")[-1]) if ":" in key else int(key)
-        except (ValueError, TypeError):
+            house = int(subject.split("_")[-1])
+        except (ValueError, IndexError):
             continue
         lookup[house] = int(r.get("fact_value_num") or 28)
     return lookup
+
+
+# ── B3: Graha inference for yoga/dosha signals ────────────────────────────────
+
+# Maps uppercase name tokens found in fire_reason / fact_value_text → canonical graha key
+# (matching the graha keys used in strength_lookup / dignity_lookup)
+_GRAHA_NAME_MAP: dict[str, str] = {
+    "sun": "SUN", "sol": "SUN", "surya": "SUN",
+    "moon": "MOON", "chandra": "MOON", "luna": "MOON",
+    "mars": "MAR", "kuja": "MAR", "mangal": "MAR", "mangala": "MAR",
+    "mercury": "MER", "budha": "MER", "budh": "MER",
+    "jupiter": "JUP", "guru": "JUP", "brihaspati": "JUP",
+    "venus": "VEN", "shukra": "VEN", "sukra": "VEN",
+    "saturn": "SAT", "shani": "SAT", "sani": "SAT",
+    "rahu": "RAH_MEAN", "rahoo": "RAH_MEAN",
+    "ketu": "KET_MEAN", "kethu": "KET_MEAN",
+}
+
+# Dosha-group → primary graha (classical primary graha for each dosha type)
+_DOSHA_GROUP_GRAHA: dict[str, str] = {
+    "mangal": "MAR",
+    "kala_sarpa": "RAH_MEAN",
+    "graha_placement": "",   # too generic, parse from text
+}
+
+# Long graha name (as returned by chart_divisionals queries) → short strength_lookup key.
+# Used by O3 navamsha signals so shadbala_norm resolves correctly instead of falling
+# back to 1.0 when graha is e.g. "Saturn" and strength_lookup keys are "SAT".
+_LONG_TO_SHORT: dict[str, str] = {
+    "Sun":     "SUN",
+    "Moon":    "MOON",
+    "Mars":    "MAR",
+    "Mercury": "MER",
+    "Jupiter": "JUP",
+    "Venus":   "VEN",
+    "Saturn":  "SAT",
+    "Rahu":    "RAH_MEAN",
+    "Ketu":    "KET_MEAN",
+}
+
+
+def _infer_graha_from_text(text: str) -> str | None:
+    """Extract canonical graha key from free-text (fire_reason, dosha_name, etc.).
+
+    Uses word-boundary matching so 'Moon' in 'Jupiter in kendra from Moon'
+    does not shadow 'Jupiter'.  Returns the graha whose name appears FIRST
+    in the text (lowest start position wins).
+    """
+    if not text:
+        return None
+    lower = text.lower()
+    best_pos: int = len(lower) + 1
+    best_graha: str | None = None
+    for token, graha_key in _GRAHA_NAME_MAP.items():
+        # Word-boundary match: token must be preceded/followed by non-alpha
+        idx = lower.find(token)
+        while idx != -1:
+            end = idx + len(token)
+            before_ok = (idx == 0) or not lower[idx - 1].isalpha()
+            after_ok  = (end == len(lower)) or not lower[end].isalpha()
+            if before_ok and after_ok:
+                if idx < best_pos:
+                    best_pos   = idx
+                    best_graha = graha_key
+                break
+            idx = lower.find(token, idx + 1)
+    return best_graha
+
+
+def _infer_graha_for_yoga_dosha(fact_cat: str, fvj: dict,
+                                 fact_value_text: str | None) -> str | None:
+    """B3: Infer the primary graha for yoga/dosha category facts.
+
+    Priority:
+    1. Explicit jsonb keys (graha, primary_graha, lord)
+    2. dosha_group fixed mapping
+    3. fire_reason text parsing
+    4. fact_value_text parsing (yoga/dosha name)
+    Returns canonical graha key (e.g. 'MAR', 'JUP') or None.
+    """
+    # 1. Explicit jsonb
+    for jkey in ("graha", "primary_graha", "lord"):
+        v = fvj.get(jkey)
+        if v:
+            return str(v)
+
+    # 2. dosha_group fixed mapping
+    dosha_group = fvj.get("dosha_group") or ""
+    if dosha_group in _DOSHA_GROUP_GRAHA:
+        mapped = _DOSHA_GROUP_GRAHA[dosha_group]
+        if mapped:
+            return mapped
+
+    # 3. fire_reason text
+    fire_reason = fvj.get("fire_reason") or ""
+    graha = _infer_graha_from_text(fire_reason)
+    if graha:
+        return graha
+
+    # 4. fact_value_text (yoga/dosha name)
+    graha = _infer_graha_from_text(fact_value_text or "")
+    if graha:
+        return graha
+
+    return None
 
 
 # ── Row fetcher (ALL fact categories, no whitelist) ──────────────────────────
@@ -528,6 +670,27 @@ def _av_mult(bindus: int) -> float:
     return 0.70
 
 
+def _graha_key_from_subject(fact_subject: str) -> str | None:
+    """Extract the canonical graha key from fact_subject for lookup table matching.
+
+    fact_subject patterns observed:
+      'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT', 'RAH_MEAN', 'KET_MEAN'
+      'D1_SUN', 'D1_MAR', …  → strip 'D1_' prefix
+      'SUN-HOUSE_1', …       → strip '-HOUSE_N' suffix
+    Returns the raw graha token (e.g. 'SUN', 'MAR') or None if not parseable.
+    """
+    s = (fact_subject or "").strip()
+    if not s:
+        return None
+    # Strip varga prefix like 'D1_', 'D9_', …
+    if "_" in s and s.split("_")[0].startswith("D") and s.split("_")[0][1:].isdigit():
+        s = "_".join(s.split("_")[1:])
+    # Strip house suffix like '-HOUSE_7'
+    if "-HOUSE_" in s:
+        s = s.split("-HOUSE_")[0]
+    return s or None
+
+
 def _compute_salience(
     fact_row: dict,
     tags: dict,
@@ -535,14 +698,22 @@ def _compute_salience(
     dignity_lookup: dict[str, str],
     av_lookup: dict[int, int],
 ) -> dict:
-    """Compute salience_formula_v1 inputs deterministically from L1 data."""
+    """Compute salience_formula_v1 inputs deterministically from L1 data.
+
+    B2-fix: primary_graha resolution now also falls back to fact_subject so
+    that graha-centric facts (shadbala, dignity, etc.) correctly resolve the
+    strength and dignity lookups even when fact_value_jsonb carries no 'graha'
+    key.
+    """
     tier = str(fact_row.get("verification_pass_status") or "documented_approximation")
 
-    # Graha from tags
+    # Graha: prefer explicit tags (from jsonb), then fall back to fact_subject
     primary_graha = (tags.get("graha") or tags.get("primary_graha")
-                     or tags.get("lord") or tags.get("body"))
+                     or tags.get("lord") or tags.get("body")
+                     or _graha_key_from_subject(str(fact_row.get("fact_subject") or "")))
+
     house_num_raw = (tags.get("house") or tags.get("house_number")
-                     or tags.get("bhava") or tags.get("house"))
+                     or tags.get("bhava"))
     try:
         house_num = int(house_num_raw) if house_num_raw is not None else 1
     except (TypeError, ValueError):
@@ -669,6 +840,17 @@ def _build_signal_row(
     # Domains
     domains        = _assign_domains(fact_cat, source_subsystem)
     duration_class = _duration_class(fact_cat)
+
+    # B3: Populate configuration_jsonb.graha for yoga/dosha signals (CONTRACT-1).
+    # A2 (bo_karanajala) groups contradiction detection by config['graha'].
+    # yoga/dosha facts rarely carry graha in jsonb — infer it here.
+    if fact_cat in ("yoga_label", "yoga_fires", "dosha_label", "dosha_fires",
+                    "graha_yoga_karaka_flag"):
+        if "graha" not in config or config.get("graha") is None:
+            inferred_graha = _infer_graha_for_yoga_dosha(fact_cat, fvj, fact_value_text)
+            if inferred_graha:
+                config["graha"] = inferred_graha
+                tags["graha"] = inferred_graha
 
     # Classical citation from fact_value_jsonb if available
     classical_sources_jsonb: dict | None = None
@@ -809,6 +991,238 @@ def _build_signal_row(
     }
 
 
+# ── O3: Navamsha (D9) cross-check signal builder ─────────────────────────────
+
+# Dignity strength tier for cross-check comparisons
+_DIGNITY_STRENGTH_TIER: dict[str, int] = {
+    "exalted": 3, "uccha": 3,
+    "own": 2, "mooltrikona": 2,
+    "friend": 1, "mitra": 1,
+    "neutral": 0,
+    "enemy": -1, "shatru": -1,
+    "debilitated": -2, "neecha": -2,
+    "friend (neecha bhanga)": 1,  # pyjhora sometimes emits this
+}
+
+
+def _dignity_tier(text: str) -> int:
+    return _DIGNITY_STRENGTH_TIER.get((text or "neutral").lower().strip(), 0)
+
+
+def _build_d1_dignity_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """graha (long name, e.g. 'Sun') → D1 dignity text.
+
+    Uses chart_facts.graha_dignity_per_varga filtered on varga='D1'.
+    fact_subject format: 'D1_SUN', 'D1_MOON' …  — we map to long names via
+    a lookup so we can join with chart_divisionals.graha which uses long names.
+    """
+    short_to_long = {
+        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+        "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+    }
+    rows = _fetch_dict(conn,
+        """SELECT fact_subject, fact_value_text FROM chart_facts
+           WHERE chart_id=%s AND ayanamsha_id=%s
+             AND fact_category='graha_dignity_per_varga'
+             AND fact_value_jsonb->>'varga' = 'D1'""",
+        [chart_id, ayanamsha_id])
+    d1: dict[str, str] = {}
+    for r in rows:
+        subj = str(r.get("fact_subject") or "").removeprefix("D1_")
+        long_name = short_to_long.get(subj)
+        if long_name and long_name not in d1:
+            d1[long_name] = str(r.get("fact_value_text") or "neutral")
+    return d1
+
+
+def _build_d9_dignity_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """graha (long name, e.g. 'Sun') → D9 dignity text, from chart_divisionals."""
+    rows = _fetch_dict(conn,
+        """SELECT graha, fact_value_text FROM chart_divisionals
+           WHERE chart_id=%s AND ayanamsha_id=%s
+             AND varga = 'D9' AND fact_key = 'dignity'""",
+        [chart_id, ayanamsha_id])
+    d9: dict[str, str] = {}
+    for r in rows:
+        graha = str(r.get("graha") or "")
+        if graha and graha not in d9:
+            d9[graha] = str(r.get("fact_value_text") or "neutral")
+    return d9
+
+
+def _build_navamsha_cross_check_signals(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    build_id: str,
+    now: str,
+    strength_lookup: dict,
+    dignity_lookup: dict,
+    av_lookup: dict,
+) -> list[dict]:
+    """O3: Emit D1×D9 cross-check signals (~9 grahas × 1 ayanamsha = ~9 signals).
+
+    Classical basis (Parashari Hora Shastra):
+    - D1 strong + D9 weak → 'broken_promise' (natal potential undermined by navamsha)
+    - D1 weak + D9 strong → 'vargottama_resilience' (neechabhanga-grade uplift)
+    - Both strong / both weak → 'concordant_strong' / 'concordant_weak'
+    """
+    d1_map = _build_d1_dignity_map(conn, chart_id, ayanamsha_id)
+    d9_map = _build_d9_dignity_map(conn, chart_id, ayanamsha_id)
+
+    graha_names = set(d1_map.keys()) | set(d9_map.keys())
+    signals: list[dict] = []
+
+    for graha in sorted(graha_names):
+        d1_text = d1_map.get(graha, "neutral")
+        d9_text = d9_map.get(graha, "neutral")
+        d1_tier = _dignity_tier(d1_text)
+        d9_tier = _dignity_tier(d9_text)
+
+        # Classify
+        if d1_tier >= 2 and d9_tier <= -1:
+            classification = "broken_promise"
+            valence = "malefic"
+            salience_base = 1.8  # high — classically significant warning
+        elif d1_tier <= -1 and d9_tier >= 1:
+            classification = "vargottama_resilience"
+            valence = "benefic"
+            salience_base = 1.6
+        elif d1_tier >= 2 and d9_tier >= 1:
+            classification = "concordant_strong"
+            valence = "benefic"
+            salience_base = 2.0  # strongest — D9 confirms D1 strength
+        elif d1_tier <= -1 and d9_tier <= -1:
+            classification = "concordant_weak"
+            valence = "malefic"
+            salience_base = 1.2
+        else:
+            classification = "mixed"
+            valence = "neutral"
+            salience_base = 0.6
+
+        # signal_type_id truncated to 80 chars
+        signal_type_id = f"navamsha_d9_cross_check:{graha.lower()}"[:80]
+
+        config = {
+            "graha": graha,
+            "d1_dignity": d1_text,
+            "d9_dignity": d9_text,
+            "d1_tier": d1_tier,
+            "d9_tier": d9_tier,
+            "classification": classification,
+        }
+
+        headline = (
+            f"D9 cross-check: {graha} D1={d1_text} × D9={d9_text} "
+            f"→ {classification}"
+        )
+        summary = (
+            f"category=navamsha_d9_cross_check | key={graha.lower()} | "
+            f"d1_dignity={d1_text} | d9_dignity={d9_text} | "
+            f"classification={classification} | valence={valence}"
+        )
+
+        epistemic_jsonb = json.dumps({
+            "tradition_agreement_state": "single",
+            "epistemic_tier": "documented_approximation",
+            "computation_vs_interpretation": "computation",
+        })
+
+        # Salience: base × minor house weight for house=1 default
+        computed_salience = round(salience_base, 6)
+
+        row: dict = {
+            "signal_id":                                str(uuid.uuid4()),
+            "chart_id":                                 chart_id,
+            "ayanamsha_id":                             ayanamsha_id,
+            "build_id":                                 build_id,
+            "signal_type_id":                           signal_type_id,
+            "signal_type_class":                        "varga_pattern",
+            "signal_tradition":                         "parashari",
+            "fact_kind":                                "configuration",
+            "source_l1_asset":                          "ga_divisionals",
+            "source_subsystem":                         "varga",
+            "signal_summary_text":                      summary,
+            "signal_headline_text":                     headline,
+            "classical_sources_jsonb":                  None,
+            "varga_id":                                 "D9",
+            "varga_provenance_jsonb":                   None,
+            "epistemic_tier":                           "documented_approximation",
+            "epistemic_jsonb":                          epistemic_jsonb,
+            "salience_conditioned_by_jsonb":            None,
+            "signature_tier":                           _signature_tier(computed_salience),
+            "valence":                                  valence,
+            "lel_origin":                               False,
+            "configuration_jsonb":                      json.dumps(config),
+            "constituent_facts_array":                  None,
+            "constituent_signals_array":                None,
+            "classical_sources_array":                  None,
+            "source_corroboration_count_by_text":       2,
+            "source_corroboration_count_by_verse":      None,
+            "orb_tightness":                            1.0,
+            "shadbala_norm":                            strength_lookup.get(_LONG_TO_SHORT.get(graha, graha), 1.0),
+            "dignity_score":                            _DIGNITY_SCORE.get(d1_text.lower(), 0.5),
+            "deterministic_strength":                   salience_base,
+            "verification_certainty":                   round(
+                min(math.log(1 + 2) / math.log(10), 1.0), 6
+            ),
+            "divisional_corroboration_count":           None,
+            "dasha_activation_proximity_score":         None,
+            "house_weight_multiplier":                  1.0,
+            "ashtakavarga_support_multiplier":          1.0,
+            "aspect_modifier":                          None,
+            "vargottama_amplification":                 0.0,
+            "argala_modifier":                          None,
+            "neechabhanga_modifier":                    1.0,
+            "cancellation_modifier":                    1.0,
+            "computed_salience":                        computed_salience,
+            "salience_formula_version":                 "v1.0",
+            "salience_confidence_interval_jsonb":       None,
+            "domains_affected_array":                   ["career", "character"],
+            "domain_salience_jsonb":                    json.dumps({
+                "career": round(computed_salience / 2, 6),
+                "character": round(computed_salience / 2, 6),
+            }),
+            "shared_factor_keys_jsonb":                 None,
+            "cross_domain_shared_factor_count":         None,
+            "graph_edge_pattern_jsonb":                 None,
+            "graph_node_strength_contribution_jsonb":   None,
+            "relationship_classification":              None,
+            "graha_weakness_indicators_jsonb":          None,
+            "remedy_hooks_array":                       (
+                ["navamsha_d9_cross_check"] if valence == "malefic" else None
+            ),
+            "recurring_pattern_marker":                 None,
+            "top_k_salience_rank":                      None,
+            "system_convergence_count":                 None,
+            "signature_class":                          None,
+            "contradicts_signals_array":                None,
+            "active_duration_class":                    "natal_permanent",
+            "active_dasha_periods_jsonb":               None,
+            "activation_predicted_dates_jsonb":         None,
+            "predicted_outcome_class":                  None,
+            "cross_ayanamsha_consistency_score":        None,
+            "strength_normalized_to_chart_max":         None,
+            "pada_precision_flag":                      None,
+            "cross_system_consensus_count":             None,
+            "channel_render_priority_jsonb":            None,
+            "verification_pass_status":                 "documented_approximation",
+            "verification_method":                      "L1_divisional_cross_check",
+            "citation_ref":                             f"chart_divisionals/D9/{graha}",
+            "citation_human":                           (
+                f"Navamsha D9 cross-check: {graha} "
+                f"D1={d1_text} × D9={d9_text} → {classification}"
+            ),
+            "computed_at":                              now,
+            "engine_version":                           ENGINE_VERSION,
+        }
+        signals.append(row)
+
+    return signals
+
+
 # ── INSERT SQL (includes all enriched spine columns) ─────────────────────────
 
 _INSERT_SQL = """
@@ -877,7 +1291,7 @@ _BATCH_SIZE = 200
 
 
 def _batch_insert(conn: Any, rows: list[dict]) -> int:
-    """Batch insert using executemany (one round-trip per batch, commit per batch)."""
+    """Batch insert using executemany (one round-trip per batch). Transaction owned by orchestrator — no commit here."""
     inserted = 0
     with conn.cursor() as cur:
         for i in range(0, len(rows), _BATCH_SIZE):
@@ -924,15 +1338,21 @@ def _normalize_by_chart_max(rows: list[dict]) -> None:
 @register("bo_laksana")
 class BoLaksanaWriter(WriterBase):
     """
-    bo_laksana v2.0: MSR Signal Store — category-agnostic projection of ALL L1 chart_facts.
+    bo_laksana v2.1: MSR Signal Store — category-agnostic projection of ALL L1 chart_facts.
 
-    HEAVY writer: one sub-step per ayanamsha + INVARIANT.
+    B2-fix: lookup builders now use fact_subject (not fact_key) for graha resolution,
+    correct varga='D1' filter for dignity, and ashtakavarga_bindu SARVA-HOUSE_N for AV.
+    B3-fix: yoga/dosha signals get configuration_jsonb.graha populated (CONTRACT-1 with A2).
+    O3: emits Navamsha D9 cross-check signals per ayanamsha.
+
+    HEAVY writer: one sub-step per ayanamsha.
     Each sub-step:
-    1. Builds strength/dignity/AV lookup dicts from L1 data.
+    1. Builds strength/dignity/AV lookup dicts from L1 data (fixed to use fact_subject).
     2. Fetches ALL chart_facts rows for the ayanamsha (no category filter).
     3. Builds one bodha_msr_signals row per fact row with ALL enriched spine columns.
-    4. Ranks by salience; normalizes by chart max.
-    5. DELETE-then-INSERT (idempotent per replace_prior_msr_for_chart).
+    4. Appends Navamsha D9 cross-check signals (O3).
+    5. Ranks by salience; normalizes by chart max.
+    6. DELETE-then-INSERT (idempotent per replace_prior_msr_for_chart).
     """
     asset_id     = "bo_laksana"
     has_substeps = True
@@ -996,6 +1416,19 @@ class BoLaksanaWriter(WriterBase):
                 f"[bo_laksana] G3: chart_id={chart_id} ayanamsha={ayanamsha} — "
                 f"all {len(fact_rows)} facts were skipped; no MSR signals produced"
             )
+
+        # O3: Append Navamsha D9 cross-check signals
+        try:
+            navamsha_signals = _build_navamsha_cross_check_signals(
+                conn, chart_id, ayanamsha, build_id, now,
+                strength_lookup, dignity_lookup, av_lookup,
+            )
+            signal_rows.extend(navamsha_signals)
+            logger.info("[bo_laksana] %s — O3 navamsha cross-check: %d signals",
+                        ayanamsha, len(navamsha_signals))
+        except Exception as exc:
+            logger.warning("[bo_laksana] %s — O3 navamsha cross-check skipped: %s",
+                           ayanamsha, exc)
 
         # Post-processing: rank + normalize
         _set_top_k_ranks(signal_rows)
