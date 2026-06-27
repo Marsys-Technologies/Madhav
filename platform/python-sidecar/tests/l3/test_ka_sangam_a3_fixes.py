@@ -598,6 +598,100 @@ class TestO7AvBindhuMode:
             "O7: _generate_windows must call mode_d_av_bindhu(...)"
         )
 
+    def test_mode_d_emitted_once_across_multiple_predicates(self):
+        """
+        O7 BLOCKING FIX: Mode D runs only for first predicate — N predicates must
+        produce the same Mode D rows as one predicate, not N×K rows.
+
+        Regression guard for the bug where mode_d_av_bindhu was called inside the
+        predicate loop without a guard, producing N×duplicate windows that bypassed
+        the dedup key (which includes signal_id, so different signal_ids from
+        different predicates created distinct duplicate rows).
+        """
+        from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
+
+        # Build 3 predicates with distinct signal_ids (simulates the real N=200 scenario)
+        def _make_pred(uid_suffix: str, dignity: float = 0.7) -> dict:
+            return {
+                'signal_id': f'dddddddd-0000-0000-0000-{uid_suffix}',
+                'signature_class': 'YOGA',
+                'dignity_score': dignity,
+                'primary_domain': 'career',
+                'dasha_eligibility_rule_jsonb': {'eligibility_score': 0.7},
+                'transit_trigger_jsonb': {'target_longitude_deg': 90.0, 'orb_deg': 5.0},
+                'strength_affliction_hook_jsonb': {},
+                'derivation_ledger_jsonb': {},
+            }
+
+        pred_a = _make_pred('000000000001')
+        pred_b = _make_pred('000000000002')
+        pred_c = _make_pred('000000000003')
+        three_preds = [pred_a, pred_b, pred_c]
+
+        # EnrichmentContext with one strong sign (SAV=32 for Aries)
+        ctx = EnrichmentContext(ashtakavarga_bindu={'SARVA': {1: 32}})
+
+        # Gochara service: returns one ingress for Aries (the strong sign)
+        mock_gs = MagicMock()
+        ingress_ev = MagicMock()
+        ingress_ev.event_jd = _date_to_jd(date(2027, 3, 21))
+
+        def _find_ingresses(planet, target_sign, start_jd, end_jd):
+            if target_sign == 'Aries':
+                return [ingress_ev]
+            return []
+
+        mock_gs.find_ingresses.side_effect = _find_ingresses
+
+        start_jd = _date_to_jd(date(2026, 1, 1))
+        end_jd   = _date_to_jd(date(2030, 1, 1))
+
+        # Patch Mode A and Mode B to return empty (isolate Mode D behaviour)
+        with patch('pipeline.orchestrator.writers.ka_sangam.mode_a_search', return_value=[]), \
+             patch('pipeline.orchestrator.writers.ka_sangam.mode_b_sweep', return_value=[]):
+            writer = KaSangamWriter.__new__(KaSangamWriter)
+            all_windows = writer._generate_windows(
+                pred_dicts=three_preds,
+                horizon_start=date(2026, 1, 1),
+                horizon_end=date(2030, 1, 1),
+                dasha_kala_service=MagicMock(),
+                gochara_service=mock_gs,
+                chart_id='test-chart-id',
+                keepalive=None,
+                enrichment_context=ctx,
+                muhurta_service=None,
+            )
+
+        # Compute how many Mode D rows a single predicate produces
+        with patch('pipeline.orchestrator.writers.ka_sangam.mode_a_search', return_value=[]), \
+             patch('pipeline.orchestrator.writers.ka_sangam.mode_b_sweep', return_value=[]):
+            writer2 = KaSangamWriter.__new__(KaSangamWriter)
+            single_windows = writer2._generate_windows(
+                pred_dicts=[pred_a],
+                horizon_start=date(2026, 1, 1),
+                horizon_end=date(2030, 1, 1),
+                dasha_kala_service=MagicMock(),
+                gochara_service=mock_gs,
+                chart_id='test-chart-id',
+                keepalive=None,
+                enrichment_context=ctx,
+                muhurta_service=None,
+            )
+
+        mode_d_all    = [w for w in all_windows    if w.get('mode') == 'D']
+        mode_d_single = [w for w in single_windows if w.get('mode') == 'D']
+
+        assert len(mode_d_single) > 0, (
+            "O7 guard test: single predicate produced 0 Mode D windows — "
+            "check gochara mock or EnrichmentContext"
+        )
+        assert len(mode_d_all) == len(mode_d_single), (
+            f"O7 BLOCKING: Mode D emitted {len(mode_d_all)} windows for 3 predicates "
+            f"but only {len(mode_d_single)} for 1 predicate — "
+            f"the guard (pred_dict is pred_dicts[0]) is not working correctly. "
+            f"Expected {len(mode_d_single)}, got {len(mode_d_all)}."
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Migration 361 static checks

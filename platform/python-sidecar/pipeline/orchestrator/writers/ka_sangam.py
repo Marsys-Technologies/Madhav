@@ -360,23 +360,26 @@ class KaSangamWriter(WriterBase):
                 keepalive()
 
             # O7: Mode D — SAV-bindhu activation windows for strong signs
-            # Only run for the first predicate per horizon to avoid duplicate windows
-            # (Mode D is sign-level and predicate-agnostic; dedup handles the rest).
-            try:
-                new_windows_d = mode_d_av_bindhu(
-                    predicate=pred_dict,
-                    horizon_start_jd=horizon_start_jd,
-                    horizon_end_jd=horizon_end_jd,
-                    gochara_service=gochara_service,
-                    enrichment_context=enrichment_context,
-                )
-                for w in new_windows_d:
-                    w['primary_domain'] = primary_domain
-                all_windows.extend(new_windows_d)
-            except Exception as exc:
-                logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
-            if keepalive:
-                keepalive()
+            # Only run for the first predicate per horizon call to avoid duplicate windows.
+            # Mode D is sign-level and predicate-agnostic; running it for every predicate
+            # produces N×K duplicate windows with different signal_ids that bypass the dedup
+            # key check (which includes signal_id).
+            if pred_dicts and pred_dict is pred_dicts[0]:
+                try:
+                    new_windows_d = mode_d_av_bindhu(
+                        predicate=pred_dict,
+                        horizon_start_jd=horizon_start_jd,
+                        horizon_end_jd=horizon_end_jd,
+                        gochara_service=gochara_service,
+                        enrichment_context=enrichment_context,
+                    )
+                    for w in new_windows_d:
+                        w['primary_domain'] = primary_domain
+                    all_windows.extend(new_windows_d)
+                except Exception as exc:
+                    logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
+                if keepalive:
+                    keepalive()
         return all_windows
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
