@@ -15,13 +15,28 @@ class KaBhavishyaLekhaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
 
-        # Read top-ranked darshana windows in the future (next 3 years)
+        # Read top-ranked darshana windows in the future (next 5 years).
+        # B4-consume: also SELECT kc.domain (added by A3 migration 361).
+        # Pre-flight schema probe (read-only, no transaction impact) determines whether
+        # the domain column exists. This avoids conn.rollback() which violates the FROZEN
+        # orchestrator contract (writers NEVER commit, rollback, or close ctx.db_conn).
+        with conn.cursor() as probe_cur:
+            probe_cur.execute("""
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'kala_convergence' AND column_name = 'domain'
+                LIMIT 1
+            """)
+            _convergence_has_domain = probe_cur.fetchone() is not None
+
+        domain_select = "kc.domain," if _convergence_has_domain else "NULL AS domain,"
+
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT kd.convergence_id, kd.signal_id, kd.net_label, kd.effective_score,
                        kd.peak_date, kd.window_start, kd.window_end,
                        kd.narrative, kd.obstruction_summary,
-                       kc.confidence_label, kc.rarity_years, kc.mode
+                       kc.confidence_label, kc.rarity_years, kc.mode,
+                       {domain_select}
                 FROM kala_darshana kd
                 JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
                 WHERE kd.chart_id = %s
@@ -35,6 +50,9 @@ class KaBhavishyaLekhaWriter(WriterBase):
 
         if not darshana_rows:
             return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
+
+        # Store flag on local scope so the loop can access it without a global
+        has_domain_col = _convergence_has_domain
 
         # CF.L3.5: batch-fetch signal_type_id for domain mapping
         # darshana_rows is list[dict] (dict_row cursor); use key access throughout
@@ -69,8 +87,13 @@ class KaBhavishyaLekhaWriter(WriterBase):
             # Probability tier
             tier = _assign_tier(eff_score, net_label)
 
-            # CF.L3.5: domain from signal_type_id keywords; rank rotation as fallback
-            domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
+            # B4-consume: prefer kc.domain (set by A3 migration 361) over keyword inference.
+            # Fall back to keyword inference only if convergence domain is NULL or absent.
+            conv_domain = row.get('domain') if has_domain_col else None
+            if conv_domain:
+                domain = conv_domain
+            else:
+                domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
 
             # Falsifiability hook
             falsifiability = _build_falsifiability(tier, domain, peak_date, eff_score)

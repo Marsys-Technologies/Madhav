@@ -82,17 +82,29 @@ class MiBhavisyaWriter(WriterBase):
                 notes="no phala_anchors rows for this chart; 0 predictions frozen",
             )
 
-        # Load MSR signals for driving_signals context
-        msr_signals: dict[str, dict] = {}
+        # O2: Load MSR signals grouped by domain for domain-matched driving_signals.
+        # Fetch all signals once upfront (ordered by salience); group by each entry in
+        # domains_affected_array. This avoids one DB query per prediction row.
+        # msr_by_domain maps domain → top-5 [{"signal_id": ..., "strength": salience}]
+        msr_by_domain: dict[str, list[dict]] = {}
+        msr_signals: dict[str, dict] = {}  # retained as fallback keyed by signal_id
         if _table_exists(conn, "bodha_msr_signals"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT signal_id "
-                    "FROM bodha_msr_signals WHERE chart_id = %s",
+                    "SELECT signal_id, computed_salience, domains_affected_array "
+                    "FROM bodha_msr_signals WHERE chart_id = %s "
+                    "ORDER BY computed_salience DESC NULLS LAST",
                     (chart_id,),
                 )
                 for r in cur.fetchall():
-                    msr_signals[str(r["signal_id"])] = dict(r)
+                    sid = str(r["signal_id"])
+                    salience = float(r["computed_salience"] or 1.0)
+                    msr_signals[sid] = dict(r)
+                    domains_affected = r.get("domains_affected_array") or []
+                    for dom in (domains_affected if isinstance(domains_affected, list) else []):
+                        bucket = msr_by_domain.setdefault(str(dom), [])
+                        if len(bucket) < 5:
+                            bucket.append({"signal_id": sid, "strength": salience})
 
         emitted_at = datetime.utcnow()
         emitted_str = emitted_at.isoformat()
@@ -126,11 +138,13 @@ class MiBhavisyaWriter(WriterBase):
             conf_low = float(anchor.get("confidence_low") or 0.4)
             conf_high = float(anchor.get("confidence_high") or 0.7)
 
-            # Driving signals: first 5 MSR signals for this chart (domain filter deferred)
-            driving = [
+            # O2: domain-matched driving signals. Use signals tagged to this prediction's
+            # domain (from msr_by_domain cache). Fall back to top-5 generic if no domain
+            # match exists (e.g. domain="unknown" or no signals tagged for that domain).
+            driving = msr_by_domain.get(domain) or [
                 {"signal_id": sid, "strength": 1.0}
-                for sid in list(msr_signals.keys())
-            ][:5]
+                for sid in list(msr_signals.keys())[:5]
+            ]
 
             falsifier = anchor.get("falsifier_spec") or anchor.get("falsifier") or {}
             if isinstance(falsifier, str):
