@@ -345,8 +345,33 @@ export interface CapabilityContext {
   request_id?: string
 }
 
+/**
+ * D1 contract fields mixin for the narrowed Stream B types.
+ * These types (ToolCapability, ResourceCapability) predate D1 and use different
+ * field names (primitive_type, loader). The D1 fields are added as optional here
+ * so existing narrowed capabilities can carry the contract fields without breaking
+ * the interface. The main CapabilityDescriptor (above) is the authoritative shape.
+ */
+interface D1Fields {
+  scope?: Scope
+  archetype?: RetrievalArchetype
+  traversal_level?: TraversalLevel
+  tool_role?: ToolRole
+  drill_children?: CapabilityUri[]
+  emits_references?: boolean
+  grounds_to?: { l1_fact_ids?: boolean; l0_citation_ids?: boolean }
+  lel_capable?: boolean
+  behavioral_overrides?: {
+    anthropic?: Record<string, unknown>
+    gemini?: Record<string, unknown>
+    openai?: Record<string, unknown>
+    deepseek?: Record<string, unknown>
+  }
+  required_inputs?: string[]
+}
+
 /** Narrowed descriptor for capabilities with primitive_type = 'tool' */
-export interface ToolCapability {
+export interface ToolCapability extends D1Fields {
   uri: CapabilityUri
   primitive_type: 'tool'
   layer: Layer
@@ -359,7 +384,7 @@ export interface ToolCapability {
 }
 
 /** Narrowed descriptor for capabilities with primitive_type = 'resource' */
-export interface ResourceCapability {
+export interface ResourceCapability extends D1Fields {
   uri: CapabilityUri
   primitive_type: 'resource'
   layer: Layer
