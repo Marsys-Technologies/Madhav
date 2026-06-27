@@ -544,6 +544,21 @@ _DOSHA_GROUP_GRAHA: dict[str, str] = {
     "graha_placement": "",   # too generic, parse from text
 }
 
+# Long graha name (as returned by chart_divisionals queries) → short strength_lookup key.
+# Used by O3 navamsha signals so shadbala_norm resolves correctly instead of falling
+# back to 1.0 when graha is e.g. "Saturn" and strength_lookup keys are "SAT".
+_LONG_TO_SHORT: dict[str, str] = {
+    "Sun":     "SUN",
+    "Moon":    "MOON",
+    "Mars":    "MAR",
+    "Mercury": "MER",
+    "Jupiter": "JUP",
+    "Venus":   "VEN",
+    "Saturn":  "SAT",
+    "Rahu":    "RAH_MEAN",
+    "Ketu":    "KET_MEAN",
+}
+
 
 def _infer_graha_from_text(text: str) -> str | None:
     """Extract canonical graha key from free-text (fire_reason, dosha_name, etc.).
@@ -1147,7 +1162,7 @@ def _build_navamsha_cross_check_signals(
             "source_corroboration_count_by_text":       2,
             "source_corroboration_count_by_verse":      None,
             "orb_tightness":                            1.0,
-            "shadbala_norm":                            strength_lookup.get(graha.upper(), 1.0),
+            "shadbala_norm":                            strength_lookup.get(_LONG_TO_SHORT.get(graha, graha), 1.0),
             "dignity_score":                            _DIGNITY_SCORE.get(d1_text.lower(), 0.5),
             "deterministic_strength":                   salience_base,
             "verification_certainty":                   round(
@@ -1276,7 +1291,7 @@ _BATCH_SIZE = 200
 
 
 def _batch_insert(conn: Any, rows: list[dict]) -> int:
-    """Batch insert using executemany (one round-trip per batch, commit per batch)."""
+    """Batch insert using executemany (one round-trip per batch). Transaction owned by orchestrator — no commit here."""
     inserted = 0
     with conn.cursor() as cur:
         for i in range(0, len(rows), _BATCH_SIZE):

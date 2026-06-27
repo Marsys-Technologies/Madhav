@@ -662,5 +662,57 @@ class TestDignityTier(unittest.TestCase):
         self.assertEqual(_dignity_tier("something_unknown"), 0)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# I2 — shadbala_norm key mapping for navamsha signals
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestI2NavamshaShаdbalaShortKey(unittest.TestCase):
+    """I2: navamsha signal shadbala_norm must use the short key via _LONG_TO_SHORT,
+    not graha.upper() which produces 'SATURN' instead of 'SAT'."""
+
+    def test_navamsha_shadbala_norm_uses_short_key(self):
+        """Saturn long name must resolve to SAT key, not SATURN → not 1.0 fallback."""
+        # D1: SAT exalted; D9: Saturn Debilitated → broken_promise signal emitted
+        d1_rows = [{"fact_subject": "D1_SAT", "fact_value_text": "exalted"}]
+        d9_rows = [{"graha": "Saturn", "fact_value_text": "Debilitated"}]
+        conn = _make_conn([d1_rows, d9_rows])
+
+        signals = _build_navamsha_cross_check_signals(
+            conn, "chart-1", "lahiri_chitrapaksha", "build-1",
+            "2026-06-28T00:00:00+00:00",
+            strength_lookup={"SAT": 1.8},
+            dignity_lookup={},
+            av_lookup={},
+        )
+        self.assertEqual(len(signals), 1, "Expected exactly one Saturn navamsha signal")
+        sat_sig = signals[0]
+        self.assertAlmostEqual(
+            sat_sig["shadbala_norm"], 1.8, places=3,
+            msg=(
+                f"shadbala_norm should be 1.8 (SAT key hit); got {sat_sig['shadbala_norm']}. "
+                "Bug: graha.upper()='SATURN' misses 'SAT' key and falls back to 1.0."
+            ),
+        )
+
+    def test_navamsha_shadbala_norm_jupiter_short_key(self):
+        """Jupiter long name must resolve to JUP key."""
+        d1_rows = [{"fact_subject": "D1_JUP", "fact_value_text": "debilitated"}]
+        d9_rows = [{"graha": "Jupiter", "fact_value_text": "Exalted"}]
+        conn = _make_conn([d1_rows, d9_rows])
+
+        signals = _build_navamsha_cross_check_signals(
+            conn, "chart-1", "lahiri_chitrapaksha", "build-1",
+            "2026-06-28T00:00:00+00:00",
+            strength_lookup={"JUP": 1.6},
+            dignity_lookup={},
+            av_lookup={},
+        )
+        self.assertEqual(len(signals), 1)
+        self.assertAlmostEqual(
+            signals[0]["shadbala_norm"], 1.6, places=3,
+            msg=f"shadbala_norm should be 1.6 (JUP key hit); got {signals[0]['shadbala_norm']}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
