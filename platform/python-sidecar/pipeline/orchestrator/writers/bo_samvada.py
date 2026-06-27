@@ -37,72 +37,11 @@ logger = logging.getLogger(__name__)
 ENGINE_VERSION = "bo_samvada_v1.0"
 
 # ── View DDL ───────────────────────────────────────────────────────────────────
+# NOTE: an earlier draft (_CREATE_VIEW) contained a broken GROUP BY that included
+# cv.domain, cv.convergence_count, cv.convergence_score — joining those non-aggregate
+# columns from bodha_convergence into the outer GROUP BY produced fan-out duplicates.
+# That draft was removed; only the corrected single-group-by version below is live.
 
-_CREATE_VIEW = """
-CREATE OR REPLACE VIEW vw_chart_digest AS
-SELECT
-  m.chart_id,
-  m.ayanamsha_id,
-  count(*) AS msr_signal_count,
-  array_agg(m.signal_id ORDER BY m.top_k_salience_rank NULLS LAST) FILTER (WHERE m.top_k_salience_rank <= 10)
-    AS top_10_signal_ids,
-  array_agg(m.signal_type_id ORDER BY m.computed_salience DESC NULLS LAST) FILTER (WHERE m.signal_type_class = 'yoga')
-    AS yoga_signals,
-  array_agg(m.signal_type_id ORDER BY m.computed_salience DESC NULLS LAST) FILTER (WHERE m.signal_type_class = 'dosha')
-    AS dosha_signals,
-  jsonb_object_agg(
-    cv.domain,
-    jsonb_build_object('convergence_count', cv.convergence_count, 'convergence_score', cv.convergence_score)
-    ORDER BY cv.convergence_score DESC
-  ) FILTER (WHERE cv.domain IS NOT NULL) AS domain_summary,
-  (
-    SELECT jsonb_agg(j ORDER BY (j->>'convergence_score')::numeric DESC)
-    FROM (
-      SELECT jsonb_build_object(
-        'domain',    cv2.domain,
-        'score',     cv2.convergence_score,
-        'count',     cv2.convergence_count
-      ) AS j
-      FROM bodha_convergence cv2
-      WHERE cv2.chart_id = m.chart_id AND cv2.ayanamsha_id = m.ayanamsha_id
-        AND cv2.snapshot_type = 'static_natal'
-      ORDER BY cv2.convergence_score DESC
-      LIMIT 5
-    ) t
-  ) AS convergence_leaders,
-  (
-    SELECT count(*) FROM bodha_contradictions bc
-    WHERE bc.chart_id = m.chart_id AND bc.ayanamsha_id = m.ayanamsha_id
-  ) AS contradiction_count,
-  (
-    SELECT MIN(rm.remedy_priority_class)
-    FROM bodha_rm_resonances rm
-    WHERE rm.chart_id = m.chart_id AND rm.ayanamsha_id = m.ayanamsha_id
-      AND rm.weakest_rank_in_chart = 1
-  ) AS rm_top_priority_class,
-  (
-    SELECT rm.graha FROM bodha_rm_resonances rm
-    WHERE rm.chart_id = m.chart_id AND rm.ayanamsha_id = m.ayanamsha_id
-    ORDER BY rm.weakest_rank_in_chart ASC NULLS LAST
-    LIMIT 1
-  ) AS weakest_graha,
-  (
-    SELECT sc.trap1_authority_inversion_count
-    FROM synthesis_quality_scorecard sc
-    WHERE sc.chart_id = m.chart_id
-    ORDER BY sc.scored_at DESC
-    LIMIT 1
-  ) AS scorecard_trap1_count,
-  NOW() AS viewed_at
-FROM bodha_msr_signals m
-LEFT JOIN bodha_convergence cv
-  ON cv.chart_id = m.chart_id
-  AND cv.ayanamsha_id = m.ayanamsha_id
-  AND cv.snapshot_type = 'static_natal'
-GROUP BY m.chart_id, m.ayanamsha_id, cv.domain, cv.convergence_count, cv.convergence_score
-"""
-
-# Simplified, single-group-by version:
 _CREATE_VIEW_CLEAN = """
 CREATE OR REPLACE VIEW vw_chart_digest AS
 SELECT

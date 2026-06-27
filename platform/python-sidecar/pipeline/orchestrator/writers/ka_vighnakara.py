@@ -164,13 +164,29 @@ class KaVighnakaraWriter(WriterBase):
         # Pre-fetch natal lagna longitude from chart_facts (for papakartari + combustion)
         natal_lagna_lon: Optional[float] = self._fetch_natal_lagna_lon(conn, chart_id)
 
-        # Try to obtain swisseph for live ephemeris
+        # Try to obtain swisseph for live ephemeris.
+        # swisseph is REQUIRED for real ephemeris-based detection.  Without it
+        # the malefic_transit, gandanta and papakartari detectors cannot run and
+        # would emit stub rows with severity_score=0 that are indistinguishable
+        # from genuine zero-score computations.  We therefore halt early and
+        # return 0 rows with an explicit diagnostic note rather than silently
+        # inserting dummy data.
         try:
             import swisseph as swe
             _swe = swe
         except ImportError:
-            logger.warning("ka_vighnakara: swisseph unavailable — malefic_transit/gandanta/papakartari will be skipped")
-            _swe = None
+            logger.warning(
+                "ka_vighnakara: swisseph unavailable — cannot compute transit "
+                "obstruction scores; returning 0 rows (ephemeris required)"
+            )
+            return WriterResult(
+                asset_id='ka_vighnakara',
+                rows_inserted=0,
+                notes=(
+                    "swisseph unavailable — 0 rows emitted; "
+                    "ephemeris required for real obstruction scoring"
+                ),
+            )
 
         # Try to obtain muhurta service for real tithi
         try:
