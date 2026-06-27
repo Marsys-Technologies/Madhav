@@ -228,6 +228,60 @@ def _fetch_chara_roles(conn: Any, chart_id: str, aya: str) -> dict[str, str]:
     return out
 
 
+def _fetch_chart_typology(conn: Any, chart_id: str, aya: str) -> str:
+    """
+    Derive chart typology from element distribution of graha sign placements.
+    Queries chart_facts for graha_sign_attributes element facts and returns
+    the dominant element mapped to a typology label.
+
+    Maps:
+      Fire dominant   → "pitta"
+      Earth dominant  → "kapha_stable"
+      Air dominant    → "vata"
+      Water dominant  → "kapha_fluid"
+      No clear majority (tie) → "balanced"
+    """
+    rows = conn.execute(
+        """SELECT fact_value_text, COUNT(*) AS cnt
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_sign_attributes'
+             AND fact_key = 'element'
+           GROUP BY fact_value_text
+           ORDER BY cnt DESC""",
+        [chart_id, aya],
+    ).fetchall()
+
+    if not rows:
+        return "balanced"
+
+    counts: dict[str, int] = {}
+    for r in rows:
+        elem = str(r[0] if isinstance(r, tuple) else r.get("fact_value_text") or "")
+        cnt  = int(r[1] if isinstance(r, tuple) else r.get("cnt") or 0)
+        if elem:
+            counts[elem] = cnt
+
+    if not counts:
+        return "balanced"
+
+    max_cnt = max(counts.values())
+    # Tie check: more than one element shares the maximum count → balanced
+    leaders = [e for e, c in counts.items() if c == max_cnt]
+    if len(leaders) != 1:
+        return "balanced"
+
+    dominant = leaders[0].lower()
+    _ELEMENT_MAP: dict[str, str] = {
+        "fire": "pitta",
+        "earth": "kapha_stable",
+        "air": "vata",
+        "water": "kapha_fluid",
+    }
+    return _ELEMENT_MAP.get(dominant, "balanced")
+
+
 def _fetch_msr_dosha_sigs_by_graha(conn: Any, chart_id: str, aya: str) -> dict[str, list[str]]:
     """graha → list of dosha signal_type_ids (from MSR signals of class dosha)."""
     rows = conn.execute(
@@ -328,6 +382,7 @@ def _build_resonances_and_prescriptions(
     yoga_karakas  = _fetch_yoga_karaka_flags(conn, chart_id, aya)
     chara_roles   = _fetch_chara_roles(conn, chart_id, aya)
     dosha_by_graha = _fetch_msr_dosha_sigs_by_graha(conn, chart_id, aya)
+    chart_typology = _fetch_chart_typology(conn, chart_id, aya)
 
     resonances: list[dict] = []
 
@@ -406,7 +461,7 @@ def _build_resonances_and_prescriptions(
         for corpus_row in remedies_from_corpus:
             rm_inputs = ResonanceMatchInputs(
                 classical_strength_for_graha=float(corpus_row.get("confidence") or 0.85),
-                chart_typology="balanced",
+                chart_typology=chart_typology,
                 remedy_category=str(corpus_row.get("remedy_type") or "mantra"),
                 cross_tradition_corroboration_count=1,
                 has_active_counter_indication=False,

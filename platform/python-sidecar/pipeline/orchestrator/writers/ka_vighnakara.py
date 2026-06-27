@@ -136,10 +136,34 @@ def _jd_from_date(d: DateType) -> float:
 @register('ka_vighnakara')
 class KaVighnakaraWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
+        # Guard: swisseph is REQUIRED for real ephemeris-based detection.  Without it
+        # the malefic_transit, gandanta and papakartari detectors cannot run and
+        # would emit stub rows with severity_score=0 that are indistinguishable
+        # from genuine zero-score computations.  Check BEFORE any DB operations so
+        # that a missing swisseph never causes the prior chart's kala_obstruction rows
+        # to be silently wiped by the DELETE below.
+        try:
+            import swisseph as swe
+            _swe = swe
+        except ImportError:
+            logger.warning(
+                "ka_vighnakara: swisseph unavailable — cannot compute transit "
+                "obstruction scores; returning 0 rows (ephemeris required)"
+            )
+            return WriterResult(
+                asset_id='ka_vighnakara',
+                rows_inserted=0,
+                notes=(
+                    "swisseph unavailable — 0 rows emitted; "
+                    "ephemeris required for real obstruction scoring"
+                ),
+            )
+
         conn     = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
 
-        # Idempotency: delete-then-insert scoped to chart
+        # Idempotency: delete-then-insert scoped to chart.
+        # Safe to DELETE only after confirming swisseph is available and we can rebuild.
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s", (chart_id,))
 
@@ -163,14 +187,6 @@ class KaVighnakaraWriter(WriterBase):
 
         # Pre-fetch natal lagna longitude from chart_facts (for papakartari + combustion)
         natal_lagna_lon: Optional[float] = self._fetch_natal_lagna_lon(conn, chart_id)
-
-        # Try to obtain swisseph for live ephemeris
-        try:
-            import swisseph as swe
-            _swe = swe
-        except ImportError:
-            logger.warning("ka_vighnakara: swisseph unavailable — malefic_transit/gandanta/papakartari will be skipped")
-            _swe = None
 
         # Try to obtain muhurta service for real tithi
         try:

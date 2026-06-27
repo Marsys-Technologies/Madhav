@@ -30,6 +30,20 @@ logger = logging.getLogger(__name__)
 SCORING_FORMULA_VERSION = "mi_pramana_v1.0"
 CALIBRATION_FORMULA_VER = "mi_pramana_v1.0"
 
+# Sentinel flags: True means the corresponding scoring function is a stub pending
+# real LEL calibration / outcome data.  Set to False only when a real implementation
+# replaces the stub.  These flags are checked by tests to ensure stubs remain
+# visible and cannot be mistaken for production scoring logic.
+_IS_STUB_FALSIFIER: bool = True        # _score_falsifier: awaiting falsifier JSON standardization
+_IS_STUB_MANIFESTATION: bool = True    # _score_manifestation: awaiting outcome channel data
+
+logger.debug(
+    "mi_pramana: _score_falsifier + _score_manifestation are stubs "
+    "(n=0 outcomes; _IS_STUB_FALSIFIER=%s, _IS_STUB_MANIFESTATION=%s)",
+    _IS_STUB_FALSIFIER,
+    _IS_STUB_MANIFESTATION,
+)
+
 # Scoring weights (must sum to 1.0)
 _W_TIMING = 0.30
 _W_MAGNITUDE = 0.20
@@ -81,14 +95,32 @@ def _score_domain(pred_domain: str, event_domain: str) -> float:
 
 def _score_falsifier(falsifier_jsonb: Any, event: dict) -> float:
     """
-    Score falsifier: if the falsifier conditions are met, score = 0 (prediction denied).
-    v1: naive — falsifier JSON structure not yet standardized; default pass = 1.0.
+    STUB (_IS_STUB_FALSIFIER = True): always returns 1.0.
+
+    A real implementation would evaluate the structured falsifier_jsonb conditions
+    against the event and return 0.0 if any falsifier condition is met (prediction
+    denied), or 1.0 if all falsifier conditions pass.
+
+    Pending: falsifier JSON structure not yet standardized across mimamsa_predictions.
+    Replace this stub and set _IS_STUB_FALSIFIER = False once the schema is settled
+    and LEL calibration data is available.
     """
+    # STUB: always 1.0 until LEL calibration data + falsifier schema available
     return 1.0
 
 
 def _score_manifestation(manifestation_channels: list[str], event: dict) -> tuple[float, str | None]:
-    """v1 stub: 0.5 (unknown channel); returns (score, channel_fired)."""
+    """
+    STUB (_IS_STUB_MANIFESTATION = True): always returns (0.5, None).
+
+    A real implementation would check which channel in manifestation_channels
+    matches the event's observed channel and return a non-uniform propensity score.
+
+    Pending: outcome channel data (mimamsa_manifestation_grammar) needed for
+    empirical propensity; replace stub and set _IS_STUB_MANIFESTATION = False
+    once n_support >= 5 for at least one channel.
+    """
+    # STUB: always 0.5 (unknown channel) until outcome data available
     return 0.5, None
 
 
