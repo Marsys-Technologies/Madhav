@@ -152,26 +152,34 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
     """Returns {graha_name: sign_number (1-12)} for argala computation.
 
     Reads from chart_facts (L1 authority). sign_number is 1-based (Aries=1 … Pisces=12).
+
+    Correct L1 schema (ga_positions_writer):
+      fact_category = 'graha_sign_attributes'
+      fact_key      = 'sign_num'
+      fact_value_num (float, e.g. 1.0 for Aries)
+      fact_subject  = UPPER_SNAKE (SUN, MOON, MARS, …) → title-cased to match KNOWN_GRAHAS
     """
     rows = conn.execute(
-        """SELECT fact_subject, fact_value_text
+        """SELECT fact_subject, fact_value_num
            FROM chart_facts
            WHERE chart_id = %s
              AND ayanamsha_id = %s
-             AND fact_category = 'graha_position'
-             AND fact_key = 'sign_number'""",
+             AND fact_category = 'graha_sign_attributes'
+             AND fact_key = 'sign_num'""",
         [chart_id, aya],
     ).fetchall()
     result: dict[str, int] = {}
     for r in rows:
         if isinstance(r, dict):
             subject = r["fact_subject"]
-            val     = r["fact_value_text"]
+            val     = r["fact_value_num"]
         else:
             subject = str(r[0])
-            val     = str(r[1])
+            val     = r[1]
         try:
-            result[subject] = int(val)
+            # fact_subject is UPPER_SNAKE (SUN) — title-case to match KNOWN_GRAHAS (Sun)
+            graha = subject.title()
+            result[graha] = int(float(val))
         except (ValueError, TypeError):
             pass
     return result

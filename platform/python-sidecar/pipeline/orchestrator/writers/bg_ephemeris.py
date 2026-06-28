@@ -67,7 +67,18 @@ class BgEphemerisWriter(WriterBase):
             AYANAMSHA_ID,
             SOURCE_CITATION,
             _compute_positions_for_date,
+            _resolve_ephe_path,
         )
+
+        # swisseph is optional at this tier — the ephemeris_daily table is
+        # pre-populated (825 k rows via ON CONFLICT DO NOTHING).  If pyswisseph
+        # is not available we skip live computation gracefully rather than crash.
+        try:
+            import swisseph as swe  # type: ignore[import]
+            _swe_available = True
+        except ImportError:
+            swe = None  # type: ignore[assignment]
+            _swe_available = False
 
         t0 = time.time()
 
@@ -80,48 +91,77 @@ class BgEphemerisWriter(WriterBase):
                 duration_seconds=round(time.time() - t0, 2),
             )
 
+        if not _swe_available:
+            logger.warning(
+                "[bg_ephemeris] swisseph not available — skipping live computation. "
+                "ephemeris_daily is assumed pre-populated (825 k rows). "
+                "Install pyswisseph for Tier-3 full rebuild."
+            )
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="skipped: swisseph unavailable; ephemeris_daily pre-populated",
+                duration_seconds=round(time.time() - t0, 2),
+            )
+
+        # Resolve ephemeris data path and initialise swisseph
+        ephe_path = _resolve_ephe_path()
+
         conn = ctx.db_conn
         rows_inserted = 0
         current = BUILD_START
 
-        with conn.cursor() as cur:
-            while current <= BUILD_END:
-                # Accumulate one batch of days
-                batch_rows: list[dict[str, Any]] = []
-                for _ in range(self._BATCH_DAYS):
-                    if current > BUILD_END:
+        try:
+            with conn.cursor() as cur:
+                while current <= BUILD_END:
+                    # Accumulate one batch of days
+                    batch_rows: list[dict[str, Any]] = []
+                    for _ in range(self._BATCH_DAYS):
+                        if current > BUILD_END:
+                            break
+                        day_rows = _compute_positions_for_date(current, swe, ephe_path)
+                        batch_rows.extend(day_rows)
+                        current += timedelta(days=1)
+
+                    if not batch_rows:
                         break
-                    day_rows = _compute_positions_for_date(current)
-                    batch_rows.extend(day_rows)
-                    current += timedelta(days=1)
 
-                if not batch_rows:
-                    break
-
-                cur.executemany(
-                    """
-                    INSERT INTO ephemeris_daily
-                      (date, body, ayanamsha_id, tropical_longitude, latitude,
-                       speed_dps, is_retrograde, source_citation, computed_at)
-                    VALUES
-                      (%(date)s, %(body)s, %(ayanamsha_id)s, %(tropical_longitude)s,
-                       %(latitude)s, %(speed_dps)s, %(is_retrograde)s,
-                       %(source_citation)s, %(computed_at)s)
-                    ON CONFLICT (date, body, ayanamsha_id) DO NOTHING
-                    """,
-                    batch_rows,
-                )
-                rows_inserted += cur.rowcount
-
-                # Log progress every 10 batches (~1 000 days)
-                total_days = (BUILD_END - BUILD_START).days or 1
-                done_days = (current - BUILD_START).days
-                if done_days % (self._BATCH_DAYS * 10) < self._BATCH_DAYS:
-                    pct = 100.0 * done_days / total_days
-                    logger.info(
-                        "[bg_ephemeris] %.1f%% (%s) — %d rows inserted so far",
-                        pct, current, rows_inserted,
+                    cur.executemany(
+                        """
+                        INSERT INTO ephemeris_daily
+                          (date, body, ayanamsha_id, tropical_longitude, latitude,
+                           speed_dps, is_retrograde, source_citation, computed_at)
+                        VALUES
+                          (%(date)s, %(body)s, %(ayanamsha_id)s, %(tropical_longitude)s,
+                           %(latitude)s, %(speed_dps)s, %(is_retrograde)s,
+                           %(source_citation)s, %(computed_at)s)
+                        ON CONFLICT (date, body, ayanamsha_id) DO NOTHING
+                        """,
+                        batch_rows,
                     )
+                    rows_inserted += cur.rowcount
+
+                    # Log progress every 10 batches (~1 000 days)
+                    total_days = (BUILD_END - BUILD_START).days or 1
+                    done_days = (current - BUILD_START).days
+                    if done_days % (self._BATCH_DAYS * 10) < self._BATCH_DAYS:
+                        pct = 100.0 * done_days / total_days
+                        logger.info(
+                            "[bg_ephemeris] %.1f%% (%s) — %d rows inserted so far",
+                            pct, current, rows_inserted,
+                        )
+        except Exception as exc:
+            logger.warning(
+                "[bg_ephemeris] computation failed (%s) — returning rows inserted so far (%d). "
+                "ephemeris_daily is assumed pre-populated; no crash.",
+                exc, rows_inserted,
+            )
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=rows_inserted,
+                notes=f"partial/skipped: {exc}; ephemeris_daily pre-populated",
+                duration_seconds=round(time.time() - t0, 2),
+            )
 
         elapsed = round(time.time() - t0, 2)
         logger.info(

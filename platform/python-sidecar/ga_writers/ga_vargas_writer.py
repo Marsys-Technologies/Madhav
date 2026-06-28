@@ -2275,7 +2275,7 @@ def build_ga_vargas(
         if chart_id == CANONICAL_CHART_ID and forensic_result["result"] == "FAIL":
             logger.error("[ga_vargas] FORENSIC FAIL: %s", forensic_result["findings"])
             _write_halt_log(
-                chart_id, build_id, "GA6_FORENSIC_FAIL",
+                "GA6_FORENSIC_FAIL",
                 f"FORENSIC gate failed for ayanamsha={ayan_id}: {forensic_result['findings']}",
             )
             summary["status"] = "FORENSIC_FAIL"

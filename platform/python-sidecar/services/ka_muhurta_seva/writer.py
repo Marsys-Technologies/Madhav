@@ -27,6 +27,23 @@ from datetime import date, datetime
 
 from pipeline.orchestrator.writers import WriterBase, ContextSpec, WriterResult, register
 
+# ---------------------------------------------------------------------------
+# Module-level import guard for muhurat package
+# ---------------------------------------------------------------------------
+try:
+    import muhurat  # noqa: F401 — existence check only; symbols imported inside self-test
+    MUHURTA_MODULE_AVAILABLE = True
+except ImportError as _muhurta_import_err:
+    MUHURTA_MODULE_AVAILABLE = False
+    _MUHURTA_IMPORT_ERROR = str(_muhurta_import_err)
+    logging.getLogger(__name__).error(
+        "[ka_muhurta_seva] FATAL: muhurat package unavailable — %s. "
+        "Checks 3 and 4 will fail and the writer will raise to mark the asset errored.",
+        _muhurta_import_err,
+    )
+else:
+    _MUHURTA_IMPORT_ERROR = ""
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -104,13 +121,24 @@ class KaMuhurtaSevaWriter(WriterBase):
             _write_service_health(ctx.db_conn, self.asset_id, health, selftest_detail)
 
         if failures:
-            logger.warning("[ka_muhurta_seva] FORENSIC failures: %s", failures)
+            logger.error(
+                "[ka_muhurta_seva] FORENSIC self-test FAILED (%d failures): %s",
+                len(failures), failures,
+            )
+            # Raise so _run_data_writer catches it and calls mark_asset_error —
+            # the only signal path that prevents the orchestrator from marking
+            # this asset 'lit'. A returned WriterResult is always treated as
+            # success by the orchestrator regardless of notes content.
+            raise RuntimeError(
+                f"ka_muhurta_seva self-test: {len(failures)} failure(s): "
+                + "; ".join(failures)
+            )
 
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=0,
             rows_updated=0,
-            notes=f"service_health={health}; checks={len(checks)}; failures={len(failures)}",
+            notes=f"service_health={health}; checks={len(checks)}; failures=0",
         )
 
 
@@ -168,71 +196,81 @@ def _run_forensic_selftest() -> tuple[list, list]:
         failures.append(f"tara_bala call failed: {exc}")
 
     # ── Check 3: Native overlay changes score relative to no native_chart ──
-    try:
-        from panchang_engine import compute_panchang
-        from panchang_engine.types import NatalChart
-        from muhurat.finder import score_muhurat
-
-        test_date = date(2026, 6, 21)  # today — any valid date
-
-        panchang = compute_panchang(test_date, BIRTH_LAT, BIRTH_LON, BIRTH_TZ_OFFSET_MINUTES)
-
-        native_chart = NatalChart(
-            birth_nakshatra_id=FORENSIC_NAKSHATRA_ID,  # 25 = Purva Bhadrapada
-            birth_lagna_sign_id=1,
-            moon_sign_id=11,
-            active_dasha_lord="Jupiter",
+    if not MUHURTA_MODULE_AVAILABLE:
+        failures.append(
+            f"muhurat module unavailable (Check 3 cannot run): {_MUHURTA_IMPORT_ERROR}"
         )
+    else:
+        try:
+            from panchang_engine import compute_panchang
+            from panchang_engine.types import NatalChart
+            from muhurat.finder import score_muhurat
 
-        score_without = score_muhurat(panchang, "vivah", native_chart=None)
-        score_with    = score_muhurat(panchang, "vivah", native_chart=native_chart)
+            test_date = date(2026, 6, 21)  # any valid date
 
-        if score_without != score_with:
-            checks.append(
-                f"tara_bala overlay changes score: without={score_without:.2f} with={score_with:.2f}"
+            panchang = compute_panchang(test_date, BIRTH_LAT, BIRTH_LON, BIRTH_TZ_OFFSET_MINUTES)
+
+            native_chart = NatalChart(
+                birth_nakshatra_id=FORENSIC_NAKSHATRA_ID,  # 25 = Purva Bhadrapada
+                birth_lagna_sign_id=1,
+                moon_sign_id=11,
+                active_dasha_lord="Jupiter",
             )
-        else:
-            # Same score is fine if native weight contribution = 0 (knockouted or zero tara score)
-            checks.append(
-                f"tara_bala overlay: without={score_without:.2f} with={score_with:.2f} "
-                "(equal — may be knockout day or Vipat/Vadha tara; not a failure)"
-            )
 
-    except Exception as exc:
-        failures.append(f"native overlay comparison failed: {exc}")
+            score_without = score_muhurat(panchang, "vivah", native_chart=None)
+            score_with    = score_muhurat(panchang, "vivah", native_chart=native_chart)
+
+            if score_without != score_with:
+                checks.append(
+                    f"tara_bala overlay changes score: without={score_without:.2f} with={score_with:.2f}"
+                )
+            else:
+                # Same score is fine if native weight = 0 (knockout day or Vipat/Vadha tara)
+                checks.append(
+                    f"tara_bala overlay: without={score_without:.2f} with={score_with:.2f} "
+                    "(equal — may be knockout day or Vipat/Vadha tara; not a failure)"
+                )
+
+        except Exception as exc:
+            failures.append(f"native overlay comparison failed: {exc}")
 
     # ── Check 4: Knockout asserts zero for compound inauspicious ──────────
-    try:
-        from muhurat.finder import _in_inauspicious, score_muhurat, _CachedPanchang
+    if not MUHURTA_MODULE_AVAILABLE:
+        failures.append(
+            f"muhurat module unavailable (Check 4 cannot run): {_MUHURTA_IMPORT_ERROR}"
+        )
+    else:
+        try:
+            from muhurat.finder import _in_inauspicious, score_muhurat, _CachedPanchang
 
-        # Build a proxy with the exact compound-knockout conditions:
-        # rahu_kalam + yamagandam + tithi=8 (Ashtami) + vara=7 (Saturday)
-        row = {
-            "tithi_id": 8,      # Ashtami (worst tithi)
-            "nakshatra_id": 1,  # Ashwini (arbitrary)
-            "vara_id": 7,       # Saturday
-            "inauspicious": [
-                {"label": "rahu_kalam"},
-                {"label": "yamagandam"},
-            ],
-            "auspicious": [],
-            "special_yogas": [],
-            "sunrise_utc": None,
-            "sunset_utc": None,
-        }
-        proxy = _CachedPanchang(row)
+            # Build a proxy with the exact compound-knockout conditions:
+            # rahu_kalam + yamagandam + tithi=8 (Ashtami) + vara=7 (Saturday)
+            row = {
+                "tithi_id": 8,      # Ashtami (worst tithi)
+                "nakshatra_id": 1,  # Ashwini (arbitrary)
+                "vara_id": 7,       # Saturday
+                "inauspicious": [
+                    {"label": "rahu_kalam"},
+                    {"label": "yamagandam"},
+                ],
+                "auspicious": [],
+                "special_yogas": [],
+                "sunrise_utc": None,
+                "sunset_utc": None,
+            }
+            proxy = _CachedPanchang(row)
 
-        if _in_inauspicious(proxy):
-            s = score_muhurat(proxy, "vivah")
-            if s == 0.0:
-                checks.append("knockout: compound inauspicious → score=0.0 PASS")
+            if _in_inauspicious(proxy):
+                s = score_muhurat(proxy, "vivah")
+                if s == 0.0:
+                    checks.append("knockout: compound inauspicious → score=0.0 PASS")
+                else:
+                    failures.append(f"knockout: compound inauspicious should return 0.0, got {s}")
             else:
-                failures.append(f"knockout: compound inauspicious should return 0.0, got {s}")
-        else:
-            failures.append("knockout: _in_inauspicious() returned False for known-bad proxy")
+                failures.append("knockout: _in_inauspicious() returned False for known-bad proxy")
 
-    except Exception as exc:
-        failures.append(f"knockout check failed: {exc}")
+        except Exception as exc:
+            failures.append(f"knockout check failed: {exc}")
 
     return checks, failures
 

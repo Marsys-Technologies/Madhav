@@ -224,7 +224,14 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         logger.info("[bo_cgm_paths] %s — no graha nodes found; skipping", aya)
         return 0
 
-    # Fetch all dispositor-class edges
+    # Fetch all dispositor-class edges.
+    # NOTE (Tier 3 future work): bo_karanajala does not yet emit dispositor edges
+    # (edge_type='dispositor' or relationship_basis='dispositor'/'lord_of_sign').
+    # Until those edges are written this query returns 0 rows, edge_by_from is empty,
+    # and _build_dispositor_chains produces 0 chains.  A warning is logged so the
+    # absence is auditable.  The self-ruling (length-0) path also relies on
+    # position_in_chart_jsonb['sign'] which is now populated by bo_bimba — those
+    # will fire correctly once bo_bimba fix is in place.
     all_edges = _fetch_dict(
         conn,
         """SELECT edge_id, from_node_id, to_node_id, edge_type, relationship_basis,
@@ -238,6 +245,13 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
              )""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
+    if not all_edges:
+        logger.warning(
+            "[bo_cgm_paths] %s — 0 dispositor edges found in bodha_cgm_edges; "
+            "bo_karanajala does not yet emit dispositor edges — "
+            "multi-hop chains cannot be built; only self-ruling (length-0) paths will emit",
+            aya,
+        )
 
     # Also fetch all nodes so we can traverse
     all_nodes = _fetch_dict(

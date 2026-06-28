@@ -166,13 +166,11 @@ def build_ga_vastu_substep(
                 _forensic_saturn_impact = direction_impact
 
     # ── FORENSIC assertion for canonical native chart ─────────────────────────
+    # Sun assertion removed: "Sun debilitated in Capricorn" was astrologically
+    # incorrect — Sun debilitates in Libra, not Capricorn. Sun's direction_impact
+    # is correctly derived from ga_condition_composite.condition_score via
+    # compute_direction_impact(); no hard gate is needed here.
     if chart_id == CANONICAL_CHART_ID:
-        if not _forensic_sun_impact or _forensic_sun_impact != "weakened":
-            raise AssertionError(
-                f"FORENSIC VIOLATION: Sun direction_impact={_forensic_sun_impact!r} "
-                f"but expected 'weakened' (Sun debilitated in Capricorn) "
-                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
-            )
         if not _forensic_saturn_impact or _forensic_saturn_impact != "strengthened":
             raise AssertionError(
                 f"FORENSIC VIOLATION: Saturn direction_impact={_forensic_saturn_impact!r} "

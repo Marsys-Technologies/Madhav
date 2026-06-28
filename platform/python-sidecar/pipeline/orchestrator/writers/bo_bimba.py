@@ -79,6 +79,68 @@ INSERT INTO bodha_cgm_nodes (
 _BATCH_SIZE = 50
 
 
+def _fetch_graha_positions(conn, chart_id: str, aya: str) -> dict[str, dict]:
+    """Returns {graha_name: {"sign": str, "house": int}} from L1 chart_facts.
+
+    Reads fact_category='graha_position' fact_key='sign' for sign name (fact_value_text)
+    and fact_key='house_d1' for house number (fact_value_num).
+    fact_subject is UPPER_SNAKE (SUN, MOON, etc.) so we title-case it to match KNOWN_GRAHAS.
+    """
+    positions: dict[str, dict] = {}
+
+    # Sign name rows — ga_positions_writer emits (graha_position, sign, fact_value_text)
+    sign_rows = conn.execute(
+        """SELECT fact_subject, fact_value_text
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_position'
+             AND fact_key = 'sign'""",
+        [chart_id, aya],
+    ).fetchall()
+    for r in sign_rows:
+        if isinstance(r, dict):
+            subject = r["fact_subject"]
+            val     = r["fact_value_text"]
+        else:
+            subject = str(r[0])
+            val     = str(r[1]) if r[1] is not None else None
+        if val:
+            graha = subject.title()  # UPPER_SNAKE → Title (SUN → Sun)
+            if graha not in positions:
+                positions[graha] = {}
+            positions[graha]["sign"] = val
+
+    # House number rows — ga_positions_writer emits (graha_position, house_d1, fact_value_num)
+    house_rows = conn.execute(
+        """SELECT fact_subject, fact_value_num
+           FROM chart_facts
+           WHERE chart_id = %s
+             AND ayanamsha_id = %s
+             AND fact_category = 'graha_position'
+             AND fact_key = 'house_d1'""",
+        [chart_id, aya],
+    ).fetchall()
+    for r in house_rows:
+        if isinstance(r, dict):
+            subject = r["fact_subject"]
+            val     = r["fact_value_num"]
+        else:
+            subject = str(r[0])
+            val     = r[1]
+        if val is not None:
+            graha = subject.title()
+            try:
+                house = int(float(val))
+                if graha not in positions:
+                    positions[graha] = {}
+                positions[graha]["house"] = house
+            except (TypeError, ValueError):
+                pass
+
+    return positions
+
+
 def _fetch_msr_signals(conn, chart_id: str, aya: str) -> list[dict]:
     rows = conn.execute(
         """SELECT signal_id, signal_type_class, signal_tradition, configuration_jsonb,
@@ -123,7 +185,8 @@ def _parse_house_from_signal(cfg: dict) -> int | None:
 
 
 def _build_nodes_for_aya(
-    chart_id: str, aya: str, build_id: str, signals: list[dict], now: str
+    chart_id: str, aya: str, build_id: str, signals: list[dict], now: str,
+    graha_positions: dict[str, dict] | None = None,
 ) -> list[dict]:
     nodes: list[dict] = []
 
@@ -150,6 +213,8 @@ def _build_nodes_for_aya(
                 graha_tradition[g].add(str(sig["signal_tradition"]))
 
     for graha in KNOWN_GRAHAS:
+        _pos = (graha_positions or {}).get(graha)
+        _pos_json = json.dumps(_pos) if _pos else None
         nodes.append({
             "node_id": str(uuid.uuid4()),
             "chart_id": chart_id,
@@ -159,7 +224,7 @@ def _build_nodes_for_aya(
             "node_type": "graha",
             "node_subject": graha,
             "node_label_human": graha,
-            "position_in_chart_jsonb": None,
+            "position_in_chart_jsonb": _pos_json,
             "strength_score": round(graha_strength.get(graha, 0.5), 6),
             "dignity_state": graha_dignity.get(graha),
             "degree_in": 0,
@@ -307,7 +372,14 @@ class BoBimbaWriter(WriterBase):
                     f"[bo_bimba] G3: chart_id={chart_id} ayanamsha={aya} — "
                     "bodha_msr_signals is empty; bo_laksana must have failed or produced 0 rows"
                 )
-            nodes   = _build_nodes_for_aya(chart_id, aya, build_id, signals, now)
+            graha_positions = _fetch_graha_positions(conn, chart_id, aya)
+            if not graha_positions:
+                logger.warning(
+                    "[bo_bimba] %s — _fetch_graha_positions returned 0 rows; "
+                    "graha nodes will have position_in_chart_jsonb=None (stellium/paths detectors will be blind)",
+                    aya,
+                )
+            nodes   = _build_nodes_for_aya(chart_id, aya, build_id, signals, now, graha_positions)
 
             deleted = replace_prior_cgm_nodes(conn, chart_id, aya, SNAPSHOT_TYPE)
             logger.info("[bo_bimba] %s — deleted %d prior, inserting %d nodes", aya, deleted, len(nodes))

@@ -88,6 +88,13 @@ def _detect_mutual_reception(
     """
     Detect mutual reception: node A → dispositor edge → node B AND node B → dispositor edge → node A.
     Returns list of motif dicts.
+
+    NOTE (Tier 3 future work): This detector requires bo_karanajala to emit dispositor edges
+    with edge_type='dispositor' or relationship_basis='dispositor'/'lord_of_sign'.  As of the
+    current wave bo_karanajala does NOT write these edges (dispositor edge construction requires
+    sign-lord lookup logic not yet implemented).  Until bo_karanajala emits dispositor edges this
+    detector will always return 0 motifs.  A warning is logged when the dispositor edge set is
+    empty so the absence is auditable.
     """
     motifs = []
     seen_pairs: set[frozenset] = set()
@@ -105,6 +112,14 @@ def _detect_mutual_reception(
                 tid = str(e["to_node_id"])
                 disp_targets[nid].add(tid)
                 disp_edges[(nid, tid)] = str(e["edge_id"])
+
+    total_disp_edges = sum(len(v) for v in disp_targets.values())
+    if total_disp_edges == 0:
+        logger.warning(
+            "[bo_cgm_motifs] mutual_reception: 0 dispositor edges found in CGM edge set — "
+            "bo_karanajala does not yet emit dispositor edges; "
+            "mutual_reception motifs cannot fire until Tier 3 dispositor edges are added"
+        )
 
     graha_ids = [str(n["node_id"]) for n in graha_nodes]
     node_by_id = {str(n["node_id"]): n for n in graha_nodes}
@@ -211,6 +226,12 @@ def _detect_parivartana_chains(
     """
     Detect Parivartana chains: dispositor cycles of length 3–6.
     Uses DFS from each graha node to find cycles.
+
+    NOTE (Tier 3 future work): Same root dependency as mutual_reception — requires
+    bo_karanajala to emit dispositor edges (edge_type='dispositor' or
+    relationship_basis='dispositor'/'lord_of_sign').  Until those edges are written the
+    DFS adjacency graph is always empty and this detector returns 0 motifs.  A warning is
+    logged when the adjacency graph is empty so the absence is auditable.
     """
     motifs = []
     seen_cycles: set[frozenset] = set()
@@ -223,6 +244,14 @@ def _detect_parivartana_chains(
             if str(e.get("relationship_basis", "")).lower() in ("dispositor", "lord_of_sign") \
                or str(e.get("edge_type", "")).lower() in ("disposited_by", "dispositor", "sign_lord"):
                 disp_adj[nid].append((str(e["to_node_id"]), str(e["edge_id"])))
+
+    total_disp_adj = sum(len(v) for v in disp_adj.values())
+    if total_disp_adj == 0:
+        logger.warning(
+            "[bo_cgm_motifs] parivartana_chain: 0 dispositor edges found in CGM edge set — "
+            "bo_karanajala does not yet emit dispositor edges; "
+            "parivartana_chain motifs cannot fire until Tier 3 dispositor edges are added"
+        )
 
     node_by_id = {str(n["node_id"]): n for n in graha_nodes}
     graha_id_set = {str(n["node_id"]) for n in graha_nodes}

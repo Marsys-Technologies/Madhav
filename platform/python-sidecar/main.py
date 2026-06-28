@@ -86,6 +86,20 @@ app.include_router(sutravali_router.router, prefix="/api/brahma", dependencies=[
 from routers import transit_search as transit_search_router
 app.include_router(transit_search_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# BRAHMA MI-5-3 — Mīmāṃsā L5 outcome scoring + calibration query + acceptance gate
+# Routes: POST /api/compute/mimamsa/record_outcome
+#         POST /api/compute/mimamsa/query_calibration
+#         GET  /api/compute/mimamsa/acceptance_gate/{chart_id}
+#         GET  /api/compute/mimamsa/acceptance_gate
+from brahmagyan.mimamsa.outcome import router as mimamsa_outcome_router
+app.include_router(mimamsa_outcome_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# BRAHMA L2 Bodha — holistic bundle (bo_2-8; filename uses hyphen, import via importlib)
+# Route: POST /api/compute/brahma/holistic_bundle
+import importlib as _importlib
+_bodha_bundle = _importlib.import_module("brahmagyan.bodha.bo_2-8")
+app.include_router(_bodha_bundle.router, prefix="/api/compute/brahma", dependencies=[Depends(verify_api_key)])
+
 
 @app.get("/health")
 def health():

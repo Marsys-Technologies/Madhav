@@ -629,7 +629,7 @@ def _infer_graha_for_yoga_dosha(fact_cat: str, fvj: dict,
 # ── Row fetcher (ALL fact categories, no whitelist) ──────────────────────────
 
 _FETCH_SQL = """
-SELECT fact_id, fact_category, ayanamsha_id, fact_key,
+SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_subject,
        fact_value_num, fact_value_text, fact_value_jsonb, formula_id,
        source_calculation, verification_pass_status, citation_ref, citation_human
 FROM chart_facts
