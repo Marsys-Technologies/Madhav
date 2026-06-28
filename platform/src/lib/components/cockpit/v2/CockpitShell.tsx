@@ -116,10 +116,16 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
     if (!r.ok) throw new Error(body.error ?? 'Failed to start build after clear')
   }, [rebuildMode, chartId])
 
+  // C4: post-clear fast refresh key (distinct from refreshKey / manual Refresh).
+  // The execute route sets rows_written=0 in asset_throughput, so the stats route's
+  // rows_written shortcut immediately returns 0 without running COUNT(*) queries.
+  // DataAssetsView uses this key to call refetchStats() (not refetchLive) — <2s to 0.
+  const [clearKey, setClearKey] = useState(0)
+
   const handleClearSuccess = useCallback(() => {
     setClearModalOpen(false)
     setClearPreview(null)
-    setRefreshKey(k => k + 1)
+    setClearKey(k => k + 1)  // C4: fast shortcut path, not live count_sql
   }, [])
 
   const handleClearClose = useCallback(() => {
@@ -130,7 +136,8 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   const [proMode, setProMode] = useState(false)
 
-  // Incrementing this key triggers DataAssetsView to re-fetch all live data.
+  // C3: Incrementing this key triggers DataAssetsView to re-fetch live data via count_sql.
+  // Used by the manual Refresh button — bypasses the rows_written cache for accurate counts.
   const [refreshKey, setRefreshKey] = useState(0)
   const handleRefreshed = useCallback(() => setRefreshKey(k => k + 1), [])
 
@@ -202,6 +209,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
             onAssetsReady={handleAssetsReady}
             header={headerEl}
             refreshKey={refreshKey}
+            clearKey={clearKey}
             activeRun={activeRun}
             refreshRun={refreshRun}
           />

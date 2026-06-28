@@ -47,15 +47,21 @@ interface Props {
   onAssetsReady?: (assets: AssetWithState[]) => void
   /** Optional content rendered at the top of the scrolling ledger column (chart identity + telemetry + actions). */
   header?: React.ReactNode
-  /** Incrementing this triggers a full re-fetch of registry + stats + active run (C3). */
+  /** Incrementing this triggers a full re-fetch of registry + live stats + active run (C3).
+   *  Used by the manual Refresh button — runs count_sql for all assets via ?mode=live. */
   refreshKey?: number
+  /** Incrementing this triggers a fast post-clear re-fetch (C4).
+   *  Distinct from refreshKey: uses the rows_written shortcut (not count_sql) because the
+   *  execute route already sets rows_written=0 in asset_throughput. This means the tracker
+   *  updates to 0 in <2s rather than waiting for count_sql across 80+ assets. */
+  clearKey?: number
   /** Task 1: active run lifted to CockpitShell — passed down as a prop */
   activeRun: ActiveRun | null
   /** Task 1: refresh callback for the active run — passed from CockpitShell */
   refreshRun: () => void
 }
 
-export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, activeRun, refreshRun }: Props) {
+export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, clearKey, activeRun, refreshRun }: Props) {
   const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
   // Task 1: useActiveRun removed — activeRun + refreshRun received as props from CockpitShell.
   // Stats still owned here so SSE overlay merging stays local to this component.
@@ -63,7 +69,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, act
   const refetchStatsRef = useRef<() => void>(() => {})
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
-  const { stats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
+  const { stats, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   // Keep ref in sync — use the LIVE refetch so a completed run's final counts (incl. global
   // assets that bypass the rows_written cache) match the DB, not a stale build-time cache.
   refetchStatsRef.current = refetchLive
@@ -79,6 +85,16 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, act
     refreshRun()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
+
+  // C4: Post-clear fast refresh. The clear execute route sets rows_written=0 in asset_throughput,
+  // so the normal rows_written shortcut in the stats route immediately returns 0 without COUNT(*).
+  // refetchStats() (not refetchLive) so we get the shortcut path — update in <2s, not 30s+.
+  useEffect(() => {
+    if (!clearKey) return
+    refetchStats()
+    refreshRun()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearKey])
 
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null)
   // Bidirectional bond: which asset is hovered anywhere (row or bead). Shared

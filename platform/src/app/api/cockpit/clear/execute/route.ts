@@ -186,11 +186,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Reset asset_throughput for scope assets (chart-scoped rows)
+    // Reset asset_throughput for scope assets (chart-scoped rows).
+    // Set rows_written=0 (not NULL) so the stats route's fast rows_written shortcut
+    // immediately returns 0 on the next normal poll — no COUNT(*) query needed.
+    // rows_written=NULL means "unknown / not tracked"; rows_written=0 is the accurate
+    // post-clear state and is what the build system would write after a zero-row run.
     if (affectedAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
-         SET state='dormant', last_built_at=NULL, rows_written=NULL,
+         SET state='dormant', last_built_at=NULL, rows_written=0,
              built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
              last_error=NULL
          WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
@@ -207,7 +211,7 @@ export async function POST(req: NextRequest) {
     if (globalAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
-         SET state='dormant', last_built_at=NULL, rows_written=NULL,
+         SET state='dormant', last_built_at=NULL, rows_written=0,
              built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
              last_error=NULL
          WHERE chart_id IS NULL AND asset_id = ANY($1::text[])`,
