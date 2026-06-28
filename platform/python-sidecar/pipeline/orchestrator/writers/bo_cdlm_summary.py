@@ -101,7 +101,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     cells = _fetch_dict(
         conn,
         """SELECT domain_row, domain_col, computed_linkage_strength,
-                  contradiction_density, asymmetric_linkage_flag,
+                  asymmetry_score AS contradiction_density, asymmetric_linkage_flag,
                   top_k_rank_in_snapshot
            FROM bodha_cdlm_cells
            WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
