@@ -82,6 +82,10 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   ],
   mi_adhilepa: [
     { sql: 'DELETE FROM mimamsa_load_bearing WHERE chart_id = $1' },
+    // Secondary output tables beyond the registered target_table.
+    // count_sql extended in migration 364 to count all three tables.
+    { sql: 'DELETE FROM mimamsa_convergence_adjustment WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_anchor_adjustment WHERE chart_id = $1' },
   ],
 
   // ── L4 Phala — multi-table writers ───────────────────────────────────────────
