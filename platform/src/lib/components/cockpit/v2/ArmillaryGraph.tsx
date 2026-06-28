@@ -73,12 +73,17 @@ function arcPath(cx: number, cy: number, r: number, frac: number): string {
 // ── Per-layer aggregate ─────────────────────────────────────────────────────
 export type LayerAgg = { count: number; state: string; builtFrac: number }
 export function aggregate(assets: AssetWithState[]): LayerAgg {
-  const total = assets.length || 1
-  const building = assets.some(a => a.state === 'building')
-  // service_ok counts as built (service assets have no rows, state is never 'lit').
-  // build_state_stale counts as built (rows are present; ledger is behind, not absent).
-  const built = assets.filter(a => a.state === 'lit' || a.state === 'service_ok' || a.build_state_stale).length
-  const stale = assets.some(a => a.state === 'stale' || a.build_state_stale)
+  // Service assets (service_ok) are excluded from the built/total calculation.
+  // They are always service_ok regardless of build state and would permanently
+  // inflate builtFrac after a clear — e.g. Kāla's 5 service assets would show
+  // as "5/12 built" even when all data has been wiped. Service health is shown
+  // separately via service_health field; it does not reflect data build state.
+  const dataAssets = assets.filter(a => a.state !== 'service_ok')
+  const total = dataAssets.length || 1
+  const building = dataAssets.some(a => a.state === 'building')
+  // build_state_stale counts as built (rows are present; throughput ledger is behind, not absent).
+  const built = dataAssets.filter(a => a.state === 'lit' || a.build_state_stale).length
+  const stale = dataAssets.some(a => a.state === 'stale' || a.build_state_stale)
   const state = building ? 'building' : built === 0 ? 'dormant' : stale ? 'stale' : 'lit'
   return { count: assets.length, state, builtFrac: built / total }
 }
