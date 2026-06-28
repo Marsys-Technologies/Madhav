@@ -30309,3 +30309,78 @@ session_close:
 ```
 
 *End of ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28 entry — 2026-06-28.*
+
+---
+
+## ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28 — 2026-06-28, COMPLETE
+
+**Session type:** Read-only data-correctness audit  
+**Governing brief:** `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_ABHINANDAN_DEEP_DATA_AUDIT_v1_0.md`  
+**Subject:** Abhinandan Mohanty — `1c826d5a-41cb-4450-b4dc-59d440e5f75a` (born 1985-03-02, 09:40 IST, Bhubaneswar)  
+**Output artifact:** `00_ARCHITECTURE/ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md`
+
+### What was done
+
+Full read-only DB audit of the regenerated Abhinandan dataset against 17 falsifiable per-fix criteria
+(B1–B10 + O1–O7) plus three-axis (astro correctness / code logic / data engineering), contamination
+sweep, and completeness re-check across L1–L5.
+
+### Summary verdict
+
+**Remediation largely DID NOT TAKE in data.** Of 17 checks:
+
+- **2 TOOK (partial):** B10 — bodha_chart_gestalt (5 rows ✓) + bodha_cdlm_chart_summary (5 rows ✓); B6 — ka_sangam FK cascade fix confirmed (kala_convergence 1,721 rows with source_citation 100%).
+- **4 PARTIAL:** B1 (identity correct, FORENSIC panchanga unverifiable — chart_panchanga = 0 rows); B6 (convergence citations OK, MSR classical enrichment 0%); B7 (0 mimamsa_signal_adjustment expected on first build — indeterminate); O3 (D9 + vargottama signals exist, broken-promise class unconfirmed).
+- **10 DID-NOT-TAKE:** B2 (salience — 86.2% pinned at 0.5058, all `background`); B3/O1 (contradictions — 0 rows); B4/O2 (domains — 4 of 7 life domains empty); B5 (discovery anchor windows — 100 NULL); B8 (broker — 0 cross-subsystem edges); B9 (muhurta — composite_quality hardcoded 0.3); O4 (argala edges — 0); O6 (Pratyantar — flat parva structure, no level-3); O7 (Mode D — 0 AV-bindhu rows).
+
+### Critical hygiene findings
+
+- **chart_facts idempotency violated**: 2 distinct build_ids co-exist (14,726 rows from build `b806295a` at 09:59 UTC + 115,486 rows from build `2954e04c` at 12:11 UTC = 130,212 total). Prior-build rows not cleared before second build wrote.
+- **Native (482012f1) stale multi-build residue**: 5 distinct build_ids in chart_facts (oldest 2026-06-11, newest 2026-06-24). Needs dedicated hygiene session.
+- **constituent_facts_array grounding**: ~32.2% for Abhinandan (1,610/5,000 sampled signals resolve to chart_facts). Above native's 6.88% but below ≥80% target (ISSUE-4 persists).
+
+### Top P0/P1 items for native approval
+
+1. chart_facts idempotency fix (P0-CRITICAL)
+2. Native 482012f1 build-id hygiene (P0-CRITICAL)
+3. B2 salience stratification — diagnose pinned values (P1)
+4. B3/O1 contradiction detection — diagnose 0-row writer (P1)
+5. B4/O2 domain propagation — trace missing domain mapping (P1)
+6. B5 discovery anchor timing — trace NULL window_start path (P2)
+
+Full prioritized action list in `ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md §6`.
+
+### Safety spot-checks
+
+| Check | Result |
+|---|---|
+| Native 482012f1 data written | ✅ NEVER — read-only queries only |
+| Any chart data written | ✅ NEVER — audit only |
+| FROZEN orchestrator contract | ✅ N/A — no code changes |
+| Abhinandan identity in charts table | ✅ 1985-03-02, 09:40, Bhubaneswar confirmed |
+
+```yaml
+session_close:
+  session_id: ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28
+  closed_on: 2026-06-28
+  outcome: >
+    COMPLETE — read-only audit of Abhinandan 1c826d5a against 17 per-fix criteria.
+    2 TOOK / 4 PARTIAL / 10 DID-NOT-TAKE / 1 INDETERMINATE.
+    Findings register written to ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md.
+    Critical idempotency violation found in chart_facts (2 build_ids). Native 482012f1
+    stale-build hygiene still needed. No data writes, no code changes.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L2 Bodha (NEXT) — unchanged
+  current_state_updated: false
+  current_state_version: 6.06
+  session_log_appended: true
+  red_team_pass: "n/a — audit-only session (not a macro-phase close)"
+  next_session_objective: >
+    Review findings in ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md with native and
+    approve the P0/P1 remediation list. Priority: (1) chart_facts idempotency fix;
+    (2) salience stratification root-cause investigation; (3) contradiction detection
+    writer diagnosis; (4) domain propagation trace; (5) native 482012f1 hygiene run.
+```
+
+*End of ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28 entry — 2026-06-28.*
