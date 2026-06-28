@@ -55,6 +55,7 @@ export type TraversalLevel =
   | 'L-DOMAIN'    // Life-domain framing (career, health, relationship, etc.)
   | 'L-SIGNAL'    // Individual signal / factor drill (specific graha, yoga, dosha)
   | 'L-SOURCE'    // Classical citation / classical grounding (verse, rule, sutra)
+  | 'L-SYNTH'     // Cross-layer synthesis — D6 synergy tools spanning multiple layers
 
 /**
  * Tool role in the topology (drives MARO routing decisions).
@@ -67,6 +68,7 @@ export type ToolRole =
   | 'hybrid_retrieval'  // BM25+dense+rerank prose retrieval
   | 'temporal'          // time-keyed tool family
   | 'quality'           // calibration/trust surface
+  | 'synthesizer'       // cross-layer synthesis tool (D6 synergy layer)
 
 // ── Scope discriminator: per_chart vs global ─────────────────────────────────
 

@@ -80,6 +80,7 @@ const TRAVERSAL_FALLBACKS: Record<TraversalLevel, TraversalLevel[]> = {
   'L-DOMAIN':   ['L-DOMAIN', 'L-OVERVIEW'],
   'L-SIGNAL':   ['L-SIGNAL', 'L-DOMAIN'],
   'L-SOURCE':   ['L-SOURCE'],
+  'L-SYNTH':    ['L-SYNTH'],
 }
 
 // ── Selection algorithm ───────────────────────────────────────────────────────
