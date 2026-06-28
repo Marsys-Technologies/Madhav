@@ -11,6 +11,10 @@
  * `getRegistryCapabilitiesForMcp()` so the MCP server can introspect which
  * registry capabilities are available at boot without importing the full
  * registry directly (avoiding circular dependency risks).
+ *
+ * D6/D7 extension (2026-06-28): added all consolidated MCP tool URIs for the
+ * 12 workflow-shaped tools (~§2.1 of the D7 brief). Extended from 5 → 17 mappings.
+ * Parity is now enforced across the full consolidated MCP surface.
  */
 
 import type { CapabilityUri } from './types'
@@ -21,15 +25,22 @@ import type { CapabilityUri } from './types'
  *
  * Covers the full set of MCP tools registered in platform-mcp/src/server.ts.
  * Extended by D7 to include all layer tool names from the rebuild arc.
+ * Tool names are snake_case, no hyphens, ≤64 chars (cross-family compliance:
+ * satisfies Anthropic ^[a-zA-Z0-9_-]{1,64}$ and Gemini [A-Za-z0-9_.]).
  */
 const MCP_TOOL_TO_URI: Record<string, CapabilityUri> = {
-  // L0 capabilities (Stream A)
+  // ── L0 Brahmagyan capabilities (Stream A) ──────────────────────────────────
   'resolve_entity':                    'marsys://tool/L0/resolve_entity',
   'list_entities':                     'marsys://tool/L0/list_entities',
+  'intent_classify':                   'marsys://prompt/intent-classify',
   'intent-classify':                   'marsys://prompt/intent-classify',
   // Resources use their path as URI
+  'asset_registry_all':                'marsys://resource/asset-registry/all',
+  'asset_registry_l0':                 'marsys://resource/asset-registry/L0',
   'asset-registry-all':                'marsys://resource/asset-registry/all',
   'asset-registry-L0':                 'marsys://resource/asset-registry/L0',
+  // Classical text retrieval (L0)
+  'get_classical_citation':            'marsys://tool/L0/query_classical_texts',
   // L0 Stream B — Ephemeris
   'query_planet_position':             'marsys://tool/L0/query_planet_position',
   'query_planet_transit':              'marsys://tool/L0/query_planet_transit',
@@ -42,11 +53,15 @@ const MCP_TOOL_TO_URI: Record<string, CapabilityUri> = {
   'query_dosha_catalog':               'marsys://tool/L0/query_dosha_catalog',
   'query_remedy_corpus':               'marsys://tool/L0/query_remedy_corpus',
   'query_classical_texts':             'marsys://tool/L0/query_classical_texts',
-  // L1 Gaṇita — PyJHora Stream G
+  // ── L1 Gaṇita capabilities ─────────────────────────────────────────────────
+  // PyJHora Stream G
   'compute_natal_positions':           'marsys://tool/L1/compute_natal_positions',
   'query_dasha_periods':               'marsys://tool/L1/query_dasha_periods',
   'query_special_lagnas':              'marsys://tool/L1/query_special_lagnas',
-  // L2 Bodha
+  // Consolidated MCP workflow tools (§2.1 of D7 brief)
+  'get_positions':                     'marsys://tool/L1/get_positions',
+  'get_dashas':                        'marsys://tool/L1/get_dashas',
+  // ── L2 Bodha capabilities ──────────────────────────────────────────────────
   'holistic_bundle':                   'marsys://tool/L2/holistic_bundle',
   'chart_facts_read':                  'marsys://tool/L2/chart_facts_read',
   'query_domain_reading':              'marsys://tool/L2/query_domain_reading',
@@ -54,22 +69,33 @@ const MCP_TOOL_TO_URI: Record<string, CapabilityUri> = {
   'query_contradictions':              'marsys://tool/L2/query_contradictions',
   'query_remedies':                    'marsys://tool/L2/query_remedies',
   'query_quality_scorecard':           'marsys://tool/L2/query_quality_scorecard',
-  // L3 Kāla
+  // Consolidated MCP workflow tools (§2.1 of D7 brief)
+  'get_chart_orientation':             'marsys://tool/L2/query_ucd',
+  'get_domain_reading':                'marsys://tool/L2/query_domain_reading',
+  'get_signals':                       'marsys://tool/L2/query_signals',
+  'traverse_graph':                    'marsys://tool/L2/traverse_chart_graph',
+  'get_remedies':                      'marsys://tool/L2/query_remedies',
+  'get_chart_quality':                 'marsys://tool/L2/query_quality_scorecard',
+  // ── L3 Kāla capabilities ───────────────────────────────────────────────────
   'kala_temporal':                     'marsys://tool/L3/kala_temporal',
   'query_temporal_activation':         'marsys://tool/L3/query_temporal_activation',
   'query_convergence_windows':         'marsys://tool/L3/query_convergence_windows',
   'query_life_arc':                    'marsys://tool/L3/query_life_arc',
   'query_projections':                 'marsys://tool/L3/query_projections',
-  // L4 Phala
+  'get_temporal_windows':              'marsys://tool/L3/query_temporal_activation',
+  'get_projections':                   'marsys://tool/L3/query_projections',
+  // ── L4 Phala capabilities ──────────────────────────────────────────────────
   'phala_event_anchors':               'marsys://tool/L4/phala_event_anchors',
   'phala_mitigation_map':              'marsys://tool/L4/phala_mitigation_map',
   'phala_outlook':                     'marsys://tool/L4/phala_outlook',
   'muhurta_finder':                    'marsys://tool/L4/muhurta_finder',
-  // L5 Mīmāṃsā
+  // ── L5 Mīmāṃsā capabilities ───────────────────────────────────────────────
   'lel_query':                         'marsys://tool/L5/lel_query',
   'mimamsa_outcome':                   'marsys://tool/L5/mimamsa_outcome',
   // L0 Remedy tools (Stream F)
   'query_remedies_tool':               'marsys://tool/L0/query_remedies_tool',
+  // ── Asset catalog (all layers) ─────────────────────────────────────────────
+  'list_assets':                       'marsys://resource/asset-registry/all',
   // D6/D7 synergy + channel introspection (internal-only, not LLM-facing)
   'synergy_pipeline':                  'marsys://tool/synergy/pipeline',
   'synergy_cross_layer':               'marsys://tool/synergy/cross_layer',

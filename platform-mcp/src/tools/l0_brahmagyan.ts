@@ -19,7 +19,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 
+// REMEDIATION D7: NATIVE_CHART_ID removed.
+// intent_classify is a global tool — it MUST NOT stamp a chart_id on every call.
+// chart_agnostic_gate RULE-6: global scope must not have chart_id in required_inputs.
 const PLATFORM_URL = process.env['PLATFORM_URL'] ?? 'http://localhost:3000'
+
 // ── Helper: platform API call ─────────────────────────────────────────────────
 
 async function platformGet(path: string): Promise<unknown> {
@@ -202,6 +206,8 @@ export function registerIntentClassifyTool(server: McpServer): void {
     'house_analysis, remedy_lookup, panchanga, classical_rule, chart_overview, ' +
     'prediction_calibration, unknown). Returns the rendered prompt for the LLM.',
     IntentClassifyInput.shape,
+    // REMEDIATION D7: removed chart_id: NATIVE_CHART_ID from response.
+    // intent_classify is chart-agnostic (global tool) — must not inject a chart_id.
     async (params) => {
       const input = IntentClassifyInput.parse(params)
       const rendered = INTENT_CLASSIFY_TEMPLATE.replace('{{query}}', input.query)
@@ -211,7 +217,7 @@ export function registerIntentClassifyTool(server: McpServer): void {
             type: 'text' as const,
             text: JSON.stringify({
               prompt: rendered,
-              usage: 'Pass prompt to Gemini Flash-Lite for intent classification',
+              usage: 'Pass prompt to an LLM for intent classification. Provide chart_id separately when routing.',
             }, null, 2),
           },
         ],

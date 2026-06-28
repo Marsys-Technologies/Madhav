@@ -51,8 +51,8 @@ function getPool(): pg.Pool | null {
   return _pool
 }
 
-// ── Native canonical chart ─────────────────────────────────────────────────────
-
+// REMEDIATION D7: NATIVE_CHART_ID removed. chart_id is now REQUIRED from caller.
+// chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -265,17 +265,25 @@ async function fetchGraphEdges(
 // ── Tool registration ──────────────────────────────────────────────────────────
 
 export function registerHolisticBundleRetrievalTool(server: McpServer): void {
+  // REMEDIATION D7: chart_id is now REQUIRED (no default fallback to native chart).
+  // chart_agnostic_gate RULE-1: per_chart scope → chart_id in required_inputs.
   server.tool(
     'holistic_bundle_chart_facts',
     {
       chart_id: z.string().uuid().describe(
-        'Chart UUID. Must be a valid chart UUID from the charts table.'
+        'Chart UUID. Required — no default chart.'
       ),
       include_graph: z.boolean().optional().default(false).describe(
         'Include bodha.graph (CGM edge set) in the bundle. Default: false.'
       ),
     },
     async ({ chart_id, include_graph = false }) => {
+      if (!chart_id) {
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'chart_id is required', tool: 'holistic_bundle_chart_facts' }, null, 2) }],
+          isError: true,
+        }
+      }
       const targetChartId = chart_id
       const queriedAt = new Date().toISOString()
       const pool = getPool()

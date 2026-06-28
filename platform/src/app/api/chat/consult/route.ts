@@ -479,8 +479,15 @@ export async function POST(request: Request) {
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map(tc => tc.tool_name)))
 
   // B.11 Whole-Chart-Read enforcement — at least one L2.5 tool required.
+  // D7 NOTE: Old names 'msr_sql' / 'cgm_graph_walk' are kept here for backward
+  // compat with the existing lib/retrieve execution path (getTool() still resolves them).
+  // The registry execution path (getCapability) is tried first; lib/retrieve is fallback.
+  // Remapping: msr_sql → marsys://tool/L2/query_signals
+  //            cgm_graph_walk → marsys://tool/L2/traverse_chart_graph
   const L2_5_TOOLS = ['msr_sql', 'query_msr_aggregate', 'pattern_register',
-    'resonance_register', 'cluster_atlas', 'contradiction_register', 'cgm_graph_walk']
+    'resonance_register', 'cluster_atlas', 'contradiction_register', 'cgm_graph_walk',
+    // D7: registry-URI aliases for the same tools
+    'marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph']
   if (!toolsAuthorized.some(t => L2_5_TOOLS.includes(t))) {
     // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is
     // required (R7a). Inject msr_sql + vector_search + pattern_register so the
@@ -490,17 +497,19 @@ export async function POST(request: Request) {
         ? (plan.domains ?? []).join(' ')
         : 'relationships family marriage children'
       plan.tool_calls.push(
-        { tool_name: 'msr_sql', params: { forward_looking: true }, token_budget: 600, priority: 1 as const, reason: 'B.11 predictive floor: signal foundation' },
+        // D7: prefer registry URI; lib/retrieve 'msr_sql' is the fallback
+        { tool_name: 'marsys://tool/L2/query_signals', params: { forward_looking: true }, token_budget: 600, priority: 1 as const, reason: 'B.11 predictive floor: signal foundation (registry)' },
         { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1 as const, reason: 'B.11 predictive floor: domain narrative' },
         { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2 as const, reason: 'B.11 predictive floor: R7a requirement' },
       )
-      toolsAuthorized.push('msr_sql', 'vector_search', 'pattern_register')
+      toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search', 'pattern_register')
     } else {
       plan.tool_calls.push(
-        { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'B.11 floor enforcement' },
-        { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 2 as const, reason: 'B.11 floor enforcement' },
+        // D7: prefer registry URIs; lib/retrieve names are the fallback
+        { tool_name: 'marsys://tool/L2/query_signals', params: {}, token_budget: 600, priority: 1 as const, reason: 'B.11 floor enforcement (registry)' },
+        { tool_name: 'marsys://tool/L2/traverse_chart_graph', params: {}, token_budget: 400, priority: 2 as const, reason: 'B.11 floor enforcement (registry)' },
       )
-      toolsAuthorized.push('msr_sql', 'cgm_graph_walk')
+      toolsAuthorized.push('marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph')
     }
   }
 

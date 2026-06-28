@@ -47,6 +47,8 @@ import { registerL0BrahmagyanTools } from './tools/l0_brahmagyan.js'
 import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 // L0FR Stream F: Remedy Corpus retrieval tools
 import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
+// D7 — Registry bridge: consolidated workflow tools from the retrieval registry
+import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
 
 const app = express()
 app.use(express.json())
@@ -135,6 +137,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerMimamsaLelIntakeTool(server as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerMimamsaOutcomeTool(server as any)
+
+  // D7 — Registry-backed consolidated workflow tools (12 MCP tools → registry URIs)
+  // These are chart-agnostic: chart_id required on per_chart tools, no default.
+  registerRegistryBridgeTools(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

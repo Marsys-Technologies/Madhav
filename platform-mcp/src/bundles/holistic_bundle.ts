@@ -292,7 +292,10 @@ export async function executeHolisticBundle(
       subset: params.subset,
     },
     tier: params.tier,
-    chartId: params.chart_id ?? 'default',
+    // REMEDIATION D7 (MEDIUM): removed ?? 'default' fallback.
+    // ?? 'default' caused all charts without an ID to share a single cache bucket.
+    // chart_id must be provided; if missing, cache is bypassed by using a random key.
+    chartId: params.chart_id ?? `no-chart-${Date.now()}`,
   })
 
   const cached = await cacheLookup(cacheKey)
@@ -380,7 +383,10 @@ export async function executeHolisticBundle(
     cacheKey,
     bundleName: 'holistic_bundle',
     audienceTier: params.tier,
-    chartId: params.chart_id ?? 'default',
+    // REMEDIATION D7 (MEDIUM): removed ?? 'default' fallback.
+    // ?? 'default' caused all charts without an ID to share a single cache bucket.
+    // chart_id must be provided; if missing, cache is bypassed by using a random key.
+    chartId: params.chart_id ?? `no-chart-${Date.now()}`,
     envelope: annotatedEnvelope,
   })
 
