@@ -2091,12 +2091,68 @@ def compute_sandhi_post_pass(system_rows: list[dict]) -> None:
 
 # ── DB persistence (idempotent per-system) ────────────────────────────────────
 
+_UPSERT_SQL = """
+    INSERT INTO chart_dashas (
+        dasha_row_id, chart_id, ayanamsha_id, build_id, system_id,
+        level_n, parent_row_id, lord_graha, lord_sign,
+        start_date, end_date, start_iso, end_iso, duration_days,
+        sandhi_flag, karaka_role_at_period,
+        verification_pass_status, verification_method,
+        citation_ref, citation_human, computed_at, engine_version,
+        lord_natal_house_d1, lord_natal_sign, lord_natal_nakshatra,
+        lord_natal_dignity_d1, lord_natal_shadbala_total,
+        sandhi_with_next_dasha_lord, next_dasha_start_iso,
+        concurrent_system_lords_jsonb, convergence_count_at_start,
+        applies_to_this_chart_flag, period_deity_or_marker,
+        lord_to_parent_relationship, varsha_year_lord,
+        anchored_solar_return_iso,
+        triggered_yogas_jsonb_atomic,
+        lord_transit_at_period_start_jsonb,
+        karakas_active_during_period,
+        is_truncated_at_window_start, is_truncated_at_window_end,
+        kp_sublevel, kp_sub_lord, kp_sub_sub_lord
+    ) VALUES (
+        %(dasha_row_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+        %(system_id)s, %(level_n)s, %(parent_row_id)s, %(lord_graha)s,
+        %(lord_sign)s, %(start_date)s, %(end_date)s, %(start_iso)s,
+        %(end_iso)s, %(duration_days)s, %(sandhi_flag)s,
+        %(karaka_role_at_period)s, %(verification_pass_status)s,
+        %(verification_method)s, %(citation_ref)s, %(citation_human)s,
+        %(computed_at)s, %(engine_version)s,
+        %(lord_natal_house_d1)s, %(lord_natal_sign)s, %(lord_natal_nakshatra)s,
+        %(lord_natal_dignity_d1)s, %(lord_natal_shadbala_total)s,
+        %(sandhi_with_next_dasha_lord)s, %(next_dasha_start_iso)s,
+        %(concurrent_system_lords_jsonb)s::jsonb,
+        %(convergence_count_at_start)s,
+        %(applies_to_this_chart_flag)s, %(period_deity_or_marker)s,
+        %(lord_to_parent_relationship)s, %(varsha_year_lord)s,
+        %(anchored_solar_return_iso)s,
+        %(triggered_yogas_jsonb_atomic)s::jsonb,
+        %(lord_transit_at_period_start_jsonb)s::jsonb,
+        %(karakas_active_during_period)s,
+        %(is_truncated_at_window_start)s, %(is_truncated_at_window_end)s,
+        %(kp_sublevel)s, %(kp_sub_lord)s, %(kp_sub_sub_lord)s
+    )
+    ON CONFLICT (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id)
+    DO UPDATE SET
+        lord_graha = EXCLUDED.lord_graha,
+        end_iso = EXCLUDED.end_iso,
+        duration_days = EXCLUDED.duration_days,
+        verification_pass_status = EXCLUDED.verification_pass_status,
+        computed_at = EXCLUDED.computed_at,
+        concurrent_system_lords_jsonb = EXCLUDED.concurrent_system_lords_jsonb,
+        convergence_count_at_start = EXCLUDED.convergence_count_at_start,
+        sandhi_with_next_dasha_lord = EXCLUDED.sandhi_with_next_dasha_lord,
+        next_dasha_start_iso = EXCLUDED.next_dasha_start_iso,
+        karakas_active_during_period = EXCLUDED.karakas_active_during_period
+"""
+
+
 def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str, *, commit: bool = True) -> int:
     """
-    Upsert rows into chart_dashas.
+    Bulk-upsert rows into chart_dashas via executemany().
     Idempotent: ON CONFLICT on (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id).
     Returns count of rows written.
-    Handles JSONB columns by json.dumps()-encoding them.
     """
     if not rows:
         return 0
@@ -2106,93 +2162,24 @@ def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str,
     # (build_id is in the chart_dashas unique key).
     replace_prior_chart_dashas(conn, rows)
 
-    count = 0
-    for row in rows:
-        # Prepare JSONB columns
-        concurrent_json = row.get("concurrent_system_lords_jsonb")
-        triggered_json = row.get("triggered_yogas_jsonb_atomic")
-        transit_json = row.get("lord_transit_at_period_start_jsonb")
-        karakas = row.get("karakas_active_during_period")
+    params_list = [
+        {
+            **row,
+            "concurrent_system_lords_jsonb": row.get("concurrent_system_lords_jsonb"),
+            "triggered_yogas_jsonb_atomic": row.get("triggered_yogas_jsonb_atomic") or "[]",
+            "lord_transit_at_period_start_jsonb": row.get("lord_transit_at_period_start_jsonb"),
+            "karakas_active_during_period": row.get("karakas_active_during_period"),
+        }
+        for row in rows
+    ]
 
-        try:
-            conn.execute(
-                """
-                INSERT INTO chart_dashas (
-                    dasha_row_id, chart_id, ayanamsha_id, build_id, system_id,
-                    level_n, parent_row_id, lord_graha, lord_sign,
-                    start_date, end_date, start_iso, end_iso, duration_days,
-                    sandhi_flag, karaka_role_at_period,
-                    verification_pass_status, verification_method,
-                    citation_ref, citation_human, computed_at, engine_version,
-                    lord_natal_house_d1, lord_natal_sign, lord_natal_nakshatra,
-                    lord_natal_dignity_d1, lord_natal_shadbala_total,
-                    sandhi_with_next_dasha_lord, next_dasha_start_iso,
-                    concurrent_system_lords_jsonb, convergence_count_at_start,
-                    applies_to_this_chart_flag, period_deity_or_marker,
-                    lord_to_parent_relationship, varsha_year_lord,
-                    anchored_solar_return_iso,
-                    triggered_yogas_jsonb_atomic,
-                    lord_transit_at_period_start_jsonb,
-                    karakas_active_during_period,
-                    is_truncated_at_window_start, is_truncated_at_window_end,
-                    kp_sublevel, kp_sub_lord, kp_sub_sub_lord
-                ) VALUES (
-                    %(dasha_row_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-                    %(system_id)s, %(level_n)s, %(parent_row_id)s, %(lord_graha)s,
-                    %(lord_sign)s, %(start_date)s, %(end_date)s, %(start_iso)s,
-                    %(end_iso)s, %(duration_days)s, %(sandhi_flag)s,
-                    %(karaka_role_at_period)s, %(verification_pass_status)s,
-                    %(verification_method)s, %(citation_ref)s, %(citation_human)s,
-                    %(computed_at)s, %(engine_version)s,
-                    %(lord_natal_house_d1)s, %(lord_natal_sign)s, %(lord_natal_nakshatra)s,
-                    %(lord_natal_dignity_d1)s, %(lord_natal_shadbala_total)s,
-                    %(sandhi_with_next_dasha_lord)s, %(next_dasha_start_iso)s,
-                    %(concurrent_system_lords_jsonb)s::jsonb,
-                    %(convergence_count_at_start)s,
-                    %(applies_to_this_chart_flag)s, %(period_deity_or_marker)s,
-                    %(lord_to_parent_relationship)s, %(varsha_year_lord)s,
-                    %(anchored_solar_return_iso)s,
-                    %(triggered_yogas_jsonb_atomic)s::jsonb,
-                    %(lord_transit_at_period_start_jsonb)s::jsonb,
-                    %(karakas_active_during_period)s,
-                    %(is_truncated_at_window_start)s, %(is_truncated_at_window_end)s,
-                    %(kp_sublevel)s, %(kp_sub_lord)s, %(kp_sub_sub_lord)s
-                )
-                ON CONFLICT (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id)
-                DO UPDATE SET
-                    lord_graha = EXCLUDED.lord_graha,
-                    end_iso = EXCLUDED.end_iso,
-                    duration_days = EXCLUDED.duration_days,
-                    verification_pass_status = EXCLUDED.verification_pass_status,
-                    computed_at = EXCLUDED.computed_at,
-                    concurrent_system_lords_jsonb = EXCLUDED.concurrent_system_lords_jsonb,
-                    convergence_count_at_start = EXCLUDED.convergence_count_at_start,
-                    sandhi_with_next_dasha_lord = EXCLUDED.sandhi_with_next_dasha_lord,
-                    next_dasha_start_iso = EXCLUDED.next_dasha_start_iso,
-                    karakas_active_during_period = EXCLUDED.karakas_active_during_period
-                """,
-                {
-                    **row,
-                    "concurrent_system_lords_jsonb": concurrent_json,
-                    "triggered_yogas_jsonb_atomic": triggered_json if triggered_json else "[]",
-                    "lord_transit_at_period_start_jsonb": transit_json,
-                    "karakas_active_during_period": karakas,
-                },
-            )
-            count += 1
-        except Exception as exc:
-            logger.warning("[ga_dashas] Row upsert failed: %s — row=%s", exc, {
-                "system_id": row.get("system_id"),
-                "level_n": row.get("level_n"),
-                "lord_graha": row.get("lord_graha"),
-                "start_date": str(row.get("start_date")),
-            })
+    conn.executemany(_UPSERT_SQL, params_list)
 
     # On the conformed orchestrator path (commit=False) the caller's SAVEPOINT +
     # per-sub-step commit own atomicity; only the legacy CLI path commits here.
     if commit:
         conn.commit()
-    return count
+    return len(params_list)
 
 
 # ── Build-state throughput update ─────────────────────────────────────────────

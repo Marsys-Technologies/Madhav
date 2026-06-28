@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createToolCache } from '../tool_cache'
 import { executeWithCache } from '../with_cache'
-import type { QueryPlan, ToolBundle, RetrievalTool } from '../../retrieve/types'
+import type { QueryPlan, ToolBundle, RetrievalTool } from '../../retrieval/shared_types'
 
 function makeQueryPlan(overrides: Partial<QueryPlan> = {}): QueryPlan {
   return {
@@ -17,7 +17,6 @@ function makeQueryPlan(overrides: Partial<QueryPlan> = {}): QueryPlan {
     query_class: 'factual',
     domains: ['career'],
     forward_looking: false,
-    audience_tier: 'super_admin',
     tools_authorized: ['mock_tool'],
     history_mode: 'synthesized',
     panel_mode: true,

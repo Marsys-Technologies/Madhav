@@ -13,7 +13,7 @@
  *         where the tool is registered (where applicable).
  *
  * The audit walks two surfaces:
- *   - portal RETRIEVAL_TOOLS (platform/src/lib/retrieve/index.ts)
+ *   - portal RETRIEVAL_TOOLS (ALL_21_RETRIEVAL_TOOLS from lib/trace/types — D7 migration retired lib/retrieve)
  *   - MCP CATALOG (platform-mcp/src/tools/catalog.ts)
  */
 
@@ -30,7 +30,7 @@ import {
   isReconciliationGreen,
 } from '../tool_metadata'
 
-import { RETRIEVAL_TOOLS } from '../../retrieve'
+import { ALL_21_RETRIEVAL_TOOLS } from '../../trace/types'
 import { TOOL_CONTRACTS } from '../registry'
 
 /**
@@ -116,7 +116,7 @@ describe('Unit 3.tool_asset_recon — tool ↔ asset reconciliation (G6 gate)', 
   })
 
   it('AC.3 — every live portal + MCP tool name has a TOOL_METADATA entry', () => {
-    const portalNames = new Set(RETRIEVAL_TOOLS.map(t => t.name))
+    const portalNames = new Set(ALL_21_RETRIEVAL_TOOLS as readonly string[])
     const mcpNames = new Set(MCP_CATALOG_NAMES)
     const metadataNames = new Set(TOOL_METADATA_NAMES)
 

@@ -26,8 +26,8 @@ import {
   zodToJsonSchema,
 } from '../index'
 
-// Portal channel re-exports from retrieve/index.ts (Unit 2b additive bridge).
-import { CONTRACT_TOOL_NAMES as PORTAL_CONTRACT_TOOL_NAMES } from '../../retrieve'
+// Portal channel: CONTRACT_TOOL_NAMES now lives directly in contract/catalog (D7 migration retired lib/retrieve).
+import { CONTRACT_TOOL_NAMES as PORTAL_CONTRACT_TOOL_NAMES } from '../catalog'
 
 // MCP channel bridge (verified mirror).
 import { MCP_CONTRACT_TOOL_NAMES } from '../../../../../platform-mcp/src/contract_bridge'

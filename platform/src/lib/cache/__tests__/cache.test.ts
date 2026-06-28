@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { RequestScopedToolCache, createToolCache } from '../tool_cache'
-import type { ToolBundle } from '../../retrieve/types'
+import type { ToolBundle } from '../../retrieval/shared_types'
 
 function makeBundle(overrides: Partial<ToolBundle> = {}): ToolBundle {
   return {
