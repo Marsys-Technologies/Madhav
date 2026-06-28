@@ -10,6 +10,7 @@ import logging
 import os
 import signal
 import sys
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
 from typing import Optional
 
 import psycopg
@@ -20,10 +21,19 @@ from .locks import acquire_chart_lock, release_chart_lock
 
 logger = logging.getLogger(__name__)
 
-# Concurrency cap: keep worst-case orchestrator connections well under Cloud SQL
-# max_connections=50 (budget: 50 − ~12 app/agent headroom − 5 margin = 33 available).
-# Default 10 leaves ample room; override via env var for larger deployments.
-_MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "10"))
+# ── Connection budget (Cloud SQL max_connections=50; ~33 available to orchestrator) ──
+# A single run holds 1 MAIN connection (advisory lock + run-state) plus up to
+# WORKER_LIMIT worker connections (one per concurrently-executing asset). Worst case
+# per run = 1 + WORKER_LIMIT. The product MUST stay under the available budget:
+#     _MAX_CONCURRENT_RUNS × (1 + _WORKER_LIMIT) ≤ ~33
+# Defaults: 6 × (1 + 4) = 30. Override either via env for different deployments.
+_MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "6"))
+
+# Wave-parallel scheduler width: how many independent DAG assets run at once within
+# ONE run. 1 = serial (dependency-ordered) — a safe fallback. The DAG's peak width
+# is ~8 (L1); 4 captures most of the achievable speedup since the long pole is one
+# asset (ga_dashas/ka_sangam). Each worker uses its own DB connection.
+_WORKER_LIMIT = max(1, int(os.environ.get("ORCHESTRATOR_WORKER_LIMIT", "4")))
 
 
 # ── Run-level helpers ─────────────────────────────────────────────────────────
@@ -126,16 +136,212 @@ def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blockin
     logger.warning("[orchestrator] BLOCKED %s — upstream not complete: %s", asset_id, blocking_deps)
 
 
+def execute_dag(
+    plan: list[str],
+    deps_of: dict[str, list[str]],
+    run_fn,
+    worker_limit: int,
+    seed_completed: Optional[set] = None,
+    on_block=None,
+    should_stop=None,
+) -> tuple[set[str], Optional[str]]:
+    """
+    Pure (DB-free) wave-parallel DAG executor — the scheduling core, separated so it
+    is unit-testable without a database or the writer machinery.
+
+      run_fn(asset) -> 'lit' | <anything else = failure>   (called on a worker thread)
+      should_stop() -> None | 'stop' | 'pause'              (checked each round)
+      on_block(asset, blocking_deps)                        (side effect on block)
+
+    Invariant: an asset is dispatched ONLY when every dep is in `completed` and none
+    is in `failed`; a failed dep blocks it (transitively). Two assets run at once only
+    if neither depends on the other. Returns (failed_set, terminal|None).
+    """
+    completed: set = set(seed_completed or set())
+    failed: set = set()
+    pending: list[str] = list(plan)
+    in_flight: dict = {}
+    terminal: Optional[str] = None
+    _block = on_block or (lambda a, b: None)
+    _stop = should_stop or (lambda: None)
+    wl = max(1, worker_limit)
+
+    with ThreadPoolExecutor(max_workers=wl, thread_name_prefix="asset") as pool:
+        while pending or in_flight:
+            sig = _stop()
+            if sig in ("stop", "pause"):
+                terminal = "stopped" if sig == "stop" else "paused"
+                break
+
+            progressed = False
+            for a in list(pending):
+                blocking = [d for d in deps_of.get(a, []) if d in failed]
+                if blocking:
+                    _block(a, blocking)
+                    failed.add(a)
+                    pending.remove(a)
+                    progressed = True
+                    continue
+                if all(d in completed for d in deps_of.get(a, [])) and len(in_flight) < wl:
+                    in_flight[pool.submit(run_fn, a)] = a
+                    pending.remove(a)
+                    progressed = True
+
+            if not in_flight:
+                if pending and not progressed:
+                    # Deadlock: remaining deps are neither completed nor failed and can
+                    # never become ready (missing upstream). Block loudly, don't hang.
+                    for a in list(pending):
+                        miss = [d for d in deps_of.get(a, []) if d not in completed]
+                        _block(a, miss)
+                        failed.add(a)
+                        pending.remove(a)
+                    break
+                continue
+
+            done, _ = _futures_wait(list(in_flight), return_when=FIRST_COMPLETED)
+            for fut in done:
+                a = in_flight.pop(fut)
+                # Serial-equivalent success rule: only 'error' is failure; any other
+                # terminal state ('lit'/'complete') counts as success (matches the old
+                # `if state == 'error'` gate). run_fn returns 'error' on crash too.
+                (failed if fut.result() == "error" else completed).add(a)
+
+        # On stop/pause, let dispatched workers finish (their committed sub-steps are real).
+        for fut in list(in_flight):
+            a = in_flight.pop(fut)
+            try:
+                # Serial-equivalent success rule: only 'error' is failure; any other
+                # terminal state ('lit'/'complete') counts as success (matches the old
+                # `if state == 'error'` gate). run_fn returns 'error' on crash too.
+                (failed if fut.result() == "error" else completed).add(a)
+            except Exception:
+                failed.add(a)
+
+    return failed, terminal
+
+
+def _schedule_parallel(
+    conn,
+    cur,
+    run_id: str,
+    chart_id,
+    plan: list[str],
+    action: str,
+    asset_scopes: dict[str, str],
+    asset_deps: dict[str, list[str]],
+) -> tuple[set[str], Optional[str]]:
+    """
+    Wave-parallel DAG executor. Replaces the serial plan walk while preserving the
+    SAME completeness/consistency guarantee: an asset runs ONLY when every dependency
+    it declares is committed-complete ('lit'); if any dependency failed/blocked, the
+    asset is blocked (transitively) and never runs.
+
+    Returns (failed_assets, terminal) where terminal is None | 'stopped' | 'paused'.
+
+    Correctness model (provably equivalent to the serial gate, parallelism only
+    changes WHICH independent ready assets run at the same time):
+      * completed — assets confirmed 'lit' (this run, plus out-of-plan deps already
+        lit from a prior build, seeded up front).
+      * failed    — assets that errored or were blocked; their downstream never
+        becomes ready (transitive blocking).
+      * ready(a)  ⇔ every dep of a is in `completed` and none is in `failed`.
+      * Two assets run concurrently ONLY if neither (transitively) depends on the
+        other — guaranteed because dispatch requires all deps already in `completed`.
+
+    Each in-flight asset runs on its OWN connection (psycopg connections are not
+    shared across threads; run_asset commits per sub-step). The MAIN connection is
+    used only by this scheduler thread (signals, blocked-marking) and holds the
+    chart advisory lock for the whole run.
+    """
+    from .asset_runner import run_asset  # break circular import
+
+    plan_set = set(plan)
+    pos_of = {a: i for i, a in enumerate(plan)}
+    deps_of = {a: list(asset_deps.get(a, [])) for a in plan}
+
+    def eff(a: str):
+        # Global assets are chart-independent singletons (chart_id IS NULL row).
+        return None if asset_scopes.get(a) == "global" else chart_id
+
+    completed: set[str] = set()
+    pending: list[str] = list(plan)
+
+    # Seed `completed` with out-of-plan dependencies already satisfied in the DB
+    # (e.g. an earlier build already produced them). This makes ready(a) a single
+    # "all deps in completed" test regardless of whether a dep is in this plan.
+    out_deps = {d for a in plan for d in deps_of[a] if d not in plan_set}
+    for d in out_deps:
+        cur.execute(
+            "SELECT 1 FROM asset_throughput WHERE asset_id = %s "
+            "AND (chart_id = %s OR chart_id IS NULL) AND state IN ('lit','service_ok') LIMIT 1",
+            (d, chart_id),
+        )
+        if cur.fetchone():
+            completed.add(d)
+    conn.commit()  # release the read snapshot so later check_signals sees fresh data
+
+    # Skip-if-complete (non-rebuild): plan assets already lit need no work.
+    if action != "rebuild":
+        for a in list(pending):
+            if is_asset_complete(cur, eff(a), a):
+                completed.add(a)
+                pending.remove(a)
+                logger.info("[orchestrator] skip %s (already lit)", a)
+        conn.commit()
+
+    def worker(asset_id: str) -> str:
+        """Run one asset on a DEDICATED connection. Returns its final state string."""
+        wconn = connect()
+        wconn.autocommit = False
+        try:
+            wcur = wconn.cursor()
+            run_asset(wconn, wcur, run_id, eff(asset_id), asset_id, pos_of[asset_id])
+            wcur.execute(
+                "SELECT state FROM build_run_assets WHERE run_id = %s AND asset_id = %s",
+                (run_id, asset_id),
+            )
+            r = wcur.fetchone()
+            return r["state"] if r else "error"
+        except Exception as exc:
+            logger.error("[orchestrator] worker crashed for %s: %s", asset_id, exc, exc_info=True)
+            return "error"
+        finally:
+            try:
+                wconn.close()
+            except Exception:
+                pass
+
+    def should_stop():
+        # Refresh the main connection's snapshot so a stop/pause committed by the API
+        # server is visible (the serial runner got this for free via per-asset commits).
+        conn.rollback()
+        return check_signals(cur, run_id)
+
+    def on_block(a, blocking):
+        _mark_asset_blocked(conn, cur, run_id, eff(a), a, blocking)
+
+    return execute_dag(
+        plan=pending,
+        deps_of=deps_of,
+        run_fn=worker,
+        worker_limit=_WORKER_LIMIT,
+        seed_completed=completed,
+        on_block=on_block,
+        should_stop=should_stop,
+    )
+
+
 def execute_run(run_id: str) -> None:
     """
-    Load build_run by run_id, acquire chart advisory lock, walk the asset plan.
+    Load build_run by run_id, acquire chart advisory lock, run the asset plan via
+    the wave-parallel scheduler (dependency-gated; width = ORCHESTRATOR_WORKER_LIMIT).
 
     Exit codes:
       0  — completed or stopped/paused cleanly
       2  — run not found
       3  — chart locked by another run (defer)
     """
-    from .asset_runner import run_asset  # imported here to break circular deps
     from .writers import discover_all    # D1: ensure all writer modules are imported
     discover_all()
 
@@ -194,55 +400,26 @@ def execute_run(run_id: str) -> None:
     # Lock acquired; commit the advisory lock transaction so it survives later commits
     conn.commit()
 
-    # Assets that errored OR were blocked during this run. Used by the upstream-success gate
-    # to stop a failure from cascading into "empty but complete" downstream rows.
-    failed_assets: set[str] = set()
-
     try:
         mark_run_state(conn, cur, run_id, "running", started_at=True)
         emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "running"})
 
-        for position, asset_id in enumerate(plan):
-            sig = check_signals(cur, run_id)
-            if sig == "stop":
-                mark_run_state(conn, cur, run_id, "stopped", ended_at=True)
-                emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "stopped"})
-                return
-            if sig == "pause":
-                mark_run_state(conn, cur, run_id, "paused")
-                emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
-                return
+        # Wave-parallel execution. The scheduler enforces the SAME upstream-success
+        # gate as the old serial loop (an asset runs only when all deps are 'lit'; a
+        # failed/blocked dep blocks it transitively), but runs independent DAG branches
+        # concurrently (width = ORCHESTRATOR_WORKER_LIMIT, default 4; 1 = serial).
+        failed_assets, terminal = _schedule_parallel(
+            conn, cur, run_id, chart_id, plan, action, _asset_scopes, _asset_deps,
+        )
 
-            # Global assets are chart-independent singletons; run with chart_id=None
-            # so run_asset() targets the `WHERE chart_id IS NULL` partial index.
-            effective_chart_id = None if _asset_scopes.get(asset_id) == "global" else chart_id
-
-            if action != "rebuild" and is_asset_complete(cur, effective_chart_id, asset_id):
-                logger.info("[orchestrator] skip %s (already lit)", asset_id)
-                continue
-
-            # ── Upstream-success gate ──────────────────────────────────────────────
-            # Only deps that actually failed/blocked IN THIS run block a downstream asset;
-            # deps that are lit (succeeded, or already-built globals not re-run) never block.
-            # Blocking is transitive: a blocked asset joins failed_assets, so ITS downstream
-            # also blocks — the whole tainted subtree stops instead of building on empty data.
-            blocking_deps = [d for d in _asset_deps.get(asset_id, []) if d in failed_assets]
-            if blocking_deps:
-                _mark_asset_blocked(conn, cur, run_id, effective_chart_id, asset_id, blocking_deps)
-                failed_assets.add(asset_id)
-                continue
-
-            run_asset(conn, cur, run_id, effective_chart_id, asset_id, position)
-
-            # Detect a per-asset failure (run_asset records 'error' but does not raise) so the
-            # gate can block this asset's downstream dependents.
-            cur.execute(
-                "SELECT state FROM build_run_assets WHERE run_id=%s AND asset_id=%s",
-                (run_id, asset_id),
-            )
-            _row = cur.fetchone()
-            if _row and _row["state"] == "error":
-                failed_assets.add(asset_id)
+        if terminal == "stopped":
+            mark_run_state(conn, cur, run_id, "stopped", ended_at=True)
+            emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "stopped"})
+            return
+        if terminal == "paused":
+            mark_run_state(conn, cur, run_id, "paused")
+            emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
+            return
 
         if failed_assets:
             logger.warning(

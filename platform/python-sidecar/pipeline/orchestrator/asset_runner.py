@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import subprocess
 import traceback
 
@@ -19,6 +20,63 @@ from .events import emit_event
 from .writers import discover_all, get_writer, ContextSpec, WriterBase
 
 logger = logging.getLogger(__name__)
+
+# Writer-entry dependency assertion (defense-in-depth layer 5).
+#   enforce (default) — block the asset if any declared dep is not satisfied.
+#   warn              — log loudly + emit event, but run anyway.
+#   off               — skip the check entirely.
+# The wave-parallel scheduler guarantees deps are lit before dispatch, so this is
+# a backstop that catches scheduler bugs, out-of-order dispatch, or a never-built
+# upstream — failing LOUD instead of silently building on missing data.
+_DEP_ASSERT_MODE = os.environ.get("ORCHESTRATOR_DEP_ASSERT", "enforce").lower()
+
+
+def deps_unsatisfied(cur, chart_id, asset_id: str) -> list[str]:
+    """Return the list of this asset's declared deps that are NOT satisfied for the
+    target scope, as 'dep(state)' strings. Empty list = all deps ready.
+
+    A data dep is satisfied iff its asset_throughput.state == 'lit' at the correct
+    scope (global deps -> chart_id IS NULL row; per-chart deps -> this chart's row).
+    A service dep (asset_kind/type='service') has no data rows and is never 'lit';
+    it is satisfied unless explicitly in 'error'.
+    """
+    cur.execute(
+        "SELECT COALESCE(depends_on, '{}') AS deps FROM asset_registry WHERE asset_id = %s",
+        (asset_id,),
+    )
+    row = cur.fetchone()
+    # Defensive: a real dict_row has 'deps'; if the cursor can't resolve it (no row,
+    # or a context that doesn't answer this query), treat as "no deps to verify" — the
+    # assertion is a backstop, it must never crash the writer path.
+    deps = list(row.get("deps") or []) if isinstance(row, dict) else []
+    if not deps:
+        return []
+    cur.execute(
+        """
+        SELECT r.asset_id,
+               COALESCE(r.asset_kind, r.asset_type) AS kind,
+               t.state
+        FROM asset_registry r
+        LEFT JOIN LATERAL (
+            SELECT state FROM asset_throughput at
+            WHERE at.asset_id = r.asset_id
+              AND (CASE WHEN r.scope = 'global' THEN at.chart_id IS NULL
+                        ELSE at.chart_id = %s END)
+            LIMIT 1
+        ) t ON true
+        WHERE r.asset_id = ANY(%s)
+        """,
+        (chart_id, deps),
+    )
+    bad: list[str] = []
+    for d in cur.fetchall():
+        state = d["state"]
+        if d["kind"] == "service":
+            if state == "error":
+                bad.append(f"{d['asset_id']}(service:error)")
+        elif state != "lit":
+            bad.append(f"{d['asset_id']}({state or 'absent'})")
+    return bad
 
 
 # ── Downstream closure ────────────────────────────────────────────────────────
@@ -455,6 +513,35 @@ def run_asset(
     - Downstream stale marking: transitive downstream assets flipped to 'stale'.
     """
     logger.info("[orchestrator] starting asset %s (pos=%d)", asset_id, position)
+
+    # ── Writer-entry dependency assertion (defense-in-depth) ───────────────────
+    # Verify every declared dependency is actually committed-complete BEFORE running
+    # the writer. This is the last line catching a scheduler bug, out-of-order
+    # dispatch, or a never-built upstream — so the writer never silently builds on
+    # missing/incomplete data (many writers swallow missing-table reads).
+    if _DEP_ASSERT_MODE != "off":
+        unmet = deps_unsatisfied(cur, chart_id, asset_id)
+        if unmet:
+            detail = ", ".join(sorted(unmet))
+            if _DEP_ASSERT_MODE == "warn":
+                logger.warning(
+                    "[orchestrator] DEP-ASSERT(warn) %s: unmet deps [%s] — running anyway",
+                    asset_id, detail,
+                )
+                emit_event({"type": "asset.dep_assert", "chart_id": chart_id,
+                            "asset_id": asset_id, "mode": "warn", "unmet": detail[:500]})
+            else:  # enforce
+                msg = (
+                    "DEP-ASSERT: declared dependency(ies) not lit before run: %s — "
+                    "refused to build on incomplete/missing upstream data" % detail
+                )
+                logger.error("[orchestrator] %s %s", asset_id, msg)
+                mark_asset_error(conn, cur, run_id, chart_id, asset_id, msg)
+                conn.commit()
+                emit_event({"type": "asset.state_change", "chart_id": chart_id,
+                            "asset_id": asset_id, "from_state": "queued",
+                            "to_state": "error", "error": msg[:500]})
+                return
 
     # Ensure asset_throughput row exists for this (chart_id, asset_id).
     # Global assets (chart_id IS NULL) use a separate partial unique index (migration 184).

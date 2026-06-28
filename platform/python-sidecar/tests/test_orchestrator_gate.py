@@ -69,6 +69,8 @@ class FakeConn:
         return FakeCursor(self._state)
     def commit(self):
         pass
+    def rollback(self):
+        pass
     def close(self):
         pass
 
@@ -124,5 +126,9 @@ def test_no_failure_runs_everything(monkeypatch):
 
     runner.execute_run("run-1")
 
-    assert ran == ["A", "B", "C", "D"]
+    # Under the wave-parallel scheduler the order is a valid TOPOLOGICAL order, not a
+    # fixed sequence (D is independent and may run alongside A). Assert the invariant:
+    # everything ran exactly once, completed, and each dep preceded its dependent.
+    assert set(ran) == set(PLAN) and len(ran) == len(PLAN)
+    assert ran.index("A") < ran.index("B") < ran.index("C")  # A → B → C chain order
     assert all(state[a] == "complete" for a in PLAN)
