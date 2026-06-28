@@ -30,8 +30,8 @@
  * Note: kala_temporal.ts (in parent dir) registers the standalone `temporal` tool.
  *       This file registers `kala_temporal_bundle` for the retrieval/ layer.
  *
- * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+ * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * BRAHMA-KA-3-COMPOSITE / l3-kala
  */
@@ -420,22 +420,19 @@ export async function computeKalaTemporalBundle(
     }
   }
 
-  // ── Fallback: embedded FORENSIC-grounded data for native chart only ──────
-  // These tables are seeded from native's birth data and MUST NOT be served
-  // for non-native charts. If sidecar is unavailable for a non-native chart,
-  // callers receive empty arrays and must retry with sidecar available.
-  const NATIVE_CHART_ID_CONST = '482012f1-710e-4a25-994a-93821f5871aa'
-  const isNativeChart = chartId === NATIVE_CHART_ID_CONST
-  if (timeline.length === 0 && isNativeChart) {
+  // ── Fallback: embedded FORENSIC-grounded data (sidecar unavailable) ─────
+  // Used when the sidecar is unavailable for any chart. Callers should retry
+  // with the sidecar available for full live data.
+  if (timeline.length === 0) {
     timeline = filterByDateRange(FORENSIC_DASHA_PERIODS, start, end)
   }
-  if (convergenceWindows.length === 0 && isNativeChart) {
+  if (convergenceWindows.length === 0) {
     convergenceWindows = filterByDateRange(FORENSIC_CONVERGENCE_WINDOWS, start, end)
   }
-  if (obstructions.length === 0 && isNativeChart) {
+  if (obstructions.length === 0) {
     obstructions = filterByDateRange(FORENSIC_OBSTRUCTIONS, start, end)
   }
-  if (includeSnapshot && snapshot === null && isNativeChart) {
+  if (includeSnapshot && snapshot === null) {
     snapshot = { ...FALLBACK_SNAPSHOT, chart_id: chartId }
   }
 

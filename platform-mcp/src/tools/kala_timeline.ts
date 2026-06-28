@@ -21,8 +21,8 @@
  *
  * Wiring: registerKalaTimeline(server, principal) → server.ts during L3 Kāla registration.
  *
- * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+ * Reference birth: 1984-02-05, 10:43 IST Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * BRAHMA-KA-3-1
  */
@@ -51,7 +51,7 @@ function getPool(): pg.Pool {
 
 // ── Vimshottari constants (FORENSIC §5.1 — do not recompute) ─────────────────
 //
-// Canonical MD boundaries for Abhisek Mohanty from FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1.
+// Canonical MD boundaries from FORENSIC_ASTROLOGICAL_DATA_v8_0.md §5.1.
 // FORENSIC dates are canonical per GAP.09; JH dates (±7-9 days) are NOT used.
 
 const FORENSIC_MD_SCHEDULE: Array<{ lord: string; start: string; end: string }> = [
@@ -153,10 +153,9 @@ const DateRangeSchema = z.object({
 const KalaTimelineSchema = z.object({
   /**
    * Chart UUID to query the timeline for.
-   * Native: 482012f1-710e-4a25-994a-93821f5871aa
    */
   chart_id: z.string().uuid({
-    message: 'chart_id must be a valid UUID (e.g. 482012f1-710e-4a25-994a-93821f5871aa)',
+    message: 'chart_id must be a valid UUID',
   }),
 
   /**

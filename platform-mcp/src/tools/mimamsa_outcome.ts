@@ -15,8 +15,8 @@
  * NO LEAKAGE: life_events must never feed into prediction generation —
  *   only into calibration after outcomes are observed.
  *
- * Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+ * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * L1 ground-truth:
  *   FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari dasha 2024-2030)

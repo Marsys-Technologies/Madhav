@@ -18,8 +18,8 @@
  *     - all source_citations non-empty (B.3 mandate)
  *     - confidence in [0.0, 1.0]
  *
- * Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+ * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * L1 ground-truth:
  *   FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari dasha 2024-2030)
@@ -160,7 +160,7 @@ export async function fetchEventAnchors(
 }
 
 /**
- * Seed pre-calibrated phala anchors for the native chart (idempotent).
+ * Seed pre-calibrated phala anchors for a chart (idempotent).
  * Calls seed_native_phala_anchors() SQL function via the sidecar.
  */
 export async function seedNativeAnchors(

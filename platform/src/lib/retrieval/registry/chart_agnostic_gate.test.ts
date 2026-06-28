@@ -26,6 +26,7 @@ import {
   checkCapability,
   checkAllCapabilities,
   runChartAgnosticGate,
+  scanMcpToolFileContent,
   NATIVE_CHART_ID,
   PHANTOM_CHART_ID,
 } from './chart_agnostic_gate'
@@ -337,6 +338,29 @@ describe('chart_agnostic_gate', () => {
       description: 'Returns positions for chart <chart_uuid>.',
     })
     const violations = checkCapability(cap)
+    expect(violations).toHaveLength(0)
+  })
+})
+
+describe('scanMcpToolFileContent', () => {
+  it('flags a file containing the native UUID', () => {
+    const content = `const NATIVE = '482012f1-710e-4a25-994a-93821f5871aa'\n`
+    const violations = scanMcpToolFileContent('tools/test_tool.ts', content)
+    expect(violations).toHaveLength(1)
+    expect(violations[0].pattern).toContain('482012f1')
+    expect(violations[0].line).toBe(1)
+  })
+
+  it('flags a file containing NATIVE_CHART_ID', () => {
+    const content = `const chartId = NATIVE_CHART_ID ?? 'default'\n`
+    const violations = scanMcpToolFileContent('tools/test_tool.ts', content)
+    expect(violations).toHaveLength(1)
+    expect(violations[0].pattern).toContain('NATIVE_CHART_ID')
+  })
+
+  it('passes a clean file', () => {
+    const content = `const chartId = params.chart_id\nif (!chartId) throw new Error('chart_id is required')\n`
+    const violations = scanMcpToolFileContent('tools/clean_tool.ts', content)
     expect(violations).toHaveLength(0)
   })
 })

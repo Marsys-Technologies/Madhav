@@ -23,10 +23,10 @@
  *   Acceptance:
  *     AC1 — all 4 subsystems present in response
  *     AC2 — summary_confidence in [0.0, 1.0]
- *     AC3 — tool smoke: native chart returns valid structure
+ *     AC3 — tool smoke: chart returns valid structure
  *
- * Native chart: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+ * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * Wiring: registerPhalaOutlookTool(server) → server.ts during L4 Phala registration.
  *

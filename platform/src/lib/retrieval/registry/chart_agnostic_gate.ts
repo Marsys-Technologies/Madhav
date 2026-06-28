@@ -295,6 +295,48 @@ export function runChartAgnosticGate(capabilities: CapabilityDescriptor[]): void
   )
 }
 
+// ── Rule 8: MCP Tool File Hygiene (amendment 2026-06-28) ─────────────────────
+
+/**
+ * Rule 8 (MCP Tool Hygiene Gate) — Extension amendment 2026-06-28.
+ * Scans platform-mcp/src/tools/**\/*.ts files for native identifier contamination.
+ * Called separately from the capability registry scan (which covers registered capabilities only).
+ * This covers ALL tool files — wired and unwired — to catch future contamination before wiring.
+ */
+export const MCP_TOOLS_DIR_PATTERNS = [
+  /482012f1/,
+  /NATIVE_CHART_ID/,
+  /Abhisek\s+Mohanty/,
+] as const
+
+export interface McpToolFileViolation {
+  file: string
+  line: number
+  pattern: string
+  text: string
+}
+
+export function scanMcpToolFileContent(
+  filePath: string,
+  content: string
+): McpToolFileViolation[] {
+  const violations: McpToolFileViolation[] = []
+  const lines = content.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    for (const pattern of MCP_TOOLS_DIR_PATTERNS) {
+      if (pattern.test(lines[i])) {
+        violations.push({
+          file: filePath,
+          line: i + 1,
+          pattern: pattern.toString(),
+          text: lines[i].trim(),
+        })
+      }
+    }
+  }
+  return violations
+}
+
 // ── CLI entry point ───────────────────────────────────────────────────────────
 
 // When run directly (tsx chart_agnostic_gate.ts), load and check the registry.

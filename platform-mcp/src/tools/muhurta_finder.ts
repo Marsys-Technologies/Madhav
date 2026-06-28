@@ -23,9 +23,9 @@
  *   - provenance_envelope on every response
  *
  * FORENSIC grounding:
- *   Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
- *   chart_id: 482012f1-710e-4a25-994a-93821f5871aa
- *   A high-score education muhurta for the native should align with
+ *   Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
+ *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ *   A high-score education muhurta for this chart should align with
  *   Mercury+Pushya windows (Mercury MD + Pushya nakshatra per BPHS ch.46).
  *
  * Architecture:
