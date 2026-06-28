@@ -309,7 +309,7 @@ export const MODELS: ModelMeta[] = [
     provider: 'deepseek',
     tier: 'mid',
     label: 'DeepSeek V4 Flash [internal label only]',
-    hint: '⚠ Not a valid DeepSeek API model ID — API maps this to deepseek-reasoner which rejects toolChoice. Use deepseek-chat for planner/worker calls. Retain entry in case DeepSeek publishes this ID officially.',
+    hint: 'DeepSeek V4 Flash — canonical model ID for standard (CoT-off) calls (confirmed valid 2026-06-28). Replaces deprecated deepseek-chat alias (retires 2026-07-24). Supports tool_choice, JSON, 1M context.',
     speedTier: 'fast',
     maxInputTokens: 1_000_000,
     maxOutputTokens: 8_192,
@@ -883,7 +883,7 @@ export const FAMILY_WORKER: Record<Provider, string> = {
   anthropic: 'claude-haiku-4-5',                // tier=worker  $1.00/$5.00
   google:    'gemini-2.5-flash-lite',            // tier=worker  $0.015/$0.06  (was gemini-2.0-flash-lite, dropped from OpenAI-compat 2026-05-03)
   openai:    'gpt-4.1-nano',                     // tier=worker  $0.05/$0.20  (was gpt-4o-mini)
-  deepseek:  'deepseek-chat',                     // non-thinking, supports tool_choice; deepseek-v4-flash is not a valid API model ID
+  deepseek:  'deepseek-v4-flash',                  // non-thinking, supports tool_choice; canonical API ID (retires deepseek-chat alias 2026-07-24)
   nvidia:    'nvidia/nemotron-3-super-120b-a12b', // tier=worker  $0.00 (llama-3.1-8b timed out 2026-05-03; nemotron-3 confirmed ✅ 356ms)
 }
 
@@ -1235,30 +1235,30 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
   deepseek: {
     synthesis: {
       primary:  'deepseek-v4-pro',                          // 1M ctx, thinking, $1.74/$3.48
-      fallback: 'deepseek-chat',                            // non-thinking, valid API ID (was: deepseek-v4-flash — INVALID)
+      fallback: 'deepseek-v4-flash',                        // non-thinking, canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
     },
     planner_deep: {
       primary:  'deepseek-v4-pro',                          // thinking=false for JSON speed
-      fallback: 'deepseek-chat',                            // non-thinking, valid API ID (was: deepseek-v4-flash — INVALID)
+      fallback: 'deepseek-v4-flash',                        // non-thinking, canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
     },
     planner_fast: {
-      primary:  'deepseek-chat',                            // non-thinking, supports toolChoice — deepseek-v4-flash is not a valid API ID
+      primary:  'deepseek-v4-flash',                        // non-thinking, supports toolChoice; canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
       fallback: 'deepseek-v4-pro',                          // fallback with thinking=false
     },
     context_assembly: {
-      primary:  'deepseek-chat',                            // non-thinking, correct API ID
+      primary:  'deepseek-v4-flash',                        // non-thinking, canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
       fallback: 'deepseek-v4-pro',                          // 1M ctx, thinking=false
     },
     worker: {
-      primary:  'deepseek-chat',                            // non-thinking, correct API ID
+      primary:  'deepseek-v4-flash',                        // non-thinking, canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
       fallback: 'deepseek-v4-pro',                          // fallback
     },
-    eval_judge:      { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
-    eval_generator:  { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
-    smoke_synth:     { primary: 'deepseek-v4-pro',  fallback: 'deepseek-chat' },
-    checkpoint_4_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
-    checkpoint_5_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
-    checkpoint_8_5:  { primary: 'deepseek-chat',    fallback: 'deepseek-v4-pro' },
+    eval_judge:      { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
+    eval_generator:  { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
+    smoke_synth:     { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
+    checkpoint_4_5:  { primary: 'deepseek-v4-flash', fallback: 'deepseek-v4-pro' },
+    checkpoint_5_5:  { primary: 'deepseek-v4-flash', fallback: 'deepseek-v4-pro' },
+    checkpoint_8_5:  { primary: 'deepseek-v4-flash', fallback: 'deepseek-v4-pro' },
   },
 
   // ── MARSYS Stack (AIOps CP.1) ─────────────────────────────────────────────
