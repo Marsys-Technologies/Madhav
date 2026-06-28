@@ -25,6 +25,28 @@ Five coordinated changes across backend and frontend. Each stands alone and can 
 
 **File:** `platform/src/app/api/cockpit/stats/route.ts`
 
+**Two-part fix required:**
+
+### Part A — `fetchAllCounts` fast-path (line ~112)
+
+The fast-path for assets with a throughput row hardcodes `state: 'dormant'` on the returned object:
+```ts
+// Current (buggy): state is hardcoded 'dormant' so deriveState never sees 'building'
+if (!liveMode && tp != null && tp.rows_written != null) {
+  return { ..., state: 'dormant' as const, ... }
+}
+```
+
+Fix: pass `tp.state` through so `deriveState` receives the real throughput state:
+```ts
+// Fixed: keep tp.state so deriveState can distinguish 'building' from 'lit'
+if (!liveMode && tp != null && tp.rows_written != null) {
+  return { ..., state: (tp.state ?? 'dormant') as AssetState, ... }
+}
+```
+
+### Part B — `deriveState` priority (line ~28)
+
 **Current (buggy):**
 ```ts
 if (actualRows != null && actualRows > 0) return 'lit'
@@ -37,9 +59,9 @@ if (throughputState === 'building') return 'building'
 if (actualRows != null && actualRows > 0) return 'lit'
 ```
 
-**Why:** During an active build, `asset_throughput.rows_written` climbs from 0. Once it exceeds 0, the current code returns `'lit'` — skipping the `'building'` check. Progress bar renders at 100% fill. Swapping the order fixes this: an asset in `'building'` throughput state always surfaces as `'building'` regardless of partial row count.
+**Why both parts are needed:** The fast-path sets `actual_rows = tp.rows_written` (climbing during build). If `rows_written > 0` and `state = 'dormant'` (fast-path Part A bug), `deriveState` sees `actualRows > 0` and returns `'lit'` regardless of Part B. Even after fixing Part B, if Part A still passes `state = 'dormant'`, the `throughputState` argument to `deriveState` is `'dormant'`, not `'building'`, so the priority swap in Part B has no effect. Both fixes must land together.
 
-**Side effect (positive):** `rows_written` field in `AssetStats` is now populated during build (it gates on `derivedState === 'building'`), which the `AssetProgressBar` uses for progress percentage.
+**Side effect (positive):** `rows_written` field in `AssetStats` is now populated during build (it gates on `derivedState === 'building'`), which `AssetProgressBar` uses for progress percentage.
 
 ---
 
@@ -62,9 +84,9 @@ The stats API reads `asset_throughput.rows_written` via a single fast batch quer
 
 When Pub/Sub is disabled (`pollingStream` fallback), the current implementation only emits `run.state_change` on terminal states. Enhance it to also emit synthetic `asset.progress` events:
 
-- Poll `SELECT asset_id, rows_written FROM asset_throughput WHERE chart_id=$1 AND state='building' LIMIT 1` every 2s within the existing poll loop.
-- If rows_written changed since last poll, emit: `event: asset.progress\ndata: { type: 'asset.progress', asset_id, rows_written, chart_id }\n\n`
-- This flows through `DataAssetsView.handleSSEEvent → sseOverlay.actual_rows` for continuous animation.
+- Poll `SELECT asset_id, rows_written FROM asset_throughput WHERE chart_id=$1 AND state='building' ORDER BY asset_id` every 2s within the existing poll loop (no `LIMIT` — emit progress for ALL building assets so multi-asset layer builds animate all bars simultaneously).
+- Track `lastRowsWritten: Map<string, number>` across ticks. For each asset where `rows_written` changed since last tick, emit: `event: asset.progress\ndata: { type: 'asset.progress', asset_id, rows_written, chart_id }\n\n`
+- This flows through `DataAssetsView.handleSSEEvent → sseOverlay.actual_rows` for continuous animation of every in-flight bar.
 
 **Combined effect:** 2s stats poll catches state; synthetic SSE events drive smooth animation between polls.
 
@@ -88,18 +110,29 @@ Two visual improvements:
 
 Accept an optional `clear_before?: boolean` field on the POST body.
 
-When `clear_before: true`:
+When `clear_before: true`, the POST handler follows this strict gate order:
 
-1. **Compute clear scope** from the build scope, using the same `filterScopeAssets` logic as `clear/route.ts`.
-2. **L0 guard:** Always exclude `brahmagyan` assets from auto-clear unless `force_l0: true` is explicitly set.
-   - If `scope === 'layer'` and `scope_target === 'brahmagyan'` and `force_l0` is not set: return HTTP 202 `{ requires_double_confirm: true, message: 'This will clear L0 Brahmagyan — confirm?' }`.
-3. **Execute clear atomically** within the same DB transaction as the build run insert:
-   - Use `EXPLICIT_CLEAR_OPS` + `deriveDeleteSqlFromCountSql` (same logic as `clear/execute/route.ts`) to build DELETE statements.
-   - No `preview_hash` needed — the user confirmed via the PlanModal.
-   - Reset `asset_throughput.state = 'dormant'` for cleared assets.
-   - Mark downstream assets (outside scope) as `'stale'`.
-4. **Insert `build_runs`** record and start the orchestrator.
-5. **Response:** `{ run_id, cleared_asset_count }` — same shape as today, with `cleared_asset_count` added.
+**Gate 0 — Active run check (existing 409 gate — unchanged, runs first).**
+
+**Gate 1 — L0 double-confirm check (new, runs after auth/isSuperAdmin resolution, before registry queries).**
+- If `scope === 'layer'` and `scope_target === 'brahmagyan'` and `force_l0` is not set: return HTTP 202 `{ requires_double_confirm: true, message: 'This will clear L0 Brahmagyan — confirm?' }` immediately. No DB reads beyond the active-run check.
+
+**Gate 2 — Auth and scope validation (existing gates — unchanged).**
+
+**Gate 3 — Precondition check (existing gate — runs BEFORE any clear).**
+- The `bo_*` upstream check (lines 120-163) must run against the current DB state, before any clear operation, so it reflects real data. The spec's implementation must not reorder these checks.
+
+**Then — Execute clear atomically within a single pool client transaction:**
+
+Open a pool client with `BEGIN`:
+1. **Compute clear scope** from the build scope using `filterScopeAssets`, excluding `brahmagyan` assets when `scope !== 'layer' || scope_target !== 'brahmagyan'` (or when `force_l0` is not set for brahmagyan scope).
+2. **Execute DELETEs:** Use `EXPLICIT_CLEAR_OPS` + `deriveDeleteSqlFromCountSql` (same resolution as `clear/execute/route.ts`) to build and run DELETE statements within the transaction. No `preview_hash` needed.
+3. **Reset throughput:** `UPDATE asset_throughput SET state='dormant', rows_written=0 WHERE chart_id=$1 AND asset_id = ANY($2)` within the same transaction.
+4. **Mark downstream stale:** `UPDATE asset_throughput SET state='stale' WHERE chart_id=$1 AND asset_id = ANY($3)` within the same transaction.
+5. **Insert `build_runs`** and return `run_id`.
+6. `COMMIT`.
+
+**Response:** `{ run_id, cleared_asset_count }` — same shape as today, with `cleared_asset_count` added.
 
 ### 4b. Frontend: `PlanModal.tsx`
 
