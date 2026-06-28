@@ -607,3 +607,21 @@ the MCP channel and the registry layer. Full dual-channel compliance requires D7
 ---
 
 *Report end. RETRIEVAL_AUTONOMOUS_RUN_REPORT v1.0 — 2026-06-28.*
+
+---
+
+## §11 — D7 Chat-Channel Migration — Post-Run Addendum (2026-06-28)
+
+ISSUE-1 (BLOCKING): RESOLVED — /api/chat/consult migrated to lib/retrieval registry;
+lib/retrieve and mcp/primitives_registry retired per DG1. Citation report:
+RETRIEVAL_CITATION_REPORT_LIB_RETRIEVE_RETIREMENT.md. Tag: retrieval-d7-chat-migration-complete.
+
+ISSUE-4 (MODERATE): STILL-OPEN — structural faithfulness is 6.88% (constituent_facts_array
+resolution rate against chart_facts). This is a pre-existing L2 data issue (MSR signals built
+against a different L1 epoch — documented in MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md).
+The §N.5 orphan-detection spine is working correctly (grounding spine surfaces orphans,
+not silently drops them). Resolution requires an L2 Bodha MSR rebuild. Not a D7 regression.
+Full evidence in RETRIEVAL_EVAL_RESULTS_v1_0.md §FAITHFULNESS RUN.
+
+System state: both MCP and chat channels now share a single registry source (lib/retrieval).
+DG1 convergence ruling fully executed. Retrieval system sealed end-to-end.

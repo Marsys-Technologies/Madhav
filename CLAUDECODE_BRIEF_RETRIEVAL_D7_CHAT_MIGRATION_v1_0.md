@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_RETRIEVAL_D7_CHAT_MIGRATION
 version: 1.0
-status: READY-FOR-EXECUTION
+status: COMPLETE
 created: 2026-06-28
 author: Cowork (planning) — for execution by Claude Code in Antigravity
 classification: CLAUDECODE_BRIEF — the scoped chat-channel migration the autonomous swarm asked for

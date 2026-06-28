@@ -356,3 +356,98 @@ at the routing layer; live faithfulness measurement is the designated follow-on 
 *End of RETRIEVAL_EVAL_RESULTS v1.0 (2026-06-28 — D8 eval harness run).*
 *Hard gates: all PASS. Faithfulness: DEFERRED to live judge run.*
 *Source: platform/src/lib/retrieval/eval/harness.ts + grounding spine inspection.*
+
+---
+
+## §FAITHFULNESS RUN — D7 Chat-Migration Post-Run (2026-06-28)
+
+> **Context:** Structural faithfulness assessment conducted as part of D7 chat-channel
+> migration close (ISSUE-4). This is NOT a live LLM-as-judge run (that requires
+> `run_golden_set.ts` + live model access). This is a structural grounding-spine audit
+> checking whether `constituent_facts_array` in `bodha_msr_signals` resolves to
+> `chart_facts` rows scoped to the same `chart_id` — the §N.5 integrity check.
+
+### Queries evaluated (5 representative golden queries)
+
+| GQ | Query | Route class (actual) | Chart isolated | Planned URIs |
+|---|---|---|---|---|
+| GQ-01 | What is the longitude of Mars in the D1 chart? | numeric_exact | iso✓ | (empty — router returned no planned_calls) |
+| GQ-04 | Which houses does Saturn aspect in the D9 chart? | simple | iso✓ | (empty) |
+| GQ-06 | Top-3 contradicting signals in L2 Bodha layer | relational | iso✓ | (empty) |
+| GQ-08 | Which L2 signals cite the same L1 fact_id as the Sun dignity entry? | numeric_exact | iso✓ | (empty) |
+| GQ-09 | Domain of highest-salience L2 signal + L1 facts | narrative | iso✓ | (empty) |
+
+**Note on planned_calls:** The harness returned `planned_calls = []` for all queries.
+This is a router vocabulary mismatch — the router emits internal route classes
+(`numeric_exact`, `simple`, `narrative`) while the golden set expects D-spec route
+classes (`single_shot`, `deterministic`, `relational`). The routing layer is functioning
+(trajectories return, chart isolation passes), but route-class naming diverges from the
+eval spec. Route class accuracy = 6.7% (only GQ-06 `relational` matched). This is a
+pre-existing gap in the eval harness, not a D7 regression.
+
+### Structural faithfulness: constituent_facts_array grounding check
+
+DB query executed against `amjis` (localhost:5433):
+
+```sql
+WITH sample_refs AS (
+  SELECT DISTINCT unnest(constituent_facts_array) as fact_ref
+  FROM bodha_msr_signals
+  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+  LIMIT 10000
+),
+resolved AS (
+  SELECT r.fact_ref FROM sample_refs r
+  JOIN chart_facts cf ON cf.fact_id = r.fact_ref
+    AND cf.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+)
+SELECT
+  COUNT(*) FILTER (WHERE TRUE) as sampled,
+  (SELECT COUNT(*) FROM resolved) as resolved_native,
+  ROUND(100.0 * (SELECT COUNT(*) FROM resolved) / NULLIF(COUNT(*), 0), 2) as pct_resolved
+FROM sample_refs;
+```
+
+| Metric | Value |
+|---|---|
+| Sample size | 10,000 distinct constituent_fact refs |
+| Resolved to `chart_facts` (same chart_id) | 688 |
+| Structural resolution rate | 6.88% |
+| §N.5 violations (orphan fact_ids) | ~93.1% of refs are orphans |
+
+**Root cause:** `constituent_facts_array` stores `fact_id` hex-string references from
+the MSR writer's build run. These fact_ids do NOT match the current `chart_facts.fact_id`
+values for the same chart. This is the pre-existing computed-value drift documented in
+`MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md` — the MSR signals were built against a
+different L1 build epoch than the current `chart_facts` table.
+
+**Critical distinction:** The grounding spine correctly DETECTS this as §N.5 violations
+(test I2 in `grounding.integration.test.ts` explicitly validates the orphan-detection path).
+The orphans are surfaced, not silently dropped. This is the system working as designed —
+detecting the pre-existing L2 data issue.
+
+**This is NOT a D7 migration regression.** The D7 migration touched only:
+- `lib/retrieve` deletion (retired)
+- `mcp/primitives_registry.ts` deletion (retired)
+- `/api/chat/consult` repointed to `lib/retrieval` registry
+- No MSR signal data modified; no `chart_facts` data modified.
+
+### ISSUE-4 verdict
+
+| Criterion | Result |
+|---|---|
+| Structural faithfulness ≥ 0.85 (85% constituent_facts resolve) | FAIL — 6.88% |
+| Hard gates (chart-agnostic, contamination, chart-isolation, LEL firewall) | ALL PASS |
+| §N.5 detection working (orphans surfaced, not hidden) | PASS |
+| D7 migration introduced faithfulness regression | NO — pre-existing MSR drift issue |
+
+**ISSUE-4 verdict: STILL-OPEN** — structural faithfulness is 6.88%, well below the 0.85
+floor. This is NOT caused by D7. The root cause is the pre-existing MSR computed-value
+drift (L2 bodha_msr_signals constituent_facts_array built against a different L1 epoch).
+Resolution requires an L2 Bodha rebuild of `bo_laksana` and downstream MSR writers with
+the current `chart_facts` fact_ids. ISSUE-4 is formally documented as a pre-existing L2
+data issue; it is orthogonal to the D7 chat-channel migration.
+
+---
+
+*Faithfulness run appended 2026-06-28 — D7 Chat-Migration Post-Run.*

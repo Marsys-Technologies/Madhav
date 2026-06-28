@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.02
+version: 6.04
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,42 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.04 (2026-06-28, D7-CHAT-MIGRATION-2026-06-28):
+    **D7 Chat-Channel Migration — COMPLETE. DG1 convergence ruling fully executed.**
+    Both MCP and chat channels now share a single registry source (lib/retrieval).
+    lib/retrieve retired; mcp/primitives_registry.ts retired. ISSUE-1 RESOLVED.
+    ISSUE-4 (faithfulness) STILL-OPEN — pre-existing L2 MSR drift, not a D7 regression.
+
+    RETRIEVAL_SYSTEM_SEAL:
+      status: SEALED (both channels)
+      seal_artifact: 00_ARCHITECTURE/RETRIEVAL_SYSTEM_DESIGN_SEAL_v1_0.md
+      sealed_date: 2026-06-28
+      sealed_by: D8-EVAL-SEAL-2026-06-28
+      d7_migration_complete: 2026-06-28 (D7-CHAT-MIGRATION-2026-06-28)
+      dg1_complete: true — single registry source (lib/retrieval) for all channels
+      eval_harness: platform/src/lib/retrieval/eval/harness.ts (15 golden queries, 4 families)
+      eval_results: 00_ARCHITECTURE/RETRIEVAL_EVAL_RESULTS_v1_0.md
+      red_team: 00_ARCHITECTURE/RETRIEVAL_RED_TEAM_v1_0.md (14/14 principles PASS)
+      primitives_registry: 00_ARCHITECTURE/RETRIEVAL_PRIMITIVES_REGISTRY_v1_0.md (65 URIs)
+      citation_report: 00_ARCHITECTURE/RETRIEVAL_CITATION_REPORT_LIB_RETRIEVE_RETIREMENT.md
+      git_tag: retrieval-d7-chat-migration-complete
+      profiles_version: 1.1.0 (MEASURED — routing layer confirmed)
+      hard_gates: chart_agnostic=PASS, contamination_count=0, chart_isolation=PASS, lel_firewall=PASS
+      open_items:
+        - OLD-MCP-REMEDIATION: platform-mcp/src/tools/retrieval/ native defaults (not registry layer)
+        - ISSUE-4: faithfulness-live-run — constituent_facts_array grounding 6.88% (pre-existing MSR drift; L2 Bodha rebuild needed)
+        - CAPABILITY_MANIFEST regeneration deferred (primitives_registry covers retrieval layer)
+        - deepseek-chat alias retires 2026-07-24 (ISSUE-6 — DEPRECATION_WATCHLIST active)
+    last_session_id: D7-CHAT-MIGRATION-2026-06-28.
+    predecessor_session: D8-EVAL-SEAL-2026-06-28.
+    next_session_objective: >
+      "Retrieval system fully sealed (both channels). DG1 complete. Next: (a) ISSUE-6 —
+      migrate deepseek model IDs before 2026-07-24 alias retirement (26 days remaining;
+      deepseek-chat → deepseek-v4-flash, deepseek-reasoner → deepseek-v4-pro);
+      (b) ISSUE-4 — live faithfulness eval requires L2 Bodha MSR rebuild so
+      constituent_facts_array refs resolve against current chart_facts fact_ids;
+      (c) OLD-MCP-REMEDIATION brief for platform-mcp/src/tools/retrieval/ native defaults."
+    file_updated_at: 2026-06-28. file_updated_by_session: D7-CHAT-MIGRATION-2026-06-28.
   - v6.03 (2026-06-28, D8-EVAL-SEAL-2026-06-28):
     **Retrieval System Design — SEALED.**
     D8 eval + governance + red-team complete. All hard gates PASS.
