@@ -134,7 +134,8 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         ephe_path = os.environ.get("SWISSEPH_PATH", "/app/ephe")
         swe.set_ephe_path(ephe_path)
         jd = _FORENSIC_POSITION["jd"]
-        sun_lon, _ = swe.calc_ut(jd, swe.SUN)
+        xx, _ = swe.calc_ut(jd, swe.SUN)
+        sun_lon = xx[0]
         checks.append({"check": "de441_position_query", "passed": True, "sun_lon": round(sun_lon, 4)})
     except Exception as exc:
         checks.append({"check": "de441_position_query", "passed": False, "error": str(exc)})
@@ -144,7 +145,8 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     try:
         import swisseph as swe
         jd = _FORENSIC_POSITION["jd"]
-        node_lon, _ = swe.calc_ut(jd, swe.MEAN_NODE)
+        xx, _ = swe.calc_ut(jd, swe.MEAN_NODE)
+        node_lon = xx[0]
         # Mean node = Rahu longitude; should be in 0..360, Rahu in Vrishabha Feb 1984 (~30-60°)
         rahu_sign = int(node_lon / 30) + 1
         passed = 1 <= rahu_sign <= 12
