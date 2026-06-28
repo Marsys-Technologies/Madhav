@@ -9,15 +9,41 @@
  * make the channel wiring discoverable by the D8 eval harness and the
  * integration smoke test.
  *
+ * D7 GAP FILL (2026-06-28 — chat-channel migration, §2):
+ * Fifteen lib/retrieve tools had no registry equivalent; they are ported here
+ * per the D1 contract (chart_id required where per_chart, tier stripped,
+ * emits_references set correctly). Covered by RETRIEVAL_D7_GAP_REPORT_v1_0.md.
+ *
  * Capabilities registered by D7:
- *   marsys://tool/channel/mcp_wiring      — MCP server ↔ registry bridge descriptor
- *   marsys://tool/channel/chat_dispatch   — chat-route ↔ registry adapter descriptor
+ *   marsys://tool/channel/mcp_wiring               — MCP server ↔ registry bridge descriptor
+ *   marsys://tool/channel/chat_dispatch            — chat-route ↔ registry adapter descriptor
  *
- * Total D7 new capabilities: 2
+ *   Wave A — sutravali (ported from lib/retrieve/sutravali_tools.ts):
+ *   marsys://tool/L0/query_sutravali_rules          — sutravali flexible JSONB query
+ *   marsys://tool/L0/query_sutravali_rules_for_planet — sutravali planet-scoped query
+ *   marsys://tool/L0/read_sutravali_rule            — single rule fetch by UUID
+ *   marsys://tool/L0/list_sutravali_rules_by_text   — list rules from a text
  *
- * These capabilities are introspection-only — they describe the wiring contracts
- * between channels and the registry, enabling the D8 eval harness to verify
- * channel completeness without running the live servers.
+ *   Wave B — classical attribution (ported from lib/retrieve/classical_attribution_lookup_tool.ts):
+ *   marsys://tool/L2/classical_attribution_lookup   — MSR signal × classical text attribution
+ *
+ *   Wave C — chart facts umbrella (gap fill — B.11 floor injection target):
+ *   marsys://tool/L1/chart_facts_query              — unified chart_facts parametric lookup
+ *
+ *   Wave D — remedy sub-tools (ported from lib/retrieve/remedy_tools.ts):
+ *   marsys://tool/L0/query_remedies_for_chart       — per-chart remedy lookup by affliction
+ *   marsys://tool/L0/list_remedies_by_category      — list remedies by category (global)
+ *   marsys://tool/L0/read_remedy                    — single remedy by remedy_id (global)
+ *   marsys://tool/L0/query_tantric_remedies         — tantric remedies by deity/planet (global)
+ *   marsys://tool/L0/query_remedies_by_planet       — all remedies for a planet (global)
+ *   marsys://tool/L0/query_mantras                  — mantra remedies by planet (global)
+ *
+ *   Wave E — classical text sub-tools (ported from lib/retrieve/index.ts CLASSICAL_TOOLS):
+ *   marsys://tool/L0/read_chapter                   — fetch all verse chunks for a chapter
+ *   marsys://tool/L0/list_classical_texts           — list all ingested classical texts
+ *   marsys://tool/L0/find_verses_about              — embedding-similarity verse discovery
+ *
+ * Total D7 new capabilities: 17 (2 wiring + 15 gap-fill)
  *
  * Usage: import this file at application startup after D6 synergy is registered.
  */
@@ -156,22 +182,1311 @@ const chatDispatchTool: CapabilityDescriptor = {
   },
 }
 
+// ── GAP FILL: marsys://tool/L0/query_sutravali_rules ─────────────────────────
+// Ports lib/retrieve/sutravali_tools.ts::queryRulesTool (query_rules).
+// Scope: global — sutravali_rules is a reference corpus, not per-chart.
+// Tier stripped per DG1; audience_tier removed from handler.
+
+const querySutravaliRulesTool: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_sutravali_rules',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_sutravali_rules',
+  scope: 'global',
+
+  description: [
+    'Query sutravali_rules by antecedent JSONB pattern.',
+    'Supports optional filters: planet (graha name), house (1-12), sign (rashi name),',
+    'antecedent_pattern (free-text substring match on antecedent JSONB), limit (default 20).',
+    'SQL-only via the Python sidecar. Zero LLM.',
+    'Returns classical rule rows with antecedent, predicate, prediction, confidence,',
+    'text_id, and provenance. Use to look up classical rules for a planet/house combination.',
+    'Registry equivalent of lib/retrieve/sutravali_tools.ts::query_rules (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    planet: {
+      type: 'string',
+      description: 'Graha name to filter by (e.g. "Sun", "Moon", "Saturn"). Optional.',
+    },
+    house: {
+      type: 'number',
+      description: 'Bhava number (1-12) to filter by. Optional.',
+    },
+    sign: {
+      type: 'string',
+      description: 'Rashi name to filter by (e.g. "Aries", "Scorpio"). Optional.',
+    },
+    antecedent_pattern: {
+      type: 'string',
+      description: 'Free-text substring match applied to the antecedent JSONB field. Optional.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum rows to return (default: 20, max: 200).',
+    },
+  },
+
+  required_inputs: [],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'hybrid_retrieval',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 55 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    try {
+      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+      const limit = Math.min(Number(args['limit'] ?? 20), 200)
+
+      const body: Record<string, unknown> = { limit }
+      if (typeof args['planet'] === 'string') body['planet'] = args['planet']
+      if (typeof args['house'] === 'number') body['house'] = args['house']
+      if (typeof args['sign'] === 'string') body['sign'] = args['sign']
+      if (typeof args['antecedent_pattern'] === 'string') body['antecedent_pattern'] = args['antecedent_pattern']
+
+      const res = await fetch(`${sidecarUrl}/api/brahma/sutravali/query_rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!res.ok) {
+        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}` }, is_error: true }
+      }
+      const rows = await res.json() as unknown[]
+      return { content: { rules: rows, returned_count: rows.length, filters: body }, is_error: false }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL: marsys://tool/L0/query_sutravali_rules_for_planet ──────────────
+// Ports lib/retrieve/sutravali_tools.ts::queryRulesForPlanetTool (query_rules_for_planet).
+
+const querySutravaliRulesForPlanetTool: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_sutravali_rules_for_planet',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_sutravali_rules_for_planet',
+  scope: 'global',
+
+  description: [
+    'Query sutravali_rules for a specific planet (graha), optionally filtered by bhava (house).',
+    'Returns all classical rules referencing the planet in the antecedent.',
+    'SQL-only via Python sidecar. Zero LLM.',
+    'planet is required; house and limit are optional.',
+    'Registry equivalent of lib/retrieve/sutravali_tools.ts::query_rules_for_planet (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    planet: {
+      type: 'string',
+      description: 'Graha name (e.g. "Sun", "Moon", "Saturn"). Required.',
+      required: true,
+    },
+    house: {
+      type: 'number',
+      description: 'Bhava number (1-12) to narrow the filter. Optional.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum rows to return (default: 50, max: 500).',
+    },
+  },
+
+  required_inputs: ['planet'],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 60 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const planet = args['planet'] as string | undefined
+    if (!planet) {
+      return { content: { error: 'planet is required' }, is_error: true }
+    }
+    try {
+      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+      const limit = Math.min(Number(args['limit'] ?? 50), 500)
+
+      const qs = new URLSearchParams({ planet, limit: String(limit) })
+      if (typeof args['house'] === 'number') qs.set('house', String(args['house']))
+
+      const res = await fetch(`${sidecarUrl}/api/brahma/sutravali/query_rules_for_planet?${qs.toString()}`, {
+        headers: { 'x-api-key': sidecarKey },
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!res.ok) {
+        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}` }, is_error: true }
+      }
+      const rows = await res.json() as unknown[]
+      return { content: { rules: rows, returned_count: rows.length, planet, limit }, is_error: false }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL: marsys://tool/L0/read_sutravali_rule ───────────────────────────
+// Ports lib/retrieve/sutravali_tools.ts::readRuleTool (read_rule).
+
+const readSutravaliRuleTool: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/read_sutravali_rule',
+  type: 'tool',
+  layer: 'L0',
+  name: 'read_sutravali_rule',
+  scope: 'global',
+
+  description: [
+    'Fetch a single sutravali rule by its UUID rule_id.',
+    'Returns antecedent, predicate, prediction, confidence, text_id, and provenance.',
+    'SQL-only via Python sidecar. Zero LLM.',
+    'rule_id is required.',
+    'Registry equivalent of lib/retrieve/sutravali_tools.ts::read_rule (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    rule_id: {
+      type: 'string',
+      description: 'UUID of the sutravali rule to fetch. Required.',
+      required: true,
+    },
+  },
+
+  required_inputs: ['rule_id'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 40 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const rule_id = args['rule_id'] as string | undefined
+    if (!rule_id) {
+      return { content: { error: 'rule_id is required' }, is_error: true }
+    }
+    try {
+      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+
+      const res = await fetch(`${sidecarUrl}/api/brahma/sutravali/read_rule/${encodeURIComponent(rule_id)}`, {
+        headers: { 'x-api-key': sidecarKey },
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!res.ok) {
+        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}` }, is_error: true }
+      }
+      const row = await res.json()
+      return { content: { rule: row }, is_error: false }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL: marsys://tool/L0/list_sutravali_rules_by_text ──────────────────
+// Ports lib/retrieve/sutravali_tools.ts::listRulesByTextTool (list_rules_by_text).
+
+const listSutravaliRulesByTextTool: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/list_sutravali_rules_by_text',
+  type: 'tool',
+  layer: 'L0',
+  name: 'list_sutravali_rules_by_text',
+  scope: 'global',
+
+  description: [
+    'List all sutravali rules sourced from a given text_id',
+    '(e.g. "bphs", "hora_sara", "phaladeepika", "saravali").',
+    'Paginated via limit (default 50, max 500) and offset (default 0).',
+    'SQL-only via Python sidecar. Zero LLM.',
+    'text_id is required.',
+    'Registry equivalent of lib/retrieve/sutravali_tools.ts::list_rules_by_text (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    text_id: {
+      type: 'string',
+      description: 'Classical text identifier (e.g. "bphs", "hora_sara", "phaladeepika"). Required.',
+      required: true,
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum rows to return (default: 50, max: 500).',
+    },
+    offset: {
+      type: 'number',
+      description: 'Pagination offset (default: 0).',
+    },
+  },
+
+  required_inputs: ['text_id'],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 50 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const text_id = args['text_id'] as string | undefined
+    if (!text_id) {
+      return { content: { error: 'text_id is required' }, is_error: true }
+    }
+    try {
+      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+      const limit = Math.min(Number(args['limit'] ?? 50), 500)
+      const offset = Number(args['offset'] ?? 0)
+
+      const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+      const res = await fetch(
+        `${sidecarUrl}/api/brahma/sutravali/list_rules_by_text/${encodeURIComponent(text_id)}?${qs.toString()}`,
+        {
+          headers: { 'x-api-key': sidecarKey },
+          signal: AbortSignal.timeout(10_000),
+        }
+      )
+      if (!res.ok) {
+        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}` }, is_error: true }
+      }
+      const rows = await res.json() as unknown[]
+      return { content: { rules: rows, returned_count: rows.length, text_id, limit, offset }, is_error: false }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL: marsys://tool/L2/classical_attribution_lookup ──────────────────
+// Ports lib/retrieve/classical_attribution_lookup_tool.ts.
+// scope: per_chart — attributions are scoped to MSR signals which are per-chart.
+// Tier stripped per DG1 (classical_disclosure_filter.ts RETIRED; no audience_tier).
+// emits_references: true — returns signal_ids and attribution_ids (references not text).
+
+const classicalAttributionLookupCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L2/classical_attribution_lookup',
+  type: 'tool',
+  layer: 'L2',
+  name: 'classical_attribution_lookup',
+  scope: 'per_chart',
+
+  description: [
+    'Fetch classical text attributions for MSR signals in a chart.',
+    'Each attribution links an MSR signal (signal_id) to a classical text passage',
+    '(text_key, title, author, chapter, verse_range, content) with an attribution_type',
+    '(confirms | contradicts | partial | extends | silent) and confidence score.',
+    'Provides the classical grounding for Bodha layer signals.',
+    'Required: chart_id + signal_ids (array of signal_id strings).',
+    'Optional: attribution_type filter, confidence_tier filter (HIGH|MEDIUM|LOW).',
+    'emits_references: returns signal_id + attribution_id references.',
+    'No audience-tier gating — tier gating is serve-time only.',
+    'Registry equivalent of lib/retrieve/classical_attribution_lookup_tool.ts (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    signal_ids: {
+      type: 'array',
+      description: 'Array of MSR signal_id strings to look up attributions for. Required.',
+      required: true,
+      items: { type: 'string' },
+    },
+    attribution_type: {
+      type: 'string',
+      description: "Filter by attribution type: 'confirms'|'contradicts'|'partial'|'extends'|'silent'. Optional.",
+      enum: ['confirms', 'contradicts', 'partial', 'extends', 'silent'],
+    },
+    confidence_tier: {
+      type: 'string',
+      description: "Filter by confidence tier: 'HIGH'|'MEDIUM'|'LOW'. Optional.",
+      enum: ['HIGH', 'MEDIUM', 'LOW'],
+    },
+  },
+
+  required_inputs: ['chart_id', 'signal_ids'],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'leaf',
+  emits_references: true,
+  lel_capable: false,
+  grounds_to: { l1_fact_ids: true, l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'medium', cacheable: true },
+    bulk_context: { pre_fetch_priority: 70 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const chart_id = args['chart_id'] as string | undefined
+    if (!chart_id) {
+      return { content: { error: 'chart_id is required' }, is_error: true }
+    }
+    const signal_ids = Array.isArray(args['signal_ids']) ? (args['signal_ids'] as string[]) : []
+    if (signal_ids.length === 0) {
+      return { content: { error: 'signal_ids array is required and must be non-empty' }, is_error: true }
+    }
+    const attribution_type = typeof args['attribution_type'] === 'string'
+      ? args['attribution_type'] as 'confirms' | 'contradicts' | 'partial' | 'extends' | 'silent'
+      : undefined
+    const confidence_tier = typeof args['confidence_tier'] === 'string'
+      ? args['confidence_tier'] as 'HIGH' | 'MEDIUM' | 'LOW'
+      : undefined
+
+    try {
+      // Delegate to the underlying Tool 26 implementation
+      const { classical_attribution_lookup } = await import('@/lib/tools/classical_attribution_lookup')
+      const output = await classical_attribution_lookup({ signal_ids, attribution_type, confidence_tier })
+
+      // Strip audience_tier — no tier gating in the registry layer (serve-time gating only)
+      const attributions = (output.attributions as unknown as Record<string, unknown>[]).map((a) => ({
+        attribution_id: a['attribution_id'],
+        msr_signal_id: a['msr_signal_id'],
+        text_key: a['text_key'],
+        title: a['title'],
+        author: a['author'],
+        chapter: a['chapter'],
+        verse_range: a['verse_range'],
+        content: a['content'],
+        attribution_type: a['attribution_type'],
+        confidence: a['confidence'],
+        confidence_tier: a['confidence_tier'],
+        derivation_notes: a['derivation_notes'],
+        translation_cross_checked: a['translation_cross_checked'],
+      }))
+
+      return {
+        content: {
+          chart_id,
+          signal_ids,
+          attributions,
+          returned_count: attributions.length,
+          filters: { attribution_type, confidence_tier },
+          provenance: {
+            note: 'Audience-tier gating removed per DG1 (no-audience-tier). Serve-time gating at API boundary.',
+            legacy_replacement: 'lib/retrieve/classical_attribution_lookup_tool.ts (classical_disclosure_filter.ts RETIRED)',
+          },
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL Wave C: marsys://tool/L1/chart_facts_query ──────────────────────
+// Ports the B.11-floor-injected chart_facts_query tool (lib/retrieve type stub +
+// contract alias for query_chart_facts). scope: per_chart — chart_id required.
+// Tier stripped per DG1. Delegates to L1 chart_facts table via Python sidecar.
+
+const chartFactsQueryCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L1/chart_facts_query',
+  type: 'tool',
+  layer: 'L1',
+  name: 'chart_facts_query',
+  scope: 'per_chart',
+
+  description: [
+    'Parametric lookup over the chart_facts table (27,554 rows per chart).',
+    'Covers all 27 fact categories: planet positions, dignities, strengths, house placements,',
+    'divisional charts, dashas, yogas, doshas, and more.',
+    'B.11-floor-injected on every query — provides the L1 fact foundation for all synthesis.',
+    'Required: chart_id. Optional filters: category (single or array), planet, house, sign,',
+    'nakshatra, divisional_chart, keyword, limit, as_of_date, from_date, to_date.',
+    'emits_references: returns fact_id references (not restated narrative).',
+    'Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill).',
+    'Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).',
+  ].join(' '),
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    category: {
+      type: 'string',
+      description: [
+        'Fact category to filter by (e.g. "planet_position", "house_placement", "dignity",',
+        '"strength", "yoga", "dosha", "dasha", "divisional"). Accepts a single value or',
+        'comma-separated list for multiple categories.',
+      ].join(' '),
+    },
+    planet: {
+      type: 'string',
+      description: 'Graha name to filter by (e.g. "Sun", "Moon", "Saturn"). Optional.',
+    },
+    house: {
+      type: 'number',
+      description: 'Bhava number (1-12) to filter by. Optional.',
+    },
+    sign: {
+      type: 'string',
+      description: 'Rashi name to filter by (e.g. "Aries", "Scorpio"). Optional.',
+    },
+    nakshatra: {
+      type: 'string',
+      description: 'Nakshatra name to filter by. Optional.',
+    },
+    divisional_chart: {
+      type: 'string',
+      description: 'Divisional chart code to filter by (e.g. "D9", "D10", "D1"). Optional.',
+    },
+    keyword: {
+      type: 'string',
+      description: 'Free-text keyword search over fact_value or fact_label. Optional.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum rows to return (default: 100, max: 1000).',
+    },
+    as_of_date: {
+      type: 'string',
+      description: 'ISO date — filter facts valid as of this date (for time-sensitive facts). Optional.',
+    },
+    from_date: {
+      type: 'string',
+      description: 'ISO date — filter facts with validity_start >= from_date. Optional.',
+    },
+    to_date: {
+      type: 'string',
+      description: 'ISO date — filter facts with validity_end <= to_date. Optional.',
+    },
+  },
+
+  required_inputs: ['chart_id'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'umbrella',
+  emits_references: true,
+  lel_capable: false,
+  grounds_to: { l1_fact_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 90, always_include: true },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const chart_id = args['chart_id'] as string | undefined
+    if (!chart_id) {
+      return { content: { error: 'chart_id is required' }, is_error: true }
+    }
+
+    try {
+      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+      const limit = Math.min(Number(args['limit'] ?? 100), 1000)
+
+      const body: Record<string, unknown> = { chart_id, limit }
+      if (args['category'])          body['category']          = args['category']
+      if (args['planet'])            body['planet']            = args['planet']
+      if (typeof args['house'] === 'number') body['house'] = args['house']
+      if (args['sign'])              body['sign']              = args['sign']
+      if (args['nakshatra'])         body['nakshatra']         = args['nakshatra']
+      if (args['divisional_chart'])  body['divisional_chart']  = args['divisional_chart']
+      if (args['keyword'])           body['keyword']           = args['keyword']
+      if (args['as_of_date'])        body['as_of_date']        = args['as_of_date']
+      if (args['from_date'])         body['from_date']         = args['from_date']
+      if (args['to_date'])           body['to_date']           = args['to_date']
+
+      const res = await fetch(`${sidecarUrl}/api/ganita/chart_facts/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!res.ok) {
+        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}`, chart_id }, is_error: true }
+      }
+      const rows = await res.json() as unknown[]
+      return {
+        content: {
+          chart_id,
+          facts: rows,
+          returned_count: rows.length,
+          filters: { ...body, chart_id: undefined },
+          provenance: {
+            table: 'chart_facts',
+            note: 'fact_id references resolve to the canonical L1 chart_facts table.',
+            legacy_replacement: 'lib/retrieve/chart_facts_query.ts (TYPE_STUB) + B.11 floor injection (D7 gap fill)',
+          },
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL Wave D: Remedy sub-tools (from lib/retrieve/remedy_tools.ts) ─────
+// The registry already has marsys://tool/L0/query_remedy_corpus (generic graha filter)
+// and marsys://tool/L2/query_remedies (Bodha layer per-chart). The 6 specific sub-tools
+// below map to the 7 RetrievalTool entries in REMEDY_TOOLS that the planner can dispatch
+// via getTool(). query_remedies (global filter) is covered by query_remedy_corpus;
+// the remaining 6 have no registry equivalent.
+// Tier stripped per DG1. Per_chart only where chart_id is meaningful.
+
+// D-1: query_remedies_for_chart — per_chart
+const queryRemediesForChartCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_remedies_for_chart',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_remedies_for_chart',
+  scope: 'per_chart',
+
+  description: [
+    'Return remedies relevant to a specific chart affliction.',
+    'Matches the affliction (planet name or life domain) against both the planet and domain',
+    'columns in brahma_remedy_corpus. Returns top remedies ordered by confidence and cost tier.',
+    'Required: chart_id + affliction. Optional: top_k (default 5).',
+    'chart_id is required to scope the query to a specific chart context.',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::query_remedies_for_chart (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    affliction: {
+      type: 'string',
+      description: 'Planet name or life domain to match (ILIKE against both planet and domain columns). Required.',
+      required: true,
+    },
+    top_k: {
+      type: 'number',
+      description: 'Maximum remedies to return (default: 5, max: 50).',
+    },
+  },
+
+  required_inputs: ['chart_id', 'affliction'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 60 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const chart_id = args['chart_id'] as string | undefined
+    if (!chart_id) {
+      return { content: { error: 'chart_id is required' }, is_error: true }
+    }
+    const affliction = args['affliction'] as string | undefined
+    if (!affliction) {
+      return { content: { error: 'affliction is required' }, is_error: true }
+    }
+    const topK = Math.min(Number(args['top_k'] ?? 5), 50)
+
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+      const sql = `
+        SELECT remedy_id, planet, domain, category, deity,
+               prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
+               cost_tier, contraindications, source_canonical_id, source_citation,
+               classical_attestation_text
+        FROM brahma_remedy_corpus
+        WHERE planet ILIKE $1 OR domain ILIKE $1
+        ORDER BY confidence DESC NULLS LAST, cost_tier ASC
+        LIMIT $2
+      `
+      const result = await pool.query(sql, [`%${affliction}%`, topK])
+      await pool.end()
+      return {
+        content: {
+          chart_id,
+          affliction,
+          remedies: result.rows,
+          returned_count: result.rows.length,
+          provenance: { table: 'brahma_remedy_corpus', note: 'No audience_tier gating — serve-time only.' },
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+  },
+}
+
+// D-2: list_remedies_by_category — global
+const listRemediesByCategoryCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/list_remedies_by_category',
+  type: 'tool',
+  layer: 'L0',
+  name: 'list_remedies_by_category',
+  scope: 'global',
+
+  description: [
+    'List all remedies in a given category from brahma_remedy_corpus.',
+    'category is required. Valid values: mantras | gemstones | charity | vrata |',
+    'yantras | puja | tantric | ayurvedic | vastu | behavioral.',
+    'Returns remedy_id, planet, domain, deity, prescription_text, mantra_text,',
+    'mantra_sanskrit, cost_tier, source_canonical_id, classical_attestation_text.',
+    'Ordered by planet then remedy_id. No chart_id needed (global reference data).',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::list_remedies_by_category (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    category: {
+      type: 'string',
+      description: 'Remedy category: mantras|gemstones|charity|vrata|yantras|puja|tantric|ayurvedic|vastu|behavioral. Required.',
+      required: true,
+      enum: ['mantras', 'gemstones', 'charity', 'vrata', 'yantras', 'puja', 'tantric', 'ayurvedic', 'vastu', 'behavioral'],
+    },
+  },
+
+  required_inputs: ['category'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 55 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const category = args['category'] as string | undefined
+    if (!category) {
+      return { content: { error: 'category is required' }, is_error: true }
+    }
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+      const sql = `
+        SELECT remedy_id, planet, domain, category, deity,
+               prescription_text, mantra_text, mantra_sanskrit,
+               cost_tier, source_canonical_id, classical_attestation_text
+        FROM brahma_remedy_corpus
+        WHERE category = $1
+        ORDER BY planet, remedy_id
+      `
+      const result = await pool.query(sql, [category])
+      await pool.end()
+      return {
+        content: { category, remedies: result.rows, returned_count: result.rows.length },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// D-3: read_remedy — global
+const readRemedyCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/read_remedy',
+  type: 'tool',
+  layer: 'L0',
+  name: 'read_remedy',
+  scope: 'global',
+
+  description: [
+    'Fetch the full record for a single remedy by remedy_id from brahma_remedy_corpus.',
+    'Returns all columns including ingredients_jsonb and timing_rules_jsonb.',
+    'remedy_id is required (UUID).',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::read_remedy (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    remedy_id: {
+      type: 'string',
+      description: 'UUID of the remedy to fetch. Required.',
+      required: true,
+    },
+  },
+
+  required_inputs: ['remedy_id'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 45 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const remedy_id = args['remedy_id'] as string | undefined
+    if (!remedy_id) {
+      return { content: { error: 'remedy_id is required' }, is_error: true }
+    }
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+      const result = await pool.query('SELECT * FROM brahma_remedy_corpus WHERE remedy_id = $1', [remedy_id])
+      await pool.end()
+      const row = result.rows[0] ?? null
+      return {
+        content: { remedy_id, remedy: row, found: row !== null },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// D-4: query_tantric_remedies — global
+const queryTantricRemediesCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_tantric_remedies',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_tantric_remedies',
+  scope: 'global',
+
+  description: [
+    'Query tantric remedies from brahma_remedy_corpus (category=tantric).',
+    'All returned rows have passed the tantric careful-inclusion gate (BPHS / Phaladeepika sources only).',
+    'Optional filters: deity (ILIKE), planet. Returns prescription, mantra, ingredients,',
+    'timing rules, cost tier, contraindications, and classical attestation.',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::query_tantric_remedies (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    deity: {
+      type: 'string',
+      description: 'Deity name to filter by (ILIKE match). Optional.',
+    },
+    planet: {
+      type: 'string',
+      description: 'Graha name to filter by. Optional.',
+    },
+  },
+
+  required_inputs: [],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 50 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const deity  = args['deity']  as string | undefined
+    const planet = args['planet'] as string | undefined
+
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+
+      const conditions: string[] = ["category = 'tantric'"]
+      const values: unknown[] = []
+      if (deity)  { values.push(`%${deity}%`);  conditions.push(`deity ILIKE $${values.length}`) }
+      if (planet) { values.push(planet);         conditions.push(`planet = $${values.length}`) }
+
+      const sql = `
+        SELECT remedy_id, planet, domain, deity,
+               prescription_text, mantra_sanskrit, mantra_transliteration,
+               ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
+               source_canonical_id, source_citation, classical_attestation_text
+        FROM brahma_remedy_corpus
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY planet, remedy_id
+      `
+      const result = await pool.query(sql, values)
+      await pool.end()
+      return {
+        content: { remedies: result.rows, returned_count: result.rows.length, filters: { deity, planet } },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// D-5: query_remedies_by_planet — global
+const queryRemediesByPlanetCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_remedies_by_planet',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_remedies_by_planet',
+  scope: 'global',
+
+  description: [
+    'Return all remedies for a given planet across all categories from brahma_remedy_corpus.',
+    'Useful for building a complete upaya profile for a planet.',
+    'planet is required. Returns all categories ordered by category then remedy_id.',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::query_remedies_by_planet (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    planet: {
+      type: 'string',
+      description: 'Graha name to look up (e.g. "Saturn", "Mars", "Venus"). Required.',
+      required: true,
+    },
+  },
+
+  required_inputs: ['planet'],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 60 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const planet = args['planet'] as string | undefined
+    if (!planet) {
+      return { content: { error: 'planet is required' }, is_error: true }
+    }
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+      const sql = `
+        SELECT remedy_id, planet, domain, category, deity,
+               prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
+               cost_tier, contraindications, source_canonical_id, classical_attestation_text
+        FROM brahma_remedy_corpus
+        WHERE planet = $1
+        ORDER BY category, remedy_id
+      `
+      const result = await pool.query(sql, [planet])
+      await pool.end()
+      return {
+        content: { planet, remedies: result.rows, returned_count: result.rows.length },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// D-6: query_mantras — global
+const queryMantrasCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/query_mantras',
+  type: 'tool',
+  layer: 'L0',
+  name: 'query_mantras',
+  scope: 'global',
+
+  description: [
+    'Return mantra remedies (category=mantras) from brahma_remedy_corpus.',
+    'Includes Sanskrit mantra, transliteration, and classical source.',
+    'Optional filter: planet (graha name). Returns all mantras if planet is omitted.',
+    'Registry equivalent of lib/retrieve/remedy_tools.ts::query_mantras (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    planet: {
+      type: 'string',
+      description: 'Graha name to filter mantras by (e.g. "Sun", "Jupiter"). Optional — returns all if omitted.',
+    },
+  },
+
+  required_inputs: [],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'drill',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 50 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const planet = args['planet'] as string | undefined
+    try {
+      const { Pool } = await import('pg')
+      const url = process.env.DATABASE_URL
+      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
+      const pool = new Pool({ connectionString: url, max: 3 })
+
+      const conditions: string[] = ["category = 'mantras'"]
+      const values: unknown[] = []
+      if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
+
+      const sql = `
+        SELECT remedy_id, planet, deity,
+               mantra_sanskrit, mantra_transliteration, mantra_text,
+               prescription_text, timing_rules_jsonb,
+               source_canonical_id, classical_attestation_text, classical_ref
+        FROM brahma_remedy_corpus
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY planet, remedy_id
+      `
+      const result = await pool.query(sql, values)
+      await pool.end()
+      return {
+        content: { planet: planet ?? 'all', mantras: result.rows, returned_count: result.rows.length },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// ── GAP FILL Wave E: Classical text sub-tools ─────────────────────────────────
+// Ports three CLASSICAL_TOOLS from lib/retrieve/index.ts that have no registry
+// equivalent. marsys://tool/L0/query_classical_texts covers the main semantic
+// search path (read_classical_text / search_classical_texts). The three below
+// are distinct: chapter fetch, text listing, and embedding-similarity discovery.
+
+// E-1: read_chapter — global
+const readChapterCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/read_chapter',
+  type: 'tool',
+  layer: 'L0',
+  name: 'read_chapter',
+  scope: 'global',
+
+  description: [
+    'Fetch all verse chunks for a specific chapter of a classical Jyotish text.',
+    'Required: text_id (e.g. "bphs", "hora_sara", "saravali") and chapter (integer).',
+    'Returns all chunk content for the chapter in English translation.',
+    'Delegates to the Python sidecar classical text tools endpoint.',
+    'Registry equivalent of lib/retrieve/index.ts::read_chapter (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    text_id: {
+      type: 'string',
+      description: 'Classical text identifier (e.g. "bphs", "hora_sara", "saravali"). Required.',
+      required: true,
+    },
+    chapter: {
+      type: 'number',
+      description: 'Chapter number to fetch (integer). Required.',
+      required: true,
+    },
+  },
+
+  required_inputs: ['text_id', 'chapter'],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'leaf',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 45 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const text_id = args['text_id'] as string | undefined
+    const chapter = args['chapter'] as number | undefined
+    if (!text_id) return { content: { error: 'text_id is required' }, is_error: true }
+    if (chapter === undefined || chapter === null) return { content: { error: 'chapter is required' }, is_error: true }
+    try {
+      const mod = await import('@/lib/tools/classical_text_tools')
+      const result = await (mod as unknown as { read_chapter: (args: { text_id: string; chapter: number }) => Promise<{ chunks: Array<{ content_en: string }> }> }).read_chapter({ text_id, chapter })
+      return {
+        content: {
+          text_id,
+          chapter,
+          chunks: result.chunks.map((c: { content_en: string }) => ({ content: c.content_en })),
+          returned_count: result.chunks.length,
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), text_id, chapter }, is_error: true }
+    }
+  },
+}
+
+// E-2: list_classical_texts — global
+const listClassicalTextsCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/list_classical_texts',
+  type: 'tool',
+  layer: 'L0',
+  name: 'list_classical_texts',
+  scope: 'global',
+
+  description: [
+    'List all classical Jyotish texts ingested in the corpus with metadata.',
+    'Returns text_id, title, author, language, chapter_count, verse_count, and other metadata.',
+    'No filters required — returns the full text roster.',
+    'Delegates to the Python sidecar classical text tools endpoint.',
+    'Registry equivalent of lib/retrieve/index.ts::list_classical_texts (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {},
+
+  required_inputs: [],
+
+  archetype: 'flat_fact',
+  traversal_level: 'L-OVERVIEW',
+  tool_role: 'umbrella',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 40 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(_args: Record<string, unknown>, _ctx?: unknown) {
+    try {
+      const mod = await import('@/lib/tools/classical_text_tools')
+      const result = await (mod as unknown as { list_classical_texts: () => Promise<{ texts: unknown[] }> }).list_classical_texts()
+      return {
+        content: {
+          texts: result.texts,
+          returned_count: result.texts.length,
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err) }, is_error: true }
+    }
+  },
+}
+
+// E-3: find_verses_about — global (embedding-similarity discovery)
+const findVersesAboutCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L0/find_verses_about',
+  type: 'tool',
+  layer: 'L0',
+  name: 'find_verses_about',
+  scope: 'global',
+
+  description: [
+    'Discover classical text verses about a specific astrological topic using embedding similarity.',
+    'Required: topic (free-text astrological topic, e.g. "Saturn in 7th house effects").',
+    'Optional: text_ids (array — restrict search to specific texts), top_k (default 10, max 50).',
+    'Returns ranked verses with source text key and confidence score.',
+    'Distinct from query_classical_texts (which does keyword/ILIKE search) — this tool uses',
+    'semantic vector similarity over embedded verse chunks.',
+    'Registry equivalent of lib/retrieve/index.ts::find_verses_about (D7 gap fill).',
+  ].join(' '),
+
+  input_schema: {
+    topic: {
+      type: 'string',
+      description: 'Free-text astrological topic to search for (e.g. "Saturn in 7th house effects"). Required.',
+      required: true,
+    },
+    text_ids: {
+      type: 'array',
+      description: 'Restrict search to specific text IDs (e.g. ["bphs", "saravali"]). Optional.',
+      items: { type: 'string' },
+    },
+    top_k: {
+      type: 'number',
+      description: 'Maximum verses to return (default: 10, max: 50).',
+    },
+  },
+
+  required_inputs: ['topic'],
+
+  archetype: 'prose_citation',
+  traversal_level: 'L-SOURCE',
+  tool_role: 'hybrid_retrieval',
+  emits_references: false,
+  lel_capable: false,
+  grounds_to: { l0_citation_ids: true },
+
+  llm_hints: {
+    agentic: { cost_class: 'medium', cacheable: false },
+    bulk_context: { pre_fetch_priority: 55 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const topic = args['topic'] as string | undefined
+    if (!topic) return { content: { error: 'topic is required' }, is_error: true }
+    const text_ids = Array.isArray(args['text_ids']) ? (args['text_ids'] as string[]) : undefined
+    const top_k = Math.min(Number(args['top_k'] ?? 10), 50)
+    try {
+      const mod = await import('@/lib/tools/classical_text_tools')
+      const result = await (mod as unknown as { find_verses_about: (args: { topic: string; text_ids?: string[]; top_k: number }) => Promise<{ results: Array<{ text: string; text_key: string; confidence_baseline: number }> }> }).find_verses_about({ topic, text_ids, top_k })
+      return {
+        content: {
+          topic,
+          text_ids: text_ids ?? 'all',
+          top_k,
+          results: result.results.map((r: { text: string; text_key: string; confidence_baseline: number }) => ({
+            content: r.text,
+            source_canonical_id: r.text_key,
+            confidence: r.confidence_baseline,
+          })),
+          returned_count: result.results.length,
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), topic }, is_error: true }
+    }
+  },
+}
+
 // ── Registration export ────────────────────────────────────────────────────────
 
 /**
- * Register D7 channel wiring capabilities.
+ * Register D7 channel wiring + gap-fill capabilities.
  * Call at application startup after D6 synergy is registered.
  * GATE A: only registers NEW files for this wave — does not edit registry/index.ts.
  */
 export function registerD7ChannelCapabilities(): void {
   registerCapability(mcpWiringTool)
   registerCapability(chatDispatchTool)
+  // Wave A — sutravali (ported from lib/retrieve/sutravali_tools.ts)
+  registerCapability(querySutravaliRulesTool)
+  registerCapability(querySutravaliRulesForPlanetTool)
+  registerCapability(readSutravaliRuleTool)
+  registerCapability(listSutravaliRulesByTextTool)
+  // Wave B — classical attribution (ported from lib/retrieve/classical_attribution_lookup_tool.ts)
+  registerCapability(classicalAttributionLookupCapability)
+  // Wave C — chart facts umbrella (B.11 floor injection target)
+  registerCapability(chartFactsQueryCapability)
+  // Wave D — remedy sub-tools (ported from lib/retrieve/remedy_tools.ts)
+  registerCapability(queryRemediesForChartCapability)
+  registerCapability(listRemediesByCategoryCapability)
+  registerCapability(readRemedyCapability)
+  registerCapability(queryTantricRemediesCapability)
+  registerCapability(queryRemediesByPlanetCapability)
+  registerCapability(queryMantrasCapability)
+  // Wave E — classical text sub-tools (ported from lib/retrieve/index.ts CLASSICAL_TOOLS)
+  registerCapability(readChapterCapability)
+  registerCapability(listClassicalTextsCapability)
+  registerCapability(findVersesAboutCapability)
 }
 
 /**
  * D7 capability URI roster (for Gate C reverse-citation checks and roster smoke tests).
  */
 export const D7_CAPABILITY_URIS = [
+  // Wiring
   'marsys://tool/channel/mcp_wiring',
   'marsys://tool/channel/chat_dispatch',
+  // Wave A — sutravali
+  'marsys://tool/L0/query_sutravali_rules',
+  'marsys://tool/L0/query_sutravali_rules_for_planet',
+  'marsys://tool/L0/read_sutravali_rule',
+  'marsys://tool/L0/list_sutravali_rules_by_text',
+  // Wave B — classical attribution
+  'marsys://tool/L2/classical_attribution_lookup',
+  // Wave C — chart facts
+  'marsys://tool/L1/chart_facts_query',
+  // Wave D — remedy sub-tools
+  'marsys://tool/L0/query_remedies_for_chart',
+  'marsys://tool/L0/list_remedies_by_category',
+  'marsys://tool/L0/read_remedy',
+  'marsys://tool/L0/query_tantric_remedies',
+  'marsys://tool/L0/query_remedies_by_planet',
+  'marsys://tool/L0/query_mantras',
+  // Wave E — classical text sub-tools
+  'marsys://tool/L0/read_chapter',
+  'marsys://tool/L0/list_classical_texts',
+  'marsys://tool/L0/find_verses_about',
 ] as const
