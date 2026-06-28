@@ -3,7 +3,8 @@
  * Run: npm run pipeline:msr-sql-test
  * Requires DATABASE_URL or Cloud SQL env vars to be set.
  */
-import { getTool } from '@/lib/retrieve/index'
+// D7 Step 4: getTool() from lib/retrieve retired — use getToolByName from tool_name_bridge
+import { getToolByName as getTool } from '@/lib/retrieval/registry/tool_name_bridge'
 
 const TEST_PLANS = [
   {

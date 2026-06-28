@@ -16,8 +16,10 @@
 import 'server-only'
 
 import type { LoopToolCall } from './agentic_loop'
-import { getTool } from '@/lib/retrieve/index'
-import type { QueryPlan } from '@/lib/retrieve/types'
+// D7 migration: getTool() replaced with registry-backed getToolByName()
+// DO NOT restore the lib/retrieve import — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.3
+import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import type { QueryPlan } from '@/lib/retrieval/shared_types'
 
 // ---------------------------------------------------------------------------
 // Context type
@@ -48,11 +50,12 @@ export async function executeMCPTool(
   toolCall: LoopToolCall,
   ctx: MCPToolExecutorCtx,
 ): Promise<string> {
-  const tool = getTool(toolCall.name)
+  // D7: registry-backed lookup — no audience_tier forwarded (DG1 ruling)
+  const tool = getToolByName(toolCall.name)
   if (!tool) {
     return (
       `ERROR: Unknown tool "${toolCall.name}". ` +
-      `The tool is not registered in the MARSYS retrieval tool registry.`
+      `The tool is not registered in the MARSYS retrieval registry.`
     )
   }
 

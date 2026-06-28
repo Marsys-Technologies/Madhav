@@ -8,7 +8,9 @@
  * Brief: CLAUDECODE_BRIEF.md (GATE-I-PERF-CMD-001), W4.
  */
 
-import type { ToolBundle } from '@/lib/retrieve/types'
+// D7 migration Step 3: ToolBundle sourced from lib/retrieve/types (canonical until Step 4 deletion).
+// When lib/retrieve is retired, update to ToolResult from @/lib/retrieval/registry/types.
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
 
 /**
  * Citation object as derived from synthesis output. The shape is shaped by

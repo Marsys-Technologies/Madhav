@@ -16,11 +16,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ── Test 5: isAllowedSurgicalTool / MCP_TO_RETRIEVAL_TOOL unit tests ──────────
 
+// D7 Step 4: primitives_registry retired — imports moved to tool_name_bridge
 import {
   isAllowedSurgicalTool,
   MCP_TO_RETRIEVAL_TOOL,
   SURGICAL_TOOLS,
-} from '@/lib/mcp/primitives_registry'
+} from '@/lib/retrieval/registry/tool_name_bridge'
 
 describe('primitives_registry — isAllowedSurgicalTool', () => {
   it('returns true for all 37 whitelisted tool names', () => {
@@ -102,9 +103,14 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
 
 // We mock the heavy dependencies so we don't need a live DB or retrieval tools.
 
-vi.mock('@/lib/retrieve/index', () => ({
-  getTool: vi.fn(),
-}))
+// D7 Step 4: route now calls getToolByName from tool_name_bridge (lib/retrieve/index RETIRED)
+vi.mock('@/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/retrieval/registry/tool_name_bridge')>()
+  return {
+    ...real,
+    getToolByName: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/trace/emitter', () => ({
   traceEmitter: {
@@ -118,11 +124,11 @@ vi.mock('@/lib/mcp/epistemics', async (importOriginal) => {
   return real
 })
 
-import { getTool } from '@/lib/retrieve/index'
+import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { traceEmitter } from '@/lib/trace/emitter'
 import { POST } from '@/app/api/mcp/primitives/[tool]/route'
 
-const mockGetTool = vi.mocked(getTool)
+const mockGetTool = vi.mocked(getToolByName)
 const mockTraceEmitter = vi.mocked(traceEmitter)
 
 // Helper to build a request with service-token + principal headers
@@ -192,7 +198,7 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
       name: 'chart_facts_query',
       version: '1.0',
       retrieve: vi.fn().mockResolvedValue({ rows: [{ planet: 'Saturn', category: 'shadbala' }] }),
-    } as unknown as ReturnType<typeof getTool>)
+    } as unknown as ReturnType<typeof getToolByName>)
 
     const req = buildRequest('query_chart_facts', { params: { category: 'shadbala' } })
     const res = await POST(req, buildRouteParams('query_chart_facts'))
@@ -207,7 +213,7 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
       name: 'msr_sql',
       version: '1.0',
       retrieve: vi.fn().mockResolvedValue({ signals: [] }),
-    } as unknown as ReturnType<typeof getTool>)
+    } as unknown as ReturnType<typeof getToolByName>)
 
     const req = buildRequest('query_signals', { params: { domain: 'career' } })
     await POST(req, buildRouteParams('query_signals'))
@@ -231,7 +237,7 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
         capturedPlan = plan
         return Promise.resolve({ nodes: [], edges: [] })
       }),
-    } as unknown as ReturnType<typeof getTool>)
+    } as unknown as ReturnType<typeof getToolByName>)
 
     const req = buildRequest('get_cgm_subgraph', { params: { node_id: 'MERCURY_10H', hops: 2 } })
     const res = await POST(req, buildRouteParams('get_cgm_subgraph'))
@@ -252,7 +258,7 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
         capturedPlan = plan
         return Promise.resolve({ nodes: [], edges: [] })
       }),
-    } as unknown as ReturnType<typeof getTool>)
+    } as unknown as ReturnType<typeof getToolByName>)
 
     const req = buildRequest('get_cgm_subgraph', { params: {} })
     await POST(req, buildRouteParams('get_cgm_subgraph'))

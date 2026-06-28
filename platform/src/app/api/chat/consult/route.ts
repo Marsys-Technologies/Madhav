@@ -73,8 +73,10 @@ import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
-import { getTool } from '@/lib/retrieve/index'
-import { buildChatToolsFromNames } from '@/lib/retrieve/tool_catalogue'
+// D7 Step 4: getTool() replaced with registry-backed getToolByName(); tool_catalogue RETIRED
+// DO NOT restore lib/retrieve imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.1
+import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
@@ -85,7 +87,9 @@ import { compressHistory } from '@/lib/synthesis/history_compression'
 import { createAuditConsumer } from '@/lib/audit/consumer'
 import { traceEmitter } from '@/lib/trace/emitter'
 import type { TraceStep, TraceChunkItem, TraceDataSummary, TracePayload, TraceQueryPlan, TraceToolCallSpec } from '@/lib/trace/types'
-import type { ToolBundle, ToolBundleResult } from '@/lib/retrieve/index'
+// D7 migration: ToolBundle/ToolBundleResult types sourced from lib/retrieve/types
+// (canonical location until lib/retrieve is retired in Step 4).
+import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
 import { res } from '@/lib/errors'
 import {
   writeLlmCallLog,
@@ -695,7 +699,12 @@ export async function POST(request: Request) {
   const toolResults = await Promise.all(
     toolsAuthorized.map(async (toolName: string, idx: number) => {
       if (request.signal.aborted) return null
-      const t = getTool(toolName)
+      // D7: registry-backed lookup — no audience_tier forwarded (DG1 ruling).
+      // Cast to RetrievalTool for executeWithCache compatibility: the bridge's
+      // retrieve() accepts Record<string,unknown> which is a structural superset
+      // of QueryPlan at runtime; the cast is safe because QueryPlan satisfies
+      // Record<string,unknown> at the value level.
+      const t = getToolByName(toolName) as import('@/lib/retrieval/shared_types').RetrievalTool | undefined
       if (!t) return null
       const toolStart = Date.now()
       try {

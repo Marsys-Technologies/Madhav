@@ -76,7 +76,7 @@ beforeEach(() => {
 // ── 1. classical_text_search_tool returns valid ToolBundle ──
 describe('classical_text_search_tool.retrieve', () => {
   it('produces a ToolBundle with schema_version 1.0', async () => {
-    const { tool } = await import('@/lib/retrieve/classical_text_search_tool')
+    const { tool } = await import('@/lib/retrieval/tools/classical_text_search_tool')
     const plan = makePlan('classical_grounding', ['classical_text_search'])
     const bundle = await tool.retrieve(plan, { query: 'Saturn Libra Sasha yoga', limit: 3 })
     expect(bundle.schema_version).toBe('1.0')
@@ -85,7 +85,7 @@ describe('classical_text_search_tool.retrieve', () => {
   })
 
   it('result.content includes text_key and similarity', async () => {
-    const { tool } = await import('@/lib/retrieve/classical_text_search_tool')
+    const { tool } = await import('@/lib/retrieval/tools/classical_text_search_tool')
     const plan = makePlan('classical_grounding', ['classical_text_search'])
     const bundle = await tool.retrieve(plan, { query: 'Saturn yoga' })
     const parsed = JSON.parse(bundle.results[0].content)
@@ -98,7 +98,7 @@ describe('classical_text_search_tool.retrieve', () => {
 describe('classical_attribution_lookup_tool.retrieve', () => {
   it('produces a ToolBundle with tool_name classical_attribution_lookup', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [makeAttrRow()], rowCount: 1 })
-    const { tool } = await import('@/lib/retrieve/classical_attribution_lookup_tool')
+    const { tool } = await import('@/lib/retrieval/tools/classical_attribution_lookup_tool')
     const plan = makePlan('classical_grounding', ['classical_attribution_lookup'])
     const bundle = await tool.retrieve(plan, { signal_ids: ['SIG.MSR.001'] })
     expect(bundle.tool_name).toBe('classical_attribution_lookup')
@@ -107,7 +107,7 @@ describe('classical_attribution_lookup_tool.retrieve', () => {
   })
 
   it('returns empty results for empty signal_ids', async () => {
-    const { tool } = await import('@/lib/retrieve/classical_attribution_lookup_tool')
+    const { tool } = await import('@/lib/retrieval/tools/classical_attribution_lookup_tool')
     const plan = makePlan('classical_grounding', ['classical_attribution_lookup'])
     const bundle = await tool.retrieve(plan, { signal_ids: [] })
     expect(bundle.results).toHaveLength(0)
@@ -127,7 +127,7 @@ describe('QueryPlan classical_grounding query_class', () => {
 describe('applyClassicalDisclosureFilter', () => {
   it('emits confidence_tier and translation_cross_checked for all tiers', async () => {
     const { applyClassicalDisclosureFilter } = await import(
-      '@/lib/retrieve/classical_disclosure_filter'
+      '@/lib/retrieval/tools/classical_disclosure_filter'
     )
     const records = [
       {
@@ -154,7 +154,7 @@ describe('applyClassicalDisclosureFilter', () => {
 
   it('redacts verse content for public_redacted audience', async () => {
     const { applyClassicalDisclosureFilter } = await import(
-      '@/lib/retrieve/classical_disclosure_filter'
+      '@/lib/retrieval/tools/classical_disclosure_filter'
     )
     const records = [
       {

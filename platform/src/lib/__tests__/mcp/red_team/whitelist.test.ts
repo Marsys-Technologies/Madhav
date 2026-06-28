@@ -10,11 +10,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+// D7 Step 4: primitives_registry retired — imports moved to tool_name_bridge
 import {
   isAllowedSurgicalTool,
   MCP_TO_RETRIEVAL_TOOL,
   SURGICAL_TOOLS,
-} from '@/lib/mcp/primitives_registry'
+} from '@/lib/retrieval/registry/tool_name_bridge'
 
 // ── RT-04: Whitelist enforcement ─────────────────────────────────────────────
 

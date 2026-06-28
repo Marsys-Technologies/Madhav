@@ -55,7 +55,20 @@ export interface QueryPlan {
   router_confidence?: number
   router_model_id?: string
   /** Params for chart_facts_query retrieval tool (M2-C1). */
-  chart_facts_query?: import('@/lib/retrieve/chart_facts_query').ChartFactsQueryInput
+  chart_facts_query?: {
+    category?: string | string[]
+    planet?: string
+    house?: number
+    sign?: string
+    nakshatra?: string
+    divisional_chart?: string
+    keyword?: string
+    limit?: number
+    as_of_date?: string
+    from_date?: string
+    to_date?: string
+    [key: string]: unknown
+  }
   // Temporal extension flags (W5-R1)
   time_window?: { start: string; end: string }
   sade_sati_query?: boolean

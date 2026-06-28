@@ -17,12 +17,13 @@ import {
 } from '../../../src/lib/synthesis/agentic_loop'
 
 // Mock the retrieve/index module
-vi.mock('../../../src/lib/retrieve/index', () => ({
-  getTool: vi.fn(),
-  RETRIEVAL_TOOLS: [],
-}))
+// D7 Step 4: mock getToolByName from tool_name_bridge (lib/retrieve/index RETIRED)
+vi.mock('../../../src/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
+  const real = await importOriginal()
+  return { ...real, getToolByName: vi.fn() }
+})
 
-import { getTool } from '../../../src/lib/retrieve/index'
+import { getToolByName as getTool } from '../../../src/lib/retrieval/registry/tool_name_bridge'
 import { executeMCPTool } from '../../../src/lib/synthesis/mcp_tool_executor'
 import type { MCPToolExecutorCtx } from '../../../src/lib/synthesis/mcp_tool_executor'
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isAllowedSurgicalTool, MCP_TO_RETRIEVAL_TOOL, SURGICAL_TOOLS } from '../primitives_registry'
+// D7 Step 4: primitives_registry retired — imports moved to tool_name_bridge
+import { isAllowedSurgicalTool, MCP_TO_RETRIEVAL_TOOL, SURGICAL_TOOLS } from '@/lib/retrieval/registry/tool_name_bridge'
 
 describe('primitives_registry', () => {
   // FIX-1 regression: original MCP-facing tool names pass whitelist

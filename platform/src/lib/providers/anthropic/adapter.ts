@@ -49,7 +49,9 @@ import type {
   StructuredOutputsResponse,
 } from '../types';
 import { streamText, jsonSchema } from 'ai';
-import { normalizeInputSchema } from '@/lib/retrieve/tool_catalogue';
+// D7 migration: normalizeInputSchema moved to @/lib/retrieval/registry/schema_utils
+// (pure utility, no retrieval dispatch dependency). DO NOT restore lib/retrieve import.
+import { normalizeInputSchema } from '@/lib/retrieval/registry/schema_utils';
 import { anthropic as anthropicProvider } from '@ai-sdk/anthropic';
 import { ANTHROPIC_MANIFEST } from './manifest';
 

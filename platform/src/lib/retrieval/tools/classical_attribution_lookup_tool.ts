@@ -4,11 +4,12 @@
  * Wraps the Tool 26 implementation (src/lib/tools/classical_attribution_lookup.ts)
  * as a RetrievalTool conforming to the unified retrieve interface.
  *
- * M8/Brahmagyan delta build 2026-06-03
+ * M8/Brahmagyan delta build 2026-06-03.
+ * D7 Step 4 (2026-06-28): moved from lib/retrieve/ to lib/retrieval/tools/ on lib/retrieve retirement.
  */
 
 import { createHash } from 'crypto'
-import type { RetrievalTool, ToolBundle, ToolBundleResult, QueryPlan } from './types'
+import type { RetrievalTool, ToolBundle, ToolBundleResult, QueryPlan } from '@/lib/retrieval/shared_types'
 import { classical_attribution_lookup } from '@/lib/tools/classical_attribution_lookup'
 
 function sha256(data: string): string {

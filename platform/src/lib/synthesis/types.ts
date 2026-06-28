@@ -5,7 +5,9 @@
 
 import type { QueryPlan } from '@/lib/router/types'
 import type { Bundle } from '@/lib/bundle/types'
-import type { ToolBundle } from '@/lib/retrieve/types'
+// D7 migration Step 3: ToolBundle sourced from lib/retrieve/types (canonical until Step 4 deletion).
+// When lib/retrieve is retired, update to ToolResult from @/lib/retrieval/registry/types.
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { RequestScopedToolCache } from '@/lib/cache/index'
 import type { AudienceTier, StyleSuffix } from '@/lib/prompts/types'
 import type { ValidationResult } from '@/lib/validators/types'

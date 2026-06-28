@@ -20,17 +20,21 @@
 
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getTool } from '@/lib/retrieve/index'
+// D7 migration Step 4: all imports consolidated into tool_name_bridge (primitives_registry RETIRED)
+// DO NOT restore lib/mcp/primitives_registry imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.4
+import {
+  getToolByName,
+  resolveToolUri,
+  TOOL_NAME_TO_URI,
+  isAllowedSurgicalTool,
+  MCP_TO_RETRIEVAL_TOOL,
+} from '@/lib/retrieval/registry/tool_name_bridge'
 import type { QueryPlan } from '@/lib/router/types'
 import {
   buildEnvelope,
   buildErrorEnvelope,
   buildEpistemicsBlock,
 } from '@/lib/mcp/epistemics'
-import {
-  isAllowedSurgicalTool,
-  MCP_TO_RETRIEVAL_TOOL,
-} from '@/lib/mcp/primitives_registry'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
 import { buildTraceSummary } from '@/lib/mcp/trace_summary'
@@ -146,17 +150,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.warn(`[mcp:primitives] tool_registry lookup failed for ${mcpToolName} — proceeding`, registryErr)
   }
 
-  // Resolve the underlying retrieval tool name
+  // Resolve the underlying retrieval tool name (from primitives_registry whitelist)
   const retrievalToolName = MCP_TO_RETRIEVAL_TOOL[mcpToolName]
 
-  // Get the retrieval tool instance
-  const tool = getTool(retrievalToolName)
+  // D7: Get the retrieval tool via the registry bridge (no audience_tier forwarded — DG1 ruling)
+  const tool = getToolByName(retrievalToolName)
   if (!tool) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'internal',
         message: `Retrieval tool not found in registry: ${retrievalToolName}`,
-        remediation: 'Platform retrieval tool registry may be misconfigured',
+        remediation: 'Platform retrieval tool registry may be misconfigured (TOOL_NAME_TO_URI missing entry)',
       }),
       { status: 500 }
     )
@@ -201,10 +205,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   }
 
-  // Execute the retrieval tool
+  // Execute the retrieval tool via registry bridge.
+  // D7: audience_tier stripped from plan before passing to registry handler (DG1 ruling).
+  const { audience_tier: _stripped, ...planWithoutTier } = queryPlan
+  void _stripped // intentionally stripped
   let toolResult: unknown
   try {
-    const rawResult = await tool.retrieve(queryPlan, toolParams)
+    const rawResult = await tool.retrieve(planWithoutTier as Record<string, unknown>, toolParams)
     toolResult = rawResult
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

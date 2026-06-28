@@ -54,8 +54,9 @@ import {
   GEMINI_CACHE_MIN_TOKENS,
 } from '@/lib/providers/google/cached_content'
 
-import { buildChatToolsFromNames } from '@/lib/retrieve/tool_catalogue'
-import type { ToolBundle } from '@/lib/retrieve/index'
+// D7 Step 4: buildChatToolsFromNames moved to schema_utils (tool_catalogue RETIRED)
+import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
 
 import {
   writeConversationMessages,
