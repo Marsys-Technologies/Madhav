@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_RETRIEVAL_DEEPSEEK_MODEL_MIGRATION
 version: 1.0
-status: READY-FOR-EXECUTION
+status: COMPLETE
 created: 2026-06-28
 author: Cowork (planning) — for execution by Claude Code in Antigravity
 classification: CLAUDECODE_BRIEF — DeepSeek model-ID migration (ISSUE-6, time-sensitive)
