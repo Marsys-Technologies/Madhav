@@ -4,12 +4,14 @@
  * Pure data assertions on MODELS, STACK_ROUTING, and FAMILY_WORKER from registry.ts.
  * No LLM calls, no API keys required — CI-safe.
  *
- * Guards:
- *   1. deepseek-v4-flash does NOT appear as primary in any routing slot
- *   2. deepseek stack planner_fast.primary === 'deepseek-chat'
+ * Guards (updated 2026-06-28 — deepseek-chat → deepseek-v4-flash migration):
+ *   1. deepseek-chat does NOT appear as primary in any routing slot (replaced by v4-flash)
+ *   2. deepseek stack planner_fast.primary === 'deepseek-v4-flash'
  *   3. All 5 stacks have planner_fast defined
  *   4. FAMILY_WORKER entries all resolve to model IDs in MODELS
- *   5. deepseek-chat entry is not deprecated (label/hint check)
+ *   5. deepseek-v4-flash is the canonical FAMILY_WORKER for deepseek
+ * NOTE: deepseek-chat / deepseek-reasoner entries kept in MODELS for backward compat
+ *       (localStorage persistence). They retire 2026-07-24 and will be removed after.
  */
 import { describe, it, expect } from 'vitest'
 
@@ -27,18 +29,18 @@ const ALL_CALL_TYPES: CallType[] = ['synthesis', 'planner_deep', 'planner_fast',
 const modelIds = new Set(MODELS.map(m => m.id))
 
 describe('BF.GAP.001 regression guard', () => {
-  it('deepseek planner_fast.primary is deepseek-chat (not deepseek-v4-flash)', () => {
-    expect(STACK_ROUTING.deepseek.planner_fast.primary).toBe('deepseek-chat')
+  // Post-migration (2026-06-28): deepseek-v4-flash IS the canonical primary.
+  // Guard now prevents regression back to deepseek-chat.
+  it('deepseek planner_fast.primary is deepseek-v4-flash (not deepseek-chat)', () => {
+    expect(STACK_ROUTING.deepseek.planner_fast.primary).toBe('deepseek-v4-flash')
   })
 
-  it('deepseek-v4-flash does not appear as primary in any stack routing slot', () => {
+  it('deepseek-chat does not appear as primary in any deepseek stack routing slot', () => {
     const violations: string[] = []
-    for (const stack of ALL_STACKS) {
-      for (const callType of ALL_CALL_TYPES) {
-        const { primary } = STACK_ROUTING[stack][callType]
-        if (primary === 'deepseek-v4-flash') {
-          violations.push(`${stack}.${callType}.primary`)
-        }
+    for (const callType of ALL_CALL_TYPES) {
+      const { primary } = STACK_ROUTING.deepseek[callType]
+      if (primary === 'deepseek-chat') {
+        violations.push(`deepseek.${callType}.primary`)
       }
     }
     expect(violations).toEqual([])
@@ -74,12 +76,15 @@ describe('FAMILY_WORKER integrity', () => {
   })
 })
 
-describe('deepseek-chat model entry health', () => {
-  it('deepseek-chat entry exists in MODELS', () => {
+// deepseek-chat / deepseek-v4-flash entry integrity
+// deepseek-chat is kept as a backward-compat entry for persisted localStorage model IDs.
+// deepseek-v4-flash is now the canonical routing ID.
+describe('deepseek model entry health', () => {
+  it('deepseek-chat entry exists in MODELS (backward compat)', () => {
     expect(modelIds.has('deepseek-chat')).toBe(true)
   })
 
-  it('deepseek-chat entry does not have "deprecated" in label or hint', () => {
+  it('deepseek-chat entry does not have "deprecated" in label or hint (label is user-facing)', () => {
     const entry = MODELS.find(m => m.id === 'deepseek-chat')
     expect(entry).toBeDefined()
     expect(entry!.label.toLowerCase()).not.toContain('deprecated')
@@ -89,5 +94,13 @@ describe('deepseek-chat model entry health', () => {
   it('deepseek-chat speedTier is fast', () => {
     const entry = MODELS.find(m => m.id === 'deepseek-chat')
     expect(entry!.speedTier).toBe('fast')
+  })
+
+  it('deepseek-v4-flash entry exists in MODELS (canonical routing ID)', () => {
+    expect(modelIds.has('deepseek-v4-flash')).toBe(true)
+  })
+
+  it('FAMILY_WORKER.deepseek is deepseek-v4-flash', () => {
+    expect(FAMILY_WORKER.deepseek).toBe('deepseek-v4-flash')
   })
 })
