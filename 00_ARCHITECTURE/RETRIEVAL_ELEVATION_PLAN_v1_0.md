@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_ELEVATION_PLAN_v1_0.md
 canonical_id: RETRIEVAL_ELEVATION_PLAN
 version: 1.0
 status: CURRENT — the phased plan for elevating the retrieval system (built in this Cowork session's workstream)

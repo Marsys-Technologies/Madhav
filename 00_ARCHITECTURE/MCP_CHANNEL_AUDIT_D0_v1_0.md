@@ -1,4 +1,5 @@
 ---
+artifact: MCP_CHANNEL_AUDIT_D0_v1_0.md
 canonical_id: MCP_CHANNEL_AUDIT_D0
 version: 1.0
 status: CURRENT — current-state map of the MCP channel; gates the production-hardening plan

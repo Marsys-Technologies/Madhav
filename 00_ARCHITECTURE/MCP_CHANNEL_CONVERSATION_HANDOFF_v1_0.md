@@ -1,4 +1,5 @@
 ---
+artifact: MCP_CHANNEL_CONVERSATION_HANDOFF_v1_0.md
 canonical_id: MCP_CHANNEL_CONVERSATION_HANDOFF
 version: 1.0
 status: CURRENT — paste into a fresh Cowork conversation to start the MCP-channel workstream

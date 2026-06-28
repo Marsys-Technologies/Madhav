@@ -1,4 +1,5 @@
 ---
+artifact: MCP_ELEVATION_PLAN_AND_HANDOFF_v1_0.md
 canonical_id: MCP_ELEVATION_PLAN_AND_HANDOFF
 version: 1.0
 status: CURRENT — paste into a fresh Cowork conversation to drive the MCP elevation workstream

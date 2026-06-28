@@ -30314,6 +30314,27 @@ session_close:
 
 ## ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28 — 2026-06-28, COMPLETE
 
+```yaml
+session_open:
+  session_id: ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28
+  opened_on: 2026-06-28
+  cowork_thread_name: ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28
+  brief: 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_ABHINANDAN_DEEP_DATA_AUDIT_v1_0.md
+  objective: >
+    Read-only DB audit of regenerated Abhinandan Mohanty (1c826d5a) dataset against
+    17 falsifiable per-fix criteria (B1–B10 + O1–O7) plus contamination sweep and
+    completeness re-check across L1–L5.
+  may_touch:
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md
+  must_not_touch:
+    - "chart_id = '482012f1-710e-4a25-994a-93821f5871aa' (native — never)"
+    - "chart_id = '1c826d5a-41cb-4450-b4dc-59d440e5f75a' (Abhinandan — read-only audit)"
+    - platform/python-sidecar/pipeline/orchestrator/ (FROZEN contract — no modifications)
+  predecessor_session: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
+  current_state_version_at_open: 6.06
+```
+
 **Session type:** Read-only data-correctness audit  
 **Governing brief:** `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_ABHINANDAN_DEEP_DATA_AUDIT_v1_0.md`  
 **Subject:** Abhinandan Mohanty — `1c826d5a-41cb-4450-b4dc-59d440e5f75a` (born 1985-03-02, 09:40 IST, Bhubaneswar)  

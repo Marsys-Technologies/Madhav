@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_MCP_UNIFIED_AUDIT_AND_SYNC_CONTRACT_v1_0.md
 canonical_id: RETRIEVAL_MCP_UNIFIED_AUDIT_AND_SYNC_CONTRACT
 version: 1.1
 status: CURRENT — LIVE-VERIFIED foundation for the parallel retrieval-elevation + MCP-build forks

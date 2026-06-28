@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_ELEVATION_AUDIT_FINDINGS_v1_0.md
 canonical_id: RETRIEVAL_ELEVATION_AUDIT_FINDINGS
 version: 1.0
 status: CURRENT
