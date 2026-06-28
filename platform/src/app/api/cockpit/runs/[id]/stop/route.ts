@@ -24,8 +24,9 @@ export async function POST(
   try {
     const result = await query<{ id: string }>(
       `UPDATE build_runs
-       SET stop_requested_at = NOW()
-       WHERE id=$1 AND state IN ('running','paused')
+       SET stop_requested_at = NOW(),
+           state = CASE WHEN state = 'planned' THEN 'stopped' ELSE state END
+       WHERE id=$1 AND state IN ('planned','running','paused')
        RETURNING id`,
       [id]
     )
