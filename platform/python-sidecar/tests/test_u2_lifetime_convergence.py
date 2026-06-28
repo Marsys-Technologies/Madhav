@@ -66,8 +66,7 @@ class FakeCursor:
         elif 'kala_activation_predicates' in low:
             self._result = self._store['predicates']
         elif 'bodha_msr_signals' in low:
-            # plan_substeps expects dict rows: signal_id, dignity_score, graha_name, house_num,
-            # and domains_affected_array (added in B4-src domain-map enrichment).
+            # plan_substeps SELECT includes domains_affected_array (B4-src domain enrichment).
             self._result = [
                 {
                     'signal_id': sig,
@@ -191,7 +190,7 @@ def _run(store):
     conn = FakeConn(store)
     writer = KaSangamWriter()
     result = writer.run(FakeCtx(conn))
-    # horizon_tier is the second-to-last INSERT param; primary_domain (B4-src) is last.
+    # horizon_tier is params[-2]; primary_domain (B4-src) was appended last → params[-1].
     tiers = [ins['params'][-2] for ins in store['inserts']]
     return result, conn, tiers
 
