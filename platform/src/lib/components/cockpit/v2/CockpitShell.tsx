@@ -105,6 +105,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   const handleClearSuccess = useCallback(() => {
     setClearPreview(null)
+    setRefreshKey(k => k + 1)
   }, [])
 
   const handleClearClose = useCallback(() => {

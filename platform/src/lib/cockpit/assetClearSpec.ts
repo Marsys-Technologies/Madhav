@@ -84,6 +84,14 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: 'DELETE FROM mimamsa_load_bearing WHERE chart_id = $1' },
   ],
 
+  // ── L4 Phala — multi-table writers ───────────────────────────────────────────
+  // ph_rectification writes phala_rectification (185 rows) + phala_rectification_best
+  // (1 row). phala_rectification_best has an FK to phala_rectification — delete child first.
+  ph_rectification: [
+    { sql: 'DELETE FROM phala_rectification_best WHERE chart_id = $1' },
+    { sql: 'DELETE FROM phala_rectification WHERE chart_id = $1' },
+  ],
+
   // bo_samvada's "table" is the vw_chart_digest VIEW (a derived projection over
   // other bodha tables) — it owns no rows of its own and cannot be DELETEd from.
   // null = nothing to clear, skip cleanly (avoids a spurious failed_tables entry).

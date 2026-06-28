@@ -8,6 +8,8 @@ import { EXPLICIT_CLEAR_OPS, deriveDeleteSqlFromCountSql } from '@/lib/cockpit/a
  * tables behind and a layer clear appeared to "not clear".
  */
 const EXPECTED_TABLES: Record<string, string[]> = {
+  // L4 Phala
+  ph_rectification: ['phala_rectification_best', 'phala_rectification'],
   // L2 Bodha
   bo_karanajala: ['bodha_contradictions', 'bodha_cgm_edges'],
   bo_sangati: ['bodha_convergence', 'bodha_cdlm_cells'],
