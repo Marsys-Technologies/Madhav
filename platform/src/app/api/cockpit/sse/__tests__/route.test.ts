@@ -72,10 +72,8 @@ describe('GET /api/cockpit/sse', () => {
 
     const firstFrame = await readFirstFrame(res)
 
-    // pollingStream emits: `data: {"type":"hello","chart_id":"…"}\n\n`
-    // pubsubStream emits:  `: hello …\n\n`  (SSE comment, not data)
-    expect(firstFrame).toMatch(/^data: /)
-    expect(firstFrame).toContain('"type":"hello"')
+    // Both paths now emit a named hello event: `event: hello\ndata: {...}\n\n`
+    expect(firstFrame).toMatch(/^event: hello\n/)
     expect(firstFrame).toContain(CHART_ID)
   })
 
@@ -94,8 +92,8 @@ describe('GET /api/cockpit/sse', () => {
 
     const firstFrame = await readFirstFrame(res)
 
-    // pubsubStream emits an SSE comment as its hello frame
-    expect(firstFrame).toMatch(/^: hello /)
+    // pubsubStream emits a named hello event
+    expect(firstFrame).toMatch(/^event: hello\n/)
     expect(firstFrame).toContain(CHART_ID)
   })
 
@@ -107,7 +105,7 @@ describe('GET /api/cockpit/sse', () => {
 
     expect(res.status).toBe(200)
     const firstFrame = await readFirstFrame(res)
-    expect(firstFrame).toMatch(/^data: /)
+    expect(firstFrame).toMatch(/^event: hello\n/)
   })
 
   it('returns 403 for unauthenticated requests', async () => {
