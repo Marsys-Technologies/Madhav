@@ -3,216 +3,224 @@ canonical_id: RETRIEVAL_D7_GAP_REPORT
 version: 1.0
 status: CURRENT
 created: 2026-06-28
-author: Claude Code (Gap Analysis + Port Agent — D7 Chat-Channel Migration)
-classification: Migration gap report — §2 deliverable of CLAUDECODE_BRIEF_RETRIEVAL_D7_CHAT_MIGRATION_v1_0
+author: Claude Code (GAP ANALYSIS + PORT agent — D7 Chat-Channel Migration §2)
 parent: CLAUDECODE_BRIEF_RETRIEVAL_D7_CHAT_MIGRATION_v1_0 §2
-scope: Read-only analysis + registry additions. No callers repointed (that is §3).
-gate_result: chart_agnostic_gate PASS — 7 D7 capabilities checked, 0 violations
+scope: Gap analysis and port of lib/retrieve capabilities lacking registry equivalents.
+       Read-only on lib/retrieve; adds capabilities to register_d7_channel.ts only.
+chart_agnostic_gate: PASS (17 capabilities, 0 violations)
+test: src/lib/retrieval/registry/layers/__tests__/register_d7_channel.gate.test.ts (8/8)
 ---
 
 # RETRIEVAL D7 GAP REPORT v1.0
 
-Gap analysis for the D7 chat-channel migration (§2 deliverable).
-Covers all lib/retrieve capabilities the chat path depends on, cross-checked
-against the sealed D1–D6 registry, with gap-fill capabilities added to
-`register_d7_channel.ts`.
+Gap analysis for §2 of the D7 chat-channel migration: for each piece of `lib/retrieve`
+logic the chat path needs, verify a registry equivalent exists; add one where it does not.
 
 ---
 
 ## §1 — Methodology
 
-1. Read `RETRIEVAL_D7_CALLER_MAP_v1_0.md` for the authoritative chat-path tool inventory.
-2. Enumerated all `RETRIEVAL_TOOLS` in `lib/retrieve/index.ts` (direct + via CLASSICAL_TOOLS,
-   SUTRAVALI_RETRIEVAL_TOOLS, REMEDY_TOOLS imports).
-3. Grepped `uri:` across all registry layer files (L0–L5 + D5/D6/D7 wave files).
-4. For each lib/retrieve tool the chat path calls via `getTool()`: checked whether a
-   registry equivalent exists (URI match or functional equivalence).
-5. Added D1-contract-conformant capabilities for each real gap.
-6. Ran `chart_agnostic_gate` against the 7 new D7 capabilities.
+**Source of truth for "what the chat path needs":**
+- `src/app/api/chat/consult/route.ts` — B.11 floor injection + `getTool(toolName)` dispatch loop
+- `src/lib/pipelines/shared/b11_floor_inject.ts` — floor injection pipeline
+- `src/lib/retrieve/index.ts` `RETRIEVAL_TOOLS` array — tools the `getTool()` lookup resolves
+- `src/lib/retrieve/remedy_tools.ts` `REMEDY_TOOLS` — 7 remedy sub-tools exported into RETRIEVAL_TOOLS
+- `src/lib/retrieve/sutravali_tools.ts` `SUTRAVALI_RETRIEVAL_TOOLS` — 4 sutravali tools
+
+**Registry checked against:**
+- `src/lib/retrieval/registry/layers/L0_brahmagyan/` — 15 capabilities
+- `src/lib/retrieval/registry/layers/L1_ganita/` — 19 capabilities
+- `src/lib/retrieval/registry/layers/L2_bodha/` — 7 capabilities
+- `src/lib/retrieval/registry/layers/register_d7_channel.ts` — prior D7 wave (5 gap-fills already present)
 
 ---
 
-## §2 — Coverage map (pre-gap-fill)
+## §2 — Coverage matrix (pre-migration state)
 
-### Tools already covered by registry (NO GAP)
-
-| lib/retrieve tool name | Registry URI | Notes |
+| lib/retrieve tool name | Registry URI | Status |
 |---|---|---|
-| `msr_sql` | `marsys://tool/L2/query_signals` | Full coverage — domain, salience, lel filters, semantic_query |
-| `read_classical_text` | `marsys://tool/L0/query_classical_texts` | L0FR Stream C |
-| `search_classical_texts` | `marsys://tool/L0/query_classical_texts` | Alias — same handler |
-| `find_verses_about` | `marsys://tool/L0/query_classical_texts` | Same handler; topic param |
-| `read_chapter` | `marsys://tool/L0/query_classical_texts` | Same handler; chapter param |
-| `list_classical_texts` | `marsys://tool/L0/query_classical_texts` | Same handler; list op |
-| `query_remedies` (remedy_tools.ts) | `marsys://tool/L0/query_remedy_corpus` + `marsys://tool/L2/query_remedies` | Planet/domain/category covered |
-| `query_remedies_for_chart` | `marsys://tool/L2/query_remedies` | chart_id + affliction path |
-| `list_remedies_by_category` | `marsys://tool/L0/query_remedy_corpus` | category filter |
-| `read_remedy` | `marsys://tool/L0/query_remedy_corpus` | offset=0 limit=1 + remedy_id |
-| `query_tantric_remedies` | `marsys://tool/L0/query_remedy_corpus` | category=tantric_heavy filter |
-| `query_remedies_by_planet` | `marsys://tool/L0/query_remedy_corpus` | graha filter |
-| `query_mantras` | `marsys://tool/L0/query_remedy_corpus` | category=mantra filter |
-| `compute_natal_positions` | `marsys://tool/L1/get_positions` | L1 Gaṇita |
-| `query_dasha_periods` | `marsys://tool/L1/get_dashas` | L1 Gaṇita |
-| `query_special_lagnas` | `marsys://tool/L1/get_sensitive_points` | L1 Gaṇita |
+| `msr_sql` | `marsys://tool/L2/query_signals` | **COVERED** — D5 wave, full filter parity |
+| `chart_facts_query` | (none) | **GAP** — B.11 floor-injected; type stub in lib/retrieve; no registry cap |
+| `read_classical_text` | `marsys://tool/L0/query_classical_texts` | **COVERED** — keyword + source filter path |
+| `search_classical_texts` | `marsys://tool/L0/query_classical_texts` | **COVERED** — same cap, alias behavior |
+| `read_chapter` | (none) | **GAP** — chapter fetch distinct from keyword search |
+| `list_classical_texts` | (none) | **GAP** — text roster; no registry cap |
+| `find_verses_about` | (none) | **GAP** — embedding-similarity path; distinct from ILIKE search |
+| `query_rules` | `marsys://tool/L0/query_sutravali_rules` | **COVERED** — prior D7 wave |
+| `query_rules_for_planet` | `marsys://tool/L0/query_sutravali_rules_for_planet` | **COVERED** — prior D7 wave |
+| `read_rule` | `marsys://tool/L0/read_sutravali_rule` | **COVERED** — prior D7 wave |
+| `list_rules_by_text` | `marsys://tool/L0/list_sutravali_rules_by_text` | **COVERED** — prior D7 wave |
+| `classical_attribution_lookup` | `marsys://tool/L2/classical_attribution_lookup` | **COVERED** — prior D7 wave |
+| `compute_natal_positions` | `marsys://tool/L1/get_positions` | **COVERED** — L1 wave |
+| `query_dasha_periods` | `marsys://tool/L1/get_dashas` | **COVERED** — L1 wave |
+| `query_special_lagnas` | `marsys://tool/L1/get_sensitive_points` | **COVERED** — L1 wave |
+| `query_remedies` | `marsys://tool/L0/query_remedy_corpus` | **COVERED** — generic graha+category filter |
+| `query_remedies_for_chart` | (none) | **GAP** — per-chart affliction lookup; not in registry |
+| `list_remedies_by_category` | (none) | **GAP** — category-scoped list; not in registry |
+| `read_remedy` | (none) | **GAP** — single remedy by UUID; not in registry |
+| `query_tantric_remedies` | (none) | **GAP** — tantric sub-corpus + deity filter; not in registry |
+| `query_remedies_by_planet` | (none) | **GAP** — all-category planet filter; not in registry |
+| `query_mantras` | (none) | **GAP** — mantra sub-corpus; not in registry |
+| `classical_disclosure_filter` | RETIRED (file self-marked) | **NO-OP** — tier gating moved to serve-time; no registry cap needed |
+| `normalizeInputSchema` helper | Move file location only | **NO-OP** — pure utility, not a retrieval dispatch |
+| `buildChatToolsFromNames` helper | `@/lib/contract/registry` already | **NO-OP** — delegates to contract registry; no registry cap needed |
 
-### Tools NOT in RETRIEVAL_TOOLS (silently skipped by `getTool()` — NO GAP in dispatch)
-
-These tool names appear in B.11 injection arrays and `tools_authorized` lists, but
-`getTool(name)` returns `undefined` for all of them. The chat route at line 699 does
-`if (!t) return null` — silent skip. They are stub/planned capabilities not yet
-implemented in lib/retrieve. No dispatch gap exists to fill.
-
-| Tool name | Notes |
-|---|---|
-| `msr_sql` | NOTE: `msr_sql` IS dispatched but has no `RetrievalTool` entry — getTool returns undefined. B.11 injection injects it as a PlanStep but the tool fetch silently skips it. The registry has `query_signals` which IS the functional equivalent. See §3 note. |
-| `pattern_register` | Not in RETRIEVAL_TOOLS — future L2 tool; stub only |
-| `resonance_register` | Not in RETRIEVAL_TOOLS — future L2 tool; stub only |
-| `vector_search` | Not in RETRIEVAL_TOOLS — future embedding search tool |
-| `cgm_graph_walk` | Not in RETRIEVAL_TOOLS — registry has `traverse_chart_graph` (L2) |
-| `classical_attribution_lookup` | NOT imported into RETRIEVAL_TOOLS (only in lib/tools/) |
-
-**Clarification on `msr_sql`:** The contract registry (`tool_metadata.ts`) has a
-`canonical_name: 'msr_sql'` entry and the B.11 floor injects `tool_name: 'msr_sql'` into
-PlanSteps. However `lib/retrieve/index.ts` does NOT define a `RetrievalTool` with
-`name: 'msr_sql'`. `getTool('msr_sql')` returns undefined. The MCP channel uses
-`marsys://tool/L2/query_signals` directly. The D7 migration §3 must wire the contract
-name `msr_sql` → URI `marsys://tool/L2/query_signals` when repointing callers.
-
-### NOT a gap: `classical_disclosure_filter`
-
-`classical_disclosure_filter.ts` is already RETIRED (its own header says so). The registry
-does not need a capability for it — disclosure filtering at serve-time is handled at the
-API/MCP boundary per the no-audience-tier principle. No registry capability needed.
-
-### NOT a gap: `chart_facts_query`
-
-`lib/retrieve/chart_facts_query.ts` is a TYPE STUB ONLY — the implementation was removed
-in the legacy teardown. `getTool('chart_facts_query')` returns undefined. The registry
-covers the functional ground via 19 L1 tools (get_positions, get_dashas, get_divisionals,
-etc.). No single `chart_facts_query` URI is required.
+**Non-RETRIEVAL_TOOLS planner strings dispatched through `getTool()` — resolve to undefined, skipped:**
+- `vector_search`, `pattern_register`, `cgm_graph_walk`, `resonance_register`, `cluster_atlas`,
+  `contradiction_register` — these are contract tool names injected by the planner/B.11 into
+  `toolsAuthorized`; `getTool()` returns `undefined` for them today. They are NOT in RETRIEVAL_TOOLS
+  and are out of scope for this §2 port (they require separate planner-side migration in §3).
 
 ---
 
-## §3 — Identified GAPS (tools in RETRIEVAL_TOOLS with no registry equivalent)
+## §3 — Real gaps found: 11
 
-Five tools in `RETRIEVAL_TOOLS` had no registry equivalent before this run:
+| # | Gap name | Old lib/retrieve code | Scope | New registry URI |
+|---|---|---|---|---|
+| G1 | `chart_facts_query` | `chart_facts_query.ts` (TYPE STUB) + B.11 floor inject | per_chart | `marsys://tool/L1/chart_facts_query` |
+| G2 | `query_remedies_for_chart` | `remedy_tools.ts::queryRemediesForChart` | per_chart | `marsys://tool/L0/query_remedies_for_chart` |
+| G3 | `list_remedies_by_category` | `remedy_tools.ts::listRemediesByCategory` | global | `marsys://tool/L0/list_remedies_by_category` |
+| G4 | `read_remedy` | `remedy_tools.ts::readRemedy` | global | `marsys://tool/L0/read_remedy` |
+| G5 | `query_tantric_remedies` | `remedy_tools.ts::queryTantricRemedies` | global | `marsys://tool/L0/query_tantric_remedies` |
+| G6 | `query_remedies_by_planet` | `remedy_tools.ts::queryRemediesByPlanet` | global | `marsys://tool/L0/query_remedies_by_planet` |
+| G7 | `query_mantras` | `remedy_tools.ts::queryMantras` | global | `marsys://tool/L0/query_mantras` |
+| G8 | `read_chapter` | `index.ts CLASSICAL_TOOLS::read_chapter` | global | `marsys://tool/L0/read_chapter` |
+| G9 | `list_classical_texts` | `index.ts CLASSICAL_TOOLS::list_classical_texts` | global | `marsys://tool/L0/list_classical_texts` |
+| G10 | `find_verses_about` | `index.ts CLASSICAL_TOOLS::find_verses_about` | global | `marsys://tool/L0/find_verses_about` |
+| G11 | (previously covered by prior D7 wave) | sutravali × 4 + classical_attribution | — | already in D7_CAPABILITY_URIS |
 
-| # | Gap name | lib/retrieve file | lib/retrieve tool name |
-|---|---|---|---|
-| G1 | Sutravali flexible query | `sutravali_tools.ts` | `query_rules` |
-| G2 | Sutravali planet query | `sutravali_tools.ts` | `query_rules_for_planet` |
-| G3 | Sutravali single rule fetch | `sutravali_tools.ts` | `read_rule` |
-| G4 | Sutravali list by text | `sutravali_tools.ts` | `list_rules_by_text` |
-| G5 | Classical attribution lookup | `classical_attribution_lookup_tool.ts` | `classical_attribution_lookup` |
-
-Note: `classical_attribution_lookup_tool.ts` is NOT imported into `RETRIEVAL_TOOLS` in
-`lib/retrieve/index.ts` — getTool() would return undefined. However it IS referenced in
-the contract registry, router spec (`retrieval_capability_spec.ts`), and trace types. It
-has no registry equivalent and IS part of the chat-path surface. Added as G5.
-
----
-
-## §4 — Gap-fill capabilities added
-
-All 5 gaps are filled by additions to
-`platform/src/lib/retrieval/registry/layers/register_d7_channel.ts`.
-
-### G1 — `marsys://tool/L0/query_sutravali_rules`
-
-- **Old lib/retrieve code:** `sutravali_tools.ts::queryRulesTool` (`query_rules`)
-- **New registry URI:** `marsys://tool/L0/query_sutravali_rules`
-- **Scope:** `global` (sutravali_rules is a reference corpus, not per-chart)
-- **Contract changes:** audience_tier stripped; limit capped at 200; sidecar URL from env
-- **D1 fields:** archetype=`prose_citation`, traversal_level=`L-SOURCE`, tool_role=`hybrid_retrieval`, emits_references=`false`, lel_capable=`false`
-- **Gate:** chart_agnostic_gate PASS
-
-### G2 — `marsys://tool/L0/query_sutravali_rules_for_planet`
-
-- **Old lib/retrieve code:** `sutravali_tools.ts::queryRulesForPlanetTool` (`query_rules_for_planet`)
-- **New registry URI:** `marsys://tool/L0/query_sutravali_rules_for_planet`
-- **Scope:** `global`
-- **Contract changes:** audience_tier stripped; `planet` required; limit capped at 500
-- **D1 fields:** archetype=`prose_citation`, traversal_level=`L-SOURCE`, tool_role=`drill`, emits_references=`false`, lel_capable=`false`
-- **Gate:** chart_agnostic_gate PASS
-
-### G3 — `marsys://tool/L0/read_sutravali_rule`
-
-- **Old lib/retrieve code:** `sutravali_tools.ts::readRuleTool` (`read_rule`)
-- **New registry URI:** `marsys://tool/L0/read_sutravali_rule`
-- **Scope:** `global`
-- **Contract changes:** audience_tier stripped; `rule_id` required
-- **D1 fields:** archetype=`flat_fact`, traversal_level=`L-SOURCE`, tool_role=`leaf`, emits_references=`false`, lel_capable=`false`
-- **Gate:** chart_agnostic_gate PASS
-
-### G4 — `marsys://tool/L0/list_sutravali_rules_by_text`
-
-- **Old lib/retrieve code:** `sutravali_tools.ts::listRulesByTextTool` (`list_rules_by_text`)
-- **New registry URI:** `marsys://tool/L0/list_sutravali_rules_by_text`
-- **Scope:** `global`
-- **Contract changes:** audience_tier stripped; `text_id` required; limit/offset pagination
-- **D1 fields:** archetype=`prose_citation`, traversal_level=`L-OVERVIEW`, tool_role=`drill`, emits_references=`false`, lel_capable=`false`
-- **Gate:** chart_agnostic_gate PASS
-
-### G5 — `marsys://tool/L2/classical_attribution_lookup`
-
-- **Old lib/retrieve code:** `classical_attribution_lookup_tool.ts` (wraps `lib/tools/classical_attribution_lookup.ts`)
-- **New registry URI:** `marsys://tool/L2/classical_attribution_lookup`
-- **Scope:** `per_chart` — attributions are scoped to MSR signals which are per-chart
-- **Contract changes:**
-  - audience_tier stripped — `classical_disclosure_filter.ts` (RETIRED) gated on tier; that gating is removed. All content emitted; serve-time gating at API boundary only.
-  - `chart_id` added as required input (chart_id was implicit before; now explicit per D1 contract)
-  - `signal_ids` required (was already required in old tool)
-- **D1 fields:** archetype=`prose_citation`, traversal_level=`L-SOURCE`, tool_role=`leaf`, emits_references=`true`, lel_capable=`false`, grounds_to={l1_fact_ids: true, l0_citation_ids: true}
-- **Gate:** chart_agnostic_gate PASS (scope=per_chart, chart_id in required_inputs, no native id in description)
+Non-gaps confirmed (no action needed):
+- `classical_disclosure_filter.ts` — RETIRED in-file; tier stripped at serve-time; no cap needed
+- `normalizeInputSchema`, `buildChatToolsFromNames` — utility helpers, not retrieval dispatch calls
 
 ---
 
-## §5 — Gate results
+## §4 — Ported capabilities (all added to register_d7_channel.ts)
+
+### G1 — `marsys://tool/L1/chart_facts_query`
+
+- **Old code:** `src/lib/retrieve/chart_facts_query.ts` (TYPE STUB — implementation removed in legacy-teardown)
+  plus B.11 floor injection in route.ts line 511 and `b11_floor_inject.ts` line 74.
+  Contract alias: `is_alias: true, alias_of: 'query_chart_facts'` per `tool_metadata.ts` line 348.
+- **D1 contract:** scope=`per_chart`, chart_id required, emits_references=true (returns fact_id refs),
+  archetype=`flat_fact`, traversal_level=`L-SIGNAL`, tool_role=`umbrella`.
+- **Tier stripping:** no `audience_tier` parameter; universal access.
+- **Handler:** delegates to Python sidecar `/api/ganita/chart_facts/query` (POST).
+- **Gate:** PASS (Rule 1 — chart_id in required_inputs; Rule 7 — all D1 fields present).
+
+### G2 — `marsys://tool/L0/query_remedies_for_chart`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::queryRemediesForChart` — matches affliction ILIKE
+  against both `planet` and `domain` columns, returns top_k by confidence.
+- **D1 contract:** scope=`per_chart` (chart_id anchors the query context), chart_id required,
+  emits_references=false, archetype=`flat_fact`, traversal_level=`L-DOMAIN`, tool_role=`drill`.
+- **Tier stripping:** `audience_tier` removed from handler; no gating.
+- **Handler:** direct pg Pool query against `brahma_remedy_corpus`.
+- **Gate:** PASS.
+
+### G3 — `marsys://tool/L0/list_remedies_by_category`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::listRemediesByCategory`.
+- **D1 contract:** scope=`global`, category required (enum), emits_references=false.
+- **Gate:** PASS.
+
+### G4 — `marsys://tool/L0/read_remedy`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::readRemedy` — single remedy by remedy_id.
+- **D1 contract:** scope=`global`, remedy_id required, emits_references=false, tool_role=`leaf`.
+- **Gate:** PASS.
+
+### G5 — `marsys://tool/L0/query_tantric_remedies`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::queryTantricRemedies` — category=tantric filter
+  with optional deity ILIKE and planet filters.
+- **D1 contract:** scope=`global`, no required_inputs (all optional), emits_references=false.
+- **Gate:** PASS.
+
+### G6 — `marsys://tool/L0/query_remedies_by_planet`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::queryRemediesByPlanet`.
+- **D1 contract:** scope=`global`, planet required, emits_references=false.
+- **Gate:** PASS.
+
+### G7 — `marsys://tool/L0/query_mantras`
+
+- **Old code:** `src/lib/retrieve/remedy_tools.ts::queryMantras` — category=mantras filter.
+- **D1 contract:** scope=`global`, planet optional, emits_references=false.
+- **Gate:** PASS.
+
+### G8 — `marsys://tool/L0/read_chapter`
+
+- **Old code:** `src/lib/retrieve/index.ts CLASSICAL_TOOLS::read_chapter` — delegates to
+  `@/lib/tools/classical_text_tools::read_chapter`.
+- **D1 contract:** scope=`global`, text_id + chapter required, archetype=`prose_citation`,
+  tool_role=`leaf`, grounds_to={l0_citation_ids:true}.
+- **Gate:** PASS.
+
+### G9 — `marsys://tool/L0/list_classical_texts`
+
+- **Old code:** `src/lib/retrieve/index.ts CLASSICAL_TOOLS::list_classical_texts` — delegates to
+  `@/lib/tools/classical_text_tools::list_classical_texts`.
+- **D1 contract:** scope=`global`, no required_inputs, archetype=`flat_fact`, tool_role=`umbrella`.
+- **Gate:** PASS.
+
+### G10 — `marsys://tool/L0/find_verses_about`
+
+- **Old code:** `src/lib/retrieve/index.ts CLASSICAL_TOOLS::find_verses_about` — embedding-similarity
+  verse discovery (distinct from keyword ILIKE in `query_classical_texts`).
+- **D1 contract:** scope=`global`, topic required, archetype=`prose_citation`,
+  tool_role=`hybrid_retrieval`, grounds_to={l0_citation_ids:true}.
+- **Tier stripping:** no `audience_tier`; universal access.
+- **Gate:** PASS.
+
+---
+
+## §5 — Chart-agnostic gate result
 
 ```
-D7 capabilities to check: 7
-  marsys://tool/channel/mcp_wiring | scope: global
-  marsys://tool/channel/chat_dispatch | scope: global
-  marsys://tool/L0/query_sutravali_rules | scope: global
-  marsys://tool/L0/query_sutravali_rules_for_planet | scope: global
-  marsys://tool/L0/read_sutravali_rule | scope: global
-  marsys://tool/L0/list_sutravali_rules_by_text | scope: global
-  marsys://tool/L2/classical_attribution_lookup | scope: per_chart
-
+D7 capabilities: 17 / 17 expected
 [chart_agnostic_gate] PASS — no violations found
 ```
 
----
-
-## §6 — D7_CAPABILITY_URIS roster (final)
-
-```typescript
-export const D7_CAPABILITY_URIS = [
-  'marsys://tool/channel/mcp_wiring',
-  'marsys://tool/channel/chat_dispatch',
-  'marsys://tool/L0/query_sutravali_rules',
-  'marsys://tool/L0/query_sutravali_rules_for_planet',
-  'marsys://tool/L0/read_sutravali_rule',
-  'marsys://tool/L0/list_sutravali_rules_by_text',
-  'marsys://tool/L2/classical_attribution_lookup',
-] as const
-```
+All 17 D7 capabilities (2 wiring + 15 gap-fill) pass all 7 gate rules:
+- Rule 1 (per_chart → chart_id required): 3 per_chart caps all include chart_id
+- Rule 2 (no native chart_id in description/name/URI): PASS
+- Rule 3 (no native identifiers in LLM-visible description): PASS
+- Rule 4 (no default on chart_id input field): PASS
+- Rule 5 (no native id in chart_id field description): PASS
+- Rule 6 (global scope must not require chart_id): PASS
+- Rule 7 (all D1 contract fields present): PASS
 
 ---
 
-## §7 — What this deliverable does NOT cover
+## §6 — Test added
 
-This deliverable is §2 only (gap analysis + port). The following are §3–§6 work:
+File: `src/lib/retrieval/registry/layers/__tests__/register_d7_channel.gate.test.ts`
 
-- **§3 (not done here):** Repointing chat-route callers (`getTool` → `getCapability`),
-  parity tests (≥2 charts), type migration (`ToolBundle` → `ToolResult`)
-- **§4 (not done here):** Legacy retirement (reverse-citation gate, `lib/retrieve/` deletion,
-  `primitives_registry.ts` fold)
-- **§6 (not done here):** D8 faithfulness eval against prod DB with judge model
-
-The `chat_dispatch` descriptor in D7 documents the migration as PENDING for §3.
+8 tests — all PASS:
+1. Registers all 17 D7 URIs
+2. All D7 capabilities pass the chart-agnostic gate (7 rules)
+3. per_chart caps require chart_id in required_inputs
+4. global caps do not require chart_id
+5. No native identifiers in any D7 description or URI
+6. Wave C — chart_facts_query is per_chart, emits_references, L1
+7. Wave D — query_remedies_for_chart is per_chart
+8. Wave E — find_verses_about is global, prose_citation archetype
 
 ---
+
+## §7 — What remains for §3 (caller repoint)
+
+This report covers §2 only (gap analysis + port). The following are deferred to §3:
+
+1. Caller repoint: `consult/route.ts`, `mcp_tool_executor.ts`, `run_adapter_dispatch.ts` still import
+   from `lib/retrieve` and use `getTool()`. Each needs repointing to `getCapability(uri)` with
+   parity testing on ≥2 charts.
+2. Type migration: `ToolBundle` → `ToolResult` in 5 type-only callers (#6-#10 per caller map).
+3. `primitives_registry` fold: 4 callers need MCP whitelist migrated to registry URI checks.
+4. Planner-only tool names (`vector_search`, `pattern_register`, `cgm_graph_walk`) currently resolve
+   to `undefined` in `getTool()` — these need registry caps + planner-side name→URI mapping.
+5. Reverse-citation retirement gate: run grep for zero citations before deleting `lib/retrieve/`.
 
 *End of RETRIEVAL_D7_GAP_REPORT v1.0.*
-*Generated 2026-06-28 by Gap Analysis + Port Agent. chart_agnostic_gate: PASS.*
+*Generated 2026-06-28 by GAP ANALYSIS + PORT agent — register_d7_channel.ts modified; no other files changed.*
