@@ -40,9 +40,9 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
       let sql = `SELECT * FROM brahma_remedy_corpus WHERE 1=1`
-      if (args.graha)    { sql += ` AND target_graha = $${params.length + 1}`; params.push(args.graha as string) }
-      if (args.category) { sql += ` AND remedy_category = $${params.length + 1}`; params.push(args.category as string) }
-      sql += ` ORDER BY target_graha, remedy_category LIMIT $1 OFFSET $2`
+      if (args.graha)    { sql += ` AND planet = $${params.length + 1}`; params.push(args.graha as string) }
+      if (args.category) { sql += ` AND remedy_type = $${params.length + 1}`; params.push(args.category as string) }
+      sql += ` ORDER BY planet, remedy_type LIMIT $1 OFFSET $2`
       const result = await query<Record<string, unknown>>(sql, params)
       return { content: { rows: result.rows ?? [], total: result.rows?.length ?? 0 }, is_error: false }
     } catch (err) {

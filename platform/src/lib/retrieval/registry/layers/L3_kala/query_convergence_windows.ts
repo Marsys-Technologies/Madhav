@@ -11,6 +11,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_convergence_windows',
@@ -21,7 +22,7 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
   description: [
     'Returns temporal convergence windows for a chart — periods where multiple signals co-activate.',
     'Source: kala_convergence (19,482 rows per chart).',
-    'Filter by date range, domain, min_convergence_score, and ayanamsha_id.',
+    'Filter by date range, domain, and min_convergence_score.',
     'Returns convergence_score, rarity_years, confidence_score, and independent_current_count.',
     'High convergence_score + low rarity_years = high-attention period.',
     'Drill child of query_temporal_activation. Call for timing-specific domain questions.',
@@ -42,10 +43,6 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
-    },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
     },
     date_from: {
       type: 'string',
@@ -85,7 +82,6 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id       = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
     const date_from          = args['date_from'] as string | undefined
     const date_to            = args['date_to'] as string | undefined
     const min_convergence    = Number(args['min_convergence_score'] ?? 0)
@@ -93,48 +89,44 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
     const top_k              = Math.min(Number(args['top_k'] ?? 30), 200)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      const conds: string[] = ['chart_id = $1', 'ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
+      // kala_convergence has no ayanamsha_id column — filter on chart_id only.
+      const conds: string[] = ['chart_id = $1']
+      const params: unknown[] = [chart_id]
+      let p = 2
 
       if (date_from) { conds.push(`window_end >= $${p++}`);        params.push(date_from) }
       if (date_to)   { conds.push(`window_start <= $${p++}`);      params.push(date_to) }
       if (min_convergence > 0) { conds.push(`convergence_score >= $${p++}`); params.push(min_convergence) }
-      if (domain)    { conds.push(`domain_primary = $${p++}`);     params.push(domain) }
+      if (domain)    { conds.push(`domain = $${p++}`);             params.push(domain) }
 
       params.push(top_k)
       const topKPh = `$${p++}`
 
       const sql = `
-        SELECT convergence_id, window_start, window_end,
-               convergence_score, rarity_years, confidence_score,
-               independent_current_count, domain_primary, domain_secondary,
-               signal_id_refs, dasha_context_jsonb, ayanamsha_id
+        SELECT convergence_id, signal_id, window_start, window_end, peak_date,
+               mode, convergence_score, orb_strength, rarity_years,
+               confidence_score, confidence_label, independent_current_count,
+               is_off_dasha_discovery, horizon_tier, domain,
+               constituent_factors, source_citation
         FROM kala_convergence
         WHERE ${conds.join(' AND ')}
         ORDER BY convergence_score DESC NULLS LAST
         LIMIT ${topKPh}
       `
 
-      const result = await db.query(sql, params)
+      const result = await query<Record<string, unknown>>(sql, params)
 
-      // Collect signal_id references
-      const signalRefs = new Set<string>()
-      for (const row of result.rows as Array<{ signal_id_refs?: string[] }>) {
-        if (row.signal_id_refs) {
-          for (const id of row.signal_id_refs) signalRefs.add(id)
-        }
-      }
+      // Collect signal_id references (one per row)
+      const signalRefs = [...new Set(
+        (result.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
+      )]
 
       return {
         content: {
           chart_id,
-          ayanamsha_id,
           convergence_windows: result.rows,
           window_count:        result.rows.length,
-          signal_id_refs:      Array.from(signalRefs),
+          signal_id_refs:      signalRefs,
           filters: { date_from, date_to, min_convergence, domain, top_k },
           provenance: { tables: ['kala_convergence'] },
         },

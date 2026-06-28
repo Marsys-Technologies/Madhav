@@ -199,33 +199,50 @@ class PhNimittaWriter(WriterBase):
             return cur.fetchall()
 
     def _load_discoveries(self, conn, chart_id: str) -> list:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            # bodha_discoveries schema uses discovery_id, discovery_class, affected_domains_array,
-            # composite_discovery_rank — alias to names the engine expects.
-            # detected_at + discovery_subsystem fetched for B5 timing + domain enrichment.
-            cur.execute(
-                """
-                SELECT d.discovery_id AS id,
-                       NULL::uuid AS signal_id,
-                       (d.affected_domains_array)[1] AS domain,
-                       d.discovery_class AS discovery_type,
-                       d.surface_depth_delta, d.why_an_acharya_misses_it,
-                       d.falsifier_jsonb,
-                       d.composite_discovery_rank AS confidence_score,
-                       NULL::date AS peak_date,
-                       NULL::date AS window_start,
-                       NULL::date AS window_end,
-                       d.detected_at,
-                       d.discovery_subsystem,
-                       d.cross_subsystem_root
-                FROM bodha_discoveries d
-                WHERE d.chart_id = %s
-                ORDER BY d.composite_discovery_rank DESC NULLS LAST
-                LIMIT %s
-                """,
-                (chart_id, _MAX_DISCOVERIES),
-            )
-            return cur.fetchall()
+        # bodha_discoveries schema uses discovery_id, discovery_class, affected_domains_array,
+        # composite_discovery_rank — alias to names the engine expects.
+        # computed_at (aliased detected_at) + discovery_subsystem fetched for
+        # B5 timing + domain enrichment.
+        # Uses a SAVEPOINT so a load error here does not abort the outer transaction
+        # and fail the whole asset (mirrors the 3 sibling loaders).
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_nimitta_disc")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT d.discovery_id AS id,
+                           NULL::uuid AS signal_id,
+                           (d.affected_domains_array)[1] AS domain,
+                           d.discovery_class AS discovery_type,
+                           d.surface_depth_delta, d.why_an_acharya_misses_it,
+                           d.falsifier_jsonb,
+                           d.composite_discovery_rank AS confidence_score,
+                           NULL::date AS peak_date,
+                           NULL::date AS window_start,
+                           NULL::date AS window_end,
+                           d.computed_at AS detected_at,
+                           d.discovery_subsystem,
+                           d.cross_subsystem_root
+                    FROM bodha_discoveries d
+                    WHERE d.chart_id = %s
+                    ORDER BY d.composite_discovery_rank DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (chart_id, _MAX_DISCOVERIES),
+                )
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_nimitta_disc")
+            return rows
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_disc")
+            except Exception:
+                pass
+            logger.warning("ph_nimitta: discoveries load skipped: %s", exc)
+            return []
 
     def _load_signal_meta(self, conn, signal_ids: list[str]) -> dict[str, dict]:
         if not signal_ids:

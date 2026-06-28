@@ -14,6 +14,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryQualityScorecardCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_quality_scorecard',
@@ -23,7 +24,7 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
 
   description: [
     'Returns the Bodha synthesis quality scorecard for a chart.',
-    'Source: synthesis_quality_scorecard (2 rows per chart — one per ayanamsha).',
+    'Source: synthesis_quality_scorecard (keyed by chart_id + build_id; no ayanamsha split).',
     'CRITICAL: unresolved_constituent_facts_count in the scorecard reads 0 (FALSE PASS).',
     'Actual orphan count is ~61,161/66,832 (91.5%) per DEFECT-001 (OPEN).',
     'This tool annotates the false pass in its output — use defect_001_alert in the response.',
@@ -48,7 +49,7 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha label echoed back for caller context (default: 'LAHIRI'). The scorecard is not split by ayanamsha — it is keyed by chart_id + build_id — so this value does not filter rows.",
     },
   },
 
@@ -71,20 +72,20 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       const scorecardSql = `
-        SELECT scorecard_id, chart_id, ayanamsha_id,
-               total_signals, signals_with_salience, signals_with_domains,
-               unresolved_constituent_facts_count, orphan_signal_count,
-               quality_score, quality_tier, build_id, created_at
+        SELECT scorecard_id, chart_id, build_id,
+               msr_signal_count, cdlm_cell_count, cgm_node_count, cgm_edge_count,
+               two_pass_verified_pct, documented_approximation_pct,
+               msr_citation_ref_coverage_pct,
+               trap1_authority_inversion_count, trap2_narration_leak_count,
+               unresolved_constituent_facts_count, scored_at
         FROM synthesis_quality_scorecard
-        WHERE chart_id = $1 AND ayanamsha_id = $2
-        ORDER BY created_at DESC
+        WHERE chart_id = $1
+        ORDER BY scored_at DESC
         LIMIT 1
       `
 
-      const result = await db.query(scorecardSql, [chart_id, ayanamsha_id])
+      const result = await query<Record<string, unknown>>(scorecardSql, [chart_id])
       const scorecard = result.rows[0] as Record<string, unknown> | undefined
 
       return {

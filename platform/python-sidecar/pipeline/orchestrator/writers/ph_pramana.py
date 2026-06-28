@@ -8,7 +8,7 @@ D5 NO-SCORING gate: this writer NEVER inserts calibration_score,
 posterior_probability, accuracy_rate, hit_rate, or Brier_score.
 Raises D5ViolationError if any such column is attempted.
 
-Reads: phala_anchors · life_event_log (LEL)
+Reads: phala_anchors · life_events (LEL)
 Writes: phala_pramana (delete-then-insert per chart_id)
 """
 from __future__ import annotations
@@ -159,10 +159,20 @@ class PhPramanaWriter(WriterBase):
             return rows
 
     def _load_lel(self, conn, chart_id: str) -> list[LelEntry]:
-        """Load life_event_log entries for this chart_id.
+        """Load life_events (LEL) entries.
 
-        life_event_log may not exist (table is seeded separately from L4 build).
-        Uses SAVEPOINT so a missing-table error does not abort the outer transaction.
+        The real table is `life_events` (the prior `life_event_log` name never
+        existed). `life_events` is a global, single-native log: it carries no
+        chart_id column, so the load is not chart-scoped here. The table may be
+        absent on a fresh DB (seeded by the LEL ingest, not the L4 build), in
+        which case psycopg raises UndefinedTable; we narrow the except to that
+        case and roll back the SAVEPOINT so the outer transaction survives.
+
+        Column map (db_schema.json / live `life_events`):
+          id (uuid) · event_date (date) · domain (text) ·
+          description -> event_summary · outcome_observed (bool) -> valence.
+        `id` is a uuid; `phala_pramana.lel_entry_id` is bigint, so the uuid is
+        carried in lel_jsonb (auditable) and lel_id is left unset (None).
         """
         try:
             with conn.cursor() as sp:
@@ -170,33 +180,35 @@ class PhPramanaWriter(WriterBase):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, event_date, domain_primary, event_summary,
-                           outcome_valence
-                    FROM life_event_log
-                    WHERE chart_id = %s
+                    SELECT id, event_date, domain,
+                           description AS event_summary, outcome_observed
+                    FROM life_events
                     ORDER BY event_date
                     """,
-                    (chart_id,),
                 )
                 entries: list[LelEntry] = []
                 for r in cur.fetchall():
+                    observed = r.get('outcome_observed')
+                    valence = ('observed' if observed
+                               else 'not_observed' if observed is False
+                               else None)
                     entries.append(LelEntry(
-                        lel_id=int(r['id']),
+                        lel_id=None,
                         event_date=r['event_date'],
-                        domain=str(r.get('domain_primary') or ''),
+                        domain=str(r.get('domain') or ''),
                         event_summary=str(r.get('event_summary') or ''),
-                        outcome_valence=str(r.get('outcome_valence') or '') or None,
-                        lel_jsonb={'id': int(r['id']), 'event_date': str(r['event_date']),
+                        outcome_valence=valence,
+                        lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']),
                                    'summary': str(r.get('event_summary') or '')},
                     ))
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_pramana_lel")
             return entries
-        except Exception as exc:
+        except psycopg.errors.UndefinedTable as exc:
             try:
                 with conn.cursor() as sp:
                     sp.execute("ROLLBACK TO SAVEPOINT sp_pramana_lel")
             except Exception:
                 pass
-            logger.debug("ph_pramana: LEL load skipped: %s", exc)
+            logger.info("ph_pramana: life_events table absent — LEL load skipped: %s", exc)
             return []

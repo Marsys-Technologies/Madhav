@@ -88,6 +88,14 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: 'DELETE FROM mimamsa_anchor_adjustment WHERE chart_id = $1' },
   ],
 
+  // mi_seva's count_sql is the un-scoped `SELECT count(*) FROM mimamsa_preferences`
+  // (no WHERE chart_id = $1), so deriveDeleteSqlFromCountSql() would transform it into
+  // an unscoped `DELETE FROM mimamsa_preferences` — wiping EVERY user's preferences on
+  // a single-chart clear. Protective skip-clean stop-gap (C-D2-10): null disables the
+  // auto-derived destructive DELETE. The proper chart-scoped count_sql + clear is a
+  // Tier-4 registry migration handled in a later wave.
+  mi_seva: null,
+
   // ── L4 Phala — multi-table writers ───────────────────────────────────────────
   // ph_rectification writes phala_rectification (185 rows) + phala_rectification_best
   // (1 row). phala_rectification_best has an FK to phala_rectification — delete child first.

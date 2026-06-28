@@ -11,6 +11,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L4/query_predictive_anchors',
@@ -21,9 +22,9 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
   description: [
     'Returns predictive anchors for a chart from phala_anchors (ph_nimitta).',
     'Source: phala_anchors (150 rows — the core L4 prediction foundation).',
-    'Each anchor has 8 derivation axes (natal, dasha, gochara, divisional,',
-    'strength, karaka, yoga, convergence) and 5 elevation fields.',
-    'Filter by domain and derivation_axis to focus on specific anchor classes.',
+    'Each anchor carries a magnitude, confidence band, karmic frame, malleability,',
+    'and a derivation ledger over its constituent L1/L2/L3 facts.',
+    'Filter by domain, event_type, direction, and horizon_tier to focus.',
     'emits_references: signal_id refs back to bodha_msr_signals via anchor provenance.',
     'Drill further: query_domain_result (7-domain result map), query_falsifiers,',
     'query_anomaly_flags, query_cleansed_anchors.',
@@ -49,18 +50,21 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
     },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
-    },
     domain: {
       type: 'string',
       description: 'Filter by domain (career, wealth, relationship, health, character, spirituality, other).',
     },
-    derivation_axis: {
+    event_type: {
       type: 'string',
-      description: "Filter by derivation axis: 'natal'|'dasha'|'gochara'|'divisional'|'strength'|'karaka'|'yoga'|'convergence'.",
-      enum: ['natal', 'dasha', 'gochara', 'divisional', 'strength', 'karaka', 'yoga', 'convergence'],
+      description: 'Filter by event_type (e.g. onset, peak, transition).',
+    },
+    direction: {
+      type: 'string',
+      description: 'Filter by direction of the predicted effect.',
+    },
+    horizon_tier: {
+      type: 'string',
+      description: 'Filter by horizon tier (e.g. near, mid, far).',
     },
     top_k: {
       type: 'number',
@@ -84,54 +88,52 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
-    const domain          = args['domain'] as string | undefined
-    const derivation_axis = args['derivation_axis'] as string | undefined
-    const top_k           = Math.min(Number(args['top_k'] ?? 50), 150)
+    const domain       = args['domain'] as string | undefined
+    const event_type   = args['event_type'] as string | undefined
+    const direction    = args['direction'] as string | undefined
+    const horizon_tier = args['horizon_tier'] as string | undefined
+    const top_k        = Math.min(Number(args['top_k'] ?? 50), 150)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      const conds: string[] = ['chart_id = $1']
+      const params: unknown[] = [chart_id]
+      let p = 2
 
-      const conds: string[] = ['chart_id = $1', 'ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
-
-      if (domain)          { conds.push(`domain = $${p++}`);           params.push(domain) }
-      if (derivation_axis) { conds.push(`derivation_axis = $${p++}`);  params.push(derivation_axis) }
+      if (domain)       { conds.push(`domain = $${p++}`);       params.push(domain) }
+      if (event_type)   { conds.push(`event_type = $${p++}`);   params.push(event_type) }
+      if (direction)    { conds.push(`direction = $${p++}`);    params.push(direction) }
+      if (horizon_tier) { conds.push(`horizon_tier = $${p++}`); params.push(horizon_tier) }
 
       params.push(top_k)
 
       const sql = `
-        SELECT anchor_id, domain, derivation_axis,
-               anchor_statement, signal_id_refs,
-               natal_axis_score, dasha_axis_score, gochara_axis_score,
-               divisional_axis_score, strength_axis_score,
-               karaka_axis_score, yoga_axis_score, convergence_axis_score,
-               elevation_primary, elevation_secondary,
-               anchor_weight, anchor_confidence,
-               classical_warrant, ayanamsha_id
+        SELECT anchor_id, domain, event_type, direction, horizon_tier,
+               anchor_source, signal_id, convergence_id, discovery_id, bhavishya_id,
+               window_start, peak_date, window_end,
+               magnitude, magnitude_basis,
+               confidence_low, confidence_high, confidence_basis,
+               karmic_frame, karmic_note, malleability,
+               dasha_consensus_count, ayanamsha_robustness,
+               falsifier, source_citation
         FROM phala_anchors
         WHERE ${conds.join(' AND ')}
-        ORDER BY anchor_weight DESC NULLS LAST
+        ORDER BY magnitude DESC NULLS LAST
         LIMIT $${p}
       `
 
-      const result = await db.query(sql, params)
+      const result = await query(sql, params)
       const signalRefs = new Set<string>()
-      for (const row of result.rows as Array<{ signal_id_refs?: string[] }>) {
-        if (row.signal_id_refs) {
-          for (const id of row.signal_id_refs) signalRefs.add(id)
-        }
+      for (const row of result.rows as Array<{ signal_id?: string }>) {
+        if (row.signal_id) signalRefs.add(row.signal_id)
       }
 
       return {
         content: {
           chart_id,
-          ayanamsha_id,
           anchors:      result.rows,
           anchor_count: result.rows.length,
           signal_id_refs: Array.from(signalRefs),
-          filters: { domain, derivation_axis, top_k },
+          filters: { domain, event_type, direction, horizon_tier, top_k },
           drill_next: ['marsys://tool/L4/query_domain_result', 'marsys://tool/L4/query_falsifiers'],
           provenance: { tables: ['phala_anchors'] },
         },

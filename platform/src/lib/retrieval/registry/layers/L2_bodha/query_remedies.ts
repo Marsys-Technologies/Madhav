@@ -5,13 +5,17 @@
  *   - bodha_rm_resonances: 45 rows — remedy resonance targets keyed to bo_laksana signals
  *   - bodha_rm_remedy_prescriptions: 135 rows — prescriptions with tradition + feasibility
  *
- * Returns resonance targets + prescriptions, optionally filtered by tradition and domain.
- * emits_references=true: resonance rows carry signal_id references back to bodha_msr_signals.
+ * Returns resonance targets + prescriptions, optionally filtered by tradition.
+ * NOTE: bodha_rm_resonances carries no signal_id column — resonances key to grahas
+ * (graha + resonance_score) and link to CDLM cells / motifs / doshas via the
+ * associated_*_array columns, not directly to bodha_msr_signals. emits_references
+ * is therefore false (no signal_id references are emitted by this tool).
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryRemediesCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_remedies',
@@ -20,19 +24,19 @@ export const queryRemediesCapability: CapabilityDescriptor = {
   name:  'query_remedies',
 
   description: [
-    'Returns the Bodha remedy layer for a chart: resonance targets + prescriptions.',
-    'Sources: bodha_rm_resonances (45 rows, signal-keyed remedy targets) and',
-    'bodha_rm_remedy_prescriptions (135 rows, tradition-categorized prescriptions).',
-    'Filterable by tradition (mantra, gemstone, charity, vrata, yantra, ayurvedic) and domain.',
-    'Resonances carry signal_id references into bodha_msr_signals for provenance tracking.',
-    'Prescriptions include feasibility_tier, economics, sequencing, and muhurta timing flags.',
+    'Returns the Bodha remedy layer for a chart: graha resonance targets + prescriptions.',
+    'Sources: bodha_rm_resonances (graha-keyed remedy targets ranked by resonance_score) and',
+    'bodha_rm_remedy_prescriptions (tradition-categorized prescriptions).',
+    'Filterable by tradition (mantra, gemstone, charity, vrata, yantra, ayurvedic).',
+    'Resonances link to CDLM cells, motifs, and doshas via associated_*_array columns.',
+    'Prescriptions include feasibility_score, cost/time estimates, sequencing, and ritual flags.',
   ].join(' '),
 
   scope: 'per_chart',
   archetype: 'rich_relational',
   traversal_level: 'L-DOMAIN',
   tool_role: 'drill',
-  emits_references: true,
+  emits_references: false,
   grounds_to: { l1_fact_ids: true },
   lel_capable: false,
 
@@ -53,14 +57,9 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       description: 'Filter prescriptions by tradition: mantra|gemstone|charity|vrata|yantra|ayurvedic.',
       enum: ['mantra', 'gemstone', 'charity', 'vrata', 'yantra', 'ayurvedic'],
     },
-    domain: {
+    graha: {
       type: 'string',
-      description: 'Filter by life domain (career, wealth, relationship, health, character, spirituality, other).',
-    },
-    feasibility_tier: {
-      type: 'string',
-      description: 'Filter prescriptions by feasibility tier: tier_1_accessible|tier_2_moderate|tier_3_dedicated.',
-      enum: ['tier_1_accessible', 'tier_2_moderate', 'tier_3_dedicated'],
+      description: 'Filter resonances by target graha (e.g. Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu).',
     },
   },
 
@@ -82,54 +81,50 @@ export const queryRemediesCapability: CapabilityDescriptor = {
 
     const ayanamsha_id   = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
     const tradition      = args['tradition'] as string | undefined
-    const domain         = args['domain'] as string | undefined
-    const feasibility    = args['feasibility_tier'] as string | undefined
+    const graha          = args['graha'] as string | undefined
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      // Resonances
+      // Resonances (graha-keyed; no signal_id column on this table)
       const resConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const resParams: unknown[] = [chart_id, ayanamsha_id]
       let rp = 3
-      if (domain) { resConds.push(`$${rp++} = ANY(domains_affected_array)`); resParams.push(domain) }
+      if (graha) { resConds.push(`graha = $${rp++}`); resParams.push(graha) }
 
       const resonanceSql = `
-        SELECT resonance_id, signal_id, graha_target, house_target,
-               domain_target, valence, remedy_weight, domains_affected_array,
-               updated_at
+        SELECT resonance_id, graha, resonance_score, weakness_score,
+               contradiction_factor, domain_burden, motif_burden,
+               remedy_priority_class, is_yoga_karaka_flag, weakest_rank_in_chart,
+               associated_doshas_array, associated_motifs_array,
+               associated_cdlm_cells_array, computed_at
         FROM bodha_rm_resonances
         WHERE ${resConds.join(' AND ')}
-        ORDER BY remedy_weight DESC NULLS LAST
+        ORDER BY resonance_score DESC NULLS LAST
       `
 
       // Prescriptions
       const preConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const preParams: unknown[] = [chart_id, ayanamsha_id]
       let pp = 3
-      if (tradition)  { preConds.push(`tradition = $${pp++}`);       preParams.push(tradition) }
-      if (domain)     { preConds.push(`domain = $${pp++}`);           preParams.push(domain) }
-      if (feasibility){ preConds.push(`feasibility_tier = $${pp++}`); preParams.push(feasibility) }
+      if (tradition)  { preConds.push(`tradition = $${pp++}`);  preParams.push(tradition) }
+      if (graha)      { preConds.push(`target_graha = $${pp++}`); preParams.push(graha) }
 
       const prescriptionSql = `
-        SELECT prescription_id, resonance_id, tradition, remedy_name,
-               remedy_description, domain, feasibility_tier, economics_jsonb,
-               sequence_order, muhurta_required, contraindications,
-               expected_effect_duration_months, updated_at
+        SELECT prescription_id, target_resonance_id, target_graha, tradition,
+               sub_tradition, remedy_category, remedy_label_human,
+               prescription_detail_jsonb, classical_strength_rating,
+               feasibility_score, estimated_cost_inr_range_jsonb,
+               estimated_time_minutes_daily, ritual_complexity_class,
+               requires_acharya_review_flag, phase_sequence_class,
+               phase_duration_days, computed_at
         FROM bodha_rm_remedy_prescriptions
         WHERE ${preConds.join(' AND ')}
-        ORDER BY sequence_order NULLS LAST, feasibility_tier
+        ORDER BY phase_sequence_class NULLS LAST, feasibility_score DESC NULLS LAST
       `
 
       const [resResult, preResult] = await Promise.all([
-        db.query(resonanceSql, resParams),
-        db.query(prescriptionSql, preParams),
+        query<Record<string, unknown>>(resonanceSql, resParams),
+        query<Record<string, unknown>>(prescriptionSql, preParams),
       ])
-
-      // Collect signal_id references
-      const signalRefs = (resResult.rows as Array<{ signal_id?: string }>)
-        .map(r => r.signal_id)
-        .filter(Boolean) as string[]
 
       return {
         content: {
@@ -139,8 +134,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           resonance_count:      resResult.rows.length,
           prescriptions:        preResult.rows,
           prescription_count:   preResult.rows.length,
-          signal_id_refs:       [...new Set(signalRefs)],
-          filters: { tradition, domain, feasibility_tier: feasibility },
+          filters: { tradition, graha },
           provenance: {
             tables: ['bodha_rm_resonances', 'bodha_rm_remedy_prescriptions'],
           },

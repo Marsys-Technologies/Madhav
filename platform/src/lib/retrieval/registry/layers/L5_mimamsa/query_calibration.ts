@@ -10,6 +10,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../index'
+import { query } from '@/lib/db/client'
 
 export const queryCalibrationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_calibration',
@@ -107,13 +108,11 @@ export const queryCalibrationCapability: CapabilityDescriptor = {
     `
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       const [verdictResult, relResult, multResult, qaResult] = await Promise.all([
-        db.query(verdictSql,      [chart_id]),
-        db.query(reliabilitySql,  [chart_id]),
-        db.query(multiplierSql,   [chart_id]),
-        db.query(qaSql,           [chart_id]),
+        query(verdictSql,      [chart_id]),
+        query(reliabilitySql,  [chart_id]),
+        query(multiplierSql,   [chart_id]),
+        query(qaSql,           [chart_id]),
       ])
 
       const qa_fail_count = (qaResult.rows as Array<{ status: string }>)

@@ -24,6 +24,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const querySignalsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_signals',
@@ -129,7 +130,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
     const semantic_query  = args['semantic_query'] as string | undefined
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      void _ctx
 
       const filters: string[] = ['m.chart_id = $1', 'm.ayanamsha_id = $2']
       const params: unknown[] = [chart_id, ayanamsha_id]
@@ -200,7 +201,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         queryParams = params
       }
 
-      const result = await db.query(sql, queryParams)
+      const result = await query(sql, queryParams)
 
       return {
         content: {

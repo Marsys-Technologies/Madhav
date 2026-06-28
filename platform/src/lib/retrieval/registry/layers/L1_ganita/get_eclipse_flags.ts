@@ -42,8 +42,8 @@ export const getEclipseFlagsCapability: CapabilityDescriptor = {
       const offset  = (args.offset as number) ?? 0
 
       const result = await query<Record<string, unknown>>(
-        `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_numeric,
-                fact_value_text, fact_tags, epistemic_tier, source_asset_id
+        `SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
          FROM chart_facts
          WHERE chart_id = $1 AND fact_category = 'eclipse_proximity_natal'
          ORDER BY ayanamsha_id, fact_key LIMIT $2 OFFSET $3`,

@@ -58,11 +58,11 @@ export const getDashasCapability: CapabilityDescriptor = {
         params.push(args.ayanamsha_id as string)
       }
       if (args.dasha_system) {
-        sql += ` AND dasha_system = $${params.length + 1}`
+        sql += ` AND system_id = $${params.length + 1}`
         params.push(args.dasha_system as string)
       }
       if (args.level !== undefined) {
-        sql += ` AND level = $${params.length + 1}`
+        sql += ` AND level_n = $${params.length + 1}`
         params.push(args.level as number)
       }
       if (args.lord_graha) {
@@ -74,7 +74,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         params.push(args.date_contains as string)
         params.push(args.date_contains as string)
       }
-      sql += ` ORDER BY dasha_system, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
+      sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
       return {

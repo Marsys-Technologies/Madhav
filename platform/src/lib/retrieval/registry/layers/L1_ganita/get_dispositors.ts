@@ -51,8 +51,8 @@ export const getDispositorsCapability: CapabilityDescriptor = {
 
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
-        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_numeric,
-               fact_value_text, fact_tags, epistemic_tier, source_asset_id
+        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `

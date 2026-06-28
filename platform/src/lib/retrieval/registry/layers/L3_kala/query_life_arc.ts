@@ -4,12 +4,12 @@
  * Queries kala_jivana_parva (ka_jivana_parva) — 739 rows per chart.
  * Returns daśā-anchored biographical chapter parvas with:
  *   - theme keywords, quality labels (building/peak/consolidating/receding/transitional)
- *   - convergence density, dominant domain
+ *   - high-convergence count, dominant signal class
  *
- * emits_references: true (signal_id back to bo_laksana via activation link).
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
+import { query } from '@/lib/db/client'
 import type { CapabilityDescriptor } from '../../types'
 
 export const queryLifeArcCapability: CapabilityDescriptor = {
@@ -20,18 +20,17 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
 
   description: [
     'Returns biographical life-arc chapters (parvas) for a chart from kala_jivana_parva.',
-    'Each parva is anchored to a mahadasha/antardasha period with theme keywords,',
-    'quality label (building/peak/consolidating/receding/transitional), and convergence density.',
+    'Each parva is anchored to a dasha period (dasha_planet) with theme keywords,',
+    'quality label (building/peak/consolidating/receding/transitional), and high-convergence count.',
     'Total: 739 rows per chart covering the full life arc.',
-    'Filter by mahadasha_lord to focus on a specific major period.',
-    'Returns signal_id references into bodha_msr_signals via activation links.',
+    'Filter by mahadasha_lord (matches dasha_planet) to focus on a specific major period.',
   ].join(' '),
 
   scope: 'per_chart',
   archetype: 'temporal',
   traversal_level: 'L-DOMAIN',
   tool_role: 'drill',
-  emits_references: true,
+  emits_references: false,
   grounds_to: { l1_fact_ids: true },
   lel_capable: false,
 
@@ -42,10 +41,6 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
-    },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
     },
     mahadasha_lord: {
       type: 'string',
@@ -91,7 +86,6 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id   = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
     const mahadasha_lord = args['mahadasha_lord'] as string | undefined
     const quality_label  = args['quality_label'] as string | undefined
     const domain         = args['domain'] as string | undefined
@@ -99,49 +93,45 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
     const date_to        = args['date_to'] as string | undefined
     const top_k          = Math.min(Number(args['top_k'] ?? 739), 739)
 
+    // kala_jivana_parva models the period as integer life years (start_year/end_year),
+    // not dates. Map any ISO date filters to their year component for overlap filtering.
+    const year_from = date_from ? new Date(date_from).getUTCFullYear() : undefined
+    const year_to   = date_to ? new Date(date_to).getUTCFullYear() : undefined
+
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      const conds: string[] = ['chart_id = $1']
+      const params: unknown[] = [chart_id]
+      let p = 2
 
-      const conds: string[] = ['chart_id = $1', 'ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
-
-      if (mahadasha_lord) { conds.push(`mahadasha_lord = $${p++}`); params.push(mahadasha_lord) }
-      if (quality_label)  { conds.push(`quality_label = $${p++}`);  params.push(quality_label) }
-      if (domain)         { conds.push(`dominant_domain = $${p++}`); params.push(domain) }
-      if (date_from)      { conds.push(`period_end >= $${p++}`);    params.push(date_from) }
-      if (date_to)        { conds.push(`period_start <= $${p++}`);  params.push(date_to) }
+      // mahadasha_lord → dasha_planet; quality_label → parva_quality;
+      // domain → dominant_signal_class (closest real column on this table).
+      if (mahadasha_lord)         { conds.push(`dasha_planet = $${p++}`);          params.push(mahadasha_lord) }
+      if (quality_label)          { conds.push(`parva_quality = $${p++}`);         params.push(quality_label) }
+      if (domain)                 { conds.push(`dominant_signal_class = $${p++}`); params.push(domain) }
+      if (year_from !== undefined) { conds.push(`end_year >= $${p++}`);            params.push(year_from) }
+      if (year_to !== undefined)   { conds.push(`start_year <= $${p++}`);          params.push(year_to) }
 
       params.push(top_k)
       const topKPh = `$${p}`
 
       const sql = `
-        SELECT parva_id, mahadasha_lord, antardasha_lord, pratyantar_lord,
-               period_start, period_end, quality_label, dominant_domain,
-               convergence_density, theme_keywords_array, signal_id_refs,
-               chapter_weight, narrative_summary, ayanamsha_id
+        SELECT id, parva_index, dasha_planet, dominant_signal_class,
+               start_year, end_year, parva_quality, theme_keywords,
+               high_convergence_count, avg_effective_score,
+               narrative, source_citation, computed_at
         FROM kala_jivana_parva
         WHERE ${conds.join(' AND ')}
-        ORDER BY period_start
+        ORDER BY parva_index
         LIMIT ${topKPh}
       `
 
-      const result = await db.query(sql, params)
-
-      const signalRefs = new Set<string>()
-      for (const row of result.rows as Array<{ signal_id_refs?: string[] }>) {
-        if (row.signal_id_refs) {
-          for (const id of row.signal_id_refs) signalRefs.add(id)
-        }
-      }
+      const result = await query(sql, params)
 
       return {
         content: {
           chart_id,
-          ayanamsha_id,
           parvas:       result.rows,
           parva_count:  result.rows.length,
-          signal_id_refs: Array.from(signalRefs),
           filters: { mahadasha_lord, quality_label, domain, date_from, date_to, top_k },
           provenance: { tables: ['kala_jivana_parva'] },
         },

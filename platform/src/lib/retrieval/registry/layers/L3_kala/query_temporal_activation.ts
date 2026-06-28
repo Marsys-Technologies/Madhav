@@ -14,6 +14,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryTemporalActivationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_temporal_activation',
@@ -74,7 +75,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     },
     min_activation_strength: {
       type: 'number',
-      description: 'Minimum activation_strength threshold (0..1, default: 0).',
+      description: 'Minimum orb_strength threshold (0..1, default: 0).',
     },
   },
 
@@ -102,18 +103,16 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     const min_strength        = Number(args['min_activation_strength'] ?? 0)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       const actConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const actParams: unknown[] = [chart_id, ayanamsha_id]
       let ap = 3
 
       if (date_from) {
-        actConds.push(`window_end >= $${ap++}`)
+        actConds.push(`activation_end >= $${ap++}`)
         actParams.push(date_from)
       }
       if (date_to) {
-        actConds.push(`window_start <= $${ap++}`)
+        actConds.push(`activation_start <= $${ap++}`)
         actParams.push(date_to)
       }
       if (signal_ids && signal_ids.length > 0) {
@@ -122,39 +121,47 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         actParams.push(...signal_ids)
       }
       if (min_strength > 0) {
-        actConds.push(`activation_strength >= $${ap++}`)
+        actConds.push(`orb_strength >= $${ap++}`)
         actParams.push(min_strength)
       }
       actParams.push(top_k)
       const topKPh = `$${ap++}`
 
       const activationSql = `
-        SELECT activation_id, signal_id, window_start, window_end,
-               activation_strength, activation_type, dasha_lord, antardasha_lord,
-               pratyantar_lord, trigger_type, domain_primary, ayanamsha_id
+        SELECT id, signal_id, ayanamsha_id, signature_class,
+               activation_start, activation_end, activation_peak_date,
+               orb_strength, convergence_score, dasha_activation_proximity_score,
+               active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
+               source_citation
         FROM kala_activation
         WHERE ${actConds.join(' AND ')}
-        ORDER BY activation_strength DESC NULLS LAST, window_start
+        ORDER BY orb_strength DESC NULLS LAST, activation_start
         LIMIT ${topKPh}
       `
 
-      const activations = await db.query(activationSql, actParams)
-      const activationIds = (activations.rows as Array<{ activation_id?: string }>)
-        .map(r => r.activation_id).filter(Boolean) as string[]
+      const activations = await query<Record<string, unknown>>(activationSql, actParams)
 
-      // Fetch predicates for the activation rows returned
+      // Predicates link to activations by signal_id (+ signature_class), not an
+      // activation_id FK. Fetch predicates for the signals in the returned set.
+      const predSignalIds = [...new Set(
+        (activations.rows as Array<{ signal_id?: string }>)
+          .map(r => r.signal_id).filter(Boolean) as string[]
+      )]
+
       let predicates: unknown[] = []
-      if (activationIds.length > 0) {
-        const predPhs = activationIds.map((_, i) => `$${i + 2}`).join(', ')
+      if (predSignalIds.length > 0) {
+        const predPhs = predSignalIds.map((_, i) => `$${i + 3}`).join(', ')
         const predSql = `
-          SELECT predicate_id, activation_id, predicate_type, predicate_expression,
-                 predicate_weight, condition_met, checked_at
+          SELECT id, signal_id, ayanamsha_id, signature_class,
+                 dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                 strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                 template_version
           FROM kala_activation_predicates
           WHERE chart_id = $1
-            AND activation_id IN (${predPhs})
-          ORDER BY predicate_weight DESC NULLS LAST
+            AND ayanamsha_id = $2
+            AND signal_id IN (${predPhs})
         `
-        const predResult = await db.query(predSql, [chart_id, ...activationIds])
+        const predResult = await query<Record<string, unknown>>(predSql, [chart_id, ayanamsha_id, ...predSignalIds])
         predicates = predResult.rows
       }
 

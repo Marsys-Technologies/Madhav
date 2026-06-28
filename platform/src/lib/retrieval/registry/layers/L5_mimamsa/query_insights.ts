@@ -13,6 +13,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../index'
+import { query } from '@/lib/db/client'
 
 export const queryInsightsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insights',
@@ -123,11 +124,9 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     `
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       const [insightResult, calResult] = await Promise.all([
-        db.query(sql, params),
-        db.query(calSql, [chart_id]),
+        query(sql, params),
+        query(calSql, [chart_id]),
       ])
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>

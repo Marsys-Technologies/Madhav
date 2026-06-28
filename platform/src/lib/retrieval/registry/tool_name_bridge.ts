@@ -97,7 +97,15 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
  *   - If handler returns an object with a `results` array → use it directly (already ToolBundle-shaped).
  *   - If handler returns an object with `content` (ToolResult) → wrap in a single-item results array.
  *   - If handler returns a plain object → JSON-serialise into content.
- *   - Errors from the handler are caught and returned as an empty bundle.
+ *
+ * Error contract (T1 anti-laundering — audit §6 Cross-cutting):
+ *   - A *thrown* sql/programming error from the handler is a bug, not data. It is
+ *     NOT swallowed into an empty bundle; it propagates so callers' existing
+ *     try/catch (consult → step_error, MCP → 500 envelope) surface it.
+ *   - A handler that *returns* `{ is_error: true, ... }` is likewise surfaced as a
+ *     thrown error, never laundered into a normal (empty-looking) success bundle.
+ *   - A legitimate empty result (handler returns `[]` / `{results:[]}` / null with
+ *     no `is_error` flag) stays a successful bundle with zero results.
  */
 function resultHash(data: unknown): string {
   return 'sha256:' + crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex')
@@ -143,7 +151,31 @@ async function capabilityResultToToolBundle(
   params: object,
   t0: number,
 ): Promise<ToolBundle> {
-  const result = await handlerPromise
+  let result: unknown
+  try {
+    result = await handlerPromise
+  } catch (err) {
+    // T1 anti-laundering: a thrown sql/programming error is a bug, NOT a legitimate
+    // empty result. Re-throw (annotated) so callers' existing catch surfaces it as a
+    // tool error rather than returning an indistinguishable empty success bundle.
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`tool '${toolName}' handler threw: ${msg}`, { cause: err })
+  }
+
+  // T1 anti-laundering: a handler that *returns* an error object (is_error: true)
+  // must also surface as an error, not be flattened into a normal results array
+  // where an empty-but-failed result looks identical to a legitimate empty success.
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    (result as Record<string, unknown>)['is_error'] === true
+  ) {
+    const errContent = (result as Record<string, unknown>)['content']
+    const detail =
+      typeof errContent === 'string' ? errContent : JSON.stringify(errContent)
+    throw new Error(`tool '${toolName}' returned an error result: ${detail}`)
+  }
+
   const results = toToolBundleResults(result)
   return {
     tool_bundle_id: crypto.randomUUID(),

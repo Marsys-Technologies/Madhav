@@ -2,11 +2,13 @@
  * query_domain_reading — Domain Reading (L2 Bodha)
  * =================================================
  * Drill into a life domain via two sources:
- *   - bodha_question_lenses (bo_drishti): domain question lenses (60 rows)
- *   - bodha_cdlm_cells (bo_sangati): CDLM cross-domain matrix cells (70 rows)
+ *   - bodha_question_lenses (bo_drishti): question lenses keyed by question_type
+ *     (NO domain column — returned chart-wide, not domain-filtered)
+ *   - bodha_cdlm_cells (bo_sangati): CDLM cross-domain matrix cells (domain_row/col)
  *
- * Returns a reconciled multi-vantage domain view. Each lens carries references
- * back to bodha_msr_signals via signal_id_refs (emits_references=true).
+ * Returns a reconciled multi-vantage domain view. Signal references are emitted
+ * from CDLM cells (shared_signal_ids_array); bodha_question_lenses carries no
+ * signal_id_refs column.
  *
  * DEFECT-001 note: constituent_facts_array on referenced signals has a 91.5%
  * orphan rate (L1 hash rebuild mismatch). Downstream joins to chart_facts by
@@ -17,6 +19,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryDomainReadingCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_domain_reading',
@@ -26,9 +29,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
 
   description: [
     'Drill into a specific life domain for a chart using the Bodha synthesis layer.',
-    'Returns the domain question lens from bodha_question_lenses and the corresponding',
-    'CDLM cross-domain matrix cell from bodha_cdlm_cells.',
-    'Both sources carry signal_id references into bodha_msr_signals for downstream hydration.',
+    'Returns the chart question lenses from bodha_question_lenses (no domain column —',
+    'returned chart-wide) and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells.',
+    'CDLM cells carry signal references (shared_signal_ids_array) for downstream hydration.',
     'If no lens exists for the requested domain, returns the list of available domains.',
     'Multi-vantage: lens covers house + karaka + varga vantages; CDLM covers cross-domain spillover.',
     'Follows query_ucd in the reading hierarchy; drill further with query_signals.',
@@ -88,17 +91,17 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'other']
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      // If no domain requested, return available domains for this chart
+      // Domain discovery is sourced from bodha_cdlm_cells (domain_row/domain_col).
+      // bodha_question_lenses has NO domain column — see MODEL-MISMATCH note below.
       if (!domain || !VALID_DOMAINS.includes(domain)) {
         const availSql = `
-          SELECT DISTINCT domain_primary
-          FROM bodha_question_lenses
-          WHERE chart_id = $1 AND ayanamsha_id = $2
-          ORDER BY domain_primary
+          SELECT DISTINCT d AS domain
+          FROM bodha_cdlm_cells,
+               LATERAL (VALUES (domain_row), (domain_col)) AS v(d)
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND d IS NOT NULL
+          ORDER BY d
         `
-        const availRes = await db.query(availSql, [chart_id, ayanamsha_id])
+        const availRes = await query<Record<string, unknown>>(availSql, [chart_id, ayanamsha_id])
         return {
           content: {
             chart_id,
@@ -111,61 +114,60 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         }
       }
 
-      // Domain question lens from bodha_question_lenses
+      // Question lenses from bodha_question_lenses.
+      // MODEL-MISMATCH: this table carries no domain column; lenses are keyed by
+      // question_type with template_element_ids_jsonb / all_relevant_ranked_jsonb.
+      // We cannot filter lenses by life-domain, so we return the chart's lenses
+      // (ranked payload included) alongside the domain-scoped CDLM cells. The
+      // lens<->domain reconciliation is deferred to a later wave (see needs_decision).
       const lensSql = `
         SELECT
           lens_id,
-          domain_primary,
-          domain_secondary,
-          question_text,
-          house_axis_primary,
-          karaka_primary,
-          varga_primary,
-          signal_id_refs,
-          lens_weight,
-          tradition_filter,
-          updated_at
+          question_type,
+          template_element_ids_jsonb,
+          all_relevant_ranked_jsonb,
+          lens_template_version,
+          points_only_assertion,
+          verification_pass_status,
+          computed_at
         FROM bodha_question_lenses
-        WHERE chart_id = $1 AND ayanamsha_id = $2 AND domain_primary = $3
-        ORDER BY lens_weight DESC NULLS LAST
-        LIMIT 10
+        WHERE chart_id = $1 AND ayanamsha_id = $2
+        ORDER BY question_type
+        LIMIT 60
       `
 
-      // CDLM cross-domain cell from bodha_cdlm_cells
+      // CDLM cross-domain cell from bodha_cdlm_cells (real columns)
       const cdlmSql = `
         SELECT
           cell_id,
           domain_row,
           domain_col,
-          relationship_type,
-          signal_count,
-          net_valence,
-          top_signal_ids,
-          spillover_weight,
-          classical_warrant,
-          updated_at
+          domain_relationship_class,
+          shared_signal_count,
+          net_linkage_strength,
+          computed_linkage_strength,
+          shared_signal_ids_array,
+          dominant_linkage_rank_in_chart,
+          cell_remedy_priority_rank,
+          computed_at
         FROM bodha_cdlm_cells
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND (domain_row = $3 OR domain_col = $3)
-        ORDER BY spillover_weight DESC NULLS LAST
+        ORDER BY net_linkage_strength DESC NULLS LAST
         LIMIT 10
       `
 
       const [lensRes, cdlmRes] = await Promise.all([
-        db.query(lensSql, [chart_id, ayanamsha_id, domain]),
-        db.query(cdlmSql, [chart_id, ayanamsha_id, domain]),
+        query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id]),
+        query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain]),
       ])
 
-      // Collect signal_id references emitted by this tool
+      // Collect signal_id references emitted by this tool (CDLM cells only;
+      // bodha_question_lenses carries no signal_id_refs column).
       const signalRefs = new Set<string>()
-      for (const lens of lensRes.rows as Array<{ signal_id_refs?: string[] }>) {
-        if (lens.signal_id_refs) {
-          for (const id of lens.signal_id_refs) signalRefs.add(id)
-        }
-      }
-      for (const cell of cdlmRes.rows as Array<{ top_signal_ids?: string[] }>) {
-        if (cell.top_signal_ids) {
-          for (const id of cell.top_signal_ids) signalRefs.add(id)
+      for (const cell of cdlmRes.rows as Array<{ shared_signal_ids_array?: string[] }>) {
+        if (cell.shared_signal_ids_array) {
+          for (const id of cell.shared_signal_ids_array) signalRefs.add(id)
         }
       }
 
@@ -182,9 +184,13 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           drill_next:      'marsys://tool/L2/query_signals',
           provenance: {
             tables: ['bodha_question_lenses', 'bodha_cdlm_cells'],
+            model_mismatch_note: [
+              'bodha_question_lenses has no domain column; lenses are returned chart-wide,',
+              'not domain-filtered. Signal references derive from CDLM cells only.',
+            ].join(' '),
             defect_001_note: [
               'constituent_facts_array in referenced signals has 91.5% orphan rate (DEFECT-001 OPEN).',
-              'L1 fact joins via signal_id_refs will be empty for most signals until L2 rebuild.',
+              'L1 fact joins via signal references will be empty for most signals until L2 rebuild.',
             ].join(' '),
           },
         },

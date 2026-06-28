@@ -15,7 +15,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
     'Retrieve divisional chart (varga) placements for a chart from the chart_divisionals table. ' +
     'Contains graha positions in each of the 16 standard vargas (D1–D60 including D1, D2, D3, D4, D5, ' +
     'D6, D7, D8, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60). ' +
-    'Each row: graha, varga_code, rashi_number, house_from_lagna, longitude. ' +
+    'Each row: graha, varga, sign, sign_number, degree_in_sign, house, vargottama. ' +
     'Contains 21,635 rows for the native.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
@@ -51,14 +51,14 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         params.push(args.ayanamsha_id as string)
       }
       if (args.varga) {
-        sql += ` AND varga_code = $${params.length + 1}`
+        sql += ` AND varga = $${params.length + 1}`
         params.push(args.varga as string)
       }
       if (args.graha) {
         sql += ` AND graha = $${params.length + 1}`
         params.push(args.graha as string)
       }
-      sql += ` ORDER BY varga_code, ayanamsha_id, graha LIMIT $2 OFFSET $3`
+      sql += ` ORDER BY varga, ayanamsha_id, graha LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
       return {

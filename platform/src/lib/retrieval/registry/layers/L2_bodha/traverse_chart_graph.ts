@@ -322,7 +322,6 @@ async function _neighborsMode(
       n.hub_flag,
       n.hub_score,
       n.primary_domain,
-      n.valence AS node_valence,
       n.strength_score,
       n.dignity_state,
       n.source_subsystem,
@@ -453,7 +452,7 @@ async function _pathsMode(
 
     const nodeRes = await query<Record<string, unknown>>(
       `SELECT node_id, node_type, node_subject, node_label_human, msr_signal_id,
-              pagerank_score, hub_flag, primary_domain, valence, strength_score
+              pagerank_score, hub_flag, primary_domain, strength_score
        FROM bodha_cgm_nodes
        WHERE ${nc.join(' AND ')} AND node_id IN (${nPhs})`,
       np
@@ -516,7 +515,6 @@ async function _convergenceMode(
       primary_domain,
       domain_affiliations_jsonb,
       cluster_membership_array,
-      valence AS node_valence,
       strength_score,
       dignity_state,
       source_subsystem,
@@ -599,8 +597,8 @@ async function _contradictionsMode(
       tension_class,
       domains_affected_array,
       combined_salience,
-      resolution_approach,
-      resolution_status,
+      resolution_hint_jsonb,
+      verification_pass_status,
       ayanamsha_id,
       build_id
     FROM bodha_contradictions

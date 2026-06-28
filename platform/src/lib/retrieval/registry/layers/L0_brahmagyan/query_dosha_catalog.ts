@@ -20,7 +20,7 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
     'Returns all 50 entries with no truncation.',
   input_schema: {
     dosha_name:   { type: 'string', description: 'Partial match on dosha name.' },
-    severity:     { type: 'string', description: 'Filter by severity tier: high | medium | low.' },
+    severity:     { type: 'string', description: 'Filter to doshas that define a given severity grade key in severity_grades (e.g. mild | moderate | severe).' },
     domain:       { type: 'string', description: 'Filter by domain tag.' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 50 },
@@ -42,10 +42,10 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
       let sql = `SELECT * FROM brahma_dosha_catalog WHERE 1=1`
-      if (args.dosha_name) { sql += ` AND dosha_name ILIKE $${params.length + 1}`; params.push(`%${args.dosha_name as string}%`) }
-      if (args.severity)   { sql += ` AND severity_tier = $${params.length + 1}`; params.push(args.severity as string) }
-      if (args.domain)     { sql += ` AND $${params.length + 1} = ANY(domain_tags)`; params.push(args.domain as string) }
-      sql += ` ORDER BY severity_tier, dosha_name LIMIT $1 OFFSET $2`
+      if (args.dosha_name) { sql += ` AND name_en ILIKE $${params.length + 1}`; params.push(`%${args.dosha_name as string}%`) }
+      if (args.severity)   { sql += ` AND severity_grades ? $${params.length + 1}`; params.push(args.severity as string) }
+      if (args.domain)     { sql += ` AND category = $${params.length + 1}`; params.push(args.domain as string) }
+      sql += ` ORDER BY category, name_en LIMIT $1 OFFSET $2`
       const result = await query<Record<string, unknown>>(sql, params)
       return { content: { rows: result.rows ?? [], total: result.rows?.length ?? 0 }, is_error: false }
     } catch (err) {

@@ -14,6 +14,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../index'
+import { query } from '@/lib/db/client'
 
 export const queryUcdCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_ucd',
@@ -123,16 +124,16 @@ export const queryUcdCapability: CapabilityDescriptor = {
     `
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      void _ctx
 
       const signalParams: unknown[] = [chart_id, ayanamsha_id, top_k, 0]
       if (signal_class)  signalParams.push(signal_class)
       if (min_salience > 0) signalParams.push(min_salience)
 
       const [digestResult, signalResult, convResult] = await Promise.all([
-        db.query(digestSql, [chart_id, ayanamsha_id]),
-        db.query(signalSql, signalParams),
-        db.query(convSql,   [chart_id, ayanamsha_id]),
+        query(digestSql, [chart_id, ayanamsha_id]),
+        query(signalSql, signalParams),
+        query(convSql,   [chart_id, ayanamsha_id]),
       ])
 
       const digest = (digestResult.rows[0] ?? {}) as Record<string, unknown>

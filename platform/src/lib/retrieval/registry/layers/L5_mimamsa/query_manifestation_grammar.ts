@@ -10,6 +10,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryManifestationGrammarCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_manifestation_grammar',
@@ -19,11 +20,11 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
 
   description: [
     'Returns the manifestation grammar for a chart from mimamsa_manifestation_grammar (mi_sambandha).',
-    'Per-native grammar: how each signal/house/karaka actually expresses in this chart.',
-    'Two cell types: structural (classical prediction) and empirical (observed expression).',
+    'Per-native grammar: how each origin (signal/house/karaka) actually expresses through channels in this chart.',
+    'Each row carries channel propensity (fire_count/opportunity_count → channel_propensity) vs prior_propensity, with propensity_delta.',
     'Useful for calibrating interpretation models against lived reality.',
-    'emits_references: signal_id references back to bodha_msr_signals.',
-    'Filter by signal_family or house to narrow scope.',
+    'emits_references: origin_ref references back to bodha_msr_signals.',
+    'Filter by origin_kind, origin_ref, or domain to narrow scope.',
   ].join(' '),
 
   scope: 'per_chart',
@@ -42,18 +43,17 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
     },
-    signal_family: {
+    origin_kind: {
       type: 'string',
-      description: 'Filter by signal family (yoga, dosha, karaka_alignment, composite_state, etc.).',
+      description: 'Filter by origin kind (signal, house, karaka, composite_state, etc.).',
     },
-    house: {
-      type: 'number',
-      description: 'Filter by house (1–12).',
-    },
-    cell_type: {
+    origin_ref: {
       type: 'string',
-      description: "Filter by cell type: 'structural'|'empirical'.",
-      enum: ['structural', 'empirical'],
+      description: 'Filter by specific origin reference id (e.g. signal_id back to bodha_msr_signals).',
+    },
+    domain: {
+      type: 'string',
+      description: 'Filter by life domain (career, wealth, relationship, health, etc.).',
     },
     top_k: {
       type: 'number',
@@ -72,38 +72,37 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const signal_family = args['signal_family'] as string | undefined
-    const house         = args['house'] !== undefined ? Number(args['house']) : undefined
-    const cell_type     = args['cell_type'] as string | undefined
-    const top_k         = Math.min(Number(args['top_k'] ?? 50), 500)
+    const origin_kind = args['origin_kind'] as string | undefined
+    const origin_ref  = args['origin_ref'] as string | undefined
+    const domain      = args['domain'] as string | undefined
+    const top_k       = Math.min(Number(args['top_k'] ?? 50), 500)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       const conds: string[] = ['chart_id = $1']
       const params: unknown[] = [chart_id]
       let p = 2
 
-      if (signal_family) { conds.push(`signal_family = $${p++}`); params.push(signal_family) }
-      if (house !== undefined) { conds.push(`house = $${p++}`); params.push(house) }
-      if (cell_type) { conds.push(`cell_type = $${p++}`); params.push(cell_type) }
+      if (origin_kind) { conds.push(`origin_kind = $${p++}`); params.push(origin_kind) }
+      if (origin_ref)  { conds.push(`origin_ref = $${p++}`);  params.push(origin_ref) }
+      if (domain)      { conds.push(`domain = $${p++}`);      params.push(domain) }
 
       params.push(top_k)
 
       const sql = `
-        SELECT grammar_id, signal_family, house, karaka,
-               cell_type, structural_prediction, empirical_expression,
-               alignment_score, signal_id_ref, lel_event_id,
-               recorded_at
+        SELECT origin_kind, origin_ref, channel_id, domain,
+               fire_count, opportunity_count, channel_propensity,
+               prior_propensity, propensity_delta, n_support,
+               confidence_band, evidence_grade, citation_ref,
+               grammar_formula_version, updated_at
         FROM mimamsa_manifestation_grammar
         WHERE ${conds.join(' AND ')}
-        ORDER BY alignment_score DESC NULLS LAST
+        ORDER BY channel_propensity DESC NULLS LAST
         LIMIT $${p}
       `
 
-      const result = await db.query(sql, params)
-      const signalRefs = [...new Set(
-        (result.rows as Array<{ signal_id_ref?: string }>).map(r => r.signal_id_ref).filter(Boolean) as string[]
+      const result = await query(sql, params)
+      const originRefs = [...new Set(
+        (result.rows as Array<{ origin_ref?: string }>).map(r => r.origin_ref).filter(Boolean) as string[]
       )]
 
       return {
@@ -111,8 +110,8 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
           chart_id,
           grammar_rows:  result.rows,
           row_count:     result.rows.length,
-          signal_id_refs: signalRefs,
-          filters: { signal_family, house, cell_type, top_k },
+          origin_refs:   originRefs,
+          filters: { origin_kind, origin_ref, domain, top_k },
           provenance: { tables: ['mimamsa_manifestation_grammar'] },
         },
         is_error: false,

@@ -3,11 +3,12 @@
  * ===================================================
  * Queries kala_bhavishya (ka_bhavishya_lekha) — 50 rows per chart.
  * Returns probabilistic forward projections with domain labels,
- * falsifiability hooks, and calibration records.
+ * peak_date / window bounds, falsifiability hooks, and source chains.
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
+import { query } from '@/lib/db/client'
 import type { CapabilityDescriptor } from '../../types'
 
 export const queryProjectionsCapability: CapabilityDescriptor = {
@@ -19,11 +20,11 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
   description: [
     'Returns probabilistic forward projections for a chart from kala_bhavishya.',
     'Source: kala_bhavishya (50 rows — spanning multiple years and domains).',
-    'Each projection carries: domain, probability_tier, horizon_years,',
-    'falsifiability hooks, calibration record references, and confidence band.',
+    'Each projection carries: domain, probability_tier, peak_date, window_start/window_end,',
+    'falsifiability hook, source_chain, effective_score, and narrative.',
     'Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65),',
     'tier_3_speculative (<0.40).',
-    'emits_references: returns prediction_id references linkable to ph_pramana (L4).',
+    'emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4).',
   ].join(' '),
 
   scope: 'per_chart',
@@ -42,13 +43,9 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
     },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
-    },
     horizon_years: {
       type: 'number',
-      description: 'Filter projections within this many years from today (default: 3).',
+      description: 'Filter projections whose peak_date falls within this many years from today (default: 3).',
     },
     probability_tier: {
       type: 'string',
@@ -77,7 +74,6 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
     const horizon_years   = Number(args['horizon_years'] ?? 3)
     const probability_tier = args['probability_tier'] as string | undefined
     const domain          = args['domain'] as string | undefined
@@ -86,42 +82,40 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
     horizon_date.setFullYear(horizon_date.getFullYear() + horizon_years)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      const conds: string[] = ['chart_id = $1']
+      const params: unknown[] = [chart_id]
+      let p = 2
 
-      const conds: string[] = ['chart_id = $1', 'ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
-
+      // The projection's temporal anchor is peak_date (kala_bhavishya has no
+      // projection_date / horizon_years columns).
       if (horizon_years > 0) {
-        conds.push(`projection_date <= $${p++}`)
+        conds.push(`peak_date <= $${p++}`)
         params.push(horizon_date.toISOString().split('T')[0])
       }
       if (probability_tier) { conds.push(`probability_tier = $${p++}`); params.push(probability_tier) }
       if (domain)           { conds.push(`domain = $${p++}`);           params.push(domain) }
 
       const sql = `
-        SELECT projection_id, domain, probability_tier, confidence_band,
-               projection_date, horizon_years, projection_statement,
-               falsifiability_hook, calibration_record_id, signal_id_refs,
-               activation_ids, source_convergence_ids, ayanamsha_id
+        SELECT id, projection_rank, domain, probability_tier, effective_score,
+               peak_date, window_start, window_end, narrative,
+               falsifiability, convergence_id, signal_id, source_chain,
+               outcome_recorded, outcome_notes, source_citation, computed_at
         FROM kala_bhavishya
         WHERE ${conds.join(' AND ')}
-        ORDER BY probability_tier, projection_date
+        ORDER BY probability_tier, projection_rank
       `
 
-      const result = await db.query(sql, params)
+      const result = await query(sql, params)
 
+      // signal_id is a scalar per row (not an array); collect distinct refs.
       const signalRefs = new Set<string>()
-      for (const row of result.rows as Array<{ signal_id_refs?: string[] }>) {
-        if (row.signal_id_refs) {
-          for (const id of row.signal_id_refs) signalRefs.add(id)
-        }
+      for (const row of result.rows as Array<{ signal_id?: string }>) {
+        if (row.signal_id) signalRefs.add(row.signal_id)
       }
 
       return {
         content: {
           chart_id,
-          ayanamsha_id,
           projections:      result.rows,
           projection_count: result.rows.length,
           signal_id_refs:   Array.from(signalRefs),

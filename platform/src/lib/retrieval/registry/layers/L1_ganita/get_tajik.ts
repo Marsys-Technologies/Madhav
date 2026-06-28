@@ -58,8 +58,8 @@ export const getTajikCapability: CapabilityDescriptor = {
 
       const params: unknown[] = [chartId, TAJIK_CF_CATEGORIES, limit, offset]
       let sql = `
-        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_numeric,
-               fact_value_text, fact_tags, epistemic_tier, source_asset_id
+        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -75,10 +75,10 @@ export const getTajikCapability: CapabilityDescriptor = {
       if (includeVarsha) {
         const vParams: unknown[] = [chartId]
         let vSql = `SELECT * FROM l1_tajik_varsha_year_lords WHERE chart_id = $1`
-        if (args.year_min) { vSql += ` AND year_num >= $${vParams.length + 1}`; vParams.push(args.year_min as number) }
-        if (args.year_max) { vSql += ` AND year_num <= $${vParams.length + 1}`; vParams.push(args.year_max as number) }
+        if (args.year_min) { vSql += ` AND varsha_year >= $${vParams.length + 1}`; vParams.push(args.year_min as number) }
+        if (args.year_max) { vSql += ` AND varsha_year <= $${vParams.length + 1}`; vParams.push(args.year_max as number) }
         if (args.ayanamsha_id) { vSql += ` AND ayanamsha_id = $${vParams.length + 1}`; vParams.push(args.ayanamsha_id as string) }
-        vSql += ` ORDER BY year_num, ayanamsha_id LIMIT ${limit}`
+        vSql += ` ORDER BY varsha_year, ayanamsha_id LIMIT ${limit}`
         const vResult = await query<Record<string, unknown>>(vSql, vParams)
         rows.push(...(vResult.rows ?? []).map(r => ({ ...r, _source_table: 'l1_tajik_varsha_year_lords' })))
       }

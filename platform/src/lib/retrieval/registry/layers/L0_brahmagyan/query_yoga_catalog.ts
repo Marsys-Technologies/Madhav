@@ -41,10 +41,10 @@ export const queryYogaCatalogCapability: CapabilityDescriptor = {
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
       let sql = `SELECT * FROM brahma_yoga_catalog WHERE 1=1`
-      if (args.yoga_name) { sql += ` AND yoga_name ILIKE $${params.length + 1}`; params.push(`%${args.yoga_name as string}%`) }
-      if (args.tradition)  { sql += ` AND tradition = $${params.length + 1}`; params.push(args.tradition as string) }
-      if (args.domain)     { sql += ` AND $${params.length + 1} = ANY(domain_tags)`; params.push(args.domain as string) }
-      sql += ` ORDER BY tradition, yoga_name LIMIT $1 OFFSET $2`
+      if (args.yoga_name) { sql += ` AND name_en ILIKE $${params.length + 1}`; params.push(`%${args.yoga_name as string}%`) }
+      if (args.tradition)  { sql += ` AND school = $${params.length + 1}`; params.push(args.tradition as string) }
+      if (args.domain)     { sql += ` AND category = $${params.length + 1}`; params.push(args.domain as string) }
+      sql += ` ORDER BY school, name_en LIMIT $1 OFFSET $2`
       const result = await query<Record<string, unknown>>(sql, params)
       return { content: { rows: result.rows ?? [], total: result.rows?.length ?? 0 }, is_error: false }
     } catch (err) {

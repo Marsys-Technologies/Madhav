@@ -196,22 +196,20 @@ export const callEphemerisAtTCapability: CapabilityDescriptor = {
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
 
-    try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      const sql = `
-        SELECT graha, sign, degree, nakshatra, pada, retrograde_flag, speed_deg_per_day
-        FROM ka_graha_sancara_snapshot
-        WHERE snapshot_utc::date = $1::date AND ayanamsha_id = $2
-        ORDER BY graha
-      `
-      const result = await db.query(sql, [datetime_utc, ayanamsha_id])
-      return {
-        content: { datetime_utc, ayanamsha_id, positions: result.rows },
-        is_error: false,
-      }
-    } catch (err) {
-      return { content: { error: String(err), note: 'ka_graha_sancara service may require ephemeris engine call' }, is_error: true }
+    // ka_graha_sancara is a compute service (asset_registry target_table = null) — there is no
+    // ka_graha_sancara_snapshot table to query. Positions at an arbitrary datetime must be
+    // produced by the compute sidecar. No /api/compute endpoint is wired for arbitrary-time
+    // ephemeris yet (the existing /ephemeris router computes natal positions from birth params,
+    // not a general datetime_utc + ayanamsha contract), so fail loud rather than query a phantom
+    // table. See needs_decision: wire a /api/compute/ephemeris_at_t sidecar endpoint.
+    return {
+      content: {
+        error: 'call_ephemeris_at_t is not yet wired to a compute sidecar endpoint',
+        note: 'ka_graha_sancara is a compute service with no backing table; no /api/compute/ephemeris_at_t endpoint exists yet. This handler will return positions once the sidecar endpoint is added.',
+        datetime_utc,
+        ayanamsha_id,
+      },
+      is_error: true,
     }
   },
 }
@@ -260,7 +258,7 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
     },
     target_lords: {
       type: 'array',
-      description: "Graha names to filter by (e.g. ['Jupiter','Saturn']). When provided, only returns windows where these lords appear at any dasha level (MD/AD/PD/SP). Omit to return all active windows.",
+      description: "Graha names to filter by (e.g. ['Jupiter','Saturn']). chart_dashas is a flat one-row-per-level model (level_n + lord_graha), so this filters rows whose lord_graha is in the list, at any level. Omit to return all active windows.",
     },
   },
 
@@ -283,35 +281,38 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
     try {
       const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
 
-      // Optional target-lord filter across all dasha levels
+      // chart_dashas is a flat one-row-per-level model: each row carries a single
+      // lord_graha at level_n (not separate MD/AD/PD/SP lord columns). The optional
+      // target-lord filter therefore matches lord_graha at any level.
       let lordFilter = ''
       if (target_lords.length > 0) {
         const ph = target_lords.map((_, i) => `$${5 + i}`).join(', ')
-        lordFilter = `AND (mahadasha_lord IN (${ph}) OR antardasha_lord IN (${ph}) OR pratyantar_lord IN (${ph}) OR sookshma_lord IN (${ph}))`
+        lordFilter = `AND lord_graha IN (${ph})`
         target_lords.forEach(l => params.push(l))
       }
 
       const result = await query<Record<string, unknown>>(
         `SELECT
-           dasha_id, system_id, dasha_level,
-           mahadasha_lord, antardasha_lord, pratyantar_lord, sookshma_lord,
-           dasha_start, dasha_end, kp_sublevel, kp_sub_lord
+           dasha_row_id, system_id, level_n,
+           lord_graha, lord_sign, parent_row_id,
+           start_date, end_date, start_iso, end_iso,
+           kp_sublevel, kp_sub_lord
          FROM chart_dashas
          WHERE chart_id = $1 AND ayanamsha_id = $2
-           AND dasha_end >= $3 AND dasha_start <= $4
+           AND end_date >= $3 AND start_date <= $4
            ${lordFilter}
-         ORDER BY dasha_start, system_id, dasha_level
+         ORDER BY start_date, system_id, level_n
          LIMIT 400`,
         params,
       )
 
-      // Cross-system agreement: for each unique (dasha_start, dasha_end) pair,
+      // Cross-system agreement: for each unique (start_date, end_date) pair,
       // collect all systems that independently produce a window at that interval.
       // Different systems use different cycle lengths, so identical boundaries
       // mean true multi-system convergence on that period.
       const windowMap = new Map<string, { systems: Set<string>; row: Record<string, unknown> }>()
       for (const row of result.rows) {
-        const key = `${row['dasha_start']}|${row['dasha_end']}`
+        const key = `${row['start_date']}|${row['end_date']}`
         if (!windowMap.has(key)) windowMap.set(key, { systems: new Set(), row })
         windowMap.get(key)!.systems.add(row['system_id'] as string)
       }
@@ -397,28 +398,20 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
     const event_class  = args['event_class'] as string | undefined
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
 
-    try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      const sql = `
-        SELECT score_id, datetime_utc, event_class, muhurta_score,
-               tithi_score, nakshatra_score, yoga_score, karana_score,
-               lagna_fitness_score, ayanamsha_id, scored_at
-        FROM ka_muhurta_scores
-        WHERE datetime_utc::date = $1::date
-          AND ($2::text IS NULL OR event_class = $2)
-          AND ayanamsha_id = $3
-        ORDER BY muhurta_score DESC
-        LIMIT 20
-      `
-
-      const result = await db.query(sql, [datetime_utc, event_class ?? null, ayanamsha_id])
-      return {
-        content: { datetime_utc, event_class, ayanamsha_id, scores: result.rows },
-        is_error: false,
-      }
-    } catch (err) {
-      return { content: { error: String(err), note: 'ka_muhurta_seva service may require ephemeris computation' }, is_error: true }
+    // ka_muhurta_seva is a compute service (asset_registry target_table = null) — there is no
+    // ka_muhurta_scores table to query. Muhurta scoring for an arbitrary datetime must be
+    // produced by the compute sidecar. No /api/compute/muhurta_score endpoint is wired yet,
+    // so fail loud rather than query a phantom table.
+    // See needs_decision: wire a /api/compute/muhurta_score sidecar endpoint.
+    return {
+      content: {
+        error: 'call_muhurta_score is not yet wired to a compute sidecar endpoint',
+        note: 'ka_muhurta_seva is a compute service with no backing table; no /api/compute/muhurta_score endpoint exists yet. This handler will return muhurta scores once the sidecar endpoint is added.',
+        datetime_utc,
+        event_class,
+        ayanamsha_id,
+      },
+      is_error: true,
     }
   },
 }

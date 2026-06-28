@@ -13,6 +13,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryContradictionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_contradictions',
@@ -26,7 +27,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     'and bodha_anomalies (quality anomalies surfaced during L2 build).',
     'NOTE: bodha_contradictions currently contains 0 rows for all charts — this is expected state',
     '(contradiction writer pending rebuild). Returns empty array, not error.',
-    'bodha_discoveries: 1,505 rows ranked by novelty_score.',
+    'bodha_discoveries: 1,505 rows ranked by composite_discovery_rank (non_obviousness_score gated).',
     'bodha_anomalies: 4,265 rows covering 5 detector types.',
     'emits_references: returns signal_id pairs from contradiction pairs as reference list.',
   ].join(' '),
@@ -65,7 +66,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     },
     min_novelty: {
       type: 'number',
-      description: 'Minimum novelty_score for discoveries (0..1, default: 0).',
+      description: 'Minimum non_obviousness_score for discoveries (0..1, default: 0).',
     },
   },
 
@@ -91,21 +92,20 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     const top_k_discoveries    = Math.min(Number(args['top_k_discoveries'] ?? 20), 200)
     const min_novelty          = Number(args['min_novelty'] ?? 0)
 
+    void _ctx
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       // Contradictions (expected 0 rows — graceful-empty)
       const contraSql = `
         SELECT contradiction_id, signal_a_id, signal_b_id,
                tension_class, domains_affected_array, combined_salience,
-               resolution_approach, resolution_status, ayanamsha_id
+               resolution_hint_jsonb, ayanamsha_id
         FROM bodha_contradictions
         WHERE chart_id = $1 AND ayanamsha_id = $2
         ORDER BY combined_salience DESC NULLS LAST
       `
 
       const promises: Array<Promise<{ rows: unknown[] }>> = [
-        db.query(contraSql, [chart_id, ayanamsha_id]),
+        query<Record<string, unknown>>(contraSql, [chart_id, ayanamsha_id]),
       ]
 
       // Discoveries
@@ -114,33 +114,36 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
         const discParams: unknown[] = [chart_id, ayanamsha_id]
         let dp = 3
         if (min_novelty > 0) {
-          discoveryFilters.push(`novelty_score >= $${dp++}`)
+          discoveryFilters.push(`non_obviousness_score >= $${dp++}`)
           discParams.push(min_novelty)
         }
         discParams.push(top_k_discoveries)
         const discSql = `
-          SELECT discovery_id, discovery_type, domain, pattern_description,
-                 novelty_score, confidence_score, signal_id_refs,
-                 supporting_evidence_jsonb, created_at
+          SELECT discovery_id, discovery_class, discovery_subsystem,
+                 affected_domains_array, hypothesis_text,
+                 non_obviousness_score, consequence_score,
+                 composite_discovery_rank, constituent_refs_jsonb, computed_at
           FROM bodha_discoveries
           WHERE ${discoveryFilters.join(' AND ')}
-          ORDER BY novelty_score DESC NULLS LAST
+          ORDER BY composite_discovery_rank DESC NULLS LAST
           LIMIT $${dp}
         `
-        promises.push(db.query(discSql, discParams))
+        promises.push(query<Record<string, unknown>>(discSql, discParams))
       }
 
       // Anomalies
       if (include_anomalies) {
         const anomSql = `
-          SELECT anomaly_id, anomaly_type, severity, description,
-                 signal_id_ref, detection_source, created_at
+          SELECT anomaly_id, anomaly_type, discovery_subsystem,
+                 subject_ref_jsonb, anomaly_metric, anomaly_value,
+                 chart_baseline_value, sigma_from_baseline,
+                 meaningfulness_gate_result, computed_at
           FROM bodha_anomalies
           WHERE chart_id = $1 AND ayanamsha_id = $2
-          ORDER BY severity DESC, created_at DESC
+          ORDER BY sigma_from_baseline DESC NULLS LAST, computed_at DESC
           LIMIT 100
         `
-        promises.push(db.query(anomSql, [chart_id, ayanamsha_id]))
+        promises.push(query<Record<string, unknown>>(anomSql, [chart_id, ayanamsha_id]))
       }
 
       const results = await Promise.all(promises)

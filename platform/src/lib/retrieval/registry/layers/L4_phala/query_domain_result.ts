@@ -10,6 +10,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 export const queryDomainResultCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L4/query_domain_result',
@@ -21,7 +22,8 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
     'Returns the L4 domain result map for a chart from phala_phaladesa (ph_phaladesa).',
     'Source: phala_phaladesa (7 rows — one per life domain, by design).',
     'Each row is a B.11-compliant domain result declaration covering:',
-    'anchor inventory count, spillover coverage, mitigation coverage, muhurta coverage.',
+    'anchor inventory count, clean/staged/anomaly counts, incoming spillover,',
+    'mitigation availability, and muhurta availability.',
     'Returns all 7 domains by default; filter by domain for a specific one.',
     'NOTE: 7 total rows is by design — one row per domain per chart. Expected sparse count.',
   ].join(' '),
@@ -42,10 +44,6 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
     },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
-    },
     domain: {
       type: 'string',
       description: 'Filter by domain (career, wealth, relationship, health, character, spirituality, other). Omit for all 7.',
@@ -64,44 +62,41 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
-    const domain       = args['domain'] as string | undefined
+    const domain = args['domain'] as string | undefined
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      const conds: string[] = ['chart_id = $1', 'ayanamsha_id = $2']
-      const params: unknown[] = [chart_id, ayanamsha_id]
-      let p = 3
+      const conds: string[] = ['chart_id = $1']
+      const params: unknown[] = [chart_id]
+      let p = 2
 
       if (domain) { conds.push(`domain = $${p++}`); params.push(domain) }
 
       const sql = `
-        SELECT phaladesa_id, domain, anchor_count,
-               spillover_coverage_pct, mitigation_coverage_pct,
-               muhurta_coverage_pct, anchor_id_refs,
-               result_summary, confidence_band,
-               b11_compliance_flag, ayanamsha_id
+        SELECT phaladesa_id, domain, anchor_count, clean_anchor_count,
+               staged_revision_count, anomaly_flag_count, top_anchor_id,
+               prediction_window_start, prediction_window_end, peak_date,
+               magnitude, confidence_low, confidence_high, malleability,
+               incoming_spillover_count, mitigation_available, muhurta_available,
+               pramana_window_status, evidence_type, narration_status,
+               source_citation
         FROM phala_phaladesa
         WHERE ${conds.join(' AND ')}
         ORDER BY domain
       `
 
-      const result = await db.query(sql, params)
-      const anchorRefs = new Set<string>()
-      for (const row of result.rows as Array<{ anchor_id_refs?: string[] }>) {
-        if (row.anchor_id_refs) {
-          for (const id of row.anchor_id_refs) anchorRefs.add(id)
-        }
-      }
+      const result = await query(sql, params)
+      const anchorRefs = [...new Set(
+        (result.rows as Array<{ top_anchor_id?: string }>)
+          .map(r => r.top_anchor_id)
+          .filter(Boolean) as string[]
+      )]
 
       return {
         content: {
           chart_id,
-          ayanamsha_id,
           domain_results:  result.rows,
           domain_count:    result.rows.length,
-          anchor_id_refs:  Array.from(anchorRefs),
+          anchor_id_refs:  anchorRefs,
           design_note:     '7 rows is by design — one per domain. Sparse count is expected.',
           filters: { domain },
           provenance: { tables: ['phala_phaladesa'] },
