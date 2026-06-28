@@ -81,6 +81,11 @@ app.include_router(ephemeris_brahmagyan_router, prefix="/brahmagyan/ephemeris", 
 from routers import sutravali as sutravali_router
 app.include_router(sutravali_router.router, prefix="/api/brahma", dependencies=[Depends(verify_api_key)])
 
+# L3 Kāla — Transit search (ka_gochara, aspect + conjunction live compute)
+# Retrieval call_transit_search capability calls /api/compute/transit_search
+from routers import transit_search as transit_search_router
+app.include_router(transit_search_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 
 @app.get("/health")
 def health():

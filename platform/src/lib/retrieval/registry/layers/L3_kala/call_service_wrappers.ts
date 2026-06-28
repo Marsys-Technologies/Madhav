@@ -18,6 +18,7 @@
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
 
 // ── call_transit_search ───────────────────────────────────────────────────────
 
@@ -43,6 +44,12 @@ export const callTransitSearchCapability: CapabilityDescriptor = {
   lel_capable: false,
 
   input_schema: {
+    event_type: {
+      type: 'string',
+      description: "Type of transit event: 'aspect' (planet-to-natal-point) or 'conjunction' (planet-to-planet). Required.",
+      enum: ['aspect', 'conjunction'],
+      required: true,
+    },
     date_from: {
       type: 'string',
       description: 'Start date for transit search (ISO 8601: YYYY-MM-DD). Required.',
@@ -50,21 +57,37 @@ export const callTransitSearchCapability: CapabilityDescriptor = {
     },
     date_to: {
       type: 'string',
-      description: 'End date for transit search (ISO 8601: YYYY-MM-DD). Required.',
+      description: 'End date for transit search (ISO 8601: YYYY-MM-DD, max 10yr window). Required.',
       required: true,
     },
-    graha: {
+    // Aspect-mode fields (event_type = 'aspect')
+    transit_planet: {
       type: 'string',
-      description: 'Filter by graha (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu).',
+      description: "Moving planet to track (e.g. 'Saturn'). Required for aspect mode.",
       enum: ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'],
     },
-    sign: {
-      type: 'string',
-      description: 'Filter by transit sign (Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricorn, Aquarius, Pisces).',
+    target_longitude_deg: {
+      type: 'number',
+      description: 'Natal longitude (degrees 0–360) that the transit planet aspects. Required for aspect mode.',
     },
-    ayanamsha_id: {
+    aspect_degrees: {
+      type: 'array',
+      description: 'Aspect angles to detect (default: [0,60,90,120,180]).',
+    },
+    // Conjunction-mode fields (event_type = 'conjunction')
+    planet_a: {
       type: 'string',
-      description: "Ayanamsha (default: 'LAHIRI').",
+      description: "First planet for conjunction mode (e.g. 'Jupiter'). Required for conjunction mode.",
+      enum: ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'],
+    },
+    planet_b: {
+      type: 'string',
+      description: "Second planet for conjunction mode (e.g. 'Saturn'). Required for conjunction mode.",
+      enum: ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'],
+    },
+    orb_deg: {
+      type: 'number',
+      description: 'Orb in degrees (default: 1.0, max: 3.0).',
     },
   },
 
@@ -74,42 +97,54 @@ export const callTransitSearchCapability: CapabilityDescriptor = {
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
-    const date_from    = args['date_from'] as string
-    const date_to      = args['date_to'] as string
+    const date_from  = args['date_from'] as string
+    const date_to    = args['date_to'] as string
+    const event_type = (args['event_type'] as string | undefined) ?? 'conjunction'
+
     if (!date_from || !date_to) {
       return { content: { error: 'date_from and date_to are required' }, is_error: true }
     }
 
-    const graha        = args['graha'] as string | undefined
-    const sign         = args['sign'] as string | undefined
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const sidecarUrl = process.env.PYTHON_SIDECAR_URL
+    const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+
+    if (!sidecarUrl) {
+      return { content: { error: 'PYTHON_SIDECAR_URL not configured — transit search unavailable' }, is_error: true }
+    }
+
+    const body: Record<string, unknown> = {
+      event_type,
+      start_date: date_from,
+      end_date:   date_to,
+      orb_deg:    args['orb_deg'] ?? 1.0,
+    }
+
+    if (event_type === 'aspect') {
+      body['transit_planet']        = args['transit_planet']
+      body['target_longitude_deg']  = args['target_longitude_deg']
+      body['aspect_degrees']        = args['aspect_degrees'] ?? [0, 60, 90, 120, 180]
+    } else {
+      body['planet_a'] = args['planet_a']
+      body['planet_b'] = args['planet_b']
+    }
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
-      const conds: string[] = ['event_date BETWEEN $1 AND $2', 'ayanamsha_id = $3']
-      const params: unknown[] = [date_from, date_to, ayanamsha_id]
-      let p = 4
-
-      if (graha) { conds.push(`graha = $${p++}`); params.push(graha) }
-      if (sign)  { conds.push(`sign = $${p++}`);  params.push(sign) }
-
-      const sql = `
-        SELECT event_id, graha, sign, degree, event_type,
-               event_date, retrograde_flag, ayanamsha_id
-        FROM ka_gochara_transit_events
-        WHERE ${conds.join(' AND ')}
-        ORDER BY event_date
-        LIMIT 200
-      `
-
-      const result = await db.query(sql, params)
+      const resp = await fetch(`${sidecarUrl}/api/compute/transit_search`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
+        body:    JSON.stringify(body),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
+      }
+      const events = await resp.json() as unknown[]
       return {
-        content: { date_from, date_to, ayanamsha_id, events: result.rows, count: result.rows.length },
+        content: { date_from, date_to, event_type, events, count: events.length },
         is_error: false,
       }
     } catch (err) {
-      return { content: { error: String(err), note: 'ka_gochara service may require a separate API call' }, is_error: true }
+      return { content: { error: String(err) }, is_error: true }
     }
   },
 }
@@ -213,7 +248,7 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha (default: 'LAHIRI').",
+      description: "Ayanamsha (default: 'lahiri').",
     },
     date_from: {
       type: 'string',
@@ -222,6 +257,10 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
     date_to: {
       type: 'string',
       description: 'End date (ISO 8601: YYYY-MM-DD). Default: 3 years from today.',
+    },
+    target_lords: {
+      type: 'array',
+      description: "Graha names to filter by (e.g. ['Jupiter','Saturn']). When provided, only returns windows where these lords appear at any dasha level (MD/AD/PD/SP). Omit to return all active windows.",
     },
   },
 
@@ -236,27 +275,67 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
-    const date_from    = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
-    const date_to      = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]
+    const ayanamsha_id  = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri'
+    const date_from     = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
+    const date_to       = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]
+    const target_lords  = (args['target_lords'] as string[] | undefined) ?? []
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
+      const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
 
-      // Query chart_dashas for active dasha windows in range
-      const sql = `
-        SELECT dasha_id, mahadasha_lord, antardasha_lord, pratyantar_lord,
-               dasha_start, dasha_end, dasha_level, system_id
-        FROM chart_dashas
-        WHERE chart_id = $1 AND ayanamsha_id = $2
-          AND dasha_end >= $3 AND dasha_start <= $4
-        ORDER BY dasha_start, dasha_level
-        LIMIT 200
-      `
+      // Optional target-lord filter across all dasha levels
+      let lordFilter = ''
+      if (target_lords.length > 0) {
+        const ph = target_lords.map((_, i) => `$${5 + i}`).join(', ')
+        lordFilter = `AND (mahadasha_lord IN (${ph}) OR antardasha_lord IN (${ph}) OR pratyantar_lord IN (${ph}) OR sookshma_lord IN (${ph}))`
+        target_lords.forEach(l => params.push(l))
+      }
 
-      const result = await db.query(sql, [chart_id, ayanamsha_id, date_from, date_to])
+      const result = await query<Record<string, unknown>>(
+        `SELECT
+           dasha_id, system_id, dasha_level,
+           mahadasha_lord, antardasha_lord, pratyantar_lord, sookshma_lord,
+           dasha_start, dasha_end, kp_sublevel, kp_sub_lord
+         FROM chart_dashas
+         WHERE chart_id = $1 AND ayanamsha_id = $2
+           AND dasha_end >= $3 AND dasha_start <= $4
+           ${lordFilter}
+         ORDER BY dasha_start, system_id, dasha_level
+         LIMIT 400`,
+        params,
+      )
+
+      // Cross-system agreement: for each unique (dasha_start, dasha_end) pair,
+      // collect all systems that independently produce a window at that interval.
+      // Different systems use different cycle lengths, so identical boundaries
+      // mean true multi-system convergence on that period.
+      const windowMap = new Map<string, { systems: Set<string>; row: Record<string, unknown> }>()
+      for (const row of result.rows) {
+        const key = `${row['dasha_start']}|${row['dasha_end']}`
+        if (!windowMap.has(key)) windowMap.set(key, { systems: new Set(), row })
+        windowMap.get(key)!.systems.add(row['system_id'] as string)
+      }
+
+      const crossSystemWindows = Array.from(windowMap.values())
+        .map(v => ({
+          ...v.row,
+          system_agreement_count: v.systems.size,
+          agreeing_systems: Array.from(v.systems).sort(),
+        }))
+        .sort((a, b) => (b.system_agreement_count as number) - (a.system_agreement_count as number))
+
       return {
-        content: { chart_id, ayanamsha_id, date_from, date_to, dasha_windows: result.rows, count: result.rows.length },
+        content: {
+          chart_id,
+          ayanamsha_id,
+          date_from,
+          date_to,
+          target_lords: target_lords.length > 0 ? target_lords : 'all',
+          dasha_windows:         result.rows,
+          cross_system_windows:  crossSystemWindows,
+          high_agreement_count:  crossSystemWindows.filter(w => (w.system_agreement_count as number) >= 2).length,
+          count:                 result.rows.length,
+        },
         is_error: false,
       }
     } catch (err) {

@@ -79,6 +79,10 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_ephemeris: 'marsys://tool/L0/query_planet_position',
   query_transit_event: 'marsys://tool/L0/query_planet_transit',
   query_muhurat: 'marsys://tool/L0/query_planet_transit',     // nearest equivalent; sidecar path
+
+  // L3 Kāla — live compute service wrappers
+  call_transit_search:    'marsys://tool/L3/call_transit_search',
+  call_dasha_eligibility: 'marsys://tool/L3/call_dasha_eligibility',
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
