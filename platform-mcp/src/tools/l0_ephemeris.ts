@@ -10,8 +10,8 @@
  *   6. ephemeris_cache_native_lifetime — marsys://resource/ephemeris-cache/native-lifetime
  *
  * Data source: ephemeris_daily table (1900-2150, 9 bodies, pyswisseph DE441).
- * Native chart: Abhisek Mohanty, 1984-02-05 10:43 IST, Bhubaneswar.
- * Expected Sun on native birth: tropical ~315.87° (sidereal ~292.0° = Capricorn ~22°).
+ * Reference chart: 1984-02-05 10:43 IST, Bhubaneswar (canonical build anchor).
+ * Expected Sun on reference birth: tropical ~315.87° (sidereal ~292.0° = Capricorn ~22°).
  *
  * MCP pattern: calls Python sidecar via PLATFORM_URL (REST API).
  *
@@ -244,7 +244,7 @@ export function registerEphemerisCacheNativeLifetimeTool(server: McpServer): voi
   server.tool(
     'ephemeris_cache_native_lifetime',
     'Fetch ephemeris coverage statistics for the native\'s lifetime window (1984-2070). ' +
-    'Returns row count, date range, and native birth chart context from the sidecar. ' +
+    'Returns row count, date range, and chart context from the sidecar. ' +
     'Use as a sanity check before querying native-lifetime transits.',
     EphemerisCacheNativeLifetimeInput.shape,
     async (_params) => {

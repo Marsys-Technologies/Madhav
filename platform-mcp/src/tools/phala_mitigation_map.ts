@@ -20,7 +20,7 @@
  *   - BG-0-7 (brahmagyan.concordance): concordance_lookup (L0 rule source)
  *   - BO-2-6 (bodha.remediation): optional L2 cross-reference
  *
- * FORENSIC ground: Abhisek Mohanty, 1984-02-05 10:43 IST Bhubaneswar.
+ * FORENSIC ground: reference birth 1984-02-05 10:43 IST Bhubaneswar.
  * Every mitigation is grounded to BPHS/concordance — zero hallucinated remedies.
  *
  * Architecture:

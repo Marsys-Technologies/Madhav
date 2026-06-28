@@ -17,7 +17,7 @@
  *   All source_citations are non-null (B.3 mandate).
  *   provenance_envelope is present on every response (B.3 mandate).
  *
- * Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
+ * Reference birth: 1984-02-05, 10:43 IST, Bhubaneswar
  *   Source: LIFE_EVENT_LOG_v1_2.md (native-disclosed, v1.7, 57 events, confidence 0.89)
  *
  * Wiring: registerMimamsaLelIntakeTool(server) → server.ts during L5 Mīmāṃsā registration.
