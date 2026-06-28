@@ -104,8 +104,18 @@ FORENSIC_MOON_LON = 325.5  # degrees, within Purva Bhadrapada
 import swisseph as _swe
 BIRTH_JD = _swe.julday(1984, 2, 5, 5.21667)  # 10:43 IST = 05:13 UTC
 
+# Minimal birth_params required by resolve_birth_params() (B1 elimination — no native fallback)
+NATIVE_BIRTH_PARAMS = {
+    "datetime_iso": "1984-02-05T10:43:00",
+    "latitude_deg": 20.2961,
+    "longitude_deg": 85.8245,
+    "tz_offset_hours": 5.5,
+    "place_name": "Bhubaneswar",
+    "subject_label": "abhisek_mohanty_native",
+}
 
-def _mock_get_moon_position(ayanamsha_id: str):
+
+def _mock_get_moon_position(ayanamsha_id: str, birth: dict | None = None):
     """Return FORENSIC Moon position for all ayanamshas."""
     return FORENSIC_MOON_LON, BIRTH_JD
 
@@ -721,20 +731,23 @@ class TestBuildSystem(unittest.TestCase):
 
     def test_65_build_system_skip_db_returns_pass(self):
         mod = _get_mod()
-        with patch.object(mod, "_get_moon_position", side_effect=lambda aya: (FORENSIC_MOON_LON, BIRTH_JD)):
-            result = mod.build_system("vimshottari", "lahiri", skip_db=True)
+        with patch.object(mod, "_get_moon_position", side_effect=lambda aya, birth=None: (FORENSIC_MOON_LON, BIRTH_JD)):
+            result = mod.build_system("vimshottari", "lahiri", mod.CANONICAL_CHART_ID,
+                                      birth_params=NATIVE_BIRTH_PARAMS, skip_db=True)
         assert result["status"] == "PASS", f"build_system returned {result.get('status')}: {result}"
 
     def test_66_build_system_rows_computed(self):
         mod = _get_mod()
-        with patch.object(mod, "_get_moon_position", side_effect=lambda aya: (FORENSIC_MOON_LON, BIRTH_JD)):
-            result = mod.build_system("vimshottari", "lahiri", skip_db=True)
+        with patch.object(mod, "_get_moon_position", side_effect=lambda aya, birth=None: (FORENSIC_MOON_LON, BIRTH_JD)):
+            result = mod.build_system("vimshottari", "lahiri", mod.CANONICAL_CHART_ID,
+                                      birth_params=NATIVE_BIRTH_PARAMS, skip_db=True)
         assert result["rows_computed"] > 0
 
     def test_67_build_system_unknown_system_raises(self):
         mod = _get_mod()
         with self.assertRaises(ValueError):
-            mod.build_system("unknown_system", "lahiri", skip_db=True)
+            mod.build_system("unknown_system", "lahiri", mod.CANONICAL_CHART_ID,
+                             birth_params=NATIVE_BIRTH_PARAMS, skip_db=True)
 
     def test_68_forensic_halt_propagated(self):
         """build_system propagates FORENSIC halt if starting lord wrong."""
@@ -742,7 +755,8 @@ class TestBuildSystem(unittest.TestCase):
         wrong_moon = 2.0  # Ashwini → Ketu lord
         with patch.object(mod, "_get_moon_position", side_effect=lambda aya, birth=None: (wrong_moon, BIRTH_JD)):
             with self.assertRaises(ValueError) as ctx:
-                mod.build_system("vimshottari", "lahiri", skip_db=True)
+                mod.build_system("vimshottari", "lahiri", mod.CANONICAL_CHART_ID,
+                                 birth_params=NATIVE_BIRTH_PARAMS, skip_db=True)
         assert "FORENSIC HALT" in str(ctx.exception)
 
 
