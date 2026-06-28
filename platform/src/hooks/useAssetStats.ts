@@ -80,7 +80,7 @@ export function useAssetStats({
     inFlightRef.current = false
 
     fetchStats(controller.signal)
-    const pollMs = isBuilding ? 5_000 : 30_000
+    const pollMs = isBuilding ? 2_000 : 30_000
     const id = setInterval(() => fetchStats(controller.signal), pollMs)
 
     return () => {

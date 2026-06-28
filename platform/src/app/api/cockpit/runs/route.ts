@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
-import { query } from '@/lib/db/client'
-import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { query, getPool } from '@/lib/db/client'
+import { resolveBuildPlan, computeDownstreamClosure, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
+import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
+import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -18,7 +20,11 @@ async function getUserRole(uid: string): Promise<string> {
 
 interface RegistryEntryWithScope extends RegistryEntry {
   scope: string
+  target_table: string | null
+  count_sql: string | null
 }
+
+const TABLE_NAME_RE = /^[a-z_][a-z0-9_]{0,62}$/
 
 export async function POST(req: NextRequest) {
   const user = await requireUser()
@@ -29,11 +35,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'chart_id, scope, and action are required' }, { status: 400 })
   }
 
-  const { chart_id, scope, scope_target = null, action } = body as {
+  const {
+    chart_id,
+    scope,
+    scope_target = null,
+    action,
+    clear_before = false,
+    force_l0 = false,
+  } = body as {
     chart_id: string
     scope: BuildScope
     scope_target?: string | null
     action: BuildAction
+    clear_before?: boolean
+    force_l0?: boolean
   }
 
   const role = await getUserRole(user.uid)
@@ -61,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 409 gate — block if an active run already exists for this chart
+  // Gate 0: 409 — block if an active run already exists for this chart
   const activeCheck = await query<{ id: string }>(
     `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
     [chart_id]
@@ -73,11 +88,23 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Gate 1: L0 double-confirm — when clear_before targets brahmagyan, require explicit force_l0.
+  // Returns HTTP 202 so the frontend can surface a second confirmation prompt without treating
+  // it as an error. Must run after isSuperAdmin is known (brahmagyan is super_admin-only).
+  if (clear_before && scope === 'layer' && scope_target === 'brahmagyan' && !force_l0) {
+    return NextResponse.json(
+      { requires_double_confirm: true, message: 'This will clear all L0 Brahmagyan data before rebuilding. Confirm?' },
+      { status: 202 }
+    )
+  }
+
   // Resolve the plan — filter registry by allowedScopes so non-super-admin plans
-  // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic)
+  // silently exclude all L0/global assets (mirrors clear's filterScopeAssets logic).
+  // Also fetch target_table + count_sql for clear-before execution.
   const [registryResult, throughputResult] = await Promise.all([
     query<RegistryEntryWithScope>(
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds, scope
+      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
+              scope, target_table, count_sql
        FROM asset_registry WHERE is_active = true AND has_writer = true ORDER BY layer, sort_order`
     ),
     query<ThroughputEntry>(
@@ -116,14 +143,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errMsg, code: allLit ? 'ALL_LIT' : 'NO_ASSETS', ...detail }, { status: 422 })
   }
 
-  // G4: L1/L0 precondition gate — if plan includes any bo_* assets verify upstream is ready.
+  // Gate 3: L1/L0 precondition gate — must run against current DB state BEFORE any clear.
+  // If plan includes bo_* assets, verify upstream (L1 Gaṇita + L0 remedy corpus) is ready.
   if (plan.some(id => id.startsWith('bo_'))) {
-    // Preconditions that will be satisfied by EARLIER assets in the SAME plan must not block.
-    // The plan is DAG-ordered (L1 Gaṇita before L2 Bodha), so a global / multi-layer rebuild
-    // that already includes the L1 builders will have chart_facts + ga_structural ready by the
-    // time Bodha runs. Only gate the L1 preconditions for a plan that does NOT build L1 itself
-    // (e.g. a Bodha-only layer/asset build against a chart whose L1 isn't lit). The L0
-    // brahma_remedy_corpus check always applies — L0 is never part of an L1–L5 plan.
     const planBuildsL1 = plan.includes('ga_positions') && plan.includes('ga_structural')
 
     const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
@@ -162,7 +184,171 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Create build_run in 'planned' state — orchestrator transitions to 'running'
+  // ── Clear-before-build path ─────────────────────────────────────────────────
+  // When clear_before is true: execute the clear atomically with the build_run insert
+  // in one pool-client transaction. The clear runs AFTER all read-only gates pass so
+  // we never clear data only to fail on a precondition check.
+  if (clear_before) {
+    // Compute clear scope from the full registry (all scopes, not just has_writer).
+    // Exclude brahmagyan unless force_l0 is explicitly set.
+    const fullRegistry = registryResult.rows
+    let clearAssets = filterScopeAssets(fullRegistry, scope, scope_target, allowedScopes) as RegistryEntryWithScope[]
+    if (!force_l0) {
+      clearAssets = clearAssets.filter(a => a.layer !== 'brahmagyan')
+    }
+    const clearAssetIds = clearAssets.map(a => a.asset_id)
+
+    // Compute transitive downstream outside the clear scope → mark stale
+    const downstreamSet = computeDownstreamClosure(clearAssetIds, fullRegistry)
+    for (const id of clearAssetIds) downstreamSet.delete(id)
+    const downstreamAssets = Array.from(downstreamSet)
+
+    const pool = await getPool()
+    const client = await pool.connect()
+    let runId: string
+    try {
+      await client.query('BEGIN')
+
+      // Delete data — reverse order for FK safety (downstream first)
+      const reversedAssets = [...clearAssets].reverse()
+      let spIdx = 0
+      for (const asset of reversedAssets) {
+        let ops: Array<{ sql: string; params: unknown[] }> | null = null
+
+        if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
+          const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
+          if (explicitOps === null) continue  // zero-row service asset — skip cleanly
+          ops = explicitOps.map(op => ({
+            sql: op.sql,
+            params: op.sql.includes('$1') ? [chart_id] : [],
+          }))
+        } else if (asset.count_sql) {
+          const deleteSql = deriveDeleteSqlFromCountSql(asset.count_sql)
+          if (deleteSql) {
+            ops = [{ sql: deleteSql, params: deleteSql.includes('$1') ? [chart_id] : [] }]
+          }
+        }
+
+        if (!ops && asset.target_table) {
+          if (!TABLE_NAME_RE.test(asset.target_table)) {
+            await client.query('ROLLBACK')
+            client.release()
+            return NextResponse.json({ error: `Invalid target_table: ${asset.target_table}`, code: 'INVALID_TABLE' }, { status: 500 })
+          }
+          const sql = asset.scope === 'global'
+            ? `DELETE FROM ${asset.target_table}`
+            : `DELETE FROM ${asset.target_table} WHERE chart_id = $1`
+          ops = [{ sql, params: asset.scope === 'global' ? [] : [chart_id] }]
+        }
+
+        if (!ops) continue  // no clear spec — skip (non-destructive; build will populate from scratch)
+
+        const sp = `cb_${spIdx++}`
+        await client.query(`SAVEPOINT ${sp}`)
+        let assetFailed = false
+        for (const op of ops) {
+          try {
+            await client.query(op.sql, op.params)
+          } catch (opErr) {
+            console.warn(`[runs/clear-before] DELETE failed for ${asset.asset_id}:`, (opErr as Error).message)
+            await client.query(`ROLLBACK TO SAVEPOINT ${sp}`)
+            await client.query(`RELEASE SAVEPOINT ${sp}`)
+            assetFailed = true
+            break
+          }
+        }
+        if (!assetFailed) {
+          await client.query(`RELEASE SAVEPOINT ${sp}`)
+        }
+      }
+
+      // Reset throughput to dormant for all cleared assets (chart-scoped)
+      if (clearAssetIds.length > 0) {
+        await client.query(
+          `UPDATE asset_throughput
+           SET state='dormant', last_built_at=NULL, rows_written=NULL,
+               built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
+               last_error=NULL
+           WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
+          [chart_id, clearAssetIds]
+        )
+        // Also reset global-scope throughput rows (chart_id IS NULL)
+        const globalClearIds = clearAssets.filter(a => a.scope === 'global').map(a => a.asset_id)
+        if (globalClearIds.length > 0) {
+          await client.query(
+            `UPDATE asset_throughput
+             SET state='dormant', last_built_at=NULL, rows_written=NULL,
+                 built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
+                 last_error=NULL
+             WHERE chart_id IS NULL AND asset_id = ANY($1::text[])`,
+            [globalClearIds]
+          )
+        }
+      }
+
+      // Mark transitive downstream as stale (only currently-built assets)
+      if (downstreamAssets.length > 0) {
+        await client.query(
+          `UPDATE asset_throughput SET state='stale'
+           WHERE chart_id=$1 AND asset_id = ANY($2::text[]) AND state IN ('lit','building','error')`,
+          [chart_id, downstreamAssets]
+        )
+      }
+
+      // Insert build_run within the same transaction
+      const runRes = await client.query<{ id: string }>(
+        `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
+         VALUES ($1, $2, $3, $4, 'planned', $5, $6) RETURNING id`,
+        [chart_id, scope, scope_target, action, JSON.stringify(plan), user.uid]
+      )
+      runId = runRes.rows[0].id
+
+      // Insert build_run_assets within the same transaction
+      const placeholders = plan.map((_, i) =>
+        `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
+      ).join(', ')
+      const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
+      await client.query(
+        `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}
+         ON CONFLICT (run_id, asset_id) DO NOTHING`,
+        flatParams
+      )
+
+      await client.query('COMMIT')
+    } catch (outerErr) {
+      await client.query('ROLLBACK').catch(() => null)
+      console.error('[api/cockpit/runs] clear-before transaction failed:', outerErr)
+      return NextResponse.json({
+        error: 'Clear-before-build transaction failed; rolled back.',
+        code: 'CLEAR_TRANSACTION_FAILED',
+        detail: ((outerErr as Error).message ?? 'unknown').substring(0, 200),
+      }, { status: 500 })
+    } finally {
+      client.release()
+    }
+
+    // Invoke the job OUTSIDE the transaction — Cloud Run invocations cannot be rolled back
+    const jobImageTag = await getJobImageTag().catch(() => null)
+    try {
+      await invokeRunJob(runId)
+    } catch (err) {
+      const errMsg = (err as Error).message
+      console.error('[api/cockpit/runs] invokeRunJob failed after clear — marking run failed:', errMsg)
+      await query(`UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`, [errMsg, runId])
+      await query(`UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`, [runId])
+      // Note: data was already cleared; user will need to rebuild again after fixing the job issue
+      return NextResponse.json(
+        { error: 'Data cleared but build job failed to start', detail: errMsg, run_id: runId, code: 'JOB_DISPATCH_FAILED' },
+        { status: 503 }
+      )
+    }
+
+    return NextResponse.json({
+      data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, blocked_assets, cleared_asset_count: clearAssetIds.length },
+    }, { status: 201 })
+  }
+
+  // ── Standard build path (no clear_before) ───────────────────────────────────
   const runResult = await query<{ id: string }>(
     `INSERT INTO build_runs (chart_id, scope, scope_target, action, state, plan, triggered_by)
      VALUES ($1, $2, $3, $4, 'planned', $5, $6)

@@ -18,7 +18,7 @@ const STATE_COLORS: Record<string, {
   fill: string; stroke: string; pill: string; pillColor: string
 }> = {
   dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.4)',    pill: 'NOT BUILT',     pillColor: 'rgba(155,131,80,0.8)' },
-  building:     { fill: 'rgba(168,124,48,0.7)',    stroke: 'rgba(200,154,70,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(236,197,106,0.95)' },
+  building:     { fill: 'rgba(210,162,60,0.88)',   stroke: 'rgba(210,162,60,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(236,197,106,0.95)' },
   lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(236,197,106,0.95)' },
   stale:        { fill: 'rgba(166,108,52,0.7)',    stroke: 'rgba(196,128,64,0.75)',  pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
   error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
@@ -100,7 +100,7 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
         <motion.div
           className="h-full rounded-l-[3px] origin-left relative"
           style={{ background: fillColor }}
-          animate={{ width: `${fillPct}%` }}
+          animate={{ width: `${isBuilding ? Math.max(1.5, fillPct) : fillPct}%` }}
           transition={springTransition}
         >
           {/* Shimmer overlay — CSS keyframe animation on the fill div, only during active building stages */}

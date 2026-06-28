@@ -19,18 +19,17 @@ function deriveState(
   if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
   if (asset.is_active === false) return 'not_migrated'
   if (error) return 'error'
+  // 'building' must precede the actualRows check: the fast-path sets actual_rows=rows_written
+  // which climbs from 0 during a build. Without this guard the bar would flip to 'lit' at the
+  // first committed batch even though the asset is still actively building.
+  if (throughputState === 'building') return 'building'
   // §N.4: count_sql is authoritative for data presence. Rows present = lit,
   // regardless of throughput state or target_floor. Floors are aspirational,
   // NOT gates — an asset with rows > 0 and no active zero-row build is lit.
-  // An orphaned 'building' record or cascade-stale flag does NOT override real
-  // data confirmed by count_sql. Under-floor is shown as an informational badge
-  // (build_state_stale), never as 'building' or 'incomplete'.
+  // An orphaned record or cascade-stale flag does NOT override real data confirmed by count_sql.
   if (actualRows != null && actualRows > 0) return 'lit'
   // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
-  // 'lit' here means the writer ran and zero rows is correct by design (e.g. ga_prashna
-  // on a natal chart with no horary questions submitted).
   if (throughputState === 'lit') return 'lit'
-  if (throughputState === 'building') return 'building'
   if (throughputState === 'stale') return 'stale'
   return 'dormant'
 }
@@ -114,6 +113,9 @@ async function fetchAllCounts(
     // Always run count_sql for global assets — their tables are small (no chart_id
     // filter) and the extra query cost is negligible.
     if (!liveMode && tp != null && tp.rows_written != null && asset.scope === 'per_chart') {
+      // Pass tp.state through so deriveState can distinguish 'building' from 'lit'.
+      // Hardcoding 'dormant' here was masking active builds: deriveState would receive
+      // throughputState='dormant' and then flip to 'lit' the moment rows_written > 0.
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,
@@ -121,7 +123,7 @@ async function fetchAllCounts(
         size_bytes: null,
         last_updated: now,
         error: null,
-        state: 'dormant' as const,
+        state: (tp.state ?? 'dormant') as AssetState,
         last_built_at: tp.last_built_at ?? null,
         build_state_stale: false,
         service_health: null,

@@ -144,6 +144,8 @@ function pollingStream(
 
       let lastRunId: string | null = null
       let lastState: string | null = null
+      // Track per-asset rows_written so we only emit asset.progress when the count changes
+      const lastRowsWritten = new Map<string, number>()
 
       const pollRun = async () => {
         try {
@@ -163,21 +165,46 @@ function pollingStream(
           if (runId !== lastRunId) {
             lastRunId = runId
             lastState = state
+            lastRowsWritten.clear()
             return
           }
 
           // Emit run.state_change when an active run reaches a terminal state
           if (lastState && ACTIVE_STATES.has(lastState) && state && TERMINAL_STATES.has(state)) {
             enqueue(`event: run.state_change\ndata: ${JSON.stringify({ type: 'run.state_change', run_id: runId, state, chart_id: chartId })}\n\n`)
+            lastRowsWritten.clear()
           }
           lastState = state
+
+          // Emit synthetic asset.progress events for all building assets so the
+          // progress bar animates continuously without Pub/Sub. Only fires when the
+          // chart has an active run to avoid unnecessary DB reads at idle.
+          if (state && ACTIVE_STATES.has(state)) {
+            try {
+              const { rows: buildingRows } = await query<{ asset_id: string; rows_written: number | null }>(
+                `SELECT asset_id, rows_written
+                   FROM asset_throughput
+                  WHERE chart_id=$1 AND state='building'
+                  ORDER BY asset_id`,
+                [chartId]
+              )
+              for (const r of buildingRows) {
+                if (r.rows_written == null) continue
+                const prev = lastRowsWritten.get(r.asset_id)
+                if (prev !== r.rows_written) {
+                  lastRowsWritten.set(r.asset_id, r.rows_written)
+                  enqueue(`event: asset.progress\ndata: ${JSON.stringify({ type: 'asset.progress', asset_id: r.asset_id, rows_written: r.rows_written, chart_id: chartId })}\n\n`)
+                }
+              }
+            } catch { /* skip progress tick on db error */ }
+          }
         } catch {
           // db error — skip this tick
         }
       }
 
       const heartbeat = setInterval(() => enqueue(`: hb\n\n`), 30_000)
-      const poll = setInterval(pollRun, 5_000)
+      const poll = setInterval(pollRun, 2_000)
       // Prime on first connect so we know the current run id
       pollRun()
 

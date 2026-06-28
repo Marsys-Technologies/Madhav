@@ -34,6 +34,9 @@ interface Props {
 export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose, onRunStarted, assets }: Props) {
   const [planData, setPlanData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState<'plan' | 'run' | null>('plan')
+  const [isClearing, setIsClearing] = useState(false)
+  // When the server returns requires_double_confirm for L0 brahmagyan clear, show inline panel
+  const [l0ConfirmPending, setL0ConfirmPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
@@ -61,21 +64,39 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     })()
   })
 
-  const runPlan = async () => {
+  const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return
     setLoading('run')
     setError(null)
+    setL0ConfirmPending(false)
+    const clearBefore = action === 'rebuild'
+    if (clearBefore) setIsClearing(true)
     try {
       const r = await fetch('/api/cockpit/runs', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget, action }),
+        body: JSON.stringify({
+          chart_id: chartId,
+          scope,
+          scope_target: scopeTarget,
+          action,
+          clear_before: clearBefore,
+          ...(opts.forceL0 ? { force_l0: true } : {}),
+        }),
       })
       const body = await r.json()
+      setIsClearing(false)
+      // HTTP 202 = L0 double-confirm required
+      if (r.status === 202 && body.requires_double_confirm) {
+        setL0ConfirmPending(true)
+        setLoading(null)
+        return
+      }
       if (!r.ok) throw new Error(body.error ?? 'Failed to start run')
       onRunStarted(body.data.run_id)
     } catch (e) {
+      setIsClearing(false)
       setError((e as Error).message)
       setLoading(null)
     }
@@ -86,6 +107,10 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
     : planData.estimated_seconds < 60
       ? `~${planData.estimated_seconds}s`
       : `~${Math.ceil(planData.estimated_seconds / 60)}m`
+
+  // Button label: "Clear & Rebuild" for rebuild, "Run plan" for build/cascade/update
+  const confirmLabel = action === 'rebuild' ? 'Clear & Rebuild' : 'Run plan'
+  const loadingLabel = isClearing ? 'Clearing…' : 'Starting…'
 
   if (!mounted) return null
 
@@ -145,6 +170,11 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           <>
             <div style={{ fontSize: '12px', color: 'var(--on-dark-faint)', fontFamily: 'var(--ui-stack)' }}>
               {planData.plan.length} asset{planData.plan.length !== 1 ? 's' : ''} · estimated {estimateLabel}
+              {action === 'rebuild' && (
+                <span style={{ marginLeft: '8px', color: 'rgba(181,71,76,0.9)', fontSize: '11px' }}>
+                  · existing data will be cleared first
+                </span>
+              )}
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {planData.plan.map((assetId, i) => (
@@ -180,25 +210,57 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                 />
               </div>
             )}
+            {/* L0 double-confirm panel — shown when server returns requires_double_confirm */}
+            {l0ConfirmPending && (
+              <div style={{
+                padding: '12px',
+                background: 'rgba(181,71,76,0.12)',
+                border: '1px solid rgba(181,71,76,0.4)',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontFamily: 'var(--ui-stack)',
+                color: 'var(--on-dark)',
+                lineHeight: 1.5,
+              }}>
+                <div style={{ color: 'rgba(220,100,104,1)', fontWeight: 600, marginBottom: '6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  L0 Brahmagyan — clear confirmation required
+                </div>
+                This will permanently delete all Brahmagyan layer data before rebuilding. This action cannot be undone.
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 onClick={onClose}
+                disabled={loading === 'run'}
                 style={{
                   padding: '6px 14px', borderRadius: '6px', fontSize: '12px',
                   background: 'transparent', border: '1px solid var(--black-line)',
-                  color: 'var(--on-dark-faint)', cursor: 'pointer',
+                  color: 'var(--on-dark-faint)', cursor: loading === 'run' ? 'default' : 'pointer',
+                  opacity: loading === 'run' ? 0.5 : 1,
                 }}
               >
                 Cancel
               </button>
-              <button
-                className="marsys-btn-primary"
-                onClick={runPlan}
-                disabled={loading === 'run'}
-                style={{ opacity: loading === 'run' ? 0.7 : 1 }}
-              >
-                {loading === 'run' ? 'Starting…' : 'Run plan'}
-              </button>
+              {l0ConfirmPending ? (
+                <button
+                  className="marsys-btn-danger"
+                  onClick={() => runPlan({ forceL0: true })}
+                  disabled={loading === 'run'}
+                  style={{ opacity: loading === 'run' ? 0.7 : 1 }}
+                >
+                  {loading === 'run' ? loadingLabel : 'Confirm — clear L0 & rebuild'}
+                </button>
+              ) : (
+                <button
+                  className="marsys-btn-primary"
+                  onClick={() => runPlan()}
+                  disabled={loading === 'run'}
+                  style={{ opacity: loading === 'run' ? 0.7 : 1 }}
+                >
+                  {loading === 'run' ? loadingLabel : confirmLabel}
+                </button>
+              )}
             </div>
           </>
         )}
