@@ -107,9 +107,13 @@ async function fetchAllCounts(
     }
 
     const tp = throughputMap.get(asset.asset_id)
-    // Always use rows_written for non-live polls — it's the build-recorded truth.
-    // Live COUNT(*) is reserved for ?mode=live (operator-triggered refresh only).
-    if (!liveMode && tp != null && tp.rows_written != null) {
+    // rows_written shortcut: valid ONLY for per_chart assets.
+    // Global scope assets (bg_*, mi_kula, etc.) have a single throughput row with
+    // chart_id IS NULL. That row is NOT reset by per-chart clear operations, so
+    // rows_written can be stale long after the underlying table was emptied.
+    // Always run count_sql for global assets — their tables are small (no chart_id
+    // filter) and the extra query cost is negligible.
+    if (!liveMode && tp != null && tp.rows_written != null && asset.scope === 'per_chart') {
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,

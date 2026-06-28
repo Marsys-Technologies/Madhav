@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Reset asset_throughput for scope assets
+    // Reset asset_throughput for scope assets (chart-scoped rows)
     if (affectedAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
@@ -195,6 +195,23 @@ export async function POST(req: NextRequest) {
              last_error=NULL
          WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
         [chart_id, affectedAssetIds]
+      )
+    }
+
+    // Also reset global throughput rows (chart_id IS NULL) for any global-scope assets
+    // that were cleared. Without this, the stats route's rows_written cache returns
+    // the pre-clear count (e.g. mi_kula shows 15 after the underlying table is empty).
+    const globalAssetIds = scopeAssets
+      .filter(a => a.scope === 'global')
+      .map(a => a.asset_id)
+    if (globalAssetIds.length > 0) {
+      await client.query(
+        `UPDATE asset_throughput
+         SET state='dormant', last_built_at=NULL, rows_written=NULL,
+             built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
+             last_error=NULL
+         WHERE chart_id IS NULL AND asset_id = ANY($1::text[])`,
+        [globalAssetIds]
       )
     }
 
