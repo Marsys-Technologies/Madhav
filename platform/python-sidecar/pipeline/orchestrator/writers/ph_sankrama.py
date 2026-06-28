@@ -25,6 +25,17 @@ logger = logging.getLogger(__name__)
 
 _LINKAGE_THRESHOLD = 0.25
 
+# Anchor domains (ph_nimitta) → CDLM domains (bodha_cdlm_cells.domain_row/domain_col).
+# ph_nimitta uses: career, relationship, financial, spiritual, health, transition, psychological
+# CDLM uses:       career, relationship, wealth,    spirituality, health, general,    character
+# The 3 exact matches (career, relationship, health) pass through unchanged.
+_ANCHOR_TO_CDLM_DOMAIN: dict[str, str] = {
+    'financial':    'wealth',
+    'spiritual':    'spirituality',
+    'psychological': 'character',
+    'transition':   'general',
+}
+
 
 @register('ph_sankrama')
 class PhSankramaWriter(WriterBase):
@@ -73,10 +84,15 @@ class PhSankramaWriter(WriterBase):
                     try: we = date.fromisoformat(we)
                     except ValueError: we = None
 
-                # Cells where domain_row = this anchor's domain
+                # Translate anchor domain to CDLM vocabulary before matching.
+                # ph_nimitta and CDLM use different terms for the same domains;
+                # without this mapping the JOIN finds zero cells for 4 of 7 domains.
+                cdlm_domain = _ANCHOR_TO_CDLM_DOMAIN.get(domain, domain)
+
+                # Cells where domain_row = this anchor's domain (CDLM vocabulary)
                 matching_cells = [
                     c for c in cdlm_cells
-                    if c.domain_row == domain and c.net_linkage_strength >= _LINKAGE_THRESHOLD
+                    if c.domain_row == cdlm_domain and c.net_linkage_strength >= _LINKAGE_THRESHOLD
                 ]
 
                 if not matching_cells:
@@ -84,7 +100,7 @@ class PhSankramaWriter(WriterBase):
 
                 sctx = SankramaContext(
                     source_anchor_id=anchor_id,
-                    source_domain=domain,
+                    source_domain=cdlm_domain,  # CDLM-vocab domain for engine matching
                     source_window_start=ws,
                     source_window_end=we,
                     source_confidence=conf,
@@ -119,7 +135,7 @@ class PhSankramaWriter(WriterBase):
                                 %s, %s,
                                 %s, %s::jsonb, %s
                             )
-                            ON CONFLICT DO NOTHING
+                            ON CONFLICT ON CONSTRAINT phala_sankrama_natural_key DO NOTHING
                             """,
                             (
                                 chart_id, s.source_anchor_id, s.cdlm_cell_id,

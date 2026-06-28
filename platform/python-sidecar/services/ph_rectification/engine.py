@@ -297,6 +297,7 @@ def score_candidate(
     ascendant_fn: AscendantFn,
     reference_signs: dict[str, str],
     training_events: Optional[list[TrainingEvent]] = None,
+    recorded_birth_utc: Optional[datetime] = None,
 ) -> list[RectificationCandidate]:
     """Score one candidate birth time across all ayanamshas.
 
@@ -306,8 +307,9 @@ def score_candidate(
     """
     if training_events is None:
         training_events = _firewall_filter(TRAINING_EVENTS)
+    base_utc = recorded_birth_utc if recorded_birth_utc is not None else RECORDED_BIRTH_UTC
 
-    cand_birth = RECORDED_BIRTH_UTC + timedelta(minutes=offset_minutes)
+    cand_birth = base_utc + timedelta(minutes=offset_minutes)
     per_ayan: dict[str, dict] = {}
     signs: dict[str, str] = {}
     for ay in AYANAMSHAS:
@@ -343,8 +345,15 @@ def score_candidate(
     return out
 
 
-def run_rectification(ascendant_fn: AscendantFn) -> list[RectificationCandidate]:
+def run_rectification(
+    ascendant_fn: AscendantFn,
+    recorded_birth_utc: Optional[datetime] = None,
+) -> list[RectificationCandidate]:
     """Generate and score all 37 candidates across all 5 ayanamshas.
+
+    recorded_birth_utc: the chart's birth time in UTC; if None, falls back to
+    the module-level RECORDED_BIRTH_UTC constant (native Abhisek Mohanty).
+    Always pass this from ctx.config['birth_params'] for non-native charts.
 
     Returns a flat list of RectificationCandidate (37 * 5 = 185 rows).
     """
@@ -354,7 +363,9 @@ def run_rectification(ascendant_fn: AscendantFn) -> list[RectificationCandidate]
 
     results: list[RectificationCandidate] = []
     for off in build_candidate_offsets():
-        results.extend(score_candidate(off, ascendant_fn, reference_signs, training))
+        results.extend(
+            score_candidate(off, ascendant_fn, reference_signs, training, recorded_birth_utc)
+        )
     return results
 
 

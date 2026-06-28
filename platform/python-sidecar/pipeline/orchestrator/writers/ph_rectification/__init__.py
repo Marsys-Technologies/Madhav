@@ -8,7 +8,8 @@ NEVER mutates the charts table — D43 NO-AUTO-OVERRIDE hard gate. The canonical
 chart 482012f1 is never auto-revised; the best candidate is only STAGED for
 native review (auto_action = 'stage_for_review').
 
-Reads:  nothing from DB (birth params from ctx.config; PyJHora computes the scan).
+Reads:  birth params from ctx.config['birth_params'] (orchestrator pre-fetches
+        from public.charts via fetch_birth_params(); PyJHora computes the scan).
 Writes: phala_rectification        (delete-then-insert per chart_id; 37*5 = 185 rows)
         phala_rectification_best    (delete-then-insert per chart_id; 1 row)
 
@@ -19,15 +20,13 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 
+from pipeline.orchestrator.birth_params import resolve_birth_params
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_rectification.engine import (
     AYANAMSHAS,
     AUTO_ACTION,
-    NATIVE_LAT,
-    NATIVE_LON,
-    NATIVE_TZ,
-    RECORDED_BIRTH_UTC,
     run_rectification,
     select_best,
 )
@@ -35,7 +34,7 @@ from services.ph_rectification.engine import (
 logger = logging.getLogger(__name__)
 
 
-def _build_ascendant_fn():
+def _build_ascendant_fn(local_birth_dt: datetime, lat: float, lon: float, tz_offset_hours: float):
     """Return a PyJHora-backed ascendant function (offset_min, ayanamsha) -> dict.
 
     Imports PyJHora lazily so the module imports cleanly even where the native
@@ -43,22 +42,29 @@ def _build_ascendant_fn():
     always runs with PyJHora present.
 
     JD convention: drik.ascendant expects a LOCAL-time Julian Day (see
-    compute.py docstring). Using swe.julday with UTC hours (05:13) gives
-    Capricorn instead of Aries — a 9-sign error caused by the 5.5h IST offset.
-    We build the base JD from LOCAL birth time (10:43 IST) via
-    utils.julian_day_number and shift candidates via JD arithmetic.
+    compute.py docstring). Using swe.julday with UTC hours gives the wrong sign
+    (a 9-sign error caused by the tz offset). We build the base JD from LOCAL
+    birth time via utils.julian_day_number and shift candidates via JD arithmetic.
+
+    Args:
+        local_birth_dt: naive datetime representing the chart's LOCAL birth time.
+        lat: birth latitude in decimal degrees.
+        lon: birth longitude in decimal degrees.
+        tz_offset_hours: UTC offset in fractional hours (e.g. 5.5 for IST).
     """
     from jhora import utils
     from jhora.panchanga import drik as _drik
     from pyjhora_adapter.houses import compute_ascendant  # type: ignore
 
-    # Local birth: 1984-02-05 10:43:00 IST (= RECORDED_BIRTH_UTC + NATIVE_TZ h).
-    _base_jd = utils.julian_day_number(_drik.Date(1984, 2, 5), (10, 43, 0))
+    _base_jd = utils.julian_day_number(
+        _drik.Date(local_birth_dt.year, local_birth_dt.month, local_birth_dt.day),
+        (local_birth_dt.hour, local_birth_dt.minute, local_birth_dt.second),
+    )
 
     def fn(offset_minutes: int, ayanamsha_id: str) -> dict:
         jd = _base_jd + offset_minutes / 1440.0  # 1440 min per JD day
         asc = compute_ascendant(
-            jd, ayanamsha_id, lat=NATIVE_LAT, lon=NATIVE_LON, tz=NATIVE_TZ
+            jd, ayanamsha_id, lat=lat, lon=lon, tz=tz_offset_hours
         )
         return {
             "sign": asc["sign"],
@@ -81,6 +87,21 @@ class PhRectificationWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or close — orchestrator owns the txn
         chart_id = ctx.config["chart_id"]
+        birth_params = resolve_birth_params(chart_id, ctx.config.get("birth_params"))
+
+        # Derive LOCAL birth datetime and UTC birth datetime from birth_params.
+        # birth_params['datetime_iso'] is the LOCAL birth datetime (naive ISO string).
+        # birth_params['tz_offset_hours'] is the UTC offset in fractional hours.
+        local_birth_dt = datetime.fromisoformat(birth_params["datetime_iso"])
+        tz_offset_hours = float(birth_params["tz_offset_hours"])
+        lat = float(birth_params["latitude_deg"])
+        lon = float(birth_params["longitude_deg"])
+
+        # Derive UTC birth time: local - tz_offset as a UTC-aware datetime.
+        from datetime import timedelta
+        utc_birth_dt = (local_birth_dt - timedelta(hours=tz_offset_hours)).replace(
+            tzinfo=timezone.utc
+        )
 
         # Delete-then-insert idempotency (L1+ standard, §N.3). Children first.
         with conn.cursor() as cur:
@@ -91,8 +112,8 @@ class PhRectificationWriter(WriterBase):
                 "DELETE FROM phala_rectification WHERE chart_id = %s", (chart_id,)
             )
 
-        ascendant_fn = _build_ascendant_fn()
-        candidates = run_rectification(ascendant_fn)
+        ascendant_fn = _build_ascendant_fn(local_birth_dt, lat, lon, tz_offset_hours)
+        candidates = run_rectification(ascendant_fn, recorded_birth_utc=utc_birth_dt)
         best = select_best(candidates)
         logger.info(
             "ph_rectification: scored %d candidate rows; best offset=%s label=%s",

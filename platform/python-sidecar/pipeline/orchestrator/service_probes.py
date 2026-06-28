@@ -127,7 +127,14 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         failures.append(f"swisseph import failed: {exc}")
         return {"status": "down", "message": str(exc), "checks": checks}
 
-    # Check 2: DE441 path set and position query runs
+    # Check 2: DE441 path set, position query runs, AND Sun is in expected FORENSIC sign.
+    # For 1984-02-05 tropical Sun must be in Capricorn (sign 10, tropical ~280–310°).
+    # This is a real assertion, not just "no exception raised".
+    # Tropical range for Capricorn: 270.0 <= lon < 300.0.  We allow a generous
+    # ±15° window (255–315°) to absorb ayanamsha differences between callers, while
+    # still catching a completely wrong body or Julian-day bug.
+    _SUN_TROPICAL_LO = 255.0   # well south of Sagittarius start
+    _SUN_TROPICAL_HI = 315.0   # well short of Aquarius start
     try:
         import swisseph as swe
         import os
@@ -136,24 +143,60 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         jd = _FORENSIC_POSITION["jd"]
         xx, _ = swe.calc_ut(jd, swe.SUN)
         sun_lon = xx[0]
-        checks.append({"check": "de441_position_query", "passed": True, "sun_lon": round(sun_lon, 4)})
+        sun_in_range = _SUN_TROPICAL_LO <= sun_lon <= _SUN_TROPICAL_HI
+        checks.append({
+            "check": "de441_position_query",
+            "passed": sun_in_range,
+            "sun_lon": round(sun_lon, 4),
+            "expected_range": f"{_SUN_TROPICAL_LO}–{_SUN_TROPICAL_HI}° (Capricorn tropical)",
+        })
+        if not sun_in_range:
+            failures.append(
+                f"Sun lon {sun_lon:.4f}° outside expected Capricorn range "
+                f"[{_SUN_TROPICAL_LO}, {_SUN_TROPICAL_HI}] for 1984-02-05"
+            )
     except Exception as exc:
         checks.append({"check": "de441_position_query", "passed": False, "error": str(exc)})
         failures.append(f"ephemeris position query failed: {exc}")
 
-    # Check 3: MEAN_NODE-for-Rahu invariant (mean node mode returns Rahu, not Ketu)
+    # Check 3: MEAN_NODE-for-Rahu invariant.
+    # Asserts Rahu is in Vrishabha (sign 2, ~30–60°) for Feb 1984 — a real FORENSIC
+    # assertion, not the tautological "1 <= sign <= 12" which is always True for any
+    # valid ephemeris output. Also verifies Ketu (true opposite) is in sign 8 (Vrischika).
     try:
         import swisseph as swe
         jd = _FORENSIC_POSITION["jd"]
         xx, _ = swe.calc_ut(jd, swe.MEAN_NODE)
         node_lon = xx[0]
-        # Mean node = Rahu longitude; should be in 0..360, Rahu in Vrishabha Feb 1984 (~30-60°)
+        # Rahu mean node for Feb 1984 should be in Vrishabha (30° – 60°)
         rahu_sign = int(node_lon / 30) + 1
-        passed = 1 <= rahu_sign <= 12
-        checks.append({"check": "mean_node_rahu_invariant", "passed": passed,
-                        "rahu_sign": rahu_sign, "rahu_lon": round(node_lon, 4)})
-        if not passed:
-            failures.append(f"MEAN_NODE sign out of range: {rahu_sign}")
+        expected_rahu_sign = _FORENSIC_POSITION["expected_mean_node_rahu_sign"]  # 2
+        # Ketu is exactly opposite; swe.MEAN_NODE gives Rahu, Ketu = (Rahu + 180) % 360
+        ketu_lon = (node_lon + 180.0) % 360.0
+        ketu_sign = int(ketu_lon / 30) + 1
+        expected_ketu_sign = ((expected_rahu_sign - 1 + 6) % 12) + 1  # 8 = Vrischika
+        rahu_ok = rahu_sign == expected_rahu_sign
+        ketu_ok = ketu_sign == expected_ketu_sign
+        passed = rahu_ok and ketu_ok
+        checks.append({
+            "check": "mean_node_rahu_invariant",
+            "passed": passed,
+            "rahu_sign": rahu_sign,
+            "rahu_lon": round(node_lon, 4),
+            "ketu_sign": ketu_sign,
+            "expected_rahu_sign": expected_rahu_sign,
+            "expected_ketu_sign": expected_ketu_sign,
+        })
+        if not rahu_ok:
+            failures.append(
+                f"Rahu sign={rahu_sign} (lon={node_lon:.4f}°), "
+                f"expected sign {expected_rahu_sign} (Vrishabha) for 1984-02-05"
+            )
+        if not ketu_ok:
+            failures.append(
+                f"Ketu sign={ketu_sign} (lon={ketu_lon:.4f}°), "
+                f"expected sign {expected_ketu_sign} (Vrischika) for 1984-02-05"
+            )
     except Exception as exc:
         checks.append({"check": "mean_node_rahu_invariant", "passed": False, "error": str(exc)})
         failures.append(f"MEAN_NODE check failed: {exc}")

@@ -1432,10 +1432,10 @@ def build_ga_sade_sati(
             moon_sign = moon_signs.get(ayanamsha_id)
             if not moon_sign:
                 logger.warning(
-                    "[ga_sade_sati_writer] Moon sign not found in GA3 for ayanamsha=%s; "
-                    "using Lahiri fallback", ayanamsha_id
+                    "[ga_sade_sati_writer] Moon sign unavailable for ayanamsha %s, skipping sade sati",
+                    ayanamsha_id,
                 )
-                moon_sign = moon_signs.get("lahiri_chitrapaksha", "Aquarius")
+                continue
 
             moon_pada = moon_padas.get(ayanamsha_id, NATIVE_MOON_PADA)
 

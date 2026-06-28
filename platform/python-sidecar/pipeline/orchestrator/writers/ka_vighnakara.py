@@ -390,7 +390,7 @@ def _check_panchanga_obstruction(peak_date, jd=None, swe=None, muhurta_service=N
             )
             tithi_raw = getattr(panchang, 'tithi', None)
             if tithi_raw is not None:
-                tithi = int(tithi_raw) if not hasattr(tithi_raw, 'number') else int(tithi_raw.number)
+                tithi = int(tithi_raw.id) if hasattr(tithi_raw, 'id') else int(tithi_raw)
         except Exception as exc:
             logger.debug("panchanga_obstruction: panchang_engine failed for %s: %s", peak_date, exc)
 

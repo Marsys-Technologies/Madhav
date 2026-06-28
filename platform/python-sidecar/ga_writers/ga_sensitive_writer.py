@@ -93,6 +93,11 @@ NAK_SPAN_DEG = 360.0 / 27.0  # ~13.333
 # Pada span: NAK_SPAN_DEG / 4
 PADA_SPAN_DEG = NAK_SPAN_DEG / 4.0
 
+# Weekday lords: index 0 = Monday (Python datetime.weekday() convention).
+# Sunday = index 6 → Sun; Monday = 0 → Moon; etc.
+# Matches the standard Jyotish Vara sequence (Ravivara=Sun, Somavara=Moon, …).
+_WEEKDAY_LORDS: list[str] = ["Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Sun"]
+
 
 def _load_l0_refs(conn: Any) -> None:
     """Populate _SIGN_LORDS and _NAK_LORDS from L0 reference tables.
@@ -754,7 +759,10 @@ def _build_trisphuta_family_rows(
     Chatushphuta = Trisphuta + Sun (mod 360)
     Panchasphuta v1 = Chatushphuta + Saturn (mod 360)
     Panchasphuta v2 = Chatushphuta + Rahu (mod 360)
-    Hora Lagna = computed from birth time after sunrise
+    Hora Lagna = computed from birth time after sunrise; requires sunrise_jd and
+    birth_jd (both Julian Day numbers from Swiss Ephemeris). When not provided this
+    function logs [EXTERNAL_COMPUTATION_REQUIRED] and skips Trisphuta-family emission
+    rather than silently emitting a fabricated approximation (B.10).
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -764,12 +772,22 @@ def _build_trisphuta_family_rows(
     rahu = all_longs.get("RAH_MEAN", 0.0)
 
     # Hora Lagna: time elapsed since sunrise / 2.5 hours * 30° + Lagna
-    # If birth data not available, approximate as Sun + 15° (simplified)
+    # Requires sunrise_jd and birth_jd (Julian Day numbers) from Swiss Ephemeris.
+    # [EXTERNAL_COMPUTATION_REQUIRED]: swe.rise_trans() at birth lat/lon gives sunrise_jd;
+    # swe.julday() from birth datetime gives birth_jd. Neither is computed here (B.10).
     if sunrise_jd is not None and birth_jd is not None:
         elapsed_hrs = (birth_jd - sunrise_jd) * 24.0
         hora_lagna = (lagna + elapsed_hrs * 30.0 / 2.5) % 360.0
     else:
-        hora_lagna = (sun + 15.0) % 360.0  # Fallback approximation
+        logging.warning(
+            "[EXTERNAL_COMPUTATION_REQUIRED] chart_id=%s ayanamsha=%s: "
+            "Hora Lagna requires sunrise_jd + birth_jd (Swiss Ephemeris swe.rise_trans / "
+            "swe.julday). Neither was provided — Trisphuta/Chatushphuta/Panchasphuta "
+            "rows SKIPPED rather than emitting a fabricated sun+15 approximation (B.10). "
+            "Caller must compute these JD values and pass them to _build_trisphuta_family_rows.",
+            chart_id, ayanamsha_id,
+        )
+        return rows
 
     trisphuta = (lagna + moon + hora_lagna) % 360.0
     chatushphuta = (trisphuta + sun) % 360.0
@@ -964,15 +982,24 @@ def _build_saham_rows(
         base_long = _planet_long(base_name)
 
         saham_long = (lord_long - sub_long + base_long) % 360.0
-        # Two-pass verification: re-compute
-        saham_verify = (lord_long - sub_long + base_long) % 360.0
-        tol = abs(saham_long - saham_verify) * 3600.0
+        # Range guard: saham must be a valid ecliptic longitude [0, 360).
+        # NOTE: the former "two-pass" re-computation (saham_verify) was byte-identical
+        # to this expression on the same local variables — guaranteed 0.0 delta, so it
+        # was a tautology. Replaced with a real range assertion.
+        if not (0.0 <= saham_long < 360.0):
+            raise ValueError(
+                f"Saham {saham_name}: longitude {saham_long:.6f} out of [0, 360) "
+                f"(lord={lord_long:.4f}, sub={sub_long:.4f}, base={base_long:.4f})"
+            )
+        # Fixed precision constant: 1 arcsec tolerance for downstream consumers.
+        # There is no independent recomputation here; this is a precision declaration.
+        tol = 1.0
 
         rows.extend(_long_rows(
             "saham_position", saham_name, saham_long,
             chart_id, ayanamsha_id, build_id, eng_ver, lagna,
             formula_provenance_text=prov,
-            tolerance_arcsec=max(tol, 1.0),
+            tolerance_arcsec=tol,
             extra_keys={"day_birth": is_day_birth},
         ))
     return rows
@@ -1356,6 +1383,7 @@ def _build_midpoint_rows(
 def _build_kp_ruling_planets_rows(
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+    day_lord: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Category 22: kp_ruling_planets_natal — 5 KP ruling planets
@@ -1364,7 +1392,10 @@ def _build_kp_ruling_planets_rows(
     RP_ASC_SUB_LORD = sub-lord of ascendant (nakshatra sub-division)
     RP_MOON_SIGN_LORD = sign lord of Moon
     RP_MOON_STAR_LORD = nakshatra lord of Moon
-    RP_DAY_LORD = lord of weekday (Sun=Sun, Mon=Moon, Tue=Mars, etc.)
+    RP_DAY_LORD = lord of weekday (derived from birth date weekday via _WEEKDAY_LORDS)
+
+    day_lord must be passed by the caller (derived from birth_params datetime weekday
+    via _WEEKDAY_LORDS). If None, RP_DAY_LORD rows are skipped and a warning is logged.
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -1377,16 +1408,24 @@ def _build_kp_ruling_planets_rows(
     # ASC sub-lord: nakshatra lord of Ascendant
     asc_nak, asc_sub_lord, _ = _long_to_nakshatra_pada(lagna)
 
-    # Day lord: weekday from birth date 1984-02-05 = Sunday → Sun
-    day_lord = "Sun"  # Ravivara (Sunday) confirmed FORENSIC anchor
+    # Day lord is passed in by the caller; it is derived from birth_params["datetime_iso"]
+    # weekday using _WEEKDAY_LORDS. A None here means the caller could not derive it.
+    if day_lord is None:
+        logging.warning(
+            "[ga_sensitive] chart_id=%s ayanamsha=%s: day_lord is None — "
+            "RP_DAY_LORD rows SKIPPED. Caller must derive from birth_params[\"datetime_iso\"] "
+            "weekday via _WEEKDAY_LORDS.",
+            chart_id, ayanamsha_id,
+        )
 
-    rp_map = {
+    rp_map: dict[str, tuple[str, float]] = {
         "RP_ASC_LORD": (_SIGN_LORDS[lagna_sign], lagna),
         "RP_ASC_SUB_LORD": (asc_sub_lord, lagna),
         "RP_MOON_SIGN_LORD": (_SIGN_LORDS[moon_sign], moon),
         "RP_MOON_STAR_LORD": (moon_nak_lord, moon),
-        "RP_DAY_LORD": (day_lord, 0.0),
     }
+    if day_lord is not None:
+        rp_map["RP_DAY_LORD"] = (day_lord, 0.0)
 
     for subj, (rp_name, ref_long) in rp_map.items():
         near_sign = _is_near_sign_boundary(ref_long) if ref_long else False
@@ -2120,13 +2159,71 @@ def _build_all_sensitive_rows_for_ayanamsha(
     # Panchanga block (vara=0..6 Sunday-based, etc.)
     panchanga = chart_data.get("panchanga", {})
     if not panchanga:
-        # Fallback: derive vara from birth_params if PyJHora didn't provide it
-        # Native birth 1984-02-05 was a Sunday → vara=0
-        panchanga = {"vara": birth_params.get("vara", 0), "is_daytime": True}
+        # PyJHora did not populate panchanga — build a minimal stub from birth_params.
+        # Do NOT hardcode vara=0 (Sunday) here; derive from the birth date's weekday.
+        logging.warning(
+            "[ga_sensitive] chart_id=%s ayanamsha=%s: panchanga absent from chart_data; "
+            "deriving vara from birth_params datetime_iso weekday",
+            chart_id, ayanamsha_key,
+        )
+        panchanga = {}
 
-    # Determine day/night birth (sunrise check)
-    # Native birth 10:43 IST; Bhubaneswar sunrise ~06:30 → day birth
-    is_day_birth = True
+    # ── Determine day/night birth ──────────────────────────────────────────────
+    # Primary source: panchanga["is_daytime"] populated by PyJHora (sunrise-aware).
+    # Secondary source: birth hour from birth_params["datetime_iso"] (local time).
+    #   A birth between 06:00–18:00 local is heuristically treated as day birth.
+    #   This heuristic is approximate (actual sunrise/sunset vary by date/location)
+    #   but is far better than a hardcoded True for all charts.
+    # If neither source is available, log a warning and default to day birth with
+    # a clear provenance note — callers may override once sunrise_jd is available.
+    panchanga_is_daytime = panchanga.get("is_daytime")
+    if panchanga_is_daytime is not None:
+        is_day_birth = bool(panchanga_is_daytime)
+    else:
+        datetime_iso = birth_params.get("datetime_iso", "")
+        birth_hour: int | None = None
+        if datetime_iso:
+            try:
+                from datetime import datetime as _dt
+                birth_hour = _dt.fromisoformat(datetime_iso).hour
+            except Exception:
+                birth_hour = None
+        if birth_hour is not None:
+            is_day_birth = 6 <= birth_hour < 18
+            logging.info(
+                "[ga_sensitive] chart_id=%s: is_day_birth derived from birth hour %d → %s",
+                chart_id, birth_hour, is_day_birth,
+            )
+        else:
+            is_day_birth = True  # safest classical default; provenance logged below
+            logging.warning(
+                "[ga_sensitive] chart_id=%s ayanamsha=%s: could not derive is_day_birth "
+                "from panchanga or birth_params — defaulting to True (day birth). "
+                "Pass sunrise_jd+birth_jd for an authoritative result.",
+                chart_id, ayanamsha_key,
+            )
+
+    # ── Derive day lord from birth date weekday ────────────────────────────────
+    # _WEEKDAY_LORDS[weekday()] uses Python's Monday=0 convention.
+    # This is purely calendrical (no ephemeris required) and correct for all charts.
+    datetime_iso = birth_params.get("datetime_iso", "")
+    day_lord: str | None = None
+    if datetime_iso:
+        try:
+            from datetime import datetime as _dt
+            day_lord = _WEEKDAY_LORDS[_dt.fromisoformat(datetime_iso).weekday()]
+        except Exception as _e:
+            logging.warning(
+                "[ga_sensitive] chart_id=%s: could not derive day_lord from "
+                "datetime_iso=%r: %s — RP_DAY_LORD will be skipped",
+                chart_id, datetime_iso, _e,
+            )
+    else:
+        logging.warning(
+            "[ga_sensitive] chart_id=%s: birth_params missing 'datetime_iso' — "
+            "day_lord cannot be derived; RP_DAY_LORD will be skipped",
+            chart_id,
+        )
 
     rows: list[dict[str, Any]] = []
 
@@ -2195,7 +2292,8 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(_build_midpoint_rows(all_longs, chart_id, cid, build_id, eng_ver))
 
     # ── 22. KP Ruling Planets ────────────────────────────────────────────────
-    rows.extend(_build_kp_ruling_planets_rows(all_longs, chart_id, cid, build_id, eng_ver))
+    rows.extend(_build_kp_ruling_planets_rows(all_longs, chart_id, cid, build_id, eng_ver,
+                                              day_lord=day_lord))
 
     # ── 23. KP Cuspal Significators ──────────────────────────────────────────
     rows.extend(_build_kp_cuspal_rows(all_longs, chart_id, cid, build_id, eng_ver, chart_data))

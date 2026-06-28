@@ -125,12 +125,22 @@ class MiBhavisyaWriter(WriterBase):
                 # Skip anchors without timing
                 continue
 
-            outcome_claim = str(
-                anchor.get("outcome_claim")
-                or anchor.get("prediction_text")
-                or anchor.get("summary")
-                or "unspecified"
-            )
+            # phala_anchors has no outcome_claim / prediction_text / summary column.
+            # Build a non-null outcome_claim from the actual columns:
+            #   karmic_note  — human-readable karmic frame note (best narrative, may be None)
+            #   event_type   — structured event label (always set by engine)
+            #   direction    — suppressed / amplified / neutral
+            #   domain       — life domain (career / financial / spiritual / …)
+            _karmic_note = anchor.get("karmic_note")
+            _event_type  = anchor.get("event_type") or "development"
+            _direction   = anchor.get("direction") or ""
+            _domain_raw  = anchor.get("domain") or anchor.get("life_domain") or "unknown"
+            if _karmic_note:
+                outcome_claim = str(_karmic_note)
+            else:
+                # Compose a readable label: e.g. "suppressed career activation"
+                parts = [p for p in [_direction, _domain_raw, _event_type] if p]
+                outcome_claim = " ".join(parts) if parts else "unspecified"
             domain = str(anchor.get("domain") or anchor.get("life_domain") or "unknown")
             magnitude_expected = str(anchor.get("magnitude") or "moderate")
 

@@ -602,25 +602,51 @@ class TwoPassVerificationError(RuntimeError):
 
 def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0.01) -> str:
     """
-    Verify shadbala invariant: sum of sub-balas ≈ total within tolerance.
-    Returns 'two_pass_verified' on pass, raises TwoPassVerificationError on fail.
+    Verify shadbala invariants:
+    1. Every sub-bala is non-negative (sanity: no negative strength).
+    2. total > 0.0 for any real chart (a graha with all-zero sub-balas is a data bug).
+    3. sum(sub-balas) ≈ total within tolerance — catches key-set mismatches or
+       rounding drift between individual sub-bala rounding and stored total.
+
+    NOTE: `total` is stored as round(sum, 4) and sub-balas are each round(x, 4),
+    so the sum-vs-total check can catch rounding drift (up to ~0.0001 * 6 keys)
+    but does NOT constitute an independent recomputation from a second code path.
+    The primary guards here are the non-negativity and non-zero total checks.
     """
     sub_bala_keys = ["sthana", "dig", "kala", "cheshta", "naisargika", "drik"]
     failures = []
     for graha, sb in shadbala.items():
-        sub_sum = sum(sb.get(k, 0.0) for k in sub_bala_keys)
+        # Guard 1: all sub-balas must be non-negative
+        for key in sub_bala_keys:
+            val = sb.get(key, 0.0)
+            if val < 0.0:
+                failures.append(
+                    f"{graha}.{key}={val:.6f} is negative (expected >= 0.0)"
+                )
+
+        # Guard 2: total must be positive for a real chart row
         total = sb.get("total", 0.0)
+        if total <= 0.0:
+            failures.append(
+                f"{graha}: total={total:.6f} is zero or negative (data bug)"
+            )
+
+        # Guard 3: sum of stored sub-balas must match stored total within tolerance
+        # (catches key-set mismatches and rounding drift)
+        sub_sum = sum(sb.get(k, 0.0) for k in sub_bala_keys)
         delta = abs(sub_sum - total)
         if delta > tolerance:
             failures.append(
-                f"{graha}: sum_sub_balas={sub_sum:.6f} total={total:.6f} delta={delta:.6f}"
+                f"{graha}: sum_sub_balas={sub_sum:.6f} total={total:.6f} "
+                f"delta={delta:.6f} exceeds tolerance={tolerance}"
             )
+
     if failures:
         msg = (
-            f"SHADBALA TWO-PASS DIVERGENCE (tolerance={tolerance}):\n"
+            f"SHADBALA VERIFICATION FAILED:\n"
             + "\n".join(f"  {f}" for f in failures)
         )
-        _write_halt_log("TWO_PASS_SHADBALA", msg)
+        _write_halt_log("VERIFY_SHADBALA", msg)
         raise TwoPassVerificationError(msg)
     return "two_pass_verified"
 
@@ -712,7 +738,7 @@ def _build_shadbala_rows(
                 "unit": "rupa",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"pyjhora_adapter.strength_classical/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation/ga_strength_writer/_derive_shadbala_from_positions/{eng_ver}",
                 "verification_pass_status": verif,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -767,7 +793,7 @@ def _build_shadbala_rows(
                                                chart_id, ayanamsha_id, eng_ver),
                 "citation_human": _citation_human_strength(
                     ik_cat, subject, "score", val, ayanamsha_id),
-                "source_calculation": f"pyjhora_adapter.ishta_kashta/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation.ishta_kashta/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -799,7 +825,7 @@ def _build_shadbala_rows(
                                                chart_id, ayanamsha_id, eng_ver),
                 "citation_human": _citation_human_strength(
                     cat, subject, "score", val, ayanamsha_id),
-                "source_calculation": f"pyjhora_adapter.vimsopaka/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation.vimsopaka/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -844,7 +870,7 @@ def _build_shadbala_rows(
                 "unit": "rupa",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"pyjhora_adapter.strength_classical/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation/ga_strength_writer/_derive_shadbala_from_positions/{eng_ver}",
                 "verification_pass_status": node_verif,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -896,7 +922,7 @@ def _build_ashtakavarga_rows(
                 "unit": "bindu",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"pyjhora_adapter.ashtakavarga_classical/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation.ashtakavarga_classical/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -930,7 +956,7 @@ def _build_ashtakavarga_rows(
                 "unit": "bindu",
                 "citation_ref": cref2,
                 "citation_human": chum2,
-                "source_calculation": f"pyjhora_adapter.ashtakavarga_classical/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation.ashtakavarga_classical/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -973,7 +999,7 @@ def _build_bhava_bala_rows(
                 "unit": "rupa",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"pyjhora_adapter.bhava_bala_classical/{eng_ver}",
+                "source_calculation": f"python_heuristic_approximation.bhava_bala_classical/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -1194,7 +1220,7 @@ def _build_ashtakavarga_per_varga_rows(
     else:
         bindu_verif = "two_pass_verified"
 
-    src_calc = f"pyjhora_adapter.ashtakavarga_per_varga/{eng_ver}"
+    src_calc = f"python_heuristic_approximation.ashtakavarga_per_varga/{eng_ver}"
 
     for planet_name, subject in planet_subjects.items():
         bindus_list = bav_varga.get(planet_name, [0] * 12)
