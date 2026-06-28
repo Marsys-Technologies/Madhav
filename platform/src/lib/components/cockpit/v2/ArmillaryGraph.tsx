@@ -195,6 +195,19 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idSignature])
 
+  // Sync bead aria-labels on every stats poll.
+  // The idSignature effect stamps aria-labels at DOM-creation time, but asset states change
+  // after the first poll (dormant → lit → building). The RAF loop updates visual colours
+  // imperatively but never touches ARIA attributes — this effect closes that gap so screen
+  // readers and automated tools always see the live state, not the mount-time snapshot.
+  useEffect(() => {
+    const bmap = beadMapRef.current
+    for (const a of assets) {
+      const refs = bmap.get(a.asset_id)
+      if (refs) refs.g.setAttribute('aria-label', `${a.english_name}, ${stateLabel(a.state)}`)
+    }
+  }, [assets])
+
   // ── Hover handlers (single source: hoverRef) ──
   function setTip(text: { title: string; sub: string; state: string; color: string } | null) {
     const tip = tipRef.current; if (!tip) return
