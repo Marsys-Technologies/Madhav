@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.04
+version: 6.05
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,25 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.05 (2026-06-28, MCP-TOOL-HYGIENE-ISSUE7-2026-06-28):
+    **ISSUE-7 RESOLVED — MCP tool hygiene complete.**
+    19 contaminated legacy MCP tool files in platform-mcp/src/tools/ retired (10) or scrubbed (9).
+    Zero native identifiers remain in MCP tool surface. CI gate (chart_agnostic_gate.ts) extended
+    with scanMcpToolFileContent() to cover platform-mcp/src/tools/ directory; 3 tests prove it
+    catches native UUID contamination. PR #360 merged (commit 8af581ad).
+    CLAUDECODE_BRIEF_RETRIEVAL_MCP_TOOL_HYGIENE_v1_0.md status: COMPLETE.
+    RETRIEVAL_AUTONOMOUS_RUN_REPORT_v1_0.md §12 appended.
+    open_items:
+      - ISSUE-4: faithfulness-live-run — constituent_facts_array grounding 6.88% (pre-existing MSR drift; L2 Bodha rebuild needed)
+      - CAPABILITY_MANIFEST regeneration deferred (primitives_registry covers retrieval layer)
+    last_session_id: MCP-TOOL-HYGIENE-ISSUE7-2026-06-28.
+    predecessor_session: D7-CHAT-MIGRATION-2026-06-28.
+    next_session_objective: >
+      "Retrieval system fully sealed and clean. ISSUE-6 (deepseek alias) RESOLVED (PR #359).
+      ISSUE-7 (MCP hygiene) RESOLVED (PR #360). Remaining: ISSUE-4 — L2 Bodha MSR rebuild
+      needed so constituent_facts_array refs resolve against current chart_facts fact_ids
+      (faithfulness 6.88% → target ≥80%)."
+    file_updated_at: 2026-06-28. file_updated_by_session: MCP-TOOL-HYGIENE-ISSUE7-2026-06-28.
   - v6.04 (2026-06-28, D7-CHAT-MIGRATION-2026-06-28):
     **D7 Chat-Channel Migration — COMPLETE. DG1 convergence ruling fully executed.**
     Both MCP and chat channels now share a single registry source (lib/retrieval).

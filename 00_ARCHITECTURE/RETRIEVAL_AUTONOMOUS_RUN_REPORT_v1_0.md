@@ -625,3 +625,26 @@ Full evidence in RETRIEVAL_EVAL_RESULTS_v1_0.md §FAITHFULNESS RUN.
 
 System state: both MCP and chat channels now share a single registry source (lib/retrieval).
 DG1 convergence ruling fully executed. Retrieval system sealed end-to-end.
+
+---
+
+## §12 — MCP Tool Hygiene (ISSUE-7) — Post-Run Addendum (2026-06-28)
+
+ISSUE-7: RESOLVED — 19 contaminated legacy MCP tool files retired/scrubbed; CI gate extended
+to cover platform-mcp/src/tools/. Zero native identifiers remain in MCP tool surface.
+
+Details:
+- 10 unwired files RETIRED (confirmed zero imports before deletion): bo_2-5, bo_2-6, bodha_bo22,
+  bodha_bo24, get_cgm_subgraph, phala_rectification, kala_period_snapshot, kala_convergence,
+  retrieval/ganita_forensic_render, kala_temporal (root) + its test file.
+- 9 wired/test-wired files SCRUBBED to chart-agnostic: l0_ephemeris, muhurta_finder,
+  phala_event_anchors, mimamsa_lel_intake, mimamsa_outcome, phala_outlook, phala_mitigation_map,
+  retrieval/kala_temporal (functional NATIVE_CHART_ID_CONST branching removed — fallback now
+  applies to all charts equally), kala_timeline.
+- CI gate extended: scanMcpToolFileContent() added to chart_agnostic_gate.ts; 3 tests prove it
+  catches native UUID in mock MCP tool file content.
+- Citation report: 00_ARCHITECTURE/RETRIEVAL_CITATION_REPORT_MCP_TOOL_HYGIENE.md
+- PR #360 merged (feature/retrieval-mcp-tool-hygiene, commit 8af581ad).
+- Tests: 5088/5088 pass. Gate: PASS.
+
+Verification: grep -rn "482012f1|NATIVE_CHART_ID|Abhisek Mohanty" platform-mcp/src/tools/ → CLEAN (0 results).

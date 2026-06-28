@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_RETRIEVAL_MCP_TOOL_HYGIENE
 version: 1.0
-status: READY-FOR-EXECUTION
+status: COMPLETE
 created: 2026-06-28
 author: Cowork (planning) — for execution by Claude Code in Antigravity
 classification: CLAUDECODE_BRIEF — scrub/retire unwired legacy MCP tool files (ISSUE-7)
