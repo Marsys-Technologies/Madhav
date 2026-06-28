@@ -2,9 +2,11 @@
 # assert_no_native_literal.sh — G4 gate for Unit 2a.
 #
 # Asserts that NO `NATIVE_CHART_ID` or `DEFAULT_CHART_ID` identifier literal
-# appears in `platform/src/lib/retrieve/` outside:
+# appears in `platform/src/lib/retrieval/` outside:
 #   - test files     (*.test.ts, *.test.tsx, *_test.ts, __tests__/, __smoke__/)
-#   - chart_context.ts (the resolver module that documents what it forbids)
+#   - eval/         (eval harness — golden-result test infrastructure)
+#   - chart_context.ts       (the resolver module that documents what it forbids)
+#   - chart_agnostic_gate.ts (the gate module that defines the forbidden constant)
 #
 # Exits 0 (GREEN) if no offending matches.
 # Exits 1 (RED) and prints offending matches if any are found.
@@ -17,7 +19,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")"/../../.. && pwd)"
-target_dir="${repo_root}/platform/src/lib/retrieve"
+target_dir="${repo_root}/platform/src/lib/retrieval"
 
 if [ ! -d "${target_dir}" ]; then
   echo "G4 gate: target directory ${target_dir} not found." >&2
@@ -34,10 +36,12 @@ matches=$(
   grep -RnwE 'NATIVE_CHART_ID|DEFAULT_CHART_ID' "${target_dir}" \
     --exclude-dir=__tests__ \
     --exclude-dir=__smoke__ \
+    --exclude-dir=eval \
     --exclude='*.test.ts' \
     --exclude='*.test.tsx' \
     --exclude='*_test.ts' \
     --exclude='chart_context.ts' \
+    --exclude='chart_agnostic_gate.ts' \
     || true
 )
 
@@ -45,7 +49,7 @@ if [ -n "${matches}" ]; then
   echo "G4 GATE FAILED — NATIVE_CHART_ID/DEFAULT_CHART_ID literal found in production paths:" >&2
   echo "${matches}" >&2
   echo "" >&2
-  echo "Fix: replace literal with retrieve/chart_context.requireChartId(input.chart_id)." >&2
+  echo "Fix: replace literal with retrieval/chart_context.requireChartId(input.chart_id)." >&2
   exit 1
 fi
 

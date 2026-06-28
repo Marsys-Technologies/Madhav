@@ -13,7 +13,7 @@
  * REDIS_HOST or any Redis trouble falls back cleanly to L1-only behaviour.
  */
 
-import type { QueryPlan, ToolBundle, RetrievalTool } from '../retrieve/types'
+import type { QueryPlan, ToolBundle, RetrievalTool } from '../retrieval/shared_types'
 import { RequestScopedToolCache } from './tool_cache'
 import { buildKey, cacheGet, cacheSet } from './shared_cache'
 
@@ -37,7 +37,7 @@ function buildSharedBundleKey(
   return buildKey('retrieval-bundle', {
     tool: toolName,
     manifest_fingerprint: plan.manifest_fingerprint,
-    audience_tier: plan.audience_tier,
+    // audience_tier removed (DG1 ruling — retrieval layer is universal-access; no tier gating)
     query_class: plan.query_class,
     domains: [...(plan.domains ?? [])].sort(),
     planets: [...(plan.planets ?? [])].sort(),

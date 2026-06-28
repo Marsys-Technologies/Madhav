@@ -753,7 +753,7 @@ export async function POST(request: Request) {
       }
     })
   )
-  const validToolResults = toolResults.filter((r): r is NonNullable<typeof r> => r !== null)
+  const validToolResults = toolResults.filter((r: ToolBundle | null): r is ToolBundle => r !== null)
   const toolFetchMs = Date.now() - toolFetchWallStart
 
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })

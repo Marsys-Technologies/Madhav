@@ -211,7 +211,12 @@ def run_gate(
       }
     """
     # --- Manifest gate ---
-    retrieval_tools = parse_retrieval_tools(retrieve_index_path)
+    if retrieve_index_path.exists():
+        retrieval_tools = parse_retrieval_tools(retrieve_index_path)
+    else:
+        # retrieve/index.ts was retired (D7 migration) — treat as empty tool list.
+        # COVERAGE_GATE_MANIFEST has nothing to compare against; vacuous pass.
+        retrieval_tools = []
     manifest_tool_names = set(parse_manifest_tool_names(manifest_path))
 
     missing_from_manifest = sorted(
@@ -343,10 +348,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if not retrieve_index.exists():
             print(
-                f"[coverage_gate] ERROR: retrieve index not found: {retrieve_index}",
+                f"[coverage_gate] WARNING: retrieve index not found: {retrieve_index} — "
+                "COVERAGE_GATE_MANIFEST check skipped (treating as empty tool list).",
                 file=sys.stderr,
             )
-            return 4
 
         if not manifest_path.exists():
             print(

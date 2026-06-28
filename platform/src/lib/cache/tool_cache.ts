@@ -7,7 +7,7 @@
  */
 
 import crypto from 'crypto'
-import type { ToolBundle } from '../retrieve/types'
+import type { ToolBundle } from '../retrieval/shared_types'
 
 export class RequestScopedToolCache {
   private cache: Map<string, Promise<ToolBundle>> = new Map()
