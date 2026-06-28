@@ -200,10 +200,18 @@ class PhMuhurtaWriter(WriterBase):
         return rows
 
     def _load_obstruction_windows(self, conn, chart_id: str) -> dict:
-        """Load ka_vighnakara obstruction windows as {(start,end): id}.
+        """Load L3 obstruction windows as {(start,end): id}.
 
-        ka_vighnakara is built by L3 Kāla — may not exist yet. Uses a SAVEPOINT
-        so a missing-table SQL error does not abort the outer transaction.
+        Obstructions are stored in `kala_obstruction` (built by ka_vighnakara), which
+        carries no dates of its own — each row links to the `kala_convergence` row
+        (built by ka_sangam) that supplies the temporal window via window_start/window_end.
+        L3 Kāla may not be built yet, so a SAVEPOINT keeps a missing-table error from
+        aborting the outer transaction.
+
+        NOTE: prior versions queried `FROM ka_vighnakara` (an asset id, not a table) and
+        selected obstruction_start/obstruction_end columns that do not exist — the read
+        always errored and was silently swallowed, so obstruction overlap was permanently
+        empty. Corrected to the real table + JOIN.
         """
         result: dict = {}
         try:
@@ -212,9 +220,12 @@ class PhMuhurtaWriter(WriterBase):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, obstruction_start, obstruction_end
-                    FROM ka_vighnakara
-                    WHERE chart_id = %s
+                    SELECT o.id,
+                           c.window_start AS obstruction_start,
+                           c.window_end   AS obstruction_end
+                    FROM kala_obstruction o
+                    JOIN kala_convergence c ON c.convergence_id = o.convergence_id
+                    WHERE o.chart_id = %s
                     """,
                     (chart_id,),
                 )
@@ -256,45 +267,30 @@ class PhMuhurtaWriter(WriterBase):
         return result
 
     def _load_gochara_transits(self, conn, chart_id: str) -> dict[str, list[dict]]:
-        """B9: load ka_gochara transit windows per graha for transit scoring.
+        """B9: gochara (transit) windows per graha for transit scoring.
 
         Returns {graha_lower: [{'sign_number': int, 'is_retrograde': bool,
                                 'start_date': date, 'end_date': date}, ...]}
-        Uses a SAVEPOINT; returns {} silently if table absent (L3 Kāla may not be built yet).
+
+        KNOWN GAP (honest): there is NO `kala_gochara` table. ka_gochara is a
+        compute-only L3 service (asset_kind='service', no persistence) that wraps
+        live Swiss-Ephemeris transit search. Prior versions issued `FROM kala_gochara`,
+        which always errored and was silently swallowed — so the transit score was
+        permanently the neutral default. Reading a non-existent table is removed.
+
+        Full gochara transit scoring requires wiring the KaGocharaService into this
+        writer (a per-candidate live-ephemeris call); that is deferred to the L4 Phala
+        build campaign, where it can be validated end-to-end. Until then this returns
+        {} EXPLICITLY (not via a swallowed error), and _compute_transit_score falls
+        back to its documented neutral 0.5.
         """
-        result: dict[str, list[dict]] = {}
-        try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_muhurta_gochara")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT graha, sign_number, is_retrograde, start_date, end_date
-                    FROM kala_gochara
-                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
-                    ORDER BY start_date DESC
-                    LIMIT 20
-                    """,
-                    (chart_id,),
-                )
-                for row in cur.fetchall():
-                    graha = str(row['graha']).lower()
-                    result.setdefault(graha, []).append({
-                        'sign_number':   int(row['sign_number']),
-                        'is_retrograde': bool(row.get('is_retrograde')),
-                        'start_date':    row['start_date'],
-                        'end_date':      row['end_date'],
-                    })
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_muhurta_gochara")
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_gochara")
-            except Exception:
-                pass
-            logger.debug("ph_muhurta: ka_gochara load skipped: %s", exc)
-        return result
+        # No table to read; gochara service wiring is an L4-campaign task. Return the
+        # empty map plainly so the neutral-score fallback is intentional, not masked.
+        logger.info(
+            "ph_muhurta: gochara transit scoring not yet wired (ka_gochara is a "
+            "compute-only service; no kala_gochara table) — using neutral transit score"
+        )
+        return {}
 
     def _compute_transit_score(
         self,
