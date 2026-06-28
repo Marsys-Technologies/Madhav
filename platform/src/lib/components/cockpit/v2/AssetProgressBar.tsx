@@ -166,13 +166,6 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
         </AnimatePresence>
       </div>
 
-      {/* Shimmer keyframe — injected once via a style tag */}
-      <style>{`
-        @keyframes shimmer {
-          from { transform: translateX(-100%); }
-          to   { transform: translateX(200%); }
-        }
-      `}</style>
     </div>
   )
 }

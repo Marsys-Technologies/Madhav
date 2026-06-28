@@ -39,12 +39,15 @@ async function publishEvent(event: Record<string, unknown>): Promise<void> {
   }
 }
 
+export const maxDuration = 10
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const authHeader = req.headers.get('x-watchdog-auth')
   if (!process.env.WATCHDOG_SECRET || authHeader !== process.env.WATCHDOG_SECRET) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
+  try {
   // 1. Orphan build_runs: running > 30 min with no recent asset progress
   const orphanRuns = await query<{ id: string; chart_id: string }>(
     `UPDATE build_runs
@@ -107,4 +110,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
     undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
   })
+  } catch (err) {
+    console.error('[cockpit/watchdog]', err)
+    return NextResponse.json({ error: 'db error' }, { status: 500 })
+  }
 }

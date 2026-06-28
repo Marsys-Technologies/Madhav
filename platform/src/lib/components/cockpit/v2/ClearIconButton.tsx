@@ -2,19 +2,8 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ClearConfirmModal } from './ClearConfirmModal'
+import { ClearConfirmModal, type ClearPreview } from './ClearConfirmModal'
 import { CascadePreviewModal } from '@/components/cockpit/CascadePreviewModal'
-
-interface ClearPreview {
-  tables: { table: string; rows: number; error?: string }[]
-  total_rows: number
-  affected_assets: string[]
-  not_clearable_assets?: { id: string; label: string }[]
-  downstream_stale_assets: string[]
-  preview_hash: string
-  requires_typed_confirmation?: string
-  layer_summary?: { layer: string; rows: number; asset_count: number }[]
-}
 
 interface Props {
   chartId: string
@@ -25,18 +14,25 @@ interface Props {
 }
 
 export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSuccess }: Props) {
-  const [loading, setLoading] = useState(false)
+  // Modal is opened immediately on click; preview fetched async inside.
+  const [modalOpen, setModalOpen] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [preview, setPreview] = useState<ClearPreview | null>(null)
-  // Post-clear cascade offer state
-  const [downstreamAssets, setDownstreamAssets] = useState<string[] | null>(null)
+
+  // Post-clear cascade offer
+  const [cascadeAssets, setCascadeAssets] = useState<string[] | null>(null)
   const [cascadeLoading, setCascadeLoading] = useState(false)
   const [cascadePlan, setCascadePlan] = useState<string[]>([])
-  const [showCascadeModal, setShowCascadeModal] = useState(false)
+  const [showCascade, setShowCascade] = useState(false)
 
   async function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
-    if (loading) return
-    setLoading(true)
+    if (modalOpen || previewLoading) return
+
+    // Open modal immediately — user sees it right away with loading skeleton
+    setModalOpen(true)
+    setPreview(null)
+    setPreviewLoading(true)
     try {
       const r = await fetch('/api/cockpit/clear', {
         method: 'POST',
@@ -46,29 +42,36 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
       })
       const txt = await r.text()
       let body: Record<string, unknown>
-      try {
-        body = JSON.parse(txt)
-      } catch {
-        throw new Error(`Server error (${r.status}): ${txt.substring(0, 200) || 'no response body'}`)
-      }
+      try { body = JSON.parse(txt) }
+      catch { throw new Error(`Server error (${r.status}): ${txt.substring(0, 200) || 'no body'}`) }
       if (!r.ok) throw new Error((body.error as string | undefined) ?? 'Preview failed')
       setPreview(body.preview as ClearPreview)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load clear preview')
+      setModalOpen(false)
     } finally {
-      setLoading(false)
+      setPreviewLoading(false)
     }
   }
 
-  // Called by ClearConfirmModal after a successful delete
-  async function handleAfterClear(downstream: string[]) {
+  function handleModalClose() {
+    setModalOpen(false)
+    setPreview(null)
+  }
+
+  // Called by ClearConfirmModal after a successful clear
+  async function handleSuccess() {
+    const downstream = preview?.downstream_stale_assets ?? []
+    setModalOpen(false)
     setPreview(null)
     onSuccess?.()
+
     if (downstream.length === 0) return
-    // Offer cascade rebuild: fetch plan for the cleared scope
-    setDownstreamAssets(downstream)
+
+    // Offer cascade rebuild
+    setCascadeAssets(downstream)
     setCascadeLoading(true)
-    setShowCascadeModal(true)
+    setShowCascade(true)
     setCascadePlan([])
     try {
       const r = await fetch('/api/cockpit/plan', {
@@ -81,7 +84,6 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
       if (r.ok && Array.isArray(body?.data?.plan) && body.data.plan.length > 0) {
         setCascadePlan(body.data.plan as string[])
       } else {
-        // Fallback: show downstream assets as plan (empty-array response is falsy-equivalent)
         setCascadePlan(downstream)
       }
     } catch {
@@ -92,18 +94,13 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
   }
 
   async function handleCascadeConfirm() {
-    setShowCascadeModal(false)
+    setShowCascade(false)
     try {
       const r = await fetch('/api/cockpit/runs', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chart_id: chartId,
-          scope,
-          scope_target: scopeTarget ?? null,
-          action: 'cascade',
-        }),
+        body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null, action: 'cascade' }),
       })
       const body = await r.json().catch(() => null)
       if (!r.ok) {
@@ -115,7 +112,7 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to start cascade rebuild')
     } finally {
-      setDownstreamAssets(null)
+      setCascadeAssets(null)
       setCascadePlan([])
     }
   }
@@ -124,8 +121,9 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
     <>
       <button
         onClick={handleClick}
-        title={`Clear ${scope === 'asset' ? scopeTarget ?? 'asset' : scope}`}
-        disabled={loading}
+        title={`Clear ${scope === 'asset' ? (scopeTarget ?? 'asset') : scope}`}
+        disabled={modalOpen}
+        data-icon-btn
         style={{
           width: size,
           height: size,
@@ -135,24 +133,26 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
           background: 'transparent',
           border: 'none',
           borderRadius: '4px',
-          cursor: loading ? 'wait' : 'pointer',
+          cursor: modalOpen ? 'default' : 'pointer',
           color: 'var(--on-dark-faint)',
           padding: 0,
           transition: 'color 0.15s, background 0.15s',
         }}
         onMouseEnter={e => {
-          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--marsys-error)'
-          ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(181,71,76,0.10)'
+          if (!modalOpen) {
+            e.currentTarget.style.color = 'var(--marsys-error)'
+            e.currentTarget.style.background = 'rgba(181,71,76,0.10)'
+          }
         }}
         onMouseLeave={e => {
-          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--on-dark-faint)'
-          ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+          e.currentTarget.style.color = 'var(--on-dark-faint)'
+          e.currentTarget.style.background = 'transparent'
         }}
       >
-        {/* Trash2 icon (inline SVG, no Lucide dep) */}
+        {/* Trash2 icon */}
         <svg
-          width={Math.round(size * 0.57)}
-          height={Math.round(size * 0.57)}
+          width={Math.round(size * 0.54)}
+          height={Math.round(size * 0.54)}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -168,34 +168,33 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
         </svg>
       </button>
 
-      {preview && (
+      {/* Confirm modal — opens immediately with isLoading skeleton until preview arrives */}
+      {modalOpen && (
         <ClearConfirmModal
           chartId={chartId}
           scope={scope}
           scopeTarget={scopeTarget}
           preview={preview}
-          onClose={() => setPreview(null)}
-          onSuccess={() => {
-            const downstream = preview.downstream_stale_assets ?? []
-            handleAfterClear(downstream)
-          }}
+          isLoading={previewLoading}
+          onClose={handleModalClose}
+          onSuccess={handleSuccess}
         />
       )}
 
       {/* Post-clear cascade rebuild offer */}
       <CascadePreviewModal
-        isOpen={showCascadeModal}
+        isOpen={showCascade}
         isLoading={cascadeLoading}
         onClose={() => {
-          setShowCascadeModal(false)
-          setDownstreamAssets(null)
+          setShowCascade(false)
+          setCascadeAssets(null)
           setCascadePlan([])
         }}
         onConfirm={handleCascadeConfirm}
         rootAssetId={scopeTarget ?? scope}
         rootAssetLabel={
-          downstreamAssets
-            ? `${downstreamAssets.length} stale downstream asset${downstreamAssets.length !== 1 ? 's' : ''}`
+          cascadeAssets
+            ? `${cascadeAssets.length} stale downstream asset${cascadeAssets.length !== 1 ? 's' : ''}`
             : undefined
         }
         plan={cascadePlan}

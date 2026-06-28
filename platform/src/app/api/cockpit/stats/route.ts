@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 15 // seconds — Next.js route segment config
 
 type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
 
@@ -75,34 +76,10 @@ interface RegistryAsset {
 
 type ThroughputEntry = { state: string; last_built_at: string | null; rows_written: number | null }
 
-// Fetch asset counts for the cockpit stats view.
-//
-// Strategy: use asset_throughput.rows_written as the primary count source.
-// The L1/L2 writers set rows_written during the build — it is the authoritative
-// count from the last run and avoids expensive live COUNT queries.
-//
-// Live count_sql is only executed for assets where rows_written is null (these
-// are global bg_* reference tables whose writers predate the rows_written
-// convention; they have no chart_id filter so their counts are fast).
-//
-// C2 HYBRID (native ruling 2026-06-26): when ?mode=live is set (explicit Refresh or
-// post-build refetch), the rows_written shortcut is bypassed for global assets so
-// count_sql runs live. On the idle/poll path, rows_written is used as before.
-//
-// Prior perf history:
-// - Per-asset pool.connect() (v1): 76 TLS handshakes on cold pool → 26s
-// - Single connection + SAVEPOINTs (v2): 3 round-trips each × 76 assets → 73-92s
-// - Pure parallel pool.query() (v3): connectionTimeout on tail queries → 8-13s
-// - rows_written shortcut + live fallback (v4, this): ~200ms
-//
-// v5 staleness fix: the rows_written shortcut is a build-time cache and can drift from
-// the live table (e.g. a global asset whose table is emptied out-of-band leaves a stale
-// non-zero rows_written, so the tracker shows phantom rows). The shortcut only EARNS its
-// keep on genuinely large tables where a live COUNT(*) is slow (e.g. ephemeris_daily,
-// ~825k rows). For everything below this threshold a live count is cheap (single-digit ms),
-// so we run it and the displayed number always matches the DB. This keeps the perf win for
-// the one or two bulk reference tables while making every small global asset accurate.
-const LARGE_COUNT_SHORTCUT_THRESHOLD = 50_000
+// Stats source hierarchy:
+//   1. rows_written from asset_throughput (normal polls) — build-time truth, <100ms
+//   2. live count_sql (?mode=live) — operator-triggered only, bypasses cache
+// This eliminates the 40+ COUNT(*) query storm on every 5s poll.
 
 async function fetchAllCounts(
   assets: RegistryAsset[],
@@ -129,21 +106,10 @@ async function fetchAllCounts(
       }
     }
 
-    // rows_written shortcut: use the build-recorded count only for global/bg_ assets whose
-    // tables are large and have no chart_id filter (live COUNT would be expensive).
-    // For per_chart assets the count_sql is indexed by chart_id and fast — always run it
-    // live so the header, preview, and stats all read the same on-disk truth and can never
-    // diverge after a partial build or schema migration.
-    // On ?mode=live (explicit Refresh / post-build refetch), bypass the shortcut so global
-    // assets also get a live count_sql value (C2 native ruling 2026-06-26).
     const tp = throughputMap.get(asset.asset_id)
-    if (
-      !liveMode &&
-      tp != null &&
-      tp.rows_written != null &&
-      tp.rows_written > LARGE_COUNT_SHORTCUT_THRESHOLD &&
-      asset.scope !== 'per_chart'
-    ) {
+    // Always use rows_written for non-live polls — it's the build-recorded truth.
+    // Live COUNT(*) is reserved for ?mode=live (operator-triggered refresh only).
+    if (!liveMode && tp != null && tp.rows_written != null) {
       return {
         asset_id: asset.asset_id,
         actual_rows: tp.rows_written,
@@ -151,8 +117,8 @@ async function fetchAllCounts(
         size_bytes: null,
         last_updated: now,
         error: null,
-        state: 'dormant' as const,  // overridden by deriveState in GET handler
-        last_built_at: null,
+        state: 'dormant' as const,
+        last_built_at: tp.last_built_at ?? null,
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
@@ -208,7 +174,8 @@ async function fetchAllCounts(
       const isTimeout = msg.includes('statement timeout') || msg.includes('canceling statement')
       const isDataPlane = msg.includes('ECONNREFUSED') || msg.includes('connection refused') ||
         msg.includes('ETIMEDOUT') || msg.includes('Connection terminated') ||
-        msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo')
+        msg.includes('connect ETIMEDOUT') || msg.includes('getaddrinfo') ||
+        msg.includes('timeout exceeded when trying to connect')
       return {
         asset_id: asset.asset_id,
         actual_rows: null,
@@ -239,8 +206,13 @@ async function fetchAllCounts(
 
 export async function GET(req: NextRequest) {
   const chartId = req.nextUrl.searchParams.get('chart_id')
-  // C2: ?mode=live bypasses the rows_written shortcut for global assets (used by Refresh path + post-build refetch)
+  // C2: ?mode=live bypasses the rows_written shortcut (used by Refresh path + post-build refetch)
   const liveMode = req.nextUrl.searchParams.get('mode') === 'live'
+
+  // Abort-aware: if client disconnects, skip the DB work
+  if (req.signal?.aborted) {
+    return NextResponse.json({ data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['aborted'] })
+  }
 
   try {
     // Load active assets that have count_sql

@@ -6,6 +6,21 @@ import { createHash } from 'crypto'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
 import { deriveDeleteSqlFromCountSql, EXPLICIT_CLEAR_OPS } from '@/lib/cockpit/assetClearSpec'
 
+// Count queries can hang when the DB pool has long-running queries.
+// Race each count_sql against a 4-second timeout so a single slow table
+// doesn't block the entire preview response.
+const COUNT_TIMEOUT_MS = 4000
+const CONCURRENCY = 8
+
+async function queryWithTimeout<T extends Record<string, unknown>>(sql: string, params: unknown[]): Promise<{ rows: T[] }> {
+  return Promise.race([
+    query<T>(sql, params),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('statement timeout')), COUNT_TIMEOUT_MS)
+    ),
+  ])
+}
+
 interface RegistryRow extends RegistryEntry {
   scope: string
   target_table: string | null
@@ -110,9 +125,14 @@ export async function POST(req: NextRequest) {
     is_clearable: boolean
     error?: string
   }
-  const assetCountResults: AssetCountResult[] = []
 
-  for (const asset of scopeAssets) {
+  // Resolve clear-spec synchronously; separate assets needing a DB count from those that don't
+  interface AssetWithSpec {
+    asset: RegistryRow
+    isClearable: boolean
+    needsCount: boolean  // true = has count_sql and requires a live DB call
+  }
+  const assetSpecs: AssetWithSpec[] = scopeAssets.map(asset => {
     let isClearable = false
     let isExplicitNull = false
 
@@ -127,37 +147,61 @@ export async function POST(req: NextRequest) {
       isClearable = true
     }
 
-    if (!isClearable) {
-      assetCountResults.push({ asset_id: asset.asset_id, target_table: asset.target_table, rows: 0, is_clearable: false })
-      continue
-    }
+    const needsCount = isClearable && !isExplicitNull && !!asset.count_sql
+    return { asset, isClearable, needsCount }
+  })
 
-    // Explicit null → zero-row service asset (no DB query needed)
-    if (isExplicitNull || !asset.count_sql) {
-      assetCountResults.push({ asset_id: asset.asset_id, target_table: asset.target_table, rows: 0, is_clearable: true })
-      continue
-    }
+  // Resolve zero-query results immediately; collect DB-count assets for batching
+  const immediateResults: AssetCountResult[] = []
+  const toCount: AssetWithSpec[] = []
 
+  for (const spec of assetSpecs) {
+    if (!spec.isClearable) {
+      immediateResults.push({ asset_id: spec.asset.asset_id, target_table: spec.asset.target_table, rows: 0, is_clearable: false })
+    } else if (!spec.needsCount) {
+      immediateResults.push({ asset_id: spec.asset.asset_id, target_table: spec.asset.target_table, rows: 0, is_clearable: true })
+    } else {
+      toCount.push(spec)
+    }
+  }
+
+  // Batch count_sql queries CONCURRENCY at a time — mirrors stats/route.ts fetchAllCounts pattern
+  const countedResults: AssetCountResult[] = []
+  const fetchCount = async (spec: AssetWithSpec): Promise<AssetCountResult> => {
     try {
-      const params = asset.scope === 'per_chart' ? [chart_id] : []
-      const { rows: cnt } = await query<{ count: string }>(asset.count_sql, params)
-      assetCountResults.push({
-        asset_id: asset.asset_id,
-        target_table: asset.target_table,
+      const params = spec.asset.scope === 'per_chart' ? [chart_id] : []
+      const { rows: cnt } = await queryWithTimeout<{ count: string }>(spec.asset.count_sql!, params)
+      return {
+        asset_id: spec.asset.asset_id,
+        target_table: spec.asset.target_table,
         rows: parseInt(cnt[0]?.count ?? '0', 10),
         is_clearable: true,
-      })
+      }
     } catch (err) {
-      console.warn(`[clear/preview] count_sql failed for ${asset.asset_id}:`, (err as Error).message)
-      assetCountResults.push({
-        asset_id: asset.asset_id,
-        target_table: asset.target_table,
+      console.warn(`[clear/preview] count_sql failed for ${spec.asset.asset_id}:`, (err as Error).message)
+      return {
+        asset_id: spec.asset.asset_id,
+        target_table: spec.asset.target_table,
         rows: 0,
         error: ((err as Error).message ?? 'unknown').substring(0, 100),
         is_clearable: true,
-      })
+      }
     }
   }
+
+  for (let i = 0; i < toCount.length; i += CONCURRENCY) {
+    const batch = await Promise.all(toCount.slice(i, i + CONCURRENCY).map(fetchCount))
+    countedResults.push(...batch)
+  }
+
+  // Merge: preserve original scopeAssets order for display consistency
+  const resultByAssetId = new Map<string, AssetCountResult>([
+    ...immediateResults.map(r => [r.asset_id, r] as [string, AssetCountResult]),
+    ...countedResults.map(r => [r.asset_id, r] as [string, AssetCountResult]),
+  ])
+  const assetCountResults: AssetCountResult[] = scopeAssets.map(
+    asset => resultByAssetId.get(asset.asset_id) ?? { asset_id: asset.asset_id, target_table: asset.target_table, rows: 0, is_clearable: false }
+  )
 
   const clearableResults = assetCountResults.filter(a => a.is_clearable)
   const notClearableResults = assetCountResults.filter(a => !a.is_clearable)

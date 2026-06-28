@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/date'
-import { useActiveRun } from '@/hooks/useActiveRun'
 import { useCockpitStatus } from '@/hooks/useCockpitStatus'
 import { BuildActionButton } from './BuildActionButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
+import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // Sun-node mark — the brand's sanctioned sacred-geometry glyph (replaces the
 // uncontrolled ◆ Unicode lozenge). A small 4-point star drawn at 1px stroke,
@@ -43,11 +43,19 @@ interface Props {
   birthTime?: string | null
   birthPlace?: string | null
   assets?: { asset_id: string; state: string }[]
+  /** Task 1: active run lifted from CockpitShell — no longer fetched here */
+  activeRun?: ActiveRun | null
+  /** Task 1: isBuilding flag (activeRun !== null) lifted from CockpitShell */
+  isBuilding?: boolean
+  /** Task 7: count of assets currently in error state — shown as badge when > 0 */
+  errorCount?: number
   proMode?: boolean
   onProModeToggle?: () => void
   onGlobalClear?: () => void
   onGlobalRebuild?: () => void
   onRefreshed?: () => void
+  /** Task 1: callback to refresh the active run (was `refreshRun` inside this component) */
+  onRunRefresh?: () => void
   /** 'card' = standalone bordered card (default). 'inline' = compact, no card
    *  chrome — sits at the top of the scrolling ledger column. */
   variant?: 'card' | 'inline'
@@ -60,15 +68,19 @@ export function CockpitHeader({
   birthTime,
   birthPlace,
   assets = [],
+  activeRun = null,
+  isBuilding = false,
+  errorCount = 0,
   proMode = false,
   variant = 'card',
   onProModeToggle,
   onGlobalClear,
   onGlobalRebuild,
   onRefreshed,
+  onRunRefresh,
 }: Props) {
   const [sidecarHealthy, setSidecarHealthy] = useState<boolean | null>(null)
-  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+  // Task 1: useActiveRun removed — activeRun + isBuilding received as props from CockpitShell
 
   useEffect(() => {
     const check = async () => {
@@ -189,8 +201,25 @@ export function CockpitHeader({
           )}
         </div>
 
-        {/* Right: [Build/Rebuild] [Refresh] [Stop | Delete] */}
+        {/* Right: [error badge] [Build/Rebuild] [Refresh] [Stop | Delete] */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+          {/* Task 7: run-level error badge — appears when run=completed but assets errored */}
+          {!isBuilding && errorCount > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono"
+              style={{
+                background: 'rgba(181, 71, 76, 0.12)',
+                border: '1px solid rgba(181, 71, 76, 0.35)',
+                color: 'var(--danger, #e89a9a)',
+                letterSpacing: '0.06em',
+              }}
+            >
+              <span style={{ color: 'var(--marsys-error, #B5474C)' }}>&#9873;</span>
+              {errorCount} {errorCount === 1 ? 'asset' : 'assets'} failed
+            </div>
+          )}
+
           {/* Build/Rebuild — hidden when a run is active */}
           {!globalRunId && (
             <BuildActionButton
@@ -204,8 +233,8 @@ export function CockpitHeader({
                 active_run_id: null,
                 is_paused: false,
               }}
-              onRunStarted={refreshRun}
-              onRunStateChange={refreshRun}
+              onRunStarted={onRunRefresh}
+              onRunStateChange={onRunRefresh}
               onRebuildOverride={deriveGlobalLabel(assets) === 'Rebuild' ? onGlobalRebuild : undefined}
             />
           )}
@@ -220,7 +249,7 @@ export function CockpitHeader({
 
           {/* Stop (when running) or Delete (when idle) */}
           {globalRunId ? (
-            <StopIconButton runId={globalRunId} size={28} onStopped={refreshRun} />
+            <StopIconButton runId={globalRunId} size={28} onStopped={onRunRefresh} />
           ) : (
             <button
               title="Clear instrument"
@@ -308,7 +337,7 @@ export function CockpitHeader({
                 animate={{ width: `${globalProgressPct}%` }}
                 transition={{ type: 'spring', stiffness: 60, damping: 18 }}
               />
-              {/* Shimmer while building (not 100%) */}
+              {/* Shimmer while building (not 100%) — keyframe lives in globals.css */}
               {globalProgressPct < 100 && (
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none',

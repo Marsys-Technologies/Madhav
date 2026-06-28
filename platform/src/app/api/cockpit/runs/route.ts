@@ -171,16 +171,16 @@ export async function POST(req: NextRequest) {
   )
   const runId = runResult.rows[0].id
 
-  // Create build_run_assets
-  const assetInserts = plan.map((asset_id, i) =>
-    query(
-      `INSERT INTO build_run_assets (run_id, asset_id, position, state)
-       VALUES ($1, $2, $3, 'queued')
-       ON CONFLICT (run_id, asset_id) DO NOTHING`,
-      [runId, asset_id, i]
-    )
+  // Create build_run_assets — single multi-row INSERT instead of N parallel queries
+  const placeholders = plan.map((_, i) =>
+    `($1, $${i * 3 + 2}, $${i * 3 + 3}, $${i * 3 + 4})`
+  ).join(', ')
+  const flatParams = [runId, ...plan.flatMap((asset_id, i) => [asset_id, i, 'queued'])]
+  await query(
+    `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ${placeholders}
+     ON CONFLICT (run_id, asset_id) DO NOTHING`,
+    flatParams
   )
-  await Promise.all(assetInserts)
 
   // Fetch the currently deployed job image tag (best-effort; null if GCP unreachable)
   const jobImageTag = await getJobImageTag().catch(() => null)

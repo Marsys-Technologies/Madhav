@@ -41,14 +41,16 @@ export function useActiveRun(
   const onCompletedRef = useRef(options?.onCompleted)
   onCompletedRef.current = options?.onCompleted
 
-  const fetch_ = useCallback(async () => {
+  const fetch_ = useCallback(async (signal?: AbortSignal) => {
     try {
       const r = await fetch(`/api/cockpit/runs/active?chart_id=${chartId}`, {
         credentials: 'include',
         cache: 'no-store',
+        signal,
       })
-      if (!r.ok) return
+      if (!r.ok || signal?.aborted) return
       const body = await r.json()
+      if (signal?.aborted) return
       const newRun: ActiveRun | null = body.data?.run ?? null
       // Belt-and-suspenders: when an active run transitions to null (terminal),
       // trigger an immediate stats refetch so counts update within the 5s poll
@@ -59,19 +61,23 @@ export function useActiveRun(
       prevRunRef.current = newRun
       setRun(newRun)
       setAssets(body.data?.assets ?? [])
-    } catch {
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return
       // network error — keep last known state
     }
   }, [chartId])
 
-  const isRunning = run !== null
   useEffect(() => {
-    fetch_()
-    // Always poll at 5s — a build can move from planned→running→completed in seconds,
-    // and a 30s interval misses the entire active window before isRunning flips.
-    const t = setInterval(fetch_, 5_000)
-    return () => clearInterval(t)
-  }, [fetch_, isRunning])
+    const controller = new AbortController()
+    fetch_(controller.signal)
+    // Poll at 5s during active run, 15s during idle — reduces 24 req/min to 8 req/min at idle
+    const isRunning = prevRunRef.current !== null
+    const t = setInterval(() => fetch_(controller.signal), isRunning ? 5_000 : 15_000)
+    return () => {
+      controller.abort()
+      clearInterval(t)
+    }
+  }, [fetch_])
 
-  return { run, assets, refresh: fetch_ }
+  return { run, assets, refresh: () => fetch_() }
 }

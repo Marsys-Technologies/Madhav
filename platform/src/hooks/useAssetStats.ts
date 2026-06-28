@@ -22,6 +22,8 @@ export function useAssetStats({
   const [lastFetched, setLastFetched] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const inFlightRef = useRef(false)
+  const statsRef = useRef(new Map<string, AssetStats>())
+  const controllersRef = useRef<AbortController[]>([])
 
   const fetchStats = useCallback(
     async (signal: AbortSignal, liveMode = false, force = false) => {
@@ -29,29 +31,40 @@ export function useAssetStats({
       // explicit refetch after a mutation (clear/build/run-complete) must NEVER be dropped —
       // otherwise the tracker keeps showing pre-action numbers until the next poll. force=true
       // bypasses the in-flight guard so post-action refreshes always reach the DB.
-      if (inFlightRef.current && !force) { console.log('[AS] skipping — in flight'); return }
+      if (inFlightRef.current && !force) return
       inFlightRef.current = true
       const modeParam = liveMode ? '&mode=live' : ''
-      console.log('[AS] fetching stats for chartId=', chartId, liveMode ? '(live)' : '')
       try {
         const r = await fetch(
           `/api/cockpit/stats?chart_id=${encodeURIComponent(chartId)}${modeParam}`,
           { credentials: 'include', signal }
         )
-        console.log('[AS] fetch returned, ok=', r.ok, 'aborted=', signal.aborted)
         if (signal.aborted) return
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         const json = await r.json()
         const list: AssetStats[] = json?.data?.assets ?? []
-        console.log('[AS] parsed', list.length, 'stats entries')
         const map = new Map<string, AssetStats>()
         for (const a of list) map.set(a.asset_id, a)
-        setStats(map)
+
+        // Only update state if something actually changed to avoid unnecessary re-renders
+        const prevStats = statsRef.current
+        let changed = map.size !== prevStats.size
+        if (!changed) {
+          for (const [id, a] of map) {
+            const prev = prevStats.get(id)
+            if (!prev || prev.actual_rows !== a.actual_rows || prev.state !== a.state || prev.build_state_stale !== a.build_state_stale) {
+              changed = true
+              break
+            }
+          }
+        }
+        if (changed) {
+          statsRef.current = map
+          setStats(map)
+        }
         setLastFetched(new Date())
         setError(null)
-        console.log('[AS] setStats called')
       } catch (e) {
-        console.log('[AS] catch:', (e as Error)?.name, (e as Error)?.message)
         if (signal.aborted) return
         if ((e as Error)?.name === 'AbortError') return
         setError((e as Error)?.message ?? 'Failed to fetch stats')
@@ -63,7 +76,6 @@ export function useAssetStats({
   )
 
   useEffect(() => {
-    console.log('[AS] effect start, isBuilding=', isBuilding)
     const controller = new AbortController()
     inFlightRef.current = false
 
@@ -72,8 +84,9 @@ export function useAssetStats({
     const id = setInterval(() => fetchStats(controller.signal), pollMs)
 
     return () => {
-      console.log('[AS] cleanup, aborting')
       controller.abort()
+      controllersRef.current.forEach(c => c.abort())
+      controllersRef.current = []
       clearInterval(id)
       inFlightRef.current = false
     }
@@ -84,6 +97,7 @@ export function useAssetStats({
   // force=true so it is never dropped by the in-flight guard.
   const refetch = useCallback(() => {
     const controller = new AbortController()
+    controllersRef.current.push(controller)
     fetchStats(controller.signal, false, true)
   }, [fetchStats])
 
@@ -94,6 +108,7 @@ export function useAssetStats({
   // force=true so it is never dropped by the in-flight guard.
   const refetchLive = useCallback(() => {
     const controller = new AbortController()
+    controllersRef.current.push(controller)
     fetchStats(controller.signal, true, true)
   }, [fetchStats])
 

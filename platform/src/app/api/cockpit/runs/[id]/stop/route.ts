@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 
+export const maxDuration = 8
+
 async function requireSuperAdmin() {
   const user = await getServerUser()
   if (!user) return null
@@ -19,17 +21,22 @@ export async function POST(
 
   const { id } = await params
 
-  const result = await query<{ id: string }>(
-    `UPDATE build_runs
-     SET stop_requested_at = NOW()
-     WHERE id=$1 AND state IN ('running','paused')
-     RETURNING id`,
-    [id]
-  )
+  try {
+    const result = await query<{ id: string }>(
+      `UPDATE build_runs
+       SET stop_requested_at = NOW()
+       WHERE id=$1 AND state IN ('running','paused')
+       RETURNING id`,
+      [id]
+    )
 
-  if (result.rows.length === 0) {
-    return NextResponse.json({ error: 'Run not found or already completed/stopped' }, { status: 404 })
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Run not found or already completed/stopped' }, { status: 404 })
+    }
+
+    return NextResponse.json({ data: { run_id: id, stop_requested: true } })
+  } catch (err) {
+    console.error('[cockpit/runs/stop]', err)
+    return NextResponse.json({ error: 'db error' }, { status: 500 })
   }
-
-  return NextResponse.json({ data: { run_id: id, stop_requested: true } })
 }

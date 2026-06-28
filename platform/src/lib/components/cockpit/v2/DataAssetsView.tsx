@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAssetRegistry } from '@/hooks/useAssetRegistry'
 import { useAssetStats } from '@/hooks/useAssetStats'
-import { useActiveRun } from '@/hooks/useActiveRun'
 import { useCockpitSSE } from '@/hooks/useCockpitSSE'
 import type { CockpitEvent } from '@/hooks/useCockpitSSE'
+import type { ActiveRun } from '@/hooks/useActiveRun'
 import dynamic from 'next/dynamic'
 import { LayerPanel } from './LayerPanel'
 import type { AssetWithState } from './LiveDependencyGraph'
@@ -49,18 +49,18 @@ interface Props {
   header?: React.ReactNode
   /** Incrementing this triggers a full re-fetch of registry + stats + active run (C3). */
   refreshKey?: number
+  /** Task 1: active run lifted to CockpitShell — passed down as a prop */
+  activeRun: ActiveRun | null
+  /** Task 1: refresh callback for the active run — passed from CockpitShell */
+  refreshRun: () => void
 }
 
-export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: Props) {
+export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, activeRun, refreshRun }: Props) {
   const { assets, isLoading, error, refetch: refetchRegistry } = useAssetRegistry()
-  // Stable ref so useActiveRun's onCompleted can call refetchStats without
-  // being declared after it (avoids hook-ordering circular dependency).
+  // Task 1: useActiveRun removed — activeRun + refreshRun received as props from CockpitShell.
+  // Stats still owned here so SSE overlay merging stays local to this component.
+  // Stable ref so the onCompleted callback path still exists if needed via SSE terminal states.
   const refetchStatsRef = useRef<() => void>(() => {})
-  // Wire onCompleted so that when the active run transitions to nil (terminal),
-  // we immediately refetch stats — belt-and-suspenders for heartbeat-only SSE mode (C1-Step2).
-  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId, {
-    onCompleted: () => refetchStatsRef.current(),
-  })
   // Poll at 5s during active builds so the 'building' state window in asset_throughput
   // is actually caught. Without this, stats poll at 30s and always miss the window.
   const { stats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
@@ -147,7 +147,9 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
   const handleNodeClick = useCallback((assetId: string) => {
     const asset = assets.find(a => a.asset_id === assetId)
     if (!asset) return
-    console.log('[DAG] node click:', assetId)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DAG] node click:', assetId)
+    }
     setFocusedAssetId(assetId)
     // Wait 80ms for forceExpand to open the layer, then scroll to the specific row
     setTimeout(() => {
@@ -158,9 +160,10 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
     setTimeout(() => setFocusedAssetId(null), 1500)
   }, [assets])
 
+  // Task 2: memoize assetsWithState — was recomputed on every render.
   // Merge assets + stats + SSE overlay — computed before early returns so the
   // useEffect below can be called unconditionally (Rules of Hooks).
-  const assetsWithState: AssetWithState[] = assets.map(a => {
+  const assetsWithState: AssetWithState[] = useMemo(() => assets.map(a => {
     const s = stats.get(a.asset_id)
     const overlay = sseOverlay.get(a.asset_id)
     return {
@@ -170,7 +173,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey }: P
       actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
       build_state_stale: s?.build_state_stale ?? false,
     }
-  })
+  }), [assets, stats, sseOverlay])
 
   // Notify parent (CockpitShell) whenever the merged state list changes.
   // Must be above early returns — hooks must be called unconditionally.

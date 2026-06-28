@@ -3,16 +3,11 @@ import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 
-async function requireSuperAdmin() {
-  const user = await getServerUser()
-  if (!user) return null
-  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
-  if (rows[0]?.role !== 'super_admin') return null
-  return user
-}
-
 export async function POST(req: NextRequest) {
-  const user = await requireSuperAdmin()
+  // Plan preview is a read-only operation — any authenticated user may call it.
+  // super_admin gate removed so the plan modal works for all users with cockpit access.
+  // NOTE: destructive operations (clear, stop, global build) retain their super_admin gates.
+  const user = await getServerUser()
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => null)
@@ -27,27 +22,32 @@ export async function POST(req: NextRequest) {
     action: BuildAction
   }
 
-  const [registryResult, throughputResult] = await Promise.all([
-    query<RegistryEntry>(
-      `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-       FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
-    ),
-    query<ThroughputEntry>(
-      // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
-      // global assets (L0 bg_*, global services) report their real built state. Without the
-      // global rows the resolver treats every built L0 asset as "not built" and wrongly
-      // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
-      // build. DISTINCT ON prefers the chart-scoped row when both exist.
-      `SELECT DISTINCT ON (asset_id) asset_id, state
-         FROM asset_throughput
-        WHERE chart_id=$1 OR chart_id IS NULL
-        ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
-      [chart_id]
-    ),
-  ])
+  try {
+    const [registryResult, throughputResult] = await Promise.all([
+      query<RegistryEntry>(
+        `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
+         FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
+      ),
+      query<ThroughputEntry>(
+        // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
+        // global assets (L0 bg_*, global services) report their real built state. Without the
+        // global rows the resolver treats every built L0 asset as "not built" and wrongly
+        // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
+        // build. DISTINCT ON prefers the chart-scoped row when both exist.
+        `SELECT DISTINCT ON (asset_id) asset_id, state
+           FROM asset_throughput
+          WHERE chart_id=$1 OR chart_id IS NULL
+          ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
+        [chart_id]
+      ),
+    ])
 
-  const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const plan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
+    const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
+    const plan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
 
-  return NextResponse.json({ data: plan })
+    return NextResponse.json({ data: plan })
+  } catch (err) {
+    console.error('[cockpit/plan]', err)
+    return NextResponse.json({ error: 'db error' }, { status: 500 })
+  }
 }

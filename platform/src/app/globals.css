@@ -1108,3 +1108,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .marsys-cockpit [data-icon-btn]:hover { transform: none; }
 }
+
+/* AssetProgressBar shimmer — global keyframe so the component doesn't inject
+   a <style> tag on every render. The animation name "shimmer" is used by the
+   progress bar's inline style; keep this name stable. */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
@@ -81,6 +81,11 @@ export function LayerPanel({
     if (forceExpand) setExpanded(true)
   }, [forceExpand])
 
+  // Task 5: sync when defaultExpanded prop changes (e.g. build starts and auto-expands)
+  useEffect(() => {
+    if (defaultExpanded) setExpanded(true)
+  }, [defaultExpanded])
+
   const layerNames = LAYER_NAMES[layer] ?? { sa: layer, en: layer }
 
   const totalRows = assets.reduce((sum, asset) => {
@@ -94,7 +99,10 @@ export function LayerPanel({
     const s = stats.get(a.asset_id)
     return !s?.actual_rows && !s?.error
   }).length
-  const staleCount = 0 // populated by throughput state in Phase 9
+  const staleCount = useMemo(
+    () => activeAssets.filter(a => stats.get(a.asset_id)?.state === 'stale').length,
+    [activeAssets, stats]
+  )
   const errorCount = activeAssets.filter(a => stats.get(a.asset_id)?.state === 'error').length
 
   // Active run overlaps this layer if scope is global or scope_target matches this layer
@@ -188,7 +196,22 @@ export function LayerPanel({
             </span>
             <span aria-hidden style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.14)' }} />
             <span style={{ minWidth: '88px', textAlign: 'right', color: 'var(--on-dark-mut)' }}>
-              {totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'}
+              {stats.size > 0 ? (
+                totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'
+              ) : (
+                <span
+                  aria-label="Loading row count"
+                  style={{
+                    display: 'inline-block',
+                    width: '4.5ch',
+                    height: '0.85em',
+                    borderRadius: '2px',
+                    background: 'var(--obsidian-border-mid, #252119)',
+                    verticalAlign: 'middle',
+                    animation: 'pulse 1.4s ease-in-out infinite',
+                  }}
+                />
+              )}
             </span>
             {errorCount > 0 && (
               <>

@@ -44,6 +44,20 @@ export function useCockpitSSE(
       }, 60_000)
     }
 
+    /** Shared handler — called from both named addEventListener callbacks and
+     *  the onmessage fallback so that servers that omit event: lines still work.
+     *  Resets backoff counters on ANY successful message, not just 'hello'. */
+    function handleEvent(type: string, payload: unknown) {
+      // Reset backoff on any successful message
+      attemptCount = 0
+      retryDelay = 1000
+      resetHeartbeat()
+      if (type === 'hello') return  // hello is connection bookkeeping, not a CockpitEvent
+      try {
+        onEventRef.current(payload as CockpitEvent)
+      } catch { /* ignore */ }
+    }
+
     function connect() {
       if (aborted) return
 
@@ -63,32 +77,35 @@ export function useCockpitSSE(
 
       es = new EventSource(`/api/cockpit/sse?chart_id=${encodeURIComponent(chartId)}`, { withCredentials: true })
 
+      // Named-event listeners (primary path — server sends event: <type> lines)
       es.addEventListener('hello', () => {
-        attemptCount = 0   // reset on successful connection
-        retryDelay = 1000
-        resetHeartbeat()
+        handleEvent('hello', null)
       })
 
       es.addEventListener('asset.state_change', (e) => {
-        resetHeartbeat()
-        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+        try { handleEvent('asset.state_change', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
       })
       es.addEventListener('asset.progress', (e) => {
-        resetHeartbeat()
-        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+        try { handleEvent('asset.progress', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
       })
       es.addEventListener('edge.first_signal', (e) => {
-        resetHeartbeat()
-        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+        try { handleEvent('edge.first_signal', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
       })
       es.addEventListener('asset.substep', (e) => {
-        resetHeartbeat()
-        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+        try { handleEvent('asset.substep', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
       })
       es.addEventListener('run.state_change', (e) => {
-        resetHeartbeat()
-        try { onEventRef.current(JSON.parse((e as MessageEvent).data) as CockpitEvent) } catch { /* ignore */ }
+        try { handleEvent('run.state_change', JSON.parse((e as MessageEvent).data)) } catch { /* ignore */ }
       })
+
+      // Fallback: onmessage fires for unnamed frames (no event: line).
+      // Routes by the payload's type field so servers that omit event: still work.
+      es.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data) as { type?: string }
+          if (payload?.type) handleEvent(payload.type, payload)
+        } catch { /* ignore malformed */ }
+      }
 
       es.onerror = () => {
         es?.close()

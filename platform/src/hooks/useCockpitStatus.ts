@@ -12,19 +12,27 @@ export function useCockpitStatus(): CockpitStatus {
   const [status, setStatus] = useState<CockpitStatus>({ writers: null, queue: null, build: null })
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetch_ = async () => {
       try {
-        const r = await fetch('/api/cockpit/status', { credentials: 'include', cache: 'no-store' })
-        if (!r.ok) return
+        const r = await fetch('/api/cockpit/status', { credentials: 'include', signal: controller.signal })
+        if (!r.ok || controller.signal.aborted) return
         const body = await r.json()
+        if (controller.signal.aborted) return
         setStatus(body.data)
-      } catch {
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return
         // keep last known
       }
     }
+
     fetch_()
     const t = setInterval(fetch_, 30_000)
-    return () => clearInterval(t)
+    return () => {
+      controller.abort()
+      clearInterval(t)
+    }
   }, [])
 
   return status

@@ -2,11 +2,6 @@ import { NextRequest } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 
-async function isSuperAdmin(uid: string): Promise<boolean> {
-  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [uid])
-  return rows[0]?.role === 'super_admin'
-}
-
 export const dynamic = 'force-dynamic'
 
 const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
@@ -20,7 +15,6 @@ function pubsubEnabled(): boolean {
 export async function GET(req: NextRequest) {
   const user = await getServerUser()
   if (!user) return new Response('Forbidden', { status: 403 })
-  if (!(await isSuperAdmin(user.uid))) return new Response('Forbidden', { status: 403 })
 
   const chartId = req.nextUrl.searchParams.get('chart_id')
   if (!chartId) return new Response('chart_id required', { status: 400 })
@@ -78,13 +72,23 @@ async function pubsubStream(
         try { controller.enqueue(encoder.encode(data)) } catch { /* closed */ }
       }
 
-      enqueue(`: hello ${chartId}\n\n`)
+      // Named hello event so the client addEventListener('hello') handler fires
+      enqueue(`event: hello\ndata: ${JSON.stringify({ connected: true, chart_id: chartId })}\n\n`)
 
       const heartbeat = setInterval(() => enqueue(`: hb\n\n`), 30_000)
 
       sub.on('message', (message) => {
         try {
-          enqueue(`data: ${message.data.toString()}\n\n`)
+          const raw = message.data.toString()
+          // Pub/Sub messages are expected to carry a `type` field matching the
+          // SSE event name (e.g. "asset.state_change", "run.state_change").
+          // Parse the payload to extract the type so we can set the event: line.
+          let eventType = 'message'
+          try {
+            const parsed = JSON.parse(raw) as { type?: string }
+            if (parsed?.type) eventType = parsed.type
+          } catch { /* not JSON — fall through with generic 'message' */ }
+          enqueue(`event: ${eventType}\ndata: ${raw}\n\n`)
           message.ack()
         } catch {
           message.nack()
@@ -135,7 +139,8 @@ function pollingStream(
         try { controller.enqueue(encoder.encode(data)) } catch { /* closed */ }
       }
 
-      enqueue(`data: ${JSON.stringify({ type: 'hello', chart_id: chartId })}\n\n`)
+      // Named hello event so the client addEventListener('hello') handler fires
+      enqueue(`event: hello\ndata: ${JSON.stringify({ connected: true, chart_id: chartId })}\n\n`)
 
       let lastRunId: string | null = null
       let lastState: string | null = null
@@ -143,6 +148,8 @@ function pollingStream(
       const pollRun = async () => {
         try {
           const { rows } = await query<{ id: string; state: string }>(
+            // Index: build_runs_chart_state_planned_idx covers planned/running/paused
+            // See migration NNN_fix_build_runs_active_index.sql
             `SELECT id, state FROM build_runs
               WHERE chart_id=$1
               ORDER BY created_at DESC LIMIT 1`,
@@ -161,7 +168,7 @@ function pollingStream(
 
           // Emit run.state_change when an active run reaches a terminal state
           if (lastState && ACTIVE_STATES.has(lastState) && state && TERMINAL_STATES.has(state)) {
-            enqueue(`data: ${JSON.stringify({ type: 'run.state_change', run_id: runId, state, chart_id: chartId })}\n\n`)
+            enqueue(`event: run.state_change\ndata: ${JSON.stringify({ type: 'run.state_change', run_id: runId, state, chart_id: chartId })}\n\n`)
           }
           lastState = state
         } catch {

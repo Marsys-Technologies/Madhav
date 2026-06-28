@@ -11,6 +11,7 @@ import { WorkflowView } from './WorkflowView'
 import { AgentsView } from './AgentsView'
 import { ClearConfirmModal } from './ClearConfirmModal'
 import { useChartContext } from '@/hooks/useChartContext'
+import { useActiveRun } from '@/hooks/useActiveRun'
 import type { AssetWithState } from './LiveDependencyGraph'
 
 type Tab = 'data' | 'workflow' | 'agents'
@@ -46,23 +47,35 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('data')
   const { chartName, birthDate, birthTime, birthPlace } = useChartContext(chartId, initialChartMeta)
 
-  // Asset state summary — populated by DataAssetsView via onAssetsReady
+  // Asset state summary — populated by DataAssetsView via onAssetsReady (merged state list)
   const [assetStates, setAssetStates] = useState<{ asset_id: string; state: string }[]>([])
 
-  // Global clear modal state
+  // Single useActiveRun instance — lifted from CockpitHeader and DataAssetsView.
+  // Previously both components had their own 5s polling loop to the same endpoint.
+  const { run: activeRun, refresh: refreshRun } = useActiveRun(chartId)
+  const isBuilding = activeRun !== null
+
+  // Global clear modal state — clearModalOpen lets us show the modal immediately
+  // (with isLoading skeleton) while clearPreview is still being fetched.
+  const [clearModalOpen, setClearModalOpen] = useState(false)
   const [clearPreview, setClearPreview] = useState<ClearPreview | null>(null)
   const [clearLoading, setClearLoading] = useState(false)
 
   // Whether the clear is part of a Rebuild flow (chains a build POST after clear)
   const [rebuildMode, setRebuildMode] = useState(false)
 
+  // handleAssetsReady: receives the merged (assets + stats + SSE overlay) list from
+  // DataAssetsView. Used for error badge count (Task 7) and header label logic.
   const handleAssetsReady = useCallback((assets: AssetWithState[]) => {
     setAssetStates(assets.map(a => ({ asset_id: a.asset_id, state: a.state })))
   }, [])
 
-  // Fetch a global clear preview and open the modal
+  // Open the modal immediately, then fetch preview async (loading skeleton while waiting).
   const openGlobalClearModal = useCallback(async (isRebuild = false) => {
+    setClearModalOpen(true)
+    setClearPreview(null)
     setClearLoading(true)
+    setRebuildMode(isRebuild)
     try {
       const r = await fetch('/api/cockpit/clear', {
         method: 'POST',
@@ -72,10 +85,10 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
       })
       const body = await r.json()
       if (!r.ok) throw new Error(body.error ?? 'Failed to fetch clear preview')
-      setRebuildMode(isRebuild)
       setClearPreview(body.preview)
     } catch (e) {
       toast.error((e as Error).message)
+      setClearModalOpen(false)
     } finally {
       setClearLoading(false)
     }
@@ -104,11 +117,13 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   }, [rebuildMode, chartId])
 
   const handleClearSuccess = useCallback(() => {
+    setClearModalOpen(false)
     setClearPreview(null)
     setRefreshKey(k => k + 1)
   }, [])
 
   const handleClearClose = useCallback(() => {
+    setClearModalOpen(false)
     setClearPreview(null)
     setRebuildMode(false)
   }, [])
@@ -118,6 +133,10 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   // Incrementing this key triggers DataAssetsView to re-fetch all live data.
   const [refreshKey, setRefreshKey] = useState(0)
   const handleRefreshed = useCallback(() => setRefreshKey(k => k + 1), [])
+
+  // Error badge count — derived from the merged state list that DataAssetsView
+  // reports via onAssetsReady. No extra polling needed.
+  const errorCount = assetStates.filter(a => a.state === 'error').length
 
   // The chart identity + telemetry + actions, compact — rides at the top of the
   // scrolling ledger column (no full-width header card; graph gets the height).
@@ -130,11 +149,15 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
       birthTime={birthTime}
       birthPlace={birthPlace}
       assets={assetStates}
+      activeRun={activeRun}
+      isBuilding={isBuilding}
+      errorCount={errorCount}
       proMode={proMode}
       onProModeToggle={() => setProMode(p => !p)}
       onGlobalClear={clearLoading ? undefined : handleGlobalClear}
       onGlobalRebuild={clearLoading ? undefined : handleGlobalRebuild}
       onRefreshed={handleRefreshed}
+      onRunRefresh={refreshRun}
     />
   )
 
@@ -174,7 +197,14 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
           transition={{ duration: DUR.micro }}
           style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
-          <DataAssetsView chartId={chartId} onAssetsReady={handleAssetsReady} header={headerEl} refreshKey={refreshKey} />
+          <DataAssetsView
+            chartId={chartId}
+            onAssetsReady={handleAssetsReady}
+            header={headerEl}
+            refreshKey={refreshKey}
+            activeRun={activeRun}
+            refreshRun={refreshRun}
+          />
         </motion.div>
       )}
       {activeTab === 'workflow' && proMode && (
@@ -190,12 +220,13 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
         </motion.div>
       )}
 
-      {clearPreview && (
+      {clearModalOpen && (
         <ClearConfirmModal
           chartId={chartId}
           scope="global"
           scopeTarget={null}
           preview={clearPreview}
+          isLoading={clearLoading}
           onClose={handleClearClose}
           onSuccess={handleClearSuccess}
           onAfterClear={handleAfterClear}
