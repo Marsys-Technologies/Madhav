@@ -2173,7 +2173,8 @@ def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str,
         for row in rows
     ]
 
-    conn.executemany(_UPSERT_SQL, params_list)
+    with conn.cursor() as _cur:
+        _cur.executemany(_UPSERT_SQL, params_list)
 
     # On the conformed orchestrator path (commit=False) the caller's SAVEPOINT +
     # per-sub-step commit own atomicity; only the legacy CLI path commits here.
