@@ -200,14 +200,7 @@ class KaSangamWriter(WriterBase):
     # ── substep implementations ───────────────────────────────────────────────
 
     def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
-        # Idempotency: clear phala_anchors convergence rows before deleting kala_convergence.
-        # phala_anchors.convergence_id has ON DELETE SET NULL; if a null row already exists
-        # with the same natural key, the cascade produces a UniqueViolation.
         with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM phala_anchors WHERE chart_id = %s AND anchor_source = 'convergence'",
-                (chart_id,),
-            )
             cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
                         (chart_id,))
 
@@ -246,12 +239,6 @@ class KaSangamWriter(WriterBase):
         # substeps scope the delete to this signal only.
         with conn.cursor() as cur:
             if idx == 0:
-                # Clear phala_anchors before deleting kala_convergence (idempotent even if
-                # _substep_near already ran — prevents ON DELETE SET NULL UniqueViolation).
-                cur.execute(
-                    "DELETE FROM phala_anchors WHERE chart_id = %s AND anchor_source = 'convergence'",
-                    (chart_id,),
-                )
                 cur.execute(
                     "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
                     (chart_id,),
