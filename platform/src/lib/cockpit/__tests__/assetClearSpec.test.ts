@@ -24,7 +24,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   mi_pramana: ['mimamsa_reliability', 'mimamsa_calibration'],
   mi_pariksha: ['mimamsa_attribution', 'mimamsa_discoveries', 'mimamsa_qa_eval'],
   mi_darshana: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'],
-  mi_adhilepa: ['mimamsa_load_bearing'],
+  mi_adhilepa: ['mimamsa_load_bearing', 'mimamsa_convergence_adjustment', 'mimamsa_anchor_adjustment'],
 }
 
 describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
