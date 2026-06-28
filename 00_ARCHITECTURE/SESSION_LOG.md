@@ -30144,3 +30144,168 @@ session_close:
 **Build-path remediation complete (2026-06-28).** 10 blockers fixed, 7 enhancements live, 4 new Bodha writers registered, all merged to main with 3,471 tests passing. **Pending prod ops**: apply migrations `platform/migrations/358_bodha_orphaned_writer_registry.sql` and `platform/supabase/migrations/361_kala_convergence_domain.sql`. Then: run native 482012f1 rebuild to exercise the new writers end-to-end.
 
 *End of ABHINANDAN-REBUILD-L1L5-2026-06-27 entry — 2026-06-27.*
+
+---
+
+## ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28 — 2026-06-28, COMPLETE
+
+```yaml
+session_open:
+  session_id: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
+  opened_on: 2026-06-28
+  cowork_thread_name: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
+  brief: 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_ABHINANDAN_REGEN_AND_TRACKER_SHAKEDOWN_v1_0.md
+  objective: >
+    Regenerate Abhinandan Mohanty (1c826d5a) end-to-end on post-remediation code;
+    shake down the Nirmāṇa build tracker across 5 axes (A correctness, B UI/UX,
+    C reconciliation, D refresh/liveness, E performance).
+  may_touch:
+    - platform/src/lib/cockpit/assetClearSpec.ts
+    - platform/src/components/cockpit/ClearConfirmModal.tsx
+    - platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py
+    - platform/python-sidecar/ga_writers/ga_dashas_writer.py
+    - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+    - 00_ARCHITECTURE/SESSION_LOG.md
+    - 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_ABHINANDAN_REGEN_AND_TRACKER_SHAKEDOWN_v1_0.md
+  must_not_touch:
+    - "chart_id = '482012f1-710e-4a25-994a-93821f5871aa' (native — never)"
+    - "layer = 'brahmagyan' (L0 — never clear/rebuild/refresh)"
+    - platform/python-sidecar/pipeline/orchestrator/ (FROZEN contract — no modifications)
+  predecessor_session: MCP-TOOL-HYGIENE-ISSUE7-2026-06-28
+  current_state_version_at_open: 6.05
+```
+
+**Environment**: Claude Code (VSCode extension, Antigravity, Playwright MCP + postgres MCP)
+**Chart scope**: Abhinandan Mohanty `1c826d5a-41cb-4450-b4dc-59d440e5f75a` ONLY
+
+### PRE-FLIGHT
+
+- Migration 358 (4 bodha writers in asset_registry, has_writer=true): **confirmed on prod** ✅
+- Migration 361 (kala_convergence.domain + mode CHECK 'D'): **confirmed on prod** ✅
+- Deployed sidecar SHA: `8a0ac5af`+ (post-remediation) ✅
+- L0 Brahmagyan: 27 lit assets, 266 remedy corpus rows, identity = "Abhinandan Mohanty" ✅
+- Native `482012f1` chart_facts: 142,416 rows — never touched ✅
+
+### PHASE 1 — Tracker fixes (commit `9c89e24d`)
+
+**Fix 1 — ph_rectification multi-table clear** (`platform/src/lib/cockpit/assetClearSpec.ts`):
+- Root cause: `ph_rectification` writes two tables (phala_rectification primary +
+  phala_rectification_best staged-best), but its count_sql/target_table referenced only
+  phala_rectification. `deriveDeleteSqlFromCountSql` cleared the primary table only; residue
+  in phala_rectification_best caused the clear preview to loop ("won't clear").
+- Fix: added `ph_rectification` entry to `EXPLICIT_CLEAR_OPS` listing both tables FK-child-first.
+- Verified: clear empties both tables.
+
+**Fix 2 — Instant post-delete refetch** (`platform/src/components/cockpit/ClearConfirmModal.tsx`):
+- Root cause: no refetch trigger after successful clear/execute — UI stayed stale up to 30s
+  (idle poll interval). User explicitly reported "refresh not happening immediately."
+- Fix: on successful clear/execute, call `refetchStats()` + `refreshRun()` immediately.
+
+### PHASE 2 — Writer bug fixes
+
+**Fix 3 — bo_cdlm_summary column alias** (`5ba7ade0`, deployed 11:29 UTC):
+- Root cause: writer queried `contradiction_density` from `bodha_cdlm_cells` but the column
+  doesn't exist there; actual column is `asymmetry_score` (numeric semantic proxy).
+  `bodha_cdlm_chart_summary` has `contradiction_density` as destination — correct.
+- Fix: `asymmetry_score AS contradiction_density` in SELECT.
+- File: `platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py` line 104.
+
+**Fix 4 — ga_dashas executemany cursor** (`c9fada9b`, deployed ~11:40 UTC):
+- Root cause: psycopg3 `Connection` has no `executemany()` method — only `Cursor` does.
+  Prior optimization called `conn.executemany()` directly → `AttributeError` at runtime.
+- Fix: `with conn.cursor() as _cur: _cur.executemany(_UPSERT_SQL, params_list)`.
+- File: `platform/python-sidecar/ga_writers/ga_dashas_writer.py` line 2176.
+
+### PHASE 2 — Rebuild sequence
+
+| Run | Plan | Result | Elapsed |
+|---|---|---|---|
+| `94943822` | ga_dashas only | ✅ completed | **439s** (was 2270s — **80.7% faster**) |
+| `2954e04c` | 7 stale ganita assets (ga_structural, ga_sade_sati, ga_tajaka, ga_condition, ga_yoga, ga_vastu, ga_medical) | ✅ completed 7/7 | 252s |
+| `67cd16cf` | bo_cdlm_summary | ✅ completed | 2s |
+
+Abhinandan final asset state:
+- L1 Gaṇita: 20 assets lit (all ga_* complete) — chart_dashas 538,337 rows ✅
+- L2 Bodha: 4 writers lit (bo_chart_gestalt, bo_cgm_motifs, bo_cgm_paths, bo_cdlm_summary) — cdlm_summary 5 rows ✅
+- L3/L4/L5: dormant (placeholder writers only — expected; no per-layer campaign yet)
+- L0 Brahmagyan: 27 lit, untouched throughout ✅
+- Native `482012f1`: never touched (142,416 chart_facts verified post-rebuild) ✅
+
+### AXIS E — Performance
+
+- **ga_dashas**: 2270s (row-by-row baseline) → **439s** (cursor.executemany batch insert) = **80.7% reduction**
+- Ganita 7-stale update: **252s** total
+- bo_cdlm_summary (light writer, 5 rows): **2s**
+
+### Tracker shakedown findings (AXES A–D)
+
+**AXIS A — Correctness:**
+- `action='update'` on ganita layer excludes `error`-state assets (only includes dormant+stale).
+  After cursor error, ga_dashas was `error` not `dormant`; update plan omitted it. Workaround:
+  use `action='build'` for error-state assets. (Minor logic gap — documented, not fixed this session.)
+- Stuck-planned run (`eb342964`) created by 500-before-invokeRunJob pattern: watchdog cleaned it
+  after 10 min per its planned-run reaper (correct behavior, no bug).
+
+**AXIS B — UI/UX:**
+- 409 one-active-run gate working correctly.
+- Stop API correctly restricted to running/paused (not planned) state.
+- Cockpit identity correct: "Abhinandan Mohanty" throughout.
+
+**AXIS C — Reconciliation:**
+- clear execute `rows: 0` cosmetic (pg `result.rowCount` returns null in SAVEPOINT context;
+  `?? 0` converts to 0 in display). Data IS deleted (confirmed by direct DB count). Not fixed.
+
+**AXIS D — Refresh/Liveness:**
+- Post-delete instant refetch: **fixed** (Fix 2 above, commit `9c89e24d`).
+
+**AXIS E — Performance:**
+- ga_dashas 80.7% speedup: **fixed** (Fix 4, `c9fada9b`).
+
+### Safety spot-checks
+
+| Check | Result |
+|---|---|
+| L0 Brahmagyan counts unchanged | ✅ 27 lit assets, 266 remedy corpus rows — never touched |
+| Abhinandan identity | ✅ "Abhinandan Mohanty" throughout |
+| Native `482012f1` untouched | ✅ 142,416 chart_facts, zero data operations issued |
+| FROZEN orchestrator contract | ✅ 0 violations; all fixes are writer-only or UI-only |
+| ga_dashas row count | ✅ 538,337 (matches prior build) |
+| bo_cdlm_summary rows | ✅ 5 (1 per ayanamsha) |
+
+### Git state
+
+- All session fixes merged to main and deployed before re-triggering:
+  - `9c89e24d` — PHASE 1 tracker fixes
+  - `5ba7ade0` — bo_cdlm_summary column alias (deployed 11:29 UTC)
+  - `c9fada9b` — ga_dashas cursor fix (deployed ~11:40 UTC)
+- HEAD == origin/main ✅
+- Note: unstaged `RETRIEVAL_AUTONOMOUS_RUN_OUTCOME_v1_0.md` + untracked retrieval briefs/accuracy
+  files are pre-existing from prior retrieval sessions — not this session's scope.
+
+### Deferred (per brief §0)
+
+Deep data-correctness audit (salience stratification, domain population, MSR constituent_facts
+grounding, contradiction analysis) — explicitly deferred to a separate session per brief §0.
+
+```yaml
+session_close:
+  session_id: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
+  closed_on: 2026-06-28
+  outcome: >
+    COMPLETE — 4 bugs fixed (ph_rectification clear, post-delete refetch, bo_cdlm_summary
+    column alias, ga_dashas cursor), Abhinandan 1c826d5a fully rebuilt L1/L2, ga_dashas
+    80.7% faster (2270s → 439s), all commits deployed, L0 untouched, native never touched.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: L2 Bodha (NEXT) — unchanged
+  current_state_updated: true
+  current_state_version: 6.06
+  session_log_appended: true
+  red_team_pass: "n/a — tracker shakedown + non-native rebuild (not a macro-phase close)"
+  next_session_objective: >
+    Deep data-correctness audit for Abhinandan 1c826d5a (salience, domain population,
+    MSR constituent_facts grounding, contradictions). Then ISSUE-4 faithfulness fix —
+    L2 Bodha MSR rebuild for native 482012f1 to raise grounding from 6.88% to ≥80%.
+```
+
+*End of ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28 entry — 2026-06-28.*

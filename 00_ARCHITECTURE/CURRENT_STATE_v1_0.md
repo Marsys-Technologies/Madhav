@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.05
+version: 6.06
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,41 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.06 (2026-06-28, ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28):
+    **Abhinandan Mohanty (1c826d5a) rebuilt end-to-end via Nirmāṇa tracker shakedown.**
+    PRE-FLIGHT: migrations 358+361 confirmed on prod; deployed SHA on post-remediation code.
+    PHASE 1 — 2 tracker fixes (commit 9c89e24d):
+      (1) ph_rectification added to EXPLICIT_CLEAR_OPS — both tables (phala_rectification +
+          phala_rectification_best) cleared; root cause: deriveDeleteSqlFromCountSql only
+          cleared the primary table, leaving phala_rectification_best as residue.
+      (2) Instant post-delete refetch — ClearConfirmModal.tsx was not triggering refetchStats()
+          after clear/execute; UI stayed stale for up to 30s; fixed to refetch immediately.
+    PHASE 2 — 2 writer bugs fixed + deployed:
+      (3) 5ba7ade0: bo_cdlm_summary column alias — bodha_cdlm_cells has asymmetry_score (not
+          contradiction_density); aliased AS contradiction_density in SELECT.
+      (4) c9fada9b: ga_dashas executemany — psycopg3 Connection has no executemany(); fixed
+          to use cursor: "with conn.cursor() as _cur: _cur.executemany(...)".
+    AXIS E performance: ga_dashas batch-insert cursor fix cut rebuild time 2270s → 439s (80.7%
+    faster). Ganita stale-7 update: 252s. bo_cdlm_summary light writer: 2s.
+    Final Abhinandan state: L1 20 lit (all ga_* assets); L2 4 Bodha writers lit (bo_chart_gestalt,
+    bo_cgm_motifs, bo_cgm_paths, bo_cdlm_summary); L3/L4/L5 dormant (placeholder writers only —
+    no chart data expected). L0 Brahmagyan untouched (27 lit). Native 482012f1 never touched.
+    open_items:
+      - Abhinandan L3/L4/L5 build: blocked on per-layer campaign (ka_*/ph_*/mi_* writers dormant)
+      - ISSUE-4: faithfulness — constituent_facts_array grounding 6.88% (L2 Bodha MSR rebuild needed)
+      - git working tree: unstaged retrieval-session file (RETRIEVAL_AUTONOMOUS_RUN_OUTCOME_v1_0.md)
+        + untracked briefs/accuracy files — pre-existing from retrieval sessions, not this scope
+      - Deep data-correctness audit (salience, domain population, MSR contradictions) deferred
+        per brief §0 — separate session
+    last_session_id: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28.
+    predecessor_session: MCP-TOOL-HYGIENE-ISSUE7-2026-06-28.
+    next_session_objective: >
+      "Abhinandan 1c826d5a tracker shakedown complete — 4 bugs fixed, 80% ga_dashas speedup,
+      all L1/L2 assets lit. Next: (a) deep data-correctness audit for Abhinandan — salience
+      stratification, domain population, MSR constituent_facts grounding, contradictions; this
+      is the per-§0 deferred audit; (b) ISSUE-4 — L2 Bodha MSR rebuild for native 482012f1
+      to raise faithfulness from 6.88% → ≥80%; (c) commit unstaged retrieval-session files."
+    file_updated_at: 2026-06-28. file_updated_by_session: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28.
   - v6.05 (2026-06-28, MCP-TOOL-HYGIENE-ISSUE7-2026-06-28):
     **ISSUE-7 RESOLVED — MCP tool hygiene complete.**
     19 contaminated legacy MCP tool files in platform-mcp/src/tools/ retired (10) or scrubbed (9).
