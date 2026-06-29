@@ -55,9 +55,9 @@ export function PlanBar({ plan, currentAssetId, assetStateMap }: PlanBarProps) {
     <div style={{ width: '100%' }}>
       {/* Cluster labels */}
       <div style={{ display: 'flex', gap: '3px', marginBottom: '3px' }}>
-        {clusters.map(cluster => (
+        {clusters.map((cluster, i) => (
           <div
-            key={cluster.layer}
+            key={`${cluster.layer}-${i}`}
             style={{ flex: cluster.assets.length + ' 0 0%', minWidth: 0, overflow: 'hidden' }}
           >
             <div style={{
@@ -74,11 +74,11 @@ export function PlanBar({ plan, currentAssetId, assetStateMap }: PlanBarProps) {
       </div>
       {/* Segment track */}
       <div style={{ display: 'flex', gap: '3px', height: '6px' }}>
-        {clusters.map(cluster => {
+        {clusters.map((cluster, i) => {
           const gold = LAYER_GOLD[cluster.layer] ?? '#A87C2A'
           return (
             <div
-              key={cluster.layer}
+              key={`${cluster.layer}-${i}`}
               style={{ flex: cluster.assets.length + ' 0 0%', display: 'flex', gap: '1px' }}
             >
               {cluster.assets.map(assetId => {
