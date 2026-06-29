@@ -288,6 +288,7 @@ export function LayerPanel({
               }}
               onRunStarted={onRunStarted}
               onRunStateChange={onRunStarted}
+              assets={assets}
             />
           )}
 

@@ -13,6 +13,14 @@ interface ScopeStats {
   is_paused?: boolean
 }
 
+interface AssetNode {
+  asset_id: string
+  sanskrit_name: string
+  english_name: string
+  depends_on?: string[] | null
+  catalog_status?: string | null
+}
+
 interface Props {
   chartId: string
   scope: BuildScope
@@ -23,6 +31,8 @@ interface Props {
   onRunStateChange?: () => void
   /** When provided and action === 'rebuild', called instead of opening PlanModal */
   onRebuildOverride?: () => void
+  /** Asset metadata for badge rendering in PlanModal */
+  assets?: AssetNode[]
 }
 
 function deriveAction(stats: ScopeStats): { label: string; action: BuildAction } {
@@ -39,6 +49,7 @@ export function BuildActionButton({
   onRunStarted,
   onRunStateChange,
   onRebuildOverride,
+  assets,
 }: Props) {
   const [showModal, setShowModal] = useState(false)
 
@@ -104,6 +115,7 @@ export function BuildActionButton({
             setShowModal(false)
             onRunStarted?.(runId)
           }}
+          assets={assets}
         />
       )}
     </>
