@@ -71,11 +71,13 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   }, [])
 
   // Open the modal immediately, then fetch preview async (loading skeleton while waiting).
+  // Also fire a live stats refresh so the tracker and dialog show the same counts.
   const openGlobalClearModal = useCallback(async (isRebuild = false) => {
     setClearModalOpen(true)
     setClearPreview(null)
     setClearLoading(true)
     setRebuildMode(isRebuild)
+    setRefreshKey(k => k + 1)  // sync stats tracker to live counts before user confirms
     try {
       const r = await fetch('/api/cockpit/clear', {
         method: 'POST',
