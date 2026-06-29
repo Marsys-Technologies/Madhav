@@ -49,13 +49,13 @@ export async function POST(req: NextRequest) {
     const medianResult = await query<{ asset_id: string; median_seconds: number }>(
       `SELECT asset_id,
               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
-                EXTRACT(EPOCH FROM (completed_at - started_at))
+                EXTRACT(EPOCH FROM (ended_at - started_at))
               )::numeric AS median_seconds
        FROM build_run_assets
        WHERE asset_id = ANY($1)
-         AND completed_at IS NOT NULL
+         AND ended_at IS NOT NULL
          AND started_at IS NOT NULL
-         AND state = 'lit'
+         AND state = 'complete'
        GROUP BY asset_id`,
       [plan.plan]
     )
