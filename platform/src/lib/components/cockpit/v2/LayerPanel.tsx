@@ -167,7 +167,7 @@ export function LayerPanel({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '16px',
+          gap: '8px',
           padding: '12px 16px',
           cursor: 'pointer',
           background: 'var(--black-raised)',
@@ -221,54 +221,54 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Right: gauge + [Build/Rebuild] [Refresh] [Stop | Delete] */}
+        {/* Gauge — own flex child so space-between spreads name / gauge / buttons */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}
+          style={{ width: '210px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Two-column gauge: Assets Built + Rows + completion bar */}
-          <div
-            style={{ width: '200px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Two-column numeric row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
-              <div>
-                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
-                  Assets Built
-                </div>
-                <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
-                  <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
-                </div>
+          {/* Two-column numeric row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
+            <div>
+              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                Assets Built
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
-                  Rows
-                </div>
-                <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
-                  {totalRows > 0 ? totalRows.toLocaleString() : '—'}
-                </div>
+              <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
+                <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
               </div>
             </div>
-            {/* 3px completion bar */}
-            <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
-              <div style={{
-                position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
-                width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
-                background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
-                transition: 'width 0.6s ease-out',
-              }} />
-              {layerIsBuilding && (
-                <div style={{
-                  position: 'absolute', inset: 0, pointerEvents: 'none',
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
-                  animation: 'shimmer 2.2s linear infinite',
-                }} />
-              )}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                Rows
+              </div>
+              <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
+                {totalRows > 0 ? totalRows.toLocaleString() : '—'}
+              </div>
             </div>
           </div>
+          {/* 3px completion bar */}
+          <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
+              width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
+              background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
+              transition: 'width 0.6s ease-out',
+            }} />
+            {layerIsBuilding && (
+              <div style={{
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
+                animation: 'shimmer 2.2s linear infinite',
+              }} />
+            )}
+          </div>
+        </div>
 
+        {/* Actions — own flex child, always anchored to the right edge */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
+          onClick={e => e.stopPropagation()}
+        >
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
           {!layerRunId && (isSuperAdmin || layer !== 'brahmagyan') && (
             <BuildActionButton
@@ -302,7 +302,6 @@ export function LayerPanel({
           {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
             layerRunId ? (
-              // Stop only on the layer actually building; idle layers during a run show nothing
               layerOwnsBuildingAsset
                 ? <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
                 : null
