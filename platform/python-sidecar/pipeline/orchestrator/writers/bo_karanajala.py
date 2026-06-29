@@ -32,6 +32,7 @@ import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from pipeline.orchestrator.writers.bo_bimba import _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,23 @@ ARGALA_POSITIONS = {2, 4, 11}
 # 12th cancels 2nd argala, 3rd cancels 4th argala, 10th cancels 11th argala
 VIRODHA_POSITIONS = {12, 3, 10}
 
+# Classical Parashari sign lordship: sign_number (1-12) → graha name.
+# Rahu and Ketu have no sign lordship in Parashari tradition.
+SIGN_LORD: dict[int, str] = {
+    1:  "Mars",     # Aries
+    2:  "Venus",    # Taurus
+    3:  "Mercury",  # Gemini
+    4:  "Moon",     # Cancer
+    5:  "Sun",      # Leo
+    6:  "Mercury",  # Virgo
+    7:  "Venus",    # Libra
+    8:  "Mars",     # Scorpio
+    9:  "Jupiter",  # Sagittarius
+    10: "Saturn",   # Capricorn
+    11: "Saturn",   # Aquarius
+    12: "Jupiter",  # Pisces
+}
+
 MALEFIC_GRAHAS  = {"Saturn", "Mars", "Rahu", "Ketu"}
 BENEFIC_GRAHAS  = {"Jupiter", "Venus", "Moon", "Mercury"}
 
@@ -157,7 +175,7 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
       fact_category = 'graha_sign_attributes'
       fact_key      = 'sign_num'
       fact_value_num (float, e.g. 1.0 for Aries)
-      fact_subject  = UPPER_SNAKE (SUN, MOON, MARS, …) → title-cased to match KNOWN_GRAHAS
+      fact_subject  = UPPER_SNAKE (SUN, MOON, MAR, …) → mapped via _GRAHA_SUBJECT_MAP to match KNOWN_GRAHAS
     """
     rows = conn.execute(
         """SELECT fact_subject, fact_value_num
@@ -177,8 +195,9 @@ def _fetch_graha_sign_numbers(conn, chart_id: str, aya: str) -> dict[str, int]:
             subject = str(r[0])
             val     = r[1]
         try:
-            # fact_subject is UPPER_SNAKE (SUN) — title-case to match KNOWN_GRAHAS (Sun)
-            graha = subject.title()
+            graha = _GRAHA_SUBJECT_MAP.get(subject.upper())
+            if not graha:
+                continue
             result[graha] = int(float(val))
         except (ValueError, TypeError):
             pass
@@ -294,6 +313,72 @@ def _build_argala_edges(
                 "engine_version": ENGINE_VERSION,
             })
 
+    return edges
+
+
+def _build_dispositor_edges(
+    chart_id: str, aya: str, build_id: str,
+    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str
+) -> list[dict]:
+    """Build dispositor edges: graha → its sign lord.
+
+    For each graha in graha_signs, looks up the lord of its sign via SIGN_LORD.
+    Emits edge_type='dispositor' directed from graha to its lord.
+    Self-ruling grahas (e.g. Sun in Leo, sign 5) are skipped — no self-loops.
+    Rahu/Ketu are included as from_node (they ARE disposed by some graha's sign)
+    but are never the lord (SIGN_LORD has no Rahu/Ketu entry).
+
+    The motif detectors in bo_cgm_motifs check:
+      str(e.get("edge_type", "")).lower() in ("disposited_by", "dispositor", "sign_lord")
+    so edge_type='dispositor' is the operative field — the detectors will fire.
+    """
+    edges: list[dict] = []
+    for graha, sign_num in graha_signs.items():
+        if graha not in KNOWN_GRAHAS:
+            continue
+        lord = SIGN_LORD.get(sign_num)
+        if not lord or lord == graha:
+            continue  # unknown sign or self-ruling (e.g. Sun in Leo)
+        from_node = node_map.get(("graha", graha))
+        to_node   = node_map.get(("graha", lord))
+        if not from_node or not to_node:
+            continue
+        edges.append({
+            "edge_id":                         str(uuid.uuid4()),
+            "chart_id":                        chart_id,
+            "ayanamsha_id":                    aya,
+            "build_id":                        build_id,
+            "snapshot_type":                   SNAPSHOT_TYPE,
+            "edge_type":                       "dispositor",
+            "from_node_id":                    from_node,
+            "to_node_id":                      to_node,
+            "direction":                       "directed",
+            "computed_strength":               0.6,
+            "weight_formula_version":          "edge_weight_v1.0",
+            "edge_properties_jsonb":           json.dumps({
+                "graha":      graha,
+                "sign_num":   sign_num,
+                "dispositor": lord,
+            }),
+            "relationship_class":              "dispositor",
+            "semantic_path_class":             "sign_lordship",
+            "active_duration_class":           "natal_permanent",
+            "active_dasha_periods_jsonb":      None,
+            "underlying_msr_signal_ids_array": [],
+            "cross_system_consensus_count":    1,
+            "cancelled_flag":                  False,
+            "present_in_traditions_array":     ["parashari"],
+            "graph_compute_library":           GRAPH_LIB,
+            "graph_compute_library_version":   GRAPH_LIB_VER,
+            "is_cross_subsystem":              False,
+            "subsystem_from":                  "parashari",
+            "subsystem_to":                    "parashari",
+            "verification_pass_status":        "two_pass_verified",
+            "citation_ref":                    f"parashari/sign_lordship/{graha}",
+            "citation_human":                  f"Dispositor: {graha} (sign {sign_num}) → lord {lord}",
+            "computed_at":                     now,
+            "engine_version":                  ENGINE_VERSION,
+        })
     return edges
 
 
@@ -573,12 +658,17 @@ class BoKaranajalaWriter(WriterBase):
             )
             edges.extend(argala_edges)
 
+            dispositor_edges = _build_dispositor_edges(
+                chart_id, aya, build_id, graha_signs, node_map, now
+            )
+            edges.extend(dispositor_edges)
+
             replace_prior_cgm_edges(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_contradictions(conn, chart_id, aya)
 
             logger.info(
-                "[bo_karanajala] %s — %d edges (%d argala), %d contradictions",
-                aya, len(edges), len(argala_edges), len(contradictions),
+                "[bo_karanajala] %s — %d edges (%d argala, %d dispositor), %d contradictions",
+                aya, len(edges), len(argala_edges), len(dispositor_edges), len(contradictions),
             )
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
