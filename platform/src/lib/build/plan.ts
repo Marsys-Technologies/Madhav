@@ -235,6 +235,53 @@ export function preflight(
 
   return Array.from(blockerMap.values())
 }
+/**
+ * Groups candidates into parallel execution waves.
+ * Layer scope: only intra-layer deps count for wave assignment.
+ * Global scope: all deps (incl. cross-layer) count.
+ * Asset scope: always [[candidate]].
+ */
+export function computeWaves(
+  candidates: AssetId[],
+  registry: RegistryEntry[],
+  scope: BuildScope,
+  scope_target: string | null
+): AssetId[][] {
+  if (candidates.length === 0) return []
+  if (scope === 'asset') return [candidates.slice()]
+
+  const candidateSet = new Set(candidates)
+  const regMap = new Map(registry.map(r => [r.asset_id, r]))
+  const sorted = topoSort(candidates, registry)
+  const waveOf = new Map<AssetId, number>()
+
+  for (const id of sorted) {
+    const entry = regMap.get(id)
+    const deps = entry?.depends_on ?? []
+
+    const relevantDeps = deps.filter(dep => {
+      if (!candidateSet.has(dep)) return false
+      // Layer scope: cross-layer deps don't determine wave (already pre-flighted)
+      if (scope === 'layer' && scope_target) {
+        const depEntry = regMap.get(dep)
+        if (depEntry?.layer !== scope_target) return false
+      }
+      return true
+    })
+
+    const wave = relevantDeps.length === 0
+      ? 0
+      : Math.max(...relevantDeps.map(d => waveOf.get(d) ?? 0)) + 1
+    waveOf.set(id, wave)
+  }
+
+  const maxWave = Math.max(...Array.from(waveOf.values()))
+  const waves: AssetId[][] = Array.from({ length: maxWave + 1 }, () => [])
+  for (const [id, wave] of waveOf) waves[wave].push(id)
+
+  return waves
+}
+
 export function resolveBuildPlan({
   scope,
   scope_target,
