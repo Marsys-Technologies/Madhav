@@ -41,8 +41,9 @@ describe('resolveBuildPlan — empty DAG', () => {
       registry: [],
       throughput: new Map(),
     })
-    expect(result.plan).toEqual([])
-    expect(result.estimated_seconds).toBe(0)
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves.flat()).toEqual([])
+    expect(result.estimated_seconds).toBeNull()
   })
 })
 
@@ -53,9 +54,11 @@ describe('resolveBuildPlan — action:build (dormant only)', () => {
       scope: 'global', scope_target: null, action: 'build',
       registry: LINEAR, throughput,
     })
-    expect(result.plan).toContain('b')
-    expect(result.plan).toContain('c')
-    expect(result.plan).not.toContain('a')
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
+    expect(plan).toContain('b')
+    expect(plan).toContain('c')
+    expect(plan).not.toContain('a')
   })
 
   it('respects topo order — b before c', () => {
@@ -64,7 +67,8 @@ describe('resolveBuildPlan — action:build (dormant only)', () => {
       scope: 'global', scope_target: null, action: 'build',
       registry: LINEAR, throughput,
     })
-    expect(result.plan.indexOf('b')).toBeLessThan(result.plan.indexOf('c'))
+    const plan = result.plan_waves.flat()
+    expect(plan.indexOf('b')).toBeLessThan(plan.indexOf('c'))
   })
 
   it('assets with no throughput row treated as dormant', () => {
@@ -72,7 +76,7 @@ describe('resolveBuildPlan — action:build (dormant only)', () => {
       scope: 'global', scope_target: null, action: 'build',
       registry: LINEAR, throughput: new Map(),
     })
-    expect(result.plan).toEqual(['a', 'b', 'c'])
+    expect(result.plan_waves.flat()).toEqual(['a', 'b', 'c'])
   })
 })
 
@@ -83,7 +87,8 @@ describe('resolveBuildPlan — action:rebuild (all in scope)', () => {
       scope: 'global', scope_target: null, action: 'rebuild',
       registry: LINEAR, throughput,
     })
-    expect(result.plan).toEqual(['a', 'b', 'c'])
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves.flat()).toEqual(['a', 'b', 'c'])
   })
 })
 
@@ -94,7 +99,8 @@ describe('resolveBuildPlan — action:update (stale + dormant transitive)', () =
       scope: 'global', scope_target: null, action: 'update',
       registry: LINEAR, throughput,
     })
-    expect(result.plan).toContain('a')
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves.flat()).toContain('a')
   })
 
   it('includes dormant assets transitively reachable from stale', () => {
@@ -103,7 +109,8 @@ describe('resolveBuildPlan — action:update (stale + dormant transitive)', () =
       scope: 'global', scope_target: null, action: 'update',
       registry: BRANCHING, throughput,
     })
-    expect(result.plan).toContain('left')
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves.flat()).toContain('left')
   })
 })
 
@@ -114,11 +121,13 @@ describe('resolveBuildPlan — action:cascade', () => {
       scope: 'global', scope_target: null, action: 'cascade',
       registry: BRANCHING, throughput,
     })
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
     // left, right, and merge are downstream of stale root
-    expect(result.plan).toContain('left')
-    expect(result.plan).toContain('right')
-    expect(result.plan).toContain('merge')
-    expect(result.plan).not.toContain('root')
+    expect(plan).toContain('left')
+    expect(plan).toContain('right')
+    expect(plan).toContain('merge')
+    expect(plan).not.toContain('root')
   })
 })
 
@@ -134,9 +143,11 @@ describe('resolveBuildPlan — scope:layer', () => {
       scope: 'layer', scope_target: 'layer1', action: 'rebuild',
       registry: MULTI_LAYER, throughput: new Map(),
     })
-    expect(result.plan).toContain('l1a')
-    expect(result.plan).toContain('l1b')
-    expect(result.plan).not.toContain('l2a')
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
+    expect(plan).toContain('l1a')
+    expect(plan).toContain('l1b')
+    expect(plan).not.toContain('l2a')
   })
 })
 
@@ -190,9 +201,10 @@ describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
       scope: 'layer', scope_target: 'ganita', action: 'rebuild',
       registry: L1_GANITA, throughput: new Map(),
     })
+    const plan = result.plan_waves.flat()
     const expected = L1_GANITA.map(r => r.asset_id)
-    expect(result.plan).toHaveLength(expected.length)
-    for (const id of expected) expect(result.plan).toContain(id)
+    expect(plan).toHaveLength(expected.length)
+    for (const id of expected) expect(plan).toContain(id)
   })
 
   it('topo order: roots before dependents (ga_structural after ga_condition + ga_nakshatra)', () => {
@@ -200,7 +212,8 @@ describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
       scope: 'layer', scope_target: 'ganita', action: 'rebuild',
       registry: L1_GANITA, throughput: new Map(),
     })
-    const idx = (id: string) => result.plan.indexOf(id)
+    const plan = result.plan_waves.flat()
+    const idx = (id: string) => plan.indexOf(id)
     expect(idx('ga_condition')).toBeLessThan(idx('ga_structural'))
     expect(idx('ga_nakshatra')).toBeLessThan(idx('ga_structural'))
     expect(idx('ga_structural')).toBeLessThan(idx('ga_dashas'))
@@ -215,7 +228,7 @@ describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
       scope: 'layer', scope_target: 'ganita', action: 'rebuild',
       registry: L1_GANITA, throughput: allLit,
     })
-    expect(result.plan).toHaveLength(L1_GANITA.length)
+    expect(result.plan_waves.flat()).toHaveLength(L1_GANITA.length)
   })
 
   it('layer build (not rebuild) skips lit assets', () => {
@@ -224,7 +237,8 @@ describe('RELIABILITY — layer-scope rebuild yields full ordered plan', () => {
       scope: 'layer', scope_target: 'ganita', action: 'build',
       registry: L1_GANITA, throughput: allLit,
     })
-    expect(result.plan).toHaveLength(0)
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves.flat()).toHaveLength(0)
   })
 })
 
@@ -245,8 +259,9 @@ describe('RELIABILITY — layer-scope generalises to L2/L3/L4', () => {
       scope: 'layer', scope_target: 'bodha', action: 'rebuild',
       registry: MIXED, throughput: new Map(),
     })
-    expect(result.plan.every(id => id.startsWith('bo_'))).toBe(true)
-    expect(result.plan).not.toContain('ga_structural')
+    const plan = result.plan_waves.flat()
+    expect(plan.every(id => id.startsWith('bo_'))).toBe(true)
+    expect(plan).not.toContain('ga_structural')
   })
 
   it('bo_laksana (root) is before bo_upaya (dependent)', () => {
@@ -254,8 +269,9 @@ describe('RELIABILITY — layer-scope generalises to L2/L3/L4', () => {
       scope: 'layer', scope_target: 'bodha', action: 'rebuild',
       registry: L2_BODHA, throughput: new Map(),
     })
-    expect(result.plan.indexOf('bo_laksana')).toBeLessThan(result.plan.indexOf('bo_upaya'))
-    expect(result.plan.indexOf('bo_upaya')).toBeLessThan(result.plan.indexOf('bo_pramana_mapa'))
+    const plan = result.plan_waves.flat()
+    expect(plan.indexOf('bo_laksana')).toBeLessThan(plan.indexOf('bo_upaya'))
+    expect(plan.indexOf('bo_upaya')).toBeLessThan(plan.indexOf('bo_pramana_mapa'))
   })
 })
 
@@ -278,10 +294,11 @@ describe('G2 DAG edge fix — bo_bimba must precede bo_karanajala (Migration 356
       scope: 'layer', scope_target: 'bodha', action: 'rebuild',
       registry: BODHA_OLD_BROKEN, throughput: new Map(),
     })
+    const plan = result.plan_waves.flat()
     // In the old DAG there is no ordering constraint between karanajala and bimba.
     // When karanajala appears first in registry, topo visits it first → it lands first.
-    const idxKara = result.plan.indexOf('bo_karanajala')
-    const idxBimba = result.plan.indexOf('bo_bimba')
+    const idxKara = plan.indexOf('bo_karanajala')
+    const idxBimba = plan.indexOf('bo_bimba')
     // This assertion PASSES (proves broken state): karanajala < bimba is possible.
     expect(idxKara).toBeLessThan(idxBimba)
   })
@@ -298,8 +315,9 @@ describe('G2 DAG edge fix — bo_bimba must precede bo_karanajala (Migration 356
       scope: 'layer', scope_target: 'bodha', action: 'rebuild',
       registry: BODHA_NEW_FIXED, throughput: new Map(),
     })
-    const idxBimba = result.plan.indexOf('bo_bimba')
-    const idxKara  = result.plan.indexOf('bo_karanajala')
+    const plan = result.plan_waves.flat()
+    const idxBimba = plan.indexOf('bo_bimba')
+    const idxKara  = plan.indexOf('bo_karanajala')
     expect(idxBimba).toBeLessThan(idxKara)
   })
 
@@ -327,6 +345,6 @@ describe('RELIABILITY — DAG source authority', () => {
       scope: 'layer', scope_target: 'test', action: 'rebuild',
       registry, throughput: new Map(),
     })
-    expect(result.plan).toEqual(['A', 'B', 'C'])
+    expect(result.plan_waves.flat()).toEqual(['A', 'B', 'C'])
   })
 })

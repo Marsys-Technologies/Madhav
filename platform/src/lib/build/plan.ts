@@ -30,46 +30,6 @@ export interface BuildPlan {
   estimated_seconds: number | null  // always null when status is 'blocked'
 }
 
-export interface StalenessGateEntry {
-  asset_id: AssetId
-  state: string
-  required_by: AssetId[]
-}
-
-/**
- * Returns one entry per out-of-plan upstream dep whose state is 'stale'.
- * A non-empty result means the build should be blocked: building downstream
- * on stale data produces wrong output. In-plan deps are excluded — the DAG
- * scheduler handles those by running deps before dependents.
- * Dormant/error upstream are not flagged here: auto-pull or L0-blocking
- * handles them separately.
- */
-export function checkStalenessGate(
-  plan: AssetId[],
-  registry: RegistryEntry[],
-  throughput: Map<AssetId, ThroughputEntry>
-): StalenessGateEntry[] {
-  const planSet = new Set(plan)
-  const regMap = new Map(registry.map(r => [r.asset_id, r]))
-  // Map from blocker asset_id → set of plan assets that require it.
-  const staleBlockers = new Map<AssetId, Set<AssetId>>()
-
-  for (const planAsset of plan) {
-    for (const dep of regMap.get(planAsset)?.depends_on ?? []) {
-      if (planSet.has(dep)) continue  // in-plan: DAG will handle it
-      if (throughput.get(dep)?.state === 'stale') {
-        if (!staleBlockers.has(dep)) staleBlockers.set(dep, new Set())
-        staleBlockers.get(dep)!.add(planAsset)
-      }
-    }
-  }
-
-  return Array.from(staleBlockers.entries()).map(([dep, requiredBySet]) => ({
-    asset_id: dep,
-    state: throughput.get(dep)!.state,
-    required_by: Array.from(requiredBySet),
-  }))
-}
 
 export interface ResolveBuildPlanArgs {
   scope: BuildScope
@@ -282,6 +242,16 @@ export function computeWaves(
   return waves
 }
 
+function estimateSeconds(ids: AssetId[], registry: RegistryEntry[]): number | null {
+  let total = 0
+  for (const id of ids) {
+    const entry = registry.find(r => r.asset_id === id)
+    if (!entry || entry.estimated_seconds == null) return null
+    total += entry.estimated_seconds
+  }
+  return total
+}
+
 export function resolveBuildPlan({
   scope,
   scope_target,
@@ -289,114 +259,60 @@ export function resolveBuildPlan({
   registry,
   throughput,
 }: ResolveBuildPlanArgs): BuildPlan {
-  const scopeAssets = assetsInScope(scope, scope_target, registry)
-
-  let candidates: AssetId[]
-
-  if (action === 'build') {
-    candidates = scopeAssets.filter(id => {
-      const t = throughput.get(id)
-      return !t || t.state === 'dormant' || t.state === 'error'
-    })
-  } else if (action === 'update') {
+  // update and cascade: no pre-flight, use existing behavior, return new shape
+  if (action === 'update') {
+    const scopeAssets = assetsInScope(scope, scope_target, registry)
     const stale = scopeAssets.filter(id => throughput.get(id)?.state === 'stale')
     const dormant = scopeAssets.filter(id => {
       const t = throughput.get(id)
       return !t || t.state === 'dormant'
     })
-    // For asset-scoped update: include transitive downstream regardless of scope boundary.
-    // For layer/global scopes: only downstream within scope.
     const downstreamAll = transitiveDownstream(stale, registry)
     const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
-    candidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
-  } else if (action === 'rebuild') {
-    // Asset-scoped rebuild: target + its full transitive downstream (90/10 semantic).
-    // Layer/global scopes: all assets in scope.
-    if (scope === 'asset' && scope_target) {
-      const downstream = transitiveDownstream([scope_target], registry)
-      candidates = [scope_target, ...downstream]
-    } else {
-      candidates = [...scopeAssets]
-    }
-  } else {
-    // cascade: only downstream-stale from any stale seed
+    const candidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
+    const sorted = topoSort(candidates, registry)
+    const estimated = estimateSeconds(sorted, registry)
+    return { status: 'ok', plan_waves: computeWaves(sorted, registry, scope, scope_target), blockers: [], estimated_seconds: estimated }
+  }
+
+  if (action === 'cascade') {
+    const scopeAssets = assetsInScope(scope, scope_target, registry)
     const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
-    candidates = transitiveDownstream(stale, registry)
-      .filter(id => scopeAssets.includes(id))
+    const candidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
+    const sorted = topoSort(candidates, registry)
+    const estimated = estimateSeconds(sorted, registry)
+    return { status: 'ok', plan_waves: computeWaves(sorted, registry, scope, scope_target), blockers: [], estimated_seconds: estimated }
   }
 
-  const blockedAssets: { asset_id: string; reason: string }[] = []
+  // build and rebuild: scope-aware candidates + pre-flight gate
+  const scopeAssets = assetsInScope(scope, scope_target, registry)
 
-  // For build/rebuild at non-global scope, pull in dormant/error/missing upstream
-  // dependencies that fall outside the literal scope. Without this, building a
-  // downstream asset whose cross-layer upstream is dormant fails silently because
-  // the orchestrator walks the plan in order and the source table is absent.
-  // Global scope is safe: all assets are already candidates.
-  //
-  // L0 EXCLUSION (native ruling 2026-06-26): bg_* (brahmagyan) assets are NEVER
-  // auto-pulled. If a candidate transitively depends on a dormant L0 asset, it is
-  // marked blocked (not built) and excluded from the plan. The caller surfaces the
-  // blocked list so the UI can say "run the Brahmagyan layer first".
-  if ((action === 'build' || action === 'rebuild') && scope !== 'global' && candidates.length > 0) {
-    const upstreamAll = computeUpstreamClosure(candidates, registry)
-    const regMap = new Map(registry.map(r => [r.asset_id, r]))
+  let candidates: AssetId[]
+  if (action === 'build') {
+    candidates = scopeAssets.filter(id => {
+      const t = throughput.get(id)
+      return !t || t.state === 'dormant' || t.state === 'error'
+    })
+  } else {
+    // rebuild: all assets in scope (no transitive downstream expansion)
+    candidates = [...scopeAssets]
+  }
 
-    // Pull in non-L0 dormant/error upstream only
-    for (const upId of upstreamAll) {
-      const upEntry = regMap.get(upId)
-      if (upEntry?.layer === 'brahmagyan') continue  // never auto-pull L0
-      if (!candidates.includes(upId)) {
-        const t = throughput.get(upId)
-        // Skip already-lit upstream: pulling in lit upstream would unexpectedly redo work.
-        if (!t || t.state === 'dormant' || t.state === 'error') {
-          candidates.push(upId)
-        }
-      }
-    }
+  // build no-op: asset is already lit, nothing to do
+  if (action === 'build' && candidates.length === 0) {
+    return { status: 'ok', plan_waves: [], blockers: [], estimated_seconds: null }
+  }
 
-    // Detect candidates blocked by dormant L0 transitive deps and remove from plan
-    const l0Dormant = new Set(
-      registry
-        .filter(r => r.layer === 'brahmagyan')
-        .filter(r => { const t = throughput.get(r.asset_id); return !t || t.state === 'dormant' || t.state === 'error' })
-        .map(r => r.asset_id)
-    )
-
-    if (l0Dormant.size > 0) {
-      const candidateSet = new Set(candidates)
-      const blockedSet = new Set<string>()
-      for (const id of candidates) {
-        const transitiveUp = computeUpstreamClosure([id], registry)
-        // Only block if the dormant L0 dep is NOT already being built in this same plan.
-        // When scope=layer/brahmagyan, all L0 assets are candidates and will be topo-ordered first.
-        const blockerDep = [...transitiveUp].find(up => l0Dormant.has(up) && !candidateSet.has(up))
-        if (blockerDep) {
-          blockedSet.add(id)
-          blockedAssets.push({
-            asset_id: id,
-            reason: `L0 dependency '${blockerDep}' not built — run the Brahmagyan layer first`,
-          })
-        }
-      }
-      if (blockedSet.size > 0) {
-        candidates = candidates.filter(id => !blockedSet.has(id))
-      }
+  // pre-flight gate: only for non-global scope (global has all assets as candidates)
+  if (scope !== 'global') {
+    const blockers = preflight(candidates, scope, scope_target, registry, throughput)
+    if (blockers.length > 0) {
+      return { status: 'blocked', plan_waves: [], blockers, estimated_seconds: null }
     }
   }
 
-  const sorted = topoSort(candidates, registry)
-
-  const upstreamCount = sorted.filter(id => !scopeAssets.includes(id)).length
-
-  let estimated: number | null = 0
-  for (const id of sorted) {
-    const entry = registry.find(r => r.asset_id === id)
-    if (!entry || entry.estimated_seconds == null) {
-      estimated = null
-      break
-    }
-    estimated = (estimated ?? 0) + entry.estimated_seconds
-  }
-
-  return { plan: sorted, includes_upstream_count: upstreamCount, estimated_seconds: estimated, blocked_assets: blockedAssets }
+  const waves = computeWaves(candidates, registry, scope, scope_target)
+  const flat = waves.flat()
+  const estimated = estimateSeconds(flat, registry)
+  return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimated }
 }
