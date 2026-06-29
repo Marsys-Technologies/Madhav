@@ -89,7 +89,8 @@ def propagate_downstream_staleness(
                     "type": "asset.state_change",
                     "chart_id": chart_id,
                     "asset_id": asset_id,
-                    "state": "stale",
+                    "from_state": "lit",
+                    "to_state": "stale",
                     "run_id": run_id,
                 })
             except Exception as emit_err:
