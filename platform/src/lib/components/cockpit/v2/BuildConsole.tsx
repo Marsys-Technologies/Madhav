@@ -9,29 +9,18 @@ import { PlanBar } from './PlanBar'
 // ---------------------------------------------------------------------------
 
 const LAYER_PREFIXES: { prefix: string; name: string; sanskrit: string; color: string }[] = [
-  { prefix: 'bg_', name: 'brahmagyan', sanskrit: 'Brahmagyan',  color: '#ECC56A' },
-  { prefix: 'ga_', name: 'ganita',     sanskrit: 'Gaṇita',      color: '#D2A23C' },
+  { prefix: 'bg_', name: 'brahmagyan', sanskrit: 'Brahma Jñāna', color: '#ECC56A' },
+  { prefix: 'ga_', name: 'ganita',     sanskrit: 'Gaṇita',       color: '#D2A23C' },
   { prefix: 'bo_', name: 'bodha',      sanskrit: 'Bodha',        color: '#A87C2A' },
   { prefix: 'ka_', name: 'kala',       sanskrit: 'Kāla',         color: '#8A5E12' },
   { prefix: 'ph_', name: 'phala',      sanskrit: 'Phala',        color: '#B98A2E' },
   { prefix: 'mi_', name: 'mimamsa',    sanskrit: 'Mīmāṃsā',     color: '#6E4E0F' },
 ]
 
-function layerForAssetId(assetId: string) {
-  return LAYER_PREFIXES.find(l => assetId.startsWith(l.prefix)) ?? null
+// State is 'lit' or 'service_ok' — not 'complete'/'done' (those don't exist in this project)
+function isLit(state: string) {
+  return state === 'lit' || state === 'service_ok'
 }
-
-function sanskritForScope(scope: string, scopeTarget: string | null): string {
-  if (scope === 'layer' && scopeTarget) {
-    const hit = LAYER_PREFIXES.find(l => l.name === scopeTarget || l.prefix === scopeTarget + '_')
-    return hit ? hit.sanskrit : scopeTarget
-  }
-  return ''
-}
-
-// ---------------------------------------------------------------------------
-// Elapsed timer helper
-// ---------------------------------------------------------------------------
 
 function formatElapsed(startedAt: string | null): string {
   if (!startedAt) return '00:00'
@@ -42,19 +31,11 @@ function formatElapsed(startedAt: string | null): string {
   return `${mm}:${ss}`
 }
 
-// ---------------------------------------------------------------------------
-// Scope chip label
-// ---------------------------------------------------------------------------
-
-function scopeChipLabel(
-  scope: string,
-  scopeTarget: string | null,
-  planLength: number,
-): string {
+function scopeChipLabel(scope: string, scopeTarget: string | null, planLength: number): string {
   if (scope === 'global') return 'Full chart'
   if (scope === 'layer') {
-    const sanskrit = sanskritForScope(scope, scopeTarget)
-    return `${sanskrit || scopeTarget} layer only`
+    const hit = LAYER_PREFIXES.find(l => l.name === scopeTarget)
+    return `${hit?.sanskrit ?? scopeTarget} layer only`
   }
   if (scope === 'asset') {
     const downstream = planLength - 1
@@ -81,50 +62,56 @@ export interface BuildConsoleProps {
 
 function SidecarDot({ healthy }: { healthy: boolean | null }) {
   const color =
-    healthy === true  ? 'var(--color-ok, #4caf50)' :
-    healthy === false ? 'var(--color-error, #e53935)' :
-                        'var(--color-muted, #555)'
+    healthy === true  ? '#4caf50' :
+    healthy === false ? 'var(--marsys-error, #B5474C)' :
+                        'rgba(255,255,255,0.2)'
+  const glow = healthy === true ? '0 0 5px rgba(76,175,80,0.5)' : 'none'
   return (
     <span
-      title={healthy === null ? 'Sidecar unknown' : healthy ? 'Sidecar healthy' : 'Sidecar unreachable'}
+      title={healthy === null ? 'Sidecar: checking…' : healthy ? 'Sidecar: healthy' : 'Sidecar: unreachable'}
       style={{
         display: 'inline-block',
         width: 6,
         height: 6,
         borderRadius: '50%',
         background: color,
+        boxShadow: glow,
         flexShrink: 0,
       }}
     />
   )
 }
 
-// Mini per-layer segment bar shown in idle state
+// Per-layer completion mini-segments (idle state)
 function LayerMiniBar({ assets }: { assets: { asset_id: string; state: string }[] }) {
-  // Determine which layers have any assets, and how many are "done"
   const layerStats = LAYER_PREFIXES.map(layer => {
     const layerAssets = assets.filter(a => a.asset_id.startsWith(layer.prefix))
-    const done = layerAssets.filter(a => a.state === 'complete' || a.state === 'done').length
+    const done = layerAssets.filter(a => isLit(a.state)).length
     return { ...layer, total: layerAssets.length, done }
   }).filter(l => l.total > 0)
 
   if (layerStats.length === 0) return null
 
   return (
-    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
       {layerStats.map(l => {
         const fullyLit = l.total > 0 && l.done === l.total
+        const partiallyLit = !fullyLit && l.done > 0
         return (
           <div
             key={l.name}
             title={`${l.sanskrit}: ${l.done}/${l.total}`}
             style={{
-              width: 18,
-              height: 6,
+              width: 16,
+              height: 5,
               borderRadius: 2,
-              background: fullyLit ? l.color : 'var(--surface-3, #2a2a2a)',
-              border: fullyLit ? 'none' : '1px solid var(--border-subtle, #333)',
-              transition: 'background 0.3s',
+              background: fullyLit
+                ? l.color
+                : partiallyLit
+                  ? l.color + '55'
+                  : 'rgba(122,86,24,0.15)',
+              border: `1px solid ${fullyLit ? l.color + '88' : 'rgba(122,86,24,0.25)'}`,
+              transition: 'background 0.4s ease',
             }}
           />
         )
@@ -140,205 +127,126 @@ function LayerMiniBar({ assets }: { assets: { asset_id: string; state: string }[
 export function BuildConsole({ activeRun, assets, isBuilding, sidecarHealthy }: BuildConsoleProps) {
   const [elapsed, setElapsed] = useState<string>('00:00')
 
-  // Tick elapsed every second when building
   useEffect(() => {
     if (!isBuilding || !activeRun?.started_at) {
       setElapsed('00:00')
       return
     }
     setElapsed(formatElapsed(activeRun.started_at))
-    const t = setInterval(() => {
-      setElapsed(formatElapsed(activeRun.started_at))
-    }, 1000)
+    const t = setInterval(() => setElapsed(formatElapsed(activeRun.started_at)), 1000)
     return () => clearInterval(t)
   }, [isBuilding, activeRun?.started_at])
 
-  // Asset counts for building state
+  // Metrics
   const planAssets = activeRun?.plan ?? []
-  const doneAssets = assets.filter(
-    a => a.state === 'complete' || a.state === 'done'
-  ).length
-  const totalAssets = planAssets.length
+  const litAssets = assets.filter(a => isLit(a.state)).length
+  const planDone = planAssets.filter(id => isLit(assets.find(a => a.asset_id === id)?.state ?? '')).length
 
-  // Idle state metrics
-  const totalComplete = assets.filter(a => a.state === 'complete' || a.state === 'done').length
   const totalAll = assets.length
-  const overallPct = totalAll > 0 ? Math.round((totalComplete / totalAll) * 100) : 0
+  const overallPct = totalAll > 0 ? Math.round((litAssets / totalAll) * 100) : 0
 
   const liveLayers = LAYER_PREFIXES.filter(l =>
     assets.some(a => a.asset_id.startsWith(l.prefix))
+  )
+  const litLayerCount = liveLayers.filter(l =>
+    assets.filter(a => a.asset_id.startsWith(l.prefix)).every(a => isLit(a.state))
   ).length
-  const totalLayers = LAYER_PREFIXES.length
 
-  // Scope chip text
   const chipLabel = activeRun
     ? scopeChipLabel(activeRun.scope, activeRun.scope_target, activeRun.plan.length)
     : ''
 
-  // Shared container style
+  // Shared container — Marsys dark theme tokens, hairline separator from name row above
   const containerStyle: React.CSSProperties = {
-    fontFamily: 'var(--mono-stack, "JetBrains Mono", "Fira Mono", monospace)',
-    background: 'var(--surface-1, #141414)',
-    border: '1px solid var(--border-subtle, #2e2e2e)',
-    borderRadius: 8,
-    padding: '12px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    minHeight: 64,
+    fontFamily: 'var(--mono-stack)',
+    background: 'rgba(10,8,6,0.45)',
+    border: '1px solid var(--black-line)',
+    borderRadius: 'var(--r-btn, 6px)',
+    padding: '6px 12px',
+    marginTop: 8,
   }
 
   // ── BUILDING STATE ──────────────────────────────────────────────────────
   if (isBuilding && activeRun) {
     return (
       <div style={containerStyle}>
-        {/* Row 1: status + sidecar dot */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Pulsing gold dot */}
-            <span
-              className="obs-live-pulse"
-              style={{
-                display: 'inline-block',
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--gold-mid, #D2A23C)',
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--gold-mid, #D2A23C)',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}
-            >
+        {/* Single row: pulsing dot + Building + scope chip ·· elapsed + assets + sidecar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Left cluster */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+              background: '#ECC56A',
+              boxShadow: '0 0 6px rgba(236,197,106,0.6)',
+              animation: 'obs-live-pulse 1.4s ease-in-out infinite',
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold-high)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Building
             </span>
-
-            {/* Scope chip */}
-            <span
-              style={{
-                fontSize: 10,
-                color: 'var(--text-muted, #888)',
-                background: 'var(--surface-2, #1e1e1e)',
-                border: '1px solid var(--border-subtle, #2e2e2e)',
-                borderRadius: 4,
-                padding: '1px 6px',
-                letterSpacing: '0.03em',
-              }}
-            >
+            <span style={{
+              fontSize: 9.5, color: 'var(--on-dark-mut)',
+              background: 'rgba(168,124,42,0.12)',
+              border: '1px solid rgba(168,124,42,0.25)',
+              borderRadius: 10, padding: '1px 7px',
+              letterSpacing: '0.03em', whiteSpace: 'nowrap',
+            }}>
               {chipLabel}
             </span>
           </div>
-
-          <SidecarDot healthy={sidecarHealthy} />
-        </div>
-
-        {/* Row 2: elapsed + asset count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--text-muted, #666)', letterSpacing: '0.05em' }}>
-              ELAPSED
+          {/* Right cluster */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 10, color: 'var(--on-dark-faint)', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: 8, textTransform: 'uppercase', marginRight: 3 }}>Elapsed</span>
+              <span style={{ color: 'var(--on-dark-mut)', fontVariantNumeric: 'tabular-nums' }}>{elapsed}</span>
             </span>
-            <span
-              style={{
-                fontSize: 13,
-                color: 'var(--text-primary, #e8e8e8)',
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '0.04em',
-              }}
-            >
-              {elapsed}
+            <span style={{ fontSize: 10, color: 'var(--on-dark-faint)', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: 8, textTransform: 'uppercase', marginRight: 3 }}>Assets</span>
+              <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{planDone}</span>
+              <span style={{ color: 'var(--on-dark-faint)' }}>/{planAssets.length}</span>
             </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--text-muted, #666)', letterSpacing: '0.05em' }}>
-              ASSETS
-            </span>
-            <span
-              style={{
-                fontSize: 13,
-                color: 'var(--text-primary, #e8e8e8)',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {doneAssets}
-              <span style={{ color: 'var(--text-muted, #666)' }}>/{totalAssets}</span>
-            </span>
+            <SidecarDot healthy={sidecarHealthy} />
           </div>
         </div>
-
-        {/* PlanBar */}
-        <PlanBar
-          plan={activeRun.plan}
-          currentAssetId={activeRun.current_asset_id}
-          assetStateMap={new Map(assets.map(a => [a.asset_id, a.state]))}
-        />
+        {/* Plan bar — below the single row */}
+        <div style={{ marginTop: 7 }}>
+          <PlanBar
+            plan={activeRun.plan}
+            currentAssetId={activeRun.current_asset_id}
+            assetStateMap={new Map(assets.map(a => [a.asset_id, a.state]))}
+          />
+        </div>
       </div>
     )
   }
 
-  // ── IDLE STATE ──────────────────────────────────────────────────────────
+  // ── IDLE STATE — single compact row ─────────────────────────────────────
   return (
     <div style={containerStyle}>
-      {/* Row 1: status label + sidecar dot */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: 'var(--text-muted, #555)',
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--text-muted, #666)',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Left: idle label + mini-bars + layer count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+            color: 'var(--on-dark-faint)',
+          }}>
             Idle
           </span>
+          <span style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+          <LayerMiniBar assets={assets} />
+          <span style={{ fontSize: 9.5, color: 'var(--on-dark-faint)', whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--on-dark-mut)' }}>{litLayerCount}</span>
+            {' / '}{liveLayers.length} layers live
+          </span>
         </div>
-        <SidecarDot healthy={sidecarHealthy} />
-      </div>
-
-      {/* Row 2: layer mini-bar + counts */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <LayerMiniBar assets={assets} />
-
-        <span
-          style={{
-            fontSize: 10,
-            color: 'var(--text-muted, #666)',
-            letterSpacing: '0.04em',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {liveLayers}/{totalLayers} layers
-        </span>
-
-        <span
-          style={{
-            fontSize: 10,
-            color: 'var(--text-muted, #666)',
-            letterSpacing: '0.04em',
-            marginLeft: 'auto',
-          }}
-        >
-          {overallPct}% complete
-        </span>
+        {/* Right: sidecar dot + complete % */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <SidecarDot healthy={sidecarHealthy} />
+          <span style={{ fontSize: 9.5, color: 'var(--on-dark-faint)', whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--on-dark-mut)', fontVariantNumeric: 'tabular-nums' }}>{overallPct}%</span>
+            {' complete'}
+          </span>
+        </div>
       </div>
     </div>
   )

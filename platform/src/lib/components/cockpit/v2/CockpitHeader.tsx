@@ -259,6 +259,8 @@ export function CockpitHeader({
         </div>
       </div>
 
+      {/* Hairline separator before console */}
+      <div style={{ margin: '12px 0 0', borderTop: '1px solid var(--black-line)' }} />
       <BuildConsole
         activeRun={activeRun}
         assets={assets}
