@@ -1156,7 +1156,7 @@ def _build_navamsha_cross_check_signals(
             "valence":                                  valence,
             "lel_origin":                               False,
             "configuration_jsonb":                      json.dumps(config),
-            "constituent_facts_array":                  None,
+            "constituent_facts_array":                  [],
             "constituent_signals_array":                None,
             "classical_sources_array":                  None,
             "source_corroboration_count_by_text":       2,

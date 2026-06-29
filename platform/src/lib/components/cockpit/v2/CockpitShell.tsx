@@ -112,7 +112,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chart_id: chartId, scope: 'global', scope_target: null, action: 'build' }),
+      body: JSON.stringify({ chart_id: chartId, scope: 'global', scope_target: null, action: 'rebuild' }),
     })
     const body = await r.json()
     if (!r.ok) throw new Error(body.error ?? 'Failed to start build after clear')

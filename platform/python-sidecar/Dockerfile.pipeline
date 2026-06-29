@@ -45,6 +45,10 @@ COPY platform/python-sidecar/services/ ./platform/python-sidecar/services/
 # Panchang engine (ga_panchanga + ga_pyjhora_engine health probe). Required since
 # ga_panchanga_writer imports panchang_engine at build time.
 COPY platform/python-sidecar/panchang_engine/ ./platform/python-sidecar/panchang_engine/
+# Muhurta scoring package (ka_muhurta_seva imports muhurat.finder at runtime).
+# Without this COPY, Cloud Run job → ModuleNotFoundError('muhurat') → ka_muhurta_seva
+# self-test failures → cascading block of 7 ka_* + 9 ph_* + 5 mi_* assets.
+COPY platform/python-sidecar/muhurat/ ./platform/python-sidecar/muhurat/
 # CGM edge manifests (read by brahmagyan.bodha.bo22 at runtime)
 COPY 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 COPY 035_DISCOVERY_LAYER/cgm_supports_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
