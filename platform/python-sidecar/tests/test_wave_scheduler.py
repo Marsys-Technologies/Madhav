@@ -164,30 +164,3 @@ def test_stale_mark_lock_serialises_concurrent_callers():
     )
 
 
-def test_asset_timeout_marks_as_failed():
-    """An asset that runs longer than ASSET_TIMEOUT_SEC must be marked failed."""
-    import time as _t
-    import threading
-
-    def run_fn(asset_id):
-        _t.sleep(999)  # simulates a hanging Vertex AI call
-        return "lit"
-
-    import pipeline.orchestrator.runner as mod
-    orig = mod.ASSET_TIMEOUT_SEC
-    mod.ASSET_TIMEOUT_SEC = 2  # 2s for test speed
-    try:
-        start = _t.monotonic()
-        failed, terminal = execute_dag(
-            plan=["bo_samskara"],
-            deps_of={"bo_samskara": []},
-            run_fn=run_fn,
-            worker_limit=1,
-            on_timeout=lambda a, msg: None,
-        )
-        elapsed = _t.monotonic() - start
-    finally:
-        mod.ASSET_TIMEOUT_SEC = orig
-
-    assert "bo_samskara" in failed, "timed-out asset must be in failed set"
-    assert elapsed < 10, f"scheduler must not hang past timeout, took {elapsed:.1f}s"

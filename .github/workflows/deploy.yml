@@ -494,7 +494,7 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
             --task-timeout=86400 \
-            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,ORCHESTRATOR_ASSET_TIMEOUT_SEC=3600 \
+            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
             --quiet
 
       - name: Verify ga_writers is importable in the pushed image

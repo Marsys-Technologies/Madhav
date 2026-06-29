@@ -10,7 +10,6 @@ import logging
 import os
 import signal
 import sys
-import time as _time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
 from typing import Optional
 
@@ -78,11 +77,7 @@ _MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "6
 # asset (ga_dashas/ka_sangam). Each worker uses its own DB connection.
 _WORKER_LIMIT = max(1, int(os.environ.get("ORCHESTRATOR_WORKER_LIMIT", "4")))
 
-# Per-asset timeout: if an asset's future does not complete within this many seconds,
-# the scheduler evicts it from in_flight, marks it failed, and fires on_timeout().
-# Default 300 s (5 min). Override via env for testing or slow embedding jobs.
-ASSET_TIMEOUT_SEC: int = int(os.environ.get("ORCHESTRATOR_ASSET_TIMEOUT_SEC", "300"))
-_POLL_INTERVAL: float = 5.0  # seconds between signal checks + timeout checks
+_POLL_INTERVAL: float = 5.0  # seconds between signal checks
 
 # ── Writer-gap guard ──────────────────────────────────────────────────────────
 # Mode: enforce (default) — fail the run; warn — log only; off — skip.
@@ -237,7 +232,6 @@ def execute_dag(
     seed_completed: Optional[set] = None,
     on_block=None,
     should_stop=None,
-    on_timeout=None,          # NEW: called(asset_id, msg) when asset exceeds ASSET_TIMEOUT_SEC
     on_complete=None,         # called(asset_id) when asset lands in completed; errors are swallowed
 ) -> tuple[set[str], Optional[str]]:
     """
@@ -259,11 +253,9 @@ def execute_dag(
     terminal: Optional[str] = None
     _block = on_block or (lambda a, b: None)
     _stop = should_stop or (lambda: None)
-    _on_timeout = on_timeout or (lambda a, msg: None)
     _on_complete = on_complete or (lambda a: None)
     wl = max(1, worker_limit)
 
-    _in_flight_start: dict = {}  # future -> submit_time (monotonic seconds)
     pool = _DaemonThreadPoolExecutor(max_workers=wl, thread_name_prefix="asset")
     try:
         while pending or in_flight:
@@ -284,7 +276,6 @@ def execute_dag(
                 if all(d in completed for d in deps_of.get(a, [])) and len(in_flight) < wl:
                     _fut = pool.submit(run_fn, a)
                     in_flight[_fut] = a
-                    _in_flight_start[_fut] = _time.monotonic()
                     pending.remove(a)
                     progressed = True
 
@@ -303,7 +294,6 @@ def execute_dag(
             done, _ = _futures_wait(list(in_flight), return_when=FIRST_COMPLETED, timeout=_POLL_INTERVAL)
             for fut in done:
                 a = in_flight.pop(fut)
-                _in_flight_start.pop(fut, None)   # cleanup start-time tracking
                 # Serial-equivalent success rule: only 'error' is failure; any other
                 # terminal state ('lit'/'complete') counts as success (matches the old
                 # `if state == 'error'` gate). run_fn returns 'error' on crash too.
@@ -316,25 +306,10 @@ def execute_dag(
                     except Exception as _oce:
                         logger.warning("[execute_dag] on_complete(%s) raised: %s", a, _oce)
 
-            # Per-asset timeout: any in-flight future older than ASSET_TIMEOUT_SEC is forfeit.
-            _now = _time.monotonic()
-            for _tfut in list(in_flight):
-                _age = _now - _in_flight_start.get(_tfut, _now)
-                if _age > ASSET_TIMEOUT_SEC:
-                    _ta = in_flight.pop(_tfut)
-                    _in_flight_start.pop(_tfut, None)
-                    failed.add(_ta)
-                    _msg = f"asset_timeout: {_ta} exceeded {ASSET_TIMEOUT_SEC}s (actual {_age:.0f}s)"
-                    logger.error("[orchestrator] %s", _msg)
-                    _on_timeout(_ta, _msg)
-
         # On stop/pause, let dispatched workers finish (their committed sub-steps are real).
         for fut in list(in_flight):
             a = in_flight.pop(fut)
             try:
-                # Serial-equivalent success rule: only 'error' is failure; any other
-                # terminal state ('lit'/'complete') counts as success (matches the old
-                # `if state == 'error'` gate). run_fn returns 'error' on crash too.
                 if fut.result() == "error":
                     failed.add(a)
                 else:
@@ -483,38 +458,6 @@ def _schedule_parallel(
     def on_block(a, blocking):
         _mark_asset_blocked(conn, cur, run_id, eff(a), a, blocking)
 
-    def on_timeout(asset_id: str, msg: str) -> None:
-        """Mark timed-out asset as error via a fresh DB connection.
-
-        NOTE: The worker thread for this asset is still alive (ThreadPoolExecutor
-        cannot interrupt a running future). When that thread eventually finishes
-        or crashes, worker()'s crash-recovery path will also call mark_asset_error()
-        for the same asset. Both writes use ON CONFLICT DO UPDATE (idempotent), so
-        there is no data corruption — but the second write may overwrite this clean
-        'asset_timeout:' message with a crash message. This is an accepted trade-off:
-        the important outcome (state='error', build unblocked) is guaranteed regardless
-        of which write lands last.
-        """
-        try:
-            from .asset_runner import mark_asset_error as _mark_err
-            _tconn = connect()
-            _tconn.autocommit = False
-            _tcur = _tconn.cursor()
-            _mark_err(_tconn, _tcur, run_id, eff(asset_id), asset_id, msg)
-            _tconn.close()
-        except Exception as _te:
-            logger.error("[orchestrator] timeout-cleanup failed for %s: %s", asset_id, _te)
-        # Emit a timeout-specific event for SSE observability. Note: mark_asset_error()
-        # above already emits asset.state_change → error (the primary UI update). This
-        # event is supplementary — operators/logs can see the timeout cause explicitly.
-        emit_event({
-            "type": "asset.timeout",
-            "chart_id": eff(asset_id),
-            "asset_id": asset_id,
-            "run_id": run_id,
-            "timeout_sec": ASSET_TIMEOUT_SEC,
-        })
-
     from .staleness import propagate_downstream_staleness
 
     def on_complete(asset_id: str) -> None:
@@ -556,7 +499,6 @@ def _schedule_parallel(
         seed_completed=completed,
         on_block=on_block,
         should_stop=should_stop,
-        on_timeout=on_timeout,
         on_complete=on_complete,
     )
 
