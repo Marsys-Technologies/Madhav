@@ -28,7 +28,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
             """)
             _convergence_has_domain = probe_cur.fetchone() is not None
 
-        domain_select = "kc.domain," if _convergence_has_domain else "NULL AS domain,"
+        domain_select = "kc.domain" if _convergence_has_domain else "NULL AS domain"
 
         with conn.cursor() as cur:
             cur.execute(f"""
