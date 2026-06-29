@@ -101,8 +101,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     cells = _fetch_dict(
         conn,
         """SELECT domain_row, domain_col, computed_linkage_strength,
-                  asymmetry_score AS contradiction_density, asymmetric_linkage_flag,
-                  top_k_rank_in_snapshot
+                  asymmetry_score AS contradiction_density, asymmetric_linkage_flag
            FROM bodha_cdlm_cells
            WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
         [chart_id, aya, SNAPSHOT_TYPE],
@@ -116,7 +115,6 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     total_linkage = 0.0
     contradiction_scores: list[float] = []
     domain_strength: dict[str, float] = defaultdict(float)
-    bridge_count = 0
     asymmetric_count = 0
     strongest_strength = -1.0
     strongest_pair: dict = {}
@@ -141,7 +139,6 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
 
         if asymm_flag:
             asymmetric_count += 1
-            bridge_count += 1
 
         if strength > strongest_strength:
             strongest_strength = strength
@@ -196,7 +193,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         "karaka_to_domain_strength_jsonb": json.dumps({}),    # karaka mapping populated in L4+
         "dominant_3_domains_array": dominant_3,
         "weakest_3_domains_array": weakest_3,
-        "bridge_link_count": bridge_count,
+        "bridge_link_count": asymmetric_count,
         "asymmetric_link_count": asymmetric_count,
         "verification_pass_status": "pass",
         "citation_ref": "bo_cdlm_summary:aggregation_v1:bodha_cdlm_cells",

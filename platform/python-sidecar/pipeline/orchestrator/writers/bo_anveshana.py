@@ -752,6 +752,7 @@ def _batch_insert(conn: Any, rows: list[dict], sql: str, batch_size: int = 50) -
             batch = rows[i:i + batch_size]
             try:
                 cur.executemany(sql, batch)
+                inserted += max(0, cur.rowcount)
             except Exception as exc:
                 logger.warning("[bo_anveshana] batch failed at %d: %s", i, exc)
                 for row in batch:
@@ -759,10 +760,10 @@ def _batch_insert(conn: Any, rows: list[dict], sql: str, batch_size: int = 50) -
                         cur.execute("SAVEPOINT row_sp")
                         cur.execute(sql, row)
                         cur.execute("RELEASE SAVEPOINT row_sp")
+                        inserted += max(0, cur.rowcount)
                     except Exception as re:
                         cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_anveshana] row skip: %s", re)
-            inserted += len(batch)
     return inserted
 
 

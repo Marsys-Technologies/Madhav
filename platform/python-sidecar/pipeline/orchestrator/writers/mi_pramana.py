@@ -246,7 +246,7 @@ class MiPramanaWriter(WriterBase):
                 })
 
         logger.info("[mi_pramana:match] %d matches for chart %s", len(self._matches), chart_id)
-        return WriterResult(asset_id=self.asset_id, rows_inserted=len(self._matches),
+        return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                             duration_seconds=time.time() - t0)
 
     # ── substep: score ───────────────────────────────────────────────────────
@@ -329,9 +329,10 @@ class MiPramanaWriter(WriterBase):
         """
         with conn.cursor() as cur:
             cur.executemany(CAL_SQL, rows)
+            rows_inserted = max(0, cur.rowcount)
 
-        logger.info("[mi_pramana:score] %d calibration rows for chart %s", len(rows), chart_id)
-        return WriterResult(asset_id=self.asset_id, rows_inserted=len(rows),
+        logger.info("[mi_pramana:score] %d calibration rows for chart %s", rows_inserted, chart_id)
+        return WriterResult(asset_id=self.asset_id, rows_inserted=rows_inserted,
                             duration_seconds=time.time() - t0)
 
     # ── substep: reliability ─────────────────────────────────────────────────

@@ -236,7 +236,7 @@ class KaDashaKalaService:
     def confirm_systems_present(
         self,
         chart_id: str,
-        ayanamsha_id: str = "lahiri",
+        ayanamsha_id: str = "lahiri_chitrapaksha",
     ) -> dict[str, int]:
         """
         Return a dict of {system_id: row_count} for the given chart+ayanamsha.

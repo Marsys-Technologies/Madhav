@@ -1298,6 +1298,7 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
             batch = rows[i : i + _BATCH_SIZE]
             try:
                 cur.executemany(_INSERT_SQL, batch)
+                inserted += max(0, cur.rowcount)
             except Exception:
                 # Fallback: per-row insert to skip any single bad row
                 logger.warning("[bo_laksana] batch at %d failed, falling back to per-row insert", i)
@@ -1306,11 +1307,11 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
                         cur.execute("SAVEPOINT row_sp")
                         cur.execute(_INSERT_SQL, row)
                         cur.execute("RELEASE SAVEPOINT row_sp")
+                        inserted += max(0, cur.rowcount)
                     except Exception as row_exc:
                         cur.execute("ROLLBACK TO SAVEPOINT row_sp")
                         logger.warning("[bo_laksana] skipping row signal_type_id=%s: %s",
                                        row.get("signal_type_id"), row_exc)
-            inserted += len(batch)
             if inserted % 2000 == 0 or i + _BATCH_SIZE >= len(rows):
                 logger.info("[bo_laksana] inserted %d/%d signals", inserted, len(rows))
     return inserted

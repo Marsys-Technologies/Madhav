@@ -21,12 +21,10 @@ class KaKalasutraWriter(WriterBase):
                     kap.signature_class,
                     kap.dasha_eligibility_rule_jsonb,
                     kap.transit_trigger_jsonb,
-                    kap.strength_affliction_hook_jsonb,
-                    COALESCE(msr.deterministic_strength, 0.5) as strength
+                    kap.strength_affliction_hook_jsonb
                 FROM kala_activation_predicates kap
-                LEFT JOIN bodha_msr_signals msr ON kap.signal_id = msr.signal_id
                 WHERE kap.chart_id = %s
-                ORDER BY kap.signature_class, COALESCE(msr.deterministic_strength, 0) DESC
+                ORDER BY kap.signature_class
             """, (chart_id,))
             predicates = cur.fetchall()
         
@@ -63,7 +61,6 @@ class KaKalasutraWriter(WriterBase):
             dasha_rule = pred['dasha_eligibility_rule_jsonb']
             transit_rule = pred['transit_trigger_jsonb']
             strength_hook = pred['strength_affliction_hook_jsonb']
-            strength = pred['strength']
             sig_id_str = str(signal_id)
             
             # L2 null hooks: filled here at L3 (NEVER by writing bodha_msr_signals)

@@ -722,7 +722,7 @@ def _load_varga_dignity_spread(
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             # chart_divisionals.graha stores Title Case ("Sun", "Moon", ...) — pass graha directly.
-            # Include both 'varga_position' (sign) and 'varga_dignity' (dignity_status, dignity_score).
+            # Include both 'varga_position' (sign) and 'varga_dignity' (dignity, overall_dignity_score).
             cur.execute("""
                 SELECT varga, fact_key, fact_value_text, fact_value_num
                 FROM chart_divisionals
@@ -730,7 +730,7 @@ def _load_varga_dignity_spread(
                   AND ayanamsha_id   = %s
                   AND graha          = %s
                   AND fact_category IN ('varga_position', 'varga_dignity')
-                  AND fact_key       IN ('sign', 'dignity', 'dignity_score')
+                  AND fact_key       IN ('sign', 'dignity', 'overall_dignity_score')
             """, (chart_id, ayanamsha_id, graha))
 
             spread: dict[str, Any] = {}
@@ -741,7 +741,7 @@ def _load_varga_dignity_spread(
                     spread[varga]["sign"] = val_text
                 elif key == "dignity":
                     spread[varga]["dignity"] = val_text
-                elif key == "dignity_score":
+                elif key == "overall_dignity_score":
                     spread[varga]["score"] = float(val_num) if val_num is not None else None
 
             if not spread:
@@ -1314,7 +1314,7 @@ def build_ga_condition_substep(
         for row in insert_rows:
             values = [row[c] for c in cols]
             cur.execute(sql, values)
-            inserted += 1
+            inserted += max(0, cur.rowcount)
 
     logger.info(
         "[ga_condition_writer] Inserted %d rows for chart=%s ayanamsha=%s",

@@ -203,6 +203,12 @@ class KaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
                         (chart_id,))
+            # Clear lifetime rows here so stale rows are removed even when
+            # _lt_preds is empty and _substep_lifetime is never called.
+            cur.execute(
+                "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
+                (chart_id,),
+            )
 
         today        = date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
@@ -234,16 +240,10 @@ class KaSangamWriter(WriterBase):
         pred      = self._lt_preds[idx]
         signal_id = pred.get('signal_id')
 
-        # Idempotency: on first lifetime substep clear all lifetime rows (handles
-        # stale rows from previous builds with different predicates); subsequent
-        # substeps scope the delete to this signal only.
+        # Idempotency: lifetime rows were bulk-cleared in _substep_near before any
+        # lifetime substep runs; no additional full-table delete needed here.
         with conn.cursor() as cur:
-            if idx == 0:
-                cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
-                    (chart_id,),
-                )
-            elif signal_id:
+            if signal_id:
                 cur.execute(
                     "DELETE FROM kala_convergence WHERE chart_id = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
                     (chart_id, str(signal_id)),
@@ -544,7 +544,7 @@ class KaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT graha, transit_to_house, vedha_house
+                    SELECT graha, primary_house, vedha_house
                     FROM bg_transit_rules
                     WHERE rule_type = 'vedha'
                     """
@@ -552,7 +552,7 @@ class KaSangamWriter(WriterBase):
                 for row in cur.fetchall():
                     vedha_rules.append({
                         'graha': row['graha'],
-                        'transit_to_house': row['transit_to_house'],
+                        'transit_to_house': row['primary_house'],
                         'vedha_house': row['vedha_house'],
                     })
             with conn.cursor() as sp:

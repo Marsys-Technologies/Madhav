@@ -352,8 +352,11 @@ def replace_prior_signal_embeddings(conn: Any, chart_id: str, ayanamsha_id: str)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def replace_prior_scorecard(conn: Any, chart_id: str, build_id: str) -> int:
+    """Delete ALL prior scorecard rows for this chart (not just matching build_id).
+    Scoping to chart_id only ensures N rebuilds leave exactly 1 scorecard row.
+    build_id is kept in the signature for call-site compatibility but is not used."""
     return _delete(
         conn,
-        "DELETE FROM synthesis_quality_scorecard WHERE chart_id = %s AND build_id = %s",
-        [chart_id, build_id],
+        "DELETE FROM synthesis_quality_scorecard WHERE chart_id = %s",
+        [chart_id],
     )

@@ -233,7 +233,7 @@ class ChartState:
                     if planet == "lagna":  # FIX: lagna sign stored under graha_position
                         self.lagna_sign = sign
 
-            if cat in ("graha_position", "planet_position") and key in ("degree_absolute", "longitude"):
+            if cat in ("graha_position", "planet_position") and key in ("longitude_sidereal",):
                 planet = subj
                 deg = f.get("fact_value_num")
                 if deg is not None:
