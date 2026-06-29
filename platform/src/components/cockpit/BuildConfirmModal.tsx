@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 interface BuildConfirmModalProps {
   assetIds: string[]          // plan_waves.flat() — the assets that will be built
   estimatedSeconds: number | null
@@ -15,7 +18,23 @@ function formatDuration(seconds: number): string {
 }
 
 export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCancel }: BuildConfirmModalProps) {
-  return (
+  // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
+  // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onCancel])
+
+  if (!mounted) return null
+
+  return createPortal(
     <div
       role="presentation"
       onClick={onCancel}
@@ -150,6 +169,7 @@ export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCan
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
