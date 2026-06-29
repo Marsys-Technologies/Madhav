@@ -238,6 +238,7 @@ def execute_dag(
     on_block=None,
     should_stop=None,
     on_timeout=None,          # NEW: called(asset_id, msg) when asset exceeds ASSET_TIMEOUT_SEC
+    on_complete=None,         # called(asset_id) when asset lands in completed; errors are swallowed
 ) -> tuple[set[str], Optional[str]]:
     """
     Pure (DB-free) wave-parallel DAG executor — the scheduling core, separated so it
@@ -259,6 +260,7 @@ def execute_dag(
     _block = on_block or (lambda a, b: None)
     _stop = should_stop or (lambda: None)
     _on_timeout = on_timeout or (lambda a, msg: None)
+    _on_complete = on_complete or (lambda a: None)
     wl = max(1, worker_limit)
 
     _in_flight_start: dict = {}  # future -> submit_time (monotonic seconds)
@@ -305,7 +307,14 @@ def execute_dag(
                 # Serial-equivalent success rule: only 'error' is failure; any other
                 # terminal state ('lit'/'complete') counts as success (matches the old
                 # `if state == 'error'` gate). run_fn returns 'error' on crash too.
-                (failed if fut.result() == "error" else completed).add(a)
+                if fut.result() == "error":
+                    failed.add(a)
+                else:
+                    completed.add(a)
+                    try:
+                        _on_complete(a)
+                    except Exception as _oce:
+                        logger.warning("[execute_dag] on_complete(%s) raised: %s", a, _oce)
 
             # Per-asset timeout: any in-flight future older than ASSET_TIMEOUT_SEC is forfeit.
             _now = _time.monotonic()
@@ -326,7 +335,14 @@ def execute_dag(
                 # Serial-equivalent success rule: only 'error' is failure; any other
                 # terminal state ('lit'/'complete') counts as success (matches the old
                 # `if state == 'error'` gate). run_fn returns 'error' on crash too.
-                (failed if fut.result() == "error" else completed).add(a)
+                if fut.result() == "error":
+                    failed.add(a)
+                else:
+                    completed.add(a)
+                    try:
+                        _on_complete(a)
+                    except Exception as _oce:
+                        logger.warning("[execute_dag] on_complete(%s) raised: %s", a, _oce)
             except Exception:
                 failed.add(a)
 
