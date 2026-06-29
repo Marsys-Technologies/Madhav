@@ -103,6 +103,11 @@ class CompendiumIndexWriter(WriterBase):
         logger.info("[bg_compendium_index] dedup unique index ensured")
 
         # ── Step 2: Pass A — per-text-per-chapter rows ────────────────────────
+        # Idempotency: full clear before re-seed (L0 global reference, no chart_id scope).
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM brahma_compendium_index")
+        logger.info("[bg_compendium_index] cleared brahma_compendium_index for re-seed")
+
         # For each (text_id, chapter) group: verse range, chunk_ids, synopsis, score.
         logger.info("[bg_compendium_index] Pass A: loading per-text-per-chapter groups...")
 

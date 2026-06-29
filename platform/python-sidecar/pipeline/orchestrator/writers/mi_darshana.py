@@ -232,8 +232,9 @@ class MiDarshanaWriter(WriterBase):
                 SURFACE_FORMULA_VERSION,
             ))
 
-        # Idempotency: delete prior insight units
+        # Idempotency: delete prior insight units and their embeddings
         with conn.cursor() as cur:
+            cur.execute("DELETE FROM mimamsa_insight_embeddings WHERE chart_id = %s", (chart_id,))
             cur.execute("DELETE FROM mimamsa_insight_units WHERE chart_id = %s", (chart_id,))
 
         if not rows:

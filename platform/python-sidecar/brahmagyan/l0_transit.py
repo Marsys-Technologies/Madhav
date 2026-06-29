@@ -569,6 +569,12 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
 
     cur = conn.cursor()
 
+    # Idempotency: full clear before re-seed so removed entries don't persist
+    # as orphan rows. 37 static rows — full truncate is correct L0 behaviour.
+    cur.execute("DELETE FROM bg_transit_rules")
+    cur.execute("DELETE FROM bg_transit_engine")
+    logger.info("[transit] cleared bg_transit_rules and bg_transit_engine for re-seed")
+
     # ── Insert bg_transit_engine rows ─────────────────────────────────────────
     engine_count = 0
     for row in BG_TRANSIT_ENGINE:

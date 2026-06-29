@@ -1200,6 +1200,12 @@ def seed_rules(
     chunks_processed = 0
     chunks_with_zero_extractions = 0
 
+    # Idempotency: delete all python-extracted rules before re-seed so stale
+    # rules from changed regex patterns or corpus edits don't survive.
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM sutravali_rules WHERE extracted_by = %s", (EXTRACTED_BY,))
+    logger.info("[rules] cleared sutravali_rules WHERE extracted_by='%s'", EXTRACTED_BY)
+
     # Stream chunks in batches to avoid loading all 8k into memory at once
     BATCH_SIZE = 200
 

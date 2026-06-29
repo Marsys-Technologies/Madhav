@@ -83,9 +83,24 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   mi_adhilepa: [
     { sql: 'DELETE FROM mimamsa_load_bearing WHERE chart_id = $1' },
     // Secondary output tables beyond the registered target_table.
-    // count_sql extended in migration 364 to count all three tables.
+    // count_sql extended in migration 364 (3 tables) and migration 369 (all 5 tables).
     { sql: 'DELETE FROM mimamsa_convergence_adjustment WHERE chart_id = $1' },
     { sql: 'DELETE FROM mimamsa_anchor_adjustment WHERE chart_id = $1' },
+    // Added migration 369: signal + fact overlay tables written by mi_adhilepa
+    // but previously absent from count_sql (dark tables). No FK constraints among
+    // mimamsa tables — delete order is free.
+    { sql: 'DELETE FROM mimamsa_signal_adjustment WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_fact_adjustment WHERE chart_id = $1' },
+  ],
+
+  // mi_kula is a GLOBAL catalog writer (no chart_id column on either table).
+  // The writer does: DELETE FROM mimamsa_negative_controls; DELETE FROM mimamsa_signal_families;
+  // then re-seeds from the embedded static catalog. deriveDeleteSqlFromCountSql() cannot
+  // produce a correct unscoped DELETE from the summed count_sql, so we hardcode both here.
+  // Delete negative_controls first (logically depends on families; no FK but safe order).
+  mi_kula: [
+    { sql: 'DELETE FROM mimamsa_negative_controls' },
+    { sql: 'DELETE FROM mimamsa_signal_families' },
   ],
 
   // mi_seva's count_sql is the un-scoped `SELECT count(*) FROM mimamsa_preferences`
