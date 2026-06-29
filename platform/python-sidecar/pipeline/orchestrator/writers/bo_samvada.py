@@ -23,6 +23,12 @@ The bo_samvada asset in the orchestrator registry counts rows in the
 view (via count_sql) to signal success. B5 must update count_sql
 to use: SELECT count(*) FROM vw_chart_digest WHERE chart_id = '<canonical>'
 
+POSITION NOTE: bo_samvada is intentionally the LAST bodha asset in execution order.
+It is a VIEW definition (DDL, not INSERT) that spans all bodha_* tables. It must
+execute only after all upstream data tables are fully populated for the chart.
+This is by design — last position in the build plan is correct.
+rows_written = 1 (the VIEW itself counts as 1 object created).
+
 LIGHT writer.
 """
 from __future__ import annotations

@@ -16,6 +16,10 @@ Convergence algorithm (per domain):
     - convergence_score = computed via convergence_formula_v1
     - cross_tradition_count = distinct traditions in those signals
 
+SPARSITY NOTE: Row count varies per chart (depends on how many domain pairs co-occur
+in that chart's MSR signals). 100 rows for chart 482012f1-... is expected and correct.
+Sparse charts with few cross-domain signals will produce fewer rows. This is by design.
+
 LIGHT writer — one run() call.
 """
 from __future__ import annotations
