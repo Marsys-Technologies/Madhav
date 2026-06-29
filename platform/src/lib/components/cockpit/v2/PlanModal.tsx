@@ -45,7 +45,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   useEffect(() => { setMounted(true) }, [])
 
   // Fetch plan on first render
-  useState(() => {
+  useEffect(() => {
     ;(async () => {
       try {
         const r = await fetch('/api/cockpit/plan', {
@@ -63,7 +63,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         setLoading(null)
       }
     })()
-  })
+  }, [])
 
   const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return
@@ -197,8 +197,8 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                     {isDraft && (
                       <span style={{
                         fontSize: '9px', padding: '1px 5px', borderRadius: '3px',
-                        background: 'rgba(235,180,52,0.15)', color: '#ECC56A',
-                        border: '1px solid rgba(235,180,52,0.3)',
+                        background: 'var(--gold-glow)', color: 'var(--gold-high)',
+                        border: '1px solid var(--gold-core)',
                         textTransform: 'uppercase', letterSpacing: '0.04em', marginLeft: 'auto',
                       }}>
                         DRAFT
