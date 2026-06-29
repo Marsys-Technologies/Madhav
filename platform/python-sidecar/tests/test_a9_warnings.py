@@ -95,17 +95,23 @@ def _load_module(filename: str) -> types.ModuleType:
     Uses the stub's no-op ``register`` function while loading the module so
     that re-loading a writer that was already registered by another test file
     does not raise a duplicate-registration ValueError.
+
+    sys.modules[key] is restored to its previous state after loading so that
+    subsequent discover_all() calls in other test files see the real writer
+    module (or no entry, causing a fresh disk import) rather than this
+    no-op-registered stub — which would silently exclude the writer from
+    WRITER_REGISTRY and cause phantom-entry failures in test_has_writer_completeness.
     """
     stub = _ensure_writers_stub()
     _ensure_psycopg_stub()
     key = f"{_PKG}.{filename.replace('.py', '')}"
-    sys.modules.pop(key, None)
+    prev_mod = sys.modules.pop(key, None)  # save & clear prior entry
 
     path = _WORKTREE + filename
     spec = importlib.util.spec_from_file_location(key, path)
     mod = importlib.util.module_from_spec(spec)
     mod.__package__ = _PKG
-    sys.modules[key] = mod
+    sys.modules[key] = mod  # required during exec_module so relative imports work
 
     # Temporarily replace the writers-package `register` with a no-op so that
     # @register(…) decorators inside the loaded module don't fire on the real
@@ -118,6 +124,12 @@ def _load_module(filename: str) -> types.ModuleType:
         spec.loader.exec_module(mod)
     finally:
         stub.register = original_register
+        # Restore sys.modules to its prior state so later discover_all() calls
+        # don't inherit this no-op-registered stub.
+        if prev_mod is not None:
+            sys.modules[key] = prev_mod
+        else:
+            sys.modules.pop(key, None)
 
     return mod
 

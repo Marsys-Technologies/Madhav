@@ -86,6 +86,10 @@ def _install(monkeypatch, state, fail_assets):
     monkeypatch.setattr(runner, "emit_event", lambda *a, **k: None)
     import pipeline.orchestrator.writers as writers_mod
     monkeypatch.setattr(writers_mod, "discover_all", lambda: None, raising=False)
+    # Patch out the writer-gap guard: this test focuses on DAG blocking behaviour,
+    # not writer-registry completeness. The guard queries asset_registry for
+    # has_writer, which the 4-row fake DB does not provide.
+    monkeypatch.setattr(runner, "_check_writer_registry_gaps", lambda cur: [], raising=False)
 
     ran: list[str] = []
 
