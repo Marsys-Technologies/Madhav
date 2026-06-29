@@ -24,7 +24,13 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   mi_pramana: ['mimamsa_reliability', 'mimamsa_calibration'],
   mi_pariksha: ['mimamsa_attribution', 'mimamsa_discoveries', 'mimamsa_qa_eval'],
   mi_darshana: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'],
-  mi_adhilepa: ['mimamsa_load_bearing', 'mimamsa_convergence_adjustment', 'mimamsa_anchor_adjustment'],
+  mi_adhilepa: [
+    'mimamsa_load_bearing',
+    'mimamsa_convergence_adjustment',
+    'mimamsa_anchor_adjustment',
+    'mimamsa_signal_adjustment',
+    'mimamsa_fact_adjustment',
+  ],
 }
 
 describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
@@ -44,9 +50,9 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     })
   }
 
-  it('mi_adhilepa does NOT reference mimamsa_signal_adjustment (the mis-targeted table)', () => {
+  it('mi_adhilepa includes mimamsa_signal_adjustment (confirmed output table per migration 369)', () => {
     const ops = EXPLICIT_CLEAR_OPS['mi_adhilepa'] ?? []
-    expect(ops.some(op => /signal_adjustment/.test(op.sql))).toBe(false)
+    expect(ops.some(op => /signal_adjustment/.test(op.sql))).toBe(true)
   })
 
   it('bo_samvada is an explicit null (view-backed asset, nothing to clear)', () => {

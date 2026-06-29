@@ -212,11 +212,9 @@ describe('L3 service asset dual-check (asset_kind fix)', () => {
         onRunStarted={() => {}}
       />
     )
-    // Bar should show LIVE, not NOT BUILT — null floor + rows present = fully built
-    expect(screen.getByText('LIVE')).toBeTruthy()
-    expect(screen.queryByText('NOT BUILT')).toBeNull()
-    // Row count displayed in bar numeric overlay
+    // Bar shows row count for lit data assets (milestone-segment design; no text pill)
     expect(screen.getByText('66,738')).toBeTruthy()
+    expect(screen.queryByText('NOT BUILT')).toBeNull()
   })
 })
 
@@ -249,7 +247,8 @@ describe('CF.L3.7 — RETIRED placeholder rendering', () => {
         onRunStarted={() => {}}
       />
     )
-    expect(screen.getByText('RETIRED')).toBeTruthy()
+    // RETIRED assets: milestone-segment bar (no text pill); confirm no NOT_MIGRATED fallback
+    expect(document.querySelector('[data-asset-id="ka_test_retired_placeholder"]')).toBeTruthy()
     expect(screen.queryByText('NOT MIGRATED')).toBeNull()
   })
 

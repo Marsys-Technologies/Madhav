@@ -111,6 +111,12 @@ _TEST_SAT_LONG = 210.0   # Scorpio
 _TEST_RAH_LONG = 180.0   # Libra
 _TEST_KET_LONG = 0.0     # Aries
 
+# Approximate Julian Day values for FORENSIC birth event (1984-02-05, Bhubaneswar).
+# Used to unblock _build_trisphuta_family_rows (B.10 guard returns [] when both are None).
+# Values need only be internally consistent — trisphuta tests do not verify JD precision.
+_TEST_SUNRISE_JD = 2445737.037   # ~06:24 IST sunrise at Bhubaneswar on 1984-02-05
+_TEST_BIRTH_JD   = 2445737.218   # ~10:43 IST birth (~4.3 h after sunrise)
+
 _TEST_LONGS = {
     "SUN": _TEST_SUN_LONG,
     "MOON": _TEST_MOON_LONG,
@@ -166,7 +172,8 @@ def _build_test_rows_for_one_ayanamsha() -> list[dict[str, Any]]:
     rows += w._build_bhrigu_bindu_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_yogi_avayogi_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_mrityu_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng", True)
-    rows += w._build_trisphuta_family_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
+    rows += w._build_trisphuta_family_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng",
+                                             sunrise_jd=_TEST_SUNRISE_JD, birth_jd=_TEST_BIRTH_JD)
     rows += w._build_pranapada_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_trikona_dasha_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_sri_yantra_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
