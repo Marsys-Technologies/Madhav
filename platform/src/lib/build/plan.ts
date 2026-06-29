@@ -271,8 +271,8 @@ export function resolveBuildPlan({
     const downstreamFiltered = scope === 'asset' ? downstreamAll : downstreamAll.filter(id => scopeAssets.includes(id))
     const candidates = Array.from(new Set([...stale, ...dormant, ...downstreamFiltered]))
     const sorted = topoSort(candidates, registry)
-    const estimated = estimateSeconds(sorted, registry)
-    return { status: 'ok', plan_waves: computeWaves(sorted, registry, scope, scope_target), blockers: [], estimated_seconds: estimated }
+    const waves = computeWaves(sorted, registry, scope, scope_target)
+    return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimateSeconds(waves.flat(), registry) }
   }
 
   if (action === 'cascade') {
@@ -280,8 +280,8 @@ export function resolveBuildPlan({
     const stale = registry.filter(r => throughput.get(r.asset_id)?.state === 'stale').map(r => r.asset_id)
     const candidates = transitiveDownstream(stale, registry).filter(id => scopeAssets.includes(id))
     const sorted = topoSort(candidates, registry)
-    const estimated = estimateSeconds(sorted, registry)
-    return { status: 'ok', plan_waves: computeWaves(sorted, registry, scope, scope_target), blockers: [], estimated_seconds: estimated }
+    const waves = computeWaves(sorted, registry, scope, scope_target)
+    return { status: 'ok', plan_waves: waves, blockers: [], estimated_seconds: estimateSeconds(waves.flat(), registry) }
   }
 
   // build and rebuild: scope-aware candidates + pre-flight gate

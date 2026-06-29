@@ -348,3 +348,34 @@ describe('RELIABILITY — DAG source authority', () => {
     expect(result.plan_waves.flat()).toEqual(['A', 'B', 'C'])
   })
 })
+
+describe('resolveBuildPlan — edge cases', () => {
+  it('asset scope with null target returns no-op (not error)', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset', scope_target: null, action: 'build',
+      registry: [], throughput: new Map(),
+    })
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves).toEqual([])
+    expect(result.blockers).toEqual([])
+  })
+
+  it('layer-scope build returns empty plan when all in-scope assets are already lit', () => {
+    const registry = [
+      { asset_id: 'ga_a', layer: 'ganita', depends_on: [], estimated_seconds: 10 },
+      { asset_id: 'ga_b', layer: 'ganita', depends_on: ['ga_a'], estimated_seconds: 10 },
+    ]
+    const throughput = new Map([
+      ['ga_a', { asset_id: 'ga_a', state: 'lit' as const }],
+      ['ga_b', { asset_id: 'ga_b', state: 'lit' as const }],
+    ])
+    const result = resolveBuildPlan({
+      scope: 'layer', scope_target: 'ganita', action: 'build',
+      registry, throughput,
+    })
+    expect(result.status).toBe('ok')
+    expect(result.plan_waves).toEqual([])
+    expect(result.blockers).toEqual([])
+    expect(result.estimated_seconds).toBeNull()
+  })
+})
