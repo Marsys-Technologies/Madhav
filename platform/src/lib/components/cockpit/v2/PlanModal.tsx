@@ -158,6 +158,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
           padding: '24px',
           width: '480px',
           maxHeight: '70vh',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
@@ -230,24 +231,24 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
                   </div>
                 )
               })}
-            </div>
 
-            {/* MiniDAG — shown for multi-asset rebuild/update plans when assets data is available */}
-            {planData.plan.length > 1 && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                <div style={{
-                  fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',
-                  color: 'var(--on-dark-faint)', marginBottom: '8px',
-                }}>
-                  Rebuild closure
+              {/* MiniDAG — inside scroll area so tall DAGs don't push buttons off-screen */}
+              {planData.plan.length > 1 && action !== 'build' && scopeTarget && assets && assets.length > 0 && (
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{
+                    fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: 'var(--on-dark-faint)', marginBottom: '8px',
+                  }}>
+                    Rebuild closure
+                  </div>
+                  <MiniDAG
+                    targetAssetId={scopeTarget}
+                    planAssetIds={planData.plan}
+                    assets={assets}
+                  />
                 </div>
-                <MiniDAG
-                  targetAssetId={scopeTarget}
-                  planAssetIds={planData.plan}
-                  assets={assets}
-                />
-              </div>
-            )}
+              )}
+            </div>
             {/* L0 double-confirm panel — shown when server returns requires_double_confirm */}
             {l0ConfirmPending && (
               <div style={{
