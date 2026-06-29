@@ -15,7 +15,7 @@ import { useUserRole } from '@/hooks/useUserRole'
 import { DUR, EASE, STAGGER } from './motion'
 
 // Layer-level status dot — mirrors AssetRow's StatusDot at the layer grain.
-// green = all active assets lit; amber = layer actively building; red = any error; dim = dormant/partial.
+// green = all lit · amber = building OR partially lit · red = any error · dim = all dormant
 function LayerStatusDot({
   layerIsBuilding,
   litCount,
@@ -28,21 +28,24 @@ function LayerStatusDot({
   errorCount: number
 }) {
   const allLit = activeCount > 0 && litCount === activeCount
-  const color = layerIsBuilding
+  const partialLit = litCount > 0 && !allLit
+  const color = layerIsBuilding || partialLit
     ? '#ECC56A'
     : errorCount > 0
       ? 'rgba(220,80,80,0.95)'
       : allLit
         ? 'rgba(83,200,100,0.95)'
-        : 'rgba(255,255,255,0.25)'
-  const shadow = (layerIsBuilding || allLit || errorCount > 0) ? `0 0 5px ${color}` : 'none'
+        : 'rgba(255,255,255,0.22)'
+  const shadow = (layerIsBuilding || partialLit || allLit || errorCount > 0) ? `0 0 5px ${color}` : 'none'
   const title = layerIsBuilding
     ? 'Building…'
     : errorCount > 0
       ? `${errorCount} error(s)`
       : allLit
         ? 'All assets lit'
-        : `${litCount} / ${activeCount} lit`
+        : partialLit
+          ? `${litCount} / ${activeCount} lit`
+          : `0 / ${activeCount} — not built`
   return (
     <span
       title={title}
@@ -164,10 +167,10 @@ export function LayerPanel({
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
         }}
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr 210px 130px',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '8px',
+          columnGap: '20px',
           padding: '12px 16px',
           cursor: 'pointer',
           background: 'var(--black-raised)',
