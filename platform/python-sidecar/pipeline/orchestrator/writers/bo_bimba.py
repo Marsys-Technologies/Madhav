@@ -38,6 +38,21 @@ KNOWN_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
     "Venus", "Saturn", "Rahu", "Ketu",
 ]
+
+# L1 fact_subject codes → KNOWN_GRAHAS canonical names.
+# subject.title() only works for SUN→Sun and MOON→Moon; all others are abbreviated
+# (MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN) and title-case to wrong values.
+_SUBJECT_TO_GRAHA: dict[str, str] = {
+    "SUN":      "Sun",
+    "MOON":     "Moon",
+    "MAR":      "Mars",
+    "MER":      "Mercury",
+    "JUP":      "Jupiter",
+    "VEN":      "Venus",
+    "SAT":      "Saturn",
+    "RAH_MEAN": "Rahu",
+    "KET_MEAN": "Ketu",
+}
 KNOWN_DOMAINS = [
     "career", "wealth", "health", "relationship",
     "spirituality", "character", "general",
@@ -106,7 +121,7 @@ def _fetch_graha_positions(conn, chart_id: str, aya: str) -> dict[str, dict]:
             subject = str(r[0])
             val     = str(r[1]) if r[1] is not None else None
         if val:
-            graha = subject.title()  # UPPER_SNAKE → Title (SUN → Sun)
+            graha = _SUBJECT_TO_GRAHA.get(subject.upper(), subject.title())
             if graha not in positions:
                 positions[graha] = {}
             positions[graha]["sign"] = val
@@ -129,7 +144,7 @@ def _fetch_graha_positions(conn, chart_id: str, aya: str) -> dict[str, dict]:
             subject = str(r[0])
             val     = r[1]
         if val is not None:
-            graha = subject.title()
+            graha = _SUBJECT_TO_GRAHA.get(subject.upper(), subject.title())
             try:
                 house = int(float(val))
                 if graha not in positions:
