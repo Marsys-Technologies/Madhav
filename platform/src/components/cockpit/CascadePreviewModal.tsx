@@ -234,8 +234,12 @@ export function CascadePreviewModal({
 
                 {/* Empty state */}
                 {plan.length === 0 && (
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #888373)' }}>
-                    No assets in plan.
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', lineHeight: 1.5 }}>
+                    <div style={{ marginBottom: '6px' }}>No assets require building.</div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
+                      This asset is already built and up-to-date. Use <strong>Rebuild</strong> to
+                      force-rerun it (right-click or trigger from the layer panel).
+                    </div>
                   </div>
                 )}
 
@@ -275,6 +279,7 @@ export function CascadePreviewModal({
               <button
                 onClick={onConfirm}
                 disabled={confirmDisabled}
+                title={confirmDisabled && !isLoading ? 'No assets in plan — nothing to build' : undefined}
                 style={{
                   padding: '6px 20px',
                   fontSize: 13,
