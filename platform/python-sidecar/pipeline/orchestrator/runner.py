@@ -476,6 +476,16 @@ def _schedule_parallel(
             _tconn.close()
         except Exception as _te:
             logger.error("[orchestrator] timeout-cleanup failed for %s: %s", asset_id, _te)
+        # Emit a timeout-specific event for SSE observability. Note: mark_asset_error()
+        # above already emits asset.state_change → error (the primary UI update). This
+        # event is supplementary — operators/logs can see the timeout cause explicitly.
+        emit_event({
+            "type": "asset.timeout",
+            "chart_id": eff(asset_id),
+            "asset_id": asset_id,
+            "run_id": run_id,
+            "timeout_sec": ASSET_TIMEOUT_SEC,
+        })
 
     return execute_dag(
         plan=pending,
@@ -631,6 +641,10 @@ def execute_run(run_id: str) -> None:
             emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
             return
 
+        # A run completes as "completed" even when some assets failed or timed out.
+        # Timed-out assets are in failed_assets (their state in asset_throughput is
+        # 'error' — set by on_timeout → mark_asset_error). The run does NOT hang as
+        # 'running'; it terminates cleanly so the next build can acquire the lock.
         if failed_assets:
             logger.warning(
                 "[orchestrator] run %s completed with %d failed/blocked asset(s): %s",
