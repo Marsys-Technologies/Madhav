@@ -35,6 +35,50 @@ _MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "6
 # asset (ga_dashas/ka_sangam). Each worker uses its own DB connection.
 _WORKER_LIMIT = max(1, int(os.environ.get("ORCHESTRATOR_WORKER_LIMIT", "4")))
 
+# ── Writer-gap guard ──────────────────────────────────────────────────────────
+# Mode: enforce (default) — fail the run; warn — log only; off — skip.
+# A "writer gap" is an asset_id registered via @register() in the Python codebase
+# that has has_writer=false in asset_registry. The plan resolver query
+# (WHERE has_writer=true) silently excludes it from every build plan, so it can
+# never be built. Gaps are a data-loss risk — L5 was entirely absent this way.
+_WRITER_GAP_MODE = os.environ.get("ORCHESTRATOR_WRITER_GAP_CHECK", "enforce").lower()
+
+# Sub-registrations that share a writer with their parent and intentionally have
+# no independent asset_registry row (they are not standalone plan-level assets).
+_WRITER_SUBASSET_IDS: frozenset[str] = frozenset({
+    "bg_nakshatra_medical",  # sub-table inside bg_medical_mappings writer
+    "bg_transit_engine",     # sub-table inside bg_transit_rules writer
+})
+
+
+def _check_writer_registry_gaps(cur) -> list[str]:
+    """
+    Return asset_ids registered via @register() in Python but with has_writer=false
+    (or missing entirely) from asset_registry.
+
+    These assets are invisible to the plan resolver (WHERE has_writer=true) and can
+    never appear in any build plan. Caller decides whether to warn or abort the run.
+    """
+    from .writers import WRITER_REGISTRY
+    candidate_ids = sorted(set(WRITER_REGISTRY.keys()) - _WRITER_SUBASSET_IDS)
+    if not candidate_ids:
+        return []
+
+    # Single query: get all asset_registry rows that exist for our candidates.
+    cur.execute(
+        "SELECT asset_id, has_writer FROM asset_registry WHERE asset_id = ANY(%s)",
+        (candidate_ids,),
+    )
+    db_rows = {r["asset_id"]: r["has_writer"] for r in cur.fetchall()}
+
+    gaps: list[str] = []
+    for aid in candidate_ids:
+        if aid not in db_rows:
+            gaps.append(aid)          # registered in Python, no DB row at all
+        elif not db_rows[aid]:
+            gaps.append(aid)          # DB row exists but has_writer=false
+    return gaps
+
 
 # ── Run-level helpers ─────────────────────────────────────────────────────────
 
@@ -351,6 +395,33 @@ def execute_run(run_id: str) -> None:
     conn = connect()
     conn.autocommit = False
     cur = conn.cursor()
+
+    # ── Writer-gap pre-flight ─────────────────────────────────────────────────
+    # Check for @register()'d writers that lack has_writer=true in asset_registry.
+    # They are silently excluded from every build plan by the plan resolver query
+    # (WHERE has_writer=true). Discovering this mid-run would leave L2+/L5 empty.
+    if _WRITER_GAP_MODE != "off":
+        _gaps = _check_writer_registry_gaps(cur)
+        if _gaps:
+            msg = (
+                "[orchestrator] WRITER GAP: %d writer(s) registered in Python but "
+                "missing has_writer=true in asset_registry — they will NEVER appear "
+                "in any build plan. Apply the missing migration. Affected: %s"
+            )
+            if _WRITER_GAP_MODE == "enforce":
+                logger.error(msg, len(_gaps), _gaps)
+                emit_event({
+                    "type": "run.writer_gap",
+                    "run_id": run_id,
+                    "gaps": _gaps,
+                    "mode": "enforce",
+                })
+                mark_run_state(conn, cur, run_id, "failed")
+                conn.commit()
+                conn.close()
+                sys.exit(1)
+            else:
+                logger.warning(msg, len(_gaps), _gaps)
 
     # Concurrency cap: defer if too many runs are already active.
     cur.execute("SELECT count(*) AS active FROM build_runs WHERE state = 'running'")

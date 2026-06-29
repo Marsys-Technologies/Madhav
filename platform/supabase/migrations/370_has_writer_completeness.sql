@@ -25,6 +25,8 @@ WHERE asset_id IN (
   'bo_cgm_motifs',
   'bo_cgm_paths',
   'bo_chart_gestalt',
+  -- L3 Kāla — ka_tulana omitted from migration 342
+  'ka_tulana',
   -- L5 Mīmāṃsā — entire layer omitted from migration 342
   'mi_abhilekha',
   'mi_adhilepa',
@@ -40,17 +42,17 @@ WHERE asset_id IN (
   'mi_vistara'
 );
 
--- Sanity check: confirm all 16 rows were found in asset_registry.
--- (Runs as a bare SELECT; a mismatch in count surfaces as a visible diff in migration logs.)
+-- Sanity check: confirm all 17 rows were found in asset_registry.
 DO $$
 DECLARE
   marked   int;
-  expected int := 16;
+  expected int := 17;
 BEGIN
   SELECT count(*) INTO marked
   FROM asset_registry
   WHERE asset_id IN (
     'bo_cdlm_summary','bo_cgm_motifs','bo_cgm_paths','bo_chart_gestalt',
+    'ka_tulana',
     'mi_abhilekha','mi_adhilepa','mi_bhavisya','mi_darshana','mi_gunanaka',
     'mi_jivanaghatana','mi_kula','mi_pariksha','mi_pramana','mi_sambandha',
     'mi_seva','mi_vistara'
@@ -59,7 +61,7 @@ BEGIN
   IF marked <> expected THEN
     RAISE EXCEPTION
       'migration 370 sanity check failed: expected % rows marked has_writer=true, got %.'
-      ' Check that all 16 asset_ids exist in asset_registry.',
+      ' Check that all 17 asset_ids exist in asset_registry.',
       expected, marked;
   END IF;
 END $$;
