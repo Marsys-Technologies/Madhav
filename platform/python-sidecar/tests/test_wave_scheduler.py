@@ -9,6 +9,7 @@ guarantee rests on:
   * a failed asset blocks its downstream transitively (no build-on-bad-data),
   * stop/pause halts dispatch,
   * worker_limit=1 degrades to dependency-ordered serial (safe fallback).
+  * stale-mark lock (_stale_mark_lock) serialises downstream closure across workers.
 """
 from __future__ import annotations
 
@@ -119,3 +120,45 @@ def test_stop_halts_dispatch():
     )
     assert terminal == "stopped"
     assert rec.started == []
+
+
+def test_stale_mark_lock_exists_and_is_a_lock():
+    """_stale_mark_lock must be a threading.Lock so the parallel race is guarded."""
+    from pipeline.orchestrator.asset_runner import _stale_mark_lock
+    assert isinstance(_stale_mark_lock, type(threading.Lock())), (
+        "_stale_mark_lock must be a threading.Lock — it serialises downstream "
+        "stale-mark UPDATEs across concurrent workers"
+    )
+    # Verify the lock is re-entrant-safe for tests: acquire + release works.
+    assert _stale_mark_lock.acquire(blocking=False), "lock should be free at test time"
+    _stale_mark_lock.release()
+
+
+def test_stale_mark_lock_serialises_concurrent_callers():
+    """Two threads cannot hold _stale_mark_lock simultaneously."""
+    from pipeline.orchestrator.asset_runner import _stale_mark_lock
+
+    held_simultaneously = threading.Event()
+    inside = threading.Event()
+
+    def holder():
+        with _stale_mark_lock:
+            inside.set()             # signal: lock acquired
+            time.sleep(0.05)         # hold for 50ms
+
+    def tester():
+        inside.wait()                # wait until holder has the lock
+        # try_acquire should fail (lock is held)
+        got = _stale_mark_lock.acquire(blocking=False)
+        if got:
+            _stale_mark_lock.release()
+            held_simultaneously.set()
+
+    import time
+    t1 = threading.Thread(target=holder)
+    t2 = threading.Thread(target=tester)
+    t1.start(); t2.start()
+    t1.join(); t2.join()
+    assert not held_simultaneously.is_set(), (
+        "two threads acquired _stale_mark_lock simultaneously — race not guarded"
+    )

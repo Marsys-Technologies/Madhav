@@ -11,6 +11,7 @@ import hashlib
 import logging
 import os
 import subprocess
+import threading
 import traceback
 
 import psycopg
@@ -20,6 +21,15 @@ from .events import emit_event
 from .writers import discover_all, get_writer, ContextSpec, WriterBase
 
 logger = logging.getLogger(__name__)
+
+# Serializes compute_downstream_closure + stale-mark UPDATE across worker threads.
+# Under wave-parallel execution each worker owns a separate DB connection; without
+# this lock two workers completing simultaneously can issue overlapping UPDATEs on
+# the same downstream rows, causing row-lock contention or a deadlock (PostgreSQL
+# locks rows in array scan order, which is not consistent across concurrent txns).
+# The lock is held only during the short SELECT + UPDATE pair, never during the
+# writer compute phase, so it adds negligible latency.
+_stale_mark_lock = threading.Lock()
 
 # Writer-entry dependency assertion (defense-in-depth layer 5).
 #   enforce (default) — block the asset if any declared dep is not satisfied.
@@ -477,15 +487,16 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
                 "rows_written": rows_written})
 
-    downstream = compute_downstream_closure(cur, asset_id)
-    if downstream:
-        cur.execute(
-            """UPDATE asset_throughput SET state = 'stale'
-               WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
-               AND state IN ('lit', 'mature')""",
-            (chart_id, downstream),
-        )
-        conn.commit()
+    with _stale_mark_lock:
+        downstream = compute_downstream_closure(cur, asset_id)
+        if downstream:
+            cur.execute(
+                """UPDATE asset_throughput SET state = 'stale'
+                   WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
+                   AND state IN ('lit', 'mature')""",
+                (chart_id, downstream),
+            )
+            conn.commit()
         for d in downstream:
             emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": d,
                         "from_state": "lit", "to_state": "stale"})
