@@ -168,7 +168,7 @@ export function LayerPanel({
         }}
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 210px 130px',
+          gridTemplateColumns: '220px 230px 1fr',
           alignItems: 'center',
           columnGap: '20px',
           padding: '12px 16px',
@@ -224,9 +224,9 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Gauge — own flex child so space-between spreads name / gauge / buttons */}
+        {/* Gauge — fixed 230px grid column */}
         <div
-          style={{ width: '210px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
+          style={{ fontFamily: 'var(--mono-stack)' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Two-column numeric row */}
@@ -267,9 +267,9 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Actions — own flex child, always anchored to the right edge */}
+        {/* Actions — 1fr column, buttons right-anchored */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}

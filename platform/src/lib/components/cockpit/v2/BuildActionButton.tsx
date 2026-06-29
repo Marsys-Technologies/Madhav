@@ -63,6 +63,7 @@ export function BuildActionButton({
           borderRadius: '999px',
           height: '22px',
           lineHeight: 1,
+          minWidth: '64px',
         }
       : {
           padding: '0 14px',
@@ -70,6 +71,7 @@ export function BuildActionButton({
           borderRadius: '999px',
           height: '26px',
           lineHeight: 1,
+          minWidth: '80px',
         }
 
   const handleClick = () => {
