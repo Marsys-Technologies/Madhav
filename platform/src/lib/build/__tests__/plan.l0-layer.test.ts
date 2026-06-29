@@ -42,9 +42,11 @@ describe('L0 brahmagyan layer — topo dispatch order', () => {
       registry: L0_REGISTRY,
       throughput: EMPTY_THROUGHPUT,
     })
-    expect(result.plan).toHaveLength(12)
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
+    expect(plan).toHaveLength(12)
     for (const id of L0_REGISTRY.map(r => r.asset_id)) {
-      expect(result.plan).toContain(id)
+      expect(plan).toContain(id)
     }
   })
 
@@ -56,7 +58,7 @@ describe('L0 brahmagyan layer — topo dispatch order', () => {
       registry: L0_REGISTRY,
       throughput: EMPTY_THROUGHPUT,
     })
-    const plan = result.plan
+    const plan = result.plan_waves.flat()
     const ontIdx = plan.indexOf('bg_ontology')
     expect(ontIdx).toBeGreaterThan(-1)
     expect(plan.indexOf('bg_yogas')).toBeGreaterThan(ontIdx)
@@ -72,7 +74,7 @@ describe('L0 brahmagyan layer — topo dispatch order', () => {
       registry: L0_REGISTRY,
       throughput: EMPTY_THROUGHPUT,
     })
-    const plan = result.plan
+    const plan = result.plan_waves.flat()
     const textsIdx = plan.indexOf('bg_texts')
     expect(plan.indexOf('bg_text_index')).toBeGreaterThan(textsIdx)
     expect(plan.indexOf('bg_rules')).toBeGreaterThan(textsIdx)
@@ -88,7 +90,7 @@ describe('L0 brahmagyan layer — topo dispatch order', () => {
       registry: L0_REGISTRY,
       throughput: EMPTY_THROUGHPUT,
     })
-    const plan = result.plan
+    const plan = result.plan_waves.flat()
     const idxIdx = plan.indexOf('bg_text_index')
     expect(plan.indexOf('bg_concordance')).toBeGreaterThan(idxIdx)
     expect(plan.indexOf('bg_compendium_index')).toBeGreaterThan(idxIdx)

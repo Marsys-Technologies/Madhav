@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
-import { resolveBuildPlan, computeDownstreamClosure, checkStalenessGate, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { resolveBuildPlan, computeDownstreamClosure, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
@@ -130,35 +130,30 @@ export async function POST(req: NextRequest) {
     : allowedRegistry
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-  const { plan, blocked_assets } = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
+  const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
+  const plan = buildPlan.plan_waves.flat()
 
-  // Gate 4: Stale upstream gate.
-  // Blocks builds where any out-of-plan dep has stale data. Dormant/error upstream
-  // are already handled by auto-pull (plan.ts). Only stale requires an explicit
-  // upstream rebuild because building downstream on stale data produces wrong output.
-  const staleGate = checkStalenessGate(plan, planRegistry, throughput)
-  if (staleGate.length > 0) {
+  // Gate 4: Pre-flight gate (built into resolveBuildPlan).
+  // Blocks builds where any out-of-plan dep has stale or error data.
+  if (buildPlan.status === 'blocked') {
     return NextResponse.json({
-      error: 'Build blocked: upstream assets have stale data and must be rebuilt first',
-      code: 'UPSTREAM_STALE',
-      stale_upstream: staleGate,
+      error: 'Build blocked: upstream assets must be rebuilt first',
+      code: 'UPSTREAM_BLOCKED',
+      blockers: buildPlan.blockers,
     }, { status: 422 })
   }
 
   if (plan.length === 0) {
-    const allLit = blocked_assets.length === 0
-    const detail = blocked_assets.length > 0
-      ? { blocked: blocked_assets, hint: 'Build the Brahmagyan layer first, then retry.' }
-      : { hint: 'All assets in scope are already built. Use Rebuild to force a full rebuild.' }
-    const errMsg = allLit
-      ? 'Nothing to build: all assets are already lit. Use action=rebuild to force a rebuild.'
-      : 'No assets to build for this scope/action combination'
-    return NextResponse.json({ error: errMsg, code: allLit ? 'ALL_LIT' : 'NO_ASSETS', ...detail }, { status: 422 })
+    return NextResponse.json({
+      error: 'Nothing to build: all assets in scope are already built. Use action=rebuild to force a rebuild.',
+      code: 'ALL_LIT',
+      hint: 'All assets in scope are already built. Use Rebuild to force a full rebuild.',
+    }, { status: 422 })
   }
 
   // Gate 3: L1/L0 precondition gate — must run against current DB state BEFORE any clear.
   // If plan includes bo_* assets, verify upstream (L1 Gaṇita + L0 remedy corpus) is ready.
-  if (plan.some(id => id.startsWith('bo_'))) {
+  if (plan.some((id: string) => id.startsWith('bo_'))) {
     const planBuildsL1 = plan.includes('ga_positions') && plan.includes('ga_structural')
 
     const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
@@ -360,7 +355,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, blocked_assets, cleared_asset_count: clearAssetIds.length },
+      data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, cleared_asset_count: clearAssetIds.length },
     }, { status: 201 })
   }
 
@@ -414,7 +409,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, blocked_assets } }, { status: 201 })
+  return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag } }, { status: 201 })
 }
 
 export async function GET(req: NextRequest) {

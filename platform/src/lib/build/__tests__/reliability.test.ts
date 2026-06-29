@@ -122,7 +122,7 @@ describe('RELIABILITY — A1: is_active filter keeps inactive assets out of plan
       scope: 'layer', scope_target: 'ganita', action: 'rebuild',
       registry: activeOnly, throughput: new Map(),
     })
-    expect(result.plan).toEqual(['ga_positions', 'ga_condition'])
-    expect(result.plan).not.toContain('ga_deprecated')
+    expect(result.plan_waves.flat()).toEqual(['ga_positions', 'ga_condition'])
+    expect(result.plan_waves.flat()).not.toContain('ga_deprecated')
   })
 })
