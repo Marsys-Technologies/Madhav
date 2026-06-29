@@ -8,7 +8,7 @@ interface AssetProgressBarProps {
   state: string                     // polled asset state
   sseState?: string                 // live SSE state override
   actualRows?: number | null        // live rows_written from SSE / stats
-  targetVolume?: number | null      // target_floor from asset_registry
+  targetVolume?: number | null      // target_floor from asset_registry; fill is stage-based per N.4; targetVolume retained for API compat
   stage?: BuildStage                // derived stage (passed from AssetRow)
   substep?: SubstepInfo             // substep data (passed from AssetRow)
   isQueued?: boolean                // true if in run plan but not yet started
@@ -50,22 +50,10 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
   const isError = effectiveState === 'error'
   const colors = STATE_COLORS[state] ?? STATE_COLORS.dormant
 
-  // B1: fill computation — row-count-proportional when target known, stage-based otherwise.
-  // The monotonic guard ensures the bar never goes backward: stageFloor provides a minimum
-  // that advances with the build lifecycle even when actualRows lags or has no target.
+  // Fill is stage-based per N.4 (floors aspirational, not gates)
   let fillPct: number
   if (isBuilding && stage) {
-    const stageFloor = stageFill(stage, substep)
-    // B1-Step1: row-proportional fill blended with stage floor
-    const hasTarget = targetVolume != null && targetVolume > 0
-    const hasRows = actualRows != null && actualRows > 0
-    if (hasTarget && hasRows) {
-      const rowsFill = Math.min((actualRows! / targetVolume!) * 100, 99) // never reach 100 while still building
-      fillPct = Math.max(stageFloor, rowsFill)
-    } else {
-      // B1-Step2: no target_floor → fall back to stage/substep fill
-      fillPct = stageFloor
-    }
+    fillPct = stageFill(stage, substep)
   } else if (isLit) {
     fillPct = 100
   } else if (isError) {
@@ -88,17 +76,36 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
   const fillColor = isError ? 'rgba(232,108,108,0.55)' : colors.fill
 
   return (
-    <div className="relative h-[22px] w-full">
+    <div className="relative h-[28px] w-full">
       {/* Track */}
       <div
-        className="absolute inset-0 rounded-[3px] border"
+        className="absolute inset-0 rounded-[4px] border"
         style={{ borderColor: colors.stroke, background: 'rgba(15,12,8,0.6)' }}
       />
 
+      {/* Substep tick marks — faint dividers at each substep boundary */}
+      {isBuilding && substep && substep.total > 1 && !prefersReducedMotion && (
+        Array.from({ length: substep.total - 1 }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: ((i + 1) / substep.total * 100) + '%',
+              width: '1px',
+              background: 'rgba(255,255,255,0.07)',
+              zIndex: 3,
+              pointerEvents: 'none',
+            }}
+          />
+        ))
+      )}
+
       {/* Fill — spring-animated width for stage-based progress */}
-      <div className="absolute top-0 bottom-0 left-0 rounded-l-[3px] overflow-hidden" style={{ width: '100%' }}>
+      <div className="absolute top-0 bottom-0 left-0 rounded-l-[4px] overflow-hidden" style={{ width: '100%' }}>
         <motion.div
-          className="h-full rounded-l-[3px] origin-left relative"
+          className="h-full rounded-l-[4px] origin-left relative"
           style={{ background: fillColor }}
           animate={{ width: `${isBuilding ? Math.max(1.5, fillPct) : fillPct}%` }}
           transition={springTransition}
@@ -113,13 +120,44 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
               }}
             />
           )}
+          {/* Leading-edge cap — 2px gold bar with glow at fill frontier while building */}
+          {isBuilding && !prefersReducedMotion && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '2px',
+                background: '#ECC56A',
+                boxShadow: '0 0 6px 2px rgba(236,197,106,0.6)',
+                borderRadius: '0 4px 4px 0',
+              }}
+            />
+          )}
         </motion.div>
       </div>
+
+      {/* Rows count — shown whenever actualRows is available, regardless of build state */}
+      {actualRows != null && actualRows > 0 && (
+        <div
+          className="absolute inset-0 flex items-center pl-2"
+          style={{
+            fontFamily: 'var(--mono-stack)',
+            fontSize: '10px',
+            fontVariantNumeric: 'tabular-nums',
+            color: 'rgba(255,255,255,0.8)',
+            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+          }}
+        >
+          {actualRows.toLocaleString()}
+        </div>
+      )}
 
       {/* Stage label — cross-fades between stages using AnimatePresence */}
       {showLabel && (
         <div
-          className="absolute inset-0 flex items-center pl-2 pr-[68px] font-mono text-[9px] overflow-hidden"
+          className="absolute inset-0 flex items-center pl-[68px] pr-[68px] font-mono text-[9px] overflow-hidden"
           style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -137,19 +175,9 @@ export function AssetProgressBar({ state, sseState, actualRows, targetVolume, st
         </div>
       )}
 
-      {/* Rows count — shown in lit state (non-building) */}
-      {!isBuilding && isLit && actualRows != null && (
-        <div
-          className="absolute inset-0 flex items-center justify-center pl-2 pr-[60px] font-mono text-[10px] text-white"
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-        >
-          {actualRows.toLocaleString()}
-        </div>
-      )}
-
       {/* State pill — right edge inside the bar; label cross-fades on state change */}
       <div
-        className="absolute top-[2px] right-[2px] bottom-[2px] flex items-center px-1.5 rounded-[2px] font-mono text-[8px] uppercase overflow-hidden"
+        className="absolute top-[3px] right-[3px] bottom-[3px] flex items-center px-1.5 rounded-[2px] font-mono text-[8px] uppercase overflow-hidden"
         style={{ background: 'rgba(10,8,6,0.85)', letterSpacing: '0.06em' }}
       >
         <AnimatePresence mode="wait" initial={false}>

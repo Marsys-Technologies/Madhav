@@ -117,6 +117,11 @@ export function LayerPanel({
   // halts the whole run. The build advances one asset at a time, so scope to current_asset_id.
   const buildingAssetId = activeRun?.current_asset_id ?? null
   const layerOwnsBuildingAsset = buildingAssetId != null && activeAssets.some(a => a.asset_id === buildingAssetId)
+  const litCount = activeAssets.filter(a => {
+    const s = stats.get(a.asset_id)
+    return s?.state === 'lit' || s?.state === 'service_ok'
+  }).length
+  const layerIsBuilding = activeRun != null && layerOwnsBuildingAsset
 
   return (
     <div
@@ -189,38 +194,65 @@ export function LayerPanel({
           style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Metric group — two distinct figures separated by a hairline divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontFamily: 'var(--mono-stack)', fontSize: '11px' }}>
-            <span style={{ minWidth: '58px', textAlign: 'right', color: 'var(--on-dark-faint)' }}>
-              {assets.length} assets
-            </span>
-            <span aria-hidden style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.14)' }} />
-            <span style={{ minWidth: '88px', textAlign: 'right', color: 'var(--on-dark-mut)' }}>
-              {stats.size > 0 ? (
-                totalRows > 0 ? `${totalRows.toLocaleString()} rows` : '— rows'
-              ) : (
-                <span
-                  aria-label="Loading row count"
-                  style={{
-                    display: 'inline-block',
-                    width: '4.5ch',
-                    height: '0.85em',
-                    borderRadius: '2px',
-                    background: 'var(--obsidian-border-mid, #252119)',
-                    verticalAlign: 'middle',
-                    animation: 'pulse 1.4s ease-in-out infinite',
-                  }}
-                />
+          {/* Two-column gauge: Assets Built + Rows + completion bar */}
+          <div
+            style={{ width: '170px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Two-column numeric row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
+              <div>
+                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                  Assets Built
+                </div>
+                <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
+                  <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                  Rows
+                </div>
+                <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
+                  {totalRows > 0 ? totalRows.toLocaleString() : '—'}
+                </div>
+              </div>
+            </div>
+            {/* 3px completion bar */}
+            <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
+                width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
+                background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
+                transition: 'width 0.6s ease-out',
+              }} />
+              {layerIsBuilding && (
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
+                  animation: 'shimmer 2.2s linear infinite',
+                }} />
               )}
-            </span>
-            {errorCount > 0 && (
-              <>
-                <span aria-hidden style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.14)' }} />
-                <span style={{ color: '#ff6b6b', fontFamily: 'var(--mono-stack)', fontSize: '11px', minWidth: '60px', textAlign: 'right' }}>
-                  {errorCount} error{errorCount > 1 ? 's' : ''}
-                </span>
-              </>
-            )}
+            </div>
+          </div>
+
+          {/* State pill */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              padding: '2px 8px', borderRadius: '10px', fontSize: '9px',
+              fontFamily: 'var(--mono-stack)', letterSpacing: '0.06em',
+              textTransform: 'uppercase', flexShrink: 0,
+              ...(layerIsBuilding
+                ? { background: 'rgba(210,162,60,0.15)', border: '1px solid rgba(210,162,60,0.4)', color: 'var(--gold-high)' }
+                : litCount === activeAssets.length && activeAssets.length > 0
+                  ? { background: 'rgba(176,137,58,0.12)', border: '1px solid rgba(176,137,58,0.3)', color: 'rgba(212,166,72,0.9)' }
+                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-dark-faint)' }
+              ),
+            }}
+          >
+            {layerIsBuilding ? 'Building' : (litCount === activeAssets.length && activeAssets.length > 0) ? 'Live' : 'Pending'}
           </div>
 
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}

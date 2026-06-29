@@ -46,11 +46,15 @@ function ServiceHealthPill({
   hasError: boolean
   errorMsg?: string | null
 }) {
+  const prefersReducedMotion = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
   const isGreen = state === 'lit' || state === 'service_ok'
   const isRunning = state === 'building'
   const isError = hasError || state === 'error'
 
-  // Same block geometry as AssetProgressBar (full-width 22px track + right-edge
+  // Same block geometry as AssetProgressBar (full-width 28px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
   // Gold brand palette for lit/service_ok (F2: revert green→gold, native ruling 2026-06-26)
   const fill = isGreen ? 'rgba(176,137,58,0.92)' : isRunning ? 'rgba(168,124,48,0.7)' : isError ? 'rgba(232,108,108,0.55)' : 'rgba(122,86,24,0.0)'
@@ -58,20 +62,47 @@ function ServiceHealthPill({
   const pillColor = isGreen ? 'rgba(236,197,106,0.95)' : isRunning ? 'rgba(236,197,106,0.95)' : isError ? 'rgba(232,108,108,1)' : 'rgba(155,131,80,0.8)'
   const pill = isGreen ? 'LIVE' : isRunning ? 'PROBING' : isError ? 'FAILED' : 'DORMANT'
 
+  const dotColor = isGreen ? '#4CAF50' : isRunning ? '#ECC56A' : isError ? '#B5474C' : 'rgba(255,255,255,0.2)'
+  const dotShadow = isGreen ? '0 0 6px rgba(76,175,80,0.6)' : isRunning ? '0 0 6px rgba(236,197,106,0.6)' : 'none'
+  const dotAnimation = (isGreen || isRunning) && !prefersReducedMotion ? 'obs-live-pulse 1.8s ease-in-out infinite' : 'none'
+  const labelColor = isGreen ? 'rgba(255,255,255,0.7)' : isRunning ? 'var(--gold-high)' : isError ? 'rgba(232,108,108,0.8)' : 'var(--on-dark-faint)'
+  const labelText = isGreen ? 'Service responding' : isRunning ? 'Probing…' : isError ? 'Service failed' : 'Dormant'
+
+  // Fill tint color at reduced opacity for heartbeat background
+  const fillTint = isGreen ? 'rgba(176,137,58,0.3)' : isRunning ? 'rgba(168,124,48,0.3)' : isError ? 'rgba(232,108,108,0.3)' : 'rgba(122,86,24,0.0)'
+
   return (
     <div>
       <div
-        style={{ position: 'relative', height: '22px', width: '100%' }}
+        style={{ position: 'relative', height: '28px', width: '100%' }}
         title={isError && errorMsg ? errorMsg : `service health: ${pill}`}
       >
         {/* Track */}
-        <div style={{ position: 'absolute', inset: 0, borderRadius: '3px', border: `1px solid ${stroke}`, background: 'rgba(15,12,8,0.6)' }} />
-        {/* Fill */}
-        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: '3px', background: fill }} />
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '4px', border: `1px solid ${stroke}`, background: 'rgba(15,12,8,0.6)' }} />
+        {/* Fill — heartbeat treatment: reduced-opacity tint + pulsing dot + label */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: '4px', background: fillTint }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', paddingLeft: 10, gap: 7, paddingRight: 64 }}>
+            {/* Pulsing dot */}
+            <div style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: dotColor,
+              boxShadow: dotShadow,
+              animation: dotAnimation,
+              flexShrink: 0,
+            }} />
+            {/* Status label */}
+            <span style={{
+              fontFamily: 'var(--mono-stack)', fontSize: 10,
+              color: labelColor,
+            }}>
+              {labelText}
+            </span>
+          </div>
+        </div>
         {/* State pill — right edge, mirrors AssetProgressBar */}
         <div
           style={{
-            position: 'absolute', top: '2px', right: '2px', bottom: '2px',
+            position: 'absolute', top: '3px', right: '3px', bottom: '3px',
             display: 'flex', alignItems: 'center', padding: '0 6px',
             borderRadius: '2px', background: 'rgba(10,8,6,0.85)',
             color: pillColor, fontFamily: 'var(--mono-stack)',
