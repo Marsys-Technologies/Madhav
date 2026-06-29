@@ -14,7 +14,9 @@ import { AssetProgressBar } from './AssetProgressBar'
 import { deriveBuildStage } from './buildStage'
 import type { SubstepInfo } from './buildStage'
 import { useUserRole } from '@/hooks/useUserRole'
-import { CascadePreviewModal, type PlanAssetInfo } from '@/components/cockpit/CascadePreviewModal'
+import { BuildBlockedModal } from '@/components/cockpit/BuildBlockedModal'
+import { BuildConfirmModal } from '@/components/cockpit/BuildConfirmModal'
+import type { BlockerEntry } from '@/lib/build/plan'
 
 interface Props {
   asset: AssetRowType
@@ -164,24 +166,18 @@ function StatusDot({
   )
 }
 
-interface CascadePending {
-  assetId: string
-  action: 'build' | 'rebuild'
-  plan: string[]
-  planInfo?: PlanAssetInfo[]
-  estimatedSeconds?: number | null
+interface ConfirmPending {
+  assetIds: string[]
+  estimatedSeconds: number | null
 }
 
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
-  const [pendingCascade, setPendingCascade] = useState<CascadePending | null>(null)
-  const [planLoading, setPlanLoading] = useState(false)
+  const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
+  const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()
 
   async function handleRebuildClick() {
     const action = derivedState === 'dormant' ? 'build' : 'rebuild'
-    setPlanLoading(true)
-    // open modal in loading state immediately
-    setPendingCascade({ assetId: asset.asset_id, action, plan: [], estimatedSeconds: null })
     try {
       const r = await fetch('/api/cockpit/plan', {
         method: 'POST',
@@ -192,33 +188,30 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       const body = await r.json().catch(() => null)
       if (!r.ok || !body?.data) {
         toast.error(body?.error ?? 'Failed to resolve build plan')
-        setPendingCascade(null)
         return
       }
-      const { plan, estimated_seconds } = body.data as { plan: string[]; estimated_seconds: number | null }
-      // E2: enrich plan with names + layer from allAssets for structured modal display
-      const planInfo: PlanAssetInfo[] | undefined = allAssets
-        ? plan.map(id => {
-            const a = allAssets.find(r => r.asset_id === id)
-            return {
-              asset_id: id,
-              layer: a?.layer ?? '',
-              english_name: a?.english_name ?? id,
-              sanskrit_name: a?.sanskrit_name ?? id,
-            }
-          })
-        : undefined
-      setPendingCascade({ assetId: asset.asset_id, action, plan, planInfo, estimatedSeconds: estimated_seconds })
+      const buildPlan = body.data as { status: 'ok' | 'blocked'; plan_waves: string[][]; blockers: BlockerEntry[]; estimated_seconds: number | null }
+
+      if (buildPlan.status === 'blocked') {
+        setPendingBlock(buildPlan.blockers)
+        return
+      }
+
+      // status === 'ok'
+      if (buildPlan.plan_waves.flat().length === 0) {
+        // no-op: build on an already-lit asset — nothing to do
+        return
+      }
+
+      setPendingCascade({ assetIds: buildPlan.plan_waves.flat(), estimatedSeconds: buildPlan.estimated_seconds })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to fetch plan')
-      setPendingCascade(null)
-    } finally {
-      setPlanLoading(false)
     }
   }
 
   async function handleCascadeConfirm() {
     if (!pendingCascade) return
+    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
     try {
       const r = await fetch('/api/cockpit/runs', {
         method: 'POST',
@@ -227,8 +220,8 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
         body: JSON.stringify({
           chart_id: chartId,
           scope: 'asset',
-          scope_target: pendingCascade.assetId,
-          action: pendingCascade.action,
+          scope_target: asset.asset_id,
+          action,
         }),
       })
       const body = await r.json().catch(() => null)
@@ -439,17 +432,20 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       </div>
 
     </div>
-    <CascadePreviewModal
-      isOpen={pendingCascade !== null}
-      isLoading={planLoading}
-      onClose={() => setPendingCascade(null)}
-      onConfirm={handleCascadeConfirm}
-      rootAssetId={asset.asset_id}
-      rootAssetLabel={asset.english_name ?? asset.asset_id}
-      plan={pendingCascade?.plan ?? []}
-      planInfo={pendingCascade?.planInfo}
-      estimatedSeconds={pendingCascade?.estimatedSeconds}
-    />
+    {pendingBlock && (
+      <BuildBlockedModal
+        blockers={pendingBlock}
+        onDismiss={() => setPendingBlock(null)}
+      />
+    )}
+    {pendingCascade && (
+      <BuildConfirmModal
+        assetIds={pendingCascade.assetIds}
+        estimatedSeconds={pendingCascade.estimatedSeconds}
+        onConfirm={handleCascadeConfirm}
+        onCancel={() => setPendingCascade(null)}
+      />
+    )}
     </>
   )
 }
