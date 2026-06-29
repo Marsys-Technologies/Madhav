@@ -1,14 +1,14 @@
 ---
 artifact: L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md
 canonical_id: L2_BODHA_CAMPAIGN_HANDOFF
-version: 1.0
+version: 1.1
 status: CURRENT
 authored_by: Cowork (planning) 2026-06-10
 authored_for: the L2 Bodha campaign (Cowork plans → Claude Code in Antigravity executes)
 purpose: >
   The single authoritative starting context for L2 Bodha. Carries forward everything L0+L1
   established — nomenclature, standards, the FROZEN orchestrator contract, the L1→L2 data
-  interface, the 8-asset Bodha DAG, the per-asset specs, and the hard-won traps — so Bodha
+  interface, the 14-asset Bodha DAG, the per-asset specs, and the hard-won traps — so Bodha
   begins fully aligned instead of rediscovering the rules. Read this FIRST when L2 opens.
 supersedes: none (new)
 read_in_combination_with:
@@ -18,6 +18,9 @@ read_in_combination_with:
   - 00_ARCHITECTURE/MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md (THE trap — read it)
   - 00_ARCHITECTURE/MSR_UCN_CONTAMINATION_AUDIT_v1_0.md (the contamination trap)
   - L1 per-asset briefs CLAUDECODE_BRIEF_GA{3..9}_* + GA_TAJAKA (the pattern Bodha mirrors)
+changelog:
+  - v1.0 (2026-06-10): Initial handoff document for L2 Bodha campaign — 8 original bo_* assets.
+  - v1.1 (2026-06-29): Added bo_drishti and bo_anveshana to asset inventory; updated asset count to 14.
 ---
 
 # L2 Bodha — Campaign Handoff v1.0
@@ -41,8 +44,8 @@ inherited rule (see §6 traps).
   `ph_*` (L4) · `mi_*` (L5). The dot-notation placeholders were renamed to underscore in migration 224
   (L1 closure Phase B). NEVER create a `bodha.*` id — the orchestrator's `@register('bo_*')` pattern keys
   on underscore.
-- **Sanskrit + English names** per asset, roman IAST (like L0/L1 — Graha-sphuṭa, not पञ्चाङ्ग). The 8 bo_
-  rows already carry these (Lakṣaṇa / Kāraṇajāla / Bimba / Saṃskāra / Saṅgati / Upāya / Saṃvāda / Pramāṇa-māpā).
+- **Sanskrit + English names** per asset, roman IAST (like L0/L1 — Graha-sphuṭa, not पञ्चाङ्ग). The 14 bo_
+  rows carry these (Lakṣaṇa / Kāraṇajāla / Bimba / Saṃskāra / Saṅgati / Upāya / Saṃvāda / Dṛṣṭi / Anveṣaṇa / Pramāṇa-māpā).
 - **Canonical chart:** native = `482012f1-710e-4a25-994a-93821f5871aa`. `362f9f17-…` is a DEAD phantom —
   it litters the A10–A14 spec citation examples as `chart=362f9f17`; those are PLACEHOLDERS, never write it.
 - **Table prefix:** L2 tables are `bodha_*` (bodha_signals, bodha_graph, bodha_graph_edges,
@@ -51,9 +54,9 @@ inherited rule (see §6 traps).
   placeholders use `bodha_*`; confirm the canonical table names at campaign open and make spec + seed +
   writer agree. This is a known spec-vs-seed naming reconciliation, like ganita_dashas vs chart_dashas was.)
 
-## §2 — The 8 Bodha assets + the DAG (already in the registry, post-rename)
+## §2 — The 14 Bodha assets + the DAG (already in the registry, post-rename)
 
-All `scope: per_chart` except `bo_pramana_mapa` (global). `depends_on` already wired (migration 223/224):
+All `scope: per_chart` except `bo_pramana_mapa` (global). `depends_on` already wired (migration 223/224). Note: `bo_drishti` and `bo_anveshana` were added after the original 8-asset handoff.
 
 | asset_id | Sanskrit | English | table | depends_on | spec |
 |---|---|---|---|---|---|
@@ -64,11 +67,14 @@ All `scope: per_chart` except `bo_pramana_mapa` (global). `depends_on` already w
 | `bo_samvada` | Saṃvāda | UCN resonance | bodha_resonance | `bo_laksana` | A14 (UCN→UCD) |
 | `bo_upaya` | Upāya | Remediation (RM) | bodha_remediation | `bo_laksana`, `bo_sangati` | A13 |
 | `bo_samskara` | Saṃskāra | Signal embeddings | bodha_signal_embeddings | `bo_laksana` | (embeddings — deterministic transform) |
+| `bo_drishti` | Dṛṣṭi | Question-lens | bodha_question_lenses | `bo_laksana`, `bo_bimba`, `bo_karanajala`, `bo_samskara`, `bo_sangati` | Pre-computes per-(question_type × ayanamsha) classical lenses: POINTS at evidence without pre-answering; additive wildcard sweep ensures no high-salience signal is missed. |
+| `bo_anveshana` | Anveṣaṇa | Discovery engine | bodha_discoveries, bodha_anomalies | `bo_laksana`, `bo_bimba`, `bo_karanajala`, `bo_samskara`, `bo_sangati` | Mines all other Bodha assets at build time for non-obvious, combinatorially deep patterns using four deterministic primitives (non-obviousness scoring, embedding-outlier detection, distributional anomalies, broker detection); outputs a ranked discovery list. |
 | `bo_pramana_mapa` | Pramāṇa-māpā | Synthesis quality | synthesis_quality_scorecard | [] (global) | scorecard |
 
 **Build order:** `bo_laksana` (MSR) FIRST — it is the root the whole layer depends on. Then
 `bo_bimba ∥ bo_karanajala ∥ bo_sangati ∥ bo_samvada ∥ bo_samskara` (parallel on MSR), then `bo_upaya`
-(needs MSR + CDLM). `bo_pramana_mapa` is a global scorecard. The orchestrator runs this from the
+(needs MSR + CDLM), then `bo_drishti ∥ bo_anveshana` (need the producing assets but run before the scorecard).
+`bo_pramana_mapa` is a global scorecard and runs last. The orchestrator runs this from the
 `depends_on` DAG automatically — confirm the edges match this intended order at open (verify against what
 each writer actually reads, per the L1 Phase-4 lesson).
 
@@ -107,7 +113,7 @@ native (L1 closure Phase A.2):
    ([[feedback-floors-are-aspirational-not-gates]])
 9. **Cockpit truth.** Each bo_ asset needs a correct chart-scoped `count_sql` on `asset_registry` (the
    stats route reads count_sql from asset_registry, NOT asset_throughput — the L1 trap), and target_floor
-   set = achieved count so the bar fills. (The 8 placeholders already have count_sql — verify they match
+   set = achieved count so the bar fills. (The 14 bo_ assets need count_sql — verify they match
    the real tables the writers write.)
 10. **PyJHora engine, Postgres-direct, surgical migrations** (never deploy.yml-auto / bulk migrate.ts —
     both are silent-failure traps [[feedback-deploy-migrations-silent-noop]] [[feedback-migrate-runner-untracked-legacy]]).
@@ -124,10 +130,10 @@ by conforming — no orchestrator code changes.** Each bo_ writer:
 - owns its idempotency on `ctx.db_conn` scoped per sub-step key;
 - gets `chart_id` + `birth_params` from `ctx.config`.
 - **If a Bodha writer seems to need a contract change → STOP and raise with the native.** The freeze is
-  deliberate. (It should NOT need one — MSR/CDLM/CGM are per-chart computed writers, exactly what the
-  contract was generalized for.)
+  deliberate. (It should NOT need one — MSR/CDLM/CGM/drishti/anveshana are per-chart computed writers,
+  exactly what the contract was generalized for.)
 The conformance checklist is ORCHESTRATOR_CONVERGENCE_CLOSE §5 — **embed it verbatim in every bo_ brief.**
-Result: when a user clicks Build, the orchestrator runs Bodha in dependency order automatically — same as L1.
+Result: when a user clicks Build, the orchestrator runs all 14 Bodha assets in dependency order automatically — same as L1.
 
 ## §6 — The TRAPS Bodha MUST avoid (hard-won; read the audits)
 
@@ -158,8 +164,8 @@ These are real failures already documented — do not repeat them:
 
 ## §7 — How Bodha gets built (same campaign shape as L1 — proven)
 
-1. **Master campaign** (like L1_GANITA_BUILD_CAMPAIGN): governing principles, the 8-asset DAG, Phase-0
-   prereqs (create the `bodha_*` tables + the `l25_*`/table-name reconciliation + flip the 8 bo_ rows
+1. **Master campaign** (like L1_GANITA_BUILD_CAMPAIGN): governing principles, the 14-asset DAG, Phase-0
+   prereqs (create the `bodha_*` tables + the `l25_*`/table-name reconciliation + flip the 14 bo_ rows
    DRAFT→CURRENT + confirm count_sql/target_floor scaffolding), agent gate-validators.
 2. **Per-asset execution briefs** — one per bo_ asset, fully detailed (every signal class/predicate, exact
    source facts, two-pass method, FORENSIC/L1-authority assertions, atomic grain, idempotency, the §5
@@ -185,9 +191,13 @@ These are real failures already documented — do not repeat them:
    the A10–A14 schemas, or author corrective migrations.
 5. **Phase 5 E2E + Abhinandan** — confirm L1's orchestrator-native build is proven on a non-native chart
    before L2 rides the same machinery (the E2E in flight at this handoff's authoring).
+6. **bo_drishti + bo_anveshana asset_registry rows** — these two assets were added after the original
+   migration 223/224 wiring; confirm their `depends_on`, `count_sql`, and `target_floor` rows are present
+   and correct in `asset_registry` for the orchestrator DAG to run them.
 
 ---
 
-*End of L2 Bodha handoff v1.0. Bodha is the synthesis layer — deterministic structural signals over L1
+*End of L2 Bodha handoff v1.1. Bodha is the synthesis layer — deterministic structural signals over L1
 facts, built orchestrator-native, under the same standards L0/L1 proved, avoiding the documented
-computed-value-drift and contamination traps. L1 is the authority; Bodha references, never re-derives over it.*
+computed-value-drift and contamination traps. L1 is the authority; Bodha references, never re-derives over it.
+14 bo_* assets total: 8 original (bo_laksana root → bo_bimba / bo_karanajala / bo_sangati / bo_samvada / bo_samskara → bo_upaya → bo_pramana_mapa) + bo_drishti (question-lens) + bo_anveshana (discovery engine) added post-handoff.*
