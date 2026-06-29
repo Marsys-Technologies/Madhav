@@ -422,6 +422,18 @@ def _schedule_parallel(
                 logger.info("[orchestrator] skip %s (already lit)", a)
         conn.commit()
 
+    # Preload full active registry for downstream staleness propagation.
+    # asset_deps only covers plan assets; propagation needs all assets.
+    cur.execute(
+        "SELECT asset_id, COALESCE(depends_on, '{}') AS depends_on "
+        "FROM asset_registry WHERE is_active = true"
+    )
+    full_registry = [
+        {'asset_id': row['asset_id'], 'depends_on': list(row['depends_on'])}
+        for row in cur.fetchall()
+    ]
+    conn.commit()  # release snapshot so subsequent reads are fresh
+
     def worker(asset_id: str) -> str:
         """Run one asset on a DEDICATED connection. Returns its final state string."""
         wconn = connect()
@@ -503,6 +515,39 @@ def _schedule_parallel(
             "timeout_sec": ASSET_TIMEOUT_SEC,
         })
 
+    from .staleness import propagate_downstream_staleness
+
+    def on_complete(asset_id: str) -> None:
+        # Fresh connection: must not use main conn (it holds the advisory lock).
+        # Pass the run's chart_id — not eff(asset_id). eff() returns None for global
+        # assets, but WHERE chart_id = NULL is always false in SQL. The staleness
+        # UPDATE targets chart-specific rows in asset_throughput using the run's real
+        # chart_id; the global asset's own throughput row (chart_id IS NULL) is never
+        # a downstream target of itself, so the NULL-chart path is never needed here.
+        _sconn = None
+        try:
+            _sconn = connect()
+            _sconn.autocommit = False
+            _scur = _sconn.cursor()
+            propagate_downstream_staleness(
+                conn=_sconn,
+                cur=_scur,
+                chart_id=chart_id,   # run's chart_id, not eff(asset_id)
+                completed_asset_id=asset_id,
+                plan_set=plan_set,
+                registry=full_registry,
+                emit_fn=emit_event,
+                run_id=run_id,
+            )
+        except Exception as _pse:
+            logger.error("[staleness] on_complete(%s) failed: %s", asset_id, _pse)
+        finally:
+            if _sconn is not None:
+                try:
+                    _sconn.close()
+                except Exception:
+                    pass
+
     return execute_dag(
         plan=pending,
         deps_of=deps_of,
@@ -511,7 +556,8 @@ def _schedule_parallel(
         seed_completed=completed,
         on_block=on_block,
         should_stop=should_stop,
-        on_timeout=on_timeout,   # NEW
+        on_timeout=on_timeout,
+        on_complete=on_complete,
     )
 
 
