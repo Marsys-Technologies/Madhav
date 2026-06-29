@@ -8,24 +8,118 @@ interface AssetProgressBarProps {
   state: string
   sseState?: string
   actualRows?: number | null
-  targetVolume?: number | null      // retained for API compat; fill is stage-based per N.4
+  targetVolume?: number | null   // retained for API compat; fill is stage-based per N.4
   stage?: BuildStage
   substep?: SubstepInfo
   isQueued?: boolean
 }
 
-const STATE_COLORS: Record<string, {
-  fill: string; stroke: string; pill: string; pillColor: string
-}> = {
-  dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.35)',   pill: 'NOT BUILT',    pillColor: 'rgba(155,131,80,0.7)' },
-  building:     { fill: 'rgba(210,162,60,0.85)',   stroke: 'rgba(210,162,60,0.7)',   pill: 'BUILDING',     pillColor: 'rgba(236,197,106,0.95)' },
-  lit:          { fill: 'rgba(176,137,58,0.9)',    stroke: 'rgba(212,166,72,0.8)',   pill: 'LIVE',         pillColor: 'rgba(236,197,106,0.95)' },
-  service_ok:   { fill: 'rgba(176,137,58,0.9)',    stroke: 'rgba(212,166,72,0.8)',   pill: 'LIVE',         pillColor: 'rgba(236,197,106,0.95)' },
-  stale:        { fill: 'rgba(166,108,52,0.65)',   stroke: 'rgba(196,128,64,0.7)',   pill: 'OUT OF SYNC',  pillColor: 'rgba(232,180,108,0.95)' },
-  error:        { fill: 'rgba(181,71,76,0.5)',     stroke: 'rgba(181,71,76,0.8)',    pill: 'FAILED',       pillColor: 'rgba(232,108,108,1)' },
-  not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.25)',    pill: 'NOT MIGRATED', pillColor: 'rgba(120,110,90,0.65)' },
-  reconnecting: { fill: 'rgba(236,197,106,0.08)',  stroke: 'rgba(236,197,106,0.35)', pill: 'RECONNECTING', pillColor: 'rgba(236,197,106,0.85)' },
-  retired:      { fill: 'rgba(80,80,80,0.0)',       stroke: 'rgba(110,110,110,0.25)', pill: 'RETIRED',      pillColor: 'rgba(150,150,150,0.6)' },
+// Four milestone segments when no substep detail is available.
+// These mark ¼, ½, ¾, full progress — a neutral scaffold visible in every state.
+const MILESTONE_COUNT = 4
+
+interface SegmentColors {
+  filledBg: string
+  filledBorder: string
+  activeBg: string
+  activeBorder: string
+  emptyBg: string
+  emptyBorder: string
+  continuousFill: string
+  trackBorder: string
+}
+
+const SEG: Record<string, SegmentColors> = {
+  lit: {
+    filledBg:     'rgba(168,124,42,0.82)',
+    filledBorder: 'rgba(212,166,72,0.70)',
+    activeBg:     'rgba(210,162,60,0.50)',
+    activeBorder: 'rgba(210,162,60,0.55)',
+    emptyBg:      'rgba(122,86,24,0.10)',
+    emptyBorder:  'rgba(122,86,24,0.18)',
+    continuousFill: 'rgba(168,124,42,0.82)',
+    trackBorder:  'rgba(122,86,24,0.28)',
+  },
+  service_ok: {
+    filledBg:     'rgba(168,124,42,0.82)',
+    filledBorder: 'rgba(212,166,72,0.70)',
+    activeBg:     'rgba(210,162,60,0.50)',
+    activeBorder: 'rgba(210,162,60,0.55)',
+    emptyBg:      'rgba(122,86,24,0.10)',
+    emptyBorder:  'rgba(122,86,24,0.18)',
+    continuousFill: 'rgba(168,124,42,0.82)',
+    trackBorder:  'rgba(122,86,24,0.28)',
+  },
+  building: {
+    filledBg:     'rgba(168,124,42,0.80)',
+    filledBorder: 'rgba(212,166,72,0.65)',
+    activeBg:     'rgba(210,162,60,0.42)',
+    activeBorder: 'rgba(236,197,106,0.50)',
+    emptyBg:      'rgba(122,86,24,0.08)',
+    emptyBorder:  'rgba(122,86,24,0.16)',
+    continuousFill: 'rgba(210,162,60,0.85)',
+    trackBorder:  'rgba(122,86,24,0.25)',
+  },
+  stale: {
+    filledBg:     'rgba(160,104,48,0.60)',
+    filledBorder: 'rgba(196,128,64,0.55)',
+    activeBg:     'rgba(160,104,48,0.35)',
+    activeBorder: 'rgba(196,128,64,0.40)',
+    emptyBg:      'rgba(122,86,24,0.08)',
+    emptyBorder:  'rgba(122,86,24,0.14)',
+    continuousFill: 'rgba(160,104,48,0.60)',
+    trackBorder:  'rgba(122,86,24,0.22)',
+  },
+  error: {
+    filledBg:     'rgba(181,71,76,0.38)',
+    filledBorder: 'rgba(181,71,76,0.60)',
+    activeBg:     'rgba(181,71,76,0.25)',
+    activeBorder: 'rgba(181,71,76,0.45)',
+    emptyBg:      'rgba(181,71,76,0.10)',
+    emptyBorder:  'rgba(181,71,76,0.22)',
+    continuousFill: 'rgba(181,71,76,0.45)',
+    trackBorder:  'rgba(181,71,76,0.30)',
+  },
+  dormant: {
+    filledBg:     'rgba(122,86,24,0.12)',
+    filledBorder: 'rgba(122,86,24,0.20)',
+    activeBg:     'rgba(122,86,24,0.18)',
+    activeBorder: 'rgba(122,86,24,0.28)',
+    emptyBg:      'rgba(122,86,24,0.06)',
+    emptyBorder:  'rgba(122,86,24,0.12)',
+    continuousFill: 'rgba(122,86,24,0.20)',
+    trackBorder:  'rgba(122,86,24,0.16)',
+  },
+  not_migrated: {
+    filledBg:     'rgba(80,70,50,0.10)',
+    filledBorder: 'rgba(80,70,50,0.18)',
+    activeBg:     'rgba(80,70,50,0.14)',
+    activeBorder: 'rgba(80,70,50,0.22)',
+    emptyBg:      'rgba(80,70,50,0.05)',
+    emptyBorder:  'rgba(80,70,50,0.10)',
+    continuousFill: 'rgba(80,70,50,0.20)',
+    trackBorder:  'rgba(80,70,50,0.14)',
+  },
+  reconnecting: {
+    filledBg:     'rgba(236,197,106,0.12)',
+    filledBorder: 'rgba(236,197,106,0.32)',
+    activeBg:     'rgba(236,197,106,0.20)',
+    activeBorder: 'rgba(236,197,106,0.40)',
+    emptyBg:      'rgba(122,86,24,0.06)',
+    emptyBorder:  'rgba(122,86,24,0.12)',
+    continuousFill: 'rgba(236,197,106,0.25)',
+    trackBorder:  'rgba(236,197,106,0.22)',
+  },
+  retired: {
+    filledBg:     'rgba(80,80,80,0.08)',
+    filledBorder: 'rgba(110,110,110,0.16)',
+    activeBg:     'rgba(80,80,80,0.12)',
+    activeBorder: 'rgba(110,110,110,0.22)',
+    emptyBg:      'rgba(80,80,80,0.04)',
+    emptyBorder:  'rgba(80,80,80,0.10)',
+    continuousFill: 'rgba(80,80,80,0.20)',
+    trackBorder:  'rgba(80,80,80,0.12)',
+  },
 }
 
 export function AssetProgressBar({
@@ -36,151 +130,164 @@ export function AssetProgressBar({
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const effectiveState = sseState ?? state
-  const isBuilding = effectiveState === 'building'
-  const isLit      = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
-  const isError    = effectiveState === 'error'
-  const colors = STATE_COLORS[effectiveState] ?? STATE_COLORS.dormant
+  const isBuilding    = effectiveState === 'building'
+  const isLit         = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
+  const isError       = effectiveState === 'error'
+  const isStale       = effectiveState === 'stale'
+  const c = SEG[effectiveState] ?? SEG.dormant
 
-  // Fill % — stage-based per N.4
-  let fillPct = 0
-  if (isBuilding && stage) fillPct = stageFill(stage, substep)
-  else if (isLit)  fillPct = 100
-  else if (isError) fillPct = 100
+  // Substep-segmented vs. continuous fill
+  const hasSubsteps    = isBuilding && substep != null && substep.total > 1
+  const useContinuous  = isBuilding && !hasSubsteps
 
-  // Left label — row count when lit, step indicator when building
-  let leftLabel = ''
+  // Segment data
+  const segCount = hasSubsteps ? substep!.total : MILESTONE_COUNT
+
+  type SegState = 'filled' | 'active' | 'empty'
+  const segStates: SegState[] = Array.from({ length: segCount }, (_, i) => {
+    if (hasSubsteps) {
+      const done  = i < (substep!.index - 1)
+      const cur   = i === (substep!.index - 1)
+      return done ? 'filled' : cur ? 'active' : 'empty'
+    }
+    // Fixed milestones: lit / error / stale fill all; everything else empties
+    return (isLit || isError || isStale) ? 'filled' : 'empty'
+  })
+
+  // Above-bar label row
+  let leftLabel  = ''
+  let rightLabel = ''
+
   if (isBuilding) {
-    if (substep && substep.total > 0) {
-      leftLabel = `${substep.index}/${substep.total}`
-    } else if (stage === 'queued')     { leftLabel = 'Queued' }
-    else if (stage === 'committing')   { leftLabel = 'Committing' }
-    else                               { leftLabel = 'Starting' }
-  } else if (isLit && actualRows != null && actualRows > 0) {
+    if (hasSubsteps) {
+      // Row count on left while building (updates in real time)
+      if (actualRows != null && actualRows > 0) leftLabel = actualRows.toLocaleString()
+      rightLabel = `${substep!.index} / ${substep!.total}`
+    } else {
+      // Stage label for builds with no substep detail yet
+      leftLabel =
+        stage === 'queued'     ? 'Queued'      :
+        stage === 'committing' ? 'Committing'  :
+        'Starting'
+    }
+  } else if ((isLit || isStale) && actualRows != null && actualRows > 0) {
     leftLabel = actualRows.toLocaleString()
   }
 
-  const hasSubsteps = isBuilding && substep != null && substep.total > 1
+  const showLabels = leftLabel !== '' || rightLabel !== ''
 
-  const springTransition = prefersReducedMotion
-    ? { duration: 0.1 }
-    : { type: 'spring' as const, stiffness: 90, damping: 22 }
+  // Continuous fill % (building, no substeps)
+  const contFillPct = useContinuous && stage ? stageFill(stage, substep) : 0
 
   return (
-    // Three-column layout: [left label] [bar] [state badge]
-    // All text sits outside the bar — no overlapping, consistent badge on right for every state.
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+    <div style={{ width: '100%' }}>
 
-      {/* Left label — rows count or build step, fixed width so bar stays aligned */}
-      <div style={{
-        fontFamily: 'var(--mono-stack)',
-        fontSize: '9px',
-        fontVariantNumeric: 'tabular-nums',
-        color: isBuilding ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)',
-        minWidth: '52px',
-        textAlign: 'right',
-        flexShrink: 0,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {leftLabel}
-      </div>
+      {/* ── Label row above bar ─────────────────────────────────────── */}
+      {showLabels && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: '4px',
+        }}>
+          <span style={{
+            fontFamily: 'var(--mono-stack)',
+            fontSize: '9px',
+            fontVariantNumeric: 'tabular-nums',
+            color: isBuilding ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)',
+            letterSpacing: '0.02em',
+            lineHeight: 1,
+          }}>
+            {leftLabel}
+          </span>
+          {rightLabel && (
+            <span style={{
+              fontFamily: 'var(--mono-stack)',
+              fontSize: '9px',
+              color: 'var(--on-dark-faint)',
+              letterSpacing: '0.04em',
+              lineHeight: 1,
+            }}>
+              {rightLabel}
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Bar — 5px thin track, either segmented (substeps) or continuous fill */}
-      <div style={{ flex: 1, position: 'relative', height: '5px' }}>
-        {hasSubsteps ? (
-          // Segmented substep bar — one block per substep
-          <div style={{ display: 'flex', gap: '2px', height: '5px' }}>
-            {Array.from({ length: substep!.total }, (_, i) => {
-              const isDone   = i < (substep!.index - 1)
-              const isActive = i === (substep!.index - 1)
-              return (
-                <div
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: '5px',
-                    borderRadius: '2px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    background: isDone
-                      ? colors.fill
-                      : isActive
-                        ? 'rgba(210,162,60,0.45)'
-                        : 'rgba(122,86,24,0.14)',
-                    border: `1px solid ${isDone || isActive ? colors.stroke : 'rgba(122,86,24,0.18)'}`,
-                    transition: prefersReducedMotion ? 'none' : 'background 0.3s ease',
-                  }}
-                >
-                  {isActive && !prefersReducedMotion && (
-                    <div style={{
-                      position: 'absolute', inset: 0, pointerEvents: 'none',
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.45) 50%, transparent 100%)',
-                      animation: 'shimmer 1.8s linear infinite',
-                    }} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          // Continuous fill bar
-          <>
-            {/* Track */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: '3px',
-              background: 'rgba(15,12,8,0.7)',
-              border: `1px solid ${colors.stroke}`,
-            }} />
-            {/* Animated fill */}
-            <motion.div
-              style={{
-                position: 'absolute', top: 0, left: 0, bottom: 0,
-                borderRadius: '3px',
-                background: isError ? 'rgba(181,71,76,0.5)' : colors.fill,
-                overflow: 'hidden',
-              }}
-              animate={{ width: `${isBuilding ? Math.max(2, fillPct) : fillPct}%` }}
-              transition={springTransition}
-            >
-              {/* Shimmer while building */}
-              {isBuilding && !prefersReducedMotion && (
+      {/* ── Bar ──────────────────────────────────────────────────────── */}
+      {useContinuous ? (
+        // Continuous animated fill — building with no substep info yet
+        <div style={{
+          position: 'relative',
+          height: '6px',
+          borderRadius: '3px',
+          background: 'rgba(10,8,6,0.65)',
+          border: `1px solid ${c.trackBorder}`,
+          overflow: 'hidden',
+        }}>
+          <motion.div
+            style={{
+              position: 'absolute', top: 0, left: 0, bottom: 0,
+              borderRadius: '3px',
+              background: c.continuousFill,
+              overflow: 'hidden',
+            }}
+            animate={{ width: `${Math.max(3, contFillPct)}%` }}
+            transition={prefersReducedMotion
+              ? { duration: 0.1 }
+              : { type: 'spring', stiffness: 90, damping: 22 }}
+          >
+            {!prefersReducedMotion && (
+              <>
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none',
                   background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.28) 50%, transparent 100%)',
                   animation: 'shimmer 2s linear infinite',
                 }} />
-              )}
-              {/* Leading-edge cap */}
-              {isBuilding && !prefersReducedMotion && fillPct > 3 && (
-                <div style={{
-                  position: 'absolute', top: 0, right: 0, bottom: 0,
-                  width: '2px',
-                  background: '#ECC56A',
-                  boxShadow: '0 0 5px rgba(236,197,106,0.8)',
-                }} />
-              )}
-            </motion.div>
-          </>
-        )}
-      </div>
-
-      {/* State badge — always on the right, never inside the bar */}
-      <div style={{
-        fontFamily: 'var(--mono-stack)',
-        fontSize: '8px',
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-        color: colors.pillColor,
-        flexShrink: 0,
-        padding: '1px 5px',
-        borderRadius: '3px',
-        background: 'rgba(10,8,6,0.7)',
-        border: `1px solid ${colors.stroke}`,
-        whiteSpace: 'nowrap',
-      }}>
-        {colors.pill}
-      </div>
+                {contFillPct > 4 && (
+                  <div style={{
+                    position: 'absolute', top: 0, right: 0, bottom: 0,
+                    width: '2px',
+                    background: '#ECC56A',
+                    boxShadow: '0 0 5px rgba(236,197,106,0.85)',
+                  }} />
+                )}
+              </>
+            )}
+          </motion.div>
+        </div>
+      ) : (
+        // Segmented milestone bar
+        <div style={{ display: 'flex', gap: '2px', height: '6px' }}>
+          {segStates.map((seg, i) => {
+            const bg     = seg === 'filled' ? c.filledBg   : seg === 'active' ? c.activeBg   : c.emptyBg
+            const border = seg === 'filled' ? c.filledBorder : seg === 'active' ? c.activeBorder : c.emptyBorder
+            return (
+              <div
+                key={i}
+                style={{
+                  flex: 1,
+                  height: '6px',
+                  borderRadius: '2px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: bg,
+                  border: `1px solid ${border}`,
+                  transition: prefersReducedMotion ? 'none' : 'background 0.45s ease, border-color 0.45s ease',
+                }}
+              >
+                {seg === 'active' && !prefersReducedMotion && (
+                  <div style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.55) 50%, transparent 100%)',
+                    animation: 'shimmer 1.8s linear infinite',
+                  }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
     </div>
   )
