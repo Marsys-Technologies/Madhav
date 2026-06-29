@@ -233,7 +233,17 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       })
       const body = await r.json().catch(() => null)
       if (!r.ok) {
-        toast.error(body?.error ?? 'Failed to start build')
+        if (body?.code === 'UPSTREAM_STALE' && Array.isArray(body?.stale_upstream)) {
+          const names = (body.stale_upstream as { asset_id: string }[])
+            .map((s: { asset_id: string }) => s.asset_id)
+            .join(', ')
+          toast.error(
+            `Build blocked — stale upstream: ${names}. Rebuild those assets first, then retry.`,
+            { duration: 8000 }
+          )
+        } else {
+          toast.error(body?.error ?? 'Failed to start build')
+        }
         return
       }
       setPendingCascade(null)
