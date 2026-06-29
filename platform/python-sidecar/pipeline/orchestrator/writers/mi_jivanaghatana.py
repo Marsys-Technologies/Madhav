@@ -6,7 +6,8 @@ rows in mimamsa_event_provenance with admissibility flags + held-out partition.
 
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 NEVER commits or closes ctx.db_conn.
-GLOBAL scope — processes all charts in life_events.
+PER-CHART scope — provenance rows are keyed to chart_id; a rebuild replaces only
+this chart's rows (N.3 delete-then-insert), never other charts'.
 Determinism: MD5-hash partition, pure joins, no LLM (D-1).
 """
 from __future__ import annotations
@@ -47,8 +48,8 @@ def _admissibility(shaped: bool, disclosure_timing: str, event_date: Any) -> tup
 @register("mi_jivanaghatana")
 class MiJivanaghatanaWriter(WriterBase):
     """
-    Populates mimamsa_event_provenance from life_events.
-    Global scope — deletes all existing rows and re-inserts for all charts.
+    Populates mimamsa_event_provenance from life_events for one chart.
+    Per-chart scope — deletes and re-inserts only this chart's rows (N.3).
     """
 
     asset_id = "mi_jivanaghatana"
@@ -66,9 +67,19 @@ class MiJivanaghatanaWriter(WriterBase):
             col_rows = cur.fetchall()
         col_names = {r["column_name"] for r in col_rows}
 
-        # Load all life events
+        chart_id = str(ctx.config.get("chart_id") or "")
+
+        # Load this chart's life events. life_events is the native's log; when it
+        # carries a chart_id column, scope the read to this chart, otherwise read the
+        # full (single-native) log. Forward-compatible with a multi-chart LEL.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute("SELECT * FROM life_events ORDER BY event_id")
+            if "chart_id" in col_names:
+                cur.execute(
+                    "SELECT * FROM life_events WHERE chart_id = %s ORDER BY event_id",
+                    (chart_id,),
+                )
+            else:
+                cur.execute("SELECT * FROM life_events ORDER BY event_id")
             events = cur.fetchall()
 
         logger.info("[mi_jivanaghatana] loaded %d life_events rows", len(events))
@@ -87,7 +98,6 @@ class MiJivanaghatanaWriter(WriterBase):
             event_id = str(ev.get("event_id") or ev.get("id") or "")
             if not event_id:
                 continue
-            chart_id = str(ctx.config.get("chart_id") or "")
 
             # Safely extract date field (try multiple common column names)
             event_date = (
@@ -144,10 +154,16 @@ class MiJivanaghatanaWriter(WriterBase):
                 PROVENANCE_FORMULA_VER,
             ))
 
-        # Idempotency: delete all existing rows (global scope) then re-insert
+        # Idempotency (N.3): per-chart delete-then-insert scoped to chart_id —
+        # rebuilding one chart never wipes another chart's provenance.
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM mimamsa_event_provenance")
-            logger.info("[mi_jivanaghatana] deleted existing provenance rows")
+            cur.execute(
+                "DELETE FROM mimamsa_event_provenance WHERE chart_id = %s",
+                (chart_id,),
+            )
+            logger.info(
+                "[mi_jivanaghatana] deleted prior provenance rows for chart %s", chart_id
+            )
 
         if not rows:
             return WriterResult(
