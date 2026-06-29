@@ -510,3 +510,51 @@ FORENSIC GATE FAILED:
 ## HALT: FORENSIC_GATE — 2026-06-27T08:04:25.478129+00:00
 FORENSIC GATE FAILED:
   - FORENSIC FAIL: Lagna sign expected 'Aries', got 'Scorpio' (ayanamsha=lahiri_chitrapaksha). Known trap: NOT Scorpio.
+
+## HALT: FORENSIC_GATE — 2026-06-28T21:51:22.848520+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Sun sign expected Capricorn, got 'Aries' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T21:51:22.849111+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Moon nakshatra expected 'Purva Bhadrapada', got 'Ashwini' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T21:51:22.849505+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Lagna sign expected 'Aries', got 'Scorpio' (ayanamsha=lahiri_chitrapaksha). Known trap: NOT Scorpio.
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:11:43.730799+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Sun sign expected Capricorn, got 'Aries' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:11:43.731270+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Moon nakshatra expected 'Purva Bhadrapada', got 'Ashwini' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:11:43.731693+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Lagna sign expected 'Aries', got 'Scorpio' (ayanamsha=lahiri_chitrapaksha). Known trap: NOT Scorpio.
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:29.367587+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Sun sign expected Capricorn, got 'Aries' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:29.368450+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Moon nakshatra expected 'Purva Bhadrapada', got 'Ashwini' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:29.368857+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Lagna sign expected 'Aries', got 'Scorpio' (ayanamsha=lahiri_chitrapaksha). Known trap: NOT Scorpio.
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:58.730995+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Sun sign expected Capricorn, got 'Aries' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:58.731443+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Moon nakshatra expected 'Purva Bhadrapada', got 'Ashwini' (ayanamsha=lahiri_chitrapaksha)
+
+## HALT: FORENSIC_GATE — 2026-06-28T22:41:58.731795+00:00
+FORENSIC GATE FAILED:
+  - FORENSIC FAIL: Lagna sign expected 'Aries', got 'Scorpio' (ayanamsha=lahiri_chitrapaksha). Known trap: NOT Scorpio.
