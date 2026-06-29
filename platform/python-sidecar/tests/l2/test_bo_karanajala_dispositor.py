@@ -20,11 +20,48 @@ from pipeline.orchestrator.writers.bo_karanajala import (
     SIGN_LORD,
     KNOWN_GRAHAS,
 )
+from pipeline.orchestrator.writers.bo_cgm_motifs import (
+    _detect_mutual_reception,
+    _detect_parivartana_chains,
+    _detect_stellia,
+)
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 BUILD_ID  = str(uuid.uuid4())
 AYA       = "lahiri_chitrapaksha"
 NOW       = "2026-06-29T00:00:00+00:00"
+
+
+def _make_graha_node(node_id: str, subject: str, house: int | None = None) -> dict:
+    pos = json.dumps({"house": house}) if house is not None else None
+    return {
+        "node_id": node_id,
+        "node_subject": subject,
+        "node_label_human": subject,
+        "position_in_chart_jsonb": pos,
+    }
+
+
+def _make_dispositor_edge(edge_id: str, from_id: str, to_id: str) -> dict:
+    return {
+        "edge_id": edge_id,
+        "from_node_id": from_id,
+        "to_node_id": to_id,
+        "edge_type": "dispositor",
+        "relationship_basis": None,
+        "computed_strength": 0.6,
+    }
+
+
+def _make_conjunction_edge(edge_id: str, from_id: str, to_id: str) -> dict:
+    return {
+        "edge_id": edge_id,
+        "from_node_id": from_id,
+        "to_node_id": to_id,
+        "edge_type": "conjunction",
+        "relationship_basis": None,
+        "computed_strength": 0.7,
+    }
 
 
 def _make_conn_with_rows(rows: list[tuple]) -> MagicMock:
@@ -165,3 +202,90 @@ class TestBuildDispositorEdges:
         # (the motif detectors fire on edge_type='dispositor', not on relationship_basis)
         props = json.loads(e["edge_properties_jsonb"])
         assert "relationship_basis" not in props
+
+
+class TestMotifDetectorsWithDispositorEdges:
+
+    def test_mutual_reception_detected(self) -> None:
+        """
+        Sun→Mars dispositor + Mars→Sun dispositor → mutual_reception motif fires.
+        Scenario: Sun in Aries (lord Mars), Mars in Leo (lord Sun).
+        """
+        nodes = [
+            _make_graha_node("n-sun",  "Sun"),
+            _make_graha_node("n-mars", "Mars"),
+        ]
+        edge_by_from = {
+            "n-sun":  [_make_dispositor_edge("e1", "n-sun",  "n-mars")],
+            "n-mars": [_make_dispositor_edge("e2", "n-mars", "n-sun")],
+        }
+        motifs = _detect_mutual_reception(nodes, edge_by_from)
+        assert len(motifs) == 1, f"Expected 1 mutual_reception motif; got {len(motifs)}"
+        assert motifs[0]["motif_class"] == "mutual_reception"
+
+    def test_no_mutual_reception_when_only_one_direction(self) -> None:
+        """Sun→Mars edge exists but no Mars→Sun edge → no mutual reception."""
+        nodes = [
+            _make_graha_node("n-sun",  "Sun"),
+            _make_graha_node("n-mars", "Mars"),
+        ]
+        edge_by_from = {"n-sun": [_make_dispositor_edge("e1", "n-sun", "n-mars")]}
+        motifs = _detect_mutual_reception(nodes, edge_by_from)
+        assert motifs == []
+
+    def test_parivartana_chain_length_3_detected(self) -> None:
+        """
+        Sun→Mars→Moon→Sun dispositor cycle (length 3) → parivartana_chain motif fires.
+        """
+        nodes = [
+            _make_graha_node("n-sun",  "Sun"),
+            _make_graha_node("n-mars", "Mars"),
+            _make_graha_node("n-moon", "Moon"),
+        ]
+        edge_by_from = {
+            "n-sun":  [_make_dispositor_edge("e1", "n-sun",  "n-mars")],
+            "n-mars": [_make_dispositor_edge("e2", "n-mars", "n-moon")],
+            "n-moon": [_make_dispositor_edge("e3", "n-moon", "n-sun")],
+        }
+        motifs = _detect_parivartana_chains(nodes, edge_by_from)
+        assert len(motifs) >= 1, f"Expected ≥1 parivartana_chain; got {len(motifs)}"
+        assert all(m["motif_class"] == "parivartana_chain" for m in motifs)
+
+    def test_stellium_detected_with_position_data(self) -> None:
+        """
+        3 graha nodes all in house 1 → stellium motif fires.
+        """
+        nodes = [
+            _make_graha_node("n-sun",  "Sun",    house=1),
+            _make_graha_node("n-mars", "Mars",   house=1),
+            _make_graha_node("n-sat",  "Saturn", house=1),
+            _make_graha_node("n-moon", "Moon",   house=4),  # different house
+        ]
+        edge_by_from = {
+            "n-sun":  [_make_conjunction_edge("c1", "n-sun",  "n-mars"),
+                       _make_conjunction_edge("c2", "n-sun",  "n-sat")],
+            "n-mars": [_make_conjunction_edge("c3", "n-mars", "n-sat")],
+        }
+        motifs = _detect_stellia(nodes, edge_by_from)
+        assert len(motifs) == 1, f"Expected 1 stellium; got {len(motifs)}"
+        assert motifs[0]["motif_class"] == "stellium"
+        assert "House 1" in motifs[0]["motif_name"]
+
+    def test_stellium_requires_3_grahas(self) -> None:
+        """2 grahas in same house → no stellium (below threshold of 3)."""
+        nodes = [
+            _make_graha_node("n-sun",  "Sun",  house=1),
+            _make_graha_node("n-mars", "Mars", house=1),
+        ]
+        edge_by_from = {"n-sun": [_make_conjunction_edge("c1", "n-sun", "n-mars")]}
+        motifs = _detect_stellia(nodes, edge_by_from)
+        assert motifs == []
+
+    def test_no_motifs_without_dispositor_edges(self) -> None:
+        """Without any dispositor edges, mutual_reception and parivartana_chain return 0."""
+        nodes = [
+            _make_graha_node("n-sun",  "Sun"),
+            _make_graha_node("n-mars", "Mars"),
+        ]
+        assert _detect_mutual_reception(nodes, {}) == []
+        assert _detect_parivartana_chains(nodes, {}) == []
