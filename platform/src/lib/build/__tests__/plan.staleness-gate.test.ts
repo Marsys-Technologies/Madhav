@@ -37,12 +37,16 @@ describe('checkStalenessGate', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('lists multiple stale deps and their required_by', () => {
+  it('flags out-of-plan stale dep even when an in-plan asset is also stale', () => {
+    // bo_laksana: out-of-plan dep of bo_bimba (in-plan) — stale → flagged
+    // bo_bimba: in-plan (will be rebuilt by DAG) — NOT flagged even though stale
+    // Gate blocks via bo_laksana; DAG rebuilds bo_bimba on fresh bo_laksana after user fixes bo_laksana
     const throughput = new Map([tp('bo_laksana', 'stale'), tp('bo_bimba', 'stale')])
     const result = checkStalenessGate(['bo_bimba', 'ph_result'], REGISTRY, throughput)
     const ids = result.map(r => r.asset_id)
     expect(ids).toContain('bo_laksana')
-    expect(ids).toContain('bo_bimba')
+    expect(ids).not.toContain('bo_bimba')
+    expect(result).toHaveLength(1)
   })
 
   it('does NOT flag dormant upstream — auto-pull or L0-gate handles those', () => {
