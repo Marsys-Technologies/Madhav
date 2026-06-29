@@ -1,5 +1,6 @@
 export type AssetId = string
-export type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'service_ok'
+export type AssetState =
+  | 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'service_ok' | 'service_down'
 export type BuildAction = 'build' | 'update' | 'rebuild' | 'cascade'
 export type BuildScope = 'global' | 'layer' | 'asset'
 
@@ -15,12 +16,18 @@ export interface ThroughputEntry {
   state: AssetState
 }
 
+export interface BlockerEntry {
+  dep_asset_id: AssetId
+  dep_state: AssetState
+  required_by: AssetId[]    // which in-scope assets need this dep
+  guidance?: string         // non-empty for L0 dormant/error deps
+}
+
 export interface BuildPlan {
-  plan: AssetId[]
-  includes_upstream_count: number
-  estimated_seconds: number | null
-  /** Assets excluded from the plan because a dormant L0 (bg_*) dep blocks them. */
-  blocked_assets: { asset_id: string; reason: string }[]
+  status: 'ok' | 'blocked'
+  plan_waves: AssetId[][]   // empty when blocked or when build no-ops a lit asset
+  blockers: BlockerEntry[]  // empty when ok
+  estimated_seconds: number | null  // always null when status is 'blocked'
 }
 
 export interface StalenessGateEntry {
@@ -64,7 +71,7 @@ export function checkStalenessGate(
   }))
 }
 
-interface ResolveBuildPlanArgs {
+export interface ResolveBuildPlanArgs {
   scope: BuildScope
   scope_target: string | null
   action: BuildAction
