@@ -107,7 +107,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md` | 1.0 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.0 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.2 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -120,18 +120,15 @@ Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` 
 | Layer | Name | Status | Key facts |
 |---|---|---|---|
 | L0 | Brahmagyan | ✓ SEALED | Infrastructure provisioned; DB bootstrap complete; ga_chart_service live |
-| L1 | Gaṇita | ✓ CLOSED | 9 data assets + service; 585,710 total rows; FORENSIC 7/7; orchestrator-native; id-naming standardized. Seal: `L1_GANITA_CLOSURE_v1_0.md`. Phase E gated (operator E2E on Abhinandan `1c826d5a`). |
-| **L2** | **Bodha** | **NEXT** | **8 assets in DAG (bo_laksana root → bo_bimba / bo_karanajala / bo_sangati / bo_samvada / bo_samskara → bo_upaya → bo_pramana_mapa); tables `bodha_*`; handoff: `L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md`** |
-| L3 | Kāla | DRAFT/pending | Placeholder asset_ids registered (`ka_*`); awaits L2 close |
-| L4 | Phala | DRAFT/pending | Placeholder asset_ids registered (`ph_*`); awaits L3 close |
-| L5 | Mīmāṃsā | DRAFT/pending | Placeholder asset_ids registered (`mi_*`); awaits L4 close |
+| L1 | Gaṇita | ✓ CLOSED | 9 data assets + service; FORENSIC 7/7; orchestrator-native; id-naming standardized. Seal: `L1_GANITA_CLOSURE_v2_0.md`. |
+| L2 | Bodha | ✓ BUILT | 14 `bo_*` assets in DAG (bo_laksana root → bo_bimba / bo_karanajala / bo_sangati / bo_samvada / bo_samskara → bo_upaya → bo_pramana_mapa + 4 gestalt/CGM/CDLM writers); tables `bodha_*`; ran end-to-end (Abhinandan L1→L5, 2026-06-27). Handoff: `L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` |
+| L3 | Kāla | ✓ CLOSED | 12 `ka_*` assets, 12/12 buildable; tables `kala_*`; ran end-to-end (Abhinandan L1→L5). Seal: `L3_KALA_CLOSE_v1_0.md` |
+| L4 | Phala | ✓ CLOSED | 9 `ph_*` assets, 9/9; tables `phala_*`; ran end-to-end (Abhinandan L1→L5); deterministic phala, calibration owned by L5 (ph_pramana D5 NO-SCORING gate). Seal: `L4_PHALA_CLOSE_v1_0.md` |
+| L5 | Mīmāṃsā | ✓ SEALED | 12 `mi_*` assets (10 data writers + 2 service verifiers); tables `mimamsa_*`; sealed in **STRUCTURAL mode** — empirical calibration values fill in as prediction→outcome data accrues (this is by design, not unfinished work). Seal: `L5_SEAL_AND_SHIP_REPORT_v1_0.md` |
 
 **The orchestrator is FROZEN** (sealed at `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`). The product "click Build" drives any chart's assets in dependency order via the FROZEN `WriterBase` contract. Future layers onboard by writing a `@register('<asset_id>')` `WriterBase` subclass that conforms to the frozen contract — never by extending the orchestrator. See §N for the one-paragraph contract summary and §C item 13 for the full sealed record.
 
-**Truly open items (as of CURRENT_STATE v5.74 / main HEAD `00000587`):**
-- Phase E (L1 non-native E2E + Abhinandan `1c826d5a` teardown): operator-gated; needed to fully close L1.
-- `feature/panchanga-service-registry` branch: pending its own PR (independent of L1 closure).
-- Orchestrator arc doc registration in CAPABILITY_MANIFEST.json (R6-1 manifest registration).
+**Truly open items:** see `CURRENT_STATE_v1_0.md §2` for the authoritative live list (this section previously hardcoded a v5.74 snapshot and is intentionally not maintained here — per §F, live state lives in CURRENT_STATE). Durable note: **all six build layers (L0–L5) are now sealed/closed** — the build arc is complete; remaining work is per-chart builds + the L5 calibration loop maturing as outcome data accrues.
 
 ## §F — Current execution position (You are here)
 
@@ -229,4 +226,4 @@ An L2+ signal NEVER restates an L1 computed value as its own truth — it REFERE
 
 ---
 
-*End of CLAUDE.md v6.0 (2026-06-12 — structural realignment; §F collapsed; §E replaced with layer-reality block; §D trimmed; §N standards added; §B FORENSIC/naming fixed; §C updated. Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
+*End of CLAUDE.md v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete. Prior: v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
