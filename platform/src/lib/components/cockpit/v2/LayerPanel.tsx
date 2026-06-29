@@ -14,23 +14,47 @@ import { StopIconButton } from './StopIconButton'
 import { useUserRole } from '@/hooks/useUserRole'
 import { DUR, EASE, STAGGER } from './motion'
 
-// Layer identity is a value-step within the gold ramp (not a jewel hue) —
-// each layer's sun-node sits a notch differently on the burnished-gold scale.
-const LAYER_GOLD: Record<string, string> = {
-  brahmagyan: '#ECC56A',
-  ganita:     '#D2A23C',
-  bodha:      '#A87C2A',
-  kala:       '#8A5E12',
-  phala:      '#B98A2E',
-  mimamsa:    '#6E4E0F',
-}
-
-// Sun-node mark — the brand's sanctioned glyph, tinted per layer along the gold ramp.
-function SunNode({ color, size = 11 }: { color: string; size?: number }) {
+// Layer-level status dot — mirrors AssetRow's StatusDot at the layer grain.
+// green = all lit · amber = building OR partially lit · red = any error · dim = all dormant
+function LayerStatusDot({
+  layerIsBuilding,
+  litCount,
+  activeCount,
+  errorCount,
+}: {
+  layerIsBuilding: boolean
+  litCount: number
+  activeCount: number
+  errorCount: number
+}) {
+  const allLit = activeCount > 0 && litCount === activeCount
+  const partialLit = litCount > 0 && !allLit
+  const color = layerIsBuilding || partialLit
+    ? '#ECC56A'
+    : errorCount > 0
+      ? 'rgba(220,80,80,0.95)'
+      : allLit
+        ? 'rgba(83,200,100,0.95)'
+        : 'rgba(255,255,255,0.22)'
+  const shadow = (layerIsBuilding || partialLit || allLit || errorCount > 0) ? `0 0 5px ${color}` : 'none'
+  const title = layerIsBuilding
+    ? 'Building…'
+    : errorCount > 0
+      ? `${errorCount} error(s)`
+      : allLit
+        ? 'All assets lit'
+        : partialLit
+          ? `${litCount} / ${activeCount} lit`
+          : `0 / ${activeCount} — not built`
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" stroke={color} strokeWidth="1" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <path d="M6 0.5 L7.2 4.8 L11.5 6 L7.2 7.2 L6 11.5 L4.8 7.2 L0.5 6 L4.8 4.8 Z" />
-    </svg>
+    <span
+      title={title}
+      style={{
+        width: 8, height: 8, borderRadius: '50%',
+        background: color, boxShadow: shadow,
+        flexShrink: 0, display: 'inline-block',
+      }}
+    />
   )
 }
 
@@ -143,118 +167,111 @@ export function LayerPanel({
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
         }}
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '220px 230px 1fr',
           alignItems: 'center',
-          gap: '10px',
+          columnGap: '20px',
           padding: '12px 16px',
           cursor: 'pointer',
           background: 'var(--black-raised)',
         }}
       >
-        {/* Rotating caret + per-layer sun-node mark (gold hairline language, no jewel stripe) */}
-        <motion.svg
-          width="11" height="11" viewBox="0 0 12 12" fill="none"
-          stroke="var(--on-dark-mut)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true" style={{ flexShrink: 0 }}
-          animate={{ rotate: expanded ? 90 : 0 }}
-          transition={{ duration: DUR.base, ease: EASE.out }}
-        >
-          <path d="M4 2 L8 6 L4 10" />
-        </motion.svg>
-        <SunNode color={LAYER_GOLD[layer] ?? 'var(--gold-core)'} />
+        {/* Left: rotating caret + status dot + bilingual name block */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <motion.svg
+            width="11" height="11" viewBox="0 0 12 12" fill="none"
+            stroke="var(--on-dark-mut)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            aria-hidden="true" style={{ flexShrink: 0 }}
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={{ duration: DUR.base, ease: EASE.out }}
+          >
+            <path d="M4 2 L8 6 L4 10" />
+          </motion.svg>
 
-        {/* Name column — bilingual two-line: Sanskrit (22px gold) above, English (14px) below */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: '22px',
-              lineHeight: 1.1,
-              fontWeight: 400,
-              color: 'var(--gold-high)',
-            }}
-          >
-            {layerNames.sa}
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--ui-stack)',
-              fontSize: '14px',
-              lineHeight: 1.2,
-              color: 'rgba(255,255,255,0.90)',
-              marginTop: '2px',
-            }}
-          >
-            {layerNames.en}
+          {/* Name block — status dot sits beside Sanskrit name */}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <LayerStatusDot
+                layerIsBuilding={layerIsBuilding}
+                litCount={litCount}
+                activeCount={activeAssets.length}
+                errorCount={errorCount}
+              />
+              <div
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '22px',
+                  lineHeight: 1.1,
+                  fontWeight: 400,
+                  color: 'var(--gold-high)',
+                }}
+              >
+                {layerNames.sa}
+              </div>
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--ui-stack)',
+                fontSize: '14px',
+                lineHeight: 1.2,
+                color: 'rgba(255,255,255,0.90)',
+                marginTop: '2px',
+                paddingLeft: '15px',
+              }}
+            >
+              {layerNames.en}
+            </div>
           </div>
         </div>
 
-        {/* Right: asset count + rows + [Build/Rebuild] [Refresh] [Stop | Delete] */}
+        {/* Gauge — fixed 230px grid column */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}
+          style={{ fontFamily: 'var(--mono-stack)' }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Two-column gauge: Assets Built + Rows + completion bar */}
-          <div
-            style={{ width: '170px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Two-column numeric row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
-              <div>
-                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
-                  Assets Built
-                </div>
-                <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
-                  <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
-                </div>
+          {/* Two-column numeric row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
+            <div>
+              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                Assets Built
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
-                  Rows
-                </div>
-                <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
-                  {totalRows > 0 ? totalRows.toLocaleString() : '—'}
-                </div>
+              <div style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ color: 'var(--gold-high)', fontWeight: 600 }}>{litCount}</span>
+                <span style={{ color: 'var(--on-dark-faint)', fontWeight: 400, fontSize: '11px' }}>{' / '}{activeAssets.length}</span>
               </div>
             </div>
-            {/* 3px completion bar */}
-            <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '8.5px', color: 'var(--on-dark-faint)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '1px' }}>
+                Rows
+              </div>
+              <div style={{ fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: totalRows > 0 ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)' }}>
+                {totalRows > 0 ? totalRows.toLocaleString() : '—'}
+              </div>
+            </div>
+          </div>
+          {/* 3px completion bar */}
+          <div style={{ position: 'relative', height: '3px', borderRadius: '2px', background: 'rgba(122,86,24,0.25)', overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
+              width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
+              background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
+              transition: 'width 0.6s ease-out',
+            }} />
+            {layerIsBuilding && (
               <div style={{
-                position: 'absolute', top: 0, left: 0, bottom: 0, borderRadius: '2px',
-                width: activeAssets.length > 0 ? ((litCount / activeAssets.length) * 100) + '%' : '0%',
-                background: layerIsBuilding ? 'rgba(210,162,60,0.88)' : 'rgba(176,137,58,0.92)',
-                transition: 'width 0.6s ease-out',
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
+                animation: 'shimmer 2.2s linear infinite',
               }} />
-              {layerIsBuilding && (
-                <div style={{
-                  position: 'absolute', inset: 0, pointerEvents: 'none',
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.3) 50%, transparent 100%)',
-                  animation: 'shimmer 2.2s linear infinite',
-                }} />
-              )}
-            </div>
+            )}
           </div>
+        </div>
 
-          {/* State pill */}
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              padding: '2px 8px', borderRadius: '10px', fontSize: '9px',
-              fontFamily: 'var(--mono-stack)', letterSpacing: '0.06em',
-              textTransform: 'uppercase', flexShrink: 0,
-              ...(layerIsBuilding
-                ? { background: 'rgba(210,162,60,0.15)', border: '1px solid rgba(210,162,60,0.4)', color: 'var(--gold-high)' }
-                : litCount === activeAssets.length && activeAssets.length > 0
-                  ? { background: 'rgba(176,137,58,0.12)', border: '1px solid rgba(176,137,58,0.3)', color: 'rgba(212,166,72,0.9)' }
-                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-dark-faint)' }
-              ),
-            }}
-          >
-            {layerIsBuilding ? 'Building' : (litCount === activeAssets.length && activeAssets.length > 0) ? 'Live' : 'Pending'}
-          </div>
-
+        {/* Actions — 1fr column, buttons right-anchored */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}
+          onClick={e => e.stopPropagation()}
+        >
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
           {!layerRunId && (isSuperAdmin || layer !== 'brahmagyan') && (
             <BuildActionButton
@@ -288,7 +305,6 @@ export function LayerPanel({
           {/* Stop (when running) or Delete (when idle) — role-gated for brahmagyan */}
           {(isSuperAdmin || layer !== 'brahmagyan') && (
             layerRunId ? (
-              // Stop only on the layer actually building; idle layers during a run show nothing
               layerOwnsBuildingAsset
                 ? <StopIconButton runId={layerRunId} size={28} onStopped={onRunStarted} />
                 : null

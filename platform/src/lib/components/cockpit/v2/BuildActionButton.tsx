@@ -58,11 +58,21 @@ export function BuildActionButton({
   const btnStyle: React.CSSProperties =
     size === 'sm'
       ? {
-          padding: '3px 8px',
+          padding: '0 10px',
           fontSize: '10px',
-          borderRadius: '4px',
+          borderRadius: '999px',
+          height: '22px',
+          lineHeight: 1,
+          minWidth: '64px',
         }
-      : {}
+      : {
+          padding: '0 14px',
+          fontSize: '11px',
+          borderRadius: '999px',
+          height: '26px',
+          lineHeight: 1,
+          minWidth: '80px',
+        }
 
   const handleClick = () => {
     if (action === 'rebuild' && onRebuildOverride) {

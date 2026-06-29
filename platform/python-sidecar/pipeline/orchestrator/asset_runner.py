@@ -597,12 +597,14 @@ def run_asset(
 
     # Asset metadata: probe/integrity-check + rebuild policy (Phase 4).
     cur.execute(
-        """SELECT asset_type, health_probe, rebuild_on_probe_fail, integrity_check_sql
+        """SELECT asset_kind, asset_type, health_probe, rebuild_on_probe_fail, integrity_check_sql
            FROM asset_registry WHERE asset_id = %s""",
         (asset_id,),
     )
     registry_row = cur.fetchone() or {}
-    is_service = registry_row.get("asset_type") == "service"
+    # asset_kind is canonical since migration 242; asset_type retained for legacy bg_* rows
+    is_service = (registry_row.get("asset_kind") == "service"
+                  or registry_row.get("asset_type") == "service")
     has_check = is_service or bool(registry_row.get("integrity_check_sql"))
     rebuild_policy = bool(registry_row.get("rebuild_on_probe_fail"))
 
