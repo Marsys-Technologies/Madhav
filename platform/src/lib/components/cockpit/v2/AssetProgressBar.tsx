@@ -1,197 +1,185 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { BuildStage, SubstepInfo } from './buildStage'
 import { stageFill } from './buildStage'
 
 interface AssetProgressBarProps {
-  state: string                     // polled asset state
-  sseState?: string                 // live SSE state override
-  actualRows?: number | null        // live rows_written from SSE / stats
-  targetVolume?: number | null      // target_floor from asset_registry; fill is stage-based per N.4; targetVolume retained for API compat
-  stage?: BuildStage                // derived stage (passed from AssetRow)
-  substep?: SubstepInfo             // substep data (passed from AssetRow)
-  isQueued?: boolean                // true if in run plan but not yet started
+  state: string
+  sseState?: string
+  actualRows?: number | null
+  targetVolume?: number | null      // retained for API compat; fill is stage-based per N.4
+  stage?: BuildStage
+  substep?: SubstepInfo
+  isQueued?: boolean
 }
 
 const STATE_COLORS: Record<string, {
   fill: string; stroke: string; pill: string; pillColor: string
 }> = {
-  dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.4)',    pill: 'NOT BUILT',     pillColor: 'rgba(155,131,80,0.8)' },
-  building:     { fill: 'rgba(210,162,60,0.88)',   stroke: 'rgba(210,162,60,0.75)',  pill: 'BUILDING',      pillColor: 'rgba(236,197,106,0.95)' },
-  lit:          { fill: 'rgba(176,137,58,0.92)',   stroke: 'rgba(212,166,72,0.9)',   pill: 'LIVE',          pillColor: 'rgba(236,197,106,0.95)' },
-  stale:        { fill: 'rgba(166,108,52,0.7)',    stroke: 'rgba(196,128,64,0.75)',  pill: 'OUT OF SYNC',   pillColor: 'rgba(232,180,108,0.95)' },
-  error:        { fill: 'rgba(232,108,108,0.55)',  stroke: 'rgba(232,108,108,0.85)', pill: 'FAILED',        pillColor: 'rgba(232,108,108,1)' },
-  not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.3)',     pill: 'NOT MIGRATED',  pillColor: 'rgba(120,110,90,0.7)' },
-  reconnecting: { fill: 'rgba(236,197,106,0.1)',   stroke: 'rgba(236,197,106,0.4)', pill: 'RECONNECTING',  pillColor: 'rgba(236,197,106,0.9)' },
-  retired:      { fill: 'rgba(80,80,80,0.0)',       stroke: 'rgba(110,110,110,0.3)', pill: 'RETIRED',       pillColor: 'rgba(150,150,150,0.65)' },
+  dormant:      { fill: 'rgba(122,86,24,0.0)',    stroke: 'rgba(122,86,24,0.35)',   pill: 'NOT BUILT',    pillColor: 'rgba(155,131,80,0.7)' },
+  building:     { fill: 'rgba(210,162,60,0.85)',   stroke: 'rgba(210,162,60,0.7)',   pill: 'BUILDING',     pillColor: 'rgba(236,197,106,0.95)' },
+  lit:          { fill: 'rgba(176,137,58,0.9)',    stroke: 'rgba(212,166,72,0.8)',   pill: 'LIVE',         pillColor: 'rgba(236,197,106,0.95)' },
+  service_ok:   { fill: 'rgba(176,137,58,0.9)',    stroke: 'rgba(212,166,72,0.8)',   pill: 'LIVE',         pillColor: 'rgba(236,197,106,0.95)' },
+  stale:        { fill: 'rgba(166,108,52,0.65)',   stroke: 'rgba(196,128,64,0.7)',   pill: 'OUT OF SYNC',  pillColor: 'rgba(232,180,108,0.95)' },
+  error:        { fill: 'rgba(181,71,76,0.5)',     stroke: 'rgba(181,71,76,0.8)',    pill: 'FAILED',       pillColor: 'rgba(232,108,108,1)' },
+  not_migrated: { fill: 'rgba(80,70,50,0.0)',      stroke: 'rgba(80,70,50,0.25)',    pill: 'NOT MIGRATED', pillColor: 'rgba(120,110,90,0.65)' },
+  reconnecting: { fill: 'rgba(236,197,106,0.08)',  stroke: 'rgba(236,197,106,0.35)', pill: 'RECONNECTING', pillColor: 'rgba(236,197,106,0.85)' },
+  retired:      { fill: 'rgba(80,80,80,0.0)',       stroke: 'rgba(110,110,110,0.25)', pill: 'RETIRED',      pillColor: 'rgba(150,150,150,0.6)' },
 }
 
-function stageLabel(stage: BuildStage, substep?: SubstepInfo, actualRows?: number | null): string {
-  switch (stage) {
-    case 'queued':     return 'Queued'
-    case 'running':    return 'Starting…'
-    case 'substeps':   return substep ? `Step ${substep.index} / ${substep.total}` : 'Running…'
-    case 'committing': return 'Committing…'
-    case 'lit':        return actualRows != null ? `${actualRows.toLocaleString()} rows` : ''
-    default:           return ''
-  }
-}
-
-export function AssetProgressBar({ state, sseState, actualRows, targetVolume, stage, substep, isQueued }: AssetProgressBarProps) {
-  // Prefer-reduced-motion check (safe for SSR — only evaluated client-side)
+export function AssetProgressBar({
+  state, sseState, actualRows, stage, substep,
+}: AssetProgressBarProps) {
   const prefersReducedMotion = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const effectiveState = sseState ?? state
   const isBuilding = effectiveState === 'building'
-  const isLit = effectiveState === 'lit' || stage === 'lit'
-  const isError = effectiveState === 'error'
-  const colors = STATE_COLORS[state] ?? STATE_COLORS.dormant
+  const isLit      = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
+  const isError    = effectiveState === 'error'
+  const colors = STATE_COLORS[effectiveState] ?? STATE_COLORS.dormant
 
-  // Fill is stage-based per N.4 (floors aspirational, not gates)
-  let fillPct: number
-  if (isBuilding && stage) {
-    fillPct = stageFill(stage, substep)
-  } else if (isLit) {
-    fillPct = 100
-  } else if (isError) {
-    fillPct = 100
-  } else {
-    fillPct = 0
+  // Fill % — stage-based per N.4
+  let fillPct = 0
+  if (isBuilding && stage) fillPct = stageFill(stage, substep)
+  else if (isLit)  fillPct = 100
+  else if (isError) fillPct = 100
+
+  // Left label — row count when lit, step indicator when building
+  let leftLabel = ''
+  if (isBuilding) {
+    if (substep && substep.total > 0) {
+      leftLabel = `${substep.index}/${substep.total}`
+    } else if (stage === 'queued')     { leftLabel = 'Queued' }
+    else if (stage === 'committing')   { leftLabel = 'Committing' }
+    else                               { leftLabel = 'Starting' }
+  } else if (isLit && actualRows != null && actualRows > 0) {
+    leftLabel = actualRows.toLocaleString()
   }
 
-  // Spring animation — disabled for prefers-reduced-motion
+  const hasSubsteps = isBuilding && substep != null && substep.total > 1
+
   const springTransition = prefersReducedMotion
     ? { duration: 0.1 }
-    : { type: 'spring' as const, stiffness: 80, damping: 20 }
-
-  // Stage label — only shown when building
-  const currentStage: BuildStage = stage ?? (isLit ? 'lit' : 'idle')
-  const label = stageLabel(currentStage, substep, actualRows)
-  const showLabel = isBuilding && label !== ''
-
-  // Fill color: falls through to STATE_COLORS (gold for lit, amber for building, red for error)
-  const fillColor = isError ? 'rgba(232,108,108,0.55)' : colors.fill
+    : { type: 'spring' as const, stiffness: 90, damping: 22 }
 
   return (
-    <div className="relative h-[28px] w-full">
-      {/* Track */}
-      <div
-        className="absolute inset-0 rounded-[4px] border"
-        style={{ borderColor: colors.stroke, background: 'rgba(15,12,8,0.6)' }}
-      />
+    // Three-column layout: [left label] [bar] [state badge]
+    // All text sits outside the bar — no overlapping, consistent badge on right for every state.
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
 
-      {/* Substep tick marks — faint dividers at each substep boundary */}
-      {isBuilding && substep && substep.total > 1 && !prefersReducedMotion && (
-        Array.from({ length: substep.total - 1 }, (_, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: ((i + 1) / substep.total * 100) + '%',
-              width: '1px',
-              background: 'rgba(255,255,255,0.07)',
-              zIndex: 3,
-              pointerEvents: 'none',
-            }}
-          />
-        ))
-      )}
-
-      {/* Fill — spring-animated width for stage-based progress */}
-      <div className="absolute top-0 bottom-0 left-0 rounded-l-[4px] overflow-hidden" style={{ width: '100%' }}>
-        <motion.div
-          className="h-full rounded-l-[4px] origin-left relative"
-          style={{ background: fillColor }}
-          animate={{ width: `${isBuilding ? Math.max(1.5, fillPct) : fillPct}%` }}
-          transition={springTransition}
-        >
-          {/* Shimmer overlay — CSS keyframe animation on the fill div, only during active building stages */}
-          {isBuilding && (currentStage === 'running' || currentStage === 'substeps') && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.22) 50%, transparent 100%)',
-                animation: 'shimmer 2s linear infinite',
-              }}
-            />
-          )}
-          {/* Leading-edge cap — 2px gold bar with glow at fill frontier while building */}
-          {isBuilding && !prefersReducedMotion && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: '2px',
-                background: '#ECC56A',
-                boxShadow: '0 0 6px 2px rgba(236,197,106,0.6)',
-                borderRadius: '0 4px 4px 0',
-              }}
-            />
-          )}
-        </motion.div>
+      {/* Left label — rows count or build step, fixed width so bar stays aligned */}
+      <div style={{
+        fontFamily: 'var(--mono-stack)',
+        fontSize: '9px',
+        fontVariantNumeric: 'tabular-nums',
+        color: isBuilding ? 'var(--on-dark-mut)' : 'var(--on-dark-faint)',
+        minWidth: '52px',
+        textAlign: 'right',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {leftLabel}
       </div>
 
-      {/* Rows count — shown whenever actualRows is available, regardless of build state */}
-      {actualRows != null && actualRows > 0 && (
-        <div
-          className="absolute inset-0 flex items-center pl-2"
-          style={{
-            fontFamily: 'var(--mono-stack)',
-            fontSize: '10px',
-            fontVariantNumeric: 'tabular-nums',
-            color: 'rgba(255,255,255,0.8)',
-            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-          }}
-        >
-          {actualRows.toLocaleString()}
-        </div>
-      )}
-
-      {/* Stage label — cross-fades between stages using AnimatePresence */}
-      {showLabel && (
-        <div
-          className="absolute inset-0 flex items-center pl-[68px] pr-[68px] font-mono text-[9px] overflow-hidden"
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={label}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
-              style={{ color: 'rgba(255,255,255,0.75)', display: 'block', whiteSpace: 'nowrap' }}
+      {/* Bar — 5px thin track, either segmented (substeps) or continuous fill */}
+      <div style={{ flex: 1, position: 'relative', height: '5px' }}>
+        {hasSubsteps ? (
+          // Segmented substep bar — one block per substep
+          <div style={{ display: 'flex', gap: '2px', height: '5px' }}>
+            {Array.from({ length: substep!.total }, (_, i) => {
+              const isDone   = i < (substep!.index - 1)
+              const isActive = i === (substep!.index - 1)
+              return (
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    height: '5px',
+                    borderRadius: '2px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    background: isDone
+                      ? colors.fill
+                      : isActive
+                        ? 'rgba(210,162,60,0.45)'
+                        : 'rgba(122,86,24,0.14)',
+                    border: `1px solid ${isDone || isActive ? colors.stroke : 'rgba(122,86,24,0.18)'}`,
+                    transition: prefersReducedMotion ? 'none' : 'background 0.3s ease',
+                  }}
+                >
+                  {isActive && !prefersReducedMotion && (
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none',
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.45) 50%, transparent 100%)',
+                      animation: 'shimmer 1.8s linear infinite',
+                    }} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          // Continuous fill bar
+          <>
+            {/* Track */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: '3px',
+              background: 'rgba(15,12,8,0.7)',
+              border: `1px solid ${colors.stroke}`,
+            }} />
+            {/* Animated fill */}
+            <motion.div
+              style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0,
+                borderRadius: '3px',
+                background: isError ? 'rgba(181,71,76,0.5)' : colors.fill,
+                overflow: 'hidden',
+              }}
+              animate={{ width: `${isBuilding ? Math.max(2, fillPct) : fillPct}%` }}
+              transition={springTransition}
             >
-              {label}
-            </motion.span>
-          </AnimatePresence>
-        </div>
-      )}
+              {/* Shimmer while building */}
+              {isBuilding && !prefersReducedMotion && (
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(236,197,106,0.28) 50%, transparent 100%)',
+                  animation: 'shimmer 2s linear infinite',
+                }} />
+              )}
+              {/* Leading-edge cap */}
+              {isBuilding && !prefersReducedMotion && fillPct > 3 && (
+                <div style={{
+                  position: 'absolute', top: 0, right: 0, bottom: 0,
+                  width: '2px',
+                  background: '#ECC56A',
+                  boxShadow: '0 0 5px rgba(236,197,106,0.8)',
+                }} />
+              )}
+            </motion.div>
+          </>
+        )}
+      </div>
 
-      {/* State pill — right edge inside the bar; label cross-fades on state change */}
-      <div
-        className="absolute top-[3px] right-[3px] bottom-[3px] flex items-center px-1.5 rounded-[2px] font-mono text-[8px] uppercase overflow-hidden"
-        style={{ background: 'rgba(10,8,6,0.85)', letterSpacing: '0.06em' }}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={colors.pill}
-            initial={{ opacity: 0, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -3 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            style={{ color: colors.pillColor, display: 'block' }}
-          >
-            {colors.pill}
-          </motion.span>
-        </AnimatePresence>
+      {/* State badge — always on the right, never inside the bar */}
+      <div style={{
+        fontFamily: 'var(--mono-stack)',
+        fontSize: '8px',
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        color: colors.pillColor,
+        flexShrink: 0,
+        padding: '1px 5px',
+        borderRadius: '3px',
+        background: 'rgba(10,8,6,0.7)',
+        border: `1px solid ${colors.stroke}`,
+        whiteSpace: 'nowrap',
+      }}>
+        {colors.pill}
       </div>
 
     </div>
