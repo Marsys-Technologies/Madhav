@@ -23,6 +23,65 @@ export interface BuildPlan {
   blocked_assets: { asset_id: string; reason: string }[]
 }
 
+export interface StalenessGateEntry {
+  asset_id: AssetId
+  state: string
+  required_by: AssetId[]
+}
+
+/**
+ * Returns one entry per out-of-plan upstream dep whose state is 'stale'.
+ * A non-empty result means the build should be blocked: building downstream
+ * on stale data produces wrong output. In-plan deps are excluded — the DAG
+ * scheduler handles those by running deps before dependents.
+ * Dormant/error upstream are not flagged here: auto-pull or L0-blocking
+ * handles them separately.
+ */
+export function checkStalenessGate(
+  plan: AssetId[],
+  registry: RegistryEntry[],
+  throughput: Map<AssetId, ThroughputEntry>
+): StalenessGateEntry[] {
+  const planSet = new Set(plan)
+  const regMap = new Map(registry.map(r => [r.asset_id, r]))
+  // Map from blocker asset_id → set of plan assets that require it.
+  const staleBlockers = new Map<AssetId, Set<AssetId>>()
+
+  const flagBlocker = (dep: AssetId, planAsset: AssetId) => {
+    if (!staleBlockers.has(dep)) staleBlockers.set(dep, new Set())
+    staleBlockers.get(dep)!.add(planAsset)
+  }
+
+  for (const planAsset of plan) {
+    for (const dep of regMap.get(planAsset)?.depends_on ?? []) {
+      if (planSet.has(dep)) {
+        // In-plan dep: DAG will handle ordering. However, if this in-plan dep is
+        // itself stale and has an out-of-plan stale upstream, flag it as a blocker
+        // so the caller knows the plan's starting state is already corrupted.
+        const depState = throughput.get(dep)?.state
+        if (depState === 'stale') {
+          const depHasOutOfPlanStaleDep = (regMap.get(dep)?.depends_on ?? [])
+            .some(d => !planSet.has(d) && throughput.get(d)?.state === 'stale')
+          if (depHasOutOfPlanStaleDep) {
+            flagBlocker(dep, planAsset)
+          }
+        }
+        continue
+      }
+      // Out-of-plan dep: flag if stale.
+      if (throughput.get(dep)?.state === 'stale') {
+        flagBlocker(dep, planAsset)
+      }
+    }
+  }
+
+  return Array.from(staleBlockers.entries()).map(([dep, requiredBySet]) => ({
+    asset_id: dep,
+    state: throughput.get(dep)?.state ?? 'stale',
+    required_by: Array.from(requiredBySet),
+  }))
+}
+
 interface ResolveBuildPlanArgs {
   scope: BuildScope
   scope_target: string | null
