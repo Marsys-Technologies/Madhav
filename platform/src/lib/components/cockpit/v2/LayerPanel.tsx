@@ -378,7 +378,7 @@ export function LayerPanel({
                     chartId={chartId}
                     activeRunId={assetRunActive ? activeRun!.id : null}
                     activeRunPaused={assetRunActive && activeRun!.state === 'paused'}
-                    isActiveAsset={assetRunActive && activeRun!.current_asset_id === asset.asset_id}
+                    isActiveAsset={assetRunActive && stats.get(asset.asset_id)?.state === 'building'}
                     highlighted={focusedAssetId === asset.asset_id || hoveredAssetId === asset.asset_id}
                     allAssets={allAssets}
                     substep={substepOverlay?.get(asset.asset_id) ?? null}
