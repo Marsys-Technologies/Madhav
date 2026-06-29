@@ -72,7 +72,7 @@ describe('traverse_chart_graph — D4 capability descriptor', () => {
   it('chart_id input_schema has no default value (Rule-4)', () => {
     const chartIdSchema = traverseChartGraphCapability.input_schema?.['chart_id']
     expect(chartIdSchema).toBeDefined()
-    expect((chartIdSchema as Record<string, unknown>)?.['default']).toBeUndefined()
+    expect((chartIdSchema as unknown as Record<string, unknown>)?.['default']).toBeUndefined()
   })
 
   it('description does not contain native chart UUID (Rule-2)', () => {
@@ -97,7 +97,7 @@ describe('traverse_chart_graph — D4 capability descriptor', () => {
   it('supports the 4 required traversal modes in input_schema', () => {
     const modeSchema = traverseChartGraphCapability.input_schema?.['mode']
     expect(modeSchema).toBeDefined()
-    expect((modeSchema as Record<string, unknown>)?.['enum']).toEqual(
+    expect((modeSchema as unknown as Record<string, unknown>)?.['enum']).toEqual(
       expect.arrayContaining(['neighbors', 'paths', 'convergence', 'contradictions'])
     )
   })

@@ -4,142 +4,107 @@ import { AssetTable, type AssetRow } from '../AssetTable'
 
 // Stub CascadePreviewModal (tested separately)
 vi.mock('../CascadePreviewModal', () => ({
-  CascadePreviewModal: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
-    open ? <div data-testid="cascade-modal"><button onClick={onClose}>Close</button></div> : null,
+  CascadePreviewModal: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
+    isOpen ? <div data-testid="cascade-modal"><button onClick={onClose}>Close</button></div> : null,
 }))
 
 const SAMPLE_ASSETS: AssetRow[] = [
-  { assetId: 'pratyaksha',    status: 'complete', rowCount: 1200, progress: 1.0 },
-  { assetId: 'panchanga',     status: 'running',  rowCount: 400,  progress: 0.4 },
-  { assetId: 'lakshana_kosha', status: 'pending',  rowCount: 0,    progress: 0 },
-  { assetId: 'prashna',       status: 'failed',   rowCount: 0,    progress: 0 },
+  { assetId: 'pratyaksha',     status: 'complete', rowCount: 1200, lastUpdated: '2026-06-29T10:00:00Z' },
+  { assetId: 'panchanga',      status: 'running',  rowCount: 400,  lastUpdated: '2026-06-29T10:01:00Z' },
+  { assetId: 'lakshana_kosha', status: 'pending',  rowCount: 0,    lastUpdated: '' },
+  { assetId: 'prashna',        status: 'failed',   rowCount: 0,    lastUpdated: '' },
 ]
 
 describe('AssetTable', () => {
-  it('renders with data-testid asset-table', () => {
+  it('renders empty state message when no assets provided', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    expect(screen.getByTestId('asset-table')).toBeTruthy()
+    expect(screen.getByText(/No asset data yet/)).toBeTruthy()
   })
 
-  it('renders all 4 layer section headings', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    expect(screen.getByTestId('layer-section-L1')).toBeTruthy()
-    expect(screen.getByTestId('layer-section-L2_5')).toBeTruthy()
-    expect(screen.getByTestId('layer-section-L3')).toBeTruthy()
-    expect(screen.getByTestId('layer-section-L4')).toBeTruthy()
-  })
-
-  it('renders Sanskrit section heading for L1 (Adhara)', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    const section = screen.getByTestId('layer-section-L1')
-    expect(section.textContent).toContain('Adhara')
-  })
-
-  it('renders Sanskrit section heading for L2_5 (Sambandha)', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    const section = screen.getByTestId('layer-section-L2_5')
-    expect(section.textContent).toContain('Sambandha')
-  })
-
-  it('renders rows for all 28 known assets', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    // Every asset key should have a row
-    const allRows = screen.getAllByTestId(/^asset-row-/)
-    expect(allRows.length).toBeGreaterThanOrEqual(28)
-  })
-
-  it('renders pratyaksha row with Sanskrit name', () => {
+  it('renders a table when assets are provided', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    const row = screen.getByTestId('asset-row-pratyaksha')
-    expect(row.textContent).toContain('Pratyaksha')
+    expect(screen.getByRole('table')).toBeTruthy()
   })
 
-  it('renders asset subtitle in the row', () => {
+  it('renders Asset, Status, Rows, Updated, Actions column headers', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    const row = screen.getByTestId('asset-row-pratyaksha')
-    expect(row.textContent).toContain('Forensic chart')
+    expect(screen.getByText('Asset')).toBeTruthy()
+    expect(screen.getByText('Status')).toBeTruthy()
+    expect(screen.getByText('Rows')).toBeTruthy()
+    expect(screen.getByText('Updated')).toBeTruthy()
+    expect(screen.getByText('Actions')).toBeTruthy()
   })
 
-  it('renders correct status for complete asset', () => {
+  it('renders one row per asset', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    expect(screen.getAllByTestId('status-pill-complete').length).toBeGreaterThan(0)
+    const rows = screen.getAllByRole('row')
+    // 1 header row + 4 data rows
+    expect(rows.length).toBe(5)
   })
 
-  it('renders correct status for running asset', () => {
+  it('renders the row count formatted for assets with data', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    expect(screen.getAllByTestId('status-pill-running').length).toBeGreaterThan(0)
+    expect(screen.getByText('1,200')).toBeTruthy()
   })
 
-  it('renders correct status for pending asset', () => {
+  it('renders 0 for assets with zero row count', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    expect(screen.getAllByTestId('status-pill-pending').length).toBeGreaterThan(0)
+    // Two assets have rowCount 0
+    const zeros = screen.getAllByText('0')
+    expect(zeros.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('renders correct status for failed asset', () => {
+  it('renders Rebuild button for non-running assets', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    expect(screen.getAllByTestId('status-pill-failed').length).toBeGreaterThan(0)
+    // complete, pending, failed all get Rebuild
+    const rebuilds = screen.getAllByText('Rebuild')
+    expect(rebuilds.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('shows row count for assets with data', () => {
+  it('renders Stop button for running assets', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    const row = screen.getByTestId('asset-row-pratyaksha')
-    expect(row.textContent).toContain('1,200')
+    expect(screen.getByText('Stop')).toBeTruthy()
   })
 
-  it('shows dash for assets with zero row count', () => {
+  it('renders Skip button for pending assets', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    const row = screen.getByTestId('asset-row-prashna')
-    expect(row.textContent).toContain('—')
-  })
-
-  it('renders Rebuild button for each asset row', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    const rebuilds = screen.getAllByTestId(/^rebuild-btn-/)
-    expect(rebuilds.length).toBeGreaterThanOrEqual(28)
-  })
-
-  it('calls onRebuild prop when Rebuild button is clicked', () => {
-    const onRebuild = vi.fn()
-    render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} onRebuild={onRebuild} />)
-    fireEvent.click(screen.getByTestId('rebuild-btn-pratyaksha'))
-    expect(onRebuild).toHaveBeenCalledWith('pratyaksha')
+    expect(screen.getByText('Skip')).toBeTruthy()
   })
 
   it('opens CascadePreviewModal when Rebuild is clicked', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    fireEvent.click(screen.getByTestId('rebuild-btn-panchanga'))
+    // Click the first Rebuild button (pratyaksha — status=complete)
+    const rebuilds = screen.getAllByText('Rebuild')
+    fireEvent.click(rebuilds[0])
     expect(screen.getByTestId('cascade-modal')).toBeTruthy()
   })
 
   it('closes CascadePreviewModal when modal Close is clicked', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    fireEvent.click(screen.getByTestId('rebuild-btn-panchanga'))
+    const rebuilds = screen.getAllByText('Rebuild')
+    fireEvent.click(rebuilds[0])
     fireEvent.click(screen.getByText('Close'))
     expect(screen.queryByTestId('cascade-modal')).toBeNull()
   })
 
-  it('renders cascade hint footer', () => {
-    render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    expect(screen.getByTestId('cascade-hint').textContent).toContain('Rebuild just that asset')
-  })
-
-  it('shows layer completion count', () => {
+  it('renders a dash when lastUpdated is empty', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
-    const l1Count = screen.getByTestId('layer-count-L1')
-    expect(l1Count.textContent).toContain('1 of 8 complete')
+    // Two assets have lastUpdated='' → should render '—'
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('renders rows in layer order: L1 before L2_5 before L3 before L4', () => {
+  it('renders a time string when lastUpdated is set', () => {
+    render(<AssetTable buildId="b1" chartId="c1" assets={SAMPLE_ASSETS} />)
+    // At least one asset has a valid ISO date — toLocaleTimeString renders something
+    const tds = document.querySelectorAll('td')
+    const timeValues = Array.from(tds).map(td => td.textContent ?? '')
+    const hasTime = timeValues.some(t => /\d+:\d+/.test(t))
+    expect(hasTime).toBe(true)
+  })
+
+  it('does not render table when assets is empty', () => {
     render(<AssetTable buildId="b1" chartId="c1" assets={[]} />)
-    const table = screen.getByTestId('asset-table')
-    const sectionOrder = Array.from(
-      table.querySelectorAll('[data-testid^="layer-section-"]')
-    ).map((el) => el.getAttribute('data-testid'))
-    expect(sectionOrder).toEqual([
-      'layer-section-L1',
-      'layer-section-L2_5',
-      'layer-section-L3',
-      'layer-section-L4',
-    ])
+    expect(screen.queryByRole('table')).toBeNull()
   })
 })

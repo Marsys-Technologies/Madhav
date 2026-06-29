@@ -428,6 +428,24 @@ def _signature_tier(computed_salience: float) -> str:
     return "background"
 
 
+# ── Signature class derivation ────────────────────────────────────────────────
+
+def _signature_class(signal_type_class: str) -> str:
+    """Derive signature_class from signal_type_class.
+
+    signature_class is a free-text grouping field (no DB constraint).
+    Derivation is categorical, deterministic, and never generative.
+    """
+    stc = (signal_type_class or "").lower()
+    if any(kw in stc for kw in ("dignity", "shadbala", "strength", "varga_pattern")):
+        return "planetary"
+    if any(kw in stc for kw in ("house", "bhava")):
+        return "house"
+    if any(kw in stc for kw in ("dasha", "temporal", "sade_sati", "annual")):
+        return "temporal"
+    return "general"
+
+
 # ── Lookup builders ───────────────────────────────────────────────────────────
 
 def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
@@ -437,14 +455,13 @@ def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
 
 
 def _build_strength_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, float]:
-    """graha → normalized shadbala (total virupas / 390).
+    """graha → normalized shadbala (rupas clamped to 0–2.0).
 
     B2-fix: graha lives in fact_subject (e.g. 'SUN', 'MOON', 'MAR', …).
     The fact_key is always 'rupa' — splitting on ':' in fact_key was wrong.
-    Normalization: 1 rupa = typical minimum requirement; 2+ rupas = strong.
-    We divide by 390 virupas (= 1 rupa; shadbala unit).  Values are already
-    in rupas so we divide by the classical minimum-required range (~1 rupa)
-    to get a 0–2 clamped ratio.
+    C2-verified: fact_value_num is already in rupas (observed: SUN=3.23, SAT=3.61,
+    JUP=2.66, MOON=2.56, MER=2.50, VEN=2.36, MAR=3.11, RAH=0.38, KET=0.63).
+    Classical minimum ≈ 1 rupa per planet; values ≥1.0 = adequate, 2.0 = 2× minimum.
     """
     rows = _fetch_dict(conn,
         """SELECT fact_subject, fact_value_num FROM chart_facts
@@ -458,9 +475,14 @@ def _build_strength_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[
         if not graha:
             continue
         raw = float(r.get("fact_value_num") or 0.0)
-        # fact_value_num is already in rupas (1 rupa = 390 virupas).
-        # Classical minimum needed ≈ 1 rupa for each planet; normalise to that.
-        lookup[graha] = min(raw / 1.0, 2.0)  # clamp at 2× minimum
+        # C2-verified: fact_value_num is already in rupas (observed range: JUP=2.66,
+        # MER=2.50, MOON=2.56, SUN=3.23, SAT=3.61, MAR=3.11, VEN=2.36, RAH=0.38,
+        # KET=0.63 — all consistent with rupa scale, NOT virupas).
+        # Classical minimum needed ≈ 1 rupa per planet; we normalise against that
+        # floor so values ≥1.0 indicate adequate strength and 2.0 = double minimum.
+        # Dividing by 1.0 is intentional (identity — the value IS already normalised
+        # to rupas); we clamp at 2.0 to bound the salience multiplier.
+        lookup[graha] = min(raw / 1.0, 2.0)  # clamp at 2× classical minimum
     return lookup
 
 
@@ -633,13 +655,37 @@ SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_subject,
        fact_value_num, fact_value_text, fact_value_jsonb, formula_id,
        source_calculation, verification_pass_status, citation_ref, citation_human
 FROM chart_facts
-WHERE chart_id = %s AND ayanamsha_id IN (%s, 'INVARIANT')
+WHERE chart_id = %s AND ayanamsha_id = %s
+ORDER BY fact_category, fact_key
+"""
+
+# C3-fix: INVARIANT rows were previously fetched via IN (%s, 'INVARIANT') which
+# caused them to be included in every ayanamsha sub-step, producing 5 identical
+# signals per INVARIANT fact.  We now fetch INVARIANT rows in a separate pass
+# (called once per sub-step) and process them with ayanamsha_override set to the
+# current ayanamsha so the emitted signal carries the correct ayanamsha_id label.
+# The separate fetch ensures each INVARIANT fact produces exactly one signal per
+# ayanamsha (matching the per-ayanamsha rows), which is the intended behaviour:
+# INVARIANT facts are ayanamsha-independent at source but need to be retrievable
+# per-ayanamsha in downstream queries.
+_FETCH_INVARIANT_SQL = """
+SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_subject,
+       fact_value_num, fact_value_text, fact_value_jsonb, formula_id,
+       source_calculation, verification_pass_status, citation_ref, citation_human
+FROM chart_facts
+WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'
 ORDER BY fact_category, fact_key
 """
 
 
 def _fetch_all_facts(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dict]:
+    """Fetch ayanamsha-specific facts only (INVARIANT excluded — see _fetch_invariant_facts)."""
     return _fetch_dict(conn, _FETCH_SQL, [chart_id, ayanamsha_id])
+
+
+def _fetch_invariant_facts(conn: Any, chart_id: str) -> list[dict]:
+    """Fetch INVARIANT facts separately so they are processed exactly once per sub-step."""
+    return _fetch_dict(conn, _FETCH_INVARIANT_SQL, [chart_id])
 
 
 # ── Salience helpers ──────────────────────────────────────────────────────────
@@ -966,7 +1012,7 @@ def _build_signal_row(
         # ── Digest hooks ─────────────────────────────────────────────────────
         "top_k_salience_rank":                      None,   # set post-build
         "system_convergence_count":                 None,
-        "signature_class":                          None,
+        "signature_class":                          _signature_class(_signal_type_class(fact_cat)),
         # ── Contradictions ────────────────────────────────────────────────────
         "contradicts_signals_array":                None,
         # ── Active periods (L3-fill hooks) ────────────────────────────────────
@@ -1009,12 +1055,18 @@ def _dignity_tier(text: str) -> int:
     return _DIGNITY_STRENGTH_TIER.get((text or "neutral").lower().strip(), 0)
 
 
-def _build_d1_dignity_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
-    """graha (long name, e.g. 'Sun') → D1 dignity text.
+def _build_d1_dignity_map(
+    conn: Any, chart_id: str, ayanamsha_id: str
+) -> dict[str, tuple[str, str | None]]:
+    """graha (long name, e.g. 'Sun') → (D1 dignity text, fact_id | None).
 
     Uses chart_facts.graha_dignity_per_varga filtered on varga='D1'.
     fact_subject format: 'D1_SUN', 'D1_MOON' …  — we map to long names via
     a lookup so we can join with chart_divisionals.graha which uses long names.
+
+    Returns a tuple per graha so callers can cite the L1 fact_id in
+    constituent_facts_array (B2 governance mandate: every L2 signal must
+    cite the L1 fact IDs it consumes).
     """
     short_to_long = {
         "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
@@ -1022,17 +1074,19 @@ def _build_d1_dignity_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[s
         "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
     }
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_value_text FROM chart_facts
+        """SELECT fact_id, fact_subject, fact_value_text FROM chart_facts
            WHERE chart_id=%s AND ayanamsha_id=%s
              AND fact_category='graha_dignity_per_varga'
              AND fact_value_jsonb->>'varga' = 'D1'""",
         [chart_id, ayanamsha_id])
-    d1: dict[str, str] = {}
+    d1: dict[str, tuple[str, str | None]] = {}
     for r in rows:
         subj = str(r.get("fact_subject") or "").removeprefix("D1_")
         long_name = short_to_long.get(subj)
         if long_name and long_name not in d1:
-            d1[long_name] = str(r.get("fact_value_text") or "neutral")
+            dignity_text = str(r.get("fact_value_text") or "neutral")
+            fact_id = str(r.get("fact_id")) if r.get("fact_id") is not None else None
+            d1[long_name] = (dignity_text, fact_id)
     return d1
 
 
@@ -1075,7 +1129,9 @@ def _build_navamsha_cross_check_signals(
     signals: list[dict] = []
 
     for graha in sorted(graha_names):
-        d1_text = d1_map.get(graha, "neutral")
+        # d1_map values are (dignity_text, fact_id | None) tuples (B2-fix)
+        d1_tuple = d1_map.get(graha, ("neutral", None))
+        d1_text, d1_fact_id = d1_tuple
         d9_text = d9_map.get(graha, "neutral")
         d1_tier = _dignity_tier(d1_text)
         d9_tier = _dignity_tier(d9_text)
@@ -1156,7 +1212,10 @@ def _build_navamsha_cross_check_signals(
             "valence":                                  valence,
             "lel_origin":                               False,
             "configuration_jsonb":                      json.dumps(config),
-            "constituent_facts_array":                  [],
+            # B2-fix: cite the D1 dignity fact_id from chart_facts when available.
+            # D9 data comes from chart_divisionals which has no fact_id column,
+            # so only the D1 side is traceable to a chart_facts row.
+            "constituent_facts_array":                  ([d1_fact_id] if d1_fact_id else []),
             "constituent_signals_array":                None,
             "classical_sources_array":                  None,
             "source_corroboration_count_by_text":       2,
@@ -1197,7 +1256,7 @@ def _build_navamsha_cross_check_signals(
             "recurring_pattern_marker":                 None,
             "top_k_salience_rank":                      None,
             "system_convergence_count":                 None,
-            "signature_class":                          None,
+            "signature_class":                          _signature_class("varga_pattern"),
             "contradicts_signals_array":                None,
             "active_duration_class":                    "natal_permanent",
             "active_dasha_periods_jsonb":               None,
@@ -1375,18 +1434,27 @@ class BoLaksanaWriter(WriterBase):
 
         if ctx.dry_run:
             facts = _fetch_all_facts(conn, chart_id, ayanamsha)
-            logger.info("[bo_laksana dry_run] %s — would project %d facts", ayanamsha, len(facts))
+            invariant = _fetch_invariant_facts(conn, chart_id)
+            total = len(facts) + len(invariant)
+            logger.info("[bo_laksana dry_run] %s — would project %d facts (%d INVARIANT)",
+                        ayanamsha, total, len(invariant))
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes=f"dry_run:{ayanamsha}:{len(facts)}_facts")
+                                notes=f"dry_run:{ayanamsha}:{total}_facts")
 
         # Build L1 lookup dicts for salience inputs
         strength_lookup = _build_strength_lookup(conn, chart_id, ayanamsha)
         dignity_lookup  = _build_dignity_lookup(conn, chart_id, ayanamsha)
         av_lookup       = _build_av_lookup(conn, chart_id, ayanamsha)
 
-        # Fetch ALL fact rows for this ayanamsha (category-agnostic)
+        # Fetch ALL fact rows for this ayanamsha (category-agnostic).
+        # C3-fix: INVARIANT rows are fetched separately and appended so each
+        # ayanamsha sub-step processes them exactly once (previously they were
+        # included via IN (%s, 'INVARIANT') → 5× duplicate signals).
         fact_rows = _fetch_all_facts(conn, chart_id, ayanamsha)
-        logger.info("[bo_laksana] %s — fetched %d fact rows", ayanamsha, len(fact_rows))
+        invariant_rows = _fetch_invariant_facts(conn, chart_id)
+        fact_rows = fact_rows + invariant_rows
+        logger.info("[bo_laksana] %s — fetched %d fact rows (%d INVARIANT)",
+                    ayanamsha, len(fact_rows), len(invariant_rows))
 
         if not fact_rows:
             raise RuntimeError(

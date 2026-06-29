@@ -374,7 +374,7 @@ describe('§E — Budget rules API endpoints', () => {
       new Request('http://x/api/admin/observatory/budget-rules/br-existing-1', {
         method: 'DELETE',
       }),
-      { params: { id: 'br-existing-1' } },
+      { params: Promise.resolve({ id: 'br-existing-1' }) },
     )
     expect(deleteResponse.status).toBe(204)
     // 204 has no body — read-as-text returns empty.
@@ -389,7 +389,7 @@ describe('§E — Budget rules API endpoints', () => {
 
     const getResponse = await GET(
       new Request('http://x/api/admin/observatory/budget-rules/br-existing-1'),
-      { params: { id: 'br-existing-1' } },
+      { params: Promise.resolve({ id: 'br-existing-1' }) },
     )
     expect(getResponse.status).toBe(200)
     const body = await getResponse.json()

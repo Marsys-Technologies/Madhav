@@ -9,7 +9,7 @@ import { ClearIconButton } from './ClearIconButton'
 import { RefreshIconButton } from './RefreshIconButton'
 import { StopIconButton } from './StopIconButton'
 import { formatDateTime, formatRelative } from '@/lib/utils/date'
-import { Zap, Database, Cpu } from 'lucide-react'
+import { Zap, Database, Cpu, Link2 } from 'lucide-react'
 import { AssetProgressBar } from './AssetProgressBar'
 import { deriveBuildStage } from './buildStage'
 import type { SubstepInfo } from './buildStage'
@@ -242,6 +242,11 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       toast.error(err instanceof Error ? err.message : 'Failed to start build')
     }
   }
+  // O1: distinguish BLOCKED cascade errors from genuine root failures
+  function isBlockedCascade(errorMessage: string): boolean {
+    return errorMessage.startsWith('BLOCKED:')
+  }
+
   const isActive = asset.is_active
   const isDataPlaneDown = stat?.error_class === 'dataplane'
   // Suppress red-error display when the failure is a transient data-plane blip
@@ -335,11 +340,32 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
               </div>
             )}
             {hasError && stat?.error && (
+              isBlockedCascade(stat.error) ? (
+                // O1: blocked cascade — amber/orange, chain icon, distinct tooltip
+                <div
+                  style={{ fontSize: '9px', color: 'rgba(236,147,50,0.9)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  title={`Blocked by upstream failure — ${stat.error}`}
+                >
+                  <Link2 size={9} style={{ flexShrink: 0, color: 'rgba(236,147,50,0.8)' }} />
+                  <span>blocked by upstream failure</span>
+                </div>
+              ) : (
+                // O1: genuine root failure — keep existing red styling
+                <div
+                  style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={stat.error}
+                >
+                  {stat.error.slice(0, 64)}
+                </div>
+              )
+            )}
+            {/* O2: lit asset with 0 rows — subtle note, not alarming */}
+            {derivedState === 'lit' && stat?.rows_written === 0 && (
               <div
-                style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                title={stat.error}
+                style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}
+                title={asset.target_floor === 0 ? '0 rows by design (target_floor = 0 for this asset)' : '0 rows written — expected for some chart types'}
               >
-                {stat.error.slice(0, 80)}
+                {asset.target_floor === 0 ? '0 rows (by design)' : '0 rows'}
               </div>
             )}
           </>

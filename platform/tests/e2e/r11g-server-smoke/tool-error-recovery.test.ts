@@ -19,7 +19,7 @@ import {
 // Mock the retrieve/index module
 // D7 Step 4: mock getToolByName from tool_name_bridge (lib/retrieve/index RETIRED)
 vi.mock('../../../src/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
-  const real = await importOriginal()
+  const real = await importOriginal() as Record<string, unknown>
   return { ...real, getToolByName: vi.fn() }
 })
 
