@@ -14,23 +14,44 @@ import { StopIconButton } from './StopIconButton'
 import { useUserRole } from '@/hooks/useUserRole'
 import { DUR, EASE, STAGGER } from './motion'
 
-// Layer identity is a value-step within the gold ramp (not a jewel hue) —
-// each layer's sun-node sits a notch differently on the burnished-gold scale.
-const LAYER_GOLD: Record<string, string> = {
-  brahmagyan: '#ECC56A',
-  ganita:     '#D2A23C',
-  bodha:      '#A87C2A',
-  kala:       '#8A5E12',
-  phala:      '#B98A2E',
-  mimamsa:    '#6E4E0F',
-}
-
-// Sun-node mark — the brand's sanctioned glyph, tinted per layer along the gold ramp.
-function SunNode({ color, size = 11 }: { color: string; size?: number }) {
+// Layer-level status dot — mirrors AssetRow's StatusDot at the layer grain.
+// green = all active assets lit; amber = layer actively building; red = any error; dim = dormant/partial.
+function LayerStatusDot({
+  layerIsBuilding,
+  litCount,
+  activeCount,
+  errorCount,
+}: {
+  layerIsBuilding: boolean
+  litCount: number
+  activeCount: number
+  errorCount: number
+}) {
+  const allLit = activeCount > 0 && litCount === activeCount
+  const color = layerIsBuilding
+    ? '#ECC56A'
+    : errorCount > 0
+      ? 'rgba(220,80,80,0.95)'
+      : allLit
+        ? 'rgba(83,200,100,0.95)'
+        : 'rgba(255,255,255,0.25)'
+  const shadow = (layerIsBuilding || allLit || errorCount > 0) ? `0 0 5px ${color}` : 'none'
+  const title = layerIsBuilding
+    ? 'Building…'
+    : errorCount > 0
+      ? `${errorCount} error(s)`
+      : allLit
+        ? 'All assets lit'
+        : `${litCount} / ${activeCount} lit`
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" stroke={color} strokeWidth="1" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <path d="M6 0.5 L7.2 4.8 L11.5 6 L7.2 7.2 L6 11.5 L4.8 7.2 L0.5 6 L4.8 4.8 Z" />
-    </svg>
+    <span
+      title={title}
+      style={{
+        width: 8, height: 8, borderRadius: '50%',
+        background: color, boxShadow: shadow,
+        flexShrink: 0, display: 'inline-block',
+      }}
+    />
   )
 }
 
@@ -145,58 +166,69 @@ export function LayerPanel({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          justifyContent: 'space-between',
+          gap: '16px',
           padding: '12px 16px',
           cursor: 'pointer',
           background: 'var(--black-raised)',
         }}
       >
-        {/* Rotating caret + per-layer sun-node mark (gold hairline language, no jewel stripe) */}
-        <motion.svg
-          width="11" height="11" viewBox="0 0 12 12" fill="none"
-          stroke="var(--on-dark-mut)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-          aria-hidden="true" style={{ flexShrink: 0 }}
-          animate={{ rotate: expanded ? 90 : 0 }}
-          transition={{ duration: DUR.base, ease: EASE.out }}
-        >
-          <path d="M4 2 L8 6 L4 10" />
-        </motion.svg>
-        <SunNode color={LAYER_GOLD[layer] ?? 'var(--gold-core)'} />
+        {/* Left: rotating caret + status dot + bilingual name block */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <motion.svg
+            width="11" height="11" viewBox="0 0 12 12" fill="none"
+            stroke="var(--on-dark-mut)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            aria-hidden="true" style={{ flexShrink: 0 }}
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={{ duration: DUR.base, ease: EASE.out }}
+          >
+            <path d="M4 2 L8 6 L4 10" />
+          </motion.svg>
 
-        {/* Name column — bilingual two-line: Sanskrit (22px gold) above, English (14px) below */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: 'var(--font-serif)',
-              fontSize: '22px',
-              lineHeight: 1.1,
-              fontWeight: 400,
-              color: 'var(--gold-high)',
-            }}
-          >
-            {layerNames.sa}
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--ui-stack)',
-              fontSize: '14px',
-              lineHeight: 1.2,
-              color: 'rgba(255,255,255,0.90)',
-              marginTop: '2px',
-            }}
-          >
-            {layerNames.en}
+          {/* Name block — status dot sits beside Sanskrit name */}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <LayerStatusDot
+                layerIsBuilding={layerIsBuilding}
+                litCount={litCount}
+                activeCount={activeAssets.length}
+                errorCount={errorCount}
+              />
+              <div
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '22px',
+                  lineHeight: 1.1,
+                  fontWeight: 400,
+                  color: 'var(--gold-high)',
+                }}
+              >
+                {layerNames.sa}
+              </div>
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--ui-stack)',
+                fontSize: '14px',
+                lineHeight: 1.2,
+                color: 'rgba(255,255,255,0.90)',
+                marginTop: '2px',
+                paddingLeft: '15px',
+              }}
+            >
+              {layerNames.en}
+            </div>
           </div>
         </div>
 
-        {/* Right: asset count + rows + [Build/Rebuild] [Refresh] [Stop | Delete] */}
+        {/* Right: gauge + [Build/Rebuild] [Refresh] [Stop | Delete] */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
         >
           {/* Two-column gauge: Assets Built + Rows + completion bar */}
           <div
-            style={{ width: '170px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
+            style={{ width: '200px', flexShrink: 0, fontFamily: 'var(--mono-stack)' }}
             onClick={e => e.stopPropagation()}
           >
             {/* Two-column numeric row */}
@@ -235,24 +267,6 @@ export function LayerPanel({
                 }} />
               )}
             </div>
-          </div>
-
-          {/* State pill */}
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              padding: '2px 8px', borderRadius: '10px', fontSize: '9px',
-              fontFamily: 'var(--mono-stack)', letterSpacing: '0.06em',
-              textTransform: 'uppercase', flexShrink: 0,
-              ...(layerIsBuilding
-                ? { background: 'rgba(210,162,60,0.15)', border: '1px solid rgba(210,162,60,0.4)', color: 'var(--gold-high)' }
-                : litCount === activeAssets.length && activeAssets.length > 0
-                  ? { background: 'rgba(176,137,58,0.12)', border: '1px solid rgba(176,137,58,0.3)', color: 'rgba(212,166,72,0.9)' }
-                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--on-dark-faint)' }
-              ),
-            }}
-          >
-            {layerIsBuilding ? 'Building' : (litCount === activeAssets.length && activeAssets.length > 0) ? 'Live' : 'Pending'}
           </div>
 
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
