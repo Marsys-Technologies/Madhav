@@ -42,7 +42,7 @@ rm platform/src/lib/build/__tests__/plan.staleness-gate.test.ts
 
 - [ ] **Step 2: Update types in `plan.ts`**
 
-Replace lines 1–30 (the type block at the top of the file). The full replacement:
+Replace lines 1–30 (the type block at the top of the file) **AND delete the existing non-exported `ResolveBuildPlanArgs` interface at lines 67–73** (it becomes the exported version below). Leaving both copies causes a TypeScript duplicate-identifier error. The full replacement block:
 
 ```typescript
 export type AssetId = string
@@ -118,13 +118,15 @@ git commit -m "refactor(plan): update types — service_down, BlockerEntry, new 
 - Modify: `platform/src/lib/build/plan.ts`
 - Create: `platform/src/lib/build/__tests__/plan.preflight.test.ts`
 
+> **TDD note:** Tests call `preflight()` directly (not through `resolveBuildPlan`) so Task 2 is fully self-contained. `preflight()` must be exported from `plan.ts`. The `resolveBuildPlan` wiring happens in Task 4.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `platform/src/lib/build/__tests__/plan.preflight.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest'
-import { resolveBuildPlan } from '../plan'
+import { preflight } from '../plan'
 import type { RegistryEntry, ThroughputEntry } from '../plan'
 
 function reg(asset_id: string, layer: string, depends_on: string[] = []): RegistryEntry {
@@ -143,177 +145,75 @@ const REGISTRY = [
   reg('ka_kalasutra', 'kala', ['bo_bimba']),
 ]
 
-describe('pre-flight gate — single asset scope', () => {
+// preflight() is called with (candidates, scope, scope_target, registry, throughput)
+describe('preflight() — single asset scope', () => {
   it('blocks when a direct dep is stale', () => {
     const throughput = new Map([
-      tp('bg_texts', 'lit'),
-      tp('ga_positions', 'lit'),
-      tp('bo_bimba', 'stale'),
-      tp('ka_sangam', 'dormant'),
+      tp('bg_texts', 'lit'), tp('ga_positions', 'lit'), tp('bo_bimba', 'stale'),
     ])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    expect(result.plan_waves).toEqual([])
-    expect(result.estimated_seconds).toBeNull()
-    expect(result.blockers).toHaveLength(1)
-    expect(result.blockers[0].dep_asset_id).toBe('bo_bimba')
-    expect(result.blockers[0].dep_state).toBe('stale')
-    expect(result.blockers[0].required_by).toContain('ka_sangam')
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result).toHaveLength(1)
+    expect(result[0].dep_asset_id).toBe('bo_bimba')
+    expect(result[0].dep_state).toBe('stale')
+    expect(result[0].required_by).toContain('ka_sangam')
   })
 
   it('blocks when a direct dep is dormant', () => {
     const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'dormant')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    expect(result.blockers[0].dep_state).toBe('dormant')
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result[0].dep_state).toBe('dormant')
   })
 
   it('blocks when a direct dep is in error', () => {
     const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'error')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    expect(result.blockers[0].dep_state).toBe('error')
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result[0].dep_state).toBe('error')
   })
 
   it('blocks when a direct dep is service_down', () => {
     const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'service_down')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    expect(result.blockers[0].dep_state).toBe('service_down')
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result[0].dep_state).toBe('service_down')
   })
 
-  it('proceeds when all deps are lit', () => {
+  it('returns empty when all deps are lit', () => {
     const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    expect(result.blockers).toEqual([])
-    expect(result.plan_waves).toEqual([['ka_sangam']])
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result).toEqual([])
   })
 
-  it('proceeds when a dep is service_ok', () => {
+  it('treats service_ok as ready', () => {
     const throughput = new Map([tp('ga_positions', 'service_ok'), tp('bo_bimba', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-  })
-
-  it('build action: no-op when target is already lit', () => {
-    const throughput = new Map([tp('ka_sangam', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'build',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    expect(result.plan_waves).toEqual([])
-    expect(result.blockers).toEqual([])
-  })
-
-  it('build action: runs pre-flight and builds when target is dormant', () => {
-    const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'build',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    expect(result.plan_waves).toEqual([['ka_sangam']])
+    const result = preflight(['ka_sangam'], 'asset', 'ka_sangam', REGISTRY, throughput)
+    expect(result).toEqual([])
   })
 
   it('L0 dormant dep includes guidance message', () => {
-    const throughput = new Map([tp('bg_texts', 'dormant'), tp('ga_positions', 'dormant')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ga_positions', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    const l0 = result.blockers.find(b => b.dep_asset_id === 'bg_texts')
-    expect(l0?.guidance).toBe("L0 dependency not built — run the Brahmagyan layer first")
-  })
-
-  it('does NOT cascade downstream — only rebuilds the target', () => {
-    const throughput = new Map([tp('bo_bimba', 'lit'), tp('ga_positions', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'asset', scope_target: 'ka_sangam', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    // ka_vighnakara depends on ka_sangam but must NOT appear in the plan
-    expect(result.plan_waves.flat()).not.toContain('ka_vighnakara')
-    expect(result.plan_waves.flat()).toEqual(['ka_sangam'])
+    const throughput = new Map([tp('bg_texts', 'dormant')])
+    const result = preflight(['ga_positions'], 'asset', 'ga_positions', REGISTRY, throughput)
+    expect(result).toHaveLength(1)
+    expect(result[0].dep_asset_id).toBe('bg_texts')
+    expect(result[0].guidance).toBe("L0 dependency not built — run the Brahmagyan layer first")
   })
 })
 
-describe('pre-flight gate — layer scope', () => {
-  it('blocks entire layer when any cross-layer dep is stale', () => {
-    const throughput = new Map([
-      tp('ga_positions', 'stale'),   // cross-layer dep of ka_sangam and ka_kalasutra
-      tp('bo_bimba', 'lit'),
-    ])
-    const result = resolveBuildPlan({
-      scope: 'layer', scope_target: 'kala', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('blocked')
-    expect(result.plan_waves).toEqual([])
-    const blocker = result.blockers.find(b => b.dep_asset_id === 'ga_positions')
+describe('preflight() — layer scope', () => {
+  it('blocks when any cross-layer dep is stale', () => {
+    const throughput = new Map([tp('ga_positions', 'stale'), tp('bo_bimba', 'lit')])
+    const candidates = ['ka_sangam', 'ka_vighnakara', 'ka_kalasutra']
+    const result = preflight(candidates, 'layer', 'kala', REGISTRY, throughput)
+    const blocker = result.find(b => b.dep_asset_id === 'ga_positions')
     expect(blocker).toBeDefined()
-    // required_by should list all kala assets that need ga_positions
     expect(blocker?.required_by).toContain('ka_sangam')
     expect(blocker?.required_by).toContain('ka_kalasutra')
   })
 
-  it('does NOT pre-flight intra-layer deps — DAG handles them', () => {
-    // ka_vighnakara depends on ka_sangam (same layer, dormant) — NOT a pre-flight blocker
-    const throughput = new Map([
-      tp('ga_positions', 'lit'),
-      tp('bo_bimba', 'lit'),
-      tp('ka_sangam', 'dormant'),   // intra-layer dep, should not block pre-flight
-    ])
-    const result = resolveBuildPlan({
-      scope: 'layer', scope_target: 'kala', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-  })
-
-  it('proceeds when all cross-layer deps are lit', () => {
+  it('does NOT flag intra-layer deps — DAG handles them', () => {
+    // ka_vighnakara depends on ka_sangam (same layer) — not a pre-flight blocker
     const throughput = new Map([tp('ga_positions', 'lit'), tp('bo_bimba', 'lit')])
-    const result = resolveBuildPlan({
-      scope: 'layer', scope_target: 'kala', action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    // All 3 kala assets in plan
-    expect(result.plan_waves.flat().sort()).toEqual(['ka_kalasutra', 'ka_sangam', 'ka_vighnakara'])
-  })
-})
-
-describe('pre-flight gate — global scope', () => {
-  it('has no pre-flight gate — always returns ok', () => {
-    // Even with stale deps, global scope does not pre-flight
-    const throughput = new Map([tp('ga_positions', 'stale')])
-    const result = resolveBuildPlan({
-      scope: 'global', scope_target: null, action: 'rebuild',
-      registry: REGISTRY, throughput,
-    })
-    expect(result.status).toBe('ok')
-    expect(result.blockers).toEqual([])
+    const candidates = ['ka_sangam', 'ka_vighnakara', 'ka_kalasutra']
+    const result = preflight(candidates, 'layer', 'kala', REGISTRY, throughput)
+    expect(result).toEqual([])
   })
 })
 ```
@@ -326,9 +226,9 @@ cd platform && npx vitest run src/lib/build/__tests__/plan.preflight.test.ts
 
 Expected: all tests FAIL with import errors or assertion errors (pre-flight not yet implemented).
 
-- [ ] **Step 3: Add `preflight()` helper to `plan.ts`**
+- [ ] **Step 3: Add `export function preflight()` to `plan.ts`**
 
-Add this function after `computeUpstreamClosure()` (around line 155):
+Add this function after `computeUpstreamClosure()` (around line 155). It must be exported so the tests can call it directly:
 
 ```typescript
 const READY_STATES = new Set<AssetState>(['lit', 'service_ok'])
@@ -386,9 +286,7 @@ function preflight(
 cd platform && npx vitest run src/lib/build/__tests__/plan.preflight.test.ts
 ```
 
-Expected: all tests PASS. (Note: the test file calls `resolveBuildPlan` — full wiring happens in Task 4. For now you may need to wire a minimal stub in `resolveBuildPlan` that calls `preflight` for asset scope. See Task 4 for the full implementation.)
-
-> **Implementation note for steps 3–4:** The tests call `resolveBuildPlan()` directly. To make them pass without finishing Task 4 first, temporarily add a block at the top of `resolveBuildPlan`'s asset scope path that calls `preflight()` and returns early if blocked. Task 4 will complete the full rewrite.
+Expected: all tests PASS. Tests call `preflight()` directly — no dependency on `resolveBuildPlan()` wiring.
 
 - [ ] **Step 5: Commit**
 
@@ -778,11 +676,23 @@ if (planResult.status === 'blocked') {
 
 **Area 3 — Adapt flat `plan` usage throughout the file**:
 
-Wherever the route previously read `plan.plan` (the old flat `AssetId[]`), replace with `planResult.plan_waves.flat()`. Key locations:
-- DB insert at line 315: `JSON.stringify(planResult.plan_waves.flat())` — stores flat list in `build_runs.plan` (Python orchestrator reads this; backward-compatible)
-- `plan.length === 0` guard → `planResult.plan_waves.flat().length === 0`
-- `blocked_assets` references → `planResult.blockers`
-- `includes_upstream_count` references → remove
+The variable in `runs/route.ts` is a bare `plan` (destructured from the old `resolveBuildPlan` result). After the rewrite, `resolveBuildPlan` returns a `BuildPlan` object — so change the destructuring at line 133 from:
+```typescript
+const { plan, blocked_assets, includes_upstream_count } = resolveBuildPlan(...)
+```
+to:
+```typescript
+const planResult = resolveBuildPlan(...)
+const plan = planResult.plan_waves.flat()   // flat list used throughout
+```
+
+Then update every remaining reference to `blocked_assets` and `includes_upstream_count`. All six locations in the file:
+- **Line 133** — destructuring (replaced above)
+- **Line 148** — `plan.length === 0` guard → `plan.length === 0` (unchanged; `plan` is now the flat result of `.flat()`)
+- **Line 315** — `JSON.stringify(plan)` → `JSON.stringify(plan)` (unchanged; `plan` is already flat — Python orchestrator reads this from DB)
+- **Line 363** — response body: remove `blocked_assets` and `includes_upstream_count` fields; keep `plan`
+- **Line 372** — DB insert of plan in the clear-before path: `JSON.stringify(plan)` (unchanged)
+- **Line 417** — response body: same as line 363
 
 - [ ] **Step 3: TypeScript check**
 
@@ -1173,6 +1083,16 @@ Expected: all tests PASS.
 git add platform/src/lib/components/cockpit/v2/AssetRow.tsx
 git commit -m "feat(nirmana): AssetRow uses BuildBlockedModal + BuildConfirmModal — no downstream cascade"
 ```
+
+---
+
+## Note: Python sidecar `plan_waves` storage (deferred)
+
+The spec lists `platform/python-sidecar/` as a file to change with: "Accept optional `plan_waves` in payload; store for auditability." However, the Python orchestrator never receives the TypeScript payload directly — it reads `plan` (flat list) from the `build_runs` table in PostgreSQL. Storing `plan_waves` requires a new `JSONB` column on `build_runs` and a DB migration.
+
+**This is deferred to a follow-up.** The system is fully functional without it: the orchestrator uses the flat `plan` list (backward-compatible) and its existing DAG scheduler handles parallel execution. The `plan_waves` structure is available in the TypeScript API response for UI display.
+
+When ready to add auditability: create migration `ADD COLUMN plan_waves JSONB` on `build_runs`; update `runs/route.ts` line 315 to also write `plan_waves`; update `runner.py`'s `load_run()` to read it.
 
 ---
 
