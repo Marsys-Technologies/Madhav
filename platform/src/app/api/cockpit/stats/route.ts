@@ -28,9 +28,13 @@ function deriveState(
   // NOT gates — an asset with rows > 0 and no active zero-row build is lit.
   // An orphaned record or cascade-stale flag does NOT override real data confirmed by count_sql.
   if (actualRows != null && actualRows > 0) return 'lit'
+  // §N.4: target_floor=0 declares that 0 rows IS the correct complete state for this asset
+  // (e.g. ga_prashna on natal charts — writer ran, evaluated, found no prashna question).
+  // When throughput confirms completion and 0 rows is by design, honour it as lit.
+  if (throughputState === 'lit' && actualRows === 0 && asset.target_floor === 0) return 'lit'
   // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
-  // A writer that ran but produced 0 rows (e.g. ga_prashna for non-prashna charts,
-  // mi_jivanaghatana with no life_events) should show as 'dormant' not 'lit'.
+  // A writer that ran but produced 0 rows and target_floor > 0 (e.g. mi_jivanaghatana
+  // with no life_events) should show as 'dormant' not 'lit'.
   if (throughputState === 'lit' && actualRows !== 0) return 'lit'
   if (throughputState === 'stale') return 'stale'
   return 'dormant'

@@ -467,12 +467,23 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
     writer_hash = get_writer_git_hash(asset_id)
 
-    # Chart-scoped data writers that produce 0 rows are 'dormant', not 'lit'.
-    # 'lit' with 0 rows causes the plan resolver's action='build' filter
-    # (!t || dormant || error) to skip the asset, leaving the Build button stuck
-    # on an empty plan. Global assets (chart_id IS NULL) are service singletons
-    # and always get 'lit' regardless of rows_written.
-    final_state = 'dormant' if rows_written == 0 and chart_id is not None else 'lit'
+    # Determine whether 0 rows is correct completion for this asset.
+    # target_floor=0 in asset_registry is the explicit declaration that a writer
+    # may correctly produce 0 rows (e.g. ga_prashna on natal charts — the writer
+    # ran, evaluated, found no prashna question, and returned nothing by design).
+    # Such assets must be 'lit' so the plan resolver stops re-queuing them.
+    # For assets with target_floor > 0, 0 rows means a silent failure → 'dormant'
+    # keeps them in the plan so the next build retries them.
+    # Global assets (chart_id IS NULL) are service singletons — always 'lit'.
+    cur.execute(
+        "SELECT target_floor FROM asset_registry WHERE asset_id = %s",
+        (asset_id,),
+    )
+    reg_row = cur.fetchone()
+    target_floor = reg_row["target_floor"] if reg_row else None
+
+    zero_rows_is_complete = (chart_id is None) or (target_floor == 0)
+    final_state = 'lit' if (rows_written > 0 or zero_rows_is_complete) else 'dormant'
 
     cur.execute(
         """UPDATE asset_throughput
