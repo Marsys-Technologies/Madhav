@@ -94,7 +94,17 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         setLoading(null)
         return
       }
-      if (!r.ok) throw new Error(body.error ?? 'Failed to start run')
+      if (!r.ok) {
+        if (body?.code === 'UPSTREAM_STALE' && Array.isArray(body?.stale_upstream)) {
+          const lines = (body.stale_upstream as { asset_id: string; required_by: string[] }[])
+            .map(s => `• ${s.asset_id}  (needed by: ${s.required_by.join(', ')})`)
+            .join('\n')
+          throw new Error(
+            `Build blocked — these upstream assets are stale and must be rebuilt first:\n${lines}`
+          )
+        }
+        throw new Error(body.error ?? 'Failed to start run')
+      }
       onRunStarted(body.data.run_id)
     } catch (e) {
       setIsClearing(false)
@@ -162,7 +172,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         )}
 
         {error && (
-          <div style={{ color: 'var(--marsys-error)', fontSize: '12px', fontFamily: 'var(--ui-stack)' }}>
+          <div style={{ color: 'var(--marsys-error)', fontSize: '12px', fontFamily: 'var(--ui-stack)', whiteSpace: 'pre-wrap' }}>
             {error}
           </div>
         )}
