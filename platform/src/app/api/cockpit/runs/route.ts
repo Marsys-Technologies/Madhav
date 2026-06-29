@@ -403,3 +403,35 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ data: { run_id: runId, plan, asset_count: plan.length, job_image_tag: jobImageTag, blocked_assets } }, { status: 201 })
 }
+
+export async function GET(req: NextRequest) {
+  const user = await requireUser()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const chart_id = req.nextUrl.searchParams.get('chart_id')
+  if (!chart_id) return NextResponse.json({ error: 'chart_id query param required' }, { status: 400 })
+
+  try {
+    const { rows } = await query<{
+      id: string
+      scope: string
+      scope_target: string | null
+      action: string
+      state: string
+      created_at: string
+      ended_at: string | null
+      last_error: string | null
+    }>(
+      `SELECT id, scope, scope_target, action, state, created_at, ended_at, last_error
+         FROM build_runs
+        WHERE chart_id = $1
+        ORDER BY created_at DESC
+        LIMIT 20`,
+      [chart_id]
+    )
+    return NextResponse.json({ data: rows })
+  } catch (err) {
+    console.error('[cockpit/runs GET]', err)
+    return NextResponse.json({ data: [] })
+  }
+}

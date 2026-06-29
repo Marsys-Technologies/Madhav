@@ -414,7 +414,7 @@ function AttachmentChip({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={attachment.previewUrl}
-            alt=""
+            alt={attachment.filename ?? 'attachment preview'}
             className={cn(
               'size-full object-cover',
               isUploading && 'opacity-60',

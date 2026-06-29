@@ -114,7 +114,7 @@ function ServiceHealthPill({
       </div>
       {isError && errorMsg && (
         <div style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
-          {errorMsg.slice(0, 28)}
+          {errorMsg.slice(0, 80)}
         </div>
       )}
     </div>
@@ -336,10 +336,10 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
             )}
             {hasError && stat?.error && (
               <div
-                style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '22ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                 title={stat.error}
               >
-                {stat.error.slice(0, 64)}
+                {stat.error.slice(0, 80)}
               </div>
             )}
           </>

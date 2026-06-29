@@ -245,17 +245,22 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   for (const layer of LAYER_ORDER) byLayer.set(layer, [])
 
   for (const asset of uniqueAssets) {
-    const bucket = byLayer.get(asset.layer)
+    // Normalize layer to lowercase so "Ganita" and "ganita" hash to the same bucket
+    const normalizedLayer = (asset.layer ?? '').toLowerCase()
+    const bucket = byLayer.get(normalizedLayer)
     if (bucket) bucket.push(asset)
-    else byLayer.set(asset.layer, [asset])
+    else byLayer.set(normalizedLayer, [asset])
   }
 
-  // Build display order: canonical layers first, then any extras
+  // Build display order: canonical layers first, then any extras.
+  // Wrap in Set to guard against duplicate keys from mid-refetch race conditions.
   const orderedLayers: string[] = [
-    ...LAYER_ORDER.filter((l) => (byLayer.get(l)?.length ?? 0) > 0),
-    ...[...byLayer.keys()].filter(
-      (l) => !LAYER_ORDER.includes(l as (typeof LAYER_ORDER)[number])
-    ),
+    ...new Set([
+      ...LAYER_ORDER.filter((l) => (byLayer.get(l)?.length ?? 0) > 0),
+      ...[...byLayer.keys()].filter(
+        (l) => !LAYER_ORDER.includes(l as (typeof LAYER_ORDER)[number])
+      ),
+    ])
   ]
 
   // Auto-expand layers that have an active run in scope
@@ -301,7 +306,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
               <LayerPanel
                 layer={layer}
                 assets={layerAssets}
-                allAssets={assets}
+                allAssets={uniqueAssets}
                 stats={stats}
                 defaultExpanded={isLayerExpanded(layer)}
                 forceExpand={focusedInLayer}

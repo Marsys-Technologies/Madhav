@@ -18,7 +18,16 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+
+# Guarantee the sidecar root is on sys.path so local packages (muhurat, panchang_engine,
+# services, etc.) are importable regardless of how the Cloud Run Job invokes this entry
+# point. `python -m pipeline.orchestrator.main` adds the package parent but Cloud Run
+# jobs may configure a different working directory.
+_SIDECAR_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _SIDECAR_ROOT not in sys.path:
+    sys.path.insert(0, _SIDECAR_ROOT)
 
 logging.basicConfig(
     level=logging.INFO,

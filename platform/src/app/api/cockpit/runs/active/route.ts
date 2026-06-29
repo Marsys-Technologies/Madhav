@@ -57,6 +57,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: { run, assets: assetsResult.rows } })
   } catch (err) {
     console.error('[cockpit/runs/active]', err)
-    return NextResponse.json({ data: null }, { status: 500 })
+    return NextResponse.json({ data: null, _error: (err as Error).message })
   }
 }

@@ -29,7 +29,9 @@ function deriveState(
   // An orphaned record or cascade-stale flag does NOT override real data confirmed by count_sql.
   if (actualRows != null && actualRows > 0) return 'lit'
   // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
-  if (throughputState === 'lit') return 'lit'
+  // A writer that ran but produced 0 rows (e.g. ga_prashna for non-prashna charts,
+  // mi_jivanaghatana with no life_events) should show as 'dormant' not 'lit'.
+  if (throughputState === 'lit' && actualRows !== 0) return 'lit'
   if (throughputState === 'stale') return 'stale'
   return 'dormant'
 }
@@ -303,7 +305,6 @@ export async function GET(req: NextRequest) {
         stale_after_seconds: 0,
         errors: [(err as Error).message ?? 'unknown error'],
       },
-      { status: 500 }
     )
   }
 }

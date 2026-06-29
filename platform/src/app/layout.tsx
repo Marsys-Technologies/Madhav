@@ -14,20 +14,25 @@ const inter = Inter({
 })
 
 // Cormorant Garamond — Sanskrit names + page headings (visual v2 contract §Typography)
+// preload:false — multiple weight×style variants trigger "preloaded but not used" warnings
+// on pages that don't render Cormorant in the first 5s (e.g. Nirmāṇa build tracker).
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
   variable: '--font-cormorant',
   display: 'swap',
   weight: ['400', '500', '600'],
   style: ['normal', 'italic'],
+  preload: false,
 })
 
 // JetBrains Mono — telemetry readouts + monospace numerics
+// preload:false — not rendered on first paint of most pages; avoids preload warnings.
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
   weight: ['400', '500'],
+  preload: false,
 })
 
 export const metadata: Metadata = {

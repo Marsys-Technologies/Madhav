@@ -131,7 +131,7 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         aria-label="MARSYS-JIS — go to Jātakas"
         className="mb-4 flex w-full items-center gap-2.5 px-3"
       >
-        <Logo size="sm" className="shrink-0" />
+        <Logo size="sm" className="shrink-0" priority />
         <AnimatePresence>
           {expanded && (
             <motion.span

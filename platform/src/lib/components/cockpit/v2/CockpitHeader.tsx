@@ -41,7 +41,7 @@ interface Props {
   birthDate?: string | null
   birthTime?: string | null
   birthPlace?: string | null
-  assets?: { asset_id: string; state: string }[]
+  assets?: { asset_id: string; state: string; asset_kind?: string | null; service_health?: string | null }[]
   /** Task 1: active run lifted from CockpitShell — no longer fetched here */
   activeRun?: ActiveRun | null
   /** Task 1: isBuilding flag (activeRun !== null) lifted from CockpitShell */
@@ -207,6 +207,29 @@ export function CockpitHeader({
               {errorCount} {errorCount === 1 ? 'asset' : 'assets'} failed
             </div>
           )}
+
+          {/* Unhealthy service warning — amber, distinct from the error badge */}
+          {(() => {
+            const unhealthy = assets.filter(a => a.service_health === 'unhealthy')
+            if (unhealthy.length === 0) return null
+            const names = unhealthy.map(a => a.asset_id).join(', ')
+            return (
+              <div
+                title={`Unhealthy: ${names}`}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono"
+                style={{
+                  background: 'rgba(236,197,106,0.10)',
+                  border: '1px solid rgba(236,197,106,0.35)',
+                  color: '#ECC56A',
+                  letterSpacing: '0.06em',
+                  cursor: 'default',
+                }}
+              >
+                <span>&#9888;</span>
+                {unhealthy.length} service{unhealthy.length > 1 ? 's' : ''} degraded
+              </div>
+            )
+          })()}
 
           {/* Build/Rebuild — hidden when a run is active */}
           {!globalRunId && (
