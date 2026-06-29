@@ -335,8 +335,11 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
               </div>
             )}
             {hasError && stat?.error && (
-              <div style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}>
-                {stat.error.slice(0, 24)}
+              <div
+                style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '22ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={stat.error}
+              >
+                {stat.error.slice(0, 64)}
               </div>
             )}
           </>
