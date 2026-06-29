@@ -164,15 +164,10 @@ export function computeUpstreamClosure(seeds: AssetId[], registry: RegistryEntry
 const READY_STATES = new Set<AssetState>(['lit', 'service_ok'])
 
 /**
- * Pre-flight check: verifies all relevant deps of candidates are ready.
- *
- * Asset scope: checks only direct deps of the candidate.
- * Layer scope: checks transitive cross-layer deps (intra-layer deps are
- *   skipped — the DAG handles ordering within a layer). This catches cases
- *   where a cross-layer dep (e.g. ga_positions) is stale and its consumer
- *   (e.g. bo_bimba) was built on stale data, meaning any kala asset depending
- *   on bo_bimba is also indirectly tainted.
- *
+ * Checks all relevant deps of `candidates` for readiness.
+ * Layer scope: only cross-layer deps checked (intra-layer handled by DAG).
+ * Traverses transitively in layer scope — a stale ga_positions is flagged
+ * even when it's only reachable via a lit cross-layer dep (bo_bimba).
  * Returns BlockerEntry[] — empty means pre-flight passed.
  */
 export function preflight(
@@ -185,13 +180,6 @@ export function preflight(
   const regMap = new Map(registry.map(r => [r.asset_id, r]))
   const blockerMap = new Map<AssetId, BlockerEntry>()
 
-  /**
-   * Collect deps to check for a candidate.
-   * - Asset scope: direct deps only.
-   * - Layer scope: transitive, but stop recursion at intra-layer deps
-   *   (record them as blocking if unready, but don't recurse into their
-   *   own deps because the DAG handles intra-layer ordering).
-   */
   function collectDepsToCheck(
     assetId: AssetId,
     visited: Set<AssetId>,
@@ -207,14 +195,13 @@ export function preflight(
       const isIntraLayer = scope === 'layer' && scope_target != null && depLayer === scope_target
 
       if (isIntraLayer) {
-        // Intra-layer: DAG will order these — don't block on them, don't recurse
+        // Intra-layer: DAG will order these — don't check, don't recurse
         continue
       }
 
-      // Cross-layer dep: add it to check set and recurse in layer scope
+      // Cross-layer dep: add to check set and recurse in layer scope
       result.add(dep)
       if (scope === 'layer') {
-        // Layer scope: walk transitively through all cross-layer deps
         collectDepsToCheck(dep, visited, result)
       }
       // Asset scope: direct deps only — no recursion
@@ -226,12 +213,9 @@ export function preflight(
     collectDepsToCheck(candidate, new Set<AssetId>(), depsToCheck)
 
     for (const dep of depsToCheck) {
-      // Only flag deps that are EXPLICITLY in the throughput map and not ready.
-      // Missing from throughput = unknown state; don't block on it here.
-      const throughputEntry = throughput.get(dep)
-      if (!throughputEntry) continue
-      const depState = throughputEntry.state
-      if (READY_STATES.has(depState)) continue
+      // Use undefined-safe: absent entries are not our concern (treat as ready)
+      const depState = throughput.get(dep)?.state
+      if (depState === undefined || READY_STATES.has(depState)) continue
 
       if (!blockerMap.has(dep)) {
         const isL0 = regMap.get(dep)?.layer === 'brahmagyan'
@@ -251,7 +235,6 @@ export function preflight(
 
   return Array.from(blockerMap.values())
 }
-
 export function resolveBuildPlan({
   scope,
   scope_target,
