@@ -234,8 +234,14 @@ export function CascadePreviewModal({
 
                 {/* Empty state */}
                 {plan.length === 0 && (
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #888373)' }}>
-                    No assets in plan.
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #888373)' }}>
+                      No assets require building.
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                      This asset is already built and up-to-date. If you expected a build,
+                      check that the asset state is dormant or error in the tracker.
+                    </div>
                   </div>
                 )}
 
@@ -275,6 +281,7 @@ export function CascadePreviewModal({
               <button
                 onClick={onConfirm}
                 disabled={confirmDisabled}
+                title={confirmDisabled && !isLoading ? 'No assets in plan — nothing to build' : undefined}
                 style={{
                   padding: '6px 20px',
                   fontSize: 13,
