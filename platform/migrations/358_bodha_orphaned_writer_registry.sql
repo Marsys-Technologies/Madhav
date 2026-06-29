@@ -24,7 +24,7 @@ VALUES (
   'bo_cdlm_summary', 'bodha', 91,
   'bo_cdlm_summary', 'CDLM Summary',
   'Per-chart cross-domain linkage strength summary aggregated from bodha_cdlm_cells',
-  'postgres_table', 'per_chart', true, 1,
+  'postgres_table', 'per_chart', true, 5,
   'SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1',
   NOW()
 )

@@ -18,6 +18,13 @@ Emits 1 row per chart per ayanamsha with:
 
 ANTI-DRIFT: this writer REFERENCES bodha_cdlm_cells — never invents values.
 
+DESIGN FLOOR NOTE: this writer produces exactly 5 rows per chart — one per ayanamsha
+(lahiri_chitrapaksha, raman, krishnamurti, surya_siddhanta_classical, true_chitra).
+target_floor = 5 is the correct expectation for any single-chart build. A count of
+fewer than 5 means at least one ayanamsha had no bodha_cdlm_cells to aggregate (valid
+for sparse charts but worth investigating); a count of more than 5 indicates a
+delete-then-insert idempotency failure.
+
 LIGHT writer — one run() call, iterates 5 ayanamshas.
 """
 from __future__ import annotations

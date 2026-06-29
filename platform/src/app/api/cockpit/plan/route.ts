@@ -45,7 +45,30 @@ export async function POST(req: NextRequest) {
     const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
     const plan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
 
-    return NextResponse.json({ data: plan })
+    // Query historical median duration per asset in the resolved plan
+    const medianResult = await query<{ asset_id: string; median_seconds: number }>(
+      `SELECT asset_id,
+              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
+                EXTRACT(EPOCH FROM (ended_at - started_at))
+              )::numeric AS median_seconds
+       FROM build_run_assets
+       WHERE asset_id = ANY($1)
+         AND ended_at IS NOT NULL
+         AND started_at IS NOT NULL
+         AND state = 'complete'
+       GROUP BY asset_id`,
+      [plan.plan]
+    )
+    const medianByAsset = new Map(medianResult.rows.map(r => [r.asset_id, Number(r.median_seconds)]))
+
+    let estimated_seconds: number | null = 0
+    for (const assetId of plan.plan) {
+      const perAsset = medianByAsset.get(assetId) ?? null
+      if (perAsset === null) { estimated_seconds = null; break }
+      estimated_seconds += perAsset
+    }
+
+    return NextResponse.json({ data: { ...plan, estimated_seconds } })
   } catch (err) {
     console.error('[cockpit/plan]', err)
     return NextResponse.json({ error: 'db error' }, { status: 500 })

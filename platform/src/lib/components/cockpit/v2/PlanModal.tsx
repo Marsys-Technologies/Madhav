@@ -18,6 +18,7 @@ interface AssetNode {
   sanskrit_name: string
   english_name: string
   depends_on?: string[] | null
+  catalog_status?: string | null   // 'DRAFT' | 'CURRENT' | 'RETIRED' | null
 }
 
 interface Props {
@@ -44,7 +45,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   useEffect(() => { setMounted(true) }, [])
 
   // Fetch plan on first render
-  useState(() => {
+  useEffect(() => {
     ;(async () => {
       try {
         const r = await fetch('/api/cockpit/plan', {
@@ -62,7 +63,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         setLoading(null)
       }
     })()
-  })
+  }, [])
 
   const runPlan = async (opts: { forceL0?: boolean } = {}) => {
     if (!planData) return
@@ -177,21 +178,35 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
               )}
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
-              {planData.plan.map((assetId, i) => (
-                <div
-                  key={assetId}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '5px 0',
-                    borderBottom: '1px solid var(--black-line)',
-                    fontFamily: 'var(--mono-stack)', fontSize: '11px',
-                    color: 'var(--on-dark)',
-                  }}
-                >
-                  <span style={{ color: 'var(--on-dark-faint)', minWidth: '20px' }}>{i + 1}.</span>
-                  <span>{assetId}</span>
-                </div>
-              ))}
+              {planData.plan.map((assetId, i) => {
+                const assetMeta = assets?.find(a => a.asset_id === assetId)
+                const isDraft = assetMeta?.catalog_status === 'DRAFT'
+                return (
+                  <div
+                    key={assetId}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '5px 0',
+                      borderBottom: '1px solid var(--black-line)',
+                      fontFamily: 'var(--mono-stack)', fontSize: '11px',
+                      color: 'var(--on-dark)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--on-dark-faint)', minWidth: '20px' }}>{i + 1}.</span>
+                    <span>{assetId}</span>
+                    {isDraft && (
+                      <span style={{
+                        fontSize: '9px', padding: '1px 5px', borderRadius: '3px',
+                        background: 'var(--gold-glow)', color: 'var(--gold-high)',
+                        border: '1px solid var(--gold-core)',
+                        textTransform: 'uppercase', letterSpacing: '0.04em', marginLeft: 'auto',
+                      }}>
+                        DRAFT
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* MiniDAG — shown for multi-asset rebuild/update plans when assets data is available */}

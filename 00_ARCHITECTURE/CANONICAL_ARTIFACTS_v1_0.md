@@ -711,6 +711,25 @@ last_verified_on: 2026-04-29
 notes: "Admitted at R0 Foundation close (2026-04-29). LIVING — updated at every redesign session-close. §2 canonical state block + §3 phase ledger (R0 closed; R1–R6 parallel-ready). Companion to PORTAL_REDESIGN_VISION."
 ```
 
+#### L2_BODHA_CAMPAIGN_HANDOFF
+
+```yaml
+canonical_id: L2_BODHA_CAMPAIGN_HANDOFF
+path: 00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md
+version: "1.1"
+status: CURRENT
+fingerprint_sha256: e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807
+mirror_obligations:
+  claude_side: 00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md
+  gemini_side: null
+  mirror_mode: claude_only
+  authoritative_side: claude
+  asymmetries: "Claude-only campaign handoff. L2 Bodha campaign planning and execution is a Claude Code (Antigravity) workstream; no Gemini-side counterpart."
+last_verified_session: nirmana-fixes-task13-2026-06-29
+last_verified_on: 2026-06-29
+notes: "Admitted retroactively at nirmana-fixes-task13 (2026-06-29). Original v1.0 was authored 2026-06-10 for the L2 Bodha campaign open but was never registered. v1.1 adds bo_drishti and bo_anveshana to the 14-asset DAG inventory and updates all asset-count references from 8→14."
+```
+
 ---
 
 ## §2 — Mirror-pair inventory (RETIRED 2026-05-27)
