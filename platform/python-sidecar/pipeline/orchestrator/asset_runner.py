@@ -481,7 +481,7 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
             (asset_id,),
         )
         _tf_row = cur.fetchone()
-        _target_floor = _tf_row[0] if _tf_row else None
+        _target_floor = _tf_row["target_floor"] if _tf_row else None
         if _target_floor != 0:
             final_state = 'dormant'
 
