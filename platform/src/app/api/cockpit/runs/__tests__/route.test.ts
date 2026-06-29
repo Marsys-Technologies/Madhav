@@ -421,7 +421,7 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
     // GREEN assertion: after G1 the response is actionable
     expect(body.code).toBe('ALL_LIT')
     expect(body.hint).toContain('Rebuild')
-    expect(body.error).toContain('already lit')
+    expect(body.error).toContain('already built')
   })
 
   it('GREEN — action=rebuild on lit layer bypasses ALL_LIT and creates the run', async () => {
