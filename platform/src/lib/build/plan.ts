@@ -1,5 +1,5 @@
 export type AssetId = string
-export type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error'
+export type AssetState = 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'service_ok'
 export type BuildAction = 'build' | 'update' | 'rebuild' | 'cascade'
 export type BuildScope = 'global' | 'layer' | 'asset'
 
@@ -59,7 +59,7 @@ export function checkStalenessGate(
 
   return Array.from(staleBlockers.entries()).map(([dep, requiredBySet]) => ({
     asset_id: dep,
-    state: throughput.get(dep)?.state ?? 'stale',
+    state: throughput.get(dep)!.state,
     required_by: Array.from(requiredBySet),
   }))
 }

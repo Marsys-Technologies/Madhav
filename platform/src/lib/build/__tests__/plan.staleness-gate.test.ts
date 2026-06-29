@@ -75,7 +75,7 @@ describe('checkStalenessGate', () => {
   })
 
   it('does NOT flag service_ok upstream — treated same as lit', () => {
-    const throughput = new Map([['ga_chart_service', { asset_id: 'ga_chart_service', state: 'service_ok' as any }]])
+    const throughput = new Map([tp('ga_chart_service', 'service_ok')])
     const SREG = [
       reg('ga_chart_service', 'ganita', []),
       reg('bo_laksana', 'bodha', ['ga_chart_service']),
