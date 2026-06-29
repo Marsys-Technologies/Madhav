@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query, getPool } from '@/lib/db/client'
-import { resolveBuildPlan, computeDownstreamClosure, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { resolveBuildPlan, computeDownstreamClosure, checkStalenessGate, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
 import { getJobImageTag } from '@/lib/cloud_run/jobs'
 import { filterScopeAssets } from '@/lib/cockpit/clearScopeFilter'
@@ -131,6 +131,19 @@ export async function POST(req: NextRequest) {
 
   const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
   const { plan, blocked_assets } = resolveBuildPlan({ scope, scope_target, action, registry: planRegistry, throughput })
+
+  // Gate 4: Stale upstream gate.
+  // Blocks builds where any out-of-plan dep has stale data. Dormant/error upstream
+  // are already handled by auto-pull (plan.ts). Only stale requires an explicit
+  // upstream rebuild because building downstream on stale data produces wrong output.
+  const staleGate = checkStalenessGate(plan, planRegistry, throughput)
+  if (staleGate.length > 0) {
+    return NextResponse.json({
+      error: 'Build blocked: upstream assets have stale data and must be rebuilt first',
+      code: 'UPSTREAM_STALE',
+      stale_upstream: staleGate,
+    }, { status: 422 })
+  }
 
   if (plan.length === 0) {
     const allLit = blocked_assets.length === 0
