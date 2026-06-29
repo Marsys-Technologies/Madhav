@@ -80,7 +80,9 @@ export function useAssetStats({
     inFlightRef.current = false
 
     fetchStats(controller.signal)
-    const pollMs = isBuilding ? 2_000 : 30_000
+    // SSE covers live state transitions; stats polling only needs to refresh row counts.
+    // 10s during builds is sufficient — aggressive sub-5s polling queues slow DB requests.
+    const pollMs = isBuilding ? 10_000 : 30_000
     const id = setInterval(() => fetchStats(controller.signal), pollMs)
 
     return () => {

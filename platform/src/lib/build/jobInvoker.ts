@@ -46,6 +46,17 @@ export interface JobInvokerEnv {
 }
 
 export function readJobInvokerEnv(env: NodeJS.ProcessEnv = process.env): JobInvokerEnv {
+  // Safety guard: when BUILD_EXECUTOR=local, the operator explicitly declared that
+  // this environment should NOT dispatch to Cloud Run. Throw early so the runs API
+  // can catch and return a 503 rather than silently dispatching a real GCP job from
+  // a local dev server connected to the production database.
+  if (env.BUILD_EXECUTOR === 'local') {
+    throw new Error(
+      '[build/jobInvoker] BUILD_EXECUTOR=local — Cloud Run dispatch is disabled in this environment. ' +
+      'Run the orchestrator manually: python -m pipeline.orchestrator.main --run-id <run_id>'
+    )
+  }
+
   const missing: string[] = []
   const get = (k: string, fallback?: string): string => {
     const v = env[k]

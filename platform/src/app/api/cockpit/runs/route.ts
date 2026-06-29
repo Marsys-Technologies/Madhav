@@ -331,6 +331,9 @@ export async function POST(req: NextRequest) {
     const jobImageTag = await getJobImageTag().catch(() => null)
     try {
       await invokeRunJob(runId)
+      // Mark dispatched so the UI can distinguish "job sent to Cloud Run" from "still planning".
+      // The orchestrator itself will transition to 'running' when it acquires the chart lock.
+      await query(`UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=$1 AND state='planned'`, [runId])
     } catch (err) {
       const errMsg = (err as Error).message
       console.error('[api/cockpit/runs] invokeRunJob failed after clear — marking run failed:', errMsg)
@@ -374,6 +377,13 @@ export async function POST(req: NextRequest) {
   // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
   try {
     await invokeRunJob(runId)
+    // Mark running immediately after dispatch so the UI reflects "job sent" vs "still planned".
+    // The orchestrator transitions to 'running' again when it acquires the chart advisory lock —
+    // the COALESCE(started_at, NOW()) ensures the first write wins on started_at.
+    await query(
+      `UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=$1 AND state='planned'`,
+      [runId]
+    )
   } catch (err) {
     const errMsg = (err as Error).message
     console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)

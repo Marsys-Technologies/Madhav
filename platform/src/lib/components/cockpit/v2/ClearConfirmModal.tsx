@@ -536,7 +536,7 @@ export function ClearConfirmModal({
                       width: '100%', boxSizing: 'border-box',
                       padding: '8px 11px',
                       background: 'rgba(0,0,0,0.4)',
-                      border: `1px solid ${typed && typed !== confirmTarget ? 'rgba(181,71,76,0.7)' : 'rgba(255,255,255,0.12)'}`,
+                      border: `1px solid ${typed === confirmTarget && typed ? 'rgba(74,140,92,0.8)' : typed && typed !== confirmTarget ? 'rgba(181,71,76,0.7)' : 'rgba(255,255,255,0.12)'}`,
                       borderRadius: '5px',
                       color: 'var(--on-dark)',
                       fontFamily: 'var(--ui-stack)', fontSize: '13px',

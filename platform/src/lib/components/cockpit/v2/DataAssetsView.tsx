@@ -179,7 +179,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   // Task 2: memoize assetsWithState — was recomputed on every render.
   // Merge assets + stats + SSE overlay — computed before early returns so the
   // useEffect below can be called unconditionally (Rules of Hooks).
-  const assetsWithState: AssetWithState[] = useMemo(() => assets.map(a => {
+  const assetsWithState: AssetWithState[] = useMemo(() => assets.filter((a, i, arr) => arr.findIndex(b => b.asset_id === a.asset_id) === i).map(a => {
     const s = stats.get(a.asset_id)
     const overlay = sseOverlay.get(a.asset_id)
     return {
@@ -230,11 +230,21 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
     )
   }
 
+  // Deduplicate by asset_id — defends against transient double-renders that cause
+  // React "duplicate key" warnings (e.g. mid-refetch race where two responses land
+  // in the same render cycle before the abort controller cancels the stale one).
+  const seenIds = new Set<string>()
+  const uniqueAssets = assets.filter(a => {
+    if (seenIds.has(a.asset_id)) return false
+    seenIds.add(a.asset_id)
+    return true
+  })
+
   // Group assets by layer in canonical order
   const byLayer = new Map<string, typeof assets>()
   for (const layer of LAYER_ORDER) byLayer.set(layer, [])
 
-  for (const asset of assets) {
+  for (const asset of uniqueAssets) {
     const bucket = byLayer.get(asset.layer)
     if (bucket) bucket.push(asset)
     else byLayer.set(asset.layer, [asset])

@@ -349,6 +349,24 @@ def _schedule_parallel(
             return r["state"] if r else "error"
         except Exception as exc:
             logger.error("[orchestrator] worker crashed for %s: %s", asset_id, exc, exc_info=True)
+            # When the connection is dead (e.g. server-side timeout killed it while the
+            # writer was doing CPU-heavy work), mark_asset_error() inside the writer path
+            # can't run — the asset stays 'building' in asset_throughput forever. Recover
+            # by opening a FRESH connection to write the error state.
+            _crash_msg = f"worker_crash: {type(exc).__name__}: {exc}"[:2000]
+            try:
+                from .asset_runner import mark_asset_error as _mark_err
+                _use_orig = not getattr(wconn, "closed", False)
+                _cconn = wconn if _use_orig else connect()
+                _cconn.autocommit = False
+                _ccur = _cconn.cursor()
+                _mark_err(_cconn, _ccur, run_id, eff(asset_id), asset_id, _crash_msg)
+                if not _use_orig:
+                    _cconn.close()
+            except Exception as _ce:
+                logger.error(
+                    "[orchestrator] crash-cleanup also failed for %s: %s", asset_id, _ce
+                )
             return "error"
         finally:
             try:
@@ -470,6 +488,32 @@ def execute_run(run_id: str) -> None:
         sys.exit(3)
     # Lock acquired; commit the advisory lock transaction so it survives later commits
     conn.commit()
+
+    # Orphan cleanup: reset assets stuck in 'building' from a prior crashed run.
+    # We hold the chart advisory lock, so no other orchestrator is running for this
+    # chart. Any 'building' row in asset_throughput is from a dead run whose
+    # worker connection was closed before mark_asset_error() could execute.
+    cur.execute(
+        """UPDATE asset_throughput
+           SET state = 'error',
+               last_error = 'orphaned_by_crash: prior orchestrator terminated while asset was in-flight'
+           WHERE chart_id IS NOT DISTINCT FROM %s AND state = 'building'""",
+        (chart_id,),
+    )
+    cur.execute(
+        """UPDATE build_run_assets
+           SET state = 'error',
+               error = 'orphaned_by_crash: prior orchestrator terminated while asset was in-flight',
+               ended_at = NOW()
+           FROM build_runs br
+           WHERE build_run_assets.run_id = br.id
+             AND br.chart_id IS NOT DISTINCT FROM %s
+             AND br.id != %s
+             AND build_run_assets.state = 'building'""",
+        (chart_id, run_id),
+    )
+    conn.commit()
+    logger.info("[orchestrator] orphan-cleanup complete for chart %s", chart_id)
 
     try:
         mark_run_state(conn, cur, run_id, "running", started_at=True)
