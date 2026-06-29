@@ -251,7 +251,7 @@ class KaVighnakaraWriter(WriterBase):
                     """
                     SELECT fact_value_num FROM chart_facts
                     WHERE chart_id = %s AND fact_subject = 'LAGNA'
-                      AND fact_key = 'longitude' AND ayanamsha_id = 'lahiri'
+                      AND fact_key = 'longitude' AND ayanamsha_id = 'lahiri_chitrapaksha'
                     LIMIT 1
                     """,
                     (chart_id,),

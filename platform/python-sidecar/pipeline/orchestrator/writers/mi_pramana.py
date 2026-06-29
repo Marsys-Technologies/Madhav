@@ -329,7 +329,7 @@ class MiPramanaWriter(WriterBase):
         """
         with conn.cursor() as cur:
             cur.executemany(CAL_SQL, rows)
-            rows_inserted = max(0, cur.rowcount)
+            rows_inserted = len(rows)  # psycopg3 executemany rowcount is -1 (undefined)
 
         logger.info("[mi_pramana:score] %d calibration rows for chart %s", rows_inserted, chart_id)
         return WriterResult(asset_id=self.asset_id, rows_inserted=rows_inserted,

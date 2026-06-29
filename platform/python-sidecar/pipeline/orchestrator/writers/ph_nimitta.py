@@ -418,7 +418,9 @@ class PhNimittaWriter(WriterBase):
         the proximity lookup to be silently skipped 100% of the time).
         """
         # 1. Domain enrichment — avoid 'transition' when subsystem tells us better
-        subsystem = (row.get('discovery_subsystem') or row.get('cross_subsystem_root') or '').lower()
+        # cross_subsystem_root is a BOOLEAN column — guard before .lower()
+        _csroot = row.get('cross_subsystem_root')
+        subsystem = (row.get('discovery_subsystem') or (str(_csroot) if _csroot else '') or '').lower()
         mapped_domain = self._SUBSYSTEM_DOMAIN.get(subsystem)
         if mapped_domain:
             row['domain'] = mapped_domain
