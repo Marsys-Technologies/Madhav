@@ -1048,7 +1048,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_karanajala',
-    layer: 'bodha', sort_order: 2,
+    layer: 'bodha', sort_order: 3,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Kāraṇajāla',
     english_name: 'Signal graph edges (CGM)',
@@ -1069,7 +1069,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_bimba',
-    layer: 'bodha', sort_order: 3,
+    layer: 'bodha', sort_order: 2,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Bimba',
     english_name: 'Signal graph nodes (CGM)',
@@ -1087,7 +1087,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_samskara',
-    layer: 'bodha', sort_order: 4,
+    layer: 'bodha', sort_order: 6,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Saṃskāra',
     english_name: 'Signal embeddings',
@@ -1106,7 +1106,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_sangati',
-    layer: 'bodha', sort_order: 5,
+    layer: 'bodha', sort_order: 7,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Saṅgati',
     english_name: 'Domain links (CDLM)',
@@ -1128,7 +1128,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_upaya',
-    layer: 'bodha', sort_order: 6,
+    layer: 'bodha', sort_order: 12,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Upāya',
     english_name: 'Remediation (RM)',
@@ -1149,7 +1149,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_samvada',
-    layer: 'bodha', sort_order: 7,
+    layer: 'bodha', sort_order: 14,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Saṃvāda',
     english_name: 'Unified Chart Digest (UCD)',
@@ -1170,7 +1170,7 @@ export const ASSETS: AssetDef[] = [
   },
   {
     asset_id: 'bo_pramana_mapa',
-    layer: 'bodha', sort_order: 8,
+    layer: 'bodha', sort_order: 13,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Pramāṇa-māpā',
     english_name: 'Synthesis quality',
