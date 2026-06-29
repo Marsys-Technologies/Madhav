@@ -464,16 +464,27 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
         return False
 
     rows_written = int((rows_inserted + rows_updated) or 0)
+
+    # When a chart-scoped data writer produces 0 rows, record 'dormant' rather than
+    # 'lit'. 'lit' would cause the plan resolver's action='build' filter to exclude
+    # the asset (filter picks only dormant/error/missing), leaving the Build button
+    # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
+    # — safe to retry". Global assets (chart_id is None) are service singletons and
+    # always get 'lit' regardless of rows_written.
+    final_state = 'lit'
+    if rows_written == 0 and chart_id is not None:
+        final_state = 'dormant'
+
     upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
     writer_hash = get_writer_git_hash(asset_id)
 
     cur.execute(
         """UPDATE asset_throughput
-           SET state = 'lit', last_built_at = NOW(), rows_written = %s,
+           SET state = %s, last_built_at = NOW(), rows_written = %s,
                built_against_upstream_hash = %s, built_against_writer_hash = %s,
                last_error = NULL
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
-        (rows_written, upstream_hash, writer_hash, chart_id, asset_id),
+        (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
     )
     cur.execute(
         """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
@@ -483,7 +494,7 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     conn.commit()
 
     emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
-                "from_state": "building", "to_state": "lit"})
+                "from_state": "building", "to_state": final_state})
     emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
                 "rows_written": rows_written})
 
