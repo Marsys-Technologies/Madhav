@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import type { BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
 import { DUR, EASE } from './motion'
 
 interface PlanData {
   plan: string[]
+  plan_waves: string[][]
+  status: 'ok' | 'blocked'
+  blockers: { asset_id: string; required_by: string[] }[]
   includes_upstream_count: number
   estimated_seconds: number | null
 }
@@ -56,7 +60,16 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         })
         const body = await r.json()
         if (!r.ok) throw new Error(body.error ?? 'Failed to resolve plan')
-        setPlanData(body.data)
+        const rawData = body.data
+        if (rawData.status === 'blocked') {
+          throw new Error(
+            rawData.blockers?.length
+              ? 'Build blocked — upstream assets must be rebuilt first: ' +
+                rawData.blockers.map((b: { asset_id: string }) => b.asset_id).join(', ')
+              : 'Build blocked by upstream dependencies'
+          )
+        }
+        setPlanData({ ...rawData, plan: rawData.plan_waves?.flat() ?? rawData.plan ?? [] })
       } catch (e) {
         setError((e as Error).message)
       } finally {
@@ -95,12 +108,12 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
         return
       }
       if (!r.ok) {
-        if (body?.code === 'UPSTREAM_STALE' && Array.isArray(body?.stale_upstream)) {
-          const lines = (body.stale_upstream as { asset_id: string; required_by: string[] }[])
-            .map(s => `• ${s.asset_id}  (needed by: ${s.required_by.join(', ')})`)
+        if (body?.code === 'UPSTREAM_BLOCKED' && Array.isArray(body?.blockers)) {
+          const lines = (body.blockers as { dep_asset_id: string }[])
+            .map(b => `• ${b.dep_asset_id}`)
             .join('\n')
           throw new Error(
-            `Build blocked — these upstream assets are stale and must be rebuilt first:\n${lines}`
+            `Build blocked — these upstream assets must be ready first:\n${lines}`
           )
         }
         throw new Error(body.error ?? 'Failed to start run')

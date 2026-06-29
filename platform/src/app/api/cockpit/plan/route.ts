@@ -62,11 +62,11 @@ export async function POST(req: NextRequest) {
     )
     const medianByAsset = new Map(medianResult.rows.map(r => [r.asset_id, Number(r.median_seconds)]))
 
-    let estimated_seconds: number | null = 0
+    let estimated_seconds: number | null = flatPlan.length === 0 ? null : 0
     for (const assetId of flatPlan) {
       const perAsset = medianByAsset.get(assetId) ?? null
       if (perAsset === null) { estimated_seconds = null; break }
-      estimated_seconds += perAsset
+      estimated_seconds = (estimated_seconds ?? 0) + perAsset
     }
 
     return NextResponse.json({ data: { ...buildPlan, estimated_seconds } })
