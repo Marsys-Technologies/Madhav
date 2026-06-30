@@ -447,10 +447,13 @@ jobs:
           service: amjis-mcp
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
-          # IAM-gated (no --allow-unauthenticated); per-service runtime SA.
-          flags: --no-allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=0 --concurrency=80 --memory=512Mi
+          # amjis-mcp is publicly invokable (allUsers:roles/run.invoker). The app-level
+          # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
+          # F3 posture correction: --no-allow-unauthenticated was stale; removed.
+          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=0 --concurrency=80 --memory=512Mi
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
+            PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
   # ── /4.edge_and_infra_hygiene ──

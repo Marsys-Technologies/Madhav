@@ -20,6 +20,19 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { getCapability } from '@/lib/retrieval/registry'
+
+// ── Service-to-service internal token gate ────────────────────────────────────
+
+function validateServiceToken(request: Request): boolean {
+  const token = request.headers.get('x-mcp-internal-token')
+  const expected = process.env.MCP_INTERNAL_TOKEN
+  if (!expected) {
+    if (process.env.NODE_ENV === 'development') return true
+    console.error('[api/retrieval/capability] MCP_INTERNAL_TOKEN not set in production')
+    return false
+  }
+  return token === expected
+}
 import {
   registerD5FanoutCapabilities,
 } from '@/lib/retrieval/registry/layers/register_d5_fanout'
@@ -61,6 +74,13 @@ async function ensureBootstrapped(): Promise<void> {
 // ── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  // Service-to-service gate — must be first; proxy.ts allowlists /api/retrieval/
+  // only because this check is here. Remove this and you expose the retrieval
+  // layer unauthenticated to the internet.
+  if (!validateServiceToken(request)) {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 })
+  }
+
   let body: { uri?: string; args?: Record<string, unknown> }
   try {
     body = await request.json()
