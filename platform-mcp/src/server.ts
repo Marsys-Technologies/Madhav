@@ -51,6 +51,8 @@ import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
 import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
 // M2 — Chart selection: list_my_charts + select_chart
 import { registerChartSelectionTools } from './tools/chart_selection.js'
+// M3+M4 — Session tools: recall_session + list_my_sessions
+import { registerSessionTools } from './tools/session_tools.js'
 // R5 — Richness Layer: MCP resources (9 registered) + guided-reading prompts
 import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
@@ -158,6 +160,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.
   registerChartSelectionTools(server, principal)
 
+  // M3+M4 — Session tools: recall_session + list_my_sessions (2 tools)
+  // recall_session: resume session with entitlement re-check; list_my_sessions: session history.
+  registerSessionTools(server, principal)
+
   // R5 — Richness Layer: 9 MCP resources + 3 guided-reading prompts
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
@@ -199,8 +205,9 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // L5 Mīmāṃsā (lel_query + record_outcome): 2
 // D7 Registry bridge (registerRegistryBridgeTools — 14 MCP tools): 14
 // M2 Chart selection (list_my_charts + select_chart): 2
-// Total: 45
-const REGISTERED_TOOL_COUNT = 45
+// M3+M4 Session tools (recall_session + list_my_sessions): 2
+// Total: 47
+const REGISTERED_TOOL_COUNT = 47
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
