@@ -111,11 +111,27 @@ export default function AssetDetailPanel({ asset, onClose, isOpen }: AssetDetail
           </div>
         )}
 
-        {/* Error */}
+        {/* Error (L-7: Copy button + null-error fallback message) */}
         {asset.state === 'failed' && asset.error && (
           <div className="bg-red-900/30 rounded p-3">
             <p className="text-xs text-red-400 mb-1">Error</p>
-            <p className="text-xs text-red-300 font-mono break-all">{asset.error}</p>
+            <div className="relative">
+              <pre className="font-mono break-all text-xs text-red-300 whitespace-pre-wrap pr-14">
+                {asset.error}
+              </pre>
+              <button
+                onClick={() => navigator.clipboard.writeText(asset.error!)}
+                className="absolute top-0 right-0 text-xs text-red-400 hover:text-red-200 px-2 py-1 rounded bg-red-900/40 hover:bg-red-900/70 transition-colors"
+                title="Copy error to clipboard"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        )}
+        {asset.state === 'failed' && !asset.error && (
+          <div className="bg-red-900/30 rounded p-3">
+            <p className="text-xs text-red-400 italic">No error details available — check orchestrator logs.</p>
           </div>
         )}
       </div>

@@ -20,6 +20,37 @@ interface AssetNodeProps {
   compact?: boolean  // compact=true for wheel overlay nodes, false for list view
 }
 
+/**
+ * M-13: Explicit mapping from DB states (asset_throughput + build_run_assets) to UI AssetState.
+ * DB uses: 'dormant'|'building'|'lit'|'stale'|'error'|'service_ok'|'service_down' (asset_throughput)
+ *          and 'queued'|'running'|'complete'|'aborted' (build_run_assets).
+ * UI type: 'pending'|'running'|'complete'|'failed'|'cancelled'|'skipped'.
+ * Safe fallback to 'pending' for any unrecognised state so the component never crashes.
+ */
+export function mapDbStateToUiState(dbState: string): AssetState {
+  const mapping: Record<string, AssetState> = {
+    // asset_throughput states
+    dormant:      'pending',
+    building:     'running',
+    lit:          'complete',
+    stale:        'pending',
+    error:        'failed',
+    service_ok:   'complete',
+    service_down: 'failed',
+    // build_run_assets states
+    queued:       'pending',
+    running:      'running',
+    complete:     'complete',
+    aborted:      'cancelled',
+    // UI states (pass-through so callers can use either vocabulary)
+    pending:      'pending',
+    failed:       'failed',
+    cancelled:    'cancelled',
+    skipped:      'skipped',
+  }
+  return mapping[dbState] ?? 'pending'
+}
+
 const STATE_CONFIG: Record<AssetState, { color: string; icon: string; label: string }> = {
   pending:   { color: 'text-gray-400 border-gray-600',     icon: '○', label: 'Pending' },
   running:   { color: 'text-blue-400 border-blue-500',     icon: '◉', label: 'Building' },
