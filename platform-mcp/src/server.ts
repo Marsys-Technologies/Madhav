@@ -18,14 +18,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import express from 'express'
+import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
-// L0FR Stream A: OAuth 2.0 endpoints for ChatGPT MCP
-import { handleAuthorize } from './oauth/authorize.js'
+// M5: DB-backed OAuth 2.0 endpoints
+import { handleAuthorize, handleCallback } from './oauth/authorize.js'
 import { handleToken } from './oauth/token.js'
 import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
 import { validateAccessToken } from './oauth/token_store.js'
+import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
 import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
@@ -59,11 +61,14 @@ import { registerPrompts } from './prompts/index.js'
 
 const app = express()
 app.use(express.json())
+app.use(cookieParser())
 
-// ── OAuth 2.0 endpoints (L0FR Stream A) ──────────────────────────────────────
+// ── OAuth 2.0 endpoints (M5: DB-backed, real Firebase identity) ──────────────
 // Per MCP authorization spec + ChatGPT connector requirements
 
 app.post('/mcp/oauth/authorize', (req, res) => void handleAuthorize(req, res))
+// GET /mcp/oauth/callback — Firebase auth callback (stamps uid onto auth code)
+app.get('/mcp/oauth/callback', (req, res) => void handleCallback(req, res))
 app.post('/mcp/oauth/token', (req, res) => void handleToken(req, res))
 app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
   // Redirect to token endpoint with grant_type=refresh_token
@@ -71,7 +76,50 @@ app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
   await handleToken(req, res)
 })
 
-// OAuth discovery metadata
+// M5: Dynamic client registration (RFC 7591 / MCP OAuth spec)
+// Writes to mcp_oauth_clients table via platform API.
+app.post('/mcp/oauth/register', async (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization']
+  // Registration requires a valid Bearer key to identify the registering user.
+  const principal = await validateMcpKeyFromHeader(authHeader)
+  if (!principal) {
+    res.status(401).json({ error: 'Unauthorized', message: 'Bearer key required to register an OAuth client' })
+    return
+  }
+
+  const body = req.body as { redirect_uris?: string[]; scope?: string }
+  if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
+    res.status(400).json({ error: 'invalid_client_metadata', error_description: 'redirect_uris required' })
+    return
+  }
+
+  // Validate any registered client_id/secret from body (for test use-case, skip — new registration).
+  void validateOAuthClient  // imported for side-channel use; suppress lint
+
+  const scopes = body.scope ? body.scope.split(' ') : undefined
+  const result = await registerOAuthClient({
+    ownerUid: principal.user_uid,
+    redirectUris: body.redirect_uris,
+    scopes,
+  })
+
+  if (!result) {
+    res.status(500).json({ error: 'server_error', error_description: 'Client registration failed' })
+    return
+  }
+
+  // RFC 7591 response
+  res.status(201).json({
+    client_id: result.client_id,
+    client_secret: result.client_secret,
+    redirect_uris: body.redirect_uris,
+    grant_types: ['authorization_code', 'client_credentials'],
+    response_types: ['code'],
+    scope: (scopes ?? ['mcp:tools', 'mcp:resources', 'mcp:prompts']).join(' '),
+  })
+})
+
+// OAuth discovery metadata (add registration_endpoint per M5)
 app.get('/mcp/.well-known/oauth-authorization-server', handleOAuthDiscovery)
 app.get('/mcp/.well-known/openid-configuration', handleOpenIDConfiguration)
 
@@ -91,18 +139,19 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   let principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
 
-  // L0FR: also accept OAuth access tokens (for ChatGPT integration)
+  // M5: also accept OAuth access tokens (DB-backed; survives restart + multi-instance).
   if (!principal && authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice('Bearer '.length)
-    const oauthRecord = validateAccessToken(token)
+    // DB-backed validation via platform API (replaces in-memory validateAccessToken).
+    const oauthRecord = await validateAccessToken(token)
     if (oauthRecord) {
-      // M0: fail-closed if uid is unset — do not mint an 'anonymous'-owned principal
-      // that would then fail the entitlement gate opaquely. Full DB-backed OAuth is M5.
+      // Fail-closed: never allow 'anonymous' uid through the entitlement gate.
       if (!oauthRecord.uid || oauthRecord.uid === 'anonymous') {
         res.status(401).json({ error: 'Unauthorized', message: 'OAuth token carries no verified uid' })
         return
       }
-      // Map OAuth principal to MCP Principal shape (role defaults to 'guest'; M5 will resolve from DB)
+      // One identity core (M5.1): OAuth maps to the same Principal shape as Bearer key.
+      // Role defaults to 'guest'; super_admin role requires Bearer key with profile lookup.
       principal = {
         user_uid: oauthRecord.uid,
         key_id: 'oauth:' + token.slice(0, 8),

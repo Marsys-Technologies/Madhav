@@ -1,38 +1,22 @@
 /**
  * platform-mcp/src/oauth/token_store.ts
  *
- * OAuth token lifecycle management.
- * Underlying identity: Firebase Authentication.
- * This layer is a protocol bridge — Firebase is the authority.
+ * OAuth token lifecycle — DB-backed via platform API (M5).
  *
- * L0FR Stream A — authored 2026-06-07
- * Per source data §4 (MCP OAuth 2.0 specification)
+ * Replaces in-memory Maps (tokenStore, refreshStore) with calls to
+ * platform's /api/mcp/oauth/tokens endpoints. Tokens survive restart and
+ * work correctly across ≥2 Cloud Run instances.
+ *
+ * M5: in-memory Maps removed. Platform API is the single source of truth.
+ *
+ * L0FR Stream A — authored 2026-06-07; rewritten M5 2026-07-01.
  */
 
-import crypto from 'crypto'
-
-const ACCESS_TOKEN_TTL_SECONDS = 3600       // 1 hour
-const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 3600  // 30 days
-
-// In-memory store (replace with DB in production — table: mcp_oauth_tokens)
-interface TokenRecord {
-  access_token: string
-  refresh_token: string
-  uid: string
-  scopes: string[]
-  created_at: Date
-  expires_at: Date
-  refresh_expires_at: Date
-}
-
-const tokenStore = new Map<string, TokenRecord>()
-const refreshStore = new Map<string, string>()  // refresh_token → access_token
-
-// ── Token generation ──────────────────────────────────────────────────────────
-
-function generateToken(prefix: string = 'mcp'): string {
-  return `${prefix}_${crypto.randomBytes(32).toString('hex')}`
-}
+import {
+  issueDbTokens,
+  validateDbAccessToken,
+  refreshDbAccessToken,
+} from './oauth_platform_client.js'
 
 export interface IssuedTokens {
   access_token: string
@@ -41,79 +25,64 @@ export interface IssuedTokens {
   scope: string
 }
 
+// ── Token generation ──────────────────────────────────────────────────────────
+
 /**
  * Issue new access + refresh tokens for a Firebase UID.
+ * Stores SHA-256 hashes in the platform DB; returns plaintext tokens.
  */
-export function issueTokens(uid: string, scopes: string[]): IssuedTokens {
-  const accessToken = generateToken('mcp_at')
-  const refreshToken = generateToken('mcp_rt')
-  const now = new Date()
-
-  const record: TokenRecord = {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    uid,
-    scopes,
-    created_at: now,
-    expires_at: new Date(now.getTime() + ACCESS_TOKEN_TTL_SECONDS * 1000),
-    refresh_expires_at: new Date(now.getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+export async function issueTokens(uid: string, scopes: string[]): Promise<IssuedTokens> {
+  const tokens = await issueDbTokens(uid, scopes)
+  if (!tokens) {
+    throw new Error('[mcp:token_store] issueTokens: platform call failed')
   }
+  return tokens
+}
 
-  tokenStore.set(accessToken, record)
-  refreshStore.set(refreshToken, accessToken)
+// ── Token record type (matches platform schema) ───────────────────────────────
 
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_in: ACCESS_TOKEN_TTL_SECONDS,
-    scope: scopes.join(' '),
-  }
+export interface TokenRecord {
+  uid: string
+  scopes: string[]
 }
 
 /**
- * Validate an access token. Returns the token record or null.
+ * Validate an access token. Returns { uid, scopes } or null if expired/not found.
+ * DB-backed: survives restart, works across instances.
  */
-export function validateAccessToken(token: string): TokenRecord | null {
-  const record = tokenStore.get(token)
-  if (!record) return null
-  if (record.expires_at < new Date()) {
-    tokenStore.delete(token)
-    return null
-  }
-  return record
+export async function validateAccessToken(token: string): Promise<TokenRecord | null> {
+  return validateDbAccessToken(token)
 }
 
 /**
- * Refresh: exchange a refresh token for a new access token.
+ * Refresh: exchange a refresh token for a new access token pair.
+ * Returns new IssuedTokens or null if the refresh token is expired/invalid.
  */
-export function refreshAccessToken(refreshToken: string): IssuedTokens | null {
-  const oldAccessToken = refreshStore.get(refreshToken)
-  if (!oldAccessToken) return null
-
-  const record = tokenStore.get(oldAccessToken)
-  if (!record) return null
-  if (record.refresh_expires_at < new Date()) {
-    tokenStore.delete(oldAccessToken)
-    refreshStore.delete(refreshToken)
-    return null
-  }
-
-  // Revoke old tokens
-  tokenStore.delete(oldAccessToken)
-  refreshStore.delete(refreshToken)
-
-  // Issue new tokens
-  return issueTokens(record.uid, record.scopes)
+export async function refreshAccessToken(refreshToken: string): Promise<IssuedTokens | null> {
+  return refreshDbAccessToken(refreshToken)
 }
 
 /**
  * Revoke all tokens for a UID.
+ * Note: revokeTokensForUid is called via the platform DELETE /api/mcp/oauth/tokens
+ * endpoint. This export is kept for API surface compatibility.
  */
-export function revokeTokensForUid(uid: string): void {
-  for (const [token, record] of tokenStore.entries()) {
-    if (record.uid === uid) {
-      tokenStore.delete(token)
-      refreshStore.delete(record.refresh_token)
-    }
+export async function revokeTokensForUid(uid: string): Promise<void> {
+  // Implemented via platform API (called directly from routes that need revocation).
+  // For backward compat the function exists; callers should prefer the platform route.
+  const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+  const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+  try {
+    await fetch(`${PLATFORM_URL}/api/mcp/oauth/tokens`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      },
+      body: JSON.stringify({ uid }),
+      signal: AbortSignal.timeout(5_000),
+    })
+  } catch (err) {
+    console.error('[mcp:token_store] revokeTokensForUid error:', err instanceof Error ? err.message : String(err))
   }
 }
