@@ -42,8 +42,14 @@ async function publishEvent(event: Record<string, unknown>): Promise<void> {
 export const maxDuration = 10
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // M-2: Warn explicitly when WATCHDOG_SECRET is unset so misconfiguration is visible in logs
+  // rather than silently disabling the stuck-build reaper.
+  if (!process.env.WATCHDOG_SECRET) {
+    console.warn('[watchdog] WATCHDOG_SECRET is not set — watchdog endpoint is effectively disabled (all requests return 401). Set WATCHDOG_SECRET to enable the stuck-build reaper.')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   const authHeader = req.headers.get('x-watchdog-auth')
-  if (!process.env.WATCHDOG_SECRET || authHeader !== process.env.WATCHDOG_SECRET) {
+  if (authHeader !== process.env.WATCHDOG_SECRET) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -70,6 +76,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      WHERE state = 'building'
        AND last_built_at < NOW() - INTERVAL '15 minutes'
      RETURNING chart_id, asset_id`
+  )
+
+  // M-5: Also surface the orphan error in build_run_assets so the UI can show it instead
+  // of a blank "Failed" state when bra.error was never written by the writer.
+  await query(
+    `UPDATE build_run_assets bra
+     SET error = 'orphan-watchdog: writer never reported back'
+     FROM build_runs br
+     WHERE bra.run_id = br.id
+       AND bra.state = 'running'
+       AND br.state = 'running'
+       AND br.started_at < NOW() - INTERVAL '30 minutes'
+       AND bra.error IS NULL`
   )
 
   // 3. Orphan build_runs: planned > 10 min with started_at IS NULL (dispatch never happened)
@@ -105,10 +124,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ),
   ])
 
+  // M-4: Prune old completed/failed/stopped build runs and their child assets (retention: 90 days)
+  // Delete build_run_assets first in case there is no CASCADE FK.
+  await query(
+    `DELETE FROM build_run_assets
+     WHERE run_id IN (
+       SELECT id FROM build_runs
+       WHERE state IN ('completed', 'failed', 'stopped')
+         AND created_at < NOW() - INTERVAL '90 days'
+     )`
+  )
+  const pruned = await query(
+    `DELETE FROM build_runs
+     WHERE state IN ('completed', 'failed', 'stopped')
+       AND created_at < NOW() - INTERVAL '90 days'
+     RETURNING id`
+  )
+
   return NextResponse.json({
     orphan_runs_failed: orphanRuns.rowCount ?? 0,
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
     undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
+    pruned_runs: pruned.rowCount ?? 0,
   })
   } catch (err) {
     console.error('[cockpit/watchdog]', err)

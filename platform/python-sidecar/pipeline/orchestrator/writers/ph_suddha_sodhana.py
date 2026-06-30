@@ -63,54 +63,51 @@ class PhSuddhaSodhanaWriter(WriterBase):
                 assert rec.revision_approved_by is None, "D43 VIOLATED: engine set revision_approved_by"
                 assert rec.revision_applied_at is None,  "D43 VIOLATED: engine set revision_applied_at"
 
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_suddha_sodhana (
-                            chart_id, anchor_id,
-                            cleanliness_status,
-                            critical_flag_count, major_flag_count, minor_flag_count,
-                            flag_ids_jsonb,
-                            staged_revision_jsonb,
-                            revision_approved_by, revision_applied_at,
-                            confidence_delta_if_applied, magnitude_delta_if_applied,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s,
-                            %s,
-                            %s, %s, %s,
-                            %s::jsonb,
-                            %s::jsonb,
-                            NULL, NULL,
-                            %s, %s,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT (chart_id, anchor_id) DO UPDATE SET
-                            cleanliness_status          = EXCLUDED.cleanliness_status,
-                            critical_flag_count         = EXCLUDED.critical_flag_count,
-                            major_flag_count            = EXCLUDED.major_flag_count,
-                            minor_flag_count            = EXCLUDED.minor_flag_count,
-                            flag_ids_jsonb              = EXCLUDED.flag_ids_jsonb,
-                            staged_revision_jsonb       = EXCLUDED.staged_revision_jsonb,
-                            confidence_delta_if_applied = EXCLUDED.confidence_delta_if_applied,
-                            magnitude_delta_if_applied  = EXCLUDED.magnitude_delta_if_applied,
-                            derivation_ledger_jsonb     = EXCLUDED.derivation_ledger_jsonb,
-                            source_citation             = EXCLUDED.source_citation,
-                            computed_at                 = now()
-                        """,
-                        (
-                            chart_id, rec.anchor_id,
-                            rec.cleanliness_status,
-                            rec.critical_flag_count, rec.major_flag_count, rec.minor_flag_count,
-                            json.dumps(rec.flag_ids_jsonb) if rec.flag_ids_jsonb else None,
-                            json.dumps(rec.staged_revision_jsonb) if rec.staged_revision_jsonb else None,
-                            rec.confidence_delta_if_applied, rec.magnitude_delta_if_applied,
-                            json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_suddha_sodhana (
+                        chart_id, anchor_id,
+                        cleanliness_status,
+                        critical_flag_count, major_flag_count, minor_flag_count,
+                        flag_ids_jsonb,
+                        staged_revision_jsonb,
+                        revision_approved_by, revision_applied_at,
+                        confidence_delta_if_applied, magnitude_delta_if_applied,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s,
+                        %s,
+                        %s, %s, %s,
+                        %s::jsonb,
+                        %s::jsonb,
+                        NULL, NULL,
+                        %s, %s,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_suddha_sodhana: insert failed for anchor %s: %s", anchor_id, exc)
+                    ON CONFLICT (chart_id, anchor_id) DO UPDATE SET
+                        cleanliness_status          = EXCLUDED.cleanliness_status,
+                        critical_flag_count         = EXCLUDED.critical_flag_count,
+                        major_flag_count            = EXCLUDED.major_flag_count,
+                        minor_flag_count            = EXCLUDED.minor_flag_count,
+                        flag_ids_jsonb              = EXCLUDED.flag_ids_jsonb,
+                        staged_revision_jsonb       = EXCLUDED.staged_revision_jsonb,
+                        confidence_delta_if_applied = EXCLUDED.confidence_delta_if_applied,
+                        magnitude_delta_if_applied  = EXCLUDED.magnitude_delta_if_applied,
+                        derivation_ledger_jsonb     = EXCLUDED.derivation_ledger_jsonb,
+                        source_citation             = EXCLUDED.source_citation,
+                        computed_at                 = now()
+                    """,
+                    (
+                        chart_id, rec.anchor_id,
+                        rec.cleanliness_status,
+                        rec.critical_flag_count, rec.major_flag_count, rec.minor_flag_count,
+                        json.dumps(rec.flag_ids_jsonb) if rec.flag_ids_jsonb else None,
+                        json.dumps(rec.staged_revision_jsonb) if rec.staged_revision_jsonb else None,
+                        rec.confidence_delta_if_applied, rec.magnitude_delta_if_applied,
+                        json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info(
             "ph_suddha_sodhana: inserted %d rows into phala_suddha_sodhana for %s",

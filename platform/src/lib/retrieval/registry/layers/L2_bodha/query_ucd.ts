@@ -15,6 +15,8 @@
 
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
+import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 
 export const queryUcdCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_ucd',
@@ -37,7 +39,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to filter by (default: 'LAHIRI')",
+      description: "Ayanamsha to filter by (default: 'lahiri_chitrapaksha')",
       required: false,
     },
     top_k_signals: {
@@ -82,8 +84,19 @@ export const queryUcdCapability: CapabilityDescriptor = {
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
+    // L-6: chart_id null guard
+    if (!args.chart_id) {
+      return { content: { error: 'chart_id is required for query_ucd' }, is_error: true }
+    }
     const chart_id       = String(args.chart_id)
-    const ayanamsha_id   = String(args.ayanamsha_id  ?? 'LAHIRI')
+    const ayanamsha_id   = String(args.ayanamsha_id  ?? DEFAULT_AYANAMSHA)
+
+    // H-11: cache check
+    const _cacheKey = cacheKey('query_ucd', { chart_id, ayanamsha_id,
+      top_k_signals: args.top_k_signals, signal_class: args.signal_class,
+      min_salience: args.min_salience })
+    const _cached = cacheGet(_cacheKey)
+    if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
     const top_k          = Math.min(Number(args.top_k_signals ?? 20), 100)
     const signal_class   = args.signal_class ? String(args.signal_class) : null
     const min_salience   = Number(args.min_salience ?? 0)
@@ -138,7 +151,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
 
       const digest = (digestResult.rows[0] ?? {}) as Record<string, unknown>
 
-      return {
+      const result = {
         content: {
           chart_id,
           ayanamsha_id,
@@ -157,8 +170,10 @@ export const queryUcdCapability: CapabilityDescriptor = {
           convergence_domains:   convResult.rows,
           filters: { top_k, signal_class, min_salience },
         },
-        is_error: false,
+        is_error: false as const,
       }
+      cacheSet(_cacheKey, result)
+      return result
     } catch (err) {
       return {
         content: { error: String(err), chart_id, ayanamsha_id },

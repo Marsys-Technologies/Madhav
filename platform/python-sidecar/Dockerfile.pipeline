@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y gcc g++ libpq-dev curl && rm -rf /var/l
 RUN mkdir -p /app/ephe
 # Download from GCS (if available) or fallback to bundled copy
 # Build-time download — fails silently if credentials unavailable (files can be mounted at runtime)
-RUN curl -sSL -o /app/ephe/sepl_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/sepl_18.se1" 2>/dev/null || true
-RUN curl -sSL -o /app/ephe/semo_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/semo_18.se1" 2>/dev/null || true
-RUN curl -sSL -o /app/ephe/seas_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/seas_18.se1" 2>/dev/null || true
-RUN curl -sSL -o /app/ephe/sefstars.txt "https://storage.googleapis.com/madhav-ephemeris/se1/sefstars.txt" 2>/dev/null || true
-RUN curl -sSL -o /app/ephe/seleapsec.txt "https://storage.googleapis.com/madhav-ephemeris/se1/seleapsec.txt" 2>/dev/null || true
+RUN curl -sSL -o /app/ephe/sepl_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/sepl_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
+RUN curl -sSL -o /app/ephe/semo_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/semo_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
+RUN curl -sSL -o /app/ephe/seas_18.se1 "https://storage.googleapis.com/madhav-ephemeris/se1/seas_18.se1" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
+RUN curl -sSL -o /app/ephe/sefstars.txt "https://storage.googleapis.com/madhav-ephemeris/se1/sefstars.txt" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
+RUN curl -sSL -o /app/ephe/seleapsec.txt "https://storage.googleapis.com/madhav-ephemeris/se1/seleapsec.txt" 2>/dev/null || (echo "FATAL: ephemeris files failed to download"; exit 1)
 ENV SWE_EPHE_PATH=/app/ephe
 
 COPY platform/python-sidecar/requirements.txt .
@@ -55,7 +55,8 @@ COPY 035_DISCOVERY_LAYER/cgm_supports_edges_manifest_v1_0.json 035_DISCOVERY_LAY
 COPY 035_DISCOVERY_LAYER/cgm_contradicts_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 
 ENV PYTHONPATH=/app/platform/python-sidecar
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 # Stream G: Swiss Ephemeris path for PyJHora
 ENV SWE_EPHE_PATH=/app/ephe
 RUN mkdir -p /app/ephe

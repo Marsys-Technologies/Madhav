@@ -46,7 +46,8 @@ async function initPool(): Promise<Pool> {
   if (process.env.DATABASE_URL) {
     // Local dev: Cloud SQL Auth Proxy via DATABASE_URL from .env.rag
     return attachErrorHandler(
-      new Pool({ connectionString: process.env.DATABASE_URL, max: 15, ...POOL_KEEPALIVE })
+      new Pool({ connectionString: process.env.DATABASE_URL, // reduced from 15 — leaves ~20 connections for orchestrator workers against Cloud SQL max_connections=50
+      max: 10, ...POOL_KEEPALIVE })
     )
   }
   // Production (Cloud Run): cloud-sql-connector authenticates via ADC
@@ -61,7 +62,8 @@ async function initPool(): Promise<Pool> {
       user: process.env.DB_USER!,
       password: process.env.DB_PASSWORD!,
       database: process.env.DB_NAME!,
-      max: 15,
+      // reduced from 15 — leaves ~20 connections for orchestrator workers against Cloud SQL max_connections=50
+      max: 10,
       ...POOL_KEEPALIVE,
     })
   )

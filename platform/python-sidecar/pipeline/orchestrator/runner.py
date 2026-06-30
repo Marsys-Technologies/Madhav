@@ -10,6 +10,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait as _futures_wait
 from typing import Optional
 
@@ -78,6 +79,27 @@ _MAX_CONCURRENT_RUNS = int(os.environ.get("ORCHESTRATOR_MAX_CONCURRENT_RUNS", "6
 _WORKER_LIMIT = max(1, int(os.environ.get("ORCHESTRATOR_WORKER_LIMIT", "4")))
 
 _POLL_INTERVAL: float = 5.0  # seconds between signal checks
+
+# ── Per-writer timeout (H-3) ──────────────────────────────────────────────────
+# A hung writer (e.g. blocked on a DB lock) will block a worker thread
+# indefinitely without this guard. Timed-out assets are marked 'error' so the
+# DAG can continue and the operator can see the failure. The daemon thread
+# itself cannot be cancelled — it will die when the process exits — but the
+# orchestrator no longer waits on it.
+_WRITER_TIMEOUT_SECONDS = int(os.environ.get("WRITER_TIMEOUT_SECONDS", "600"))  # 10 min default
+
+# ── Graceful SIGTERM drain (M-7) ──────────────────────────────────────────────
+# Cloud Run sends SIGTERM and then waits up to 10 seconds before SIGKILL. Rather
+# than calling sys.exit(0) immediately (which kills daemon threads without any
+# cleanup), set a flag and let the polling loop drain in-flight sub-steps.
+_shutdown = False
+
+
+def _handle_sigterm(signum, frame):
+    global _shutdown
+    logger.warning("[orchestrator] SIGTERM received — draining in-flight writers")
+    _shutdown = True
+
 
 # ── Writer-gap guard ──────────────────────────────────────────────────────────
 # Mode: enforce (default) — fail the run; warn — log only; off — skip.
@@ -249,7 +271,8 @@ def execute_dag(
     completed: set = set(seed_completed or set())
     failed: set = set()
     pending: list[str] = list(plan)
-    in_flight: dict = {}
+    in_flight: dict = {}          # future → asset_id
+    deadlines: dict = {}          # future → wall-clock deadline (seconds since epoch)
     terminal: Optional[str] = None
     _block = on_block or (lambda a, b: None)
     _stop = should_stop or (lambda: None)
@@ -259,9 +282,10 @@ def execute_dag(
     pool = _DaemonThreadPoolExecutor(max_workers=wl, thread_name_prefix="asset")
     try:
         while pending or in_flight:
+            # H-3 / M-7: check both DB stop/pause signals and the SIGTERM drain flag
             sig = _stop()
-            if sig in ("stop", "pause"):
-                terminal = "stopped" if sig == "stop" else "paused"
+            if sig in ("stop", "pause") or _shutdown:
+                terminal = "stopped" if (sig == "stop" or _shutdown) else "paused"
                 break
 
             progressed = False
@@ -276,6 +300,8 @@ def execute_dag(
                 if all(d in completed for d in deps_of.get(a, [])) and len(in_flight) < wl:
                     _fut = pool.submit(run_fn, a)
                     in_flight[_fut] = a
+                    # H-3: record the per-asset deadline when we dispatch
+                    deadlines[_fut] = time.monotonic() + _WRITER_TIMEOUT_SECONDS
                     pending.remove(a)
                     progressed = True
 
@@ -292,8 +318,28 @@ def execute_dag(
                 continue
 
             done, _ = _futures_wait(list(in_flight), return_when=FIRST_COMPLETED, timeout=_POLL_INTERVAL)
+
+            # H-3: check for timed-out in-flight futures BEFORE processing done set
+            now = time.monotonic()
+            for fut in list(in_flight):
+                if fut not in done and deadlines.get(fut, float("inf")) < now:
+                    a = in_flight.pop(fut)
+                    deadlines.pop(fut, None)
+                    logger.warning(
+                        "[execute_dag] TIMEOUT: asset_id=%s exceeded WRITER_TIMEOUT_SECONDS=%d — "
+                        "marking error; daemon thread will die on process exit",
+                        a, _WRITER_TIMEOUT_SECONDS,
+                    )
+                    _block(a, [f"timeout:{_WRITER_TIMEOUT_SECONDS}s"])
+                    failed.add(a)
+
             for fut in done:
+                if fut not in in_flight:
+                    # Already evicted by the timeout check above
+                    deadlines.pop(fut, None)
+                    continue
                 a = in_flight.pop(fut)
+                deadlines.pop(fut, None)
                 # Serial-equivalent success rule: only 'error' is failure; any other
                 # terminal state ('lit'/'complete') counts as success (matches the old
                 # `if state == 'error'` gate). run_fn returns 'error' on crash too.
@@ -306,9 +352,11 @@ def execute_dag(
                     except Exception as _oce:
                         logger.warning("[execute_dag] on_complete(%s) raised: %s", a, _oce)
 
-        # On stop/pause, let dispatched workers finish (their committed sub-steps are real).
+        # On stop/pause/SIGTERM drain, let dispatched workers finish their current
+        # savepoint commit (Cloud Run gives 10 s after SIGTERM before SIGKILL).
         for fut in list(in_flight):
             a = in_flight.pop(fut)
+            deadlines.pop(fut, None)
             try:
                 if fut.result() == "error":
                     failed.add(a)
@@ -516,8 +564,10 @@ def execute_run(run_id: str) -> None:
     from .writers import discover_all    # D1: ensure all writer modules are imported
     discover_all()
 
-    # SIGTERM → SystemExit so finally blocks run and the connection is cleaned up.
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    # M-7: SIGTERM sets _shutdown flag for graceful drain instead of sys.exit(0).
+    # Cloud Run gives 10 s after SIGTERM before SIGKILL; daemon workers finish
+    # their current savepoint commit before the process exits.
+    signal.signal(signal.SIGTERM, _handle_sigterm)
 
     conn = connect()
     conn.autocommit = False

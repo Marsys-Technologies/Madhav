@@ -75,8 +75,10 @@ export async function POST(req: NextRequest) {
   const affectedAssetIds = scopeAssets.map(r => r.asset_id)
 
   // Verify preview_hash
+  // L-10: Match the timeSlot formula from clear/route.ts so hashes older than ~15 min are rejected.
+  const timeSlot = Math.floor(Date.now() / (15 * 60 * 1000))
   const expectedHash = createHash('sha256')
-    .update(JSON.stringify({ chart_id, scope, scope_target, affectedAssetIds: affectedAssetIds.sort() }))
+    .update(JSON.stringify({ chart_id, scope, scope_target, affectedAssetIds: affectedAssetIds.sort(), timeSlot }))
     .digest('hex')
     .slice(0, 32)
 

@@ -74,9 +74,27 @@ async function runAssessDomain(
       undefined
     )
 
+    // M-12: shield Step 1 failure — return partial bundle instead of propagating
+    if (domainResult.is_error) {
+      return {
+        content: {
+          step_results: {
+            domain_reading: { ok: false, error: domainResult.content },
+            temporal: { ok: false },
+            contradictions: { ok: false },
+          },
+          chart_id,
+          domain,
+          error: 'domain_reading step failed',
+        },
+        is_error: true,
+      }
+    }
+
     // ── Step 2: temporal activation window (L3 Kāla) ──────────────────────
     // Pull signal_id refs from the domain result to filter activations.
     const domainContent = domainResult.content as Record<string, unknown>
+    // M-12: null guard on signal_id_refs before use
     const signalRefs: string[] = Array.isArray(domainContent['signal_id_refs'])
       ? (domainContent['signal_id_refs'] as string[])
       : []
@@ -100,10 +118,17 @@ async function runAssessDomain(
       temporalArgs['signal_ids'] = signalRefs
     }
 
-    const temporalResult = await queryTemporalActivationCapability.handler(
-      temporalArgs,
-      undefined
-    )
+    // M-12: shield Step 2 — return partial bundle on failure rather than throwing
+    let temporalResult: { ok: boolean; data: unknown }
+    try {
+      const rawTemporal = await queryTemporalActivationCapability.handler(
+        temporalArgs,
+        undefined
+      )
+      temporalResult = { ok: !rawTemporal.is_error, data: rawTemporal.content }
+    } catch (err) {
+      temporalResult = { ok: false, data: { error: String(err) } }
+    }
 
     // ── Step 3: contradictions / discoveries (L2 Bodha) ───────────────────
     const { queryContradictionsCapability } = await import(
@@ -132,7 +157,7 @@ async function runAssessDomain(
           }
 
     // ── Assemble reconciled bundle ─────────────────────────────────────────
-    const temporalContent = temporalResult.content as Record<string, unknown>
+    const temporalContent = (temporalResult.data ?? {}) as Record<string, unknown>
 
     return {
       content: {
@@ -140,6 +165,11 @@ async function runAssessDomain(
         domain_label,
         chart_id,
         ayanamsha_id,
+        step_results: {
+          domain_reading: { ok: true },
+          temporal: { ok: temporalResult.ok },
+          contradictions: { ok: true },
+        },
         house_analysis: {
           question_lenses: domainContent['question_lenses'] ?? [],
           lens_count: domainContent['lens_count'] ?? 0,
@@ -154,11 +184,12 @@ async function runAssessDomain(
           drill_uri: 'marsys://tool/L1/chart_facts_query',
         },
         activating_dasha: {
-          activations: temporalContent['activations'] ?? [],
-          activation_count: temporalContent['activation_count'] ?? 0,
-          predicates: temporalContent['predicates'] ?? [],
+          activations: temporalResult.ok ? (temporalContent['activations'] ?? []) : [],
+          activation_count: temporalResult.ok ? (temporalContent['activation_count'] ?? 0) : 0,
+          predicates: temporalResult.ok ? (temporalContent['predicates'] ?? []) : [],
           window: { date_from: today, date_to: futureDate },
-          signal_id_refs: temporalContent['signal_id_refs'] ?? [],
+          signal_id_refs: temporalResult.ok ? (temporalContent['signal_id_refs'] ?? []) : [],
+          ...(temporalResult.ok ? {} : { partial_failure: temporalContent['error'] }),
         },
         contradictions,
         citations: {
@@ -563,7 +594,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       let p = 5
 
       if (min_salience > 0) {
-        conds.push(`m.salience >= $${p++}`)
+        conds.push(`m.computed_salience >= $${p++}`)
         params.push(min_salience)
       }
 
@@ -582,8 +613,8 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           m.signal_id,
           m.signal_type_id            AS yoga_type,
           m.signal_tradition,
-          m.salience,
-          m.signal_summary,
+          m.computed_salience,
+          m.signal_summary_text       AS signal_summary,
           m.constituent_facts_array   AS constituent_fact_ids,
           ka.id                       AS activation_id,
           ka.activation_start,
@@ -600,7 +631,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           AND ka.chart_id = m.chart_id
         WHERE ${conds.join('\n          AND ')}
         ORDER BY ka.dasha_activation_proximity_score DESC NULLS LAST,
-                 m.salience DESC NULLS LAST,
+                 m.computed_salience DESC NULLS LAST,
                  ka.activation_start
         LIMIT ${limitPh}
       `

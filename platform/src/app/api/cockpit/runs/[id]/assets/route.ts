@@ -36,14 +36,17 @@ export async function GET(
       rows_written: number | null
     }>(`
       SELECT
-        bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error,
+        bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at,
+        COALESCE(bra.error, at2.last_error) AS error,
         ar.sanskrit_name, ar.english_name, ar.layer, ar.target_floor,
         at2.rows_written
       FROM build_run_assets bra
+      JOIN build_runs br ON br.id = bra.run_id
       JOIN asset_registry ar ON ar.asset_id = bra.asset_id
       LEFT JOIN asset_throughput at2
         ON at2.asset_id = bra.asset_id
-        AND at2.chart_id = (SELECT chart_id FROM build_runs WHERE id = $1)
+        AND at2.chart_id = br.chart_id
+        AND at2.ayanamsha_id IS NULL
       WHERE bra.run_id = $1
       ORDER BY bra.position
     `, [id])

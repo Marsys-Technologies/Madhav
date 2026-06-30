@@ -256,7 +256,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Build preview_hash
-  const hashInput = JSON.stringify({ chart_id, scope, scope_target, affectedAssetIds: affectedAssetIds.sort() })
+  // L-10: Include a 15-minute time slot so generated hashes expire automatically.
+  // The execute route uses the same timeSlot formula to verify the hash.
+  const timeSlot = Math.floor(Date.now() / (15 * 60 * 1000))
+  const hashInput = JSON.stringify({ chart_id, scope, scope_target, affectedAssetIds: affectedAssetIds.sort(), timeSlot })
   const preview_hash = createHash('sha256').update(hashInput).digest('hex').slice(0, 32)
 
   // Build per-layer summary using per-asset counts (not per-table)

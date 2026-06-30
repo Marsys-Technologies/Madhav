@@ -109,57 +109,53 @@ class PhNimittaWriter(WriterBase):
         rows_inserted = 0
         with conn.cursor() as cur:
             for a in anchors:
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_anchors (
-                            chart_id, anchor_source, convergence_id, discovery_id,
-                            bhavishya_id, signal_id, subsystem_source,
-                            event_type, direction, domain, horizon_tier,
-                            window_start, peak_date, window_end,
-                            magnitude, magnitude_basis,
-                            confidence_low, confidence_high, confidence_basis,
-                            karmic_frame, karmic_note,
-                            malleability, counterfactual_jsonb,
-                            contradiction_jsonb, causal_chain_jsonb,
-                            precedent_refs_jsonb, dasha_consensus_count,
-                            school_consensus_jsonb, ayanamsha_robustness,
-                            falsifier, derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s, %s, %s,
-                            %s, %s, %s,
-                            %s, %s, %s, %s,
-                            %s, %s, %s,
-                            %s, %s,
-                            %s, %s, %s,
-                            %s, %s,
-                            %s, %s::jsonb,
-                            %s::jsonb, %s::jsonb,
-                            %s::jsonb, %s,
-                            %s::jsonb, %s,
-                            %s, %s::jsonb, %s
-                        )
-                        ON CONFLICT DO NOTHING
-                        """,
-                        (
-                            chart_id, a.anchor_source, a.convergence_id, a.discovery_id,
-                            a.bhavishya_id, a.signal_id, a.subsystem_source,
-                            a.event_type, a.direction, a.domain, a.horizon_tier,
-                            a.window_start, a.peak_date, a.window_end,
-                            a.magnitude, a.magnitude_basis,
-                            a.confidence_low, a.confidence_high, a.confidence_basis,
-                            a.karmic_frame, a.karmic_note,
-                            a.malleability, json.dumps(a.counterfactual_jsonb or {}),
-                            json.dumps(a.contradiction_jsonb or {}), json.dumps(a.causal_chain_jsonb or {}),
-                            json.dumps(a.precedent_refs_jsonb or {}), a.dasha_consensus_count,
-                            json.dumps(a.school_consensus_jsonb or {}), a.ayanamsha_robustness,
-                            a.falsifier, json.dumps(a.derivation_ledger_jsonb), a.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_anchors (
+                        chart_id, anchor_source, convergence_id, discovery_id,
+                        bhavishya_id, signal_id, subsystem_source,
+                        event_type, direction, domain, horizon_tier,
+                        window_start, peak_date, window_end,
+                        magnitude, magnitude_basis,
+                        confidence_low, confidence_high, confidence_basis,
+                        karmic_frame, karmic_note,
+                        malleability, counterfactual_jsonb,
+                        contradiction_jsonb, causal_chain_jsonb,
+                        precedent_refs_jsonb, dasha_consensus_count,
+                        school_consensus_jsonb, ayanamsha_robustness,
+                        falsifier, derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s,
+                        %s, %s, %s,
+                        %s, %s,
+                        %s, %s::jsonb,
+                        %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s,
+                        %s::jsonb, %s,
+                        %s, %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_nimitta: insert failed for anchor %s/%s: %s",
-                                   a.anchor_source, a.convergence_id or a.bhavishya_id or a.discovery_id, exc)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        chart_id, a.anchor_source, a.convergence_id, a.discovery_id,
+                        a.bhavishya_id, a.signal_id, a.subsystem_source,
+                        a.event_type, a.direction, a.domain, a.horizon_tier,
+                        a.window_start, a.peak_date, a.window_end,
+                        a.magnitude, a.magnitude_basis,
+                        a.confidence_low, a.confidence_high, a.confidence_basis,
+                        a.karmic_frame, a.karmic_note,
+                        a.malleability, json.dumps(a.counterfactual_jsonb or {}),
+                        json.dumps(a.contradiction_jsonb or {}), json.dumps(a.causal_chain_jsonb or {}),
+                        json.dumps(a.precedent_refs_jsonb or {}), a.dasha_consensus_count,
+                        json.dumps(a.school_consensus_jsonb or {}), a.ayanamsha_robustness,
+                        a.falsifier, json.dumps(a.derivation_ledger_jsonb), a.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_nimitta: inserted %d rows into phala_anchors for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_nimitta', rows_inserted=rows_inserted)

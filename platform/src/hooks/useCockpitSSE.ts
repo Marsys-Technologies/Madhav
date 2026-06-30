@@ -16,17 +16,22 @@ export type CockpitEvent =
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-// In dev, cap reconnects to prevent an infinite retry storm when the SSE route
-// fails (e.g. no GCP creds). In prod, allow unlimited reconnects.
-const MAX_RECONNECT_ATTEMPTS = process.env.NODE_ENV === 'development' ? 5 : Infinity
+// L-8: Unified reconnect cap of 50 (was: dev=5, prod=Infinity).
+// The old dev=5 cap left the cockpit permanently blind after 5 failures during
+// a long build session. 50 is large enough to survive transient failures while
+// still providing a backstop if the SSE route is permanently broken.
+const MAX_RECONNECT_ATTEMPTS = 50  // was: process.env.NODE_ENV === 'development' ? 5 : Infinity
 const MIN_RECONNECT_INTERVAL_MS = 1000
 
 export function useCockpitSSE(
   chartId: string,
-  onEvent: (e: CockpitEvent) => void
+  onEvent: (e: CockpitEvent) => void,
+  onReconnect?: () => void,
 ): void {
   const onEventRef = useRef(onEvent)
   onEventRef.current = onEvent
+  const onReconnectRef = useRef(onReconnect)
+  onReconnectRef.current = onReconnect
 
   useEffect(() => {
     let es: EventSource | null = null
@@ -35,6 +40,7 @@ export function useCockpitSSE(
     let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null
     let attemptCount = 0
     let lastAttemptAt = 0
+    let hasConnectedOnce = false
 
     function resetHeartbeat() {
       if (heartbeatTimeout) clearTimeout(heartbeatTimeout)
@@ -52,7 +58,15 @@ export function useCockpitSSE(
       attemptCount = 0
       retryDelay = 1000
       resetHeartbeat()
-      if (type === 'hello') return  // hello is connection bookkeeping, not a CockpitEvent
+      if (type === 'hello') {
+        // M-3: On reconnect (not first connect), call onReconnect so the consumer
+        // can fetch current DB state to reconcile any events missed during the gap.
+        if (hasConnectedOnce) {
+          try { onReconnectRef.current?.() } catch { /* ignore */ }
+        }
+        hasConnectedOnce = true
+        return  // hello is connection bookkeeping, not a CockpitEvent
+      }
       try {
         onEventRef.current(payload as CockpitEvent)
       } catch { /* ignore */ }

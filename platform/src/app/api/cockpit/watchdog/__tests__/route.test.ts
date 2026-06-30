@@ -29,12 +29,15 @@ function makeReq(secret: string | null = 'test-secret'): NextRequest {
   })
 }
 
-/** Default mock: nothing to reap (0 rows for all three UPDATE clauses). */
+/** Default mock: nothing to reap (0 rows for all clauses + M-4 pruning DELETEs). */
 function noOrphans() {
   mockQuery
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 1. orphan running runs
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 2. stuck building assets
-    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 3. undispatched planned runs
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 3. M-5: UPDATE build_run_assets SET error
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 4. undispatched planned runs
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 5. M-4: DELETE build_run_assets (retention)
+    .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // 6. M-4: DELETE build_runs (retention)
 }
 
 // ─── A — auth gate ────────────────────────────────────────────────────────────
@@ -83,14 +86,17 @@ describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 1. running orphans
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 2. stuck assets
-      .mockResolvedValueOnce({                                    // 3. undispatched
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 3. M-5 UPDATE build_run_assets SET error
+      .mockResolvedValueOnce({                                    // 4. undispatched planned
         rows: [
           { id: 'run-aaa', chart_id: 'chart-111' },
           { id: 'run-bbb', chart_id: 'chart-222' },
         ],
         rowCount: 2,
       })
-      .mockResolvedValueOnce({ rows: [], rowCount: 2 })          // 4. abort assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 2 })          // 5. abort queued assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 6. M-4 DELETE build_run_assets
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 7. M-4 DELETE build_runs
 
     const { POST } = await import('../route')
     const res = await POST(makeReq())
@@ -99,9 +105,9 @@ describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
     const body = await res.json()
     expect(body.undispatched_runs_failed).toBe(2)
 
-    // The 4th query must be the build_run_assets abort update
+    // The 5th query (index 4) must be the build_run_assets abort update
     const calls = mockQuery.mock.calls as [string, unknown[]][]
-    const assetAbortCall = calls[3]
+    const assetAbortCall = calls[4]
     expect(assetAbortCall[0]).toMatch(/UPDATE build_run_assets/)
     expect(assetAbortCall[0]).toMatch(/aborted/)
     // run IDs passed as array param
@@ -112,26 +118,26 @@ describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
     noOrphans()
     const { POST } = await import('../route')
     await POST(makeReq())
-    // Only 3 UPDATE calls; no 4th (asset abort)
-    expect(mockQuery).toHaveBeenCalledTimes(3)
+    // 6 queries total: 3 reapers + M-5 UPDATE + 2 M-4 DELETEs; no asset-abort (7th) call
+    expect(mockQuery).toHaveBeenCalledTimes(6)
+    const calls = mockQuery.mock.calls as [string][]
+    // None of the 6 calls should be the asset-abort UPDATE (which targets aborted state)
+    expect(calls.every(c => !(/aborted/.test(c[0])))).toBe(true)
   })
 
   it('undispatched reaper SQL targets planned + started_at IS NULL + created_at threshold', async () => {
-    mockQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
-
+    noOrphans()
     const { POST } = await import('../route')
     await POST(makeReq())
 
+    // M-5 UPDATE moved to slot 3 (index 2); undispatched is now slot 4 (index 3)
     const calls = mockQuery.mock.calls as [string][]
-    const thirdCall = calls[2][0]
-    expect(thirdCall).toMatch(/state = 'planned'/)
-    expect(thirdCall).toMatch(/started_at IS NULL/)
-    expect(thirdCall).toMatch(/created_at/)
-    expect(thirdCall).toMatch(/10 minutes/)
-    expect(thirdCall).toMatch(/orphan-watchdog: run never dispatched/)
+    const undispatchedCall = calls[3][0]
+    expect(undispatchedCall).toMatch(/state = 'planned'/)
+    expect(undispatchedCall).toMatch(/started_at IS NULL/)
+    expect(undispatchedCall).toMatch(/created_at/)
+    expect(undispatchedCall).toMatch(/10 minutes/)
+    expect(undispatchedCall).toMatch(/orphan-watchdog: run never dispatched/)
   })
 })
 

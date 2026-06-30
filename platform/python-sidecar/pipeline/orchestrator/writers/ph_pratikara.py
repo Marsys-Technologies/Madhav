@@ -98,49 +98,46 @@ class PhPratikaraWriter(WriterBase):
 
                 rec = derive_mitigation_record(mctx)
 
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_mitigation (
-                            chart_id, obstruction_id, linked_anchor_id,
-                            afflicting_graha, obstruction_severity,
-                            program_jsonb, tradition_options_jsonb, recommended_tier_jsonb,
-                            intensity_tier, proportionality_basis,
-                            initiation_muhurta_ref,
-                            window_start, window_end, re_evaluation_date,
-                            outcome_hook_jsonb, classical_citation,
-                            cross_tradition_corroboration,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s, %s,
-                            %s, %s,
-                            %s::jsonb, %s::jsonb, %s::jsonb,
-                            %s, %s,
-                            %s,
-                            %s, %s, %s,
-                            %s::jsonb, %s,
-                            %s,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT DO NOTHING
-                        """,
-                        (
-                            chart_id, rec.obstruction_id, rec.linked_anchor_id,
-                            rec.afflicting_graha, rec.obstruction_severity,
-                            json.dumps(rec.program_jsonb),
-                            json.dumps(rec.tradition_options_jsonb),
-                            json.dumps(rec.recommended_tier_jsonb),
-                            rec.intensity_tier, rec.proportionality_basis,
-                            rec.initiation_muhurta_ref,
-                            rec.window_start, rec.window_end, rec.re_evaluation_date,
-                            json.dumps(rec.outcome_hook_jsonb), rec.classical_citation,
-                            rec.cross_tradition_corroboration,
-                            json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_mitigation (
+                        chart_id, obstruction_id, linked_anchor_id,
+                        afflicting_graha, obstruction_severity,
+                        program_jsonb, tradition_options_jsonb, recommended_tier_jsonb,
+                        intensity_tier, proportionality_basis,
+                        initiation_muhurta_ref,
+                        window_start, window_end, re_evaluation_date,
+                        outcome_hook_jsonb, classical_citation,
+                        cross_tradition_corroboration,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s, %s,
+                        %s, %s,
+                        %s::jsonb, %s::jsonb, %s::jsonb,
+                        %s, %s,
+                        %s,
+                        %s, %s, %s,
+                        %s::jsonb, %s,
+                        %s,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_pratikara: insert failed for obstruction %s: %s", obs_id, exc)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        chart_id, rec.obstruction_id, rec.linked_anchor_id,
+                        rec.afflicting_graha, rec.obstruction_severity,
+                        json.dumps(rec.program_jsonb),
+                        json.dumps(rec.tradition_options_jsonb),
+                        json.dumps(rec.recommended_tier_jsonb),
+                        rec.intensity_tier, rec.proportionality_basis,
+                        rec.initiation_muhurta_ref,
+                        rec.window_start, rec.window_end, rec.re_evaluation_date,
+                        json.dumps(rec.outcome_hook_jsonb), rec.classical_citation,
+                        rec.cross_tradition_corroboration,
+                        json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_pratikara: inserted %d rows into phala_mitigation for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_pratikara', rows_inserted=rows_inserted)

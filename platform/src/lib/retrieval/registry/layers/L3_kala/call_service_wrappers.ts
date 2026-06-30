@@ -19,6 +19,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // ── call_transit_search ───────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ export const callEphemerisAtTCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha (default: 'LAHIRI').",
+      description: "Ayanamsha (default: 'lahiri_chitrapaksha').",
     },
   },
 
@@ -194,7 +195,7 @@ export const callEphemerisAtTCapability: CapabilityDescriptor = {
       return { content: { error: 'datetime_utc is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
 
     // ka_graha_sancara is a compute service (asset_registry target_table = null) — there is no
     // ka_graha_sancara_snapshot table to query. Positions at an arbitrary datetime must be
@@ -380,7 +381,7 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha (default: 'LAHIRI').",
+      description: "Ayanamsha (default: 'lahiri_chitrapaksha').",
     },
   },
 
@@ -396,7 +397,7 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
     }
 
     const event_class  = args['event_class'] as string | undefined
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
 
     // ka_muhurta_seva is a compute service (asset_registry target_table = null) — there is no
     // ka_muhurta_scores table to query. Muhurta scoring for an arbitrary datetime must be
@@ -449,7 +450,7 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha (default: 'LAHIRI').",
+      description: "Ayanamsha (default: 'lahiri_chitrapaksha').",
     },
     date_from: {
       type: 'string',
@@ -476,7 +477,7 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const date_from    = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
     const date_to      = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
     const top_k        = Math.min(Number(args['top_k'] ?? 20), 100)

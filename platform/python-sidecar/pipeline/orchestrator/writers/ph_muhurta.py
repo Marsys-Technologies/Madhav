@@ -126,49 +126,46 @@ class PhMuhurtaWriter(WriterBase):
 
                 rec = derive_muhurta_record(mctx)
 
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_muhurta (
-                            chart_id, action_class, window_start, window_end,
-                            hora_lord, panchanga_score, chart_personalization_score,
-                            personalization_graha, personal_adversity_penalty,
-                            overlapping_obstruction_id, linked_anchor_id,
-                            composite_quality, window_quality_verdict, verdict_reason,
-                            panchanga_snapshot_jsonb, classical_citation,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s, %s, %s,
-                            %s, %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s, %s, %s,
-                            %s::jsonb, %s,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT DO NOTHING
-                        """,
-                        (
-                            chart_id, rec.action_class,
-                            rec.window_start, rec.window_end,
-                            rec.hora_lord, rec.panchanga_score,
-                            rec.chart_personalization_score,
-                            rec.personalization_graha,
-                            rec.personal_adversity_penalty,
-                            rec.overlapping_obstruction_id,
-                            rec.linked_anchor_id,
-                            rec.composite_quality,
-                            rec.window_quality_verdict,
-                            rec.verdict_reason,
-                            json.dumps(rec.panchanga_snapshot_jsonb or {}),
-                            rec.classical_citation,
-                            json.dumps(rec.derivation_ledger_jsonb),
-                            rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_muhurta (
+                        chart_id, action_class, window_start, window_end,
+                        hora_lord, panchanga_score, chart_personalization_score,
+                        personalization_graha, personal_adversity_penalty,
+                        overlapping_obstruction_id, linked_anchor_id,
+                        composite_quality, window_quality_verdict, verdict_reason,
+                        panchanga_snapshot_jsonb, classical_citation,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s,
+                        %s, %s,
+                        %s, %s, %s,
+                        %s::jsonb, %s,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_muhurta: insert failed for anchor %s: %s", anchor_id, exc)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        chart_id, rec.action_class,
+                        rec.window_start, rec.window_end,
+                        rec.hora_lord, rec.panchanga_score,
+                        rec.chart_personalization_score,
+                        rec.personalization_graha,
+                        rec.personal_adversity_penalty,
+                        rec.overlapping_obstruction_id,
+                        rec.linked_anchor_id,
+                        rec.composite_quality,
+                        rec.window_quality_verdict,
+                        rec.verdict_reason,
+                        json.dumps(rec.panchanga_snapshot_jsonb or {}),
+                        rec.classical_citation,
+                        json.dumps(rec.derivation_ledger_jsonb),
+                        rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_muhurta: inserted %d rows into phala_muhurta for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_muhurta', rows_inserted=rows_inserted)

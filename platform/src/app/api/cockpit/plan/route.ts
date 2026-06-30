@@ -46,6 +46,38 @@ export async function POST(req: NextRequest) {
     const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
     const flatPlan = buildPlan.plan_waves.flat()
 
+    // L-12: Run the same bo_* precondition checks that runs/route.ts performs, so the plan preview
+    // shows accurate `blocked`/`blockers` state rather than an optimistic plan that would fail at
+    // dispatch time.  Only run when the plan would include Bodha (bo_*) assets.
+    let preconditionBlockers: string[] = []
+    if (flatPlan.some((id: string) => id.startsWith('bo_'))) {
+      const planBuildsL1 = flatPlan.includes('ga_positions') && flatPlan.includes('ga_structural')
+      const [chartFactsRes, gaStructuralRes, remedyCorpusRes] = await Promise.all([
+        query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM chart_facts WHERE chart_id=$1',
+          [chart_id]
+        ),
+        query<{ state: string }>(
+          `SELECT state FROM asset_throughput WHERE chart_id=$1 AND asset_id='ga_structural'`,
+          [chart_id]
+        ),
+        query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM brahma_remedy_corpus'
+        ),
+      ])
+      if (!planBuildsL1) {
+        if (parseInt(chartFactsRes.rows[0]?.count ?? '0', 10) === 0) {
+          preconditionBlockers.push('chart_facts is empty — build L1 (Gaṇita) layer first')
+        }
+        if (gaStructuralRes.rows[0]?.state !== 'lit') {
+          preconditionBlockers.push('ga_structural is not lit — build L1 (Gaṇita) layer first')
+        }
+      }
+      if (parseInt(remedyCorpusRes.rows[0]?.count ?? '0', 10) === 0) {
+        preconditionBlockers.push('brahma_remedy_corpus is empty — build L0 (Brahmagyan) layer first')
+      }
+    }
+
     // Query historical median duration per asset in the resolved plan
     const medianResult = await query<{ asset_id: string; median_seconds: number }>(
       `SELECT asset_id,
@@ -69,7 +101,21 @@ export async function POST(req: NextRequest) {
       estimated_seconds = (estimated_seconds ?? 0) + perAsset
     }
 
-    return NextResponse.json({ data: { ...buildPlan, estimated_seconds } })
+    // Include precondition blockers in the response alongside the plan data.
+    // `blocked` merges plan-level blocking (upstream stale/error) with precondition blocking.
+    const isBlocked = buildPlan.status === 'blocked' || preconditionBlockers.length > 0
+    const allBlockers = [
+      ...(buildPlan.blockers ?? []),
+      ...preconditionBlockers,
+    ]
+
+    return NextResponse.json({
+      data: {
+        ...buildPlan,
+        estimated_seconds,
+        ...(isBlocked ? { blocked: true, blockers: allBlockers } : {}),
+      },
+    })
   } catch (err) {
     console.error('[cockpit/plan]', err)
     return NextResponse.json({ error: 'db error' }, { status: 500 })

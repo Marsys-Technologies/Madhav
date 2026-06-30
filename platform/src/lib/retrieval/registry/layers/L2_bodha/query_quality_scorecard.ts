@@ -15,6 +15,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 export const queryQualityScorecardCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_quality_scorecard',
@@ -49,7 +50,7 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha label echoed back for caller context (default: 'LAHIRI'). The scorecard is not split by ayanamsha — it is keyed by chart_id + build_id — so this value does not filter rows.",
+      description: "Ayanamsha label echoed back for caller context (default: 'lahiri_chitrapaksha'). The scorecard is not split by ayanamsha — it is keyed by chart_id + build_id — so this value does not filter rows.",
     },
   },
 
@@ -69,7 +70,7 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
 
     try {
       const scorecardSql = `
