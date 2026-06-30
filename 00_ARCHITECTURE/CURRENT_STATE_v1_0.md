@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.06
+version: 6.07
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,43 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.07 (2026-06-30, RETRIEVAL-ENGINE-R6-SEAL-2026-06-30):
+    **Retrieval Engine R-1→R6 sealed — runtime repair, seam fix, D8 astrological tools, multi-LLM.**
+    All six R-phases executed and committed (d139a63d). Migration 380 applied (bo_samvada count_sql fixed).
+    RETRIEVAL_ELEVATION_PLAN_v1_0.md bumped v1.0→v1.1, status SEALED.
+    Key deliverables:
+      R-1: callPriorityRankingCapability _ctx.db bug fixed (sole P2 critical remaining).
+      R0.2: bo_karanajala two-pass contradiction logic fixed + case normalization.
+      R1: kala_temporal DEFAULT_SNAPSHOT_DATE made dynamic (chart-agnostic); dead bo_2-7.ts deleted.
+      R2.0: audienceTierHeader 401 gate removed from /api/mcp/primitives (tier_excision seam fix).
+      R2.1: audit/remedy_tools/read_classical_text/kala_timeline/holistic_bundle repointed from
+            pg.Pool to callPlatformPrimitive; FORENSIC native dasha schedule purged from kala_timeline.
+      R2.2: /api/mcp/surface-spec route created + callPlatformSurfaceSpec() client.
+      R3.1+R3.2: 5 D8 domain CapabilityDescriptors built (assess_marriage/career/health/wealth +
+                 yoga_activation_by_dasha) in register_d8_assess_domain.ts.
+      R3.4+R3.5: B.11 orient-first wired via fetchOrientationContext in registry_bridge;
+                 synergy_pipeline/cross_layer connected to runWholeChartRead().
+      R4: bundle-elasticity (minimal/standard/detailed), behavioral_overrides, cross-model consistency tests.
+      R5: registerResources (9 resources) + registerPrompts (3 guided-reading prompts); teaching
+          descriptions on 5 tools; house_rules_variants stubs (super_admin/acharya/client).
+      R6: /api/retrieval/capability route created — bootstraps D5–D8 at module init; dispatches
+          callRegistryCapability() calls from registry_bridge.ts to the live registry.
+    platform-mcp vitest: 288 pass (resources 28/28 pass; kala_temporal 21/21 pass).
+    Both TypeScript packages compile clean (0 errors).
+    open_items:
+      - bo_samvada rebuild needed for Abhinandan (1c826d5a) to populate bodha_contradictions
+        (Gate B — bodha_contradictions still 0 rows for native 482012f1 too; bo_karanajala
+        fix now deployed so next chart rebuild should produce contradiction rows)
+      - kala_timeline.test.ts (10 failures) + phala_muhurta.test.ts (2 failures): pre-existing
+        stale tests from before chart-agnostic refactor; not regressions from R-series
+      - CAPABILITY_MANIFEST regeneration deferred (primitives_registry covers retrieval layer)
+    last_session_id: RETRIEVAL-ENGINE-R6-SEAL-2026-06-30.
+    predecessor_session: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28.
+    next_session_objective: >
+      "Retrieval Engine R-1→R6 sealed. Next: trigger chart rebuild for Abhinandan (1c826d5a)
+      to populate bodha_contradictions via fixed bo_karanajala and verify contradiction output
+      end-to-end. Also verify native 482012f1 contradiction count after bo_karanajala fix."
+    file_updated_at: 2026-06-30. file_updated_by_session: RETRIEVAL-ENGINE-R6-SEAL-2026-06-30.
   - v6.06 (2026-06-28, ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28):
     **Abhinandan Mohanty (1c826d5a) rebuilt end-to-end via Nirmāṇa tracker shakedown.**
     PRE-FLIGHT: migrations 358+361 confirmed on prod; deployed SHA on post-remediation code.

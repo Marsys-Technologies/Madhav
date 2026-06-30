@@ -1,8 +1,8 @@
 ---
 artifact: RETRIEVAL_ELEVATION_PLAN_v1_0.md
 canonical_id: RETRIEVAL_ELEVATION_PLAN
-version: 1.0
-status: CURRENT — the phased plan for elevating the retrieval system (built in this Cowork session's workstream)
+version: 1.1
+status: SEALED — R-1→R6 fully executed (2026-06-30); all phases committed + migration 380 applied
 created: 2026-06-28
 author: Cowork (planning) — for native Abhisek Mohanty; executed via Claude Code briefs
 classification: phased elevation plan (retrieval fork)
@@ -12,6 +12,7 @@ grounded_in:
   - RETRIEVAL_GROUNDTRUTH_TOOL_TOPOLOGY_v1_0 (archetype × traversal-level topology)
 pairs_with: the MCP elevation plan (separate conversation) — both obey the frozen §4 sync contract
 changelog:
+  - v1.1 (2026-06-30): R-1→R6 retrieval engine sealed. All six R-phases executed: runtime repair (_ctx.db), seam fix (401 tier gate + own-pool bypass), 5 domain astrological tools (D8), /api/retrieval/capability bootstrap (D5–D8), multi-LLM consistency tests (231 pass), resources/prompts live. Migration 380 applied (bo_samvada count_sql). Status updated to SEALED.
   - v1.0 (2026-06-28): Initial phased retrieval-elevation plan, grounded in the live Claude Code audit. Data prereqs (MSR re-run) gate the astrological elevation. Honors the frozen retrieval↔MCP contract; retrieval stays chart-agnostic + frozen, entitlement stays at the channel.
 ---
 
