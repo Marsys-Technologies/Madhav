@@ -352,7 +352,7 @@ class TestTaraBalaBadeline:
         """17. Tara bala baseline: exactly 27 rows per ayanamsha."""
         w = _writer()
         rows = w._emit_tara_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         assert len(rows) == 27
@@ -361,7 +361,7 @@ class TestTaraBalaBadeline:
         """18. Tara bala: native's own nakshatra (Purva Bhadrapada=25) → Janma."""
         w = _writer()
         rows = w._emit_tara_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         # Purva Bhadrapada = short code PPB
@@ -373,7 +373,7 @@ class TestTaraBalaBadeline:
         """19. Tara bala: nakshatra 2 ahead from birth (UPB=26) → Sampat; 3 ahead (REV=27) → Vipat."""
         w = _writer()
         rows = w._emit_tara_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         by_subj = {r["fact_subject"]: r["fact_value_text"] for r in rows}
@@ -386,7 +386,7 @@ class TestTaraBalaBadeline:
         """20. Tara bala: all tara_class values are valid enum members."""
         w = _writer()
         rows = w._emit_tara_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         for r in rows:
@@ -404,7 +404,7 @@ class TestChandraBalaBadeline:
         """21. Chandra bala baseline: exactly 12 rows per ayanamsha."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         assert len(rows) == 12
@@ -413,7 +413,7 @@ class TestChandraBalaBadeline:
         """22. Chandra bala: birth Moon sign Kumbha → favorable (position=1)."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         kumbha_rows = [r for r in rows if r["fact_subject"] == "TRANSIT_SIGN_KUMBHA"]
@@ -426,7 +426,7 @@ class TestChandraBalaBadeline:
         """23. Chandra bala: 2nd sign from Kumbha (Meena) → unfavorable (position=2)."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         # Meena = sign_id=12, position from Kumbha(11) = (12-11)%12+1 = 2 → unfavorable
@@ -438,7 +438,7 @@ class TestChandraBalaBadeline:
         """24. Chandra bala: all classification values are valid enum members."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         for r in rows:
@@ -452,7 +452,7 @@ class TestSubjectPatterns:
         """25. _emit_tara_bala_baseline: all subjects match TRANSIT_NAK_{SHORT} pattern."""
         w = _writer()
         rows = w._emit_tara_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         pat = re.compile(r"^TRANSIT_NAK_[A-Z]+$")
@@ -465,7 +465,7 @@ class TestSubjectPatterns:
         """26. _emit_chandra_bala_baseline: all subjects match TRANSIT_SIGN_{NAME} pattern."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         pat = re.compile(r"^TRANSIT_SIGN_[A-Z]+$")
@@ -511,8 +511,8 @@ class TestFactIdUniqueness:
         rows += w._emit_yoga(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at)
         rows += w._emit_karana(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at)
         rows += w._emit_nakshatra_moon(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
-        rows += w._emit_tara_bala_baseline(CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
-        rows += w._emit_chandra_bala_baseline(CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
+        rows += w._emit_tara_bala_baseline(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
+        rows += w._emit_chandra_bala_baseline(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
 
         fact_ids = [r["fact_id"] for r in rows]
         assert len(fact_ids) == len(set(fact_ids)), (
@@ -535,8 +535,8 @@ class TestValueQuality:
         rows += w._emit_karana(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at)
         rows += w._emit_nakshatra_moon(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
         rows += w._emit_disha_shul(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at)
-        rows += w._emit_tara_bala_baseline(CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
-        rows += w._emit_chandra_bala_baseline(CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
+        rows += w._emit_tara_bala_baseline(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
+        rows += w._emit_chandra_bala_baseline(forensic_pi, CANONICAL_CHART_ID, BUILD_ID, computed_at, ay)
         return rows
 
     def test_citation_human_non_empty_and_ends_with_period(self, forensic_pi):
@@ -735,7 +735,7 @@ class TestChandraBalaSigns:
         """50. _emit_chandra_bala_baseline: all 12 sign names are valid SIGN_NAMES members."""
         w = _writer()
         rows = w._emit_chandra_bala_baseline(
-            CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
+            _make_forensic_pi(), CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00",
             "lahiri_chitrapaksha"
         )
         assert len(rows) == 12
