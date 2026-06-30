@@ -13,11 +13,12 @@ RETRY_DELAY=6  # seconds
 check_health() {
   local url="$1"
   local label="$2"
+  local path="${3:-/api/health}"
   local attempt=1
 
   while [ $attempt -le $MAX_RETRIES ]; do
-    echo "  [${label}] attempt ${attempt}/${MAX_RETRIES} → ${url}/api/health"
-    status=$(curl --silent --max-time 15 --write-out '%{http_code}' --output /dev/null "${url}/api/health" || echo "000")
+    echo "  [${label}] attempt ${attempt}/${MAX_RETRIES} → ${url}${path}"
+    status=$(curl --silent --max-time 15 --write-out '%{http_code}' --output /dev/null "${url}${path}" || echo "000")
     if [ "$status" = "200" ]; then
       echo "  [${label}] OK (HTTP 200)"
       return 0
@@ -32,6 +33,6 @@ check_health() {
 }
 
 echo "=== Post-deploy smoke ==="
-check_health "$WEB_URL"     "amjis-web"
-check_health "$SIDECAR_URL" "amjis-sidecar"
+check_health "$WEB_URL"     "amjis-web"     "/api/health"
+check_health "$SIDECAR_URL" "amjis-sidecar" "/health"
 echo "=== Smoke PASS ==="
