@@ -456,6 +456,7 @@ jobs:
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
+            PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
   # ── /4.edge_and_infra_hygiene ──
 
   # ── Orchestrator Convergence Phase 1: brahma-pipeline job image under CI ──
