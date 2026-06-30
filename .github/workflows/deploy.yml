@@ -312,14 +312,14 @@ jobs:
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
 
       - name: Post-deploy smoke
-        continue-on-error: true
+        id: smoke
         env:
           SMOKE_WEB_URL: ${{ steps.deploy.outputs.url }}
         run: |
-          bash scripts/operator/end_to_end_smoke.sh \
-            || echo "WARN: smoke failed — promoting traffic anyway; operator should verify /api/health auth chain"
+          bash scripts/operator/end_to_end_smoke.sh
 
       - name: Promote traffic to latest revision
+        if: success()
         run: |
           gcloud run services update-traffic amjis-web \
             --to-latest \
@@ -378,7 +378,17 @@ jobs:
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
           # ── 4.edge_and_infra_hygiene ──
           # Per-service least-priv runtime SA (see infra/iam/main.tf).
-          flags: --timeout=300 --cpu=2 --memory=1Gi --min-instances=0 --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
+          flags: >-
+            --timeout=300
+            --cpu=2
+            --memory=1Gi
+            --min-instances=0
+            --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
+            --startup-probe-path=/api/health
+            --startup-probe-initial-delay=5
+            --startup-probe-timeout=10
+            --startup-probe-period=10
+            --startup-probe-failure-threshold=3
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
@@ -494,6 +504,8 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
             --task-timeout=86400 \
+            --memory=4Gi \
+            --cpu=2 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
             --quiet
 
