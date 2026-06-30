@@ -49,6 +49,8 @@ import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
 // D7 — Registry bridge: consolidated workflow tools from the retrieval registry
 import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
+// M2 — Chart selection: list_my_charts + select_chart
+import { registerChartSelectionTools } from './tools/chart_selection.js'
 // R5 — Richness Layer: MCP resources (9 registered) + guided-reading prompts
 import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
@@ -152,6 +154,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // These are chart-agnostic: chart_id required on per_chart tools, no default.
   registerRegistryBridgeTools(server)
 
+  // M2 — Chart selection: list_my_charts + select_chart (2 tools)
+  // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.
+  registerChartSelectionTools(server, principal)
+
   // R5 — Richness Layer: 9 MCP resources + 3 guided-reading prompts
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
@@ -192,8 +198,9 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // L4 Phala (event_anchors + mitigation_map + muhurta_finder + phala_outlook): 4
 // L5 Mīmāṃsā (lel_query + record_outcome): 2
 // D7 Registry bridge (registerRegistryBridgeTools — 14 MCP tools): 14
-// Total: 43
-const REGISTERED_TOOL_COUNT = 43
+// M2 Chart selection (list_my_charts + select_chart): 2
+// Total: 45
+const REGISTERED_TOOL_COUNT = 45
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
