@@ -88,9 +88,9 @@ class KaBhavishyaLekhaWriter(WriterBase):
             tier = _assign_tier(eff_score, net_label)
 
             # B4-consume: prefer kc.domain (set by A3 migration 361) over keyword inference.
-            # Fall back to keyword inference only if convergence domain is NULL or absent.
+            # Validate against kala_bhavishya check constraint; fall back to inference if outside allowed set.
             conv_domain = row.get('domain') if has_domain_col else None
-            if conv_domain:
+            if conv_domain and conv_domain in _ALLOWED_DOMAINS:
                 domain = conv_domain
             else:
                 domain = _infer_domain(rank, net_label, signal_type_map.get(str(signal_id) if signal_id else ''))
@@ -154,6 +154,7 @@ def _assign_tier(effective_score: float, net_label: str) -> str:
 
 
 _DOMAINS = ['career', 'health', 'relationship', 'finance', 'spiritual', 'education', 'general']
+_ALLOWED_DOMAINS = set(_DOMAINS)  # mirrors kala_bhavishya_domain_check constraint
 
 # CF.L3.5: keyword sets for signal_type_id → domain mapping.
 # Checked in order; first match wins; falls through to rank rotation.
