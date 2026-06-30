@@ -55,38 +55,35 @@ class PhSodhanaWriter(WriterBase):
         rows_inserted = 0
         with conn.cursor() as cur:
             for rec in flags:
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_sodhana (
-                            chart_id, anchor_id,
-                            anomaly_type, anomaly_severity, detected_field,
-                            expected_value_text, observed_value_text,
-                            leakage_class, recommendation_text,
-                            auto_action,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s,
-                            %s, %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT DO NOTHING
-                        """,
-                        (
-                            chart_id, rec.anchor_id,
-                            rec.anomaly_type, rec.anomaly_severity, rec.detected_field,
-                            rec.expected_value_text, rec.observed_value_text,
-                            rec.leakage_class, rec.recommendation_text,
-                            rec.auto_action,
-                            json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_sodhana (
+                        chart_id, anchor_id,
+                        anomaly_type, anomaly_severity, detected_field,
+                        expected_value_text, observed_value_text,
+                        leakage_class, recommendation_text,
+                        auto_action,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s,
+                        %s, %s, %s,
+                        %s, %s,
+                        %s, %s,
+                        %s,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_sodhana: insert failed for anchor %s: %s", rec.anchor_id, exc)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        chart_id, rec.anchor_id,
+                        rec.anomaly_type, rec.anomaly_severity, rec.detected_field,
+                        rec.expected_value_text, rec.observed_value_text,
+                        rec.leakage_class, rec.recommendation_text,
+                        rec.auto_action,
+                        json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_sodhana: inserted %d rows into phala_sodhana for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_sodhana', rows_inserted=rows_inserted)
