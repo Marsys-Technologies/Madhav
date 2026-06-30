@@ -123,11 +123,40 @@ export async function invokeBuildJob(
   })
 }
 
+/**
+ * Local dev: spawn the orchestrator as a detached child process instead of
+ * dispatching to Cloud Run. Inherits DATABASE_URL + all other env vars from
+ * the Next.js server process (populated from .env.local).
+ */
+async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> {
+  const { spawn } = await import('child_process')
+  const nodePath = await import('path')
+  const repoRoot = process.env.MARSYS_REPO_ROOT ?? nodePath.resolve(process.cwd(), '..')
+  const pythonPath = process.env.LOCAL_PYTHON_PATH ?? nodePath.join(repoRoot, '.venv', 'bin', 'python')
+  const sidecarDir = nodePath.join(repoRoot, 'platform', 'python-sidecar')
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      pythonPath,
+      ['-m', 'pipeline.orchestrator.main', '--run-id', runId],
+      { cwd: sidecarDir, env: { ...process.env }, detached: true, stdio: 'ignore' },
+    )
+    proc.on('error', reject)
+    proc.unref()
+    // Give Node one tick to surface any immediate spawn error (bad path etc.)
+    // before resolving so the API caller can propagate it correctly.
+    setImmediate(() => resolve({ executionName: `local-pid-${proc.pid ?? 0}` }))
+  })
+}
+
 /** New orchestrator: invoke with --run-id only. */
 export async function invokeRunJob(
   runId: string,
   opts: { env?: JobInvokerEnv; transport?: JobTransport } = {},
 ): Promise<JobInvocationResult> {
+  if (process.env.BUILD_EXECUTOR === 'local') {
+    return invokeRunJobLocally(runId)
+  }
   const env = opts.env ?? readJobInvokerEnv()
   const transport = opts.transport ?? (await defaultTransport())
   return transport.runJob({

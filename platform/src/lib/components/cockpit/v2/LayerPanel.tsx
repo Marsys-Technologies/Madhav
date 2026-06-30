@@ -156,26 +156,29 @@ export function LayerPanel({
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-label={`${layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
-        onClick={() => setExpanded(!expanded)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
-        }}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '220px 230px 1fr',
-          alignItems: 'center',
-          columnGap: '20px',
-          padding: '12px 16px',
-          cursor: 'pointer',
-          background: 'var(--black-raised)',
-        }}
-      >
+      {/* Header — outer flex wrapper keeps toggle and actions as siblings so
+           action buttons are NOT nested inside role=button (a11y correctness). */}
+      <div style={{ display: 'flex', alignItems: 'center', background: 'var(--black-raised)' }}>
+        {/* Toggle region — clicking here expands/collapses the layer */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`${layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
+          onClick={() => setExpanded(!expanded)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
+          }}
+          style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: '220px 230px',
+            alignItems: 'center',
+            columnGap: '20px',
+            padding: '12px 16px',
+            cursor: 'pointer',
+          }}
+        >
         {/* Left: rotating caret + status dot + bilingual name block */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           <motion.svg
@@ -227,7 +230,6 @@ export function LayerPanel({
         {/* Gauge — fixed 230px grid column */}
         <div
           style={{ fontFamily: 'var(--mono-stack)' }}
-          onClick={e => e.stopPropagation()}
         >
           {/* Two-column numeric row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3px' }}>
@@ -267,10 +269,11 @@ export function LayerPanel({
           </div>
         </div>
 
-        {/* Actions — 1fr column, buttons right-anchored */}
+        </div>{/* end toggle region */}
+
+        {/* Actions — sibling of toggle div, NOT inside role=button */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}
-          onClick={e => e.stopPropagation()}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', flexShrink: 0 }}
         >
           {/* Build/Rebuild — hidden when layer run active; role-gated for brahmagyan */}
           {!layerRunId && (isSuperAdmin || layer !== 'brahmagyan') && (
