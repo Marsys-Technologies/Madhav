@@ -127,6 +127,10 @@ export async function invokeBuildJob(
  * Local dev: spawn the orchestrator as a detached child process instead of
  * dispatching to Cloud Run. Inherits DATABASE_URL + all other env vars from
  * the Next.js server process (populated from .env.local).
+ *
+ * H-6: Grace-period race detects immediate spawn failure (ENOENT/EACCES) and
+ *      immediate process death within 200ms, rather than resolving blindly.
+ * M-6: stderr is piped so Python import errors and tracebacks reach the logs.
  */
 async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> {
   const { spawn } = await import('child_process')
@@ -134,19 +138,38 @@ async function invokeRunJobLocally(runId: string): Promise<JobInvocationResult> 
   const repoRoot = process.env.MARSYS_REPO_ROOT ?? nodePath.resolve(process.cwd(), '..')
   const pythonPath = process.env.LOCAL_PYTHON_PATH ?? nodePath.join(repoRoot, '.venv', 'bin', 'python')
   const sidecarDir = nodePath.join(repoRoot, 'platform', 'python-sidecar')
+  const args = ['-m', 'pipeline.orchestrator.main', '--run-id', runId]
 
-  return new Promise((resolve, reject) => {
-    const proc = spawn(
-      pythonPath,
-      ['-m', 'pipeline.orchestrator.main', '--run-id', runId],
-      { cwd: sidecarDir, env: { ...process.env }, detached: true, stdio: 'ignore' },
-    )
-    proc.on('error', reject)
-    proc.unref()
-    // Give Node one tick to surface any immediate spawn error (bad path etc.)
-    // before resolving so the API caller can propagate it correctly.
-    setImmediate(() => resolve({ executionName: `local-pid-${proc.pid ?? 0}` }))
+  const proc = spawn(
+    pythonPath,
+    args,
+    { cwd: sidecarDir, env: { ...process.env }, detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
+  )
+
+  // Capture stderr so Python import errors and tracebacks reach the logs (M-6)
+  const stderrChunks: Buffer[] = []
+  proc.stderr!.on('data', (chunk: Buffer) => stderrChunks.push(chunk))
+
+  // Race: error event (immediate ENOENT/EACCES) vs. 200ms grace (process started OK) (H-6)
+  await Promise.race([
+    new Promise<void>((_, reject) => proc.once('error', (err) => reject(err))),
+    new Promise<void>((resolve) => setTimeout(resolve, 200)),
+  ])
+
+  // Check if process died immediately after the grace period
+  if (proc.exitCode !== null && proc.exitCode !== 0) {
+    const stderr = Buffer.concat(stderrChunks).toString().slice(0, 2000)
+    throw new Error(`Python orchestrator exited immediately (code ${proc.exitCode}): ${stderr}`)
+  }
+
+  proc.unref()
+
+  // Continue logging stderr from the background process after we've confirmed it started
+  proc.stderr!.on('data', (chunk: Buffer) => {
+    console.error('[orchestrator:stderr]', chunk.toString().trimEnd())
   })
+
+  return { executionName: `local-pid-${proc.pid ?? 0}` }
 }
 
 /** New orchestrator: invoke with --run-id only. */

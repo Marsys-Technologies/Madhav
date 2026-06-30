@@ -76,16 +76,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Gate 0: 409 — block if an active run already exists for this chart
-  const activeCheck = await query<{ id: string }>(
-    `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
-    [chart_id]
-  )
-  if (activeCheck.rows.length > 0) {
-    return NextResponse.json(
-      { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE', existing_run_id: activeCheck.rows[0].id },
-      { status: 409 }
-    )
+  // Gate 0: 409 — block if an active run already exists for this chart.
+  // M-14: Wrapped in SERIALIZABLE transaction to prevent TOCTOU race where two simultaneous
+  // POST requests both pass the SELECT check and both INSERT a new run.
+  {
+    const pool = await getPool()
+    const checkClient = await pool.connect()
+    try {
+      await checkClient.query('BEGIN ISOLATION LEVEL SERIALIZABLE')
+      const activeCheck = await checkClient.query<{ id: string }>(
+        `SELECT id FROM build_runs WHERE chart_id=$1 AND state IN ('planned','running','paused') LIMIT 1`,
+        [chart_id]
+      )
+      await checkClient.query('COMMIT')
+      if (activeCheck.rows.length > 0) {
+        return NextResponse.json(
+          { error: 'A build is already in progress for this chart', code: 'RUN_ACTIVE', existing_run_id: activeCheck.rows[0].id },
+          { status: 409 }
+        )
+      }
+    } catch (err) {
+      await checkClient.query('ROLLBACK').catch(() => null)
+      throw err
+    } finally {
+      checkClient.release()
+    }
   }
 
   // Gate 1: L0 double-confirm — when clear_before targets brahmagyan, require explicit force_l0.
@@ -339,9 +354,9 @@ export async function POST(req: NextRequest) {
     const jobImageTag = await getJobImageTag().catch(() => null)
     try {
       await invokeRunJob(runId)
-      // Mark dispatched so the UI can distinguish "job sent to Cloud Run" from "still planning".
-      // The orchestrator itself will transition to 'running' when it acquires the chart lock.
-      await query(`UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=$1 AND state='planned'`, [runId])
+      // M-1: Do NOT pre-mark as 'running' here. The run stays in 'planned' until the orchestrator
+      // itself transitions it to 'running' after acquiring the chart advisory lock. This prevents
+      // a phantom 'running' state when the spawned process never actually starts.
     } catch (err) {
       const errMsg = (err as Error).message
       console.error('[api/cockpit/runs] invokeRunJob failed after clear — marking run failed:', errMsg)
@@ -385,13 +400,10 @@ export async function POST(req: NextRequest) {
   // Invoke Cloud Run Job — failure is fatal: mark the run failed so it doesn't orphan as 'planned'
   try {
     await invokeRunJob(runId)
-    // Mark running immediately after dispatch so the UI reflects "job sent" vs "still planned".
-    // The orchestrator transitions to 'running' again when it acquires the chart advisory lock —
-    // the COALESCE(started_at, NOW()) ensures the first write wins on started_at.
-    await query(
-      `UPDATE build_runs SET state='running', started_at=COALESCE(started_at, NOW()) WHERE id=$1 AND state='planned'`,
-      [runId]
-    )
+    // M-1: Do NOT pre-mark as 'running' here. The run stays in 'planned' until the orchestrator
+    // itself transitions it to 'running' after acquiring the chart advisory lock. The watchdog's
+    // "planned > 10 min with no transition" reaper handles the case where the orchestrator never
+    // starts (undispatched run reaper already present in watchdog/route.ts).
   } catch (err) {
     const errMsg = (err as Error).message
     console.error('[api/cockpit/runs] invokeRunJob failed — marking run failed:', errMsg)
