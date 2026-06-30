@@ -16,6 +16,7 @@ import hashlib
 import logging
 import os
 import re
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -59,23 +60,31 @@ _BNN_CHART_LABELS_RE = re.compile(
 
 # ── google-genai embedding client ─────────────────────────────────────────────
 
+# L-3: double-checked locking for thread-safe singleton init. The outer
+# `if _genai_client is not None` fast-path avoids lock contention once the
+# client is initialised; the inner check inside the lock prevents a second
+# initialisation when two threads race through the outer check simultaneously.
+_genai_client_lock = threading.Lock()
 _genai_client: Any = None
 
 
 def _get_genai_client() -> Any:
     global _genai_client
-    if _genai_client is None:
-        from google import genai  # type: ignore[import]
-        _genai_client = genai.Client(
-            vertexai=True,
-            project=GCP_PROJECT,
-            location=VERTEX_LOCATION,
-        )
-        logger.info(
-            "[bg_texts] genai client init: project=%s location=%s model=%s",
-            GCP_PROJECT, VERTEX_LOCATION, EMBED_MODEL,
-        )
-    return _genai_client
+    if _genai_client is not None:
+        return _genai_client
+    with _genai_client_lock:
+        if _genai_client is None:
+            from google import genai  # type: ignore[import]
+            _genai_client = genai.Client(
+                vertexai=True,
+                project=GCP_PROJECT,
+                location=VERTEX_LOCATION,
+            )
+            logger.info(
+                "[bg_texts] genai client init: project=%s location=%s model=%s",
+                GCP_PROJECT, VERTEX_LOCATION, EMBED_MODEL,
+            )
+        return _genai_client
 
 
 def _embed_batch(texts: list[str]) -> list[list[float]]:
