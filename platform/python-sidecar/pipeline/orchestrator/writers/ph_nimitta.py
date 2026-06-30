@@ -490,7 +490,7 @@ class PhNimittaWriter(WriterBase):
             signal_domain=sm.get('domain'),
             signal_signature_class=sm.get('signature_class'),
             signal_salience=sm.get('salience_score'),
-            cgm_path_ids=[p.get('path_id') for p in cgm.get('paths', [])],
+            cgm_path_ids=[str(p['path_id']) for p in cgm.get('paths', []) if p.get('path_id')],
             cgm_centrality=cgm.get('max_path_length'),
             root_graha=cgm.get('paths', [{}])[0].get('path_label_human') if cgm.get('paths') else None,
             precedent_signal_ids=prec.get('nearest_signal_ids', []),
