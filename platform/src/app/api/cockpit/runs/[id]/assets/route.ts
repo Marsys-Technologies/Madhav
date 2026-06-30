@@ -1,77 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
-import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
 
-export async function POST(req: NextRequest) {
-  // Plan preview is a read-only operation — any authenticated user may call it.
-  // super_admin gate removed so the plan modal works for all users with cockpit access.
-  // NOTE: destructive operations (clear, stop, global build) retain their super_admin gates.
+export const maxDuration = 8
+
+async function requireSuperAdmin() {
   const user = await getServerUser()
+  if (!user) return null
+  const { rows } = await query<{ role: string }>('SELECT role FROM profiles WHERE id=$1', [user.uid])
+  if (rows[0]?.role !== 'super_admin') return null
+  return user
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await requireSuperAdmin()
   if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const body = await req.json().catch(() => null)
-  if (!body?.chart_id || !body?.scope || !body?.action) {
-    return NextResponse.json({ error: 'chart_id, scope, and action are required' }, { status: 400 })
-  }
-
-  const { chart_id, scope, scope_target = null, action } = body as {
-    chart_id: string
-    scope: BuildScope
-    scope_target?: string | null
-    action: BuildAction
-  }
+  const { id } = await params
 
   try {
-    const [registryResult, throughputResult] = await Promise.all([
-      query<RegistryEntry>(
-        `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-         FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
-      ),
-      query<ThroughputEntry>(
-        // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that
-        // global assets (L0 bg_*, global services) report their real built state. Without the
-        // global rows the resolver treats every built L0 asset as "not built" and wrongly
-        // BLOCKS its downstream ("run the Brahmagyan layer first") for any layer/asset-scoped
-        // build. DISTINCT ON prefers the chart-scoped row when both exist.
-        `SELECT DISTINCT ON (asset_id) asset_id, state
-           FROM asset_throughput
-          WHERE chart_id=$1 OR chart_id IS NULL
-          ORDER BY asset_id, (chart_id = $1) DESC NULLS LAST`,
-        [chart_id]
-      ),
-    ])
+    const { rows } = await query<{
+      asset_id: string
+      position: number
+      state: string
+      started_at: string | null
+      ended_at: string | null
+      error: string | null
+      sanskrit_name: string
+      english_name: string
+      layer: string
+      target_floor: number | null
+      rows_written: number | null
+    }>(`
+      SELECT
+        bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at,
+        COALESCE(bra.error, at2.last_error) AS error,
+        ar.sanskrit_name, ar.english_name, ar.layer, ar.target_floor,
+        at2.rows_written
+      FROM build_run_assets bra
+      JOIN build_runs br ON br.id = bra.run_id
+      JOIN asset_registry ar ON ar.asset_id = bra.asset_id
+      LEFT JOIN asset_throughput at2
+        ON at2.asset_id = bra.asset_id
+        AND at2.chart_id = br.chart_id
+        AND at2.ayanamsha_id IS NULL
+      WHERE bra.run_id = $1
+      ORDER BY bra.position
+    `, [id])
 
-    const throughput = new Map(throughputResult.rows.map(r => [r.asset_id, r]))
-    const buildPlan = resolveBuildPlan({ scope, scope_target, action, registry: registryResult.rows, throughput })
-    const flatPlan = buildPlan.plan_waves.flat()
-
-    // Query historical median duration per asset in the resolved plan
-    const medianResult = await query<{ asset_id: string; median_seconds: number }>(
-      `SELECT asset_id,
-              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
-                EXTRACT(EPOCH FROM (ended_at - started_at))
-              )::numeric AS median_seconds
-       FROM build_run_assets
-       WHERE asset_id = ANY($1)
-         AND ended_at IS NOT NULL
-         AND started_at IS NOT NULL
-         AND state = 'complete'
-       GROUP BY asset_id`,
-      [flatPlan]
-    )
-    const medianByAsset = new Map(medianResult.rows.map(r => [r.asset_id, Number(r.median_seconds)]))
-
-    let estimated_seconds: number | null = flatPlan.length === 0 ? null : 0
-    for (const assetId of flatPlan) {
-      const perAsset = medianByAsset.get(assetId) ?? null
-      if (perAsset === null) { estimated_seconds = null; break }
-      estimated_seconds = (estimated_seconds ?? 0) + perAsset
-    }
-
-    return NextResponse.json({ data: { ...buildPlan, estimated_seconds } })
+    return NextResponse.json({ data: { run_assets: rows } })
   } catch (err) {
-    console.error('[cockpit/plan]', err)
+    console.error('[cockpit/runs/assets]', err)
     return NextResponse.json({ error: 'db error' }, { status: 500 })
   }
 }
