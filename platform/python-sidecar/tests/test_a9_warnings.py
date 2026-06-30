@@ -15,6 +15,7 @@ from __future__ import annotations
 import collections
 import importlib.util
 import pathlib
+import pytest
 import sys
 import time
 import types
@@ -216,41 +217,13 @@ class TestW2SwissephUnavailable:
         _ensure_writers_stub()
         return _load_module("ka_vighnakara.py")
 
-    def test_swisseph_unavailable_returns_zero_rows_not_silent_stubs(self):
-        """W2: when swisseph cannot be imported, writer returns 0 rows with explicit notes."""
-        mod = self._load()
+    def test_swisseph_unavailable_raises_runtime_error(self):
+        """W2: when swisseph cannot be imported, writer raises RuntimeError (not silent zeros).
 
-        ctx = MagicMock()
-        ctx.config = {"chart_id": "test-chart-id"}
-
-        peak = date(2026, 3, 15)
-        conv_row = ("conv-1", "sig-1", "dasha", peak, 0.8, 0.9, peak, peak)
-
-        conn = MagicMock()
-        ctx.db_conn = conn
-
-        cm = MagicMock()
-        cm.__enter__ = MagicMock(return_value=cm)
-        cm.__exit__ = MagicMock(return_value=False)
-        conn.cursor.return_value = cm
-        cm.fetchall.return_value = [conv_row]
-
-        # Patch swisseph to be unavailable
-        with patch.dict(sys.modules, {"swisseph": None}):
-            writer = mod.KaVighnakaraWriter()
-            result = writer.run(ctx)
-
-        assert result.rows_inserted == 0, (
-            f"Expected rows_inserted=0 when swisseph unavailable, got {result.rows_inserted}"
-        )
-        assert result.notes is not None, "Expected non-None notes when swisseph unavailable"
-        notes_lower = result.notes.lower()
-        assert "swisseph" in notes_lower or "ephemeris" in notes_lower, (
-            f"Notes should mention swisseph/ephemeris, got: '{result.notes}'"
-        )
-
-    def test_swisseph_unavailable_does_not_insert_rows(self):
-        """W2 contrast: no INSERT INTO kala_obstruction when swisseph is absent."""
+        H-5 (2026-06-30): changed from returning rows_inserted=0 with notes to raising
+        RuntimeError so the orchestrator SAVEPOINT marks the asset as failed — visible error
+        is better than silent 0-row success for an operator debugging a container config issue.
+        """
         mod = self._load()
 
         ctx = MagicMock()
@@ -268,14 +241,41 @@ class TestW2SwissephUnavailable:
 
         with patch.dict(sys.modules, {"swisseph": None}):
             writer = mod.KaVighnakaraWriter()
-            writer.run(ctx)
+            with pytest.raises(RuntimeError, match="swisseph not available"):
+                writer.run(ctx)
 
-        # executemany must NOT have been called (no INSERT with stub rows)
+    def test_swisseph_unavailable_does_not_insert_rows(self):
+        """W2 contrast: no INSERT INTO kala_obstruction when swisseph is absent.
+
+        Even though the writer now raises RuntimeError (H-5), no rows must be inserted
+        before the exception propagates — the contract is fail-fast, not fail-silent.
+        """
+        mod = self._load()
+
+        ctx = MagicMock()
+        ctx.config = {"chart_id": "test-chart-id"}
+
+        peak = date(2026, 3, 15)
+        conn = MagicMock()
+        ctx.db_conn = conn
+
+        cm = MagicMock()
+        cm.__enter__ = MagicMock(return_value=cm)
+        cm.__exit__ = MagicMock(return_value=False)
+        conn.cursor.return_value = cm
+        cm.fetchall.return_value = [("conv-1", "sig-1", "dasha", peak, 0.8, 0.9, peak, peak)]
+
+        with patch.dict(sys.modules, {"swisseph": None}):
+            writer = mod.KaVighnakaraWriter()
+            with pytest.raises(RuntimeError):
+                writer.run(ctx)
+
+        # executemany must NOT have been called (no INSERT before the raise)
         assert not cm.executemany.called, (
             "executemany was called even though swisseph was unavailable — "
-            "silent stub rows were being inserted."
+            "rows were being inserted before the RuntimeError."
         )
-        # DELETE must NOT have been called (prior data must not be wiped before swisseph check)
+        # DELETE must NOT have been called before the swisseph check
         delete_calls = [c for c in cm.execute.call_args_list if "DELETE" in str(c)]
         assert not delete_calls, (
             f"DELETE was called before swisseph check: {delete_calls}"
