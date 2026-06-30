@@ -119,14 +119,37 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       console.error('[mcp:auth] last_used_at update failed', err)
     })
 
+    const role = await resolveMcpPrincipalRole(row.user_uid)
+
     return {
       user_uid: row.user_uid,
       // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
       key_id: row.key_id,
+      role,
     }
   } catch (err) {
     console.error('[mcp:auth] validateMcpKey DB error', err)
     return null
+  }
+}
+
+/**
+ * Resolve the Firebase role for a given user UID.
+ * Reads from the profiles table; defaults to 'guest' if no row found.
+ * Used by both the Bearer-key path and the OAuth path.
+ */
+export async function resolveMcpPrincipalRole(
+  userUid: string
+): Promise<'guest' | 'super_admin'> {
+  try {
+    const { rows } = await query<{ role: string }>(
+      `SELECT role FROM profiles WHERE id = $1 LIMIT 1`,
+      [userUid]
+    )
+    const r = rows[0]?.role
+    return r === 'super_admin' ? 'super_admin' : 'guest'
+  } catch {
+    return 'guest'
   }
 }
 

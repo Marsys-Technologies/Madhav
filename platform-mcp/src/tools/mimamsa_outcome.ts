@@ -29,6 +29,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -221,7 +223,7 @@ const AYANAMSHAS = [
  *   import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
  *   registerMimamsaOutcomeTool(server)
  */
-export function registerMimamsaOutcomeTool(server: McpServer): void {
+export function registerMimamsaOutcomeTool(server: McpServer, principal: Principal): void {
   // ── Tool 1: record_outcome ─────────────────────────────────────────────────
 
   server.tool(
@@ -287,6 +289,15 @@ export function registerMimamsaOutcomeTool(server: McpServer): void {
         ),
     },
     async (params) => {
+      if (params.chart_id) {
+        const authorized = await remoteAuthorize(principal, params.chart_id, 'all')
+        if (!authorized) {
+          return {
+            content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to write outcomes for this chart' }],
+            isError: true,
+          }
+        }
+      }
       try {
         const result = await recordOutcome(
           params.prediction_id,

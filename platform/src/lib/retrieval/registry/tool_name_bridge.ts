@@ -380,3 +380,17 @@ export function isAllowedSurgicalTool(
 ): mcpToolName is keyof typeof MCP_TO_RETRIEVAL_TOOL {
   return Object.hasOwn(MCP_TO_RETRIEVAL_TOOL, mcpToolName)
 }
+
+/**
+ * Returns true if the MCP tool name maps to a per_chart capability.
+ * Used by the primitives route to decide whether to enforce authorizeChartAccess.
+ * Returns false for global/agnostic tools and for unknown tool names.
+ */
+export function isPerChartPrimitive(mcpToolName: string): boolean {
+  const retrievalName = MCP_TO_RETRIEVAL_TOOL[mcpToolName]
+  if (!retrievalName) return false
+  const uri = TOOL_NAME_TO_URI[retrievalName]
+  if (!uri) return false
+  const cap = getCapability(uri)
+  return cap?.scope === 'per_chart'
+}

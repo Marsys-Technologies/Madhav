@@ -27,6 +27,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -118,7 +120,7 @@ async function callSidecar<T>(
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
-export function registerMimamsaLelIntakeTool(server: McpServer): void {
+export function registerMimamsaLelIntakeTool(server: McpServer, principal: Principal): void {
   // REMEDIATION D7 (RULE-3): scrubbed native name + event count from LLM-visible description.
   // Also added required chart_id parameter (RULE-1: per_chart tools must have chart_id).
   // The LEL corpus is per-chart calibration data — chart_id is required to scope it.
@@ -171,6 +173,13 @@ export function registerMimamsaLelIntakeTool(server: McpServer): void {
         return {
           content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'chart_id is required', tool: 'lel_query' }, null, 2) }],
           isError: true as const,
+        }
+      }
+      const authorized = await remoteAuthorize(principal, params.chart_id)
+      if (!authorized) {
+        return {
+          content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }],
+          isError: true,
         }
       }
       try {

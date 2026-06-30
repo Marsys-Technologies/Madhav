@@ -27,8 +27,11 @@ import {
   resolveToolUri,
   TOOL_NAME_TO_URI,
   isAllowedSurgicalTool,
+  isPerChartPrimitive,
   MCP_TO_RETRIEVAL_TOOL,
 } from '@/lib/retrieval/registry/tool_name_bridge'
+import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import type { QueryPlan } from '@/lib/router/types'
 import {
   buildEnvelope,
@@ -181,6 +184,28 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const toolParams = body.params ?? {}
+
+  // M0 entitlement gate — enforce authorizeChartAccess for per_chart primitives.
+  if (isPerChartPrimitive(mcpToolName)) {
+    const chartId =
+      (toolParams['chart_id'] as string | undefined) ??
+      request.headers.get('x-mcp-chart-id') ??
+      null
+    if (!chartId) {
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'validation', message: 'CHART_REQUIRED', remediation: 'Supply chart_id in params or X-MCP-Chart-Id header for per-chart tools.' }),
+        { status: 400 }
+      )
+    }
+    const role = await resolveMcpPrincipalRole(userUid)
+    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (perm === 'deny') {
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: `Caller does not have access to chart ${chartId}` }),
+        { status: 401 }
+      )
+    }
+  }
 
   // Generate a trace ID for this primitive call
   const queryId = crypto.randomUUID()

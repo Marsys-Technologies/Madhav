@@ -19,24 +19,26 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
 // ── Fetch helpers ──────────────────────────────────────────────────────────────
 
-async function fetchPrimitive(toolName: string, params: Record<string, unknown>): Promise<unknown> {
+async function fetchPrimitive(toolName: string, params: Record<string, unknown>, userUid: string): Promise<unknown> {
   try {
     const response = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${toolName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
-        'X-MCP-User': 'system',
+        'X-MCP-User': userUid,
         'X-MCP-Audience-Tier': 'super_admin',
         'X-MCP-Key-Id': 'resource-loader',
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ params }),
       signal: AbortSignal.timeout(10_000),
     })
     if (!response.ok) return null
@@ -196,16 +198,16 @@ function renderKarakas(facts: ChartFactRow[]): string[] {
 
 // ── Snapshot generator ─────────────────────────────────────────────────────────
 
-async function generateChartSnapshot(): Promise<string> {
+async function generateChartSnapshot(chartId: string, userUid: string): Promise<string> {
   const now = new Date().toISOString()
   const today = now.slice(0, 10)
 
   // Fetch in parallel — planet category covers positions + karaka attributes
   const [planetFacts, karakaFacts, dashaPeriods, panchanga] = await Promise.all([
-    fetchPrimitive('query_chart_facts', { category: 'planet', divisional_chart: 'D1', limit: 100 }),
-    fetchPrimitive('query_chart_facts', { category: 'karaka', limit: 50 }),
-    fetchPrimitive('query_dasha_periods', { active_only: true }),
-    fetchPrimitive('query_panchanga', { date: today }),
+    fetchPrimitive('query_chart_facts', { chart_id: chartId, category: 'planet', divisional_chart: 'D1', limit: 100 }, userUid),
+    fetchPrimitive('query_chart_facts', { chart_id: chartId, category: 'karaka', limit: 50 }, userUid),
+    fetchPrimitive('query_dasha_periods', { chart_id: chartId, active_only: true }, userUid),
+    fetchPrimitive('query_panchanga', { date: today }, userUid),
   ])
 
   // Merge all chart_facts rows (planet rows may contain CHARA_KARAKA attrs; karaka category holds dedicated rows)
@@ -282,16 +284,30 @@ async function generateChartSnapshot(): Promise<string> {
 
 // ── Registration ───────────────────────────────────────────────────────────────
 
-export function registerChartSnapshot(server: McpServer): void {
+export function registerChartSnapshot(server: McpServer, principal: Principal): void {
+  // M0: parametrize with {chart_id} so each user's session accesses their own chart.
+  // The resource template URI includes the chart_id, and remoteAuthorize gates access.
   server.resource(
     'chart-snapshot',
-    new ResourceTemplate('marsys://chart-snapshot', { list: undefined }),
-    async (_uri) => {
-      const text = await generateChartSnapshot()
+    new ResourceTemplate('marsys://chart-snapshot/{chart_id}', { list: undefined }),
+    async (uri, _variables) => {
+      // Extract chart_id from the URI path (matches chart_bundle_resource.ts pattern)
+      const chartId = (uri.pathname ?? '').replace(/^\//, '')
+      if (!chartId) {
+        return { contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Error: chart_id required in URI (marsys://chart-snapshot/{chart_id})' }] }
+      }
+
+      // M0 entitlement gate — authorize before fetching
+      const authorized = await remoteAuthorize(principal, chartId)
+      if (!authorized) {
+        return { contents: [{ uri: uri.href, mimeType: 'text/plain', text: `Error: AUTHZ_DENIED for chart ${chartId}` }] }
+      }
+
+      const text = await generateChartSnapshot(chartId, principal.user_uid)
       return {
         contents: [
           {
-            uri: 'marsys://chart-snapshot',
+            uri: uri.href,
             mimeType: 'text/markdown',
             text,
           },

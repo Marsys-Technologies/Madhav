@@ -147,6 +147,28 @@ export async function POST(request: Request, { params }: RouteParams) {
     )
   }
 
+  // M0 entitlement gate — authorize chart access when chart_id is supplied.
+  const chartId = body['chart_id'] as string | undefined
+  if (chartId && (action === 'record_outcome' || action === 'log_prediction')) {
+    const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
+    const { resolveMcpPrincipalRole } = await import('@/lib/mcp/auth')
+    const { query } = await import('@/lib/db/client')
+    const role = await resolveMcpPrincipalRole(userUid)
+    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (action === 'record_outcome' && perm !== 'all') {
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'record_outcome requires write (all) permission for this chart' }),
+        { status: 401 }
+      )
+    }
+    if (action === 'log_prediction' && perm === 'deny') {
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'log_prediction requires view permission for this chart' }),
+        { status: 401 }
+      )
+    }
+  }
+
   // Build common epistemics block for write responses.
   const epistemics = buildEpistemicsBlock({ surgical: true })
 

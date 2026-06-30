@@ -92,11 +92,18 @@ app.post('/mcp', async (req: Request, res: Response) => {
     const token = authHeader.slice('Bearer '.length)
     const oauthRecord = validateAccessToken(token)
     if (oauthRecord) {
-      // Map OAuth principal to MCP Principal shape
+      // M0: fail-closed if uid is unset — do not mint an 'anonymous'-owned principal
+      // that would then fail the entitlement gate opaquely. Full DB-backed OAuth is M5.
+      if (!oauthRecord.uid || oauthRecord.uid === 'anonymous') {
+        res.status(401).json({ error: 'Unauthorized', message: 'OAuth token carries no verified uid' })
+        return
+      }
+      // Map OAuth principal to MCP Principal shape (role defaults to 'guest'; M5 will resolve from DB)
       principal = {
         user_uid: oauthRecord.uid,
         key_id: 'oauth:' + token.slice(0, 8),
-      } as Principal
+        role: 'guest',
+      } satisfies Principal
     }
   }
 
@@ -124,8 +131,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
-  registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts direct read (L2 Bodha — chart-agnostic)
-  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-agnostic)
+  registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts direct read (L2 Bodha — chart-SCOPED; requires chart_id)
+  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-SCOPED; requires chart_id)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools
@@ -146,7 +153,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerRegistryBridgeTools(server)
 
   // R5 — Richness Layer: 9 MCP resources + 3 guided-reading prompts
-  registerResources(server)
+  // M0: principal passed for chart-snapshot gate
+  registerResources(server, principal)
   registerPrompts(server)
 
   const transport = new StreamableHTTPServerTransport({
@@ -174,9 +182,27 @@ app.get('/mcp', (_req: Request, res: Response) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
+// Tool count computed from registration calls (update when adding/removing tools):
+// L0 Brahmagyan pattern-validation: 5
+// L0 Ephemeris: 5
+// L1 Stream G PyJHora: 3
+// L2 Bodha (holistic_bundle + holistic_bundle_chart_facts): 2
+// L3 Kāla (kala_temporal_bundle): 1
+// L0FR Remedy: 7
+// L4 Phala (event_anchors + mitigation_map + muhurta_finder + phala_outlook): 4
+// L5 Mīmāṃsā (lel_query + record_outcome): 2
+// D7 Registry bridge (registerRegistryBridgeTools — 14 MCP tools): 14
+// Total: 43
+const REGISTERED_TOOL_COUNT = 43
+
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'marsys-mcp', version: '1.0.0', tools: 13,
-    stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'] })
+  res.json({
+    status: 'ok',
+    service: 'marsys-mcp',
+    version: '1.0.0',
+    tools: REGISTERED_TOOL_COUNT,
+    stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'],
+  })
 })
 
 // ── Start server ──────────────────────────────────────────────────────────────

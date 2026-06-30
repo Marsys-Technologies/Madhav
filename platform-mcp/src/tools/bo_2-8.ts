@@ -21,6 +21,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ async function callSidecarHolisticBundle(chartId: string): Promise<HolisticBundl
  */
 export function registerHolisticBundleTool(
   server: McpServer,
-  _principal: Principal
+  principal: Principal
 ): void {
   server.tool(
     // Tool name
@@ -164,6 +165,12 @@ export function registerHolisticBundleTool(
 
     // Handler
     async ({ chart_id }): Promise<{ content: Array<{ type: 'text'; text: string }> }> => {
+      // M0 entitlement gate — require view access to the requested chart
+      const authorized = await remoteAuthorize(principal, chart_id)
+      if (!authorized) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: 'AUTHZ_DENIED', chart_id }) }], isError: true } as never
+      }
+
       const t0 = Date.now()
       let bundle: HolisticBundleResult
 
