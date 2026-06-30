@@ -1085,11 +1085,11 @@ def _emit_eclipse_proximity(pi: Any, chart_id: str, build_id: str,
     return rows
 
 
-def _emit_tara_bala_baseline(chart_id: str, build_id: str, computed_at: str,
+def _emit_tara_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at: str,
                                ayanamsha_id: str) -> list[dict]:
     """
     tara_bala_natal_baseline — 27-row state table per ayanamsha.
-    Native birth nakshatra = Purva Bhadrapada (id 25).
+    Birth nakshatra derived from pi.nakshatra.id (chart-specific).
     Each row: subject=TRANSIT_NAK_<SHORT>, key=tara_class, value=Janma/Sampat/...
     """
     cat = "tara_bala_natal_baseline"
@@ -1097,7 +1097,12 @@ def _emit_tara_bala_baseline(chart_id: str, build_id: str, computed_at: str,
     vp = "single"
     rows = []
 
-    birth_nak_id = NATIVE_MOON_NAK_ID  # 25 = Purva Bhadrapada
+    birth_nak_id = (
+        pi.nakshatra.id
+        if (pi and pi.nakshatra and pi.nakshatra.id)
+        else NATIVE_MOON_NAK_ID
+    )
+    birth_nak_name = NAKSHATRA_NAMES[birth_nak_id - 1] if 1 <= birth_nak_id <= 27 else "unknown"
 
     for transit_nak_idx in range(27):  # 0-indexed → nak_id = idx+1
         transit_nak_id = transit_nak_idx + 1
@@ -1115,18 +1120,18 @@ def _emit_tara_bala_baseline(chart_id: str, build_id: str, computed_at: str,
                          value_text=tara_class,
                          citation_human=(
                              f"When transit Moon is in {nak_name}, "
-                             f"Tara state for native (birth nak=Purva Bhadrapada): "
+                             f"Tara state for native (birth nak={birth_nak_name}): "
                              f"{tara_class} ({ayanamsha_id})."
                          ),
                          verification_pass_status=vp, computed_at=computed_at))
     return rows
 
 
-def _emit_chandra_bala_baseline(chart_id: str, build_id: str, computed_at: str,
+def _emit_chandra_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at: str,
                                   ayanamsha_id: str) -> list[dict]:
     """
     chandra_bala_natal_baseline — 12-row state table per ayanamsha.
-    Native birth Moon sign = Kumbha (Aquarius, id=11).
+    Birth Moon sign derived from pi.nakshatra.id (chart-specific).
     Each row: subject=TRANSIT_SIGN_<NAME>, key=classification.
     """
     cat = "chandra_bala_natal_baseline"
@@ -1134,7 +1139,15 @@ def _emit_chandra_bala_baseline(chart_id: str, build_id: str, computed_at: str,
     vp = "single"
     rows = []
 
-    birth_moon_sign_id = NATIVE_MOON_SIGN_ID  # 11 = Kumbha
+    birth_nak_id = (
+        pi.nakshatra.id
+        if (pi and pi.nakshatra and pi.nakshatra.id)
+        else NATIVE_MOON_NAK_ID
+    )
+    # Derive birth Moon sign from nakshatra start position (standard formula):
+    # each sign spans 2.25 nakshatras; sign_id = floor((nak_id-1)*4/9) + 1
+    birth_moon_sign_id = ((birth_nak_id - 1) * 4) // 9 + 1
+    birth_moon_sign_name = SIGN_NAMES[birth_moon_sign_id - 1] if 1 <= birth_moon_sign_id <= 12 else "unknown"
 
     for sign_idx in range(12):  # 0-indexed → sign_id = idx+1
         sign_id = sign_idx + 1
@@ -1149,7 +1162,7 @@ def _emit_chandra_bala_baseline(chart_id: str, build_id: str, computed_at: str,
                          value_text=classification,
                          citation_human=(
                              f"When transit Moon is in {sign_name}, "
-                             f"Chandra Bala for native (birth Moon sign=Kumbha): "
+                             f"Chandra Bala for native (birth Moon sign={birth_moon_sign_name}): "
                              f"{classification} ({ayanamsha_id})."
                          ),
                          verification_pass_status=vp, computed_at=computed_at))
@@ -1343,11 +1356,11 @@ def build_ga_panchanga(
         dep_rows += _emit_eclipse_proximity(pi, chart_id, build_id, computed_at, ay)
         dep_rows += _emit_bhadra_flag(pi, chart_id, build_id, computed_at, ay)
 
-        # Tara bala baseline (27 rows per ayanamsha)
-        dep_rows += _emit_tara_bala_baseline(chart_id, build_id, computed_at, ay)
+        # Tara bala baseline (27 rows per ayanamsha) — derived from this chart's birth nakshatra
+        dep_rows += _emit_tara_bala_baseline(pi, chart_id, build_id, computed_at, ay)
 
-        # Chandra bala baseline (12 rows per ayanamsha)
-        dep_rows += _emit_chandra_bala_baseline(chart_id, build_id, computed_at, ay)
+        # Chandra bala baseline (12 rows per ayanamsha) — derived from this chart's birth Moon sign
+        dep_rows += _emit_chandra_bala_baseline(pi, chart_id, build_id, computed_at, ay)
 
         summary["dependent_rows_by_ayanamsha"][ay] = len(dep_rows)
         all_dependent.extend(dep_rows)

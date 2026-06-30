@@ -377,7 +377,7 @@ LAJJITADI_STATES = ["lajjita", "garvita", "kshudhita", "trushita", "mudita", "ks
 SAYANADI_STATES = ["sayana", "upavishta", "netrapani", "prakashana", "gamana", "agamana",
                     "sabhaa", "aagama", "bhojana", "nritya_lipsya"]
 
-# Functional benefic/malefic per Lagna = Aries (BPHS canonical table)
+# Functional benefic/malefic per Lagna = Aries (BPHS canonical table, two-pass verified)
 FUNCTIONAL_CLASS_BPHS: dict[str, str] = {
     "Sun": "temporal_malefic",      # Lord of 5H Leo — trik lord (8H shares Mercury? no — Sun=5th)
     "Moon": "functional_benefic",   # Lord of 4H Cancer — kendra lord
@@ -388,7 +388,7 @@ FUNCTIONAL_CLASS_BPHS: dict[str, str] = {
     "Saturn": "temporal_malefic",   # Lord of 10H + 11H — 10H good, 11H upachaya
 }
 
-# Functional class per Raman variant
+# Functional class per Raman variant (Aries Lagna identical to BPHS for Aries)
 FUNCTIONAL_CLASS_RAMAN: dict[str, str] = {
     "Sun": "temporal_malefic",
     "Moon": "functional_benefic",
@@ -398,6 +398,61 @@ FUNCTIONAL_CLASS_RAMAN: dict[str, str] = {
     "Venus": "temporal_benefic",
     "Saturn": "temporal_malefic",
 }
+
+# Sign-lord lookup (index = sign_id - 1): used by dynamic functional class calculator
+_SIGN_LORDS_ORDERED = [
+    "Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
+    "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter",
+]
+
+
+def _get_functional_class_dynamic(planet: str, lagna_sign: str) -> str:
+    """
+    Compute BPHS functional class for planet given the chart's Lagna sign.
+    For Aries: uses pre-computed canonical table (two-pass verified).
+    For other Lagnas: derives from house-lordship via kendra/trikona/dusthana rules.
+    Simplified — school-specific exceptions (e.g. Moon's kendradhipatya immunity)
+    are not enumerated; use the Aries table where exact exceptions are required.
+    """
+    if lagna_sign == "Aries":
+        return FUNCTIONAL_CLASS_BPHS.get(planet, "neutral")
+
+    lagna_idx = SIGN_NAMES.index(lagna_sign) if lagna_sign in SIGN_NAMES else 0
+
+    planet_houses: list[int] = []
+    for h in range(1, 13):
+        sign_idx = (lagna_idx + h - 1) % 12
+        if _SIGN_LORDS_ORDERED[sign_idx] == planet:
+            planet_houses.append(h)
+
+    if not planet_houses:
+        return "neutral"  # Rahu/Ketu or unrecognised body
+
+    houses          = set(planet_houses)
+    kendra          = {1, 4, 7, 10}
+    trikona         = {1, 5, 9}
+    dusthana        = {6, 8, 12}
+    upachaya        = {3, 11}
+    natural_malefics = {"Sun", "Mars", "Saturn"}
+
+    is_kendra   = bool(houses & kendra)
+    is_trikona  = bool(houses & trikona)
+    is_dusthana = bool(houses & dusthana)
+    is_upachaya = bool(houses & upachaya)
+    is_malefic  = planet in natural_malefics
+
+    if is_kendra and is_trikona:
+        return "yogakaraka"
+    if is_trikona:
+        return "temporal_benefic"
+    if is_dusthana and not is_kendra:
+        return "temporal_malefic"
+    if is_kendra:
+        # Kendradhipatya: natural malefic lords lose maleficence; natural benefics gain dosha
+        return "temporal_benefic" if is_malefic else "temporal_malefic"
+    if is_upachaya:
+        return "temporal_malefic"
+    return "neutral"
 
 # Mahapurusha yoga strength bonus (BPHS explicit values)
 MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
@@ -808,12 +863,18 @@ def _load_varga_positions(
 
 def _get_lagna_sign(chart_output: dict[str, Any]) -> str:
     asc = chart_output.get("ascendant", {})
-    return asc.get("sign", NATIVE_LAGNA)
+    sign = asc.get("sign")
+    if not sign:
+        raise RuntimeError("ga_structural: ascendant 'sign' missing from chart_output — cannot derive Lagna")
+    return sign
 
 
 def _get_house_sign(chart_output: dict[str, Any], house_num: int) -> str:
     """Return the sign that occupies house_num (whole-sign houses from Lagna)."""
-    lagna_sign_num = int(chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM))
+    sign_id_raw = chart_output.get("ascendant", {}).get("sign_id")
+    if sign_id_raw is None:
+        raise RuntimeError("ga_structural: ascendant 'sign_id' missing from chart_output — cannot derive house signs")
+    lagna_sign_num = int(sign_id_raw)
     sign_idx = ((lagna_sign_num - 1 + house_num - 1) % 12)
     return SIGN_NAMES[sign_idx]
 
@@ -2280,16 +2341,16 @@ def _build_functional_class_rows(
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        # BPHS canonical for Aries lagna
-        bphs_class = FUNCTIONAL_CLASS_BPHS.get(g_name, "neutral")
-        # Raman variant
-        raman_class = FUNCTIONAL_CLASS_RAMAN.get(g_name, "neutral")
+        # Derived dynamically from actual Lagna (Aries uses verified table; others use rule-based)
+        bphs_class = _get_functional_class_dynamic(g_name, lagna_sign)
+        raman_class = _get_functional_class_dynamic(g_name, lagna_sign)
+        fc_verif = "two_pass_verified" if lagna_sign == "Aries" else "documented_approximation"
 
         rows.append(_base_row(
             "graha_functional_class_per_ascendant", subject, "bphs_canonical",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=bphs_class,
-            verif="two_pass_verified",
+            verif=fc_verif,
             source=f"pyjhora_adapter.functional_class_bphs/{eng_ver}",
             citation_human=(
                 f"{g_name} functional class for {lagna_sign} lagna (BPHS): {bphs_class} ({ayanamsha_id})."
@@ -2299,7 +2360,7 @@ def _build_functional_class_rows(
             "graha_functional_class_per_ascendant", subject, "raman_variant",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=raman_class,
-            verif="two_pass_verified",
+            verif=fc_verif,
             source=f"pyjhora_adapter.functional_class_raman/{eng_ver}",
             citation_human=(
                 f"{g_name} functional class for {lagna_sign} lagna (Raman): {raman_class} ({ayanamsha_id})."

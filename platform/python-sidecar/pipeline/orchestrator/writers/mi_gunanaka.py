@@ -169,13 +169,13 @@ class MiGunakaWriter(WriterBase):
                 notes=f"dry_run: would insert {len(rows)} multiplier rows",
             )
 
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM mimamsa_multipliers WHERE chart_id = %s", (chart_id,))
-
         if not rows:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 duration_seconds=time.time() - t0,
                                 notes="no signal families found — 0 multiplier rows")
+
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM mimamsa_multipliers WHERE chart_id = %s", (chart_id,))
 
         SQL = """
             INSERT INTO mimamsa_multipliers (
