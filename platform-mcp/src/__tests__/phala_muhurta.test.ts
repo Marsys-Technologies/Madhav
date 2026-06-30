@@ -240,8 +240,10 @@ describe('phala.muhurta contract constants', () => {
     expect(MUHURTA_FINDER_DESCRIPTION).toContain('panchanga_quality')
   })
 
-  it('description references native chart ID for Abhisek Mohanty', () => {
-    expect(MUHURTA_FINDER_DESCRIPTION).toContain('Abhisek Mohanty')
+  it('description does not embed native name or chart ID (chart-agnostic)', () => {
+    expect(MUHURTA_FINDER_DESCRIPTION).not.toContain('Abhisek Mohanty')
+    expect(MUHURTA_FINDER_DESCRIPTION).not.toContain('Mohanty')
+    expect(MUHURTA_FINDER_DESCRIPTION).not.toContain('482012f1')
   })
 
   it('schema rejects missing chart_id', () => {
