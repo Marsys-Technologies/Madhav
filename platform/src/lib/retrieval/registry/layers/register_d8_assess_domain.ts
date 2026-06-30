@@ -25,7 +25,7 @@
  * Design constraints:
  *   - chart_id is ALWAYS required — no native defaults (principle #14)
  *   - Every returned fact carries its signal_id / fact_id reference from L1/L2
- *   - Contradictions graceful-empty (bodha_contradictions = 0 rows, expected state)
+ *   - Contradictions live: bodha_contradictions populated by bo_karanajala (1,034–1,100 rows/aya/chart)
  *   - judgment_flags marks any inference requiring acharya validation
  *   - Calls real handlers (query_domain_reading, query_temporal_activation,
  *     query_contradictions) — no mock/fake data
@@ -61,7 +61,7 @@ async function runAssessDomain(
     return { content: { error: 'chart_id is required' }, is_error: true }
   }
 
-  const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+  const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
   const { domain, domain_label, judgment_flag_note } = opts
 
   try {
@@ -106,7 +106,6 @@ async function runAssessDomain(
     )
 
     // ── Step 3: contradictions / discoveries (L2 Bodha) ───────────────────
-    // bodha_contradictions = 0 rows is EXPECTED state — handle gracefully.
     const { queryContradictionsCapability } = await import(
       './L2_bodha/query_contradictions'
     )
@@ -124,7 +123,7 @@ async function runAssessDomain(
             status: 'no_data',
             note:
               contraContent['contradictions_note'] ??
-              'bodha_contradictions not yet populated for this chart (expected state).',
+              'bodha_contradictions: 0 rows for this chart/ayanamsha — verify chart has been built (bo_karanajala).',
           }
         : {
             status: 'ok',
@@ -534,7 +533,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
     const dasha_period = args['dasha_period'] as string | undefined
     const date_from =
       (args['date_from'] as string | undefined) ??

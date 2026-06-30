@@ -103,6 +103,7 @@ export async function validateMcpKeyFromHeader(
       user_uid: data.user_uid,
       // audience_tier excised (Stream A 3.tier_excision 2026-05-28).
       key_id: data.key_id,
+      role: data.role ?? 'guest',
     }
 
     // F.5: write to cache on successful validation

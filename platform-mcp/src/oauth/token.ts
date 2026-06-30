@@ -92,7 +92,13 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const tokens = issueTokens(authCode.uid ?? 'anonymous', authCode.scopes)
+    // M0: fail-closed — do not mint a token with 'anonymous' uid; it would fail the
+    // entitlement gate opaquely. Full DB-backed OAuth with verified uid is M5.
+    if (!authCode.uid || authCode.uid === 'anonymous') {
+      res.status(400).json({ error: 'invalid_grant', error_description: 'authorization code carries no verified uid; full OAuth identity is not yet supported (M5)' })
+      return
+    }
+    const tokens = issueTokens(authCode.uid, authCode.scopes)
     const response: OAuthTokenResponse = {
       access_token: tokens.access_token,
       token_type: 'Bearer',

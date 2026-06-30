@@ -15,6 +15,7 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../types.js'
 import { registerChartSnapshot } from './chart_snapshot.js'
 import { registerChartOverview } from './chart_overview.js'
 import { registerHouseRules } from './house_rules.js'
@@ -33,11 +34,11 @@ import { registerSutravaliResources } from './sutravali_resource.js'
  *
  * @param server  The McpServer instance to register resources on.
  */
-export function registerResources(server: McpServer): void {
+export function registerResources(server: McpServer, principal: Principal): void {
   // 1. chart-snapshot: structured L1 facts (~2.5k tokens, NEW in v3.1)
   //    Generated at attach time from chart_facts + dasha + panchang.
-  //    No synthesis — pure facts only.
-  registerChartSnapshot(server)
+  //    M0: parametrized with {chart_id} + gated via remoteAuthorize.
+  registerChartSnapshot(server, principal)
 
   // 2. chart-overview: L2.5 synthesis themes (~3k tokens for admin/acharya, ~800 for client)
   //    Top 5 MSR themes + top 2 CDLM contradictions + CGM anchor + LEL life-phase.

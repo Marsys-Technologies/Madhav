@@ -2,12 +2,9 @@
  * query_contradictions — Contradiction & Discovery Query (L2 Bodha)
  * ==================================================================
  * Surfaces contradictions and discoveries from two sources:
- *   - bodha_contradictions (bo_sangati): 0 rows currently — graceful-empty expected
- *   - bodha_discoveries (bo_anveshana): 1,505 rows
- *   - bodha_anomalies (bo_anveshana): 4,265 rows
- *
- * The 0-row state in bodha_contradictions is the CURRENT EXPECTED STATE (V12b).
- * This tool MUST NOT error on empty contradictions — return empty array + note.
+ *   - bodha_contradictions (bo_karanajala): populated — 1,034–1,100 rows per ayanamsha per chart
+ *   - bodha_discoveries (bo_anveshana): rows ranked by composite_discovery_rank
+ *   - bodha_anomalies (bo_anveshana): rows covering detector types
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
@@ -23,12 +20,11 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
 
   description: [
     'Returns synthesis contradictions and discovery findings for a chart.',
-    'Sources: bodha_contradictions (formal contradiction pairs), bodha_discoveries (synthesis discoveries),',
+    'Sources: bodha_contradictions (formal yoga-vs-dosha tension pairs), bodha_discoveries (synthesis discoveries),',
     'and bodha_anomalies (quality anomalies surfaced during L2 build).',
-    'NOTE: bodha_contradictions currently contains 0 rows for all charts — this is expected state',
-    '(contradiction writer pending rebuild). Returns empty array, not error.',
-    'bodha_discoveries: 1,505 rows ranked by composite_discovery_rank (non_obviousness_score gated).',
-    'bodha_anomalies: 4,265 rows covering 5 detector types.',
+    'bodha_contradictions: populated — 1,034–1,100 rows per ayanamsha per chart (built by bo_karanajala).',
+    'bodha_discoveries: rows ranked by composite_discovery_rank (non_obviousness_score gated).',
+    'bodha_anomalies: rows covering detector types.',
     'emits_references: returns signal_id pairs from contradiction pairs as reference list.',
   ].join(' '),
 
@@ -50,7 +46,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
     },
     include_discoveries: {
       type: 'boolean',
@@ -86,7 +82,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
     const include_discoveries  = args['include_discoveries'] !== false
     const include_anomalies    = Boolean(args['include_anomalies'] ?? false)
     const top_k_discoveries    = Math.min(Number(args['top_k_discoveries'] ?? 20), 200)
@@ -94,7 +90,6 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
 
     void _ctx
     try {
-      // Contradictions (expected 0 rows — graceful-empty)
       const contraSql = `
         SELECT contradiction_id, signal_a_id, signal_b_id,
                tension_class, domains_affected_array, combined_salience,
@@ -163,7 +158,7 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
           contradictions:         contraRows,
           contradiction_count:    contraRows.length,
           contradictions_note:    contraRows.length === 0
-            ? 'bodha_contradictions contains 0 rows — expected state; contradiction writer rebuild pending.'
+            ? `bodha_contradictions: 0 rows for chart_id=${chart_id} ayanamsha_id=${ayanamsha_id}. Verify the chart has been built (bo_karanajala) and ayanamsha_id is correct.`
             : undefined,
           discoveries:            include_discoveries ? results[1]?.rows ?? [] : undefined,
           discovery_count:        include_discoveries ? (results[1]?.rows?.length ?? 0) : undefined,

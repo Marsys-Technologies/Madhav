@@ -73,6 +73,19 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
+  // M0 entitlement gate — authorize chart access when chart_id is supplied.
+  const chartId = body['chart_id'] as string | undefined
+  if (chartId) {
+    const { authorizeChartAccess } = await import('../../../../../lib/auth/authorizeChartAccess')
+    const { resolveMcpPrincipalRole } = await import('../../../../../lib/mcp/auth')
+    const { query } = await import('../../../../../lib/db/client')
+    const role = await resolveMcpPrincipalRole(principal.user_uid)
+    const perm = await authorizeChartAccess({ principal: { uid: principal.user_uid, role }, chartId, db: { query } })
+    if (perm === 'deny') {
+      return NextResponse.json({ error: 'AUTHZ_DENIED', chartId }, { status: 401 })
+    }
+  }
+
   if (bundleName !== 'holistic_bundle' && bundleName !== 'multi_school_bundle') {
     return NextResponse.json(
       { error: `Unknown bundle: ${bundleName}. Valid: holistic_bundle, multi_school_bundle` },

@@ -19,6 +19,8 @@ export interface McpPrincipal {
   audience_tier?: string
   /** Short key prefix (key_id column) — included in audit headers. */
   key_id: string
+  /** Firebase role from profiles table. Populated by M0 entitlement gate (2026-06-30). */
+  role: 'guest' | 'super_admin'
 }
 
 // ── Epistemics ────────────────────────────────────────────────────────────────

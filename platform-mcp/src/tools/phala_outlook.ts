@@ -35,6 +35,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -200,7 +202,7 @@ const InputSchema = z.object({
  *   import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
  *   registerPhalaOutlookTool(server)
  */
-export function registerPhalaOutlookTool(server: McpServer): void {
+export function registerPhalaOutlookTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
     'Composite predictive bundle for a chart and forecast horizon (BRAHMA-PH-4-5).\n\n' +
@@ -228,6 +230,14 @@ export function registerPhalaOutlookTool(server: McpServer): void {
     InputSchema.shape,
     async (params) => {
       const input = InputSchema.parse(params)
+
+      const authorized = await remoteAuthorize(principal, input.chart_id)
+      if (!authorized) {
+        return {
+          content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }],
+          isError: true,
+        }
+      }
 
       try {
         const result = await fetchPhalaOutlook(

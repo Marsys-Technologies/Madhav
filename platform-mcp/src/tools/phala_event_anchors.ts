@@ -32,6 +32,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -228,7 +230,7 @@ const InputSchema = z.object({
  *   import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
  *   registerPhalaEventAnchorsTool(server)
  */
-export function registerPhalaEventAnchorsTool(server: McpServer): void {
+export function registerPhalaEventAnchorsTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
     'Return calibrated probabilistic event anchors for a chart and date range (PH-4-1).\n\n' +
@@ -244,6 +246,14 @@ export function registerPhalaEventAnchorsTool(server: McpServer): void {
     InputSchema.shape,
     async (params) => {
       const input = InputSchema.parse(params)
+
+      const authorized = await remoteAuthorize(principal, input.chart_id)
+      if (!authorized) {
+        return {
+          content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }],
+          isError: true,
+        }
+      }
 
       try {
         const result = await fetchEventAnchors(

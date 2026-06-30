@@ -33,6 +33,7 @@
 import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 // ── Input schema ───────────────────────────────────────────────────────────────
 
@@ -150,6 +151,14 @@ export async function handleMitigationMap(
   input: MitigationMapInput,
   principal: Principal
 ): Promise<unknown> {
+  const authorized = await remoteAuthorize(principal, input.chart_id)
+  if (!authorized) {
+    return {
+      content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }],
+      isError: true,
+    }
+  }
+
   const params: Record<string, unknown> = {
     chart_id: input.chart_id,
     limit: input.limit,

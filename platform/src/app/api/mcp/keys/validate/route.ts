@@ -53,5 +53,6 @@ export async function GET(request: Request) {
     user_uid: principal.user_uid,
     // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
     key_id: principal.key_id,
+    role: principal.role,
   })
 }

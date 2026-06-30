@@ -101,6 +101,8 @@ export interface Principal {
   user_uid: string
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   key_id: string
+  /** Role from profiles table. Populated by M0 entitlement gate (2026-06-30). */
+  role: 'guest' | 'super_admin'
 }
 
 // ── Key validation response ───────────────────────────────────────────────────
@@ -111,5 +113,7 @@ export interface KeyValidateResponse {
   user_uid?: string
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   key_id?: string
+  /** Role resolved from profiles table (M0 entitlement gate). */
+  role?: 'guest' | 'super_admin'
   error?: string
 }
