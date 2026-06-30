@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ClearConfirmModal, type ClearPreview } from './ClearConfirmModal'
-import { CascadePreviewModal } from '@/components/cockpit/CascadePreviewModal'
 
 interface Props {
   chartId: string
@@ -18,12 +17,6 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
   const [modalOpen, setModalOpen] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [preview, setPreview] = useState<ClearPreview | null>(null)
-
-  // Post-clear cascade offer
-  const [cascadeAssets, setCascadeAssets] = useState<string[] | null>(null)
-  const [cascadeLoading, setCascadeLoading] = useState(false)
-  const [cascadePlan, setCascadePlan] = useState<string[]>([])
-  const [showCascade, setShowCascade] = useState(false)
 
   async function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
@@ -60,61 +53,10 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
   }
 
   // Called by ClearConfirmModal after a successful clear
-  async function handleSuccess() {
-    const downstream = preview?.downstream_stale_assets ?? []
+  function handleSuccess() {
     setModalOpen(false)
     setPreview(null)
     onSuccess?.()
-
-    if (downstream.length === 0) return
-
-    // Offer cascade rebuild
-    setCascadeAssets(downstream)
-    setCascadeLoading(true)
-    setShowCascade(true)
-    setCascadePlan([])
-    try {
-      const r = await fetch('/api/cockpit/plan', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null, action: 'cascade' }),
-      })
-      const body = await r.json().catch(() => null)
-      if (r.ok && Array.isArray(body?.data?.plan) && body.data.plan.length > 0) {
-        setCascadePlan(body.data.plan as string[])
-      } else {
-        setCascadePlan(downstream)
-      }
-    } catch {
-      setCascadePlan(downstream)
-    } finally {
-      setCascadeLoading(false)
-    }
-  }
-
-  async function handleCascadeConfirm() {
-    setShowCascade(false)
-    try {
-      const r = await fetch('/api/cockpit/runs', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart_id: chartId, scope, scope_target: scopeTarget ?? null, action: 'cascade' }),
-      })
-      const body = await r.json().catch(() => null)
-      if (!r.ok) {
-        toast.error(body?.error ?? 'Failed to start cascade rebuild')
-        return
-      }
-      toast.success('Cascade rebuild started')
-      onSuccess?.()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to start cascade rebuild')
-    } finally {
-      setCascadeAssets(null)
-      setCascadePlan([])
-    }
   }
 
   return (
@@ -181,25 +123,6 @@ export function ClearIconButton({ chartId, scope, scopeTarget, size = 28, onSucc
         />
       )}
 
-      {/* Post-clear cascade rebuild offer */}
-      <CascadePreviewModal
-        isOpen={showCascade}
-        isLoading={cascadeLoading}
-        onClose={() => {
-          setShowCascade(false)
-          setCascadeAssets(null)
-          setCascadePlan([])
-        }}
-        onConfirm={handleCascadeConfirm}
-        rootAssetId={scopeTarget ?? scope}
-        rootAssetLabel={
-          cascadeAssets
-            ? `${cascadeAssets.length} stale downstream asset${cascadeAssets.length !== 1 ? 's' : ''}`
-            : undefined
-        }
-        plan={cascadePlan}
-        isClearCascade
-      />
     </>
   )
 }
