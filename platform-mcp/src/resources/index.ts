@@ -25,6 +25,7 @@ import { registerChartBundleResource } from './chart_bundle_resource.js'
 import { registerMultiAyanamshaResource } from './multi_ayanamsha_resource.js'
 import { registerClassicalTextsResource } from './classical_texts_resource.js'
 import { registerSutravaliResources } from './sutravali_resource.js'
+import { registerChartCatalogResource } from './chart_catalog_resource.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -81,4 +82,9 @@ export function registerResources(server: McpServer, principal: Principal): void
   //      marsys://resource/sutravali/all-by-house/{n}
   //    BRAHMA L0 Stream D (2026-06-07)
   registerSutravaliResources(server)
+
+  // 10. chart catalog: entitled chart list + per-chart metadata resource
+  //     marsys://chart/{chart_id} — list returns only the caller's entitled charts;
+  //     read handler is M0-gated (remoteAuthorize). M2 chart selection (2026-07-01).
+  registerChartCatalogResource(server, principal)
 }
