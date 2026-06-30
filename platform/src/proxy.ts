@@ -42,7 +42,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/mcp/') ||
     pathname.startsWith('/api/admin/internal/') ||
     pathname.startsWith('/api/admin/cron/') ||
-    pathname === '/api/cockpit/watchdog'
+    pathname === '/api/cockpit/watchdog' ||
+    // Safe because /api/retrieval/capability validates X-MCP-Internal-Token before any data access.
+    // Do NOT remove that check — this allowlist entry depends on it.
+    pathname.startsWith('/api/retrieval/')
 
   if (!isPublic) {
     const sessionCookie = request.cookies.get('__session')?.value

@@ -236,35 +236,11 @@ export function registerEphemerisCacheYearTool(server: McpServer): void {
   )
 }
 
-// ── 6. ephemeris_cache_native_lifetime (resource as tool for MCP compat) ──────
-
-const EphemerisCacheNativeLifetimeInput = z.object({})
-
-export function registerEphemerisCacheNativeLifetimeTool(server: McpServer): void {
-  server.tool(
-    'ephemeris_cache_native_lifetime',
-    'Fetch ephemeris coverage statistics for the native\'s lifetime window (1984-2070). ' +
-    'Returns row count, date range, and chart context from the sidecar. ' +
-    'Use as a sanity check before querying native-lifetime transits.',
-    EphemerisCacheNativeLifetimeInput.shape,
-    async (_params) => {
-      try {
-        const result = await sidecarGet('/brahmagyan/ephemeris/native_lifetime_meta')
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: true, message: msg }, null, 2) }],
-          isError: true,
-        }
-      }
-    }
-  )
-}
-
-// ── Convenience: register all 6 ──────────────────────────────────────────────
+// ── Convenience: register all 5 ──────────────────────────────────────────────
+// ephemeris_cache_native_lifetime RETIRED (M0.5 §2.5a): hardcoded "1984-2070"
+// native window leaked the native identity; replaced by chart-agnostic
+// ephemeris_cache_year (tool #5 above). Reverse-citation: no callers outside
+// this file. See CLAUDECODE_BRIEF_MCP_M0_5_INFRA_UNBLOCK §2.5(a).
 
 export function registerEphemerisTools(server: McpServer): void {
   registerQueryPlanetPositionTool(server)
@@ -272,5 +248,4 @@ export function registerEphemerisTools(server: McpServer): void {
   registerQueryAspectsAtTimeTool(server)
   registerQueryRetrogradePeriodsTools(server)
   registerEphemerisCacheYearTool(server)
-  registerEphemerisCacheNativeLifetimeTool(server)
 }
