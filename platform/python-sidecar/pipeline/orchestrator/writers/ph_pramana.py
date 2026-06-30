@@ -72,43 +72,40 @@ class PhPramanaWriter(WriterBase):
             for rec in records:
                 # D5 gate: verify record has no forbidden scoring fields
                 self._d5_gate(rec)
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_pramana (
-                            chart_id, anchor_id,
-                            evidence_type, evidence_strength_label,
-                            falsifier_text, observable_criteria_jsonb,
-                            window_status,
-                            lel_entry_id, lel_entry_jsonb,
-                            linked_sodhana_id,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s,
-                            %s, %s,
-                            %s, %s::jsonb,
-                            %s,
-                            %s, %s::jsonb,
-                            %s,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT DO NOTHING
-                        """,
-                        (
-                            chart_id, rec.anchor_id,
-                            rec.evidence_type, rec.evidence_strength_label,
-                            rec.falsifier_text,
-                            json.dumps(rec.observable_criteria_jsonb),
-                            rec.window_status,
-                            rec.lel_entry_id,
-                            json.dumps(rec.lel_entry_jsonb) if rec.lel_entry_jsonb else None,
-                            rec.linked_sodhana_id,
-                            json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_pramana (
+                        chart_id, anchor_id,
+                        evidence_type, evidence_strength_label,
+                        falsifier_text, observable_criteria_jsonb,
+                        window_status,
+                        lel_entry_id, lel_entry_jsonb,
+                        linked_sodhana_id,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s,
+                        %s, %s,
+                        %s, %s::jsonb,
+                        %s,
+                        %s, %s::jsonb,
+                        %s,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_pramana: insert failed for anchor %s: %s", rec.anchor_id, exc)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (
+                        chart_id, rec.anchor_id,
+                        rec.evidence_type, rec.evidence_strength_label,
+                        rec.falsifier_text,
+                        json.dumps(rec.observable_criteria_jsonb),
+                        rec.window_status,
+                        rec.lel_entry_id,
+                        json.dumps(rec.lel_entry_jsonb) if rec.lel_entry_jsonb else None,
+                        rec.linked_sodhana_id,
+                        json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_pramana: inserted %d rows into phala_pramana for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_pramana', rows_inserted=rows_inserted)

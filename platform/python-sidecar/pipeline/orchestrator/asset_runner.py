@@ -471,20 +471,6 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
     # — safe to retry". Global assets (chart_id is None) are service singletons and
     # always get 'lit' regardless of rows_written.
-    final_state = 'lit'
-    if rows_written == 0 and chart_id is not None:
-        # Check whether the asset declares target_floor=0 (meaning 0 rows = complete
-        # by design, e.g. ga_prashna with no prashna charts). Only write 'dormant'
-        # when target_floor is None or > 0 (i.e. rows were expected but not produced).
-        cur.execute(
-            "SELECT target_floor FROM asset_registry WHERE asset_id = %s",
-            (asset_id,),
-        )
-        _tf_row = cur.fetchone()
-        _target_floor = _tf_row["target_floor"] if _tf_row else None
-        if _target_floor != 0:
-            final_state = 'dormant'
-
     upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
     writer_hash = get_writer_git_hash(asset_id)
 
@@ -505,6 +491,12 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
 
     zero_rows_is_complete = (chart_id is None) or (target_floor == 0)
     final_state = 'lit' if (rows_written > 0 or zero_rows_is_complete) else 'dormant'
+
+    if target_floor and rows_written < target_floor:
+        logger.warning(
+            "asset %s: rows_written=%d below target_floor=%d; marking %s",
+            asset_id, rows_written, target_floor, final_state
+        )
 
     cur.execute(
         """UPDATE asset_throughput

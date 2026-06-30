@@ -146,17 +146,8 @@ class KaVighnakaraWriter(WriterBase):
             import swisseph as swe
             _swe = swe
         except ImportError:
-            logger.warning(
-                "ka_vighnakara: swisseph unavailable — cannot compute transit "
-                "obstruction scores; returning 0 rows (ephemeris required)"
-            )
-            return WriterResult(
-                asset_id='ka_vighnakara',
-                rows_inserted=0,
-                notes=(
-                    "swisseph unavailable — 0 rows emitted; "
-                    "ephemeris required for real obstruction scoring"
-                ),
+            raise RuntimeError(
+                "swisseph not available in this container — check Dockerfile"
             )
 
         conn     = ctx.db_conn  # NEVER commit or rollback

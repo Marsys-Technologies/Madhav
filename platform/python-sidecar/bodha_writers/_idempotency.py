@@ -36,6 +36,8 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
         return 0
     signal_types = _distinct(rows, "signal_type_id")
     ayanamshas = _distinct(rows, "ayanamsha_id")
+    if not ayanamshas:
+        return 0
     if not signal_types:
         return 0
     deleted = 0

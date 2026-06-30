@@ -111,49 +111,45 @@ class PhSankramaWriter(WriterBase):
                 spillovers = derive_spillover(sctx)
 
                 for s in spillovers:
-                    try:
-                        cur.execute(
-                            """
-                            INSERT INTO phala_sankrama (
-                                chart_id, source_anchor_id, cdlm_cell_id,
-                                source_domain, target_domain, relationship_type,
-                                linkage_strength, asymmetry_score, trajectory,
-                                bridge_path_jsonb, mechanism_text,
-                                source_window_start, source_window_end,
-                                projected_window_start, projected_window_end, projected_peak_date,
-                                cascade_chain_jsonb, cascade_depth,
-                                spillover_confidence, confidence_basis,
-                                falsifier, derivation_ledger_jsonb, source_citation
-                            ) VALUES (
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s::jsonb, %s,
-                                %s, %s,
-                                %s, %s, %s,
-                                %s::jsonb, %s,
-                                %s, %s,
-                                %s, %s::jsonb, %s
-                            )
-                            ON CONFLICT ON CONSTRAINT phala_sankrama_natural_key DO NOTHING
-                            """,
-                            (
-                                chart_id, s.source_anchor_id, s.cdlm_cell_id,
-                                s.source_domain, s.target_domain, s.relationship_type,
-                                s.linkage_strength, s.asymmetry_score, s.trajectory,
-                                json.dumps(s.bridge_path_jsonb), s.mechanism_text,
-                                s.source_window_start, s.source_window_end,
-                                s.projected_window_start, s.projected_window_end, s.projected_peak_date,
-                                json.dumps(s.cascade_chain_jsonb) if s.cascade_chain_jsonb else None,
-                                s.cascade_depth,
-                                s.spillover_confidence, s.confidence_basis,
-                                s.falsifier, json.dumps(s.derivation_ledger_jsonb), s.source_citation,
-                            ),
+                    cur.execute(
+                        """
+                        INSERT INTO phala_sankrama (
+                            chart_id, source_anchor_id, cdlm_cell_id,
+                            source_domain, target_domain, relationship_type,
+                            linkage_strength, asymmetry_score, trajectory,
+                            bridge_path_jsonb, mechanism_text,
+                            source_window_start, source_window_end,
+                            projected_window_start, projected_window_end, projected_peak_date,
+                            cascade_chain_jsonb, cascade_depth,
+                            spillover_confidence, confidence_basis,
+                            falsifier, derivation_ledger_jsonb, source_citation
+                        ) VALUES (
+                            %s, %s, %s,
+                            %s, %s, %s,
+                            %s, %s, %s,
+                            %s::jsonb, %s,
+                            %s, %s,
+                            %s, %s, %s,
+                            %s::jsonb, %s,
+                            %s, %s,
+                            %s, %s::jsonb, %s
                         )
-                        rows_inserted += 1
-                    except Exception as exc:
-                        logger.warning("ph_sankrama: insert failed for anchor %s → %s: %s",
-                                       anchor_id, s.target_domain, exc)
+                        ON CONFLICT ON CONSTRAINT phala_sankrama_natural_key DO NOTHING
+                        """,
+                        (
+                            chart_id, s.source_anchor_id, s.cdlm_cell_id,
+                            s.source_domain, s.target_domain, s.relationship_type,
+                            s.linkage_strength, s.asymmetry_score, s.trajectory,
+                            json.dumps(s.bridge_path_jsonb), s.mechanism_text,
+                            s.source_window_start, s.source_window_end,
+                            s.projected_window_start, s.projected_window_end, s.projected_peak_date,
+                            json.dumps(s.cascade_chain_jsonb) if s.cascade_chain_jsonb else None,
+                            s.cascade_depth,
+                            s.spillover_confidence, s.confidence_basis,
+                            s.falsifier, json.dumps(s.derivation_ledger_jsonb), s.source_citation,
+                        ),
+                    )
+                    rows_inserted += 1
 
         logger.info("ph_sankrama: inserted %d rows into phala_sankrama for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_sankrama', rows_inserted=rows_inserted)
@@ -214,5 +210,5 @@ class PhSankramaWriter(WriterBase):
                     ))
                 return cells
         except Exception as exc:
-            logger.debug("ph_sankrama: cdlm_cells load skipped: %s", exc)
+            logger.warning("ph_sankrama: cdlm_cells load skipped: %s", exc)
             return []

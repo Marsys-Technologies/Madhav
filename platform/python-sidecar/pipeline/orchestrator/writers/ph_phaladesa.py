@@ -95,85 +95,82 @@ class PhPhaladesakWriter(WriterBase):
                 # Model policy gate
                 validate_narration_model(rec.narration_model)  # always None here; gate for safety
 
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO phala_phaladesa (
-                            chart_id, domain,
-                            anchor_count, clean_anchor_count,
-                            staged_revision_count, anomaly_flag_count,
-                            top_anchor_id,
-                            prediction_window_start, prediction_window_end, peak_date,
-                            magnitude, confidence_low, confidence_high, malleability,
-                            spillover_domains_jsonb, incoming_spillover_count,
-                            mitigation_available, muhurta_available,
-                            pramana_window_status, evidence_type,
-                            precedent_refs_jsonb, contradiction_summary_jsonb,
-                            derivation_summary_jsonb,
-                            narration_status, narration_model, narration_jsonb,
-                            derivation_ledger_jsonb, source_citation
-                        ) VALUES (
-                            %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s,
-                            %s, %s, %s,
-                            %s, %s, %s, %s,
-                            %s::jsonb, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s::jsonb, %s::jsonb,
-                            %s::jsonb,
-                            %s, NULL, NULL,
-                            %s::jsonb, %s
-                        )
-                        ON CONFLICT (chart_id, domain) DO UPDATE SET
-                            anchor_count                = EXCLUDED.anchor_count,
-                            clean_anchor_count          = EXCLUDED.clean_anchor_count,
-                            staged_revision_count       = EXCLUDED.staged_revision_count,
-                            anomaly_flag_count          = EXCLUDED.anomaly_flag_count,
-                            top_anchor_id               = EXCLUDED.top_anchor_id,
-                            prediction_window_start     = EXCLUDED.prediction_window_start,
-                            prediction_window_end       = EXCLUDED.prediction_window_end,
-                            peak_date                   = EXCLUDED.peak_date,
-                            magnitude                   = EXCLUDED.magnitude,
-                            confidence_low              = EXCLUDED.confidence_low,
-                            confidence_high             = EXCLUDED.confidence_high,
-                            malleability                = EXCLUDED.malleability,
-                            spillover_domains_jsonb     = EXCLUDED.spillover_domains_jsonb,
-                            incoming_spillover_count    = EXCLUDED.incoming_spillover_count,
-                            mitigation_available        = EXCLUDED.mitigation_available,
-                            muhurta_available           = EXCLUDED.muhurta_available,
-                            pramana_window_status       = EXCLUDED.pramana_window_status,
-                            evidence_type               = EXCLUDED.evidence_type,
-                            precedent_refs_jsonb        = EXCLUDED.precedent_refs_jsonb,
-                            contradiction_summary_jsonb = EXCLUDED.contradiction_summary_jsonb,
-                            derivation_summary_jsonb    = EXCLUDED.derivation_summary_jsonb,
-                            derivation_ledger_jsonb     = EXCLUDED.derivation_ledger_jsonb,
-                            source_citation             = EXCLUDED.source_citation,
-                            computed_at                 = now()
-                        """,
-                        (
-                            chart_id, rec.domain,
-                            rec.anchor_count, rec.clean_anchor_count,
-                            rec.staged_revision_count, rec.anomaly_flag_count,
-                            rec.top_anchor_id,
-                            rec.prediction_window_start, rec.prediction_window_end, rec.peak_date,
-                            rec.magnitude, rec.confidence_low, rec.confidence_high, rec.malleability,
-                            json.dumps(rec.spillover_domains_jsonb, cls=_UUIDEncoder) if rec.spillover_domains_jsonb else None,
-                            rec.incoming_spillover_count,
-                            rec.mitigation_available, rec.muhurta_available,
-                            rec.pramana_window_status, rec.evidence_type,
-                            json.dumps(rec.precedent_refs_jsonb, cls=_UUIDEncoder) if rec.precedent_refs_jsonb else None,
-                            json.dumps(rec.contradiction_summary_jsonb, cls=_UUIDEncoder) if rec.contradiction_summary_jsonb else None,
-                            json.dumps(rec.derivation_summary_jsonb, cls=_UUIDEncoder),
-                            rec.narration_status,
-                            json.dumps(rec.derivation_ledger_jsonb, cls=_UUIDEncoder), rec.source_citation,
-                        ),
+                cur.execute(
+                    """
+                    INSERT INTO phala_phaladesa (
+                        chart_id, domain,
+                        anchor_count, clean_anchor_count,
+                        staged_revision_count, anomaly_flag_count,
+                        top_anchor_id,
+                        prediction_window_start, prediction_window_end, peak_date,
+                        magnitude, confidence_low, confidence_high, malleability,
+                        spillover_domains_jsonb, incoming_spillover_count,
+                        mitigation_available, muhurta_available,
+                        pramana_window_status, evidence_type,
+                        precedent_refs_jsonb, contradiction_summary_jsonb,
+                        derivation_summary_jsonb,
+                        narration_status, narration_model, narration_jsonb,
+                        derivation_ledger_jsonb, source_citation
+                    ) VALUES (
+                        %s, %s,
+                        %s, %s,
+                        %s, %s,
+                        %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s::jsonb, %s,
+                        %s, %s,
+                        %s, %s,
+                        %s::jsonb, %s::jsonb,
+                        %s::jsonb,
+                        %s, NULL, NULL,
+                        %s::jsonb, %s
                     )
-                    rows_inserted += 1
-                except Exception as exc:
-                    logger.warning("ph_phaladesa: insert failed for domain %s: %s", rec.domain, exc)
+                    ON CONFLICT (chart_id, domain) DO UPDATE SET
+                        anchor_count                = EXCLUDED.anchor_count,
+                        clean_anchor_count          = EXCLUDED.clean_anchor_count,
+                        staged_revision_count       = EXCLUDED.staged_revision_count,
+                        anomaly_flag_count          = EXCLUDED.anomaly_flag_count,
+                        top_anchor_id               = EXCLUDED.top_anchor_id,
+                        prediction_window_start     = EXCLUDED.prediction_window_start,
+                        prediction_window_end       = EXCLUDED.prediction_window_end,
+                        peak_date                   = EXCLUDED.peak_date,
+                        magnitude                   = EXCLUDED.magnitude,
+                        confidence_low              = EXCLUDED.confidence_low,
+                        confidence_high             = EXCLUDED.confidence_high,
+                        malleability                = EXCLUDED.malleability,
+                        spillover_domains_jsonb     = EXCLUDED.spillover_domains_jsonb,
+                        incoming_spillover_count    = EXCLUDED.incoming_spillover_count,
+                        mitigation_available        = EXCLUDED.mitigation_available,
+                        muhurta_available           = EXCLUDED.muhurta_available,
+                        pramana_window_status       = EXCLUDED.pramana_window_status,
+                        evidence_type               = EXCLUDED.evidence_type,
+                        precedent_refs_jsonb        = EXCLUDED.precedent_refs_jsonb,
+                        contradiction_summary_jsonb = EXCLUDED.contradiction_summary_jsonb,
+                        derivation_summary_jsonb    = EXCLUDED.derivation_summary_jsonb,
+                        derivation_ledger_jsonb     = EXCLUDED.derivation_ledger_jsonb,
+                        source_citation             = EXCLUDED.source_citation,
+                        computed_at                 = now()
+                    """,
+                    (
+                        chart_id, rec.domain,
+                        rec.anchor_count, rec.clean_anchor_count,
+                        rec.staged_revision_count, rec.anomaly_flag_count,
+                        rec.top_anchor_id,
+                        rec.prediction_window_start, rec.prediction_window_end, rec.peak_date,
+                        rec.magnitude, rec.confidence_low, rec.confidence_high, rec.malleability,
+                        json.dumps(rec.spillover_domains_jsonb, cls=_UUIDEncoder) if rec.spillover_domains_jsonb else None,
+                        rec.incoming_spillover_count,
+                        rec.mitigation_available, rec.muhurta_available,
+                        rec.pramana_window_status, rec.evidence_type,
+                        json.dumps(rec.precedent_refs_jsonb, cls=_UUIDEncoder) if rec.precedent_refs_jsonb else None,
+                        json.dumps(rec.contradiction_summary_jsonb, cls=_UUIDEncoder) if rec.contradiction_summary_jsonb else None,
+                        json.dumps(rec.derivation_summary_jsonb, cls=_UUIDEncoder),
+                        rec.narration_status,
+                        json.dumps(rec.derivation_ledger_jsonb, cls=_UUIDEncoder), rec.source_citation,
+                    ),
+                )
+                rows_inserted += 1
 
         logger.info("ph_phaladesa: inserted %d rows for %s", rows_inserted, chart_id)
         return WriterResult(asset_id='ph_phaladesa', rows_inserted=rows_inserted)
