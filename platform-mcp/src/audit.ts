@@ -21,6 +21,7 @@ import type { Principal, McpEnvelopeError } from './types.js'
 const AUDIT_PRINCIPAL: Principal = {
   user_uid: 'audit-job',
   key_id:   'audit-internal',
+  role:     'super_admin',
 }
 
 // Brahma layer row-count checks — delegated to the platform primitive.

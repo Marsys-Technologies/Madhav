@@ -136,17 +136,17 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools
-  registerPhalaEventAnchorsTool(server)
+  registerPhalaEventAnchorsTool(server, principal)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerMitigationMapTool(server as any, principal)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerMuhurtaFinder(server as any, () => principal)
-  registerPhalaOutlookTool(server)
+  registerPhalaOutlookTool(server, principal)
   // L5 Mīmāṃsā tools
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerMimamsaLelIntakeTool(server as any)
+  registerMimamsaLelIntakeTool(server as any, principal)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerMimamsaOutcomeTool(server as any)
+  registerMimamsaOutcomeTool(server as any, principal)
 
   // D7 — Registry-backed consolidated workflow tools (12 MCP tools → registry URIs)
   // These are chart-agnostic: chart_id required on per_chart tools, no default.
