@@ -14,7 +14,21 @@ import { NextRequest } from 'next/server'
 // ─── module-level mocks (must precede route import) ───────────────────────────
 
 const mockQuery = vi.fn()
-vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+
+// Pool client mock: BEGIN/COMMIT/ROLLBACK are swallowed (no mockQuery slot consumed);
+// all data queries (SELECT, INSERT, etc.) are routed through mockQuery so the existing
+// mockResolvedValueOnce chains work unchanged. Required by M-14 (TOCTOU SERIALIZABLE gate)
+// and the atomic clear-before-build INSERT transaction, both of which use getPool().connect().
+const _TRANSACTION_RE = /^\s*(BEGIN|COMMIT|ROLLBACK)/i
+const mockPoolClientQuery = vi.fn((sql: string, ...rest: unknown[]) => {
+  if (_TRANSACTION_RE.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
+  return mockQuery(sql, ...rest)
+})
+const mockPoolClient = { query: mockPoolClientQuery, release: vi.fn() }
+const mockPool = { connect: vi.fn().mockResolvedValue(mockPoolClient) }
+const mockGetPool = vi.fn().mockResolvedValue(mockPool)
+
+vi.mock('@/lib/db/client', () => ({ query: mockQuery, getPool: mockGetPool }))
 
 const mockGetServerUser = vi.fn()
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
