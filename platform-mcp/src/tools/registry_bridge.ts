@@ -44,6 +44,10 @@ const PLATFORM_URL = (
   process.env['PLATFORM_URL'] ?? 'http://localhost:3000'
 ).replace(/\/$/, '')
 
+// Service-to-service token — must match MCP_INTERNAL_TOKEN on amjis-web.
+// Required by /api/retrieval/capability (F1 gate, M0.5).
+const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
 // ── DB proxy helper ───────────────────────────────────────────────────────────
 
 /**
@@ -123,7 +127,10 @@ async function callRegistryCapability(
 ): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+    },
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(20_000),
   })
