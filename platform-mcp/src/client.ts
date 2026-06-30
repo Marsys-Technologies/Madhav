@@ -102,6 +102,29 @@ function buildClientErrorEnvelope(
   }
 }
 
+// ── Retry helper (M-11) ───────────────────────────────────────────────────────
+
+/**
+ * Wrap fetch with 2-retry exponential backoff for transient 5xx / network errors.
+ * 4xx responses are returned immediately without retry (auth/validation — not transient).
+ */
+async function fetchWithRetry(url: string, opts: RequestInit, maxRetries = 2): Promise<Response> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const resp = await fetch(url, opts)
+      if (resp.status < 500) return resp  // 4xx and 2xx: no retry
+      if (attempt === maxRetries) return resp
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))  // 500ms, 1000ms
+    } catch (err) {
+      lastError = err
+      if (attempt === maxRetries) throw err
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))
+    }
+  }
+  throw lastError
+}
+
 // ── Common fetch helper ───────────────────────────────────────────────────────
 
 interface PlatformFetchOptions {
@@ -116,7 +139,7 @@ async function platformFetch(opts: PlatformFetchOptions): Promise<PlatformCallRe
 
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await fetchWithRetry(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

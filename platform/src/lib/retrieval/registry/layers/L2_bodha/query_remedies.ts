@@ -16,6 +16,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 export const queryRemediesCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_remedies',
@@ -50,7 +51,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
     },
     tradition: {
       type: 'string',
@@ -79,7 +80,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id   = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id   = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const tradition      = args['tradition'] as string | undefined
     const graha          = args['graha'] as string | undefined
 

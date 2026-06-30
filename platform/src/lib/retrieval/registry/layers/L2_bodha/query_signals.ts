@@ -25,6 +25,8 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
+import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 
 export const querySignalsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_signals',
@@ -62,7 +64,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to filter by (default: 'LAHIRI').",
+      description: "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
     },
     domain: {
       type: 'string',
@@ -119,7 +121,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+
+    // Cache check (H-11)
+    const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id,
+      domain: args['domain'], source_subsystem: args['source_subsystem'],
+      signal_type_class: args['signal_type_class'], min_salience: args['min_salience'],
+      lel_enabled: args['lel_enabled'], top_k: args['top_k'], offset: args['offset'],
+      semantic_query: args['semantic_query'] })
+    const _cached = cacheGet(_cacheKey)
+    if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
     const domain          = args['domain'] as string | undefined
     const source_subsystem = args['source_subsystem'] as string | undefined
     const signal_type_class = args['signal_type_class'] as string | undefined
@@ -203,27 +214,43 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
       const result = await query(sql, queryParams)
 
-      return {
-        content: {
-          chart_id,
-          ayanamsha_id,
-          signals: result.rows,
-          returned_count: result.rows.length,
-          filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset },
-          semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
-          provenance: {
-            tables: ['bodha_msr_signals'],
-            defect_001_note: [
-              'DEFECT-001 OPEN: constituent_facts_array has 91.5% orphan rate.',
-              'Joins from constituent_fact_id to chart_facts will be empty for most signals.',
-              'Do not error on empty constituent_facts joins — this is expected until L2 rebuild.',
-            ].join(' '),
-            signature_tier_note: 'signature_tier is 100% background — all ranking uses computed_salience only.',
-            lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
-          },
-        },
-        is_error: false,
+      // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
+      let signals = result.rows
+      let truncated = false
+      let truncated_from: number | undefined
+      if (signals.length > 0) {
+        const estimatedBytes = JSON.stringify(signals).length
+        if (estimatedBytes > 1_500_000) {
+          truncated_from = signals.length
+          const keepCount = Math.floor(signals.length * (1_400_000 / estimatedBytes))
+          signals = signals.slice(0, keepCount)
+          truncated = true
+        }
       }
+
+      const responseContent = {
+        chart_id,
+        ayanamsha_id,
+        signals,
+        returned_count: signals.length,
+        truncated,
+        ...(truncated_from !== undefined ? { truncated_from } : {}),
+        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset },
+        semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
+        provenance: {
+          tables: ['bodha_msr_signals'],
+          defect_001_note: [
+            'DEFECT-001 OPEN: constituent_facts_array has 91.5% orphan rate.',
+            'Joins from constituent_fact_id to chart_facts will be empty for most signals.',
+            'Do not error on empty constituent_facts joins — this is expected until L2 rebuild.',
+          ].join(' '),
+          signature_tier_note: 'signature_tier is 100% background — all ranking uses computed_salience only.',
+          lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
+        },
+      }
+      const response = { content: responseContent, is_error: false as const }
+      cacheSet(_cacheKey, response)
+      return response
     } catch (err) {
       return {
         content: { error: String(err), chart_id },
