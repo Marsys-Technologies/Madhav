@@ -138,6 +138,48 @@ async function callRegistryCapability(
   return data.content
 }
 
+// ── B.11 orient-before-domain enforcement ─────────────────────────────────────
+
+/**
+ * B.11 Whole-Chart-Read Protocol (PROJECT_ARCHITECTURE §H.4):
+ * Every domain-specific query must be preceded by an orientation digest
+ * from the L2 UCD (query_ucd / get_chart_orientation). In the MCP channel,
+ * which is stateless per-request and has no shared session state, we enforce
+ * this STRUCTURALLY: each non-floor domain tool handler fetches the UCD
+ * before doing its domain work and includes the result as `orientation_context`
+ * in the output. This means orient-before-domain is guaranteed by construction —
+ * the tool itself ensures orientation has happened, not a soft prompt convention.
+ *
+ * Floor tools (get_chart_orientation itself, get_classical_citation, list_assets)
+ * are exempt — they ARE the floor or are chart-agnostic.
+ *
+ * If the UCD call fails (e.g. no bodha data yet), we return a graceful-empty
+ * stub so the domain tool can still serve — a failed orientation is non-blocking
+ * but annotated in the response.
+ */
+async function fetchOrientationContext(
+  chart_id: string,
+  ayanamsha_id: string = 'LAHIRI',
+): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
+  try {
+    const ucdData = await callRegistryCapability(
+      'marsys://tool/L2/query_ucd',
+      { chart_id, ayanamsha_id, top_k_signals: 10, response_format: 'digest' },
+      chart_id,
+    )
+    return { orientation_context: ucdData, orientation_ok: true }
+  } catch (err) {
+    // Non-blocking: domain tool still runs; orientation failure is annotated
+    return {
+      orientation_context: {
+        b11_note: 'UCD orientation pre-fetch failed (graceful-empty). Domain tool executed without holistic context.',
+        error: String(err),
+      },
+      orientation_ok: false,
+    }
+  }
+}
+
 // ── Tool registrations ────────────────────────────────────────────────────────
 
 /**
@@ -145,6 +187,10 @@ async function callRegistryCapability(
  *
  * All per_chart tools: chart_id is REQUIRED — no default fallback.
  * chart_agnostic_gate RULE-1: per_chart scope → chart_id in required_inputs.
+ *
+ * B.11 enforcement: all per_chart domain tools call fetchOrientationContext()
+ * before executing their domain query. The UCD result is included in the
+ * response as `orientation_context` so the LLM always has holistic context.
  */
 export function registerRegistryBridgeTools(server: McpServer): void {
 
@@ -152,6 +198,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L2/query_ucd
   server.tool(
     'get_chart_orientation',
+    'Mandatory first call for any chart reading. Retrieves the L2 Bodha synthesis layer\'s Unified Chart Digest (UCD) — the holistic portrait of the chart distilled from 573 MSR signals, the CDLM domain activation grid, the CGM causal graph, and the Life Event Log. In classical Jyotish, an acharya reads the whole chart before any domain. This tool enforces that discipline: it surfaces the Lagna lord condition, Moon nakshatra character, dominant cross-domain themes, and active contradictions. Call this before get_domain_reading, get_signals, or any other per-chart tool — the B.11 Whole-Chart-Read Protocol requires it.',
     {
       chart_id: z.string().uuid().describe(
         'UUID of the chart to read. Required — no default chart.'
@@ -185,6 +232,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L2/query_domain_reading
   server.tool(
     'get_domain_reading',
+    'Retrieves the L2 Bodha domain activation reading for a specific life domain (career, relationship, health, wealth, spirituality, character). In Jyotish, each domain (bhava) is governed by a karaka planet and a set of signifying houses — career by the 10th lord and its dispositor chain; relationship by the 7th lord and Venus; health by the Lagna lord and the 6th/8th. This tool surfaces which MSR signals are active in the named domain, ranked by computed_salience, with their constituent L1 facts and classical derivation chain. Always returns an orientation_context from the L2 UCD as the holistic frame (B.11 by construction).',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       domain: z.string().describe(
@@ -196,12 +244,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, domain, ayanamsha_id, cursor }) => {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before domain drill
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_domain_reading',
           { chart_id, domain, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', cursor },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_domain_reading', String(err), { chart_id, domain })
       }
@@ -212,6 +262,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L2/query_signals
   server.tool(
     'get_signals',
+    'Retrieves ranked MSR (Multi-Signal Repository) signals for a chart — the 573-signal corpus of astrological patterns derived from L1 Gaṇita facts. Each signal encodes a classical Jyotish observation (yoga, placement, aspect, nakshatra condition) with its constituent L1 fact_ids, a computed_salience score reflecting how prominently it operates in this chart, and the domain tags it activates. Use min_salience to focus on high-confidence signals (≥0.7 = strong; ≥0.5 = moderate). The signal layer is the analytical backbone: get_domain_reading and get_chart_orientation both synthesize from this corpus. Query directly when you need raw signal evidence for a specific claim.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
@@ -228,12 +279,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before signal drill
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_signals',
           { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
       }
@@ -257,12 +310,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, seed_signal_ids, mode, depth }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before graph traversal
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
         const data = await callRegistryCapability(
           'marsys://tool/L2/traverse_chart_graph',
           { chart_id, seed_signal_ids, mode: mode ?? 'neighbors', depth: depth ?? 2 },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('traverse_graph', String(err), { chart_id })
       }
@@ -297,6 +352,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L1/get_dashas
   server.tool(
     'get_dashas',
+    'Retrieves the Vimshottari dasha chain from L1 Gaṇita — the 120-year planetary period sequence that governs the timing of karma in Parashara Jyotish. Each planet rules a fixed span (Sun 6 yr, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17, Ketu 7, Venus 20), subdivided into antardasha (sub-periods) and pratyantardasha. The running period lord colors all life events during its tenure: its natal placement, lordship, aspects received, and conjunctions determine what it delivers. Use this to identify which lords are active now and in the near future, then cross-reference with get_temporal_windows and get_signals to see which yogas those lords activate.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
@@ -322,6 +378,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L3/query_temporal_activation + query_convergence_windows
   server.tool(
     'get_temporal_windows',
+    'Retrieves the L3 Kāla temporal activation layer for a date range — identifying which Jyotish periods (Vimshottari dasha, antardasha, pratyantardasha) are running, which MSR signals are activated by those period lords, and where convergence windows occur (multiple activation streams peaking simultaneously). In classical Jyotish, timing is the hardest discipline: a powerful yoga (structural combination) only gives its results when its constituent lords run their period. This tool applies that temporal gate — distinguishing signals that are structurally present from those that are temporally ripe. Returns orientation_context (B.11) alongside temporal data.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
@@ -332,12 +389,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, date_from, date_to, include_convergence }) => {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before temporal domain query
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_temporal_activation',
           { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', date_from, date_to, include_convergence: include_convergence ?? true },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_temporal_windows', String(err), { chart_id })
       }
@@ -357,12 +416,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, domain, horizon_years }) => {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before predictive projection
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_projections',
           { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, horizon_years: horizon_years ?? 5 },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_projections', String(err), { chart_id })
       }
@@ -405,12 +466,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, domain, remedy_type }) => {
       if (!chart_id) return errorOutput('get_remedies', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before remedy prescription
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_remedies',
           { chart_id, domain, remedy_type },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_remedies', String(err), { chart_id })
       }
@@ -427,12 +490,14 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id }) => {
       if (!chart_id) return errorOutput('get_chart_quality', 'chart_id is required')
       try {
+        // B.11: fetch holistic orientation before quality/calibration surface
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_quality_scorecard',
           { chart_id },
           chart_id
         )
-        return dualOutput(data)
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_chart_quality', String(err), { chart_id })
       }

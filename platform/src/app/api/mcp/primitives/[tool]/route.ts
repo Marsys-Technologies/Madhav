@@ -77,6 +77,10 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   // Layer 2: resolved principal headers
+  // NOTE: X-MCP-Audience-Tier is NOT a gate — entitlement is owned by the channel layer
+  // (MCP fork's authorizeChartAccess). Header was excised from the MCP fork client on
+  // 2026-05-28 (tier_excision). Read for informational/logging purposes only; default to
+  // 'client' when absent. See R2.0 fix: removing 401 on missing audience-tier.
   const userUid = request.headers.get('x-mcp-user')
   const audienceTierHeader = request.headers.get('x-mcp-audience-tier') as
     | 'client'
@@ -84,16 +88,18 @@ export async function POST(request: Request, { params }: RouteParams) {
     | null
   const keyId = request.headers.get('x-mcp-key-id')
 
-  if (!userUid || !audienceTierHeader || !keyId) {
+  if (!userUid || !keyId) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'auth',
-        message: 'Missing principal headers (X-MCP-User, X-MCP-Audience-Tier, X-MCP-Key-Id)',
+        message: 'Missing principal headers (X-MCP-User, X-MCP-Key-Id)',
       }),
       { status: 401 }
     )
   }
 
+  // Audience tier: informational only — channel layer owns entitlement.
+  // Default to 'client' when header is absent (MCP fork no longer sends it).
   const audienceTier: 'client' | 'super_admin' =
     audienceTierHeader === 'super_admin' ? 'super_admin' : 'client'
 

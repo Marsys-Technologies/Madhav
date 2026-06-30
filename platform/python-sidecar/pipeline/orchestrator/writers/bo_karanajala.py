@@ -393,14 +393,25 @@ def _parse_cfg(sig: dict) -> dict:
 
 
 def _graha_from_cfg(cfg: dict) -> str | None:
+    """Extract a graha name from configuration_jsonb, normalizing case.
+
+    The L1 ga_* writers store graha names as UPPER_SNAKE (e.g. "MOON", "SUN")
+    in some fields, while KNOWN_GRAHAS uses Title Case ("Moon", "Sun").
+    We normalize every candidate to Title Case before the membership check.
+    """
     for k in ("graha", "primary_graha", "lord", "from_graha", "fact_key"):
         v = cfg.get(k, "")
-        if v in KNOWN_GRAHAS:
-            return str(v)
-        if isinstance(v, str):
-            for part in v.split(":"):
-                if part in KNOWN_GRAHAS:
-                    return part
+        if not isinstance(v, str):
+            continue
+        # Normalize to Title Case for comparison
+        v_title = v.strip().title()
+        if v_title in KNOWN_GRAHAS:
+            return v_title
+        # Try splitting on ":" (e.g. "fact_key": "SUN:MOON") — take first match
+        for part in v.split(":"):
+            part_title = part.strip().title()
+            if part_title in KNOWN_GRAHAS:
+                return part_title
     return None
 
 
@@ -411,9 +422,14 @@ def _build_edges_and_contradictions(
     edges: list[dict] = []
     contradictions: list[dict] = []
 
-    # Index signals by graha + class for contradiction detection
-    yoga_by_graha: dict[str, dict] = {}   # graha → signal
-    dosha_by_graha: dict[str, dict] = {}  # graha → signal
+    # Collect all yoga and dosha signals for domain-overlap contradiction detection.
+    # We index by graha when available (graha-keyed contradiction), and always collect
+    # into flat lists for the domain-overlap pass (catches signals without a graha field,
+    # which is the majority: ~97% of yoga/dosha signals have no graha in configuration_jsonb).
+    yoga_by_graha: dict[str, dict] = {}   # graha → signal (best-salience per graha)
+    dosha_by_graha: dict[str, dict] = {}  # graha → signal (best-salience per graha)
+    all_yoga_signals: list[dict] = []     # all yoga signals (for domain-overlap pass)
+    all_dosha_signals: list[dict] = []    # all dosha signals (for domain-overlap pass)
 
     for sig in signals:
         sig_id     = str(sig.get("signal_id", ""))
@@ -469,8 +485,12 @@ def _build_edges_and_contradictions(
                         "computed_at": now,
                         "engine_version": ENGINE_VERSION,
                     })
-            if graha:
+            # Index for graha-keyed contradiction (keep highest-salience per graha)
+            if graha not in yoga_by_graha or salience > float(yoga_by_graha[graha].get("computed_salience") or 0.0):
                 yoga_by_graha[graha] = sig
+
+        if sig_class == "yoga":
+            all_yoga_signals.append(sig)
 
         # ── Dosha → domain (antagonist edge) ─────────────────────────────────
         elif sig_class == "dosha" and graha:
@@ -510,20 +530,30 @@ def _build_edges_and_contradictions(
                         "computed_at": now,
                         "engine_version": ENGINE_VERSION,
                     })
-            if graha:
+            # Index for graha-keyed contradiction (keep highest-salience per graha)
+            if graha and (graha not in dosha_by_graha or salience > float(dosha_by_graha[graha].get("computed_salience") or 0.0)):
                 dosha_by_graha[graha] = sig
+
+        if sig_class == "dosha":
+            all_dosha_signals.append(sig)
 
         # ── Aspect / conjunction / path edges ────────────────────────────────
         # graha→graha edges: cross-subsystem only when the two signals differ in tradition
         elif sig_class == "composite_state" and graha:
-            aspected_graha = (cfg.get("aspected_graha") or cfg.get("graha_b")
-                              or cfg.get("to_graha"))
+            _raw_ag = (cfg.get("aspected_graha") or cfg.get("graha_b")
+                       or cfg.get("to_graha"))
+            aspected_graha: str | None = None
+            if _raw_ag and isinstance(_raw_ag, str):
+                _ag_title = _raw_ag.strip().title()
+                if _ag_title in KNOWN_GRAHAS:
+                    aspected_graha = _ag_title
             if not aspected_graha:
                 fact_key = cfg.get("fact_key", "")
                 parts = fact_key.split(":")
                 for p in parts:
-                    if p in KNOWN_GRAHAS and p != graha:
-                        aspected_graha = p
+                    p_title = p.strip().title()
+                    if p_title in KNOWN_GRAHAS and p_title != graha:
+                        aspected_graha = p_title
                         break
             if aspected_graha and aspected_graha in KNOWN_GRAHAS:
                 from_node = _get_node("graha", graha)
@@ -567,6 +597,23 @@ def _build_edges_and_contradictions(
                     })
 
     # ── Contradiction detection ────────────────────────────────────────────────
+    # Two-pass approach:
+    #
+    # Pass 1 — graha-keyed: yoga and dosha share the same graha AND same domain.
+    #   This catches the highest-precision contradictions (same planet is simultaneously
+    #   yoga-karaka and dosha-karaka in overlapping domains).
+    #
+    # Pass 2 — domain-overlap: any yoga signal and any dosha signal share at least one
+    #   domain, regardless of graha. This is the primary pass: ~97% of yoga/dosha signals
+    #   carry no graha field in configuration_jsonb (they use fact_key: "yoga_name" /
+    #   "dosha_name" with no graha key), so the graha-keyed pass alone produces 0 rows
+    #   for the vast majority of charts.
+    #   To avoid a combinatorial explosion (N_yoga × N_dosha pairs), we cap at the
+    #   top-50 yoga signals and top-50 dosha signals by computed_salience per ayanamsha,
+    #   then emit one contradiction row per (yoga, dosha) pair that shares ≥1 domain.
+
+    # Pass 1: graha-keyed
+    seen_pairs: set[tuple[str, str]] = set()
     for graha in yoga_by_graha:
         if graha in dosha_by_graha:
             y_sig = yoga_by_graha[graha]
@@ -575,14 +622,17 @@ def _build_edges_and_contradictions(
             d_domains = set(d_sig.get("domains_affected_array") or [])
             shared_domains = y_domains & d_domains
             if shared_domains:
+                pair_key = (str(y_sig.get("signal_id")), str(d_sig.get("signal_id")))
+                seen_pairs.add(pair_key)
                 contradictions.append({
                     "contradiction_id": str(uuid.uuid4()),
                     "chart_id": chart_id,
                     "ayanamsha_id": aya,
                     "build_id": build_id,
-                    "signal_a_id": str(y_sig.get("signal_id")),
-                    "signal_b_id": str(d_sig.get("signal_id")),
+                    "signal_a_id": pair_key[0],
+                    "signal_b_id": pair_key[1],
                     "tension_basis_jsonb": json.dumps({
+                        "pass": "graha_keyed",
                         "graha": graha,
                         "yoga_signal": str(y_sig.get("signal_type_id")),
                         "dosha_signal": str(d_sig.get("signal_type_id")),
@@ -600,6 +650,62 @@ def _build_edges_and_contradictions(
                     "citation_human": f"yoga_vs_dosha contradiction on {graha} in {sorted(shared_domains)}",
                     "computed_at": now,
                 })
+
+    # Pass 2: domain-overlap (top-50 × top-50 cap to bound row count)
+    top_yogas = sorted(
+        all_yoga_signals,
+        key=lambda s: float(s.get("computed_salience") or 0.0),
+        reverse=True,
+    )[:50]
+    top_doshas = sorted(
+        all_dosha_signals,
+        key=lambda s: float(s.get("computed_salience") or 0.0),
+        reverse=True,
+    )[:50]
+
+    for y_sig in top_yogas:
+        y_id      = str(y_sig.get("signal_id"))
+        y_domains = set(y_sig.get("domains_affected_array") or [])
+        if not y_domains:
+            continue
+        for d_sig in top_doshas:
+            d_id = str(d_sig.get("signal_id"))
+            pair_key = (y_id, d_id)
+            if pair_key in seen_pairs:
+                continue  # already emitted by pass 1
+            d_domains = set(d_sig.get("domains_affected_array") or [])
+            shared_domains = y_domains & d_domains
+            if not shared_domains:
+                continue
+            seen_pairs.add(pair_key)
+            contradictions.append({
+                "contradiction_id": str(uuid.uuid4()),
+                "chart_id": chart_id,
+                "ayanamsha_id": aya,
+                "build_id": build_id,
+                "signal_a_id": y_id,
+                "signal_b_id": d_id,
+                "tension_basis_jsonb": json.dumps({
+                    "pass": "domain_overlap",
+                    "yoga_signal": str(y_sig.get("signal_type_id")),
+                    "dosha_signal": str(d_sig.get("signal_type_id")),
+                    "shared_domains": sorted(shared_domains),
+                }),
+                "tension_class": "yoga_vs_dosha",
+                "domains_affected_array": sorted(shared_domains),
+                "combined_salience": round(
+                    float(y_sig.get("computed_salience") or 0.0)
+                    + float(d_sig.get("computed_salience") or 0.0),
+                    6
+                ),
+                "verification_pass_status": "documented_approximation",
+                "citation_ref": "bo_karanajala/contradiction/domain_overlap",
+                "citation_human": (
+                    f"yoga_vs_dosha domain-overlap contradiction in {sorted(shared_domains)}: "
+                    f"{y_sig.get('signal_type_id')} ∩ {d_sig.get('signal_type_id')}"
+                ),
+                "computed_at": now,
+            })
 
     return edges, contradictions
 

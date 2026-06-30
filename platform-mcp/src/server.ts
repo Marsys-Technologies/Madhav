@@ -49,6 +49,9 @@ import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
 // D7 — Registry bridge: consolidated workflow tools from the retrieval registry
 import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
+// R5 — Richness Layer: MCP resources (9 registered) + guided-reading prompts
+import { registerResources } from './resources/index.js'
+import { registerPrompts } from './prompts/index.js'
 
 const app = express()
 app.use(express.json())
@@ -121,10 +124,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L2 Bodha tools
   registerHolisticBundleTool(server, principal)
-  registerHolisticBundleRetrievalTool(server)  // chart_facts direct read (L2 Bodha — chart-agnostic)
+  registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts direct read (L2 Bodha — chart-agnostic)
   registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-agnostic)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
-  registerRemedyTools(server)
+  registerRemedyTools(server, () => principal)
   // L4 Phala tools
   registerPhalaEventAnchorsTool(server)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,6 +144,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // D7 — Registry-backed consolidated workflow tools (12 MCP tools → registry URIs)
   // These are chart-agnostic: chart_id required on per_chart tools, no default.
   registerRegistryBridgeTools(server)
+
+  // R5 — Richness Layer: 9 MCP resources + 3 guided-reading prompts
+  registerResources(server)
+  registerPrompts(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

@@ -22,6 +22,23 @@
 
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
+import { runWholeChartRead } from '../../synergy/orchestrator'
+import type { SynergyContext } from '../../synergy/orchestrator'
+import { query } from '@/lib/db/client'
+
+/**
+ * Build a SynergyContext backed by the platform's direct DB client.
+ * Used by D6 handlers which run inside Next.js (server-only).
+ */
+function buildPlatformCtx(lel_enabled?: boolean): SynergyContext {
+  return {
+    db: {
+      query: (sql: string, params: unknown[]) =>
+        query(sql, params as unknown[]).then((r) => ({ rows: r.rows as Record<string, unknown>[] })),
+    },
+    lel_enabled: lel_enabled ?? false,
+  }
+}
 
 // ── marsys://tool/synergy/pipeline ────────────────────────────────────────────
 
@@ -91,27 +108,54 @@ const synergyPipelineTool: CapabilityDescriptor = {
       }
     }
 
-    const query = String(args['query'] ?? '')
-    const model_family = (args['model_family'] as string | undefined) ?? 'universal'
+    const queryText = args['query'] ? String(args['query']) : undefined
+    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : 'LAHIRI'
     const dry_run = Boolean(args['dry_run'] ?? false)
 
-    // Pipeline introspection: return the planned route without executing full tool calls.
-    // Full execution is wired at application-startup via the MARO orchestrator.
-    return {
-      content: {
-        pipeline: 'router→grounding→graph+assets→maro',
+    // dry_run: return the planned pipeline stages without executing
+    if (dry_run) {
+      return {
+        content: {
+          pipeline: 'router→grounding→graph+assets→maro',
+          chart_id,
+          query: queryText,
+          ayanamsha_id,
+          dry_run: true,
+          stages: [
+            { stage: 'query_ucd',         uri: 'marsys://tool/L2/query_ucd',              status: 'planned' },
+            { stage: 'domain_readings',   uri: 'marsys://tool/L2/query_domain_reading',   status: 'planned' },
+            { stage: 'signal_rank',       uri: 'marsys://tool/L2/query_signals',          status: 'planned' },
+            { stage: 'graph_traversal',   uri: 'marsys://tool/L2/traverse_chart_graph',   status: 'planned' },
+            { stage: 'contradictions',    uri: 'marsys://tool/L2/query_contradictions',   status: 'planned' },
+            { stage: 'temporal_enrichment', uri: 'marsys://tool/L3/query_temporal_activation', status: 'planned' },
+          ],
+        },
+        is_error: false,
+      }
+    }
+
+    // Live execution: call the D6 synergy orchestrator (runWholeChartRead)
+    try {
+      const ctx = buildPlatformCtx(false)
+      const result = await runWholeChartRead(
         chart_id,
-        query,
-        model_family,
-        dry_run,
-        stages: [
-          { stage: 'router', uri: 'marsys://tool/router/route', status: dry_run ? 'planned' : 'would_execute' },
-          { stage: 'grounding', uri: 'marsys://grounding/resolve', status: dry_run ? 'planned' : 'would_execute' },
-          { stage: 'maro', uri: 'marsys://tool/maro/orchestrate', status: dry_run ? 'planned' : 'would_execute' },
-        ],
-        note: 'D6 synergy pipeline descriptor — full execution delegated to MARO orchestrator at runtime.',
-      },
-      is_error: false,
+        ayanamsha_id,
+        'holistic',
+        queryText,
+        ctx,
+      )
+      return {
+        content: result,
+        is_error: false,
+      }
+    } catch (err) {
+      return {
+        content: {
+          error: `synergy_pipeline orchestration failed: ${String(err)}`,
+          chart_id,
+        },
+        is_error: true,
+      }
     }
   },
 }
@@ -179,15 +223,61 @@ const synergyCrossLayerTool: CapabilityDescriptor = {
 
     const signal_uris = (args['signal_uris'] as string[] | undefined) ?? []
     const layers = (args['layers'] as string[] | undefined) ?? ['L1', 'L2', 'L3', 'L4', 'L5']
+    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : 'LAHIRI'
 
-    return {
-      content: {
+    // Run the D6 whole-chart read in cross_domain mode to surface contradictions +
+    // convergences across the requested layers (B.11 Whole-Chart-Read Protocol).
+    try {
+      const ctx = buildPlatformCtx(false)
+      const wholChart = await runWholeChartRead(
         chart_id,
-        reconciliation_scope: { layers, signal_uris },
-        note: 'D6 cross-layer reconciliation descriptor. Full synthesis delegated to the CGM+CDLM pipeline at runtime.',
-        b11_compliance: 'Whole-Chart-Read Protocol: L2 Bodha synthesis consulted before domain-specific answer.',
-      },
-      is_error: false,
+        ayanamsha_id,
+        'cross_domain',
+        undefined,
+        ctx,
+      )
+
+      // Extract the cross-layer reconciliation surface
+      const contradictions = wholChart.contradictions
+      const convergenceDomains = wholChart.ucd_digest.convergence_domains
+      const signalRefs = wholChart.signals.signals.map((s) => ({
+        signal_id: s.signal_id,
+        computed_salience: s.computed_salience,
+        domains_affected_array: s.domains_affected_array,
+        constituent_facts_array: s.constituent_facts_array,
+      }))
+
+      return {
+        content: {
+          chart_id,
+          reconciliation_scope: { layers, signal_uris },
+          // Cross-layer convergence: domains with corroborating signals
+          convergence_domains: convergenceDomains,
+          // Contradictions between signals/layers (bodha_contradictions — currently 0 rows)
+          contradictions: contradictions.contradictions,
+          // Discoveries (novelty-ranked cross-layer findings)
+          discoveries: contradictions.discoveries.slice(0, 20),
+          // Ranked signals across all layers
+          signal_refs: signalRefs,
+          // CGM graph edges for cross-layer linkage
+          graph: {
+            nodes: wholChart.graph.nodes,
+            edges: wholChart.graph.edges,
+            relationship_basis_note: wholChart.graph.relationship_basis_note,
+          },
+          b11_compliance: true,
+          meta: wholChart.meta,
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return {
+        content: {
+          error: `synergy_cross_layer reconciliation failed: ${String(err)}`,
+          chart_id,
+        },
+        is_error: true,
+      }
     }
   },
 }

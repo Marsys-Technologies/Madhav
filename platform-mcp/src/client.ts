@@ -326,3 +326,62 @@ export async function callPlatformRecent(
 
   return { status: response.status, envelope }
 }
+
+/**
+ * Call /api/mcp/surface-spec to retrieve the per-family MCP surface constraints.
+ *
+ * The MCP fork calls this at startup (or lazily on first request) to learn:
+ *   - max_tools: how many tools to register for this family
+ *   - tool_name_pattern: valid name regex (cross-family: no hyphens)
+ *   - requires_dual_output: whether to return structuredContent + text block
+ *   - strip_mcp_constructs: whether to strip MCP-only fields (DeepSeek)
+ *   - transport: expected transport mode
+ *
+ * R2.2 — consumes the published seam output from getMcpSurfaceSpec(family).
+ *
+ * Auth: service-to-service identity token + MCP_INTERNAL_TOKEN only.
+ * No per-user Principal needed (surface spec is chart-agnostic + family-static).
+ *
+ * @param family  One of: 'anthropic' | 'gemini' | 'openai' | 'deepseek' | 'universal'
+ *                Omit or pass unknown value → platform resolves to 'universal'.
+ */
+export async function callPlatformSurfaceSpec(
+  family?: string
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+
+  const searchParams = new URLSearchParams()
+  if (family) searchParams.set('family', family)
+  const qs = searchParams.toString()
+  const url = `${PLATFORM_URL}/api/mcp/surface-spec${qs ? `?${qs}` : ''}`
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${identityToken}`,
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      },
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      status: 503,
+      envelope: buildClientErrorEnvelope(`Platform unreachable: ${message}`),
+    }
+  }
+
+  let envelope: McpEnvelope
+  try {
+    envelope = (await response.json()) as McpEnvelope
+  } catch {
+    return {
+      status: 502,
+      envelope: buildClientErrorEnvelope('Platform returned non-JSON response'),
+    }
+  }
+
+  return { status: response.status, envelope }
+}

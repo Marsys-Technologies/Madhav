@@ -482,8 +482,6 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     const top_k        = Math.min(Number(args['top_k'] ?? 20), 100)
 
     try {
-      const { db } = _ctx as { db: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> } }
-
       // Join activation with signals to compute combined priority
       const sql = `
         SELECT
@@ -509,7 +507,7 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
         LIMIT $5
       `
 
-      const result = await db.query(sql, [chart_id, ayanamsha_id, date_from, date_to, top_k])
+      const result = await query(sql, [chart_id, ayanamsha_id, date_from, date_to, top_k])
       const signalRefs = (result.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
 
       return {

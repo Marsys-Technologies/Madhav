@@ -91,6 +91,24 @@ const maroOrchestrateTool: CapabilityDescriptor = {
   lel_capable: false,
   grounds_to: undefined,
 
+  // R4: behavioral_overrides — per-family shaping for MARO orchestration meta-tool.
+  // These override MARO family defaults when this capability is the active cap descriptor.
+  // Most capabilities leave this unset. The orchestrate meta-tool sets it to demonstrate
+  // the populate-or-amend contract: any key here merges into capability_overrides in the
+  // FamilyNormalization result (see normalizer.ts applyBehavioralOverrides).
+  behavioral_overrides: {
+    deepseek: {
+      // DeepSeek: reduce max_tokens_hint for the meta-tool response (json_object output is small)
+      max_tokens_hint: 512,
+      note: 'MARO orchestrate result is a small JSON object; no extended reasoning needed on DeepSeek',
+    },
+    gemini: {
+      // Gemini: hint that this tool output is always a flat object (no nested schema issues)
+      validate_schema_depth: 'flat',
+      note: 'MARO orchestrate result has no nested lists; validate_and_repair can be lightweight',
+    },
+  },
+
   mcp_annotations: {
     readOnly: true,
     destructive: false,

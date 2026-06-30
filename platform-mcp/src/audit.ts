@@ -8,29 +8,29 @@
  * to Brahma 6-layer tables (ganita_*, bodha_*, kala_*, phala_*, mimamsa_*).
  * data_source_expected and mcp_audit_findings tables dropped — findings now log to stdout.
  *
- * Requires: DATABASE_URL environment variable (Cloud SQL or direct postgres URL).
+ * R2.1 (2026-06-30): Repointed from direct pg.Pool to callPlatformPrimitive so that
+ * all DB access routes through the registry surface.
+ *
+ * Requires: PLATFORM_URL + SERVICE_TOKEN (or GCP ADC) environment variables.
  */
 
-import pg from 'pg'
+import { callPlatformPrimitive } from './client.js'
+import type { Principal, McpEnvelopeError } from './types.js'
 
-const { Pool } = pg
-
-const DATABASE_URL = process.env['DATABASE_URL']
-if (!DATABASE_URL) {
-  console.error('[audit] ERROR: DATABASE_URL not set. Exiting.')
-  process.exit(1)
+// Audit job runs as the internal service principal — no user-facing key.
+const AUDIT_PRINCIPAL: Principal = {
+  user_uid: 'audit-job',
+  key_id:   'audit-internal',
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL })
-
-// Brahma layer row-count checks.
-const BRAHMA_CHECKS: { label: string; query: string; minExpected: number }[] = [
-  { label: 'ganita_positions',    query: `SELECT COUNT(*) FROM ganita_positions`,    minExpected: 1 },
-  { label: 'ganita_dashas',       query: `SELECT COUNT(*) FROM ganita_dashas`,       minExpected: 1 },
-  { label: 'bodha_signals',       query: `SELECT COUNT(*) FROM bodha_signals`,       minExpected: 0 },
-  { label: 'kala_timeline',       query: `SELECT COUNT(*) FROM kala_timeline`,       minExpected: 0 },
-  { label: 'phala_anchors',       query: `SELECT COUNT(*) FROM phala_anchors`,       minExpected: 0 },
-  { label: 'mimamsa_predictions', query: `SELECT COUNT(*) FROM mimamsa_predictions`, minExpected: 0 },
+// Brahma layer row-count checks — delegated to the platform primitive.
+const BRAHMA_CHECKS: { label: string; minExpected: number }[] = [
+  { label: 'ganita_positions',    minExpected: 1 },
+  { label: 'ganita_dashas',       minExpected: 1 },
+  { label: 'bodha_signals',       minExpected: 0 },
+  { label: 'kala_timeline',       minExpected: 0 },
+  { label: 'phala_anchors',       minExpected: 0 },
+  { label: 'mimamsa_predictions', minExpected: 0 },
 ]
 
 async function run(): Promise<void> {
@@ -38,8 +38,18 @@ async function run(): Promise<void> {
 
   let findings = 0
   for (const check of BRAHMA_CHECKS) {
-    const result = await pool.query(check.query)
-    const actual = parseInt(result.rows[0].count as string, 10)
+    const { status, envelope } = await callPlatformPrimitive(
+      'audit_row_count',
+      { table: check.label },
+      AUDIT_PRINCIPAL,
+    )
+    if (status !== 200 || !envelope.ok) {
+      console.warn(`[audit] class_1: ${check.label} — primitive error: ${(envelope as McpEnvelopeError).error?.message ?? status}`)
+      findings++
+      continue
+    }
+    const result = envelope.result as { count: number } | undefined
+    const actual = result?.count ?? 0
     if (actual === 0 && check.minExpected > 0) {
       console.warn(`[audit] class_1: ${check.label} = 0 rows (expected >= ${check.minExpected})`)
       findings++
@@ -50,11 +60,10 @@ async function run(): Promise<void> {
 
   console.log(`[audit] Emitted ${findings} findings (stdout only — mcp_audit_findings removed in WS-0).`)
   console.log('[audit] Nightly audit complete.')
-  await pool.end()
   process.exit(0)
 }
 
 run().catch((err) => {
   console.error('[audit] FATAL:', err)
-  pool.end().finally(() => process.exit(1))
+  process.exit(1)
 })

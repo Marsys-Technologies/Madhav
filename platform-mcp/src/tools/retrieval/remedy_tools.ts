@@ -16,33 +16,12 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import pg from 'pg'
-
-const { Pool } = pg
-
-// ── DB pool ───────────────────────────────────────────────────────────────────
-
-let _pool: pg.Pool | null = null
-
-function getPool(): pg.Pool | null {
-  if (!_pool) {
-    const dbUrl = process.env['DATABASE_URL']
-    if (!dbUrl) return null
-    _pool = new Pool({ connectionString: dbUrl, max: 5, idleTimeoutMillis: 30_000 })
-  }
-  return _pool
-}
-
-async function queryDb(sql: string, params: unknown[]): Promise<Record<string, unknown>[]> {
-  const pool = getPool()
-  if (!pool) throw new Error('DATABASE_URL not configured — cannot query remedy corpus')
-  const result = await pool.query(sql, params)
-  return result.rows as Record<string, unknown>[]
-}
+import { callPlatformPrimitive } from '../../client.js'
+import type { Principal, McpEnvelopeError } from '../../types.js'
 
 // ── Registration helper ────────────────────────────────────────────────────────
 
-export function registerRemedyTools(server: McpServer): void {
+export function registerRemedyTools(server: McpServer, getPrincipal: () => Principal): void {
 
   // ── 1. query_remedies ──────────────────────────────────────────────────────
 
@@ -56,24 +35,15 @@ export function registerRemedyTools(server: McpServer): void {
       top_k: z.number().int().min(1).max(50).default(10).describe('Max rows to return'),
     },
     async ({ planet, domain, category, top_k }) => {
-      const conditions: string[] = []
-      const values: unknown[] = []
-
-      if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
-      if (domain) { values.push(domain); conditions.push(`domain = $${values.length}`) }
-      if (category) { values.push(category); conditions.push(`category = $${values.length}`) }
-
-      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-      values.push(top_k)
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, domain, category, deity,
-                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-                cost_tier, contraindications, source_canonical_id, source_citation,
-                classical_attestation_text, classical_ref
-         FROM brahma_remedy_corpus ${where}
-         ORDER BY confidence DESC NULLS LAST LIMIT $${values.length}`,
-        values,
+      const { status, envelope } = await callPlatformPrimitive(
+        'query_remedies',
+        { planet, domain, category, top_k },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies: rows, count: rows.length }) }],
       }
@@ -90,15 +60,15 @@ export function registerRemedyTools(server: McpServer): void {
       top_k: z.number().int().min(1).max(20).default(5),
     },
     async ({ affliction, top_k }) => {
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, domain, category, deity,
-                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-                cost_tier, contraindications, source_canonical_id, classical_attestation_text
-         FROM brahma_remedy_corpus
-         WHERE planet ILIKE $1 OR domain ILIKE $1
-         ORDER BY confidence DESC NULLS LAST, cost_tier ASC LIMIT $2`,
-        [`%${affliction}%`, top_k],
+      const { status, envelope } = await callPlatformPrimitive(
+        'query_remedies_for_chart',
+        { affliction, top_k },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies_for_chart' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies_for_chart: rows, affliction, count: rows.length }) }],
       }
@@ -117,15 +87,15 @@ export function registerRemedyTools(server: McpServer): void {
       ]).describe('Remedy category'),
     },
     async ({ category }) => {
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, domain, category, deity,
-                prescription_text, mantra_text, mantra_sanskrit,
-                cost_tier, source_canonical_id, classical_attestation_text
-         FROM brahma_remedy_corpus
-         WHERE category = $1
-         ORDER BY planet, remedy_id`,
-        [category],
+      const { status, envelope } = await callPlatformPrimitive(
+        'list_remedies_by_category',
+        { category },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'list_remedies_by_category' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ list_remedies_by_category: rows, category, count: rows.length }) }],
       }
@@ -141,12 +111,17 @@ export function registerRemedyTools(server: McpServer): void {
       remedy_id: z.string().describe('The unique remedy identifier e.g. man_sun_gayatri_001'),
     },
     async ({ remedy_id }) => {
-      const rows = await queryDb(
-        `SELECT * FROM brahma_remedy_corpus WHERE remedy_id = $1`,
-        [remedy_id],
+      const { status, envelope } = await callPlatformPrimitive(
+        'read_remedy',
+        { remedy_id },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'read_remedy' }) }], isError: true }
+      }
+      const row = envelope.result as Record<string, unknown> | null
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ read_remedy: rows[0] ?? null, found: rows.length > 0 }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ read_remedy: row ?? null, found: row !== null }) }],
       }
     },
   )
@@ -161,22 +136,15 @@ export function registerRemedyTools(server: McpServer): void {
       planet: z.string().optional().describe('Planet name e.g. Saturn, Rahu'),
     },
     async ({ deity, planet }) => {
-      const conditions: string[] = ["category = 'tantric'"]
-      const values: unknown[] = []
-
-      if (deity) { values.push(`%${deity}%`); conditions.push(`deity ILIKE $${values.length}`) }
-      if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
-
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, domain, deity,
-                prescription_text, mantra_sanskrit, mantra_transliteration,
-                ingredients_jsonb, timing_rules_jsonb, cost_tier, contraindications,
-                source_canonical_id, source_citation, classical_attestation_text
-         FROM brahma_remedy_corpus
-         WHERE ${conditions.join(' AND ')}
-         ORDER BY planet, remedy_id`,
-        values,
+      const { status, envelope } = await callPlatformPrimitive(
+        'query_tantric_remedies',
+        { deity, planet },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_tantric_remedies' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ query_tantric_remedies: rows, count: rows.length }) }],
       }
@@ -193,15 +161,15 @@ export function registerRemedyTools(server: McpServer): void {
         .describe('Planet name'),
     },
     async ({ planet }) => {
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, domain, category, deity,
-                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
-                cost_tier, contraindications, source_canonical_id, classical_attestation_text
-         FROM brahma_remedy_corpus
-         WHERE planet = $1
-         ORDER BY category, remedy_id`,
-        [planet],
+      const { status, envelope } = await callPlatformPrimitive(
+        'query_remedies_by_planet',
+        { planet },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_remedies_by_planet' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies_by_planet: rows, planet, count: rows.length }) }],
       }
@@ -217,21 +185,15 @@ export function registerRemedyTools(server: McpServer): void {
       planet: z.string().optional().describe('Planet name; omit to return all mantras'),
     },
     async ({ planet }) => {
-      const conditions: string[] = ["category = 'mantras'"]
-      const values: unknown[] = []
-
-      if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
-
-      const rows = await queryDb(
-        `SELECT remedy_id, planet, deity,
-                mantra_sanskrit, mantra_transliteration, mantra_text,
-                prescription_text, timing_rules_jsonb,
-                source_canonical_id, classical_attestation_text, classical_ref
-         FROM brahma_remedy_corpus
-         WHERE ${conditions.join(' AND ')}
-         ORDER BY planet, remedy_id`,
-        values,
+      const { status, envelope } = await callPlatformPrimitive(
+        'query_mantras',
+        { planet },
+        getPrincipal(),
       )
+      if (status !== 200 || !envelope.ok) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: (envelope as McpEnvelopeError).error?.message ?? status, tool: 'query_mantras' }) }], isError: true }
+      }
+      const rows = envelope.result as Record<string, unknown>[]
       return {
         content: [{ type: 'text' as const, text: JSON.stringify({ query_mantras: rows, planet: planet ?? 'all', count: rows.length }) }],
       }

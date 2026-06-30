@@ -99,6 +99,10 @@ export async function POST(
               subset: body['subset'] as string[] | undefined,
               tier: principal.audience_tier,
               chart_id: body['chart_id'] as string | undefined,
+              // R4: Multi-LLM Exposure params
+              response_format: body['response_format'] as 'minimal' | 'standard' | 'detailed' | undefined,
+              model_family: body['model_family'] as 'anthropic' | 'gemini' | 'openai' | 'deepseek' | 'universal' | undefined,
+              behavioral_overrides: body['behavioral_overrides'] as Record<string, Record<string, unknown>> | undefined,
             },
             principal,
             (event) => {
@@ -113,6 +117,10 @@ export async function POST(
               schools: body['schools'] as Array<'parashara' | 'jaimini' | 'kp' | 'tajaka'> | undefined,
               tier: principal.audience_tier,
               chart_id: body['chart_id'] as string | undefined,
+              // R4: Multi-LLM Exposure params
+              response_format: body['response_format'] as 'minimal' | 'standard' | 'detailed' | undefined,
+              model_family: body['model_family'] as 'anthropic' | 'gemini' | 'openai' | 'deepseek' | 'universal' | undefined,
+              behavioral_overrides: body['behavioral_overrides'] as Record<string, Record<string, unknown>> | undefined,
             },
             principal,
             (event) => {

@@ -45,7 +45,9 @@ const SOURCE_CITATION = 'PyJHora/SwissEph DE441 + Brahma-L1'
 // chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
 const PYTHON_SIDECAR_URL =
   process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
-const DEFAULT_SNAPSHOT_DATE = '2026-06-05'
+// DEFAULT_SNAPSHOT_DATE: today's date (ISO), computed at runtime.
+// chart_agnostic_gate: no hardcoded native-specific date.
+const DEFAULT_SNAPSHOT_DATE = new Date().toISOString().slice(0, 10)
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -406,10 +408,13 @@ export function registerKalaTemporalRetrievalTool(server: McpServer): void {
   server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
     const input = InputSchema.parse(params)
 
-    // Default date range: 6 months before + 6 months after DEFAULT_SNAPSHOT_DATE
+    // Default date range: 6 months before + 6 months after today (chart-agnostic).
+    // Computed at request time so the window always centers on the current date.
+    const todayMs = Date.now()
+    const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000
     const dateRange = input.date_range ?? {
-      start: '2025-12-05', // 6 months before 2026-06-05
-      end: '2026-12-05',   // 6 months after
+      start: new Date(todayMs - sixMonthsMs).toISOString().slice(0, 10),
+      end:   new Date(todayMs + sixMonthsMs).toISOString().slice(0, 10),
     }
 
     try {

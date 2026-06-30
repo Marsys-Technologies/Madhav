@@ -34,239 +34,20 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import pg from 'pg'
-
-const { Pool } = pg
-
-// ── DB pool ────────────────────────────────────────────────────────────────────
-
-let _pool: pg.Pool | null = null
-
-function getPool(): pg.Pool | null {
-  if (!_pool) {
-    const dbUrl = process.env['DATABASE_URL']
-    if (!dbUrl) return null
-    _pool = new Pool({ connectionString: dbUrl, max: 5, idleTimeoutMillis: 30_000 })
-  }
-  return _pool
-}
+import { callPlatformPrimitive } from '../../client.js'
+import type { Principal, McpEnvelopeError } from '../../types.js'
 
 // REMEDIATION D7: NATIVE_CHART_ID removed. chart_id is now REQUIRED from caller.
 // chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface PositionRow {
-  fact_subject: string
-  graha: string
-  sign: string
-  nakshatra: string
-  nakshatra_pada: number
-  house: number
-  sidereal_longitude: number
-  ayanamsha: string
-}
-
-interface SignalRow {
-  signal_id: string
-  signal_text: string
-  domain: string
-  valence: string
-  strength_score: number | null
-  confidence: number | null
-  rule_id: null                    // Always null at scaffold pass
-  grounding_status: 'UNGROUNDED'  // Always UNGROUNDED at scaffold pass
-}
-
-interface DomainLinkRow {
-  link_id: string
-  source_domain: string
-  target_domain: string
-  link_type: string
-  strength: number | null
-  direction: string
-  valence: string
-  key_finding: string
-  msr_anchors: string[]
-}
-
-interface ResonanceRow {
-  pattern_id: string
-  element_text: string
-  domains_primary: string[]
-  resonance_type: string
-  strength: number
-  net_resonance: string
-}
-
-interface GraphEdgeRow {
-  edge_id: string
-  source_node: string
-  target_node: string
-  edge_type: string
-  weight: number
-  domain: string
-}
-
-interface BundleResult {
-  positions:     PositionRow[]
-  signals:       SignalRow[]
-  domain_links:  DomainLinkRow[]
-  resonance:     ResonanceRow[]
-  graph_edges?:  GraphEdgeRow[]
-  grounding_status: 'SCAFFOLD'
-  b11_floor_passed: boolean
-  provenance_envelope: {
-    chart_id:            string
-    queried_at:          string
-    source:              string
-    layer_coverage:      string[]
-    position_count:      number
-    signal_count:        number
-    domain_link_count:   number
-    resonance_count:     number
-    graph_edge_count:    number
-    grounding_status:    'SCAFFOLD'
-    grounding_note:      string
-    rule_id_all_null:    boolean
-    b11_floor_passed:    boolean
-    subsystems_errored:  string[]
-  }
-}
-
-// ── Subsystem fetchers ─────────────────────────────────────────────────────────
-
-async function fetchPositions(
-  client: pg.PoolClient,
-  chartId: string,
-): Promise<PositionRow[]> {
-  const result = await client.query<{ fact_subject: string; fact_value: Record<string, unknown> }>(
-    `SELECT fact_subject, fact_value
-     FROM chart_facts
-     WHERE chart_id = $1
-       AND fact_category = 'ganita.positions'
-       AND fact_subject LIKE '%_lahiri'
-     ORDER BY fact_subject
-     LIMIT 20`,
-    [chartId],
-  )
-  return result.rows.map(r => ({
-    fact_subject:       r.fact_subject,
-    graha:              String(r.fact_value['graha'] ?? ''),
-    sign:               String(r.fact_value['sign'] ?? ''),
-    nakshatra:          String(r.fact_value['nakshatra'] ?? ''),
-    nakshatra_pada:     Number(r.fact_value['nakshatra_pada'] ?? 0),
-    house:              Number(r.fact_value['house'] ?? 0),
-    sidereal_longitude: Number(r.fact_value['sidereal_longitude'] ?? 0),
-    ayanamsha:          String(r.fact_value['ayanamsha'] ?? 'lahiri'),
-  }))
-}
-
-async function fetchSignals(
-  client: pg.PoolClient,
-  chartId: string,
-  limit = 573,
-): Promise<SignalRow[]> {
-  const result = await client.query<{ fact_subject: string; fact_value: Record<string, unknown> }>(
-    `SELECT fact_subject, fact_value
-     FROM chart_facts
-     WHERE chart_id = $1
-       AND fact_category = 'bodha.signals'
-     ORDER BY fact_subject
-     LIMIT $2`,
-    [chartId, limit],
-  )
-  return result.rows.map(r => ({
-    signal_id:     r.fact_subject,
-    signal_text:   String(r.fact_value['signal_text'] ?? r.fact_value['signal_name'] ?? ''),
-    domain:        String(r.fact_value['domain'] ?? 'unknown'),
-    valence:       String(r.fact_value['valence'] ?? 'context-dependent'),
-    strength_score:r.fact_value['strength_score'] != null ? Number(r.fact_value['strength_score']) : null,
-    confidence:    r.fact_value['confidence'] != null ? Number(r.fact_value['confidence']) : null,
-    rule_id:       null,           // Hardcoded null — scaffold pass requirement
-    grounding_status: 'UNGROUNDED' as const,
-  }))
-}
-
-async function fetchDomainLinks(
-  client: pg.PoolClient,
-  chartId: string,
-): Promise<DomainLinkRow[]> {
-  const result = await client.query<{ fact_subject: string; fact_value: Record<string, unknown> }>(
-    `SELECT fact_subject, fact_value
-     FROM chart_facts
-     WHERE chart_id = $1
-       AND fact_category = 'bodha.domain_links'
-     ORDER BY fact_subject`,
-    [chartId],
-  )
-  return result.rows.map(r => ({
-    link_id:       r.fact_subject,
-    source_domain: String(r.fact_value['source_domain'] ?? ''),
-    target_domain: String(r.fact_value['target_domain'] ?? ''),
-    link_type:     String(r.fact_value['link_type'] ?? 'feeds'),
-    strength:      r.fact_value['strength'] != null ? Number(r.fact_value['strength']) : null,
-    direction:     String(r.fact_value['direction'] ?? 'row→col'),
-    valence:       String(r.fact_value['valence'] ?? 'mixed'),
-    key_finding:   String(r.fact_value['key_finding'] ?? ''),
-    msr_anchors:   Array.isArray(r.fact_value['msr_anchors'])
-      ? (r.fact_value['msr_anchors'] as string[])
-      : [],
-  }))
-}
-
-async function fetchResonance(
-  client: pg.PoolClient,
-  chartId: string,
-): Promise<ResonanceRow[]> {
-  const result = await client.query<{ fact_subject: string; fact_value: Record<string, unknown> }>(
-    `SELECT fact_subject, fact_value
-     FROM chart_facts
-     WHERE chart_id = $1
-       AND fact_category = 'bodha.resonance'
-     ORDER BY fact_subject`,
-    [chartId],
-  )
-  return result.rows.map(r => ({
-    pattern_id:      r.fact_subject,
-    element_text:    String(r.fact_value['element_text'] ?? ''),
-    domains_primary: Array.isArray(r.fact_value['domains_primary'])
-      ? (r.fact_value['domains_primary'] as string[])
-      : [],
-    resonance_type:  String(r.fact_value['resonance_type'] ?? 'neutral'),
-    strength:        Number(r.fact_value['strength'] ?? 0.5),
-    net_resonance:   String(r.fact_value['net_resonance'] ?? ''),
-  }))
-}
-
-async function fetchGraphEdges(
-  client: pg.PoolClient,
-  chartId: string,
-): Promise<GraphEdgeRow[]> {
-  const result = await client.query<{ fact_subject: string; fact_value: Record<string, unknown> }>(
-    `SELECT fact_subject, fact_value
-     FROM chart_facts
-     WHERE chart_id = $1
-       AND fact_category = 'bodha.graph'
-     ORDER BY fact_subject
-     LIMIT 110`,
-    [chartId],
-  )
-  return result.rows.map(r => ({
-    edge_id:     r.fact_subject,
-    source_node: String(r.fact_value['source_node'] ?? ''),
-    target_node: String(r.fact_value['target_node'] ?? ''),
-    edge_type:   String(r.fact_value['edge_type'] ?? ''),
-    weight:      Number(r.fact_value['weight'] ?? 0.7),
-    domain:      String(r.fact_value['domain'] ?? 'chart'),
-  }))
-}
+// R2.1 (2026-06-30): Repointed from direct pg.Pool to callPlatformPrimitive —
+// registry = served surface. No local Pool instantiation.
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
-export function registerHolisticBundleRetrievalTool(server: McpServer): void {
+export function registerHolisticBundleRetrievalTool(server: McpServer, getPrincipal: () => Principal): void {
   // REMEDIATION D7: chart_id is now REQUIRED (no default fallback to native chart).
   // chart_agnostic_gate RULE-1: per_chart scope → chart_id in required_inputs.
+  // R2.1: delegates to callPlatformPrimitive('holistic_bundle', params) — no local Pool.
   server.tool(
     'holistic_bundle_chart_facts',
     {
@@ -284,128 +65,34 @@ export function registerHolisticBundleRetrievalTool(server: McpServer): void {
           isError: true,
         }
       }
-      const targetChartId = chart_id
-      const queriedAt = new Date().toISOString()
-      const pool = getPool()
-
-      // Static scaffold bundle when DB is unavailable
-      if (!pool) {
-        const scaffoldBundle: BundleResult = {
-          positions:    [],
-          signals:      [],
-          domain_links: [],
-          resonance:    [],
-          grounding_status: 'SCAFFOLD',
-          b11_floor_passed: false,
-          provenance_envelope: {
-            chart_id:           targetChartId,
-            queried_at:         queriedAt,
-            source:             'chart_facts (DATABASE_UNAVAILABLE)',
-            layer_coverage:     ['L1-ganita', 'L2-bodha'],
-            position_count:     0,
-            signal_count:       0,
-            domain_link_count:  0,
-            resonance_count:    0,
-            graph_edge_count:   0,
-            grounding_status:   'SCAFFOLD',
-            grounding_note:     'Scaffold pass — all signals UNGROUNDED; awaiting WS-3 rule_base',
-            rule_id_all_null:   true,
-            b11_floor_passed:   false,
-            subsystems_errored: ['DATABASE_UNAVAILABLE'],
-          },
-        }
-        return {
-          content: [{
-            type: 'text' as const,
-            text: JSON.stringify(scaffoldBundle, null, 2),
-          }],
-        }
-      }
-
-      let client: pg.PoolClient | null = null
-      const subsystems_errored: string[] = []
 
       try {
-        client = await pool.connect()
+        const { status, envelope } = await callPlatformPrimitive(
+          'holistic_bundle',
+          { chart_id, include_graph },
+          getPrincipal(),
+        )
 
-        // Fetch all subsystems with per-subsystem error isolation
-        let positions: PositionRow[] = []
-        let signals: SignalRow[] = []
-        let domain_links: DomainLinkRow[] = []
-        let resonance: ResonanceRow[] = []
-        let graph_edges: GraphEdgeRow[] = []
-
-        try {
-          positions = await fetchPositions(client, targetChartId)
-        } catch (e) {
-          subsystems_errored.push(`ganita.positions: ${e instanceof Error ? e.message : String(e)}`)
-        }
-
-        try {
-          signals = await fetchSignals(client, targetChartId)
-        } catch (e) {
-          subsystems_errored.push(`bodha.signals: ${e instanceof Error ? e.message : String(e)}`)
-        }
-
-        try {
-          domain_links = await fetchDomainLinks(client, targetChartId)
-        } catch (e) {
-          subsystems_errored.push(`bodha.domain_links: ${e instanceof Error ? e.message : String(e)}`)
-        }
-
-        try {
-          resonance = await fetchResonance(client, targetChartId)
-        } catch (e) {
-          subsystems_errored.push(`bodha.resonance: ${e instanceof Error ? e.message : String(e)}`)
-        }
-
-        if (include_graph) {
-          try {
-            graph_edges = await fetchGraphEdges(client, targetChartId)
-          } catch (e) {
-            subsystems_errored.push(`bodha.graph: ${e instanceof Error ? e.message : String(e)}`)
+        if (status !== 200 || !envelope.ok) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                status: 'ERROR',
+                error: (envelope as McpEnvelopeError).error?.message ?? status,
+                chart_id,
+                grounding_status: 'SCAFFOLD',
+                b11_floor_passed: false,
+              }, null, 2),
+            }],
+            isError: true,
           }
         }
 
-        // B.11 floor: signals present AND domain_links present AND positions present
-        const b11_floor_passed =
-          signals.length > 0 &&
-          domain_links.length > 0 &&
-          positions.length > 0
-
-        // Verify all signals are UNGROUNDED (scaffold integrity check)
-        const rule_id_all_null = signals.every(s => s.rule_id === null)
-
-        const bundle: BundleResult = {
-          positions,
-          signals,
-          domain_links,
-          resonance,
-          ...(include_graph ? { graph_edges } : {}),
-          grounding_status: 'SCAFFOLD',
-          b11_floor_passed,
-          provenance_envelope: {
-            chart_id:           targetChartId,
-            queried_at:         queriedAt,
-            source:             'chart_facts',
-            layer_coverage:     ['L1-ganita', 'L2-bodha.signals', 'L2-bodha.domain_links', 'L2-bodha.resonance'],
-            position_count:     positions.length,
-            signal_count:       signals.length,
-            domain_link_count:  domain_links.length,
-            resonance_count:    resonance.length,
-            graph_edge_count:   graph_edges.length,
-            grounding_status:   'SCAFFOLD',
-            grounding_note:     'Scaffold pass — all signals UNGROUNDED (rule_id=null); l2-bodha-grounded session re-derives post ws3-rule-base-complete tag',
-            rule_id_all_null,
-            b11_floor_passed,
-            subsystems_errored,
-          },
-        }
-
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(bundle, null, 2),
+            text: JSON.stringify(envelope.result, null, 2),
           }],
         }
       } catch (err) {
@@ -416,14 +103,13 @@ export function registerHolisticBundleRetrievalTool(server: McpServer): void {
             text: JSON.stringify({
               status: 'ERROR',
               error: msg,
-              chart_id: targetChartId,
+              chart_id,
               grounding_status: 'SCAFFOLD',
               b11_floor_passed: false,
             }, null, 2),
           }],
+          isError: true,
         }
-      } finally {
-        if (client) client.release()
       }
     }
   )

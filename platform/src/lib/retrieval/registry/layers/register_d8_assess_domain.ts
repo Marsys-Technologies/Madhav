@@ -1,0 +1,684 @@
+/**
+ * D8 Assess-Domain + Yoga-Dasha Bridge — Capability Registration (per-wave file)
+ * ================================================================================
+ * GATE A compliance: this is the per-wave registration file for D8.
+ * It does NOT edit registry/index.ts or registry/types.ts.
+ *
+ * D8 registers domain reasoning-unit tools (assess_*) and the yoga-dasha bridge.
+ * These are reconciled multi-call capabilities that orchestrate existing L2/L3 handlers
+ * into a single acharya-grade domain bundle.
+ *
+ * Capabilities registered by D8:
+ *
+ *   L-DOMAIN assess tools (R3.1):
+ *   marsys://tool/L-DOMAIN/assess_marriage  — 7th lord + Venus + D9 + bhāvat-bhāva + timing
+ *   marsys://tool/L-DOMAIN/assess_career    — 10th lord + Saturn + D10 + yogas + timing
+ *   marsys://tool/L-DOMAIN/assess_health    — 1st+6th+8th lords + Sun + afflictions + D1/D6
+ *   marsys://tool/L-DOMAIN/assess_wealth    — 2nd+11th lords + Jupiter + dasha activation
+ *
+ *   Timing bridge (R3.2):
+ *   marsys://tool/L-TIMING/yoga_activation_by_dasha
+ *     — bodha_msr_signals (signal_type_class='yoga') × kala_activation join
+ *
+ * Total D8 new capabilities: 5
+ *
+ * Design constraints:
+ *   - chart_id is ALWAYS required — no native defaults (principle #14)
+ *   - Every returned fact carries its signal_id / fact_id reference from L1/L2
+ *   - Contradictions graceful-empty (bodha_contradictions = 0 rows, expected state)
+ *   - judgment_flags marks any inference requiring acharya validation
+ *   - Calls real handlers (query_domain_reading, query_temporal_activation,
+ *     query_contradictions) — no mock/fake data
+ *
+ * Usage: import this file at application startup after D7 channel is registered.
+ */
+
+import { registerCapability } from '../index'
+import type { CapabilityDescriptor } from '../types'
+import { query } from '@/lib/db/client'
+
+// ── Shared: domain handler factory ───────────────────────────────────────────
+//
+// All four assess_* tools share this shape. The factory calls three real
+// underlying handlers (query_domain_reading, query_temporal_activation,
+// query_contradictions) via their exported capability handlers, then assembles
+// a reconciled bundle.
+
+interface AssessDomainArgs {
+  chart_id: string
+  ayanamsha_id: string
+  domain: string
+  domain_label: string
+  judgment_flag_note: string
+}
+
+async function runAssessDomain(
+  args: Record<string, unknown>,
+  opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
+): Promise<{ content: object; is_error: boolean }> {
+  const chart_id = args['chart_id'] as string | undefined
+  if (!chart_id) {
+    return { content: { error: 'chart_id is required' }, is_error: true }
+  }
+
+  const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+  const { domain, domain_label, judgment_flag_note } = opts
+
+  try {
+    // ── Step 1: domain reading (L2 Bodha) ──────────────────────────────────
+    const { queryDomainReadingCapability } = await import(
+      './L2_bodha/query_domain_reading'
+    )
+    const domainResult = await queryDomainReadingCapability.handler(
+      { chart_id, ayanamsha_id, domain },
+      undefined
+    )
+
+    // ── Step 2: temporal activation window (L3 Kāla) ──────────────────────
+    // Pull signal_id refs from the domain result to filter activations.
+    const domainContent = domainResult.content as Record<string, unknown>
+    const signalRefs: string[] = Array.isArray(domainContent['signal_id_refs'])
+      ? (domainContent['signal_id_refs'] as string[])
+      : []
+
+    const { queryTemporalActivationCapability } = await import(
+      './L3_kala/query_temporal_activation'
+    )
+    const today = new Date().toISOString().split('T')[0]!
+    const futureDate = new Date(Date.now() + 3 * 365 * 86400000)
+      .toISOString()
+      .split('T')[0]!
+
+    const temporalArgs: Record<string, unknown> = {
+      chart_id,
+      ayanamsha_id,
+      date_from: today,
+      date_to: futureDate,
+      top_k: 20,
+    }
+    if (signalRefs.length > 0) {
+      temporalArgs['signal_ids'] = signalRefs
+    }
+
+    const temporalResult = await queryTemporalActivationCapability.handler(
+      temporalArgs,
+      undefined
+    )
+
+    // ── Step 3: contradictions / discoveries (L2 Bodha) ───────────────────
+    // bodha_contradictions = 0 rows is EXPECTED state — handle gracefully.
+    const { queryContradictionsCapability } = await import(
+      './L2_bodha/query_contradictions'
+    )
+    const contraResult = await queryContradictionsCapability.handler(
+      { chart_id, ayanamsha_id, include_discoveries: true },
+      undefined
+    )
+
+    const contraContent = contraResult.content as Record<string, unknown>
+    const contradictions =
+      contraResult.is_error
+        ? { status: 'error', note: String(contraContent['error']) }
+        : (contraContent['contradiction_count'] as number) === 0
+        ? {
+            status: 'no_data',
+            note:
+              contraContent['contradictions_note'] ??
+              'bodha_contradictions not yet populated for this chart (expected state).',
+          }
+        : {
+            status: 'ok',
+            items: contraContent['contradictions'],
+            discoveries: contraContent['discoveries'],
+          }
+
+    // ── Assemble reconciled bundle ─────────────────────────────────────────
+    const temporalContent = temporalResult.content as Record<string, unknown>
+
+    return {
+      content: {
+        domain,
+        domain_label,
+        chart_id,
+        ayanamsha_id,
+        house_analysis: {
+          question_lenses: domainContent['question_lenses'] ?? [],
+          lens_count: domainContent['lens_count'] ?? 0,
+          note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells.',
+        },
+        karaka_analysis: {
+          cdlm_cells: domainContent['cdlm_cells'] ?? [],
+          cdlm_cell_count: domainContent['cdlm_cell_count'] ?? 0,
+        },
+        varga_analysis: {
+          note: 'Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.',
+          drill_uri: 'marsys://tool/L1/chart_facts_query',
+        },
+        activating_dasha: {
+          activations: temporalContent['activations'] ?? [],
+          activation_count: temporalContent['activation_count'] ?? 0,
+          predicates: temporalContent['predicates'] ?? [],
+          window: { date_from: today, date_to: futureDate },
+          signal_id_refs: temporalContent['signal_id_refs'] ?? [],
+        },
+        contradictions,
+        citations: {
+          note: 'Classical citations available via classical_attribution_lookup for signal_id_refs above.',
+          drill_uri: 'marsys://tool/L2/classical_attribution_lookup',
+          signal_id_refs: signalRefs,
+        },
+        judgment_flags: [
+          {
+            claim: judgment_flag_note,
+            requires_acharya_validation: true,
+          },
+        ],
+        provenance: {
+          tables: [
+            'bodha_question_lenses',
+            'bodha_cdlm_cells',
+            'kala_activation',
+            'kala_activation_predicates',
+            'bodha_contradictions',
+            'bodha_discoveries',
+          ],
+          handlers_called: [
+            'marsys://tool/L2/query_domain_reading',
+            'marsys://tool/L3/query_temporal_activation',
+            'marsys://tool/L2/query_contradictions',
+          ],
+          defect_001_note:
+            'constituent_facts_array in referenced signals has 91.5% orphan rate (DEFECT-001 OPEN). L1 fact joins via signal references will be empty for most signals until L2 rebuild.',
+        },
+      },
+      is_error: false,
+    }
+  } catch (err) {
+    return {
+      content: { error: String(err), chart_id, domain },
+      is_error: true,
+    }
+  }
+}
+
+// ── R3.1a: assess_marriage ────────────────────────────────────────────────────
+
+const assessMarriageCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-DOMAIN/assess_marriage',
+  type: 'tool',
+  layer: 'L2',
+  name: 'assess_marriage',
+  scope: 'per_chart',
+
+  description: [
+    'Reconciled marriage/partnership assessment for a chart.',
+    '7th lord + Venus kāraka + D9 analysis + bhāvat-bhāva + afflictions + activating dasha window + classical citations.',
+    'Orchestrates query_domain_reading (L2 Bodha: CDLM cells + question lenses for relationship domain),',
+    'query_temporal_activation (L3 Kāla: dasha activation window for domain signal refs),',
+    'and query_contradictions (L2 Bodha: contradiction/discovery surface).',
+    'Returns convergences and tensions with judgment_flags marking inferences requiring acharya validation.',
+    'Varga refinement (D9) available via chart_facts_query drill (marsys://tool/L1/chart_facts_query).',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha to use (default: 'LAHIRI').",
+    },
+  },
+
+  archetype: 'rich_relational',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L1/chart_facts_query',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L2/classical_attribution_lookup',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'expensive', cacheable: true },
+    bulk_context: { pre_fetch_priority: 30 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    return runAssessDomain(args, {
+      domain: 'relationship',
+      domain_label: 'Marriage / Partnership',
+      judgment_flag_note:
+        'Marriage domain synthesis reconciles 7th lord + Venus kāraka + D9 from L1 chart_facts (via drill). CDLM cell reconciliation and affliction assessment require acharya review of the assembled bundle.',
+    })
+  },
+}
+
+// ── R3.1b: assess_career ──────────────────────────────────────────────────────
+
+const assessCareerCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-DOMAIN/assess_career',
+  type: 'tool',
+  layer: 'L2',
+  name: 'assess_career',
+  scope: 'per_chart',
+
+  description: [
+    'Reconciled career/vocation assessment for a chart.',
+    '10th lord + Saturn kāraka + D10 analysis + yogas + activating dasha window + classical citations.',
+    'Orchestrates query_domain_reading (L2 Bodha: CDLM cells + question lenses for career domain),',
+    'query_temporal_activation (L3 Kāla: dasha activation window for domain signal refs),',
+    'and query_contradictions (L2 Bodha: contradiction/discovery surface).',
+    'Returns convergences and tensions with judgment_flags marking inferences requiring acharya validation.',
+    'Varga refinement (D10) available via chart_facts_query drill (marsys://tool/L1/chart_facts_query).',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha to use (default: 'LAHIRI').",
+    },
+  },
+
+  archetype: 'rich_relational',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L1/chart_facts_query',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L2/classical_attribution_lookup',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'expensive', cacheable: true },
+    bulk_context: { pre_fetch_priority: 30 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    return runAssessDomain(args, {
+      domain: 'career',
+      domain_label: 'Career / Vocation',
+      judgment_flag_note:
+        'Career domain synthesis reconciles 10th lord + Saturn kāraka + D10 from L1 chart_facts (via drill). Yoga detection and dasha activation windows require acharya review of the assembled bundle.',
+    })
+  },
+}
+
+// ── R3.1c: assess_health ─────────────────────────────────────────────────────
+
+const assessHealthCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-DOMAIN/assess_health',
+  type: 'tool',
+  layer: 'L2',
+  name: 'assess_health',
+  scope: 'per_chart',
+
+  description: [
+    'Reconciled health/vitality assessment for a chart.',
+    '1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis + activating dasha window.',
+    'Orchestrates query_domain_reading (L2 Bodha: CDLM cells + question lenses for health domain),',
+    'query_temporal_activation (L3 Kāla: dasha activation window for domain signal refs),',
+    'and query_contradictions (L2 Bodha: contradiction/discovery surface).',
+    'Returns convergences and tensions with judgment_flags marking inferences requiring acharya validation.',
+    'Varga refinement (D6) available via chart_facts_query drill (marsys://tool/L1/chart_facts_query).',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha to use (default: 'LAHIRI').",
+    },
+  },
+
+  archetype: 'rich_relational',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L1/chart_facts_query',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L2/classical_attribution_lookup',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'expensive', cacheable: true },
+    bulk_context: { pre_fetch_priority: 30 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    return runAssessDomain(args, {
+      domain: 'health',
+      domain_label: 'Health / Vitality',
+      judgment_flag_note:
+        'Health domain synthesis reconciles 1st/6th/8th lords + Sun kāraka from L1 chart_facts (via drill). Affliction assessment and maraka timing require acharya review of the assembled bundle.',
+    })
+  },
+}
+
+// ── R3.1d: assess_wealth ─────────────────────────────────────────────────────
+
+const assessWealthCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-DOMAIN/assess_wealth',
+  type: 'tool',
+  layer: 'L2',
+  name: 'assess_wealth',
+  scope: 'per_chart',
+
+  description: [
+    'Reconciled wealth/prosperity assessment for a chart.',
+    '2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations.',
+    'Orchestrates query_domain_reading (L2 Bodha: CDLM cells + question lenses for wealth domain),',
+    'query_temporal_activation (L3 Kāla: dasha activation window for domain signal refs),',
+    'and query_contradictions (L2 Bodha: contradiction/discovery surface).',
+    'Returns convergences and tensions with judgment_flags marking inferences requiring acharya validation.',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha to use (default: 'LAHIRI').",
+    },
+  },
+
+  archetype: 'rich_relational',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L1/chart_facts_query',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L2/classical_attribution_lookup',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'expensive', cacheable: true },
+    bulk_context: { pre_fetch_priority: 30 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    return runAssessDomain(args, {
+      domain: 'wealth',
+      domain_label: 'Wealth / Prosperity',
+      judgment_flag_note:
+        'Wealth domain synthesis reconciles 2nd/11th lords + Jupiter kāraka from L1 chart_facts (via drill). Dhana yoga identification and dasha timing require acharya review of the assembled bundle.',
+    })
+  },
+}
+
+// ── R3.2: yoga_activation_by_dasha ───────────────────────────────────────────
+
+const yogaActivationByDashaCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+  type: 'tool',
+  layer: 'L3',
+  name: 'yoga_activation_by_dasha',
+  scope: 'per_chart',
+
+  description: [
+    'Which yogas fire in a given dasha-antardasha window?',
+    'Joins bodha_msr_signals (signal_type_class = \'yoga\') with kala_activation (active dasha periods)',
+    'to return activated yogas with dasha alignment score, activation window, and signal refs.',
+    'Filter by dasha_period (e.g. \'saturn-venus\'), date range, or ayanamsha_id.',
+    'Returns activated_yogas with: signal_id, signal_summary, yoga_type (signal_type_id),',
+    'salience, dasha_alignment_score (dasha_activation_proximity_score), activation_start,',
+    'activation_end, active_dasha_periods_jsonb, and constituent_fact_ids.',
+    'Bridges the L2 Bodha yoga-signal catalog and the L3 Kāla timing activation surface.',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha filter (default: 'LAHIRI').",
+    },
+    dasha_period: {
+      type: 'string',
+      description:
+        "Dasha-antardasha label to filter by (e.g. 'saturn-venus', 'jupiter-moon'). " +
+        'Matched as a case-insensitive substring against active_dasha_periods_jsonb text. Optional.',
+    },
+    date_from: {
+      type: 'string',
+      description: 'Start of date window (ISO 8601: YYYY-MM-DD). Default: today.',
+    },
+    date_to: {
+      type: 'string',
+      description: 'End of date window (ISO 8601: YYYY-MM-DD). Default: 3 years from today.',
+    },
+    top_k: {
+      type: 'number',
+      description: 'Maximum activated yogas to return (default: 30, max: 200).',
+    },
+    min_salience: {
+      type: 'number',
+      description: 'Minimum salience threshold on bodha_msr_signals (0..1, default: 0).',
+    },
+  },
+
+  archetype: 'temporal',
+  traversal_level: 'L-SIGNAL',
+  tool_role: 'temporal',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L3/query_temporal_activation',
+    'marsys://tool/L2/classical_attribution_lookup',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'medium', cacheable: true },
+    bulk_context: { pre_fetch_priority: 25 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const chart_id = args['chart_id'] as string | undefined
+    if (!chart_id) {
+      return { content: { error: 'chart_id is required' }, is_error: true }
+    }
+
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const dasha_period = args['dasha_period'] as string | undefined
+    const date_from =
+      (args['date_from'] as string | undefined) ??
+      new Date().toISOString().split('T')[0]!
+    const date_to =
+      (args['date_to'] as string | undefined) ??
+      new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]!
+    const top_k = Math.min(Number(args['top_k'] ?? 30), 200)
+    const min_salience = Number(args['min_salience'] ?? 0)
+
+    try {
+      // Join bodha_msr_signals (yoga signals) with kala_activation on signal_id.
+      // kala_activation links back to bodha_msr_signals via signal_id.
+      // signal_type_class = 'yoga' is the authoritative yoga filter on bodha_msr_signals
+      // (confirmed from query_signals.ts enum: 'yoga'|'dosha'|'karaka_alignment'|...).
+
+      const conds: string[] = [
+        'm.chart_id = $1',
+        'm.ayanamsha_id = $2',
+        "m.signal_type_class = 'yoga'",
+        'ka.chart_id = $1',
+        'ka.ayanamsha_id = $2',
+        'ka.activation_end >= $3',
+        'ka.activation_start <= $4',
+      ]
+      const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
+      let p = 5
+
+      if (min_salience > 0) {
+        conds.push(`m.salience >= $${p++}`)
+        params.push(min_salience)
+      }
+
+      // dasha_period filter: match against the jsonb text representation.
+      // active_dasha_periods_jsonb stores dasha period labels; ILIKE on ::text is pragmatic.
+      if (dasha_period) {
+        conds.push(`ka.active_dasha_periods_jsonb::text ILIKE $${p++}`)
+        params.push(`%${dasha_period}%`)
+      }
+
+      params.push(top_k)
+      const limitPh = `$${p++}`
+
+      const sql = `
+        SELECT
+          m.signal_id,
+          m.signal_type_id            AS yoga_type,
+          m.signal_tradition,
+          m.salience,
+          m.signal_summary,
+          m.constituent_facts_array   AS constituent_fact_ids,
+          ka.id                       AS activation_id,
+          ka.activation_start,
+          ka.activation_end,
+          ka.activation_peak_date,
+          ka.dasha_activation_proximity_score AS dasha_alignment_score,
+          ka.orb_strength,
+          ka.convergence_score,
+          ka.active_dasha_periods_jsonb,
+          ka.source_citation
+        FROM bodha_msr_signals m
+        JOIN kala_activation ka ON ka.signal_id = m.signal_id
+          AND ka.ayanamsha_id = m.ayanamsha_id
+          AND ka.chart_id = m.chart_id
+        WHERE ${conds.join('\n          AND ')}
+        ORDER BY ka.dasha_activation_proximity_score DESC NULLS LAST,
+                 m.salience DESC NULLS LAST,
+                 ka.activation_start
+        LIMIT ${limitPh}
+      `
+
+      const result = await query<Record<string, unknown>>(sql, params)
+
+      // Collect signal_id references
+      const signalRefs = [
+        ...new Set(
+          (result.rows as Array<{ signal_id?: string }>)
+            .map((r) => r.signal_id)
+            .filter(Boolean) as string[]
+        ),
+      ]
+
+      return {
+        content: {
+          chart_id,
+          ayanamsha_id,
+          query_window: {
+            dasha_period: dasha_period ?? null,
+            date_from,
+            date_to,
+          },
+          activated_yogas: result.rows,
+          total_count: result.rows.length,
+          signal_id_refs: signalRefs,
+          filters: { dasha_period, date_from, date_to, top_k, min_salience },
+          drill_next: [
+            'marsys://tool/L2/query_signals',
+            'marsys://tool/L3/query_temporal_activation',
+            'marsys://tool/L2/classical_attribution_lookup',
+          ],
+          provenance: {
+            tables: ['bodha_msr_signals', 'kala_activation'],
+            join_key: 'signal_id (bodha_msr_signals.signal_id = kala_activation.signal_id)',
+            yoga_filter: "signal_type_class = 'yoga'",
+            defect_001_note:
+              'constituent_facts_array has 91.5% orphan rate (DEFECT-001 OPEN). ' +
+              'L1 fact joins via constituent_fact_ids will be empty for most signals until L2 rebuild.',
+          },
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return {
+        content: { error: String(err), chart_id },
+        is_error: true,
+      }
+    }
+  },
+}
+
+// ── Registration export ────────────────────────────────────────────────────────
+
+/**
+ * Register D8 domain reasoning-unit + yoga-dasha bridge capabilities.
+ * Call at application startup after D7 channel capabilities are registered.
+ * GATE A: only registers NEW files for this wave — does not edit registry/index.ts.
+ */
+export function registerD8AssessDomainCapabilities(): void {
+  registerCapability(assessMarriageCapability)
+  registerCapability(assessCareerCapability)
+  registerCapability(assessHealthCapability)
+  registerCapability(assessWealthCapability)
+  registerCapability(yogaActivationByDashaCapability)
+}
+
+/**
+ * D8 capability URI roster (for Gate C reverse-citation checks and roster smoke tests).
+ */
+export const D8_CAPABILITY_URIS = [
+  // R3.1 — Domain reasoning-unit tools
+  'marsys://tool/L-DOMAIN/assess_marriage',
+  'marsys://tool/L-DOMAIN/assess_career',
+  'marsys://tool/L-DOMAIN/assess_health',
+  'marsys://tool/L-DOMAIN/assess_wealth',
+  // R3.2 — Yoga-Dasha bridge
+  'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+] as const
