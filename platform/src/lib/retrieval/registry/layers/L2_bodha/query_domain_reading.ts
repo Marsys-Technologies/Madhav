@@ -20,6 +20,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 export const queryDomainReadingCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_domain_reading',
@@ -65,7 +66,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha to filter by (default: 'LAHIRI').",
+      description: "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
     },
   },
 
@@ -86,7 +87,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     }
 
     const domain       = args['domain'] as string | undefined
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
 
     const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'other']
 

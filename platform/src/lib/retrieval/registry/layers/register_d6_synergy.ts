@@ -25,6 +25,7 @@ import type { CapabilityDescriptor } from '../types'
 import { runWholeChartRead } from '../../synergy/orchestrator'
 import type { SynergyContext } from '../../synergy/orchestrator'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../constants'
 
 /**
  * Build a SynergyContext backed by the platform's direct DB client.
@@ -109,7 +110,7 @@ const synergyPipelineTool: CapabilityDescriptor = {
     }
 
     const queryText = args['query'] ? String(args['query']) : undefined
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : 'LAHIRI'
+    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
     const dry_run = Boolean(args['dry_run'] ?? false)
 
     // dry_run: return the planned pipeline stages without executing
@@ -223,7 +224,7 @@ const synergyCrossLayerTool: CapabilityDescriptor = {
 
     const signal_uris = (args['signal_uris'] as string[] | undefined) ?? []
     const layers = (args['layers'] as string[] | undefined) ?? ['L1', 'L2', 'L3', 'L4', 'L5']
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : 'LAHIRI'
+    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
 
     // Run the D6 whole-chart read in cross_domain mode to surface contradictions +
     // convergences across the requested layers (B.11 Whole-Chart-Read Protocol).

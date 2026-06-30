@@ -15,6 +15,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 export const queryTemporalActivationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_temporal_activation',
@@ -54,7 +55,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
+      description: "Ayanamsha filter (default: 'lahiri_chitrapaksha').",
     },
     date_from: {
       type: 'string',
@@ -95,7 +96,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const date_from           = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
     const date_to             = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
     const signal_ids          = args['signal_ids'] as string[] | undefined

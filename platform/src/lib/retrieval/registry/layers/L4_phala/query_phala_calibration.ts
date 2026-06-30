@@ -16,6 +16,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // ── query_auspicious_windows ──────────────────────────────────────────────────
 
@@ -504,7 +505,7 @@ export const queryRectificationCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID (<chart_uuid>). Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Ayanamsha (default: 'LAHIRI')." },
+    ayanamsha_id: { type: 'string', description: "Ayanamsha (default: 'lahiri_chitrapaksha')." },
     top_k: { type: 'number', description: 'Max candidates to return (default: 20, max: 185).' },
   },
 
@@ -514,7 +515,7 @@ export const queryRectificationCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] as string
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'LAHIRI'
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const top_k        = Math.min(Number(args['top_k'] ?? 20), 185)
 
     try {
