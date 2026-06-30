@@ -2,7 +2,16 @@
 artifact: MCP_CHANNEL_AUDIT_D0_v1_0.md
 canonical_id: MCP_CHANNEL_AUDIT_D0
 version: 1.0
-status: CURRENT — current-state map of the MCP channel; gates the production-hardening plan
+status: SUPERSEDED-IN-PART by RETRIEVAL_TO_MCP_HANDOFF_v1_0 (2026-06-30) — see superseding_note. Still
+  valid as the gap taxonomy + provider-obligations matrix; its pre-seal COUNTS + several findings are stale.
+superseding_note: >
+  Post-retrieval-seal (CURRENT_STATE v6.07, git HEAD 2b02f924), code-verified 2026-06-30: F-1 (registry
+  bypass) is largely RESOLVED — the registry path is live and 5 bypass tools repointed to callPlatformPrimitive;
+  the MCP must not run its own chart SQL. F-2 tool COUNT is now 48 wired (this doc's 26 is superseded; /health
+  still stale at 13). F-4 kala_temporal native fallback is REMOVED (graceful-empty now); ephemeris_cache_native_
+  lifetime still to confirm. F-6 MARO seam (getMcpSurfaceSpec) is now a LIVE consumable. The remaining MCP P0 is
+  the authorizeChartAccess entitlement gate (F-5 context) + principal→role mapping. Use the live charter
+  (CLAUDECODE_BRIEF_MCP_ELEVATION_SWARM_CHARTER §0.A) and RETRIEVAL_TO_MCP_HANDOFF for current state.
 created: 2026-06-28
 author: Cowork (planning) — D0-style audit for the MCP-channel workstream, native Abhisek Mohanty
 classification: audit / current-state map (mirrors the retrieval D0 pattern)
