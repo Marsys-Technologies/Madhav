@@ -32,6 +32,34 @@ logger = logging.getLogger(__name__)
 _GLOBAL_BUILD_LOCK = 0x676c6f62  # hashtext('global') approximate; use pg function
 
 
+def _upsert_asset_throughput_global(conn, asset_id: str, state: str, error: Optional[str] = None) -> None:
+    """
+    Upsert asset_throughput for a global (chart_id IS NULL) asset.
+    Uses the partial-index unique constraint: UNIQUE (asset_id) WHERE chart_id IS NULL.
+    """
+    with conn.cursor() as cur:
+        if error is not None:
+            cur.execute(
+                """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+                   VALUES (%s, NULL, %s, %s, NOW())
+                   ON CONFLICT (asset_id) WHERE chart_id IS NULL
+                   DO UPDATE SET state = EXCLUDED.state,
+                                 last_error = EXCLUDED.last_error,
+                                 last_built_at = NOW()""",
+                (asset_id, state, error),
+            )
+        else:
+            cur.execute(
+                """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
+                   VALUES (%s, NULL, %s, NOW())
+                   ON CONFLICT (asset_id) WHERE chart_id IS NULL
+                   DO UPDATE SET state = EXCLUDED.state,
+                                 last_built_at = NOW()""",
+                (asset_id, state),
+            )
+    conn.commit()
+
+
 def execute_global_build(run_id: Optional[str] = None) -> None:
     """
     Execute a global (chart-independent) build for all scope='global' assets.
@@ -114,6 +142,14 @@ def _release_global_lock(conn, lock_key: int) -> None:
 def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
     """
     Dispatch to the writer registered for asset_id via the WriterBase registry.
+
+    Each writer runs inside a SAVEPOINT so a failed writer rolls back only its
+    own writes without affecting previously committed writers (H-1). After a
+    successful run the transaction is committed immediately (H-1 per-writer
+    commit), giving crash-recovery visibility. asset_throughput is updated before
+    and after each writer so the cockpit shows live 'building'/'lit'/'error'
+    state for L0 global assets (L-11).
+
     Returns 'ok', 'deferred', or 'failed'.
     """
     writer_cls = get_writer(asset_id)
@@ -122,6 +158,13 @@ def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
         return "deferred"
 
     logger.info("[global_build] running writer for asset_id=%s", asset_id)
+
+    # H-1 / L-11: mark asset as 'building' before we start
+    _upsert_asset_throughput_global(conn, asset_id, "building")
+
+    # H-1: SAVEPOINT isolation — a failed writer only rolls back its own writes
+    with conn.cursor() as cur:
+        cur.execute("SAVEPOINT writer_sp")
     try:
         ctx = ContextSpec(
             asset_id=asset_id,
@@ -130,8 +173,19 @@ def _run_asset_writer(conn, run_id: str, asset_id: str, row: dict) -> str:
             config={},
         )
         result = writer_cls().run(ctx)
+        # H-1: commit the writer's work immediately so it survives a crash in a
+        # later writer. The SAVEPOINT is implicitly released on commit.
+        conn.commit()
+        # L-11: update asset_throughput to 'lit' after successful commit
+        _upsert_asset_throughput_global(conn, asset_id, "lit")
         logger.info("[global_build] OK: asset_id=%s rows_inserted=%d", asset_id, result.rows_inserted)
         return "ok"
     except Exception as exc:
+        # H-1: roll back only this writer's writes; prior writers' commits survive
+        with conn.cursor() as cur:
+            cur.execute("ROLLBACK TO SAVEPOINT writer_sp")
+        conn.commit()  # flush the ROLLBACK so the connection is clean
+        # L-11: update asset_throughput to 'error' with the failure message
+        _upsert_asset_throughput_global(conn, asset_id, "error", error=f"{type(exc).__name__}: {exc}"[:2000])
         logger.error("[global_build] FAILED: asset_id=%s error=%s", asset_id, exc, exc_info=True)
         return "failed"

@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
+import threading
 from dataclasses import dataclass, field
 from typing import Callable, Any, Optional
 
@@ -198,6 +199,9 @@ def list_writers() -> dict[str, type[WriterBase]]:
     return dict(_REGISTRY)
 
 
+# L-2: threading.Lock guards the _discovered check-and-set so concurrent worker
+# threads cannot trigger duplicate-registration races during auto-discovery.
+_discover_lock = threading.Lock()
 _discovered = False
 
 
@@ -206,24 +210,29 @@ def _auto_discover() -> None:
     Auto-discover and import all writer modules in this package.
     Called lazily on first get_writer(); idempotent after first call.
     Hard-fails on import errors — registration gap is not silently OK.
+
+    Thread-safe: the _discover_lock prevents duplicate registration when multiple
+    worker threads call get_writer() simultaneously before the main thread has
+    finished calling discover_all() (L-2).
     """
     global _discovered
-    if _discovered:
-        return
-    _discovered = True
-    import sys
-    pkg_name = __name__
-    pkg = sys.modules[pkg_name]
-    for finder, mod_name, ispkg in pkgutil.iter_modules(pkg.__path__):
-        if mod_name.startswith('_') or mod_name == 'tests':
-            continue
-        full_name = f'{pkg_name}.{mod_name}'
-        try:
-            importlib.import_module(full_name)
-            logger.debug(f'discovered writer module: {full_name}')
-        except Exception as e:
-            logger.error(f'failed to import writer {full_name}: {e}')
-            raise  # hard-fail — registration gap is not silently OK
+    with _discover_lock:
+        if _discovered:
+            return
+        _discovered = True
+        import sys
+        pkg_name = __name__
+        pkg = sys.modules[pkg_name]
+        for finder, mod_name, ispkg in pkgutil.iter_modules(pkg.__path__):
+            if mod_name.startswith('_') or mod_name == 'tests':
+                continue
+            full_name = f'{pkg_name}.{mod_name}'
+            try:
+                importlib.import_module(full_name)
+                logger.debug(f'discovered writer module: {full_name}')
+            except Exception as e:
+                logger.error(f'failed to import writer {full_name}: {e}')
+                raise  # hard-fail — registration gap is not silently OK
 
 
 # Public alias for explicit callers (e.g. bootstrap scripts)
