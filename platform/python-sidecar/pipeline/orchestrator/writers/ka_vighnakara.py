@@ -257,8 +257,8 @@ class KaVighnakaraWriter(WriterBase):
                     (chart_id,),
                 )
                 row = cur.fetchone()
-                if row and row[0] is not None:
-                    return float(row[0]) % 360.0
+                if row and row['fact_value_num'] is not None:
+                    return float(row['fact_value_num']) % 360.0
         except Exception as exc:
             logger.debug("ka_vighnakara: natal lagna fetch failed: %s", exc)
         return None

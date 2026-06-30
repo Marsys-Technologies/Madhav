@@ -249,6 +249,9 @@ class KaSangamWriter(WriterBase):
                     (chart_id, str(signal_id)),
                 )
 
+        if self._birth_year is None:
+            return WriterResult(asset_id='ka_sangam', rows_inserted=0,
+                                notes='skipped lifetime substep: _birth_year is None (chart_dashas has no level_n=1 rows)')
         horizon_start = date(self._birth_year, 1, 1)
         horizon_end   = date(self._birth_year + _LIFETIME_HORIZON_YEARS, 12, 31)
         def _keepalive():

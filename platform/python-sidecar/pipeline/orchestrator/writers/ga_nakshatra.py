@@ -250,7 +250,7 @@ class NakshatraWriter(WriterBase):
             )
 
         nak_rows, pada_rows = _fetch_bg_nakshatra(ctx.db_conn)
-        chart_id    = ctx.config.get("chart_id") or ctx.asset_id
+        chart_id    = ctx.config["chart_id"]
         birth_params = ctx.config.get("birth_params")
 
         if step.key.startswith("ayanamsha:"):
