@@ -22,13 +22,15 @@ export type Principal = {
 
 export type Permission = 'all' | 'view' | 'deny'
 
+import type { QueryResultRow } from 'pg'
+
 /**
  * Minimal DB surface this brain needs. Production passes the pg `query` from
  * `@/lib/db/client`; tests pass a mock. Keeping it structural avoids importing
  * `server-only` into the unit test path.
  */
 export interface DbLike {
-  query<T = Record<string, unknown>>(
+  query<T extends QueryResultRow = QueryResultRow>(
     sql: string,
     params?: unknown[]
   ): Promise<{ rows: T[] }>
