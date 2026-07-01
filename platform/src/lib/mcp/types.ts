@@ -21,6 +21,12 @@ export interface McpPrincipal {
   key_id: string
   /** Firebase role from profiles table. Populated by M0 entitlement gate (2026-06-30). */
   role: 'guest' | 'super_admin'
+  /**
+   * Bound model family for this API key (M6 declared profile 2026-07-01).
+   * Undefined = undeclared → universal-best surface served.
+   * Values: 'anthropic' | 'gemini' | 'openai' | 'deepseek'
+   */
+  model_family?: 'anthropic' | 'gemini' | 'openai' | 'deepseek'
 }
 
 // ── Epistemics ────────────────────────────────────────────────────────────────
@@ -150,6 +156,8 @@ export interface McpApiKeyRow {
   created_at: string
   last_used_at: string | null
   revoked_at: string | null
+  /** Bound model family for profiled surface. Null = undeclared (universal-best). M6. */
+  model_family?: string | null
 }
 
 /** Shape of the one-time creation response (includes full_key shown once). */
@@ -162,4 +170,6 @@ export interface McpKeyCreatedResponse {
   audience_tier?: string
   user_uid: string
   created_at: string
+  /** Bound model family for this key. Null = undeclared (universal-best). M6. */
+  model_family?: string | null
 }

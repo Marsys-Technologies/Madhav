@@ -54,5 +54,7 @@ export async function GET(request: Request) {
     // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
     key_id: principal.key_id,
     role: principal.role,
+    // M6: per-key model family binding (null = undeclared → universal-best).
+    model_family: principal.model_family ?? null,
   })
 }
