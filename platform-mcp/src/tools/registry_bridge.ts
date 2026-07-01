@@ -48,6 +48,26 @@ const PLATFORM_URL = (
 // Required by /api/retrieval/capability (F1 gate, M0.5).
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
+// ── Ayanamsha normalization (F-006/F-011/F-031) ───────────────────────────────
+// Signals are stored under 'lahiri_chitrapaksha'. Tools historically defaulted
+// to 'LAHIRI' causing a join mismatch → 0 rows. This map aliases all known
+// spellings to the canonical stored id so default + explicit calls both work.
+const AYANAMSHA_ALIAS: Record<string, string> = {
+  lahiri:               'lahiri_chitrapaksha',
+  lahiri_chitrapaksha:  'lahiri_chitrapaksha',
+  lahiri_chitra:        'lahiri_chitrapaksha',
+  true_chitra:          'lahiri_chitrapaksha',
+  true_citra:           'lahiri_chitrapaksha',
+  LAHIRI:               'lahiri_chitrapaksha',
+  Lahiri:               'lahiri_chitrapaksha',
+}
+const DEFAULT_AYANAMSHA = 'lahiri_chitrapaksha'
+
+function normalizeAyanamsha(id?: string): string {
+  if (!id) return DEFAULT_AYANAMSHA
+  return AYANAMSHA_ALIAS[id] ?? id
+}
+
 // ── DB proxy helper ───────────────────────────────────────────────────────────
 
 /**
@@ -166,12 +186,12 @@ async function callRegistryCapability(
  */
 async function fetchOrientationContext(
   chart_id: string,
-  ayanamsha_id: string = 'LAHIRI',
+  ayanamsha_id?: string,
 ): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
   try {
     const ucdData = await callRegistryCapability(
       'marsys://tool/L2/query_ucd',
-      { chart_id, ayanamsha_id, top_k_signals: 10, response_format: 'digest' },
+      { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: 10, response_format: 'digest' },
       chart_id,
     )
     return { orientation_context: ucdData, orientation_ok: true }
@@ -225,7 +245,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_ucd',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', top_k_signals: top_k_signals ?? 20, response_format: response_format ?? 'summary' },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: top_k_signals ?? 20, response_format: response_format ?? 'summary' },
           chart_id
         )
         return dualOutput(data)
@@ -252,10 +272,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before domain drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_domain_reading',
-          { chart_id, domain, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', cursor },
+          { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
@@ -287,10 +307,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before signal drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_signals',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
@@ -345,7 +365,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_positions',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', planet },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet },
           chart_id
         )
         return dualOutput(data)
@@ -371,7 +391,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_dashas',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', limit: limit ?? 50, cursor },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 50, cursor },
           chart_id
         )
         return dualOutput(data)
@@ -397,10 +417,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before temporal domain query
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_temporal_activation',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', date_from, date_to, include_convergence: include_convergence ?? true },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
@@ -424,10 +444,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before predictive projection
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_projections',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, horizon_years: horizon_years ?? 5 },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, horizon_years: horizon_years ?? 5 },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
