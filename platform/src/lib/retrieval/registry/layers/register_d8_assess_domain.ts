@@ -712,3 +712,7 @@ export const D8_CAPABILITY_URIS = [
   // R3.2 — Yoga-Dasha bridge
   'marsys://tool/L-TIMING/yoga_activation_by_dasha',
 ] as const
+
+// Auto-register on import — consistent with L0-L5 layer pattern (catalog.ts
+// imports this file; the import alone triggers registration via this call).
+registerD8AssessDomainCapabilities()

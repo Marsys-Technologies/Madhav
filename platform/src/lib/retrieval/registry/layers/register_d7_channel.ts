@@ -1490,3 +1490,7 @@ export const D7_CAPABILITY_URIS = [
   'marsys://tool/L0/list_classical_texts',
   'marsys://tool/L0/find_verses_about',
 ] as const
+
+// Auto-register on import — consistent with L0-L5 layer pattern (catalog.ts
+// imports this file; the import alone triggers registration via this call).
+registerD7ChannelCapabilities()

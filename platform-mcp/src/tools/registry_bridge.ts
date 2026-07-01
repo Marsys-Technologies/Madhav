@@ -304,18 +304,30 @@ export function registerRegistryBridgeTools(server: McpServer): void {
           { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor },
           chart_id
         )
-        // F-021: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
+        // F-021R: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
+        // The large field is all_relevant_ranked_jsonb (JSONB array per lens), NOT 'signals'.
         const domainData = data as Record<string, unknown>
         const lenses = (domainData['question_lenses'] as unknown[]) ?? []
         const maxLenses = max_lenses ?? 3
         const maxSig = max_signals_per_lens ?? 20
-        const boundedLenses = lenses.slice(0, maxLenses).map((lens) => {
+        const lensesToBound = lenses.slice(0, maxLenses)
+        const boundedLenses = lensesToBound.map((lens) => {
           const l = lens as Record<string, unknown>
-          const signals = (l['signals'] as unknown[]) ?? []
-          const signalIdRefs = (l['signal_id_refs'] as unknown[]) ?? []
-          // F-023: dedup signal_id_refs (was byte-for-byte duplicate of template_element_ids)
-          const uniqueSignalIdRefs = [...new Set(signalIdRefs as string[])]
-          return { ...l, signals: signals.slice(0, maxSig), signal_id_refs: uniqueSignalIdRefs }
+          // all_relevant_ranked_jsonb is the massive JSONB array (thousands of signal objects)
+          const allRelevant = Array.isArray(l['all_relevant_ranked_jsonb'])
+            ? (l['all_relevant_ranked_jsonb'] as unknown[])
+            : []
+          // F-023: template_element_ids_jsonb may contain duplicate refs — dedup
+          const templateIds = Array.isArray(l['template_element_ids_jsonb'])
+            ? (l['template_element_ids_jsonb'] as string[])
+            : []
+          const uniqueTemplateIds = [...new Set(templateIds)]
+          return {
+            ...l,
+            all_relevant_ranked_jsonb: allRelevant.slice(0, maxSig),
+            all_relevant_total: allRelevant.length,
+            template_element_ids_jsonb: uniqueTemplateIds,
+          }
         })
         return dualOutput({
           orientation_context,
