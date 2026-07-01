@@ -99,11 +99,21 @@ export async function validateMcpKeyFromHeader(
       return null
     }
 
+    // M6: sanitize model_family from the validate response.
+    const ALLOWED_FAMILIES = ['anthropic', 'gemini', 'openai', 'deepseek'] as const
+    type ModelFamily = typeof ALLOWED_FAMILIES[number]
+    const rawFamily = data.model_family
+    const model_family: ModelFamily | undefined =
+      rawFamily && (ALLOWED_FAMILIES as readonly string[]).includes(rawFamily)
+        ? (rawFamily as ModelFamily)
+        : undefined
+
     const principal: Principal = {
       user_uid: data.user_uid,
       // audience_tier excised (Stream A 3.tier_excision 2026-05-28).
       key_id: data.key_id,
       role: data.role ?? 'guest',
+      model_family,
     }
 
     // F.5: write to cache on successful validation

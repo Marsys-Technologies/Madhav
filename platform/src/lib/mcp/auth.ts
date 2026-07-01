@@ -92,9 +92,11 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       key_id: string
       key_hash: string
       user_uid: string
+      model_family: string | null
     }>(
       // audience_tier column dropped (Stream A 3.tier_excision migration 090 2026-05-28).
-      `SELECT key_id, key_hash, user_uid
+      // model_family added (M6 migration 384 2026-07-01).
+      `SELECT key_id, key_hash, user_uid, model_family
        FROM mcp_api_keys
        WHERE key_id = $1 AND revoked_at IS NULL
        LIMIT 1`,
@@ -126,11 +128,27 @@ export async function validateMcpKey(authHeader: string | null | undefined): Pro
       // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
       key_id: row.key_id,
       role,
+      // sanitizeModelFamily narrows string | null → the literal union or undefined.
+      model_family: sanitizeModelFamily(row.model_family),
     }
   } catch (err) {
     console.error('[mcp:auth] validateMcpKey DB error', err)
     return null
   }
+}
+
+/**
+ * Validate M6 model_family value from an untrusted source.
+ * Returns the value if it's in the allowed set; undefined otherwise.
+ */
+export function sanitizeModelFamily(
+  value: string | null | undefined
+): 'anthropic' | 'gemini' | 'openai' | 'deepseek' | undefined {
+  const allowed = ['anthropic', 'gemini', 'openai', 'deepseek'] as const
+  if (!value) return undefined
+  return (allowed as readonly string[]).includes(value)
+    ? (value as 'anthropic' | 'gemini' | 'openai' | 'deepseek')
+    : undefined
 }
 
 /**

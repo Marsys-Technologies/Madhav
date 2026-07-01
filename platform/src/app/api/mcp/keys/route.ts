@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/access-control'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { query } from '@/lib/db/client'
-import { generateMcpKey } from '@/lib/mcp/auth'
+import { generateMcpKey, sanitizeModelFamily } from '@/lib/mcp/auth'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { res } from '@/lib/errors'
 import type { McpApiKeyRow, McpKeyCreatedResponse } from '@/lib/mcp/types'
@@ -31,7 +31,7 @@ export async function GET() {
     if (ctx.profile.role === 'super_admin') {
       // Admin sees all keys
       const result = await query<McpApiKeyRow>(
-        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at
+        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at, model_family
          FROM mcp_api_keys
          ORDER BY created_at DESC`
       )
@@ -39,7 +39,7 @@ export async function GET() {
     } else {
       // Regular user sees only their own keys
       const result = await query<McpApiKeyRow>(
-        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at
+        `SELECT key_id, label, user_uid, scopes, created_at, last_used_at, revoked_at, model_family
          FROM mcp_api_keys
          WHERE user_uid = $1
          ORDER BY created_at DESC`,
@@ -60,6 +60,12 @@ interface CreateKeyBody {
   user_uid?: string
   // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
   label?: string
+  /**
+   * Optional model family binding for this key (M6 declared profile).
+   * Allowed values: 'anthropic' | 'gemini' | 'openai' | 'deepseek'.
+   * Omit or null → undeclared (universal-best surface served).
+   */
+  model_family?: string
 }
 
 export async function POST(request: Request) {
@@ -76,6 +82,8 @@ export async function POST(request: Request) {
   const targetUid = body.user_uid ?? auth.user.uid
   // audience_tier excised (Stream A 3.tier_excision 2026-05-28).
   const label = body.label ? String(body.label).slice(0, 128) : null
+  // M6: validate and sanitize model_family (rejects unknown values → null).
+  const model_family = sanitizeModelFamily(body.model_family) ?? null
 
   // Validate target user exists
   try {
@@ -106,9 +114,9 @@ export async function POST(request: Request) {
     const { key_id, full_key, key_hash } = await generateMcpKey(env)
 
     await query(
-      `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, label)
-       VALUES ($1, $2, $3, $4)`,
-      [key_id, key_hash, targetUid, label]
+      `INSERT INTO mcp_api_keys (key_id, key_hash, user_uid, label, model_family)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [key_id, key_hash, targetUid, label, model_family]
     )
 
     const response: McpKeyCreatedResponse = {
@@ -118,6 +126,7 @@ export async function POST(request: Request) {
       // audience_tier removed (Stream A 3.tier_excision 2026-05-28).
       user_uid: targetUid,
       created_at: new Date().toISOString(),
+      model_family,
     }
     return NextResponse.json(response, { status: 201 })
   } catch (err) {

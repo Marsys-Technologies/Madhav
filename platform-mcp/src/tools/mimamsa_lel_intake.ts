@@ -20,6 +20,12 @@
  *
  * chart_id: required from caller (chart_agnostic_gate RULE-1/4). No default chart.
  *
+ * KEYSTONE migration (M6+M7, 2026-07-01):
+ *   Migrated from sidecar-direct (PYTHON_SIDECAR_URL) to the registry path via
+ *   callPlatformPrimitive('lel_query', ...) — 'lel_query' is whitelisted in
+ *   MCP_TO_RETRIEVAL_TOOL (tool_name_bridge.ts, UDA Campaign).
+ *   No local DB SQL. No PYTHON_SIDECAR_URL calls. Entitlement gate (M0) preserved.
+ *
  * Wiring: registerMimamsaLelIntakeTool(server) → server.ts during L5 Mīmāṃsā registration.
  *
  * BRAHMA-MI-5-1
@@ -29,15 +35,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
-
-// ── Environment ────────────────────────────────────────────────────────────────
-
-const PYTHON_SIDECAR_URL = (
-  process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
-).replace(/\/$/, '')
-
-const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
-const TOOL_TIMEOUT_MS = 30_000
+import { callPlatformPrimitive } from '../client.js'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -59,7 +57,7 @@ export interface LelProvenanceEnvelope {
   source: string           // 'mimamsa.lel_intake'
   asset: string            // 'MI-5-1'
   lel_version: string      // 'LIFE_EVENT_LOG_v1_2.md v1.7'
-  total_events: number     // 57
+  total_events: number     // corpus size
   confidence: number       // 0.89
   source_citation: string  // 'LIFE_EVENT_LOG_v1_2.md (native-disclosed)'
   no_leakage_note: string
@@ -80,50 +78,16 @@ export interface LelQueryResult {
   provenance_envelope: LelProvenanceEnvelope
 }
 
-// ── Sidecar call ───────────────────────────────────────────────────────────────
-
-async function callSidecar<T>(
-  path: string,
-  body: Record<string, unknown>
-): Promise<T> {
-  const url = `${PYTHON_SIDECAR_URL}${path}`
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  if (SIDECAR_API_KEY) {
-    headers['X-API-Key'] = SIDECAR_API_KEY
-  }
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TOOL_TIMEOUT_MS)
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => '')
-      throw new Error(
-        `Sidecar HTTP ${response.status} from ${path}: ${text.slice(0, 300)}`
-      )
-    }
-
-    return (await response.json()) as T
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 // ── Tool registration ──────────────────────────────────────────────────────────
 
 export function registerMimamsaLelIntakeTool(server: McpServer, principal: Principal): void {
   // REMEDIATION D7 (RULE-3): scrubbed native name + event count from LLM-visible description.
   // Also added required chart_id parameter (RULE-1: per_chart tools must have chart_id).
   // The LEL corpus is per-chart calibration data — chart_id is required to scope it.
+  //
+  // KEYSTONE (M6+M7): routes through callPlatformPrimitive('lel_query', ...)
+  // which is whitelisted in tool_name_bridge.MCP_TO_RETRIEVAL_TOOL.
+  // Zero sidecar SQL. Entitlement gate (M0 remoteAuthorize) preserved.
   server.tool(
     'lel_query',
     'Query the Life Event Log calibration corpus for a chart. '
@@ -182,65 +146,79 @@ export function registerMimamsaLelIntakeTool(server: McpServer, principal: Princ
           isError: true,
         }
       }
-      try {
-        const result = await callSidecar<LelQueryResult>('/brahma/mimamsa/lel_query', {
+
+      // KEYSTONE: delegate to the registry path via callPlatformPrimitive.
+      // 'lel_query' is whitelisted in MCP_TO_RETRIEVAL_TOOL (tool_name_bridge.ts).
+      const { status, envelope } = await callPlatformPrimitive(
+        'lel_query',
+        {
           chart_id: params.chart_id,
           domain: params.domain ?? null,
           date_from: params.date_from ?? null,
           date_to: params.date_to ?? null,
           limit: params.limit ?? 100,
-        })
+        },
+        principal,
+      )
 
+      if (status !== 200 || !envelope.ok) {
+        const errorMsg = !envelope.ok
+          ? envelope.error?.message ?? 'lel_query primitive failed'
+          : `HTTP ${status} from lel_query primitive`
         return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  ok: true,
-                  events: result.events,
-                  total_count: result.total_count,
-                  filter_applied: result.filter_applied,
-                  provenance_envelope: result.provenance_envelope,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  ok: false,
-                  error: message,
-                  tool: 'lel_query',
-                  asset: 'MI-5-1',
-                  provenance_envelope: {
-                    source: 'mimamsa.lel_intake',
-                    asset: 'MI-5-1',
-                    lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
-                    total_events: 57,
-                    confidence: 0.89,
-                    source_citation: 'LIFE_EVENT_LOG_v1_2.md (native-disclosed)',
-                    no_leakage_note:
-                      'life_events is calibration corpus only — must not feed prediction generation',
-                    b3_compliant: true,
-                    queried_at: new Date().toISOString(),
-                  },
-                },
-                null,
-                2
-              ),
-            },
-          ],
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              ok: false,
+              error: errorMsg,
+              tool: 'lel_query',
+              asset: 'MI-5-1',
+              provenance_envelope: {
+                source: 'mimamsa.lel_intake',
+                asset: 'MI-5-1',
+                lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
+                no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
+                b3_compliant: true,
+                queried_at: new Date().toISOString(),
+              },
+            }, null, 2),
+          }],
           isError: true,
         }
+      }
+
+      // Unwrap from the registry envelope — result carries the LEL payload.
+      const result = envelope.result as LelQueryResult | null
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                ok: true,
+                events: result?.events ?? [],
+                total_count: result?.total_count ?? 0,
+                filter_applied: result?.filter_applied ?? {
+                  domain: params.domain ?? null,
+                  date_from: params.date_from ?? null,
+                  date_to: params.date_to ?? null,
+                  limit: params.limit ?? 100,
+                },
+                provenance_envelope: result?.provenance_envelope ?? {
+                  source: 'mimamsa.lel_intake',
+                  asset: 'MI-5-1',
+                  lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
+                  no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
+                  b3_compliant: true,
+                  queried_at: new Date().toISOString(),
+                },
+              },
+              null,
+              2
+            ),
+          },
+        ],
       }
     }
   )

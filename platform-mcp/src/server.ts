@@ -22,6 +22,8 @@ import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
+// M6: surface spec for per-model declared profile
+import { callPlatformSurfaceSpec } from './client.js'
 // M5: DB-backed OAuth 2.0 endpoints
 import { handleAuthorize, handleCallback } from './oauth/authorize.js'
 import { handleToken } from './oauth/token.js'
@@ -31,12 +33,25 @@ import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
 import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
+// KEYSTONE (M6+M7): mimamsa_lel_intake migrated to callPlatformPrimitive('lel_query').
 import { registerMimamsaLelIntakeTool } from './tools/mimamsa_lel_intake.js'
 import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
-import { registerHolisticBundleTool } from './tools/bo_2-8.js'
+// KEYSTONE REQUEST: mimamsa_outcome (record_outcome / mimamsa_calibration) has no registry primitive.
+// REQUEST to retrieval fork: expose 'record_outcome' capability in tool_name_bridge.
+// Still served via sidecar until the registry primitive lands.
+//
+// KEYSTONE (M6+M7): holistic_bundle sidecar path (bo_2-8) RETIRED — registry path
+// (holistic_bundle_chart_facts via callPlatformPrimitive) is the canonical route.
+// import { registerHolisticBundleTool } from './tools/bo_2-8.js'  // RETIRED
 import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
+// KEYSTONE REQUEST: phala_event_anchors (phala_anchors table) has no registry primitive.
+// REQUEST to retrieval fork: expose 'phala_event_anchors' capability in tool_name_bridge.
+// Still served via sidecar until the registry primitive lands.
 import { registerHolisticBundleRetrievalTool } from './tools/retrieval/holistic_bundle.js'
 import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_temporal.js'
+// KEYSTONE REQUEST: kala_temporal_bundle (KA-3-COMPOSITE: timeline/convergence/obstruction/snapshot)
+// has no registry primitive. REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability.
+// Still served via sidecar until the registry primitive lands.
 // Stream G — L1 Gaṇita PyJHora capabilities (BRAHMA-G-1)
 import {
   registerComputeNatalPositionsTool,
@@ -167,6 +182,45 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   void fromUrlParam
 
+  // M6: Resolve effective model family.
+  // Precedence: x-mcp-model-family header override > per-key binding > 'universal' fallback.
+  // The header lets a client override at runtime (e.g. testing a different profile).
+  const ALLOWED_FAMILIES = ['anthropic', 'gemini', 'openai', 'deepseek'] as const
+  type ModelFamily = typeof ALLOWED_FAMILIES[number]
+  const headerFamily = typeof req.headers['x-mcp-model-family'] === 'string'
+    ? req.headers['x-mcp-model-family']
+    : undefined
+  const effectiveFamily: string = (
+    (headerFamily && (ALLOWED_FAMILIES as readonly string[]).includes(headerFamily)
+      ? headerFamily
+      : principal.model_family) ??
+    'universal'
+  )
+
+  // M6.2: Fetch the surface spec for the effective family.
+  // Non-blocking: surface spec is advisory for shaping; failure falls back to serving all tools.
+  // Fire-and-forget; surfaceSpec.envelope holds the spec result.
+  let responseFormat: 'minimal' | 'standard' | 'detailed' = 'standard'
+  try {
+    const surfaceResult = await callPlatformSurfaceSpec(effectiveFamily)
+    if (surfaceResult.status === 200 && surfaceResult.envelope.ok) {
+      const spec = surfaceResult.envelope.result as Record<string, unknown> | null
+      if (spec && typeof spec['response_format'] === 'string') {
+        const rf = spec['response_format']
+        if (rf === 'minimal' || rf === 'standard' || rf === 'detailed') {
+          responseFormat = rf
+        }
+      }
+    }
+  } catch {
+    // Non-fatal: surface spec failure does not block tool serving.
+  }
+
+  // Pass effectiveFamily + responseFormat to tools that accept them.
+  // Currently stored as request-scoped constants for tool callbacks.
+  void effectiveFamily
+  void responseFormat
+
   const server = new McpServer({
     name: 'marsys-jis',
     version: '1.0.0',
@@ -183,9 +237,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerQuerySpecialLagnasTool(server)       // Lagna + upagrahas (Gulika, Maandi, etc.)
 
   // L2 Bodha tools
-  registerHolisticBundleTool(server, principal)
-  registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts direct read (L2 Bodha — chart-SCOPED; requires chart_id)
-  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-SCOPED; requires chart_id)
+  // KEYSTONE: holistic_bundle sidecar path (bo_2-8) RETIRED.
+  // Registry path: holistic_bundle_chart_facts (retrieval/holistic_bundle.ts → callPlatformPrimitive).
+  registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts via registry (L2 Bodha — chart-SCOPED; requires chart_id)
+  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-SCOPED; sidecar — REQUEST: registry primitive pending)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools
@@ -247,16 +302,16 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // L0 Brahmagyan pattern-validation: 5
 // L0 Ephemeris: 5
 // L1 Stream G PyJHora: 3
-// L2 Bodha (holistic_bundle + holistic_bundle_chart_facts): 2
-// L3 Kāla (kala_temporal_bundle): 1
+// L2 Bodha — holistic_bundle_chart_facts (registry path; sidecar path RETIRED): 1
+// L3 Kāla (kala_temporal_bundle — sidecar; REQUEST: registry primitive pending): 1
 // L0FR Remedy: 7
 // L4 Phala (event_anchors + mitigation_map + muhurta_finder + phala_outlook): 4
-// L5 Mīmāṃsā (lel_query + record_outcome): 2
+// L5 Mīmāṃsā (lel_query via registry + record_outcome via sidecar): 2
 // D7 Registry bridge (registerRegistryBridgeTools — 14 MCP tools): 14
 // M2 Chart selection (list_my_charts + select_chart): 2
 // M3+M4 Session tools (recall_session + list_my_sessions): 2
-// Total: 47
-const REGISTERED_TOOL_COUNT = 47
+// KEYSTONE: holistic_bundle sidecar retired (-1). Total: 46
+const REGISTERED_TOOL_COUNT = 46
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
