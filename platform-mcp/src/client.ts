@@ -132,10 +132,12 @@ interface PlatformFetchOptions {
   body: Record<string, unknown>
   principal: Principal
   identityToken: string
+  /** M8: request-scoped trace ID for end-to-end log correlation. */
+  requestId?: string
 }
 
 async function platformFetch(opts: PlatformFetchOptions): Promise<PlatformCallResult> {
-  const { url, body, principal, identityToken } = opts
+  const { url, body, principal, identityToken, requestId } = opts
 
   let response: Response
   try {
@@ -150,6 +152,8 @@ async function platformFetch(opts: PlatformFetchOptions): Promise<PlatformCallRe
         'X-MCP-User': principal.user_uid,
         // X-MCP-Audience-Tier header removed (Stream A 3.tier_excision 2026-05-28).
         'X-MCP-Key-Id': principal.key_id,
+        // M8: trace propagation — platform logs will carry this ID for correlation.
+        ...(requestId ? { 'X-Request-ID': requestId } : {}),
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(125_000),  // slightly above platform maxDuration=120s
