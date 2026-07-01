@@ -275,15 +275,16 @@ export function registerPhalaEventAnchorsTool(server: McpServer, principal: Prin
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        // F-028: standardized error envelope { ok: false, error, tool }
         return {
           content: [
             {
               type: 'text' as const,
               text: JSON.stringify(
                 {
-                  error: true,
+                  ok: false,
+                  error: message,
                   tool: TOOL_NAME,
-                  message,
                   chart_id: input.chart_id,
                   date_range: input.date_range,
                 },

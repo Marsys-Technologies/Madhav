@@ -37,6 +37,9 @@ import {
   registerD5FanoutCapabilities,
 } from '@/lib/retrieval/registry/layers/register_d5_fanout'
 import {
+  registerL0Capabilities,
+} from '@/lib/retrieval/registry/layers/L0_brahmagyan/index'
+import {
   registerD6SynergyCapabilities,
 } from '@/lib/retrieval/registry/layers/register_d6_synergy'
 import {
@@ -66,6 +69,12 @@ async function ensureBootstrapped(): Promise<void> {
   registerD6SynergyCapabilities()
   registerD7ChannelCapabilities()
   registerD8AssessDomainCapabilities()
+
+  // D-B fix: register L0 + L1 capabilities (not included in D5 fanout)
+  // L0: exports registerL0Capabilities() — must be called explicitly
+  registerL0Capabilities()
+  // L1: top-level registerCapability() calls fire on import (side-effect module)
+  await import('@/lib/retrieval/registry/layers/L1_ganita/index')
 
   // D5 is async (dynamic imports of L2–L5 layer indexes)
   await registerD5FanoutCapabilities()

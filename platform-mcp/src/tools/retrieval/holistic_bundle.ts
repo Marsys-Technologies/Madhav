@@ -34,7 +34,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { callPlatformPrimitive } from '../../client.js'
+import { callPlatformBundle } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
 
 // REMEDIATION D7: NATIVE_CHART_ID removed. chart_id is now REQUIRED from caller.
@@ -67,7 +67,8 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
       }
 
       try {
-        const { status, envelope } = await callPlatformPrimitive(
+        // D-C fix: route through bundle endpoint (not surgical primitives)
+        const { status, envelope } = await callPlatformBundle(
           'holistic_bundle',
           { chart_id, include_graph },
           getPrincipal(),
