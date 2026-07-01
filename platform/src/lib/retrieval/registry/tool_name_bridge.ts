@@ -87,6 +87,9 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // L3 Kāla — live compute service wrappers
   call_transit_search:    'marsys://tool/L3/call_transit_search',
   call_dasha_eligibility: 'marsys://tool/L3/call_dasha_eligibility',
+
+  // L4 Phala
+  query_remedy_program: 'marsys://tool/L4/query_remedy_program',
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -331,6 +334,8 @@ export const SURGICAL_TOOLS = [
   'query_tantric_remedies',
   'query_remedies_by_planet',
   'query_mantras',
+  // F-016: L4 Phala mitigation_map primitive (query_remedy_program is the retrieval tool)
+  'query_remedy_program',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -393,6 +398,8 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_tantric_remedies: 'query_tantric_remedies',
   query_remedies_by_planet: 'query_remedies_by_planet',
   query_mantras: 'query_mantras',
+  // F-016: mitigation_map → query_remedy_program (L4 Phala phala_mitigation retrieval tool)
+  mitigation_map: 'query_remedy_program',
 }
 
 /**

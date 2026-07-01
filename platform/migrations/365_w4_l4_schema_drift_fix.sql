@@ -36,35 +36,52 @@ COMMENT ON COLUMN public.phala_anchors.domain IS
 CREATE INDEX IF NOT EXISTS idx_phala_anchors_domain
     ON public.phala_anchors (chart_id, domain);
 
--- ── §3 — phala_rectification_best VIEW: drop and recreate ────────────────────
+-- ── §3 — phala_rectification_best VIEW: drop and recreate (GUARDED) ─────────
 --
--- If the view was created from an older schema snapshot it may not expose
--- candidate_time cleanly. Drop + recreate is safe since the base table has the
--- column (brahma_phala_rectification.sql §2).
+-- Path (a): prod has phala_rectification_best as a TABLE (relkind='r'), owned by
+-- migrations 335/336 and the ph_rectification writer (which DELETE/INSERTs with
+-- the writer schema: best_candidate_id, candidate_birth_utc, confidence_label, …).
+-- The original DROP VIEW IF EXISTS fails with PG 42809 when the object is a TABLE.
+-- Guard: only execute the VIEW drop+recreate if the object is currently a VIEW;
+-- leave the TABLE (and its live data) untouched.
 
-DROP VIEW IF EXISTS public.phala_rectification_best CASCADE;
-
-CREATE OR REPLACE VIEW public.phala_rectification_best AS
-SELECT DISTINCT ON (chart_id)
-    chart_id,
-    candidate_time,
-    alignment_score        AS best_alignment_score,
-    rectification_confidence,
-    source_citation,
-    computed_at
-FROM public.phala_rectification
-ORDER BY chart_id, alignment_score DESC, rectification_confidence DESC;
-
-COMMENT ON VIEW public.phala_rectification_best IS
-    'PH-4-3 convenience view: one row per chart — the candidate_time with the highest '
-    'alignment_score. Recreated by 365_w4_l4_schema_drift_fix to ensure candidate_time '
-    'is resolvable in phala_get_rectification (fixes PH-4-3 v_row.candidate_time error).';
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = 'phala_rectification_best'
+      AND n.nspname = 'public'
+      AND c.relkind = 'v'
+  ) THEN
+    DROP VIEW public.phala_rectification_best CASCADE;
+    EXECUTE $ddl$
+      CREATE OR REPLACE VIEW public.phala_rectification_best AS
+      SELECT DISTINCT ON (chart_id)
+          chart_id,
+          candidate_time,
+          alignment_score        AS best_alignment_score,
+          rectification_confidence,
+          source_citation,
+          computed_at
+      FROM public.phala_rectification
+      ORDER BY chart_id, alignment_score DESC, rectification_confidence DESC
+    $ddl$;
+    EXECUTE $ddl$
+      COMMENT ON VIEW public.phala_rectification_best IS
+          'PH-4-3 convenience view: one row per chart — the candidate_time with the highest '
+          'alignment_score. Recreated by 365_w4_l4_schema_drift_fix.'
+    $ddl$;
+  END IF;
+  -- If relkind='r' (TABLE): ph_rectification writer owns the schema — leave it.
+END $$;
 
 -- ── §4 — phala_get_rectification: drop and recreate ─────────────────────────
 --
--- The PL/pgSQL function uses SELECT * INTO v_row FROM phala_rectification_best;
--- if the view was stale the record type didn't include candidate_time.
--- Re-create the function so it binds to the fresh view.
+-- The existing function references VIEW-schema columns (candidate_time,
+-- rectification_confidence, best_alignment_score, source_citation, computed_at)
+-- that do not exist on the TABLE. Recreate it to bind to the TABLE's actual
+-- columns: candidate_birth_utc, confidence_label, best_lel_fit_score,
+-- leakage_firewall_note, scored_at.
 
 DROP FUNCTION IF EXISTS public.phala_get_rectification(UUID) CASCADE;
 
@@ -88,7 +105,7 @@ BEGIN
         RETURN jsonb_build_object(
             'error',      'no_candidates',
             'chart_id',   p_chart_id,
-            'message',    'Run: python -m brahmagyan.phala.rectification seed --chart-id ' || p_chart_id,
+            'message',    'Run ph_rectification writer for this chart.',
             'asset',      'PH-4-3'
         );
     END IF;
@@ -98,22 +115,37 @@ BEGIN
     FROM   public.phala_rectification_best
     WHERE  chart_id = p_chart_id;
 
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'error',    'no_best_candidate',
+            'chart_id', p_chart_id,
+            'asset',    'PH-4-3'
+        );
+    END IF;
+
     v_result := jsonb_build_object(
         'chart_id',                 p_chart_id,
-        'best_candidate_time',      TO_CHAR(v_row.candidate_time, 'HH24:MI'),
-        'confidence',               v_row.rectification_confidence,
-        'train_score',              v_row.best_alignment_score,
+        'best_candidate_time',      TO_CHAR(v_row.candidate_birth_utc AT TIME ZONE 'Asia/Kolkata', 'HH24:MI'),
+        'offset_minutes',           v_row.offset_minutes,
+        'confidence',               v_row.confidence_label,
+        'confidence_range',         jsonb_build_object(
+                                        'low',  v_row.confidence_low,
+                                        'high', v_row.confidence_high
+                                    ),
+        'train_score',              v_row.best_lel_fit_score,
+        'best_lagna_sign',          v_row.best_lagna_sign,
         'candidate_count',          v_count,
-        'source_citation',          v_row.source_citation,
+        'auto_action',              v_row.auto_action,
         'provenance_envelope',      jsonb_build_object(
             'source',               'phala.rectification',
             'asset',                'PH-4-3',
-            'algorithm',            'dasha_alignment_train_test_split',
+            'algorithm',            'dasha_alignment_lel_train_test_split',
             'train_split',          'events 1–43 (75%)',
             'test_split',           'events 44–57 (25%, held-out)',
             'leakage_check',        'PASS — test events not used for candidate selection',
             'b10_compliance',       'Dasha-level only; no Swiss Ephemeris re-run',
-            'computed_at',          v_row.computed_at
+            'leakage_firewall_note', v_row.leakage_firewall_note,
+            'scored_at',            v_row.scored_at
         )
     );
 
@@ -123,7 +155,8 @@ $$;
 
 COMMENT ON FUNCTION public.phala_get_rectification(UUID) IS
     'PH-4-3 tool entry point: returns best rectification candidate for a chart. '
-    'Recreated by 365_w4_l4_schema_drift_fix — binds to refreshed phala_rectification_best view. '
+    'Patched by 365_w4_l4_schema_drift_fix to bind to phala_rectification_best TABLE schema '
+    '(cols: candidate_birth_utc, best_lel_fit_score, confidence_label, scored_at). '
     'BRAHMA-PH-4-3 | phala.rectification';
 
 -- ── §5 — panchanga_daily: create compatibility VIEW ──────────────────────────
