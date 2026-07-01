@@ -96,8 +96,8 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
     }
   })
 
-  it('RT-04h: whitelist maps 37 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs + 14 UDA)', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(37)
+  it('RT-04h: whitelist maps 46 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs + 14 UDA + 2 entity + 7 remedy)', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(46)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {
