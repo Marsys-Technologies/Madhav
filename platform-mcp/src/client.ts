@@ -355,6 +355,111 @@ export async function callPlatformRecent(
 }
 
 /**
+ * Call /api/mcp/bundles/{bundleName} for composite bundle tool invocations.
+ * The bundle endpoint returns SSE events; this helper collects them and returns
+ * the data from the final `bundle.completed` (or `bundle.error`) event as a
+ * PlatformCallResult, letting callers use the same envelope handling as primitives.
+ *
+ * @param bundleName  The bundle name (e.g. "holistic_bundle").
+ * @param params      Bundle-specific parameters (chart_id, etc).
+ * @param principal   The resolved principal.
+ * @returns           { status, envelope } — envelope.result = bundle.completed data.
+ */
+export async function callPlatformBundle(
+  bundleName: string,
+  params: Record<string, unknown>,
+  principal: Principal
+): Promise<PlatformCallResult> {
+  const identityToken = await fetchIdentityToken()
+  const url = `${PLATFORM_URL}/api/mcp/bundles/${encodeURIComponent(bundleName)}`
+
+  let response: Response
+  try {
+    response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${identityToken}`,
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Key-Id': principal.key_id,
+        'Accept': 'text/event-stream',
+      },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(125_000),
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { status: 503, envelope: buildClientErrorEnvelope(`Platform unreachable: ${message}`) }
+  }
+
+  if (!response.ok) {
+    try {
+      const errBody = await response.json() as McpEnvelope
+      return { status: response.status, envelope: errBody }
+    } catch {
+      return {
+        status: response.status,
+        envelope: buildClientErrorEnvelope(`Bundle endpoint error: ${response.status}`),
+      }
+    }
+  }
+
+  // Parse SSE stream: collect all events, return data from bundle.completed or bundle.error
+  let sseText: string
+  try {
+    sseText = await response.text()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { status: 502, envelope: buildClientErrorEnvelope(`Failed to read bundle SSE stream: ${message}`) }
+  }
+
+  // Walk SSE events line-by-line; keep last bundle.completed or first bundle.error
+  let completedData: unknown = null
+  let errorData: unknown = null
+  let currentEvent = ''
+  let currentData = ''
+
+  for (const line of sseText.split('\n')) {
+    if (line.startsWith('event: ')) {
+      currentEvent = line.slice('event: '.length).trim()
+    } else if (line.startsWith('data: ')) {
+      currentData = line.slice('data: '.length).trim()
+    } else if (line === '') {
+      if (currentEvent && currentData) {
+        try {
+          const parsed = JSON.parse(currentData)
+          if (currentEvent === 'bundle.completed') completedData = parsed
+          if (currentEvent === 'bundle.error' && !errorData) errorData = parsed
+        } catch { /* ignore malformed SSE data line */ }
+      }
+      currentEvent = ''
+      currentData = ''
+    }
+  }
+
+  if (errorData !== null) {
+    const errMsg = (errorData as Record<string, unknown>)['error'] as string | undefined
+    return {
+      status: 500,
+      envelope: buildClientErrorEnvelope(errMsg ?? 'Bundle execution error'),
+    }
+  }
+
+  if (completedData === null) {
+    return {
+      status: 502,
+      envelope: buildClientErrorEnvelope('Bundle returned no bundle.completed event'),
+    }
+  }
+
+  return {
+    status: 200,
+    envelope: { ok: true, trace_id: '', result: completedData } as McpEnvelope,
+  }
+}
+
+/**
  * Call /api/mcp/surface-spec to retrieve the per-family MCP surface constraints.
  *
  * The MCP fork calls this at startup (or lazily on first request) to learn:

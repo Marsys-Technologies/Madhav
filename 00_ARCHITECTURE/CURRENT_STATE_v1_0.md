@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.07
+version: 6.08
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,40 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.08 (2026-07-01, MCP-ELEVATION-AUTONOMOUS-RUN-2026-07-01):
+    **MCP Elevation M1→M8 SEALED — autonomous run report written; all V0/V5/V6 gates green.**
+    Run arc: mcp-elevation-run-start-236b91b8 → mcp-elevation-m8-sealed-db813823.
+    Phases executed: M0(prereq) + M1(prereq-impl) + M2 + M3+M4 + M5 + M6+M7 + M8.
+    Sealed main HEAD: db813823. Tool count: 45. Goal matrix: 24 PASS / 2 SKIP (integration-only) / 0 FAIL.
+    Key deliverables:
+      M2: list_my_charts + select_chart (display names, chart-catalog resource, chart-switch advisory).
+      M3+M4: mcp_sessions table (migration 382); session memory per user×chart; recall_session entitlement re-check.
+      M5: mcp_oauth_clients/tokens/auth_codes (migration 383, SHA-256 at rest); Firebase delegation to platform.
+      M6: model_family column on mcp_api_keys (migration 384); surface-spec routing; x-mcp-model-family override.
+      M7: 10 resources + 3 prompts verified; G8 gate PASS.
+      M8: rate limiting (60 RPM/key, pre-registration); structured JSON logs; X-Request-ID propagation;
+          G12 living-gate test (dynamic tool count = 45); holistic_bundle sidecar RETIRED (registry-only);
+          mimamsa_lel_intake migrated to callPlatformPrimitive; retrieval FROZEN throughout (0 lines changed).
+    Migrations applied: 382 (mcp_sessions), 383 (mcp_oauth_*), 384 (model_family).
+    Pre-existing vitest failures: 94 on main = 94 on M8 — zero regressions.
+    Carry-forwards: phala_event_anchors/mimamsa_outcome/kala_temporal_bundle await retrieval fork;
+      cookie-parser @types fix; live integration tests (describe.skip, proven manually).
+    Run report: 00_ARCHITECTURE/MCP_ELEVATION_AUTONOMOUS_RUN_REPORT_v1_0.md
+    open_items:
+      - phala_event_anchors, mimamsa_outcome (record_outcome), kala_temporal_bundle: no registry
+        primitives; REQUEST comments in server.ts; served via sidecar pending retrieval fork
+      - V3 deploy truth: operator verifies Cloud Run revision SHA == db813823 after CI/CD deploy
+      - V2 structured-log trace: operator verifies X-Request-ID chain in Cloud Logging console
+      - tsc exit_code=1 (cookie-parser @types): pre-existing; add @types/cookie-parser to platform-mcp
+      - Integration tests G1/G3/G6/G9/G10/V2/V3: describe.skip; proven manually; need live connector
+      - bo_samvada rebuild for Abhinandan (1c826d5a): bodha_contradictions still 0 rows (carried from R6)
+    last_session_id: MCP-ELEVATION-AUTONOMOUS-RUN-2026-07-01.
+    predecessor_session: RETRIEVAL-ENGINE-R6-SEAL-2026-06-30.
+    next_session_objective: >
+      "MCP elevation M1→M8 sealed. Next: (a) operator verifies Cloud Run deploy picks up db813823;
+      (b) trigger chart rebuild for Abhinandan (1c826d5a) to populate bodha_contradictions via
+      fixed bo_karanajala; (c) verify native 482012f1 contradiction count after bo_karanajala fix."
+    file_updated_at: 2026-07-01. file_updated_by_session: MCP-ELEVATION-AUTONOMOUS-RUN-2026-07-01.
   - v6.07 (2026-06-30, RETRIEVAL-ENGINE-R6-SEAL-2026-06-30):
     **Retrieval Engine R-1→R6 sealed — runtime repair, seam fix, D8 astrological tools, multi-LLM.**
     All six R-phases executed and committed (d139a63d). Migration 380 applied (bo_samvada count_sql fixed).
