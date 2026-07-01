@@ -15,11 +15,17 @@ import type { OAuthDiscoveryMetadata } from './types.js'
 
 const BASE_URL = (process.env['MCP_BASE_URL'] ?? 'https://madhav.marsys.in/mcp').replace(/\/$/, '')
 
-export function buildDiscoveryMetadata(): OAuthDiscoveryMetadata {
+export interface ExtendedDiscoveryMetadata extends OAuthDiscoveryMetadata {
+  registration_endpoint?: string
+}
+
+export function buildDiscoveryMetadata(): ExtendedDiscoveryMetadata {
   return {
     issuer: BASE_URL,
     authorization_endpoint: `${BASE_URL}/oauth/authorize`,
     token_endpoint: `${BASE_URL}/oauth/token`,
+    // M5: dynamic client registration (RFC 7591)
+    registration_endpoint: `${BASE_URL}/oauth/register`,
     scopes_supported: ['mcp:tools', 'mcp:resources', 'mcp:prompts'],
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
