@@ -317,6 +317,13 @@ export const SURGICAL_TOOLS = [
   'query_jaimini_drishti',
   'timeline_query',
   'query_signal_state',
+  // F-004 fix: remedy corpus tools (Stream F) — whitelisted for MCP primitive dispatch
+  'query_remedies_for_chart',
+  'list_remedies_by_category',
+  'read_remedy',
+  'query_tantric_remedies',
+  'query_remedies_by_planet',
+  'query_mantras',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -368,6 +375,14 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_jaimini_drishti: 'query_jaimini_drishti',
   timeline_query: 'timeline_query',
   query_signal_state: 'query_signal_state',
+  // F-004 fix: remedy corpus tools (Stream F) — MCP tool name → retrieval name
+  query_remedies: 'remedial_codex_query',
+  query_remedies_for_chart: 'query_remedies_for_chart',
+  list_remedies_by_category: 'list_remedies_by_category',
+  read_remedy: 'read_remedy',
+  query_tantric_remedies: 'query_tantric_remedies',
+  query_remedies_by_planet: 'query_remedies_by_planet',
+  query_mantras: 'query_mantras',
 }
 
 /**
