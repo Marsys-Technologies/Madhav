@@ -228,13 +228,25 @@ COMMENT ON TABLE public.mimamsa_calibration IS
     'Created/guarded by 365_w4_l4_schema_drift_fix (Wave 4) so query_calibration '
     'returns empty-structured rather than 500. STRUCTURAL mode: rows fill as outcomes accrue.';
 
-CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_chart_technique
-    ON public.mimamsa_calibration (chart_id, technique);
-
-CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_ayanamsha
-    ON public.mimamsa_calibration (ayanamsha_id, computed_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_computed_at
-    ON public.mimamsa_calibration (computed_at DESC);
+-- Guard indexes: only create them if the table was just minted (has 'technique' column).
+-- Prod has mimamsa_calibration as the L5 scoring table (match_id/prediction_id/...);
+-- that table has no 'technique' column. IF NOT EXISTS on CREATE INDEX is not enough —
+-- it still fails with 42703 when the column doesn't exist. DO block gates the whole set.
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'mimamsa_calibration'
+      AND column_name  = 'technique'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_chart_technique
+        ON public.mimamsa_calibration (chart_id, technique);
+    CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_ayanamsha
+        ON public.mimamsa_calibration (ayanamsha_id, computed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_mimamsa_calibration_computed_at
+        ON public.mimamsa_calibration (computed_at DESC);
+  END IF;
+  -- If table has the L5 scoring schema (no 'technique'): no-op — indexes not applicable.
+END $$;
 
 COMMIT;
