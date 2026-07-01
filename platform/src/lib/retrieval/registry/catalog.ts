@@ -55,6 +55,13 @@ import './layers/L5_mimamsa/index'
 // Router registration (D2)
 import './layers/router_registration'
 
+// D7 channel capabilities: chart_facts_query, vector_search, cgm_graph_walk (F-032)
+import './layers/register_d7_channel'
+
+// D8 reasoning-unit capabilities: assess_career, assess_marriage, assess_health,
+// assess_wealth, yoga_activation_by_dasha (F-032 — gates G10 witness)
+import './layers/register_d8_assess_domain'
+
 // ── getCatalog ────────────────────────────────────────────────────────────────
 
 let _catalogLoaded = false

@@ -304,18 +304,18 @@ export async function POST(request: Request, { params }: RouteParams) {
     falsifier: null,
   })
 
-  return NextResponse.json(
-    buildEnvelope({
-      trace_id: queryId,
-      audience_tier: audienceTier,
-      epistemics,
-      result: toolResult,
-      citations: [],
-      plan: null,
-      predictions_logged: [],
-      synthesis_audit: null,
-      suggested_followups: [],
-      warnings: [],
-    })
-  )
+  // F-033: strip audience_tier from served MCP envelope (no-audience-tier doctrine)
+  const { audience_tier: _tier, ...envelope } = buildEnvelope({
+    trace_id: queryId,
+    audience_tier: audienceTier,
+    epistemics,
+    result: toolResult,
+    citations: [],
+    plan: null,
+    predictions_logged: [],
+    synthesis_audit: null,
+    suggested_followups: [],
+    warnings: [],
+  })
+  return NextResponse.json(envelope)
 }
