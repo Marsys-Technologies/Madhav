@@ -22,6 +22,9 @@ import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
 import { validateMcpKeyFromHeader } from './auth.js'
 import type { Principal } from './types.js'
+// M8: structured logging + request-ID + in-process rate limiting
+import { generateRequestId, log, logError } from './lib/logger.js'
+import { checkMcpRateLimit } from './lib/rate_limiter.js'
 // M6: surface spec for per-model declared profile
 import { callPlatformSurfaceSpec } from './client.js'
 // M5: DB-backed OAuth 2.0 endpoints
@@ -147,6 +150,14 @@ app.get('/mcp/.well-known/openid-configuration', handleOpenIDConfiguration)
  * statelessness (D10: no conversation history; no shared session state).
  */
 app.post('/mcp', async (req: Request, res: Response) => {
+  // M8: generate a request-scoped trace ID for end-to-end log correlation.
+  // Prefer the inbound X-Request-ID from the connector (allows client-side tracing);
+  // fall back to a new generated ID.
+  const requestId: string =
+    (typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] : undefined) ??
+    generateRequestId()
+  const requestStart = Date.now()
+
   const headerAuth = req.headers['authorization']
   const queryKey = typeof req.query['api_key'] === 'string' ? req.query['api_key'] : undefined
   const fromUrlParam = !headerAuth && !!queryKey
@@ -162,6 +173,11 @@ app.post('/mcp', async (req: Request, res: Response) => {
     if (oauthRecord) {
       // Fail-closed: never allow 'anonymous' uid through the entitlement gate.
       if (!oauthRecord.uid || oauthRecord.uid === 'anonymous') {
+        logError({
+          request_id: requestId,
+          outcome: 'auth_denied',
+          message: 'OAuth token carries no verified uid — rejected',
+        })
         res.status(401).json({ error: 'Unauthorized', message: 'OAuth token carries no verified uid' })
         return
       }
@@ -176,9 +192,41 @@ app.post('/mcp', async (req: Request, res: Response) => {
   }
 
   if (!principal) {
+    logError({
+      request_id: requestId,
+      outcome: 'auth_denied',
+      message: 'Invalid or missing Bearer API key',
+    })
     res.status(401).json({ error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
     return
   }
+
+  // M8: Rate limiting — applied at MCP dispatch level so ALL tools are gated,
+  // including sidecar-direct tools that bypass the platform-side limiter.
+  const rlResult = checkMcpRateLimit(principal.key_id)
+  if (!rlResult.allowed) {
+    log({
+      level: 'warn',
+      request_id: requestId,
+      user_uid: principal.user_uid,
+      key_id: principal.key_id,
+      outcome: 'rate_limited',
+      message: 'MCP request rate-limited at sidecar dispatch',
+      latency_ms: Date.now() - requestStart,
+    })
+    res.setHeader('Retry-After', String(rlResult.retry_after_seconds ?? 60))
+    res.status(429).json({
+      error: 'rate_limit_exceeded',
+      message: `Too many requests. Retry after ${rlResult.retry_after_seconds ?? 60} seconds.`,
+      retry_after_seconds: rlResult.retry_after_seconds ?? 60,
+    })
+    return
+  }
+
+  // M8: Propagate the request-ID as X-Request-ID on all outbound calls to the platform.
+  // The platform receives this and can log it for correlation.
+  // We attach it to the response as well so connectors can correlate.
+  res.setHeader('X-Request-ID', requestId)
 
   void fromUrlParam
 
@@ -277,11 +325,45 @@ app.post('/mcp', async (req: Request, res: Response) => {
     sessionIdGenerator: undefined,
   })
 
+  // M8: Log request dispatch — captures the tool invocation context.
+  // The actual tool name is embedded in req.body.method; extract for logging.
+  const mcpMethod = typeof (req.body as Record<string, unknown>)?.['method'] === 'string'
+    ? (req.body as Record<string, unknown>)['method'] as string
+    : undefined
+  log({
+    level: 'info',
+    request_id: requestId,
+    user_uid: principal.user_uid,
+    key_id: principal.key_id,
+    tool: mcpMethod,
+    message: 'MCP request dispatched',
+  })
+
   try {
     await server.connect(transport)
     await transport.handleRequest(req, res, req.body)
+    log({
+      level: 'info',
+      request_id: requestId,
+      user_uid: principal.user_uid,
+      key_id: principal.key_id,
+      tool: mcpMethod,
+      outcome: 'ok',
+      latency_ms: Date.now() - requestStart,
+      message: 'MCP request completed',
+    })
   } catch (err) {
-    console.error('[mcp:server] Unhandled error in MCP request', err)
+    const errMsg = err instanceof Error ? err.message : String(err)
+    logError({
+      request_id: requestId,
+      user_uid: principal.user_uid,
+      key_id: principal.key_id,
+      tool: mcpMethod,
+      outcome: 'error',
+      latency_ms: Date.now() - requestStart,
+      message: 'Unhandled error in MCP request',
+      error: errMsg,
+    })
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' })
     }
@@ -298,20 +380,25 @@ app.get('/mcp', (_req: Request, res: Response) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-// Tool count computed from registration calls (update when adding/removing tools):
-// L0 Brahmagyan pattern-validation: 5
-// L0 Ephemeris: 5
-// L1 Stream G PyJHora: 3
-// L2 Bodha — holistic_bundle_chart_facts (registry path; sidecar path RETIRED): 1
-// L3 Kāla (kala_temporal_bundle — sidecar; REQUEST: registry primitive pending): 1
-// L0FR Remedy: 7
-// L4 Phala (event_anchors + mitigation_map + muhurta_finder + phala_outlook): 4
-// L5 Mīmāṃsā (lel_query via registry + record_outcome via sidecar): 2
-// D7 Registry bridge (registerRegistryBridgeTools — 14 MCP tools): 14
-// M2 Chart selection (list_my_charts + select_chart): 2
-// M3+M4 Session tools (recall_session + list_my_sessions): 2
-// KEYSTONE: holistic_bundle sidecar retired (-1). Total: 46
-const REGISTERED_TOOL_COUNT = 46
+// Tool count computed from registration calls (M8 recount 2026-07-01 — authoritative):
+// L0 Brahmagyan pattern-validation (registerL0BrahmagyanTools):  5
+// L0 Ephemeris (registerEphemerisTools):                          5
+// L1 Stream G PyJHora natal:                                      3
+//   (compute_natal_positions + query_dasha_periods + query_special_lagnas)
+// L2 Bodha — holistic_bundle_chart_facts (registry path):         1
+// L3 Kāla — kala_temporal_bundle (sidecar; registry pending):     1
+// L0FR Remedy (registerRemedyTools):                              7
+// L4 Phala:                                                       4
+//   (phala_event_anchors + mitigation_map + muhurta_finder + phala_outlook)
+// L5 Mīmāṃsā:                                                     3
+//   (mimamsa_lel_intake [1: lel_query] + mimamsa_outcome [2: record_outcome + query_calibration])
+// D7 Registry bridge (registerRegistryBridgeTools):               12
+//   (server.tool() counted in registry_bridge.ts: grep confirms 12)
+// M2 Chart selection (list_my_charts + select_chart):             2
+// M3+M4 Session tools (recall_session + list_my_sessions):        2
+// ────────────────────────────────────────────────────────────────
+// Total (M8 recount):                                             45
+const REGISTERED_TOOL_COUNT = 45
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
