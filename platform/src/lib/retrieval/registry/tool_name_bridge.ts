@@ -51,6 +51,10 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   lel_query: 'marsys://tool/L2/query_signals',                // lel_enabled flag path
   query_panchanga: 'marsys://tool/L1/get_panchanga',
 
+  // L0 Brahmagyan — ontology / entity resolution
+  resolve_entity: 'marsys://tool/L0/resolve_entity',
+  list_entities: 'marsys://tool/L0/list_entities',
+
   // L0 Brahmagyan — classical texts
   read_classical_text: 'marsys://tool/L0/query_classical_texts',
   search_classical_texts: 'marsys://tool/L0/query_classical_texts',
@@ -317,6 +321,16 @@ export const SURGICAL_TOOLS = [
   'query_jaimini_drishti',
   'timeline_query',
   'query_signal_state',
+  // F-015: L0 entity resolution tools (were missing from whitelist; primitives route is POST-only)
+  'resolve_entity',
+  'list_entities',
+  // F-004: Remedy corpus tools (were missing from whitelist; caused "not in surgical whitelist" errors)
+  'query_remedies_for_chart',
+  'list_remedies_by_category',
+  'read_remedy',
+  'query_tantric_remedies',
+  'query_remedies_by_planet',
+  'query_mantras',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -368,6 +382,17 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_jaimini_drishti: 'query_jaimini_drishti',
   timeline_query: 'timeline_query',
   query_signal_state: 'query_signal_state',
+  // F-015: L0 entity resolution tools exposed as MCP primitives (called via POST now)
+  resolve_entity: 'resolve_entity',
+  list_entities: 'list_entities',
+  // F-004: Remedy corpus tools exposed as MCP primitives
+  query_remedies: 'remedial_codex_query',
+  query_remedies_for_chart: 'query_remedies_for_chart',
+  list_remedies_by_category: 'list_remedies_by_category',
+  read_remedy: 'read_remedy',
+  query_tantric_remedies: 'query_tantric_remedies',
+  query_remedies_by_planet: 'query_remedies_by_planet',
+  query_mantras: 'query_mantras',
 }
 
 /**

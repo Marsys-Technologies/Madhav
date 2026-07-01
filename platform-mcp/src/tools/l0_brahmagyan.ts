@@ -55,12 +55,22 @@ export function registerResolveEntityTool(server: McpServer): void {
     async (params) => {
       const input = ResolveEntityInput.parse(params)
       try {
-        const result = await platformGet(
-          `/api/mcp/primitives/resolve_entity?name=${encodeURIComponent(input.name)}`
-        )
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-        }
+        // F-015: primitives route is POST-only — changed from platformGet (GET) to POST
+        const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+        const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/resolve_entity`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+            'x-mcp-user': 'mcp-internal',
+            'x-mcp-key-id': 'mcp-internal',
+          },
+          body: JSON.stringify({ params: { name: input.name } }),
+          signal: AbortSignal.timeout(10_000),
+        })
+        if (!res.ok) throw new Error(`resolve_entity failed: ${res.status}`)
+        const result = await res.json()
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {
@@ -94,14 +104,24 @@ export function registerListEntitiesTool(server: McpServer): void {
     async (params) => {
       const input = ListEntitiesInput.parse(params)
       try {
-        let path = `/api/mcp/primitives/list_entities?limit=${input.limit}`
-        if (input.entity_class) {
-          path += `&entity_class=${encodeURIComponent(input.entity_class)}`
-        }
-        const result = await platformGet(path)
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-        }
+        // F-015: primitives route is POST-only — changed from platformGet (GET) to POST
+        const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+        const body: Record<string, unknown> = { limit: input.limit }
+        if (input.entity_class) body['entity_class'] = input.entity_class
+        const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/list_entities`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+            'x-mcp-user': 'mcp-internal',
+            'x-mcp-key-id': 'mcp-internal',
+          },
+          body: JSON.stringify({ params: body }),
+          signal: AbortSignal.timeout(10_000),
+        })
+        if (!res.ok) throw new Error(`list_entities failed: ${res.status}`)
+        const result = await res.json()
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {

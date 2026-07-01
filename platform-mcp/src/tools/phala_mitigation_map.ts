@@ -266,8 +266,13 @@ export function registerMitigationMapTool(
         .describe('Max mitigation rows. Default 100.'),
     },
     async (args: unknown) => {
+      // F-016: wrap in MCP content array — handleMitigationMap returns a raw envelope,
+      // but MCP tools must return { content: [{ type: 'text', text: string }] }
       const parsed = MitigationMapInputSchema.parse(args)
-      return handleMitigationMap(parsed, principal)
+      const result = await handleMitigationMap(parsed, principal)
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      }
     }
   )
 }
