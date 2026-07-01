@@ -20,6 +20,10 @@
 
 import 'server-only'
 import { NextResponse } from 'next/server'
+// Trigger capability registration for all layers (L0–L5) at module load.
+// Without this import, only L0 capabilities (registered via a separate import chain)
+// are in the registry — L1/L2/L3/L4/L5 getCapability() calls return undefined.
+import '@/lib/retrieval/registry/catalog'
 // D7 migration Step 4: all imports consolidated into tool_name_bridge (primitives_registry RETIRED)
 // DO NOT restore lib/mcp/primitives_registry imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.4
 import {
