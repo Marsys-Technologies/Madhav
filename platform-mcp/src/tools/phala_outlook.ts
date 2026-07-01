@@ -256,18 +256,19 @@ export function registerPhalaOutlookTool(server: McpServer, principal: Principal
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        // F-028: standardized error envelope { ok: false, error, tool }
         return {
           content: [
             {
               type: 'text' as const,
               text: JSON.stringify(
                 {
-                  error: true,
+                  ok: false,
+                  error: message,
                   tool: TOOL_NAME,
                   asset: 'PH-4-5',
                   chart_id: input.chart_id,
                   horizon_months: input.horizon_months,
-                  message,
                   hint:
                     'Ensure all 4 L4 sub-systems are seeded: ' +
                     'PH-4-1 (phala_anchors), PH-4-2 (phala_mitigation), ' +
