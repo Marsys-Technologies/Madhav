@@ -48,6 +48,26 @@ const PLATFORM_URL = (
 // Required by /api/retrieval/capability (F1 gate, M0.5).
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
+// ── Ayanamsha normalization (F-006/F-011/F-031) ───────────────────────────────
+// Signals are stored under 'lahiri_chitrapaksha'. Tools historically defaulted
+// to 'LAHIRI' causing a join mismatch → 0 rows. This map aliases all known
+// spellings to the canonical stored id so default + explicit calls both work.
+const AYANAMSHA_ALIAS: Record<string, string> = {
+  lahiri:               'lahiri_chitrapaksha',
+  lahiri_chitrapaksha:  'lahiri_chitrapaksha',
+  lahiri_chitra:        'lahiri_chitrapaksha',
+  true_chitra:          'lahiri_chitrapaksha',
+  true_citra:           'lahiri_chitrapaksha',
+  LAHIRI:               'lahiri_chitrapaksha',
+  Lahiri:               'lahiri_chitrapaksha',
+}
+const DEFAULT_AYANAMSHA = 'lahiri_chitrapaksha'
+
+function normalizeAyanamsha(id?: string): string {
+  if (!id) return DEFAULT_AYANAMSHA
+  return AYANAMSHA_ALIAS[id] ?? id
+}
+
 // ── DB proxy helper ───────────────────────────────────────────────────────────
 
 /**
@@ -166,12 +186,12 @@ async function callRegistryCapability(
  */
 async function fetchOrientationContext(
   chart_id: string,
-  ayanamsha_id: string = 'LAHIRI',
+  ayanamsha_id?: string,
 ): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
   try {
     const ucdData = await callRegistryCapability(
       'marsys://tool/L2/query_ucd',
-      { chart_id, ayanamsha_id, top_k_signals: 10, response_format: 'digest' },
+      { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: 10, response_format: 'digest' },
       chart_id,
     )
     return { orientation_context: ucdData, orientation_ok: true }
@@ -223,12 +243,32 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, top_k_signals, response_format }) => {
       if (!chart_id) return errorOutput('get_chart_orientation', 'chart_id is required')
       try {
+        const fmt = response_format ?? 'summary'
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_ucd',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', top_k_signals: top_k_signals ?? 20, response_format: response_format ?? 'summary' },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: top_k_signals ?? 20, response_format: fmt },
           chart_id
         )
-        return dualOutput(data)
+        // F-026: Apply response_format bounding at MCP layer
+        const responseData = data as Record<string, unknown>
+        if (fmt === 'digest') {
+          // Counts only — strip signal arrays
+          return dualOutput({
+            chart_id: responseData['chart_id'],
+            ayanamsha_id: responseData['ayanamsha_id'],
+            msr_signal_count: responseData['msr_signal_count'],
+            convergence_domains: responseData['convergence_domains'],
+            provenance: responseData['provenance'],
+            response_format: 'digest',
+          })
+        } else if (fmt === 'summary') {
+          // Top-k signals only (cap at 10)
+          const signals = (responseData['top_signals'] as unknown[]) ?? []
+          return dualOutput({ ...responseData, top_signals: signals.slice(0, 10), response_format: 'summary' })
+        }
+        // 'full' — cap at 100 signals hard limit
+        const signals = (responseData['top_signals'] as unknown[]) ?? []
+        return dualOutput({ ...responseData, top_signals: signals.slice(0, 100), response_format: 'full' })
       } catch (err) {
         return errorOutput('get_chart_orientation', String(err), { chart_id })
       }
@@ -247,18 +287,45 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       ),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       cursor: z.string().optional().describe('Pagination cursor (from previous response.next_cursor)'),
+      max_lenses: z.number().int().min(1).max(12).optional().describe(
+        'Max question lenses to return (default: 3 for token safety; pass 12 for full payload).'
+      ),
+      max_signals_per_lens: z.number().int().min(1).max(100).optional().describe(
+        'Max signals per lens (default: 20).'
+      ),
     },
-    async ({ chart_id, domain, ayanamsha_id, cursor }) => {
+    async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens }) => {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before domain drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_domain_reading',
-          { chart_id, domain, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', cursor },
+          { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor },
           chart_id
         )
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        // F-021: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
+        const domainData = data as Record<string, unknown>
+        const lenses = (domainData['question_lenses'] as unknown[]) ?? []
+        const maxLenses = max_lenses ?? 3
+        const maxSig = max_signals_per_lens ?? 20
+        const boundedLenses = lenses.slice(0, maxLenses).map((lens) => {
+          const l = lens as Record<string, unknown>
+          const signals = (l['signals'] as unknown[]) ?? []
+          const signalIdRefs = (l['signal_id_refs'] as unknown[]) ?? []
+          // F-023: dedup signal_id_refs (was byte-for-byte duplicate of template_element_ids)
+          const uniqueSignalIdRefs = [...new Set(signalIdRefs as string[])]
+          return { ...l, signals: signals.slice(0, maxSig), signal_id_refs: uniqueSignalIdRefs }
+        })
+        return dualOutput({
+          orientation_context,
+          orientation_ok,
+          ...domainData,
+          question_lenses: boundedLenses,
+          lenses_total: lenses.length,
+          lenses_returned: boundedLenses.length,
+          token_safety_note: `Bounded to ${maxLenses} lenses × ${maxSig} signals. Pass max_lenses=12 + max_signals_per_lens=100 for full payload.`,
+        })
       } catch (err) {
         return errorOutput('get_domain_reading', String(err), { chart_id, domain })
       }
@@ -287,10 +354,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before signal drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_signals',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
@@ -345,7 +412,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_positions',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', planet },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet },
           chart_id
         )
         return dualOutput(data)
@@ -371,7 +438,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_dashas',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', limit: limit ?? 50, cursor },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 50, cursor },
           chart_id
         )
         return dualOutput(data)
@@ -397,10 +464,10 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before temporal domain query
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_temporal_activation',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', date_from, date_to, include_convergence: include_convergence ?? true },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
           chart_id
         )
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
@@ -419,18 +486,33 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       domain: z.string().optional().describe('Domain to project (e.g. career, relationship)'),
       horizon_years: z.number().int().min(1).max(20).optional().describe('Projection horizon in years (default: 5)'),
+      max_projections: z.number().int().min(1).max(200).optional().describe(
+        'Max projections to return (default: 20; was unbounded at 117KB+).'
+      ),
     },
-    async ({ chart_id, ayanamsha_id, domain, horizon_years }) => {
+    async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections }) => {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before predictive projection
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, ayanamsha_id ?? 'LAHIRI')
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L3/query_projections',
-          { chart_id, ayanamsha_id: ayanamsha_id ?? 'LAHIRI', domain, horizon_years: horizon_years ?? 5 },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, horizon_years: horizon_years ?? 5 },
           chart_id
         )
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        // F-008: Cap projections array — was 117KB unbounded
+        const projData = data as Record<string, unknown>
+        const projections = (projData['projections'] as unknown[]) ?? []
+        const cap = max_projections ?? 20
+        const boundedProjections = projections.slice(0, cap)
+        return dualOutput({
+          orientation_context,
+          orientation_ok,
+          ...projData,
+          projections: boundedProjections,
+          projections_total: projections.length,
+          projections_returned: boundedProjections.length,
+        })
       } catch (err) {
         return errorOutput('get_projections', String(err), { chart_id })
       }

