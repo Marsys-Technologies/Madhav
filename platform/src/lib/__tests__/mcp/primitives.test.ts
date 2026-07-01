@@ -104,6 +104,11 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
 // We mock the heavy dependencies so we don't need a live DB or retrieval tools.
 
 // D7 Step 4: route now calls getToolByName from tool_name_bridge (lib/retrieve/index RETIRED)
+// Prevent catalog side-effect import from populating the capability registry during
+// unit tests — otherwise isPerChartPrimitive() returns true for per_chart tools (e.g.
+// query_signals) and the route returns 400 CHART_REQUIRED before the trace emit.
+vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
+
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/retrieval/registry/tool_name_bridge')>()
   return {
