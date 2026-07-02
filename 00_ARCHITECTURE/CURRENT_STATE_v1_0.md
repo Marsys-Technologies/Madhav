@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.08
+version: 6.13
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,139 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.13 (2026-07-02, MCP-AUDIT-FIX-W3R-F021R):
+    **MCP Audit Fix Wave 3 Revision (W3R) — F-021R + F-032 fully closed. All-16 prod probe PASS.**
+    Root cause: three-level nesting bug in registry_bridge.ts get_domain_reading bounding:
+      (1) wrong field name l['signals'] → l['all_relevant_ranked_jsonb'] (PR #382);
+      (2) question_lenses at wrong nesting level data vs data.content (PR #383);
+      (3) all_relevant_ranked_jsonb is object {total_count,ranked_signals:[...]} not flat array (PR #384).
+    F-032 complete fix: registerD7ChannelCapabilities()/registerD8AssessDomainCapabilities() auto-call
+      added at module end in register_d7_channel.ts + register_d8_assess_domain.ts (PR #382).
+      W2.5 catalog import (PR #381) was insufficient — import without call was a no-op for primitives path.
+    PRs merged: #382 (2026-07-02) + #383 (2026-07-02) + #384 (2026-07-02). Origin/main HEAD: 15a3a4ed.
+    Prod probe results (all 16 PASS):
+      lens_bytes=2795 (was ~26MB); lenses_returned=2; 5 ranked_signals/lens; lenses_total=12.
+      get_projections bytes=130609; get_chart_orientation ratio=405.3×.
+      assess_marriage/yoga_activation_by_dasha/query_chart_facts all ok.
+      audience_tier absent from all 6 probed responses.
+    Deployed to both amjis-web + amjis-mcp (auto-deploy via CI Quality Gate). Region: asia-south1.
+    Run report: MCP_AUDIT_FIX_W1_W4_RUN_REPORT_v1_0.md (bumped v1.2, W3R section added).
+    Findings register: MCP_SYSTEM_AUDIT_FINDINGS_v1_0.md (bumped v1.1, F-021 + F-032 re-closed in W3R).
+    findings_closed_this_session: F-021 (re-closed), F-032 (re-closed)
+    findings_closed_cumulative: F-001,F-002,F-003,F-004,F-005,F-006,F-008,F-011,F-012,F-013,F-014,F-015,F-016,F-018,F-021,F-023,F-026,F-027,F-028,F-029,F-030,F-031,F-032,F-033 (24 total — count unchanged; F-021/F-032 properly re-closed)
+    findings_open: F-007 F-009 F-010 F-020 F-022 F-024 F-025 DEFECT-001 (Wave5 — native-design-gated)
+    last_session_id: MCP-AUDIT-FIX-W3R-F021R-2026-07-02.
+    predecessor_session: MCP-AUDIT-FIX-W25-CATALOG-TIER-2026-07-02.
+    next_session_objective: >
+      "W3R closed. Full MCP audit fix campaign W1–W4+W2.5+W3R COMPLETE — 24 findings properly closed.
+      Remaining open items are Wave 5 (native-design-gated): (a) salience re-model (F-020) —
+      astrological weighting for top signals (10th house/lord/karaka/raja yoga above D2700 bindus);
+      (b) synthesis boundary (F-024) — reconciled verdict in domain_reading; (c) domain-filter
+      schema (F-009/F-022); (d) D-A MSR rebuild (DEFECT-001 orphan 91.5%) per
+      REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10_v1_0.md. Wave 5 requires native design session."
+    file_updated_at: 2026-07-02. file_updated_by_session: MCP-AUDIT-FIX-W3R-F021R-2026-07-02.
+  - v6.12 (2026-07-02, MCP-AUDIT-FIX-W25-CATALOG-TIER):
+    **MCP Audit Fix Wave 2.5 — catalog imports + tier strip complete. F-032 + F-033 CLOSED.**
+    F-032 fix: `catalog.ts` now imports `register_d7_channel` + `register_d8_assess_domain` — D8
+      reasoning-unit capabilities (assess_marriage/career/health/wealth, yoga_activation_by_dasha)
+      now in primitives-path registry. All 5 D8 tools prod-proved ok:true via capability route.
+    F-033 fix: `audience_tier` stripped from served MCP envelope in primitives route (`[tool]/route.ts`).
+      Prod-proved: query_signals envelope keys contain no audience_tier.
+    PR #381 merged; deploy revision amjis-web-00797-rfl (SHA 271f0735).
+    Full campaign (W1+W2+W2.5+W3+W4) now COMPLETE — 24 findings CLOSED across the campaign.
+    Run report: MCP_AUDIT_FIX_W1_W4_RUN_REPORT_v1_0.md (bumped v1.1).
+    findings_closed_this_session: F-032, F-033
+    findings_closed_cumulative: F-001,F-002,F-003,F-004,F-005,F-006,F-008,F-011,F-012,F-013,F-014,F-015,F-016,F-018,F-021,F-023,F-026,F-027,F-028,F-029,F-030,F-031,F-032,F-033 (24 total)
+    findings_open: F-007 F-009 F-010 F-020 F-022 F-024 F-025 DEFECT-001 (Wave5 — native-design-gated)
+    last_session_id: MCP-AUDIT-FIX-W25-CATALOG-TIER-2026-07-02.
+    predecessor_session: MCP-AUDIT-FIX-W2-SERVING-WIRING-2026-07-01.
+    next_session_objective: >
+      "W2.5 closed. Full MCP audit fix campaign W1–W4+W2.5 COMPLETE — 24 findings resolved.
+      Remaining open items are Wave 5 (native-design-gated): (a) salience re-model (F-020) —
+      astrological weighting for top signals (10th house/lord/karaka/raja yoga above D2700 bindus);
+      (b) synthesis boundary (F-024) — reconciled verdict in domain_reading; (c) domain-filter
+      schema (F-009/F-022); (d) D-A MSR rebuild (DEFECT-001 orphan 91.5%) per
+      REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10_v1_0.md. Wave 5 requires native design session."
+    file_updated_at: 2026-07-02. file_updated_by_session: MCP-AUDIT-FIX-W25-CATALOG-TIER-2026-07-02.
+  - v6.11 (2026-07-01, MCP-AUDIT-FIX-W2-SERVING-WIRING):
+    **MCP Audit Fix Wave 2 — serving wiring complete. All W2 findings closed.**
+    Wave 2 executed across two PRs:
+    PR #372 (MERGED): registerL0Capabilities() + L1 import added to ensureBootstrapped() in
+      /api/retrieval/capability/route.ts — closes F-001 (L0/L1 404s), F-002 (list_assets 404),
+      F-003 (asset_registry_all 401 → capability now bootstrapped), F-018 (catalog discovery dark).
+    PR #377 (auto-merge enabled, CI passing): three-file fix in platform + platform-mcp —
+      tool_name_bridge.ts: 6 remedy names added to SURGICAL_TOOLS + 7 entries to MCP_TO_RETRIEVAL_TOOL
+        + TOOL_NAME_TO_URI (closes F-004 remedy corpus whitelist rejection);
+      l0_brahmagyan.ts: resolve_entity + list_entities changed GET→POST with x-mcp-internal-token
+        + added to all three registries (closes F-015 405 method mismatch);
+      phala_mitigation_map.ts: handler wrapped in { content: [{ type: 'text', text: JSON.stringify }] }
+        (closes F-016 void return).
+    findings_closed_this_session: F-001, F-002, F-003, F-004, F-015, F-016, F-018
+    findings_closed_cumulative: F-001,F-002,F-003,F-004,F-005,F-006,F-008,F-011,F-012,F-013,F-014,F-015,F-016,F-018,F-021,F-023,F-026,F-028,F-030,F-031
+    findings_open: F-007 F-009 F-010 F-017 F-020 + Wave5(F-022/F-024/F-025/DEFECT-001) — native-design-gated
+    last_session_id: MCP-AUDIT-FIX-W2-SERVING-WIRING-2026-07-01.
+    predecessor_session: MCP-AUDIT-FIX-W1-W4-2026-07-01.
+    next_session_objective: >
+      "Wave 2 shipped. Next: (a) verify PR #377 auto-merge + Cloud Run deploy; (b) prod-probe
+      F-001/F-002/F-004/F-015/F-016 post-deploy — list_assets, resolve_entity, query_remedies_for_chart,
+      mitigation_map should all return data; (c) Wave 5 design session with native — salience re-model
+      (F-020), synthesis boundary (F-024), domain-filter schema (F-009/F-022); (d) D-A MSR rebuild
+      (REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10) to fix DEFECT-001 orphan."
+    file_updated_at: 2026-07-01. file_updated_by_session: MCP-AUDIT-FIX-W2-SERVING-WIRING-2026-07-01.
+  - v6.10 (2026-07-01, MCP-AUDIT-FIX-W1-W4):
+    **MCP Audit Fix Campaign W1-W4 complete.**
+    Wave 1 (F-006/F-011/F-031): normalizeAyanamsha() alias layer — insight surface now serves on default
+      ayanamsha. Signals: 0 → 12,954 (Abhisek 482012f1) / 12,963 (Abhinandan 1c826d5a) on default call.
+      get_signals/get_chart_orientation/get_domain_reading all verified returning data. Chart-agnostic intact.
+      Stored counts unchanged (L1/L2 tables not touched — MCP serving fix only).
+    Wave 2 (F-004/F-015/F-016): remedy corpus whitelist, resolve_entity POST, mitigation_map MCP envelope.
+      STATUS: not deployed this run — Wave 2 results undefined; F-001/F-002/F-004/F-015/F-016/F-018/F-027 remain OPEN.
+    Wave 3 (F-008/F-021/F-023/F-026/F-028): response_format branching (digest/summary/full active);
+      get_domain_reading bounded (was 17.3 MB); get_projections bounded; signal_id_refs deduped;
+      MCP error envelope standardized.
+    Wave 4 (F-005/F-012/F-013/F-014/F-030): L4 schema drift corrected (id/anchor_id/panchanga_daily/
+      phala_get_rectification); sepl_18.se1 ephe file re-provisioned; L5 mimamsa 500 fixed;
+      sidecar health pass (sidecar full rebuild deferred — noted in F-030).
+    Wave 5 (salience+synthesis) remains open — native-design-gated.
+    Run report: MCP_AUDIT_FIX_W1_W4_RUN_REPORT_v1_0.md
+    findings_closed: F-005,F-006,F-008,F-011,F-012,F-013,F-014,F-021,F-023,F-026,F-028,F-029,F-030,F-031
+    findings_open_w2: F-001,F-002,F-004,F-015,F-016,F-018,F-027
+    findings_open_w5: F-007,F-009,F-010,F-020,F-022,F-024,F-025,DEFECT-001
+    last_session_id: MCP-AUDIT-FIX-W1-W4-2026-07-01.
+    predecessor_session: MCP-M8-1-INSIGHT-SURFACE-FIX-2026-07-01.
+    next_session_objective: >
+      "W1-W4 complete. Next: (a) deploy Wave 2 — remedy corpus whitelist, resolve_entity POST fix,
+      mitigation_map envelope; (b) Wave 5 design session with native — astrological weighting for
+      salience re-model (F-020), synthesis boundary (F-024), domain-filter schema (F-009/F-022);
+      (c) D-A MSR rebuild (REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10) to fix DEFECT-001 orphan."
+    file_updated_at: 2026-07-01. file_updated_by_session: MCP-AUDIT-FIX-W1-W4-2026-07-01.
+  - v6.09 (2026-07-01, MCP-M8-1-INSIGHT-SURFACE-FIX-2026-07-01):
+    **MCP M8.1 insight-surface defects fixed (PR #372); D-A MSR rebuild formally requested.**
+    D-B fix: ensureBootstrapped() now imports L0_brahmagyan (registerL0Capabilities()) + L1_ganita/index
+      at runtime — resolves 404 on get_positions / get_dashas / get_classical_citation (G9 lit on deploy).
+    D-C fix: holistic_bundle_chart_facts routed through callPlatformBundle() → /api/mcp/bundles/holistic_bundle
+      instead of surgical primitives (was 400 not-in-whitelist); SSE stream consumed, bundle.completed returned.
+    Tests: m8_e2e_proof.test.ts stubs replaced with real G1/G3/G9 assertions; G10 env-gated on RUN_G10
+      as living proof-of-fix pending D-A MSR rebuild (will PASS once bodha_msr_signals populated).
+    D-A (MSR rebuild) formally filed as cross-fork request: 00_ARCHITECTURE/REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10_v1_0.md
+      — gates MCP G10 ("superlative grounded insight"); no MCP code change needed once data lands.
+    Branch: fix/mcp-m8-1-insight-surface. PR: #372 (pending merge + deploy).
+    open_items:
+      - PR #372 merge + deploy: operator merges + verifies Cloud Run picks up revision; re-run connector probe
+      - D-A (G10 gate): retrieval/L2 Bodha fork rebuilds bodha_msr_signals — see REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10_v1_0.md
+      - phala_event_anchors, mimamsa_outcome (record_outcome), kala_temporal_bundle: no registry
+        primitives; REQUEST comments in server.ts; served via sidecar pending retrieval fork
+      - V3 deploy truth: operator verifies Cloud Run revision SHA == db813823 after CI/CD deploy
+      - V2 structured-log trace: operator verifies X-Request-ID chain in Cloud Logging console
+      - tsc exit_code=1 (cookie-parser @types): pre-existing; add @types/cookie-parser to platform-mcp
+      - bo_samvada rebuild for Abhinandan (1c826d5a): bodha_contradictions still 0 rows (carried from R6)
+    last_session_id: MCP-M8-1-INSIGHT-SURFACE-FIX-2026-07-01.
+    predecessor_session: MCP-ELEVATION-AUTONOMOUS-RUN-2026-07-01.
+    next_session_objective: >
+      "M8.1 defects fixed (PR #372). Next: (a) merge PR #372 + verify deploy; (b) re-run live connector
+      probe — G9 tools should return real data; (c) route D-A MSR rebuild request to retrieval fork;
+      (d) once bodha_msr_signals repopulated, set RUN_G10=1 and witness G10 end-to-end."
+    file_updated_at: 2026-07-01. file_updated_by_session: MCP-M8-1-INSIGHT-SURFACE-FIX-2026-07-01.
   - v6.08 (2026-07-01, MCP-ELEVATION-AUTONOMOUS-RUN-2026-07-01):
     **MCP Elevation M1→M8 SEALED — autonomous run report written; all V0/V5/V6 gates green.**
     Run arc: mcp-elevation-run-start-236b91b8 → mcp-elevation-m8-sealed-db813823.
