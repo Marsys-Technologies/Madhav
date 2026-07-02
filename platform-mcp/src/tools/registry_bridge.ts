@@ -68,6 +68,32 @@ function normalizeAyanamsha(id?: string): string {
   return AYANAMSHA_ALIAS[id] ?? id
 }
 
+// ── Platform primitive caller ─────────────────────────────────────────────────
+
+/**
+ * Call a platform primitive via /api/mcp/primitives/{tool}.
+ * Used for tools (e.g. vector_search) that are not in the registry.
+ */
+async function callPlatformPrimitive(
+  tool: string,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${tool}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+    },
+    body: JSON.stringify({ params }),
+    signal: AbortSignal.timeout(20_000),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`[registry_bridge] primitive call '${tool}' failed (${res.status}): ${text.slice(0, 200)}`)
+  }
+  return res.json()
+}
+
 // ── DB proxy helper ───────────────────────────────────────────────────────────
 
 /**
@@ -464,19 +490,32 @@ export function registerRegistryBridgeTools(server: McpServer): void {
   // marsys://tool/L1/get_dashas
   server.tool(
     'get_dashas',
-    'Retrieves the Vimshottari dasha chain from L1 Gaṇita — the 120-year planetary period sequence that governs the timing of karma in Parashara Jyotish. Each planet rules a fixed span (Sun 6 yr, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17, Ketu 7, Venus 20), subdivided into antardasha (sub-periods) and pratyantardasha. The running period lord colors all life events during its tenure: its natal placement, lordship, aspects received, and conjunctions determine what it delivers. Use this to identify which lords are active now and in the near future, then cross-reference with get_temporal_windows and get_signals to see which yogas those lords activate.',
+    'Retrieves the dasha (planetary period) chain from L1 Gaṇita. Default system: VIMSHOTTARI — the 120-year Parashara sequence (Sun 6 yr, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17, Ketu 7, Venus 20), subdivided into antardasha and pratyantardasha. Other systems available: YOGINI, ASHTOTTARI, CHARA, NARAYANA, SHOOLA, KALACHAKRA. The running period lord colors all life events during its tenure: its natal placement, lordship, aspects received, and conjunctions determine what it delivers. Use this to identify which lords are active now and in the near future, then cross-reference with get_temporal_windows and get_signals to see which yogas those lords activate. Pass date_from=birth_date to exclude pre-birth rows (the dasha running at birth may have started before the birth date).',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      system_id: z.string().optional().describe(
+        "Dasha system to retrieve (default: 'VIMSHOTTARI'). Options: VIMSHOTTARI | YOGINI | ASHTOTTARI | CHARA | NARAYANA | SHOOLA | KALACHAKRA."
+      ),
+      date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe(
+        "ISO date YYYY-MM-DD. Filters to dashas whose end_date >= this date, excluding rows that ended before this point. Pass the chart's birth date (e.g. '1984-02-05') to exclude pre-birth rows."
+      ),
       limit: z.number().int().min(1).max(200).optional().describe('Max dasha rows (default: 50)'),
       cursor: z.string().optional().describe('Pagination cursor'),
     },
-    async ({ chart_id, ayanamsha_id, limit, cursor }) => {
+    async ({ chart_id, ayanamsha_id, system_id, date_from, limit, cursor }) => {
       if (!chart_id) return errorOutput('get_dashas', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_dashas',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 50, cursor },
+          {
+            chart_id,
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            dasha_system: system_id ?? 'VIMSHOTTARI',
+            ...(date_from ? { date_from } : {}),
+            limit: limit ?? 50,
+            cursor,
+          },
           chart_id
         )
         return dualOutput(data)
@@ -651,6 +690,268 @@ export function registerRegistryBridgeTools(server: McpServer): void {
         return dualOutput({ ...(data as Record<string, unknown>), pagination: { cursor, limit } })
       } catch (err) {
         return errorOutput('list_assets', String(err))
+      }
+    }
+  )
+
+  // ── D8 APEX TOOLS ─────────────────────────────────────────────────────────
+  // assess_marriage / assess_career / assess_health / assess_wealth
+  // yoga_activation_by_dasha
+  // get_cgm_subgraph / query_chart_facts / vector_search
+
+  // ── assess_marriage (D8 L-DOMAIN reconciled bundle) ──────────────────────
+  server.tool(
+    'assess_marriage',
+    'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+    },
+    async ({ chart_id, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
+      try {
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
+        const data = await callRegistryCapability(
+          'marsys://tool/L-DOMAIN/assess_marriage',
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+          chart_id
+        )
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+      } catch (err) {
+        return errorOutput('assess_marriage', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── assess_career (D8 L-DOMAIN reconciled bundle) ────────────────────────
+  server.tool(
+    'assess_career',
+    'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+    },
+    async ({ chart_id, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
+      try {
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
+        const data = await callRegistryCapability(
+          'marsys://tool/L-DOMAIN/assess_career',
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+          chart_id
+        )
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+      } catch (err) {
+        return errorOutput('assess_career', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── assess_health (D8 L-DOMAIN reconciled bundle) ────────────────────────
+  server.tool(
+    'assess_health',
+    'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+    },
+    async ({ chart_id, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
+      try {
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
+        const data = await callRegistryCapability(
+          'marsys://tool/L-DOMAIN/assess_health',
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+          chart_id
+        )
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+      } catch (err) {
+        return errorOutput('assess_health', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── assess_wealth (D8 L-DOMAIN reconciled bundle) ────────────────────────
+  server.tool(
+    'assess_wealth',
+    'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+    },
+    async ({ chart_id, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
+      try {
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
+        const data = await callRegistryCapability(
+          'marsys://tool/L-DOMAIN/assess_wealth',
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+          chart_id
+        )
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+      } catch (err) {
+        return errorOutput('assess_wealth', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── yoga_activation_by_dasha (D8 L-TIMING bridge) ────────────────────────
+  server.tool(
+    'yoga_activation_by_dasha',
+    'Bridges the L2 Bodha yoga-signal catalog and the L3 Kāla timing activation surface. Returns yoga signals (signal_type_class=yoga) active within the given dasha window, ranked by salience × dasha_alignment_score. Each result includes activation_start, activation_end, active_dasha_periods_jsonb, and constituent_fact_ids for drill-down. Use to answer "which yogas are ripening now?" chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      dasha_period: z.string().optional().describe(
+        "Dasha-antardasha label to filter by (e.g. 'saturn-venus'). Case-insensitive substring match against active_dasha_periods_jsonb."
+      ),
+      date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start of window (YYYY-MM-DD). Default: today.'),
+      date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End of window (YYYY-MM-DD). Default: 3 years from today.'),
+      top_k: z.number().int().min(1).max(200).optional().describe('Max activated yogas to return (default: 30).'),
+      min_salience: z.number().min(0).max(1).optional().describe('Minimum salience threshold (0–1, default: 0).'),
+    },
+    async ({ chart_id, ayanamsha_id, dasha_period, date_from, date_to, top_k, min_salience }) => {
+      if (!chart_id) return errorOutput('yoga_activation_by_dasha', 'chart_id is required')
+      try {
+        const data = await callRegistryCapability(
+          'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+          {
+            chart_id,
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            ...(dasha_period ? { dasha_period } : {}),
+            ...(date_from ? { date_from } : {}),
+            ...(date_to ? { date_to } : {}),
+            ...(top_k != null ? { top_k } : {}),
+            ...(min_salience != null ? { min_salience } : {}),
+          },
+          chart_id
+        )
+        return dualOutput(data)
+      } catch (err) {
+        return errorOutput('yoga_activation_by_dasha', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── get_cgm_subgraph (CGM graph: per-chart subgraph traversal) ────────────
+  // marsys://tool/L2/traverse_chart_graph
+  // Apex alias: expose traverse_chart_graph as get_cgm_subgraph for D8 surface.
+  server.tool(
+    'get_cgm_subgraph',
+    'Traverses the Causal Graph Model (CGM) for a chart — the bodha_cgm_nodes + bodha_cgm_edges graph built from L2 Bodha signals. Four modes: neighbors (BFS from seed node_ids), paths (shortest path between two nodes), convergence (top hub nodes by in-degree), contradictions (nodes with conflicting signal valence). Use to explore causal chains, find convergence hubs, or surface contradictions in the chart\'s signal graph. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      mode: z.enum(['neighbors', 'paths', 'convergence', 'contradictions']).optional().describe(
+        'Traversal mode (default: neighbors).'
+      ),
+      seed_node_ids: z.array(z.string().uuid()).optional().describe(
+        'Seed node UUIDs (from bodha_cgm_nodes) for neighbors/paths modes.'
+      ),
+      depth: z.number().int().min(1).max(3).optional().describe('BFS depth for neighbors mode (1–3, default 1).'),
+      seed_node: z.string().uuid().optional().describe('Source node UUID for paths mode.'),
+      target_node: z.string().uuid().optional().describe('Target node UUID for paths mode.'),
+      query_text: z.string().optional().describe('Semantic seed: finds top-3 similar nodes and runs BFS from them.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+    },
+    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
+      try {
+        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
+        const data = await callRegistryCapability(
+          'marsys://tool/L2/traverse_chart_graph',
+          {
+            chart_id,
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            mode: mode ?? 'neighbors',
+            ...(seed_node_ids ? { seed_node_ids } : {}),
+            ...(depth != null ? { depth } : {}),
+            ...(seed_node ? { seed_node } : {}),
+            ...(target_node ? { target_node } : {}),
+            ...(query_text ? { query_text } : {}),
+          },
+          chart_id
+        )
+        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+      } catch (err) {
+        return errorOutput('get_cgm_subgraph', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── query_chart_facts (L1 chart_facts parametric lookup) ─────────────────
+  // marsys://tool/L1/chart_facts_query  (D7 gap-fill / B.11 floor tool)
+  server.tool(
+    'query_chart_facts',
+    'Parametric lookup over the chart_facts table (27,554 rows per chart). Covers all 27 fact categories: planet positions, dignities, strengths, house placements, divisional charts, dashas, yogas, doshas, and more. Optional filters: category, planet, house, sign, nakshatra, divisional_chart (D9/D10/D6/etc.), keyword, date range. Returns fact_id references for downstream drill. B.11-floor-injected — provides the L1 fact foundation for all synthesis. chart_id is required — never defaulted.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      category: z.string().optional().describe(
+        'Fact category filter (e.g. "planet_position", "house_placement", "dignity", "strength", "yoga", "dosha", "dasha", "divisional"). Comma-separated for multiple.'
+      ),
+      planet: z.string().optional().describe('Graha name filter (e.g. "Sun", "Moon", "Saturn").'),
+      house: z.number().int().min(1).max(12).optional().describe('Bhava number (1–12) filter.'),
+      sign: z.string().optional().describe('Rashi name filter (e.g. "Aries", "Scorpio").'),
+      nakshatra: z.string().optional().describe('Nakshatra name filter.'),
+      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10", "D1").'),
+      keyword: z.string().optional().describe('Free-text keyword search over fact_value or fact_label.'),
+      limit: z.number().int().min(1).max(1000).optional().describe('Max rows (default: 100, max: 1000).'),
+      as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts valid as of this date.'),
+      from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_start >= from_date.'),
+      to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_end <= to_date.'),
+    },
+    async ({ chart_id, ayanamsha_id, category, planet, house, sign, nakshatra, divisional_chart, keyword, limit, as_of_date, from_date, to_date }) => {
+      if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
+      try {
+        const data = await callRegistryCapability(
+          'marsys://tool/L1/chart_facts_query',
+          {
+            chart_id,
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            ...(category ? { category } : {}),
+            ...(planet ? { planet } : {}),
+            ...(house != null ? { house } : {}),
+            ...(sign ? { sign } : {}),
+            ...(nakshatra ? { nakshatra } : {}),
+            ...(divisional_chart ? { divisional_chart } : {}),
+            ...(keyword ? { keyword } : {}),
+            ...(limit != null ? { limit } : {}),
+            ...(as_of_date ? { as_of_date } : {}),
+            ...(from_date ? { from_date } : {}),
+            ...(to_date ? { to_date } : {}),
+          },
+          chart_id
+        )
+        return dualOutput(data)
+      } catch (err) {
+        return errorOutput('query_chart_facts', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── vector_search (semantic retrieval — chart-agnostic) ───────────────────
+  // Not in the registry; calls platform primitive directly.
+  server.tool(
+    'vector_search',
+    'Semantic vector search over the MARSYS document corpus (domain reports, signal narratives, classical text excerpts, life event annotations). Returns the top-k most semantically similar documents to the query. Chart-agnostic — no chart_id required. Use to find relevant astrological literature, prior domain reports, or signal descriptions matching a natural-language query.',
+    {
+      query_text: z.string().describe('Natural-language query for semantic retrieval. Required.'),
+      top_k: z.number().int().min(1).max(50).optional().describe('Number of results to return (default: 10).'),
+      doc_type: z.array(z.string()).optional().describe(
+        'Document type filter (e.g. ["domain_report"], ["signal_narrative"], ["classical_text"]). Omit for all types.'
+      ),
+    },
+    async ({ query_text, top_k, doc_type }) => {
+      if (!query_text) return errorOutput('vector_search', 'query_text is required')
+      try {
+        const data = await callPlatformPrimitive('vector_search', {
+          query_text,
+          top_k: top_k ?? 10,
+          ...(doc_type ? { doc_type } : {}),
+        })
+        return dualOutput(data)
+      } catch (err) {
+        return errorOutput('vector_search', String(err))
       }
     }
   )

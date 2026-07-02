@@ -392,13 +392,17 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //   (phala_event_anchors + mitigation_map + muhurta_finder + phala_outlook)
 // L5 Mīmāṃsā:                                                     3
 //   (mimamsa_lel_intake [1: lel_query] + mimamsa_outcome [2: record_outcome + query_calibration])
-// D7 Registry bridge (registerRegistryBridgeTools):               12
-//   (server.tool() counted in registry_bridge.ts: grep confirms 12)
+// D7 Registry bridge (registerRegistryBridgeTools):               20
+//   D7 workflow tools (12): get_chart_orientation, get_domain_reading, get_signals,
+//     traverse_graph, get_positions, get_dashas, get_temporal_windows, get_projections,
+//     get_classical_citation, get_remedies, get_chart_quality, list_assets
+//   D8 apex tools (8): assess_marriage, assess_career, assess_health, assess_wealth,
+//     yoga_activation_by_dasha, get_cgm_subgraph, query_chart_facts, vector_search
 // M2 Chart selection (list_my_charts + select_chart):             2
 // M3+M4 Session tools (recall_session + list_my_sessions):        2
 // ────────────────────────────────────────────────────────────────
-// Total (M8 recount):                                             45
-const REGISTERED_TOOL_COUNT = 45
+// Total (G-A recount 2026-07-02):                                 53
+const REGISTERED_TOOL_COUNT = 53
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
