@@ -293,15 +293,23 @@ export function registerRegistryBridgeTools(server: McpServer): void {
       max_signals_per_lens: z.number().int().min(1).max(100).optional().describe(
         'Max signals per lens (default: 20).'
       ),
+      max_signal_refs: z.number().int().min(1).max(2000).optional().describe(
+        'Max signal IDs in signal_id_refs (default 200; capped at 2000).'
+      ),
+      response_format: z.enum(['default', 'full']).optional().describe(
+        "Payload verbosity. 'default': token-safe (shared_signal_ids_array omitted, signal_id_refs ≤200). 'full': includes arrays (signal_id_refs ≤2000)."
+      ),
     },
-    async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens }) => {
+    async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens, max_signal_refs, response_format }) => {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before domain drill
         const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
         const data = await callRegistryCapability(
           'marsys://tool/L2/query_domain_reading',
-          { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor },
+          { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor,
+            ...(response_format ? { response_format } : {}),
+            ...(max_signal_refs != null ? { max_signal_refs } : {}) },
           chart_id
         )
         // F-021R: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
