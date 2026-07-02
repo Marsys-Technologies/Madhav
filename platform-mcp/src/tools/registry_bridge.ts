@@ -316,10 +316,25 @@ export function registerRegistryBridgeTools(server: McpServer): void {
         const lensesToBound = lenses.slice(0, maxLenses)
         const boundedLenses = lensesToBound.map((lens) => {
           const l = lens as Record<string, unknown>
-          // all_relevant_ranked_jsonb is the massive JSONB array (thousands of signal objects)
-          const allRelevant = Array.isArray(l['all_relevant_ranked_jsonb'])
-            ? (l['all_relevant_ranked_jsonb'] as unknown[])
-            : []
+          // all_relevant_ranked_jsonb is stored as { total_count, ranked_signals: [...] }
+          // (a JSONB object, not a flat array). Slice ranked_signals and preserve total_count.
+          const arj = l['all_relevant_ranked_jsonb']
+          let boundedArj: unknown
+          let totalSignals = 0
+          if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
+            const arjObj = arj as Record<string, unknown>
+            const ranked = Array.isArray(arjObj['ranked_signals'])
+              ? (arjObj['ranked_signals'] as unknown[])
+              : []
+            totalSignals = ranked.length
+            boundedArj = { ...arjObj, ranked_signals: ranked.slice(0, maxSig), total_count: ranked.length }
+          } else if (Array.isArray(arj)) {
+            // Flat array fallback (schema v1 compat)
+            totalSignals = (arj as unknown[]).length
+            boundedArj = (arj as unknown[]).slice(0, maxSig)
+          } else {
+            boundedArj = arj
+          }
           // F-023: template_element_ids_jsonb may contain duplicate refs — dedup
           const templateIds = Array.isArray(l['template_element_ids_jsonb'])
             ? (l['template_element_ids_jsonb'] as string[])
@@ -327,8 +342,8 @@ export function registerRegistryBridgeTools(server: McpServer): void {
           const uniqueTemplateIds = [...new Set(templateIds)]
           return {
             ...l,
-            all_relevant_ranked_jsonb: allRelevant.slice(0, maxSig),
-            all_relevant_total: allRelevant.length,
+            all_relevant_ranked_jsonb: boundedArj,
+            all_relevant_total: totalSignals,
             template_element_ids_jsonb: uniqueTemplateIds,
           }
         })
