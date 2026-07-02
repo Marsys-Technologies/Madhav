@@ -384,11 +384,6 @@ jobs:
             --memory=1Gi
             --min-instances=0
             --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
-            --startup-probe-path=/api/health
-            --startup-probe-initial-delay=5
-            --startup-probe-timeout=10
-            --startup-probe-period=10
-            --startup-probe-failure-threshold=3
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
