@@ -151,21 +151,36 @@ export function sanitizeModelFamily(
     : undefined
 }
 
+// Process-level role cache — avoids a DB round-trip on every per-chart
+// primitive call. Roles almost never change mid-session; 30s TTL is safe
+// and keeps stale-role exposure window minimal. Per-process (not shared)
+// so a role change propagates within at most one TTL across all instances.
+const _roleCache = new Map<string, { role: 'guest' | 'super_admin'; expiry: number }>()
+const ROLE_CACHE_TTL_MS = 30_000
+
 /**
  * Resolve the Firebase role for a given user UID.
  * Reads from the profiles table; defaults to 'guest' if no row found.
  * Used by both the Bearer-key path and the OAuth path.
+ *
+ * Results are cached in process memory for 30 seconds to avoid a DB query
+ * on every per-chart primitive call (each call previously paid one round-trip).
  */
 export async function resolveMcpPrincipalRole(
   userUid: string
 ): Promise<'guest' | 'super_admin'> {
+  const hit = _roleCache.get(userUid)
+  if (hit && hit.expiry > Date.now()) return hit.role
+
   try {
     const { rows } = await query<{ role: string }>(
       `SELECT role FROM profiles WHERE id = $1 LIMIT 1`,
       [userUid]
     )
     const r = rows[0]?.role
-    return r === 'super_admin' ? 'super_admin' : 'guest'
+    const role: 'guest' | 'super_admin' = r === 'super_admin' ? 'super_admin' : 'guest'
+    _roleCache.set(userUid, { role, expiry: Date.now() + ROLE_CACHE_TTL_MS })
+    return role
   } catch {
     return 'guest'
   }

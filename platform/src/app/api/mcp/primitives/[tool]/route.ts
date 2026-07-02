@@ -46,6 +46,8 @@ import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limi
 import { traceEmitter } from '@/lib/trace/emitter'
 import { buildTraceSummary } from '@/lib/mcp/trace_summary'
 import { query } from '@/lib/db/client'
+import { executeWithCache } from '@/lib/cache/with_cache'
+import type { QueryPlan as RetrievalQueryPlan } from '@/lib/retrieval/shared_types'
 
 export const maxDuration = 60
 
@@ -242,11 +244,20 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   // Execute the retrieval tool via registry bridge.
   // D7: audience_tier stripped from plan before passing to registry handler (DG1 ruling).
+  // Cache: executeWithCache wraps tool.retrieve() with L1 (request-scoped) and L2 (Redis)
+  // caching keyed on (tool, query_class, domains, planets, plannerParams). Identical
+  // surgical calls within a request share one result; identical calls across requests
+  // hit Redis. served_from_cache flows through to the ToolBundle and into the envelope.
   const { audience_tier: _stripped, ...planWithoutTier } = queryPlan
   void _stripped // intentionally stripped
   let toolResult: unknown
   try {
-    const rawResult = await tool.retrieve(planWithoutTier as Record<string, unknown>, toolParams)
+    const rawResult = await executeWithCache(
+      tool,
+      planWithoutTier as RetrievalQueryPlan,
+      undefined,   // no request-scoped cache for surgical primitives (single call per request)
+      toolParams,
+    )
     toolResult = rawResult
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
