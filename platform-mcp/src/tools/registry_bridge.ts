@@ -305,9 +305,12 @@ export function registerRegistryBridgeTools(server: McpServer): void {
           chart_id
         )
         // F-021R: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
-        // The large field is all_relevant_ranked_jsonb (JSONB array per lens), NOT 'signals'.
-        const domainData = data as Record<string, unknown>
-        const lenses = (domainData['question_lenses'] as unknown[]) ?? []
+        // callRegistryCapability returns data.content from the HTTP response, where
+        // the handler itself wraps in { content: {...}, is_error: false }. So the
+        // actual payload is one level deeper: data → { content: { question_lenses } }.
+        const domainWrapper = data as Record<string, unknown>
+        const inner = (domainWrapper['content'] as Record<string, unknown>) ?? domainWrapper
+        const lenses = (inner['question_lenses'] as unknown[]) ?? []
         const maxLenses = max_lenses ?? 3
         const maxSig = max_signals_per_lens ?? 20
         const lensesToBound = lenses.slice(0, maxLenses)
@@ -332,7 +335,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
         return dualOutput({
           orientation_context,
           orientation_ok,
-          ...domainData,
+          ...inner,
           question_lenses: boundedLenses,
           lenses_total: lenses.length,
           lenses_returned: boundedLenses.length,
