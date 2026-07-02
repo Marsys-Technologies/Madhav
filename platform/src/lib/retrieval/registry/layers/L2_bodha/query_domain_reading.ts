@@ -3,7 +3,8 @@
  * =================================================
  * Drill into a life domain via two sources:
  *   - bodha_question_lenses (bo_drishti): question lenses keyed by question_type
- *     (NO domain column — returned chart-wide, not domain-filtered)
+ *     filtered at query-time via DOMAIN_TO_QUESTION_TYPES (inverted from
+ *     bo_drishti.py::QUESTION_TYPE_CONFIG). No domain column in the table — mapping is pure query logic.
  *   - bodha_cdlm_cells (bo_sangati): CDLM cross-domain matrix cells (domain_row/col)
  *
  * Returns a reconciled multi-vantage domain view. Signal references are emitted
@@ -28,6 +29,21 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
+/**
+ * Maps each valid life-domain to the question_types that cover it.
+ * Inverted from bo_drishti.py::QUESTION_TYPE_CONFIG (source of truth).
+ * Domain 'other' returns an empty array — no filter applied (all lenses returned).
+ */
+const DOMAIN_TO_QUESTION_TYPES: Record<string, string[]> = {
+  career:       ['career', 'progeny'],
+  wealth:       ['wealth', 'property'],
+  relationship: ['marriage', 'progeny'],
+  health:       ['health', 'longevity'],
+  character:    ['character', 'education', 'siblings'],
+  spirituality: ['spirituality', 'education', 'foreign_travel'],
+  other:        [],
+}
+
 export const queryDomainReadingCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_domain_reading',
   type:  'tool',
@@ -36,8 +52,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
 
   description: [
     'Drill into a specific life domain for a chart using the Bodha synthesis layer.',
-    'Returns the chart question lenses from bodha_question_lenses (no domain column —',
-    'returned chart-wide) and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells.',
+    'Returns question lenses from bodha_question_lenses filtered by question_type via the',
+    'DOMAIN_TO_QUESTION_TYPES mapping (inverted from bo_drishti.py::QUESTION_TYPE_CONFIG),',
+    'and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells.',
     'CDLM cells include shared_signal_count; shared_signal_ids_array is omitted by default (token-safe).',
     'signal_id_refs emits a capped set of signal IDs (default 200) for downstream hydration.',
     'Use response_format=full to include shared_signal_ids_array per cell and up to 2000 signal refs.',
@@ -128,7 +145,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
 
     try {
       // Domain discovery is sourced from bodha_cdlm_cells (domain_row/domain_col).
-      // bodha_question_lenses has NO domain column — see MODEL-MISMATCH note below.
+      // bodha_question_lenses has no domain column; lenses are filtered via DOMAIN_TO_QUESTION_TYPES.
       if (!domain || !VALID_DOMAINS.includes(domain)) {
         const availSql = `
           SELECT DISTINCT d AS domain
@@ -151,12 +168,31 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       }
 
       // Question lenses from bodha_question_lenses.
-      // MODEL-MISMATCH: this table carries no domain column; lenses are keyed by
-      // question_type with template_element_ids_jsonb / all_relevant_ranked_jsonb.
-      // We cannot filter lenses by life-domain, so we return the chart's lenses
-      // (ranked payload included) alongside the domain-scoped CDLM cells. The
-      // lens<->domain reconciliation is deferred to a later wave (see needs_decision).
-      const lensSql = `
+      // bodha_question_lenses has no domain column; lenses are keyed by question_type.
+      // We resolve domain -> question_types via DOMAIN_TO_QUESTION_TYPES and apply
+      // a WHERE question_type = ANY($3) filter when the domain has a non-empty mapping.
+      // Domain 'other' (or empty mapping) skips the filter and returns all lenses.
+      const relevantQuestionTypes = DOMAIN_TO_QUESTION_TYPES[domain] ?? []
+      const filterByQuestionType = relevantQuestionTypes.length > 0
+
+      const lensSql = filterByQuestionType
+        ? `
+        SELECT
+          lens_id,
+          question_type,
+          template_element_ids_jsonb,
+          all_relevant_ranked_jsonb,
+          lens_template_version,
+          points_only_assertion,
+          verification_pass_status,
+          computed_at
+        FROM bodha_question_lenses
+        WHERE chart_id = $1 AND ayanamsha_id = $2
+          AND question_type = ANY($3)
+        ORDER BY question_type
+        LIMIT 60
+      `
+        : `
         SELECT
           lens_id,
           question_type,
@@ -194,7 +230,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       `
 
       const [lensRes, cdlmRes] = await Promise.all([
-        query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id]),
+        filterByQuestionType
+          ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes])
+          : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id]),
         query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain]),
       ])
 
@@ -243,8 +281,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           provenance: {
             tables: ['bodha_question_lenses', 'bodha_cdlm_cells'],
             model_mismatch_note: [
-              'bodha_question_lenses has no domain column; lenses are returned chart-wide,',
-              'not domain-filtered. Signal references derive from CDLM cells only.',
+              'bodha_question_lenses has no domain column; lenses are filtered at query-time',
+              'via DOMAIN_TO_QUESTION_TYPES (source: bo_drishti.py::QUESTION_TYPE_CONFIG).',
+              'Domain \'other\' or unmapped domains return all lenses (no filter).',
+              'Signal references derive from CDLM cells only.',
             ].join(' '),
             defect_001_note: [
               'constituent_facts_array in referenced signals has 91.5% orphan rate (DEFECT-001 OPEN).',

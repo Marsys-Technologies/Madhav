@@ -42,8 +42,9 @@ describe('D7 Channel — capability registration gate', () => {
         `${cap.uri} is per_chart but required_inputs missing chart_id`
       ).toBe(true)
     }
-    // Expect 3 per_chart: classical_attribution_lookup, chart_facts_query, query_remedies_for_chart
-    expect(perChartCaps.length).toBe(3)
+    // Expect 2 per_chart: classical_attribution_lookup, chart_facts_query
+    // query_remedies_for_chart was corrected to global (corpus lookup; no chart-scoped SQL)
+    expect(perChartCaps.length).toBe(2)
   })
 
   it('global caps do not require chart_id', () => {
@@ -81,13 +82,13 @@ describe('D7 Channel — capability registration gate', () => {
     expect(cap!.layer).toBe('L1')
   })
 
-  it('Wave D — query_remedies_for_chart is per_chart', () => {
+  it('Wave D — query_remedies_for_chart is global (G-F: CHART_REQUIRED gate removed)', () => {
     const allCaps = getAllCapabilities()
     const cap = allCaps.find(c => c.uri === 'marsys://tool/L0/query_remedies_for_chart')
     expect(cap).toBeDefined()
-    expect(cap!.scope).toBe('per_chart')
-    expect(cap!.required_inputs).toContain('chart_id')
+    expect(cap!.scope).toBe('global')
     expect(cap!.required_inputs).toContain('affliction')
+    expect(cap!.required_inputs).not.toContain('chart_id')
   })
 
   it('Wave E — find_verses_about is global, prose_citation archetype', () => {

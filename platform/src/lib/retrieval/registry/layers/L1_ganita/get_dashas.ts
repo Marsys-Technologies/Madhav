@@ -24,10 +24,11 @@ export const getDashasCapability: CapabilityDescriptor = {
     ayanamsha_id:  { type: 'string', description: 'Filter by ayanamsha_id (e.g. LAHIRI). Omit for all.' },
     dasha_system:  {
       type: 'string',
-      description: 'Dasha system name: VIMSHOTTARI | YOGINI | ASHTOTTARI | CHARA | NARAYANA | SHOOLA | KALACHAKRA.',
+      description: 'Dasha system name: VIMSHOTTARI | YOGINI | ASHTOTTARI | CHARA | NARAYANA | SHOOLA | KALACHAKRA. Default: VIMSHOTTARI.',
     },
     level:         { type: 'number', description: 'Dasha level (1=Maha, 2=Antar, 3=Pratyantar). Omit for all.' },
     date_contains: { type: 'string', description: 'ISO date (YYYY-MM-DD). Returns dashas active on this date.' },
+    date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
     lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 200 },
@@ -74,11 +75,89 @@ export const getDashasCapability: CapabilityDescriptor = {
         params.push(args.date_contains as string)
         params.push(args.date_contains as string)
       }
+      if (args.date_from) {
+        // Exclude dashas that ended before date_from. The dasha running AT
+        // date_from is included even if it started before (end_date >= date_from).
+        sql += ` AND end_date >= $${params.length + 1}::date`
+        params.push(args.date_from as string)
+      }
       sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
+      const rows = result.rows ?? []
+
+      // ── Shadbala enrichment (graceful: failures return rows with null shadbala)
+      // lord_natal_shadbala_total is not stored in chart_dashas; join with
+      // chart_facts at query time. Planet codes in chart_dashas lord_graha use
+      // 2-letter abbreviations (SU, MO, MA, ME, JU, VE, SA, RA, KE).
+      const GRAHA_TO_FACT_SUBJECT: Record<string, string> = {
+        SU: 'SUN',
+        MO: 'MOON',
+        MA: 'MAR',
+        ME: 'MER',
+        JU: 'JUP',
+        VE: 'VEN',
+        SA: 'SAT',
+        RA: 'RAH_MEAN',
+        KE: 'KET_MEAN',
+      }
+
+      let shadbalMap: Record<string, number | null> = {}
+      try {
+        const uniqueLords = [...new Set(rows.map(r => r['lord_graha'] as string).filter(Boolean))]
+        // Use the ayanamsha_id from the first row (or from args) for the shadbala lookup.
+        const ayanamshaForShadbala =
+          (args.ayanamsha_id as string | undefined) ??
+          (rows[0]?.['ayanamsha_id'] as string | undefined)
+
+        const factSubjects = uniqueLords
+          .map(g => GRAHA_TO_FACT_SUBJECT[g])
+          .filter(Boolean)
+
+        if (factSubjects.length > 0 && ayanamshaForShadbala) {
+          const placeholders = factSubjects.map((_, i) => `$${i + 3}`).join(', ')
+          const shadbalaSql = `
+            SELECT fact_subject, fact_value_num
+            FROM chart_facts
+            WHERE chart_id = $1
+              AND ayanamsha_id = $2
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'rupa'
+              AND fact_subject IN (${placeholders})
+          `
+          const shadbalaResult = await query<{ fact_subject: string; fact_value_num: number | null }>(
+            shadbalaSql,
+            [chartId, ayanamshaForShadbala, ...factSubjects]
+          )
+          // Build reverse map: fact_subject → value, then re-key by lord_graha code
+          const subjectToValue: Record<string, number | null> = {}
+          for (const r of shadbalaResult.rows ?? []) {
+            subjectToValue[r.fact_subject] = r.fact_value_num
+          }
+          for (const [grahaCode, factSubject] of Object.entries(GRAHA_TO_FACT_SUBJECT)) {
+            if (factSubject in subjectToValue) {
+              shadbalMap[grahaCode] = subjectToValue[factSubject]
+            }
+          }
+        }
+      } catch {
+        // Non-blocking: shadbala enrichment failure leaves null values
+        shadbalMap = {}
+      }
+
+      const enrichedRows = rows.map(row => ({
+        ...row,
+        lord_natal_shadbala_total:
+          shadbalMap[(row['lord_graha'] as string) ?? ''] ?? null,
+      }))
+
       return {
-        content: { chart_id: chartId, source_table: 'chart_dashas', rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: {
+          chart_id: chartId,
+          source_table: 'chart_dashas',
+          rows: enrichedRows,
+          total: enrichedRows.length,
+        },
         is_error: false,
       }
     } catch (err) {

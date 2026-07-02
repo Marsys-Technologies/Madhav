@@ -778,28 +778,28 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 // the remaining 6 have no registry equivalent.
 // Tier stripped per DG1. Per_chart only where chart_id is meaningful.
 
-// D-1: query_remedies_for_chart — per_chart
+// D-1: query_remedies_for_chart — global (corpus lookup; no chart-scoped SQL)
 const queryRemediesForChartCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L0/query_remedies_for_chart',
   type: 'tool',
   layer: 'L0',
   name: 'query_remedies_for_chart',
-  scope: 'per_chart',
+  scope: 'global',
 
   description: [
-    'Return remedies relevant to a specific chart affliction.',
-    'Matches the affliction (planet name or life domain) against both the planet and domain',
-    'columns in brahma_remedy_corpus. Returns top remedies ordered by confidence and cost tier.',
-    'Required: chart_id + affliction. Optional: top_k (default 5).',
-    'chart_id is required to scope the query to a specific chart context.',
+    'Return remedies relevant to a given affliction (planet name or life domain).',
+    'Matches the affliction against both the planet and domain columns in brahma_remedy_corpus',
+    'using ILIKE. Returns top remedies ordered by confidence and cost tier.',
+    'Required: affliction. Optional: chart_id (provenance only, not used for data filtering), top_k (default 5).',
+    'No chart-scoped SQL — this is a global corpus lookup.',
     'Registry equivalent of lib/retrieve/remedy_tools.ts::query_remedies_for_chart (D7 gap fill).',
   ].join(' '),
 
   input_schema: {
     chart_id: {
       type: 'string',
-      description: 'Chart UUID (<chart_uuid>). Required.',
-      required: true,
+      description: 'Chart UUID (<chart_uuid>). Optional — used for provenance logging only, not for data filtering.',
+      required: false,
     },
     affliction: {
       type: 'string',
@@ -812,7 +812,7 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
     },
   },
 
-  required_inputs: ['chart_id', 'affliction'],
+  required_inputs: ['affliction'],
 
   archetype: 'flat_fact',
   traversal_level: 'L-DOMAIN',
@@ -829,10 +829,7 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
   mcp_annotations: { readOnly: true, destructive: false },
 
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
-    const chart_id = args['chart_id'] as string | undefined
-    if (!chart_id) {
-      return { content: { error: 'chart_id is required' }, is_error: true }
-    }
+    const chart_id = args['chart_id'] as string | undefined  // optional — provenance only
     const affliction = args['affliction'] as string | undefined
     if (!affliction) {
       return { content: { error: 'affliction is required' }, is_error: true }
@@ -856,18 +853,18 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
       `
       const result = await pool.query(sql, [`%${affliction}%`, topK])
       await pool.end()
-      return {
-        content: {
-          chart_id,
-          affliction,
-          remedies: result.rows,
-          returned_count: result.rows.length,
-          provenance: { table: 'brahma_remedy_corpus', note: 'No audience_tier gating — serve-time only.' },
-        },
-        is_error: false,
+      const content: Record<string, unknown> = {
+        affliction,
+        remedies: result.rows,
+        returned_count: result.rows.length,
+        provenance: { table: 'brahma_remedy_corpus', note: 'No audience_tier gating — serve-time only.' },
       }
+      if (chart_id) content['chart_id'] = chart_id
+      return { content, is_error: false }
     } catch (err) {
-      return { content: { error: String(err), chart_id }, is_error: true }
+      const errContent: Record<string, unknown> = { error: String(err) }
+      if (chart_id) errContent['chart_id'] = chart_id
+      return { content: errContent, is_error: true }
     }
   },
 }

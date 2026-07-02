@@ -117,35 +117,56 @@ _BATCH_SIZE = 50
 
 # ── L1 data fetchers ───────────────────────────────────────────────────────────
 
+_SUBJECT_TO_PLANET: dict[str, str] = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+}
+
+
 def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
-    """graha → normalized shadbala (total / 390)."""
+    """graha → normalized shadbala (total / 390).
+
+    fact_subject holds the planet code (SUN/MOON/MAR/…); fact_key = 'rupa'
+    for the rupa total rows (excluding 'required_rupa').
+    """
     rows = conn.execute(
-        """SELECT fact_key, fact_value_num FROM chart_facts
-           WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_shadbala_total'""",
+        """SELECT fact_subject, fact_value_num FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'graha_shadbala_total'
+             AND fact_key = 'rupa'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, float] = {}
     for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
-        graha = key.split(":")[0] if ":" in key else key
-        val   = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 390.0)
-        out[graha] = min(val / 390.0, 2.0)
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
+        planet  = _SUBJECT_TO_PLANET.get(subject)
+        if planet is None:
+            continue
+        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 390.0)
+        out[planet] = min(val / 390.0, 2.0)
     return out
 
 
 def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
-    """house → normalized bhava bala (total / 300)."""
+    """house → normalized bhava bala (total / 300).
+
+    fact_subject = 'HOUSE_1' … 'HOUSE_12'; fact_key = 'total' for total rows.
+    The actual fact_category is 'house_bhava_bala_total' (NOT 'bhava_bala_total').
+    """
     rows = conn.execute(
-        """SELECT fact_key, fact_value_num FROM chart_facts
-           WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'bhava_bala_total'""",
+        """SELECT fact_subject, fact_value_num FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'house_bhava_bala_total'
+             AND fact_key = 'total'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[int, float] = {}
     for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
         try:
-            house = int(key.split(":")[-1]) if ":" in key else int(key)
-        except ValueError:
+            house = int(subject.replace("HOUSE_", ""))
+        except (ValueError, AttributeError):
             continue
         val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 300.0)
         out[house] = min(val / 300.0, 2.0)
@@ -389,7 +410,17 @@ def _build_resonances_and_prescriptions(
     for graha in KNOWN_GRAHAS:
         states       = special_states.get(graha, set())
         combustion   = 1.0 if "combust" in states else 0.0
-        debility     = 1.0 if "debilitated" in states else (0.3 if "moolatrikona" not in states and "exalted" not in states else 0.0)
+        # Debility: only apply the 0.3 neutral penalty when states are KNOWN for
+        # this graha (key present in special_states) but lack exalted/moolatrikona.
+        # If the graha is absent from special_states entirely, default to 0.0.
+        if graha not in special_states:
+            debility = 0.0
+        elif "debilitated" in states:
+            debility = 1.0
+        elif "exalted" in states or "moolatrikona" in states:
+            debility = 0.0
+        else:
+            debility = 0.3
         afflictions  = min(len(dosha_by_graha.get(graha, [])) / 3.0, 1.0)
         house        = placements.get(graha, 1)
         sha_norm     = shadbala.get(graha, 0.5)
@@ -450,6 +481,17 @@ def _build_resonances_and_prescriptions(
     for rank, row in enumerate(resonances, start=1):
         row["weakest_rank_in_chart"] = rank
         row["remedy_priority_class"] = _priority_class(row["_resonance_score"])
+
+    # Distribution guard: warn if all resonance_score values are degenerate
+    if len(resonances) > 2:
+        scores = [r["_resonance_score"] for r in resonances]
+        score_range = max(scores) - min(scores)
+        if score_range < 0.001:
+            logger.warning(
+                "[bo_upaya] DEGENERATE DISTRIBUTION: all resonance_score values are ~%.4f; "
+                "shadbala or bhava_bala inputs may be missing for chart %s/%s",
+                scores[0], chart_id, aya,
+            )
 
     # Prescriptions (top 3 remedies per graha from corpus)
     prescriptions: list[dict] = []
