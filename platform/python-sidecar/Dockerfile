@@ -5,7 +5,9 @@ ENV QT_QPA_PLATFORM=offscreen
 
 # Swiss Ephemeris data files — bundled from GCS (L0FR step 2)
 # F-012 fix: added size guards to detect corrupt/truncated downloads.
-# sepl_18.se1 and semo_18.se1 must be >1MB; seas_18.se1 >500KB; txt files >1KB.
+# Actual GCS sizes (gs://madhav-ephemeris/se1, measured 2026-07-02):
+#   sepl_18.se1 = 484KB, semo_18.se1 = 1.24MB, seas_18.se1 = 218KB
+# Thresholds set to 80% of actual to catch 403/truncation while matching real files.
 # A 403/XML error body is <10KB and would silently corrupt the SE1 binary file.
 RUN mkdir -p /app/ephe
 RUN set -e; \
@@ -19,11 +21,11 @@ RUN set -e; \
         exit 1; \
       fi; \
     }; \
-    download_and_verify "$GCS_BASE/sepl_18.se1"   /app/ephe/sepl_18.se1   1048576; \
-    download_and_verify "$GCS_BASE/semo_18.se1"   /app/ephe/semo_18.se1   1048576; \
-    download_and_verify "$GCS_BASE/seas_18.se1"   /app/ephe/seas_18.se1    524288; \
-    download_and_verify "$GCS_BASE/sefstars.txt"  /app/ephe/sefstars.txt     1024; \
-    download_and_verify "$GCS_BASE/seleapsec.txt" /app/ephe/seleapsec.txt    1024; \
+    download_and_verify "$GCS_BASE/sepl_18.se1"   /app/ephe/sepl_18.se1   400000; \
+    download_and_verify "$GCS_BASE/semo_18.se1"   /app/ephe/semo_18.se1  1048576; \
+    download_and_verify "$GCS_BASE/seas_18.se1"   /app/ephe/seas_18.se1   180000; \
+    download_and_verify "$GCS_BASE/sefstars.txt"  /app/ephe/sefstars.txt    1024; \
+    download_and_verify "$GCS_BASE/seleapsec.txt" /app/ephe/seleapsec.txt   1024; \
     echo "All ephemeris files downloaded and size-verified."
 ENV SWE_EPHE_PATH=/app/ephe
 ENV PYTHONUNBUFFERED=1 \
