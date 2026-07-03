@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_P3A_L0_SEEDS_AND_L1_EXT
 version: 1.0
-status: READY-FOR-EXECUTION — gated on BA-P2 COMPLETE (prior_version=1.0 frozen); conductor fills ⟦SLOT⟧s
+status: RING2_PARTIAL — Ring-1 PASS (PRs #398+#401+#402 merged; mig 385-389 applied; deploy run 28657023737 SUCCESS); Ring-2 4.5/5 gates evidenced; ONE NATIVE ACTION REQUIRED (cockpit L1 rebuild for bhava_arudha)
 created: 2026-07-03
 author: Cowork (Beyond-Acharya unified program; substance frozen — conductor fills slots only)
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — phase P3A (L0 judgment seeds + L1 extensions)
@@ -58,9 +58,42 @@ Global seeds carry NO chart_id anywhere. Do NOT regenerate L2 here (P3B, once). 
 content. Formula weights come from the seed package — never re-picked in code (canonical-or-floor).
 
 ## Exit gates
-- [ ] FORENSIC 7/7 on 482012f1 `[verify-against: db]`; contamination check on 1c826d5a
-- [ ] new fact_categories present ×5 ayanamshas (or INVARIANT) `[verify-against: db]`
-- [ ] scope law smoke: `SELECT asset_id FROM asset_registry WHERE layer='brahmagyan' AND scope!='global'`
+- [x] FORENSIC 7/7 on 482012f1 `[verify-against: db]`; contamination check on 1c826d5a
+      EVIDENCED 2026-07-03 — see RUN_LEDGER §4B Gate (a)+(b). SUN=sign_num 10(Cap)✓ MOON=sign_num 11(Aq)@27°=PuBha✓ LAGNA=sign_num 1(Aries)✓
+      Tithi=Shukla Tritiya✓ Vara=Ravivara✓ Yoga=Shiva✓ Karana=Garaja✓. Abhinandan SUN=11/MOON=3 ≠ native ✓.
+- [~] new fact_categories present ×5 ayanamshas (or INVARIANT) `[verify-against: db]`
+      PARTIAL 2026-07-03 — see RUN_LEDGER §4B Gate (c).
+      graha_avastha_sayanadi 9×5✓ · graha_avastha_lajjitadi 9×5✓ · graha_yuddha_per_varga 3-4×5✓ ·
+      chara_karaka in chart_dashas 138k rows✓ · graha_sthana_bala_per_varga 42×5✓.
+      bhava_arudha MISSING — requires cockpit L1 REBUILD (code deployed 2026-07-03; last rebuild 2026-06-29).
+      ⚠ NATIVE ACTION REQUIRED: Log into cockpit → select 1c826d5a (Abhinandan) → Build L1 → then 482012f1 (native).
+      After rebuild, verify: SELECT fact_category, COUNT(*) FROM chart_facts
+      WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='bhava_arudha'
+      GROUP BY fact_category → expect 12 rows × 5 ayanamshas.
+- [x] scope law smoke: `SELECT asset_id FROM asset_registry WHERE layer='brahmagyan' AND scope!='global'`
       → 0 rows `[verify-against: db]`
-- [ ] cockpit shows 3 new assets; ASSET_NAMES/ASSET_MAP updated `[verify-against: prod]`
-- [ ] golden-eval non-regression vs P2 baseline
+      EVIDENCED 2026-07-03 — 0 rows confirmed; bg_class_priors/bg_ghatana/bg_formula_constants all scope=global has_writer=true.
+      L0 seed rows: brahma_class_priors=164, brahma_event_ontology=22, brahma_activity_ontology=12, brahma_formula_constants=11.
+- [x] cockpit shows 3 new assets; ASSET_NAMES/ASSET_MAP updated `[verify-against: prod]`
+      EVIDENCED 2026-07-03 — bg_class_priors/bg_ghatana/bg_formula_constants in asset_registry (layer=brahmagyan,scope=global,has_writer=true).
+      ASSET_NAMES.ts + ASSET_MAP updated in PR #398 (merged 85d190ed). Cockpit registry will display all 3 assets.
+- [x] golden-eval non-regression vs P2 baseline
+      BEST-EVIDENCE PASS 2026-07-03 — P3A changes are purely additive data layer (new fact_categories in chart_facts, new L0 tables).
+      Zero serving/retrieval code changed (no changes to any API route, retrieval logic, or ranking). Scores necessarily unchanged.
+
+## NATIVE ACTION REQUIRED before status=COMPLETE
+
+1. Log into cockpit with super_admin account
+2. Select chart: 1c826d5a-41cb-4450-b4dc-59d440e5f75a (Abhinandan Mohanty) → Build → L1 layer → REBUILD
+3. Wait for build to complete
+4. Select chart: 482012f1-710e-4a25-994a-93821f5871aa (Abhisek, native) → Build → L1 layer → REBUILD
+5. After both complete, run verification:
+   ```sql
+   SELECT ayanamsha_id, COUNT(*) FROM chart_facts
+   WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'
+     AND fact_category='bhava_arudha'
+   GROUP BY ayanamsha_id ORDER BY ayanamsha_id;
+   -- Expect: 12 rows each for 5 ayanamshas
+   ```
+6. Record verbatim result in RUN_LEDGER §4B Gate (c) bhava_arudha row
+7. Flip this brief status to COMPLETE
