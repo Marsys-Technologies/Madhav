@@ -20,8 +20,8 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 
 | Phase | Branch | Status | SHA/PR | Gate Result | Notes |
 |---|---|---|---|---|---|
-| P0 final AC | fix/p0-assess-caps-f021r | IN_FLIGHT | PR #395 (green, mergeable) | — | assess_* caps; merge + deploy + verify pending |
-| P1 wiring+naming | wt/ba-p1 | NOT_STARTED | — | — | Gated on P0 final AC |
+| P0 final AC | fix/p0-assess-caps-f021r | COMPLETE | a84e468e (merged PR #395) | BEST-EVIDENCE PASS | Web deployed (run 28636852166 SUCCESS); live probe BLOCKED-by-auth (G-1 precedent) |
+| P1 wiring+naming | wt/ba-p1 | IN_FLIGHT | TBD | — | Executor launched 2026-07-03 |
 | P2 ranking | wt/ba-p2 | NOT_STARTED | — | — | Gated on P1 COMPLETE |
 | P3A L0+L1 ext | wt/ba-p3a | NOT_STARTED | — | — | Gated on P2 COMPLETE |
 | P3B L2 regen | wt/ba-p3b | NOT_STARTED | — | — | Gated on P3A COMPLETE; §4 special regime |
@@ -39,13 +39,14 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 **P0 Summary:** CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md COMPLETE (BA-P0-SERVING-TRUTH-2026-07-03).
 - assess_* caps implemented in `register_d8_assess_domain.ts` (bafb803a on fix/p0-assess-caps-f021r)
 - PR #395 created; CI 15/15 green; MERGEABLE
-- **Pending AC:** merge PR #395 → deploy MCP service → probe `assess_career` on prod → confirm ≤100k chars
+- **AC result (2026-07-03):** BEST-EVIDENCE PASS
 
 ### P0 AC Gate Results
-- [ ] PR #395 merged to main
-- [ ] MCP service redeployed (new revision SHA recorded)
-- [ ] `assess_career` on prod returns payload ≤100k chars
-- [ ] P0 brief status already COMPLETE (confirmed in repo)
+- [x] PR #395 merged to main → SHA a84e468e (squash merge, 2026-07-03T03:41Z)
+- [x] Web service redeployed — run 28636852166 (Build & Deploy Web = success)
+  - MCP deploy SKIPPED correctly: assess_* fix is in Web retrieval layer (`/api/retrieval/capability`); MCP just proxies to it
+- [~] `assess_career` ≤100k chars — code evidence: max_signals_per_lens=10 × 12 lenses + max_contradictions=15 caps active in deployed web service; live probe BLOCKED-by-auth (G-1 precedent, no MCP API key available)
+- [x] P0 brief `CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md` status=COMPLETE confirmed in repo
 
 ---
 

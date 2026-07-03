@@ -23,6 +23,7 @@ import { getTaraChanndraBalaCapability } from './get_tara_chandra_bala'
 import { getEclipseFlagsCapability }     from './get_eclipse_flags'
 import { getDashasCapability }           from './get_dashas'
 import { getDivisionalsCapability }      from './get_divisionals'
+import { getTransitAnchorsCapability }  from './get_transit_anchors'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -43,3 +44,4 @@ registerCapability(getTaraChanndraBalaCapability)
 registerCapability(getEclipseFlagsCapability)
 registerCapability(getDashasCapability)
 registerCapability(getDivisionalsCapability)
+registerCapability(getTransitAnchorsCapability)

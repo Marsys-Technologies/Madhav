@@ -69,6 +69,11 @@ import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
 // D7 — Registry bridge: consolidated workflow tools from the retrieval registry
 import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
+// BA-P1 — Beyond-Acharya P1 new tool registrations (Groups 1-3 + Phase-1 naming aliases)
+import { registerP1GanitaTools }    from './tools/register_p1_ganita.js'
+import { registerP1ReferenceTools } from './tools/register_p1_reference.js'
+import { registerP1SynthesisTools } from './tools/register_p1_synthesis.js'
+import { registerP1AliasTools }     from './tools/register_p1_aliases.js'
 // M2 — Chart selection: list_my_charts + select_chart
 import { registerChartSelectionTools } from './tools/chart_selection.js'
 // M3+M4 — Session tools: recall_session + list_my_sessions
@@ -308,6 +313,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // These are chart-agnostic: chart_id required on per_chart tools, no default.
   registerRegistryBridgeTools(server)
 
+  // BA-P1 — New Group-1 computed-chart tools (9), Group-2 reference tools (7), Group-3 synthesis (3)
+  registerP1GanitaTools(server)
+  registerP1ReferenceTools(server)
+  registerP1SynthesisTools(server)
+  // BA-P1 — Phase-1 naming aliases for all 53 baseline tools (49 aliases; 6 documented deferrals)
+  registerP1AliasTools(server)
+
   // M2 — Chart selection: list_my_charts + select_chart (2 tools)
   // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.
   registerChartSelectionTools(server, principal)
@@ -380,7 +392,8 @@ app.get('/mcp', (_req: Request, res: Response) => {
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-// Tool count computed from registration calls (M8 recount 2026-07-01 — authoritative):
+// Tool count computed from registration calls (BA-P1 recount 2026-07-03 — authoritative):
+// ── BASELINE (pre-P1) ──────────────────────────────────────────────────────────
 // L0 Brahmagyan pattern-validation (registerL0BrahmagyanTools):  5
 // L0 Ephemeris (registerEphemerisTools):                          5
 // L1 Stream G PyJHora natal:                                      3
@@ -400,9 +413,45 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //     yoga_activation_by_dasha, get_cgm_subgraph, query_chart_facts, vector_search
 // M2 Chart selection (list_my_charts + select_chart):             2
 // M3+M4 Session tools (recall_session + list_my_sessions):        2
-// ────────────────────────────────────────────────────────────────
-// Total (G-A recount 2026-07-02):                                 53
-const REGISTERED_TOOL_COUNT = 53
+// ── BASELINE SUBTOTAL: ────────────────────────────────────────────            53
+// ── BA-P1 ADDITIONS ───────────────────────────────────────────────────────────
+// P1 Group 1 — computed-chart tools (registerP1GanitaTools):      9
+//   ganita_strength_get, ganita_structural_get, ganita_condition_get,
+//   ganita_sade_sati_get, ganita_tajaka_get, ganita_nakshatra_get,
+//   ganita_yogas_get, phala_rectification_get, ganita_transit_anchors_get
+// P1 Group 2 — reference tools (registerP1ReferenceTools):        7
+//   ref_rules_search, ref_yogas_get, ref_doshas_get,
+//   ref_dignity_reference_get, ref_dasha_systems_get, ref_nakshatra_get,
+//   ref_transit_rules_get
+// P1 Group 3 — synthesis tools (registerP1SynthesisTools):        3
+//   mimamsa_insight_get, bodha_discoveries_get, kala_life_arc_get
+// P1 Phase-1 naming aliases (registerP1AliasTools):               49
+//   D7/D8 aliases (21): bodha_chart_digest_get, bodha_domain_reading_get,
+//     bodha_signals_get, bodha_graph_traverse_get, ganita_positions_get,
+//     ganita_dashas_get, kala_windows_get, kala_projections_get,
+//     ref_classical_citation_get, bodha_remedies_get, bodha_remedies_search,
+//     bodha_quality_get, catalog_assets_list, apex_marriage_assess,
+//     apex_career_assess, apex_health_assess, apex_wealth_assess,
+//     kala_yoga_activation_get, bodha_graph_subgraph_get,
+//     ganita_chart_facts_get, ref_vector_search
+//   L0 Ephemeris aliases (5): ref_planet_position_get, ref_planet_transit_get,
+//     ref_aspects_at_time_get, ref_retrograde_periods_get, ref_ephemeris_year_get
+//   L0 Brahmagyan aliases (5): ref_entity_resolve, ref_entities_list,
+//     catalog_assets_all, catalog_assets_l0, util_intent_classify
+//   L0 Remedy aliases (8): ref_remedies_get, ref_remedies_chart_get,
+//     ref_remedies_by_category_list, ref_remedy_get, ref_tantric_remedies_get,
+//     ref_remedies_by_planet_get, ref_mantras_get, ref_remedies_search
+//   L4 Phala aliases (4): phala_anchors_get, phala_mitigation_get,
+//     kala_muhurta_get, phala_outlook_get
+//   L5 Mīmāṃsā aliases (3): mimamsa_lel_query, mimamsa_outcome_record,
+//     mimamsa_calibration_get
+//   L1 PyJHora aliases (3): ganita_natal_positions_compute,
+//     ganita_dasha_periods_get, ganita_special_lagnas_get
+//   DEFERRED (6): recall_session→session_recall, list_my_sessions→session_list,
+//     list_my_charts→catalog_charts_list, select_chart→catalog_chart_select,
+//     holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→kala_bundle_get
+// ── TOTAL (BA-P1 recount 2026-07-03): ─────────────────────────────           121
+const REGISTERED_TOOL_COUNT = 121
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
