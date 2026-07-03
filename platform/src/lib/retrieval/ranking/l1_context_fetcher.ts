@@ -2,11 +2,22 @@
  * l1_context_fetcher.ts — BA-P2 L1 context loader for composite ranking.
  * ========================================================================
  * Fetches (per chart, per ayanamsha):
- *   1. Graha shadbala_total + D1 dignity + D1 house occupancy from chart_facts
+ *   1. Graha shadbala_total (rupas) + D1 dignity + D1 house occupancy from chart_facts
  *   2. Current Mahadasha + Antardasha lord from chart_dashas
  *
  * Two DB queries per cache miss; results cached with COMPOSITE_CACHE_TTL_MS.
- * chart_dashas is the authoritative source for timing (kala bypass — L3 fills P5A).
+ *
+ * L1 schema (confirmed against live DB 2026-07-03):
+ *   graha_shadbala_total:
+ *     fact_subject = graha key (SUN/MOON/MAR/MER/JUP/VEN/SAT/RAH_MEAN/KET_MEAN)
+ *     fact_key = 'rupa'
+ *     fact_value_num = shadbala in rupas (range ~0.4–5.0 for real charts)
+ *
+ *   graha_dignity_per_varga:
+ *     fact_subject = '{VARGA}_{GRAHA}' (e.g. 'D1_SAT', 'D1_SUN')
+ *     fact_key = 'dignity_state'
+ *     fact_value_text = dignity classification ('exalted'|'own'|'neutral'|'debilitated'|...)
+ *     fact_value_jsonb = {varga, house, sign, ayanamsha_id, uncatalogued}
  *
  * MUST NOT: write to bodha_* tables or call any L2+ handler.
  */
@@ -27,7 +38,6 @@ function rankingCacheGet(key: string): unknown {
   return e.data
 }
 function rankingCacheSet(key: string, data: unknown, ttl_ms = COMPOSITE_CACHE_TTL_MS) {
-  // Evict stale entries if cache grows large
   if (_rankingCache.size >= 200) {
     const now = Date.now()
     for (const [k, v] of _rankingCache) { if (v.expiresAt < now) _rankingCache.delete(k) }
@@ -35,14 +45,18 @@ function rankingCacheSet(key: string, data: unknown, ttl_ms = COMPOSITE_CACHE_TT
   _rankingCache.set(key, { data, expiresAt: Date.now() + ttl_ms })
 }
 
-// Standard graha codes in the L1 chart_facts data
-const GRAHA_CODES = ['SU','MO','MA','ME','JU','VE','SA','RA','KE'] as const
+// L1 graha key → canonical 2-char code used in graha_map
+const L1_GRAHA_TO_CODE: Record<string, string> = {
+  SUN: 'SU', MOON: 'MO', MAR: 'MA', MER: 'ME',
+  JUP: 'JU', VEN: 'VE', SAT: 'SA',
+  RAH_MEAN: 'RA', KET_MEAN: 'KE',
+}
 
 /**
  * Fetch L1 context for composite ranking.
  * @param chart_id - chart UUID
- * @param ayanamsha_id - ayanamsha filter (default: lahiri_chitrapaksha)
- * @param as_of_date - ISO date string to resolve current dasha period (default: today)
+ * @param ayanamsha_id - ayanamsha filter
+ * @param as_of_date - ISO date string to resolve current dasha period
  */
 export async function fetchL1Context(
   chart_id: string,
@@ -53,107 +67,63 @@ export async function fetchL1Context(
   const cached = rankingCacheGet(ck)
   if (cached !== undefined) return cached as L1ChartContext
 
-  // ── Query 1: graha strength + dignity + house from chart_facts ────────────
-  // Uses chart_facts (the L1 canonical source for all graha data).
-  // We need three fact_categories:
-  //   graha_shadbala_total   → fact_value_numeric = total shadbala in rupas
-  //   graha_sign_attributes  → fact_value_text = dignity classification
-  //   graha_in_house         → derived from sign/house mapping (or graha position)
-  //
-  // For D1 dignity: query graha_dignity_per_varga with varga='D1'
-  // For shadbala: query graha_shadbala_total with fact_key like '%.total'
-  // For house: query graha_sthana_per_varga fact_category or use chart_facts
-
-  let strengthRows: Array<Record<string, unknown>> = []
-  let dignityRows: Array<Record<string, unknown>> = []
-  let houseRows: Array<Record<string, unknown>> = []
+  // Build empty graha_map as fallback
+  const graha_map: Record<string, GrahaStrength> = {}
+  for (const code of ['SU','MO','MA','ME','JU','VE','SA','RA','KE']) {
+    graha_map[code] = { graha: code, shadbala_total: 2.5, dignity: null, house: null }
+  }
 
   try {
-    // Shadbala total — one row per graha (fact_key = '{graha}.shadbala_total')
-    const shadbalaResult = await query(
-      `SELECT fact_key, fact_value_numeric
+    // ── Query 1: shadbala + D1 dignity + D1 house ────────────────────────────
+    // Single query covering both shadbala and D1 dignity facts.
+    //   graha_shadbala_total: fact_subject=GRAHA, fact_value_num=rupas
+    //   graha_dignity_per_varga: fact_subject='D1_GRAHA', fact_value_text=dignity,
+    //                             fact_value_jsonb.house = house number (1-12)
+    const l1Result = await query(
+      `SELECT fact_category, fact_subject, fact_value_num, fact_value_text, fact_value_jsonb
        FROM chart_facts
        WHERE chart_id = $1
          AND ayanamsha_id = $2
-         AND fact_category = 'graha_shadbala_total'
-       LIMIT 20`,
+         AND fact_category IN ('graha_shadbala_total', 'graha_dignity_per_varga')
+         AND (
+           (fact_category = 'graha_shadbala_total')
+           OR (fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%')
+         )
+       LIMIT 100`,
       [chart_id, ayanamsha_id]
     )
-    strengthRows = shadbalaResult.rows
 
-    // Dignity per D1 — one row per graha
-    const dignityResult = await query(
-      `SELECT fact_key, fact_value_text
-       FROM chart_facts
-       WHERE chart_id = $1
-         AND ayanamsha_id = $2
-         AND fact_category = 'graha_dignity_per_varga'
-         AND fact_key LIKE '%.D1.%'
-       LIMIT 20`,
-      [chart_id, ayanamsha_id]
-    )
-    dignityRows = dignityResult.rows
+    for (const row of l1Result.rows) {
+      const cat = String(row['fact_category'] ?? '')
+      const subj = String(row['fact_subject'] ?? '')
 
-    // House occupancy D1 — graha_sthana_bhava or graha position fact
-    const houseResult = await query(
-      `SELECT fact_key, fact_value_numeric
-       FROM chart_facts
-       WHERE chart_id = $1
-         AND ayanamsha_id = $2
-         AND fact_category IN ('graha_sthana_per_varga', 'graha_bhava_per_varga')
-         AND fact_key LIKE '%.D1.%'
-       LIMIT 20`,
-      [chart_id, ayanamsha_id]
-    )
-    houseRows = houseResult.rows
-  } catch {
-    // Non-fatal: if L1 data unavailable, return empty context (composite will use fallbacks)
-  }
-
-  // Parse shadbala (expect fact_key = 'SU.shadbala_total' or similar)
-  const shadbalaMap: Record<string, number> = {}
-  for (const row of strengthRows) {
-    const key = String(row['fact_key'] ?? '')
-    const graha = key.split('.')[0]?.toUpperCase() ?? ''
-    const val = Number(row['fact_value_numeric'] ?? 0)
-    if (graha && val > 0) shadbalaMap[graha] = val
-  }
-
-  // Parse dignity D1 (expect fact_key = 'SU.D1.dignity' or 'SU.D1')
-  const dignityMap: Record<string, string> = {}
-  for (const row of dignityRows) {
-    const key = String(row['fact_key'] ?? '')
-    const parts = key.split('.')
-    const graha = parts[0]?.toUpperCase() ?? ''
-    const val = String(row['fact_value_text'] ?? '').toLowerCase()
-    if (graha && val) dignityMap[graha] = val
-  }
-
-  // Parse house (expect fact_key = 'SU.D1.bhava' or 'SU.D1')
-  const houseMap: Record<string, number> = {}
-  for (const row of houseRows) {
-    const key = String(row['fact_key'] ?? '')
-    const parts = key.split('.')
-    const graha = parts[0]?.toUpperCase() ?? ''
-    const val = Number(row['fact_value_numeric'] ?? 0)
-    if (graha && val >= 1 && val <= 12) houseMap[graha] = val
-  }
-
-  // Build graha_map
-  const graha_map: Record<string, GrahaStrength> = {}
-  for (const g of GRAHA_CODES) {
-    graha_map[g] = {
-      graha:          g,
-      shadbala_total: shadbalaMap[g] ?? 300,  // 300 = neutral fallback (average ≈ 450 rupa)
-      dignity:        dignityMap[g] ?? null,
-      house:          houseMap[g] ?? null,
+      if (cat === 'graha_shadbala_total') {
+        // fact_subject = 'SAT' | 'SUN' | 'MAR' etc.
+        const code = L1_GRAHA_TO_CODE[subj]
+        if (code) {
+          graha_map[code] ??= { graha: code, shadbala_total: 2.5, dignity: null, house: null }
+          graha_map[code].shadbala_total = Number(row['fact_value_num'] ?? 2.5)
+        }
+      } else if (cat === 'graha_dignity_per_varga') {
+        // fact_subject = 'D1_SAT' | 'D1_SUN' etc. — strip 'D1_' prefix
+        const l1Key = subj.replace(/^D1_/, '')
+        const code = L1_GRAHA_TO_CODE[l1Key]
+        if (code) {
+          graha_map[code] ??= { graha: code, shadbala_total: 2.5, dignity: null, house: null }
+          graha_map[code].dignity = String(row['fact_value_text'] ?? '').toLowerCase() || null
+          // House from fact_value_jsonb.house (confirmed schema)
+          const jsonb = row['fact_value_jsonb'] as Record<string, unknown> | null
+          if (jsonb && typeof jsonb['house'] === 'number') {
+            graha_map[code].house = jsonb['house']
+          }
+        }
+      }
     }
+  } catch {
+    // Non-fatal: if L1 data unavailable, composite will use fallback values
   }
 
-  // ── Query 2: current dasha lords from chart_dashas ────────────────────────
-  // Find the active Mahadasha + Antardasha as of as_of_date.
-  // chart_dashas has columns: chart_id, ayanamsha_id, level (1=MD,2=AD,3=PD,...),
-  //   dasha_lord, start_date, end_date
+  // ── Query 2: current dasha lords from chart_dashas ──────────────────────────
   let current_md_lord: string | null = null
   let current_ad_lord: string | null = null
 
@@ -172,18 +142,15 @@ export async function fetchL1Context(
     )
     for (const row of dashaResult.rows) {
       const lvl = Number(row['level'])
-      const lord = String(row['dasha_lord'] ?? '')
-      if (lvl === 1) current_md_lord = lord.toUpperCase()
-      if (lvl === 2) current_ad_lord = lord.toUpperCase()
+      const lord = String(row['dasha_lord'] ?? '').toUpperCase()
+      if (lvl === 1) current_md_lord = L1_GRAHA_TO_CODE[lord] ?? lord
+      if (lvl === 2) current_ad_lord = L1_GRAHA_TO_CODE[lord] ?? lord
     }
   } catch {
-    // Non-fatal: dasha lookup failure means temporal_activation stays at 1.0
+    // Non-fatal: temporal_activation stays at 1.0
   }
 
-  const ctx: L1ChartContext = {
-    graha_map, current_md_lord, current_ad_lord, as_of_date,
-  }
-
+  const ctx: L1ChartContext = { graha_map, current_md_lord, current_ad_lord, as_of_date }
   rankingCacheSet(ck, ctx)
   return ctx
 }

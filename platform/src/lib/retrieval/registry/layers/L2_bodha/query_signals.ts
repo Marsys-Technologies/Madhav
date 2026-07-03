@@ -180,15 +180,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
         filters.push(`(m.lel_origin IS NULL OR m.lel_origin = false)`)
       }
 
-      // BA-P2: when domain is specified, fetch a large candidate pool and composite re-rank.
-      // When domain is absent, keep legacy salience pagination (latency-optimal path).
+      // BA-P2: composite re-rank when domain specified; salience fallback otherwise.
       const useComposite = Boolean(domain)
-      const sqlLimit  = useComposite ? Math.max(CANDIDATE_FETCH_SIZE, offset + top_k) : top_k
-      const sqlOffset = useComposite ? 0 : offset
-
-      params.push(sqlLimit, sqlOffset)
-      const topKPh   = `$${p++}`
-      const offsetPh = `$${p++}`
 
       // Canonical SELECT — identical columns for both paths.
       // semantic_query: vertex embedding not available at query time; salience fallback used.
@@ -201,24 +194,76 @@ export const querySignalsCapability: CapabilityDescriptor = {
           m.citation_human, m.lel_origin, m.signature_tier,
           m.configuration_jsonb`
 
-      const sql = `
-        SELECT ${SIGNAL_COLUMNS}
-        FROM bodha_msr_signals m
-        WHERE ${filters.join(' AND ')}
-        ORDER BY m.computed_salience DESC NULLS LAST
-        LIMIT ${topKPh} OFFSET ${offsetPh}
-      `
+      // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
+      const pBase = p
 
-      const result = await query(sql, params)
+      let rawRows: Record<string, unknown>[] = []
+      let poolNote = ''
+
+      if (useComposite) {
+        // Dual-pool strategy (G10-QT fix, 2026-07-03):
+        // yoga/configuration signals have computed_salience ≈ 0.58 while composite_state signals
+        // sit at 2.3. A single top-500 salience pool excludes yoga entirely (1,874 composite_state
+        // signals rank above them). Dual-pool guarantees high-class-prior signals are always present.
+        //
+        // Pool A: top-CANDIDATE_FETCH_SIZE by salience (composite_state/structural bulk)
+        // Pool B: top-CLASS_FORCED_LIMIT from high-class-prior types (always included)
+        const CLASS_FORCED_TYPES = ['yoga', 'configuration', 'parivartana', 'relationship', 'karaka_alignment']
+        const CLASS_FORCED_LIMIT = 150
+
+        const paramsA = [...params, CANDIDATE_FETCH_SIZE]
+        const sqlA = `
+          SELECT ${SIGNAL_COLUMNS}
+          FROM bodha_msr_signals m
+          WHERE ${filters.join(' AND ')}
+          ORDER BY m.computed_salience DESC NULLS LAST
+          LIMIT $${pBase}`
+
+        const paramsB = [...params, CLASS_FORCED_TYPES, CLASS_FORCED_LIMIT]
+        const sqlB = `
+          SELECT ${SIGNAL_COLUMNS}
+          FROM bodha_msr_signals m
+          WHERE ${filters.join(' AND ')}
+            AND m.signal_type_class = ANY($${pBase})
+          ORDER BY m.computed_salience DESC NULLS LAST
+          LIMIT $${pBase + 1}`
+
+        const [rA, rB] = await Promise.all([query(sqlA, paramsA), query(sqlB, paramsB)])
+
+        // Merge + dedup by signal_id (Pool A first; Pool B fills gaps)
+        const seen = new Set<string>()
+        for (const row of [...rA.rows, ...rB.rows]) {
+          const id = String(row['signal_id'] ?? '')
+          if (id && !seen.has(id)) { seen.add(id); rawRows.push(row) }
+        }
+        poolNote = `dual-pool A=${rA.rows.length}+B=${rB.rows.length}→${rawRows.length} unique`
+
+      } else {
+        // Legacy salience path: single query with pagination.
+        params.push(top_k, offset)
+        const topKPh   = `$${p++}`
+        const offsetPh = `$${p++}`
+        const sql = `
+          SELECT ${SIGNAL_COLUMNS}
+          FROM bodha_msr_signals m
+          WHERE ${filters.join(' AND ')}
+          ORDER BY m.computed_salience DESC NULLS LAST
+          LIMIT ${topKPh} OFFSET ${offsetPh}`
+        const result = await query(sql, params)
+        rawRows = result.rows
+        poolNote = 'salience-single'
+      }
 
       // BA-P2: composite re-rank + ranking_basis assembly
       let signals: Record<string, unknown>[]
       let ranking_basis: Record<string, unknown>
 
-      if (useComposite && result.rows.length > 0) {
+      if (useComposite && rawRows.length > 0) {
         const as_of_date = new Date().toISOString().split('T')[0]
         const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
-        const scoredAll = applyCompositeRanking(result.rows, ctx, domain)
+        // Cast through unknown: rawRows carries bodha_msr_signals columns; MsrSignalRow is satisfied at runtime.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scoredAll = applyCompositeRanking(rawRows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain)
         // Slice to requested pagination window; strip internal _subscores from wire format
         const scoredSlice = scoredAll.slice(offset, offset + top_k)
         signals = scoredSlice.map(s => {
@@ -228,7 +273,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         })
         ranking_basis = buildRankingBasis(scoredSlice, domain)
       } else {
-        signals = result.rows
+        signals = rawRows
         ranking_basis = { mode: 'salience_fallback', priors_version: PRIORS_VERSION, domain: domain ?? null }
       }
 
@@ -258,7 +303,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         provenance: {
           tables: ['bodha_msr_signals'],
           ranking_note: useComposite
-            ? `Composite 4D re-ranking applied on top-${sqlLimit} salience candidates (priors_version=${PRIORS_VERSION}).`
+            ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).`
             : `Salience-ranked (no domain specified — composite ranking requires domain).`,
           defect_001_note: [
             'DEFECT-001 OPEN: constituent_facts_array has 91.5% orphan rate.',

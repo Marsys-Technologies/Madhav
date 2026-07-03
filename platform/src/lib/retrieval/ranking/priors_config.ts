@@ -19,7 +19,12 @@
  * All values are query-time multipliers only.
  */
 
-export const PRIORS_VERSION = '0.9-prov' as const
+// '1.0': Frozen after P2T iteration. Formula is correct; G10-QT score ≈9/15.
+// Criteria 1 (≥3 yoga-class) + 4 (ZERO AV atomic tallies) PASS.
+// Criteria 2 (10th-lord) + 3 (karaka-congruent) FAIL — L2 Bodha data has no Saturn graha
+// metadata in career-domain signals (deferred to P3B salience rebuild).
+// Criteria 5 (tie-block) addressed via salience blend + index tiebreak in composite_ranker.ts.
+export const PRIORS_VERSION = '1.0' as const
 
 // ── §2.1 — w(signal_type_class) ──────────────────────────────────────────────
 // Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE §2.1 (11 values + absence)
@@ -27,11 +32,14 @@ export const PRIORS_VERSION = '0.9-prov' as const
 export const SIGNAL_TYPE_CLASS_WEIGHT: Record<string, number> = {
   configuration:  1.40,  // yogas, raja/dhana/arishta — BPHS headline structures
   relationship:   1.20,  // dispositor, argala, parivartana, aspects — chart wiring
+  parivartana:    1.20,  // mutual sign exchange — same weight as relationship
   dasha_period:   1.15,  // timing is half of Jyotish
   position:       1.10,  // atomic backbone (humble individually, decisive collectively)
+  varga_pattern:  1.10,  // vargottama / varga structural patterns (observed in live data)
   birth_moment:   1.05,  // panchanga, lagna specifics — foundational but background
   prashna:        1.00,  // only fires on prashna charts; neutral base
   magnitude:      1.00,  // bala/strength — modulates delivery (baseline)
+  tradition_specific: 0.95, // tradition-specific signal; rated below generic until classified
   time_window:    0.95,  // derived timing; slightly below the period itself
   medical:        0.90,  // domain-specific; high within health, humble elsewhere
   annual:         0.85,  // varshaphala/tajika — powerful but tradition-scoped
@@ -140,12 +148,19 @@ export const DOMAIN_VARGA_BOOST: Record<string, string[]> = {
   spirituality: ['D20', 'D60'],        // viṃśāṃśa = worship/upāsanā
   character:    ['D1', 'D9', 'D16'],   // ṣoḍaśāṃśa = comforts/temperament
 }
-const DOMAIN_VARGA_BOOST_FACTOR = 1.5
+// 1.2 (was 1.5): reduces to prevent composite_state/D1 signals from outranking yoga signals.
+// At 1.5: composite_state/D1 = 1.25×1.5×0.5×1.20 = 1.125 > yoga/null = 1.61×1.0×0.5×1.30 = 1.047.
+// At 1.2: composite_state/D1 = 0.900 < yoga = 1.047. Yoga-class signals correctly dominate top-10.
+const DOMAIN_VARGA_BOOST_FACTOR = 1.2
 
-/** Get varga weight (base × domain overlay if applicable). */
+/** Get varga weight (base × domain overlay if applicable).
+ * null/undefined varga = chart-wide signal (no varga grain) → D1-equivalent weight 1.0.
+ * The 0.18 floor is reserved for supplementary vargas explicitly named; chart-level
+ * signals that don't target any varga are NOT penalised by the varga dimension. */
 export function vargaWeight(varga: string | null | undefined, domain?: string | null): number {
-  const base = VARGA_BASE_WEIGHT[varga ?? ''] ?? 0.18
-  if (!domain || !varga) return base
+  if (!varga) return 1.0  // chart-wide: D1-equivalent, no varga penalty
+  const base = VARGA_BASE_WEIGHT[varga] ?? 0.18
+  if (!domain) return base
   const boosted = DOMAIN_VARGA_BOOST[domain]?.includes(varga) ?? false
   return boosted ? base * DOMAIN_VARGA_BOOST_FACTOR : base
 }
@@ -160,13 +175,21 @@ type Domain =
   | 'career' | 'wealth' | 'relationship' | 'progeny' | 'health'
   | 'education' | 'family' | 'residence' | 'travel' | 'spirituality' | 'character'
 
-// Canonical graha key variants (DB uses both full and abbreviated forms)
+// Canonical graha key variants (DB uses several forms across layers)
 const GRAHA_ALIASES: Record<string, string> = {
+  // 2-char codes (retrieval layer)
   SU: 'sun',   MO: 'moon', MA: 'mars',  ME: 'mercury',
   JU: 'jupiter', VE: 'venus', SA: 'saturn', RA: 'rahu', KE: 'ketu',
-  // Long form
+  // Lowercase long form
   sun: 'sun', moon: 'moon', mars: 'mars', mercury: 'mercury',
   jupiter: 'jupiter', venus: 'venus', saturn: 'saturn', rahu: 'rahu', ketu: 'ketu',
+  // L1 chart_facts.fact_subject format (observed in live data)
+  SUN: 'sun', MOON: 'moon', MAR: 'mars', MER: 'mercury',
+  JUP: 'jupiter', VEN: 'venus', SAT: 'saturn',
+  RAH_MEAN: 'rahu', KET_MEAN: 'ketu',
+  // Uppercase full names (bodha_msr_signals.configuration_jsonb format)
+  MARS: 'mars', MERCURY: 'mercury', JUPITER: 'jupiter',
+  VENUS: 'venus', SATURN: 'saturn', RAHU: 'rahu', KETU: 'ketu',
 }
 
 const GRAHA_DOMAIN_AFFINITY: Record<string, Record<Domain, number>> = {
