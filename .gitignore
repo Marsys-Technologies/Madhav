@@ -104,3 +104,6 @@ platform/python-sidecar/run_l1_fast4_rebuild.py
 platform/python-sidecar/run_l1_fix_rebuild.py
 platform/python-sidecar/verify_l1_fixes.py
 python-sidecar/venv/
+
+# Orphaned root-level lock file — no root package.json exists; per-package locks tracked in their own dirs
+/package-lock.json
