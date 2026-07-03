@@ -55,7 +55,7 @@ INSERT INTO asset_registry (
     'Monthly activation waveform (1950–2100): convolution of dasha × transit × promise for each '
     'domain and event class. Known Sade-Sati years show elevated obstruction-adjusted activation. '
     'Fine-grain (daily/hourly) = service computation, not stored. Writer: ka_taranga after ka_avadhi.',
-    'table', 'kala_taranga',
+    'postgres_table', 'kala_taranga',
     'SELECT COUNT(*) FROM kala_taranga WHERE chart_id=$1',
     NULL,
     0, 'per_chart', true, true,

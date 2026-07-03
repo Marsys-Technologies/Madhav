@@ -53,7 +53,7 @@ INSERT INTO asset_registry (
     'Per-event-class promise registry: promised/denied/conditional verdicts with grade, '
     'supporting and contradicting signal IDs, varga confirmation, derivation audit trail. '
     'Written by bo_pratijna after bo_laksana. Downstream: P5B ph_nimitta uses grade as promise_lift.',
-    'table', 'bodha_pratijna',
+    'postgres_table', 'bodha_pratijna',
     'SELECT COUNT(*) FROM bodha_pratijna WHERE chart_id=$1',
     NULL,
     0, 'per_chart', true, true,

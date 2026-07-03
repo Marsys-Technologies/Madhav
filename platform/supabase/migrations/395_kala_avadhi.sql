@@ -55,7 +55,7 @@ INSERT INTO asset_registry (
     'Per-dasha-period dossiers: for each chart, dasha system, MD/AD/PD level, stores lord condition '
     '(refs to chart_facts), activated promise-register IDs (from bodha_pratijna), and sublord modulation. '
     'Powers "how will my Ketu dasha be" readings. Writer: ka_avadhi after ka_yojaka.',
-    'table', 'kala_avadhi',
+    'postgres_table', 'kala_avadhi',
     'SELECT COUNT(*) FROM kala_avadhi WHERE chart_id=$1',
     NULL,
     0, 'per_chart', true, true,
