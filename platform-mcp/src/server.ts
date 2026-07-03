@@ -317,7 +317,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerP1GanitaTools(server)
   registerP1ReferenceTools(server)
   registerP1SynthesisTools(server)
-  // BA-P1 — Phase-1 naming aliases for all 53 baseline tools (47 aliases; 6 documented deferrals)
+  // BA-P1 — Phase-1 naming aliases for all 53 baseline tools (49 aliases; 6 documented deferrals)
   registerP1AliasTools(server)
 
   // M2 — Chart selection: list_my_charts + select_chart (2 tools)
