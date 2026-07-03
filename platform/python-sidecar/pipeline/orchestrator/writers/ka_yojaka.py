@@ -51,6 +51,48 @@ class KaYojakaWriter(WriterBase):
         # D6: pre-fetch CDLM domain strengths for this chart (domain → link_strength).
         cdlm_domain_strength: dict[str, float] = self._fetch_cdlm_domain_strength(conn, chart_id)
 
+        # Step 3a: pratijna linkage — promise-register IDs per domain + multi-system confirmation
+        # SAVEPOINT-guarded: soft dependency on P3B data (bodha_pratijna may not be built yet)
+        pratijna_by_domain: dict[str, list[str]] = {}
+        domain_confirmation: dict[str, int] = {}
+        with conn.cursor() as _sp:
+            _sp.execute("SAVEPOINT sp_pratijna_yojaka")
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT bp.pratijna_id, beo.domain
+                    FROM bodha_pratijna bp
+                    JOIN brahma_event_ontology beo USING (event_class_id)
+                    WHERE bp.chart_id = %s AND bp.status IN ('promised', 'conditional')
+                    ORDER BY bp.grade DESC
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    d = str(row['domain'] or 'unknown')
+                    pratijna_by_domain.setdefault(d, []).append(str(row['pratijna_id']))
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT beo.domain, COUNT(DISTINCT bp.ayanamsha_id) AS aya_count
+                    FROM bodha_pratijna bp
+                    JOIN brahma_event_ontology beo USING (event_class_id)
+                    WHERE bp.chart_id = %s AND bp.status = 'promised'
+                    GROUP BY beo.domain
+                    """,
+                    (chart_id,),
+                )
+                for row in cur.fetchall():
+                    domain_confirmation[str(row['domain'])] = int(row['aya_count'] or 0)
+            with conn.cursor() as _sp:
+                _sp.execute("RELEASE SAVEPOINT sp_pratijna_yojaka")
+            logger.debug("ka_yojaka: pratijna linkage loaded — %d domains", len(pratijna_by_domain))
+        except Exception as _exc:
+            with conn.cursor() as _sp:
+                _sp.execute("ROLLBACK TO SAVEPOINT sp_pratijna_yojaka")
+            logger.debug("ka_yojaka: pratijna linkage skipped: %s", _exc)
+
         # Step 3: classify + bind each signal
         # Connection uses dict_row factory — access columns by name, not integer index.
         rows = []
@@ -80,6 +122,10 @@ class KaYojakaWriter(WriterBase):
             pred['dasha_eligibility_rule']['cdlm_domain_strength'] = round(
                 cdlm_domain_strength.get(domain, 0.5), 4
             )
+
+            # P5A: pratijna linkage — activated promise IDs + multi-system ayanamsha confirmation count
+            pred['dasha_eligibility_rule']['pratijna_ids'] = pratijna_by_domain.get(domain, [])[:5]
+            pred['dasha_eligibility_rule']['multi_system_confirmation_count'] = domain_confirmation.get(domain, 0)
 
             rows.append((
                 str(sig['chart_id']),

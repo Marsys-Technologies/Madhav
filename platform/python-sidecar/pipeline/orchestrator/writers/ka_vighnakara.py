@@ -52,8 +52,14 @@ _GANDANTA_RANGES = [
     (330.0, 333.333),  # Pisces end → Aries start
 ]
 
-# Combustion orb (classical Parāśara): within 6° of Sun
-_COMBUSTION_ORB_DEG = 6.0
+# (C12 fix) flat _COMBUSTION_ORB_DEG = 6.0 DELETED — per-graha orbs from bg_combustion_orbs.
+# These classical fallback values are used when the DB table is unavailable.
+# Sārāvalī ch.6 / BPHS ch.3: Moon=12 d; Mars=17 d; Mercury=14 d; Jupiter=11 d; Venus=10 d; Saturn=15 d.
+_COMBUSTION_ORBS_CLASSICAL: dict[str, float] = {
+    'Moon': 12.0, 'Mars': 17.0, 'Mercury': 14.0,
+    'Jupiter': 11.0, 'Venus': 10.0, 'Saturn': 15.0,
+    'Rahu': 9.0, 'Ketu': 9.0,
+}
 
 # Planet IDs for swisseph (subset used by detection)
 _SWE_IDS = {
@@ -189,6 +195,9 @@ class KaVighnakaraWriter(WriterBase):
 
         _NATIVE_LOC = {'lat': 20.2961, 'lon': 85.8245, 'tz_offset_minutes': 330}
 
+        # C12 fix: fetch per-graha combustion orbs from bg_combustion_orbs (L1 single truth)
+        combustion_orbs = self._fetch_combustion_orbs(conn)
+
         rows = []
         for conv_row in convergence_rows:
             conv_id, signal_id, mode, peak_date, conv_score, orb_str, win_start, win_end = conv_row
@@ -206,6 +215,7 @@ class KaVighnakaraWriter(WriterBase):
                 muhurta_service=_muhurta,
                 native_location=_NATIVE_LOC,
                 natal_lagna_lon=natal_lagna_lon,
+                combustion_orbs=combustion_orbs,
             )
 
             for obs in obstructions:
@@ -233,6 +243,24 @@ class KaVighnakaraWriter(WriterBase):
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
+
+    def _fetch_combustion_orbs(self, conn) -> dict[str, float]:
+        """Read per-graha combustion orbs from bg_combustion_orbs (C12 fix).
+        Falls back to _COMBUSTION_ORBS_CLASSICAL if the table is unavailable."""
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_comb_orbs")
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT graha, orb_degrees FROM bg_combustion_orbs")
+                orbs = {row['graha']: float(row['orb_degrees']) for row in cur.fetchall()}
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_comb_orbs")
+            return orbs if orbs else dict(_COMBUSTION_ORBS_CLASSICAL)
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_comb_orbs")
+            logger.debug("ka_vighnakara: bg_combustion_orbs fetch skipped: %s", exc)
+            return dict(_COMBUSTION_ORBS_CLASSICAL)
 
     def _fetch_natal_lagna_lon(self, conn, chart_id: str) -> Optional[float]:
         """Fetch natal lagna degree from chart_facts (fact_subject='LAGNA', fact_key='longitude')."""
@@ -264,6 +292,7 @@ def _detect_all(
     muhurta_service,
     native_location: dict,
     natal_lagna_lon: Optional[float],
+    combustion_orbs: Optional[dict[str, float]] = None,
 ) -> list[dict]:
     """Run all obstruction detectors for one convergence window peak."""
     results = []
@@ -272,7 +301,6 @@ def _detect_all(
         _check_panchanga_obstruction,
         _check_gandanta,
         _check_papakartari,
-        _check_combustion,
     ):
         try:
             obs = check(peak_date, jd, swe, muhurta_service, native_location, natal_lagna_lon)
@@ -280,6 +308,15 @@ def _detect_all(
                 results.append(obs)
         except Exception as exc:
             logger.debug("ka_vighnakara: %s failed for %s: %s", check.__name__, peak_date, exc)
+    try:
+        obs = _check_combustion(
+            peak_date, jd, swe, muhurta_service, native_location, natal_lagna_lon,
+            combustion_orbs=combustion_orbs or _COMBUSTION_ORBS_CLASSICAL,
+        )
+        if obs:
+            results.append(obs)
+    except Exception as exc:
+        logger.debug("ka_vighnakara: _check_combustion failed for %s: %s", peak_date, exc)
     return results
 
 
@@ -545,15 +582,17 @@ def _check_papakartari(peak_date, jd=None, swe=None, muhurta_service=None,
 # ── Detector 5: combustion ────────────────────────────────────────────────────
 
 def _check_combustion(peak_date, jd=None, swe=None, muhurta_service=None,
-                      native_location=None, natal_lagna_lon=None) -> Optional[dict]:
+                      native_location=None, natal_lagna_lon=None,
+                      combustion_orbs: Optional[dict[str, float]] = None) -> Optional[dict]:
     """
-    Combustion: any planet within 6° of Sun at peak_date.
-    A combust planet loses its karakatva — reduces activation potency of windows
-    where the transit planet is combust.
-    Citation: Parāśara Āstangata; Phaladeepika §Combustion degrees.
+    Combustion: planet within its classical orb of the Sun at peak_date.
+    Per-graha orbs from bg_combustion_orbs (C12 fix — flat 6° removed).
+    Citation: Parāśara Āstangata; Sārāvalī ch.6; Phaladeepika §Combustion degrees.
     """
     if swe is None:
         return None
+
+    orbs = combustion_orbs or _COMBUSTION_ORBS_CLASSICAL
 
     sun_lon = _get_sidereal_lon(swe, jd, _SWE_IDS['Sun'])
     if sun_lon is None:
@@ -561,32 +600,33 @@ def _check_combustion(peak_date, jd=None, swe=None, muhurta_service=None,
 
     combust_planets = []
     for pname, pid in [('Mars', _SWE_IDS['Mars']), ('Saturn', _SWE_IDS['Saturn'])]:
+        orb_limit = orbs.get(pname, 8.0)
         p_lon = _get_sidereal_lon(swe, jd, pid)
         if p_lon is None:
             continue
         diff = abs(p_lon - sun_lon) % 360.0
         if diff > 180.0:
             diff = 360.0 - diff
-        if diff <= _COMBUSTION_ORB_DEG:
-            combust_planets.append((pname, round(diff, 2)))
+        if diff <= orb_limit:
+            combust_planets.append((pname, round(diff, 2), orb_limit))
 
     if not combust_planets:
         return None
 
     severity_score = 0.30
-    planet_str = ', '.join(f"{p} ({d}°)" for p, d in combust_planets)
+    planet_str = ', '.join(f"{p} ({d}°/{ol}° orb)" for p, d, ol in combust_planets)
     return {
         'obstruction_type': 'combustion',
         'severity': _severity(severity_score),
         'severity_score': severity_score,
         'override_score': 0.12,
         'detail': {
-            'combust_planets': [{'planet': p, 'orb_deg': d} for p, d in combust_planets],
+            'combust_planets': [{'planet': p, 'orb_deg': d, 'orb_limit': ol} for p, d, ol in combust_planets],
             'sun_longitude': round(sun_lon, 2),
-            'reason': f"{planet_str} combust (within {_COMBUSTION_ORB_DEG}° of Sun) — karakatva weakened.",
-            'citation': "Parāśara Āstangata — planet within Sun's combustion orb loses strength",
+            'reason': f"{planet_str} combust — karakatva weakened.",
+            'citation': "Parāśara Āstangata / Sārāvalī ch.6 — per-graha combustion orbs",
             'peak_date': str(peak_date),
-            'source': 'swisseph/lahiri',
+            'source': 'swisseph/lahiri + bg_combustion_orbs',
         },
     }
 
