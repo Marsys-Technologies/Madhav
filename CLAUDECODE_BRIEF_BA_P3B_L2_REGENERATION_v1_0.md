@@ -1,11 +1,18 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_P3B_L2_REGENERATION
-version: 1.1
+version: 1.2
 status: READY-FOR-EXECUTION — gated on BA-P3A COMPLETE + M1/M2 prod-verified; conductor fills ⟦SLOT⟧s
 created: 2026-07-03
-amended: 2026-07-03
+amended: 2026-07-04
 author: Cowork (Beyond-Acharya unified program; substance frozen — conductor fills slots only)
 changelog:
+  - v1.2 (2026-07-04): governance residual closed — the R1 verification amendment was applied to the body
+    on 2026-07-04 but never versioned (B.8 silent-mutation gap); recorded now. R1 (JL-006/JL-007):
+    verification_certainty DELETED from the salience formula (served as an epistemic dimension instead);
+    bala_gate ratified (clamp 0.30–1.00, present_but_enfeebled <0.60); priors_version=1.0 unchanged. Added
+    the JL-009 downstream carry-forward pointer (event base-rate priors are surfaced at P5B, not here).
+    Fixed a stale tool name in the G10-STORED exit gate (get_signals → bodha_signals_get; renamed in P1,
+    legacy alias retained).
   - v1.1 (2026-07-03): Step 1 L0 CLASSICAL BRIDGE added — populate classical_sources_array per signal
     (deterministic join, no LLM); ≥60% yoga/dosha-class coverage gate. Pre-rebuild audit finding +
     native ruling 2026-06-16. Gate condition updated (M1/M2 prod-verified required before P3B start).
@@ -73,6 +80,13 @@ jsonb, formula_version, UNIQUE(chart_id, ayanamsha_id, event_class_id))` — the
 verdict_inputs jsonb, concordance_score, formula_version)` — Parashari/Jaimini/KP/Tajika stacks.
 **bo_upaya:** de-degenerate resonance (F-007) from salience-v2 inputs — distribution gate applies.
 
+**Downstream carry-forward — JL-009 (NOT a P3B action; registered here so it is not lost).** `bo_pratijna`
+above keys on `event_class_id → brahma_event_ontology`, but consumes ONLY the class identity — NOT the
+ontology's *base-rate priors*. Those become a STORED formula input only at **P5B** (L4 posteriors). Per
+JL-009 (ratified-as-drafted; W1 seed §0.2.4), the event base-rate priors are placeholder-grade and must be
+surfaced to the native for glance BEFORE P5B freezes them (native item-4 protocol). Obligation is enforced
+in `CLAUDECODE_BRIEF_BA_P5B_PHALA_V2` (v1.1, Step 1 gate). P3B does not touch base-rate values.
+
 ## Step 4 — Regenerate ONCE + swap
 One L2 regeneration via cockpit: Abhinandan FIRST → gates → 482012f1. Then swap retrieval's intrinsic
 inputs from query-time computation to the stored columns — envelope diff must be EMPTY on 5 spot tools.
@@ -82,8 +96,8 @@ ONE regeneration (never iterate priors here — frozen at P2T). No envelope shap
 change beyond the documented swap. Abhinandan before native, always. No second formula site survives.
 
 ## Exit gates
-- [ ] G10-STORED: `get_signals(482012f1, career, limit=10)` via STORED path → zero atomic tallies,
-      ≥3 yoga-class, ranking_basis present `[verify-against: prod]`
+- [ ] G10-STORED: `bodha_signals_get(482012f1, career, limit=10)` (P1-renamed; `get_signals` = legacy
+      alias) via STORED path → zero atomic tallies, ≥3 yoga-class, ranking_basis present `[verify-against: prod]`
 - [ ] degeneracy sweep: salience_v2/pctl/robustness/resonance all non-degenerate `[verify-against: db]`
 - [ ] constituent resolve ≥99% · signature_tier chart_defining >0 · contradictions >0 both charts w/
       domains `[verify-against: db]`

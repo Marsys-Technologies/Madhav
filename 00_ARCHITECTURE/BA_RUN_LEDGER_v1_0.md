@@ -85,8 +85,8 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 
 | Fix | File | Status | Branch/PR | Notes |
 |---|---|---|---|---|
-| M1: ga_condition count_sql | platform/supabase/migrations/390_ga_condition_count_sql_sayanadi_lajjitadi_yuddha.sql | MERGED | PR #406 (0be2bc00); RING1_PASS | Merged 2026-07-03; verify cockpit live count post-cockpit-L1-rebuild [verify-against: prod] |
-| M2: bodha_bimba → bodha_discoveries | platform-mcp/src/tools/register_p1_synthesis.ts | MERGED | PR #406 (0be2bc00); RING1_PASS | Merged 2026-07-03; verify bodha_discoveries_get returns rows for 482012f1 post-platform-mcp-redeploy [verify-against: prod] |
+| M1: ga_condition count_sql | platform/supabase/migrations/390_ga_condition_count_sql_sayanadi_lajjitadi_yuddha.sql | RING2_PASS | PR #406 (0be2bc00); PR #407 (c5a6323e) | Applied 2026-07-03T15:59Z; count_sql live: sayanadi/lajjitadi/yuddha included; live count = 2,880 rows native chart ✓ |
+| M2: bodha_bimba → bodha_discoveries | platform-mcp/src/tools/register_p1_synthesis.ts | RING2_PASS | PR #406 (0be2bc00); MCP deploy run 28671250354 | bodha_discoveries has 2,178 rows for 482012f1; FROM bodha_bimba schema error resolved ✓ |
 
 ---
 
@@ -332,6 +332,34 @@ Seeds deployed inline with migration SQL — no cockpit run needed for base data
 | ⟦LEL_FILE_SHA⟧ | P6 | TBD (git log -- 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md) | at P6 open |
 | ⟦P6_CLOSE_SHA⟧ | P7B | TBD after P6 | P6 close |
 | ⟦PRATINIDHI_E4_RANKING_LEDGER_REF⟧ | P7A | TBD (Ācārya-Pratinidhi E4 ruling) | Judgment Ledger |
+
+---
+
+---
+
+## §3D — ENDGAME ACTIVITY PLAN — SYNC-FREEZE (Activity 1) COMPLETE (2026-07-04)
+
+**Report:** `00_ARCHITECTURE/BA_SYNC_FREEZE_REPORT_v1_0.md`
+
+| Exit Gate | Status | Evidence |
+|---|---|---|
+| origin/main (c5a6323e) == amjis-web == amjis-mcp (code Δ) == JOB image (writer Δ) | PASS | web=c5a6323e; mcp=0be2bc00 (no code Δ); JOB=85d190ed (no writer Δ) |
+| 385–390 on prod; next-free=391 | PASS | All 6 migrations in `_migrations_applied`; max=390 |
+| M1 + M2 RING2_PASS | PASS | M1: 2,880 rows w/ correct count_sql; M2: 2,178 bodha_discoveries rows |
+| CI green (web+mcp build; tsc both clean) | PASS | All 4 checks exit 0; PR #408 9/9 PASS |
+| Worktrees pruned; working tree clean; governance docs committed | PASS | PR #408 (a4433075) — 5 files; 4 worktrees pruned |
+| Localhost code-plane sync | PARTIAL | Code identical to prod; dev server = native-action before Activity 2 |
+| Native-leakage grep | PASS (hits flagged) | 11 files: ALL FORENSIC GUARD pattern; no runtime contamination |
+
+**Governance docs committed in this activity (PR #408):**
+- BA_ENDGAME_ACTIVITY_PLAN_v1_0.md (new)
+- CLAUDECODE_BRIEF_BA_PRE_REBUILD_SYNC_FREEZE_v1_0.md (new)
+- BA_JUDGMENT_LEDGER: JL-006–009 added (four W1-seed §0.2 items ratified)
+- P3B brief → v1.2; P5B brief → v1.1
+
+**Next activity (Activity 2):** Nirmāṇa build-tracker inspection via Chrome MCP.
+- Prerequisite: merge PR #408 + `git pull` + start `next dev --webpack` + Cloud SQL Auth Proxy (port 5433)
+- Inspect: presence, metadata correctness, DAG wiring, state correctness for all Stage-A assets
 
 ---
 

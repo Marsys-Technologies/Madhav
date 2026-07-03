@@ -1,9 +1,16 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_P5B_PHALA_V2
-version: 1.0
+version: 1.1
 status: READY-FOR-EXECUTION — gated on BA-P5A COMPLETE (needs activation + dossiers); conductor fills ⟦SLOT⟧s
 created: 2026-07-03
+amended: 2026-07-04
 author: Cowork (Beyond-Acharya unified program; substance frozen — conductor fills slots only)
+changelog:
+  - v1.1 (2026-07-04): registered the JL-009 carry-forward. The event base-rate priors in
+    brahma_event_ontology are ratified-as-drafted PLACEHOLDERS (W1 seed §0.2.4); P5B is the first phase
+    where they become a STORED formula input (the L4 posterior's base_rate factor), so they must be
+    surfaced to the native for glance BEFORE anchors freeze (native item-4 protocol). Added Step 1 gate +
+    exit-gate line. No substance change to the posterior model.
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — phase P5B (Phala v2: prophecy's prediction half)
 slots: ⟦P5A_CLOSE_STATE⟧ ⟦NEXT_MIGRATION_NUMBERS⟧
 common_rules: FROZEN contract · degeneracy gates · two-chart rule · falsifiability-by-schema ·
@@ -34,6 +41,14 @@ model matched against the promise register — the keyword string-matching dies.
 served, incl. `denied/unlikely` anchors (they are predictions too). Ayanamsha robustness survives as a
 lift modifier.
 
+**JL-009 GATE (native item-4 protocol — added v1.1).** The `base_rate(event_class, age_band, window)`
+factor reads the event base-rate priors from `brahma_event_ontology`. These are ratified-AS-DRAFTED
+PLACEHOLDERS (W1 seed §0.2.4 / JL-009) — the weakest-grounded seeds by design, and P5B is the FIRST phase
+where they become a *stored formula input*. BEFORE freezing anchors: surface the age-banded base-rate table
+to the native for a glance; apply any edits; record the confirmation/edits and CLOSE JL-009 in
+BA_JUDGMENT_LEDGER. Do NOT silently freeze them. (They remain L5-calibratable regardless — this glance is
+the human checkpoint at the layer where they first bite.)
+
 ## Step 2 — ph_muhurta EXT (activity-aware election)
 `brahma_activity_ontology` significators × panchanga (verify panchanga_daily populated — P0 closed this)
 × tarabala/chandrabala vs the NATIVE'S chart (not generic) × fructification rules; emits follow-up hooks
@@ -50,6 +65,8 @@ keyword-derived event types. No writer-local base rates. Anchors without lift_ve
 failures. Do not touch rectification.
 
 ## Exit gates
+- [ ] JL-009: event base-rate priors surfaced to the native + confirmed/edited BEFORE anchor freeze;
+      JL-009 closed in BA_JUDGMENT_LEDGER `[verify-against: ledger]`
 - [ ] anchors both charts span full probability range w/ lift_vectors + structured falsifiers
       `[verify-against: db]` — smoke: min(posterior) < 0.2
 - [ ] Q2/Q3 smoke: "job change this year?" returns an event-class anchor with posterior + falsifier +

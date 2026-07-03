@@ -54,6 +54,36 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.17 (2026-07-04, BA-SYNC-FREEZE-2026-07-04):
+    **BA ENDGAME Activity 1 COMPLETE — code-plane parity verified; governance docs committed; M1/M2 RING2_PASS; GO for Activity 2.**
+    Executed CLAUDECODE_BRIEF_BA_PRE_REBUILD_SYNC_FREEZE_v1_0.md end-to-end.
+    Branch reconciliation: local main reset to c5a6323e (origin/main; PR #407 squash-merge of run-ledger docs).
+    Governance docs committed (PR #408, docs/ba-endgame-governance, a4433075; 9/9 CI PASS): BA_ENDGAME_ACTIVITY_PLAN_v1_0.md (new);
+      CLAUDECODE_BRIEF_BA_PRE_REBUILD_SYNC_FREEZE_v1_0.md (new); BA_JUDGMENT_LEDGER JL-006–009 (four W1-seed §0.2
+      items ratified: bala_gate · verification_certainty deleted · domain taxonomy · event base-rate priors carry-forward);
+      P3B brief → v1.2; P5B brief → v1.1.
+    Worktrees pruned: all 4 BA worktrees (agent-aa7a48f2c4b5ec0ec, wt-ba-p3a, wt-ba-p1, wt-ba-p2) — all content
+      already in main via squash merges. `.claude/` confirmed in `.gcloudignore`.
+    Deploy-truth: web=c5a6323e ✓; mcp=0be2bc00 ✓ (no code Δ since); JOB=85d190ed ✓ (no writer Δ since P3A merge).
+      "Run database migrations" step SUCCESS at c5a6323e. All three surfaces code-plane current for the rebuild.
+    CI: web build exit 0; mcp build exit 0; platform tsc exit 0 (ZERO errors — cookie-parser residual resolved); mcp tsc exit 0.
+    Migrations 385–390 all on prod; next-free = 391.
+    M1 RING2_PASS: ga_condition count_sql live (sayanadi/lajjitadi/yuddha counted); native chart 2,880 rows.
+    M2 RING2_PASS: bodha_discoveries has 2,178 rows for 482012f1 — FROM bodha_bimba error resolved.
+    Native-leakage: 11 files flagged; ALL FORENSIC GUARD pattern (CANONICAL_CHART_ID in `if chart_id == canonical:` guards only); no runtime contamination. Two-chart build is the definitive gate.
+    Report: BA_SYNC_FREEZE_REPORT_v1_0.md — GO for Activity 2.
+    last_session_id: BA-SYNC-FREEZE-2026-07-04.
+    predecessor_session: BA-P0-SERVING-TRUTH-2026-07-03.
+    next_session_objective: >
+      "Activity 1 COMPLETE. Activity 2 NEXT: Nirmāṇa build-tracker inspection (Chrome MCP, prod + localhost).
+      Prerequisites before Activity 2 begins: (1) merge PR #408 (docs/ba-endgame-governance — 9/9 PASS, ready);
+      (2) git pull origin main; (3) start Cloud SQL Auth Proxy (port 5433) + next dev --webpack on localhost:3000.
+      Activity 2 scope (ENDGAME PLAN §2): B1 presence (every new Stage-A asset in its layer band);
+      B2 metadata correctness (count_sql non-error, correct scope); B3 DAG wiring (no orphan nodes);
+      B4 state correctness (new assets show as unbuilt/stale, not phantom-green); B5 root-cause any gap.
+      After Activity 2: Activity 3 = native-executed L1 rebuild (Abhinandan-first within one event).
+      Then: A1 ratify §0.2 (JL-006–009 already logged; native confirms) → A2–A8 code deploy → Stage C full rebuild → Stage D live E2E."
+    file_updated_at: 2026-07-04. file_updated_by_session: BA-SYNC-FREEZE-2026-07-04.
   - v6.16 (2026-07-03, BA-P0-SERVING-TRUTH-2026-07-03):
     **BA-P0 complete — fresh baseline established; assess_* caps implemented; cache contract documented; mi_vistara scope dispositioned.**
     Executed CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md end-to-end (Steps 1–5).
@@ -5477,7 +5507,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: BA-P0-SERVING-TRUTH-2026-07-03  # 2026-07-03: BA-P0 Serving Truth — fresh baseline, assess_* F-021R caps (PR #395), cache contract documented, mi_vistara scope=global confirmed. Predecessor BA-P1-SYNC-FREEZE-2026-07-03.
+  last_session_id: BA-SYNC-FREEZE-2026-07-04  # 2026-07-04: BA Endgame Activity 1 — code-plane sync-freeze COMPLETE; M1/M2 RING2_PASS; governance docs PR #408 9/9 PASS; GO for Activity 2 (Nirmāṇa inspection). Predecessor BA-P0-SERVING-TRUTH-2026-07-03.
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
