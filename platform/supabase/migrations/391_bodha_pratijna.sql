@@ -57,7 +57,7 @@ INSERT INTO asset_registry (
     'SELECT COUNT(*) FROM bodha_pratijna WHERE chart_id=$1',
     NULL,
     0, 'per_chart', true, true,
-    'Bodha', 2, 'active'
+    'Bodha', 2, 'CURRENT'
 ) ON CONFLICT (asset_id) DO UPDATE SET
     count_sql     = EXCLUDED.count_sql,
     target_table  = EXCLUDED.target_table,
