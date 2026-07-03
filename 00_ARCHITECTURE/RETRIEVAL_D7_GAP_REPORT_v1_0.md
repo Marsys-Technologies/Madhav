@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_D7_GAP_REPORT
 canonical_id: RETRIEVAL_D7_GAP_REPORT
 version: 1.0
 status: CURRENT

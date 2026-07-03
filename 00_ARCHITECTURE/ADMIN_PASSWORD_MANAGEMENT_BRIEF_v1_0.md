@@ -1,4 +1,5 @@
 ---
+artifact: ADMIN_PASSWORD_MANAGEMENT_BRIEF
 canonical_id: ADMIN_PASSWORD_MANAGEMENT_BRIEF
 version: 1.0
 status: READY_FOR_BUILD

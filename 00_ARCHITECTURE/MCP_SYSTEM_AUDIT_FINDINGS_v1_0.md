@@ -1,4 +1,5 @@
 ---
+artifact: MCP_SYSTEM_AUDIT_FINDINGS
 canonical_id: MCP_SYSTEM_AUDIT_FINDINGS
 version: 1.1
 status: LIVE — W1+W2+W2.5+W3+W3R+W4 closed (24 findings CLOSED: F-001–F-006/F-008/F-011–F-016/F-018/F-021/F-023/F-026–F-033); open: F-007 F-009 F-010 F-020 F-022 F-024 F-025 DEFECT-001 (Wave5 native-design-gated)

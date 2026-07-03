@@ -1,4 +1,5 @@
 ---
+artifact: BA_RATIFICATION_GUIDANCE_COVERAGE_AUDIT
 canonical_id: BA_RATIFICATION_GUIDANCE_COVERAGE_AUDIT
 version: 1.0
 status: CURRENT — Cowork (strategic track) dispositions on the coverage-audit [NATIVE-RATIFY] items,

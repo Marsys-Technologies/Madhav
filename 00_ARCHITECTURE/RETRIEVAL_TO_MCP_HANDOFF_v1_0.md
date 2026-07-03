@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_TO_MCP_HANDOFF
 canonical_id: RETRIEVAL_TO_MCP_HANDOFF
 version: 1.0
 status: CURRENT — paste into the MCP build conversation; the post-seal handoff FROM retrieval

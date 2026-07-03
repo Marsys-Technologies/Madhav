@@ -1,4 +1,5 @@
 ---
+artifact: MCP_TOOL_NAMING_STANDARD
 canonical_id: MCP_TOOL_NAMING_STANDARD
 version: 1.0
 status: PROPOSAL — gated on native sign-off; NOT EXECUTED; existing tool names unchanged

@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_SYSTEM_DESIGN_APPROACH
 canonical_id: RETRIEVAL_SYSTEM_DESIGN_APPROACH
 version: 1.4
 status: DRAFT

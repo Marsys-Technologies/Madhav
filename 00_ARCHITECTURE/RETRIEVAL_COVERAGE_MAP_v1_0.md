@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_COVERAGE_MAP
 canonical_id: RETRIEVAL_COVERAGE_MAP
 version: 1.0
 status: DRAFT — Part A Audits 1+2

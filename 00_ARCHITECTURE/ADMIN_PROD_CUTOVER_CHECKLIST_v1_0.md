@@ -1,4 +1,5 @@
 ---
+artifact: ADMIN_PROD_CUTOVER_CHECKLIST
 canonical_id: ADMIN_PROD_CUTOVER_CHECKLIST
 version: 1.0
 status: READY

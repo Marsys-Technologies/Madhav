@@ -1,4 +1,5 @@
 ---
+artifact: BEYOND_ACHARYA_SUPPLEMENT_RSC
 canonical_id: BEYOND_ACHARYA_SUPPLEMENT_RSC
 version: 1.0
 status: CURRENT — supplement to BEYOND_ACHARYA_MASTER_IMPLEMENTATION_PLAN_v1_0 (the master plan is NOT

@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_GROUNDTRUTH_TRAVERSAL_MODEL
 canonical_id: RETRIEVAL_GROUNDTRUTH_TRAVERSAL_MODEL
 version: 1.0
 status: DRAFT — research-grounded, pending domain-expert validation

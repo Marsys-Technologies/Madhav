@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_MODERNIZATION_MASTER_PLAN
 canonical_id: RETRIEVAL_MODERNIZATION_MASTER_PLAN
 version: 1.0
 status: CURRENT — the execution-governing document for the RETRIEVAL ENGINE MODERNIZATION program

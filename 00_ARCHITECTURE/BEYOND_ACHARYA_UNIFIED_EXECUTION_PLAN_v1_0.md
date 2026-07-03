@@ -1,4 +1,5 @@
 ---
+artifact: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN
 canonical_id: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN
 version: 1.0
 status: CURRENT — §V verification completed 2026-07-03 (two Claude-agent repo sweeps); five corrections

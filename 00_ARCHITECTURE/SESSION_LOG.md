@@ -30287,6 +30287,10 @@ Abhinandan final asset state:
 Deep data-correctness audit (salience stratification, domain population, MSR constituent_facts
 grounding, contradiction analysis) — explicitly deferred to a separate session per brief §0.
 
+### Next session objective
+
+Deep data-correctness audit for Abhinandan 1c826d5a (salience, domain population, MSR constituent_facts grounding, contradictions). Then ISSUE-4 faithfulness fix — L2 Bodha MSR rebuild for native 482012f1 to raise grounding from 6.88% to ≥80%.
+
 ```yaml
 session_close:
   session_id: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
@@ -30371,6 +30375,10 @@ sweep, and completeness re-check across L1–L5.
 
 Full prioritized action list in `ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md §6`.
 
+### Next session objective
+
+Review findings in ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md with native and approve the P0/P1 remediation list. Priority: (1) chart_facts idempotency fix; (2) salience stratification root-cause investigation; (3) contradiction detection writer diagnosis; (4) domain propagation trace; (5) native 482012f1 hygiene run.
+
 ### Safety spot-checks
 
 | Check | Result |
@@ -30405,3 +30413,108 @@ session_close:
 ```
 
 *End of ABHINANDAN-POST-REGEN-DATA-AUDIT-2026-06-28 entry — 2026-06-28.*
+
+---
+
+## BA-P1-SYNC-FREEZE-2026-07-03 — Beyond-Acharya Phase P-1 Sync Freeze (2026-07-03, CLOSED)
+
+```yaml
+session_open:
+  session_id: BA-P1-SYNC-FREEZE-2026-07-03
+  opened_on: 2026-07-03
+  environment: Claude Code (Antigravity, /Users/Dev/Vibe-Coding/Apps/Madhav)
+  cowork_thread_name: "BA-P1-SYNC-FREEZE-2026-07-03"
+  governing_brief: "CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md (program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0 phase P-1)"
+  active_layer_campaign: Beyond-Acharya unified program (precedes P0)
+  may_touch:
+    - ".git (branch/stash/worktree ops)"
+    - "00_ARCHITECTURE/**"
+    - "root brief files"
+    - "package-lock.json"
+    - ".claude/worktrees/**"
+    - ".worktrees/**"
+    - "deploy.yml execution (deploy only, no edits unless deploy fails)"
+  must_not_touch:
+    - "platform/migrations/** content"
+    - "platform/supabase/migrations/** content"
+    - "any writer/engine source (hygiene-only — NO functional changes)"
+    - "prod database (no DDL/DML)"
+    - "secrets"
+  predecessor_session: MCP-AUDIT-FIX-W3R-F021R-2026-07-02
+  current_state_version_at_open: 6.13
+```
+
+**Session type:** Repository sync freeze / hygiene (BA-P-1)
+**Governing brief:** `CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md` (COMPLETE)
+
+### What was done
+
+Executed all 6 steps of the BA-P-1 sync freeze brief to bring the repository to a clean single-branch state before the Beyond-Acharya unified program begins.
+
+**Step 0 — Inventory:** Full read-only audit. State at open: on `fix/sidecar-startup-probe-flags` (ec2dedc7), 5 local branches, 2 stashes, 4 worktrees, 15 untracked files, ~18 stale remote branches.
+
+**Step 1 — Untracked file disposition:** Committed 9 `00_ARCHITECTURE/` strategy+audit docs (Beyond-Acharya plan, retrieval coverage/tool/synthesis audits, MCP E2E report, tool naming standard, ratification guidance). Moved 3 completed `CLAUDECODE_BRIEF_*` files from root → `00_ARCHITECTURE/briefs/`. Committed `accuracy/7d1c2135.json` and `CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md` (active brief). Added `/package-lock.json` to `.gitignore` (orphaned; no root `package.json`).
+
+**Step 2 — Stash triage:**
+- stash@{0} (WIP on `chore/mcp-elevation-run-report`): deletes 2 root brief files. **Dropped** — superseded by commit `1484c2e3` which already `git mv`'d those files to `00_ARCHITECTURE/briefs/`.
+- stash@{1} (WIP on main at `8e8b1666`): cockpit route simplification (304 ins / 1108 del) across `clear/execute`, `clear`, `runs/[id]/assets`, `runs`, `watchdog` routes + `MCP_CHANNEL_AUDIT_D0_v1_0.md`. **Dropped** — 5-way merge conflict on all cockpit routes vs current main; routes have been independently refactored in main since stash was created (superseded by concurrent evolution).
+
+**Step 3 — Branch dispositions:**
+- **Content-merged + deleted (local + remote):** `fix/e2e-audit-remediation` (cherry `-`, in main via PR #389), `fix/sidecar-ephemeris-thresholds` (cherry `-`, in main via PR #391), `fix/sidecar-startup-probe-flags` (cherry `-`, in main via PR #392).
+- **Stale remote branches deleted (10):** `feature/mcp-m0-entitlement-gate`, `feature/mcp-m0.5-infra-unblock`, `feature/mcp-m2-chart-selection`, `feature/mcp-m3m4-session`, `feature/mcp-m5-oauth`, `feature/mcp-m6m7-profile-richness`, `feature/mcp-m8-harden-prove`, `fix/registry-bridge-mcp-token`, `fix/robustness-audit-all-43`, `fix/smoke-sidecar-health-path` — all verified 0 unique commits ahead of main.
+- **Docs-only → squash-merged to main:**
+  - `chore/mcp-elevation-run-report` (5 commits, 2697 insertions): MCP elevation autonomous run report, W2.5 governance, 13 `CLAUDECODE_BRIEF_MCP_*` → `00_ARCHITECTURE/briefs/`, `BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN` §2.1 three binding commitments added. ROOT violation `MCP_AUDIT_FIX_W1_W4_RUN_REPORT_v1_0.md` moved to `00_ARCHITECTURE/`. CURRENT_STATE + MCP_SYSTEM_AUDIT_FINDINGS kept at main's version (more current).
+  - `docs/cowork-session-artifacts` (4 commits, 3791 insertions): BA strategic session artifacts (gap analysis, master plans v1+v2, ranking/salience constants, W1 judgment seed, MARSYS handoff, MCP audit plans, Mimamsa v2 design), 6 accuracy probes. 4 ROOT violations moved to `00_ARCHITECTURE/` or `00_ARCHITECTURE/briefs/`.
+- **CODE branch → PR open:** `worktree-fix+mcp-latency` (MCP latency cache fix, 229 ins, 5 files): rebased on current main, pushed to remote. PR #390 already existed; updated with rebase. Awaits CI green + native review + merge.
+
+**Step 4 — Worktrees + cruft:** Removed 4 worktrees: `.claude/worktrees/agent-af29e70c0c5104e87` (planning doc), `.claude/worktrees/fix+mcp-latency` (mcp-latency branch), `.claude/worktrees/wf_22783440-9ed-4` (PR #371 merge), `.worktrees/fix/e2e-audit-remediation` (content-merged branch). Orphaned `.worktrees/feature/` and `.worktrees/fix/` dirs removed. `git worktree prune` run.
+
+**Step 5 — Push + CI + prod:** PR #393 (docs-only, 3 squash commits, 49 files) → 9/9 CI green (`TypeScript src`, `TypeScript platform-mcp`, `Unit Tests`, `Planner Regression Gate`, `ICR PR Gate`, `Secret Scan`, `Coverage Gate`, `Naming Governance Gate`, `Governance Gates`) → auto-merged → origin/main = `8566be39`. No service redeploy (docs-only; code unchanged from `40a7f0d1`). Prod smoke: `/api/health → {"status":"ok"}`, MCP service responding (401 auth gate). Revisions: `amjis-web-00807-qvz`, `amjis-sidecar-00786-6gr`, `amjis-mcp-00389-6wr`.
+
+**Step 6 — Final sync:** Local main reset to `origin/main` (`8566be39`). Merged PR branch deleted. One new untracked file found: `CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md` (appeared during session — Cowork next brief; committed in close batch).
+
+**Program start SHA:** `8566be39` — this is the clean slate from which the Beyond-Acharya unified program runs.
+
+### Acceptance criteria verification
+
+| Criterion | Result |
+|---|---|
+| Exactly ONE local branch (main) == origin/main | ✅ main = 8566be39 |
+| Zero untracked/dirty | ✅ (CLAUDECODE_BRIEF_BA_PG bundled in close commit) |
+| Zero stashes | ✅ |
+| Zero worktrees | ✅ one: main only |
+| Stale remote branches pruned | ✅ 10 feature/mcp-m* + 3 fix/* deleted |
+| CURRENT_STATE updated | ✅ v6.14 |
+| SESSION_LOG entry | ✅ this entry |
+| Brief status → COMPLETE | ✅ |
+
+**Open after this session:** PR #390 `worktree-fix+mcp-latency` (MCP latency cache fix) — needs CI green + native review + merge.
+
+### Next session objective
+
+Execute CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md (grounding proof, gates P0+). Before starting: review PR #390 (MCP latency cache fix) — merge if CI green. Program start SHA on record: 8566be39.
+
+```yaml
+session_close:
+  session_id: BA-P1-SYNC-FREEZE-2026-07-03
+  closed_on: 2026-07-03
+  outcome: >
+    COMPLETE — BA-P-1 sync freeze executed end-to-end. Repository at clean single-branch state.
+    Program start SHA: 8566be39 (origin/main after PR #393 docs merge).
+    All untracked/stale branches/stashes/worktrees resolved. Prod healthy.
+    One code PR open: #390 (MCP latency fix, awaits CI + review).
+    Next brief at root: CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (P0 gates on PG grounding proof)
+  current_state_updated: true
+  current_state_version: 6.14
+  session_log_appended: true
+  red_team_pass: "n/a — hygiene/sync session (not a macro-phase close)"
+  next_session_objective: >
+    Execute CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md (grounding proof, gates P0+).
+    Before starting: review PR #390 (MCP latency cache fix) — merge if CI green.
+    Program start SHA on record: 8566be39.
+```
+
+*End of BA-P1-SYNC-FREEZE-2026-07-03 entry — 2026-07-03.*

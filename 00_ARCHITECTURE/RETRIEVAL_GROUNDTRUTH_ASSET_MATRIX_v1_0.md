@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_GROUNDTRUTH_ASSET_MATRIX
 canonical_id: RETRIEVAL_GROUNDTRUTH_ASSET_MATRIX
 version: 1.0
 status: DRAFT

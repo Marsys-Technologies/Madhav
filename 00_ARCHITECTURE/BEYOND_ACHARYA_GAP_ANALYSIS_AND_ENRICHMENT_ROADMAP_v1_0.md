@@ -1,4 +1,5 @@
 ---
+artifact: BEYOND_ACHARYA_GAP_ANALYSIS
 canonical_id: BEYOND_ACHARYA_GAP_ANALYSIS
 version: 1.3
 status: DRAFT-FOR-NATIVE-REVIEW

@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_ENGINE_SEAL_RECORD
 canonical_id: RETRIEVAL_ENGINE_SEAL_RECORD
 version: 1.0
 status: CURRENT — close record for the R-1→R6 retrieval-engine elevation build

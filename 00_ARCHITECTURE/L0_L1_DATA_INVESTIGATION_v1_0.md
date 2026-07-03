@@ -1,4 +1,5 @@
 ---
+artifact: L0_L1_DATA_INVESTIGATION
 canonical_id: L0_L1_DATA_INVESTIGATION
 version: 1.0
 status: CURRENT

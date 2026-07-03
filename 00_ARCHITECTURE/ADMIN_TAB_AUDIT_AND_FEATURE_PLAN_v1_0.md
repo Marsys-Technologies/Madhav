@@ -1,4 +1,5 @@
 ---
+artifact: ADMIN_TAB_AUDIT_AND_FEATURE_PLAN
 canonical_id: ADMIN_TAB_AUDIT_AND_FEATURE_PLAN
 version: 1.0
 status: DRAFT

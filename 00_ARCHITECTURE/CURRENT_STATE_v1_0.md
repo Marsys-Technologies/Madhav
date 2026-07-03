@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.13
+version: 6.15
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,69 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.15 (2026-07-03, BA-PG-GROUNDING-PROOF-2026-07-03):
+    **BA-PG complete — grounding proof executed; BA_GROUNDING_REPORT_v1_0.md produced. 10 PLAN-DELTA corrections.**
+    Executed CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md end-to-end (G-1 through G-9 + report).
+    Key GROUNDED-TRUE: W3R fixes deployed; all migrations applied (max=384, next-free=385); charts.chart_type
+      absent; governing trio at 8566be39; kala/bodha tables populated (kala_activation=64,765;
+      contradictions=5,170; CGM nodes=140); current dasha MD=Mercury/AD=Saturn/PD=Moon/SD=Mars (Vimshottari
+      Lahiri 2026-07-03); bodha_chart_gestalt/vw_chart_digest populated (5 rows each); G-7 DAG fold
+      INSERT/ROLLBACK verified clean; cockpit plan/registry/status API endpoints registry-driven.
+    Key PLAN-DELTA corrections (10 total — see BA_GROUNDING_REPORT_v1_0.md §3):
+      PD-1: mimamsa_insight_units EXISTS (migration 353, 14 rows) — U5 wrong; no prereq migration needed.
+      PD-2: W1 seed package COMMITTED (2bb71852) — U2 wrong; P2 can start immediately.
+      PD-3: Tool census = 53 (not 46 per U3) — W2/W3R re-added L0+D8 tools.
+      PD-4: DEFECT-001 RESOLVED (0% orphan in 2,000-signal sample) — removing from open findings.
+      PD-5: ASSET_NAMES.ts + ASSET_MAP hardcoded — new assets must update both files (P1/P3 scope addition).
+      PD-6: mi_vistara scope='global' but table has chart_id — document or fix.
+      PD-10: life_events DB table ≠ LEL (0 rows, no chart_id) — P6 sources LEL from markdown file.
+    BLOCKED items: G-1/G-3 live probes (MCP auth key not recoverable); G-8d portal chat (auth required).
+    MCP tool census: 53 tools registered; 7 Group-1 handlers exist but NOT MCP-exposed; ga_transit_anchors
+      has NO handler (must create in P1); ga_yoga_firings partially covered by D8 yoga_activation_by_dasha.
+    G-7 dry-run: PASS — transaction INSERT confirmed; planner + cockpit API registry-driven; ROLLBACK clean.
+    findings_open: F-007 F-009 F-010 F-020 F-022 F-024 F-025 (Wave5 — DEFECT-001 REMOVED per PD-4).
+    Report: 00_ARCHITECTURE/BA_GROUNDING_REPORT_v1_0.md (status COMPLETE, zero UNKNOWN verdicts).
+    last_session_id: BA-PG-GROUNDING-PROOF-2026-07-03.
+    predecessor_session: BA-P1-SYNC-FREEZE-2026-07-03.
+    next_session_objective: >
+      "BA-PG complete. Beyond-Acharya program cleared for P0. P0 immediate actions:
+      (a) establish fresh p50/p95 latency baseline (5 tools x 10 calls, live MCP access required);
+      (b) implement assess_* size cap (G-1b confirmed uncapped in register_d8_assess_domain.ts);
+      (c) verify portal chat round-trip + cache-hit confirmation; (d) document mi_vistara scope mismatch.
+      Then P1: wire Group-1 (7 L1 tools: strength/aspects/argala/sade_sati/dispositors/tajik/tara_chandra)
+      + create ga_transit_anchors handler from scratch + Group-3; MUST update ASSET_NAMES.ts + ASSET_MAP
+      per PD-5 with each new tool. Open PR #390 (MCP latency cache fix) still awaits review."
+    file_updated_at: 2026-07-03. file_updated_by_session: BA-PG-GROUNDING-PROOF-2026-07-03.
+  - v6.14 (2026-07-03, BA-P1-SYNC-FREEZE):
+    **BA-P-1 SYNC FREEZE complete. Repo brought to clean single-branch state; program start SHA recorded.**
+    Executed CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md end-to-end (Steps 0–6 + close):
+    Steps 0–1: Full inventory; committed 3-commit docs batch (49 files, 8370 insertions): 9 BA strategy +
+      audit docs, W1–W2.5 governance artifacts, cowork session artifacts, accuracy probes, brief archival.
+      .gitignore: added /package-lock.json (orphaned at root). ROOT_FILE_POLICY enforced on all batches.
+    Step 2: Stashes triaged. stash@{0} (chore branch cleanup, 2 brief deletes) dropped — superseded by
+      chore commit 1484c2e3 which already git-mv'd those files. stash@{1} (cockpit route simplification,
+      304 ins / 1108 del across clear/execute/runs/[id]/assets/watchdog routes + MCP_CHANNEL_AUDIT_D0)
+      dropped — 5-way conflict on all cockpit routes vs current main, superseded by subsequent main evolution.
+    Step 3: Content-merged local+remote branches deleted: fix/e2e-audit-remediation, fix/sidecar-ephemeris-
+      thresholds, fix/sidecar-startup-probe-flags. 10 stale remote feature/mcp-m* branches deleted (all
+      verified 0 unique commits ahead of main). Docs-only branches squash-merged to main:
+      chore/mcp-elevation-run-report (MCP elevation governance), docs/cowork-session-artifacts (BA strategy).
+      CODE branch worktree-fix+mcp-latency: rebased on main, PR #390 open (cache fix, awaiting CI+review).
+    Step 4: 4 worktrees pruned (.claude/worktrees x3 + .worktrees/fix/e2e-audit-remediation). Orphaned
+      .worktrees/feature + .worktrees/fix dirs removed.
+    Step 5: PR #393 (docs-only) → CI 9/9 green → auto-merged → origin/main = 8566be39.
+      No service redeploy needed (docs-only; code unchanged from 40a7f0d1). Prod smoke: /api/health → ok;
+      MCP service responding (auth gate active). Revisions: web-00807-qvz, sidecar-00786-6gr, mcp-00389-6wr.
+    PROGRAM START SHA: 8566be39 (origin/main after sync-freeze — this is the start of the BA unified run).
+    Next brief at root: CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md (grounding proof; gates P0+).
+    last_session_id: BA-P1-SYNC-FREEZE-2026-07-03
+    predecessor_session: MCP-AUDIT-FIX-W3R-F021R-2026-07-02.
+    next_session_objective: >
+      "BA-P-1 SYNC FREEZE complete. Program start SHA: 8566be39. One open PR: #390 (MCP latency cache fix,
+      awaits CI green + native review + merge). Next session: execute CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md
+      — grounding proof brief that gates P0+ of the Beyond-Acharya unified program. Read brief at root before
+      starting; it is the active dispatcher for the next session."
+    file_updated_at: 2026-07-03. file_updated_by_session: BA-P1-SYNC-FREEZE-2026-07-03.
   - v6.13 (2026-07-02, MCP-AUDIT-FIX-W3R-F021R):
     **MCP Audit Fix Wave 3 Revision (W3R) — F-021R + F-032 fully closed. All-16 prod probe PASS.**
     Root cause: three-level nesting bug in registry_bridge.ts get_domain_reading bounding:
@@ -5380,7 +5443,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: BUILD-PATH-REMEDIATION-2026-06-28  # 2026-06-28: JIS build-path correctness+enhancement remediation — 9-agent wave, 10 blockers fixed, 7 enhancements, migrations 358+361 applied to prod. Predecessor ABHINANDAN-REBUILD-L1L5-2026-06-27. (prev: GIT-BRANCH-AUDIT-2026-06-27 2026-06-27)
+  last_session_id: BA-P1-SYNC-FREEZE-2026-07-03  # 2026-07-03: BA-P-1 sync freeze — clean single-branch state before Beyond-Acharya unified program. Program start SHA: 8566be39. Predecessor BUILD-PATH-REMEDIATION-2026-06-28.
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
