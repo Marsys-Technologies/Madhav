@@ -17,9 +17,6 @@ PER-CHART scope.
 FROZEN orchestrator contract: @register, plan_substeps + run_substep.
 NEVER commits or closes ctx.db_conn.
 """
-# BA-P6: real implementations — sentinels explicitly False (W4 governance gate)
-_IS_STUB_FALSIFIER = False
-_IS_STUB_MANIFESTATION = False
 from __future__ import annotations
 
 import json
@@ -34,6 +31,10 @@ import psycopg.rows
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 
 logger = logging.getLogger(__name__)
+
+# BA-P6: real implementations — sentinels explicitly False (W4 governance gate)
+_IS_STUB_FALSIFIER = False
+_IS_STUB_MANIFESTATION = False
 
 SCORING_FORMULA_VERSION = "mi_pramana_v2.0"
 CALIBRATION_FORMULA_VER = "mi_pramana_v2.0"
