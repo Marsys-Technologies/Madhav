@@ -14,6 +14,7 @@ __all__ = [
     'MuhurtaContext',
     'MuhurtaRecord',
     'compute_composite_quality',
+    'compute_tarabala_score',
     'classify_verdict',
     'ACTION_GRAHA_MAP',
 ]
@@ -43,13 +44,47 @@ _GENUINE_THRESHOLD = 0.55
 _STRONG_THRESHOLD  = 0.75
 
 
+# BA-P5B: Classical tarabala count from natal Moon nakshatra ordinal [0..26].
+# Tarabala cycle: every 9 nakshatras from natal Moon, cycle repeats.
+# Tara 1 (Janma)=mixed, 2 (Sampat)=good, 3 (Vipat)=bad, 4 (Kshema)=good,
+# 5 (Pratyari)=bad, 6 (Sadhaka)=good, 7 (Vadha)=bad, 8 (Mitra)=good, 9 (Ati-mitra)=good.
+_TARABALA_WEIGHTS = [0.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0]  # indices 0–8
+
+
+def compute_tarabala_score(
+    natal_moon_nakshatra_idx: int,
+    transit_moon_nakshatra_idx: int,
+) -> float:
+    """Structural tarabala score [0..1] from natal × transit nakshatra indices.
+
+    Both indices are 0-based ordinals into the 27-nakshatra sequence.
+    At build time: transit_moon_nakshatra_idx = natal (self-tarabala score = 0.5).
+    At serve time: pass actual transit Moon nakshatra.
+    """
+    offset = (transit_moon_nakshatra_idx - natal_moon_nakshatra_idx) % 27
+    tara_idx = offset % 9
+    return _TARABALA_WEIGHTS[tara_idx]
+
+
 def compute_composite_quality(
     panchanga_score: float,
     chart_personalization_score: float,
     personal_adversity_penalty: float,
+    tarabala_score: float = 0.5,
+    chandrabala_score: float = 0.5,
 ) -> float:
-    """composite = panchanga × personalization × (1 − penalty); clamped [0,1]."""
-    raw = float(panchanga_score) * float(chart_personalization_score) * (1.0 - float(personal_adversity_penalty))
+    """composite = panchanga × personalization × tara_candra_factor × (1 − penalty); clamped [0,1].
+
+    BA-P5B EXT: tara_candra_factor = (tarabala × chandrabala)^0.5 — geometric mean
+    of the two classical Moon-strength factors. At build time both default to 0.5.
+    """
+    tara_candra = (float(tarabala_score) * float(chandrabala_score)) ** 0.5
+    raw = (
+        float(panchanga_score) *
+        float(chart_personalization_score) *
+        tara_candra *
+        (1.0 - float(personal_adversity_penalty))
+    )
     return round(max(0.0, min(1.0, raw)), 4)
 
 
@@ -88,6 +123,13 @@ class MuhurtaContext:
     # M3
     linked_anchor_id:            Optional[str] = None
     linked_anchor_domain:        Optional[str] = None
+    # BA-P5B EXT: activity ontology enrichment
+    tarabala_score:              float      = 0.5  # Moon tara strength vs natal; 0.5 at build time
+    chandrabala_score:           float      = 0.5  # Moon rasi strength; 0.5 at build time
+    natal_moon_nakshatra_idx:    int        = 0    # from chart_facts (0-based ordinal)
+    activity_significators:      dict       = field(default_factory=dict)  # from brahma_activity_ontology
+    fructification_rules:        dict       = field(default_factory=dict)  # timing_anchor + panchanga_rules
+    fructification_anchor:       Optional[str] = None  # plain-text anchor for this activity class
 
 
 @dataclass
@@ -109,6 +151,11 @@ class MuhurtaRecord:
     classical_citation:             Optional[str] = None
     derivation_ledger_jsonb:        dict = field(default_factory=dict)
     source_citation:                str = ''
+    # BA-P5B EXT: activity ontology enrichment
+    tarabala_chandrabala_jsonb:     Optional[dict] = None  # scores + natal Moon nakshatra
+    significators_met_jsonb:        Optional[dict] = None  # which conditions satisfied
+    fructification_anchor:          Optional[str] = None
+    follow_up_hook_jsonb:           Optional[dict] = None  # for P7B scheduler
 
 
 def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
@@ -120,20 +167,52 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
     # M2: penalty from overlapping obstruction
     penalty = ctx.obstruction_penalty if ctx.overlapping_obstruction_id else 0.0
 
-    composite = compute_composite_quality(ctx.panchanga_score, personalization, penalty)
+    # BA-P5B EXT: incorporate tarabala/chandrabala into composite
+    composite = compute_composite_quality(
+        ctx.panchanga_score, personalization, penalty,
+        tarabala_score=ctx.tarabala_score,
+        chandrabala_score=ctx.chandrabala_score,
+    )
     verdict, reason = classify_verdict(composite)
 
+    # Significators: check which are noted (structural; full check needs live ephemeris)
+    strengthen_grahas = ctx.activity_significators.get('strengthen_grahas', [])
+    significators_met = {
+        'strengthen_grahas': strengthen_grahas,
+        'personalization_graha_match': graha in strengthen_grahas,
+        'note': 'structural_check_only; serve-time enrichment adds live ephemeris check',
+    }
+
+    tarabala_chandrabala = {
+        'tarabala_score': ctx.tarabala_score,
+        'chandrabala_score': ctx.chandrabala_score,
+        'natal_moon_nakshatra_idx': ctx.natal_moon_nakshatra_idx,
+        'note': 'build-time structural scores (0.5 default); serve-time computes from transit Moon',
+    }
+
+    follow_up_hook = {
+        'action': 'enrich_tarabala_chandrabala',
+        'requires': 'transit_moon_nakshatra_at_window_start',
+        'natal_moon_nakshatra_idx': ctx.natal_moon_nakshatra_idx,
+        'action_class': ctx.action_class,
+        'fructification_anchor': ctx.fructification_anchor,
+        'consumed_by': 'P7B_prashna_followup_scheduler',
+    }
+
     derivation = {
-        'action_class':             ctx.action_class,
-        'panchanga_score':          ctx.panchanga_score,
-        'chart_personalization':    personalization,
-        'personalization_graha':    graha,
-        'condition_score':          ctx.condition_score,
-        'transit_score':            ctx.transit_score,
-        'adversity_penalty':        penalty,
-        'obstruction_id':           ctx.overlapping_obstruction_id,
-        'linked_anchor_id':         ctx.linked_anchor_id,
-        'composite_formula':        'panchanga × personalization × (1−penalty)',
+        'action_class':              ctx.action_class,
+        'panchanga_score':           ctx.panchanga_score,
+        'chart_personalization':     personalization,
+        'personalization_graha':     graha,
+        'condition_score':           ctx.condition_score,
+        'transit_score':             ctx.transit_score,
+        'tarabala_score':            ctx.tarabala_score,
+        'chandrabala_score':         ctx.chandrabala_score,
+        'adversity_penalty':         penalty,
+        'obstruction_id':            ctx.overlapping_obstruction_id,
+        'linked_anchor_id':          ctx.linked_anchor_id,
+        'composite_formula':         'panchanga × personalization × tara_candra^0.5 × (1−penalty)',
+        'fructification_rules':      ctx.fructification_rules,
     }
 
     start_str = ctx.window_start.isoformat() if ctx.window_start else ''
@@ -157,4 +236,8 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         classical_citation=ctx.classical_citation,
         derivation_ledger_jsonb=derivation,
         source_citation=src,
+        tarabala_chandrabala_jsonb=tarabala_chandrabala,
+        significators_met_jsonb=significators_met,
+        fructification_anchor=ctx.fructification_anchor,
+        follow_up_hook_jsonb=follow_up_hook,
     )

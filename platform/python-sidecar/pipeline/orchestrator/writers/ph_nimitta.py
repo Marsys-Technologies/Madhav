@@ -20,10 +20,10 @@ import psycopg
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_nimitta.engine import (
     NimittaContext,
+    AnchorRecord,
     derive_anchor_from_convergence,
     derive_anchor_from_bhavishya,
     derive_anchor_from_discovery,
-    AnchorRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -118,6 +118,7 @@ class PhNimittaWriter(WriterBase):
                         window_start, peak_date, window_end,
                         magnitude, magnitude_basis,
                         confidence_low, confidence_high, confidence_basis,
+                        posterior, lift_vector_jsonb, structured_falsifier_jsonb,
                         karmic_frame, karmic_note,
                         malleability, counterfactual_jsonb,
                         contradiction_jsonb, causal_chain_jsonb,
@@ -131,6 +132,7 @@ class PhNimittaWriter(WriterBase):
                         %s, %s, %s,
                         %s, %s,
                         %s, %s, %s,
+                        %s, %s::jsonb, %s::jsonb,
                         %s, %s,
                         %s, %s::jsonb,
                         %s::jsonb, %s::jsonb,
@@ -147,6 +149,7 @@ class PhNimittaWriter(WriterBase):
                         a.window_start, a.peak_date, a.window_end,
                         a.magnitude, a.magnitude_basis,
                         a.confidence_low, a.confidence_high, a.confidence_basis,
+                        a.posterior, json.dumps(a.lift_vector or {}), json.dumps(a.structured_falsifier or {}),
                         a.karmic_frame, a.karmic_note,
                         a.malleability, json.dumps(a.counterfactual_jsonb or {}),
                         json.dumps(a.contradiction_jsonb or {}), json.dumps(a.causal_chain_jsonb or {}),
@@ -497,6 +500,15 @@ class PhNimittaWriter(WriterBase):
             dasha_consensus_count=0,   # U1: pre-fetched per window in production; 0 for now
             school_consensus_jsonb=None,  # U4: fetched via separate service at serve-time
             ayanamsha_robustness=3,       # default; real value comes from kala_convergence row
+            # BA-P5B: posterior model inputs — writer supplies defaults; cascade build populates
+            # from bodha_pratijna + ka_yojaka + AV-transit data per chart.
+            # JL-009: base_rate=0.10 is PLACEHOLDER until native review and freeze.
+            event_class_id=None,
+            pratijna_grade=5.0,
+            pratijna_status='conditional',
+            multi_system_confirmation_count=0,
+            av_transit_potency=0.0,
+            base_rate=0.10,
         )
 
     def _spine_gate(self, anchors: list[AnchorRecord]) -> None:
@@ -507,8 +519,8 @@ class PhNimittaWriter(WriterBase):
         for a in anchors:
             if (
                 a.magnitude and
-                a.confidence_low is not None and
-                a.confidence_high is not None and
+                a.posterior is not None and
+                a.lift_vector is not None and
                 a.malleability and
                 a.falsifier and
                 a.derivation_ledger_jsonb

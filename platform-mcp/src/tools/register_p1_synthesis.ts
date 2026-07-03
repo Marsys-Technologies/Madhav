@@ -342,4 +342,97 @@ export function registerP1SynthesisTools(server: McpServer): void {
       }
     }
   )
+
+  // ── prashna_undertaking_get ───────────────────────────────────────────────
+  // BA-P5B Step 3: Q4 undertaking recipe = prashna verdict × election scoring × fructification.
+  // Reads ga_prashna_judgment (prashna chart), phala_muhurta (election windows for domain),
+  // phala_anchors (fructification timing anchor), brahma_activity_ontology (rules).
+  server.tool(
+    'prashna_undertaking_get',
+    'Q4 undertaking recipe: prashna (horary) verdict × muhurta election scoring × fructification timing. ' +
+    'Provide the prashna chart_id (cast at question moment) and domain. ' +
+    'Returns: horary verdict, best election windows, fructification anchor, composite undertaking score.',
+    {
+      chart_id:       z.string().uuid().describe('Prashna chart UUID (cast at question moment, not natal chart).'),
+      domain:         z.string().describe('Undertaking domain (career | financial | relationship | health | spiritual | transition).'),
+      top_windows:    z.number().int().min(1).max(10).default(3).describe('Number of top election windows to return.'),
+    },
+    async ({ chart_id, domain, top_windows }) => {
+      try {
+        // 1. Prashna judgment (from ga_prashna_judgment)
+        const prashnaResult = await platformQuery(`
+          SELECT gj.question_class, gj.verdict, gj.verdict_strength, gj.ayanamsha_id,
+                 gj.significator_positions, gj.timing_indication, gj.classical_citations
+          FROM ga_prashna_judgment gj
+          WHERE gj.chart_id = $1
+          ORDER BY gj.ayanamsha_id
+          LIMIT 5
+        `, [chart_id])
+
+        // 2. Election windows (phala_muhurta for domain → action class mapping)
+        const muhurtaResult = await platformQuery(`
+          SELECT pm.action_class, pm.window_start, pm.window_end,
+                 pm.composite_quality, pm.window_quality_verdict,
+                 pm.fructification_anchor, pm.tarabala_chandrabala_jsonb,
+                 pm.significators_met_jsonb, pm.follow_up_hook_jsonb
+          FROM phala_muhurta pm
+          WHERE pm.chart_id = $1
+            AND pm.composite_quality IS NOT NULL
+          ORDER BY pm.composite_quality DESC NULLS LAST
+          LIMIT $2
+        `, [chart_id, top_windows])
+
+        // 3. Fructification timing from phala_anchors (domain-filtered)
+        const anchorResult = await platformQuery(`
+          SELECT pa.anchor_id, pa.domain, pa.event_type, pa.posterior,
+                 pa.magnitude, pa.window_start, pa.window_end,
+                 pa.structured_falsifier_jsonb, pa.lift_vector_jsonb
+          FROM phala_anchors pa
+          WHERE pa.chart_id = $1
+            AND pa.domain = $2
+            AND pa.posterior IS NOT NULL
+          ORDER BY pa.posterior DESC NULLS LAST
+          LIMIT 3
+        `, [chart_id, domain])
+
+        // 4. Activity ontology fructification rules for inferred action class
+        const _DOMAIN_TO_ACTION: Record<string, string> = {
+          career: 'business_start', financial: 'contract_signing',
+          health: 'medical_procedure', relationship: 'marriage',
+          spiritual: 'sadhana', transition: 'travel_journey',
+        }
+        const actionClass = _DOMAIN_TO_ACTION[domain] ?? 'business_start'
+        const ontologyResult = await platformQuery(`
+          SELECT activity_class_id, name_en, significators, fructification_rules, citations
+          FROM brahma_activity_ontology
+          WHERE activity_class_id = $1
+        `, [actionClass])
+
+        // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior)
+        const verdictStrength = prashnaResult.rows[0]?.['verdict_strength'] as number | null ?? 0.5
+        const bestElection = (muhurtaResult.rows[0]?.['composite_quality'] as number | null) ?? 0.5
+        const bestPosterior = (anchorResult.rows[0]?.['posterior'] as number | null) ?? 0.1
+        const compositeScore = Math.round(((verdictStrength + bestElection + bestPosterior) / 3) * 1000) / 1000
+
+        const recipe = {
+          chart_id,
+          domain,
+          action_class: actionClass,
+          formula_version: 'prashna_undertaking_v1.0_ba_p5b',
+          composite_undertaking_score: compositeScore,
+          prashna_verdict: prashnaResult.rows,
+          election_windows: muhurtaResult.rows,
+          fructification_anchors: anchorResult.rows,
+          fructification_rules: ontologyResult.rows[0]?.['fructification_rules'] ?? null,
+          classical_citations: ontologyResult.rows[0]?.['citations'] ?? [],
+          note: 'Q4 undertaking recipe: horary verdict × election scoring × fructification. ' +
+                'JL-009: posterior values use placeholder base rates until native review.',
+        }
+
+        return dualOutput(envelope(recipe, 'prashna_undertaking_get', 'q4_undertaking'))
+      } catch (err) {
+        return errorOutput('prashna_undertaking_get', String(err), { chart_id, domain })
+      }
+    }
+  )
 }
