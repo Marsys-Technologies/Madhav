@@ -56,6 +56,7 @@ INSERT INTO bodha_cgm_edges (
   present_in_traditions_array, edge_betweenness, in_shortest_path_count,
   graph_compute_library, graph_compute_library_version,
   is_cross_subsystem, subsystem_from, subsystem_to,
+  valence, relationship_basis, affected_domains,
   verification_pass_status, citation_ref, citation_human, computed_at, engine_version
 ) VALUES (
   %(edge_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
@@ -68,6 +69,7 @@ INSERT INTO bodha_cgm_edges (
   %(present_in_traditions_array)s, NULL, NULL,
   %(graph_compute_library)s, %(graph_compute_library_version)s,
   %(is_cross_subsystem)s, %(subsystem_from)s, %(subsystem_to)s,
+  %(valence)s, %(relationship_basis)s, %(affected_domains)s,
   %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s,
   %(computed_at)s, %(engine_version)s
 )
@@ -91,6 +93,46 @@ ON CONFLICT (chart_id, ayanamsha_id, build_id, signal_a_id, signal_b_id) DO NOTH
 """
 
 _BATCH_SIZE = 50
+
+# ── Typed edge helpers (BA-P3B migration 394) ────────────────────────────────
+
+_EDGE_TYPE_VALENCE: dict[str, str] = {
+    "yoga_domain":  "harmonious",
+    "dosha_domain": "antagonistic",
+    "aspect":       "harmonious",
+    "conjunction":  "harmonious",
+    "dispositor":   "harmonious",
+    "argala":       "harmonious",   # virodha-argala edges override below
+    "sade_sati":    "antagonistic",
+}
+
+_EDGE_TYPE_BASIS: dict[str, str] = {
+    "yoga_domain":  "yoga_activation",
+    "dosha_domain": "dosha_impairment",
+    "aspect":       "parashari_aspect",
+    "conjunction":  "planetary_conjunction",
+    "dispositor":   "sign_lordship",
+    "argala":       "argala_intervention",
+    "sade_sati":    "sade_sati_transit",
+}
+
+
+def _typed_edge_fields(
+    edge_type: str,
+    domains: list[str] | None = None,
+    relationship_class: str | None = None,
+) -> dict:
+    """Return valence, relationship_basis, affected_domains for an edge type."""
+    valence = _EDGE_TYPE_VALENCE.get(edge_type, "neutral")
+    basis   = _EDGE_TYPE_BASIS.get(edge_type, relationship_class or edge_type)
+    if edge_type == "argala" and relationship_class == "argala_virodha":
+        valence = "antagonistic"
+    return {
+        "valence":            valence,
+        "relationship_basis": basis,
+        "affected_domains":   domains or [],
+    }
+
 
 KNOWN_GRAHAS = {
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
@@ -302,6 +344,7 @@ def _build_argala_edges(
                 "is_cross_subsystem": False,
                 "subsystem_from": "parashari",
                 "subsystem_to": "parashari",
+                **_typed_edge_fields("argala", relationship_class=relationship_class),
                 "verification_pass_status": "documented_approximation",
                 "citation_ref": "BPHS_Ch28/argala",
                 "citation_human": (
@@ -373,6 +416,7 @@ def _build_dispositor_edges(
             "is_cross_subsystem":              False,
             "subsystem_from":                  "parashari",
             "subsystem_to":                    "parashari",
+            **_typed_edge_fields("dispositor"),
             "verification_pass_status":        "two_pass_verified",
             "citation_ref":                    f"parashari/sign_lordship/{graha}",
             "citation_human":                  f"Dispositor: {graha} (sign {sign_num}) → lord {lord}",
@@ -477,6 +521,7 @@ def _build_edges_and_contradictions(
                         "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
                         "subsystem_from": tradition,
                         "subsystem_to": "domain",
+                        **_typed_edge_fields("yoga_domain", domains=[domain]),
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"Yoga→domain edge: {type_id}→{domain}",
@@ -519,6 +564,7 @@ def _build_edges_and_contradictions(
                         "is_cross_subsystem": True,    # graha-tradition ≠ "domain"
                         "subsystem_from": tradition,
                         "subsystem_to": "domain",
+                        **_typed_edge_fields("dosha_domain", domains=[domain]),
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"Dosha→domain edge: {type_id}→{domain}",
@@ -581,6 +627,7 @@ def _build_edges_and_contradictions(
                         "is_cross_subsystem": False,
                         "subsystem_from": tradition,
                         "subsystem_to": tradition,
+                        **_typed_edge_fields(etype, domains=list(domains)),
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"{etype}: {graha}→{aspected_graha}",
@@ -689,6 +736,42 @@ class BoKaranajalaWriter(WriterBase):
                 chart_id, aya, build_id, graha_signs, node_map, now
             )
             edges.extend(dispositor_edges)
+
+            # ── PageRank (networkx) ───────────────────────────────────────────
+            try:
+                import networkx as nx
+                G = nx.DiGraph()
+                node_ids = list(
+                    set(str(e["from_node_id"]) for e in edges)
+                    | set(str(e["to_node_id"]) for e in edges)
+                )
+                G.add_nodes_from(node_ids)
+                for e in edges:
+                    G.add_edge(
+                        str(e["from_node_id"]),
+                        str(e["to_node_id"]),
+                        weight=abs(float(e.get("computed_strength") or 0.5)),
+                    )
+                pagerank_scores: dict[str, float] = {}
+                if G.number_of_nodes() > 0 and G.number_of_edges() > 0:
+                    pagerank_scores = nx.pagerank(G, alpha=0.85, weight="weight")
+                if pagerank_scores:
+                    with conn.cursor() as _pr_cur:
+                        for node_id, score in pagerank_scores.items():
+                            _pr_cur.execute(
+                                """UPDATE bodha_cgm_nodes
+                                   SET pagerank_score = %s
+                                   WHERE node_id = %s AND chart_id = %s AND ayanamsha_id = %s""",
+                                [round(score, 8), node_id, chart_id, aya],
+                            )
+                    logger.info(
+                        "[bo_karanajala] %s — pagerank updated for %d nodes",
+                        aya, len(pagerank_scores),
+                    )
+            except Exception as pr_exc:
+                logger.warning(
+                    "[bo_karanajala] %s — pagerank skipped: %s", aya, pr_exc
+                )
 
             replace_prior_cgm_edges(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_contradictions(conn, chart_id, aya)

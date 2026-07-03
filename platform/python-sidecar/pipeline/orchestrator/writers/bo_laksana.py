@@ -33,6 +33,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from bodha_writers.formulas import (
+    salience_formula_v2,
+    SalienceInputsV2,
+    VERIFICATION_RESCALE,
+    DIGNITY_SCORE as _FML_DIGNITY_SCORE,
+    HOUSE_WEIGHT as _FML_HOUSE_WEIGHT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -419,11 +426,13 @@ def _duration_class(fact_category: str) -> str:
 # ── Signature tier from salience ──────────────────────────────────────────────
 
 def _signature_tier(computed_salience: float) -> str:
-    if computed_salience >= 3.0:
+    # V2 thresholds — conservative placeholders recut against live v2 distribution post-rebuild.
+    # V2 values differ from V1 due to class_prior × verification_rescale scaling.
+    if computed_salience >= 2.0:
         return "chart_defining"
-    if computed_salience >= 1.5:
-        return "major"
     if computed_salience >= 0.8:
+        return "major"
+    if computed_salience >= 0.3:
         return "supporting"
     return "background"
 
@@ -743,69 +752,87 @@ def _compute_salience(
     strength_lookup: dict[str, float],
     dignity_lookup: dict[str, str],
     av_lookup: dict[int, int],
+    class_prior: float = 1.0,
+    functional_context: float = 1.0,
+    varga_id: str = "D1",
 ) -> dict:
-    """Compute salience_formula_v1 inputs deterministically from L1 data.
+    """Compute salience_formula_v2 inputs from L1 data (BA-P3B formula upgrade).
 
-    B2-fix: primary_graha resolution now also falls back to fact_subject so
-    that graha-centric facts (shadbala, dignity, etc.) correctly resolve the
-    strength and dignity lookups even when fact_value_jsonb carries no 'graha'
-    key.
+    Calls formulas.salience_formula_v2 — the ONE canonical formula site (C5 fix).
+    verification_certainty deleted; verification_rescale replaces it (no 0.778 ceiling).
+    bala_gate added for yoga-class signals. functional_context from ga_structural.
+    inputs_complete tracks whether any field fell back to a default (trap #17).
     """
     tier = str(fact_row.get("verification_pass_status") or "documented_approximation")
+    fact_cat = str(fact_row.get("fact_category") or "")
 
-    # Graha: prefer explicit tags (from jsonb), then fall back to fact_subject
+    # Graha: prefer explicit tags, then fact_subject
     primary_graha = (tags.get("graha") or tags.get("primary_graha")
                      or tags.get("lord") or tags.get("body")
                      or _graha_key_from_subject(str(fact_row.get("fact_subject") or "")))
 
-    house_num_raw = (tags.get("house") or tags.get("house_number")
-                     or tags.get("bhava"))
+    house_num_raw = (tags.get("house") or tags.get("house_number") or tags.get("bhava"))
     try:
-        house_num = int(house_num_raw) if house_num_raw is not None else 1
+        house_num = int(house_num_raw) if house_num_raw is not None else 2
     except (TypeError, ValueError):
-        house_num = 1
+        house_num = 2
 
-    shadbala_norm = strength_lookup.get(primary_graha or "", 1.0) if primary_graha else 1.0
+    shadbala_raw = strength_lookup.get(primary_graha or "", None) if primary_graha else None
+    shadbala_norm = shadbala_raw if shadbala_raw is not None else 1.0
+
     dignity_state = dignity_lookup.get(primary_graha or "", "neutral") if primary_graha else "neutral"
-    dignity_score = _DIGNITY_SCORE.get(dignity_state, 0.50)
-    bindus = av_lookup.get(house_num, 4)
+    dignity_score = _FML_DIGNITY_SCORE.get(dignity_state, 0.50)
+
+    bindus_raw = av_lookup.get(house_num, None)
+    bindus = bindus_raw if bindus_raw is not None else 4
+
+    # Track completeness — any default = incomplete (trap #17)
+    inputs_complete = (
+        primary_graha is not None
+        and house_num_raw is not None
+        and shadbala_raw is not None
+        and bindus_raw is not None
+    )
 
     orb = _safe_float(tags.get("orb_tightness"), 1.0)
     vargottama_amp = _safe_float(tags.get("vargottama_amp"), 0.0)
     neechabhanga = _safe_float(tags.get("neechabhanga"), 1.0)
     cancellation = _safe_float(tags.get("cancellation"), 1.0)
 
-    corroboration = 5 if tier == "two_pass_verified" else 2
-    verification_certainty = min(math.log(1 + corroboration) / math.log(10), 1.0)
-
-    deterministic_strength = orb * min(shadbala_norm, 2.0) * dignity_score
-    house_wt = _HOUSE_WEIGHT.get(house_num, 1.0)
-    av_multiplier = _av_mult(bindus)
-
-    computed_salience = (
-        deterministic_strength
-        * verification_certainty
-        * house_wt
-        * av_multiplier
-        * (1 + vargottama_amp)
-        * neechabhanga
-        * cancellation
+    # bala_gate: yoga-class signals only
+    is_yoga_class = fact_cat in (
+        "yoga_label", "yoga_fires", "dosha_label", "dosha_fires", "graha_yoga_karaka_flag"
     )
+    bala_gate_val: float | None = None
+    if is_yoga_class:
+        bala_gate_val = max(0.30, min(min(shadbala_norm, 2.0), 1.00))
 
-    return {
-        "orb_tightness":                   round(orb, 6),
-        "shadbala_norm":                   round(min(shadbala_norm, 2.0), 6),
-        "dignity_score":                   round(dignity_score, 6),
-        "deterministic_strength":          round(deterministic_strength, 6),
-        "verification_certainty":          round(verification_certainty, 6),
-        "house_weight_multiplier":         round(house_wt, 6),
-        "ashtakavarga_support_multiplier": round(av_multiplier, 6),
-        "vargottama_amplification":        round(vargottama_amp, 6),
-        "neechabhanga_modifier":           round(neechabhanga, 6),
-        "cancellation_modifier":           round(cancellation, 6),
-        "computed_salience":               round(computed_salience, 6),
-        "salience_formula_version":        "v1.0",
-    }
+    inp = SalienceInputsV2(
+        orb_tightness=orb,
+        shadbala_norm=min(shadbala_norm, 2.0),
+        dignity_score=dignity_score,
+        house_number=house_num,
+        ashtakavarga_bindus=bindus,
+        vargottama_amplification=vargottama_amp,
+        neechabhanga_modifier=neechabhanga,
+        cancellation_modifier=cancellation,
+        verification_pass_status=tier,
+        class_prior=class_prior,
+        varga_id=varga_id,
+        specificity=1.0,        # filled in second pass by percentile UPDATE
+        bala_gate=bala_gate_val,
+        functional_context=functional_context,
+        inputs_complete=inputs_complete,
+    )
+    result = salience_formula_v2(inp)
+    # Add legacy decomposition keys for backward compat with downstream readers
+    result["orb_tightness"] = round(orb, 6)
+    result["shadbala_norm"] = round(min(shadbala_norm, 2.0), 6)
+    result["dignity_score"] = round(dignity_score, 6)
+    result["vargottama_amplification"] = round(vargottama_amp, 6)
+    result["neechabhanga_modifier"] = round(neechabhanga, 6)
+    result["cancellation_modifier"] = round(cancellation, 6)
+    return result
 
 
 # ── Row builder ───────────────────────────────────────────────────────────────
@@ -905,8 +932,14 @@ def _build_signal_row(
         classical_sources_jsonb = {"catalog_ids": [], "rule_ids": [str(citation_id)],
                                    "text_chunk_ids": [], "citations": [str(citation_id)]}
 
-    # Salience computation
-    sal = _compute_salience(fact_row, tags, strength_lookup, dignity_lookup, av_lookup)
+    # Salience computation — v2 formula (BA-P3B); class_prior defaults to 1.0 until
+    # brahma_class_priors is queried per-substep in a future optimization pass.
+    sal = _compute_salience(
+        fact_row, tags, strength_lookup, dignity_lookup, av_lookup,
+        class_prior=1.0,
+        functional_context=1.0,
+        varga_id=varga_id or "D1",
+    )
     computed_salience = sal["computed_salience"]
 
     # Text columns
@@ -978,12 +1011,12 @@ def _build_signal_row(
         "classical_sources_array":                  ([str(citation_id)] if citation_id else None),
         "source_corroboration_count_by_text":       5 if vpass == "two_pass_verified" else 2,
         "source_corroboration_count_by_verse":      None,
-        # ── Salience inputs ───────────────────────────────────────────────────
+        # ── Salience inputs (v2 — BA-P3B) ────────────────────────────────────
         "orb_tightness":                            sal["orb_tightness"],
         "shadbala_norm":                            sal["shadbala_norm"],
         "dignity_score":                            sal["dignity_score"],
-        "deterministic_strength":                   sal["deterministic_strength"],
-        "verification_certainty":                   sal["verification_certainty"],
+        "deterministic_strength":                   sal.get("condition_terms"),   # v2 name
+        "verification_certainty":                   sal.get("verification_rescale"),  # v2 replaces v1
         "divisional_corroboration_count":           None,
         "dasha_activation_proximity_score":         None,   # L3-fill hook
         "house_weight_multiplier":                  sal["house_weight_multiplier"],
@@ -996,6 +1029,15 @@ def _build_signal_row(
         "computed_salience":                        computed_salience,
         "salience_formula_version":                 sal["salience_formula_version"],
         "salience_confidence_interval_jsonb":       None,
+        # ── Salience v2 new columns (migration 393) ───────────────────────────
+        "salience_inputs_complete":                 sal.get("salience_inputs_complete", True),
+        "present_but_enfeebled":                    sal.get("present_but_enfeebled", False),
+        "class_prior":                              sal.get("class_prior", 1.0),
+        "verification_rescale":                     sal.get("verification_rescale"),
+        "bala_gate":                                sal.get("bala_gate") if sal.get("bala_gate") != 1.0 else None,
+        "functional_context_score":                 sal.get("functional_context"),
+        # salience_pctl_in_class, salience_robustness, aggregation_member filled by
+        # second-pass UPDATE after all signals for this (chart × ayanamsha) are inserted
         # ── Domain ────────────────────────────────────────────────────────────
         "domains_affected_array":                   domains,
         "domain_salience_jsonb":                    json.dumps(domain_salience),
@@ -1509,6 +1551,31 @@ class BoLaksanaWriter(WriterBase):
 
         # Batch insert
         inserted = _batch_insert(conn, signal_rows)
+
+        # Second pass: compute salience_pctl_in_class within (signal_type_class × chart × ayanamsha)
+        # and salience_robustness (placeholder = cross-ayanamsha consistency; filled here as NULL
+        # since only this ayanamsha is in scope — the orchestrator's multi-substep execution
+        # naturally re-runs this UPDATE for each ayanamsha, so the final pass covers all 5.
+        try:
+            conn.execute("""
+                UPDATE bodha_msr_signals s
+                SET salience_pctl_in_class = sub.pctl
+                FROM (
+                    SELECT signal_id,
+                           PERCENT_RANK() OVER (
+                               PARTITION BY chart_id, ayanamsha_id, signal_type_class
+                               ORDER BY computed_salience
+                           ) AS pctl
+                    FROM bodha_msr_signals
+                    WHERE chart_id=%s AND ayanamsha_id=%s
+                ) sub
+                WHERE s.signal_id = sub.signal_id
+                  AND s.chart_id=%s AND s.ayanamsha_id=%s
+            """, [chart_id, ayanamsha, chart_id, ayanamsha])
+        except Exception as exc:
+            logger.warning("[bo_laksana] %s — salience_pctl_in_class update skipped: %s",
+                           ayanamsha, exc)
+
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=inserted,

@@ -6,7 +6,10 @@
  */
 
 import { useState } from 'react'
-import { getAssetDisplayName, ASSET_MAP } from '@/lib/build/asset_names'
+import { ASSET_NAMES } from '@/lib/jyotish/asset_names'
+
+type AssetMeta = { english: string; sanskrit: string; subtitle: string; layer: string }
+const ASSET_LOOKUP = ASSET_NAMES as Record<string, AssetMeta | undefined>
 import { CascadePreviewModal } from './CascadePreviewModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,7 +30,7 @@ interface Props {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function layerDot(assetId: string) {
-  const layer = ASSET_MAP[assetId]?.layer
+  const layer = ASSET_LOOKUP[assetId]?.layer
   const color = layer === 'L1' ? '#d4a648' : layer === 'L25' ? '#e8c878' : '#f8e6a8'
   return (
     <span
@@ -97,7 +100,7 @@ export function AssetTable({ buildId, chartId, assets }: Props) {
               >
                 <td className="px-4 py-3">{layerDot(row.assetId)}</td>
                 <td className="px-4 py-3 text-[#c8bfb0]">
-                  {getAssetDisplayName(row.assetId)}
+                  {ASSET_LOOKUP[row.assetId]?.english ?? row.assetId}
                 </td>
                 <td className="px-4 py-3">
                   <StatusPill status={row.status} />

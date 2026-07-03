@@ -363,47 +363,46 @@ class TestW3SamvadaDeadBranchRemoved:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestW4PramanaStubsMarked:
-    """W4: _score_falsifier and _score_manifestation are visibly stubs."""
+    """W4: _score_falsifier and _score_manifestation implementation status explicitly declared.
+
+    BA-P6: both functions are real implementations. Sentinels are False (not stubs).
+    """
 
     def _load(self):
         _ensure_writers_stub()
         return _load_module("mi_pramana.py")
 
-    def test_is_stub_falsifier_sentinel_is_true(self):
-        """W4: _IS_STUB_FALSIFIER sentinel must be True."""
+    def test_is_stub_falsifier_sentinel_is_false(self):
+        """W4: _IS_STUB_FALSIFIER sentinel must exist and be False (BA-P6 real implementation)."""
         mod = self._load()
         assert hasattr(mod, "_IS_STUB_FALSIFIER"), (
             "_IS_STUB_FALSIFIER sentinel missing from mi_pramana.py"
         )
-        assert mod._IS_STUB_FALSIFIER is True, (
-            f"_IS_STUB_FALSIFIER should be True, got {mod._IS_STUB_FALSIFIER}"
+        assert mod._IS_STUB_FALSIFIER is False, (
+            f"_IS_STUB_FALSIFIER should be False (real impl), got {mod._IS_STUB_FALSIFIER}"
         )
 
-    def test_is_stub_manifestation_sentinel_is_true(self):
-        """W4: _IS_STUB_MANIFESTATION sentinel must be True."""
+    def test_is_stub_manifestation_sentinel_is_false(self):
+        """W4: _IS_STUB_MANIFESTATION sentinel must exist and be False (BA-P6 real implementation)."""
         mod = self._load()
         assert hasattr(mod, "_IS_STUB_MANIFESTATION"), (
             "_IS_STUB_MANIFESTATION sentinel missing from mi_pramana.py"
         )
-        assert mod._IS_STUB_MANIFESTATION is True, (
-            f"_IS_STUB_MANIFESTATION should be True, got {mod._IS_STUB_MANIFESTATION}"
+        assert mod._IS_STUB_MANIFESTATION is False, (
+            f"_IS_STUB_MANIFESTATION should be False (real impl), got {mod._IS_STUB_MANIFESTATION}"
         )
 
-    def test_score_falsifier_docstring_contains_stub(self):
-        """W4: _score_falsifier docstring must contain 'STUB'."""
+    def test_score_falsifier_has_docstring(self):
+        """W4: _score_falsifier must have a non-empty docstring."""
         mod = self._load()
         doc = (mod._score_falsifier.__doc__ or "")
-        assert "STUB" in doc, (
-            f"_score_falsifier docstring must contain 'STUB'. Got: '{doc[:200]}'"
-        )
+        assert len(doc.strip()) > 0, "_score_falsifier docstring must not be empty"
 
-    def test_score_manifestation_docstring_contains_stub(self):
-        """W4: _score_manifestation docstring must contain 'STUB'."""
+    def test_score_manifestation_has_docstring(self):
+        """W4: _score_manifestation must have a non-empty docstring."""
         mod = self._load()
         doc = (mod._score_manifestation.__doc__ or "")
-        assert "STUB" in doc, (
-            f"_score_manifestation docstring must contain 'STUB'. Got: '{doc[:200]}'"
-        )
+        assert len(doc.strip()) > 0, "_score_manifestation docstring must not be empty"
 
     def test_score_falsifier_still_returns_1_0(self):
         """W4: stub value (1.0) unchanged — only marking was added."""

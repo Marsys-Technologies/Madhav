@@ -1,9 +1,13 @@
 """
-mi_gunanaka — Learned-Weight Register (L5 Mīmāṃsā)
-====================================================
-Computes per-chart learned multipliers for signal families from calibration
-evidence. Applies promotion gates: n ≥ 10 observations, neg-control clear,
-not diverging from classical prior by > 3×.
+mi_gunanaka v2 — Learned-Weight Register with Hierarchical Shrinkage (L5 Mīmāṃsā)
+===================================================================================
+BA-P6: n≥10 hard gate REPLACED by hierarchical shrinkage:
+  posterior = (n × likelihood + k × prior) / (n + k)
+  where k = mi_gunanaka_shrinkage_k from brahma_formula_constants.
+  At n=0: posterior = classical prior (full shrinkage to prior).
+  3× divergence cap RETAINED (mi_gunanaka_divergence_cap from brahma_formula_constants).
+
+Versioned calibration snapshots published to mimamsa_calibration_snapshot.
 
 PER-CHART scope: DELETE WHERE chart_id = %s, then re-insert.
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult.
@@ -14,7 +18,8 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 
 import psycopg.rows
 
@@ -22,13 +27,10 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-WEIGHT_FORMULA_VERSION = "mi_gunanaka_v1.0"
+WEIGHT_FORMULA_VERSION = "mi_gunanaka_v2.0"
 
-# Minimum observations to earn promotion
-_MIN_N_PROMOTE = 10
-# Maximum multiplier divergence from classical prior
-_MAX_DIVERGENCE_RATIO = 3.0
-# Applied multiplier bounds
+_DEFAULT_SHRINKAGE_K = 5.0
+_DEFAULT_DIVERGENCE_CAP = 3.0
 _MULTIPLIER_MIN = 0.1
 _MULTIPLIER_MAX = 3.0
 
@@ -37,11 +39,57 @@ def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
 
+def _load_constants(conn) -> tuple[float, float]:
+    """Load shrinkage_k and divergence_cap from brahma_formula_constants."""
+    shrinkage_k = _DEFAULT_SHRINKAGE_K
+    divergence_cap = _DEFAULT_DIVERGENCE_CAP
+    try:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                "SELECT constant_id, value_jsonb FROM brahma_formula_constants "
+                "WHERE constant_id IN ('mi_gunanaka_shrinkage_k', 'mi_gunanaka_divergence_cap')"
+            )
+            for row in cur.fetchall():
+                cid = row["constant_id"]
+                val = row["value_jsonb"]
+                if cid == "mi_gunanaka_shrinkage_k" and val:
+                    shrinkage_k = float(val.get("k", _DEFAULT_SHRINKAGE_K))
+                elif cid == "mi_gunanaka_divergence_cap" and val:
+                    divergence_cap = float(val.get("cap", _DEFAULT_DIVERGENCE_CAP))
+    except Exception as e:
+        logger.warning("[mi_gunanaka] failed to load constants from registry (%s); using defaults", e)
+    return shrinkage_k, divergence_cap
+
+
+def _hierarchical_posterior(
+    cell_likelihood: float,
+    cell_n: int,
+    family_likelihood: float,
+    global_likelihood: float,
+    classical_prior: float,
+    shrinkage_k: float,
+) -> float:
+    """
+    Hierarchical shrinkage (cell → family → global pooling, weights ∝ n).
+    Step 1: family-level posterior = (cell_n × cell_likelihood + k × family_likelihood) / (cell_n + k)
+    Step 2: global shrinkage = (cell_n × step1 + k × global_likelihood) / (cell_n + k)
+    At n=0: posterior = classical_prior (no data → fall back to classical).
+    """
+    if cell_n == 0:
+        return float(classical_prior)
+    # Cell → family shrinkage
+    family_posterior = (cell_n * cell_likelihood + shrinkage_k * family_likelihood) / (cell_n + shrinkage_k)
+    # Family → global shrinkage
+    global_posterior = (cell_n * family_posterior + shrinkage_k * global_likelihood) / (cell_n + shrinkage_k)
+    return global_posterior
+
+
 @register("mi_gunanaka")
 class MiGunakaWriter(WriterBase):
     """
-    Computes one weight row per (mechanism × target_ref) observed in calibration.
-    Seeds prior-only weights from mi_kula signal families for families with no evidence.
+    Computes per-chart learned multipliers via hierarchical shrinkage.
+    Seeds prior-only rows (posterior = classical prior) for families with no evidence.
+    Publishes a versioned calibration snapshot to mimamsa_calibration_snapshot.
     """
 
     asset_id = "mi_gunanaka"
@@ -50,6 +98,8 @@ class MiGunakaWriter(WriterBase):
         t0 = time.time()
         conn = ctx.db_conn
         chart_id: str = ctx.config["chart_id"]
+
+        shrinkage_k, divergence_cap = _load_constants(conn)
 
         # Load calibration rows
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
@@ -64,7 +114,7 @@ class MiGunakaWriter(WriterBase):
             )
             cal_rows = cur.fetchall()
 
-        # Load signal families (prior weights)
+        # Load signal families with their classical priors
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 "SELECT family_id, prior_weight, calibration_status FROM mimamsa_signal_families "
@@ -72,7 +122,7 @@ class MiGunakaWriter(WriterBase):
             )
             families = {r["family_id"]: dict(r) for r in cur.fetchall()}
 
-        # Aggregate evidence per family from calibration data
+        # Aggregate evidence per family from clean calibration data
         evidence: dict[str, list[float]] = {}
         for cr in cal_rows:
             if cr.get("leakage_status") != "clean":
@@ -88,52 +138,93 @@ class MiGunakaWriter(WriterBase):
                 family_id = str(sig.get("family_id") or sig.get("signal_id") or "unknown")
                 evidence.setdefault(family_id, []).append(score)
 
-        # Build weight rows
+        # Global likelihood: mean across all observed scores
+        all_scores = [s for scores in evidence.values() for s in scores]
+        global_likelihood = sum(all_scores) / len(all_scores) if all_scores else 0.5
+
+        # Family-level likelihood: mean per family (used as pooling target)
+        family_likelihoods = {
+            fid: sum(scores) / len(scores)
+            for fid, scores in evidence.items()
+            if scores
+        }
+        family_mean_likelihood = (
+            sum(family_likelihoods.values()) / len(family_likelihoods)
+            if family_likelihoods else 0.5
+        )
+
         rows: list[tuple] = []
         seen_families = set()
+        snapshot_cells: list[dict] = []
 
         for family_id, scores in evidence.items():
             seen_families.add(family_id)
             n = len(scores)
-            mean_score = sum(scores) / n if n > 0 else 0.5
+            cell_likelihood = sum(scores) / n if n > 0 else 0.5
             fam = families.get(family_id, {"prior_weight": 1.0})
-            prior = float(fam.get("prior_weight") or 1.0)
+            classical_prior = float(fam.get("prior_weight") or 1.0)
 
-            # Evidence factor: Laplace smoothing
-            evidence_factor = (sum(scores) + 1) / (n + 2) * 2  # scaled 0→2
-            raw_mult = mean_score * 2  # 0 → 0.0, 1 → 2.0
-            divergence = abs(raw_mult - prior) / max(prior, 0.01)
+            # Family-level likelihood for this family's pool
+            fam_likelihood = family_likelihoods.get(family_id, family_mean_likelihood)
 
-            gate_passed = n >= _MIN_N_PROMOTE and divergence <= _MAX_DIVERGENCE_RATIO
-            promotion = "promoted" if gate_passed else ("earning" if n >= 3 else "prior_only")
+            # Hierarchical shrinkage posterior
+            posterior = _hierarchical_posterior(
+                cell_likelihood, n, fam_likelihood, global_likelihood,
+                classical_prior, shrinkage_k,
+            )
+            # Convert posterior (0→1 score) to multiplier (0→2 scale)
+            raw_mult = posterior * 2.0
+            divergence = abs(raw_mult - classical_prior) / max(classical_prior, 0.01)
 
-            kill_switch = "suspended_divergence" if divergence > _MAX_DIVERGENCE_RATIO else "active"
-            applied = _clamp(raw_mult if gate_passed else prior, _MULTIPLIER_MIN, _MULTIPLIER_MAX)
+            # 3× divergence cap RETAINED
+            if divergence > divergence_cap:
+                raw_mult = classical_prior * (1 + (divergence_cap * (1 if raw_mult > classical_prior else -1)))
+                kill_switch = "suspended_divergence"
+            else:
+                kill_switch = "active"
+
+            applied = _clamp(raw_mult, _MULTIPLIER_MIN, _MULTIPLIER_MAX)
+            promotion = "promoted" if n >= 3 else "earning"
 
             weight_id = f"LL1:{family_id}"
             rows.append((
                 chart_id,
                 weight_id,
-                "LL1",           # mechanism
+                "LL1",
                 "family",
                 family_id,
-                None,            # domain
+                None,
                 round(raw_mult, 4),
-                round(evidence_factor, 4),
+                round(posterior, 4),
                 round(applied, 4),
                 n,
-                "pass" if gate_passed else "insufficient_n",
+                "pass",
                 promotion,
-                gate_passed,
-                n >= _MIN_N_PROMOTE,
-                True,            # neg_control_clear — harness checks in mi_pariksha
+                True,
+                n >= 5,
+                True,
                 kill_switch,
                 round(divergence, 4),
-                json.dumps({"scores_count": n, "mean": round(mean_score, 4)}),
+                json.dumps({
+                    "scores_count": n,
+                    "cell_likelihood": round(cell_likelihood, 4),
+                    "fam_likelihood": round(fam_likelihood, 4),
+                    "global_likelihood": round(global_likelihood, 4),
+                    "shrinkage_k": shrinkage_k,
+                    "posterior": round(posterior, 4),
+                    "formula": "hierarchical_shrinkage_v2",
+                }),
                 WEIGHT_FORMULA_VERSION,
             ))
+            snapshot_cells.append({
+                "family_id": family_id,
+                "n": n,
+                "posterior": round(posterior, 4),
+                "applied": round(applied, 4),
+                "kill_switch": kill_switch,
+            })
 
-        # Seed prior-only weights for families with no evidence
+        # Seed prior-only weights for families with no evidence (n=0 → full prior)
         for family_id, fam in families.items():
             if family_id in seen_families:
                 continue
@@ -147,7 +238,7 @@ class MiGunakaWriter(WriterBase):
                 family_id,
                 None,
                 prior,
-                1.0,
+                prior / 2.0,  # evidence_factor = prior_only
                 prior,
                 0,
                 "insufficient_n",
@@ -157,9 +248,20 @@ class MiGunakaWriter(WriterBase):
                 True,
                 "active",
                 0.0,
-                json.dumps({"scores_count": 0, "prior": prior}),
+                json.dumps({
+                    "scores_count": 0,
+                    "prior": prior,
+                    "formula": "hierarchical_shrinkage_v2_prior_only",
+                }),
                 WEIGHT_FORMULA_VERSION,
             ))
+            snapshot_cells.append({
+                "family_id": family_id,
+                "n": 0,
+                "posterior": round(prior / 2.0, 4),
+                "applied": prior,
+                "kill_switch": "active",
+            })
 
         if ctx.dry_run:
             return WriterResult(
@@ -189,9 +291,47 @@ class MiGunakaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.executemany(SQL, rows)
 
-        logger.info("[mi_gunanaka] %d multiplier rows for chart %s", len(rows), chart_id)
+        # Publish versioned calibration snapshot (two-key publication — key-2 pending native sign-off)
+        _publish_snapshot(conn, chart_id, snapshot_cells, WEIGHT_FORMULA_VERSION)
+
+        logger.info("[mi_gunanaka] %d multiplier rows (shrinkage_k=%.1f, diverge_cap=%.1f) for chart %s",
+                    len(rows), shrinkage_k, divergence_cap, chart_id)
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=len(rows),
             duration_seconds=time.time() - t0,
         )
+
+
+def _publish_snapshot(conn, chart_id: str, cells: list[dict], formula_version: str) -> None:
+    """Publish a versioned calibration snapshot (key-1 signed; key-2 pending native)."""
+    try:
+        snapshot_id = f"snap_{chart_id[:8]}_{int(time.time())}"
+        sp = "sp_snapshot"
+        with conn.cursor() as cur:
+            cur.execute(f"SAVEPOINT {sp}")
+            cur.execute(
+                "INSERT INTO mimamsa_calibration_snapshot "
+                "(snapshot_id, chart_id, proposing_executor, two_key_complete, "
+                " cells_jsonb, publication_status, formula_version) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (snapshot_id) DO NOTHING",
+                (
+                    snapshot_id,
+                    chart_id,
+                    "mi_gunanaka",
+                    False,
+                    json.dumps({"families": cells, "n_families": len(cells)}),
+                    "proposed",
+                    formula_version,
+                ),
+            )
+            cur.execute(f"RELEASE SAVEPOINT {sp}")
+            logger.info("[mi_gunanaka] snapshot %s published (key-2 pending)", snapshot_id)
+    except Exception as e:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+        logger.warning("[mi_gunanaka] snapshot publish failed (%s) — continuing", e)

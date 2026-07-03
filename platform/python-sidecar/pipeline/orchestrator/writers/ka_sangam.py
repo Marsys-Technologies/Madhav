@@ -471,7 +471,7 @@ class KaSangamWriter(WriterBase):
                         w.get('peak_date'),
                         orb_s,
                         w.get('rarity_years'),  # CF.L3.4: real planet-period rarity
-                        cs,     # confidence_score mirrors convergence_score
+                        round(min(1.0, icc / 13.0), 4),  # confidence_score = ICC/13 currents (C10 fix: distinct from convergence_score)
                         c_label,
                         icc,
                         w.get('is_off_dasha_discovery', False),

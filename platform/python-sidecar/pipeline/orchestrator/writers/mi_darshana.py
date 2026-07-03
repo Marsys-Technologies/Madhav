@@ -41,6 +41,7 @@ _INSIGHT_TYPES = {
     "emergent_law": "Pattern candidate from discovery mining",
     "load_bearing": "Load-bearing conclusion from signal sensitivity map",
     "negative_knowledge": "What definitively does NOT hold for this native",
+    "verdict_object": "Per-event-class promise verdict with ranked evidence, contradictions, and tradition concordance",
 }
 
 
@@ -231,6 +232,160 @@ class MiDarshanaWriter(WriterBase):
                 False,
                 SURFACE_FORMULA_VERSION,
             ))
+
+        # ── 5. Verdict-object rows from P3B bodha data ───────────────────────────
+        # Assembles one mimamsa_insight_unit per event_class (per BA-P4 spec):
+        # status + grade from bodha_pratijna, ranked evidence from bodha_msr_signals,
+        # contradictions from bodha_contradictions, tradition concordance from bodha_triangulation.
+        if _table_exists(conn, "bodha_pratijna") and _table_exists(conn, "bodha_triangulation"):
+            CANONICAL_AYA = "lahiri_chitrapaksha"
+
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute("""
+                    SELECT bp.event_class_id, bp.status, bp.grade,
+                           bp.supporting_signal_ids, bp.contradicting_signal_ids,
+                           beo.name_en, beo.domain
+                    FROM bodha_pratijna bp
+                    JOIN brahma_event_ontology beo USING (event_class_id)
+                    WHERE bp.chart_id = %s AND bp.ayanamsha_id = %s
+                    ORDER BY bp.grade DESC NULLS LAST
+                    LIMIT 40
+                """, (chart_id, CANONICAL_AYA))
+                pratijna_rows = cur.fetchall()
+
+            if pratijna_rows:
+                with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                    cur.execute("""
+                        SELECT signal_id, signal_type_id, computed_salience, tier,
+                               constituent_facts_array, classical_sources_array
+                        FROM bodha_msr_signals
+                        WHERE chart_id = %s AND ayanamsha_id = %s
+                        ORDER BY computed_salience DESC NULLS LAST
+                    """, (chart_id, CANONICAL_AYA))
+                    signal_by_id = {str(r["signal_id"]): r for r in cur.fetchall()}
+
+                with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                    cur.execute("""
+                        SELECT signal_a_id, signal_b_id, tension_class,
+                               domains_affected_array, combined_salience,
+                               resolution_hint_jsonb, verification_pass_status
+                        FROM bodha_contradictions
+                        WHERE chart_id = %s AND ayanamsha_id = %s
+                        ORDER BY combined_salience DESC NULLS LAST LIMIT 100
+                    """, (chart_id, CANONICAL_AYA))
+                    all_contradictions = cur.fetchall()
+
+                with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                    cur.execute("""
+                        SELECT question_class, tradition, concordance_score, signal_ids
+                        FROM bodha_triangulation
+                        WHERE chart_id = %s AND ayanamsha_id = %s
+                    """, (chart_id, CANONICAL_AYA))
+                    trad_by_class: dict[str, dict] = {}
+                    for tr in cur.fetchall():
+                        qc = tr["question_class"]
+                        if qc not in trad_by_class:
+                            trad_by_class[qc] = {}
+                        trad_by_class[qc][tr["tradition"]] = {
+                            "concordance_score": float(tr.get("concordance_score") or 0),
+                            "signal_count": len(tr.get("signal_ids") or []),
+                        }
+
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(DISTINCT ayanamsha_id) FROM bodha_pratijna WHERE chart_id = %s",
+                        (chart_id,),
+                    )
+                    aya_row = cur.fetchone()
+                    aya_count = int(aya_row[0]) if aya_row else 0
+
+                for pr in pratijna_rows:
+                    event_class_id = pr["event_class_id"]
+                    domain = pr.get("domain") or "unknown"
+                    name_en = pr.get("name_en") or event_class_id
+                    status = pr.get("status", "conditional")
+                    grade = float(pr.get("grade") or 5.0)
+
+                    sup_ids = [str(s) for s in (pr.get("supporting_signal_ids") or [])][:5]
+                    ranked_evidence = [
+                        {
+                            "signal_id": sid,
+                            "signal_type_id": signal_by_id[sid].get("signal_type_id"),
+                            "salience": float(signal_by_id[sid].get("computed_salience") or 0),
+                            "tier": signal_by_id[sid].get("tier"),
+                            "fact_ids": signal_by_id[sid].get("constituent_facts_array") or [],
+                            "classical_sources": signal_by_id[sid].get("classical_sources_array") or [],
+                        }
+                        for sid in sup_ids if sid in signal_by_id
+                    ]
+
+                    domain_contras = [
+                        {
+                            "signal_a_id": str(c.get("signal_a_id")),
+                            "signal_b_id": str(c.get("signal_b_id")),
+                            "tension_class": c.get("tension_class"),
+                            "combined_salience": float(c.get("combined_salience") or 0),
+                            "resolution": c.get("resolution_hint_jsonb"),
+                            "verification_status": c.get("verification_pass_status"),
+                        }
+                        for c in all_contradictions
+                        if domain in (c.get("domains_affected_array") or [])
+                    ][:3]
+
+                    tradition_concordance = (
+                        trad_by_class.get(event_class_id) or trad_by_class.get(domain) or {}
+                    )
+
+                    g_norm = grade / 10.0
+                    if grade >= 6.0:
+                        conf_lo = round(max(0.0, g_norm - 0.2), 2)
+                        conf_hi = round(min(1.0, g_norm + 0.1), 2)
+                    elif grade >= 3.0:
+                        conf_lo = round(max(0.0, g_norm - 0.15), 2)
+                        conf_hi = round(min(1.0, g_norm + 0.15), 2)
+                    else:
+                        conf_lo = round(max(0.0, g_norm), 2)
+                        conf_hi = round(min(1.0, g_norm + 0.2), 2)
+
+                    if grade >= 6.0:
+                        verdict_note = "Strong evidence across traditions."
+                    elif grade < 3.0:
+                        verdict_note = "Mixed or insufficient evidence."
+                    else:
+                        verdict_note = "Conditional — context-dependent."
+
+                    statement = f"{name_en}: {status} (grade {grade:.1f}/10). {verdict_note}"
+
+                    verdict_content = {
+                        "event_class_id": event_class_id,
+                        "event_class_name": name_en,
+                        "domain": domain,
+                        "activation_state": status,
+                        "grade": grade,
+                        "ayanamsha_robustness": aya_count,
+                        "canonical_ayanamsha_id": CANONICAL_AYA,
+                        "ranked_evidence": ranked_evidence,
+                        "contradictions": domain_contras,
+                        "tradition_concordance": tradition_concordance,
+                    }
+
+                    rows.append((
+                        chart_id,
+                        f"verdict_{event_class_id[:50]}",
+                        "verdict_object",
+                        domain, None, event_class_id,
+                        statement,
+                        g_norm,
+                        f"[{conf_lo},{conf_hi})",
+                        len(sup_ids),
+                        "clean",
+                        "structural",
+                        LEL_VERSION,
+                        None,
+                        json.dumps(verdict_content),
+                        False,
+                        SURFACE_FORMULA_VERSION,
+                    ))
 
         # Idempotency: delete prior insight units and their embeddings
         with conn.cursor() as cur:

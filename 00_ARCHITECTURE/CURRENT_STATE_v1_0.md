@@ -54,6 +54,16 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.18 (2026-07-04, BA-CODE-CLOSEOUT):
+    **Activity 1.5 COMPLETE on branch code/ba-code-closeout — 10 commits (P3B→P7B), migrations 391–402, JL-010 logged, ga_structural absorption fixed (6cddc910). Pre-merge prod registry baseline = 88 assets. Awaiting: merge → web/mcp deploy-truth → JOB-image rebuild (must include 6cddc910 + l0_transit/l0_rules + mi_* v2) → Nirmāṇa audit (Cowork, expect 91 assets) → optimized cascade rebuild (Abhinandan-first) → E2E. P4 (golden eval) + P6 (retrodiction) are CODE-DEPLOYED, NOT COMPLETE — their data gates run post-rebuild (PF-001 discipline).**
+    last_session_id: BA-CODE-CLOSEOUT-2026-07-04.
+    predecessor_session: BA-SYNC-FREEZE-2026-07-04.
+    next_session_objective: >
+      "Activity 1.5 COMPLETE. Next: merge code/ba-code-closeout → main; rebuild JOB image (picks up
+      l0_transit/l0_rules + mi_* v2 + ga_structural fix); then native triggers Nirmāṇa cascade rebuild
+      (Abhinandan-first, L1→L5). Post-rebuild: Activity 2 Nirmāṇa audit (91 assets expected);
+      then Activity 3 E2E + P4/P6 data gates."
+    file_updated_at: 2026-07-04. file_updated_by_session: BA-CODE-CLOSEOUT-2026-07-04.
   - v6.17 (2026-07-04, BA-SYNC-FREEZE-2026-07-04):
     **BA ENDGAME Activity 1 COMPLETE — code-plane parity verified; governance docs committed; M1/M2 RING2_PASS; GO for Activity 2.**
     Executed CLAUDECODE_BRIEF_BA_PRE_REBUILD_SYNC_FREEZE_v1_0.md end-to-end.

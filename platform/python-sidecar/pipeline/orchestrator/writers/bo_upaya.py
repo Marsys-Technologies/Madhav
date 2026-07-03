@@ -67,7 +67,7 @@ INSERT INTO bodha_rm_resonances (
   %(is_yoga_karaka_flag)s, %(is_chara_karaka_role)s,
   %(weakest_rank_in_chart)s, %(remedy_priority_class)s,
   %(associated_doshas_array)s, NULL, NULL,
-  NULL, %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+  %(ephemeris_audit_jsonb)s::jsonb, %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
 )
 """
 
@@ -423,8 +423,19 @@ def _build_resonances_and_prescriptions(
             debility = 0.3
         afflictions  = min(len(dosha_by_graha.get(graha, [])) / 3.0, 1.0)
         house        = placements.get(graha, 1)
-        sha_norm     = shadbala.get(graha, 0.5)
-        bh_norm      = bhava_bala.get(house, 0.5)
+        # BA-P3B: track which inputs fell back to silent defaults (F-007 guard)
+        inputs_complete = True
+        missing_inputs: list[str] = []
+        sha_norm = shadbala.get(graha, None)
+        if sha_norm is None:
+            sha_norm = 0.5
+            inputs_complete = False
+            missing_inputs.append("shadbala")
+        bh_norm = bhava_bala.get(house, None)
+        if bh_norm is None:
+            bh_norm = 0.5
+            inputs_complete = False
+            missing_inputs.append("bhava_bala")
         is_yk        = graha in yoga_karakas
         chara_role   = chara_roles.get(graha)
 
@@ -436,7 +447,7 @@ def _build_resonances_and_prescriptions(
             affliction_count_normalized=afflictions,
             cancellation_burden=0.0,
             dispositor_chain_weakness=0.0,
-            vargottama_absence_score=0.5,
+            vargottama_absence_score=0.5,  # placeholder — no vargottama L1 fact yet
             dasha_proximity_activation_score=0.0,
             msr_signals_in_conflict=min(len(dosha_by_graha.get(graha, [])) * 0.1, 1.0),
             cdlm_weakest_constituent_count=0.0,
@@ -470,6 +481,14 @@ def _build_resonances_and_prescriptions(
             "weakest_rank_in_chart": None,  # set after ranking
             "remedy_priority_class": None,  # set after ranking
             "associated_doshas_array": dosha_by_graha.get(graha),
+            "ephemeris_audit_jsonb": json.dumps({
+                "inputs_complete": inputs_complete,
+                "missing_inputs": missing_inputs,
+                "sha_norm_used": round(sha_norm, 4),
+                "bh_norm_used": round(bh_norm, 4),
+                "vargottama_absence_score": 0.5,
+                "note": "vargottama_absence is a placeholder until L1 vargottama fact is wired",
+            }),
             "verification_pass_status": "documented_approximation",
             "citation_ref": f"bo_upaya/resonance/{graha}",
             "citation_human": f"Resonance: {graha} | sha={sha_norm:.2f} dosha_count={len(dosha_by_graha.get(graha, []))}",

@@ -63,6 +63,10 @@ class PhMuhurtaWriter(WriterBase):
 
         # F-W5-003: derive chart's actual 10th-house lord to override native-lagna assumption
         career_lord = self._resolve_career_lord(conn, chart_id)
+
+        # BA-P5B EXT: load brahma_activity_ontology + natal Moon nakshatra
+        activity_ontology = self._load_activity_ontology(conn)
+        natal_moon_nakshatra_idx = self._load_natal_moon_nakshatra_idx(conn, chart_id)
         action_graha_overrides: dict[str, str] = {
             'start_business': career_lord,
             'career_launch':  career_lord,
@@ -108,6 +112,14 @@ class PhMuhurtaWriter(WriterBase):
                 # use a deterministic proxy from condition × season_factor
                 panchanga_score = round(min(1.0, condition * 0.8 + 0.2), 4)
 
+                # BA-P5B EXT: activity ontology enrichment
+                act_entry = activity_ontology.get(domain_action, {})
+                significators = act_entry.get('significators', {}) or {}
+                fruct_rules = act_entry.get('fructification_rules', {}) or {}
+                fruct_anchor = fruct_rules.get('timing_anchor') if isinstance(fruct_rules, dict) else None
+                classical_cite = (act_entry.get('citations') or ['Muhūrta-Chintāmaṇi + Grahalaghava'])[0] \
+                    if act_entry else 'Muhūrta-Chintāmaṇi + Grahalaghava'
+
                 mctx = MuhurtaContext(
                     action_class=domain_action,
                     window_start=candidate_start,
@@ -115,13 +127,20 @@ class PhMuhurtaWriter(WriterBase):
                     hora_lord=relevant_graha,
                     panchanga_score=panchanga_score,
                     panchanga_snapshot={'source': 'ka_muhurta_seva_proxy', 'graha': relevant_graha},
-                    classical_citation='Muhūrta-Chintāmaṇi + Grahalaghava',
+                    classical_citation=classical_cite,
                     condition_score=condition,
                     transit_score=transit,
                     overlapping_obstruction_id=obstruction_id,
                     obstruction_penalty=obstruction_penalty,
                     linked_anchor_id=anchor_id,   # M3: prediction-fused
                     linked_anchor_domain=domain,
+                    # BA-P5B EXT
+                    tarabala_score=0.5,       # serve-time enrichment (transit Moon needed)
+                    chandrabala_score=0.5,    # serve-time enrichment (transit Moon needed)
+                    natal_moon_nakshatra_idx=natal_moon_nakshatra_idx,
+                    activity_significators=significators,
+                    fructification_rules=fruct_rules,
+                    fructification_anchor=fruct_anchor,
                 )
 
                 rec = derive_muhurta_record(mctx)
@@ -135,6 +154,8 @@ class PhMuhurtaWriter(WriterBase):
                         overlapping_obstruction_id, linked_anchor_id,
                         composite_quality, window_quality_verdict, verdict_reason,
                         panchanga_snapshot_jsonb, classical_citation,
+                        tarabala_chandrabala_jsonb, significators_met_jsonb,
+                        fructification_anchor, follow_up_hook_jsonb,
                         derivation_ledger_jsonb, source_citation
                     ) VALUES (
                         %s, %s, %s, %s,
@@ -143,6 +164,8 @@ class PhMuhurtaWriter(WriterBase):
                         %s, %s,
                         %s, %s, %s,
                         %s::jsonb, %s,
+                        %s::jsonb, %s::jsonb,
+                        %s, %s::jsonb,
                         %s::jsonb, %s
                     )
                     ON CONFLICT DO NOTHING
@@ -161,6 +184,10 @@ class PhMuhurtaWriter(WriterBase):
                         rec.verdict_reason,
                         json.dumps(rec.panchanga_snapshot_jsonb or {}),
                         rec.classical_citation,
+                        json.dumps(rec.tarabala_chandrabala_jsonb or {}),
+                        json.dumps(rec.significators_met_jsonb or {}),
+                        rec.fructification_anchor,
+                        json.dumps(rec.follow_up_hook_jsonb or {}),
                         json.dumps(rec.derivation_ledger_jsonb),
                         rec.source_citation,
                     ),
@@ -397,6 +424,78 @@ class PhMuhurtaWriter(WriterBase):
         except Exception as exc:
             logger.debug("ph_muhurta: could not derive career_lord for %s: %s", chart_id, exc)
         return 'saturn'
+
+    def _load_activity_ontology(self, conn) -> dict[str, dict]:
+        """BA-P5B EXT: Load brahma_activity_ontology into {activity_class_id: row} dict.
+
+        SAVEPOINT-guarded. Falls back to empty dict if table absent.
+        """
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_activity_ont")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT activity_class_id, significators, fructification_rules, citations
+                    FROM brahma_activity_ontology
+                    """
+                )
+                result = {str(r['activity_class_id']): dict(r) for r in cur.fetchall()}
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_activity_ont")
+            return result
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_activity_ont")
+            except Exception:
+                pass
+            logger.debug("ph_muhurta: brahma_activity_ontology load skipped: %s", exc)
+            return {}
+
+    def _load_natal_moon_nakshatra_idx(self, conn, chart_id: str) -> int:
+        """BA-P5B EXT: Load natal Moon nakshatra 0-based ordinal from chart_facts.
+
+        Used for structural tarabala computation. Falls back to 0 if unavailable.
+        """
+        _NAKSHATRA_ORDINALS = {
+            'Ashwini': 0, 'Bharani': 1, 'Krittika': 2, 'Rohini': 3, 'Mrigashira': 4,
+            'Ardra': 5, 'Punarvasu': 6, 'Pushya': 7, 'Ashlesha': 8,
+            'Magha': 9, 'Purva Phalguni': 10, 'Uttara Phalguni': 11,
+            'Hasta': 12, 'Chitra': 13, 'Swati': 14, 'Vishakha': 15,
+            'Anuradha': 16, 'Jyeshtha': 17, 'Mula': 18,
+            'Purva Ashadha': 19, 'Uttara Ashadha': 20, 'Shravana': 21,
+            'Dhanishtha': 22, 'Shatabhisha': 23,
+            'Purva Bhadrapada': 24, 'Uttara Bhadrapada': 25, 'Revati': 26,
+        }
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_moon_nak")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND fact_subject = 'Moon'
+                      AND fact_key = 'nakshatra'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_nak")
+            if row and row[0]:
+                return _NAKSHATRA_ORDINALS.get(row[0], 0)
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_moon_nak")
+            except Exception:
+                pass
+            logger.debug("ph_muhurta: natal Moon nakshatra load skipped: %s", exc)
+        return 0
 
 
 _DOMAIN_TO_ACTION: dict[str, str] = {

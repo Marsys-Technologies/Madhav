@@ -1,73 +1,70 @@
 """
-ph_nimitta engine — predictive anchor derivation (DB-free, purely functional).
+ph_nimitta engine v2 — predictive anchor derivation (DB-free, purely functional).
 
 8 axes + 5 elevations per D8/D11/D21/D37/D38. Called from the writer which
 supplies pre-fetched DB data. The engine never reads from the DB.
+
+BA-P5B: G-LADDER (compute_confidence_range) REPLACED by structured posterior model.
+  posterior = base_rate × promise_lift × activation_lift × trigger_lift × robustness_mod
+
+JL-009 OPEN GATE: base_rate priors in brahma_event_ontology are PLACEHOLDER values
+(default 0.10). The native MUST review and ratify these before any anchor freeze.
+Do NOT treat computed posteriors as calibrated until JL-009 is closed.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import date, timedelta
+from dataclasses import dataclass, field, asdict
+from datetime import date
 from typing import Optional
 
 __all__ = [
     'NimittaContext',
+    'AnchorLiftVector',
+    'StructuredFalsifier',
     'AnchorRecord',
-    'compute_confidence_range',
+    'compute_posterior',
     'compute_magnitude',
     'derive_karmic_frame',
     'derive_malleability',
-    'derive_domain',
-    'derive_event_type',
-    'generate_falsifier',
     'derive_anchor_from_convergence',
     'derive_anchor_from_bhavishya',
     'derive_anchor_from_discovery',
 ]
 
-# ── domain mappings ───────────────────────────────────────────────────────────
+# ── domain validation ─────────────────────────────────────────────────────────
 
-_DOMAIN_KEYWORDS: list[tuple[str, str]] = [
-    ('CAREER', 'career'), ('PROFESSION', 'career'), ('WORK', 'career'),
-    ('FINANCIAL', 'financial'), ('WEALTH', 'financial'), ('MONEY', 'financial'),
-    ('HEALTH', 'health'), ('MEDICAL', 'health'), ('BODY', 'health'),
-    ('RELATION', 'relationship'), ('MARRIAGE', 'relationship'), ('PARTNER', 'relationship'),
-    ('SPIRITUAL', 'spiritual'), ('DHARMA', 'spiritual'), ('MOKSHA', 'spiritual'),
-    ('PSYCHOLOG', 'psychological'), ('MENTAL', 'psychological'), ('EMOTIONAL', 'psychological'),
-    ('TRANSITION', 'transition'), ('RELOCATION', 'transition'), ('CHANGE', 'transition'),
-]
+_VALID_DOMAINS = frozenset({
+    'career', 'relationship', 'financial',
+    'spiritual', 'health', 'transition', 'psychological',
+})
 
-# Axis 7: cross-ayanamsha consistency → 0-5 int (derived from constituent_factors or default 3)
 _AYANAMSHA_ROBUSTNESS_DEFAULT = 3
 
-# Axis 2 / G-LADDER (D21): confidence ceiling per ICC level
-def compute_confidence_range(
-    convergence_score: float,
-    n_independent: int,
-    ayanamsha_robustness: int,
-) -> tuple[float, float]:
-    """
-    G-LADDER: f = max(0.5, convergence_score); ceiling 0.50 + 0.05×min(n,6);
-    robustness factor 0.80–1.00; final range mid ± 0.10, both ≤ 0.80.
-    """
-    f = max(0.5, float(convergence_score or 0.0))
-    ladder_ceiling = min(0.80, 0.50 + 0.05 * min(int(n_independent or 1), 6))
-    rob = min(5, max(0, int(ayanamsha_robustness or _AYANAMSHA_ROBUSTNESS_DEFAULT)))
-    rob_factor = 0.80 + 0.04 * rob         # 0.80 … 1.00
-    mid = min(f, ladder_ceiling, 0.80) * rob_factor
-    low  = max(0.0, round(mid - 0.10, 3))
-    high = min(0.80, round(mid + 0.10, 3))
-    return low, high
+
+def _canonical_domain(*candidates: Optional[str]) -> str:
+    """Return first valid canonical domain from candidates; else 'transition'."""
+    for c in candidates:
+        if c and c.lower() in _VALID_DOMAINS:
+            return c.lower()
+    return 'transition'
 
 
-# V1: magnitude from rarity_years × effective_score
+def _resolve_event_type(event_class_id: Optional[str], domain: str, anchor_source: str) -> str:
+    """Structured event type: prefer event_class_id (from bodha_pratijna), else synthesize."""
+    if event_class_id:
+        return event_class_id
+    return f'{domain}_{anchor_source}_event'
+
+
+# ── V1: magnitude from rarity_years × effective_score ────────────────────────
+
 def compute_magnitude(
     rarity_years: float | None,
     effective_score: float | None,
 ) -> tuple[str, str]:
     ry = float(rarity_years or 1.0)
     es = float(effective_score or 0.5)
-    rarity_score = min(1.0, ry / 10.0)   # 10 yr → full rarity
+    rarity_score = min(1.0, ry / 10.0)
     combined = rarity_score * es
     if combined >= 0.60:
         tier = 'pivotal'
@@ -81,20 +78,22 @@ def compute_magnitude(
     return tier, basis
 
 
-# V3: karmic-arc framing from root graha lordship
+# ── V3: karmic-arc framing from root graha ───────────────────────────────────
+
 _KARMIC_FRAME: dict[str, tuple[str, str]] = {
     'saturn':  ('debt_surfacing',      'Saturn ripens karmic debt through restriction and discipline.'),
     'ketu':    ('debt_surfacing',      'Ketu compels completion of past-life obligations.'),
-    'jupiter': ('reward_ripening',     'Jupiter\'s grace delivers merit accumulated across cycles.'),
-    'rahu':    ('desire_entanglement', 'Rahu magnifies desire and brings novelty at karmic cost.'),
-    'mars':    ('effort_reward',       'Mars delivers proportional to sustained directed effort.'),
-    'sun':     ('effort_reward',       'Sun rewards authority and self-expression with recognition.'),
-    'venus':   ('relational_karma',    'Venus unfolds relational and aesthetic karma through pleasure and bond.'),
-    'moon':    ('relational_karma',    'Moon ripens emotional bonds and nurturing patterns from the past.'),
-    'mercury': ('effort_reward',       'Mercury rewards refined skill and discriminative intelligence.'),
+    'rahu':    ('desire_amplification','Rahu intensifies desire and drives worldly ambition.'),
+    'mars':    ('energy_directive',    'Mars channels raw force into action and assertion.'),
+    'sun':     ('authority_assertion', 'Sun crystallises identity and claims recognition.'),
+    'moon':    ('emotional_flux',      'Moon cycles the mind through feeling and receptivity.'),
+    'mercury': ('discernment_push',    'Mercury sharpens the intellect and drives communication.'),
+    'jupiter': ('grace_expansion',     'Jupiter grants wisdom-gifts and expands dharmic possibility.'),
+    'venus':   ('pleasure_integration','Venus weaves beauty and relationship into life-fabric.'),
 }
 
-def derive_karmic_frame(root_graha: str | None) -> tuple[str | None, str | None]:
+
+def derive_karmic_frame(root_graha: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     if not root_graha:
         return None, None
     pair = _KARMIC_FRAME.get(root_graha.lower().strip())
@@ -103,8 +102,10 @@ def derive_karmic_frame(root_graha: str | None) -> tuple[str | None, str | None]
     return pair
 
 
-# V4: actionability / malleability
+# ── V4: actionability / malleability ─────────────────────────────────────────
+
 _INFLUENCEABLE_DOMAINS = {'career', 'health', 'transition', 'financial'}
+
 
 def derive_malleability(domain: str, magnitude: str, direction: str) -> str:
     if magnitude == 'pivotal' and direction == 'suppressed':
@@ -114,42 +115,136 @@ def derive_malleability(domain: str, magnitude: str, direction: str) -> str:
     return 'semi_influenceable'
 
 
-# Axis 1: domain + event_type derivation from signal metadata
-def derive_domain(signature_class: str | None, signal_domain: str | None) -> str:
-    combined = ((signature_class or '') + ' ' + (signal_domain or '')).upper()
-    for keyword, mapped in _DOMAIN_KEYWORDS:
-        if keyword in combined:
-            return mapped
-    return 'transition'   # neutral fallback
+# ── BA-P5B: structured posterior model ───────────────────────────────────────
+
+@dataclass
+class AnchorLiftVector:
+    """Decomposed posterior product — written to lift_vector JSONB per anchor."""
+    base_rate:                    float
+    promise_lift:                 float
+    activation_lift:              float
+    trigger_lift:                 float
+    ayanamsha_robustness_modifier: float
+    posterior:                    float
+
+    def as_dict(self) -> dict:
+        return asdict(self)
 
 
-def derive_event_type(signature_class: str | None, anchor_source: str) -> str:
-    sc = (signature_class or '').upper()
-    if 'CAREER' in sc or 'PROFESSION' in sc:   return 'career_shift'
-    if 'HEALTH' in sc or 'MEDICAL' in sc:      return 'health_episode'
-    if 'RELATION' in sc or 'MARRIAGE' in sc:   return 'relationship_event'
-    if 'FINANCIAL' in sc or 'WEALTH' in sc:    return 'financial_event'
-    if 'SPIRITUAL' in sc or 'DHARMA' in sc:    return 'spiritual_opening'
-    if 'PSYCHOLOG' in sc or 'MENTAL' in sc:    return 'psychological_shift'
-    if 'TRANSITION' in sc or 'RELOCAT' in sc:  return 'life_transition'
-    return f'{anchor_source}_event'
+@dataclass
+class StructuredFalsifier:
+    """Machine-evaluable refutation specification per BA-P5B spec."""
+    event_class_id:       Optional[str]
+    magnitude_floor:      str    # 'minor' | 'moderate' | 'major' | 'pivotal'
+    domain:               str
+    window_end:           Optional[str]   # ISO date string
+    attestation_required: str    # 'lel_entry' | 'documented_external' | 'native_attestation'
+    refutation_condition:  str
+    confirmation_condition: str
+
+    def as_text(self) -> str:
+        deadline = self.window_end or 'end of window'
+        return (
+            f"REFUTED if no {self.domain} event of magnitude ≥ {self.magnitude_floor} "
+            f"is independently documented by {deadline}. "
+            f"CONFIRMED if a {self.domain}-domain event of matching magnitude is recorded "
+            f"in the Life-Event Log before {deadline}. "
+            f"Attestation: {self.attestation_required}."
+        )
+
+    def as_dict(self) -> dict:
+        return asdict(self)
 
 
-# Falsifier generator (machine-evaluable, domain-templated)
-def generate_falsifier(
-    domain: str,
-    event_type: str,
-    direction: str,
-    peak_date: date | None,
-    window_end: date | None,
-) -> str:
-    dir_word = {'elevated': 'positive', 'suppressed': 'negative', 'mixed': 'ambivalent'}.get(direction, 'notable')
-    deadline = str(window_end or peak_date or 'end of window')
-    return (
-        f"REFUTED if no {dir_word} {domain} {event_type or 'development'} is independently "
-        f"documented by {deadline}. CONFIRMED if a {domain}-domain event matching the direction "
-        f"is recorded in the Life-Event Log before {deadline}."
+def _promise_lift(grade: float, status: str) -> float:
+    """bodha_pratijna grade [0..10] → Bayesian lift factor."""
+    if status == 'denied':
+        # denied: suppress the base rate
+        return max(0.20, 1.0 - (grade / 10.0) * 0.80)
+    # promised/conditional: grade=0 → 1.0x; grade=10 → 2.5x
+    return 1.0 + (grade / 10.0) * 1.50
+
+
+def _activation_lift(multi_system_count: int) -> float:
+    """ka_yojaka multi_system_confirmation_count → lift factor. 5+ systems → 2.0x."""
+    return 1.0 + min(multi_system_count, 5) / 5.0
+
+
+def _trigger_lift(av_transit_potency: float) -> float:
+    """AV-transit potency [0..1] → lift factor. Full potency → 1.5x."""
+    return 1.0 + max(0.0, min(1.0, av_transit_potency)) * 0.50
+
+
+def compute_posterior(
+    base_rate: float,
+    pratijna_grade: float,
+    pratijna_status: str,
+    multi_system_confirmation_count: int,
+    av_transit_potency: float,
+    ayanamsha_robustness: int = _AYANAMSHA_ROBUSTNESS_DEFAULT,
+) -> tuple[float, AnchorLiftVector]:
+    """
+    Bayesian product model per BA-P5B spec.
+
+    posterior = base_rate × promise_lift × activation_lift × trigger_lift × robustness_mod
+
+    Returns (posterior, AnchorLiftVector) — posterior clamped [0.02, 0.95].
+
+    JL-009: base_rate priors are PLACEHOLDERS until native review and freeze.
+    """
+    promise    = _promise_lift(pratijna_grade, pratijna_status)
+    activation = _activation_lift(multi_system_confirmation_count)
+    trigger    = _trigger_lift(av_transit_potency)
+    rob_mod    = 0.80 + (min(max(0, int(ayanamsha_robustness)), 5) / 5.0) * 0.20
+
+    raw       = float(base_rate) * promise * activation * trigger * rob_mod
+    posterior = round(min(0.95, max(0.02, raw)), 4)
+
+    lift = AnchorLiftVector(
+        base_rate=round(float(base_rate), 4),
+        promise_lift=round(promise, 4),
+        activation_lift=round(activation, 4),
+        trigger_lift=round(trigger, 4),
+        ayanamsha_robustness_modifier=round(rob_mod, 4),
+        posterior=posterior,
     )
+    return posterior, lift
+
+
+def _build_structured_falsifier(
+    domain: str,
+    magnitude: str,
+    window_end: Optional[date],
+    event_class_id: Optional[str] = None,
+) -> StructuredFalsifier:
+    deadline_str = str(window_end) if window_end else None
+    return StructuredFalsifier(
+        event_class_id=event_class_id,
+        magnitude_floor=magnitude or 'minor',
+        domain=domain,
+        window_end=deadline_str,
+        attestation_required='lel_entry',
+        refutation_condition=(
+            f"No {domain} event of magnitude ≥ {magnitude or 'minor'} "
+            f"independently documented by {deadline_str or 'end of window'}."
+        ),
+        confirmation_condition=(
+            f"{domain.capitalize()}-domain event of matching magnitude recorded "
+            f"in Life-Event Log before {deadline_str or 'end of window'}."
+        ),
+    )
+
+
+def _posterior_confidence_band(posterior: float) -> tuple[float, float]:
+    """Map posterior → (confidence_low, confidence_high) for backward compat with DB schema.
+
+    The phala_anchors schema carries confidence_low/confidence_high with CHECK <= 0.80.
+    We derive a ±0.05 band around posterior, clamped to [0.01, 0.80].
+    The true point estimate is stored in the separate `posterior` column (migration 398).
+    """
+    low  = round(max(0.01, min(0.75, posterior - 0.05)), 3)
+    high = round(min(0.80, max(0.01, posterior + 0.05)), 3)
+    return low, high
 
 
 # ── context dataclass ─────────────────────────────────────────────────────────
@@ -158,26 +253,33 @@ def generate_falsifier(
 class NimittaContext:
     """Pre-fetched DB data for one convergence/bhavishya/discovery row (writer-supplied)."""
     # from bodha_msr_signals
-    signal_domain:           Optional[str] = None
-    signal_signature_class:  Optional[str] = None
+    signal_domain:           Optional[str]  = None
+    signal_signature_class:  Optional[str]  = None
     signal_salience:         Optional[float] = None
     # from bodha_cgm_paths (top path for this signal)
-    cgm_path_ids:            list[str] = field(default_factory=list)
+    cgm_path_ids:            list[str]      = field(default_factory=list)
     cgm_centrality:          Optional[float] = None
-    root_graha:              Optional[str] = None
+    root_graha:              Optional[str]  = None
     # from bodha_signal_embeddings precedent search
-    precedent_signal_ids:    list[str] = field(default_factory=list)
-    precedent_dates:         list[str] = field(default_factory=list)
+    precedent_signal_ids:    list[str]      = field(default_factory=list)
+    precedent_dates:         list[str]      = field(default_factory=list)
     # from bodha_contradictions
-    contradiction_contested: bool = False
-    contradiction_thread:    Optional[str] = None
-    contradiction_net:       Optional[str] = None
+    contradiction_contested: bool           = False
+    contradiction_thread:    Optional[str]  = None
+    contradiction_net:       Optional[str]  = None
     # from dasha consensus service (U1)
-    dasha_consensus_count:   int = 0
+    dasha_consensus_count:   int            = 0
     # from school consensus (U4)
     school_consensus_jsonb:  Optional[dict] = None
-    # cross-ayanamsha robustness
-    ayanamsha_robustness:    int = _AYANAMSHA_ROBUSTNESS_DEFAULT
+    # cross-ayanamsha robustness [0..5]
+    ayanamsha_robustness:    int            = _AYANAMSHA_ROBUSTNESS_DEFAULT
+    # BA-P5B: posterior model inputs (writer-supplied from pratijna + activation + transit)
+    event_class_id:                  Optional[str] = None
+    pratijna_grade:                  float         = 5.0   # bodha_pratijna grade [0..10]
+    pratijna_status:                 str           = 'conditional'
+    multi_system_confirmation_count: int           = 0     # ka_yojaka enrichment
+    av_transit_potency:              float         = 0.0   # AV/SAV gate score [0..1]
+    base_rate:                       float         = 0.10  # brahma_event_ontology prior (JL-009)
 
 
 # ── AnchorRecord ──────────────────────────────────────────────────────────────
@@ -185,36 +287,42 @@ class NimittaContext:
 @dataclass
 class AnchorRecord:
     anchor_source:          str
-    convergence_id:         Optional[int]  = None
-    discovery_id:           Optional[str]  = None
-    bhavishya_id:           Optional[int]  = None
-    signal_id:              Optional[str]  = None
-    subsystem_source:       Optional[str]  = None
-    event_type:             Optional[str]  = None
-    direction:              str            = 'mixed'
-    domain:                 str            = 'transition'
-    horizon_tier:           Optional[str]  = None
-    window_start:           Optional[date] = None
-    peak_date:              Optional[date] = None
-    window_end:             Optional[date] = None
-    magnitude:              Optional[str]  = None
-    magnitude_basis:        Optional[str]  = None
+    convergence_id:         Optional[int]   = None
+    discovery_id:           Optional[str]   = None
+    bhavishya_id:           Optional[int]   = None
+    signal_id:              Optional[str]   = None
+    subsystem_source:       Optional[str]   = None
+    event_type:             Optional[str]   = None
+    direction:              str             = 'mixed'
+    domain:                 str             = 'transition'
+    horizon_tier:           Optional[str]   = None
+    window_start:           Optional[date]  = None
+    peak_date:              Optional[date]  = None
+    window_end:             Optional[date]  = None
+    magnitude:              Optional[str]   = None
+    magnitude_basis:        Optional[str]   = None
+    # confidence band — backward compat with phala_anchors schema (derived from posterior)
     confidence_low:         Optional[float] = None
     confidence_high:        Optional[float] = None
-    confidence_basis:       str            = 'structural_not_yet_empirical'
-    karmic_frame:           Optional[str]  = None
-    karmic_note:            Optional[str]  = None
-    malleability:           Optional[str]  = None
-    counterfactual_jsonb:   Optional[dict] = None
-    contradiction_jsonb:    Optional[dict] = None
-    causal_chain_jsonb:     Optional[dict] = None
-    precedent_refs_jsonb:   Optional[dict] = None
-    dasha_consensus_count:  Optional[int]  = None
-    school_consensus_jsonb: Optional[dict] = None
-    ayanamsha_robustness:   Optional[int]  = None
-    falsifier:              str            = ''
-    derivation_ledger_jsonb: dict          = field(default_factory=dict)
-    source_citation:        str            = ''
+    confidence_basis:       str             = 'posterior_model_ba_p5b'
+    # BA-P5B: true posterior point estimate + lift decomposition
+    posterior:              Optional[float] = None
+    lift_vector:            Optional[dict]  = None
+    # V3-V5
+    karmic_frame:           Optional[str]   = None
+    karmic_note:            Optional[str]   = None
+    malleability:           Optional[str]   = None
+    counterfactual_jsonb:   Optional[dict]  = None
+    contradiction_jsonb:    Optional[dict]  = None
+    causal_chain_jsonb:     Optional[dict]  = None
+    precedent_refs_jsonb:   Optional[dict]  = None
+    dasha_consensus_count:  Optional[int]   = None
+    school_consensus_jsonb: Optional[dict]  = None
+    ayanamsha_robustness:   Optional[int]   = None
+    falsifier:              str             = ''
+    structured_falsifier:   Optional[dict]  = None   # StructuredFalsifier.as_dict()
+    derivation_ledger_jsonb: dict           = field(default_factory=dict)
+    source_citation:        str             = ''
 
 
 # ── derivation entry points ───────────────────────────────────────────────────
@@ -230,64 +338,47 @@ def derive_anchor_from_convergence(
               convergence_score, rarity_years, constituent_factors (jsonb), source_citation
     """
     cf = row.get('constituent_factors') or {}
-    sig_class = ctx.signal_signature_class or cf.get('signature_class', '')
 
-    domain    = derive_domain(sig_class, ctx.signal_domain)
-    evt_type  = derive_event_type(sig_class, 'convergence')
+    domain    = _canonical_domain(ctx.signal_domain, cf.get('domain'), row.get('domain'))
+    evt_type  = _resolve_event_type(ctx.event_class_id, domain, 'convergence')
 
-    # direction from constituent_factors or default
-    raw_dir = cf.get('direction', 'elevated')
+    raw_dir  = cf.get('direction', 'elevated')
     direction = raw_dir if raw_dir in ('elevated', 'suppressed', 'mixed') else 'elevated'
 
-    # V1 magnitude
     rarity_years    = row.get('rarity_years')
     effective_score = row.get('convergence_score') or row.get('effective_score', 0.5)
     magnitude, magnitude_basis = compute_magnitude(rarity_years, effective_score)
 
-    # Axis 2 / V2 confidence range
-    conf_low, conf_high = compute_confidence_range(
-        float(row.get('convergence_score') or 0.5),
-        n_independent,
-        ctx.ayanamsha_robustness,
+    # BA-P5B: structured posterior (replaces G-LADDER)
+    posterior, lift = compute_posterior(
+        base_rate=ctx.base_rate,
+        pratijna_grade=ctx.pratijna_grade,
+        pratijna_status=ctx.pratijna_status,
+        multi_system_confirmation_count=ctx.multi_system_confirmation_count,
+        av_transit_potency=ctx.av_transit_potency,
+        ayanamsha_robustness=ctx.ayanamsha_robustness,
     )
+    conf_low, conf_high = _posterior_confidence_band(posterior)
 
-    # V3 karmic frame
     karmic_frame, karmic_note = derive_karmic_frame(ctx.root_graha)
-
-    # V4 malleability
     malleability = derive_malleability(domain, magnitude, direction)
     counterfactual = {'influenceable_via': 'remedy_or_transit', 'basis': 'malleability_class'}
 
-    # V5 contradiction
     contradiction = {
         'contested': ctx.contradiction_contested,
         'countervailing_thread': ctx.contradiction_thread,
         'net_direction': ctx.contradiction_net or direction,
     }
 
-    # Axis 3 causal chain
     causal_chain = {
         'root_graha': ctx.root_graha,
         'cgm_path_ids': ctx.cgm_path_ids,
         'centrality': ctx.cgm_centrality,
     }
 
-    # Axis 5 precedent
     precedent = {
         'nearest_signal_ids': ctx.precedent_signal_ids,
         'precedent_dates': ctx.precedent_dates,
-    }
-
-    falsifier = generate_falsifier(domain, evt_type, direction,
-                                   row.get('peak_date'), row.get('window_end'))
-
-    derivation_ledger = {
-        'anchor_source':    'convergence',
-        'convergence_id':   row.get('convergence_id'),
-        'signal_id':        str(row.get('signal_id') or ''),
-        'axes_applied':     ['1','2','3','5','6','7'],
-        'elevations':       ['V1','V2','V3','V4','V5'],
-        'g_ladder_inputs':  {'convergence_score': float(row.get('convergence_score') or 0), 'n_independent': n_independent},
     }
 
     peak_date = row.get('peak_date')
@@ -304,6 +395,24 @@ def derive_anchor_from_convergence(
     if isinstance(window_end, str):
         try: window_end = date.fromisoformat(window_end)
         except ValueError: window_end = None
+
+    sf = _build_structured_falsifier(domain, magnitude, window_end, ctx.event_class_id)
+
+    derivation_ledger = {
+        'anchor_source':     'convergence',
+        'convergence_id':    row.get('convergence_id'),
+        'signal_id':         str(row.get('signal_id') or ''),
+        'axes_applied':      ['1', '2', '3', '5', '6', '7'],
+        'elevations':        ['V1', 'V2', 'V3', 'V4', 'V5'],
+        'posterior_inputs':  {
+            'base_rate':                    ctx.base_rate,
+            'pratijna_grade':               ctx.pratijna_grade,
+            'pratijna_status':              ctx.pratijna_status,
+            'multi_system_confirmation':    ctx.multi_system_confirmation_count,
+            'av_transit_potency':           ctx.av_transit_potency,
+            'n_independent_currents':       n_independent,
+        },
+    }
 
     return AnchorRecord(
         anchor_source='convergence',
@@ -320,6 +429,8 @@ def derive_anchor_from_convergence(
         magnitude_basis=magnitude_basis,
         confidence_low=conf_low,
         confidence_high=conf_high,
+        posterior=posterior,
+        lift_vector=lift.as_dict(),
         karmic_frame=karmic_frame,
         karmic_note=karmic_note,
         malleability=malleability,
@@ -330,7 +441,8 @@ def derive_anchor_from_convergence(
         dasha_consensus_count=ctx.dasha_consensus_count,
         school_consensus_jsonb=ctx.school_consensus_jsonb,
         ayanamsha_robustness=ctx.ayanamsha_robustness,
-        falsifier=falsifier,
+        falsifier=sf.as_text(),
+        structured_falsifier=sf.as_dict(),
         derivation_ledger_jsonb=derivation_ledger,
         source_citation=str(row.get('source_citation') or f"kala_convergence/{row.get('convergence_id')}"),
     )
@@ -346,19 +458,26 @@ def derive_anchor_from_bhavishya(
               effective_score, falsifiability, source_chain, signal_id, convergence_id,
               outcome_recorded, narrative
     """
-    domain = (row.get('domain') or 'transition').lower()
-    if domain not in ('career','relationship','financial','spiritual','health','transition','psychological'):
-        domain = 'transition'
+    domain = _canonical_domain(row.get('domain'), ctx.signal_domain)
 
-    # inherit bhavishya direction from probability tier
     prob_tier = str(row.get('probability_tier') or 'moderate').lower()
     direction = 'elevated' if 'positive' in prob_tier or 'high' in prob_tier else (
         'suppressed' if 'low' in prob_tier or 'negative' in prob_tier else 'mixed')
 
     es = float(row.get('effective_score') or 0.5)
-    magnitude, magnitude_basis = compute_magnitude(None, es)  # bhavishya has no rarity_years
+    magnitude, magnitude_basis = compute_magnitude(None, es)
 
-    conf_low, conf_high = compute_confidence_range(es, 3, ctx.ayanamsha_robustness)
+    # BA-P5B: structured posterior
+    posterior, lift = compute_posterior(
+        base_rate=ctx.base_rate,
+        pratijna_grade=ctx.pratijna_grade,
+        pratijna_status=ctx.pratijna_status,
+        multi_system_confirmation_count=ctx.multi_system_confirmation_count,
+        av_transit_potency=ctx.av_transit_potency,
+        ayanamsha_robustness=ctx.ayanamsha_robustness,
+    )
+    conf_low, conf_high = _posterior_confidence_band(posterior)
+
     karmic_frame, karmic_note = derive_karmic_frame(ctx.root_graha)
     malleability = derive_malleability(domain, magnitude, direction)
 
@@ -377,23 +496,38 @@ def derive_anchor_from_bhavishya(
         try: window_end = date.fromisoformat(window_end)
         except ValueError: window_end = None
 
-    # inherit bhavishya's existing falsifier (not overwritten)
-    inherited_falsifier = str(row.get('falsifiability') or '')
-    if not inherited_falsifier:
-        inherited_falsifier = generate_falsifier(domain, 'inherited_projection', direction, peak_date, window_end)
+    # inherit bhavishya's existing falsifier text; wrap in structured form if absent
+    inherited_text = str(row.get('falsifiability') or '')
+    if inherited_text:
+        sf_text = inherited_text
+        sf_dict = {
+            'inherited': True,
+            'original_text': inherited_text,
+            'event_class_id': ctx.event_class_id,
+        }
+    else:
+        sf = _build_structured_falsifier(domain, magnitude, window_end, ctx.event_class_id)
+        sf_text = sf.as_text()
+        sf_dict = sf.as_dict()
 
-    # preserve outcome hook for L5 (ph_pramana will carry this forward)
     derivation_ledger = {
-        'anchor_source':        'bhavishya',
-        'bhavishya_id':         row.get('id'),
-        'convergence_id':       row.get('convergence_id'),
-        'signal_id':            str(row.get('signal_id') or ''),
-        'source_chain':         row.get('source_chain'),
-        'outcome_recorded':     row.get('outcome_recorded'),
-        'inherited_narrative':  row.get('narrative'),
-        'axes_applied':         ['1','2','3','7'],
-        'elevations':           ['V1','V2','V3','V4','V5'],
-        'note':                 'kala_bhavishya inherited per D37; falsifiability preserved',
+        'anchor_source':       'bhavishya',
+        'bhavishya_id':        row.get('id'),
+        'convergence_id':      row.get('convergence_id'),
+        'signal_id':           str(row.get('signal_id') or ''),
+        'source_chain':        row.get('source_chain'),
+        'outcome_recorded':    row.get('outcome_recorded'),
+        'inherited_narrative': row.get('narrative'),
+        'axes_applied':        ['1', '2', '3', '7'],
+        'elevations':          ['V1', 'V2', 'V3', 'V4', 'V5'],
+        'note':                'kala_bhavishya inherited per D37; falsifiability preserved',
+        'posterior_inputs':    {
+            'base_rate':                 ctx.base_rate,
+            'pratijna_grade':            ctx.pratijna_grade,
+            'pratijna_status':           ctx.pratijna_status,
+            'multi_system_confirmation': ctx.multi_system_confirmation_count,
+            'av_transit_potency':        ctx.av_transit_potency,
+        },
     }
 
     return AnchorRecord(
@@ -401,10 +535,10 @@ def derive_anchor_from_bhavishya(
         bhavishya_id=row.get('id'),
         convergence_id=row.get('convergence_id'),
         signal_id=str(row.get('signal_id')) if row.get('signal_id') else None,
-        event_type='inherited_projection',
+        event_type=_resolve_event_type(ctx.event_class_id, domain, 'bhavishya'),
         direction=direction,
         domain=domain,
-        horizon_tier='lifetime',  # bhavishya is lifetime-scope
+        horizon_tier='lifetime',
         window_start=window_start,
         peak_date=peak_date,
         window_end=window_end,
@@ -412,6 +546,8 @@ def derive_anchor_from_bhavishya(
         magnitude_basis=magnitude_basis,
         confidence_low=conf_low,
         confidence_high=conf_high,
+        posterior=posterior,
+        lift_vector=lift.as_dict(),
         karmic_frame=karmic_frame,
         karmic_note=karmic_note,
         malleability=malleability,
@@ -426,7 +562,8 @@ def derive_anchor_from_bhavishya(
         dasha_consensus_count=ctx.dasha_consensus_count,
         school_consensus_jsonb=ctx.school_consensus_jsonb,
         ayanamsha_robustness=ctx.ayanamsha_robustness,
-        falsifier=inherited_falsifier,
+        falsifier=sf_text,
+        structured_falsifier=sf_dict,
         derivation_ledger_jsonb=derivation_ledger,
         source_citation=f"kala_bhavishya/{row.get('id')}",
     )
@@ -437,17 +574,27 @@ def derive_anchor_from_discovery(
     ctx: NimittaContext,
 ) -> AnchorRecord:
     """
-    Axis 4: bodha_discoveries (1,505) as anchor source.
-    row keys: id, signal_id, domain, discovery_type, surface_depth_delta, why_an_acharya_misses_it,
-              falsifier_jsonb, confidence_score, peak_date, window_start, window_end
+    Axis 4: bodha_discoveries as anchor source.
+    row keys: id, signal_id, domain, discovery_type, surface_depth_delta,
+              why_an_acharya_misses_it, falsifier_jsonb, confidence_score,
+              peak_date, window_start, window_end
     """
-    domain = (row.get('domain') or 'transition').lower()
-    if domain not in ('career','relationship','financial','spiritual','health','transition','psychological'):
-        domain = 'transition'
+    domain = _canonical_domain(row.get('domain'), ctx.signal_domain)
 
     cs = float(row.get('confidence_score') or 0.5)
     magnitude, magnitude_basis = compute_magnitude(None, cs)
-    conf_low, conf_high = compute_confidence_range(cs, 2, ctx.ayanamsha_robustness)
+
+    # BA-P5B: structured posterior
+    posterior, lift = compute_posterior(
+        base_rate=ctx.base_rate,
+        pratijna_grade=ctx.pratijna_grade,
+        pratijna_status=ctx.pratijna_status,
+        multi_system_confirmation_count=ctx.multi_system_confirmation_count,
+        av_transit_potency=ctx.av_transit_potency,
+        ayanamsha_robustness=ctx.ayanamsha_robustness,
+    )
+    conf_low, conf_high = _posterior_confidence_band(posterior)
+
     karmic_frame, karmic_note = derive_karmic_frame(ctx.root_graha)
     malleability = derive_malleability(domain, magnitude, 'elevated')
 
@@ -467,8 +614,18 @@ def derive_anchor_from_discovery(
         except ValueError: window_end = None
 
     falsifier_data = row.get('falsifier_jsonb') or {}
-    falsifier_str = (falsifier_data.get('statement') if isinstance(falsifier_data, dict) else None) or \
-                    generate_falsifier(domain, 'discovery_event', 'elevated', peak_date, window_end)
+    existing_text = (falsifier_data.get('statement') if isinstance(falsifier_data, dict) else None)
+    if existing_text:
+        sf_text = existing_text
+        sf_dict = {
+            'inherited': True,
+            'original_text': existing_text,
+            'event_class_id': ctx.event_class_id,
+        }
+    else:
+        sf = _build_structured_falsifier(domain, magnitude, window_end, ctx.event_class_id)
+        sf_text = sf.as_text()
+        sf_dict = sf.as_dict()
 
     derivation_ledger = {
         'anchor_source':            'discovery',
@@ -477,15 +634,22 @@ def derive_anchor_from_discovery(
         'discovery_type':           row.get('discovery_type'),
         'surface_depth_delta':      row.get('surface_depth_delta'),
         'why_an_acharya_misses_it': row.get('why_an_acharya_misses_it'),
-        'axes_applied':             ['1','2','4','5','7'],
-        'elevations':               ['V1','V2','V3','V4','V5'],
+        'axes_applied':             ['1', '2', '4', '5', '7'],
+        'elevations':               ['V1', 'V2', 'V3', 'V4', 'V5'],
+        'posterior_inputs':         {
+            'base_rate':                 ctx.base_rate,
+            'pratijna_grade':            ctx.pratijna_grade,
+            'pratijna_status':           ctx.pratijna_status,
+            'multi_system_confirmation': ctx.multi_system_confirmation_count,
+            'av_transit_potency':        ctx.av_transit_potency,
+        },
     }
 
     return AnchorRecord(
         anchor_source='discovery',
         discovery_id=str(row.get('id')) if row.get('id') else None,
         signal_id=str(row.get('signal_id')) if row.get('signal_id') else None,
-        event_type=derive_event_type(ctx.signal_signature_class, 'discovery'),
+        event_type=_resolve_event_type(ctx.event_class_id, domain, 'discovery'),
         direction='elevated',
         domain=domain,
         horizon_tier='near',
@@ -496,6 +660,8 @@ def derive_anchor_from_discovery(
         magnitude_basis=magnitude_basis,
         confidence_low=conf_low,
         confidence_high=conf_high,
+        posterior=posterior,
+        lift_vector=lift.as_dict(),
         karmic_frame=karmic_frame,
         karmic_note=karmic_note,
         malleability=malleability,
@@ -510,7 +676,8 @@ def derive_anchor_from_discovery(
         dasha_consensus_count=ctx.dasha_consensus_count,
         school_consensus_jsonb=ctx.school_consensus_jsonb,
         ayanamsha_robustness=ctx.ayanamsha_robustness,
-        falsifier=falsifier_str,
+        falsifier=sf_text,
+        structured_falsifier=sf_dict,
         derivation_ledger_jsonb=derivation_ledger,
         source_citation=f"bodha_discoveries/{row.get('id')}",
     )
