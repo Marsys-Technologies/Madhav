@@ -30518,3 +30518,96 @@ session_close:
 ```
 
 *End of BA-P1-SYNC-FREEZE-2026-07-03 entry — 2026-07-03.*
+
+---
+
+## BA-P0-SERVING-TRUTH-2026-07-03 — Beyond-Acharya P0 Serving Truth (2026-07-03, COMPLETE)
+
+```yaml
+session_open:
+  session_id: BA-P0-SERVING-TRUTH-2026-07-03
+  opened_on: 2026-07-03
+  cowork_thread_name: BA-P0-SERVING-TRUTH-2026-07-03
+  governing_brief: CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md
+  scope_notes: >
+    P0 of Beyond-Acharya unified program. Serving truth: fresh baseline,
+    assess_* caps (F-021R), cache contract, mi_vistara scope disposition, governance close.
+  may_touch:
+    - "platform-mcp serving/cap/cache code"
+    - "register_d8_assess_domain.ts (caps only)"
+    - "mi_vistara registry row / writer scope disposition"
+    - "00_ARCHITECTURE/BA_GROUNDING_REPORT_v1_0.md (addendum §5)"
+    - "CURRENT_STATE append"
+    - "this brief's status"
+  must_not_touch:
+    - "retrieval ranking logic (P2)"
+    - "any writer computation (P3)"
+    - "migrations except a mi_vistara scope fix if chosen"
+    - "tool wiring/naming (P1)"
+    - "orchestrator/planner/cockpit code"
+  predecessor_session: BA-PG-GROUNDING-PROOF-2026-07-03
+  current_state_version_at_open: 6.15
+```
+
+**Session type:** Beyond-Acharya P0 — Serving Truth + Caps
+**Governing brief:** `CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md` (COMPLETE)
+
+### What was done
+
+**Step 1 — Fresh baseline (G-1/G-3 unblocked):** Auth mechanism audited; temporary test MCP key generated via PBKDF2, inserted in prod mcp_api_keys (key_id: mcp_prod_TMRTViNs), used for probes, then DELETED — no persistent state left. Probed 5 tools × 6 calls (first=cold-ish, W1–W5=warm). Latency results: list_my_charts p50=400ms/803B; get_chart_orientation(summary) p50=458ms/28,742B; get_signals(50) p50=672ms/131,991B; get_domain_reading(career) p50=1,356ms/63,914B; assess_career (PRE-CAP) p50=4,414ms/**17,218,660B**. Response format variants: digest=211B, summary=28,742B, full≈summary (6B diff — no distinct full handler expansion). All recorded in BA_GROUNDING_REPORT_v1_0.md §5 addendum.
+
+**Step 2 — assess_* caps (F-021R bounding):** Root cause confirmed — 17.2 MB payload from `queryDomainReadingCapability.handler` bypassing F-021R: `bodha_question_lenses.all_relevant_ranked_jsonb` avg 1.4 MB/row × ~12 career lenses uncapped = ~17 MB. `queryContradictionsCapability` adds 5,170 rows × ~900 bytes = 4.65 MB. Fix applied to `platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts`: added `max_signals_per_lens` (default=10, max=50) and `max_contradictions` (default=15, max=100) cap params with F-021R bounding logic in `runAssessDomain` + params to all 4 assess_* input_schemas + drill_uri pointers. TypeScript compiles clean. Committed bafb803a. PR #395 created — prod verification pending deploy. Expected post-cap payload: ≤ 100 KB.
+
+**Step 3 — Cache contract:** No response-level cache layer found on prod. `served_from_cache` field absent across all tool responses (verified 3× identical calls). `llm_hints.cacheable` is advisory metadata only. Cloud Run stateless; no Redis/CDN wired to tool path. Residual filed for P1: implement response cache with `served_from_cache` envelope flag.
+
+**Step 4 — mi_vistara scope disposition (PD-6):** Option (b) chosen — keep `scope=global`, document as known exception. Rationale: mi_vistara generates 0 build-time rows (service verifier only; rows written by mi_seva on export delivery). Converting to per_chart would trigger delete-then-insert on chart rebuild, wiping the append-only audit ledger. `asset_registry.english_description` updated in prod (direct DML UPDATE, 2026-07-03) with full exception rationale. AC: scope matches build semantics ✅.
+
+**Step 5 — Governance close:** BA_GROUNDING_REPORT_v1_0.md §5 addendum written with 4 P0 PLAN-DELTA items. CURRENT_STATE v6.15→v6.16. Brief COMPLETE. SESSION_LOG entry (this).
+
+### Acceptance criteria verification
+
+| Criterion | Result |
+|---|---|
+| Fresh baseline table exists (§5 addendum) | ✅ §5.1 in BA_GROUNDING_REPORT_v1_0.md |
+| assess_* F-021R caps implemented | ✅ PR #395 (bafb803a — pending prod deploy) |
+| Cache contract verified-or-documented | ✅ §5.4 — documented (no cache layer), P1 residual filed |
+| mi_vistara scope dispositioned | ✅ keep global; exception in asset_registry.english_description |
+| Temp test MCP key cleaned up | ✅ deleted from prod mcp_api_keys |
+| No functional ranking logic changed (P2) | ✅ not touched |
+| No writer computation changed (P3) | ✅ not touched |
+| No tool wiring/naming changed (P1) | ✅ not touched |
+| CURRENT_STATE updated | ✅ v6.16 |
+| SESSION_LOG entry | ✅ this entry |
+| Brief status → COMPLETE | ✅ |
+
+**Open after this session:** PR #395 (assess_* caps fix) — awaits CI green + native review + merge. After merge, prod verification: assess_career default ≤ 100k chars.
+
+### Next session objective
+
+Execute P1 (Tool Estate): wire 7 Group-1 L1 tools (strength/aspects/argala/sade_sati/dispositors/tajik/tara_chandra_bala), create ga_transit_anchors handler from scratch, wire Group-3 tools (ph_rectification/bo_anveshana/bo_chart_gestalt/ka_jivana_parva/ka_tulana/mi_darshana). Update ASSET_NAMES.ts + ASSET_MAP per PD-5 for each new tool. Merge PR #395 first and verify prod caps. See CURRENT_STATE v6.16 next_session_objective for full scope.
+
+```yaml
+session_close:
+  session_id: BA-P0-SERVING-TRUTH-2026-07-03
+  closed_on: 2026-07-03
+  outcome: >
+    COMPLETE — BA-P0 Serving Truth executed end-to-end. Fresh latency baseline established.
+    assess_* F-021R caps implemented (PR #395, prod verification pending deploy).
+    Cache contract documented (no response cache layer — P1 residual).
+    mi_vistara scope=global confirmed correct + exception documented in prod registry.
+    §5 addendum written to BA_GROUNDING_REPORT_v1_0.md. CURRENT_STATE v6.16.
+    Program position: BA-P0 COMPLETE → P1 Tool Estate.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (P1 Tool Estate)
+  current_state_updated: true
+  current_state_version: 6.16
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    P1 Tool Estate: wire Group-1 (7 L1 retrieval tools, MCP-exposed), create
+    ga_transit_anchors handler, wire Group-3. Merge PR #395 first + verify prod.
+    Full scope: CURRENT_STATE v6.16 next_session_objective.
+```
+
+*End of BA-P0-SERVING-TRUTH-2026-07-03 entry — 2026-07-03.*

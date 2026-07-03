@@ -5477,7 +5477,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: BA-P1-SYNC-FREEZE-2026-07-03  # 2026-07-03: BA-P-1 sync freeze — clean single-branch state before Beyond-Acharya unified program. Program start SHA: 8566be39. Predecessor BUILD-PATH-REMEDIATION-2026-06-28.
+  last_session_id: BA-P0-SERVING-TRUTH-2026-07-03  # 2026-07-03: BA-P0 Serving Truth — fresh baseline, assess_* F-021R caps (PR #395), cache contract documented, mi_vistara scope=global confirmed. Predecessor BA-P1-SYNC-FREEZE-2026-07-03.
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
