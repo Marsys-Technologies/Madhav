@@ -18,8 +18,7 @@ CREATE TABLE IF NOT EXISTS bg_transit_av_gates (
     min_sav_score   INTEGER,                    -- min SAV total to pass gate (e.g. ≥28)
     effect          TEXT        NOT NULL,
     classical_citation TEXT     NOT NULL,
-    rule_notes      TEXT,
-    UNIQUE(gate_kind, graha, house_from_moon, COALESCE(kakshya_lord, ''))
+    rule_notes      TEXT
 );
 
 COMMENT ON TABLE bg_transit_av_gates IS
@@ -30,6 +29,10 @@ COMMENT ON TABLE bg_transit_av_gates IS
   'gate_kind=vedha_av: AV-enhanced vedha — vedha nullified when AV bindhu ≥ min_av_score. '
   'Transit service reads this table on demand to gate convergence window scoring. '
   'Source: BPHS ch.66–68 Ashtakavarga; Phaladeepika ch.26.';
+
+-- Functional unique: COALESCE is not valid in a table UNIQUE constraint; use an expression index.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bg_transit_av_gates
+    ON bg_transit_av_gates(gate_kind, graha, house_from_moon, COALESCE(kakshya_lord, ''));
 
 CREATE INDEX IF NOT EXISTS idx_bg_transit_av_graha ON bg_transit_av_gates(graha);
 CREATE INDEX IF NOT EXISTS idx_bg_transit_av_gate_kind ON bg_transit_av_gates(gate_kind);
