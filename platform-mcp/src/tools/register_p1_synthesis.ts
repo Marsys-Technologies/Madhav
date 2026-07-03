@@ -6,7 +6,7 @@
  * Per BA-P1 brief §Step 3.
  *
  * mimamsa_insight_get  → marsys://tool/L5/query_insights (PD-1: 14 rows, STRUCTURAL mode)
- * bodha_discoveries_get → bodha_bimba table (acharya-grade cross-domain observations)
+ * bodha_discoveries_get → bodha_discoveries table (acharya-grade cross-domain observations)
  * kala_life_arc_get    → marsys://tool/L3/query_life_arc (kala_jivana_parva biographical parvas)
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -121,7 +121,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
   server.tool(
     'bodha_discoveries_get',
     'Retrieve acharya-grade cross-domain discoveries for a chart from L2 Bodha. ' +
-    'Queries the bodha_bimba table — the "Bimba" (image/reflection) layer of Bodha, ' +
+    'Queries the bodha_discoveries table — the "Bimba" (image/reflection) layer of Bodha, ' +
     'which contains the system\'s highest-signal cross-domain observations: ' +
     'patterns that surface only when multiple L1 data streams are synthesized. ' +
     'Examples: Saturn-Ketu mutual aspect amplifying 8th house themes across D1+D9+D10; ' +
@@ -147,7 +147,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
         params.push(offset ?? 0)
         const sql = `
           SELECT *
-          FROM bodha_bimba
+          FROM bodha_discoveries
           WHERE ${filters.join(' AND ')}
           ORDER BY salience_score DESC NULLS LAST
           LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -157,7 +157,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           discoveries: result.rows,
           total: result.rows.length,
           filters: { domain, min_salience },
-          source_table: 'bodha_bimba',
+          source_table: 'bodha_discoveries',
         }, 'bodha_discoveries_get', 'synthesis_cross_domain'))
       } catch (err) {
         return errorOutput('bodha_discoveries_get', String(err), { chart_id })
