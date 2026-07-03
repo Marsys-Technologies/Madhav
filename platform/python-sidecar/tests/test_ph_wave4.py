@@ -41,7 +41,8 @@ import pytest
 class TestMuhurtaComposite:
     def test_formula(self):
         from services.ph_muhurta.engine import compute_composite_quality
-        q = compute_composite_quality(0.8, 0.9, 0.1)
+        # BA-P5B added tarabala/chandrabala; pass 1.0 to isolate panchanga formula
+        q = compute_composite_quality(0.8, 0.9, 0.1, tarabala_score=1.0, chandrabala_score=1.0)
         assert abs(q - 0.8 * 0.9 * 0.9) < 1e-4
 
     def test_clamps_to_unit(self):

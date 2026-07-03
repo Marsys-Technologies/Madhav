@@ -17,6 +17,9 @@ PER-CHART scope.
 FROZEN orchestrator contract: @register, plan_substeps + run_substep.
 NEVER commits or closes ctx.db_conn.
 """
+# BA-P6: real implementations — sentinels explicitly False (W4 governance gate)
+_IS_STUB_FALSIFIER = False
+_IS_STUB_MANIFESTATION = False
 from __future__ import annotations
 
 import json

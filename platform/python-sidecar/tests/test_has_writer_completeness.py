@@ -100,6 +100,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bo_cgm_motifs",
     "bo_cgm_paths",
     "bo_chart_gestalt",
+    # ── L2 Bodha — migration 391 (BA-P3B) ────────────────────────────────────
+    "bo_pratijna",
     # ── L3 Kāla — migration 342 ──────────────────────────────────────────────
     "ka_bhavishya_lekha",
     "ka_dasha_kala",
@@ -114,6 +116,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ka_yojaka",
     # ── L3 Kāla — migration 370 ──────────────────────────────────────────────
     "ka_tulana",
+    # ── L3 Kāla — migrations 395–396 (BA-P5A) ────────────────────────────────
+    "ka_avadhi",
+    "ka_taranga",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
