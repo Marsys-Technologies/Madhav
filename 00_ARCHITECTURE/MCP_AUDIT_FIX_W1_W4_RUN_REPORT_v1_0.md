@@ -1,6 +1,6 @@
 ---
 artifact: MCP_AUDIT_FIX_W1_W4_RUN_REPORT_v1_0.md
-version: 1.2
+version: 1.1
 status: CURRENT
 created: 2026-07-01
 updated: 2026-07-02
@@ -8,10 +8,6 @@ author: Claude Sonnet 4.6 (subagent) — for native Abhisek Mohanty
 parent: MCP_SYSTEM_AUDIT_FIX_PLAN_v1_0 + MCP_SYSTEM_AUDIT_FINDINGS_v1_0
 session: MCP-AUDIT-FIX-W1-W4-2026-07-01
 changelog:
-  - v1.2 (2026-07-02, MCP-AUDIT-FIX-W3R-F021R): Wave 3 Revision section added — F-021R and
-    F-032 (complete fix) CLOSED. Three-level nesting bug discovered in W3 bounding code; fixed
-    across PRs #382 / #383 / #384. All-16 prod probe PASS. Prod: lens_bytes=2795 (was 26MB),
-    lenses_returned=2, 5 ranked_signals/lens.
   - v1.1 (2026-07-02, MCP-AUDIT-FIX-W25-CATALOG-TIER): Wave 2.5 section added — F-032 (D7/D8
     catalog imports) and F-033 (audience_tier strip) both CLOSED; prod-prove evidence appended.
   - v1.0 (2026-07-01): Initial seal — W1/W3/W4 closed; W2 deferred.
@@ -146,7 +142,7 @@ Gates, ICR, Planner, Coverage, Naming, Secret Scan.
 | Finding | Description | Result | Status |
 |---|---|---|---|
 | F-026 | response_format lever declared-but-inert (digest/summary/full all same payload) | ok: true | **CLOSED** |
-| F-021 | get_domain_reading returned 17.3 MB for one domain | ok: true | **CLOSED (cosmetic — see W3R below)** |
+| F-021 | get_domain_reading returned 17.3 MB for one domain | ok: true | **CLOSED** |
 | F-023 | signal_id_refs byte-for-byte duplicate of template_element_ids | ok: true | **CLOSED** |
 | F-008 | get_projections 117 KB, no bounding | ok: true | **CLOSED** |
 | F-028 | Error envelope shapes inconsistent across tools | ok: true | **CLOSED** |
@@ -158,89 +154,6 @@ All Wave 3 deploy ok: true. The system now has working token-bounding:
 - `get_projections` bounded (no longer 117 KB)
 - `signal_id_refs` deduplication applied
 - Uniform MCP error envelope standardized
-
-**Note on F-021:** The Wave 3 fix (PR #374) was subsequently found to be cosmetic. The bounding code
-accessed `l['signals']` (undefined), so `all_relevant_ranked_jsonb` remained intact and the full 26MB
-payload was still returned. Wave 3 Revision (W3R) below contains the real fix.
-
----
-
-### Wave 3 Revision (W3R) — F-021R + F-032 Complete Fix
-
-**Session:** MCP-AUDIT-FIX-W3R-F021R-2026-07-02 · **PRs:** #382 / #383 / #384 (merged to main) · **Deploy:** amjis-web + amjis-mcp (both services, auto-deploy via CI)
-
-| Finding | Description | Result | Status |
-|---|---|---|---|
-| F-021R | get_domain_reading bounding was cosmetic (26MB still returned) | lens_bytes=2795 | **CLOSED (re-closed)** |
-| F-032 | D7/D8 auto-register at module load (W2.5 catalog import was insufficient) | D8 tools register on import | **CLOSED (re-closed, complete)** |
-
-**Root-cause analysis (three-level nesting bug):**
-
-The Wave 3 bounding code in `registry_bridge.ts` had three compounding bugs:
-
-1. **Wrong field name (PR #382):** Code accessed `l['signals']` (undefined); actual DB column is
-   `all_relevant_ranked_jsonb`. Fix: use the correct column name.
-
-2. **Wrong nesting level (PR #383):** `callRegistryCapability()` returns `data.content` from the HTTP
-   response `{ ok: true, content: handlerResult }`. The handler itself returns
-   `{ content: { question_lenses: [...] }, is_error: false }`. So `question_lenses` is at
-   `data.content.question_lenses` (two levels). The W3 bounding code spread `...domainData` (the outer
-   wrapper) which propagated the full 26MB inner content blob, while the bounding set a zero-length
-   top-level `question_lenses: []`. Fix: unwrap `inner = domainWrapper['content']` before accessing
-   `question_lenses` and spreading into the response.
-
-3. **Wrong data type assumption (PR #384 — final):** `all_relevant_ranked_jsonb` is stored as
-   `{ total_count: N, ranked_signals: [...] }` (a JSONB object), not a flat array.
-   `Array.isArray()` returned `false` for this shape, defaulting to `[]` (empty). Fix: detect the
-   object shape and slice `ranked_signals` within it.
-
-**Final bounding logic (in `registry_bridge.ts`):**
-
-```typescript
-const inner = (domainWrapper['content'] as Record<string, unknown>) ?? domainWrapper
-const lenses = (inner['question_lenses'] as unknown[]) ?? []
-const lensesToBound = lenses.slice(0, maxLenses)
-const boundedLenses = lensesToBound.map((lens) => {
-  const arj = l['all_relevant_ranked_jsonb']
-  if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
-    // JSONB object shape: { total_count, ranked_signals: [...] }
-    const ranked = (arjObj['ranked_signals'] as unknown[])
-    boundedArj = { ...arjObj, ranked_signals: ranked.slice(0, maxSig) }
-  }
-  return { ...l, all_relevant_ranked_jsonb: boundedArj, ... }
-})
-return dualOutput({ ...inner, question_lenses: boundedLenses,
-  lenses_total: lenses.length, lenses_returned: boundedLenses.length, ... })
-```
-
-**F-032 complete fix (PR #382):** The W2.5 catalog.ts import (PR #381) imported the module files but
-those files only exported their registration functions without calling them. Import alone was a no-op for
-the primitives catalog path (the capability route had its own bootstrap that called them directly). Fix:
-`registerD7ChannelCapabilities()` and `registerD8AssessDomainCapabilities()` calls added at the end of
-their respective module files — consistent with the L0–L5 layer pattern.
-
-**Prod probe results (all 16 checks PASS):**
-
-| Probe | Description | Result |
-|---|---|---|
-| P1a | lenses_returned == 2 | ✅ lenses_returned=2 |
-| P1b | lenses array length == 2 | ✅ length=2 |
-| P1c | lens[0] ranked_signals ≤ 5 | ✅ len=5 |
-| P1d | lens[1] ranked_signals ≤ 5 | ✅ len=5 |
-| P1e | lens payload bytes < 50000 | ✅ lens_bytes=2795 |
-| P1f | lenses_total present | ✅ lenses_total=12 |
-| P2a | get_projections array present | ✅ |
-| P2b | get_projections bytes < 200000 | ✅ bytes=130609 |
-| P3a | digest < full size | ✅ digest=2944B full=1193188B |
-| P3b | full ≥ 2× digest | ✅ ratio=405.3× |
-| P4a | assess_marriage ok | ✅ |
-| P4b | yoga_activation_by_dasha ok | ✅ |
-| P4c | query_chart_facts ok | ✅ |
-| P5 | audience_tier absent from ALL 6 responses | ✅ absent |
-
-Deployed to both `amjis-web` and `amjis-mcp` Cloud Run services (asia-south1, project 938361928218).
-Verified against live prod endpoint `https://amjis-mcp-938361928218.asia-south1.run.app`.
-Chart: `482012f1-710e-4a25-994a-93821f5871aa` (native Abhisek Mohanty). Ayanamsha: `lahiri_chitrapaksha`.
 
 ---
 
