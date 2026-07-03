@@ -115,6 +115,20 @@ values are frozen:
 
 ---
 
+### JL-010 — Absorption: karakamsa relationship modeling DEFERRED (ga_structural)
+- **Phase:** P3A-absorption-fix (commit 6cddc910)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** How should the new special points (arudha_pada, bhava_arudha, karakamsa_position, swamsa_position) enter ga_structural's house-based special-point relationship builder?
+- **Decision:** arudha_pada + bhava_arudha + swamsa_position ADDED (they resolve to a house); karakamsa_position DEFERRED — it is the D9 sign of the Atmakaraka with no D1 house, and is astrologically read by sign (kendras/trikonas from Karakamsa, rasi drishti), not by D1-house aspects. Forcing a house would produce plausible-but-wrong relationships (the silent-error class this program hunts). Follow-up task opened: "Karakamsa/Swamsa Jaimini sign-based relationship pass."
+- **Basis:** Constitution §3 (classical: Jaimini Karakamsa is a rasi-framework reading) + the no-silent-fabrication rule.
+- **Alternatives considered:** fabricate a D1 house for Karakamsa (rejected — wrong model); drop all four (rejected — three are house-valid and high-value).
+- **Reversibility:** the sign-based pass supersedes this deferral when built; no data lost.
+- **Consumer:** ga_structural special-point relationships → bo_laksana → L2+.
+- **Date:** 2026-07-04
+- **Status:** RATIFIED (OPEN — closes when Karakamsa/Swamsa Jaimini sign-based pass is built)
+
+---
+
 ## RUNNING SUMMARY
 
 | ID | Phase | Category | Status | Reversible? |
@@ -128,6 +142,7 @@ values are frozen:
 | JL-007 | P3B | Formula: verification_certainty | RATIFIED | Yes — formula_version + L2 regen |
 | JL-008 | P3A/B | Schema: domain taxonomy | RATIFIED-AS-DRAFTED | Yes — migration + retrieval update |
 | JL-009 | P3A→P5B | Data: event base-rate priors | RATIFIED-AS-DRAFTED (OPEN) | Yes — ontology upsert |
+| JL-010 | P3A-absorption-fix | Absorption: karakamsa modeling | RATIFIED (OPEN) | Yes — sign-based pass supersedes |
 
 ---
 
