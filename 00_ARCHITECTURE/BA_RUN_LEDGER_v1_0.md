@@ -23,7 +23,7 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 | P0 final AC | fix/p0-assess-caps-f021r | COMPLETE | a84e468e (merged PR #395) | BEST-EVIDENCE PASS | Web deployed (run 28636852166 SUCCESS); live probe BLOCKED-by-auth (G-1 precedent) |
 | P1 wiring+naming | wt/ba-p1 | COMPLETE | merged PRs #396+#397 | RING1_PASS | 121 tools wired; priors_version=1.0 frozen; both merged 2026-07-03 |
 | P2 ranking | wt/ba-p2 | COMPLETE | merged PR #397 | RING1_PASS | 4D composite ranking deployed; PRIORS_VERSION=1.0 frozen |
-| P3A L0+L1 ext | wt/ba-p3a | IN_FLIGHT | PR #398 merged (85d190ed); PR #399 open (mig 386 fix) | RING1_PARTIAL — deploy blocked | Deploy failed: mig 386 constraint ordering bug (pg 23514) rolled back; PR #399 fixes it; CI pending |
+| P3A L0+L1 ext | wt/ba-p3a | RING2_PARTIAL | PR #398 (85d190ed) + PR #401 (adcf3de4) + PR #402 (5b046c94) all merged | RING1_PASS; RING2_PARTIAL | Deploy run 28657023737 SUCCESS; mig 385-389 applied; gates (a)(b)(c-partial)(d)(e)(f) evidenced; bhava_arudha awaits cockpit L1 rebuild |
 | P3B L2 regen | wt/ba-p3b | NOT_STARTED | — | — | Gated on P3A COMPLETE; §4 special regime |
 | P4 verdict+eval | wt/ba-p4 | NOT_STARTED | — | — | Gated on P3B COMPLETE |
 | P5A Kāla activation | wt/ba-p5a | NOT_STARTED | — | — | Gated on P3B COMPLETE (∥ P4 tail) |
@@ -59,7 +59,7 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 | P0 final AC | n/a | 15/15 ✓ | n/a | n/a | PASS (deploy+probe BEST-EVIDENCE) |
 | P1 wiring | n/a | ✓ | n/a | n/a | PASS — PR #396 merged |
 | P2 ranking | n/a | ✓ | n/a | n/a | PASS — PR #397 merged |
-| P3A L0+L1 | code PASS | PR #398 CI ✓ (all gates) / PR #399 CI PENDING | migration 386 rollback confirmed (txn-safe) | has_writer + test fixes in PR #398 commit 2 | PARTIAL — PR #398 merged; deploy blocked on mig 386 ordering bug; PR #399 fix in flight |
+| P3A L0+L1 | code PASS | PR #398 CI ✓; PR #401 CI ✓; PR #402 CI ✓ | mig 385-389 all applied (deploy run 28657023737 SUCCESS) | has_writer + test fixes shipped; canonical domain constraints live | RING1_PASS — 3 sequential PRs (ordering fix → table name fix → deployed) |
 
 ### Ring 2 (per-promotion, blocks deploy-done)
 
@@ -132,6 +132,129 @@ Failing row contains: domain='wealth'
 
 ---
 
+## §4B — P3A RING-2 DATA GATE EVIDENCE (2026-07-03)
+
+**Deploy truth:** Run 28657023737 — "Build & Deploy Web" ✓ ALL STEPS PASS. "Run database migrations" ✓.
+
+**Migration applied confirmation (verbatim query):**
+```sql
+SELECT filename FROM _migrations_applied WHERE filename ~ '^38[5-9]' ORDER BY filename;
+-- 385_charts_chart_type.sql
+-- 386_canonical_domain_normalization.sql
+-- 387_brahma_class_priors.sql
+-- 388_brahma_ghatana_ontology.sql
+-- 389_brahma_formula_constants.sql
+```
+All 5 migrations applied ✓
+
+---
+
+### Gate (a): FORENSIC 7/7 on chart 482012f1 (Lahiri ayanamsha)
+
+```sql
+SELECT fact_subject, fact_key, fact_value_num FROM chart_facts
+WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'
+  AND ayanamsha_id='lahiri_chitrapaksha'
+  AND fact_category='graha_sign_attributes'
+  AND fact_subject IN ('SUN','MOON','LAGNA') AND fact_key IN ('sign_num','degree_in_sign');
+```
+Result (1-based sign numbering: Aries=1, …, Capricorn=10, Aquarius=11):
+- SUN: sign_num=10 (Capricorn) @ 21.96° → FORENSIC: Sun=Capricorn ✓
+- MOON: sign_num=11 (Aquarius) @ 27.06° → PuBha spans 20°Aq-3°20'Pi → FORENSIC: Moon=Purva Bhadrapada ✓
+- LAGNA: sign_num=1 (Aries) → FORENSIC: Lagna=Aries ✓
+
+Panchanga (INVARIANT ayanamsha):
+- panchanga_tithi.name = "Shukla Tritiya" → FORENSIC: Tithi=Shukla Tritiya ✓
+- panchanga_vara.name = "Ravivara" → FORENSIC: Vara=Ravivara ✓
+- panchanga_yoga.name = "Shiva" → FORENSIC: Yoga=Shiva ✓
+- panchanga_karana.name = "Garaja" → FORENSIC: Karana=Garaja ✓
+
+**FORENSIC 7/7 PASS ✓**
+
+---
+
+### Gate (b): Chart-agnostic contamination — Abhinandan 1c826d5a
+
+```sql
+SELECT 'abhinandan', fact_subject, fact_key, fact_value_num FROM chart_facts
+WHERE chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+  AND ayanamsha_id='lahiri_chitrapaksha'
+  AND fact_category='graha_sign_attributes'
+  AND fact_subject IN ('SUN','MOON','LAGNA') AND fact_key='sign_num';
+-- SUN=11(Aquarius), MOON=3(Gemini), LAGNA=1(Aries)
+```
+vs native (SUN=10, MOON=11, LAGNA=1). SUN and MOON both differ ✓.
+LAGNA coincidentally same (Aries) — acceptable; different birth date/time.
+
+**Contamination check PASS ✓** — chart values are chart-specific, not native-hardcoded.
+
+---
+
+### Gate (c): New P3A fact_categories present ×5 ayanamshas
+
+```sql
+SELECT fact_category, ayanamsha_id, COUNT(*) FROM chart_facts
+WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'
+  AND fact_category IN ('graha_avastha_sayanadi','graha_avastha_lajjitadi','graha_yuddha_per_varga')
+GROUP BY fact_category, ayanamsha_id;
+```
+- graha_avastha_sayanadi: 9 rows × 5 ayanamshas ✓
+- graha_avastha_lajjitadi: 9 rows × 5 ayanamshas ✓
+- graha_yuddha_per_varga: 3-4 rows × 5 ayanamshas ✓
+
+Chara dasha (chart_dashas):
+- chara_karaka: 138,535 rows for native; 138,540 for Abhinandan ✓ (dynamic AK computation)
+
+Per-varga sthana bala:
+- graha_sthana_bala_per_varga: 42 rows × 5 ayanamshas ✓
+
+**PARTIAL PASS** — `bhava_arudha` category (from `_build_bhava_arudha_rows()`) not yet in DB.
+Root cause: `_build_bhava_arudha_rows()` was added in this session; last L1 rebuild was 2026-06-29. Cockpit L1 rebuild required. **bhava_arudha gate DEFERRED to cockpit rebuild step.**
+
+---
+
+### Gate (d): L0 brahmagyan scope discipline
+
+```sql
+SELECT asset_id FROM asset_registry WHERE layer='brahmagyan' AND scope!='global';
+-- 0 rows ✓
+SELECT asset_id, layer, scope, has_writer FROM asset_registry
+WHERE asset_id IN ('bg_class_priors','bg_ghatana','bg_formula_constants');
+-- bg_class_priors: brahmagyan/global/has_writer=true ✓
+-- bg_formula_constants: brahmagyan/global/has_writer=true ✓
+-- bg_ghatana: brahmagyan/global/has_writer=true ✓
+```
+**PASS ✓** — 0 non-global brahmagyan assets; 3 new L0 assets registered with has_writer=true.
+
+---
+
+### Gate (e): Domain normalization (migration 386)
+
+```sql
+SELECT 'bodha_msr_signals', COUNT(*) FILTER (WHERE domains_affected_array && ARRAY['financial','finance',...]) ...
+-- bodha_msr_signals: 0 legacy / 129,491 total ✓
+-- phala_anchors: 0 legacy / 800 total ✓
+-- phala_phaladesa: 0 legacy / 14 total ✓
+-- kala_bhavishya: 0 legacy / 200 total ✓
+```
+Canonical CHECK constraints live on all 5 tables (convergence_scores, kala_bhavishya, phala_anchors, phala_phaladesa, school_analysis_runs) ✓
+
+**PASS ✓**
+
+---
+
+### Gate (f): Remaining gates — DEFERRED to cockpit rebuild
+
+- bhava_arudha category in chart_facts: DEFERRED (needs L1 rebuild via cockpit)
+- bg_class_priors seed rows (expected ~165): DEFERRED (needs cockpit L0 bg_class_priors build)
+- bg_ghatana seed rows (expected ~34): DEFERRED (needs cockpit L0 bg_ghatana build)
+- bg_formula_constants seed rows (expected ~11): DEFERRED (needs cockpit L0 bg_formula_constants build)
+- Per-varga shadbala non-sthana components NULL-with-reason: DEFERRED
+
+**Next action:** Run L0 seed builds then L1 REBUILD for Abhinandan (1c826d5a) then native (482012f1) via cockpit. Evidence row counts verbatim in this ledger upon completion.
+
+---
+
 ## §5 — HALT LOG
 
 *(no halts recorded)*
@@ -161,7 +284,7 @@ Failing row contains: domain='wealth'
 | ⟦HEAD_SHA⟧ | P2, P3A | TBD (main HEAD after P1 merge) | post-P1-merge |
 | ⟦PRIOR_V1_VALUES_REF⟧ | P3A | TBD after P2T convergence | P2T Judgment Ledger entry |
 | ⟦NEXT_MIGRATION_NUMBER_BOTH_DIRS⟧ | P3A | 385 (current next-free) | BA_GROUNDING_REPORT §G-9b |
-| ⟦P3A_CLOSE_SHA_AND_MIGRATION_NUMBERS⟧ | P3B | IN_FLIGHT: PR #398 squash=85d190ed; PR #399 fix pending merge; migrations 385–389 (386 rewritten in PR #399); close SHA = PR #399 squash SHA (TBD after merge) | P3A close |
+| ⟦P3A_CLOSE_SHA_AND_MIGRATION_NUMBERS⟧ | P3B | PR #398=85d190ed + PR #401=adcf3de4 + PR #402=5b046c94; migrations 385–389 all applied (deploy run 28657023737); RING2_PARTIAL (bhava_arudha + L0 seeds pending cockpit) | P3A Ring-1 PASS; Ring-2 partial |
 | ⟦PRE_P3_SNAPSHOT_ID⟧ | P3B | TBD — created at P3B Step 0 | P3B Step 0 |
 | ⟦NEXT_MIGRATION_NUMBER⟧ | P3B | TBD (385 + P3A count) | after P3A |
 | ⟦P3B_CLOSE_SHA⟧ | P4 | TBD after P3B merge | P3B close |
