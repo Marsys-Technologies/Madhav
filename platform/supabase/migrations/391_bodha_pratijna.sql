@@ -67,9 +67,7 @@ INSERT INTO asset_registry (
 
 -- ── DAG edge ─────────────────────────────────────────────────────────────────
 
-INSERT INTO asset_dag (from_asset_id, to_asset_id, edge_type, notes)
-VALUES ('bo_laksana', 'bo_pratijna', 'depends_on',
-        'Promise register reads bodha_msr_signals for signal salience and valence')
-ON CONFLICT DO NOTHING;
+UPDATE asset_registry SET depends_on = ARRAY['bo_laksana']::text[]
+WHERE asset_id = 'bo_pratijna';
 
 COMMIT;

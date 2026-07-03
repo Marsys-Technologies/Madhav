@@ -67,9 +67,7 @@ INSERT INTO asset_registry (
     sort_order   = EXCLUDED.sort_order,
     english_description = EXCLUDED.english_description;
 
-INSERT INTO asset_dag (from_asset_id, to_asset_id, edge_type, notes)
-VALUES ('ka_yojaka', 'ka_avadhi', 'depends_on',
-        'ka_avadhi reads kala_activation_predicates + bodha_pratijna for pratijna linkage')
-ON CONFLICT DO NOTHING;
+UPDATE asset_registry SET depends_on = ARRAY['ka_yojaka', 'bo_pratijna']::text[]
+WHERE asset_id = 'ka_avadhi';
 
 COMMIT;
