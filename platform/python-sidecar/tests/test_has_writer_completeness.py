@@ -63,6 +63,10 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_transit_rules",
     "bg_vastu_directions",
     "bg_yogas",
+    # ── L0 Brahmagyan — migrations 387-389 (BA-P3A) ──────────────────────────
+    "bg_class_priors",
+    "bg_ghatana",
+    "bg_formula_constants",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",

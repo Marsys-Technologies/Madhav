@@ -1642,6 +1642,15 @@ def build_ga_strength(
                 conn, chart_id, build_id, canonical_id, computed_at, eng_ver, GAP_VARGAS, verif_status
             ))
 
+            # ── Amendment BA-P3A: per-varga sthana bala for full Shodasavarga ──────────────
+            # Sthana bala (dignity-mapped) for all 15 shodasavarga vargas (D2-D60),
+            # label='computed_extension' per canonical-or-floor rule.
+            # BPHS Vimshopaka-bala chapter: sthana bala varies per varga per dignity.
+            all_rows.extend(_build_positional_components_per_varga_rows(
+                conn, chart_id, build_id, canonical_id, computed_at, eng_ver,
+                SHODASAVARGA_MINUS_D1, "computed_extension",
+            ))
+
             FLOOR_VARGAS = SHODASAVARGA_MINUS_D1 + GAP_VARGAS
             all_rows.extend(_build_kala_cheshta_floor_rows(
                 chart_id, build_id, canonical_id, computed_at, eng_ver, FLOOR_VARGAS
