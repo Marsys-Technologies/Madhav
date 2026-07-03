@@ -87,7 +87,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       insight_type: z.enum([
         'calibrated_outlook', 'manifestation_grammar', 'emergent_law',
-        'load_bearing', 'negative_knowledge',
+        'load_bearing', 'negative_knowledge', 'verdict_object',
       ]).optional().describe('Filter by insight type. Omit for all types.'),
       domain: z.string().optional().describe('Filter by life domain (career, health, relationship, wealth, etc.).'),
       min_rank: z.number().min(0).max(1).optional().describe('Minimum rank_consequence threshold (0..1, default: 0).'),
@@ -193,6 +193,152 @@ export function registerP1SynthesisTools(server: McpServer): void {
         return dualOutput(envelope(data, 'kala_life_arc_get', 'temporal_life_arc'))
       } catch (err) {
         return errorOutput('kala_life_arc_get', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── 4. synth_tail_divergence_get ─────────────────────────────────────────
+  server.tool(
+    'synth_tail_divergence_get',
+    'Retrieve the tail-divergence signals for a domain — the lowest-salience signals from L2 Bodha ' +
+    'that contradict or diverge from the dominant synthesis reading. Per BA-P4 attention budget ' +
+    '(70/20/10 head/dissent/tail), these are the "10% dissent" signals that surface minority positions. ' +
+    'Use before anchoring high-confidence forecasts to surface contradicting evidence. ' +
+    'Returns bodha_msr_signals rows in the bottom salience decile for the requested domain, ' +
+    'with signal type, salience percentile, domains, and classical sources for audit.',
+    {
+      chart_id:  z.string().uuid().describe('Chart UUID. Required.'),
+      domain:    z.string().optional().describe('Life domain filter (career, health, relationship, wealth, dharma, etc.). Omit for all domains.'),
+      top_k:     z.number().int().min(1).max(50).optional().describe('Max tail signals to return (default: 10).'),
+    },
+    async ({ chart_id, domain, top_k }) => {
+      if (!chart_id) return errorOutput('synth_tail_divergence_get', 'chart_id is required')
+      try {
+        const limitVal = top_k ?? 10
+        const params: unknown[] = [chart_id, 'lahiri_chitrapaksha']
+        const domainClause = domain
+          ? `AND domains_affected_array && ARRAY[$${(params.push(domain), params.length)}::text]`
+          : ''
+        params.push(limitVal)
+        const sql = `
+          WITH ranked AS (
+            SELECT signal_id, signal_type_id, computed_salience, tier,
+                   domains_affected_array, classical_sources_array,
+                   constituent_facts_array, valence,
+                   PERCENT_RANK() OVER (
+                     PARTITION BY chart_id, ayanamsha_id
+                     ORDER BY computed_salience ASC NULLS LAST
+                   ) AS salience_pctl
+            FROM bodha_msr_signals
+            WHERE chart_id = $1 AND ayanamsha_id = $2 ${domainClause}
+          )
+          SELECT * FROM ranked
+          WHERE salience_pctl <= 0.10
+          ORDER BY salience_pctl ASC
+          LIMIT $${params.length}
+        `
+        const result = await platformQuery(sql, params)
+        return dualOutput(envelope({
+          tail_signals: result.rows,
+          total: result.rows.length,
+          divergence_memo:
+            `${result.rows.length} tail-divergence signal(s) (bottom 10% salience) ` +
+            `for chart ${chart_id}${domain ? ` / domain ${domain}` : ''}. ` +
+            `Per BA-P4 attention budget 70/20/10: these form the dissent/tail tier. ` +
+            `Review before anchoring high-confidence forecasts.`,
+          filters: { domain, top_k: limitVal, ayanamsha: 'lahiri_chitrapaksha' },
+          attention_budget_note: 'BA-P4: head=70%, dissent=20%, tail=10%. These signals occupy the tail=10%.',
+        }, 'synth_tail_divergence_get', 'synthesis_tail_divergence'))
+      } catch (err) {
+        return errorOutput('synth_tail_divergence_get', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── 5. synth_chart_brief_get ──────────────────────────────────────────────
+  server.tool(
+    'synth_chart_brief_get',
+    'Assemble the Mahā-Brief — a comprehensive chart synthesis across 38 canonical topic slots. ' +
+    'Draws from L5 Mīmāṃsā insight_units (verdict_object + calibrated_outlook + load_bearing + ' +
+    'negative_knowledge) and L2 Bodha discoveries. Covers: domain verdicts (career/health/' +
+    'relationship/wealth/creativity/dharma/moksha), load-bearing conclusions, negative knowledge, ' +
+    'tradition concordance overview, and calibration status. ' +
+    'depth=standard: key verdicts only (38 topics). depth=deep: + evidence chains. ' +
+    'depth=complete: + tail divergence + all tradition stacks. ' +
+    'System is in STRUCTURAL mode (L5 SEALED) — empirical scores accrue as outcome data records.',
+    {
+      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+      depth:    z.enum(['standard', 'deep', 'complete']).optional()
+        .describe('Brief depth: standard (default), deep, or complete.'),
+    },
+    async ({ chart_id, depth = 'standard' }) => {
+      if (!chart_id) return errorOutput('synth_chart_brief_get', 'chart_id is required')
+      try {
+        const topK = depth === 'complete' ? 200 : depth === 'deep' ? 80 : 38
+        const insightResult = await platformQuery(`
+          SELECT insight_id, insight_type, domain, question_lens,
+                 statement, rank_consequence, confidence_band,
+                 n_support, evidence_grade, is_negative_knowledge,
+                 surface_formula_version
+                 ${depth !== 'standard' ? ', provenance_chain' : ''}
+          FROM mimamsa_insight_units
+          WHERE chart_id = $1
+          ORDER BY
+            CASE insight_type
+              WHEN 'verdict_object'     THEN 1
+              WHEN 'load_bearing'       THEN 2
+              WHEN 'calibrated_outlook' THEN 3
+              WHEN 'emergent_law'       THEN 4
+              WHEN 'negative_knowledge' THEN 5
+              ELSE 6
+            END,
+            rank_consequence DESC NULLS LAST
+          LIMIT $2
+        `, [chart_id, topK])
+
+        const discLimit = depth === 'complete' ? 20 : 5
+        const discResult = await platformQuery(`
+          SELECT discovery_id, domain, statement, salience_score, activation_status
+          FROM bodha_discoveries
+          WHERE chart_id = $1
+          ORDER BY salience_score DESC NULLS LAST
+          LIMIT $2
+        `, [chart_id, discLimit])
+
+        const rows = insightResult.rows
+        const verdicts     = rows.filter(r => r['insight_type'] === 'verdict_object')
+        const loadBearing  = rows.filter(r => r['insight_type'] === 'load_bearing')
+        const calibrated   = rows.filter(r => r['insight_type'] === 'calibrated_outlook')
+        const negKnowledge = rows.filter(r => r['is_negative_knowledge'])
+        const domains      = [...new Set(verdicts.map(r => r['domain']).filter(Boolean))]
+
+        const lbLimit  = depth === 'standard' ? 5  : 20
+        const calLimit = depth === 'standard' ? 3  : 10
+        const negLimit = depth === 'standard' ? 3  : 10
+
+        const brief = {
+          chart_id,
+          depth,
+          formula_version: 'mi_darshana_v1.0',
+          calibration_mode: 'STRUCTURAL',
+          calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.',
+          topics_covered: rows.length,
+          domains_covered: domains,
+          verdict_summary: verdicts,
+          load_bearing_signals: loadBearing.slice(0, lbLimit),
+          calibration_strata: calibrated.slice(0, calLimit),
+          negative_knowledge: negKnowledge.slice(0, negLimit),
+          top_discoveries: discResult.rows,
+          attention_budget: {
+            head:    '70% — top verdicts and load-bearing conclusions (this brief)',
+            dissent: '20% — contradictions and conditional signals (synth_tail_divergence_get)',
+            tail:    '10% — minority signals (synth_tail_divergence_get)',
+          },
+        }
+
+        return dualOutput(envelope(brief, 'synth_chart_brief_get', 'synthesis_maha_brief'))
+      } catch (err) {
+        return errorOutput('synth_chart_brief_get', String(err), { chart_id })
       }
     }
   )
