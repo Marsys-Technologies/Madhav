@@ -52,6 +52,14 @@ interface AssessDomainArgs {
   judgment_flag_note: string
 }
 
+// F-021R bounding defaults for assess_* tools.
+// question_lenses.all_relevant_ranked_jsonb averages 1.4 MB/row; contradictions run 5,000+/chart.
+// These caps bound the assembled bundle to ~100k chars (§2.1-1 budget).
+const ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS = 10
+const ASSESS_MAX_SIGNALS_PER_LENS = 50
+const ASSESS_DEFAULT_MAX_CONTRADICTIONS = 15
+const ASSESS_MAX_CONTRADICTIONS = 100
+
 async function runAssessDomain(
   args: Record<string, unknown>,
   opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
@@ -63,6 +71,16 @@ async function runAssessDomain(
 
   const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
   const { domain, domain_label, judgment_flag_note } = opts
+
+  // F-021R caps: bound signals per lens + contradictions in the assembled bundle.
+  const max_signals_per_lens = Math.min(
+    Number(args['max_signals_per_lens'] ?? ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS),
+    ASSESS_MAX_SIGNALS_PER_LENS
+  )
+  const max_contradictions = Math.min(
+    Number(args['max_contradictions'] ?? ASSESS_DEFAULT_MAX_CONTRADICTIONS),
+    ASSESS_MAX_CONTRADICTIONS
+  )
 
   try {
     // ── Step 1: domain reading (L2 Bodha) ──────────────────────────────────
@@ -94,6 +112,34 @@ async function runAssessDomain(
     // ── Step 2: temporal activation window (L3 Kāla) ──────────────────────
     // Pull signal_id refs from the domain result to filter activations.
     const domainContent = domainResult.content as Record<string, unknown>
+
+    // F-021R: bound question_lenses.all_relevant_ranked_jsonb per lens.
+    // The raw handler returns all rows; each can be 1–2 MB of ranked signals.
+    const rawLenses = Array.isArray(domainContent['question_lenses'])
+      ? (domainContent['question_lenses'] as Record<string, unknown>[])
+      : []
+    const boundedLenses = rawLenses.map((lens) => {
+      const arj = lens['all_relevant_ranked_jsonb']
+      if (arj && typeof arj === 'object') {
+        const arjObj = arj as Record<string, unknown>
+        const ranked = Array.isArray(arjObj['ranked_signals'])
+          ? (arjObj['ranked_signals'] as unknown[])
+          : []
+        if (ranked.length > max_signals_per_lens) {
+          return {
+            ...lens,
+            all_relevant_ranked_jsonb: {
+              ...arjObj,
+              ranked_signals: ranked.slice(0, max_signals_per_lens),
+              total_count: ranked.length,
+              truncated: true,
+            },
+          }
+        }
+      }
+      return lens
+    })
+
     // M-12: null guard on signal_id_refs before use
     const signalRefs: string[] = Array.isArray(domainContent['signal_id_refs'])
       ? (domainContent['signal_id_refs'] as string[])
@@ -159,6 +205,29 @@ async function runAssessDomain(
     // ── Assemble reconciled bundle ─────────────────────────────────────────
     const temporalContent = (temporalResult.data ?? {}) as Record<string, unknown>
 
+    // F-021R: cap contradictions in the assembled bundle.
+    // queryContradictionsCapability returns all rows (5,000+/chart); slice to max_contradictions.
+    let boundedContradictions: object
+    if (contradictions.status === 'ok') {
+      const items = Array.isArray((contradictions as Record<string, unknown>)['items'])
+        ? ((contradictions as Record<string, unknown>)['items'] as unknown[])
+        : []
+      const totalCount = items.length
+      const cappedItems = items.slice(0, max_contradictions)
+      boundedContradictions = {
+        ...contradictions,
+        items: cappedItems,
+        total_count: totalCount,
+        returned_count: cappedItems.length,
+        truncated: totalCount > max_contradictions,
+        drill_uri: totalCount > max_contradictions
+          ? 'marsys://tool/L2/query_contradictions'
+          : undefined,
+      }
+    } else {
+      boundedContradictions = contradictions
+    }
+
     return {
       content: {
         domain,
@@ -171,9 +240,10 @@ async function runAssessDomain(
           contradictions: { ok: true },
         },
         house_analysis: {
-          question_lenses: domainContent['question_lenses'] ?? [],
+          question_lenses: boundedLenses,
           lens_count: domainContent['lens_count'] ?? 0,
-          note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells.',
+          signals_per_lens_cap: max_signals_per_lens,
+          note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells. all_relevant_ranked_jsonb capped per lens — drill via get_domain_reading for full signal lists.',
         },
         karaka_analysis: {
           cdlm_cells: domainContent['cdlm_cells'] ?? [],
@@ -191,7 +261,7 @@ async function runAssessDomain(
           signal_id_refs: temporalResult.ok ? (temporalContent['signal_id_refs'] ?? []) : [],
           ...(temporalResult.ok ? {} : { partial_failure: temporalContent['error'] }),
         },
-        contradictions,
+        contradictions: boundedContradictions,
         citations: {
           note: 'Classical citations available via classical_attribution_lookup for signal_id_refs above.',
           drill_uri: 'marsys://tool/L2/classical_attribution_lookup',
@@ -217,8 +287,11 @@ async function runAssessDomain(
             'marsys://tool/L3/query_temporal_activation',
             'marsys://tool/L2/query_contradictions',
           ],
-          defect_001_note:
-            'constituent_facts_array in referenced signals has 91.5% orphan rate (DEFECT-001 OPEN). L1 fact joins via signal references will be empty for most signals until L2 rebuild.',
+          caps_applied: {
+            max_signals_per_lens,
+            max_contradictions,
+            note: 'F-021R bounding: question_lenses bounded per-lens; contradictions capped. Drill via listed URIs for full data.',
+          },
         },
       },
       is_error: false,
@@ -263,6 +336,14 @@ const assessMarriageCapability: CapabilityDescriptor = {
       type: 'string',
       description: "Ayanamsha to use (default: 'LAHIRI').",
     },
+    max_signals_per_lens: {
+      type: 'number',
+      description: `Max ranked signals per question lens (default: ${ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS}, max: ${ASSESS_MAX_SIGNALS_PER_LENS}). Drill via get_domain_reading for full signal lists.`,
+    },
+    max_contradictions: {
+      type: 'number',
+      description: `Max contradictions in bundle (default: ${ASSESS_DEFAULT_MAX_CONTRADICTIONS}, max: ${ASSESS_MAX_CONTRADICTIONS}). Remainder via query_contradictions.`,
+    },
   },
 
   archetype: 'rich_relational',
@@ -275,6 +356,8 @@ const assessMarriageCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
+    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_contradictions',
   ],
 
   llm_hints: {
@@ -326,6 +409,14 @@ const assessCareerCapability: CapabilityDescriptor = {
       type: 'string',
       description: "Ayanamsha to use (default: 'LAHIRI').",
     },
+    max_signals_per_lens: {
+      type: 'number',
+      description: `Max ranked signals per question lens (default: ${ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS}, max: ${ASSESS_MAX_SIGNALS_PER_LENS}). Drill via get_domain_reading for full signal lists.`,
+    },
+    max_contradictions: {
+      type: 'number',
+      description: `Max contradictions in bundle (default: ${ASSESS_DEFAULT_MAX_CONTRADICTIONS}, max: ${ASSESS_MAX_CONTRADICTIONS}). Remainder via query_contradictions.`,
+    },
   },
 
   archetype: 'rich_relational',
@@ -338,6 +429,8 @@ const assessCareerCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
+    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_contradictions',
   ],
 
   llm_hints: {
@@ -389,6 +482,14 @@ const assessHealthCapability: CapabilityDescriptor = {
       type: 'string',
       description: "Ayanamsha to use (default: 'LAHIRI').",
     },
+    max_signals_per_lens: {
+      type: 'number',
+      description: `Max ranked signals per question lens (default: ${ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS}, max: ${ASSESS_MAX_SIGNALS_PER_LENS}). Drill via get_domain_reading for full signal lists.`,
+    },
+    max_contradictions: {
+      type: 'number',
+      description: `Max contradictions in bundle (default: ${ASSESS_DEFAULT_MAX_CONTRADICTIONS}, max: ${ASSESS_MAX_CONTRADICTIONS}). Remainder via query_contradictions.`,
+    },
   },
 
   archetype: 'rich_relational',
@@ -401,6 +502,8 @@ const assessHealthCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
+    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_contradictions',
   ],
 
   llm_hints: {
@@ -451,6 +554,14 @@ const assessWealthCapability: CapabilityDescriptor = {
       type: 'string',
       description: "Ayanamsha to use (default: 'LAHIRI').",
     },
+    max_signals_per_lens: {
+      type: 'number',
+      description: `Max ranked signals per question lens (default: ${ASSESS_DEFAULT_MAX_SIGNALS_PER_LENS}, max: ${ASSESS_MAX_SIGNALS_PER_LENS}). Drill via get_domain_reading for full signal lists.`,
+    },
+    max_contradictions: {
+      type: 'number',
+      description: `Max contradictions in bundle (default: ${ASSESS_DEFAULT_MAX_CONTRADICTIONS}, max: ${ASSESS_MAX_CONTRADICTIONS}). Remainder via query_contradictions.`,
+    },
   },
 
   archetype: 'rich_relational',
@@ -463,6 +574,8 @@ const assessWealthCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
+    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_contradictions',
   ],
 
   llm_hints: {
