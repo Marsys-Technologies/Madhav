@@ -465,3 +465,122 @@ def centrality_formula_v1(node: CentralityInputs) -> dict[str, float]:
         "composite_centrality": round(composite_centrality, 6),
         "centrality_formula_version": VERSION_CENTRALITY_FORMULA,
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# BA-P3B  salience_formula_v2  (ONE canonical site — C5 fix)
+# Replaces verification_certainty (0.778 ceiling) with verification_rescale.
+# Adds class_prior × varga_weight × specificity × bala_gate × functional_context.
+# bo_laksana MUST call this function; the inline formula there is deleted.
+# ──────────────────────────────────────────────────────────────────────────────
+
+VERSION_SALIENCE_FORMULA_V2 = "v2.0"
+
+# verification_rescale lookup — replaces log(1+corroboration)/log(10)
+VERIFICATION_RESCALE: dict[str, float] = {
+    "two_pass_verified":        1.00,
+    "single_pass":              0.85,
+    "documented_approximation": 0.60,
+}
+
+# Varga weight by divisional chart suffix
+VARGA_WEIGHT: dict[str, float] = {
+    "D1": 1.00, "D2": 0.90, "D3": 0.85, "D4": 0.85,
+    "D7": 0.80, "D9": 0.90, "D10": 0.85, "D12": 0.80,
+    "D16": 0.75, "D20": 0.75, "D24": 0.75, "D27": 0.75,
+    "D30": 0.70, "D40": 0.70, "D45": 0.70, "D60": 0.65,
+}
+
+
+@dataclass
+class SalienceInputsV2:
+    """All deterministic inputs for salience_formula_v2 (BA-P3B).
+
+    Callers supply only what applies; unset fields default to neutral.
+    Completeness is tracked via inputs_complete — FALSE when any field
+    falls back to a silent default (trap #17).
+    """
+    # Condition terms — carry over from v1
+    orb_tightness: float = 1.0
+    shadbala_norm: float = 1.0          # rupas, clamped to 2.0 max
+    dignity_score: float = 0.50         # use DIGNITY_SCORE lookup or pass raw
+    house_number: int = 2
+    ashtakavarga_bindus: int = 4
+    vargottama_amplification: float = 0.0
+    neechabhanga_modifier: float = 1.0
+    cancellation_modifier: float = 1.0
+
+    # V2 additions
+    verification_pass_status: str = "documented_approximation"
+    class_prior: float = 1.0        # from brahma_class_priors; 1.0 if row not found
+    varga_id: str = "D1"            # used to look up VARGA_WEIGHT
+    specificity: float = 1.0        # 1 + 0.5×extremity_pctl; 1.0 before percentile pass
+    bala_gate: float | None = None  # yoga-class: clamp(shadbala_norm, 0.30, 1.00); None=N/A
+    functional_context: float = 1.0 # benefic=1.1, malefic=0.9, neutral=1.0
+
+    # Completeness tracking
+    inputs_complete: bool = True    # set False when any field fell back to a default
+
+
+def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
+    """BA-P3B salience formula v2.0 — ONE canonical site (C5 fix).
+
+    salience_v2 = class_prior × varga_weight × specificity
+                × verification_rescale
+                × condition_terms(orb × shadbala × dignity × house_wt × av_mult
+                                  × vargottama × neechabhanga × cancellation)
+                × bala_gate   [yoga-class only; 1.0 for all others]
+                × functional_context
+
+    verification_rescale eliminates the 0.778 ceiling of log(1+corroboration)/log(10).
+    bala_gate: yoga signals with weak constituent planets are demoted, not excluded.
+    specificity and salience_pctl_in_class are filled in a second pass by bo_laksana.
+    """
+    verification_rescale = VERIFICATION_RESCALE.get(
+        s.verification_pass_status,
+        VERIFICATION_RESCALE["documented_approximation"],
+    )
+    varga_weight = VARGA_WEIGHT.get(s.varga_id or "D1", 1.00)
+    house_wt = HOUSE_WEIGHT.get(s.house_number, 1.00)
+    av_mult = _av_multiplier(s.ashtakavarga_bindus)
+
+    condition_terms = (
+        s.orb_tightness
+        * min(s.shadbala_norm, 2.0)
+        * s.dignity_score
+        * house_wt
+        * av_mult
+        * (1 + s.vargottama_amplification)
+        * s.neechabhanga_modifier
+        * s.cancellation_modifier
+    )
+
+    gate = s.bala_gate if s.bala_gate is not None else 1.0
+    present_but_enfeebled = (s.bala_gate is not None) and (s.bala_gate < 0.60)
+
+    computed_salience = (
+        s.class_prior
+        * varga_weight
+        * s.specificity
+        * verification_rescale
+        * condition_terms
+        * gate
+        * s.functional_context
+    )
+
+    return {
+        "class_prior":              round(s.class_prior, 6),
+        "varga_weight":             round(varga_weight, 6),
+        "specificity":              round(s.specificity, 6),
+        "verification_rescale":     round(verification_rescale, 6),
+        "condition_terms":          round(condition_terms, 6),
+        "bala_gate":                round(gate, 6),
+        "functional_context":       round(s.functional_context, 6),
+        "computed_salience":        round(computed_salience, 6),
+        "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
+        "salience_inputs_complete": s.inputs_complete,
+        "present_but_enfeebled":    present_but_enfeebled,
+        # v1 compat keys — callers that stored these column names still work
+        "house_weight_multiplier":           round(house_wt, 6),
+        "ashtakavarga_support_multiplier":   round(av_mult, 6),
+    }

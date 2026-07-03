@@ -113,6 +113,74 @@ INSERT INTO bodha_convergence (
 
 _BATCH_SIZE = 50
 
+# BA-P3B EXT ──────────────────────────────────────────────────────────────────
+_TRIANGULATION_INSERT = """
+INSERT INTO bodha_triangulation (
+    triangulation_id, chart_id, ayanamsha_id, build_id,
+    question_class, tradition,
+    verdict_inputs, concordance_score, signal_ids,
+    formula_version, computed_at, engine_version
+) VALUES (
+    %(triangulation_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+    %(question_class)s, %(tradition)s,
+    %(verdict_inputs)s::jsonb, %(concordance_score)s, %(signal_ids)s,
+    %(formula_version)s, %(computed_at)s, %(engine_version)s
+)
+ON CONFLICT (chart_id, ayanamsha_id, question_class, tradition)
+DO UPDATE SET
+    verdict_inputs      = EXCLUDED.verdict_inputs,
+    concordance_score   = EXCLUDED.concordance_score,
+    signal_ids          = EXCLUDED.signal_ids,
+    computed_at         = EXCLUDED.computed_at,
+    engine_version      = EXCLUDED.engine_version
+"""
+
+_TRIANGULATION_TRADITIONS = ("parashari", "jaimini", "kp", "tajika")
+_TRIANGULATION_FORMULA    = "v1.0"
+
+
+def _build_triangulation_rows(
+    chart_id: str, aya: str, build_id: str,
+    signals: list[dict], now: str,
+) -> list[dict]:
+    """Per (domain × tradition) concordance: mean salience of top-5 signals."""
+    rows: list[dict] = []
+    for domain in KNOWN_DOMAINS:
+        for trad in _TRIANGULATION_TRADITIONS:
+            trad_sigs = [
+                s for s in signals
+                if str(s.get("signal_tradition") or "").lower() == trad
+                and domain in (s.get("domains_affected_array") or [])
+            ]
+            if not trad_sigs:
+                continue
+            trad_sigs.sort(
+                key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True
+            )
+            top5      = trad_sigs[:5]
+            top5_sal  = [float(s.get("computed_salience") or 0.0) for s in top5]
+            concordance = round(sum(top5_sal) / len(top5_sal), 6) if top5_sal else 0.0
+            sig_ids   = [str(s.get("signal_id") or "") for s in trad_sigs]
+            rows.append({
+                "triangulation_id": str(uuid.uuid4()),
+                "chart_id":         chart_id,
+                "ayanamsha_id":     aya,
+                "build_id":         build_id,
+                "question_class":   domain,
+                "tradition":        trad,
+                "verdict_inputs":   json.dumps({
+                    "domain": domain, "tradition": trad,
+                    "signal_count": len(trad_sigs),
+                    "top5_saliences": top5_sal,
+                }),
+                "concordance_score": concordance,
+                "signal_ids":       sig_ids or None,
+                "formula_version":  _TRIANGULATION_FORMULA,
+                "computed_at":      now,
+                "engine_version":   ENGINE_VERSION,
+            })
+    return rows
+
 
 def _fetch_dict(conn, sql: str, params: list) -> list[dict]:
     # conn uses dict_row factory; fetchall() already returns dicts — convert to plain dict.
@@ -339,8 +407,9 @@ class BoSangatiWriter(WriterBase):
         build_id = ctx.build_id
         conn     = ctx.db_conn
         now      = datetime.now(timezone.utc).isoformat()
-        total_cells = 0
-        total_conv  = 0
+        total_cells  = 0
+        total_conv   = 0
+        total_triang = 0
 
         for aya in CANONICAL_AYAS:
             signals = _fetch_signals(conn, chart_id, aya)
@@ -360,5 +429,15 @@ class BoSangatiWriter(WriterBase):
             total_cells += _batch_insert(conn, cells, _CDLM_INSERT)
             total_conv  += _batch_insert(conn, conv,  _CONVERGENCE_INSERT)
 
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total_cells + total_conv,
-                            notes=f"cdlm_cells={total_cells} convergence={total_conv}")
+            # BA-P3B EXT: write bodha_triangulation rows (multi-tradition concordance)
+            triang = _build_triangulation_rows(chart_id, aya, build_id, signals, now)
+            conn.execute(
+                "DELETE FROM bodha_triangulation WHERE chart_id=%s AND ayanamsha_id=%s",
+                [chart_id, aya],
+            )
+            for row in triang:
+                conn.execute(_TRIANGULATION_INSERT, row)
+            total_triang += len(triang)
+
+        return WriterResult(asset_id=self.asset_id, rows_inserted=total_cells + total_conv + total_triang,
+                            notes=f"cdlm_cells={total_cells} convergence={total_conv} triangulation={total_triang}")
