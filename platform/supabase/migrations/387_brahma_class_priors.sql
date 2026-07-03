@@ -322,4 +322,6 @@ ON CONFLICT (asset_id) DO UPDATE SET
     layer_index         = EXCLUDED.layer_index,
     catalog_status      = EXCLUDED.catalog_status;
 
+UPDATE asset_registry SET has_writer = true WHERE asset_id = 'bg_class_priors';
+
 COMMIT;

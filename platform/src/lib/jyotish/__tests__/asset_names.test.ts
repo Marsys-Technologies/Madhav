@@ -22,11 +22,12 @@ describe('ASSET_NAMES', () => {
     }
   })
 
-  it('contains all 12 L0 Brahmagyan global foundation assets', () => {
+  it('contains all 16 L0 Brahmagyan global foundation assets', () => {
     const l0Keys: AssetKey[] = [
       'bg_ephemeris', 'bg_reference', 'bg_texts', 'bg_ontology',
       'bg_text_index', 'bg_rules', 'bg_remedies', 'bg_concordance',
       'bg_yogas', 'bg_dasha_systems', 'bg_doshas', 'bg_compendium_index',
+      'bg_nakshatra', 'bg_class_priors', 'bg_ghatana', 'bg_formula_constants',
     ]
     for (const k of l0Keys) {
       expect(ASSET_NAMES[k].layer).toBe('L0')
@@ -140,8 +141,8 @@ describe('LAYER_NAMES', () => {
 })
 
 describe('assetsByLayer', () => {
-  it('returns 12 L0 Brahmagyan assets', () => {
-    expect(assetsByLayer('L0').length).toBe(12)
+  it('returns 16 L0 Brahmagyan assets', () => {
+    expect(assetsByLayer('L0').length).toBe(16)
   })
 
   it('returns 8 L1 Gaṇita assets', () => {
