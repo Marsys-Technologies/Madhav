@@ -251,7 +251,22 @@ Canonical CHECK constraints live on all 5 tables (convergence_scores, kala_bhavi
 - bg_formula_constants seed rows (expected ~11): DEFERRED (needs cockpit L0 bg_formula_constants build)
 - Per-varga shadbala non-sthana components NULL-with-reason: DEFERRED
 
-**Next action:** Run L0 seed builds then L1 REBUILD for Abhinandan (1c826d5a) then native (482012f1) via cockpit. Evidence row counts verbatim in this ledger upon completion.
+**L0 seed table row counts (migration inline INSERTs — no cockpit build required):**
+```sql
+SELECT 'brahma_class_priors', COUNT(*) FROM brahma_class_priors
+UNION ALL SELECT 'brahma_event_ontology', COUNT(*) FROM brahma_event_ontology
+UNION ALL SELECT 'brahma_activity_ontology', COUNT(*) FROM brahma_activity_ontology
+UNION ALL SELECT 'brahma_formula_constants', COUNT(*) FROM brahma_formula_constants;
+-- brahma_class_priors:      164 rows ✓ (expected ~165; migrations 387 inline INSERTs)
+-- brahma_event_ontology:     22 rows ✓ (migration 388)
+-- brahma_activity_ontology:  12 rows ✓ (migration 388)
+-- brahma_formula_constants:  11 rows ✓ (migration 389)
+```
+Seeds deployed inline with migration SQL — no cockpit run needed for base data.
+
+**bhava_arudha DEFERRED:** `_build_bhava_arudha_rows()` added 2026-07-03; last L1 rebuild was 2026-06-29; bhava_arudha category not yet in chart_facts. Requires cockpit L1 REBUILD (Abhinandan first, then native 482012f1). Open action for P3A closure.
+
+**Next action:** Cockpit L1 REBUILD for 482012f1 and 1c826d5a to populate bhava_arudha rows. Evidence verbatim in this ledger. THEN flip brief status=COMPLETE.
 
 ---
 
