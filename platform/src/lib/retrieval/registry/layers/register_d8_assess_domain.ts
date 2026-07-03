@@ -202,8 +202,77 @@ async function runAssessDomain(
             discoveries: contraContent['discoveries'],
           }
 
-    // ── Assemble reconciled bundle ─────────────────────────────────────────
+    // ── Step 4: composite-ranked signals + ranking_basis (BA-P2 envelope retrofit) ──
+    // Calls query_signals (which now composite-ranks when domain is specified, wired in BA-P2 Step 2).
+    // Non-fatal: a failure here returns salience_fallback ranking_basis, not a broken bundle.
+    let p2RankingBasis: Record<string, unknown> = {
+      mode: 'salience_fallback',
+      priors_version: '0.9-prov',
+      domain,
+    }
+    let topCompositeSignals: Record<string, unknown>[] = []
+
+    try {
+      const { querySignalsCapability } = await import('./L2_bodha/query_signals')
+      const signalsResult = await querySignalsCapability.handler(
+        { chart_id, ayanamsha_id, domain, top_k: 50 },
+        undefined
+      )
+      if (!signalsResult.is_error) {
+        const sc = signalsResult.content as Record<string, unknown>
+        topCompositeSignals = Array.isArray(sc['signals'])
+          ? (sc['signals'] as Record<string, unknown>[])
+          : []
+        if (sc['ranking_basis']) {
+          p2RankingBasis = sc['ranking_basis'] as Record<string, unknown>
+        }
+      }
+    } catch {
+      // Non-fatal: ranking_basis falls back to salience_fallback
+    }
+
+    // ── Assemble verdict_skeleton (deterministic — no LLM inference) ──────────
+    // Groups top composite signals by reasoning-chain stage.
+    // Stages: yoga/configuration → karaka_alignment → relationship (lord/dispositor)
+    //         → magnitude/strength → varga → temporal → contradiction_pairs
+    const stc = (s: Record<string, unknown>) => String(s['signal_type_class'] ?? '')
+    const sss = (s: Record<string, unknown>) => String(s['source_subsystem'] ?? '')
+
+    const pickSignals = (sigs: Record<string, unknown>[], n: number) =>
+      sigs.slice(0, n).map(s => ({
+        signal_id:          s['signal_id'],
+        signal_type_class:  s['signal_type_class'],
+        summary:            s['signal_summary_text'],
+        source_subsystem:   s['source_subsystem'],
+        composite_score:    s['composite_score'] ?? null,
+        final_rank_score:   s['final_rank_score'] ?? null,
+      }))
+
     const temporalContent = (temporalResult.data ?? {}) as Record<string, unknown>
+    const contrItems = contradictions.status === 'ok'
+      ? ((contradictions as Record<string, unknown>)['items'] as unknown[] ?? [])
+      : []
+
+    const verdict_skeleton = {
+      top_10_composite: pickSignals(topCompositeSignals, 10),
+      by_stage: {
+        yoga:      pickSignals(topCompositeSignals.filter(s => ['configuration', 'yoga'].includes(stc(s))), 5),
+        karaka:    pickSignals(topCompositeSignals.filter(s => stc(s) === 'karaka_alignment'), 5),
+        lord:      pickSignals(topCompositeSignals.filter(s => stc(s) === 'relationship'), 5),
+        strength:  pickSignals(
+          topCompositeSignals.filter(s => stc(s) === 'magnitude' || sss(s) === 'strength_ashtakavarga'),
+          5
+        ),
+        varga:     pickSignals(topCompositeSignals.filter(s => sss(s) === 'varga'), 5),
+        temporal:  temporalResult.ok
+          ? (temporalContent['activations'] as unknown[] ?? []).slice(0, 5)
+          : [],
+        contradiction_pairs: contrItems.slice(0, 5),
+      },
+      note: 'Deterministic classification by signal_type_class + source_subsystem. No LLM inference. Drill via query_signals for full composite ranking.',
+    }
+
+    // ── Assemble reconciled bundle ─────────────────────────────────────────
 
     // F-021R: cap contradictions in the assembled bundle.
     // queryContradictionsCapability returns all rows (5,000+/chart); slice to max_contradictions.
@@ -234,10 +303,13 @@ async function runAssessDomain(
         domain_label,
         chart_id,
         ayanamsha_id,
+        ranking_basis: p2RankingBasis,
+        verdict_skeleton,
         step_results: {
           domain_reading: { ok: true },
           temporal: { ok: temporalResult.ok },
           contradictions: { ok: true },
+          composite_ranking: { ok: topCompositeSignals.length > 0 },
         },
         house_analysis: {
           question_lenses: boundedLenses,
@@ -275,6 +347,7 @@ async function runAssessDomain(
         ],
         provenance: {
           tables: [
+            'bodha_msr_signals',
             'bodha_question_lenses',
             'bodha_cdlm_cells',
             'kala_activation',
@@ -286,11 +359,13 @@ async function runAssessDomain(
             'marsys://tool/L2/query_domain_reading',
             'marsys://tool/L3/query_temporal_activation',
             'marsys://tool/L2/query_contradictions',
+            'marsys://tool/L2/query_signals (BA-P2 composite ranking)',
           ],
           caps_applied: {
             max_signals_per_lens,
             max_contradictions,
-            note: 'F-021R bounding: question_lenses bounded per-lens; contradictions capped. Drill via listed URIs for full data.',
+            composite_signals_fetched: topCompositeSignals.length,
+            note: 'F-021R bounding: question_lenses bounded per-lens; contradictions capped. BA-P2: composite 4D ranking applied to top-50 signals. Drill via listed URIs for full data.',
           },
         },
       },
