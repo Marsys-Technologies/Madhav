@@ -85,8 +85,8 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 
 | Fix | File | Status | Branch/PR | Notes |
 |---|---|---|---|---|
-| M1: ga_condition count_sql | platform/supabase/migrations/390_ga_condition_count_sql_sayanadi_lajjitadi_yuddha.sql | IN_FLIGHT | fix/m1-m2-pre-p3b | Extends count_sql to include graha_avastha_sayanadi, graha_avastha_lajjitadi, graha_yuddha; verify cockpit live count post-rebuild [verify-against: prod] |
-| M2: bodha_bimba → bodha_discoveries | platform-mcp/src/tools/register_p1_synthesis.ts | IN_FLIGHT | fix/m1-m2-pre-p3b | Lines 9/124/150/160 — 4 occurrences corrected; redeploy platform-mcp required; verify bodha_discoveries_get returns rows for 482012f1 [verify-against: prod] |
+| M1: ga_condition count_sql | platform/supabase/migrations/390_ga_condition_count_sql_sayanadi_lajjitadi_yuddha.sql | MERGED | PR #406 (0be2bc00); RING1_PASS | Merged 2026-07-03; verify cockpit live count post-cockpit-L1-rebuild [verify-against: prod] |
+| M2: bodha_bimba → bodha_discoveries | platform-mcp/src/tools/register_p1_synthesis.ts | MERGED | PR #406 (0be2bc00); RING1_PASS | Merged 2026-07-03; verify bodha_discoveries_get returns rows for 482012f1 post-platform-mcp-redeploy [verify-against: prod] |
 
 ---
 
@@ -322,7 +322,7 @@ Seeds deployed inline with migration SQL — no cockpit run needed for base data
 | ⟦NEXT_MIGRATION_NUMBER_BOTH_DIRS⟧ | P3A | 385 (current next-free) | BA_GROUNDING_REPORT §G-9b |
 | ⟦P3A_CLOSE_SHA_AND_MIGRATION_NUMBERS⟧ | P3B | PR #398=85d190ed + PR #401=adcf3de4 + PR #402=5b046c94; migrations 385–389 all applied (deploy run 28657023737); RING2_PARTIAL (bhava_arudha + L0 seeds pending cockpit) | P3A Ring-1 PASS; Ring-2 partial |
 | ⟦PRE_P3_SNAPSHOT_ID⟧ | P3B | TBD — created at P3B Step 0 | P3B Step 0 |
-| ⟦NEXT_MIGRATION_NUMBER⟧ | P3B | TBD (385 + P3A count) | after P3A |
+| ⟦NEXT_MIGRATION_NUMBER⟧ | P3B | 391 (mig 390 taken by M1 ga_condition count_sql fix, fix/m1-m2-pre-p3b) | pre-P3B fix wave |
 | ⟦P3B_CLOSE_SHA⟧ | P4 | TBD after P3B merge | P3B close |
 | ⟦GOLDEN_EVAL_SCORE_AFTER_P3B⟧ | P4 | TBD (Astro-Examiner after P3B) | P3B Ring-2 |
 | ⟦P4_OR_P3B_CLOSE_SHA⟧ | P5A | TBD | P4 or P3B close |
