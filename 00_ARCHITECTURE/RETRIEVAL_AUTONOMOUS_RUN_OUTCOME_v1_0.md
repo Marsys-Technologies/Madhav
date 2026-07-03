@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_AUTONOMOUS_RUN_OUTCOME
 canonical_id: RETRIEVAL_AUTONOMOUS_RUN_OUTCOME
 version: 1.1
 status: CURRENT — retrieval SEALED (both channels); 2 non-retrieval items routed

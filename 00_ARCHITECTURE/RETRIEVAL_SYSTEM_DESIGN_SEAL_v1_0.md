@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_SYSTEM_DESIGN_SEAL
 canonical_id: RETRIEVAL_SYSTEM_DESIGN_SEAL
 version: 1.0
 status: SEALED

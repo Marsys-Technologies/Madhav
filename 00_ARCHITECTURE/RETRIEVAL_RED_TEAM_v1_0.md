@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_RED_TEAM
 canonical_id: RETRIEVAL_RED_TEAM
 version: 1.0
 status: CURRENT

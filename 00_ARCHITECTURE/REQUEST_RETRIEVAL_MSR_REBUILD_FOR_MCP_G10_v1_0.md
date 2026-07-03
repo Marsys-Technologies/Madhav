@@ -1,4 +1,5 @@
 ---
+artifact: REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10
 canonical_id: REQUEST_RETRIEVAL_MSR_REBUILD_FOR_MCP_G10
 version: 1.0
 status: OPEN REQUEST — from the MCP-elevation workstream TO the retrieval / L2 Bodha fork

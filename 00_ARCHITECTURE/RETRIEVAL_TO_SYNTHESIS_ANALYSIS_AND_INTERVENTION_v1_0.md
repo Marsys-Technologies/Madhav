@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_TO_SYNTHESIS_ANALYSIS_AND_INTERVENTION
 canonical_id: RETRIEVAL_TO_SYNTHESIS_ANALYSIS_AND_INTERVENTION
 version: 1.0
 status: CURRENT — complete analysis + intervention plan: data → retrieval → MCP → synthesis, astrological-lens-first

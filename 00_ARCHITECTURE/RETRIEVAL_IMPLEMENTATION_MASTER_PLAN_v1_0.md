@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_IMPLEMENTATION_MASTER_PLAN
 canonical_id: RETRIEVAL_IMPLEMENTATION_MASTER_PLAN
 version: 1.1
 status: CURRENT — the execution runway for the retrieval-system build (parallel-enabled)

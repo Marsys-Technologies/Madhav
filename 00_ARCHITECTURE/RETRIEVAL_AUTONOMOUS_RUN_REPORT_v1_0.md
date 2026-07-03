@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_AUTONOMOUS_RUN_REPORT
 canonical_id: RETRIEVAL_AUTONOMOUS_RUN_REPORT
 version: 1.0
 status: CURRENT

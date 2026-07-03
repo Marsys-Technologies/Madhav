@@ -1,3 +1,9 @@
+---
+artifact: TIER_B_BRANCH_AUDIT_PENDING
+version: 1.0
+status: SUPERSEDED
+---
+
 # Tier B Branch Audit — Required Next Session
 
 After Tier A cleanup (5 origin branches + 3 worktrees removed, PRs #221/#224 closed), 32 origin branches remain ahead of main.

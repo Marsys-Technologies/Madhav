@@ -1,4 +1,5 @@
 ---
+artifact: MCP_SYSTEM_AUDIT_FIX_PLAN
 canonical_id: MCP_SYSTEM_AUDIT_FIX_PLAN
 version: 1.0
 status: DRAFT-FOR-REVIEW — prioritized fix-wave plan from the 360° audit (~31 findings)

@@ -1,4 +1,5 @@
 ---
+artifact: BEYOND_ACHARYA_MASTER_IMPLEMENTATION_PLAN
 canonical_id: BEYOND_ACHARYA_MASTER_IMPLEMENTATION_PLAN
 version: 1.0
 status: CURRENT — the single execution-governing document for the Beyond-Acharya program

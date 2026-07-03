@@ -1,4 +1,5 @@
 ---
+artifact: MCP_SYSTEM_AUDIT_PLAN
 canonical_id: MCP_SYSTEM_AUDIT_PLAN
 version: 1.0
 status: DRAFT-FOR-REVIEW — the exhaustive 360° system-audit plan; we iterate on this before executing

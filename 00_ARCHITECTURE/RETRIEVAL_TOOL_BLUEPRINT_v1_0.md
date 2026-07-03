@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_TOOL_BLUEPRINT
 canonical_id: RETRIEVAL_TOOL_BLUEPRINT
 version: 1.0
 status: DRAFT — Part B (to-be reference design)

@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_RECONFIRM_FINDINGS
 canonical_id: RETRIEVAL_RECONFIRM_FINDINGS
 version: 1.0
 status: CURRENT

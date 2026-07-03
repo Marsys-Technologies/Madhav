@@ -1,4 +1,5 @@
 ---
+artifact: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE
 canonical_id: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE
 version: 1.0
 status: DRAFT-FOR-NATIVE-GLANCE — authored by Cowork under explicit native delegation (2026-07-02).

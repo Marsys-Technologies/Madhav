@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_DESIGN_D0_FOUNDATIONS
 canonical_id: RETRIEVAL_DESIGN_D0_FOUNDATIONS
 version: 1.1
 status: DECISIONS-RESOLVED — gates DG1–DG4 ruled; ready to feed D1

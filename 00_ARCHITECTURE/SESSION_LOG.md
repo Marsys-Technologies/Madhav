@@ -30287,6 +30287,10 @@ Abhinandan final asset state:
 Deep data-correctness audit (salience stratification, domain population, MSR constituent_facts
 grounding, contradiction analysis) — explicitly deferred to a separate session per brief §0.
 
+### Next session objective
+
+Deep data-correctness audit for Abhinandan 1c826d5a (salience, domain population, MSR constituent_facts grounding, contradictions). Then ISSUE-4 faithfulness fix — L2 Bodha MSR rebuild for native 482012f1 to raise grounding from 6.88% to ≥80%.
+
 ```yaml
 session_close:
   session_id: ABHINANDAN-REGEN-TRACKER-SHAKEDOWN-2026-06-28
@@ -30371,6 +30375,10 @@ sweep, and completeness re-check across L1–L5.
 
 Full prioritized action list in `ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md §6`.
 
+### Next session objective
+
+Review findings in ABHINANDAN_POST_REGEN_DATA_AUDIT_v1_0.md with native and approve the P0/P1 remediation list. Priority: (1) chart_facts idempotency fix; (2) salience stratification root-cause investigation; (3) contradiction detection writer diagnosis; (4) domain propagation trace; (5) native 482012f1 hygiene run.
+
 ### Safety spot-checks
 
 | Check | Result |
@@ -30408,7 +30416,7 @@ session_close:
 
 ---
 
-## Session BA-P1-SYNC-FREEZE — Beyond-Acharya Phase P-1 Sync Freeze (2026-07-03, CLOSED)
+## BA-P1-SYNC-FREEZE-2026-07-03 — Beyond-Acharya Phase P-1 Sync Freeze (2026-07-03, CLOSED)
 
 ```yaml
 session_open:
@@ -30416,7 +30424,7 @@ session_open:
   opened_on: 2026-07-03
   environment: Claude Code (Antigravity, /Users/Dev/Vibe-Coding/Apps/Madhav)
   cowork_thread_name: "BA-P1-SYNC-FREEZE-2026-07-03"
-  governing_brief: CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md (program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0 phase P-1)
+  governing_brief: "CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md (program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0 phase P-1)"
   active_layer_campaign: Beyond-Acharya unified program (precedes P0)
   may_touch:
     - ".git (branch/stash/worktree ops)"
@@ -30481,6 +30489,10 @@ Executed all 6 steps of the BA-P-1 sync freeze brief to bring the repository to 
 | Brief status → COMPLETE | ✅ |
 
 **Open after this session:** PR #390 `worktree-fix+mcp-latency` (MCP latency cache fix) — needs CI green + native review + merge.
+
+### Next session objective
+
+Execute CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md (grounding proof, gates P0+). Before starting: review PR #390 (MCP latency cache fix) — merge if CI green. Program start SHA on record: 8566be39.
 
 ```yaml
 session_close:

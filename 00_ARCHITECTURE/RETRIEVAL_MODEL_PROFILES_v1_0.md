@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_MODEL_PROFILES
 canonical_id: RETRIEVAL_MODEL_PROFILES
 version: 1.1.0
 status: MEASURED — routing-layer values confirmed by D8 eval harness (2026-06-28)

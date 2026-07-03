@@ -1,4 +1,5 @@
 ---
+artifact: L0_L1_STRATEGIC_DEEP_AUDIT
 canonical_id: L0_L1_STRATEGIC_DEEP_AUDIT
 version: "1.0"
 status: CURRENT

@@ -1,4 +1,5 @@
 ---
+artifact: MARSYS_STRATEGIC_HANDOFF
 canonical_id: MARSYS_STRATEGIC_HANDOFF
 version: 1.0
 status: CURRENT — paste into a fresh Cowork conversation to open the STRATEGIC workstream

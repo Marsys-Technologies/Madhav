@@ -1,4 +1,5 @@
 ---
+artifact: MCP_E2E_TEST_REPORT
 canonical_id: MCP_E2E_TEST_REPORT
 version: 1.0
 status: CURRENT — end-to-end LLM-as-client test of the live MCP (completeness + retrievability + synthesis)

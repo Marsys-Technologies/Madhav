@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_EVAL_RESULTS
 canonical_id: RETRIEVAL_EVAL_RESULTS
 version: 1.0
 status: CURRENT

@@ -1,4 +1,5 @@
 ---
+artifact: L1_SEAL_v1_0
 artifact_id: L1_SEAL
 version: 1.0
 status: SEALED — ALL 4 GATES PASS on live DB 2026-06-24; G1 confirmed PASS (cloud rebuild 586f4e9b landed)

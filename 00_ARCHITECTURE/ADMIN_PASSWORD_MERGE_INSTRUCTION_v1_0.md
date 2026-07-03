@@ -1,4 +1,5 @@
 ---
+artifact: ADMIN_PASSWORD_MERGE_INSTRUCTION
 canonical_id: ADMIN_PASSWORD_MERGE_INSTRUCTION
 version: 1.0
 status: READY

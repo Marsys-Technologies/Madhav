@@ -1,4 +1,5 @@
 ---
+artifact: RETRIEVAL_PRIMITIVES_REGISTRY
 canonical_id: RETRIEVAL_PRIMITIVES_REGISTRY
 version: 1.0
 status: CURRENT

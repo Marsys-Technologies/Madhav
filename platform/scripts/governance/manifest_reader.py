@@ -52,7 +52,7 @@ def load_manifest_as_ca(repo_root: pathlib.Path) -> CanonicalArtifacts:
             "canonical_id": canonical_id,
             "path": entry.get("path", ""),
             "status": entry.get("status", "CURRENT"),
-            "version": str(entry.get("version", "")),
+            "version": str(entry.get("version") or entry.get("interface_version", "")),
             # prefer fingerprint_sha256 (authoritative); fall back to legacy fingerprint field
             "fingerprint_sha256": entry.get("fingerprint_sha256") or entry.get("fingerprint", ""),
             "layer": entry.get("layer", ""),
