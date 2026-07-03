@@ -1054,6 +1054,205 @@ def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
         conn.execute(sql, values)
 
 
+# ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ──────
+
+# Sayanadi avasthas — 12 states per 2.5° within sign (BPHS ch.28, Parashari).
+# Signs divided into 12 equal 2.5° zones (30°/12 = 2.5°).
+_SAYANADI_STATES: list[str] = [
+    "shayana",    # 0-2.5°   sleeping — weakened state
+    "upavishtha", # 2.5-5°   seated
+    "netrapani",  # 5-7.5°   covering eyes
+    "prakashana", # 7.5-10°  illuminated — visible
+    "gamana",     # 10-12.5° moving
+    "agama",      # 12.5-15° approaching
+    "sabha",      # 15-17.5° in assembly — active
+    "agamana",    # 17.5-20° arrived
+    "naiveshya",  # 20-22.5° offering
+    "kautuka",    # 22.5-25° curious
+    "nishkapata", # 25-27.5° innocent/transparent
+    "nidra",      # 27.5-30° deep sleep — debilitated
+]
+
+
+def _sayanadi_from_degree(degree_in_sign: float) -> str:
+    """Sayanadi avastha from degree within sign (0–30). BPHS ch.28."""
+    idx = min(int(degree_in_sign / 2.5), 11)
+    return _SAYANADI_STATES[idx]
+
+
+def _lajjitadi_from_context(
+    graha: str,
+    dignity_d1: str,
+    house: Optional[int],
+    is_combust: bool,
+    position_map: dict,
+) -> str:
+    """
+    Lajjitadi avastha — 6 states from Phaladeepika ch.13 + BPHS:
+      Lajjita  — in 5th/9th with Rahu or Ketu
+      Garvita  — in exaltation or moolatrikona sign
+      Kshudhita— lord of sign is enemy
+      Trishita — in enemy sign
+      Mudita   — in friend sign (aspected or placed by friend)
+      Kshobhita— with Sun (combust) + malefic aspect
+
+    Falls back to 'neutral' when context is unavailable.
+    """
+    if dignity_d1 in ("exalted", "moolatrikona"):
+        return "garvita"
+    if is_combust:
+        return "kshobhita"
+    if dignity_d1 == "debilitated":
+        return "trishita"
+    if house in (5, 9):
+        for shadow in ("Rahu", "Ketu"):
+            shadow_pos = position_map.get(shadow)
+            if shadow_pos and shadow_pos.get("house") == house:
+                return "lajjita"
+    if dignity_d1 in ("friend_sign", "great_friend_sign"):
+        return "mudita"
+    if dignity_d1 in ("enemy_sign", "great_enemy_sign"):
+        return "kshudhita"
+    return "neutral"
+
+
+def _build_d1_avastha_rows(
+    conn: Any,
+    chart_id: str,
+    build_id: Optional[str],
+    ayanamsha_id: str,
+    computed_at: str,
+    eng_ver: str,
+) -> list[dict]:
+    """
+    Build D1-level chart_facts rows for:
+      - graha_avastha_sayanadi     (12-state degree-based, BPHS)
+      - graha_avastha_lajjitadi    (6-state context-based, Phaladeepika)
+      - graha_yuddha               (explicit chart_facts row for retrieval)
+
+    Sources: _load_graha_positions() (already computed for ayanamsha_id).
+    These supplement the existing ga_condition_composite columns.
+    """
+    rows: list[dict] = []
+    try:
+        positions = _load_graha_positions(conn, chart_id, ayanamsha_id)
+    except Exception as exc:
+        logger.warning("[ga_condition_writer] d1_avastha: position load failed: %s", exc)
+        return []
+
+    position_map: dict[str, dict] = {}
+    for p in positions:
+        graha = p.get("graha") or p.get("fact_subject", "")
+        position_map[graha] = p
+
+    sun_pos = position_map.get("Sun")
+    sun_longitude = sun_pos.get("longitude") if sun_pos else None
+    yuddha_map = _detect_graha_yuddha(position_map)
+    combustion_orbs: dict = {}
+
+    for graha in ALL_GRAHAS:
+        pos = position_map.get(graha)
+        if pos is None:
+            continue
+
+        sign         = pos.get("sign")
+        deg_in_sign  = pos.get("degree_in_sign")
+        longitude    = pos.get("longitude")
+        house        = pos.get("house")
+        is_retrograde = bool(pos.get("is_retrograde", False))
+
+        dignity_d1 = dignity_d1_from_sign(graha, sign, deg_in_sign or 0.0) if sign else "neutral_sign"
+
+        # Combustion for lajjitadi
+        is_combust = False
+        if longitude is not None and sun_longitude is not None and graha != "Sun":
+            arc = compute_combustion_arc(longitude, sun_longitude)
+            is_combust, _ = check_combustion(graha, arc, combustion_orbs)
+
+        # ── Sayanadi row ──────────────────────────────────────────────────────
+        if deg_in_sign is not None:
+            sayanadi_val = _sayanadi_from_degree(float(deg_in_sign))
+            rows.append({
+                "fact_id":                 str(uuid.uuid4()),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            ayanamsha_id,
+                "build_id":                build_id or "",
+                "fact_category":           "graha_avastha_sayanadi",
+                "fact_subject":            graha.upper(),
+                "fact_key":                "D1",
+                "fact_value_text":         sayanadi_val,
+                "fact_value_num":          None,
+                "fact_value_jsonb":        None,
+                "unit":                    None,
+                "citation_ref":            f"graha_avastha_sayanadi.{graha}.D1@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+                "citation_human":          f"{graha} sayanadi avastha (D1): {sayanadi_val} (deg_in_sign={deg_in_sign:.2f}). BPHS ch.28: 12-state 2.5°-division rule.",
+                "source_calculation":      f"ga_condition_writer._sayanadi_from_degree/{eng_ver}",
+                "verification_pass_status":"computed_extension",
+                "engine_version":          eng_ver,
+                "computed_at":             computed_at,
+            })
+
+        # ── Lajjitadi row ─────────────────────────────────────────────────────
+        lajjitadi_val = _lajjitadi_from_context(
+            graha, dignity_d1, house, is_combust, position_map
+        )
+        rows.append({
+            "fact_id":                 str(uuid.uuid4()),
+            "chart_id":                chart_id,
+            "ayanamsha_id":            ayanamsha_id,
+            "build_id":                build_id or "",
+            "fact_category":           "graha_avastha_lajjitadi",
+            "fact_subject":            graha.upper(),
+            "fact_key":                "D1",
+            "fact_value_text":         lajjitadi_val,
+            "fact_value_num":          None,
+            "fact_value_jsonb":        None,
+            "unit":                    None,
+            "citation_ref":            f"graha_avastha_lajjitadi.{graha}.D1@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+            "citation_human":          (
+                f"{graha} lajjitadi avastha (D1): {lajjitadi_val}. "
+                "Phaladeepika ch.13 / BPHS: 6-state context rule "
+                "(exalted=garvita, combust=kshobhita, debilitated=trishita, "
+                "5/9+shadow=lajjita, friend=mudita, enemy=kshudhita)."
+            ),
+            "source_calculation":      f"ga_condition_writer._lajjitadi_from_context/{eng_ver}",
+            "verification_pass_status":"computed_extension",
+            "engine_version":          eng_ver,
+            "computed_at":             computed_at,
+        })
+
+        # ── Graha yuddha chart_facts row (for MSR retrieval) ─────────────────
+        yuddha_data = yuddha_map.get(graha)
+        if yuddha_data:
+            opponent, result = yuddha_data
+            rows.append({
+                "fact_id":                 str(uuid.uuid4()),
+                "chart_id":                chart_id,
+                "ayanamsha_id":            ayanamsha_id,
+                "build_id":                build_id or "",
+                "fact_category":           "graha_yuddha",
+                "fact_subject":            graha.upper(),
+                "fact_key":                "opponent",
+                "fact_value_text":         f"{opponent}:{result}",
+                "fact_value_num":          None,
+                "fact_value_jsonb":        json.dumps({"opponent": opponent, "result": result}),
+                "unit":                    None,
+                "citation_ref":            f"graha_yuddha.{graha}.{opponent}@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
+                "citation_human":          (
+                    f"{graha} in planetary war (graha yuddha) with {opponent}: {result}. "
+                    "Classical rule: two classical grahas within 1° in same sign — "
+                    "winner determined by higher ecliptic longitude (simplified per BPHS ch.3). "
+                    "True latitude-based determination requires Swiss Ephemeris latitude data."
+                ),
+                "source_calculation":      f"ga_condition_writer._detect_graha_yuddha/{eng_ver}",
+                "verification_pass_status":"computed_extension",
+                "engine_version":          eng_ver,
+                "computed_at":             computed_at,
+            })
+
+    return rows
+
+
 # ── Main build function ───────────────────────────────────────────────────────
 
 def build_ga_condition_substep(
@@ -1328,5 +1527,14 @@ def build_ga_condition_substep(
     if per_varga_rows:
         _insert_per_varga_avastha_rows(conn, per_varga_rows)
         logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", len(per_varga_rows))
+
+    # ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ────
+    d1_avastha_rows = _build_d1_avastha_rows(
+        conn, chart_id, str(build_id) if build_id else None,
+        ayanamsha_id, computed_at, ENGINE_VERSION
+    )
+    if d1_avastha_rows:
+        _insert_per_varga_avastha_rows(conn, d1_avastha_rows)
+        logger.info("[ga_condition_writer] d1_avastha_rows=%d", len(d1_avastha_rows))
 
     return inserted

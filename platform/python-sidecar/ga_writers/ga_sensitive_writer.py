@@ -1316,6 +1316,108 @@ def _build_arudha_rows(
     return rows  # 19 × 3 = 57 rows
 
 
+# ── Amendment BA-P3A: bhava_arudha — full Parashari 2-exception rule ──────────
+
+_ARUDHA_ALIASES: dict[int, str] = {1: "AL", 2: "UPA"}  # A1=Arudha Lagna, A2=Upapada
+
+
+def _build_bhava_arudha_rows(
+    all_longs: dict[str, float],
+    chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """
+    Category: bhava_arudha — A1-A12 with full Parashari 2-exception rule.
+
+    Parashari formula (BPHS ch.32 v.2–3, KN Rao):
+      1. Count signs from bhava to its lord (1-12; 0 counts as 12)
+      2. Count same number of signs from lord → arudha_sign
+      3. Exception 1: if arudha = same sign as bhava → use 10th from arudha
+      4. Exception 2: if arudha = 7th from bhava → use 10th from arudha
+
+    Named aliases: A1=AL (Arudha Lagna), A2=UPA (Upapada Lagna / 2nd house arudha)
+    """
+    rows: list[dict[str, Any]] = []
+    lagna = all_longs.get("LAGNA", 0.0)
+    lagna_sign_idx = int(lagna / 30.0)
+
+    graha_longs = {
+        "Sun": all_longs.get("SUN", 0.0),
+        "Moon": all_longs.get("MOON", 0.0),
+        "Mars": all_longs.get("MAR", 0.0),
+        "Mercury": all_longs.get("MER", 0.0),
+        "Jupiter": all_longs.get("JUP", 0.0),
+        "Venus": all_longs.get("VEN", 0.0),
+        "Saturn": all_longs.get("SAT", 0.0),
+    }
+
+    sign_lord_map = {
+        0: "Mars", 1: "Venus", 2: "Mercury", 3: "Moon", 4: "Sun", 5: "Mercury",
+        6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter",
+    }
+
+    def _bhava_arudha_sign_idx(bhava_sign_idx: int, lord_long: float) -> int:
+        """Full Parashari 2-exception arudha formula. Returns 0-based sign index."""
+        lord_sign_idx = int(lord_long / 30.0)
+        steps = (lord_sign_idx - bhava_sign_idx) % 12
+        if steps == 0:
+            steps = 12
+        arudha_idx = (lord_sign_idx + steps) % 12
+        # Exception 1: pada = same sign as bhava
+        if arudha_idx == bhava_sign_idx:
+            arudha_idx = (arudha_idx + 9) % 12
+        # Exception 2: pada = 7th from bhava (180° away)
+        elif arudha_idx == (bhava_sign_idx + 6) % 12:
+            arudha_idx = (arudha_idx + 9) % 12
+        return arudha_idx
+
+    # ── A1–A12 ────────────────────────────────────────────────────────────────
+    for house_num in range(1, 13):
+        bhava_sign_idx = (lagna_sign_idx + house_num - 1) % 12
+        lord_name = sign_lord_map[bhava_sign_idx]
+        lord_long = graha_longs[lord_name]
+        arudha_idx = _bhava_arudha_sign_idx(bhava_sign_idx, lord_long)
+        arudha_sign = SIGNS[arudha_idx]
+        arudha_long = float(arudha_idx * 30.0)
+
+        alias = _ARUDHA_ALIASES.get(house_num, "")
+        subj = f"BHAVA_ARUDHA_A{house_num}"
+        alias_subj = f"BHAVA_ARUDHA_{alias}" if alias else None
+
+        near_sign = _is_near_sign_boundary(arudha_long)
+        near_nak = _is_near_nakshatra_boundary(arudha_long)
+        house_d1 = _house_d1(arudha_long, lagna)
+
+        exc_note = (
+            "Exception 1 (pada=bhava→10th from pada) or "
+            "Exception 2 (pada=7th from bhava→10th from pada) applied if triggered."
+        )
+        prov = (
+            f"BPHS ch.32 v.2–3 (KN Rao): bhava_arudha A{house_num} via {lord_name}. "
+            f"Full 2-exception Parashari rule. {exc_note}"
+        )
+
+        for s in ([subj] + ([alias_subj] if alias_subj else [])):
+            rows.extend([
+                _make_row("bhava_arudha", s, "sign",
+                          None, arudha_sign, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                          formula_provenance_text=prov, tolerance_arcsec=1.0,
+                          near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                          vargottama_flag_at_point=False),
+                _make_row("bhava_arudha", s, "longitude_sidereal",
+                          arudha_long, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                          formula_provenance_text=prov, tolerance_arcsec=1.0,
+                          near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                          vargottama_flag_at_point=False),
+                _make_row("bhava_arudha", s, "house_d1",
+                          float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                          formula_provenance_text=prov, tolerance_arcsec=1.0,
+                          near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
+                          vargottama_flag_at_point=False),
+            ])
+
+    return rows
+
+
 def _build_midpoint_rows(
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
@@ -2340,6 +2442,9 @@ def _build_all_sensitive_rows_for_ayanamsha(
         all_longs, chart_id, cid, build_id, eng_ver))
     rows.extend(_build_yogi_system_completion_rows(
         all_longs, chart_id, cid, build_id, eng_ver, panchanga))
+
+    # ── Amendment BA-P3A: bhava_arudha — full Parashari 2-exception rule ────
+    rows.extend(_build_bhava_arudha_rows(all_longs, chart_id, cid, build_id, eng_ver))
 
     logger.info("[ga_sensitive] ayanamsha=%s rows=%d", cid, len(rows))
     return rows

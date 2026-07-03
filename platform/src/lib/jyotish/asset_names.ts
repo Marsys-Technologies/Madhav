@@ -35,6 +35,10 @@ export const ASSET_NAMES = {
   bg_dasha_systems:     { sanskrit: 'Daśā-paddhati',  english: 'Dasha Systems',      subtitle: 'Vimshottari, Yogini, Chara, Kalachakra, …',                        layer: 'L0' },
   bg_doshas:            { sanskrit: 'Doṣa-kośa',      english: 'Dosha Catalog',      subtitle: 'Manglik, Kala-sarpa, Kemadruma, …',                                 layer: 'L0' },
   bg_compendium_index:  { sanskrit: 'Anukrama',       english: 'Compendium Index',   subtitle: 'Cross-text chapter index + topic-coverage map',                    layer: 'L0' },
+  bg_nakshatra:         { sanskrit: 'Nakṣatra-kośa',  english: 'Nakshatra Reference', subtitle: '28 nakshatras + 108 padas + matrices — fully cited; ZERO LLM',      layer: 'L0' },
+  bg_class_priors:      { sanskrit: 'Pūrva-pakṣa-mānāḥ', english: 'Class Priors',   subtitle: '165-row ranked salience prior matrix: class × subsystem × tradition × varga × graha×domain', layer: 'L0' },
+  bg_ghatana:           { sanskrit: 'Ghaṭanā-darśanam', english: 'Event + Activity Ontology', subtitle: '22 life-event classes + 12 electional activity classes (W1 §5–§6)', layer: 'L0' },
+  bg_formula_constants: { sanskrit: 'Sūtra-māna-kośaḥ', english: 'Formula Constants', subtitle: 'Canonical constants registry: combustion orbs, dignity scores, house weights, attention budget (W1 §7)', layer: 'L0' },
 
   // ── L1 Gaṇita — Chart Facts ───────────────────────────────────────────────
   ga_engine:       { sanskrit: 'Gaṇanā',         english: 'Engine',            subtitle: 'PyJHora chart computation — all ayanamshas',        layer: 'L1' },

@@ -1326,56 +1326,142 @@ def compute_ashtottari_system(
 
 # ── System 4: Chara Karaka (Jaimini sign-based, 4 levels) ─────────────────────
 
+def _compute_dynamic_chara_params(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+) -> tuple[int, dict[str, int]]:
+    """
+    Rao-standard Jaimini Chara dynamic params for any chart.
+
+    Returns (ak_sign_idx, CHARA_YEARS) where:
+      - ak_sign_idx  : 0-based sign index of the Atmakaraka (highest degree_in_sign
+                       among 7 classical grahas — Sun, Moon, Mars, Mercury, Jupiter,
+                       Venus, Saturn; Rahu excluded per Parashari 7-karaka school)
+      - CHARA_YEARS  : {sign_name: int} computed via Rao formula:
+                       years = signs from sign to its lord's current sign (1-12;
+                       lord in own sign → 12, else forward count)
+    """
+    _SIGN_NAMES = [
+        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+    ]
+    _SIGN_LORD_IDX = {  # classical 7-graha lord, keyed by sign index (0-based)
+        0: "Mars", 1: "Venus", 2: "Mercury", 3: "Moon", 4: "Sun", 5: "Mercury",
+        6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter",
+    }
+    _CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+    # Query chart_facts for graha positions
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = %s
+               AND ayanamsha_id = %s
+               AND fact_category IN ('graha_sign_attributes', 'graha_position')
+               AND fact_key IN ('sign', 'degree_in_sign')
+               AND fact_subject = ANY(%s)
+            """,
+            (chart_id, ayanamsha_id, _CLASSICAL_GRAHAS),
+        )
+        rows = cur.fetchall()
+
+    graha_sign: dict[str, str] = {}
+    graha_deg: dict[str, float] = {}
+    for row in rows:
+        subj, key, val_text, val_num = row
+        if key == "sign" and val_text:
+            graha_sign[subj] = val_text
+        elif key == "degree_in_sign" and val_num is not None:
+            graha_deg[subj] = float(val_num)
+
+    # AK = highest degree_in_sign among classical grahas
+    ak_graha = max(
+        (g for g in _CLASSICAL_GRAHAS if g in graha_deg),
+        key=lambda g: graha_deg[g],
+        default="Sun",
+    )
+    ak_sign_name = graha_sign.get(ak_graha, "Capricorn")
+    ak_sign_idx = next(
+        (i for i, s in enumerate(_SIGN_NAMES) if s == ak_sign_name), 9
+    )
+
+    # Graha → current sign index map (for CHARA_YEARS computation)
+    graha_sign_idx: dict[str, int] = {}
+    for g, s in graha_sign.items():
+        idx = next((i for i, sn in enumerate(_SIGN_NAMES) if sn == s), None)
+        if idx is not None:
+            graha_sign_idx[g] = idx
+
+    # Rao formula: CHARA_YEARS[sign] = forward count from sign to lord's sign (1-12)
+    chara_years: dict[str, int] = {}
+    for sign_idx, sign_name in enumerate(_SIGN_NAMES):
+        lord = _SIGN_LORD_IDX[sign_idx]
+        lord_sign_idx = graha_sign_idx.get(lord)
+        if lord_sign_idx is None:
+            years = 7  # safe fallback if chart_facts absent for this graha
+        else:
+            steps = (lord_sign_idx - sign_idx) % 12
+            years = 12 if steps == 0 else steps
+        chara_years[sign_name] = years
+
+    return ak_sign_idx, chara_years
+
+
 def compute_chara_system(
     birth_jd: float,
     ayanamsha_id: str,
     chart_id: str,
     build_id: str,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
     """
-    Jaimini Chara Dasha (sign-based).
-    Starting sign: sign of Atmakaraka (Sun in FORENSIC chart, Capricorn).
-    Progression: from AK sign through zodiac (forward for odd rising, backward for even).
-    Duration: per-sign = remaining degrees in sign + full signs × years per sign.
+    Jaimini Chara Dasha (sign-based), chart-agnostic via KN Rao formula.
 
-    For FORENSIC: AK = Sun in Capricorn (10th house).
-    Classic Chara: each sign gets years = (30 - longitude_in_sign) for first sign,
-    then 12y-minus-Jupiter-sub etc. Simplified: use standard sign duration table.
+    AK is the graha (7 classical) with highest degree_in_sign in this chart.
+    CHARA_YEARS per sign = forward count from sign to lord's current sign (1-12;
+    lord in own sign → 12). Queries chart_facts when conn is provided.
 
-    Classical Chara year assignments per sign (based on AK position):
-    Each sign gets years based on sign lord's position from that sign.
-    Simplified: Aries-based cycle, ~12-15y per sign on average.
+    If conn is None (legacy CLI path) or query fails, falls back to FORENSIC
+    hardcoded values (AK=Sun/Capricorn) with a warning.
     """
     import swisseph as swe
     min_jd = swe.julday(1950, 1, 1, 0.0)
     max_jd = swe.julday(2100, 12, 31, 0.0)
 
-    # FORENSIC: AK = Sun in Capricorn (sign index 9, 0-based)
-    # Chara starts from AK sign and goes through zodiac
     sign_names = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
     ]
-    # Standard Chara year assignments (simplified, per KN Rao method)
-    # Each sign's dasha duration = years lord of that sign is away from AK sign + 1
-    # Simplified for FORENSIC chart (AK=Sun, Capricorn):
-    CHARA_YEARS = {
-        "Capricorn":  12,  # 1st sign (AK)
-        "Aquarius":   8,
-        "Pisces":     6,
-        "Aries":      4,
-        "Taurus":     10,
-        "Gemini":     7,
-        "Cancer":     11,
-        "Leo":        5,
-        "Virgo":      9,
-        "Libra":      13,
-        "Scorpio":    3,
-        "Sagittarius": 12,
-    }
 
-    # Starting sign: Capricorn (AK sign)
-    ak_sign_idx = 9  # Capricorn
+    # ── Dynamic params (chart-agnostic) ──────────────────────────────────────
+    # FORENSIC static fallback — used when conn is absent or query fails
+    _FORENSIC_CHARA_YEARS = {
+        "Capricorn": 12, "Aquarius": 8, "Pisces": 6, "Aries": 4,
+        "Taurus": 10, "Gemini": 7, "Cancer": 11, "Leo": 5,
+        "Virgo": 9, "Libra": 13, "Scorpio": 3, "Sagittarius": 12,
+    }
+    _FORENSIC_AK_SIGN_IDX = 9  # Capricorn — Sun is AK for native
+
+    if conn is not None:
+        try:
+            ak_sign_idx, CHARA_YEARS = _compute_dynamic_chara_params(
+                conn, chart_id, ayanamsha_id
+            )
+        except Exception as exc:
+            logger.warning(
+                "[ga_dashas] chara dynamic params failed for chart=%s; "
+                "falling back to FORENSIC hardcoded. cause=%s", chart_id, exc,
+            )
+            ak_sign_idx, CHARA_YEARS = _FORENSIC_AK_SIGN_IDX, _FORENSIC_CHARA_YEARS
+    else:
+        logger.debug(
+            "[ga_dashas] chara: conn=None — using FORENSIC static CHARA_YEARS (chart=%s)",
+            chart_id,
+        )
+        ak_sign_idx, CHARA_YEARS = _FORENSIC_AK_SIGN_IDX, _FORENSIC_CHARA_YEARS
 
     # Backdate
     cycle_total = sum(CHARA_YEARS.values())  # 100y per cycle
@@ -2304,7 +2390,7 @@ def build_system(
         verification = _verify_ashtottari(rows)
 
     elif system_id == "chara_karaka":
-        rows = compute_chara_system(birth_jd, ayanamsha_id, chart_id, build_id)
+        rows = compute_chara_system(birth_jd, ayanamsha_id, chart_id, build_id, conn=conn)
         verification = _verify_chara(rows)
 
     elif system_id == "naisargika":
