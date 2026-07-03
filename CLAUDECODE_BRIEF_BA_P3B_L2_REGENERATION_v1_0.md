@@ -1,9 +1,14 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_P3B_L2_REGENERATION
-version: 1.0
-status: READY-FOR-EXECUTION — gated on BA-P3A COMPLETE; conductor fills ⟦SLOT⟧s
+version: 1.1
+status: READY-FOR-EXECUTION — gated on BA-P3A COMPLETE + M1/M2 prod-verified; conductor fills ⟦SLOT⟧s
 created: 2026-07-03
+amended: 2026-07-03
 author: Cowork (Beyond-Acharya unified program; substance frozen — conductor fills slots only)
+changelog:
+  - v1.1 (2026-07-03): Step 1 L0 CLASSICAL BRIDGE added — populate classical_sources_array per signal
+    (deterministic join, no LLM); ≥60% yoga/dosha-class coverage gate. Pre-rebuild audit finding +
+    native ruling 2026-06-16. Gate condition updated (M1/M2 prod-verified required before P3B start).
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — phase P3B (THE ONE SHOT: the single L2 regeneration)
 slots: ⟦P3A_CLOSE_SHA_AND_MIGRATION_NUMBERS⟧ ⟦PRE_P3_SNAPSHOT_ID⟧ ⟦NEXT_MIGRATION_NUMBER⟧
 common_rules: FROZEN contract §N.2 · delete-then-insert §N.3 · degeneracy gate on EVERY new scoring
@@ -44,6 +49,12 @@ functional_context` — stored STATIC (activation/karaka/varga-affinity remain q
   signals carrying the distribution; atoms remain rows, flagged `aggregation_member`, never top-band.
 - **signature_tier recut** against the v2 distribution so `chart_defining` FIRES (top ~1% band by design).
 - **Constituent integrity:** re-resolve constituent_facts_array at `_build_signal_row`; gate ≥99% resolve.
+- **L0 CLASSICAL BRIDGE (added v1.1 per pre-rebuild audit finding + native ruling 2026-06-16):**
+  populate `classical_sources_array`/`classical_sources_jsonb` per signal from brahma_yoga_catalog +
+  sutravali_rules + classical_text_chunks (deterministic join via signal_type/yoga id/rule refs — no LLM);
+  currently NULL on all 64,765 signals. Signals must retrieve WITH citable classical attestation.
+  Exit-gate addition: ≥60% of yoga/dosha-class signals carry ≥1 resolvable classical source; coverage %
+  reported honestly per signal class (floor-NULL-with-reason where no classical source exists).
 
 ## Step 2 — Graph, contradictions, CDLM
 bo_bimba/bo_karanajala: typed edges (dispositor · argala/virodha · parivartana · yoga-membership ·

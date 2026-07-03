@@ -81,6 +81,27 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 
 ---
 
+## §3B — PRE-P3B FIX WAVE (M1/M2) STATUS
+
+| Fix | File | Status | Branch/PR | Notes |
+|---|---|---|---|---|
+| M1: ga_condition count_sql | platform/supabase/migrations/390_ga_condition_count_sql_sayanadi_lajjitadi_yuddha.sql | IN_FLIGHT | fix/m1-m2-pre-p3b | Extends count_sql to include graha_avastha_sayanadi, graha_avastha_lajjitadi, graha_yuddha; verify cockpit live count post-rebuild [verify-against: prod] |
+| M2: bodha_bimba → bodha_discoveries | platform-mcp/src/tools/register_p1_synthesis.ts | IN_FLIGHT | fix/m1-m2-pre-p3b | Lines 9/124/150/160 — 4 occurrences corrected; redeploy platform-mcp required; verify bodha_discoveries_get returns rows for 482012f1 [verify-against: prod] |
+
+---
+
+## §3C — REMAINING MINORS FROM PRE-REBUILD AUDIT (owner phases)
+
+From BA_PRE_REBUILD_AUDIT_REPORT_v1_0.md. These are MINOR — no blocker to P3B start.
+
+| Finding | Owner Phase | Disposition |
+|---|---|---|
+| Envelope completeness on raw ganita MCP tools (get_planet_positions etc. missing envelope fields) | P4 | Deferred — P4 verdict+eval phase adds envelope rigor to raw-ganita surface |
+| Service-asset coverage documentation (gap between MCP-exposed tools and full asset_registry) | P4 | Deferred — P4 is the right consolidation point for coverage documentation |
+| min_salience affordance note (bodha_discoveries_get has min_salience param but table may not have salience_score column post-P3B rename) | none | Acknowledged — bodha_discoveries.salience_score confirmed present; no action |
+
+---
+
 ## §4 — JUDGMENT LEDGER CROSS-REFERENCES
 
 > Rulings by the Ācārya-Pratinidhi (BA_JUDGMENT_LEDGER_v1_0.md) that affect phase gate decisions:
