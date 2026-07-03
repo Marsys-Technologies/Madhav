@@ -3090,15 +3090,18 @@ def _load_special_points(
                 """
                 SELECT fact_subject,
                        MAX(CASE WHEN fact_key = 'sign'                THEN fact_value_text END) AS sign,
-                       MAX(CASE WHEN fact_key IN ('house','house_d1') THEN fact_value_num  END) AS house_num,
-                       MAX(CASE WHEN fact_key IN ('longitude','longitude_sidereal') THEN fact_value_num END) AS degree
+                       MAX(CASE WHEN fact_key IN ('house','house_d1','house_number') THEN fact_value_num  END) AS house_num,
+                       MAX(CASE WHEN fact_key IN ('longitude','longitude_sidereal','longitude_d9_sidereal') THEN fact_value_num END) AS degree
                 FROM chart_facts
                 WHERE chart_id      = %s
                   AND ayanamsha_id  = %s
                   AND fact_category IN (
                       'upagraha_position',
                       'arudha_lagna_position',
-                      'special_lagna_position'
+                      'special_lagna_position',
+                      'arudha_pada',
+                      'bhava_arudha',
+                      'swamsa_position'
                   )
                 GROUP BY fact_subject
                 """,
@@ -3731,7 +3734,7 @@ def _build_karaka_web_rows(
                 FROM chart_facts
                 WHERE chart_id = %s
                   AND ayanamsha_id = %s
-                  AND fact_category = 'jaimini_chara_karaka'
+                  AND fact_category = 'karaka_chara_position'
                   AND fact_key = 'graha'
                 """,
                 (chart_id, ayanamsha_id),
