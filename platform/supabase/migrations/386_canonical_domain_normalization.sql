@@ -19,6 +19,9 @@
 --
 -- ORDER: DROP old constraints FIRST so legacy values are writable during
 -- data normalization, then ADD canonical constraints after all updates.
+--
+-- NOTE: DO blocks use to_regclass() (null-safe) instead of ::regclass (throws
+-- if table absent). The actual table for asset ka_bhavishya_lekha is kala_bhavishya.
 
 -- ── §1. Schema: drop all legacy CHECK constraints BEFORE data updates ─────────
 -- This ensures legacy domain values (e.g. 'financial') can be read and the
@@ -27,7 +30,7 @@
 -- phala_anchors
 DO $$ DECLARE v TEXT; BEGIN
   SELECT conname INTO v FROM pg_constraint
-  WHERE conrelid = 'phala_anchors'::regclass AND contype = 'c'
+  WHERE conrelid = to_regclass('public.phala_anchors') AND contype = 'c'
     AND pg_get_constraintdef(oid) ILIKE '%domain%';
   IF v IS NOT NULL THEN EXECUTE 'ALTER TABLE phala_anchors DROP CONSTRAINT ' || quote_ident(v); END IF;
 END $$;
@@ -35,23 +38,23 @@ END $$;
 -- phala_phaladesa
 DO $$ DECLARE v TEXT; BEGIN
   SELECT conname INTO v FROM pg_constraint
-  WHERE conrelid = 'phala_phaladesa'::regclass AND contype = 'c'
+  WHERE conrelid = to_regclass('public.phala_phaladesa') AND contype = 'c'
     AND pg_get_constraintdef(oid) ILIKE '%domain%';
   IF v IS NOT NULL THEN EXECUTE 'ALTER TABLE phala_phaladesa DROP CONSTRAINT ' || quote_ident(v); END IF;
 END $$;
 
--- ka_bhavishya_lekha
+-- kala_bhavishya (asset_id ka_bhavishya_lekha; actual table name is kala_bhavishya)
 DO $$ DECLARE v TEXT; BEGIN
   SELECT conname INTO v FROM pg_constraint
-  WHERE conrelid = 'ka_bhavishya_lekha'::regclass AND contype = 'c'
+  WHERE conrelid = to_regclass('public.kala_bhavishya') AND contype = 'c'
     AND pg_get_constraintdef(oid) ILIKE '%domain%';
-  IF v IS NOT NULL THEN EXECUTE 'ALTER TABLE ka_bhavishya_lekha DROP CONSTRAINT ' || quote_ident(v); END IF;
+  IF v IS NOT NULL THEN EXECUTE 'ALTER TABLE kala_bhavishya DROP CONSTRAINT ' || quote_ident(v); END IF;
 END $$;
 
 -- school_analysis_runs
 DO $$ DECLARE v TEXT; BEGIN
   FOR v IN SELECT conname FROM pg_constraint
-    WHERE conrelid = 'school_analysis_runs'::regclass AND contype = 'c'
+    WHERE conrelid = to_regclass('public.school_analysis_runs') AND contype = 'c'
       AND pg_get_constraintdef(oid) ILIKE '%domain%'
   LOOP EXECUTE 'ALTER TABLE school_analysis_runs DROP CONSTRAINT ' || quote_ident(v); END LOOP;
 END $$;
@@ -59,7 +62,7 @@ END $$;
 -- convergence_scores
 DO $$ DECLARE v TEXT; BEGIN
   FOR v IN SELECT conname FROM pg_constraint
-    WHERE conrelid = 'convergence_scores'::regclass AND contype = 'c'
+    WHERE conrelid = to_regclass('public.convergence_scores') AND contype = 'c'
       AND pg_get_constraintdef(oid) ILIKE '%domain%'
   LOOP EXECUTE 'ALTER TABLE convergence_scores DROP CONSTRAINT ' || quote_ident(v); END LOOP;
 END $$;
@@ -107,8 +110,9 @@ UPDATE phala_phaladesa SET domain = CASE domain
 END
 WHERE domain IN ('financial','spiritual','psychological');
 
--- ── §5. Data normalization: ka_bhavishya_lekha.domain ────────────────────────
-UPDATE ka_bhavishya_lekha SET domain = CASE domain
+-- ── §5. Data normalization: kala_bhavishya.domain ────────────────────────────
+-- (asset_id ka_bhavishya_lekha; the physical table is kala_bhavishya)
+UPDATE kala_bhavishya SET domain = CASE domain
   WHEN 'finance'    THEN 'wealth'
   WHEN 'spiritual'  THEN 'spirituality'
   ELSE domain
@@ -157,8 +161,8 @@ ALTER TABLE phala_phaladesa
   CHECK (domain IN ('career','wealth','relationship','progeny','health','education',
                     'family','residence','travel','spirituality','character','transition','general'));
 
-ALTER TABLE ka_bhavishya_lekha
-  ADD CONSTRAINT ka_bhavishya_lekha_domain_canonical
+ALTER TABLE kala_bhavishya
+  ADD CONSTRAINT kala_bhavishya_domain_canonical
   CHECK (domain IN ('career','wealth','relationship','progeny','health','education',
                     'family','residence','travel','spirituality','character','transition','general'));
 
