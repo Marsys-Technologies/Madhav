@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.13
+version: 6.14
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,36 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.14 (2026-07-03, BA-P1-SYNC-FREEZE):
+    **BA-P-1 SYNC FREEZE complete. Repo brought to clean single-branch state; program start SHA recorded.**
+    Executed CLAUDECODE_BRIEF_BA_PM1_SYNC_FREEZE_v1_0.md end-to-end (Steps 0–6 + close):
+    Steps 0–1: Full inventory; committed 3-commit docs batch (49 files, 8370 insertions): 9 BA strategy +
+      audit docs, W1–W2.5 governance artifacts, cowork session artifacts, accuracy probes, brief archival.
+      .gitignore: added /package-lock.json (orphaned at root). ROOT_FILE_POLICY enforced on all batches.
+    Step 2: Stashes triaged. stash@{0} (chore branch cleanup, 2 brief deletes) dropped — superseded by
+      chore commit 1484c2e3 which already git-mv'd those files. stash@{1} (cockpit route simplification,
+      304 ins / 1108 del across clear/execute/runs/[id]/assets/watchdog routes + MCP_CHANNEL_AUDIT_D0)
+      dropped — 5-way conflict on all cockpit routes vs current main, superseded by subsequent main evolution.
+    Step 3: Content-merged local+remote branches deleted: fix/e2e-audit-remediation, fix/sidecar-ephemeris-
+      thresholds, fix/sidecar-startup-probe-flags. 10 stale remote feature/mcp-m* branches deleted (all
+      verified 0 unique commits ahead of main). Docs-only branches squash-merged to main:
+      chore/mcp-elevation-run-report (MCP elevation governance), docs/cowork-session-artifacts (BA strategy).
+      CODE branch worktree-fix+mcp-latency: rebased on main, PR #390 open (cache fix, awaiting CI+review).
+    Step 4: 4 worktrees pruned (.claude/worktrees x3 + .worktrees/fix/e2e-audit-remediation). Orphaned
+      .worktrees/feature + .worktrees/fix dirs removed.
+    Step 5: PR #393 (docs-only) → CI 9/9 green → auto-merged → origin/main = 8566be39.
+      No service redeploy needed (docs-only; code unchanged from 40a7f0d1). Prod smoke: /api/health → ok;
+      MCP service responding (auth gate active). Revisions: web-00807-qvz, sidecar-00786-6gr, mcp-00389-6wr.
+    PROGRAM START SHA: 8566be39 (origin/main after sync-freeze — this is the start of the BA unified run).
+    Next brief at root: CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md (grounding proof; gates P0+).
+    last_session_id: BA-P1-SYNC-FREEZE-2026-07-03.
+    predecessor_session: MCP-AUDIT-FIX-W3R-F021R-2026-07-02.
+    next_session_objective: >
+      "BA-P-1 SYNC FREEZE complete. Program start SHA: 8566be39. One open PR: #390 (MCP latency cache fix,
+      awaits CI green + native review + merge). Next session: execute CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md
+      — grounding proof brief that gates P0+ of the Beyond-Acharya unified program. Read brief at root before
+      starting; it is the active dispatcher for the next session."
+    file_updated_at: 2026-07-03. file_updated_by_session: BA-P1-SYNC-FREEZE-2026-07-03.
   - v6.13 (2026-07-02, MCP-AUDIT-FIX-W3R-F021R):
     **MCP Audit Fix Wave 3 Revision (W3R) — F-021R + F-032 fully closed. All-16 prod probe PASS.**
     Root cause: three-level nesting bug in registry_bridge.ts get_domain_reading bounding:
