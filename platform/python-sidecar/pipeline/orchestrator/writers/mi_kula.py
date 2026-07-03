@@ -16,11 +16,67 @@ import json
 import logging
 import time
 
+import psycopg.rows
+
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-FORMULA_VERSION = "mi_kula_v1.0"
+FORMULA_VERSION = "mi_kula_v2.0"
+
+# BA-P6 C6 weight unification: prior_weight values are authoritative in brahma_class_priors.
+# This map resolves family_id → (signal_type_class, source_subsystem) for the registry lookup.
+# Fallback: the hardcoded prior_weight in _FAMILIES below if no registry match.
+_FAMILY_TO_PRIOR_KEY: dict[str, tuple[str, str]] = {
+    "fam_graha_natal":  ("position",        "*"),
+    "fam_dasha_period": ("dasha_period",     "*"),
+    "fam_yoga":         ("yoga",             "*"),
+    "fam_divisional":   ("varga_pattern",    "*"),
+    "fam_transit":      ("time_window",      "*"),
+    "fam_convergence":  ("composite_state",  "*"),
+    "fam_ashtakavarga": ("*",                "strength_ashtakavarga"),
+    "fam_msr_signal":   ("configuration",    "*"),
+    "fam_anchor":       ("time_window",      "*"),
+}
+
+
+def _load_registry_priors(conn) -> dict[str, float]:
+    """
+    Read prior weights from brahma_class_priors for each family_id via _FAMILY_TO_PRIOR_KEY.
+    Returns {family_id: class_prior}. Falls back to empty dict on any error.
+    """
+    sp = "sp_kula_priors"
+    result: dict[str, float] = {}
+    try:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(f"SAVEPOINT {sp}")
+            cur.execute(
+                "SELECT signal_type_class, source_subsystem, class_prior "
+                "FROM brahma_class_priors "
+                "WHERE prior_version = '1.0' "
+                "  AND signal_tradition = '*' "
+                "  AND fact_kind = '*'"
+            )
+            rows = cur.fetchall()
+            cur.execute(f"RELEASE SAVEPOINT {sp}")
+        # Index: (signal_type_class, source_subsystem) → class_prior
+        idx: dict[tuple[str, str], float] = {
+            (r["signal_type_class"], r["source_subsystem"]): float(r["class_prior"])
+            for r in rows
+        }
+        for family_id, (stc, sub) in _FAMILY_TO_PRIOR_KEY.items():
+            prior = idx.get((stc, sub)) or idx.get((stc, "*")) or idx.get(("*", sub))
+            if prior is not None:
+                result[family_id] = prior
+    except Exception as e:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+        logger.warning("[mi_kula] brahma_class_priors lookup failed (%s); using catalog defaults", e)
+    return result
+
 
 # ── Signal-family catalog ────────────────────────────────────────────────────
 # Each entry: (family_id, display_name, layman_name, family_class,
@@ -244,6 +300,9 @@ class MiKulaWriter(WriterBase):
                 notes="dry_run: would seed signal families + negative controls",
             )
 
+        # C6 weight unification: override prior_weight from brahma_class_priors registry
+        registry_priors = _load_registry_priors(conn)
+
         # Idempotency: delete all (global catalog)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM mimamsa_negative_controls")
@@ -264,7 +323,16 @@ class MiKulaWriter(WriterBase):
             ) VALUES (%s,%s,%s,%s,%s,%s,%s)
         """
 
-        fam_rows = [(*row, FORMULA_VERSION) for row in _FAMILIES]
+        # prior_weight (index 8) overridden from registry; catalog value is fallback
+        fam_rows = []
+        for row in _FAMILIES:
+            family_id = row[0]
+            row_list = list(row)
+            registry_w = registry_priors.get(family_id)
+            if registry_w is not None:
+                row_list[8] = registry_w  # override prior_weight from brahma_class_priors
+            fam_rows.append((*row_list, FORMULA_VERSION))
+
         ctrl_rows = [(*row, FORMULA_VERSION) for row in _CONTROLS]
 
         with conn.cursor() as cur:
