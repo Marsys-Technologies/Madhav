@@ -61,6 +61,26 @@ Claude Code in Antigravity executes autonomously per AUTONOMOUS_MODE; every AC t
 | **P7 — Classical + portal (parallel)** | W6 classical completions (Nadi rules, AV-transit gates, remaining avasthas) + W7 portal loops (ask-cards, attestation, prashna follow-ups, co-sign UI) | `BA_P7A_CLASSICAL`, `BA_P7B_PORTAL_LOOPS` | New fact_categories arrive RANKED; closed windows → adjudicated ≥80% in 7 days. |
 | **P8 — Research organs (post-run)** | Synastry sy_* (chart_type), chart embeddings + case retrieval, motif mining, rule induction w/ L5→L0 graduation | `BA_P8_*` (split at brief time) | Gated on multi-chart corpus. |
 
+## §2.1 — THREE BINDING COMMITMENTS (native review 2026-07-03)
+
+1. **PERFORMANCE IS A GATE.** The composite ranking is deterministic → computed once per
+   (chart × domain × prior_version) and CACHED; the only time-varying input (dasha activation) changes at
+   KNOWN dasha-boundary dates, so cache invalidation is scheduled, not guessed. P3 bakes intrinsic
+   dimensions into stored columns. Latency budgets added: P0 gate gains "p95 per-tool response ≤ 3s on
+   prod (bounded payloads, warm cache)"; P2 gate gains "ranking adds ≤ 500ms p95 over the P0 baseline on
+   cache-miss, ≤ 50ms on cache-hit." Current slowness is payload/cold-start/cache debt (P-1/P0 scope) —
+   response time must IMPROVE before ranking lands.
+2. **SEED SCOPE:** the judgment seed package (class priors, varga weights, affinity tables, event/activity
+   ontologies, constants) is GLOBAL — chart-agnostic śāstra, L0 reference, one table for all charts.
+   Chart-SPECIFIC are: the evidence the weights multiply (per-chart strength/dignity/activation),
+   signature_tier outcomes, and the learned surfaces (S3 dasha-fitness, S4 manifestation grammar, L5
+   calibration overlays). Judgment global; evidence and learned expression per-chart.
+3. **BACKWARDS DESIGN — the eval is the definition of done.** The golden-question harness becomes a
+   STANDING REGRESSION GATE from P2 onward: every phase close re-runs the golden set (blind rubric) and
+   must improve — never degrade — the scored quality of the eventual LLM's responses. The golden set
+   expands from 10 questions to full query-class coverage (Q1–Q9) by P4. Phase gates are response-quality
+   statements; engineering criteria are means.
+
 ## §3 — WHAT CHANGED vs THE TWO PREDECESSOR TABLES (the merge deltas)
 
 1. **W1-as-sitting DISSOLVED** → full delegation (native 2026-07-03): seeds Cowork-authored; P2 tunes them
