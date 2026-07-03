@@ -492,4 +492,82 @@ Every statement in the unified plan / BA_MASTER / RM-plan that reality contradic
 
 ---
 
-*End of BA_GROUNDING_REPORT v1.0 (2026-07-03). Zero UNKNOWN verdicts; G-7 dry-run complete + clean; 10 PLAN-DELTA corrections recorded; GO/NO-GO delivered for P0–P2.*
+---
+
+## §5 — P0 ADDENDUM: FRESH BASELINE + SERVING INTEGRITY (2026-07-03)
+
+*Added by BA-P0 execution session (CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md). Unblocks §2.1-1 budget planning. Probe method: temporary test MCP key (mcp_prod_TMRTViNs, inserted + DELETED after session — no persistent state left). 6 calls per tool; first = cold-ish, W1–W5 = warm. Auth: super_admin role resolved from native's Firebase profile.*
+
+### §5.1 — Latency Baseline Table (p50/p95 warm, prod 2026-07-03)
+
+| Tool | Cold (ms) | p50 warm (ms) | p95 warm (ms) | Payload (bytes) | Notes |
+|---|---|---|---|---|---|
+| `list_my_charts` | 572 | 400 | 410 | 803 | No chart context required |
+| `get_chart_orientation(summary)` | 525 | 458 | 469 | 28,742 | chart 482012f1; response_format=summary |
+| `get_signals(limit=50)` | 888 | 672 | 680 | 131,991 | chart 482012f1; 50 MSR signals |
+| `get_domain_reading(career,default)` | 2,443 | 1,356 | 1,425 | 63,914 | F-021R bounded; career domain |
+| `assess_career` (PRE-CAP) | 5,576 | 4,414 | 4,627 | **17,218,660** | PRE-P0-fix; 17 MB uncapped — see §5.3 |
+
+**Budget denominator (§2.1-1):** p50 warm for common retrieval path (get_domain_reading) = **1,356 ms**. assess_career p50 = 4,414 ms pre-cap; post-cap target ≤ 2,000 ms (verify after PR #395 deploys).
+
+### §5.2 — response_format Variants: get_chart_orientation
+
+| format | ms | bytes | Distinct? |
+|---|---|---|---|
+| digest | 659 | 211 | ✅ significantly smaller |
+| summary | 427 | 28,742 | ✅ |
+| full | 414 | 28,736 | ⚠️ full ≈ summary (6-byte diff — no distinct full expansion for this tool) |
+
+**Finding:** `get_chart_orientation` does not produce meaningfully distinct `full` vs `summary` payloads (6 bytes apart). `digest` works as intended (211 bytes). **PLAN-DELTA P0-D1:** P1/P2 must not rely on `full` for deeper chart data from this tool; use `get_domain_reading` + `get_signals` for depth.
+
+### §5.3 — assess_* Cap Implementation (Step 2, PR #395)
+
+**Root cause confirmed by prod probe:** `assess_career` returned 17,218,660 bytes. Source breakdown:
+- `queryDomainReadingCapability.handler` bypasses F-021R (bounding only in the `get_domain_reading` MCP tool, not the underlying handler). `bodha_question_lenses.all_relevant_ranked_jsonb` averages 1.4 MB/row; ~12 career-domain lenses returned uncapped = ~17 MB.
+- `queryContradictionsCapability.handler` returns all 5,170 contradictions; each row ~900 bytes = 4.65 MB.
+- `fetchOrientationContext` adds orientation prefix = ~28 KB.
+
+**Fix implemented (commit bafb803a, PR #395):** `platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts`
+- `max_signals_per_lens`: default 10, max 50 — bounds `ranked_signals` in each question_lens
+- `max_contradictions`: default 15, max 100 — caps contradictions array in assembled bundle
+- Both params added to `input_schema` of all 4 assess_* capabilities
+- `drill_uri` added to truncated blocks (`get_domain_reading` / `query_contradictions`)
+
+**AC verification status:** PENDING prod deploy of PR #395. Expected post-cap payload: ≤ 100 KB (from 17 MB).
+
+### §5.4 — Cache Contract (Step 3)
+
+**Finding:** No response-level cache layer exists on prod.
+- `served_from_cache` field: NOT present in any tool response (verified across 3 repeat identical calls)
+- HTTP cache headers: no `X-Cache` or `Cache-Control` from Cloud Run responses
+- `llm_hints.cacheable: true` in capability descriptors is advisory metadata only — no active cache consumer
+- Auth validation cache (60s in-memory per-instance) is not a tool-response cache
+
+**Root cause:** Cloud Run is stateless; no Redis/Memcached/CDN layer wired to the tool response path.
+
+**Residual filed (P1 scope):** Implement response-level cache with `served_from_cache` flag in the envelope. Options: (a) Platform-side in-memory/Redis cache keyed by `(tool_name, chart_id, ayanamsha_id, params_hash)` with TTL matching chart rebuild cadence; or (b) CDN edge cache. This is not a P0 fix — documented per brief instruction.
+
+### §5.5 — mi_vistara Scope Disposition (Step 4, PD-6)
+
+**Choice: Option (b) — keep global, document as known exception.**
+
+**Rationale:**
+- `mimamsa_export_log` has `chart_id NOT NULL` (logically per-chart) but the BUILD ASSET `mi_vistara` generates 0 rows
+- Actual rows written by `mi_seva` service handler on export delivery, not by the build pipeline
+- Converting to `per_chart` scope would trigger the L1+ idempotency pattern (delete-then-insert scoped to `chart_id`), which would **wipe audit records on chart rebuild** — catastrophically wrong for an append-only ledger
+- `scope='global'` correctly represents the build semantics: one verification pass, no per-chart rows generated
+
+**Action taken:** `asset_registry.english_description` updated in prod DB (2026-07-03, direct UPDATE) to record the scope exception and rationale. **AC:** Registry scope matches table reality. Exception documented. ✅
+
+### §5.6 — P0 PLAN-DELTA Summary
+
+| ID | Source | Finding | Correction |
+|---|---|---|---|
+| P0-D1 | §5.2 | `get_chart_orientation` full ≈ summary (6-byte diff) | Do not rely on `full` for depth; use `get_domain_reading` / `get_signals` |
+| P0-D2 | §5.3 | `assess_career` was 17.2 MB pre-cap (unguarded question_lenses + contradictions) | PR #395 adds F-021R caps; expected ~100 KB post-deploy |
+| P0-D3 | §5.4 | No response cache layer; `served_from_cache` absent | P1 residual: implement response cache with cache flag |
+| P0-D4 | §5.5 | `mi_vistara` scope=global is CORRECT for zero-build-row service asset | Do NOT change scope; document exception (done) |
+
+---
+
+*End of BA_GROUNDING_REPORT v1.0+P0-addendum (2026-07-03). §5 added by BA-P0 session. Baseline denominator established. PR #395 pending for caps prod verification.*

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.15
+version: 6.16
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,40 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.16 (2026-07-03, BA-P0-SERVING-TRUTH-2026-07-03):
+    **BA-P0 complete — fresh baseline established; assess_* caps implemented; cache contract documented; mi_vistara scope dispositioned.**
+    Executed CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md end-to-end (Steps 1–5).
+    Step 1 (Fresh baseline): Prod MCP probed via temporary test key (inserted + deleted). Latency table:
+      list_my_charts p50=400ms payload=803B; get_chart_orientation(summary) p50=458ms payload=28,742B;
+      get_signals(50) p50=672ms payload=131,991B; get_domain_reading(career) p50=1,356ms payload=63,914B;
+      assess_career (PRE-CAP) p50=4,414ms payload=17,218,660B. Response format: digest=211B, summary≈full (6B diff).
+    Step 2 (assess_* caps, F-021R): Root cause confirmed — queryDomainReadingCapability.handler bypasses
+      F-021R; bodha_question_lenses.all_relevant_ranked_jsonb avg 1.4MB/row × 12 career lenses = ~17MB.
+      Contradictions (5,170 rows × ~900B) add 4.65MB. Fix: added max_signals_per_lens (default=10, max=50)
+      and max_contradictions (default=15, max=100) caps to runAssessDomain + all 4 assess_* input_schemas.
+      Committed bafb803a on fix/p0-assess-caps-f021r. PR #395 open — prod verify pending deploy.
+    Step 3 (cache contract): No response-level cache layer on prod. served_from_cache field absent in all
+      responses. llm_hints.cacheable is advisory only. Residual filed for P1.
+    Step 4 (mi_vistara scope): Option (b) chosen — keep global + document exception. mi_vistara generates
+      0 build-time rows (service verifier); per_chart would delete audit records on rebuild. english_description
+      updated in prod asset_registry (direct UPDATE, 2026-07-03). AC: scope matches build semantics.
+    Step 5 (close): CURRENT_STATE v6.16; brief COMPLETE; §5 addendum written to BA_GROUNDING_REPORT_v1_0.md.
+    PLAN-DELTA from P0: P0-D1 (full≈summary for get_chart_orientation), P0-D2 (17MB→~100KB via caps),
+      P0-D3 (cache residual for P1), P0-D4 (mi_vistara scope=global is correct).
+    last_session_id: BA-P0-SERVING-TRUTH-2026-07-03.
+    predecessor_session: BA-PG-GROUNDING-PROOF-2026-07-03.
+    next_session_objective: >
+      "BA-P0 complete. Beyond-Acharya program → P1 (Tool Estate). P1 scope:
+      (a) Wire 7 Group-1 L1 tools (strength/aspects/argala/sade_sati/dispositors/tajik/tara_chandra_bala)
+      — handler files exist in retrieval registry, not MCP-exposed (confirmed by G-4 wiring matrix);
+      (b) Create ga_transit_anchors handler from scratch (NO handler file exists);
+      (c) Wire Group-3 (ph_rectification, bo_anveshana, bo_chart_gestalt, ka_jivana_parva, ka_tulana,
+      mi_darshana — see G-4 wiring matrix);
+      (d) Update ASSET_NAMES.ts + ASSET_MAP per PD-5 for each new tool;
+      (e) Merge PR #395 (assess_* caps fix) and verify prod: assess_career ≤ 100k chars;
+      (f) Merge PR #390 (MCP latency cache fix) if still open.
+      Authority: BA_GROUNDING_REPORT_v1_0.md §2 (G-4 wiring matrix) + §5.3 (cap AC pending deploy)."
+    file_updated_at: 2026-07-03. file_updated_by_session: BA-P0-SERVING-TRUTH-2026-07-03.
   - v6.15 (2026-07-03, BA-PG-GROUNDING-PROOF-2026-07-03):
     **BA-PG complete — grounding proof executed; BA_GROUNDING_REPORT_v1_0.md produced. 10 PLAN-DELTA corrections.**
     Executed CLAUDECODE_BRIEF_BA_PG_GROUNDING_PROOF_v1_0.md end-to-end (G-1 through G-9 + report).
