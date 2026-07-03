@@ -2,9 +2,10 @@
 brahmagyan.l0_transit — L0 Brahmagyan: Transit/Gochara Reference Tables
 =========================================================================
 
-Populates two reference tables:
+Populates three reference tables:
   1. bg_transit_engine  — graha average motions and period data
   2. bg_transit_rules   — classical Gochara rules from BPHS, Phaladeepika, Saravali
+  3. bg_transit_moorti  — BA-P7A: Moorti Nirnaya (27 nakshatra-offset → quality tier)
 
 Chart-agnostic static reference data only (L0 Brahmagyan layer).
 ZERO LLM — all data is hardcoded attested classical values.
@@ -15,7 +16,7 @@ Sources:
   SS   = Saravali by Kalyana Varma
   UK   = Uttara Kalamrita by Kalidasa
 
-Volume: 9 engine rows + ~37 rule rows.
+Volume: 9 engine rows + ~55 rule rows + 27 moorti rows.
 
 Gate: Transit/Gochara Subsystem Gate-1
 """
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ── Citation constants ─────────────────────────────────────────────────────────
 
 BPHS_CH29 = "BPHS Ch.29 (Gochara Phala — Transit Results)"
+BPHS_CH28 = "BPHS Ch.28 (Nakshatra Gochara + Moorti Nirnaya)"
 BPHS_CH22 = "BPHS Ch.22 (Graha Gati — Planetary Motion)"
 PD_CH26   = "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)"
 SS_CH12   = "Saravali Ch.12 (Gochara Phala adhyaya)"
@@ -549,12 +551,235 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "classical_citation": BPHS_CH29,
         "rule_notes": "Ashtama Shani — worst Saturn transit position",
     },
+    # ── RAHU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+    {
+        "rule_type": "favourable",
+        "graha": "rahu",
+        "primary_house": 3,
+        "vedha_house": 9,
+        "phala": "Enterprise, travel, gain through courage; sibling support",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu 3rd from Moon — gain and initiative; vedha from 9th nullifies.",
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "rahu",
+        "primary_house": 6,
+        "vedha_house": 12,
+        "phala": "Defeat of enemies, legal victories, health improvement",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu 6th from Moon — ari-bhava placement aids in enemy removal; vedha from 12th.",
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "rahu",
+        "primary_house": 11,
+        "vedha_house": 5,
+        "phala": "Financial gains, labha, fulfillment of desires through unconventional means",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Rahu 11th from Moon — labha amplified; shadow planet in gain house; vedha from 5th.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 1,
+        "vedha_house": None,
+        "phala": "Ill health, confusion, loss of clarity; fear and anxiety",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu over natal Moon — mental disturbance; Sade-Sati-class affliction for Rahu.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 2,
+        "vedha_house": None,
+        "phala": "Speech affliction, family disputes, financial drain",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu 2nd from Moon — kutumba and dhana affliction.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 4,
+        "vedha_house": None,
+        "phala": "Domestic troubles, property loss, mother's health affected",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu 4th from Moon — Kantaka-class obstruction; home and sukha affliction.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 7,
+        "vedha_house": None,
+        "phala": "Partnership conflicts, danger in travel, hidden adversaries",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Rahu 7th from Moon — kalatra and travel affliction.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 8,
+        "vedha_house": None,
+        "phala": "Accidents, sudden illness, hidden dangers; fear of death",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Rahu 8th from Moon — randhra affliction; severe; longevity concern.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "rahu",
+        "primary_house": 12,
+        "vedha_house": None,
+        "phala": "Hidden expenditure, foreign travel under duress, separation",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Rahu 12th from Moon — vyaya affliction; loss and isolation.",
+    },
+    # ── KETU Gochara — BPHS Ch.29 + Phaladeepika Ch.26 ──────────────────────
+    {
+        "rule_type": "favourable",
+        "graha": "ketu",
+        "primary_house": 3,
+        "vedha_house": 9,
+        "phala": "Moderate gain through effort; spiritual enterprise; sibling support",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu 3rd from Moon — paurushabala enterprise; less potent than Rahu here; vedha from 9th.",
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "ketu",
+        "primary_house": 6,
+        "vedha_house": 12,
+        "phala": "Enemies subdued; disease removal; spiritual purification",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu 6th from Moon — moksha-karak in ari-bhava aids liberation from obstacles.",
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "ketu",
+        "primary_house": 11,
+        "vedha_house": 5,
+        "phala": "Spiritual gains, gains through research or occult; modest material labha",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Ketu 11th from Moon — gains oriented toward karmic fulfilment; vedha from 5th.",
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "ketu",
+        "primary_house": 12,
+        "vedha_house": None,
+        "phala": "Spiritual liberation, moksha progress, renunciation; retreat and deep contemplation",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu 12th from Moon — moksha-karaka in vyaya: uniquely auspicious for spiritual seekers.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "ketu",
+        "primary_house": 1,
+        "vedha_house": None,
+        "phala": "Bodily affliction, confusion, spiritual restlessness; detachment from self",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu over natal Moon — dissociation and health disturbance.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "ketu",
+        "primary_house": 2,
+        "vedha_house": None,
+        "phala": "Financial loss, family separation, speech affliction",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Ketu 2nd from Moon — kutumba and dhana affliction.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "ketu",
+        "primary_house": 4,
+        "vedha_house": None,
+        "phala": "Home disruption, loss of comforts, mother's health concerns",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu 4th from Moon — Kantaka-class; domestic troubles and vehicle accidents.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "ketu",
+        "primary_house": 7,
+        "vedha_house": None,
+        "phala": "Marital friction, separation, hidden adversary in partnership",
+        "classical_citation": PD_CH26,
+        "rule_notes": "Ketu 7th from Moon — kalatra affliction; relationships tested.",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "ketu",
+        "primary_house": 8,
+        "vedha_house": None,
+        "phala": "Surgery, accidents, sudden health crisis; karmic debt activation",
+        "classical_citation": BPHS_CH29,
+        "rule_notes": "Ketu 8th from Moon — randhra + moksha karak: severe; karmic reckoning.",
+    },
+]
+
+# ── §3 — BG_TRANSIT_MOORTI: Moorti Nirnaya (BA-P7A) ──────────────────────────
+#
+# nakshatra_offset: count of transit nakshatra from natal janma nakshatra (1–27).
+# moorti_name:      swarna/rajata/tamra/loha quality tier.
+# quality_tier:     1 (best) → 4 (worst); consumed by ka_gochara for transit scoring.
+# classical source: Phaladeepika Ch.26 §moorti-nirnaya; BPHS Ch.28.
+#
+# Cycle: offsets mod 4 → 1=swarna, 2=rajata, 3=tamra, 0=loha
+# (with offset 27 = tamra, not loha, per Phaladeepika — last entry of tamra group).
+
+_MOORTI_CYCLE: list[tuple[int, str, int, str]] = [
+    # (nakshatra_offset, moorti_name, quality_tier, phala_brief)
+    (1,  "swarna", 1, "Janma nakshatra — full Swarna moorti; all endeavours prosper."),
+    (2,  "rajata", 2, "Second from janma — Rajata moorti; moderate gains and comfort."),
+    (3,  "tamra",  3, "Third from janma — Tamra moorti; mixed results; caution advised."),
+    (4,  "loha",   4, "Fourth from janma — Loha moorti; hardship, obstacles, health risk."),
+    (5,  "swarna", 1, "Fifth from janma — Swarna moorti; gains and good health."),
+    (6,  "rajata", 2, "Sixth from janma — Rajata moorti; enemies manageable, health fair."),
+    (7,  "tamra",  3, "Seventh from janma — Tamra moorti; relationship and travel caution."),
+    (8,  "loha",   4, "Eighth from janma — Loha moorti; avoid new ventures; obstruction."),
+    (9,  "swarna", 1, "Ninth from janma — Swarna moorti; dharma and fortune favoured."),
+    (10, "rajata", 2, "Tenth from janma — Rajata moorti; career matters advance moderately."),
+    (11, "tamra",  3, "Eleventh from janma — Tamra moorti; gains delayed or obstructed."),
+    (12, "loha",   4, "Twelfth from janma — Loha moorti; losses and expenditure likely."),
+    (13, "swarna", 1, "Thirteenth from janma — Swarna moorti; auspicious outcomes."),
+    (14, "rajata", 2, "Fourteenth from janma — Rajata moorti; positive outcomes with effort."),
+    (15, "tamra",  3, "Fifteenth from janma — Tamra moorti; mixed; health attention needed."),
+    (16, "loha",   4, "Sixteenth from janma — Loha moorti; disputes and health affliction."),
+    (17, "swarna", 1, "Seventeenth from janma — Swarna moorti; prosperity and recognition."),
+    (18, "rajata", 2, "Eighteenth from janma — Rajata moorti; moderate auspiciousness."),
+    (19, "tamra",  3, "Nineteenth from janma — Tamra moorti; efforts yield partial results."),
+    (20, "loha",   4, "Twentieth from janma — Loha moorti; career and domestic troubles."),
+    (21, "swarna", 1, "Twenty-first from janma — Swarna moorti; success in enterprises."),
+    (22, "rajata", 2, "Twenty-second from janma — Rajata moorti; partial success likely."),
+    (23, "tamra",  3, "Twenty-third from janma — Tamra moorti; undertakings face friction."),
+    (24, "loha",   4, "Twenty-fourth from janma — Loha moorti; delays and loss."),
+    (25, "swarna", 1, "Twenty-fifth from janma — Swarna moorti; gains and blessings."),
+    (26, "rajata", 2, "Twenty-sixth from janma — Rajata moorti; gains with moderate delay."),
+    (27, "tamra",  3, "Twenty-seventh from janma — Tamra moorti; cycle end; caution."),
+]
+
+BG_TRANSIT_MOORTI: list[dict[str, Any]] = [
+    {
+        "nakshatra_offset": offset,
+        "moorti_name": name,
+        "quality_tier": tier,
+        "phala_brief": phala,
+        "classical_citation": f"{BPHS_CH28}; {PD_CH26}",
+        "rule_notes": (
+            "Offset 1 = transit in birth nakshatra; strongest Swarna position."
+            if offset == 1
+            else "Offset 27 = last Tamra entry per Phaladeepika consensus; cycle completes."
+            if offset == 27
+            else None
+        ),
+    }
+    for offset, name, tier, phala in _MOORTI_CYCLE
 ]
 
 
 def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     """
-    Seed bg_transit_engine and bg_transit_rules reference tables.
+    Seed bg_transit_engine, bg_transit_rules, and bg_transit_moorti reference tables.
 
     L0 idempotency: ON CONFLICT DO UPDATE (upsert).
     Never commits — caller owns the transaction.
@@ -564,16 +789,18 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
         return {
             "bg_transit_engine": len(BG_TRANSIT_ENGINE),
             "bg_transit_rules": len(BG_TRANSIT_RULES),
-            "total": len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES),
+            "bg_transit_moorti": len(BG_TRANSIT_MOORTI),
+            "total": len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES) + len(BG_TRANSIT_MOORTI),
         }
 
     cur = conn.cursor()
 
     # Idempotency: full clear before re-seed so removed entries don't persist
-    # as orphan rows. 37 static rows — full truncate is correct L0 behaviour.
+    # as orphan rows. Static rows — full delete is correct L0 behaviour.
+    cur.execute("DELETE FROM bg_transit_moorti")
     cur.execute("DELETE FROM bg_transit_rules")
     cur.execute("DELETE FROM bg_transit_engine")
-    logger.info("[transit] cleared bg_transit_rules and bg_transit_engine for re-seed")
+    logger.info("[transit] cleared bg_transit_rules, bg_transit_engine, bg_transit_moorti for re-seed")
 
     # ── Insert bg_transit_engine rows ─────────────────────────────────────────
     engine_count = 0
@@ -627,10 +854,38 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
         )
         rules_count += 1
 
+    # ── Insert bg_transit_moorti rows (BA-P7A) ───────────────────────────────────
+    moorti_count = 0
+    for row in BG_TRANSIT_MOORTI:
+        cur.execute(
+            """
+            INSERT INTO bg_transit_moorti
+                (nakshatra_offset, moorti_name, quality_tier,
+                 phala_brief, classical_citation, rule_notes)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (nakshatra_offset) DO UPDATE SET
+                moorti_name        = EXCLUDED.moorti_name,
+                quality_tier       = EXCLUDED.quality_tier,
+                phala_brief        = EXCLUDED.phala_brief,
+                classical_citation = EXCLUDED.classical_citation,
+                rule_notes         = EXCLUDED.rule_notes
+            """,
+            (
+                row["nakshatra_offset"],
+                row["moorti_name"],
+                row["quality_tier"],
+                row["phala_brief"],
+                row["classical_citation"],
+                row.get("rule_notes"),
+            ),
+        )
+        moorti_count += 1
+
     cur.close()
 
     return {
         "bg_transit_engine": engine_count,
         "bg_transit_rules": rules_count,
-        "total": engine_count + rules_count,
+        "bg_transit_moorti": moorti_count,
+        "total": engine_count + rules_count + moorti_count,
     }

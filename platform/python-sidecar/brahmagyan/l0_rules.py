@@ -969,6 +969,130 @@ def _p24_extract(m: re.Match, full_text: str) -> dict | None:
     }
 
 
+# ─── Pattern 25: <planet1> and <planet2> in <sign> — Nadi compound placement ─
+# Bhrigu Nandi Nadi / Nadi Navamsa style: "Sun and Moon in Aries..."
+# Distinct from P4 (conjunction keyword) — Nadi texts enumerate planets + sign directly.
+
+_P25 = re.compile(
+    rf'\b({_PLANET_PAT})\b'
+    rf'(?:\s+and\s+|\s*,\s*)'
+    rf'({_PLANET_PAT})\b'
+    rf'(?:\s+\w+){{0,4}}\s+'
+    rf'(?:in\s+|occupying?\s+|placed?\s+in\s+|posited?\s+in\s+)'
+    rf'(?:the\s+)?({_SIGN_PAT})\b'
+    rf'(?P<tail>.{{0,120}}?)'
+    rf'(?:{_RESULT_PAT}|will\s+be|will\s+have|native\s+gets?)',
+    FLAGS,
+)
+
+
+def _p25_extract(m: re.Match, full_text: str) -> dict | None:
+    p1 = _canon_planet(m.group(1))
+    p2 = _canon_planet(m.group(2))
+    sign_num = _canon_sign(m.group(3)) if m.group(3) else None
+    if not p1 or not p2 or not sign_num or p1 == p2:
+        return None
+    result = _extract_result_clause(full_text, m.end())
+    return {
+        "antecedent": [
+            {"planet": p1, "sign": sign_num, "relation": "occupies"},
+            {"planet": p2, "sign": sign_num, "relation": "occupies"},
+        ],
+        "predicate": {
+            "type": "nadi_planet_pair_in_sign",
+            "description": f"Nadi: {p1} and {p2} in sign {sign_num}",
+        },
+        "prediction": {"result": result, "domain": "nadi_compound_placement"},
+        "pattern": "nadi_planet_pair_in_sign",
+        "match_text": m.group(0)[:120],
+        "transit_marker": False,
+    }
+
+
+# ─── Pattern 26: In Navamsa, <planet> in <sign/house> — Nadi Navamsa rule ───
+# "In the Navamsa, Jupiter occupies Sagittarius..." style Nadi aphorism.
+
+_P26 = re.compile(
+    rf'(?:[Ii]n\s+(?:the\s+)?[Nn]avamsa|[Nn]avamsha\s+(?:chart|rasi)?)'
+    rf'[^.{{0,30}}]*?'
+    rf'({_PLANET_PAT})\b'
+    rf'(?:\s+\w+){{0,4}}\s+'
+    rf'(?:in\s+|occupies?\s+|is\s+in\s+)'
+    rf'(?:the\s+)?(?:({_SIGN_PAT})\b|({_HOUSE_NUM_PAT})\s+(?:house|bhava)\b)',
+    FLAGS,
+)
+
+
+def _p26_extract(m: re.Match, full_text: str) -> dict | None:
+    planet = _canon_planet(m.group(1))
+    sign_num = _canon_sign(m.group(2)) if m.group(2) else None
+    house = _canon_house(m.group(3)) if m.group(3) else None
+    if not planet or (not sign_num and not house):
+        return None
+    result = _extract_result_clause(full_text, m.end())
+    ant: list[dict] = [{"planet": planet, "relation": "occupies", "varga": "D9"}]
+    if sign_num:
+        ant[0]["sign"] = sign_num
+    if house:
+        ant[0]["house"] = house
+    loc = f"sign {sign_num}" if sign_num else f"house {house}"
+    return {
+        "antecedent": ant,
+        "predicate": {
+            "type": "nadi_navamsa_placement",
+            "description": f"Nadi Navamsa: {planet} in {loc} (D9)",
+        },
+        "prediction": {"result": result, "domain": "nadi_navamsa"},
+        "pattern": "nadi_navamsa_placement",
+        "match_text": m.group(0)[:120],
+        "transit_marker": False,
+    }
+
+
+# ─── Pattern 27: <planet1>, <planet2> and <planet3> in <sign> — Nadi triple ──
+# "Sun, Moon, and Mars in Cancer..." triple conjunction in same sign.
+# Nadi jyotish frequently discusses 3+ planet sign-clusters.
+
+_P27 = re.compile(
+    rf'\b({_PLANET_PAT})\b'
+    rf'\s*,\s*({_PLANET_PAT})\b'
+    rf'(?:\s*,\s*({_PLANET_PAT})\b)?'
+    rf'\s+(?:and\s+)?(?:{_PLANET_PAT}\s+)?'
+    rf'(?:in\s+|are\s+in\s+|placed?\s+in\s+|together\s+in\s+)'
+    rf'(?:the\s+)?({_SIGN_PAT})\b'
+    rf'(?P<tail>.{{0,120}}?)'
+    rf'(?:{_RESULT_PAT}|native\s+will|the\s+person\s+will)',
+    FLAGS,
+)
+
+
+def _p27_extract(m: re.Match, full_text: str) -> dict | None:
+    p1 = _canon_planet(m.group(1))
+    p2 = _canon_planet(m.group(2))
+    p3 = _canon_planet(m.group(3)) if m.group(3) else None
+    sign_num = _canon_sign(m.group(4)) if m.group(4) else None
+    if not p1 or not p2 or not sign_num:
+        return None
+    planets = list({p for p in (p1, p2, p3) if p})
+    if len(planets) < 2:
+        return None
+    result = _extract_result_clause(full_text, m.end())
+    return {
+        "antecedent": [
+            {"planet": p, "sign": sign_num, "relation": "occupies"}
+            for p in planets
+        ],
+        "predicate": {
+            "type": "nadi_triple_conjunction_in_sign",
+            "description": f"Nadi triple: {'+'.join(planets)} in sign {sign_num}",
+        },
+        "prediction": {"result": result, "domain": "nadi_compound_placement"},
+        "pattern": "nadi_triple_conjunction_in_sign",
+        "match_text": m.group(0)[:120],
+        "transit_marker": False,
+    }
+
+
 # ── Registered pattern list ────────────────────────────────────────────────────
 
 PATTERNS: list[tuple[str, re.Pattern, Any]] = [
@@ -994,8 +1118,12 @@ PATTERNS: list[tuple[str, re.Pattern, Any]] = [
     ("strength_state",        _P20, _p20_extract),
     ("conditional_when",      _P21, _p21_extract),
     ("person_born_will",      _P22, _p22_extract),
-    ("planet_in_bhava",       _P23, _p23_extract),
-    ("when_planet_in_sign",   _P24, _p24_extract),
+    ("planet_in_bhava",              _P23, _p23_extract),
+    ("when_planet_in_sign",          _P24, _p24_extract),
+    # ── BA-P7A Nadi extraction patterns ──────────────────────────────────
+    ("nadi_planet_pair_in_sign",     _P25, _p25_extract),
+    ("nadi_navamsa_placement",       _P26, _p26_extract),
+    ("nadi_triple_conjunction_in_sign", _P27, _p27_extract),
 ]
 
 
