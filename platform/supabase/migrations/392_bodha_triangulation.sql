@@ -36,9 +36,7 @@ COMMENT ON TABLE bodha_triangulation IS
 
 -- ── DAG edge update for bo_sangati (already registered; no new asset_registry row) ──
 
-INSERT INTO asset_dag (from_asset_id, to_asset_id, edge_type, notes)
-VALUES ('bo_sangati', 'bo_pratijna', 'depends_on',
-        'bo_pratijna reads bodha_triangulation tradition concordance for varga_confirmation')
-ON CONFLICT DO NOTHING;
+UPDATE asset_registry SET depends_on = array_append(COALESCE(depends_on, ARRAY[]::text[]), 'bo_sangati')
+WHERE asset_id = 'bo_pratijna' AND NOT ('bo_sangati' = ANY(COALESCE(depends_on, ARRAY[]::text[])));
 
 COMMIT;
