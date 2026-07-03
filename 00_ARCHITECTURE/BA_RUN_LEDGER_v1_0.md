@@ -363,5 +363,24 @@ Seeds deployed inline with migration SQL — no cockpit run needed for base data
 
 ---
 
+## Open items (pre-rebuild wrap-up, 2026-07-04)
+
+### Open — Karakamsa/Swamsa Jaimini sign-based relationship pass (deferred, non-blocking)
+Origin: JL-010 (ga_structural absorption fix 6cddc910). Karakamsa has no D1 house; it needs SIGN-based
+relationships (grahas occupying the Karakamsa sign; kendra/trikona grahas from it; rasi-drishti onto it),
+NOT house-based aspects. Swamsa is handled house-wise as an interim. Schedule as a small post-rebuild wave.
+
+### NF-1 (cosmetic) — Nirmāṇa band over-reports "100% / green"
+The layer band shows "N/N assets built · 100% · green" while assets that are SEEDED-but-never-writer-built
+(the 3 new L0: bg_class_priors/bg_ghatana/bg_formula_constants) show per-asset "build-state stale". The band
+counts seeded rows as built (count_sql>0). Fix so the band's built-count/health reflects writer build-state,
+not mere row presence. Non-blocking; queue after rebuild.
+
+### NF-2 (verify) — bg_formula_constants row count
+Tracker renders 10 rows for bg_formula_constants; migration 389 was expected to seed 11. Confirm 10 is
+intended vs a dropped row (cf. the bg_class_priors 164-vs-165 reconciliation). One-line DB check.
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*

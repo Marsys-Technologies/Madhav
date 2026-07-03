@@ -196,3 +196,10 @@ Activity 1.5 exit gates:
 **GO for Activity 2: native may trigger L1→L5 CASCADE rebuild when ready.**
 The cascade will: rebuild L1 (Gaṇita) → L2 (Bodha) → L3 (Kāla) → L4 (Phala) → L5 (Mīmāṃsā)
 picking up all 12 migrations (391–402) and all writer v2.0 upgrades in dependency order.
+
+---
+
+**NOTE (PF-001 discipline): P4 (verdict/Mahā-Brief/golden-eval harness) and P6 (Mīmāṃsā v2 retrodiction engine)
+are CODE-DEPLOYED only. Their acceptance gates — golden-eval non-regression (P4) and the first honest skill
+table from leakage-audited retrodiction (P6) — can only pass against REBUILT data, i.e. post-Activity-3.
+Do not mark P4/P6 COMPLETE until then.**
