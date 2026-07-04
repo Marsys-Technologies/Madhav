@@ -297,7 +297,7 @@ class MiDarshanaWriter(WriterBase):
                         (chart_id,),
                     )
                     aya_row = cur.fetchone()
-                    aya_count = int(aya_row[0]) if aya_row else 0
+                    aya_count = int(aya_row["count"]) if aya_row else 0
 
                 for pr in pratijna_rows:
                     event_class_id = pr["event_class_id"]
@@ -460,7 +460,7 @@ class MiDarshanaWriter(WriterBase):
                 with conn.cursor() as cur:
                     cur.execute(f"SELECT COUNT(*) FROM {view} WHERE chart_id = %s", (chart_id,))
                     r = cur.fetchone()
-                    counts[view] = r[0] if r else 0
+                    counts[view] = r["count"] if r else 0
             except Exception as exc:
                 counts[view] = f"ERROR: {exc}"
 
