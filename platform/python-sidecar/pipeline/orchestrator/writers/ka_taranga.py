@@ -110,10 +110,10 @@ class KaTarangaWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
-                SELECT lord_graha, dasha_start::date AS ds, dasha_end::date AS de
+                SELECT lord_graha, start_date AS ds, end_date AS de
                 FROM chart_dashas
-                WHERE chart_id = %s AND level = 1 AND system_id = 'vimshottari'
-                ORDER BY dasha_start
+                WHERE chart_id = %s AND level_n = 1 AND system_id = 'vimshottari'
+                ORDER BY start_date
                 """,
                 (chart_id,),
             )

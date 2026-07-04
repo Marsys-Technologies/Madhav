@@ -51,23 +51,24 @@ _GRAHA_DOMAINS: dict[str, list[str]] = {
 
 _FETCH_MD_SQL = """
 SELECT d.chart_id, d.system_id, d.lord_graha,
-       d.dasha_start::date AS period_start,
-       d.dasha_end::date   AS period_end,
+       d.start_date AS period_start,
+       d.end_date   AS period_end,
        1 AS level_n
 FROM chart_dashas d
-WHERE d.chart_id = %s AND d.level = 1 AND d.system_id = ANY(%s)
-ORDER BY d.system_id, d.dasha_start
+WHERE d.chart_id = %s AND d.level_n = 1 AND d.system_id = ANY(%s)
+ORDER BY d.system_id, d.start_date
 """
 
 _FETCH_AD_SQL = """
 SELECT d.chart_id, d.system_id, d.lord_graha,
-       d.dasha_start::date AS period_start,
-       d.dasha_end::date   AS period_end,
+       d.start_date AS period_start,
+       d.end_date   AS period_end,
        2 AS level_n,
-       d.parent_lord_graha
+       p.lord_graha AS parent_lord_graha
 FROM chart_dashas d
-WHERE d.chart_id = %s AND d.level = 2 AND d.system_id = ANY(%s)
-ORDER BY d.system_id, d.dasha_start
+JOIN chart_dashas p ON p.dasha_row_id = d.parent_row_id
+WHERE d.chart_id = %s AND d.level_n = 2 AND d.system_id = ANY(%s)
+ORDER BY d.system_id, d.start_date
 """
 
 _FETCH_PRATIJNA_SQL = """
