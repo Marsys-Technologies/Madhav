@@ -666,9 +666,9 @@ class MiParikshaWriter(WriterBase):
         if _table_exists(conn, "bodha_msr_signals"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT signal_id, salience_score "
-                    "FROM bodha_msr_signals WHERE chart_id = %s AND salience_score IS NOT NULL "
-                    "ORDER BY salience_score ASC",
+                    "SELECT signal_id, computed_salience "
+                    "FROM bodha_msr_signals WHERE chart_id = %s AND computed_salience IS NOT NULL "
+                    "ORDER BY computed_salience ASC",
                     (chart_id,),
                 )
                 all_signals = cur.fetchall()
