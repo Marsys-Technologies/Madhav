@@ -235,20 +235,13 @@ class KaAvdhiWriter(WriterBase):
                 "formula_version": FORMULA_VERSION,
             }
 
-        # Insert MD rows
+        # Build all rows in memory then batch-insert — avoids N individual round-trips.
+        all_rows = [_build_row(md) for md in md_rows] + [
+            _build_row(ad, sublord=ad.get("parent_lord_graha")) for ad in ad_rows
+        ]
         with conn.cursor() as cur:
-            for md in md_rows:
-                row = _build_row(md)
-                cur.execute(_INSERT_SQL, row)
-                rows_inserted += 1
-
-        # Insert AD rows (with sublord = AD lord)
-        with conn.cursor() as cur:
-            for ad in ad_rows:
-                parent = ad.get("parent_lord_graha")
-                row = _build_row(ad, sublord=parent)
-                cur.execute(_INSERT_SQL, row)
-                rows_inserted += 1
+            cur.executemany(_INSERT_SQL, all_rows)
+        rows_inserted = len(all_rows)
 
         logger.info("[ka_avadhi] %d period dossier rows for chart %s", rows_inserted, chart_id)
         return WriterResult(asset_id=self.asset_id, rows_inserted=rows_inserted,
