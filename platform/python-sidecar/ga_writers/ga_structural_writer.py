@@ -3735,7 +3735,7 @@ def _build_karaka_web_rows(
                 WHERE chart_id = %s
                   AND ayanamsha_id = %s
                   AND fact_category = 'karaka_chara_position'
-                  AND fact_key = 'graha'
+                  AND fact_key = 'assigned_graha'
                 """,
                 (chart_id, ayanamsha_id),
             )
