@@ -313,10 +313,10 @@ class TestAnchorFromConvergence:
         # backward compat band derived from posterior
         assert 0.0 <= a.confidence_low <= a.confidence_high <= 0.80
 
-    def test_confidence_basis_is_posterior_model(self, convergence_row, full_ctx):
+    def test_confidence_basis_is_structural(self, convergence_row, full_ctx):
         from services.ph_nimitta.engine import derive_anchor_from_convergence
         a = derive_anchor_from_convergence(convergence_row, full_ctx, n_independent=4)
-        assert a.confidence_basis == 'posterior_model_ba_p5b'
+        assert a.confidence_basis == 'structural_not_yet_empirical'
 
     def test_contradiction_v5_populated(self, convergence_row, full_ctx):
         from services.ph_nimitta.engine import derive_anchor_from_convergence

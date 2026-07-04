@@ -304,7 +304,7 @@ class AnchorRecord:
     # confidence band — backward compat with phala_anchors schema (derived from posterior)
     confidence_low:         Optional[float] = None
     confidence_high:        Optional[float] = None
-    confidence_basis:       str             = 'posterior_model_ba_p5b'
+    confidence_basis:       str             = 'structural_not_yet_empirical'
     # BA-P5B: true posterior point estimate + lift decomposition
     posterior:              Optional[float] = None
     lift_vector:            Optional[dict]  = None
