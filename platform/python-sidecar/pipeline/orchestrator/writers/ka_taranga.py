@@ -101,6 +101,8 @@ class KaTarangaWriter(WriterBase):
         chart_id = ctx.config["chart_id"]
 
         # Idempotency: delete-then-insert
+        with conn.cursor() as _timeout_cur:
+            _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_taranga WHERE chart_id = %s", (chart_id,))
 

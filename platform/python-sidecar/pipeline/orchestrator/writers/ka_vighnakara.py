@@ -161,6 +161,8 @@ class KaVighnakaraWriter(WriterBase):
 
         # Idempotency: delete-then-insert scoped to chart.
         # Safe to DELETE only after confirming swisseph is available and we can rebuild.
+        with conn.cursor() as _timeout_cur:
+            _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s", (chart_id,))
 
