@@ -40,6 +40,8 @@ class PhSodhanaWriter(WriterBase):
         chart_id = ctx.config['chart_id']
 
         with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+        with conn.cursor() as cur:
             cur.execute("DELETE FROM phala_sodhana WHERE chart_id = %s", (chart_id,))
 
         anchors = self._load_anchors(conn, chart_id)

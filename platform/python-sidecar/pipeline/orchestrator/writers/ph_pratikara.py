@@ -38,6 +38,8 @@ class PhPratikaraWriter(WriterBase):
         chart_id = ctx.config['chart_id']
 
         with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+        with conn.cursor() as cur:
             cur.execute("DELETE FROM phala_mitigation WHERE chart_id = %s", (chart_id,))
 
         obstructions = self._load_obstructions(conn, chart_id)
