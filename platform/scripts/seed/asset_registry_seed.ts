@@ -1365,7 +1365,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One predicate per L2 signal per ayanamsha; total ≈ 66,738 for native chart',
-    depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas'],
+    depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas', 'bo_bimba', 'bo_sangati', 'bo_pratijna', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -1757,7 +1757,7 @@ export const ASSETS: AssetDef[] = [
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence',
-    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana'],
+    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
