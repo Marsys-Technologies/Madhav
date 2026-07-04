@@ -129,6 +129,9 @@ class KaAvdhiWriter(WriterBase):
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]
 
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+
         # Idempotency: delete-then-insert per §N.3
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_avadhi WHERE chart_id = %s", (chart_id,))

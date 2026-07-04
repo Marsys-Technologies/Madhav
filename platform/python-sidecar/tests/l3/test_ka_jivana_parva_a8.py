@@ -67,13 +67,14 @@ def _build_cursor_sequence(conn, md_ad_rows, pd_rows, conv_rows=None):
     if conv_rows is None:
         conv_rows = []
 
+    cur_timeout  = MagicMock()  # SET LOCAL statement_timeout = 0
     cur_delete   = MagicMock()
     cur_md_ad    = MagicMock(); cur_md_ad.fetchall.return_value = md_ad_rows
     cur_conv     = MagicMock(); cur_conv.fetchall.return_value  = conv_rows
     cur_pd       = MagicMock(); cur_pd.fetchall.return_value    = pd_rows
     cur_insert   = MagicMock()
 
-    cursors = [cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
+    cursors = [cur_timeout, cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
     idx = [0]
 
     def _new_cursor():
@@ -456,12 +457,13 @@ def test_as_of_date_passed_as_bound_param():
 
     # Track cursors in order so we can inspect the PD cursor specifically
     original_side_effect_cursors = []
+    cur_timeout  = MagicMock()  # SET LOCAL statement_timeout = 0
     cur_delete   = MagicMock()
     cur_md_ad    = MagicMock(); cur_md_ad.fetchall.return_value = [md_row, ad_row]
     cur_conv     = MagicMock(); cur_conv.fetchall.return_value  = []
     cur_pd       = MagicMock(); cur_pd.fetchall.return_value    = pd_rows
     cur_insert   = MagicMock()
-    all_cursors = [cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
+    all_cursors = [cur_timeout, cur_delete, cur_md_ad, cur_conv, cur_pd, cur_insert]
     idx = [0]
 
     def _new_cursor():

@@ -26,6 +26,8 @@ class KaYojakaWriter(WriterBase):
         chart_id = ctx.config['chart_id']
 
         # Step 1: delete existing for this chart (delete-then-insert idempotency per §N.3)
+        with conn.cursor() as _timeout_cur:
+            _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
             cur.execute(
                 "DELETE FROM kala_activation_predicates WHERE chart_id = %s",

@@ -201,6 +201,8 @@ class KaSangamWriter(WriterBase):
 
     def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
         with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+        with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
                         (chart_id,))
             # Clear lifetime rows here so stale rows are removed even when
