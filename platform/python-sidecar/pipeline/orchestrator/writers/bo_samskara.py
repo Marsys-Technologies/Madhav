@@ -8,7 +8,10 @@ Embedding strategy: Vertex AI text-multilingual-embedding-002 (768-dim).
   - Batched via google-genai client (EMBED_BATCH_SIZE=100)
   - Real semantic vectors replacing the placeholder_hash_v1 deterministic approach.
 
-LIGHT writer — one run() call over all ayanamshas.
+HEAVY writer: plan_substeps returns one SubStep per ayanamsha.
+Each sub-step runs inside its own SAVEPOINT managed by the orchestrator.
+~13,363 signals per ayanamsha → ~134 API calls → ~2-4 min per substep,
+well within the 600s per-substep limit.
 """
 from __future__ import annotations
 
@@ -19,7 +22,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from . import WriterBase, ContextSpec, WriterResult, register
+from . import WriterBase, ContextSpec, WriterResult, SubStep, register
 
 logger = logging.getLogger(__name__)
 
@@ -153,58 +156,67 @@ def _batch_insert(conn, rows: list[dict]) -> int:
 class BoSamskaraWriter(WriterBase):
     """bo_samskara: deterministic signal embeddings (1:1 with MSR signals)."""
     asset_id = "bo_samskara"
+    has_substeps = True
 
-    def run(self, ctx: ContextSpec) -> WriterResult:
+    def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        return [
+            SubStep(key=f"aya_{aya}", label=f"bo_samskara — {aya}")
+            for aya in CANONICAL_AYAS
+        ]
+
+    def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         from bodha_writers._idempotency import replace_prior_signal_embeddings
 
         chart_id = ctx.config["chart_id"]
         build_id = ctx.build_id
         conn     = ctx.db_conn
         now      = datetime.now(timezone.utc).isoformat()
-        total    = 0
-        total_signals_seen = 0
+        aya      = step.key.removeprefix("aya_")
 
-        for aya in CANONICAL_AYAS:
-            signals = _fetch_signals(conn, chart_id, aya)
+        signals = _fetch_signals(conn, chart_id, aya)
 
-            if ctx.dry_run:
-                logger.info("[bo_samskara dry_run] %s — %d signals", aya, len(signals))
-                continue
+        if ctx.dry_run:
+            logger.info("[bo_samskara dry_run] %s — %d signals", aya, len(signals))
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"dry_run:{aya}:{len(signals)}_signals")
 
-            total_signals_seen += len(signals)
+        if not signals:
+            logger.info("[bo_samskara] %s — no signals; skipping", aya)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0)
 
-            # Build (signal, summary) pairs first
-            signal_summaries: list[tuple[dict, str]] = [
-                (sig, _build_input_summary(sig)) for sig in signals
-            ]
+        # Build (signal, summary) pairs first
+        signal_summaries: list[tuple[dict, str]] = [
+            (sig, _build_input_summary(sig)) for sig in signals
+        ]
 
-            # Batch-embed all summaries for this ayanamsha
-            rows: list[dict] = []
-            for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
-                batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
-                batch_texts = [summary for _, summary in batch]
-                vecs = _embed_batch(batch_texts)
-                for (sig, summary), vec in zip(batch, vecs):
-                    rows.append({
-                        "embedding_id":             str(uuid.uuid4()),
-                        "signal_id":                str(sig["signal_id"]),
-                        "chart_id":                 chart_id,
-                        "ayanamsha_id":             aya,
-                        "build_id":                 build_id,
-                        "embedding_vec":            "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
-                        "embedding_model":          EMBEDDING_MODEL,
-                        "embedding_model_version":  EMBEDDING_VER,
-                        "embedding_input_summary":  summary,
-                        "computed_at":              now,
-                    })
+        # Batch-embed all summaries for this ayanamsha
+        rows: list[dict] = []
+        for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
+            batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
+            batch_texts = [summary for _, summary in batch]
+            vecs = _embed_batch(batch_texts)
+            for (sig, summary), vec in zip(batch, vecs):
+                rows.append({
+                    "embedding_id":             str(uuid.uuid4()),
+                    "signal_id":                str(sig["signal_id"]),
+                    "chart_id":                 chart_id,
+                    "ayanamsha_id":             aya,
+                    "build_id":                 build_id,
+                    "embedding_vec":            "[" + ",".join(f"{v:.8f}" for v in vec) + "]",
+                    "embedding_model":          EMBEDDING_MODEL,
+                    "embedding_model_version":  EMBEDDING_VER,
+                    "embedding_input_summary":  summary,
+                    "computed_at":              now,
+                })
 
-            replace_prior_signal_embeddings(conn, chart_id, aya)
-            logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
-            total += _batch_insert(conn, rows)
+        replace_prior_signal_embeddings(conn, chart_id, aya)
+        logger.info("[bo_samskara] %s — inserting %d embeddings", aya, len(rows))
+        inserted = _batch_insert(conn, rows)
 
-        if not ctx.dry_run and total_signals_seen > 0 and total == 0:
+        if len(signals) > 0 and inserted == 0:
             raise RuntimeError(
-                f"[bo_samskara] G3: chart_id={chart_id} — {total_signals_seen} signals found "
-                "but 0 embeddings written; all Vertex AI embedding batches failed"
+                f"[bo_samskara] G3: chart_id={chart_id} aya={aya} — "
+                f"{len(signals)} signals found but 0 embeddings written; "
+                "all Vertex AI embedding batches failed"
             )
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total)
+        return WriterResult(asset_id=self.asset_id, rows_inserted=inserted)
