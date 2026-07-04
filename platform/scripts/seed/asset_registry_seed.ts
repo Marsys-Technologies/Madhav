@@ -268,10 +268,15 @@ export const ASSETS: AssetDef[] = [
     target_table: 'brahma_remedy_corpus',
     count_sql: 'SELECT count(*) FROM brahma_remedy_corpus',
     size_sql: "SELECT pg_total_relation_size('brahma_remedy_corpus')",
-    target_floor: 800,
+    // 266 = writer's designed deterministic ceiling: 108 planet-matrix + 102
+    // dosha-linked + 54 legacy + 2 net-new from corpus_sweep (migrations
+    // 192/199/231). Floor = achieved count per floors-are-aspirational
+    // policy (CLAUDE.md §N.4) — do not raise without expanding the
+    // deterministic corpus design (native-judgment decision).
+    target_floor: 266,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: '800 remedies = cross-text remedy universe target across 13 classical texts. Not chunk-proportional — remedy prescriptions are distributed across texts regardless of chunk density.',
+    volume_explanation: '266 remedies = writer\'s designed deterministic ceiling: gen_planet_matrix(108) + dosha-linked(102) + legacy(54) + corpus_sweep net-new(2). Floor = achieved count per floors-are-aspirational policy (CLAUDE.md §N.4); ZERO LLM, ZERO fabrication is a hard writer constraint, so this floor cannot be raised without a native-judgment decision to expand the deterministic corpus design.',
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
