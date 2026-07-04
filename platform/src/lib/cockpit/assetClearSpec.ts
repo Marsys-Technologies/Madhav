@@ -111,6 +111,16 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // Tier-4 registry migration handled in a later wave.
   mi_seva: null,
 
+  // mi_vistara's count_sql is the un-scoped `SELECT count(*) FROM mimamsa_export_log`
+  // (no WHERE chart_id = $1) — it is an append-only, global-scope export-integrity
+  // ledger that build-time never populates per-chart. Same danger shape as mi_seva
+  // above: deriveDeleteSqlFromCountSql() would transform it into an unscoped
+  // `DELETE FROM mimamsa_export_log`, wiping the export log for ALL charts on any
+  // single-asset clear. BA_FULL_ASSET_AUDIT (2026-07-05) flagged this as the
+  // identical bug shape already stop-gapped for mi_seva but never mirrored here.
+  // null disables the auto-derived destructive DELETE.
+  mi_vistara: null,
+
   // ── L4 Phala — multi-table writers ───────────────────────────────────────────
   // ph_rectification writes phala_rectification (185 rows) + phala_rectification_best
   // (1 row). phala_rectification_best has an FK to phala_rectification — delete child first.
