@@ -46,6 +46,13 @@ from services.ph_phaladesa.engine import (
 
 logger = logging.getLogger(__name__)
 
+# phala_anchors domain vocabulary → phala_phaladesa_domain_canonical (CDLM vocab)
+_ANCHOR_TO_PHALADESA_DOMAIN: dict[str, str] = {
+    'financial':    'wealth',
+    'spiritual':    'spirituality',
+    'psychological': 'character',
+}
+
 
 @register('ph_phaladesa')
 class PhPhaladesakWriter(WriterBase):
@@ -241,7 +248,7 @@ class PhPhaladesakWriter(WriterBase):
                     (chart_id,),
                 )
                 for r in cur.fetchall():
-                    d = str(r['domain']).lower()
+                    d = _ANCHOR_TO_PHALADESA_DOMAIN.get(str(r['domain']).lower(), str(r['domain']).lower())
                     if d not in summaries:
                         summaries[d] = DomainAnchorSummary(domain=d)
                     s = summaries[d]
@@ -320,7 +327,7 @@ class PhPhaladesakWriter(WriterBase):
                         """,
                         (chart_id,),
                     )
-                return {str(r['domain']).lower() for r in cur.fetchall()}
+                return {_ANCHOR_TO_PHALADESA_DOMAIN.get(str(r['domain']).lower(), str(r['domain']).lower()) for r in cur.fetchall()}
         except Exception as exc:
             logger.debug("ph_phaladesa: %s domain coverage load skipped: %s", table, exc)
             return set()
