@@ -42,14 +42,18 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
         return 0
     deleted = 0
     for cid in _distinct(rows, "chart_id"):
-        # Delete child embeddings first to avoid FK violation on parent delete.
-        emb_sql = (
-            "DELETE FROM bodha_signal_embeddings WHERE signal_id IN ("
-            "  SELECT signal_id FROM bodha_msr_signals"
-            "  WHERE chart_id = %s AND signal_type_id = ANY(%s) AND ayanamsha_id = ANY(%s)"
-            ")"
+        # Delete all child tables referencing these signals first (FKs are NO ACTION).
+        child_scope = (
+            "SELECT signal_id FROM bodha_msr_signals"
+            " WHERE chart_id = %s AND signal_type_id = ANY(%s) AND ayanamsha_id = ANY(%s)"
         )
-        _delete(conn, emb_sql, [cid, signal_types, ayanamshas])
+        _delete(conn,
+                f"DELETE FROM bodha_signal_embeddings WHERE signal_id IN ({child_scope})",
+                [cid, signal_types, ayanamshas])
+        _delete(conn,
+                f"DELETE FROM bodha_contradictions"
+                f" WHERE chart_id = %s AND (signal_a_id IN ({child_scope}) OR signal_b_id IN ({child_scope}))",
+                [cid, cid, signal_types, ayanamshas, cid, signal_types, ayanamshas])
         sql = ("DELETE FROM bodha_msr_signals "
                "WHERE chart_id = %s AND signal_type_id = ANY(%s)")
         params: list = [cid, signal_types]
@@ -63,10 +67,15 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
 def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
     """Wipe ALL bodha_msr_signals for a (chart_id, ayanamsha_id) pair.
     Used when a full per-ayanamsha rebuild replaces everything."""
-    # Delete child embeddings first to avoid FK violation on parent delete.
+    # Delete all child tables referencing bodha_msr_signals first (all FKs are NO ACTION).
     _delete(
         conn,
         "DELETE FROM bodha_signal_embeddings WHERE chart_id = %s AND ayanamsha_id = %s",
+        [chart_id, ayanamsha_id],
+    )
+    _delete(
+        conn,
+        "DELETE FROM bodha_contradictions WHERE chart_id = %s AND ayanamsha_id = %s",
         [chart_id, ayanamsha_id],
     )
     return _delete(
