@@ -47,7 +47,7 @@ BANNED_MODEL_PREFIXES: tuple[str, ...] = (
     'claude-', 'anthropic/', 'claude3', 'claude2',
 )
 
-_ALL_DOMAINS = ('career', 'financial', 'health', 'relationship', 'spiritual', 'psychological', 'transition')
+_ALL_DOMAINS = ('career', 'wealth', 'health', 'relationship', 'spirituality', 'character', 'transition')
 
 
 class NarrationModelError(ValueError):
