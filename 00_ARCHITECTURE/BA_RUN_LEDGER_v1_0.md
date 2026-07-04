@@ -380,6 +380,14 @@ not mere row presence. Non-blocking; queue after rebuild.
 Tracker renders 10 rows for bg_formula_constants; migration 389 was expected to seed 11. Confirm 10 is
 intended vs a dropped row (cf. the bg_class_priors 164-vs-165 reconciliation). One-line DB check.
 
+### Additional items (2026-07-05)
+- CORPUS GAP: sutravali_rules.yoga_canonical_id 0% populated (2,912 rules, none linked) → rule-derived
+  signals have no classical citation. Yoga/dosha citation works (catalog-sourced). Tracked follow-up;
+  non-blocking for the ≥60% gate.
+- DOC FIX: L0 single-asset build path = scope='layer'+scope_target='brahmagyan'+action='build' (no clear).
+  scope='global' excludes brahmagyan since the 2026-06-26 L0 GATE; scope='asset' is 403 for globals.
+  Update any L0-seed briefs accordingly.
+
 ---
 
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
