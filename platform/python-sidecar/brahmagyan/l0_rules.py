@@ -1169,11 +1169,21 @@ def _normalize_ocr(text: str) -> str:
 def extract_rules_from_chunk(
     chunk: dict,
     valid_text_ids: set[str],
+    pattern_match_counts: dict[str, int] | None = None,
+    pattern_yield_counts: dict[str, int] | None = None,
 ) -> Generator[dict, None, None]:
     """
     Run all patterns against a single chunk.
     Yields dicts ready for DB insertion (all columns of sutravali_rules).
     Each dict has a deterministic rule_id.
+
+    If provided, `pattern_match_counts` is incremented once per raw regex
+    match (before dedup/quality filtering) and `pattern_yield_counts` is
+    incremented once per rule actually yielded (after dedup + REVIEW
+    threshold) — both keyed by pattern name. This makes it possible to tell
+    apart "pattern never matches this corpus" from "pattern matches but
+    every match is filtered out downstream" per pattern, instead of only
+    seeing an aggregate rows_below_threshold count.
     """
     text_id = chunk["text_id"]
     verse_ref = chunk["verse_ref"]
@@ -1188,6 +1198,9 @@ def extract_rules_from_chunk(
 
     for pat_name, pat_re, extract_fn in PATTERNS:
         for m in pat_re.finditer(content):
+            if pattern_match_counts is not None:
+                pattern_match_counts[pat_name] = pattern_match_counts.get(pat_name, 0) + 1
+
             try:
                 result = extract_fn(m, content)
             except Exception as e:
@@ -1211,6 +1224,9 @@ def extract_rules_from_chunk(
 
             if quality < QUALITY_THRESHOLD_REVIEW:
                 continue  # reject entirely
+
+            if pattern_yield_counts is not None:
+                pattern_yield_counts[pat_name] = pattern_yield_counts.get(pat_name, 0) + 1
 
             rule_id = _make_rule_id(text_id, verse_ref, antecedent, prediction)
 
@@ -1243,7 +1259,7 @@ def seed_rules(
     build_id: str | None = None,
     dry_run: bool = False,
     autocommit: bool = True,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """
     Extract rules from classical_text_chunks and insert into sutravali_rules.
 
@@ -1255,6 +1271,12 @@ def seed_rules(
         chunks_processed: total chunks iterated
         chunks_with_zero_extractions: coverage gap count
         upstream_chunks: total rows in classical_text_chunks
+        pattern_match_counts: per-pattern raw regex match counts (dict[str, int]),
+            keyed by PATTERNS name (e.g. "dasha_rule"), before dedup/quality filtering
+        pattern_yield_counts: per-pattern counts of rules actually yielded
+            (dict[str, int]) — a pattern with matches>0 but yield==0 is
+            matching-but-filtered; matches==0 means the regex never fires
+            against the current corpus at all
     """
     with conn.cursor() as cur:
         # Validate table exists
@@ -1327,6 +1349,8 @@ def seed_rules(
     rows_rejected = 0
     chunks_processed = 0
     chunks_with_zero_extractions = 0
+    pattern_match_counts: dict[str, int] = {}
+    pattern_yield_counts: dict[str, int] = {}
 
     # Idempotency: delete all python-extracted rules before re-seed so stale
     # rules from changed regex patterns or corpus edits don't survive.
@@ -1357,7 +1381,11 @@ def seed_rules(
             with conn.cursor() as insert_cur:
                 for chunk in batch:
                     chunk_rule_count = 0
-                    for rule_row in extract_rules_from_chunk(chunk, valid_text_ids):
+                    for rule_row in extract_rules_from_chunk(
+                        chunk, valid_text_ids,
+                        pattern_match_counts=pattern_match_counts,
+                        pattern_yield_counts=pattern_yield_counts,
+                    ):
                         quality = rule_row.pop("_quality")
 
                         # FK validation: dasha_system_id
@@ -1445,6 +1473,29 @@ def seed_rules(
         chunks_processed,
     )
 
+    # Per-pattern match/yield report — makes it visible whether a registered
+    # pattern (e.g. dasha_rule/P7) is never matching the live corpus at all
+    # vs. matching-but-filtered-below-threshold on every hit.
+    for pat_name, _pat_re, _extract_fn in PATTERNS:
+        matched = pattern_match_counts.get(pat_name, 0)
+        yielded = pattern_yield_counts.get(pat_name, 0)
+        if matched == 0:
+            logger.warning(
+                "[rules] pattern '%s' matched 0 times against this corpus (never fires)",
+                pat_name,
+            )
+        elif yielded == 0:
+            logger.warning(
+                "[rules] pattern '%s' matched %d times but yielded 0 rules "
+                "(all filtered below QUALITY_THRESHOLD_REVIEW)",
+                pat_name, matched,
+            )
+        else:
+            logger.info(
+                "[rules] pattern '%s': matched=%d yielded=%d",
+                pat_name, matched, yielded,
+            )
+
     if autocommit:
         conn.commit()
 
@@ -1456,4 +1507,6 @@ def seed_rules(
         "chunks_processed": chunks_processed,
         "chunks_with_zero_extractions": chunks_with_zero_extractions,
         "upstream_chunks": upstream_chunks,
+        "pattern_match_counts": pattern_match_counts,
+        "pattern_yield_counts": pattern_yield_counts,
     }
