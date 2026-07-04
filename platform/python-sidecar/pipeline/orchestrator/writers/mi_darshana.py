@@ -256,7 +256,7 @@ class MiDarshanaWriter(WriterBase):
             if pratijna_rows:
                 with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                     cur.execute("""
-                        SELECT signal_id, signal_type_id, computed_salience, tier,
+                        SELECT signal_id, signal_type_id, computed_salience, signature_tier AS tier,
                                constituent_facts_array, classical_sources_array
                         FROM bodha_msr_signals
                         WHERE chart_id = %s AND ayanamsha_id = %s
