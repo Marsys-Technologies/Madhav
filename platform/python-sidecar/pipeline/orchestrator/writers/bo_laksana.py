@@ -552,6 +552,140 @@ def _build_av_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[int, i
     return lookup
 
 
+# ── Classical bridge: yoga/dosha citation join (P3B CLASSICAL BRIDGE fix) ─────
+#
+# Root cause: L1 facts never carried fvj['classical_citation_id'] / ['citation_id']
+# (the keys this writer originally checked) — but L1 DOES carry a per-fact
+# fvj['classical_citations'] array (chapter/text_id/chunk_id/verse_ref), and
+# fact_subject IS the brahma_yoga_catalog / brahma_dosha_catalog canonical_id.
+# The bridge below is a deterministic join on that existing data — no LLM,
+# no fabrication. Preloaded once per sub-step (bulk reads), not per-row.
+
+_YOGA_DOSHA_CATS = frozenset({
+    "yoga_label", "yoga_fires", "dosha_label", "dosha_fires", "graha_yoga_karaka_flag",
+})
+
+
+def _build_classical_catalog_lookup(conn: Any) -> tuple[set[str], set[str], dict[str, list[str]]]:
+    """Bulk-preload yoga/dosha canonical_ids + rule_ids once per sub-step.
+
+    Returns (yoga_canonical_ids, dosha_canonical_ids, yoga_canonical_id -> [rule_id]).
+    """
+    yoga_ids = {
+        str(r["canonical_id"]) for r in _fetch_dict(
+            conn, "SELECT canonical_id FROM brahma_yoga_catalog", [])
+    }
+    dosha_ids = {
+        str(r["canonical_id"]) for r in _fetch_dict(
+            conn, "SELECT canonical_id FROM brahma_dosha_catalog", [])
+    }
+    rule_rows = _fetch_dict(
+        conn,
+        """SELECT yoga_canonical_id, rule_id FROM sutravali_rules
+           WHERE yoga_canonical_id IS NOT NULL""",
+        [],
+    )
+    yoga_rule_ids: dict[str, list[str]] = {}
+    for r in rule_rows:
+        yid = str(r["yoga_canonical_id"])
+        yoga_rule_ids.setdefault(yid, []).append(str(r["rule_id"]))
+    return yoga_ids, dosha_ids, yoga_rule_ids
+
+
+def _collect_referenced_chunk_ids(fact_rows: list[dict]) -> set[str]:
+    """Scan fact rows for chunk_id refs inside fvj.classical_citations (pre-validation pass)."""
+    chunk_ids: set[str] = set()
+    for fact_row in fact_rows:
+        fvj = fact_row.get("fact_value_jsonb")
+        if isinstance(fvj, str):
+            try:
+                fvj = json.loads(fvj)
+            except Exception:
+                fvj = {}
+        if not isinstance(fvj, dict):
+            continue
+        citations = fvj.get("classical_citations")
+        if not isinstance(citations, list):
+            continue
+        for c in citations:
+            if isinstance(c, dict) and c.get("chunk_id"):
+                chunk_ids.add(str(c["chunk_id"]))
+    return chunk_ids
+
+
+def _validate_chunk_ids(conn: Any, chunk_ids: set[str]) -> set[str]:
+    """One bulk query confirming which referenced chunk_ids genuinely exist (no fabrication)."""
+    if not chunk_ids:
+        return set()
+    rows = _fetch_dict(
+        conn,
+        "SELECT id FROM classical_text_chunks WHERE id = ANY(%s::uuid[])",
+        [list(chunk_ids)],
+    )
+    return {str(r["id"]) for r in rows}
+
+
+def _build_classical_sources(
+    fact_cat: str,
+    fact_subject: str | None,
+    fvj: dict,
+    yoga_catalog_ids: set[str],
+    dosha_catalog_ids: set[str],
+    yoga_rule_ids: dict[str, list[str]],
+    valid_chunk_ids: set[str],
+) -> tuple[dict | None, list[str] | None]:
+    """Deterministic classical-source bridge — no LLM, no fabricated citations.
+
+    citations/text_chunk_ids come straight from the L1 fact's own fvj.classical_citations
+    (already attached at L1 build time). catalog_ids/rule_ids come from joining
+    fact_subject (canonical_id) against brahma_yoga_catalog/brahma_dosha_catalog and
+    sutravali_rules.yoga_canonical_id.
+    """
+    citations_raw = fvj.get("classical_citations")
+    citation_strs: list[str] = []
+    text_chunk_ids: list[str] = []
+    if isinstance(citations_raw, list):
+        for c in citations_raw:
+            if not isinstance(c, dict):
+                continue
+            text_id = c.get("text_id")
+            chapter = c.get("chapter")
+            chunk_id = c.get("chunk_id")
+            if chunk_id and str(chunk_id) in valid_chunk_ids:
+                text_chunk_ids.append(str(chunk_id))
+            if text_id and chapter is not None:
+                citation_strs.append(f"{text_id}:{chapter}")
+            elif text_id:
+                citation_strs.append(str(text_id))
+
+    catalog_ids: list[str] = []
+    rule_ids: list[str] = []
+    canonical_id = (fact_subject or "").strip()
+    if canonical_id:
+        if fact_cat in ("yoga_label", "yoga_fires", "graha_yoga_karaka_flag") and canonical_id in yoga_catalog_ids:
+            catalog_ids.append(canonical_id)
+            rule_ids.extend(yoga_rule_ids.get(canonical_id, []))
+        elif fact_cat in ("dosha_label", "dosha_fires") and canonical_id in dosha_catalog_ids:
+            catalog_ids.append(canonical_id)
+
+    if not (catalog_ids or rule_ids or text_chunk_ids or citation_strs):
+        return None, None
+
+    classical_sources_jsonb = {
+        "catalog_ids": catalog_ids,
+        "rule_ids": rule_ids,
+        "text_chunk_ids": text_chunk_ids,
+        "citations": citation_strs,
+    }
+    seen: set[str] = set()
+    flat: list[str] = []
+    for x in catalog_ids + rule_ids + text_chunk_ids + citation_strs:
+        if x not in seen:
+            seen.add(x)
+            flat.append(x)
+    return classical_sources_jsonb, (flat or None)
+
+
 # ── B3: Graha inference for yoga/dosha signals ────────────────────────────────
 
 # Maps uppercase name tokens found in fire_reason / fact_value_text → canonical graha key
@@ -846,6 +980,7 @@ def _build_signal_row(
     av_lookup: dict,
     now: str,
     ayanamsha_override: str | None = None,
+    classical_catalog: tuple[set[str], set[str], dict[str, list[str]], set[str]] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
     fact_cat = str(fact_row.get("fact_category", ""))
@@ -925,12 +1060,15 @@ def _build_signal_row(
                 config["graha"] = inferred_graha
                 tags["graha"] = inferred_graha
 
-    # Classical citation from fact_value_jsonb if available
+    # Classical citation bridge (P3B fix) — deterministic join, see _build_classical_sources.
     classical_sources_jsonb: dict | None = None
-    citation_id = fvj.get("classical_citation_id") or fvj.get("citation_id")
-    if citation_id:
-        classical_sources_jsonb = {"catalog_ids": [], "rule_ids": [str(citation_id)],
-                                   "text_chunk_ids": [], "citations": [str(citation_id)]}
+    classical_sources_array: list[str] | None = None
+    if classical_catalog is not None:
+        yoga_ids, dosha_ids, yoga_rule_ids, valid_chunk_ids = classical_catalog
+        classical_sources_jsonb, classical_sources_array = _build_classical_sources(
+            fact_cat, fact_row.get("fact_subject"), fvj,
+            yoga_ids, dosha_ids, yoga_rule_ids, valid_chunk_ids,
+        )
 
     # Salience computation — v2 formula (BA-P3B); class_prior defaults to 1.0 until
     # brahma_class_priors is queried per-substep in a future optimization pass.
@@ -1008,7 +1146,7 @@ def _build_signal_row(
         "constituent_facts_array":                  constituent_facts,
         "constituent_signals_array":                None,
         # ── Classical sourcing ────────────────────────────────────────────────
-        "classical_sources_array":                  ([str(citation_id)] if citation_id else None),
+        "classical_sources_array":                  classical_sources_array,
         "source_corroboration_count_by_text":       5 if vpass == "two_pass_verified" else 2,
         "source_corroboration_count_by_verse":      None,
         # ── Salience inputs (v2 — BA-P3B) ────────────────────────────────────
@@ -1504,6 +1642,13 @@ class BoLaksanaWriter(WriterBase):
                 "chart_facts is empty; L1 (Gaṇita) must be built before Bodha"
             )
 
+        # Classical bridge (P3B fix): bulk-preload catalog/rule lookups + validate
+        # referenced chunk_ids once per sub-step — no per-row query storm.
+        yoga_ids, dosha_ids, yoga_rule_ids = _build_classical_catalog_lookup(conn)
+        referenced_chunk_ids = _collect_referenced_chunk_ids(fact_rows)
+        valid_chunk_ids = _validate_chunk_ids(conn, referenced_chunk_ids)
+        classical_catalog = (yoga_ids, dosha_ids, yoga_rule_ids, valid_chunk_ids)
+
         # Build signal rows
         signal_rows: list[dict] = []
         skipped = 0
@@ -1513,6 +1658,7 @@ class BoLaksanaWriter(WriterBase):
                     fact_row, chart_id, build_id,
                     strength_lookup, dignity_lookup, av_lookup, now,
                     ayanamsha_override=ayanamsha,
+                    classical_catalog=classical_catalog,
                 )
                 signal_rows.append(row)
             except Exception as exc:
