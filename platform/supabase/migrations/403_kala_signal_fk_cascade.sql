@@ -1,10 +1,11 @@
 -- Migration 403: kala_* signal_id FKs → ON DELETE CASCADE
 --
--- Five kāla tables reference bodha_msr_signals.signal_id with NO ACTION,
--- blocking bodha layer rebuilds (bo_laksana delete-then-insert pattern).
--- Changing to ON DELETE CASCADE allows bodha_msr_signals rows to be deleted
--- without first manually clearing downstream kāla rows — the cascade
--- handles it automatically so kāla rebuild regenerates from fresh bodha data.
+-- Five kāla tables reference bodha_msr_signals.signal_id (currently CASCADE or
+-- SET NULL in prod). Standardising all to ON DELETE CASCADE so kāla rebuild
+-- regenerates cleanly from fresh bodha data.
+-- SET LOCAL disables the statement timeout for this transaction only, avoiding
+-- the 60-second Supabase default that caused the first deploy attempt to fail.
+SET LOCAL statement_timeout = 0;
 
 ALTER TABLE kala_activation
   DROP CONSTRAINT kala_activation_signal_id_fkey,
