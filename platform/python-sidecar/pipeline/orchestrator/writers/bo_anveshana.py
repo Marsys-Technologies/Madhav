@@ -782,6 +782,10 @@ class BoAnveshanaWriter(WriterBase):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes="dry_run — would mine all ayanamshas for discoveries")
 
+        # Disable statement timeout — embedding fetch (13k × 768-dim vectors) exceeds default.
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+
         # Idempotency: delete prior rows
         with conn.cursor() as cur:
             cur.execute("DELETE FROM bodha_discoveries WHERE chart_id = %s", [chart_id])
