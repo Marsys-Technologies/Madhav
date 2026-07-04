@@ -455,9 +455,9 @@ class TextIndexWriter(WriterBase):
         if ctx.dry_run:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT COUNT(*) FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NULL"
+                    "SELECT COUNT(*) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NULL"
                 )
-                unclassified = cur.fetchone()[0]
+                unclassified = cur.fetchone()["count"]
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
@@ -468,7 +468,7 @@ class TextIndexWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("SELECT canonical_id FROM reference_topic_tags")
             rows = cur.fetchall()
-        valid_tags: frozenset[str] = frozenset(r[0] for r in rows)
+        valid_tags: frozenset[str] = frozenset(r["canonical_id"] for r in rows)
         logger.info("[bg_text_index] loaded %d valid tags from reference_topic_tags", len(valid_tags))
 
         if not valid_tags:
@@ -480,12 +480,12 @@ class TextIndexWriter(WriterBase):
 
         # ── Step 2: Check classical_text_chunks upstream ──────────────────────
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM classical_text_chunks WHERE embedding IS NOT NULL")
-            embedded_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL")
+            embedded_count = cur.fetchone()["count"]
             cur.execute(
-                "SELECT COUNT(*) FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NULL"
+                "SELECT COUNT(*) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NULL"
             )
-            unclassified_count = cur.fetchone()[0]
+            unclassified_count = cur.fetchone()["count"]
 
         logger.info(
             "[bg_text_index] upstream: %d embedded chunks, %d unclassified (NULL topic_tag)",
@@ -505,10 +505,10 @@ class TextIndexWriter(WriterBase):
         if unclassified_count == 0:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT COUNT(DISTINCT topic_tag) FROM classical_text_chunks "
+                    "SELECT COUNT(DISTINCT topic_tag) AS count FROM classical_text_chunks "
                     "WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
                 )
-                distinct_tags = cur.fetchone()[0]
+                distinct_tags = cur.fetchone()["count"]
             logger.info(
                 "[bg_text_index] all chunks already classified; distinct_tags=%d (idempotent)", distinct_tags
             )
@@ -545,7 +545,8 @@ class TextIndexWriter(WriterBase):
                 )
                 return cur.rowcount
 
-        for i, (chunk_id, content_en) in enumerate(chunk_rows):
+        for i, row in enumerate(chunk_rows):
+            chunk_id, content_en = row["chunk_id"], row["content_en"]
             if not content_en:
                 skipped_no_match += 1
                 continue
@@ -581,10 +582,10 @@ class TextIndexWriter(WriterBase):
         # ── Step 5: Measure cockpit metric ───────────────────────────────────
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT COUNT(DISTINCT topic_tag) FROM classical_text_chunks "
+                "SELECT COUNT(DISTINCT topic_tag) AS count FROM classical_text_chunks "
                 "WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
             )
-            distinct_tags = cur.fetchone()[0]
+            distinct_tags = cur.fetchone()["count"]
 
         duration = time.time() - t0
         logger.info(
