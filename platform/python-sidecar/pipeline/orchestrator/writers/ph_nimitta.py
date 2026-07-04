@@ -44,7 +44,9 @@ class PhNimittaWriter(WriterBase):
         conn = ctx.db_conn
         chart_id = ctx.config['chart_id']
 
-        # Step 1: delete-then-insert idempotency (§N.3 L4+)
+        # Step 1: disable statement timeout + delete-then-insert idempotency (§N.3 L4+)
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
             cur.execute("DELETE FROM phala_anchors WHERE chart_id = %s", (chart_id,))
         logger.info("ph_nimitta: deleted existing phala_anchors for %s", chart_id)

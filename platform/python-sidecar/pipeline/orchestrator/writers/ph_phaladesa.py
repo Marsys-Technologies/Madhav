@@ -61,6 +61,8 @@ class PhPhaladesakWriter(WriterBase):
         chart_id = ctx.config['chart_id']
 
         with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+        with conn.cursor() as cur:
             cur.execute("DELETE FROM phala_phaladesa WHERE chart_id = %s", (chart_id,))
 
         # B.11: read Bodha synthesis first

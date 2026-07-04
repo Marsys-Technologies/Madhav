@@ -46,6 +46,8 @@ class PhMuhurtaWriter(WriterBase):
         chart_id = ctx.config['chart_id']
 
         with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = 0")
+        with conn.cursor() as cur:
             cur.execute("DELETE FROM phala_muhurta WHERE chart_id = %s", (chart_id,))
 
         # Load influenceable anchors (V4 malleability)
