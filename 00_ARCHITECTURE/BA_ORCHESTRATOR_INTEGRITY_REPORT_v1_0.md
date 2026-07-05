@@ -99,7 +99,7 @@ All three are CI-confirmed real HARD violations: `dag_edge_guard.py` exits 1 wit
 3. Add `bo_pratijna` to `mi_darshana.depends_on` (asset_registry migration).
 4. Re-run `python -m pipeline.orchestrator.dag_edge_guard` after the migration to confirm exit 0.
 
-None of these three fixes were applied this session (see `BA_AUDIT_FIX_PLAN_v1_0.md` — they are registry/DAG changes distinct from the 4 findings that were in scope for the Fix phase). They remain open BLOCKERS.
+**Update:** migration `406_kala_mimamsa_dag_edge_completeness.sql` correcting all 3 edges (plus `mi_darshana`→`bo_pratijna`) was subsequently written and committed (`c68e65c4`) in a later fix-phase pass this same session. However, it has **NOT been applied to the live database** — re-verified via direct query while writing this report: `asset_registry.depends_on` for `ka_taranga`/`ka_yojaka`/`ka_avadhi`/`mi_darshana` still shows the pre-fix values live. The corrective SQL exists and is correct; someone must run it against the live DB (and then re-run `dag_edge_guard.py` to confirm exit 0) before these BLOCKERs are actually resolved. See `BA_AUDIT_FIX_PLAN_v1_0.md` for the consolidated fix ledger and the "immediate next action" callout.
 
 ### Non-blocking but worth a follow-up migration (documentation-accuracy, §2.3 list)
 
