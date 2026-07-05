@@ -617,3 +617,179 @@ def test_run_substep_calls_builder():
     )
     assert result.rows_inserted == 5
     assert result.asset_id == "ga_yoga"
+
+
+# ── JL-012 / J3 — constituent_bala_v1 strength derivation ─────────────────────
+
+def test_compute_constituent_bala_strength_known_values():
+    """
+    strength = mean of (actual_rupa / required_rupa) across constituent grahas.
+    Moon: 39.0 / 6.0 = 6.5; Jupiter: 39.0 / 6.5 = 6.0 → mean = 6.25.
+    """
+    from ga_writers.ga_yoga_writer import _compute_constituent_bala_strength
+
+    shadbala_map = {
+        "moon": {"rupa": 39.0, "required_rupa": 6.0},
+        "jupiter": {"rupa": 39.0, "required_rupa": 6.5},
+    }
+    strength, derivation, label, citation_ref, citation_human = _compute_constituent_bala_strength(
+        ["moon", "jupiter"], shadbala_map, "gajakesari", "chart-1", "lahiri_chitrapaksha",
+    )
+    assert strength == pytest.approx(6.25)
+    assert derivation == "constituent_bala_v1"
+    assert label == "computed_extension"
+    assert citation_ref is not None and "bala_gate=graha_shadbala_total" in citation_ref
+    assert citation_human is not None and "gajakesari" in citation_human
+
+
+def test_compute_constituent_bala_strength_derivation_string_exact():
+    """derivation must be exactly 'constituent_bala_v1' — JL-012 hard requirement."""
+    from ga_writers.ga_yoga_writer import _compute_constituent_bala_strength
+
+    shadbala_map = {"mars": {"rupa": 8.0, "required_rupa": 5.0}}
+    _, derivation, _, _, _ = _compute_constituent_bala_strength(
+        ["mars"], shadbala_map, "ruchaka", "chart-1", "lahiri_chitrapaksha",
+    )
+    assert derivation == "constituent_bala_v1"
+
+
+def test_compute_constituent_bala_strength_none_when_no_shadbala_resolvable():
+    """
+    No fabrication: if no constituent graha has resolvable shadbala (e.g. only
+    Rahu/Ketu, or an empty constituent_planets list from a house-lord-only
+    yoga), strength/derivation/label/citations must all be None, not guessed.
+    """
+    from ga_writers.ga_yoga_writer import _compute_constituent_bala_strength
+
+    result = _compute_constituent_bala_strength(["rahu"], {}, "some_yoga", "chart-1", "lahiri_chitrapaksha")
+    assert result == (None, None, None, None, None)
+
+    result_empty = _compute_constituent_bala_strength([], {"moon": {"rupa": 39.0, "required_rupa": 6.0}}, "x", "c", "a")
+    assert result_empty == (None, None, None, None, None)
+
+
+def test_load_shadbala_map_parses_rows():
+    """_load_shadbala_map keys by lowercase planet name and separates rupa/required_rupa."""
+    from ga_writers.ga_yoga_writer import _load_shadbala_map
+
+    rows = [
+        {"fact_subject": "JUP", "fact_key": "rupa", "fact_value_num": 39.0},
+        {"fact_subject": "JUP", "fact_key": "required_rupa", "fact_value_num": 6.5},
+        {"fact_subject": "MOON", "fact_key": "rupa", "fact_value_num": 39.0},
+        {"fact_subject": "MOON", "fact_key": "required_rupa", "fact_value_num": 6.0},
+    ]
+    mock_cur = MagicMock()
+    mock_cur.fetchall.return_value = rows
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = mock_cur
+
+    result = _load_shadbala_map(conn, "chart-1", "lahiri_chitrapaksha")
+    assert result["jupiter"] == {"rupa": 39.0, "required_rupa": 6.5}
+    assert result["moon"] == {"rupa": 39.0, "required_rupa": 6.0}
+
+
+# ── JL-012 / J3 — bhanga_active NULL-with-reason, Kemadruma untouched ─────────
+
+# Positional index of each column in the ga_yoga_firings INSERT params tuple
+# built by build_ga_yoga_substep (see the cur.execute(...) call site).
+_P_STRENGTH = 8
+_P_BHANGA_ACTIVE = 12
+_P_BHANGA_NA_REASON = 14
+_P_DERIVATION = 15
+
+
+def _patched_build_substep(yoga_catalog, fake_result, shadbala_map):
+    import ga_writers.ga_yoga_writer as gyw
+
+    conn = MagicMock()
+    cur = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = cur
+
+    with patch.object(gyw, "_load_chart_facts", return_value=[{"fact_id": "f1"}]), \
+         patch.object(gyw, "_load_yoga_catalog", return_value=yoga_catalog), \
+         patch.object(gyw, "_load_yoga_families", return_value={}), \
+         patch.object(gyw, "_load_shadbala_map", return_value=shadbala_map), \
+         patch.object(gyw, "_delete_prior_yoga_firings", return_value=0), \
+         patch.object(gyw, "ChartState", return_value=MagicMock()), \
+         patch.object(gyw, "_evaluate_yoga", return_value=fake_result):
+        rows = gyw.build_ga_yoga_substep(
+            chart_id="chart-x", build_id="build-1",
+            ayanamsha_id="lahiri_chitrapaksha", conn=conn, dry_run=False,
+        )
+    assert rows == 1
+    _, params = cur.execute.call_args[0]
+    return params
+
+
+def _fake_fired_result(constituent_planets, bhanga_active=False):
+    return {
+        "fired": True,
+        "constituent_planets": constituent_planets,
+        "constituent_houses": [1, 4],
+        "constituent_fact_ids": [],
+        "strength": None,
+        "strength_formula_version": None,
+        "is_partial": False,
+        "partial_formation_pct": None,
+        "bhanga_active": bhanga_active,
+        "bhanga_rule_fired": None,
+    }
+
+
+def test_non_kemadruma_yoga_gets_null_bhanga_with_documented_reason():
+    """
+    A yoga type this writer has no cancellation (bhanga) logic for must get
+    bhanga_active = NULL with a non-empty bhanga_na_reason — never a fabricated
+    False (which would silently claim "checked, not cancelled").
+    """
+    yoga_catalog = [{"canonical_id": "gajakesari", "cancellation_conditions": {}}]
+    shadbala_map = {
+        "moon": {"rupa": 39.0, "required_rupa": 6.0},
+        "jupiter": {"rupa": 39.0, "required_rupa": 6.5},
+    }
+    params = _patched_build_substep(
+        yoga_catalog, _fake_fired_result(["moon", "jupiter"]), shadbala_map,
+    )
+    assert params[_P_BHANGA_ACTIVE] is None
+    assert params[_P_BHANGA_NA_REASON] is not None
+    assert "no classical bhanga" in params[_P_BHANGA_NA_REASON]
+    # Real strength gets computed too, via constituent_bala_v1
+    assert params[_P_STRENGTH] == pytest.approx(6.25)
+    assert params[_P_DERIVATION] == "constituent_bala_v1"
+
+
+def test_yoga_with_cancellation_conditions_but_no_writer_rule_gets_distinct_reason():
+    """
+    When brahma_yoga_catalog HAS cancellation_conditions for a yoga but this
+    writer implements no evaluation of it, bhanga_active is still NULL, but the
+    documented reason must say a classical rule exists and is unevaluated (not
+    conflate it with "no rule exists").
+    """
+    yoga_catalog = [{
+        "canonical_id": "some_dhana_yoga",
+        "cancellation_conditions": {"bhanga": ["dhana_or_raja_yoga_present"]},
+    }]
+    params = _patched_build_substep(
+        yoga_catalog, _fake_fired_result(["jupiter"]),
+        {"jupiter": {"rupa": 39.0, "required_rupa": 6.5}},
+    )
+    assert params[_P_BHANGA_ACTIVE] is None
+    assert "not evaluated by ga_yoga_writer" in params[_P_BHANGA_NA_REASON]
+
+
+def test_kemadruma_bhanga_active_left_untouched():
+    """
+    kemadruma_aristha's bhanga is already gated into its own firing condition
+    (and, upstream, ga_structural_writer's KEMADRUMA branch) — this writer must
+    NOT override it to NULL, and must NOT set a bhanga_na_reason for it.
+    """
+    yoga_catalog = [{
+        "canonical_id": "kemadruma_aristha",
+        "cancellation_conditions": {"bhanga": ["any_planet_in_kendra_from_moon_or_lagna"]},
+    }]
+    params = _patched_build_substep(
+        yoga_catalog, _fake_fired_result(["moon"], bhanga_active=False),
+        {"moon": {"rupa": 39.0, "required_rupa": 6.0}},
+    )
+    assert params[_P_BHANGA_ACTIVE] is False
+    assert params[_P_BHANGA_NA_REASON] is None
