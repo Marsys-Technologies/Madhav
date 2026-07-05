@@ -736,7 +736,11 @@ def _make_row(
         "fact_key": key,
         "fact_value_text": value_text,
         "fact_value_num": value_num,
-        "fact_value_jsonb": json.dumps(value_jsonb) if value_jsonb is not None else None,
+        # default=str: value_jsonb can carry real upstream fact values (e.g. from
+        # GA6's D10 activation facts) that arrive as Decimal via psycopg's numeric
+        # adapter — not natively JSON-serializable. Same pattern used throughout
+        # this codebase (brahma_pipeline.py, kala/*, mimamsa/*) for the same reason.
+        "fact_value_jsonb": json.dumps(value_jsonb, default=str) if value_jsonb is not None else None,
         "unit": unit,
         "citation_ref": cref,
         "citation_human": citation_human,
