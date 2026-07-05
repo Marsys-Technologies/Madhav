@@ -2240,6 +2240,17 @@ def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str,
 
     replace_prior_chart_dashas(conn, rows)
 
+    # The DB role's default statement_timeout (25-30s) is sized for OLTP
+    # queries; a single COPY statement carrying a large system's full row set
+    # (e.g. chara_karaka: ~40K rows) can exceed it under load, aborting an
+    # otherwise-healthy bulk load (BA-P3 FIX 2c). SET LOCAL scopes to this
+    # transaction/savepoint only and reverts automatically on commit/rollback
+    # — the same pattern already used by every other heavy per-chart writer
+    # in this codebase (ka_yojaka, ph_pramana, ka_taranga, etc.) for exactly
+    # this reason.
+    with conn.cursor() as _timeout_cur:
+        _timeout_cur.execute("SET LOCAL statement_timeout = 0")
+
     with conn.cursor() as cur:
         with cur.copy(f"COPY chart_dashas ({', '.join(_COPY_COLUMNS)}) FROM STDIN") as copy:
             for row in rows:
