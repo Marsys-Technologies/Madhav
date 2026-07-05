@@ -39,8 +39,20 @@ _IS_STUB_MANIFESTATION = False
 SCORING_FORMULA_VERSION = "mi_pramana_v2.0"
 CALIBRATION_FORMULA_VER = "mi_pramana_v2.0"
 
-# Scoring weight defaults (C6: authoritative copy in brahma_formula_constants)
-_DEFAULT_WEIGHTS = {"timing": 0.30, "magnitude": 0.20, "domain": 0.25, "falsifier": 0.15, "manifestation": 0.10}
+# JL-018 (BA Phase 2.5 J8): the manifestation dimension is DROPPED from the
+# composite — _score_manifestation() has no real scorer behind it (hardcoded
+# (0.5, None) for every match; see that function's docstring). Fabricating a
+# scoring formula to keep 5 dimensions would violate B.10, so the weight is
+# removed and the remaining 4 renormalized to sum to 1.0. score_manifestation
+# is still WRITTEN (the column is NOT NULL, migration 348) so the schema and
+# mi_pariksha's downstream read of it are unaffected — it's simply excluded
+# from the weighted composite (weights.get('manifestation', 0.0) = 0 anyway).
+# REGISTERED for a future P6 pass to re-add once a real scorer exists
+# (MIMAMSA_V2 S4) — see brahma_formula_constants 'mi_pramana_dropped_dimensions'.
+#
+# 0.30/0.90, 0.20/0.90, 0.25/0.90, 0.15/0.90 — proportional renormalization of
+# the original 4 weights (sum was 0.90 before manifestation's 0.10 is dropped).
+_DEFAULT_WEIGHTS = {"timing": 0.333333, "magnitude": 0.222222, "domain": 0.277778, "falsifier": 0.166667}
 
 
 def _load_scoring_weights(conn) -> dict[str, float]:
@@ -53,7 +65,10 @@ def _load_scoring_weights(conn) -> dict[str, float]:
             )
             row = cur.fetchone()
             if row and row[0]:
-                return {k: float(v) for k, v in row[0].items()}
+                # JL-018: defensively drop 'manifestation' even if a stale registry
+                # row (pre-migration) still carries it — never let a dropped
+                # dimension's weight silently re-enter the composite.
+                return {k: float(v) for k, v in row[0].items() if k != "manifestation"}
     except Exception:
         pass
     return dict(_DEFAULT_WEIGHTS)
