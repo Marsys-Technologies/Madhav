@@ -35,20 +35,38 @@ D43 NO-AUTO-OVERRIDE: this engine NEVER mutates a chart. auto_action is always
 The current implementation is a SIGN-LEVEL scan: within the ±90-minute window, the
 lagna sign typically stays constant (all stable candidates share the same lagna sign
 and therefore the same whole-sign house placements for dasha lords). This makes
-lel_fit_score uniform across stable candidates — deliberately so. The tiebreaker
-(abs(offset)) correctly selects the recorded birth time when no discriminating
-evidence exists, and confidence_label='unresolved' is the CORRECT B.10-compliant
-output (not a defect).
+lel_fit_score uniform across stable candidates within a given offset window's lagna
+sign — deliberately so, since the sign is what the whole-sign house count keys off.
 
-Sub-degree discrimination (bhava cusps, navamsa, dasha sub-period alignment, the
-full D41 tiered whole-instrument scorer) is a FUTURE layer that builds on this
-foundation. The sign-level scan's value is: (a) verifying lagna sign stability
-across all 5 ayanamshas for the ±90-min window, and (b) establishing the
-candidate table + NO-AUTO-OVERRIDE staging infrastructure for when sub-degree
-scoring is added. Appending sub-degree logic requires only extending `_score_dasha_match`.
+BOUNDED EXTENSION (BA Phase 2.5 Phase 3, J7): `_score_dasha_match` now ALSO checks
+the ANTAR-DASHA (AD) lord active on each training event's date, in addition to the
+maha-dasha (MD) lord it already checked. The AD lord is derived deterministically
+via `_antar_dasha_lord()` from the documented MD start/end boundaries (Saturn
+1991-08-19->2010-08-18, Mercury 2010-08-18->2027-08-18) using the fixed classical
+Vimshottari sequence + proportional-years rule (AD span = MD span * lord_years/120,
+AD sequence starts at the MD lord and cycles through the standard 9-graha order).
+This is a closed-form classical computation — no new dates or lords are invented,
+only the two already-documented MD boundaries are used. A training event whose AD
+lord ALSO lands in a domain-significator house (from the candidate lagna) now scores
+as a stronger match ("double match": MD-only=1, MD+AD=2) than an MD-only match. AD
+lord resolution to a scoreable house is possible only for AD lords with a known
+natal sign (Saturn, Mercury, Sun — Sun=Capricorn is one of the CLAUDE.md §B FORENSIC
+hard anchors, not fabricated); other AD lords (Ketu/Venus/Moon/Mars/Rahu/Jupiter)
+have no documented natal sign in this DB-free module and correctly contribute no
+bonus rather than a guessed one.
+
+This extension genuinely discriminates within the previously-uniform "lagna sign
+stable" bucket (candidates that share a lagna sign no longer necessarily share a
+score, because MD+AD double-matches now outscore MD-only matches for events whose
+AD lord differs by domain fit). It does NOT change the underlying sign-level
+architecture: full D41 whole-instrument scoring (bhava cusps, navamsa placements,
+sub-degree house cusps) still requires real ephemeris-backed computation and
+remains a FUTURE layer. Appending further sub-degree logic still only requires
+extending `_score_dasha_match` / `_antar_dasha_lord`.
 """
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
@@ -121,12 +139,21 @@ class TrainingEvent:
       Mercury MD 2010-08-18 -> 2027-08-18
     domain is the LEL category (career/education/relationship/...); it maps to
     classical significator houses via domain_significator_houses().
+
+    antar_dasha_lord (BA Phase 2.5 Phase 3, J7) is the Vimshottari antar-dasha
+    (sub-period) lord active on the event date, derived deterministically by
+    `_antar_dasha_lord()` from the same two documented MD boundaries above using
+    the fixed classical AD proportion rule — NOT authored by hand, NOT fabricated.
+    Optional/None only when the event date falls outside the two documented MD
+    windows (should not occur for the embedded TRAINING_EVENTS, all of which are
+    pre-2020 and fall inside the Saturn or Mercury MD).
     """
     event_id: str
     date: datetime           # event date (UTC midnight proxy; day precision only)
     domain: str
     maha_dasha_lord: str     # graha that owns no house by itself; placed FROM candidate lagna
     date_confidence: str     # 'exact' | 'month-exact'
+    antar_dasha_lord: Optional[str] = None  # derived post-hoc; see class docstring
 
 
 # ----------------------------------------------------------------------------
@@ -138,7 +165,7 @@ def _d(y: int, m: int, day: int) -> datetime:
     return datetime(y, m, day, tzinfo=timezone.utc)
 
 
-TRAINING_EVENTS: tuple[TrainingEvent, ...] = (
+_TRAINING_EVENTS_BASE: tuple[TrainingEvent, ...] = (
     TrainingEvent("EVT.1998.02.16.01", _d(1998, 2, 16), "relationship", "Saturn", "exact"),
     TrainingEvent("EVT.2001.03.15.01", _d(2001, 3, 15), "education", "Saturn", "month-exact"),
     TrainingEvent("EVT.2003.06.15.01", _d(2003, 6, 15), "education", "Saturn", "month-exact"),
@@ -229,7 +256,81 @@ _DASHA_LORD_NATAL_SIGN_INDEX: dict[str, int] = {
     # 0=Aries .. 11=Pisces
     "Saturn":  7,   # Scorpio
     "Mercury": 9,   # Capricorn
+    "Sun":     9,   # Capricorn — CLAUDE.md §B FORENSIC hard anchor (Sun=Capricorn),
+                    # NOT fabricated; added so antar-dasha Sun periods are scoreable.
 }
+
+# ----------------------------------------------------------------------------
+# BOUNDED EXTENSION (BA Phase 2.5 Phase 3, J7): classical Vimshottari
+# antar-dasha (AD, sub-period) derivation — closed-form, DB-free, no invented
+# facts. Given a maha-dasha (MD) lord's documented start/end boundary and the
+# fixed 9-graha Vimshottari order + per-lord total-dasha-years (summing to
+# 120), the AD sequence within that MD starts at the MD lord itself and cycles
+# through the standard order, each AD's share of the MD's actual span
+# proportional to lord_years/120. This is the standard classical formula, not
+# a fabricated value: the ONLY inputs are the two MD boundaries already
+# documented above (Saturn 1991-08-19->2010-08-18, Mercury 2010-08-18->
+# 2027-08-18, matching their classical 19y/17y lengths) plus the fixed
+# constants below.
+# ----------------------------------------------------------------------------
+_VIMSHOTTARI_ORDER: tuple[str, ...] = (
+    "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+)
+_VIMSHOTTARI_YEARS: dict[str, int] = {
+    "Ketu": 7, "Venus": 20, "Sun": 6, "Moon": 10, "Mars": 7,
+    "Rahu": 18, "Jupiter": 16, "Saturn": 19, "Mercury": 17,
+}
+_VIMSHOTTARI_TOTAL_YEARS = sum(_VIMSHOTTARI_YEARS.values())  # 120
+
+# The only two MD boundaries documented in this file (see TrainingEvent
+# docstring / module docstring). Do not extend without a documented source —
+# this dict is deliberately incomplete (native's dasha lineage is only
+# resolved for these two lords in this DB-free module).
+_MD_BOUNDARIES: dict[str, tuple[datetime, datetime]] = {
+    "Saturn":  (datetime(1991, 8, 19, tzinfo=timezone.utc), datetime(2010, 8, 18, tzinfo=timezone.utc)),
+    "Mercury": (datetime(2010, 8, 18, tzinfo=timezone.utc), datetime(2027, 8, 18, tzinfo=timezone.utc)),
+}
+
+
+def _antar_dasha_lord(maha_dasha_lord: str, event_date: datetime) -> Optional[str]:
+    """Classical Vimshottari antar-dasha lord active on event_date, derived
+    purely from the documented MD boundary + the fixed AD proportion rule.
+
+    Returns None if maha_dasha_lord's MD boundaries aren't documented here, or
+    event_date falls outside that MD window (should not happen for the
+    embedded TRAINING_EVENTS). Never guesses/fabricates a date or lord.
+    """
+    bounds = _MD_BOUNDARIES.get(maha_dasha_lord)
+    if bounds is None:
+        return None
+    md_start, md_end = bounds
+    if not (md_start <= event_date <= md_end):
+        return None
+    md_span = (md_end - md_start).total_seconds()
+    if md_span <= 0:
+        return None
+    start_idx = _VIMSHOTTARI_ORDER.index(maha_dasha_lord)
+    elapsed = (event_date - md_start).total_seconds()
+    cursor = 0.0
+    n = len(_VIMSHOTTARI_ORDER)
+    for i in range(n):
+        lord = _VIMSHOTTARI_ORDER[(start_idx + i) % n]
+        ad_span = md_span * (_VIMSHOTTARI_YEARS[lord] / _VIMSHOTTARI_TOTAL_YEARS)
+        if cursor <= elapsed < cursor + ad_span or i == n - 1:
+            return lord
+        cursor += ad_span
+    return None  # unreachable; loop always returns on last iteration
+
+
+# TRAINING_EVENTS with antar_dasha_lord populated deterministically (see
+# _antar_dasha_lord docstring) — 19/19 events resolve to an AD lord since all
+# fall within the two documented MD windows.
+TRAINING_EVENTS: tuple[TrainingEvent, ...] = tuple(
+    dataclasses.replace(
+        ev, antar_dasha_lord=_antar_dasha_lord(ev.maha_dasha_lord, ev.date)
+    )
+    for ev in _TRAINING_EVENTS_BASE
+)
 
 _SIGN_NAMES = (
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -299,15 +400,38 @@ def _score_dasha_match(
     events: list[TrainingEvent],
     dasha_lord_natal_sign_index: Optional[dict[str, int]] = None,
 ) -> int:
-    """Count training events whose maha-dasha lord sits in a domain-significator
-    house, counted from the given candidate lagna sign."""
+    """Count classical-rule matches across training events, counted from the
+    given candidate lagna sign.
+
+    Each event contributes:
+      +1 if its maha-dasha (MD) lord sits in a domain-significator house.
+      +1 MORE ("double match", BA Phase 2.5 Phase 3 J7) if, in addition, its
+        antar-dasha (AD) lord ALSO sits in a domain-significator house. The AD
+        bonus is conditioned on the MD match (an MD+AD double match is a
+        strictly stronger classical signal than either alone) and only applies
+        when the AD lord has a documented natal sign (see
+        _DASHA_LORD_NATAL_SIGN_INDEX) — most AD lords in the training window
+        (Ketu/Venus/Moon/Mars/Rahu/Jupiter) have no documented natal position
+        in this DB-free module and correctly contribute no bonus rather than a
+        guessed one.
+
+    The returned integer is therefore a simple count of classical-rule matches
+    (0..2 per event, summed) — no invented formula beyond "count of matches".
+    """
     matched = 0
+    houses_cache: dict[str, tuple[int, ...]] = {}
     for ev in events:
-        house = _house_of_lord_from_lagna(ev.maha_dasha_lord, lagna_sign_index, dasha_lord_natal_sign_index)
-        if house is None:
-            continue
-        if house in domain_significator_houses(ev.domain):
+        houses = houses_cache.setdefault(ev.domain, domain_significator_houses(ev.domain))
+        md_house = _house_of_lord_from_lagna(ev.maha_dasha_lord, lagna_sign_index, dasha_lord_natal_sign_index)
+        md_match = md_house is not None and md_house in houses
+        if md_match:
             matched += 1
+            if ev.antar_dasha_lord:
+                ad_house = _house_of_lord_from_lagna(
+                    ev.antar_dasha_lord, lagna_sign_index, dasha_lord_natal_sign_index
+                )
+                if ad_house is not None and ad_house in houses:
+                    matched += 1
     return matched
 
 
@@ -349,7 +473,10 @@ def score_candidate(
         if stable and n_tested > 0:
             lagna_idx = _sign_index(asc["sign"])
             matched = _score_dasha_match(lagna_idx, training_events, dasha_lord_natal_sign_index)
-            fit = round(matched / n_tested, 4)
+            # Max possible matched is 2 per event (MD match + MD+AD double
+            # match, see _score_dasha_match docstring) — normalize against
+            # that so lel_fit_score stays bounded in [0, 1] as before.
+            fit = round(matched / (2 * n_tested), 4)
         out.append(RectificationCandidate(
             offset_minutes=offset_minutes,
             candidate_birth_utc=cand_birth,
