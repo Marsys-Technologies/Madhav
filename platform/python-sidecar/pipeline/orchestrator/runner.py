@@ -695,17 +695,19 @@ def execute_run(run_id: str) -> None:
             emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
             return
 
-        # A run completes as "completed" even when some assets failed or timed out.
-        # Timed-out assets are in failed_assets (their state in asset_throughput is
-        # 'error' — set by on_timeout → mark_asset_error). The run does NOT hang as
-        # 'running'; it terminates cleanly so the next build can acquire the lock.
+        # BA-P3 FIX 3: a run whose plan included any failed/blocked asset must NOT
+        # be reported as "completed" — that reads as a clean, trustworthy build to
+        # an operator when it is not (the 45/66-errored "green over-report", NF-1).
+        # The run still terminates cleanly (does not hang as 'running') so the next
+        # build can acquire the lock; only the terminal state differs.
+        final_state = "failed" if failed_assets else "completed"
         if failed_assets:
             logger.warning(
-                "[orchestrator] run %s completed with %d failed/blocked asset(s): %s",
-                run_id, len(failed_assets), sorted(failed_assets),
+                "[orchestrator] run %s %s with %d failed/blocked asset(s): %s",
+                run_id, final_state, len(failed_assets), sorted(failed_assets),
             )
-        mark_run_state(conn, cur, run_id, "completed", ended_at=True)
-        emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "completed"})
+        mark_run_state(conn, cur, run_id, final_state, ended_at=True)
+        emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": final_state})
 
     except Exception as exc:
         logger.error("[orchestrator] unexpected error: %s", exc, exc_info=True)

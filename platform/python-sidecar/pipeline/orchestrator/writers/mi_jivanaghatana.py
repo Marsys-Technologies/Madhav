@@ -1,10 +1,12 @@
 """
 mi_jivanaghatana — Clean-Evidence Vault & Leakage Firewall (L5 Mīmāṃsā root)
 ==============================================================================
-BA-P6 EXT (PD-10): Primary source is now the LEL markdown file
-(01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md). The life_events DB table is
-empty/chart-less and used only as a fallback. Rows are pinned to
-lel_file_sha (MD5 of the file at build time).
+BA-P6 EXT (PD-10): Primary source is the LEL markdown file
+(01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md) — but that file is the NATIVE's own
+life-event log, so it is read ONLY for the native chart_id. Every other chart
+sources its events exclusively from its own `life_events` DB rows
+(WHERE chart_id = $1) and never opens the native markdown (BA-P3 FIX 1(a) —
+the native-contamination gate).
 
 FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 NEVER commits or closes ctx.db_conn.
@@ -25,6 +27,7 @@ from typing import Any
 
 import psycopg.rows
 
+from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as NATIVE_CHART_ID
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
@@ -315,12 +318,19 @@ class MiJivanaghatanaWriter(WriterBase):
         conn = ctx.db_conn
         chart_id = str(ctx.config.get("chart_id") or "")
 
-        # ── BA-P6 PD-10: try LEL markdown first ─────────────────────────────
+        # ── BA-P6 PD-10: LEL markdown is native-only data ────────────────────
+        # The markdown is Abhisek's own life-event log (native_id: "abhisek" in
+        # its frontmatter). It is NEVER opened for a non-native chart — every
+        # other chart sources its events exclusively from its own `life_events`
+        # rows (WHERE chart_id = $1). See BA-P3 FIX 1(a): a non-native build
+        # that fell through to this markdown would silently ingest all 57 of
+        # the native's events under the wrong chart_id.
+        is_native = chart_id == NATIVE_CHART_ID
         lel_source = "db"
         lel_file_sha: str | None = None
         raw_events: list[dict] = []
 
-        if _LEL_MARKDOWN_PATH.exists():
+        if is_native and _LEL_MARKDOWN_PATH.exists():
             try:
                 raw_events, lel_file_sha = _parse_lel_markdown(_LEL_MARKDOWN_PATH)
                 lel_source = "markdown"
@@ -328,7 +338,8 @@ class MiJivanaghatanaWriter(WriterBase):
                 logger.warning("[mi_jivanaghatana] markdown parse failed (%s); falling back to DB", e)
 
         if not raw_events:
-            # Fall back to life_events DB table
+            # Fall back to life_events DB table — chart-gated. This is the ONLY
+            # source for any non-native chart.
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     "SELECT column_name FROM information_schema.columns "
@@ -353,20 +364,28 @@ class MiJivanaghatanaWriter(WriterBase):
         )
 
         if not raw_events and not ctx.dry_run:
-            # This is the L5 root asset — a 0-row build here silently collapses
-            # the entire downstream evidentiary chain (mimamsa_calibration,
-            # mimamsa_reliability, mimamsa_attribution, mimamsa_discoveries all
-            # also read as 0), yet previously returned a benign WriterResult
-            # that reported a clean 'lit' build with no error. Fail loudly
-            # instead of silently absorbing a packaging/path or DB-population
-            # problem as a legitimate zero-event chart.
-            raise RuntimeError(
-                f"[mi_jivanaghatana] chart_id={chart_id}: both the LEL markdown "
-                f"({_LEL_MARKDOWN_PATH}, exists={_LEL_MARKDOWN_PATH.exists()}) and "
-                "the life_events DB fallback yielded zero events. Verify the "
-                "LEL markdown ships at this resolved path in the runtime "
-                "container and that life_events is populated, before treating "
-                "this as a healthy build."
+            if is_native:
+                # Anti-masking (FIX 1(c)): the native HAS 57 events, so a zero
+                # build here means the LEL markdown is unreachable at its
+                # resolved path in this runtime (a deployment-packaging bug),
+                # not a legitimate empty chart. Warn loudly rather than let the
+                # graceful-empty path below silently swallow it as healthy.
+                logger.warning(
+                    "[mi_jivanaghatana] NATIVE chart_id=%s built ZERO events — "
+                    "the LEL markdown (%s, exists=%s) was unreachable and the "
+                    "life_events DB fallback is also empty. The native has 57 "
+                    "known events; this is NOT a healthy empty build. Verify "
+                    "the LEL markdown ships at this resolved path in the "
+                    "runtime container (or MI_LEL_MARKDOWN_PATH is set).",
+                    chart_id, _LEL_MARKDOWN_PATH, _LEL_MARKDOWN_PATH.exists(),
+                )
+            # Graceful empty (FIX 1(b)): zero per-chart life events is the
+            # normal, valid build for most (non-native) clients — never raise.
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                duration_seconds=time.time() - t0,
+                notes=f"no events found in {lel_source} — zero provenance rows",
             )
 
         if ctx.dry_run:
