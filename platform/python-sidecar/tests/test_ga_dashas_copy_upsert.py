@@ -135,6 +135,22 @@ def test_upsert_rows_empty_is_noop():
     assert conn.copied_rows == []
 
 
+def test_upsert_rows_disables_statement_timeout_before_copy():
+    """BA-P3 FIX 2c: a large system's COPY (e.g. chara_karaka, ~40K rows) can
+    exceed the DB role's default statement_timeout (25-30s) under load. Must
+    SET LOCAL statement_timeout = 0 before the COPY, same pattern as every
+    other heavy per-chart writer in this codebase."""
+    conn = _FakeConn()
+    rows = _sample_rows(2)
+
+    mod._upsert_rows(conn, rows, "vimshottari", "lahiri", commit=False)
+
+    assert any(
+        sql is not None and "SET LOCAL statement_timeout" in sql
+        for sql, _params in conn.deletes
+    ), f"expected a SET LOCAL statement_timeout call before COPY, got: {conn.deletes}"
+
+
 def test_build_system_raises_on_partial_persist(monkeypatch):
     """If _upsert_rows silently persists fewer rows than computed, build_system
     must raise rather than return status=PASS (BA-P3 FIX 2 completeness check)."""
