@@ -530,6 +530,51 @@ def confidence_label(score: float) -> str:
     return 'speculative'
 
 
+# ── JL-014 (BA Phase 2.5 J5): relative_confidence_labels ─────────────────────
+#
+# I-21's absolute thresholds (0.75/0.45) were ratified against an assumed
+# convergence_score scale that this chart's actual scores never reach (observed
+# range ~0.04-0.16 for the native chart) — every row collapses to 'speculative'
+# under confidence_label(), a degenerate/non-discriminating tier. Per JL-014,
+# recalibrating I-21's absolute thresholds or ka_sangam's constituent-factor
+# weights is explicitly DEFERRED to P5A (needs a multi-chart side-by-side
+# review, not a one-chart fix). This is an INTERIM, purely additive tier
+# computed on a within-chart percentile basis — it does not touch or replace
+# confidence_label()/I-21.
+
+def relative_confidence_labels(scores: list[float]) -> list[str]:
+    """
+    Within-chart percentile tier — NOT calibrated against any absolute scale.
+    Top 20% of this batch's scores -> 'high'; next 30% -> 'moderate'; rest ->
+    'speculative'. Ties share the same label (rank by score, not position).
+    An empty or single-element/all-equal batch cannot be discriminated by
+    percentile — everything gets 'moderate' (neutral, not a guess at rank).
+    """
+    n = len(scores)
+    if n == 0:
+        return []
+    if n == 1 or len(set(scores)) == 1:
+        return ['moderate'] * n
+
+    sorted_scores = sorted(scores, reverse=True)
+
+    def _percentile_rank(s: float) -> float:
+        # Fraction of the batch this score is >= to (1.0 = the top score).
+        rank = sum(1 for x in sorted_scores if x <= s)
+        return rank / n
+
+    labels = []
+    for s in scores:
+        pct = _percentile_rank(s)
+        if pct >= 0.80:
+            labels.append('high')
+        elif pct >= 0.50:
+            labels.append('moderate')
+        else:
+            labels.append('speculative')
+    return labels
+
+
 # ── I-22: independent_current_count ──────────────────────────────────────────
 
 def independent_current_count(currents: dict[str, Any]) -> int:

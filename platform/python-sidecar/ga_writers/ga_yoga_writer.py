@@ -9,7 +9,12 @@ one row per fired yoga into ga_yoga_firings.
 
 Hard rails:
 - ZERO LLM in data path — all yoga logic is deterministic rule evaluation.
-- No fabricated strength: strength is NULL unless a classical formula applies.
+- No fabricated strength: strength is NULL unless resolvable via the single
+  ratified constituent_bala_v1 derivation (JL-012/J3 — normalized shadbala of
+  constituent grahas; never a per-yoga invented formula, B.10).
+- bhanga_active is NULL-with-a-documented-reason (bhanga_na_reason) wherever
+  this writer implements no classical cancellation rule for that yoga type
+  (JL-012/J3); Kemadruma's own bhanga logic is left untouched, not duplicated.
 - Classical citations required on every yoga (inherited from brahma_yoga_catalog).
 - L1-authority: constituent_fact_ids reference real chart_facts.fact_id values.
 - Idempotency: DELETE-then-INSERT scoped to (chart_id, ayanamsha_id).
@@ -63,6 +68,32 @@ PLANET_SUBJECTS = {
 # Benefics and malefics (natural, context-independent)
 NATURAL_BENEFICS = {"jupiter", "venus", "mercury", "moon"}
 NATURAL_MALEFICS = {"sun", "mars", "saturn", "rahu", "ketu"}
+
+# ── JL-012 / J3 — constituent_bala_v1 strength derivation ──────────────────────
+# No yoga-specific strength formula exists in the classical corpus (B.10). Per
+# ratified ruling JL-012, strength = normalized shadbala of the yoga's
+# constituent grahas, applied uniformly across every yoga type this writer
+# detects (never a per-yoga invented weighting). Source: graha_shadbala_total
+# (chart_facts), written by ga_strength_writer — fact_key='rupa' (actual,
+# ayanamsha-scoped) and fact_key='required_rupa' (classical Parashara minimum,
+# ayanamsha_id='INVARIANT'). Only classical for the 7 grahas Sun..Saturn —
+# Rahu/Ketu/Lagna and house-lord constituents have no shadbala in this schema
+# and are simply excluded from the mean (not fabricated).
+CONSTITUENT_BALA_DERIVATION = "constituent_bala_v1"
+CONSTITUENT_BALA_LABEL = "computed_extension"
+
+# planet (lowercase, as used in constituent_planets) → graha_shadbala_total
+# fact_subject code (mirrors ga_positions_writer.PLANET_TO_SUBJECT)
+GRAHA_SHADBALA_SUBJECTS: dict[str, str] = {
+    "sun": "SUN", "moon": "MOON", "mars": "MAR", "mercury": "MER",
+    "jupiter": "JUP", "venus": "VEN", "saturn": "SAT",
+}
+
+# Kemadruma's cancellation (bhanga) is already gated into its own firing
+# condition above (relation="no_planet_in_2_or_12_from_moon_and_no_kendra_support")
+# and, at the ga_structural layer, in ga_structural_writer.py's KEMADRUMA branch
+# (Moon-in-kendra cancellation). Do not duplicate/override its bhanga_active here.
+KEMADRUMA_CANONICAL_ID = "kemadruma_aristha"
 
 # Movable (chara), fixed (sthira), dual (dvisvabhava) signs
 MOVABLE_SIGNS = {"aries", "cancer", "libra", "capricorn"}
@@ -151,6 +182,101 @@ def _load_yoga_catalog(conn: Any) -> list[dict]:
                 except (json.JSONDecodeError, TypeError):
                     row[field] = {}
     return rows
+
+
+def _load_shadbala_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dict[str, float]]:
+    """
+    Load composite shadbala (actual rupa) and classical required rupa per
+    classical graha, keyed by lowercase planet name (sun..saturn) to match
+    ChartState / _evaluate_yoga's constituent_planets convention.
+
+    Source: chart_facts fact_category='graha_shadbala_total' — written by
+    ga_strength_writer. fact_key='rupa' is ayanamsha-scoped (actual composite
+    shadbala); fact_key='required_rupa' is ayanamsha_id='INVARIANT' (classical
+    Parashara minimum). Used only by the constituent_bala_v1 strength
+    derivation (JL-012 / J3) — never treated as this writer's own truth
+    (L1-authority discipline, §N.5): the value is read, not recomputed.
+    """
+    subject_to_planet = {v: k for k, v in GRAHA_SHADBALA_SUBJECTS.items()}
+    result: dict[str, dict[str, float]] = {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT fact_subject, fact_key, fact_value_num
+                FROM chart_facts
+                WHERE chart_id = %s
+                  AND fact_category = 'graha_shadbala_total'
+                  AND fact_key IN ('rupa', 'required_rupa')
+                  AND (ayanamsha_id = %s OR ayanamsha_id = 'INVARIANT')
+            """, (chart_id, ayanamsha_id))
+            rows = [dict(r) for r in cur.fetchall()]
+    except Exception as exc:
+        logger.warning(
+            "[ga_yoga_writer] shadbala load failed for constituent_bala_v1 (chart=%s ayanamsha=%s): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return {}
+
+    for row in rows:
+        subject = (row.get("fact_subject") or "").upper()
+        planet = subject_to_planet.get(subject)
+        if not planet:
+            continue
+        key = row.get("fact_key")
+        value = row.get("fact_value_num")
+        if value is None or key not in ("rupa", "required_rupa"):
+            continue
+        result.setdefault(planet, {})[key] = float(value)
+    return result
+
+
+def _compute_constituent_bala_strength(
+    constituent_planets: list[str],
+    shadbala_map: dict[str, dict[str, float]],
+    yoga_canonical_id: str,
+    chart_id: str,
+    ayanamsha_id: str,
+) -> tuple[float | None, str | None, str | None, str | None, str | None]:
+    """
+    JL-012 / J3 ruling: strength = normalized shadbala of the yoga's constituent
+    grahas. Normalization = actual_rupa / required_rupa (both already-computed
+    classical values from graha_shadbala_total — no new ceiling invented);
+    combination across constituents = plain mean (no per-yoga weighting, B.10).
+
+    Returns (strength, derivation, strength_label, citation_ref, citation_human).
+    All five are None when no constituent graha has resolvable shadbala (e.g.
+    Rahu/Ketu-only constituents, or house-lord-only yogas with an empty
+    constituent_planets list) — strength stays honestly NULL rather than
+    fabricated.
+    """
+    ratios: list[float] = []
+    resolved_planets: list[str] = []
+    for planet in constituent_planets:
+        bala = shadbala_map.get(planet)
+        if not bala:
+            continue
+        required = bala.get("required_rupa")
+        actual = bala.get("rupa")
+        if not required or actual is None:
+            continue
+        ratios.append(actual / required)
+        resolved_planets.append(planet)
+
+    if not ratios:
+        return None, None, None, None, None
+
+    strength = round(sum(ratios) / len(ratios), 4)
+    citation_ref = (
+        f"ga_yoga.strength:{yoga_canonical_id}:{CONSTITUENT_BALA_DERIVATION}"
+        f"@chart={chart_id}:ay={ayanamsha_id}:bala_gate=graha_shadbala_total"
+    )
+    citation_human = (
+        f"{yoga_canonical_id} strength = mean of normalized shadbala (actual/required "
+        f"rupa, graha_shadbala_total bala_gate) across constituent grahas "
+        f"{sorted(set(resolved_planets))}; derivation={CONSTITUENT_BALA_DERIVATION} "
+        f"({CONSTITUENT_BALA_LABEL} — not a classical per-yoga formula, B.10)."
+    )
+    return strength, CONSTITUENT_BALA_DERIVATION, CONSTITUENT_BALA_LABEL, citation_ref, citation_human
 
 
 def _load_yoga_families(conn: Any) -> dict[str, list[str]]:
@@ -967,7 +1093,10 @@ def build_ga_yoga_substep(
 
     Hard gates:
     - No LLM.
-    - strength = NULL unless classical formula applies (yoga_strength_formula_v1).
+    - strength = mean normalized shadbala of constituent grahas (constituent_bala_v1,
+      JL-012/J3), or NULL if no constituent has resolvable shadbala (not fabricated).
+    - bhanga_active = NULL + bhanga_na_reason unless the yoga is kemadruma_aristha
+      (whose bhanga is already gated into its firing condition, not duplicated here).
     - constituent_fact_ids = [] if no L1 fact_ids resolved (not fabricated).
     - Delete-then-insert idempotency.
     - No commit — caller owns the transaction.
@@ -1001,6 +1130,10 @@ def build_ga_yoga_substep(
 
     family_map = _load_yoga_families(conn)
 
+    # JL-012 / J3: shadbala source for the constituent_bala_v1 strength
+    # derivation — loaded once per substep, applied per fired yoga below.
+    shadbala_map = _load_shadbala_map(conn, chart_id, ayanamsha_id)
+
     # 2. Parse chart state
     state = ChartState(facts)
 
@@ -1022,6 +1155,41 @@ def build_ga_yoga_substep(
 
             family_ids = family_map.get(cid, [])
 
+            # ── JL-012 / J3: constituent_bala_v1 strength ──────────────────────
+            # Supersedes whatever _evaluate_yoga computed internally (e.g. the
+            # pancha_mahapurusha branch's ad hoc kendra/exaltation bonus) with
+            # the single ratified, non-fabricated formula applied uniformly
+            # across every yoga type: mean normalized shadbala of constituent
+            # grahas. This is what fixes strength being NULL for all
+            # solar/positional (non-mahapurusha) yogas.
+            (
+                strength, derivation, strength_label, citation_ref, citation_human,
+            ) = _compute_constituent_bala_strength(
+                result["constituent_planets"], shadbala_map, cid, chart_id, ayanamsha_id,
+            )
+            strength_formula_version = derivation or result["strength_formula_version"]
+
+            # ── JL-012 / J3: bhanga_active ─────────────────────────────────────
+            # Kemadruma's cancellation is already gated into its own firing
+            # condition (and, upstream, ga_structural_writer's KEMADRUMA branch)
+            # — leave its bhanga_active exactly as _evaluate_yoga set it. Every
+            # other yoga type gets NULL-with-a-documented-reason: this writer
+            # implements no per-yoga bhanga evaluation, and B.10 forbids
+            # inventing one.
+            if cid == KEMADRUMA_CANONICAL_ID:
+                bhanga_active = result["bhanga_active"]
+                bhanga_na_reason = None
+            else:
+                bhanga_active = None
+                bhanga_na_reason = (
+                    "classical bhanga (cancellation) rule exists in "
+                    "brahma_yoga_catalog.cancellation_conditions for this yoga but is "
+                    "not evaluated by ga_yoga_writer (no per-yoga bhanga formula "
+                    "implemented here to avoid fabrication — B.10)"
+                    if yoga.get("cancellation_conditions") else
+                    "no classical bhanga (cancellation) rule exists for this yoga type"
+                )
+
             try:
                 cur.execute("""
                     INSERT INTO ga_yoga_firings (
@@ -1029,14 +1197,16 @@ def build_ga_yoga_substep(
                         fired, constituent_fact_ids, constituent_planets,
                         constituent_houses, strength, strength_formula_version,
                         partial_formation_pct, is_partial,
-                        bhanga_active, bhanga_rule_fired,
+                        bhanga_active, bhanga_rule_fired, bhanga_na_reason,
+                        derivation, strength_label, citation_ref, citation_human,
                         family_ids, computed_at
                     ) VALUES (
                         %s, %s::uuid, %s, %s,
                         %s, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s, %s,
                         %s, %s,
-                        %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
                         %s::jsonb, NOW()
                     )
                 """, (
@@ -1048,12 +1218,17 @@ def build_ga_yoga_substep(
                     json.dumps(result["constituent_fact_ids"]),
                     json.dumps(result["constituent_planets"]),
                     json.dumps(result["constituent_houses"]),
-                    result["strength"],
-                    result["strength_formula_version"],
+                    strength,
+                    strength_formula_version,
                     result["partial_formation_pct"],
                     result["is_partial"],
-                    result["bhanga_active"],
+                    bhanga_active,
                     result["bhanga_rule_fired"],
+                    bhanga_na_reason,
+                    derivation,
+                    strength_label,
+                    citation_ref,
+                    citation_human,
                     json.dumps(family_ids),
                 ))
                 rows_inserted += 1

@@ -21,6 +21,7 @@ from services.ka_sangam.engine import (
     mode_d_av_bindhu,
     convergence_score,
     confidence_label,
+    relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
     EnrichmentContext,
@@ -85,14 +86,21 @@ class KaSangamWriter(WriterBase):
 
         # Load top predicates
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            # NOTE: dasha_eligibility_rule_jsonb->>'eligibility_score' is never
+            # populated by ka_yojaka/binder.py — the original ORDER BY on it was
+            # a no-op (all NULL, NULLS LAST → arbitrary DB order). Rank by
+            # bodha_msr_signals.dignity_score instead, which IS populated and is
+            # already used downstream (pd['dignity_score']) as the real per-signal
+            # strength signal — so the "top predicates" LIMIT is meaningful again.
             cur.execute(
                 """
-                SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
-                       dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                       strength_affliction_hook_jsonb, derivation_ledger_jsonb
-                FROM kala_activation_predicates
-                WHERE chart_id = %s
-                ORDER BY (dasha_eligibility_rule_jsonb->>'eligibility_score')::float DESC NULLS LAST
+                SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                       p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                       p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb
+                FROM kala_activation_predicates p
+                LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                WHERE p.chart_id = %s
+                ORDER BY s.dignity_score DESC NULLS LAST
                 LIMIT %s
                 """,
                 (chart_id, _MAX_PREDICATES),
@@ -411,7 +419,11 @@ class KaSangamWriter(WriterBase):
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
         rows_inserted = 0
-        for w in deduped:
+        # JL-014: within-chart relative tier, computed once over this batch's
+        # convergence_score distribution (additive to I-21's absolute confidence_label).
+        batch_scores = [w.get('convergence_score', 0.0) for w in deduped]
+        batch_relative_labels = relative_confidence_labels(batch_scores)
+        for w, c_label_relative in zip(deduped, batch_relative_labels):
                 cs = w.get('convergence_score', 0.0)
                 orb_s = w.get('orb_strength')
                 c_label = confidence_label(cs)
@@ -451,11 +463,13 @@ class KaSangamWriter(WriterBase):
                         signal_id, mode, peak_date, orb_strength, rarity_years,
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
-                        horizon_tier, domain
+                        horizon_tier, domain,
+                        confidence_label_relative, tier_basis
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
                         %s, %s, %s, %s, %s,
+                        %s, %s,
                         %s, %s,
                         %s, %s,
                         %s, %s
@@ -480,6 +494,9 @@ class KaSangamWriter(WriterBase):
                         horizon_tier,
                         # B4-src: domain from originating MSR signal's domains_affected_array[0]
                         w.get('primary_domain'),
+                        # JL-014: interim within-chart percentile tier + provenance flag
+                        c_label_relative,
+                        'relative_uncalibrated',
                     ),
                 )
                 rows_inserted += 1

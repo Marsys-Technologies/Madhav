@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import pathlib
 import re
 import time
@@ -32,9 +33,30 @@ PARTITION_SEED_VERSION = "v1_md5_mod10"
 LEL_VERSION = "v1.7"
 PROVENANCE_FORMULA_VER = "mi_jivanaghatana_v2.0"
 
-# Resolve LEL markdown path relative to this file:
-# writers/ → orchestrator/ → pipeline/ → python-sidecar/ → platform/ → repo root
-_LEL_MARKDOWN_PATH = pathlib.Path(__file__).parents[4] / "01_FACTS_LAYER" / "LIFE_EVENT_LOG_v1_2.md"
+
+def _resolve_lel_markdown_path() -> pathlib.Path:
+    """
+    Resolve the LEL markdown path. An env var override takes priority (for
+    deployment/container layouts where the repo root isn't a fixed number of
+    parents above this file). Falls back to the on-disk repo-relative path.
+
+    __file__ is platform/python-sidecar/pipeline/orchestrator/writers/mi_jivanaghatana.py
+    parents: [0]=writers [1]=orchestrator [2]=pipeline [3]=python-sidecar
+             [4]=platform [5]=repo root
+    The prior code used parents[4] ("platform"), which resolves to
+    platform/01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md — a path that has never
+    existed (01_FACTS_LAYER lives at the repo root, one level above
+    platform/). This silently produced a non-existent path, `.exists()`
+    returned False, and every build fell through to the empty life_events
+    DB fallback — the root cause of the 0-row root-asset finding.
+    """
+    override = os.environ.get("MI_LEL_MARKDOWN_PATH")
+    if override:
+        return pathlib.Path(override)
+    return pathlib.Path(__file__).parents[5] / "01_FACTS_LAYER" / "LIFE_EVENT_LOG_v1_2.md"
+
+
+_LEL_MARKDOWN_PATH = _resolve_lel_markdown_path()
 
 # LEL magnitude labels → canonical event_magnitude values
 _MAGNITUDE_NORMALIZE = {
@@ -101,6 +123,7 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
     blocks = re.findall(r'```yaml\n(.*?)\n```', text, re.DOTALL)
 
     events: list[dict] = []
+    skipped = 0
     for block in blocks:
         try:
             if _has_yaml:
@@ -108,11 +131,24 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
                 data = _yaml.safe_load(block)
             else:
                 # Minimal fallback: skip non-yaml builds
+                skipped += 1
                 continue
-        except Exception:
+        except Exception as exc:
+            # Previously a bare `except Exception: continue` that silently
+            # absorbed malformed blocks with no distinct signal from
+            # successfully-parsed ones (e.g. unquoted colons inside narrative
+            # string values breaking YAML block-mapping parsing). Log each
+            # skip individually so a future audit can see this without a
+            # local repro.
+            skipped += 1
+            logger.warning(
+                "[mi_jivanaghatana] skipping malformed YAML block (%s): %s",
+                exc, block[:80].replace("\n", " "),
+            )
             continue
 
         if not isinstance(data, dict):
+            skipped += 1
             continue
 
         for key, val in data.items():
@@ -121,9 +157,17 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
             events.append({"event_id": key, **val})
 
     logger.info(
-        "[mi_jivanaghatana] parsed %d events from LEL markdown (sha=%s...)",
-        len(events), file_sha[:8],
+        "[mi_jivanaghatana] parsed %d events from %d yaml blocks (%d skipped as "
+        "malformed/non-EVT) from LEL markdown (sha=%s...)",
+        len(events), len(blocks), skipped, file_sha[:8],
     )
+    if skipped > 0:
+        logger.warning(
+            "[mi_jivanaghatana] %d of %d LEL yaml blocks failed to parse — "
+            "fix malformed YAML in LIFE_EVENT_LOG_v1_2.md (commonly: unquoted "
+            "colons inside narrative string values breaking block-mapping parsing)",
+            skipped, len(blocks),
+        )
     return events, file_sha
 
 
@@ -205,6 +249,23 @@ class MiJivanaghatanaWriter(WriterBase):
             "[mi_jivanaghatana] loaded %d events from %s for chart %s",
             len(raw_events), lel_source, chart_id,
         )
+
+        if not raw_events and not ctx.dry_run:
+            # This is the L5 root asset — a 0-row build here silently collapses
+            # the entire downstream evidentiary chain (mimamsa_calibration,
+            # mimamsa_reliability, mimamsa_attribution, mimamsa_discoveries all
+            # also read as 0), yet previously returned a benign WriterResult
+            # that reported a clean 'lit' build with no error. Fail loudly
+            # instead of silently absorbing a packaging/path or DB-population
+            # problem as a legitimate zero-event chart.
+            raise RuntimeError(
+                f"[mi_jivanaghatana] chart_id={chart_id}: both the LEL markdown "
+                f"({_LEL_MARKDOWN_PATH}, exists={_LEL_MARKDOWN_PATH.exists()}) and "
+                "the life_events DB fallback yielded zero events. Verify the "
+                "LEL markdown ships at this resolved path in the runtime "
+                "container and that life_events is populated, before treating "
+                "this as a healthy build."
+            )
 
         if ctx.dry_run:
             return WriterResult(

@@ -185,9 +185,20 @@ class BoPramanaMapa(WriterBase):
         # (msr_count > 0 already enforced above; this is a belt-and-suspenders flag).
         pillars_pass = msr_count > 0
 
-        # L1 assets referenced — count tables in bodha_msr_signals that carry
-        # constituent_facts_array entries (conservative: count = 1 source table, L1).
-        l1_assets_projected = 1 if msr_count > 0 else 0
+        # L1 assets referenced — real distinct count/array of source_l1_asset
+        # values on this chart's bodha_msr_signals (previously hardcoded to a
+        # degenerate `1 if msr_count>0 else 0` with an always-empty array; per
+        # bo_laksana's depends_on this should be up to 9 distinct L1 assets).
+        with conn.cursor() as l1_cur:
+            l1_cur.execute(
+                """SELECT DISTINCT source_l1_asset FROM bodha_msr_signals
+                   WHERE chart_id = %s AND source_l1_asset IS NOT NULL
+                   ORDER BY source_l1_asset""",
+                [chart_id],
+            )
+            # conn's default row_factory is dict_row — index by column name.
+            l1_assets_projected_array = [r["source_l1_asset"] for r in l1_cur.fetchall()]
+        l1_assets_projected = len(l1_assets_projected_array)
 
         scorecard = {
             "scorecard_id": str(uuid.uuid4()),
@@ -203,6 +214,9 @@ class BoPramanaMapa(WriterBase):
             "embedding_count": emb_count,
             "convergence_count": conv_count,
             "contradiction_count": contr_count,
+            # NOT YET IMPLEMENTED (schema is NOT NULL DEFAULT 0, so this cannot be
+            # NULL like the boolean gates below): no divergence detector exists.
+            # A future detector must replace this literal 0 with a real count.
             "divergent_flagged_count": 0,
             "two_pass_verified_pct": two_pass_pct,
             "documented_approximation_pct": doc_approx_pct,
@@ -214,16 +228,25 @@ class BoPramanaMapa(WriterBase):
             "convergence_formula_version": conv_ver or VERSION_CONVERGENCE_FORMULA,
             "centrality_formula_version": None,
             "trap1_authority_inversion_count": trap1_count,
+            # NOT YET IMPLEMENTED (schema is NOT NULL DEFAULT 0): the UCN-contamination
+            # narration-leak detector (MSR_UCN_CONTAMINATION_AUDIT_v1_0.md) does not
+            # exist yet. This literal 0 can never report a real leak — a future
+            # detector scanning configuration_jsonb/citation_human for UCN-narrative
+            # phrasing must replace it.
             "trap2_narration_leak_count": 0,
             # ── 8 grounding columns (were missing from INSERT) ────────────────
             "unresolved_constituent_facts_count": trap1_count,
             "l1_assets_projected_count": l1_assets_projected,
-            "l1_assets_projected_array": [],
+            "l1_assets_projected_array": l1_assets_projected_array,
             "lel_zero_leak_pass": lel_zero_leak,
-            "no_pre_answer_pass": True,           # no pre-answer gate implemented yet
+            # These three gates have no real detector implemented yet. Previously
+            # hardcoded to True, which is indistinguishable from a genuinely-passed
+            # verification. NULL is the honest "not yet computed" value — a
+            # scorecard consumer must not read a NULL gate as a clean pass.
+            "no_pre_answer_pass": None,
             "pillars_meet_reachability_pass": pillars_pass,
-            "ledger_independence_pass": True,     # independence scoring not yet implemented
-            "discovery_not_fabricated_pass": True,  # deterministic build; no fabrication gate
+            "ledger_independence_pass": None,
+            "discovery_not_fabricated_pass": None,
             "notes": json.dumps({
                 "engine_version": ENGINE_VERSION,
                 "counts": {

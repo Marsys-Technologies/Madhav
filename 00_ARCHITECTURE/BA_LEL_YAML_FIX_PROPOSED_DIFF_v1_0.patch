@@ -1,0 +1,217 @@
+--- 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md	2026-06-24 18:58:52
++++ 01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md.PROPOSED	2026-07-05 17:29:49
+@@ -540,8 +540,8 @@
+     predicted_by_chart: yes
+     signals_that_matched: [CVG.02 (Jupiter 9L dharma-pull), CTR.03 (Jupiter Uccha-weak — dharma visible but weak execution)]
+     signals_that_missed: []
+-    retrodictive_reasoning: Saturn-Jupiter AD is the classical "pilgrimage / re-direction / dharmic-rethink" AD. Native left a paying job to re-prep for IIT — exactly the pattern Jupiter AD in Saturn MD suggests. Per doc: "Worked at Cognizant for one year before returning to Bhubaneswar (c. 2008) specifically to prepare for IIT exams."
+-  notes: IIT re-attempt outcome: unclear; native eventually pursued MBA at XIMB in 2011 instead.
++    retrodictive_reasoning: "Saturn-Jupiter AD is the classical \"pilgrimage / re-direction / dharmic-rethink\" AD. Native left a paying job to re-prep for IIT — exactly the pattern Jupiter AD in Saturn MD suggests. Per doc: \"Worked at Cognizant for one year before returning to Bhubaneswar (c. 2008) specifically to prepare for IIT exams.\""
++  notes: "IIT re-attempt outcome: unclear; native eventually pursued MBA at XIMB in 2011 instead."
+ ```
+ 
+ ```yaml
+@@ -571,7 +571,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [CVG.02 (Jupiter 9L = grandfather karaka AND paternal-lineage-elder-wisdom), CTR.03 (Jupiter Uccha-weak = vulnerability in 9H-lord significations)]
+     signals_that_missed: []
+-    retrodictive_reasoning: Grandfather = 9H karaka (classical). Native is in Saturn-Jupiter AD — AD lord is 9L Jupiter itself, and Jupiter is Uccha Bala rank 7 LAST per CTR.03. AD of Jupiter while Jupiter is weakly dignified → vulnerability in 9H-significator matters, including paternal-grandfather passing. Academic-mentor framing (native's words) reinforces: Jupiter = guru, knowledge-lineage, teacher — all converge on grandfather role.
++    retrodictive_reasoning: "Grandfather = 9H karaka (classical). Native is in Saturn-Jupiter AD — AD lord is 9L Jupiter itself, and Jupiter is Uccha Bala rank 7 LAST per CTR.03. AD of Jupiter while Jupiter is weakly dignified → vulnerability in 9H-significator matters, including paternal-grandfather passing. Academic-mentor framing (native's words) reinforces: Jupiter = guru, knowledge-lineage, teacher — all converge on grandfather role."
+   notes: This is among the strongest retrodictive matches in the corpus. Jupiter-9L-weak explaining a grandfather-passing in Jupiter AD is a textbook-classical signal.
+ ```
+ 
+@@ -666,7 +666,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [SIG.09 (Mercury MD-AD spine peak — admission outcome in Mercury's domain), SIG.07 (Saraswati Yoga — educational selection), CVG.01 (Mercury operational dominance)]
+     signals_that_missed: []
+-    retrodictive_reasoning: Jan 2011 falls inside Mercury-Mercury AD peak (operational zenith for Mercury-significated outcomes: exams, selections, analytical-competition results). XIMB admission via CAT/XAT score-based selection = classical Mercury territory.
++    retrodictive_reasoning: "Jan 2011 falls inside Mercury-Mercury AD peak (operational zenith for Mercury-significated outcomes: exams, selections, analytical-competition results). XIMB admission via CAT/XAT score-based selection = classical Mercury territory."
+   notes: Admission-event distinct from enrollment-event (EVT.2011.06.XX.01). 5-month gap typical for Indian MBA admission cycles.
+ ```
+ 
+@@ -888,10 +888,10 @@
+   date_confidence: exact
+   category: family
+   subcategory: marriage
+-  description: Married childhood girlfriend (R#1, dating since 1998-02-16). Marriage duration before separation: ~12 years (wedding → current stable-separation state).
++  description: "Married childhood girlfriend (R#1, dating since 1998-02-16). Marriage duration before separation: ~12 years (wedding → current stable-separation state)."
+   magnitude: life-altering
+   valence: mixed
+-  native_reflection: "Marriage was in 11th December 2013." Doc: "Marriage deeply emotional but practically challenging. 'Pain-pleasure' dynamic. Marriage nearing separation/divorce after two decades of turbulence." Session 2 update: currently separated, stable arrangement, things looking up.
++  native_reflection: "\"Marriage was in 11th December 2013.\" Doc: \"Marriage deeply emotional but practically challenging. 'Pain-pleasure' dynamic. Marriage nearing separation/divorce after two decades of turbulence.\" Session 2 update: currently separated, stable arrangement, things looking up."
+   chart_state_at_event:
+     vimshottari_md: Mercury
+     vimshottari_ad: Ketu
+@@ -909,7 +909,7 @@
+     predicted_by_chart: partial
+     signals_that_matched: [SIG.01 (Saturn exalted 7H — the defining marriage-house signature: authority-through-tension in partnership), SIG.15 (Hidden Raja Yoga Mars+Saturn exalted conjunction 7H), CVG.08 (Aries-Libra axis triple-aspect), CTR.01 (Saturn Shadbala #2 vs Shuddha Pinda #7 LAST — "dramatic not compound" — retrodictively explains the pain-pleasure dynamic: Saturn is strong in Shadbala so marriage has gravity/longevity structure, but Shuddha Pinda last = the compounding doesn't accrue, explaining "turbulence" rather than deepening)]
+     signals_that_missed: [Ketu AD as wedding-AD is unusual — Ketu = detachment/non-attachment, which retrodictively explains BOTH the "will it last" question present from the start AND the eventual separation trajectory.]
+-    retrodictive_reasoning: STRONGEST MATCH in the corpus. Four of the chart's top signatures converge on this event: SIG.01, SIG.15, CVG.08, and CTR.01. The marriage is the chart's central 7H-signature stage. Pain-pleasure dynamic is exactly what Mars-Saturn-7H-exalted describes in classical BPHS.
++    retrodictive_reasoning: "STRONGEST MATCH in the corpus. Four of the chart's top signatures converge on this event: SIG.01, SIG.15, CVG.08, and CTR.01. The marriage is the chart's central 7H-signature stage. Pain-pleasure dynamic is exactly what Mars-Saturn-7H-exalted describes in classical BPHS."
+   notes: Per native, currently separated but stable and improving. This is an ongoing event — status will need update in v1.1+ as trajectory resolves.
+ ```
+ 
+@@ -1006,8 +1006,8 @@
+     predicted_by_chart: yes
+     signals_that_matched: [CTR.03 (Jupiter Uccha-weak = 9L/father-significator weak — foundational vulnerability across 18-year illness), SIG.04 (Moon AK — AK AD is soul-level event), SIG.05 (Moon Chalit-12 = loss-domain), CVG.02 (Jupiter 9L chain with weakness embedded)]
+     signals_that_missed: [Saturn transit Sagittarius (9H) at death is the transit-level confirmation not in v6.0-integrated-with-event format, but is classically the strongest father-loss transit trigger. Should be captured in v1.1 after Jagannatha Hora export.]
+-    retrodictive_reasoning: Multi-signal convergence. (1) Mercury-Moon AD: Moon is AK, Chalit-12 (loss-house), 4L (mother/home — father's passing affects home/security). (2) CTR.03 Jupiter-weakness explains 18-year-illness culmination. (3) Bhramari/Mars Yogini overlay = Mars AD-like intensity. (4) Saturn transit 9H (Sagittarius) at event is classical father-death trigger. Four-fold convergence = yes retrodictive match with high confidence.
+-  notes: One of the most foundationally explained events in the corpus. Also a cornerstone for native's psychology: the "2018-2021" inner period starts here (see §5.4).
++    retrodictive_reasoning: "Multi-signal convergence. (1) Mercury-Moon AD: Moon is AK, Chalit-12 (loss-house), 4L (mother/home — father's passing affects home/security). (2) CTR.03 Jupiter-weakness explains 18-year-illness culmination. (3) Bhramari/Mars Yogini overlay = Mars AD-like intensity. (4) Saturn transit 9H (Sagittarius) at event is classical father-death trigger. Four-fold convergence = yes retrodictive match with high confidence."
++  notes: "One of the most foundationally explained events in the corpus. Also a cornerstone for native's psychology: the \"2018-2021\" inner period starts here (see §5.4)."
+ ```
+ 
+ ```yaml
+@@ -1016,7 +1016,7 @@
+   date_confidence: month-exact
+   category: residential+travel
+   subcategory: foreign_move_start (dual-tagged residential+travel per GAP.M4A.04 partial close, LEL v1.6)
+-  description: Moved to the United States on Tech Mahindra work deputation (May 2019). 4-year stint; returned to India May 2023. Correction from source doc (which said 2018): native explicitly corrected to May 2019 in Session 2.
++  description: "Moved to the United States on Tech Mahindra work deputation (May 2019). 4-year stint; returned to India May 2023. Correction from source doc (which said 2018): native explicitly corrected to May 2019 in Session 2."
+   magnitude: life-altering
+   valence: positive
+   native_reflection: "The move to US happened in May 2019." Doc framing: "US Stint: Moved to the United States on a work permit; lived there for 4.5 years, returned to India in May 2023."
+@@ -1037,7 +1037,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [CVG.03 (Moon AK Chalit-12 foreign-income chain — the dominant foreign-architecture signal), SIG.05 (Moon Chalit-12 foreign delivery), SIG.06 (D9 12H Gemini stellium), SIG.15 (Mars-Saturn 7H — Mars AD activates the 7H tension-engine; Mars also = initiative/action to move)]
+     signals_that_missed: []
+-    retrodictive_reasoning: Mercury-Mars AD with Mars AD lord exalted in 7H natally AND foreign-income chain (CVG.03) active = clean match. Bhramari/Mars Yogini doubles Mars intensity. Chara Virgo/Aries with Aries AD = Aries-Lagna-self moving abroad (Lagna assertion via foreign). Classical result: foreign move happens under foreign-chain-lord AD when other yogas support.
++    retrodictive_reasoning: "Mercury-Mars AD with Mars AD lord exalted in 7H natally AND foreign-income chain (CVG.03) active = clean match. Bhramari/Mars Yogini doubles Mars intensity. Chara Virgo/Aries with Aries AD = Aries-Lagna-self moving abroad (Lagna assertion via foreign). Classical result: foreign move happens under foreign-chain-lord AD when other yogas support."
+   notes: 4-year US stint transforms native from salaried Indian engineer/analyst to globally-exposed manager. Sets up entrepreneurial awakening post-2023.
+ ```
+ 
+@@ -1068,7 +1068,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [SIG.10 (Rahu 2H — Rahu AD classical anxiety karaka), SIG.13 (Sade Sati Rising — Saturn in Cap 12th from Moon = mental pressure phase, ~1 year into Cycle 2), SIG.11 (Anapha Yoga Saturn 12th from Moon), SIG.15 (Mars-Saturn 7H exalted — Bhramari/Mars Yogini activates Mars-Saturn-tension-engine at Yogini level), CTR.01 (Saturn Shadbala-strong compressive pressure)]
+     signals_that_missed: []
+-    retrodictive_reasoning: v1.1 correction STRENGTHENS the retrodictive match. Bhramari/Mars Yogini (runs Dec 2017 – Dec 2021) = Mars-level tension-at-physiological-intensity; Mars = adrenaline/jitters karaka. Combined with Rahu AD (anxiety) + Sade Sati Cycle 2 Rising peak (~1 year in, max subconscious-pressure) + COVID-era US-stint isolation context = textbook panic-episode onset chart. Chara Virgo/Capricorn: Virgo = 6H (daily stress, psychosomatic), Capricorn = 10H (work pressure) — both activated.
++    retrodictive_reasoning: "v1.1 correction STRENGTHENS the retrodictive match. Bhramari/Mars Yogini (runs Dec 2017 – Dec 2021) = Mars-level tension-at-physiological-intensity; Mars = adrenaline/jitters karaka. Combined with Rahu AD (anxiety) + Sade Sati Cycle 2 Rising peak (~1 year in, max subconscious-pressure) + COVID-era US-stint isolation context = textbook panic-episode onset chart. Chara Virgo/Capricorn: Virgo = 6H (daily stress, psychosomatic), Capricorn = 10H (work pressure) — both activated."
+   notes: Now occurs ~1 year BEFORE twins' birth (not 2 weeks before as miscoded in v1.0). The pre-birth-stress hypothesis from v1.0 does not apply; this is a discrete panic episode during US COVID period.
+ ```
+ 
+@@ -1139,7 +1139,7 @@
+   description: Twin daughters born on 3 January 2022. Native's only children.
+   magnitude: life-altering
+   valence: positive
+-  native_reflection: Doc: "Twin daughters born on 3 January 2022."
++  native_reflection: "Doc: \"Twin daughters born on 3 January 2022.\""
+   chart_state_at_event:
+     vimshottari_md: Mercury
+     vimshottari_ad: Rahu
+@@ -1199,7 +1199,7 @@
+   description: Relationship #3 ended (approximately October 2022, 10-year duration from start). Coincides with Mercury-Jupiter AD transition (Sep 2022) and start of "2022-2024 mix" inner period.
+   magnitude: significant
+   valence: mixed
+-  native_reflection: Implied by "Oct 2012 (10 years)" and 2022-24 inner period narrative: "new relationships and rupture of old."
++  native_reflection: "Implied by \"Oct 2012 (10 years)\" and 2022-24 inner period narrative: \"new relationships and rupture of old.\""
+   chart_state_at_event:
+     vimshottari_md: Mercury
+     vimshottari_ad: Jupiter (from Sep 6, 2022)
+@@ -1290,7 +1290,7 @@
+   date_confidence: month-exact
+   category: career
+   subcategory: entrepreneurship_founded
+-  description: Founded Marsys Group (July 2023). Spans mining, AI, technology, and exports (notably with Russia). Strategic focus: system building, automation, strategic patience.
++  description: "Founded Marsys Group (July 2023). Spans mining, AI, technology, and exports (notably with Russia). Strategic focus: system building, automation, strategic patience."
+   magnitude: life-altering
+   valence: positive
+   native_reflection: "Founded Marcy's in July 2023."
+@@ -1404,7 +1404,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [SIG.01 (Saturn exalted 7H = authority-delivery via AD), SIG.09 (Mercury MD Yogi-Vargottama = operational spine peaks), CVG.01 (Mercury operational dominance), CVG.05 (Saturn 7H exalted + Shadbala-strong + Mahapurusha + AD + Yogini overlay), RPT.DSH.01 (the Triple-Dasha Engine explicitly anticipates this window as planting → compounding)]
+     signals_that_missed: []
+-    retrodictive_reasoning: STRONG MATCH. RPT.DSH.01 in Deep Analysis v1.2.1 specifically names Mercury-Saturn AD (2024-2027) as "planting → compounding" window. Concrete evidence of anticipated pattern: first major contract fires in Saturn AD's 7th month. Mercury MD yogi + Saturn AD authority-exalted = partner-platform delivery via structured authority. Marsys Technology as sector = Mercury (analytics/tech).
++    retrodictive_reasoning: "STRONG MATCH. RPT.DSH.01 in Deep Analysis v1.2.1 specifically names Mercury-Saturn AD (2024-2027) as \"planting → compounding\" window. Concrete evidence of anticipated pattern: first major contract fires in Saturn AD's 7th month. Mercury MD yogi + Saturn AD authority-exalted = partner-platform delivery via structured authority. Marsys Technology as sector = Mercury (analytics/tech)."
+   notes: Material validation of RPT.DSH.01 prediction. This single event does more to calibrate the chart's forecasting capacity than any other post-2023 event.
+ ```
+ 
+@@ -1414,7 +1414,7 @@
+   date_confidence: year-approx (native said "2025 or 2026"; logging as 2025)
+   category: health
+   subcategory: chronic_resolution
+-  description: Chronic sleep disorder (onset EVT.2007.XX.XX.03, ~18 years) resolved via Lemborexant (brand name: Dayvigo), discovered through an astrology consultation. First medication to work without debilitating drowsiness side effects. Native had tried half a dozen doctors and multiple drugs across India and the US without success.
++  description: "Chronic sleep disorder (onset EVT.2007.XX.XX.03, ~18 years) resolved via Lemborexant (brand name: Dayvigo), discovered through an astrology consultation. First medication to work without debilitating drowsiness side effects. Native had tried half a dozen doctors and multiple drugs across India and the US without success."
+   magnitude: significant
+   valence: positive
+   native_reflection: "I found the solution to my sleeping disorder in 2025 when I was consulting astrology and the astrological pharmaceutical remedy was Dayvigo drug, which is the generic name Lemborexant. I pop a pill and know without the negative impacts of drowsiness of the other drugs."
+@@ -1464,7 +1464,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [CTR.02 (Dharma Devata classical (Venkateswara) vs operational (Jagannath) tension — EXACTLY PREDICTS THIS SHIFT — native gravitating TOWARD Venkateswara indicates the "classical" dharma-devata pull is activating)]
+     signals_that_missed: []
+-    retrodictive_reasoning: STRONGEST retrodictive match of any 2025 event. CTR.02 in v1.2.1 Deep Analysis explicitly names the native's dual devata tension: classical-prescription = Venkateswara (Vishnu) vs operational-habituation = Jagannath-family. This 2025 shift is CTR.02 resolving in real-time. Deep Analysis v1.2.1 essentially predicted this gravitation before the native reported it was occurring.
++    retrodictive_reasoning: "STRONGEST retrodictive match of any 2025 event. CTR.02 in v1.2.1 Deep Analysis explicitly names the native's dual devata tension: classical-prescription = Venkateswara (Vishnu) vs operational-habituation = Jagannath-family. This 2025 shift is CTR.02 resolving in real-time. Deep Analysis v1.2.1 essentially predicted this gravitation before the native reported it was occurring."
+   notes: Single most on-the-nose retrodictive match in the entire v1.0 log. This alone validates the v1.2.1 Deep Analysis's operational accuracy on deep-psychological signals.
+ ```
+ 
+@@ -1623,7 +1623,7 @@
+   date_confidence: year-approx
+   category: psychological
+   subcategory: speech_pattern_arc
+-  description: Stammering onset in childhood (anchor: ~1995, school years). Three-phase arc: Phase 1 (childhood ~1995–2006): significant stammering; nickname 'sacca' given by friend. Phase 2 (engineering/MBA ~2007–2024): sustained practice substantially overcame it — contemporaries unaware native stammered. Phase 3 (resurgence ~2025–present): stammering has resurfaced after approximately one year; diagnosis unknown (psychological, neural, or genetic). Native manages but carries psychological impact. NOTE: three phases described; this EVT anchors the onset; phases 2+3 can be split into separate EVTs if warranted.
++  description: "Stammering onset in childhood (anchor: ~1995, school years). Three-phase arc: Phase 1 (childhood ~1995–2006): significant stammering; nickname 'sacca' given by friend. Phase 2 (engineering/MBA ~2007–2024): sustained practice substantially overcame it — contemporaries unaware native stammered. Phase 3 (resurgence ~2025–present): stammering has resurfaced after approximately one year; diagnosis unknown (psychological, neural, or genetic). Native manages but carries psychological impact. NOTE: three phases described; this EVT anchors the onset; phases 2+3 can be split into separate EVTs if warranted."
+   magnitude: moderate
+   valence: negative (phases 1+3); positive (phase 2 overcome)
+   native_reflection: "In my childhood I used to stammer quite a bit. I practiced a lot and during my engineering days and my MBA days I significantly got over it... That stammering has resurfaced over the last one year and I'm struggling with it."
+@@ -1652,7 +1652,7 @@
+   date_confidence: year-approx
+   category: spiritual
+   subcategory: transmission
+-  description: Father (Late Shri Soumya Ranjan Mohanty) held late-night spiritual dialogues with close friends; native joined in limited capacity during teens (~1997–2001). These conversations planted the seed of spirituality. Father's approach intermingled Hinduism and spirituality — became the native's foundational spiritual orientation. Astrologically significant: father as transmitter of Saturn-discipline (Saturn rules native's Arudha Lagna, Capricorn, 10H).
++  description: "Father (Late Shri Soumya Ranjan Mohanty) held late-night spiritual dialogues with close friends; native joined in limited capacity during teens (~1997–2001). These conversations planted the seed of spirituality. Father's approach intermingled Hinduism and spirituality — became the native's foundational spiritual orientation. Astrologically significant: father as transmitter of Saturn-discipline (Saturn rules native's Arudha Lagna, Capricorn, 10H)."
+   magnitude: significant
+   valence: positive
+   native_reflection: "My father was a very spiritual person. I would join late night conversation between my father and one or two specific friends of his who might be staying over in these spiritual conversations in a limited way."
+@@ -1710,7 +1710,7 @@
+   date_confidence: year-approx
+   category: spiritual
+   subcategory: sadhana_initiation
+-  description: Father instructed native (age ~18–19) to perform Shani Puja nightly. Native read Shani Shtotram every night for approximately 7–10 years. This became the first formal sustained sadhana practice. Father as transmitter of Saturn-discipline is astrologically significant: Saturn rules native's Arudha Lagna (Capricorn, 10th house). Shani Puja directly invokes the chart's most powerful planet — a father-directed dharma initiation.
++  description: "Father instructed native (age ~18–19) to perform Shani Puja nightly. Native read Shani Shtotram every night for approximately 7–10 years. This became the first formal sustained sadhana practice. Father as transmitter of Saturn-discipline is astrologically significant: Saturn rules native's Arudha Lagna (Capricorn, 10th house). Shani Puja directly invokes the chart's most powerful planet — a father-directed dharma initiation."
+   magnitude: significant
+   valence: positive
+   native_reflection: "My father asked me to do Shani Puja. So every night I used to read Shani Shtotram for a good seven, eight years or ten years."
+@@ -1797,7 +1797,7 @@
+   date_confidence: year-approx
+   category: spiritual
+   subcategory: practice_intensification
+-  description: From ~2024: daily pouring of water on shivalinga (abhisheka); independent yajna execution (fire ritual, self-conducted without a pandit); systematic panchang study (transit, muhurta, tithi); identification and planning of yajna timings using astrological data. Simultaneous with entrepreneurial transition and dharma-embrace (self-described 'I must align my life to Dharma'). Highest concentration of new spiritual practices in native's life. Coincides with Mercury-Saturn AD start (Dec 2024) and Sade Sati peak.
++  description: "From ~2024: daily pouring of water on shivalinga (abhisheka); independent yajna execution (fire ritual, self-conducted without a pandit); systematic panchang study (transit, muhurta, tithi); identification and planning of yajna timings using astrological data. Simultaneous with entrepreneurial transition and dharma-embrace (self-described 'I must align my life to Dharma'). Highest concentration of new spiritual practices in native's life. Coincides with Mercury-Saturn AD start (Dec 2024) and Sade Sati peak."
+   magnitude: major
+   valence: positive
+   native_reflection: "For the last two years I have been pouring water on the shiveling almost every day... I have been doing enormous amount of yajna. Now I have developed a skill that I do a yajna on my own... I have been following astrological data, looking at the panchang."
+@@ -1816,7 +1816,7 @@
+     predicted_by_chart: yes
+     signals_that_matched: [SIG.MSR.001 (Sasha — Saturn domain intensification at Sade Sati peak), Ketu-8H (tantric/yajna substrate), Jupiter AD (dharma-expansion), PPL retroactive pattern alignment]
+     signals_that_missed: []
+-    retrodictive_reasoning: Mercury-Jupiter AD (dharma-expansion) → Mercury-Saturn AD (Saturn-worship intensification) at Sade Sati peak is architecturally predicted: the Saturn-transit-peak + Saturn-MD-AD convergence forces direct Shiva/Saturn invocation as the chart's natural karmic response.
++    retrodictive_reasoning: "Mercury-Jupiter AD (dharma-expansion) → Mercury-Saturn AD (Saturn-worship intensification) at Sade Sati peak is architecturally predicted: the Saturn-transit-peak + Saturn-MD-AD convergence forces direct Shiva/Saturn invocation as the chart's natural karmic response."
+   notes: "SPR.E from M5-A-S1 enrichment batch."
+ ```
+ 
+@@ -1907,7 +1907,7 @@
+ PATTERN.SPORTS_LUCK.01:
+   trait: Sports participation directly correlates with better luck and prosperity
+   native_reflection: "Physically active by nature; sports participation directly correlates with better luck and prosperity." / "Luck, productivity, and social magnetism peak during active sports phases."
+-  likely_astrological_basis: Aries Lagna = Mars-ruled; Mars-engagement (sports, physical activity) = Lagna-lord activation, which strengthens overall chart delivery. Retrodictive pattern: basketball during 2012-2013 peak (§5.2) aligns with Mercury MD + Mars-engaged-via-sports.
++  likely_astrological_basis: "Aries Lagna = Mars-ruled; Mars-engagement (sports, physical activity) = Lagna-lord activation, which strengthens overall chart delivery. Retrodictive pattern: basketball during 2012-2013 peak (§5.2) aligns with Mercury MD + Mars-engaged-via-sports."
+ ```
+ 
+ ```yaml
+@@ -1975,7 +1975,7 @@
+   vimshottari: Mercury-Mercury AD (peak, through Jan 18, 2013) → Mercury-Ketu AD (Jan 18, 2013 → Jan 15, 2014)
+   yogini: Mangala/Moon (through Dec 22, 2012) → Pingala/Sun (Dec 22, 2012 → Dec 22, 2014)
+   dominant_events_in_period: [EVT.2012.09.XX.01 (modeling), EVT.2012.10.XX.01 (R#3 start), EVT.2013.03.XX.01 (XIMB graduation), EVT.2013.05.XX.01 (Mahindra Retail), EVT.2013.12.11.01 (marriage)]
+-  retrodictive_note: Mercury-Mercury AD is the chart's operational peak for Mercury-spine (Saraswati + Yogi + Vargottama + MD + all on same lord). PATTERN.SPORTS_LUCK.01 fires clearly (basketball). PATTERN.PHYSIQUE.01 peak (modeling at XIMB). Saraswati (SIG.07) = charisma in academic/performance arena. Classical result: MD-AD of same Yogi lord = experiential peak.
++  retrodictive_note: "Mercury-Mercury AD is the chart's operational peak for Mercury-spine (Saraswati + Yogi + Vargottama + MD + all on same lord). PATTERN.SPORTS_LUCK.01 fires clearly (basketball). PATTERN.PHYSIQUE.01 peak (modeling at XIMB). Saraswati (SIG.07) = charisma in academic/performance arena. Classical result: MD-AD of same Yogi lord = experiential peak."
+ ```
+ 
+ ```yaml
+@@ -1998,7 +1998,7 @@
+   vimshottari: Mercury-Moon AD (late 2017-Feb 2019, peak during father's passing) → Mercury-Mars AD (Feb 2019-Feb 2020, US move) → Mercury-Rahu AD (Feb 2020-Sep 2022, US ongoing)
+   yogini: Bhramari/Mars (Dec 22, 2017 → Dec 22, 2021)
+   dominant_events_in_period: [EVT.2018.11.28.01 (father passed), EVT.2019.05.XX.01 (US move), EVT.2021.01.XX.01 (panic episode — moved here in v1.1 from 2022)]
+-  retrodictive_note: Split-valence period. Start = father's death under AK Moon AD (soul-event magnitude). Middle = US-stint under Mars-then-Rahu AD (Mars = initiative/action abroad; Rahu = foreign-amplification). End = Jan 2021 panic episode at Sade Sati Cycle 2 Rising peak (Saturn in Cap 12th from Moon, ~1 year into cycle) + Bhramari/Mars Yogini at maximum intensity. v1.1 correction makes this period coherent: Bhramari/Mars runs through Dec 2021 exactly bounding the "US exciting" phase and containing the panic-episode terminus.
++  retrodictive_note: "Split-valence period. Start = father's death under AK Moon AD (soul-event magnitude). Middle = US-stint under Mars-then-Rahu AD (Mars = initiative/action abroad; Rahu = foreign-amplification). End = Jan 2021 panic episode at Sade Sati Cycle 2 Rising peak (Saturn in Cap 12th from Moon, ~1 year into cycle) + Bhramari/Mars Yogini at maximum intensity. v1.1 correction makes this period coherent: Bhramari/Mars runs through Dec 2021 exactly bounding the \"US exciting\" phase and containing the panic-episode terminus."
+ ```
+ 
+ ```yaml

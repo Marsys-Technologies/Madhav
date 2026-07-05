@@ -21,6 +21,7 @@ Constraints exercised:
 from __future__ import annotations
 
 import ast
+import dataclasses
 import os
 from datetime import datetime, timezone
 
@@ -285,3 +286,134 @@ def test_writer_registers_asset_id():
 
 def test_writer_parses_as_valid_python():
     ast.parse(_writer_source())
+
+
+# ── JL-017 contamination gate (BA Phase 2.5 #11) ────────────────────────────
+
+def test_writer_gates_on_native_chart_id():
+    """The writer must refuse any chart_id other than NATIVE_CHART_ID before any
+    DB write — never silently score a stranger's chart against the native's
+    own LEL training events / natal dasha-lord positions."""
+    src = _writer_source()
+    assert "NATIVE_CHART_ID" in src
+    assert "chart_id != NATIVE_CHART_ID" in src or "chart_id != E.NATIVE_CHART_ID" in src
+
+
+def test_writer_gate_precedes_any_db_write():
+    """The chart_id gate must appear before the first DELETE in source order."""
+    src = _writer_source()
+    gate_pos = src.index("chart_id != NATIVE_CHART_ID")
+    delete_pos = src.index("DELETE FROM phala_rectification")
+    assert gate_pos < delete_pos
+
+
+class _FakeCursor:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, *a, **k): raise AssertionError("no SQL should run before the gate raises")
+
+
+class _FakeConn:
+    def cursor(self, *a, **k): return _FakeCursor()
+
+
+class _FakeCtx:
+    def __init__(self, chart_id):
+        self.db_conn = _FakeConn()
+        self.config = {"chart_id": chart_id, "birth_params": {}}
+
+
+def test_writer_raises_for_non_native_chart_before_any_write():
+    from pipeline.orchestrator.writers.ph_rectification import PhRectificationWriter
+
+    writer = PhRectificationWriter()
+    with pytest.raises(ValueError, match="JL-017"):
+        writer.run(_FakeCtx("11111111-1111-1111-1111-111111111111"))
+
+
+# ── Antar-dasha double-match extension (BA Phase 2.5 Phase 3, J7) ───────────
+
+def test_antar_dasha_lord_derived_for_all_training_events():
+    """All 19 embedded training events fall inside the Saturn or Mercury MD
+    window, so the deterministic AD derivation must resolve a lord for all of
+    them (no fabrication needed — pure classical proportion math)."""
+    assert len(E.TRAINING_EVENTS) == 19
+    assert all(ev.antar_dasha_lord is not None for ev in E.TRAINING_EVENTS)
+
+
+def test_antar_dasha_lord_is_classically_consistent():
+    """Spot check: the first AD sub-period of any MD is the MD lord's own AD
+    (Vimshottari sequence always starts with the MD lord itself)."""
+    saturn_start = datetime(1991, 8, 19, tzinfo=timezone.utc)
+    assert E._antar_dasha_lord("Saturn", saturn_start) == "Saturn"
+    mercury_start = datetime(2010, 8, 18, tzinfo=timezone.utc)
+    assert E._antar_dasha_lord("Mercury", mercury_start) == "Mercury"
+
+
+def test_antar_dasha_lord_none_outside_documented_md_window():
+    assert E._antar_dasha_lord("Saturn", datetime(2015, 1, 1, tzinfo=timezone.utc)) is None
+    assert E._antar_dasha_lord("Venus", datetime(2000, 1, 1, tzinfo=timezone.utc)) is None
+
+
+def test_double_match_scores_higher_than_md_only_match():
+    """A candidate whose training event has BOTH its MD lord and AD lord in a
+    domain-significator house must score higher than one where only the MD
+    lord matches — the 'double match' the J7 extension adds."""
+    # Mercury MD, career domain -> significator houses (1, 6, 10, 11).
+    # Event date 2010-12-15 falls in Mercury's own AD sub-period (the first AD
+    # of the Mercury MD, per test_antar_dasha_lord_is_classically_consistent-
+    # style reasoning), so its antar_dasha_lord resolves to "Mercury" too.
+    event_md_only = TrainingEvent(
+        "EVT.TEST.MD_ONLY", datetime(2010, 12, 15, tzinfo=timezone.utc),
+        "career", "Mercury", "exact", antar_dasha_lord=None,
+    )
+    event_double = [ev for ev in E.TRAINING_EVENTS if ev.event_id == "EVT.2010.12.15.01"][0]
+    assert event_double.antar_dasha_lord == "Mercury"
+    assert event_double.domain == "travel"
+    # Re-tag domain to career for an apples-to-apples comparison, keeping the
+    # same dates/lords (both are pre-2020 dates already in TRAINING_EVENTS).
+    event_double_career = dataclasses.replace(event_double, domain="career")
+
+    dasha_map = {"Mercury": 9}  # Capricorn — arbitrary lagna-independent test map
+    lagna_idx = 0  # Aries lagna: Capricorn (9) from Aries -> house 10 (career significator)
+
+    md_only_score = E._score_dasha_match(lagna_idx, [event_md_only], dasha_map)
+    double_score = E._score_dasha_match(lagna_idx, [event_double_career], dasha_map)
+
+    assert md_only_score == 1
+    assert double_score == 2
+    assert double_score > md_only_score
+
+
+def test_antar_dasha_none_falls_back_to_md_only_backward_compatible():
+    """When antar_dasha_lord is None (e.g. a caller-supplied TrainingEvent that
+    doesn't set it), scoring must behave exactly as it did before J7 — MD-only
+    matching, matched in {0, 1} per event."""
+    ev = TrainingEvent(
+        "EVT.TEST.NO_AD", datetime(2010, 12, 15, tzinfo=timezone.utc),
+        "career", "Mercury", "exact",
+    )
+    assert ev.antar_dasha_lord is None
+    dasha_map = {"Mercury": 9}
+    lagna_idx = 0
+    assert E._score_dasha_match(lagna_idx, [ev], dasha_map) == 1
+
+
+def test_run_rectification_accepts_explicit_training_events_and_dasha_map():
+    """A caller-supplied training_events + dasha_lord_natal_sign_index must be
+    used verbatim rather than silently falling back to the native's own data."""
+    custom_events = [TrainingEvent("EVT.CUSTOM.01", datetime(2015, 1, 1, tzinfo=timezone.utc),
+                                    "career", "Mars", "exact")]
+    custom_map = {"Mars": 0}  # Aries
+
+    candidates = run_rectification(
+        _stub_ascendant,
+        recorded_birth_utc=RECORDED_BIRTH_UTC,
+        training_events=custom_events,
+        dasha_lord_natal_sign_index=custom_map,
+    )
+    # lel_events_tested reflects the custom (1-event) set, not the native's 19.
+    assert all(c.lel_events_tested == 1 for c in candidates)
+
+    best = select_best(candidates, training_events=custom_events)
+    assert best.lel_training_events == 1

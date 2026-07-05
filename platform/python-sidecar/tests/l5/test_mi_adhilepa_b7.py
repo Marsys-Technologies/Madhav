@@ -455,3 +455,259 @@ class TestLoadMultipliersFiltersByFamilyKind:
 
         # 3. edge_row target_ref absent (DB filtered it; our mock confirms intent)
         assert "fam_graha_natal" not in result
+
+
+# ── BA Phase 2.5 J-8: fact-overlay slice broadening + ORDER BY ────────────────
+#
+# Bug: mi_adhilepa's fact overlay query filtered
+#      `fact_category IN ('graha', 'yoga') LIMIT 200` with no ORDER BY.
+#      'graha'/'yoga' are not real chart_facts.fact_category values (real
+#      values look like 'graha_position', 'yoga_label', 'ashtakavarga_bindu',
+#      'graha_dignity_per_varga', …) — so the filter matched zero rows, ever,
+#      confirmed live (mimamsa_fact_adjustment = 0 rows for canonical chart
+#      482012f1 pre-fix). The bare LIMIT 200 was additionally nondeterministic
+#      (no guaranteed row order without ORDER BY). Fixed by:
+#        1. Selecting the full per-chart fact set with a deterministic
+#           `ORDER BY fact_id`.
+#        2. Classifying fact_category into a family key in Python via the
+#           new `_fact_family_key` helper (mirrors `_signal_family_key`),
+#           covering ashtakavarga / dasha / divisional (varga) / yoga /
+#           graha-natal categories instead of two literal values that never
+#           matched anything.
+#        3. Dropping the LIMIT entirely (chart_facts is ~138k rows per chart
+#           across ayanamshas; the sibling mimamsa_signal_adjustment overlay
+#           loop over bodha_msr_signals is similarly unbounded).
+#
+# Tests:
+#   1. test_fact_family_key_maps_correctly — _fact_family_key returns the
+#      expected fam_* key (or None) for real, live-verified fact_category
+#      strings covering all five families.
+#   2. test_fact_overlay_query_has_order_by — source-text check: the
+#      chart_facts SELECT carries an ORDER BY (AST/text style precedent:
+#      tests/test_ph_rectification.py).
+#   3. test_fact_overlay_query_no_longer_uses_dead_literals — source-text
+#      check: the broken `IN ('graha', 'yoga')` literal filter is gone.
+#   4. test_fact_overlay_deterministic_repeat_call — the same mocked fact
+#      set run through the writer twice produces the same rows in the same
+#      order both times.
+#   5. test_fact_overlay_covers_broadened_categories — an end-to-end mocked
+#      run demonstrates ashtakavarga/dasha/divisional/yoha/graha-natal facts
+#      each produce an overlay row where the old code produced none.
+
+from pipeline.orchestrator.writers import mi_adhilepa as _mi_adhilepa_mod
+
+
+def _writer_source() -> str:
+    import inspect
+    return inspect.getsource(_mi_adhilepa_mod)
+
+
+class TestFactFamilyKeyMapping:
+    """_fact_family_key returns the correct fam_* key for real fact_category values."""
+
+    def test_ashtakavarga_bindu_returns_fam_ashtakavarga(self):
+        assert _mi_adhilepa_mod._fact_family_key("ashtakavarga_bindu") == "fam_ashtakavarga"
+
+    def test_ashtakavarga_bindu_per_varga_returns_fam_ashtakavarga(self):
+        """Ashtakavarga takes precedence over the '_per_varga' divisional rule."""
+        assert _mi_adhilepa_mod._fact_family_key("ashtakavarga_bindu_per_varga") == "fam_ashtakavarga"
+
+    def test_sade_sati_concurrent_dasha_overlay_returns_fam_dasha_period(self):
+        assert _mi_adhilepa_mod._fact_family_key("sade_sati_concurrent_dasha_overlay") == "fam_dasha_period"
+
+    def test_yoga_label_returns_fam_yoga(self):
+        assert _mi_adhilepa_mod._fact_family_key("yoga_label") == "fam_yoga"
+
+    def test_graha_yoga_karaka_flag_returns_fam_yoga(self):
+        """yoga substring wins even though the category is 'graha_'-prefixed."""
+        assert _mi_adhilepa_mod._fact_family_key("graha_yoga_karaka_flag") == "fam_yoga"
+
+    def test_graha_dignity_per_varga_returns_fam_divisional(self):
+        assert _mi_adhilepa_mod._fact_family_key("graha_dignity_per_varga") == "fam_divisional"
+
+    def test_vargottama_per_varga_returns_fam_divisional(self):
+        assert _mi_adhilepa_mod._fact_family_key("vargottama_per_varga") == "fam_divisional"
+
+    def test_graha_vargottama_amplification_factor_returns_fam_divisional(self):
+        assert _mi_adhilepa_mod._fact_family_key("graha_vargottama_amplification_factor") == "fam_divisional"
+
+    def test_graha_position_returns_fam_graha_natal(self):
+        assert _mi_adhilepa_mod._fact_family_key("graha_position") == "fam_graha_natal"
+
+    def test_graha_shadbala_total_returns_fam_graha_natal(self):
+        assert _mi_adhilepa_mod._fact_family_key("graha_shadbala_total") == "fam_graha_natal"
+
+    def test_house_bhava_bala_total_returns_fam_graha_natal(self):
+        assert _mi_adhilepa_mod._fact_family_key("house_bhava_bala_total") == "fam_graha_natal"
+
+    def test_graha_avastha_baladi_returns_fam_graha_natal(self):
+        assert _mi_adhilepa_mod._fact_family_key("graha_avastha_baladi") == "fam_graha_natal"
+
+    def test_unmatched_category_returns_none(self):
+        """Composite/relationship facts with no clear family stay unmatched
+        (no catch-all fallback) — preserves the writer's original
+        'high-impact facts only' selectivity."""
+        assert _mi_adhilepa_mod._fact_family_key("argala_natal_matrix") is None
+        assert _mi_adhilepa_mod._fact_family_key("sambandha_grade") is None
+
+    def test_none_category_returns_none(self):
+        assert _mi_adhilepa_mod._fact_family_key(None) is None
+
+    def test_bare_graha_literal_is_unmatched(self):
+        """The old code's literal 'graha' was never a real fact_category value
+        (real values are 'graha_position' etc. with a trailing '_'); the
+        classifier correctly leaves the bare literal unmatched."""
+        assert _mi_adhilepa_mod._fact_family_key("graha") is None
+
+    def test_bare_yoga_literal_still_matches_via_substring(self):
+        """Unlike 'graha', the bare literal 'yoga' does contain the 'yoga'
+        substring, so it resolves to fam_yoga (substring rule, not a prefix
+        rule) — documented for clarity, not because 'yoga' itself is a real
+        fact_category value."""
+        assert _mi_adhilepa_mod._fact_family_key("yoga") == "fam_yoga"
+
+
+class TestFactOverlayQuerySourceShape:
+    """Source-text checks on the fact overlay SQL (style precedent:
+    tests/test_ph_rectification.py's AST/text writer-contract tests)."""
+
+    def test_fact_overlay_query_has_order_by(self):
+        src = _writer_source()
+        # Isolate the chart_facts SELECT block.
+        idx = src.index('SELECT fact_id, fact_category FROM chart_facts')
+        block = src[idx:idx + 200]
+        assert "ORDER BY" in block, "chart_facts fact-overlay SELECT must carry a deterministic ORDER BY"
+
+    def test_fact_overlay_query_no_longer_uses_dead_literals(self):
+        src = _writer_source()
+        code = "\n".join(
+            ln for ln in src.splitlines()
+            if not ln.strip().startswith("#")
+        )
+        assert "IN ('graha', 'yoga')" not in code
+        assert "LIMIT 200" not in code
+
+    def test_writer_parses_as_valid_python(self):
+        import ast
+        ast.parse(_writer_source())
+
+
+class TestFactOverlayDeterministicOrdering:
+    """Same mocked fact set run twice through the writer → identical rows,
+    identical order, both times (ORDER BY fact_id makes this deterministic)."""
+
+    def _facts(self):
+        # Deliberately out of fact_id order in the mock's underlying list;
+        # ORDER BY fact_id in the query is what the DB would normally do —
+        # here we assert the *query text* requests ordering and that the
+        # writer's insertion order for a given fetchall() result is stable
+        # (same input list → same output list, every time).
+        return [
+            {"fact_id": "f-003", "fact_category": "graha_position"},
+            {"fact_id": "f-001", "fact_category": "ashtakavarga_bindu"},
+            {"fact_id": "f-002", "fact_category": "yoga_label"},
+        ]
+
+    def _build_ctx(self, facts, multipliers):
+        ctx = MagicMock()
+        ctx.config = {"chart_id": "482012f1-0000-0000-0000-000000000000"}
+        ctx.dry_run = False
+        cursor_calls: list[MagicMock] = []
+
+        def _make_cursor(row_factory=None):
+            cur = MagicMock()
+            cur.__enter__ = MagicMock(return_value=cur)
+            cur.__exit__ = MagicMock(return_value=False)
+
+            def _execute(sql, params=None):
+                sql_clean = sql.strip().upper()
+                if sql_clean.startswith("SELECT") and "MIMAMSA_MULTIPLIERS" in sql_clean:
+                    cur._result = list(multipliers.values())
+                elif sql_clean.startswith("SELECT") and "BODHA_MSR_SIGNALS" in sql_clean:
+                    cur._result = []
+                elif sql_clean.startswith("SELECT") and "INFORMATION_SCHEMA" in sql_clean:
+                    cur._result = [(1,)]
+                elif sql_clean.startswith("SELECT") and "CHART_FACTS" in sql_clean:
+                    cur._result = list(facts)
+                elif sql_clean.startswith("SELECT") and "KALA_CONVERGENCE" in sql_clean:
+                    cur._result = []
+                elif sql_clean.startswith("SELECT") and "PHALA_ANCHORS" in sql_clean:
+                    cur._result = []
+                else:
+                    cur._result = []
+
+            cur.execute = MagicMock(side_effect=_execute)
+            cur.executemany = MagicMock()
+            cur.fetchone = MagicMock(side_effect=lambda: (cur._result[0] if cur._result else None))
+            cur.fetchall = MagicMock(side_effect=lambda: cur._result or [])
+            cursor_calls.append(cur)
+            return cur
+
+        ctx.db_conn.cursor = MagicMock(side_effect=_make_cursor)
+        ctx._cursor_calls = cursor_calls
+        return ctx
+
+    def _fact_overlay_rows(self, ctx):
+        for cur in ctx._cursor_calls:
+            for em_call in cur.executemany.call_args_list:
+                sql_arg = em_call.args[0] if em_call.args else ""
+                if "mimamsa_fact_adjustment" in sql_arg.lower():
+                    return em_call.args[1] if len(em_call.args) > 1 else []
+        return []
+
+    def test_fact_overlay_deterministic_repeat_call(self):
+        from pipeline.orchestrator.writers.mi_adhilepa import MiAdhilepaWriter
+
+        multipliers = {
+            "fam_graha_natal": _make_multiplier_row("fam_graha_natal", 1.0),
+            "fam_ashtakavarga": _make_multiplier_row("fam_ashtakavarga", 0.7),
+            "fam_yoga": _make_multiplier_row("fam_yoga", 0.9),
+        }
+        facts = self._facts()
+
+        ctx1 = self._build_ctx(facts, multipliers)
+        MiAdhilepaWriter().run(ctx1)
+        rows1 = self._fact_overlay_rows(ctx1)
+
+        ctx2 = self._build_ctx(facts, multipliers)
+        MiAdhilepaWriter().run(ctx2)
+        rows2 = self._fact_overlay_rows(ctx2)
+
+        assert len(rows1) == 3
+        assert rows1 == rows2, "same fact set run twice must produce identical rows in identical order"
+        # origin_id (4th element of the overlay tuple) preserves fetch order
+        assert [r[3] for r in rows1] == ["f-003", "f-001", "f-002"]
+
+
+class TestFactOverlayCoversBroadenedCategories:
+    """End-to-end: ashtakavarga/dasha/divisional/yoga/graha-natal facts each
+    produce an overlay row. Pre-fix, ALL of these produced 0 rows because
+    the filter only matched the (nonexistent) literals 'graha'/'yoga'."""
+
+    def test_all_five_families_produce_rows(self):
+        from pipeline.orchestrator.writers.mi_adhilepa import MiAdhilepaWriter
+
+        facts = [
+            {"fact_id": "f-ashtaka", "fact_category": "ashtakavarga_bindu"},
+            {"fact_id": "f-dasha", "fact_category": "sade_sati_concurrent_dasha_overlay"},
+            {"fact_id": "f-divisional", "fact_category": "graha_dignity_per_varga"},
+            {"fact_id": "f-yoga", "fact_category": "yoga_label"},
+            {"fact_id": "f-graha", "fact_category": "graha_position"},
+            {"fact_id": "f-unmatched", "fact_category": "argala_natal_matrix"},
+        ]
+        multipliers = {
+            "fam_graha_natal": _make_multiplier_row("fam_graha_natal", 1.0),
+            "fam_dasha_period": _make_multiplier_row("fam_dasha_period", 1.2),
+            "fam_yoga": _make_multiplier_row("fam_yoga", 0.9),
+            "fam_divisional": _make_multiplier_row("fam_divisional", 0.8),
+            "fam_ashtakavarga": _make_multiplier_row("fam_ashtakavarga", 0.7),
+        }
+
+        helper = TestFactOverlayDeterministicOrdering()
+        ctx = helper._build_ctx(facts, multipliers)
+        MiAdhilepaWriter().run(ctx)
+        rows = helper._fact_overlay_rows(ctx)
+
+        matched_ids = {r[3] for r in rows}
+        assert matched_ids == {"f-ashtaka", "f-dasha", "f-divisional", "f-yoga", "f-graha"}
+        assert "f-unmatched" not in matched_ids

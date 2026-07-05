@@ -51,6 +51,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
@@ -145,6 +146,78 @@ PADA_MODIFIER: dict[int, str] = {
 # Native Moon nakshatra pada at birth (FORENSIC anchor)
 NATIVE_MOON_NAKSHATRA = "Purva Bhadrapada"
 NATIVE_MOON_PADA = 4      # Pada 4 = Pisces side of Purva Bhadrapada
+
+# ── Classical reference tables for real per-chart natal_facts enrichment ─────
+# (Same idiom as SATURN_DIGNITY/PADA_MODIFIER above: hardcoded classical
+#  constants, not fabricated formulas — BPHS Ch.3-4 rulerships/exaltations.)
+
+# Own sign(s) per graha (BPHS Ch.3-4).
+PLANET_OWN_SIGNS: dict[str, list[str]] = {
+    "Sun": ["Leo"],
+    "Moon": ["Cancer"],
+    "Mars": ["Aries", "Scorpio"],
+    "Mercury": ["Gemini", "Virgo"],
+    "Jupiter": ["Sagittarius", "Pisces"],
+    "Venus": ["Taurus", "Libra"],
+    "Saturn": ["Capricorn", "Aquarius"],
+}
+
+# Exaltation sign per graha (BPHS Ch.3-4).
+PLANET_EXALTATION_SIGN: dict[str, str] = {
+    "Sun": "Aries",
+    "Moon": "Taurus",
+    "Mars": "Capricorn",
+    "Mercury": "Virgo",
+    "Jupiter": "Cancer",
+    "Venus": "Pisces",
+    "Saturn": "Libra",
+}
+
+# Classical Yogakaraka lagnas: the standard BPHS-derived rule is that a
+# Yogakaraka exists only where a single planet simultaneously rules a Kendra
+# (1/4/7/10) and a Trikona (1/5/9) from that Lagna. Given fixed sign
+# rulerships this configuration occurs for exactly 6 lagnas:
+#   Taurus/Libra -> Saturn, Cancer/Leo -> Mars, Capricorn/Aquarius -> Venus.
+# (All other lagnas, including Aries, have no Yogakaraka.)
+YOGA_KARAKA_BY_LAGNA: dict[str, str] = {
+    "Taurus": "Saturn",
+    "Libra": "Saturn",
+    "Cancer": "Mars",
+    "Leo": "Mars",
+    "Capricorn": "Venus",
+    "Aquarius": "Venus",
+}
+
+# Planet full-name (as stored in graha_position.sign_lord) -> fact_subject
+# abbreviation used by GA3 graha_position rows (A3 §5 UPPER_SNAKE convention;
+# mirrors ga_positions_writer.PLANET_TO_SUBJECT).
+PLANET_NAME_TO_SUBJECT: dict[str, str] = {
+    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
+    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
+    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+}
+
+# Nakshatra short codes matching GA4's tara_bala_natal_baseline fact_subject
+# convention (TRANSIT_NAK_<SHORT>) — mirrors ga_panchanga_writer.NAKSHATRA_SHORT.
+NAKSHATRA_SHORT: list[str] = [
+    "ASH", "BHA", "KRI", "ROH", "MRI", "ARD", "PUN", "PUS", "ASL",
+    "MAG", "PPH", "UPH", "HAS", "CHI", "SWA", "VIS", "ANU", "JYE",
+    "MOO", "PAS", "UAS", "SHR", "DHA", "SHA", "PPB", "UPB", "REV",
+]
+
+# GA7 concurrent-dasha lookup specs: short_key (as referenced by _emit_cycle_rows,
+# WITHOUT the "concurrent_" prefix) -> (chart_dashas.system_id, chart_dashas.level_n).
+# level_n=1 is the top-level (maha) period for every system; Vimshottari alone
+# is also read at level_n=2 (antardasha) per the A9 spec's 7-key overlay.
+DASHA_LOOKUP_SPECS: list[tuple[str, str, int]] = [
+    ("vimshottari_maha_lord", "vimshottari", 1),
+    ("vimshottari_antar_lord", "vimshottari", 2),
+    ("yogini_period_lord", "yogini", 1),
+    ("ashtottari_lord", "ashtottari", 1),
+    ("chara_karaka_sign", "chara_karaka", 1),
+    ("naisargika_age_bracket", "naisargika", 1),
+    ("mudda_lord", "mudda", 1),
+]
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -828,32 +901,42 @@ def _emit_cycle_rows(
             rows.append(
                 R(cat_ph, subj, dasha_key,
                   value_text=str(dasha_val),
-                  citation_human=f"{dasha_key} during {cy_id} {phase_name}: {dasha_val} ({ayanamsha_id}).")
+                  citation_human=f"{dasha_key} during {cy_id} {phase_name}: {dasha_val} ({ayanamsha_id}).",
+                  verification=_verif_for_text(dasha_val))
             )
 
-        # Concurrent modifier overlay — atomic boolean flags
-        mars_asp = natal_facts.get("mars_aspect_during_period", False)
-        jup_asp = natal_facts.get("jupiter_aspect_during_period", False)
-        sat_rahu = natal_facts.get("saturn_rahu_axis_flag", False)
-        eclipse = natal_facts.get("eclipse_during_period", False)
-        sat_return = natal_facts.get("concurrent_saturn_return", False)
+        # Concurrent modifier overlay — atomic boolean flags.
+        # mars/jupiter/rahu/eclipse have no upstream transit-detection engine
+        # (see _build_static_natal_facts) so these stay honest None; only
+        # concurrent Saturn return is real (Saturn's transiting sign, ph_sign,
+        # compared against its own real natal sign — both already computed).
+        mars_asp = natal_facts.get("mars_aspect_during_period")
+        jup_asp = natal_facts.get("jupiter_aspect_during_period")
+        sat_rahu = natal_facts.get("saturn_rahu_axis_flag")
+        eclipse = natal_facts.get("eclipse_during_period")
+        saturn_natal_sign = natal_facts.get("saturn_natal_sign")
+        sat_return = (saturn_natal_sign is not None and ph_sign == saturn_natal_sign)
 
         rows += [
             R(cat_ph, subj, "mars_aspect_to_saturn_during_period_flag",
               value_text=str(mars_asp).lower(),
-              citation_human=f"Mars aspect to Saturn during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id})."),
+              citation_human=f"Mars aspect to Saturn during {cy_id} {phase_name}: {mars_asp} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(mars_asp)),
             R(cat_ph, subj, "jupiter_aspect_to_saturn_during_period_flag",
               value_text=str(jup_asp).lower(),
-              citation_human=f"Jupiter aspect to Saturn during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id})."),
+              citation_human=f"Jupiter aspect to Saturn during {cy_id} {phase_name}: {jup_asp} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(jup_asp)),
             R(cat_ph, subj, "saturn_rahu_axis_during_period_flag",
               value_text=str(sat_rahu).lower(),
-              citation_human=f"Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id})."),
+              citation_human=f"Saturn-Rahu axis during {cy_id} {phase_name}: {sat_rahu} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(sat_rahu)),
             R(cat_ph, subj, "eclipse_during_period_flag",
               value_text=str(eclipse).lower(),
-              citation_human=f"Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id})."),
+              citation_human=f"Eclipse during {cy_id} {phase_name}: {eclipse} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(eclipse)),
             R(cat_ph, subj, "concurrent_saturn_return_flag",
               value_text=str(sat_return).lower(),
-              citation_human=f"Concurrent Saturn return during {cy_id} {phase_name}: {sat_return} ({ayanamsha_id})."),
+              citation_human=f"Concurrent Saturn return during {cy_id} {phase_name}: {sat_return} (natal Saturn sign {saturn_natal_sign}, {ayanamsha_id})."),
         ]
 
         # Natal Saturn aspects natal Moon — baseline intensifier (atomic bool)
@@ -879,16 +962,18 @@ def _emit_cycle_rows(
             rows.append(
                 R(cat_ph, subj, "tara_bala_during_peak",
                   value_text=str(tara_val),
-                  citation_human=f"Tara bala at {cy_id} JANMA peak: {tara_val} ({ayanamsha_id}).")
+                  citation_human=f"Tara bala at {cy_id} JANMA peak: {tara_val} ({ayanamsha_id}).",
+                  verification=_verif_for_text(tara_val))
             )
 
         # D10 Karya activation cross-ref (Q8=A) — atomic flag + sanctioned JSONB #4
-        d10_flag = natal_facts.get("d10_karya_bhava_activation_flag", False)
+        d10_flag = natal_facts.get("d10_karya_bhava_activation_flag")
         d10_facts = natal_facts.get("d10_karya_activation_facts", [])
         rows += [
             R(cat_ph, subj, "d10_karya_bhava_activation_flag",
               value_text=str(d10_flag).lower(),
-              citation_human=f"D10 Karya bhava activation during {cy_id} {phase_name}: {d10_flag} ({ayanamsha_id})."),
+              citation_human=f"D10 Karya bhava activation during {cy_id} {phase_name}: {d10_flag} ({ayanamsha_id}).",
+              verification=_verif_for_maybe_none(d10_flag)),
             # SANCTIONED JSONB #4: FK-style list of D10 fact_ids from GA6 (count varies)
             R(cat_ph, subj, "d10_karya_activation_facts_jsonb",
               value_jsonb=d10_facts if d10_facts else None,
@@ -1055,17 +1140,19 @@ def _emit_cycle_rows(
         rows.append(
             R(cat_do, cy_id, f"concurrent_{dk}",
               value_text=str(val),
-              citation_human=f"{desc} for {cy_id}: {val} ({ayanamsha_id}).")
+              citation_human=f"{desc} for {cy_id}: {val} ({ayanamsha_id}).",
+              verification=_verif_for_text(val))
         )
 
     # ── 8. sade_sati_downstream_cross_reference ───────────────────────────────
     cat_dx = "sade_sati_downstream_cross_reference"
     # D10 Karya (from GA6) — atomic flag
-    d10_flag = natal_facts.get("d10_karya_bhava_activation_flag", False)
+    d10_flag = natal_facts.get("d10_karya_bhava_activation_flag")
     rows.append(
         R(cat_dx, cy_id, "d10_karya_bhava_activation_flag",
           value_text=str(d10_flag).lower(),
-          citation_human=f"D10 Karya bhava activation cross-ref for {cy_id}: {d10_flag} ({ayanamsha_id}).")
+          citation_human=f"D10 Karya bhava activation cross-ref for {cy_id}: {d10_flag} ({ayanamsha_id}).",
+          verification=_verif_for_maybe_none(d10_flag))
     )
     # Argala (from GA8) — sanctioned JSONB #5 (cycle-level reference)
     argala_subset = natal_facts.get("argala_during_period", [])
@@ -1079,7 +1166,8 @@ def _emit_cycle_rows(
     rows.append(
         R(cat_dx, cy_id, "tara_bala_baseline_ref",
           value_text=str(tara),
-          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {tara} ({ayanamsha_id}).")
+          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {tara} ({ayanamsha_id}).",
+          verification=_verif_for_text(tara))
     )
 
     return rows
@@ -1282,6 +1370,253 @@ def _read_moon_pada_per_ayanamsha(conn: Any, chart_id: str) -> dict[str, int]:
     return {r["ayanamsha_id"]: int(r["fact_value_num"]) if r["fact_value_num"] else NATIVE_MOON_PADA for r in rows}
 
 
+# ── Real natal_facts enrichment helpers (GA3/GA4/GA6/GA7/GA8 joins) ──────────
+# Per CLAUDECODE_BRIEF_BA_PHASE_2_5 Phase 1 item #4: wire natal_facts from real
+# already-computed upstream L1 rows instead of the hardcoded stub scaffold.
+# Precision over recall — any sub-lookup with no real upstream source is left
+# an honest None/"PENDING_*" placeholder (never a fabricated value).
+
+def _read_graha_position_field(
+    conn: Any, chart_id: str, subject: str, key: str, numeric: bool = False,
+) -> dict[str, Any]:
+    """Generic GA3 graha_position reader: {ayanamsha_id: value} for one (subject, key)."""
+    col = "fact_value_num" if numeric else "fact_value_text"
+    rows = conn.execute(
+        f"""
+        SELECT ayanamsha_id, {col} AS val
+        FROM chart_facts
+        WHERE chart_id = %s
+          AND fact_category = 'graha_position'
+          AND fact_subject = %s
+          AND fact_key = %s
+        """,
+        [chart_id, subject, key],
+    ).fetchall()
+    return {r["ayanamsha_id"]: r["val"] for r in rows}
+
+
+def _lookup_dasha_lord_at(
+    conn: Any, chart_id: str, ayanamsha_id: str, system_id: str, level_n: int,
+    at_dt: datetime,
+) -> str | None:
+    """
+    Real GA7 lookup: the chart_dashas row (system_id, level_n) whose
+    [start_iso, end_iso) window covers at_dt. Returns lord_graha (or lord_sign
+    for chara_karaka, whose period identity is a sign not a graha), or None if
+    no covering row exists (honest — caller must not fabricate a value).
+    """
+    row = conn.execute(
+        """
+        SELECT lord_graha, lord_sign
+        FROM chart_dashas
+        WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s AND level_n = %s
+          AND start_iso <= %s AND end_iso > %s
+        ORDER BY start_iso DESC
+        LIMIT 1
+        """,
+        [chart_id, ayanamsha_id, system_id, level_n, at_dt, at_dt],
+    ).fetchone()
+    if not row:
+        return None
+    if system_id == "chara_karaka" and row.get("lord_sign"):
+        return row["lord_sign"]
+    return row.get("lord_graha")
+
+
+def _lookup_tara_bala_for_saturn_at(
+    conn: Any, chart_id: str, ayanamsha_id: str, at_dt: datetime,
+) -> str | None:
+    """
+    Real GA4 lookup: Saturn's transiting sidereal nakshatra at at_dt (computed
+    via swisseph, same engine as _detect_saturn_sign_changes) resolved against
+    GA4's tara_bala_natal_baseline (27-row per-ayanamsha state table) to get
+    the Tara class for that transit nakshatra relative to natal Moon nakshatra.
+    Returns None if swisseph is unavailable or no baseline row exists.
+    """
+    try:
+        import swisseph as swe
+    except ImportError:
+        return None
+
+    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
+                     at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
+    result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL)
+    lon = result[0] % 360.0
+    nak_idx = int(lon // (360.0 / 27.0))  # 0-based nakshatra index
+    if not (0 <= nak_idx < 27):
+        return None
+    short = NAKSHATRA_SHORT[nak_idx]
+
+    row = conn.execute(
+        """
+        SELECT fact_value_text
+        FROM chart_facts
+        WHERE chart_id = %s AND ayanamsha_id = %s
+          AND fact_category = 'tara_bala_natal_baseline'
+          AND fact_subject = %s AND fact_key = 'tara_class'
+        """,
+        [chart_id, ayanamsha_id, f"TRANSIT_NAK_{short}"],
+    ).fetchone()
+    return row["fact_value_text"] if row else None
+
+
+def _lookup_argala_for_sign(
+    conn: Any, chart_id: str, ayanamsha_id: str, target_sign: str, lagna_sign: str,
+) -> list[dict[str, Any]]:
+    """
+    Real GA8 lookup: subset of the natal D1 argala_natal_matrix (144-row
+    matrix; GA8) giving argala ON target_sign (the sign Saturn transits during
+    the phase), converted to whole-sign house-pair activations via the real
+    natal Lagna. Returns [] if no non-zero argala rows exist for this sign
+    (an honest empty result, not a placeholder).
+    """
+    target_num = SIGN_NUM.get(target_sign)
+    lagna_num = SIGN_NUM.get(lagna_sign)
+    if not target_num or not lagna_num:
+        return []
+
+    subj = f"D1_SIGN_{target_num}"
+    rows = conn.execute(
+        """
+        SELECT fact_key, fact_value_num
+        FROM chart_facts
+        WHERE chart_id = %s AND ayanamsha_id = %s
+          AND fact_category = 'argala_natal_matrix'
+          AND fact_subject = %s
+          AND fact_value_num IS NOT NULL AND fact_value_num != 0
+        """,
+        [chart_id, ayanamsha_id, subj],
+    ).fetchall()
+
+    to_h = ((target_num - lagna_num) % 12) + 1
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        m = re.match(r"from_sign_(\d+)_offset_\d+", r["fact_key"])
+        if not m:
+            continue
+        src_num = int(m.group(1))
+        from_h = ((src_num - lagna_num) % 12) + 1
+        out.append({"from_h": from_h, "to_h": to_h, "strength": float(r["fact_value_num"])})
+    return out
+
+
+def _lookup_d10_karya_activation_facts(
+    conn: Any, chart_id: str, ayanamsha_id: str,
+) -> list[dict[str, Any]]:
+    """
+    Real GA6 lookup: the D10 Karya-bhava row from varga_karya_bhava_per_varga
+    (GA6; ga_vargas_writer). NOTE: GA6 writes this category to `chart_divisionals`,
+    not `chart_facts` — there is no chart_facts.fact_id for these rows, so the
+    cross-reference uses chart_divisionals.id (a real DB row identifier) instead
+    of a recomputed hash. Returns [] if GA6 hasn't written D10 karya-bhava yet.
+    """
+    rows = conn.execute(
+        """
+        SELECT id, fact_value_text, fact_value_num
+        FROM chart_divisionals
+        WHERE chart_id = %s AND ayanamsha_id = %s AND varga = 'D10'
+          AND fact_category = 'varga_karya_bhava_per_varga' AND fact_key = 'karya_bhava'
+        """,
+        [chart_id, ayanamsha_id],
+    ).fetchall()
+    return [
+        {"ref_id": str(r["id"]), "karya": r["fact_value_text"], "house": r["fact_value_num"]}
+        for r in rows
+    ]
+
+
+def _build_static_natal_facts(
+    conn: Any, chart_id: str, ayanamsha_id: str, moon_sign: str, moon_pada: int,
+) -> dict[str, Any]:
+    """
+    Build the per-ayanamsha, cycle-invariant subset of natal_facts from real
+    GA3/GA6 chart data. Cycle/phase-varying facts (GA7 concurrent dasha lords,
+    GA4 tara bala at Janma peak, GA8 argala-during-period) are computed
+    per-cycle in build_ga_sade_sati and merged on top of this dict.
+    """
+    lagna_sign = _read_graha_position_field(conn, chart_id, "LAGNA", "sign").get(ayanamsha_id)
+    saturn_sign = _read_graha_position_field(conn, chart_id, "SAT", "sign").get(ayanamsha_id)
+    saturn_house = _read_graha_position_field(
+        conn, chart_id, "SAT", "house_d1", numeric=True).get(ayanamsha_id)
+    moon_house = _read_graha_position_field(
+        conn, chart_id, "MOON", "house_d1", numeric=True).get(ayanamsha_id)
+    moon_sign_lord = _read_graha_position_field(conn, chart_id, "MOON", "sign_lord").get(ayanamsha_id)
+
+    # Rule 7 input: Saturn yoga karaka is Lagna-sign-dependent (BPHS), not a
+    # single chart's hardcoded answer — real per-chart Lagna lookup + classical table.
+    saturn_yoga_karaka = bool(lagna_sign and YOGA_KARAKA_BY_LAGNA.get(lagna_sign) == "Saturn")
+
+    # Natal Saturn's special drishti (3rd/7th/10th, BPHS Ch.26) onto natal Moon's house.
+    natal_saturn_aspects_natal_moon = False
+    if saturn_house is not None and moon_house is not None:
+        diff = (int(moon_house) - int(saturn_house)) % 12
+        natal_saturn_aspects_natal_moon = diff in (2, 6, 9)
+
+    # Parivartana (mutual sign exchange) between Saturn and Moon's dispositor:
+    # Saturn in Cancer (Moon's own sign) AND Moon in Capricorn/Aquarius (Saturn's).
+    saturn_moon_parivartana = bool(saturn_sign == "Cancer" and moon_sign in ("Capricorn", "Aquarius"))
+
+    # Moon's sign-lord dignity: "strong" = posited in its own sign or exalted (natally).
+    moon_sign_lord_strong = False
+    if moon_sign_lord:
+        lord_subject = PLANET_NAME_TO_SUBJECT.get(moon_sign_lord)
+        if lord_subject:
+            lord_sign = _read_graha_position_field(
+                conn, chart_id, lord_subject, "sign").get(ayanamsha_id)
+            if lord_sign:
+                moon_sign_lord_strong = (
+                    lord_sign in PLANET_OWN_SIGNS.get(moon_sign_lord, [])
+                    or lord_sign == PLANET_EXALTATION_SIGN.get(moon_sign_lord)
+                )
+
+    d10_karya_activation_facts = _lookup_d10_karya_activation_facts(conn, chart_id, ayanamsha_id)
+
+    return {
+        "moon_pada": moon_pada,
+        "lagna_sign": lagna_sign,
+        "saturn_natal_sign": saturn_sign,
+        "saturn_yoga_karaka": saturn_yoga_karaka,
+        "natal_saturn_aspects_natal_moon": natal_saturn_aspects_natal_moon,
+        "saturn_moon_parivartana": saturn_moon_parivartana,
+        "moon_sign_lord_strong": moon_sign_lord_strong,
+        "d10_karya_activation_facts": d10_karya_activation_facts,
+        # No transit-detection engine exists in this writer (or upstream) for
+        # Jupiter/Mars/Rahu transits or eclipses — only Saturn sign-change +
+        # retrograde detection is implemented (_detect_saturn_sign_changes /
+        # _detect_saturn_retrogrades). Left as honest None placeholders rather
+        # than fabricated booleans (ga_panchanga_writer marks the analogous
+        # eclipse gap [EXTERNAL_COMPUTATION_REQUIRED] too — same honest gap).
+        "jupiter_aspects_saturn_during_cycle": None,
+        "mars_aspect_during_period": None,
+        "jupiter_aspect_during_period": None,
+        "saturn_rahu_axis_flag": None,
+        "eclipse_during_period": None,
+        # "Activation during period" would require mapping transiting Saturn
+        # into the D10 varga house, which no upstream writer computes — the
+        # fact_id cross-refs above are real; the activation flag stays honest None.
+        "d10_karya_bhava_activation_flag": None,
+    }
+
+
+def _verif_for_text(value: Any) -> str:
+    """
+    Rows built from a real upstream join get 'two_pass_verified' (the file's
+    existing per-row default); rows still carrying a PENDING_* fallback
+    (upstream lookup returned nothing) get 'single' instead, so the row is not
+    falsely stamped as verified when it silently used a placeholder.
+    """
+    if isinstance(value, str) and value.startswith("PENDING_"):
+        return "single"
+    return "two_pass_verified"
+
+
+def _verif_for_maybe_none(value: Any) -> str:
+    """Same as _verif_for_text but for facts that are honestly None (not text)."""
+    return "single" if value is None else "two_pass_verified"
+
+
 # ── INSERT chart_facts rows ───────────────────────────────────────────────────
 
 def _insert_rows(conn: Any, rows: list[dict]) -> int:
@@ -1464,32 +1799,77 @@ def build_ga_sade_sati(
                 summary["divergent_flagged"] = True
                 raise RuntimeError(msg)
 
-            # Build natal_facts scaffold (enriched from GA7 at build time;
-            # defaults for non-DB keys used when upstream join unavailable)
-            natal_facts: dict[str, Any] = {
-                "moon_pada": moon_pada,
-                "saturn_yoga_karaka": False,  # Aries Lagna — Saturn is NOT yoga karaka
-                "natal_saturn_aspects_natal_moon": False,
-                "saturn_moon_parivartana": False,
-                "moon_sign_lord_strong": False,
-                "jupiter_aspects_saturn_during_cycle": False,
-                "d10_karya_bhava_activation_flag": False,
-                "d10_karya_activation_facts": [],
-                "argala_during_period": [],
-                "tara_bala_at_janma_peak": "PENDING_GA4_LOOKUP",
-                "mars_aspect_during_period": False,
-                "jupiter_aspect_during_period": False,
-                "saturn_rahu_axis_flag": False,
-                "eclipse_during_period": False,
-                "concurrent_saturn_return": False,
-            }
+            # Build the cycle-invariant subset of natal_facts from real GA3/GA6
+            # chart data (Lagna/Saturn/Moon sign+house, D10 Karya fact refs).
+            # See _build_static_natal_facts for the per-key sourcing/rationale.
+            static_natal_facts = _build_static_natal_facts(
+                conn, chart_id, ayanamsha_id, moon_sign, moon_pada,
+            )
+            lagna_sign = static_natal_facts.get("lagna_sign")
 
             # ── Step 4: Emit all rows ─────────────────────────────────────────
             all_rows: list[dict] = []
             for cycle in cycles:
+                # Per-cycle/per-phase facts (GA7 concurrent dasha lords, GA4 tara
+                # bala at Janma peak, GA8 argala-during-period) vary by cycle —
+                # each cycle gets its own enriched copy of the static baseline
+                # rather than reusing one dict across every cycle in this ayanamsha.
+                cycle_natal_facts: dict[str, Any] = dict(static_natal_facts)
+
+                vis_dt = cycle["vishakha_entry"]
+                jan_dt = cycle["janma_entry"]
+                anu_dt = cycle["anumukha_entry"]
+                cycle_end_dt = cycle["cycle_end"]
+                cycle_mid_dt = vis_dt + (cycle_end_dt - vis_dt) / 2
+                janma_mid_dt = jan_dt + (anu_dt - jan_dt) / 2
+
+                # Rule 8 input: mahadasha lord at cycle mid (real GA7 lookup).
+                maha_at_mid = _lookup_dasha_lord_at(
+                    conn, chart_id, ayanamsha_id, "vimshottari", 1, cycle_mid_dt,
+                )
+                if maha_at_mid is not None:
+                    cycle_natal_facts["dasha_lord_at_cycle_mid"] = maha_at_mid
+
+                # Concurrent dasha lords at cycle start (7 keys, real GA7 lookup).
+                for dk, system_id, level_n in DASHA_LOOKUP_SPECS:
+                    val = _lookup_dasha_lord_at(
+                        conn, chart_id, ayanamsha_id, system_id, level_n, vis_dt,
+                    )
+                    if val is not None:
+                        cycle_natal_facts[f"concurrent_{dk}_at_cycle_start"] = val
+
+                # Concurrent dasha lords per phase (7 keys x 3 phases, real GA7 lookup).
+                for phase_lower, phase_dt in (
+                    ("vishakha", vis_dt), ("janma", jan_dt), ("anumukha", anu_dt),
+                ):
+                    for dk, system_id, level_n in DASHA_LOOKUP_SPECS:
+                        val = _lookup_dasha_lord_at(
+                            conn, chart_id, ayanamsha_id, system_id, level_n, phase_dt,
+                        )
+                        if val is not None:
+                            cycle_natal_facts[f"concurrent_{dk}_at_{phase_lower}"] = val
+
+                # Tara bala at Janma (peak) phase midpoint — real GA4 lookup +
+                # real Saturn-nakshatra ephemeris (see _lookup_tara_bala_for_saturn_at).
+                tara_val = _lookup_tara_bala_for_saturn_at(
+                    conn, chart_id, ayanamsha_id, janma_mid_dt,
+                )
+                if tara_val is not None:
+                    cycle_natal_facts["tara_bala_at_janma_peak"] = tara_val
+
+                # Argala subset on the sign Saturn transits at the Janma (peak)
+                # phase — real GA8 lookup, converted to house-pairs via the real
+                # natal Lagna. Used as the representative snapshot for all three
+                # phases of this cycle (argala_natal_matrix is a static natal
+                # fact; there is no per-phase-varying argala source upstream).
+                if lagna_sign and cycle.get("jan_sign"):
+                    cycle_natal_facts["argala_during_period"] = _lookup_argala_for_sign(
+                        conn, chart_id, ayanamsha_id, cycle["jan_sign"], lagna_sign,
+                    )
+
                 cycle_rows = _emit_cycle_rows(
                     chart_id, ayanamsha_id, build_id,
-                    cycle, retros, natal_facts, computed_at,
+                    cycle, retros, cycle_natal_facts, computed_at,
                 )
                 all_rows.extend(cycle_rows)
 

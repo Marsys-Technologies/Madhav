@@ -100,6 +100,166 @@ _HOUSE_NUM_PAT = rf"(?:{_ORDINAL_PAT}|{_ABBR_PAT})"
 _RESULT_PAT = RESULT_WORDS
 
 
+# ── Yoga name detection (JL-011 / BA Phase 2.5 J1) ─────────────────────────────
+# Deterministic, no LLM/fuzzy matching (B.10). Two independent detectors feed a
+# single per-window canonical_id resolution:
+#   1. Bigram rule (ALL rule text): "<word> Yoga" / "<word> yoga", any word.
+#   2. Tier-1 bare-name allowlist: 29 ratified proper nouns may match WITHOUT
+#      a trailing "Yoga" (bare mention alone is enough).
+# Hard-exclusion roots (rule 3) are respected by construction: they are common
+# Sanskrit/English nouns that only ever appear in the Tier-1 allowlist as part
+# of a longer compound phrase (e.g. "Kala Sarpa"), never bare on their own —
+# see the module-load assertion below.
+
+# Each entry is (display_name, canonical_id_override). canonical_id_override
+# is None when the naive `_yoga_slug(display_name)` already matches the
+# `brahma_yoga_catalog.canonical_id` seeded by l0_yogas.py; it is an explicit
+# string where the catalog uses a longer/different id than the naive slug
+# would produce (verified against l0_yogas.py TIER1_CORE_YOGAS/etc. 2026-07-05
+# — do not "simplify" this back to a bare name list without re-checking the
+# catalog, or these five entries silently null out via the FK-validation
+# fallback in seed_rules()).
+TIER1_YOGA_NAMES: list[tuple[str, str | None]] = [
+    ("Gajakesari", None),
+    ("Neechabhanga", "neecha_bhanga_raja_yoga"),
+    ("Vipareeta Raja", None),
+    ("Ruchaka", None),
+    ("Bhadra", None),
+    ("Hamsa", None),
+    ("Malavya", None),
+    ("Sasa", None),
+    ("Sunapha", None),
+    ("Anapha", None),
+    ("Durudhara", None),
+    ("Kemadruma", "kemadruma_aristha"),
+    ("Vesi", None),
+    ("Vasi", None),
+    ("Ubhayachari", None),
+    ("Budha-Aditya", None),
+    ("Chandra-Mangala", None),
+    ("Kala Sarpa", "kala_sarpa_yoga"),
+    ("Guru-Chandala", None),
+    ("Saraswati", None),
+    ("Amala", None),
+    ("Parijata", None),
+    ("Adhi", "adhi_yoga"),
+    ("Shankha", None),
+    ("Bheri", None),
+    ("Mridanga", "mridanga_yoga"),
+    ("Parvata", None),
+    ("Kahala", None),
+    ("Vasumati", None),
+    ("Chamara", None),
+]
+
+# Common-noun roots that must NEVER be treated as a bare yoga reference —
+# only the bigram form "<root> Yoga"/"<root> yoga" is a valid match
+# (JL-011 rule 3). These would over-match badly if matched bare (e.g. "raja"
+# appears constantly in unrelated contexts).
+YOGA_BARE_MATCH_EXCLUSIONS = {
+    "raja", "dhana", "arishta", "daridra", "mala", "sarpa", "yava",
+    "danda", "nauka", "chatra", "gada", "hala",
+}
+
+
+def _yoga_slug(name: str) -> str:
+    """Deterministic canonical_id slug: lowercase; spaces/hyphens -> '_'."""
+    s = name.strip().lower()
+    s = re.sub(r"[\s\-]+", "_", s)
+    s = re.sub(r"[^a-z0-9_]", "", s)
+    return s
+
+
+# Defensive self-check: no Tier-1 allowlist entry may itself equal a hard-
+# excluded root standing alone (would silently violate rule 3).
+assert not ({n.lower() for n, _ in TIER1_YOGA_NAMES} & YOGA_BARE_MATCH_EXCLUSIONS), (
+    "Tier-1 yoga allowlist must never contain a bare hard-excluded root (JL-011 rule 3)"
+)
+
+# Rule 1: adjacent bigram "<word> Yoga"/"<word> yoga" — applies to ALL text.
+_YOGA_BIGRAM_RE = re.compile(r'\b([A-Za-z][A-Za-z\-]*)\s+([Yy]oga)\b')
+
+# Rule 2: Tier-1 bare-name allowlist — literal phrase match, "Yoga" optional.
+_TIER1_YOGA_PATTERNS: list[tuple[str, str, re.Pattern]] = [
+    (
+        name,
+        canonical_id_override or _yoga_slug(name),
+        re.compile(r'\b' + re.escape(name).replace(r'\ ', r'\s+') + r'\b', re.IGNORECASE),
+    )
+    for name, canonical_id_override in TIER1_YOGA_NAMES
+]
+
+
+def detect_yoga_reference(text: str) -> dict:
+    """
+    Deterministic yoga-name detection over a small rule-local text window
+    (JL-011 / BA Phase 2.5 J1). No LLM, no fuzzy/similarity matching.
+
+    Runs two independent detectors over `text`:
+      1. Bigram rule: "<word> Yoga"/"<word> yoga" anywhere in the window.
+      2. Tier-1 bare-name allowlist: literal mention of any of the 29
+         ratified proper nouns, with or without a trailing "Yoga".
+
+    Collision policy (rule 4): if the window's matches resolve to MORE THAN
+    ONE distinct canonical_id, the reference is genuinely ambiguous — e.g.
+    "Kala Sarpa Yoga" triggers both the Tier-1 phrase "Kala Sarpa"
+    (-> kala_sarpa_yoga) AND the bigram "Sarpa Yoga" (-> sarpa). Per JL-011
+    this resolves to NULL, never a guess; all candidates are logged so the
+    ambiguity is auditable rather than silently dropped.
+
+    Returns:
+        {
+          "yoga_canonical_id": str | None,
+          "yoga_match_surface": str | None,   # literal matched span
+          "yoga_ambiguous": bool,
+          "yoga_candidates": list[dict],      # [{surface, canonical_id, method}]
+        }
+    """
+    candidates: list[dict] = []
+
+    for m in _YOGA_BIGRAM_RE.finditer(text):
+        candidates.append({
+            "surface": m.group(0),
+            "canonical_id": _yoga_slug(m.group(1)),
+            "method": "bigram",
+        })
+
+    for name, canonical_id, pat in _TIER1_YOGA_PATTERNS:
+        m = pat.search(text)
+        if m:
+            candidates.append({
+                "surface": m.group(0),
+                "canonical_id": canonical_id,
+                "method": "tier1_bare",
+            })
+
+    distinct_ids = {c["canonical_id"] for c in candidates}
+
+    if not distinct_ids:
+        return {
+            "yoga_canonical_id": None,
+            "yoga_match_surface": None,
+            "yoga_ambiguous": False,
+            "yoga_candidates": [],
+        }
+
+    if len(distinct_ids) > 1:
+        return {
+            "yoga_canonical_id": None,
+            "yoga_match_surface": None,
+            "yoga_ambiguous": True,
+            "yoga_candidates": candidates,
+        }
+
+    first = candidates[0]
+    return {
+        "yoga_canonical_id": first["canonical_id"],
+        "yoga_match_surface": first["surface"],
+        "yoga_ambiguous": False,
+        "yoga_candidates": candidates,
+    }
+
+
 # ── Rule dataclass ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -1169,11 +1329,21 @@ def _normalize_ocr(text: str) -> str:
 def extract_rules_from_chunk(
     chunk: dict,
     valid_text_ids: set[str],
+    pattern_match_counts: dict[str, int] | None = None,
+    pattern_yield_counts: dict[str, int] | None = None,
 ) -> Generator[dict, None, None]:
     """
     Run all patterns against a single chunk.
     Yields dicts ready for DB insertion (all columns of sutravali_rules).
     Each dict has a deterministic rule_id.
+
+    If provided, `pattern_match_counts` is incremented once per raw regex
+    match (before dedup/quality filtering) and `pattern_yield_counts` is
+    incremented once per rule actually yielded (after dedup + REVIEW
+    threshold) — both keyed by pattern name. This makes it possible to tell
+    apart "pattern never matches this corpus" from "pattern matches but
+    every match is filtered out downstream" per pattern, instead of only
+    seeing an aggregate rows_below_threshold count.
     """
     text_id = chunk["text_id"]
     verse_ref = chunk["verse_ref"]
@@ -1188,6 +1358,9 @@ def extract_rules_from_chunk(
 
     for pat_name, pat_re, extract_fn in PATTERNS:
         for m in pat_re.finditer(content):
+            if pattern_match_counts is not None:
+                pattern_match_counts[pat_name] = pattern_match_counts.get(pat_name, 0) + 1
+
             try:
                 result = extract_fn(m, content)
             except Exception as e:
@@ -1212,7 +1385,44 @@ def extract_rules_from_chunk(
             if quality < QUALITY_THRESHOLD_REVIEW:
                 continue  # reject entirely
 
+            if pattern_yield_counts is not None:
+                pattern_yield_counts[pat_name] = pattern_yield_counts.get(pat_name, 0) + 1
+
             rule_id = _make_rule_id(text_id, verse_ref, antecedent, prediction)
+
+            # Yoga-name detection (JL-011 / BA Phase 2.5 J1): run over a local
+            # window around the matched span (not the whole chunk) so a bigram
+            # or Tier-1 bare name occurring in/near this specific rule's match
+            # is attributed to THIS rule, not every rule in the chunk. A
+            # pattern's own extract_fn may already have set yoga_canonical_id
+            # (none currently do) — respect that if present rather than
+            # overwriting it.
+            if "yoga_canonical_id" not in result:
+                yoga_window_start = max(0, m.start() - 40)
+                yoga_window_end = min(len(content), m.end() + 160)
+                yoga_result = detect_yoga_reference(content[yoga_window_start:yoga_window_end])
+                result["yoga_canonical_id"] = yoga_result["yoga_canonical_id"]
+                result["_yoga_ambiguous"] = yoga_result["yoga_ambiguous"]
+                result["_yoga_candidates"] = yoga_result["yoga_candidates"]
+                if yoga_result["yoga_ambiguous"]:
+                    logger.debug(
+                        "[rules] ambiguous yoga reference chunk=%s pattern=%s candidates=%s",
+                        chunk_uuid, pat_name, yoga_result["yoga_candidates"],
+                    )
+
+            pass_log_entry = {
+                "pattern": result["pattern"],
+                "match_text": result["match_text"],
+                "chunk_id": chunk_uuid,
+            }
+            if result.get("_yoga_ambiguous"):
+                # Ambiguity is logged inline in extraction_pass_log (no new
+                # DB column — sutravali_rules.extraction_pass_log is already
+                # the generic per-rule audit trail; see N.4 surgical-migrations
+                # principle) so a NULL yoga_canonical_id is distinguishable
+                # from "no yoga reference found" vs. "collision, discarded".
+                pass_log_entry["yoga_ambiguous"] = True
+                pass_log_entry["yoga_candidates"] = result["_yoga_candidates"]
 
             yield {
                 "rule_id": str(rule_id),
@@ -1223,11 +1433,7 @@ def extract_rules_from_chunk(
                 "prediction_jsonb": json.dumps(prediction),
                 "confidence": quality,
                 "extracted_by": EXTRACTED_BY,
-                "extraction_pass_log": json.dumps([{
-                    "pattern": result["pattern"],
-                    "match_text": result["match_text"],
-                    "chunk_id": chunk_uuid,
-                }]),
+                "extraction_pass_log": json.dumps([pass_log_entry]),
                 "quality_score": quality,
                 "yoga_canonical_id": result.get("yoga_canonical_id"),
                 "dasha_system_id": result.get("dasha_system_id"),
@@ -1243,7 +1449,7 @@ def seed_rules(
     build_id: str | None = None,
     dry_run: bool = False,
     autocommit: bool = True,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """
     Extract rules from classical_text_chunks and insert into sutravali_rules.
 
@@ -1255,6 +1461,12 @@ def seed_rules(
         chunks_processed: total chunks iterated
         chunks_with_zero_extractions: coverage gap count
         upstream_chunks: total rows in classical_text_chunks
+        pattern_match_counts: per-pattern raw regex match counts (dict[str, int]),
+            keyed by PATTERNS name (e.g. "dasha_rule"), before dedup/quality filtering
+        pattern_yield_counts: per-pattern counts of rules actually yielded
+            (dict[str, int]) — a pattern with matches>0 but yield==0 is
+            matching-but-filtered; matches==0 means the regex never fires
+            against the current corpus at all
     """
     with conn.cursor() as cur:
         # Validate table exists
@@ -1327,6 +1539,8 @@ def seed_rules(
     rows_rejected = 0
     chunks_processed = 0
     chunks_with_zero_extractions = 0
+    pattern_match_counts: dict[str, int] = {}
+    pattern_yield_counts: dict[str, int] = {}
 
     # Idempotency: delete all python-extracted rules before re-seed so stale
     # rules from changed regex patterns or corpus edits don't survive.
@@ -1357,7 +1571,11 @@ def seed_rules(
             with conn.cursor() as insert_cur:
                 for chunk in batch:
                     chunk_rule_count = 0
-                    for rule_row in extract_rules_from_chunk(chunk, valid_text_ids):
+                    for rule_row in extract_rules_from_chunk(
+                        chunk, valid_text_ids,
+                        pattern_match_counts=pattern_match_counts,
+                        pattern_yield_counts=pattern_yield_counts,
+                    ):
                         quality = rule_row.pop("_quality")
 
                         # FK validation: dasha_system_id
@@ -1445,6 +1663,29 @@ def seed_rules(
         chunks_processed,
     )
 
+    # Per-pattern match/yield report — makes it visible whether a registered
+    # pattern (e.g. dasha_rule/P7) is never matching the live corpus at all
+    # vs. matching-but-filtered-below-threshold on every hit.
+    for pat_name, _pat_re, _extract_fn in PATTERNS:
+        matched = pattern_match_counts.get(pat_name, 0)
+        yielded = pattern_yield_counts.get(pat_name, 0)
+        if matched == 0:
+            logger.warning(
+                "[rules] pattern '%s' matched 0 times against this corpus (never fires)",
+                pat_name,
+            )
+        elif yielded == 0:
+            logger.warning(
+                "[rules] pattern '%s' matched %d times but yielded 0 rules "
+                "(all filtered below QUALITY_THRESHOLD_REVIEW)",
+                pat_name, matched,
+            )
+        else:
+            logger.info(
+                "[rules] pattern '%s': matched=%d yielded=%d",
+                pat_name, matched, yielded,
+            )
+
     if autocommit:
         conn.commit()
 
@@ -1456,4 +1697,6 @@ def seed_rules(
         "chunks_processed": chunks_processed,
         "chunks_with_zero_extractions": chunks_with_zero_extractions,
         "upstream_chunks": upstream_chunks,
+        "pattern_match_counts": pattern_match_counts,
+        "pattern_yield_counts": pattern_yield_counts,
     }

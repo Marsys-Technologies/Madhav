@@ -190,8 +190,9 @@ def _run(store):
     conn = FakeConn(store)
     writer = KaSangamWriter()
     result = writer.run(FakeCtx(conn))
-    # horizon_tier is params[-2]; primary_domain (B4-src) was appended last → params[-1].
-    tiers = [ins['params'][-2] for ins in store['inserts']]
+    # INSERT tuple tail: ..., horizon_tier, domain, confidence_label_relative, tier_basis
+    # (JL-014 appended the last two — see test_ka_sangam_a3_fixes.py for the same fix).
+    tiers = [ins['params'][-4] for ins in store['inserts']]
     return result, conn, tiers
 
 

@@ -60,6 +60,22 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect('bo_samvada' in EXPLICIT_CLEAR_OPS).toBe(true)
     expect(EXPLICIT_CLEAR_OPS['bo_samvada']).toBeNull()
   })
+
+  it('mi_abhilekha preserves answered journal rows (JL-020 IRREPLACEABLE)', () => {
+    const ops = EXPLICIT_CLEAR_OPS['mi_abhilekha']
+    expect(ops, 'mi_abhilekha must have an explicit clear spec').toBeTruthy()
+    expect(ops).toHaveLength(1)
+    expect(ops![0].sql).toMatch(/DELETE FROM mimamsa_journal/)
+    expect(ops![0].sql).toMatch(/WHERE chart_id = \$1/)
+    expect(ops![0].sql).toMatch(/answered_at IS NULL/)
+  })
+
+  it('mi_bhavisya preserves recorded prediction outcomes (JL-020 IRREPLACEABLE)', () => {
+    const ops = EXPLICIT_CLEAR_OPS['mi_bhavisya'] ?? []
+    const predictionsOp = ops.find(op => /mimamsa_predictions/.test(op.sql))
+    expect(predictionsOp, 'mi_bhavisya must clear mimamsa_predictions').toBeTruthy()
+    expect(predictionsOp!.sql).toMatch(/outcome_observed IS NULL/)
+  })
 })
 
 describe('deriveDeleteSqlFromCountSql', () => {

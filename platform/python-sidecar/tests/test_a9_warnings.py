@@ -417,6 +417,30 @@ class TestW4PramanaStubsMarked:
         assert score == 0.5, f"_score_manifestation should return 0.5 (stub), got {score}"
         assert channel is None, f"_score_manifestation channel should be None, got {channel}"
 
+    # ── JL-018: manifestation DROPPED from the composite (not just marked) ──
+
+    def test_default_weights_have_no_manifestation_key(self):
+        mod = self._load()
+        assert "manifestation" not in mod._DEFAULT_WEIGHTS, (
+            "JL-018: manifestation must be dropped from _DEFAULT_WEIGHTS entirely"
+        )
+
+    def test_default_weights_sum_to_one(self):
+        mod = self._load()
+        assert mod._DEFAULT_WEIGHTS.keys() == {"timing", "magnitude", "domain", "falsifier"}
+        assert sum(mod._DEFAULT_WEIGHTS.values()) == pytest.approx(1.0, abs=1e-6)
+
+    def test_composite_ignores_manifestation_even_if_still_scored(self):
+        """score_manifestation is still WRITTEN (NOT NULL column) but must
+        contribute zero to the composite once its weight is dropped."""
+        mod = self._load()
+        scores_with_mfn = {"timing": 0.8, "magnitude": 0.8, "domain": 0.8,
+                            "falsifier": 0.8, "manifestation": 0.0}
+        scores_without_mfn = {k: v for k, v in scores_with_mfn.items() if k != "manifestation"}
+        composite_with = mod._composite(scores_with_mfn, mod._DEFAULT_WEIGHTS)
+        composite_without = mod._composite(scores_without_mfn, mod._DEFAULT_WEIGHTS)
+        assert composite_with == pytest.approx(composite_without)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # W5 — mi_darshana: embeddings substep emits [EXTERNAL_COMPUTATION_REQUIRED]

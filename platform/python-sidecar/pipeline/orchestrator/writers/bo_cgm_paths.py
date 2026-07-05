@@ -33,11 +33,39 @@ from . import WriterBase, ContextSpec, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-ENGINE_VERSION = "bo_cgm_paths_v1.0"
+ENGINE_VERSION = "bo_cgm_paths_v1.1"
 SNAPSHOT_TYPE  = "static_natal"
 PATH_TYPE      = "dispositor_chain"
 MAX_CHAIN_DEPTH = 9
-PATH_STRENGTH_PLACEHOLDER = 0.5   # calibrated in L4 Phala; placeholder for now
+# JL-013 (BA Phase 2.5 J4): path_strength = PRODUCT of constituent edges'
+# computed_strength — never an average (a chain is only as strong as its
+# weakest-compounding link; averaging would let one broken edge hide behind
+# strong ones). This placeholder now only applies when NO edge in the chain
+# has a computed_strength at all (honest fallback, not a fabricated value).
+PATH_STRENGTH_PLACEHOLDER = 0.5   # fallback only when zero edges carry computed_strength
+
+
+def _path_strength(edge_ids: list[str], edge_strength_by_id: dict[str, Any]) -> float:
+    """PRODUCT of constituent edges' computed_strength (JL-013).
+
+    A zero-hop (self-ruling) chain has no edges to weaken it — full strength (1.0).
+    If some edges lack computed_strength, the product uses only the known ones
+    (still a real product, not an average); only falls back to the documented
+    placeholder when NONE of the chain's edges have a computed_strength.
+    """
+    if not edge_ids:
+        return 1.0
+    known = [
+        float(edge_strength_by_id[eid])
+        for eid in edge_ids
+        if edge_strength_by_id.get(eid) is not None
+    ]
+    if not known:
+        return PATH_STRENGTH_PLACEHOLDER
+    product = 1.0
+    for s in known:
+        product *= s
+    return round(product, 6)
 
 CANONICAL_AYAS = [
     "lahiri_chitrapaksha", "raman", "krishnamurti",
@@ -264,13 +292,25 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
 
     node_by_id: dict[str, dict] = {str(n["node_id"]): n for n in all_nodes}
     edge_by_from: dict[str, list[dict]] = {}
+    edge_strength_by_id: dict[str, Any] = {}
     for e in all_edges:
         fid = str(e["from_node_id"])
         if fid not in edge_by_from:
             edge_by_from[fid] = []
         edge_by_from[fid].append(e)
+        edge_strength_by_id[str(e["edge_id"])] = e.get("computed_strength")
 
     chains = _build_dispositor_chains(graha_nodes, edge_by_from, node_by_id)
+
+    computed_strengths = [
+        _path_strength(chain["edge_chain"], edge_strength_by_id) for chain in chains
+    ]
+    if len(computed_strengths) > 1 and len(set(computed_strengths)) == 1:
+        logger.warning(
+            "[bo_cgm_paths] %s — degeneracy gate: all %d path_strength values "
+            "collapsed to the constant %s — check edge computed_strength population",
+            aya, len(computed_strengths), computed_strengths[0],
+        )
 
     inserted = 0
     with conn.cursor() as cur:
@@ -288,7 +328,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
                 "path_node_ids_array": chain["node_chain"],
                 "path_edge_ids_array": chain["edge_chain"] or [],
                 "path_length": len(chain["node_chain"]) - 1,
-                "path_strength": PATH_STRENGTH_PLACEHOLDER,
+                "path_strength": _path_strength(chain["edge_chain"], edge_strength_by_id),
                 "is_final_dispositor": chain["is_final_dispositor"],
                 "convergence_count": 1,
                 "centrality_formula_version": ENGINE_VERSION,

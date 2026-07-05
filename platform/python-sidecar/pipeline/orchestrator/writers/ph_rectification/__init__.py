@@ -27,6 +27,7 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ph_rectification.engine import (
     AYANAMSHAS,
     AUTO_ACTION,
+    NATIVE_CHART_ID,
     run_rectification,
     select_best,
 )
@@ -87,6 +88,23 @@ class PhRectificationWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # NEVER commit or close — orchestrator owns the txn
         chart_id = ctx.config["chart_id"]
+
+        # JL-017 (BA Phase 2.5 #11, CONTAMINATION-CLASS): the engine's embedded
+        # TRAINING_EVENTS + natal dasha-lord positions are the native's own LEL
+        # events and chart facts. No other chart has a training-event corpus in
+        # this system yet, so scoring any other chart against them would be
+        # silently attributing the native's life history to a stranger's chart —
+        # exactly the plausible-but-wrong failure class this audit hunts. Fail
+        # loudly, before any DB writes, instead of guessing.
+        if chart_id != NATIVE_CHART_ID:
+            raise ValueError(
+                f"ph_rectification: no chart-specific LEL training-event corpus exists for "
+                f"chart_id={chart_id!r}. The engine's TRAINING_EVENTS + natal dasha-lord "
+                f"positions belong exclusively to the native chart ({NATIVE_CHART_ID}); "
+                f"scoring another chart against them would silently misattribute the "
+                f"native's life events (JL-017). Refusing rather than guessing."
+            )
+
         birth_params = resolve_birth_params(chart_id, ctx.config.get("birth_params"))
 
         # Derive LOCAL birth datetime and UTC birth datetime from birth_params.

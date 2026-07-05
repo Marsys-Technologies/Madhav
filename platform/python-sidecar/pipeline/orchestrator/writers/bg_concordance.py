@@ -95,16 +95,16 @@ class ConcordanceWriter(WriterBase):
             )
 
         topic_meta: dict[str, tuple[str, str]] = {
-            row[0]: (row[1], row[2]) for row in topic_rows
+            row["canonical_id"]: (row["name"], row["category"]) for row in topic_rows
         }
         logger.info("[bg_concordance] loaded %d topics from reference_topic_tags", len(topic_meta))
 
         # ── Step 2: Check upstream classical_text_chunks ──────────────────────
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT COUNT(*) FROM classical_text_chunks WHERE topic_tag IS NOT NULL"
+                "SELECT COUNT(*) AS count FROM classical_text_chunks WHERE topic_tag IS NOT NULL"
             )
-            tagged_chunks = cur.fetchone()[0]
+            tagged_chunks = cur.fetchone()["count"]
 
         if tagged_chunks == 0:
             logger.warning(
@@ -133,7 +133,8 @@ class ConcordanceWriter(WriterBase):
                 group_rows = cur.fetchall()
             # Deduplicate to (topic_id, school) pairs
             pairs: set[tuple[str, str]] = set()
-            for (topic_tag, text_id, _) in group_rows:
+            for row in group_rows:
+                topic_tag, text_id = row["topic_tag"], row["text_id"]
                 if topic_tag in topic_meta:
                     school = _school_for(text_id)
                     pairs.add((topic_tag, school))
@@ -164,7 +165,8 @@ class ConcordanceWriter(WriterBase):
         ] = defaultdict(lambda: {"text_ids": set(), "n_chunks": 0})
 
         skipped_unknown_topic = 0
-        for (topic_tag, text_id, n_chunks) in chunk_agg_rows:
+        for row in chunk_agg_rows:
+            topic_tag, text_id, n_chunks = row["topic_tag"], row["text_id"], row["n_chunks"]
             if topic_tag not in topic_meta:
                 skipped_unknown_topic += 1
                 continue
@@ -187,7 +189,8 @@ class ConcordanceWriter(WriterBase):
             rule_rows = cur.fetchall()
 
         rules_by_text: dict[str, list[str]] = defaultdict(list)
-        for (rule_id, text_id) in rule_rows:
+        for row in rule_rows:
+            rule_id, text_id = row["rule_id"], row["text_id"]
             if text_id:
                 rules_by_text[text_id].append(rule_id)
 
@@ -288,12 +291,12 @@ class ConcordanceWriter(WriterBase):
 
         # ── Step 6: Verify final count ────────────────────────────────────────
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM classical_attributions")
-            final_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT topic_id) FROM classical_attributions")
-            distinct_topics = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT school) FROM classical_attributions")
-            distinct_schools = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) AS count FROM classical_attributions")
+            final_count = cur.fetchone()["count"]
+            cur.execute("SELECT COUNT(DISTINCT topic_id) AS count FROM classical_attributions")
+            distinct_topics = cur.fetchone()["count"]
+            cur.execute("SELECT COUNT(DISTINCT school) AS count FROM classical_attributions")
+            distinct_schools = cur.fetchone()["count"]
 
         duration = time.time() - t0
         logger.info(

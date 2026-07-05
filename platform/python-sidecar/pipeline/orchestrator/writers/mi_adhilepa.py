@@ -80,6 +80,53 @@ def _signal_family_key(sig: dict) -> str | None:
     return "fam_msr_signal"
 
 
+def _fact_family_key(fact_category: str | None) -> str | None:
+    """
+    Map a chart_facts.fact_category value to its mimamsa_signal_families
+    family_id, mirroring _signal_family_key's target_ref semantics but
+    driven by fact_category substrings/prefixes — chart_facts carries no
+    subsystem column, so classification has to work off the real live
+    category strings (verified against canonical chart 482012f1,
+    2026-07-05; see fact_category_ownership seeded in migration 410 for
+    the ga_structural cross-reference).
+
+    Precedence order (first match wins):
+      'ashtakavarga' substring                    → fam_ashtakavarga
+      'dasha' substring                           → fam_dasha_period
+      'yoga' substring                            → fam_yoga
+      '_per_varga' suffix / 'vargottama' substring → fam_divisional
+      'graha_'/'bhava_'/'house_' prefix, or
+      'dignity'/'shadbala'/'avastha'/'position'
+      substring                                   → fam_graha_natal
+      (anything else — aspect/argala/panchanga/    → None (unmatched;
+      kp/sambandha/etc. composite facts)             overlay skips it,
+                                                      preserving the
+                                                      "high-impact facts
+                                                      only" selectivity
+                                                      the prior narrow
+                                                      filter intended)
+
+    Deliberately does NOT fall back to a catch-all family (e.g.
+    fam_msr_signal) the way _signal_family_key does for MSR signals:
+    fam_msr_signal carries an active multiplier, so a catch-all here
+    would silently overlay every one of the ~138k chart_facts rows per
+    chart instead of the intended high-impact subset.
+    """
+    cat = fact_category or ""
+    if "ashtakavarga" in cat:
+        return "fam_ashtakavarga"
+    if "dasha" in cat:
+        return "fam_dasha_period"
+    if "yoga" in cat:
+        return "fam_yoga"
+    if cat.endswith("_per_varga") or "vargottama" in cat:
+        return "fam_divisional"
+    if (cat.startswith("graha_") or cat.startswith("bhava_") or cat.startswith("house_")
+            or "dignity" in cat or "shadbala" in cat or "avastha" in cat or "position" in cat):
+        return "fam_graha_natal"
+    return None
+
+
 def _table_exists(conn, name: str) -> bool:
     with conn.cursor() as cur:
         cur.execute(
@@ -200,18 +247,30 @@ class MiAdhilepaWriter(WriterBase):
                 logger.info("[mi_adhilepa] %d signal overlays", len(sig_rows))
 
         # ── Fact overlays (chart_facts — high-impact facts only) ─────────────
+        # NOTE: 'graha'/'yoga' are NOT real chart_facts.fact_category values
+        # (verified live against canonical chart 482012f1, 2026-07-05: real
+        # values are things like 'graha_position', 'yoga_label',
+        # 'ashtakavarga_bindu', 'graha_dignity_per_varga', …). The old
+        # `fact_category IN ('graha', 'yoga')` filter therefore matched zero
+        # rows, ever — and its LIMIT 200 with no ORDER BY was additionally
+        # nondeterministic. Fixed by selecting the full per-chart fact set
+        # (deterministically ordered) and classifying in Python via
+        # _fact_family_key, the same pattern already used for the signal
+        # overlay loop above. This also naturally picks up dasha/divisional/
+        # ashtakavarga facts that never received an overlay row before.
         if _table_exists(conn, "chart_facts"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     "SELECT fact_id, fact_category FROM chart_facts WHERE chart_id = %s "
-                    "AND fact_category IN ('graha', 'yoga') LIMIT 200",
+                    "ORDER BY fact_id",
                     (chart_id,),
                 )
                 facts = cur.fetchall()
 
             fact_rows = []
             for fact in facts:
-                mult = multipliers.get("fam_graha_natal" if fact["fact_category"] == "graha" else "fam_yoga")
+                family_key = _fact_family_key(fact["fact_category"])
+                mult = multipliers.get(family_key) if family_key else None
                 if not mult:
                     continue
                 fact_rows.append(_overlay_row(

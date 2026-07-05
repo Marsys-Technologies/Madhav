@@ -20,6 +20,7 @@ from datetime import date, datetime
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from pipeline.orchestrator.writers.mi_adhilepa import _signal_family_key
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,8 @@ class MiBhavisyaWriter(WriterBase):
         if _table_exists(conn, "bodha_msr_signals"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT signal_id, computed_salience, domains_affected_array "
+                    "SELECT signal_id, computed_salience, domains_affected_array, "
+                    "signal_type_class, source_subsystem, source_l1_asset "
                     "FROM bodha_msr_signals WHERE chart_id = %s "
                     "ORDER BY computed_salience DESC NULLS LAST",
                     (chart_id,),
@@ -100,11 +102,16 @@ class MiBhavisyaWriter(WriterBase):
                     sid = str(r["signal_id"])
                     salience = float(r["computed_salience"] or 1.0)
                     msr_signals[sid] = dict(r)
+                    # Resolve the pooled evidence-family id (fam_yoga, fam_graha_natal,
+                    # etc.) via the same mapping mi_adhilepa already uses, so downstream
+                    # hierarchical-shrinkage pooling (mi_gunanaka, mi_pariksha) operates on
+                    # real signal families instead of falling through to signal_id (n=1).
+                    family_id = _signal_family_key(dict(r))
                     domains_affected = r.get("domains_affected_array") or []
                     for dom in (domains_affected if isinstance(domains_affected, list) else []):
                         bucket = msr_by_domain.setdefault(str(dom), [])
                         if len(bucket) < 5:
-                            bucket.append({"signal_id": sid, "strength": salience})
+                            bucket.append({"signal_id": sid, "strength": salience, "family_id": family_id})
 
         emitted_at = datetime.utcnow()
         emitted_str = emitted_at.isoformat()
@@ -152,7 +159,7 @@ class MiBhavisyaWriter(WriterBase):
             # domain (from msr_by_domain cache). Fall back to top-5 generic if no domain
             # match exists (e.g. domain="unknown" or no signals tagged for that domain).
             driving = msr_by_domain.get(domain) or [
-                {"signal_id": sid, "strength": 1.0}
+                {"signal_id": sid, "strength": 1.0, "family_id": _signal_family_key(msr_signals[sid])}
                 for sid in list(msr_signals.keys())[:5]
             ]
 

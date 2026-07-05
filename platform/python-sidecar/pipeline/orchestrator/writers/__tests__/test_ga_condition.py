@@ -443,3 +443,133 @@ def test_run_substep_dry_run_returns_zero_rows():
 
     assert result.rows_inserted == 0, f"dry_run must return 0 rows, got {result.rows_inserted}"
     ctx.db_conn.cursor.assert_not_called()
+
+
+# ── 12. _load_dasha_periods peak/weak symmetry (BA Phase 2.5 fast-follow #2) ──
+#
+# weak_dasha_periods was previously an unconditional stub (always None) while
+# peak_dasha_periods was populated. Fixed to mirror the same classical
+# condition-score criterion (see migrations/251_ga_condition_composite.sql:
+# peak = "high-condition periods", weak = "low-condition periods").
+
+class _FakeDashaCursor:
+    """Minimal fake cursor: returns 3 canned mahadasha rows for any chart/graha."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, *a, **k):
+        pass
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeDashaConn:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def cursor(self, *a, **k):
+        return _FakeDashaCursor(self._rows)
+
+
+def _make_dasha_rows():
+    from datetime import datetime, timezone
+    return [
+        (
+            "vimshottari", 1, "Saturn",
+            datetime(2000, 1, 1, tzinfo=timezone.utc),
+            datetime(2019, 1, 1, tzinfo=timezone.utc),
+        ),
+    ]
+
+
+class TestLoadDashaPeriodsSymmetry:
+
+    def test_strong_condition_score_populates_peak_only(self):
+        """condition_score >= 0.65 (classically strong) → peak populated, weak None."""
+        from ga_writers.ga_condition_writer import (
+            _load_dasha_periods, _PEAK_CONDITION_THRESHOLD,
+        )
+
+        conn = _FakeDashaConn(_make_dasha_rows())
+        peak, weak = _load_dasha_periods(
+            conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            condition_score=_PEAK_CONDITION_THRESHOLD,
+            dignity_d1="exalted",
+        )
+
+        assert weak is None
+        assert peak is not None and len(peak) == 1
+        assert peak[0]["dasha_label"] == "Saturn Mahadasha"
+        assert "strong" in peak[0]["reason"]
+
+    def test_weak_condition_score_populates_weak_only(self):
+        """condition_score <= 0.35 (classically weak — e.g. debilitated/combust)
+        → weak_dasha_periods is populated, mirroring peak's logic exactly with
+        the inverted threshold. This is the bug fix: weak must NOT be an
+        unconditional None stub."""
+        from ga_writers.ga_condition_writer import (
+            _load_dasha_periods, _WEAK_CONDITION_THRESHOLD,
+        )
+
+        conn = _FakeDashaConn(_make_dasha_rows())
+        peak, weak = _load_dasha_periods(
+            conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            condition_score=_WEAK_CONDITION_THRESHOLD,
+            dignity_d1="debilitated",
+        )
+
+        assert peak is None
+        assert weak is not None and len(weak) == 1
+        assert weak[0]["dasha_label"] == "Saturn Mahadasha"
+        assert "weak" in weak[0]["reason"]
+        assert "debilitated" in weak[0]["reason"]
+
+    def test_neutral_condition_score_yields_neither(self):
+        """Mid-band condition_score (neither classically strong nor weak) must
+        return (None, None) — a genuine no-signal case, not a stub."""
+        from ga_writers.ga_condition_writer import _load_dasha_periods
+
+        conn = _FakeDashaConn(_make_dasha_rows())
+        peak, weak = _load_dasha_periods(
+            conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            condition_score=0.5,
+            dignity_d1="neutral_sign",
+        )
+
+        assert peak is None
+        assert weak is None
+
+    def test_no_condition_score_yields_neither(self):
+        """When condition_score is unavailable (None), cannot classify → both None,
+        even though chart_dashas rows exist."""
+        from ga_writers.ga_condition_writer import _load_dasha_periods
+
+        conn = _FakeDashaConn(_make_dasha_rows())
+        peak, weak = _load_dasha_periods(
+            conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            condition_score=None,
+        )
+
+        assert peak is None
+        assert weak is None
+
+    def test_no_chart_dashas_rows_yields_neither(self):
+        """No mahadasha rows at all → (None, None) regardless of condition_score."""
+        from ga_writers.ga_condition_writer import _load_dasha_periods
+
+        conn = _FakeDashaConn([])
+        peak, weak = _load_dasha_periods(
+            conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            condition_score=0.9,
+        )
+
+        assert peak is None
+        assert weak is None

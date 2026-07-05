@@ -70,13 +70,14 @@ class PhNimittaWriter(WriterBase):
         cgm_meta        = self._load_cgm_meta(conn, all_signal_ids)
         contradiction_m = self._load_contradictions(conn, chart_id, all_signal_ids)
         precedent_m     = self._load_precedent_refs(conn, chart_id, all_signal_ids)
+        posterior_m     = self._load_posterior_meta(conn, chart_id, signal_meta)
 
         # Step 4: derive anchors per source
         anchors: list[AnchorRecord] = []
 
         for row in convergence_rows:
             try:
-                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m)
+                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m)
                 icc = int(row.get('independent_current_count') or 1)
                 a = derive_anchor_from_convergence(dict(row), ctx_n, icc)
                 anchors.append(a)
@@ -86,7 +87,7 @@ class PhNimittaWriter(WriterBase):
         # D37: inherit ALL kala_bhavishya projections
         for row in bhavishya_rows:
             try:
-                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m)
+                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m)
                 a = derive_anchor_from_bhavishya(dict(row), ctx_n)
                 anchors.append(a)
             except Exception as exc:
@@ -94,7 +95,7 @@ class PhNimittaWriter(WriterBase):
 
         for row in discovery_rows:
             try:
-                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m)
+                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m)
                 # B5: enrich row with timing (window_start/end) + real domain before engine call
                 enriched_row = self._enrich_discovery_row(conn, dict(row), chart_id)
                 a = derive_anchor_from_discovery(enriched_row, ctx_n)
@@ -252,6 +253,7 @@ class PhNimittaWriter(WriterBase):
             cur.execute(
                 """
                 SELECT signal_id,
+                       ayanamsha_id,
                        (domains_affected_array)[1] AS domain,
                        signature_class,
                        computed_salience AS salience_score
@@ -261,6 +263,82 @@ class PhNimittaWriter(WriterBase):
                 (signal_ids,),
             )
             return {str(r['signal_id']): dict(r) for r in cur.fetchall()}
+
+    def _load_posterior_meta(self, conn, chart_id: str, signal_meta: dict[str, dict]) -> dict[str, dict]:
+        """
+        BA-P5B / Phase 2.5 #8: real posterior model inputs.
+
+        pratijna_grade/pratijna_status/event_class_id come from bodha_pratijna, joined via
+        the same domain-overlap the writer itself uses (event_class_id.domain == signal's
+        domains_affected_array[1]), scoped to the signal's own ayanamsha_id (bo_pratijna is
+        computed per-ayanamsha, one row per (chart, ayanamsha, event_class)).
+
+        multi_system_confirmation_count comes from ka_yojaka's own already-computed
+        dasha_eligibility_rule_jsonb->>'multi_system_confirmation_count' (kala_activation_predicates),
+        keyed by (chart_id, signal_id, ayanamsha_id) — no re-derivation, just a join.
+
+        av_transit_potency has no real scalar source anywhere in the codebase (ka_yojaka's
+        transit_trigger_jsonb is a symbolic trigger-type descriptor, not a potency score) —
+        fabricating one would violate B.10, so it stays the documented placeholder (0.0)
+        until a real AV-transit-gate model exists.
+        """
+        if not signal_meta:
+            return {}
+
+        event_class_by_domain: dict[str, str] = {}
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute("SELECT event_class_id, domain FROM brahma_event_ontology")
+            for r in cur.fetchall():
+                event_class_by_domain.setdefault(r['domain'], str(r['event_class_id']))
+
+        pratijna_by_key: dict[tuple[str, str], dict] = {}
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                "SELECT ayanamsha_id, event_class_id, status, grade "
+                "FROM bodha_pratijna WHERE chart_id = %s",
+                (chart_id,),
+            )
+            for r in cur.fetchall():
+                pratijna_by_key[(str(r['ayanamsha_id']), str(r['event_class_id']))] = dict(r)
+
+        confirmation_by_signal: dict[str, int] = {}
+        signal_ids = list(signal_meta.keys())
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_nimitta_yojaka")
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    "SELECT signal_id, "
+                    "(dasha_eligibility_rule_jsonb->>'multi_system_confirmation_count')::int AS mscc "
+                    "FROM kala_activation_predicates "
+                    "WHERE chart_id = %s AND signal_id = ANY(%s::uuid[])",
+                    (chart_id, signal_ids),
+                )
+                for r in cur.fetchall():
+                    confirmation_by_signal[str(r['signal_id'])] = r['mscc'] or 0
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_nimitta_yojaka")
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_nimitta_yojaka")
+            except Exception:
+                pass
+            logger.debug("ph_nimitta: ka_yojaka confirmation-count lookup skipped: %s", exc)
+
+        out: dict[str, dict] = {}
+        for sid, sm in signal_meta.items():
+            domain = sm.get('domain')
+            aya = sm.get('ayanamsha_id')
+            event_class_id = event_class_by_domain.get(domain) if domain else None
+            pratijna = pratijna_by_key.get((str(aya), str(event_class_id))) if event_class_id else None
+            out[sid] = {
+                'event_class_id': event_class_id,
+                'pratijna_grade': float(pratijna['grade']) if pratijna and pratijna.get('grade') is not None else None,
+                'pratijna_status': pratijna['status'] if pratijna else None,
+                'multi_system_confirmation_count': confirmation_by_signal.get(sid, 0),
+            }
+        return out
 
     def _load_cgm_meta(self, conn, signal_ids: list[str]) -> dict:
         """Load chart-level CGM path metadata (Axis 3 causal chain).
@@ -478,7 +556,7 @@ class PhNimittaWriter(WriterBase):
 
         return row
 
-    def _build_ctx(self, row: dict, signal_meta, cgm_meta, contradiction_m, precedent_m) -> NimittaContext:
+    def _build_ctx(self, row: dict, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m=None) -> NimittaContext:
         sid = str(row.get('signal_id') or '')
         sm   = signal_meta.get(sid, {})
         # cgm_meta is a chart-level aggregate (not per-signal) — bodha_cgm_paths has no
@@ -486,6 +564,7 @@ class PhNimittaWriter(WriterBase):
         cgm  = cgm_meta  # type: dict (chart-level)
         cont = contradiction_m.get(sid, {})
         prec = precedent_m.get(sid, {})
+        post = (posterior_m or {}).get(sid, {})
 
         return NimittaContext(
             signal_domain=sm.get('domain'),
@@ -502,13 +581,21 @@ class PhNimittaWriter(WriterBase):
             dasha_consensus_count=0,   # U1: pre-fetched per window in production; 0 for now
             school_consensus_jsonb=None,  # U4: fetched via separate service at serve-time
             ayanamsha_robustness=3,       # default; real value comes from kala_convergence row
-            # BA-P5B: posterior model inputs — writer supplies defaults; cascade build populates
-            # from bodha_pratijna + ka_yojaka + AV-transit data per chart.
+            # BA Phase 2.5 #8: pratijna_grade/pratijna_status/event_class_id are real,
+            # joined from bodha_pratijna (domain-overlap match, scoped by the signal's own
+            # ayanamsha_id); multi_system_confirmation_count is a real join from ka_yojaka's
+            # own already-computed kala_activation_predicates row. Fall back to the prior
+            # neutral defaults only when no pratijna/yojaka row exists for this signal (e.g.
+            # its domain has no matching event class) — never a fabricated non-neutral value.
+            # av_transit_potency has no real scalar source in the codebase yet (ka_yojaka's
+            # transit_trigger_jsonb is a symbolic type descriptor, not a potency score) — B.10
+            # forbids inventing one, so it stays the documented placeholder pending a real
+            # AV-transit-gate model.
             # JL-009: base_rate=0.10 is PLACEHOLDER until native review and freeze.
-            event_class_id=None,
-            pratijna_grade=5.0,
-            pratijna_status='conditional',
-            multi_system_confirmation_count=0,
+            event_class_id=post.get('event_class_id'),
+            pratijna_grade=post.get('pratijna_grade') if post.get('pratijna_grade') is not None else 5.0,
+            pratijna_status=post.get('pratijna_status') or 'conditional',
+            multi_system_confirmation_count=post.get('multi_system_confirmation_count', 0),
             av_transit_potency=0.0,
             base_rate=0.10,
         )

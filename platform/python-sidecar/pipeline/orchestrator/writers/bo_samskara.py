@@ -194,7 +194,23 @@ class BoSamskaraWriter(WriterBase):
         for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
             batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
             batch_texts = [summary for _, summary in batch]
-            vecs = _embed_batch(batch_texts)
+            try:
+                vecs = _embed_batch(batch_texts)
+            except Exception as exc:
+                # Previously uncaught: any embedding-API exception on any one
+                # batch aborted the whole ayanamsha substep, and whether that
+                # read as a hard build failure or a quiet no-op depended on
+                # orchestrator-level retry/catch behavior — this is exactly how
+                # 4 of 5 ayanamshas' embeddings went missing without the
+                # bo_pramana_mapa scorecard ever being told. Log loudly and
+                # skip only this batch so the remaining batches (and other
+                # ayanamsha substeps) still get a chance to write real rows.
+                logger.warning(
+                    "[bo_samskara] %s — embedding batch at offset %d failed "
+                    "(%d signals lost from this batch): %s",
+                    aya, batch_start, len(batch), exc,
+                )
+                continue
             for (sig, summary), vec in zip(batch, vecs):
                 rows.append({
                     "embedding_id":             str(uuid.uuid4()),
@@ -218,5 +234,18 @@ class BoSamskaraWriter(WriterBase):
                 f"[bo_samskara] G3: chart_id={chart_id} aya={aya} — "
                 f"{len(signals)} signals found but 0 embeddings written; "
                 "all Vertex AI embedding batches failed"
+            )
+        if inserted < len(signals):
+            # Partial coverage for this ayanamsha — not a hard failure (some
+            # embeddings did land), but a silent partial loss here is exactly
+            # how bo_pramana_mapa's scorecard went stale relative to live data
+            # (embedding_count contradicted the live table by 4 of 5
+            # ayanamshas). Surface it loudly so a partial substep failure
+            # can't look like a clean no-op.
+            logger.warning(
+                "[bo_samskara] G3-partial: chart_id=%s aya=%s — %d/%d signals "
+                "embedded; %d signal(s) missing an embedding (embedding-API "
+                "batch/row failures — see prior warnings)",
+                chart_id, aya, inserted, len(signals), len(signals) - inserted,
             )
         return WriterResult(asset_id=self.asset_id, rows_inserted=inserted)
