@@ -411,5 +411,55 @@ deferred full Abhinandan rebuild.
 
 ---
 
+## BA Pre-Rebuild Gate close — 2026-07-05
+
+Ran the executor confirm-pass from `BA_PRE_REBUILD_GATE_REPORT_v1_0.md` (B2/B3/B4/B7/B8 + A1/A5/A2·J7/A2·J10
+runtime checks), then `CLAUDECODE_BRIEF_BA_PRE_REBUILD_CLOSEOUT_v1_0.md` end to end.
+
+**B2** migrations 405–413 confirmed live on prod (`_migrations_applied`, 2026-07-05 13:36 UTC). **A1/A5/A2·J7**
+pytest 110/1-skip green; **A2·J10** assetClearSpec 16/16 green; **A5** `dag_edge_guard` live 91/91, zero HARD
+violations. **B3/B4** found RED (not GREEN as the report's residual list left open): `amjis-mcp` was 88 commits
+stale (path-gated deploy skip, no `platform-mcp/**` diff since the previous activity) — fixed via a full manual
+`workflow_dispatch` redeploy; all four surfaces (web/sidecar/mcp/JOB) confirmed on merged HEAD (`76158638`).
+**B7** on-demand prod snapshot of `amjis-postgres` taken. **B8** JL-013/JL-015 checked directly — no mismatch,
+both correctly tag J4/`bo_cgm_paths`.
+
+**A6** (LEL starvation) closed Path 1 (parser hardening only, zero LEL edit) across two follow-on PRs merged
+in this pass:
+- **#435** (merge `bd0d3756`) — raw-field fallback in `mi_jivanaghatana.py`: when a block's narrative fields
+  (description/native_reflection/notes) break strict YAML with an unquoted colon, recover the event via only
+  the fields this writer actually consumes (date/category/subcategory/magnitude), read as raw uninterpreted
+  strings. Recovered 22 of 29 originally-failing blocks (the other 7 are legitimately non-event PATTERN.*/
+  PERIOD.*/GAP.*/version-history blocks).
+- **#436** (merge `6a0aea6f`) — found during the post-#435 A6 smoke test (not anticipated by the closeout
+  brief): the #435 fallback only read the FIRST `EVT.*` key on a block, silently dropping the rest when a
+  block groups more than one event under one ```yaml``` fence (7 blocks do this, one with 4 events) — 6 real
+  events were being lost. Fixed by splitting on every top-level `EVT.*` boundary before extracting fields.
+  Same PR also fixed a separate pre-existing bug (unrelated to A6): the illustrative `EVT.YYYY.MM.DD.XX`
+  template/legend block was parsing successfully on its own (its bracket-placeholder values happen to be
+  valid YAML) and leaking into `mimamsa_event_provenance` as a spurious event on every prior build.
+- **Verified end state:** exactly 57/57 real distinct `EVT.*` events parse from the live LEL file, each with
+  date + category present, zero missing, zero spurious.
+
+Deploy-truth re-confirmed after each merge: web/sidecar/JOB all path-gate-triggered and rebuilt to the new
+HEAD both times (`bd0d3756` then `6a0aea6f`); `amjis-mcp` correctly did NOT rebuild either time (no
+`platform-mcp/**` diff) and was independently confirmed still on its already-current SHA, not merely
+assumed unchanged.
+
+**Secrets hygiene** (the one flagged non-blocker from the prior report): `amjis-sidecar`'s `DATABASE_URL` was
+a plaintext Cloud Run env var while its sibling services referenced Secret Manager. Repointed to the same
+`amjis-pipeline-db-url` secret the build-pipeline JOB already uses (`--update-secrets` + `--remove-env-vars`);
+verified via an authenticated DB-touching endpoint (`phala/outlook/acceptance_gate/482012f1`) — identical
+200 response before and after.
+
+**Housekeeping:** `docs/ba-phase-2-5-report` and `fix/mi-jivanaghatana-multi-event-fallback` both confirmed
+fully merged, then deleted (local + remote).
+
+**REBUILD-READY: YES (unconditional).** Full report: `BA_PRE_REBUILD_CLOSEOUT_REPORT_v1_0.md`. Handed back to
+the strategic track to issue the Phase-3 Abhinandan rebuild brief. No cockpit Build/Rebuild was run in this
+pass.
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*

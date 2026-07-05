@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.16
+version: 6.19
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,35 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.19 (2026-07-05, BA-PRE-REBUILD-CLOSEOUT):
+    **BA Pre-Rebuild Gate CLOSED — all checks GREEN, REBUILD-READY = YES.** Executed
+    BA_PRE_REBUILD_GATE_REPORT_v1_0.md's residual executor confirm-pass, then
+    CLAUDECODE_BRIEF_BA_PRE_REBUILD_CLOSEOUT_v1_0.md end-to-end.
+    A6 (mi_jivanaghatana LEL starvation) closed via Path 1 (parser hardening, zero LEL edit) across
+    three PRs: #435 (raw-field fallback recovers events whose narrative fields break strict YAML —
+    22 of 29 originally-failing blocks), #436 found+fixed during the post-merge smoke test (the #435
+    fallback only recovered the FIRST EVT.* key in blocks grouping multiple events, silently dropping 6;
+    also filtered a pre-existing, unrelated bug where the illustrative EVT.YYYY.MM.DD.XX template block
+    was leaking into mimamsa_event_provenance as a spurious event). Verified against the live LEL file:
+    all 57 real distinct EVT.* events parse with date+category present, zero missing, zero spurious.
+    B3/B4 deploy-truth: amjis-web/amjis-sidecar/pipeline-JOB all confirmed on merged HEAD (6a0aea6f) after
+    each merge (auto-triggered path-gated rebuild caught correctly both times — the amjis-mcp staleness
+    trap from the prior activity did NOT recur here since #435/#436 never touched platform-mcp/, and mcp's
+    unchanged SHA was independently confirmed, not just assumed). B7: on-demand prod DB snapshot of
+    amjis-postgres taken before this close-out. B8: JL-013/JL-015 numbering checked directly — no mismatch.
+    Secrets hygiene (flagged non-blocker from the prior report): amjis-sidecar's DATABASE_URL repointed
+    from a plaintext Cloud Run env var to the amjis-pipeline-db-url Secret Manager reference (the same
+    secret the pipeline JOB already uses); connectivity re-verified via an authenticated DB-touching
+    endpoint (phala/outlook/acceptance_gate) — identical 200 response before/after. Housekeeping: stale
+    merged branches docs/ba-phase-2-5-report and fix/mi-jivanaghatana-multi-event-fallback deleted
+    (local + remote), both confirmed fully merged first.
+    last_session_id: BA-PRE-REBUILD-CLOSEOUT-2026-07-05.
+    predecessor_session: BA-PHASE-2-5-CONSOLIDATED-2026-07-05.
+    next_session_objective: >
+      "BA Pre-Rebuild Gate fully closed, REBUILD-READY = YES (unconditional). Next: hand back to the
+      strategic track to issue the Phase-3 Abhinandan rebuild brief. No further pre-rebuild gate work
+      remains — this pass explicitly did not run the cockpit Build/Rebuild itself."
+    file_updated_at: 2026-07-05. file_updated_by_session: BA-PRE-REBUILD-CLOSEOUT-2026-07-05.
   - v6.18 (2026-07-04, BA-CODE-CLOSEOUT):
     **Activity 1.5 COMPLETE on branch code/ba-code-closeout — 10 commits (P3B→P7B), migrations 391–402, JL-010 logged, ga_structural absorption fixed (6cddc910). Pre-merge prod registry baseline = 88 assets. Awaiting: merge → web/mcp deploy-truth → JOB-image rebuild (must include 6cddc910 + l0_transit/l0_rules + mi_* v2) → Nirmāṇa audit (Cowork, expect 91 assets) → optimized cascade rebuild (Abhinandan-first) → E2E. P4 (golden eval) + P6 (retrodiction) are CODE-DEPLOYED, NOT COMPLETE — their data gates run post-rebuild (PF-001 discipline).**
     last_session_id: BA-CODE-CLOSEOUT-2026-07-04.
