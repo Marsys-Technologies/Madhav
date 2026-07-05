@@ -345,6 +345,42 @@ class TestKPSubperiods(unittest.TestCase):
                 f"kp_sub_sub_lord is None on kp_sublevel='sub_sub' row"
             )
 
+    def test_25_classical_and_kp_rows_collide_on_level_n_start_iso_alone(self):
+        """
+        Regression capture (BA-P3 FIX 2b, migration 414): a KP sub-period
+        always begins exactly when its parent classical period begins, so it
+        legitimately shares (level_n, start_iso) with a classical Antardasha/
+        Pratyantardasha row. (level_n, start_iso) alone is NOT a valid natural
+        key across vimshottari + KP rows — this documents that fact so nobody
+        reintroduces a bulk-insert path keyed on it alone (chart_dashas'
+        DB-level unique index must include kp_sublevel; see migration 414).
+        """
+        all_rows = self.vim_rows + self.kp_rows
+        old_keys = [(r["level_n"], r["start_iso"]) for r in all_rows]
+        collisions = len(old_keys) - len(set(old_keys))
+        assert collisions > 0, (
+            "expected classical/KP rows to collide on (level_n, start_iso) alone "
+            "for this fixture — if this no longer collides, the underlying "
+            "algorithm changed and migration 414 / this regression test should "
+            "be revisited"
+        )
+
+    def test_26_classical_and_kp_rows_are_distinct_under_full_natural_key(self):
+        """The natural key chart_dashas actually enforces (migration 414):
+        (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id,
+        COALESCE(kp_sublevel, '')) — must have zero collisions."""
+        all_rows = self.vim_rows + self.kp_rows
+        new_keys = [
+            (r["level_n"], r["start_iso"], r.get("kp_sublevel") or "")
+            for r in all_rows
+        ]
+        collisions = len(new_keys) - len(set(new_keys))
+        assert collisions == 0, (
+            f"{collisions} row(s) collide even under the corrected natural key "
+            "(level_n, start_iso, kp_sublevel) — a real duplicate, not just the "
+            "classical/KP overlap migration 414 fixes"
+        )
+
 
 class TestYoginiSystem(unittest.TestCase):
     """Tests 25-28: Yogini system."""
