@@ -785,13 +785,33 @@ def _compute_varga_composite(spread: Optional[dict]) -> Optional[float]:
     return round(total_s / total_w, 6)
 
 
+# Condition-score thresholds gating peak vs weak dasha-trajectory classification.
+# Mirrors ga_condition_composite migration comment: peak = "high-condition periods",
+# weak = "low-condition periods" (see migrations/251_ga_condition_composite.sql).
+_PEAK_CONDITION_THRESHOLD = 0.65
+_WEAK_CONDITION_THRESHOLD = 0.35
+
+
 def _load_dasha_periods(
-    conn: Any, chart_id: str, graha: str
+    conn: Any,
+    chart_id: str,
+    graha: str,
+    condition_score: Optional[float] = None,
+    dignity_d1: Optional[str] = None,
 ) -> tuple[Optional[list], Optional[list]]:
     """
     Load mahadasha periods for this graha from chart_dashas.
     Returns (peak_periods, weak_periods) as JSON-serialisable lists.
-    Peak = graha's own mahadasha; weak = based on condition context.
+
+    Peak = graha's own mahadasha, when the graha's unified condition_score
+    (dignity + avastha + varga + combustion, see compute_condition_score_v1)
+    is classically strong (>= _PEAK_CONDITION_THRESHOLD).
+    Weak = the mirror-image case: condition_score is classically weak
+    (<= _WEAK_CONDITION_THRESHOLD) — e.g. debilitated / enemy-sign dignity,
+    deep combustion, or poor avastha dragging the composite score down.
+    Periods in the neutral middle band are neither peak nor weak and both
+    fields are None for that graha (this is a real "no signal" case, not a
+    stub — see BA-Phase-2.5 fast-follow #2).
     """
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
@@ -809,17 +829,50 @@ def _load_dasha_periods(
             if not rows:
                 return None, None
 
-            periods = [
-                {
-                    "dasha_label": f"{row[2]} Mahadasha",
-                    "system_id":   row[0],
-                    "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
-                    "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
-                    "reason":      f"{graha} mahadasha period",
-                }
-                for row in rows
-            ]
-            return periods, None   # weak periods require cross-reference with condition score
+            if condition_score is None:
+                # No condition score available to classify — cannot say peak or weak.
+                return None, None
+
+            if condition_score >= _PEAK_CONDITION_THRESHOLD:
+                reason = (
+                    f"{graha} mahadasha period — dasha lord in classically strong "
+                    f"condition (condition_score={condition_score:.4f}"
+                    + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
+                    + ")"
+                )
+                periods = [
+                    {
+                        "dasha_label": f"{row[2]} Mahadasha",
+                        "system_id":   row[0],
+                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
+                        "reason":      reason,
+                    }
+                    for row in rows
+                ]
+                return periods, None
+
+            if condition_score <= _WEAK_CONDITION_THRESHOLD:
+                reason = (
+                    f"{graha} mahadasha period — dasha lord in classically weak "
+                    f"condition (condition_score={condition_score:.4f}"
+                    + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
+                    + ")"
+                )
+                periods = [
+                    {
+                        "dasha_label": f"{row[2]} Mahadasha",
+                        "system_id":   row[0],
+                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
+                        "reason":      reason,
+                    }
+                    for row in rows
+                ]
+                return None, periods
+
+            # Neutral band — condition is neither classically strong nor weak.
+            return None, None
 
     except Exception as exc:
         logger.warning("[ga_condition_writer] chart_dashas lookup failed for %s: %s", graha, exc)
@@ -1414,7 +1467,11 @@ def build_ga_condition_substep(
         )
 
         # ── Dasha trajectory ──────────────────────────────────────────────────
-        peak_periods, weak_periods = _load_dasha_periods(conn, chart_id, graha)
+        peak_periods, weak_periods = _load_dasha_periods(
+            conn, chart_id, graha,
+            condition_score=condition_score_val,
+            dignity_d1=dignity_d1,
+        )
 
         row = {
             "chart_id":                 chart_id,
