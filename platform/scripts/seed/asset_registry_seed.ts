@@ -836,56 +836,16 @@ export const ASSETS: AssetDef[] = [
     english_description: 'GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka and tri-deva roles, and base graha facts — per ayanamsha.',
     storage_type: 'postgres_table',
     target_table: null,
-    // Registered in migration 219. Positive family filter covers ga_structural's own categories.
-    // Migration 309 (2026-06-18) fixes scope inflation introduced by L1 enrichment:
-    //   - Narrows graha_avastha_% to exclude %_per_varga (those belong to ga_condition)
-    //   - Narrows %_per_varga with NOT IN exclusion for enrichment-added categories
-    //     (ashtakavarga/*_bala_per_varga from ga_strength; avastha_*_per_varga from ga_condition)
-    //   - Removes nakshatra_pada_sensitive (written by ga_sensitive_writer; counted there)
-    count_sql: `
-  SELECT count(*) AS count FROM chart_facts
-  WHERE chart_id = $1
-    AND (
-      fact_category LIKE 'aspect_%'
-      OR (fact_category LIKE 'graha_avastha_%' AND fact_category NOT LIKE '%_per_varga')
-      OR fact_category LIKE '%argala_natal_matrix'
-      OR fact_category LIKE 'graha_dispositor_%'
-      OR (
-        fact_category LIKE '%_per_varga'
-        AND fact_category NOT IN (
-          'graha_avastha_baladi_per_varga',
-          'graha_avastha_deeptaadi_per_varga',
-          'graha_avastha_jagradadi_per_varga',
-          'graha_avastha_sayanadi_per_varga',
-          'graha_avastha_lajjitadi_per_varga',
-          'ashtakavarga_bindu_per_varga',
-          'ashtakavarga_pinda_sarva_per_varga',
-          'graha_sthana_bala_per_varga',
-          'graha_drik_bala_per_varga',
-          'graha_kala_bala_per_varga',
-          'graha_cheshta_bala_per_varga'
-        )
-      )
-      OR fact_category IN (
-        'graha_functional_class_per_ascendant',
-        'graha_composite_state_classification', 'graha_effective_dignity_modified_by_aspects',
-        'graha_in_house_composite_strength', 'graha_special_state_rollup',
-        'graha_tri_deva_role_strength', 'graha_vargottama_amplification_factor',
-        'graha_yoga_karaka_flag', 'jaimini_tri_deva_role_per_graha',
-        'karaka_house_lord_overlap_flag', 'karakatva_strength_per_significance',
-        'composite_dispositor_strength', 'house_strength_classification_rollup',
-        'pranic_strength_per_graha', 'chandra_bala_natal_baseline', 'tara_bala_natal_baseline',
-        'yoga_fires', 'dosha_fires', 'conjunction_within_orb',
-        'panchaka_flag', 'bhadra_flag', 'eclipse_proximity_natal',
-        -- Phase-2 depth additions (GA_STRUCTURAL_MAXIMAL_DEPTH_SPEC v1.0, 2026-06-18)
-        'sambandha_grade', 'nakshatra_dispositor_chain', 'dispositor_tree',
-        'bhava_significance_link', 'karaka_bhava_concordance', 'net_argala',
-        'nway_configuration', 'chart_center_of_gravity', 'graha_centrality',
-        'dispositor_cycle', 'chart_cluster', 'varga_provenance_meta',
-        'convergence_count', 'contradiction_pair'
-      )
-    )
-`,
+    // JL-015 (BA Phase 2.5 J2, migration 410): count_sql now derives from the
+    // fact_category_ownership registry (single source of truth) instead of the
+    // hand-maintained LIKE/IN/NOT-IN allow-list, which had already silently
+    // drifted twice (migrations 364, 368). Verified byte-identical row count
+    // against the prior hand-maintained query on the canonical chart 482012f1
+    // (98,314 rows, 2026-07-05) before cutover — see migration 410 for the
+    // registry seed (58 fact_category values) and comments/history.
+    count_sql: `SELECT count(*) AS count FROM chart_facts cf
+JOIN fact_category_ownership fco ON fco.fact_category = cf.fact_category
+WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     size_sql: null,
     // Floor: 77,821 measured on prod chart 482012f1 (2026-06-18, GA-STRUCTURAL-REMEDIATION session).
     // Includes all Phase-2 depth categories (dual-path collapse + depth rebuild per brief
