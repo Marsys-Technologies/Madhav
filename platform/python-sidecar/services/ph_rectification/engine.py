@@ -61,6 +61,7 @@ __all__ = [
     "AYANAMSHAS",
     "RECORDED_BIRTH_UTC",
     "AUTO_ACTION",
+    "NATIVE_CHART_ID",
     "build_candidate_offsets",
     "domain_significator_houses",
     "score_candidate",
@@ -76,6 +77,14 @@ RECORDED_BIRTH_UTC = datetime(1984, 2, 5, 5, 13, 0, tzinfo=timezone.utc)
 NATIVE_LAT = 20.2961
 NATIVE_LON = 85.8245
 NATIVE_TZ = 5.5
+
+# JL-017 (BA Phase 2.5 #11, CONTAMINATION-CLASS): TRAINING_EVENTS and
+# _DASHA_LORD_NATAL_SIGN_INDEX below are the native Abhisek Mohanty's OWN LEL
+# events and natal dasha-lord positions. The writer MUST gate their use behind
+# this chart_id — never silently apply one chart's life events / natal facts
+# to another chart's rectification scan. See pipeline/orchestrator/writers/
+# ph_rectification/__init__.py for the enforcing chart-attribution check.
+NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # Five canonical ayanamsha ids that resolve DISTINCTLY in pyjhora_adapter
 # (_ayanamsha.AYANAMSHA_MAP). 'krishnamurti' is NOT a distinct key — it falls
@@ -232,9 +241,15 @@ def _sign_index(sign_name: str) -> int:
     return _SIGN_NAMES.index(sign_name)
 
 
-def _house_of_lord_from_lagna(lord: str, lagna_sign_index: int) -> Optional[int]:
+def _house_of_lord_from_lagna(
+    lord: str,
+    lagna_sign_index: int,
+    dasha_lord_natal_sign_index: Optional[dict[str, int]] = None,
+) -> Optional[int]:
     """Whole-sign house (1..12) occupied by a dasha lord, counted from lagna."""
-    g = _DASHA_LORD_NATAL_SIGN_INDEX.get(lord)
+    lord_signs = dasha_lord_natal_sign_index if dasha_lord_natal_sign_index is not None \
+        else _DASHA_LORD_NATAL_SIGN_INDEX
+    g = lord_signs.get(lord)
     if g is None:
         return None
     return ((g - lagna_sign_index) % 12) + 1
@@ -279,12 +294,16 @@ class BestRectification:
 AscendantFn = Callable[[int, str], dict]
 
 
-def _score_dasha_match(lagna_sign_index: int, events: list[TrainingEvent]) -> int:
+def _score_dasha_match(
+    lagna_sign_index: int,
+    events: list[TrainingEvent],
+    dasha_lord_natal_sign_index: Optional[dict[str, int]] = None,
+) -> int:
     """Count training events whose maha-dasha lord sits in a domain-significator
     house, counted from the given candidate lagna sign."""
     matched = 0
     for ev in events:
-        house = _house_of_lord_from_lagna(ev.maha_dasha_lord, lagna_sign_index)
+        house = _house_of_lord_from_lagna(ev.maha_dasha_lord, lagna_sign_index, dasha_lord_natal_sign_index)
         if house is None:
             continue
         if house in domain_significator_houses(ev.domain):
@@ -298,6 +317,7 @@ def score_candidate(
     reference_signs: dict[str, str],
     training_events: Optional[list[TrainingEvent]] = None,
     recorded_birth_utc: Optional[datetime] = None,
+    dasha_lord_natal_sign_index: Optional[dict[str, int]] = None,
 ) -> list[RectificationCandidate]:
     """Score one candidate birth time across all ayanamshas.
 
@@ -328,7 +348,7 @@ def score_candidate(
         matched: Optional[int] = None
         if stable and n_tested > 0:
             lagna_idx = _sign_index(asc["sign"])
-            matched = _score_dasha_match(lagna_idx, training_events)
+            matched = _score_dasha_match(lagna_idx, training_events, dasha_lord_natal_sign_index)
             fit = round(matched / n_tested, 4)
         out.append(RectificationCandidate(
             offset_minutes=offset_minutes,
@@ -348,6 +368,8 @@ def score_candidate(
 def run_rectification(
     ascendant_fn: AscendantFn,
     recorded_birth_utc: Optional[datetime] = None,
+    training_events: Optional[list[TrainingEvent]] = None,
+    dasha_lord_natal_sign_index: Optional[dict[str, int]] = None,
 ) -> list[RectificationCandidate]:
     """Generate and score all 37 candidates across all 5 ayanamshas.
 
@@ -355,16 +377,26 @@ def run_rectification(
     the module-level RECORDED_BIRTH_UTC constant (native Abhisek Mohanty).
     Always pass this from ctx.config['birth_params'] for non-native charts.
 
+    JL-017 (CONTAMINATION-CLASS): training_events/dasha_lord_natal_sign_index
+    default to the native's own embedded TRAINING_EVENTS/_DASHA_LORD_NATAL_SIGN_INDEX
+    ONLY for backward compatibility of direct callers (e.g. tests); the writer
+    MUST pass explicit chart-scoped values (or refuse to score) for any chart
+    other than NATIVE_CHART_ID — never let another chart silently inherit the
+    native's life events / natal dasha-lord positions.
+
     Returns a flat list of RectificationCandidate (37 * 5 = 185 rows).
     """
     # Reference signs from the recorded time (offset 0).
     reference_signs = {ay: ascendant_fn(0, ay)["sign"] for ay in AYANAMSHAS}
-    training = _firewall_filter(TRAINING_EVENTS)
+    training = _firewall_filter(training_events if training_events is not None else TRAINING_EVENTS)
 
     results: list[RectificationCandidate] = []
     for off in build_candidate_offsets():
         results.extend(
-            score_candidate(off, ascendant_fn, reference_signs, training, recorded_birth_utc)
+            score_candidate(
+                off, ascendant_fn, reference_signs, training, recorded_birth_utc,
+                dasha_lord_natal_sign_index,
+            )
         )
     return results
 
@@ -377,14 +409,23 @@ def _confidence_label(win_margin: float) -> str:
     return "unresolved"
 
 
-def select_best(candidates: list[RectificationCandidate]) -> BestRectification:
+def select_best(
+    candidates: list[RectificationCandidate],
+    training_events: Optional[list[TrainingEvent]] = None,
+) -> BestRectification:
     """Pick the best candidate offset.
 
     A candidate's offset score is the mean lel_fit_score across its ayanamshas
     (only stable candidates carry a score). Sort by score DESC, lagna_stable DESC.
     win_margin is the gap between the best offset's score and the second-best.
+
+    training_events must be the SAME list passed to run_rectification() for these
+    candidates — this only affects the reported lel_training_events/firewall_note
+    metadata (candidates already carry their own lel_fit_score/lel_events_tested
+    from scoring); defaults to the native's TRAINING_EVENTS for backward
+    compatibility of direct callers.
     """
-    training = _firewall_filter(TRAINING_EVENTS)
+    training = _firewall_filter(training_events if training_events is not None else TRAINING_EVENTS)
     n_training = len(training)
     firewall_note = (
         f"LEAKAGE-FIREWALL: {n_training} training events (all pre-2020-01-01, "

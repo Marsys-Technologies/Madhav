@@ -285,3 +285,66 @@ def test_writer_registers_asset_id():
 
 def test_writer_parses_as_valid_python():
     ast.parse(_writer_source())
+
+
+# ── JL-017 contamination gate (BA Phase 2.5 #11) ────────────────────────────
+
+def test_writer_gates_on_native_chart_id():
+    """The writer must refuse any chart_id other than NATIVE_CHART_ID before any
+    DB write — never silently score a stranger's chart against the native's
+    own LEL training events / natal dasha-lord positions."""
+    src = _writer_source()
+    assert "NATIVE_CHART_ID" in src
+    assert "chart_id != NATIVE_CHART_ID" in src or "chart_id != E.NATIVE_CHART_ID" in src
+
+
+def test_writer_gate_precedes_any_db_write():
+    """The chart_id gate must appear before the first DELETE in source order."""
+    src = _writer_source()
+    gate_pos = src.index("chart_id != NATIVE_CHART_ID")
+    delete_pos = src.index("DELETE FROM phala_rectification")
+    assert gate_pos < delete_pos
+
+
+class _FakeCursor:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def execute(self, *a, **k): raise AssertionError("no SQL should run before the gate raises")
+
+
+class _FakeConn:
+    def cursor(self, *a, **k): return _FakeCursor()
+
+
+class _FakeCtx:
+    def __init__(self, chart_id):
+        self.db_conn = _FakeConn()
+        self.config = {"chart_id": chart_id, "birth_params": {}}
+
+
+def test_writer_raises_for_non_native_chart_before_any_write():
+    from pipeline.orchestrator.writers.ph_rectification import PhRectificationWriter
+
+    writer = PhRectificationWriter()
+    with pytest.raises(ValueError, match="JL-017"):
+        writer.run(_FakeCtx("11111111-1111-1111-1111-111111111111"))
+
+
+def test_run_rectification_accepts_explicit_training_events_and_dasha_map():
+    """A caller-supplied training_events + dasha_lord_natal_sign_index must be
+    used verbatim rather than silently falling back to the native's own data."""
+    custom_events = [TrainingEvent("EVT.CUSTOM.01", datetime(2015, 1, 1, tzinfo=timezone.utc),
+                                    "career", "Mars", "exact")]
+    custom_map = {"Mars": 0}  # Aries
+
+    candidates = run_rectification(
+        _stub_ascendant,
+        recorded_birth_utc=RECORDED_BIRTH_UTC,
+        training_events=custom_events,
+        dasha_lord_natal_sign_index=custom_map,
+    )
+    # lel_events_tested reflects the custom (1-event) set, not the native's 19.
+    assert all(c.lel_events_tested == 1 for c in candidates)
+
+    best = select_best(candidates, training_events=custom_events)
+    assert best.lel_training_events == 1
