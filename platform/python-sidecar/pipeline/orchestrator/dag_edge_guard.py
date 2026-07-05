@@ -122,8 +122,16 @@ def _asset_for_file(text: str) -> str | None:
 
 
 def _reads(text: str) -> set[str]:
-    """All table names appearing after FROM/JOIN, lowercased (over-approximates; filtered later)."""
-    return {t.lower() for t in _READ_RE.findall(text)}
+    """All table names appearing after FROM/JOIN, lowercased (over-approximates; filtered later).
+
+    Strips SQL/Python comment lines first — a commented-out query or an
+    explanatory `# reads old_table` note otherwise reads as a real dependency
+    and produces a false-positive HARD violation (or masks the real gap by
+    satisfying the closure check on a table the writer no longer actually reads).
+    """
+    stripped = _strip_sql_comments(text)
+    stripped = re.sub(r"#.*", " ", stripped)
+    return {t.lower() for t in _READ_RE.findall(stripped)}
 
 
 def evaluate(reg: dict, real_tables: set[str], writer_items: list[tuple[str, str]]) -> dict:

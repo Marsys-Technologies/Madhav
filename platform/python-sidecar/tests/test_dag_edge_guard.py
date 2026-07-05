@@ -62,6 +62,35 @@ def test_guard_ignores_self_read_and_globals():
     assert res["hard"] == [], res
 
 
+def test_guard_ignores_table_names_inside_comments():
+    """A commented-out query or an explanatory `# reads X` note must not read as
+    a real dependency — a false positive would either spuriously flag a HARD
+    violation on a table the writer doesn't actually touch, or (worse) let a
+    stale comment mask a genuine missing depends_on edge on the real read."""
+    reg = _synthetic_registry()
+    src_python_comment = (
+        "@register('ph_pratikara')\n"
+        "# Old approach used to read kala_convergence directly via FROM kala_convergence\n"
+        "SQL = 'SELECT * FROM phala_mitigation'\n"
+    )
+    res = g.evaluate(reg, _REAL, [("ph_pratikara.py", src_python_comment)])
+    assert res["hard"] == [], (
+        "table name inside a '#' comment must not be treated as a real read: " + repr(res)
+    )
+
+    src_sql_comment = (
+        "@register('ph_pratikara')\n"
+        "SQL = '''\n"
+        "-- FROM kala_convergence (old, no longer used)\n"
+        "SELECT * FROM phala_mitigation\n"
+        "'''\n"
+    )
+    res2 = g.evaluate(reg, _REAL, [("ph_pratikara.py", src_sql_comment)])
+    assert res2["hard"] == [], (
+        "table name inside a SQL '--' comment must not be treated as a real read: " + repr(res2)
+    )
+
+
 # ── Integration: the live DAG is edge-complete ───────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("DATABASE_URL"), reason="needs DATABASE_URL")
