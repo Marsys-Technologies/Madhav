@@ -85,14 +85,21 @@ class KaSangamWriter(WriterBase):
 
         # Load top predicates
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            # NOTE: dasha_eligibility_rule_jsonb->>'eligibility_score' is never
+            # populated by ka_yojaka/binder.py — the original ORDER BY on it was
+            # a no-op (all NULL, NULLS LAST → arbitrary DB order). Rank by
+            # bodha_msr_signals.dignity_score instead, which IS populated and is
+            # already used downstream (pd['dignity_score']) as the real per-signal
+            # strength signal — so the "top predicates" LIMIT is meaningful again.
             cur.execute(
                 """
-                SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
-                       dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                       strength_affliction_hook_jsonb, derivation_ledger_jsonb
-                FROM kala_activation_predicates
-                WHERE chart_id = %s
-                ORDER BY (dasha_eligibility_rule_jsonb->>'eligibility_score')::float DESC NULLS LAST
+                SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                       p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                       p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb
+                FROM kala_activation_predicates p
+                LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                WHERE p.chart_id = %s
+                ORDER BY s.dignity_score DESC NULLS LAST
                 LIMIT %s
                 """,
                 (chart_id, _MAX_PREDICATES),
