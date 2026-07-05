@@ -358,7 +358,13 @@ class MiParikshaWriter(WriterBase):
                 "ablation",
                 family_id,
                 round(masked_mean, 4),
-                "pass",
+                # masked_scores is a verbatim copy of composite_score (no family is
+                # actually masked — true ablation requires a serve-time R-pipeline
+                # rerun), so marginal_skill is always exactly 0.0. "pass" here would
+                # be indistinguishable from a genuinely-executed ablation check;
+                # use a distinct status so mimamsa_qa_eval consumers can't mistake
+                # this structural placeholder for a real completed validation.
+                "structural_proxy",
                 json.dumps({
                     "family_id": family_id,
                     "baseline_mean": round(baseline_mean, 4),
@@ -705,7 +711,11 @@ class MiParikshaWriter(WriterBase):
             "tail_only",
             f"salience_tail_n={len(tail_signal_ids)}",
             round(tail_mean, 4),
-            "pass",
+            # full_mean is set verbatim equal to tail_mean (no real tail-vs-full
+            # comparison runs at build time), so marginal_skill is always exactly
+            # 0.0 — same placeholder shape as _substep_ablation above. "pass"
+            # would be indistinguishable from a genuinely-executed comparison.
+            "structural_proxy",
             json.dumps({
                 "tail_signal_count": len(tail_signal_ids),
                 "tail_mean_score": round(tail_mean, 4),
