@@ -1,3 +1,21 @@
+/**
+ * JL-020 clear-allowlist classification (BA Phase 2.5 J10): every per-chart-clearable
+ * table is either REBUILDABLE (writer-derived output; safely wiped and regenerated on
+ * rebuild) or IRREPLACEABLE (native-authored input, recorded real-world outcomes, or an
+ * append-only ledger — must survive any clear/rebuild). This file is the enforcement
+ * point: an asset with no entry here gets the default target_table-fallback DELETE
+ * (correct for REBUILDABLE assets); IRREPLACEABLE assets MUST have an entry that either
+ * scopes the DELETE to exclude irreplaceable rows, or is `null` to skip the clear
+ * entirely.
+ *
+ * Known IRREPLACEABLE surfaces protected below:
+ *   - mimamsa_journal.native_answer/answered_at (mi_abhilekha)      — scoped DELETE
+ *   - mimamsa_predictions.outcome_observed/brier_score (mi_bhavisya) — scoped DELETE
+ *   - mimamsa_preferences (mi_seva)                                 — null (full skip)
+ *   - mimamsa_export_log (mi_vistara)                                — null (full skip)
+ * Everything else in this map exists to fix multi-table-writer coverage gaps or
+ * un-derivable count_sql shapes for otherwise-REBUILDABLE assets.
+ */
 export type ClearOp = { sql: string }
 
 /**
@@ -63,9 +81,16 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // its registry target_table was mimamsa_signal_adjustment (a table it never
   // writes), so its real output (mimamsa_load_bearing) was never cleared. No FK
   // constraints exist among the mimamsa tables, so delete order is free.
+  // JL-020 (REBUILDABLE vs IRREPLACEABLE clear classification): mimamsa_predictions
+  // holds both writer-derived forecast rows (rebuildable) AND outcome_observed/
+  // brier_score written exclusively via mimamsa_record_outcome() once the native's
+  // real-world outcome comes in (irreplaceable — "NO LEAKAGE" column per migration
+  // brahma_mimamsa_prediction_ledger.sql). An unconditional per-chart DELETE destroyed
+  // any recorded outcomes along with the rebuildable forecast; scoped to only clear
+  // not-yet-verified rows.
   mi_bhavisya: [
     { sql: 'DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1' },
-    { sql: 'DELETE FROM mimamsa_predictions WHERE chart_id = $1' },
+    { sql: 'DELETE FROM mimamsa_predictions WHERE chart_id = $1 AND outcome_observed IS NULL' },
   ],
   mi_pramana: [
     { sql: 'DELETE FROM mimamsa_reliability WHERE chart_id = $1' },
@@ -133,4 +158,14 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // other bodha tables) — it owns no rows of its own and cannot be DELETEd from.
   // null = nothing to clear, skip cleanly (avoids a spurious failed_tables entry).
   bo_samvada: null,
+
+  // JL-020 / BA_FULL_ASSET_AUDIT: mi_abhilekha's registered target_table is
+  // mimamsa_journal, count_sql is null, so it fell through to the target_table
+  // fallback DELETE — wiping native_answer/answered_at rows (the native's real,
+  // irreplaceable journal answers) on every per-chart clear alongside the
+  // never-answered prompt scaffolding. Scoped to only clear unanswered prompts;
+  // answered rows are IRREPLACEABLE and must survive any clear/rebuild.
+  mi_abhilekha: [
+    { sql: 'DELETE FROM mimamsa_journal WHERE chart_id = $1 AND answered_at IS NULL' },
+  ],
 }

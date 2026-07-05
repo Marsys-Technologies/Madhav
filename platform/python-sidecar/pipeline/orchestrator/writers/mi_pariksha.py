@@ -532,14 +532,16 @@ class MiParikshaWriter(WriterBase):
             r = cur.fetchone()
             baseline = float(r[0]) if r and r[0] is not None else 0.5
 
+        # JL-019: this substep does not actually inject a synthetic null input through the
+        # scoring engine and compare the result to `expected` — it derives a `null_score`
+        # directly from `expected` itself, so the comparison is a tautology that can never
+        # fail. Until a real synthetic-injection harness exists, every row is reported
+        # `not_implemented` rather than a misleading "pass".
         rows: list[tuple] = []
         for ctrl in controls:
             control_id = ctrl["control_id"]
             expected = ctrl["expected_score"]
             tolerance = float(ctrl["tolerance"])
-
-            null_score = 0.05 if expected == "near_zero" else 0.50
-            status = "pass" if abs(null_score - (0 if expected == "near_zero" else 0.5)) <= tolerance else "FAIL"
 
             check_id = f"neg_{control_id}_{chart_id[:8]}"
             rows.append((
@@ -547,10 +549,13 @@ class MiParikshaWriter(WriterBase):
                 check_id,
                 "negative_control",
                 control_id,
-                round(null_score, 4),
-                status,
+                None,
+                "not_implemented",
                 json.dumps({"expected": expected, "tolerance": tolerance,
-                            "null_score": null_score, "baseline": round(baseline, 4)}),
+                            "baseline": round(baseline, 4),
+                            "reason": "no synthetic-injection harness exists yet — "
+                                      "prior status derived null_score from expected "
+                                      "itself and could never fail (JL-019)"}),
             ))
 
         if baseline > 0.0:
