@@ -1556,6 +1556,50 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
     return inserted
 
 
+def _update_salience_pctl_in_class(conn: Any, chart_id: str, ayanamsha: str) -> None:
+    """Compute salience_pctl_in_class within (signal_type_class × chart × ayanamsha) —
+    a best-effort refinement pass; a failure here must not abort the caller's substep.
+
+    SAVEPOINT-guarded (BA-P3 regression, 2026-07-05): the prior bare try/except caught
+    the exception but never rolled back, leaving the connection in Postgres's aborted-
+    transaction state; every subsequent statement (including the orchestrator's own
+    SAVEPOINT release and crash-cleanup) then failed with InFailedSqlTransaction. SET
+    LOCAL statement_timeout=0 avoids the timeout this PERCENT_RANK() UPDATE hit under
+    load on a large chart (same class of issue as ga_dashas's COPY — see #440); the
+    SAVEPOINT + ROLLBACK TO SAVEPOINT on any other failure keeps the connection usable
+    regardless of the specific error.
+    """
+    sp = "sp_bo_laksana_salience_pctl"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SAVEPOINT {sp}")
+            cur.execute("SET LOCAL statement_timeout = 0")
+            cur.execute("""
+                UPDATE bodha_msr_signals s
+                SET salience_pctl_in_class = sub.pctl
+                FROM (
+                    SELECT signal_id,
+                           PERCENT_RANK() OVER (
+                               PARTITION BY chart_id, ayanamsha_id, signal_type_class
+                               ORDER BY computed_salience
+                           ) AS pctl
+                    FROM bodha_msr_signals
+                    WHERE chart_id=%s AND ayanamsha_id=%s
+                ) sub
+                WHERE s.signal_id = sub.signal_id
+                  AND s.chart_id=%s AND s.ayanamsha_id=%s
+            """, [chart_id, ayanamsha, chart_id, ayanamsha])
+            cur.execute(f"RELEASE SAVEPOINT {sp}")
+    except Exception as exc:
+        logger.warning("[bo_laksana] %s — salience_pctl_in_class update skipped: %s",
+                       ayanamsha, exc)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+
+
 def _set_top_k_ranks(rows: list[dict]) -> None:
     """Rank rows by computed_salience DESC in place — all rows get a rank."""
     for rank, row in enumerate(
@@ -1675,17 +1719,30 @@ class BoLaksanaWriter(WriterBase):
             )
 
         # O3: Append Navamsha D9 cross-check signals
+        # SAVEPOINT-guarded (same fix as salience_pctl_in_class below): a DB error inside
+        # this best-effort lookup would otherwise leave the connection in Postgres's
+        # aborted-transaction state with no ROLLBACK, poisoning every statement after it.
+        sp_nav = "sp_bo_laksana_navamsha"
         try:
+            with conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"SAVEPOINT {sp_nav}")
             navamsha_signals = _build_navamsha_cross_check_signals(
                 conn, chart_id, ayanamsha, build_id, now,
                 strength_lookup, dignity_lookup, av_lookup,
             )
             signal_rows.extend(navamsha_signals)
+            with conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"RELEASE SAVEPOINT {sp_nav}")
             logger.info("[bo_laksana] %s — O3 navamsha cross-check: %d signals",
                         ayanamsha, len(navamsha_signals))
         except Exception as exc:
             logger.warning("[bo_laksana] %s — O3 navamsha cross-check skipped: %s",
                            ayanamsha, exc)
+            try:
+                with conn.cursor() as _sp_cur:
+                    _sp_cur.execute(f"ROLLBACK TO SAVEPOINT {sp_nav}")
+            except Exception:
+                pass
 
         # Post-processing: rank + normalize
         _set_top_k_ranks(signal_rows)
@@ -1702,25 +1759,7 @@ class BoLaksanaWriter(WriterBase):
         # and salience_robustness (placeholder = cross-ayanamsha consistency; filled here as NULL
         # since only this ayanamsha is in scope — the orchestrator's multi-substep execution
         # naturally re-runs this UPDATE for each ayanamsha, so the final pass covers all 5.
-        try:
-            conn.execute("""
-                UPDATE bodha_msr_signals s
-                SET salience_pctl_in_class = sub.pctl
-                FROM (
-                    SELECT signal_id,
-                           PERCENT_RANK() OVER (
-                               PARTITION BY chart_id, ayanamsha_id, signal_type_class
-                               ORDER BY computed_salience
-                           ) AS pctl
-                    FROM bodha_msr_signals
-                    WHERE chart_id=%s AND ayanamsha_id=%s
-                ) sub
-                WHERE s.signal_id = sub.signal_id
-                  AND s.chart_id=%s AND s.ayanamsha_id=%s
-            """, [chart_id, ayanamsha, chart_id, ayanamsha])
-        except Exception as exc:
-            logger.warning("[bo_laksana] %s — salience_pctl_in_class update skipped: %s",
-                           ayanamsha, exc)
+        _update_salience_pctl_in_class(conn, chart_id, ayanamsha)
 
         return WriterResult(
             asset_id=self.asset_id,
