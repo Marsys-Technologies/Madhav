@@ -28,7 +28,7 @@ from pipeline.orchestrator.writers.bo_cgm_motifs import (
     BoCgmMotifsWriter, _detect_mutual_reception, _detect_stellia, _detect_parivartana_chains,
 )
 from pipeline.orchestrator.writers.bo_cgm_paths import (
-    BoCgmPathsWriter, _build_dispositor_chains, _is_self_ruling,
+    BoCgmPathsWriter, _build_dispositor_chains, _is_self_ruling, _path_strength,
 )
 from pipeline.orchestrator.writers import ContextSpec, WriterResult
 
@@ -306,6 +306,33 @@ class TestBoCgmPaths:
         assert chains[0]["from_node_id"] == sun_id
         assert chains[0]["to_node_id"] == sun_id
         assert "self-ruling" in chains[0]["label"]
+
+    # ── JL-013: path_strength = PRODUCT of constituent edges, never average ──
+
+    def test_path_strength_is_product_not_average(self) -> None:
+        edge_strength_by_id = {"e1": 0.5, "e2": 0.8}
+        result = _path_strength(["e1", "e2"], edge_strength_by_id)
+        assert result == pytest.approx(0.5 * 0.8)
+        assert result != pytest.approx((0.5 + 0.8) / 2)  # not the average
+
+    def test_path_strength_zero_hop_chain_is_full_strength(self) -> None:
+        assert _path_strength([], {}) == 1.0
+
+    def test_path_strength_uses_only_known_edges(self) -> None:
+        edge_strength_by_id = {"e1": 0.4, "e2": None}
+        assert _path_strength(["e1", "e2"], edge_strength_by_id) == pytest.approx(0.4)
+
+    def test_path_strength_falls_back_when_no_edge_has_a_value(self) -> None:
+        edge_strength_by_id = {"e1": None}
+        result = _path_strength(["e1"], edge_strength_by_id)
+        assert result == 0.5  # documented honest fallback, not fabricated
+
+    def test_path_strength_one_weak_edge_drags_the_whole_chain(self) -> None:
+        """A single weak edge must weaken the product — proves it's not an
+        average that could hide a weak link behind strong ones."""
+        weak = _path_strength(["e1", "e2"], {"e1": 0.9, "e2": 0.1})
+        strong = _path_strength(["e1", "e2"], {"e1": 0.9, "e2": 0.9})
+        assert weak < strong
 
 
 # ── Test: bo_cgm_motifs ───────────────────────────────────────────────────────
