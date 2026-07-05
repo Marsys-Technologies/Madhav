@@ -1,17 +1,24 @@
 ---
 artifact: BA_AUDIT_FIX_PLAN
 type: audit_fix_plan
-version: 1.0
-status: CURRENT
+version: 1.1
+status: SUPERSEDED-AS-COMPLETE
 authored_by: Claude (BA_FULL_ASSET_AUDIT session)
 date: 2026-07-05
+closure_record: BA_PHASE_2_5_REPORT_v1_0.md
 ---
 
 # BA Audit Fix Plan (v1.0)
 
+**CLOSED 2026-07-05 — see `BA_PHASE_2_5_REPORT_v1_0.md` for the full closure record.** Every item below
+(all BLOCKERs, all MAJOR fast-follows, all 10 native-judgment rulings) is now fixed, committed, merged
+(PR #433), deployed, and live-verified. `dag_edge_guard.py` exits 0 with zero HARD violations across all 91
+writer assets. Global REBUILD-READY = YES. This file is retained in place as the historical planning
+record — read `BA_PHASE_2_5_REPORT_v1_0.md` for current status.
+
 Prioritized remediation plan for the `BA_FULL_ASSET_AUDIT`. Consumes `BA_FULL_ASSET_AUDIT_REGISTER_v1_0.md` (91-asset, 68-finding register) and `BA_ORCHESTRATOR_INTEGRITY_REPORT_v1_0.md` (DAG integrity + rebuild-readiness verdict).
 
-**IMPORTANT — session-scope statement.** Nothing was rebuilt this session. No per-chart data was hand-patched. All fix-phase work was (a) source-code bug fixes to writers/services, (b) registry/seed-script corrections + accompanying SQL migration files, and (c) one diagnostic-instrumentation-only change — all committed to git on this branch. **Five of the thirteen fix commits require a migration-apply step that has not been run against the live database** — re-verified by direct live-DB query while writing this plan (see §"Fixed this session" for the per-commit breakdown). Until those migrations are applied, `asset_registry.target_floor`/`depends_on` and `phala_sodhana`'s CHECK constraint still show their pre-fix state live, even though the corrective code is committed.
+**IMPORTANT — session-scope statement.** Nothing was rebuilt this session. No per-chart data was hand-patched. All fix-phase work was (a) source-code bug fixes to writers/services, (b) registry/seed-script corrections + accompanying SQL migration files, and (c) one diagnostic-instrumentation-only change — all committed to git on this branch. **Five of the thirteen fix commits require a migration-apply step that has not been run against the live database** — re-verified by direct live-DB query while writing this plan (see §"Fixed this session" for the per-commit breakdown). Until those migrations are applied, `asset_registry.target_floor`/`depends_on` and `phala_sodhana`'s CHECK constraint still show their pre-fix state live, even though the corrective code is committed. **[SUPERSEDED: all migrations applied and live-verified as of BA_PHASE_2_5_REPORT_v1_0.md.]**
 
 ---
 

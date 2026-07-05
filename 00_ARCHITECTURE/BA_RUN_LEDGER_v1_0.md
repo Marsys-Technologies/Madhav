@@ -390,5 +390,26 @@ intended vs a dropped row (cf. the bg_class_priors 164-vs-165 reconciliation). O
 
 ---
 
+## BA Phase 2.5 (Consolidated) close — 2026-07-05
+
+Ran `CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md` end to end: appended JL-011..020 to the judgment
+ledger, closed all 9 open code-level BLOCKERs, implemented all 10 ratified judgment rulings (J1-J10),
+closed all MAJOR fast-follows (dag_edge_guard comment-strip, ga_condition, bo_upaya, mi_adhilepa, consolidated
+depends_on docs), and — discovered mid-session, not in the original plan — found + fixed 8 more registered
+writers with zero seed-catalog entry (`bg_class_priors`, `bg_formula_constants`, `bo_cdlm_summary`,
+`bo_cgm_motifs`, `bo_cgm_paths`, `bo_chart_gestalt`, `ka_avadhi`, `ka_taranga`), the same class of gap as
+`bo_pratijna`/`bg_ghatana` that originally broke this branch's CI.
+
+24 commits, PR #433 merged to main (`c3d48509`), CI green throughout, deploy succeeded (migrations 405-413
+all applied and live-verified), `dag_edge_guard.py` re-run against live data: 91/91 writer assets checked,
+zero HARD violations.
+
+**REBUILD-READY: YES (global).** Full report: `BA_PHASE_2_5_REPORT_v1_0.md`. `BA_AUDIT_FIX_PLAN_v1_0.md`
+marked SUPERSEDED-AS-COMPLETE (v1.1). Handed back to the strategic track for the gate-check + 3-item
+spot-check (J1 collisions→NULL, J3 no invented formula, J4 product-not-average) before scheduling the
+deferred full Abhinandan rebuild.
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*
