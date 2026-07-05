@@ -124,8 +124,12 @@ class MuhurtaContext:
     linked_anchor_id:            Optional[str] = None
     linked_anchor_domain:        Optional[str] = None
     # BA-P5B EXT: activity ontology enrichment
-    tarabala_score:              float      = 0.5  # Moon tara strength vs natal; 0.5 at build time
-    chandrabala_score:           float      = 0.5  # Moon rasi strength; 0.5 at build time
+    tarabala_score:              float      = 0.5  # Moon tara strength vs natal; 0.5 placeholder if no live source
+    chandrabala_score:           float      = 0.5  # Moon rasi strength; 0.5 placeholder if no live source
+    # JL-016 (BA-2.5 P3 J6): 'panchang_engine_live' when tarabala_score/chandrabala_score
+    # come from a real transit-Moon lookup via panchang_engine; 'placeholder_no_ephemeris'
+    # when the 0.5 defaults above are an honest stand-in (natal data or ephemeris unavailable).
+    tarabala_chandrabala_source: str        = 'placeholder_no_ephemeris'
     natal_moon_nakshatra_idx:    int        = 0    # from chart_facts (0-based ordinal)
     activity_significators:      dict       = field(default_factory=dict)  # from brahma_activity_ontology
     fructification_rules:        dict       = field(default_factory=dict)  # timing_anchor + panchanga_rules
@@ -183,13 +187,22 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         'note': 'structural_check_only; serve-time enrichment adds live ephemeris check',
     }
 
+    is_live = ctx.tarabala_chandrabala_source == 'panchang_engine_live'
     tarabala_chandrabala = {
         'tarabala_score': ctx.tarabala_score,
         'chandrabala_score': ctx.chandrabala_score,
         'natal_moon_nakshatra_idx': ctx.natal_moon_nakshatra_idx,
-        'note': 'build-time structural scores (0.5 default); serve-time computes from transit Moon',
+        'source': ctx.tarabala_chandrabala_source,
+        'note': (
+            'real transit-Moon tarabala/chandrabala via panchang_engine (JL-016)'
+            if is_live else
+            'honest 0.5 placeholder — natal Moon data or live ephemeris unavailable '
+            'for this candidate; NOT a computed score (JL-016)'
+        ),
     }
 
+    # Only surface the enrichment hook when this record is still riding the
+    # placeholder — a live-computed record has nothing left to enrich.
     follow_up_hook = {
         'action': 'enrich_tarabala_chandrabala',
         'requires': 'transit_moon_nakshatra_at_window_start',
@@ -197,6 +210,7 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         'action_class': ctx.action_class,
         'fructification_anchor': ctx.fructification_anchor,
         'consumed_by': 'P7B_prashna_followup_scheduler',
+        'already_satisfied': is_live,
     }
 
     derivation = {
@@ -208,6 +222,7 @@ def derive_muhurta_record(ctx: MuhurtaContext) -> MuhurtaRecord:
         'transit_score':             ctx.transit_score,
         'tarabala_score':            ctx.tarabala_score,
         'chandrabala_score':         ctx.chandrabala_score,
+        'tarabala_chandrabala_source': ctx.tarabala_chandrabala_source,
         'adversity_penalty':         penalty,
         'obstruction_id':            ctx.overlapping_obstruction_id,
         'linked_anchor_id':          ctx.linked_anchor_id,

@@ -4,8 +4,11 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 NEVER commits or rolls back (orchestrator owns the transaction).
 NEVER writes outside phala_muhurta.
 
-Reads: phala_anchors · ka_vighnakara · ga_condition_composite · ka_gochara
-       (calls ka_muhurta_seva for panchanga scoring via the service)
+Reads: phala_anchors · ka_vighnakara · ga_condition_composite · ka_gochara ·
+       chart_facts (natal Moon nakshatra/sign)
+       (calls ka_muhurta_seva for panchanga scoring via the service; calls
+       panchang_engine.panchanga_instant() directly for real serve-time
+       tarabala/chandrabala per JL-016 — see _compute_tara_chandra_scores)
 Writes: phala_muhurta (delete-then-insert per chart_id)
 """
 from __future__ import annotations
@@ -69,6 +72,13 @@ class PhMuhurtaWriter(WriterBase):
         # BA-P5B EXT: load brahma_activity_ontology + natal Moon nakshatra
         activity_ontology = self._load_activity_ontology(conn)
         natal_moon_nakshatra_idx = self._load_natal_moon_nakshatra_idx(conn, chart_id)
+        # JL-016 (BA-2.5 P3 J6): natal Moon nakshatra (1-indexed, None-safe) + sign,
+        # needed to derive real tarabala/chandrabala at serve time (see
+        # _compute_tara_chandra_scores). Distinct from natal_moon_nakshatra_idx above,
+        # which defaults to 0 on miss and is only used for the jsonb echo field.
+        natal_moon_nakshatra_id = self._load_natal_moon_nakshatra_id(conn, chart_id)
+        natal_moon_sign_id = self._load_natal_moon_sign_id(conn, chart_id)
+        birth_params = ctx.config.get('birth_params') or {}
         action_graha_overrides: dict[str, str] = {
             'start_business': career_lord,
             'career_launch':  career_lord,
@@ -114,6 +124,14 @@ class PhMuhurtaWriter(WriterBase):
                 # use a deterministic proxy from condition × season_factor
                 panchanga_score = round(min(1.0, condition * 0.8 + 0.2), 4)
 
+                # JL-016 (BA-2.5 P3 J6): real tarabala/chandrabala from the panchanga
+                # service (panchang_engine), not the hardcoded 0.5 defaults. Falls back
+                # to an honestly-labeled placeholder if natal Moon data or ephemeris is
+                # unavailable — see _compute_tara_chandra_scores docstring.
+                tarabala_score, chandrabala_score, tara_chandra_source = self._compute_tara_chandra_scores(
+                    natal_moon_nakshatra_id, natal_moon_sign_id, birth_params, candidate_start,
+                )
+
                 # BA-P5B EXT: activity ontology enrichment
                 act_entry = activity_ontology.get(domain_action, {})
                 significators = act_entry.get('significators', {}) or {}
@@ -136,9 +154,11 @@ class PhMuhurtaWriter(WriterBase):
                     obstruction_penalty=obstruction_penalty,
                     linked_anchor_id=anchor_id,   # M3: prediction-fused
                     linked_anchor_domain=domain,
-                    # BA-P5B EXT
-                    tarabala_score=0.5,       # serve-time enrichment (transit Moon needed)
-                    chandrabala_score=0.5,    # serve-time enrichment (transit Moon needed)
+                    # BA-P5B EXT / JL-016: real serve-time bala scores when available,
+                    # honest placeholder (source label makes this distinguishable) otherwise.
+                    tarabala_score=tarabala_score,
+                    chandrabala_score=chandrabala_score,
+                    tarabala_chandrabala_source=tara_chandra_source,
                     natal_moon_nakshatra_idx=natal_moon_nakshatra_idx,
                     activity_significators=significators,
                     fructification_rules=fruct_rules,
@@ -508,6 +528,150 @@ class PhMuhurtaWriter(WriterBase):
                 pass
             logger.debug("ph_muhurta: natal Moon nakshatra load skipped: %s", exc)
         return 0
+
+    # JL-016 (BA-2.5 P3 J6) ---------------------------------------------------
+    # tarabala/chandrabala real-source wiring. Both balas ALREADY EXIST as
+    # deterministic classical formulas in panchang_engine (compute_tara_bala_score /
+    # compute_chandra_bala_score in panchang_engine/tara_bala.py — the same module
+    # used by ka_muhurta_seva and muhurat/finder.py). ph_muhurta does NOT reimplement
+    # these formulas; it only (a) reads the natal Moon nakshatra/sign already computed
+    # into chart_facts by L1, and (b) calls panchang_engine.panchanga_instant() — the
+    # existing panchanga service — to get the TRANSIT Moon's nakshatra/sign at the
+    # candidate window's instant. This is a serve-time JOIN across two already-computed
+    # sources, per §N.5 (L1 is the authority over L2+ derivations) and the JL-016 ruling.
+
+    _NAKSHATRA_ID_1INDEXED = {
+        'Ashwini': 1, 'Bharani': 2, 'Krittika': 3, 'Rohini': 4, 'Mrigashira': 5,
+        'Ardra': 6, 'Punarvasu': 7, 'Pushya': 8, 'Ashlesha': 9,
+        'Magha': 10, 'Purva Phalguni': 11, 'Uttara Phalguni': 12,
+        'Hasta': 13, 'Chitra': 14, 'Swati': 15, 'Vishakha': 16,
+        'Anuradha': 17, 'Jyeshtha': 18, 'Mula': 19,
+        'Purva Ashadha': 20, 'Uttara Ashadha': 21, 'Shravana': 22,
+        'Dhanishtha': 23, 'Shatabhisha': 24,
+        'Purva Bhadrapada': 25, 'Uttara Bhadrapada': 26, 'Revati': 27,
+    }
+
+    def _load_natal_moon_nakshatra_id(self, conn, chart_id: str):
+        """Natal Moon nakshatra as a 1-indexed id (1..27), or None if unavailable.
+
+        Distinct from _load_natal_moon_nakshatra_idx (0-based, defaults to 0 on
+        miss) — this method returns None on miss so callers can tell "no data"
+        apart from "genuinely Ashwini", which matters for JL-016's real-vs-
+        placeholder distinction.
+        """
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_moon_nak_id")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND fact_subject = 'Moon'
+                      AND fact_key = 'nakshatra'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_nak_id")
+            if row and row[0]:
+                return self._NAKSHATRA_ID_1INDEXED.get(row[0])
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_moon_nak_id")
+            except Exception:
+                pass
+            logger.debug("ph_muhurta: natal Moon nakshatra id load skipped: %s", exc)
+        return None
+
+    def _load_natal_moon_sign_id(self, conn, chart_id: str):
+        """Natal Moon sign as a 1-indexed id (1=Aries..12=Pisces), or None if unavailable.
+
+        Same source pattern as _resolve_career_lord's lagna-sign query, but for
+        fact_subject='Moon' — reads the L1 chart_facts value, never recomputes it.
+        """
+        try:
+            with conn.cursor() as sp:
+                sp.execute("SAVEPOINT sp_muhurta_moon_sign")
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_text FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND fact_subject = 'Moon'
+                      AND fact_key = 'sign'
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_muhurta_moon_sign")
+            if row and row[0]:
+                return self._LAGNA_SIGN_NUM.get(row[0])
+        except Exception as exc:
+            try:
+                with conn.cursor() as sp:
+                    sp.execute("ROLLBACK TO SAVEPOINT sp_muhurta_moon_sign")
+            except Exception:
+                pass
+            logger.debug("ph_muhurta: natal Moon sign load skipped: %s", exc)
+        return None
+
+    def _compute_tara_chandra_scores(
+        self,
+        natal_moon_nakshatra_id,
+        natal_moon_sign_id,
+        birth_params: dict,
+        candidate_start,
+    ) -> tuple[float, float, str]:
+        """Real tarabala/chandrabala via panchang_engine, or an honest placeholder.
+
+        Requires: natal Moon nakshatra + sign (chart_facts) + birth_params lat/lon/tz
+        (for the transit-Moon ephemeris lookup at the candidate instant) +
+        panchang_engine's live swisseph path. Any of those being unavailable is not
+        fabricated — returns (0.5, 0.5, 'placeholder_no_ephemeris') so the placeholder
+        is distinguishable from a real score via the source label.
+        """
+        if (
+            not candidate_start
+            or natal_moon_sign_id is None
+            or natal_moon_nakshatra_id is None
+            or not birth_params
+        ):
+            return 0.5, 0.5, 'placeholder_no_ephemeris'
+
+        lat = birth_params.get('latitude_deg')
+        lon = birth_params.get('longitude_deg')
+        tz_hours = birth_params.get('tz_offset_hours')
+        if lat is None or lon is None or tz_hours is None:
+            return 0.5, 0.5, 'placeholder_no_ephemeris'
+
+        try:
+            from panchang_engine import panchanga_instant
+            from panchang_engine.tara_bala import (
+                compute_tara_bala_score,
+                compute_chandra_bala_score,
+            )
+
+            pi = panchanga_instant(candidate_start, float(lat), float(lon), int(round(tz_hours * 60)))
+            transit_nakshatra_id = pi.nakshatra.id
+            transit_moon = next((p for p in (pi.planets or []) if p.name == 'Moon'), None)
+            if transit_moon is None:
+                return 0.5, 0.5, 'placeholder_no_ephemeris'
+            transit_sign_id = transit_moon.sign_id
+
+            tarabala = compute_tara_bala_score(natal_moon_nakshatra_id, transit_nakshatra_id)
+            chandrabala = compute_chandra_bala_score(natal_moon_sign_id, transit_sign_id)
+            return round(tarabala, 4), round(chandrabala, 4), 'panchang_engine_live'
+        except Exception as exc:
+            logger.debug("ph_muhurta: tarabala/chandrabala live computation skipped: %s", exc)
+            return 0.5, 0.5, 'placeholder_no_ephemeris'
 
 
 _DOMAIN_TO_ACTION: dict[str, str] = {
