@@ -2177,96 +2177,79 @@ def compute_sandhi_post_pass(system_rows: list[dict]) -> None:
 
 # ── DB persistence (idempotent per-system) ────────────────────────────────────
 
-_UPSERT_SQL = """
-    INSERT INTO chart_dashas (
-        dasha_row_id, chart_id, ayanamsha_id, build_id, system_id,
-        level_n, parent_row_id, lord_graha, lord_sign,
-        start_date, end_date, start_iso, end_iso, duration_days,
-        sandhi_flag, karaka_role_at_period,
-        verification_pass_status, verification_method,
-        citation_ref, citation_human, computed_at, engine_version,
-        lord_natal_house_d1, lord_natal_sign, lord_natal_nakshatra,
-        lord_natal_dignity_d1, lord_natal_shadbala_total,
-        sandhi_with_next_dasha_lord, next_dasha_start_iso,
-        concurrent_system_lords_jsonb, convergence_count_at_start,
-        applies_to_this_chart_flag, period_deity_or_marker,
-        lord_to_parent_relationship, varsha_year_lord,
-        anchored_solar_return_iso,
-        triggered_yogas_jsonb_atomic,
-        lord_transit_at_period_start_jsonb,
-        karakas_active_during_period,
-        is_truncated_at_window_start, is_truncated_at_window_end,
-        kp_sublevel, kp_sub_lord, kp_sub_sub_lord
-    ) VALUES (
-        %(dasha_row_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-        %(system_id)s, %(level_n)s, %(parent_row_id)s, %(lord_graha)s,
-        %(lord_sign)s, %(start_date)s, %(end_date)s, %(start_iso)s,
-        %(end_iso)s, %(duration_days)s, %(sandhi_flag)s,
-        %(karaka_role_at_period)s, %(verification_pass_status)s,
-        %(verification_method)s, %(citation_ref)s, %(citation_human)s,
-        %(computed_at)s, %(engine_version)s,
-        %(lord_natal_house_d1)s, %(lord_natal_sign)s, %(lord_natal_nakshatra)s,
-        %(lord_natal_dignity_d1)s, %(lord_natal_shadbala_total)s,
-        %(sandhi_with_next_dasha_lord)s, %(next_dasha_start_iso)s,
-        %(concurrent_system_lords_jsonb)s::jsonb,
-        %(convergence_count_at_start)s,
-        %(applies_to_this_chart_flag)s, %(period_deity_or_marker)s,
-        %(lord_to_parent_relationship)s, %(varsha_year_lord)s,
-        %(anchored_solar_return_iso)s,
-        %(triggered_yogas_jsonb_atomic)s::jsonb,
-        %(lord_transit_at_period_start_jsonb)s::jsonb,
-        %(karakas_active_during_period)s,
-        %(is_truncated_at_window_start)s, %(is_truncated_at_window_end)s,
-        %(kp_sublevel)s, %(kp_sub_lord)s, %(kp_sub_sub_lord)s
-    )
-    ON CONFLICT (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id)
-    DO UPDATE SET
-        lord_graha = EXCLUDED.lord_graha,
-        end_iso = EXCLUDED.end_iso,
-        duration_days = EXCLUDED.duration_days,
-        verification_pass_status = EXCLUDED.verification_pass_status,
-        computed_at = EXCLUDED.computed_at,
-        concurrent_system_lords_jsonb = EXCLUDED.concurrent_system_lords_jsonb,
-        convergence_count_at_start = EXCLUDED.convergence_count_at_start,
-        sandhi_with_next_dasha_lord = EXCLUDED.sandhi_with_next_dasha_lord,
-        next_dasha_start_iso = EXCLUDED.next_dasha_start_iso,
-        karakas_active_during_period = EXCLUDED.karakas_active_during_period
-"""
+# Column order for the COPY bulk-load path (BA-P3 FIX 2). Must match the
+# chart_dashas column list 1:1 — COPY has no column-name-keyed binding.
+_COPY_COLUMNS = [
+    "dasha_row_id", "chart_id", "ayanamsha_id", "build_id", "system_id",
+    "level_n", "parent_row_id", "lord_graha", "lord_sign",
+    "start_date", "end_date", "start_iso", "end_iso", "duration_days",
+    "sandhi_flag", "karaka_role_at_period",
+    "verification_pass_status", "verification_method",
+    "citation_ref", "citation_human", "computed_at", "engine_version",
+    "lord_natal_house_d1", "lord_natal_sign", "lord_natal_nakshatra",
+    "lord_natal_dignity_d1", "lord_natal_shadbala_total",
+    "sandhi_with_next_dasha_lord", "next_dasha_start_iso",
+    "concurrent_system_lords_jsonb", "convergence_count_at_start",
+    "applies_to_this_chart_flag", "period_deity_or_marker",
+    "lord_to_parent_relationship", "varsha_year_lord",
+    "anchored_solar_return_iso",
+    "triggered_yogas_jsonb_atomic",
+    "lord_transit_at_period_start_jsonb",
+    "karakas_active_during_period",
+    "is_truncated_at_window_start", "is_truncated_at_window_end",
+    "kp_sublevel", "kp_sub_lord", "kp_sub_sub_lord",
+]
+
+
+def _copy_row_values(row: dict) -> tuple:
+    """Row dict → tuple in _COPY_COLUMNS order, normalizing the jsonb defaults
+    the executemany path used to apply."""
+    normalized = {
+        **row,
+        "concurrent_system_lords_jsonb": row.get("concurrent_system_lords_jsonb"),
+        "triggered_yogas_jsonb_atomic": row.get("triggered_yogas_jsonb_atomic") or "[]",
+        "lord_transit_at_period_start_jsonb": row.get("lord_transit_at_period_start_jsonb"),
+        "karakas_active_during_period": row.get("karakas_active_during_period"),
+    }
+    return tuple(normalized.get(col) for col in _COPY_COLUMNS)
 
 
 def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str, *, commit: bool = True) -> int:
     """
-    Bulk-upsert rows into chart_dashas via executemany().
-    Idempotent: ON CONFLICT on (chart_id, ayanamsha_id, system_id, level_n, start_iso, build_id).
+    Bulk-load rows into chart_dashas via COPY (BA-P3 FIX 2 — replaces the prior
+    executemany() path; COPY is materially faster for the ~thousands-of-rows-
+    per-substep loads here, shortening the window in which a concurrent
+    autovacuum on this shared table can starve the write past the substep
+    timeout).
+
+    No ON CONFLICT: safe because replace_prior_chart_dashas() (below) has just
+    deleted every existing row in this exact (chart_id, system_id, ayanamsha_id)
+    scope, across all build_ids, in the same transaction — there is nothing left
+    for this batch to collide with. A collision here (e.g. a duplicate natural
+    key within the freshly computed batch) is a genuine bug and should fail
+    loud rather than be silently upserted away.
+
+    Idempotent: replace_prior_chart_dashas scopes the delete to the
+    (chart_id, system_id, ayanamsha_id) triple present in `rows`, so a rebuild
+    under a new build_id replaces instead of accreting.
+
     Returns count of rows written.
     """
     if not rows:
         return 0
 
-    # Idempotency: replace this chart's prior rows for the (ayanamsha, system) scope
-    # being written so a rebuild under a new build_id replaces instead of accreting
-    # (build_id is in the chart_dashas unique key).
     replace_prior_chart_dashas(conn, rows)
 
-    params_list = [
-        {
-            **row,
-            "concurrent_system_lords_jsonb": row.get("concurrent_system_lords_jsonb"),
-            "triggered_yogas_jsonb_atomic": row.get("triggered_yogas_jsonb_atomic") or "[]",
-            "lord_transit_at_period_start_jsonb": row.get("lord_transit_at_period_start_jsonb"),
-            "karakas_active_during_period": row.get("karakas_active_during_period"),
-        }
-        for row in rows
-    ]
-
-    with conn.cursor() as _cur:
-        _cur.executemany(_UPSERT_SQL, params_list)
+    with conn.cursor() as cur:
+        with cur.copy(f"COPY chart_dashas ({', '.join(_COPY_COLUMNS)}) FROM STDIN") as copy:
+            for row in rows:
+                copy.write_row(_copy_row_values(row))
 
     # On the conformed orchestrator path (commit=False) the caller's SAVEPOINT +
     # per-sub-step commit own atomicity; only the legacy CLI path commits here.
     if commit:
         conn.commit()
-    return len(params_list)
+    return len(rows)
 
 
 # ── Build-state throughput update ─────────────────────────────────────────────
@@ -2431,6 +2414,18 @@ def build_system(
             rows_written = _upsert_rows(c, rows, system_id, ayanamsha_id, commit=owns_conn)
             if owns_conn:
                 _update_asset_throughput(c, chart_id, build_id, "ga_dashas", rows_written, "in_progress")
+
+        # Completeness check (BA-P3 FIX 2): never leave a silent partial substep.
+        # A mismatch here means the COPY/executemany write was truncated (e.g. by
+        # a reaper cancelling the statement mid-flight) while still reporting
+        # PASS — exactly the failure mode that let 460,831 of 603,122 rows
+        # persist as an undetected partial build.
+        if rows_written != len(rows):
+            raise RuntimeError(
+                f"[ga_dashas] chart_id={chart_id} system={system_id} ayanamsha={ayanamsha_id}: "
+                f"completeness check FAILED — computed {len(rows)} rows but only "
+                f"{rows_written} persisted. Refusing to report this substep as PASS."
+            )
 
     logger.info(
         "[ga_dashas] System=%s ayanamsha=%s: %d rows written (verification=%s)",

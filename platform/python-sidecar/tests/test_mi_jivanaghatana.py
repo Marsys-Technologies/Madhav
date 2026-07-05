@@ -1,6 +1,7 @@
 """
 test_mi_jivanaghatana.py — LEL markdown raw-field fallback parser (A6, BA
-Pre-Rebuild Gate, 2026-07-05).
+Pre-Rebuild Gate, 2026-07-05) + native-contamination gate / graceful-empty
+build (BA-P3 FIX 1, 2026-07-05).
 
 DB-free tests for pipeline.orchestrator.writers.mi_jivanaghatana's LEL
 markdown parser. Covers the recurring failure mode: narrative prose fields
@@ -11,12 +12,20 @@ category, subcategory, magnitude, ...) as raw uninterpreted strings.
 """
 from __future__ import annotations
 
+import logging
+
+import pytest
+
 from pipeline.orchestrator.writers.mi_jivanaghatana import (
+    NATIVE_CHART_ID,
+    MiJivanaghatanaWriter,
     _is_template_event_id,
     _parse_block_raw,
     _parse_lel_markdown,
     _LEL_MARKDOWN_PATH,
 )
+
+NON_NATIVE_CHART_ID = "1c826d5a-0000-4000-8000-000000000000"
 
 BROKEN_BLOCK = '''EVT.2019.05.XX.01:
   date: 2019-05-XX
@@ -162,3 +171,119 @@ def test_real_lel_file_recovers_every_real_evt_event_with_date_and_category():
     missing_category = [e["event_id"] for e in events if not e.get("category")]
     assert not missing_date, f"events missing date: {missing_date}"
     assert not missing_category, f"events missing category: {missing_category}"
+
+
+# ── BA-P3 FIX 1: native-contamination gate + graceful empty ──────────────────
+
+class _FakeCursor:
+    """Answers the two life_events queries run() issues; no chart_id column."""
+    def __init__(self, life_events_rows):
+        self._life_events_rows = life_events_rows
+        self._result = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        if "information_schema.columns" in s:
+            self._result = [{"column_name": "chart_id"}, {"column_name": "event_id"}]
+        elif "FROM life_events WHERE chart_id" in s:
+            self._result = list(self._life_events_rows)
+        else:
+            self._result = []
+
+    def fetchall(self):
+        return list(self._result)
+
+    def executemany(self, sql, params_list):
+        self._result = []
+
+
+class _FakeConn:
+    def __init__(self, life_events_rows=()):
+        self._life_events_rows = list(life_events_rows)
+
+    def cursor(self, row_factory=None):
+        return _FakeCursor(self._life_events_rows)
+
+
+class _FakeCtx:
+    def __init__(self, chart_id, db_conn, dry_run=False):
+        self.config = {"chart_id": chart_id}
+        self.db_conn = db_conn
+        self.dry_run = dry_run
+
+
+def test_non_native_chart_never_opens_native_markdown_builds_zero_success(monkeypatch, tmp_path):
+    md = tmp_path / "LEL.md"
+    md.write_text(f"```yaml\n{WELL_FORMED_BLOCK}\n```\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", md
+    )
+
+    def _boom(path):
+        raise AssertionError("non-native chart must never parse the native LEL markdown")
+
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._parse_lel_markdown", _boom
+    )
+
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NON_NATIVE_CHART_ID, _FakeConn(life_events_rows=[]))
+    result = writer.run(ctx)
+
+    assert result.rows_inserted == 0
+
+
+def test_zero_event_chart_is_success_not_exception(monkeypatch, tmp_path):
+    missing_md = tmp_path / "does_not_exist.md"
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", missing_md
+    )
+
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NON_NATIVE_CHART_ID, _FakeConn(life_events_rows=[]))
+    result = writer.run(ctx)
+
+    assert result.rows_inserted == 0
+    assert "zero provenance rows" in result.notes
+
+
+def test_native_chart_with_file_present_still_ingests_events(monkeypatch, tmp_path):
+    md = tmp_path / "LEL.md"
+    md.write_text(f"```yaml\n{WELL_FORMED_BLOCK}\n```\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", md
+    )
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._lookup_event_class",
+        lambda conn, category, subcategory: None,
+    )
+
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=[]))
+    result = writer.run(ctx)
+
+    assert result.rows_inserted == 1
+
+
+def test_native_chart_with_file_unreachable_warns_not_silent(monkeypatch, tmp_path, caplog):
+    missing_md = tmp_path / "does_not_exist.md"
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", missing_md
+    )
+
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=[]))
+    with caplog.at_level(logging.WARNING):
+        result = writer.run(ctx)
+
+    assert result.rows_inserted == 0
+    assert any(
+        "NATIVE" in rec.message and "ZERO events" in rec.message
+        for rec in caplog.records
+    ), "native zero-event build must log a loud warning, not silently succeed"
