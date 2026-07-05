@@ -34,6 +34,7 @@ from ga_writers.ga_sade_sati_writer import (  # noqa: E402
     _build_static_natal_facts,
     _verif_for_text,
     _verif_for_maybe_none,
+    _make_row,
 )
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -314,3 +315,25 @@ def test_verif_for_maybe_none_flags_none_as_single():
     assert _verif_for_maybe_none(None) == "single"
     assert _verif_for_maybe_none(False) == "two_pass_verified"
     assert _verif_for_maybe_none(True) == "two_pass_verified"
+
+
+# ── _make_row: value_jsonb must tolerate Decimal (BA-P3 rebuild regression) ──
+
+def test_make_row_serializes_decimal_inside_value_jsonb():
+    """_lookup_d10_karya_activation_facts() returns dicts whose 'house' value
+    comes from chart_divisionals.fact_value_num — a NUMERIC column that
+    psycopg adapts to Decimal, not float. json.dumps(value_jsonb) without
+    default=str raises TypeError: Object of type Decimal is not JSON
+    serializable — this broke ga_sade_sati (and therefore blocked its entire
+    downstream L2-L5 DAG) as soon as GA9 enrichment started passing real
+    upstream facts instead of stub placeholders."""
+    from decimal import Decimal
+
+    row = _make_row(
+        CHART_ID, AYANAMSHA, "build-x",
+        "sade_sati_dasha_context", "cycle1_JANMA", "d10_karya_activation_facts_jsonb",
+        value_text=None, value_num=None,
+        value_jsonb=[{"ref_id": "row-uuid-1", "karya": "career_karya", "house": Decimal("10")}],
+        citation_human="test",
+    )
+    assert row["fact_value_jsonb"] == '[{"ref_id": "row-uuid-1", "karya": "career_karya", "house": "10"}]'
