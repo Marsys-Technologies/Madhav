@@ -12,6 +12,7 @@ category, subcategory, magnitude, ...) as raw uninterpreted strings.
 from __future__ import annotations
 
 from pipeline.orchestrator.writers.mi_jivanaghatana import (
+    _is_template_event_id,
     _parse_block_raw,
     _parse_lel_markdown,
     _LEL_MARKDOWN_PATH,
@@ -93,6 +94,24 @@ def test_raw_fallback_rejects_non_event_blocks():
     assert _parse_block_raw(NON_EVENT_BLOCK) == []
 
 
+def test_template_event_id_detection():
+    assert _is_template_event_id("EVT.YYYY.MM.DD.XX")
+    # XX is a legitimate "unknown day/month" marker on real events —
+    # only the literal YYYY placeholder marks the illustrative template.
+    assert not _is_template_event_id("EVT.2019.05.XX.01")
+    assert not _is_template_event_id("EVT.CURRENT.01")
+
+
+def test_template_block_does_not_leak_via_normal_yaml_path(tmp_path):
+    md = tmp_path / "LEL.md"
+    md.write_text(
+        "```yaml\nEVT.YYYY.MM.DD.XX:\n  date: [YYYY-MM-DD | YYYY-MM-XX]\n  category: [placeholder]\n```\n",
+        encoding="utf-8",
+    )
+    events, _sha = _parse_lel_markdown(md)
+    assert events == []
+
+
 def test_well_formed_block_parses_via_normal_yaml_path(tmp_path):
     md = tmp_path / "LEL.md"
     md.write_text(f"```yaml\n{WELL_FORMED_BLOCK}\n```\n", encoding="utf-8")
@@ -113,17 +132,14 @@ def test_broken_block_recovers_via_fallback_end_to_end(tmp_path):
 
 def _real_evt_keys(text: str) -> set[str]:
     """Every distinct top-level EVT.* key in the file, excluding the
-    illustrative EVT.YYYY.MM.DD.XX template block (see module docstring /
-    known pre-existing template-leak finding — that block is not a real
-    event; it happens to satisfy strict YAML on its own and is unrelated to
-    A6's raw-field fallback)."""
+    illustrative EVT.YYYY.MM.DD.XX template block (not a real event —
+    _is_template_event_id filters it at parse time)."""
     import re
     blocks = re.findall(r'```yaml\n(.*?)\n```', text, re.DOTALL)
     keys: set[str] = set()
     for b in blocks:
         keys.update(re.findall(r'^(EVT\.\S+):\s*$', b, re.MULTILINE))
-    keys.discard("EVT.YYYY.MM.DD.XX")
-    return keys
+    return {k for k in keys if not _is_template_event_id(k)}
 
 
 def test_real_lel_file_recovers_every_real_evt_event_with_date_and_category():
@@ -139,9 +155,10 @@ def test_real_lel_file_recovers_every_real_evt_event_with_date_and_category():
 
     missing = expected_ids - parsed_ids
     assert not missing, f"real EVT events dropped by the parser: {sorted(missing)}"
+    extra = parsed_ids - expected_ids
+    assert not extra, f"spurious non-event entries leaked into parsed events: {sorted(extra)}"
 
-    real_events = [e for e in events if e["event_id"] in expected_ids]
-    missing_date = [e["event_id"] for e in real_events if not e.get("date")]
-    missing_category = [e["event_id"] for e in real_events if not e.get("category")]
+    missing_date = [e["event_id"] for e in events if not e.get("date")]
+    missing_category = [e["event_id"] for e in events if not e.get("category")]
     assert not missing_date, f"events missing date: {missing_date}"
     assert not missing_category, f"events missing category: {missing_category}"

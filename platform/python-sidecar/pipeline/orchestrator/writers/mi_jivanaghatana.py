@@ -107,6 +107,14 @@ def _parse_date(raw: str | None) -> Any:
 _EVENT_ID_RE = re.compile(r'^(EVT\.\S+):\s*$')
 _TOP_LEVEL_FIELD_RE = re.compile(r'^ {2}([a-z_]+):[ \t]?(.*)$')
 
+
+def _is_template_event_id(event_id: str) -> bool:
+    """True for the illustrative legend key (EVT.YYYY.MM.DD.XX) — a
+    placeholder, not a real event. Real event_ids are always fully dated
+    (YYYY replaced by digits; XX is a legitimate "unknown day/month" marker
+    on real events, so only the literal YYYY placeholder is excluded)."""
+    return "YYYY" in event_id
+
 # The only fields mi_jivanaghatana actually reads off an event (see run()
 # below) — narrative fields (description/native_reflection/notes) and the
 # nested chart_state_at_event/retrodictive_match blocks are never consumed,
@@ -167,6 +175,8 @@ def _parse_block_raw(block: str) -> list[dict]:
     """
     results: list[dict] = []
     for event_id, lines in _split_event_subblocks(block):
+        if _is_template_event_id(event_id):
+            continue
         data: dict[str, Any] = {"event_id": event_id}
         for line in lines:
             m = _TOP_LEVEL_FIELD_RE.match(line)
@@ -238,6 +248,13 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
 
         for key, val in data.items():
             if not (isinstance(key, str) and key.startswith("EVT.")) or not isinstance(val, dict):
+                continue
+            if _is_template_event_id(key):
+                # The illustrative legend block (EVT.YYYY.MM.DD.XX) uses
+                # bracket-delimited placeholder values that happen to be
+                # valid YAML on their own, so it parses via the normal path
+                # (never hits the raw fallback) and would otherwise leak
+                # into mimamsa_event_provenance as a spurious event.
                 continue
             events.append({"event_id": key, **val})
 
