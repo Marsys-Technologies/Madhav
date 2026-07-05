@@ -107,6 +107,14 @@ def _parse_date(raw: str | None) -> Any:
 _EVENT_ID_RE = re.compile(r'^(EVT\.\S+):\s*$')
 _TOP_LEVEL_FIELD_RE = re.compile(r'^ {2}([a-z_]+):[ \t]?(.*)$')
 
+
+def _is_template_event_id(event_id: str) -> bool:
+    """True for the illustrative legend key (EVT.YYYY.MM.DD.XX) — a
+    placeholder, not a real event. Real event_ids are always fully dated
+    (YYYY replaced by digits; XX is a legitimate "unknown day/month" marker
+    on real events, so only the literal YYYY placeholder is excluded)."""
+    return "YYYY" in event_id
+
 # The only fields mi_jivanaghatana actually reads off an event (see run()
 # below) — narrative fields (description/native_reflection/notes) and the
 # nested chart_state_at_event/retrodictive_match blocks are never consumed,
@@ -128,11 +136,36 @@ def _unquote(raw: str) -> str:
     return v
 
 
-def _parse_block_raw(block: str) -> dict | None:
+def _split_event_subblocks(block: str) -> list[tuple[str, list[str]]]:
     """
-    Fallback for blocks that fail strict YAML parsing. Reads event_id plus
-    the handful of top-level scalar fields this writer consumes as raw,
-    uninterpreted strings — line by line, independent of YAML syntax.
+    Split a yaml block's lines into (event_id, field_lines) chunks at each
+    top-level EVT.* key boundary. Some LEL sections group more than one
+    event under a single ```yaml fence, so a block that fails strict YAML
+    parsing may still contain several distinct events.
+    """
+    chunks: list[tuple[str, list[str]]] = []
+    current_id: str | None = None
+    current_lines: list[str] = []
+    for line in block.splitlines():
+        m = _EVENT_ID_RE.match(line)
+        if m:
+            if current_id is not None:
+                chunks.append((current_id, current_lines))
+            current_id = m.group(1)
+            current_lines = []
+        elif current_id is not None:
+            current_lines.append(line)
+    if current_id is not None:
+        chunks.append((current_id, current_lines))
+    return chunks
+
+
+def _parse_block_raw(block: str) -> list[dict]:
+    """
+    Fallback for blocks that fail strict YAML parsing. Reads each event_id
+    in the block plus the handful of top-level scalar fields this writer
+    consumes as raw, uninterpreted strings — line by line, independent of
+    YAML syntax.
 
     This sidesteps the recurring LEL authoring failure mode: narrative prose
     fields (description / native_reflection / notes) routinely contain
@@ -140,21 +173,20 @@ def _parse_block_raw(block: str) -> dict | None:
     even though this writer never reads those fields. Losing the whole
     event over an unrelated field is unnecessary.
     """
-    lines = block.splitlines()
-    if not lines:
-        return None
-    id_match = _EVENT_ID_RE.match(lines[0])
-    if not id_match:
-        return None
-    data: dict[str, Any] = {"event_id": id_match.group(1)}
-    for line in lines[1:]:
-        m = _TOP_LEVEL_FIELD_RE.match(line)
-        if not m or m.group(1) not in _CONSUMED_RAW_KEYS:
+    results: list[dict] = []
+    for event_id, lines in _split_event_subblocks(block):
+        if _is_template_event_id(event_id):
             continue
-        val = _unquote(m.group(2))
-        if val:
-            data[m.group(1)] = val
-    return data
+        data: dict[str, Any] = {"event_id": event_id}
+        for line in lines:
+            m = _TOP_LEVEL_FIELD_RE.match(line)
+            if not m or m.group(1) not in _CONSUMED_RAW_KEYS:
+                continue
+            val = _unquote(m.group(2))
+            if val:
+                data[m.group(1)] = val
+        results.append(data)
+    return results
 
 
 def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
@@ -189,15 +221,18 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
                 continue
         except Exception as exc:
             # Recover via the raw top-level-field fallback (see
-            # _parse_block_raw) instead of dropping the event outright.
-            fallback = _parse_block_raw(block)
-            if fallback is not None:
-                events.append(fallback)
-                recovered += 1
+            # _parse_block_raw) instead of dropping the event(s) outright.
+            # A block may contain more than one event (some LEL sections
+            # group several under one fence).
+            fallback_events = _parse_block_raw(block)
+            if fallback_events:
+                events.extend(fallback_events)
+                recovered += len(fallback_events)
                 logger.info(
-                    "[mi_jivanaghatana] recovered %s via raw-field fallback "
-                    "after YAML parse failure: %s",
-                    fallback["event_id"], exc,
+                    "[mi_jivanaghatana] recovered %d event(s) via raw-field "
+                    "fallback after YAML parse failure (%s): %s",
+                    len(fallback_events), exc,
+                    ", ".join(e["event_id"] for e in fallback_events),
                 )
                 continue
             skipped += 1
@@ -213,6 +248,13 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
 
         for key, val in data.items():
             if not (isinstance(key, str) and key.startswith("EVT.")) or not isinstance(val, dict):
+                continue
+            if _is_template_event_id(key):
+                # The illustrative legend block (EVT.YYYY.MM.DD.XX) uses
+                # bracket-delimited placeholder values that happen to be
+                # valid YAML on their own, so it parses via the normal path
+                # (never hits the raw fallback) and would otherwise leak
+                # into mimamsa_event_provenance as a spurious event.
                 continue
             events.append({"event_id": key, **val})
 
