@@ -31,6 +31,7 @@ __all__ = [
     'detect_falsifier_absent',
     'detect_ledger_gap',
     'detect_layer_leakage',
+    'detect_confidence_degenerate',
     'derive_sodhana_flags',
 ]
 
@@ -235,6 +236,61 @@ def detect_layer_leakage(anchor: AnchorRow) -> Optional[SodhanaRecord]:
     return None
 
 
+_DEGENERATE_MIN_ANCHORS = 5     # below this, "zero variance" isn't a meaningful signal
+_DEGENERATE_STDDEV_EPS  = 1e-9  # effectively-zero population stddev
+
+
+def detect_confidence_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]:
+    """
+    Chart-wide check (unlike the other four, which are per-anchor): flags when
+    confidence_high has ~zero variance across every anchor in the chart.
+
+    This catches a class of anomaly none of the per-anchor detectors can see:
+    a posterior/confidence model that has collapsed to a single constant value
+    for every anchor (e.g. because its inputs are hardcoded defaults rather
+    than computed per-anchor) will sit safely under the G-LADDER ceiling for
+    every anchor and trip zero per-anchor detectors — reading as a clean bill
+    of health for a structurally broken model. A single constant confidence
+    value across an entire chart is itself the anomaly.
+    """
+    values = [a.confidence_high for a in ctx.anchors if a.confidence_high is not None]
+    if len(values) < _DEGENERATE_MIN_ANCHORS:
+        return None
+
+    mean = sum(values) / len(values)
+    variance = sum((v - mean) ** 2 for v in values) / len(values)
+    stddev = variance ** 0.5
+    if stddev > _DEGENERATE_STDDEV_EPS:
+        return None
+
+    anchor = ctx.anchors[0]
+    return SodhanaRecord(
+        anchor_id=anchor.anchor_id,
+        anomaly_type='confidence_degenerate',
+        anomaly_severity='critical',
+        detected_field='confidence_high',
+        expected_value_text='confidence_high varying across anchors per real per-anchor inputs',
+        observed_value_text=f'constant={mean:.4f} across all {len(values)} anchors (stddev={stddev:.2e})',
+        leakage_class=None,
+        recommendation_text=(
+            'confidence_high is numerically identical across every anchor in this '
+            'chart — the posterior model is almost certainly being fed hardcoded '
+            'defaults rather than per-anchor computed inputs (e.g. pratijna_grade, '
+            'multi_system_confirmation_count, av_transit_potency). This reads as '
+            '"0 anomalies" to the per-anchor detectors and would otherwise pass as a '
+            'clean bill of health for a structurally non-differentiated model — '
+            'investigate ph_nimitta._build_ctx before trusting any posterior/'
+            'confidence value from this build.'
+        ),
+        derivation_ledger_jsonb={
+            'chart_id': ctx.chart_id,
+            'anchor_count': len(values),
+            'constant_value': mean,
+        },
+        source_citation=f'ph_sodhana/confidence_degenerate/{ctx.chart_id}',
+    )
+
+
 def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
     """
     Run all detectors over every anchor. Returns list of SodhanaRecords.
@@ -260,6 +316,11 @@ def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
                     leakage_found.append(rec)
                 else:
                     records.append(rec)
+
+    # Chart-wide detector (operates over all anchors at once, not per-anchor)
+    degenerate_rec = detect_confidence_degenerate(ctx)
+    if degenerate_rec is not None:
+        records.append(degenerate_rec)
 
     # LEAKAGE-FIREWALL: halt before any insert
     if leakage_found:
