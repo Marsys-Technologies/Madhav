@@ -104,6 +104,59 @@ def _parse_date(raw: str | None) -> Any:
         return None
 
 
+_EVENT_ID_RE = re.compile(r'^(EVT\.\S+):\s*$')
+_TOP_LEVEL_FIELD_RE = re.compile(r'^ {2}([a-z_]+):[ \t]?(.*)$')
+
+# The only fields mi_jivanaghatana actually reads off an event (see run()
+# below) — narrative fields (description/native_reflection/notes) and the
+# nested chart_state_at_event/retrodictive_match blocks are never consumed,
+# so they don't need to survive parsing.
+_CONSUMED_RAW_KEYS = {
+    "date", "event_date", "event_start_date", "start_date",
+    "category", "domain_primary", "domain",
+    "subcategory", "domain_secondary", "secondary_domains",
+    "magnitude", "event_magnitude",
+    "disclosure_timing", "disclosure_type", "disclosure_date",
+    "shaped_predictor", "shaped_predictor_refs",
+}
+
+
+def _unquote(raw: str) -> str:
+    v = raw.strip()
+    if len(v) >= 2 and v[0] == v[-1] == '"':
+        return v[1:-1]
+    return v
+
+
+def _parse_block_raw(block: str) -> dict | None:
+    """
+    Fallback for blocks that fail strict YAML parsing. Reads event_id plus
+    the handful of top-level scalar fields this writer consumes as raw,
+    uninterpreted strings — line by line, independent of YAML syntax.
+
+    This sidesteps the recurring LEL authoring failure mode: narrative prose
+    fields (description / native_reflection / notes) routinely contain
+    unquoted colons ("Doc framing: ...") that break YAML block-mapping,
+    even though this writer never reads those fields. Losing the whole
+    event over an unrelated field is unnecessary.
+    """
+    lines = block.splitlines()
+    if not lines:
+        return None
+    id_match = _EVENT_ID_RE.match(lines[0])
+    if not id_match:
+        return None
+    data: dict[str, Any] = {"event_id": id_match.group(1)}
+    for line in lines[1:]:
+        m = _TOP_LEVEL_FIELD_RE.match(line)
+        if not m or m.group(1) not in _CONSUMED_RAW_KEYS:
+            continue
+        val = _unquote(m.group(2))
+        if val:
+            data[m.group(1)] = val
+    return data
+
+
 def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
     """
     Parse YAML event blocks from the LEL markdown file.
@@ -124,6 +177,7 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
 
     events: list[dict] = []
     skipped = 0
+    recovered = 0
     for block in blocks:
         try:
             if _has_yaml:
@@ -134,12 +188,18 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
                 skipped += 1
                 continue
         except Exception as exc:
-            # Previously a bare `except Exception: continue` that silently
-            # absorbed malformed blocks with no distinct signal from
-            # successfully-parsed ones (e.g. unquoted colons inside narrative
-            # string values breaking YAML block-mapping parsing). Log each
-            # skip individually so a future audit can see this without a
-            # local repro.
+            # Recover via the raw top-level-field fallback (see
+            # _parse_block_raw) instead of dropping the event outright.
+            fallback = _parse_block_raw(block)
+            if fallback is not None:
+                events.append(fallback)
+                recovered += 1
+                logger.info(
+                    "[mi_jivanaghatana] recovered %s via raw-field fallback "
+                    "after YAML parse failure: %s",
+                    fallback["event_id"], exc,
+                )
+                continue
             skipped += 1
             logger.warning(
                 "[mi_jivanaghatana] skipping malformed YAML block (%s): %s",
@@ -157,15 +217,15 @@ def _parse_lel_markdown(path: pathlib.Path) -> tuple[list[dict], str]:
             events.append({"event_id": key, **val})
 
     logger.info(
-        "[mi_jivanaghatana] parsed %d events from %d yaml blocks (%d skipped as "
-        "malformed/non-EVT) from LEL markdown (sha=%s...)",
-        len(events), len(blocks), skipped, file_sha[:8],
+        "[mi_jivanaghatana] parsed %d events from %d yaml blocks (%d recovered "
+        "via raw-field fallback, %d skipped as malformed/non-EVT) from LEL "
+        "markdown (sha=%s...)",
+        len(events), len(blocks), recovered, skipped, file_sha[:8],
     )
     if skipped > 0:
         logger.warning(
-            "[mi_jivanaghatana] %d of %d LEL yaml blocks failed to parse — "
-            "fix malformed YAML in LIFE_EVENT_LOG_v1_2.md (commonly: unquoted "
-            "colons inside narrative string values breaking block-mapping parsing)",
+            "[mi_jivanaghatana] %d of %d LEL yaml blocks still unrecoverable — "
+            "no EVT.* key found on the block's first line",
             skipped, len(blocks),
         )
     return events, file_sha
