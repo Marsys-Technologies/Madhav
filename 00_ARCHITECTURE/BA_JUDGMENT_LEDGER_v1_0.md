@@ -129,6 +129,146 @@ values are frozen:
 
 ---
 
+### JL-011 — Schema/Extraction: `bg_rules.yoga_canonical_id` deterministic extraction rule
+- **Phase:** BA Phase 2.5 (P1 BLOCKER #1 `bg_rules`)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** How should `yoga_canonical_id` be extracted from rule text without fuzzy matching or an LLM (B.10)?
+- **Decision:** RATIFIED. (1) Bigram rule for ALL entries — match the adjacent bigram `"<Name> [Yy]oga"`. (2) Bare-name matching restricted to the Tier-1 proper-noun allowlist (29 named yogas: Gajakesari, Neechabhanga, Vipareeta Raja, Ruchaka, Bhadra, Hamsa, Malavya, Sasa, Sunapha, Anapha, Durudhara, Kemadruma, Vesi, Vasi, Ubhayachari, Budha-Aditya, Chandra-Mangala, Kala Sarpa, Guru-Chandala, Saraswati, Amala, Parijata, Adhi, Shankha, Bheri, Mridanga, Parvata, Kahala, Vasumati, Chamara). (3) Hard exclusion list, bigram-only never bare: raja, dhana, arishta, daridra, mala, sarpa, yava, danda, nauka, chatra, gada, hala — these are common-noun components that would over-match if allowed bare. (4) The matched surface form is stored per link; any collision (two distinct canonical ids matching the same span) resolves to NULL + a flag row, never a guess.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J1; B.10 no-fabricated-computation (deterministic pattern match only, no fuzzy/LLM disambiguation).
+- **Alternatives considered:** Fuzzy/embedding match against a yoga name table — rejected, non-deterministic and unauditable; bare-name matching for all 29+ names project-wide — rejected, over-matches on common Sanskrit/English nouns (raja, dhana, etc.) producing false positives; collision → best-guess pick — rejected, violates precision-over-recall mandate.
+- **Reversibility:** Pure extraction-rule code change; re-derivable any time from rule text, no destructive write.
+- **Consumer:** `bg_rules.yoga_canonical_id` → downstream yoga-family linkage (`ga_yoga`, `bo_laksana`).
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-012 — Formula: `ga_yoga.strength` hybrid constituent-bala derivation
+- **Phase:** BA Phase 2.5 (P3 J3)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** No yoga-specific strength formula exists in the classical corpus — how should `strength` be populated without fabricating one (B.10)?
+- **Decision:** RATIFIED. `strength` = normalized shadbala of the yoga's constituent grahas, stored with `derivation='constituent_bala_v1'` and label `computed_extension` (explicitly marked as an extension, not a classical citation), with a bala_gate citation to the shadbala source. `bhanga_active` is set NULL-with-reason wherever no classical bhanga (cancellation rule) exists for that yoga type — Kemadruma's bhanga logic already lives in the main detection path and is NOT duplicated here.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J3; B.10 (no invented per-yoga formula); JL-006/JL-007 precedent for `computed_extension`-labeled formula components.
+- **Alternatives considered:** Invent a yoga-specific weighting formula — rejected, no classical source (B.10 hard rule); leave `strength` NULL for all yogas — rejected, loses genuinely available shadbala signal; duplicate Kemadruma bhanga logic in `ga_yoga` — rejected, would create two divergent sources of truth for the same rule.
+- **Reversibility:** `derivation` versioned (`constituent_bala_v1` → v2 if a classical formula is later sourced); no destructive write, per-chart delete-then-insert on rebuild.
+- **Consumer:** `ga_yoga.strength`/`bhanga_active` → `bo_laksana` → L2+ yoga synthesis.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-013 — Formula: `bo_cgm_paths.path_strength` = product of constituent edges
+- **Phase:** BA Phase 2.5 (P3 J4)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `path_strength` was a flat 0.5 placeholder for every path — what is the correct aggregation of constituent edges' `computed_strength`?
+- **Decision:** RATIFIED WITH CORRECTION. `path_strength` = PRODUCT of constituent edges' `computed_strength` (a chain is only as strong as its weakest-compounding link; min() is an acceptable conservative alternative where product underflows). Averaging is explicitly rejected — an average lets one broken edge hide behind strong ones, which is exactly the plausible-but-wrong failure mode this audit hunts.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J4 + §5 (native correction: "accept WITH correction — product not average").
+- **Alternatives considered:** Arithmetic mean of edge strengths — REJECTED (native veto: masks weak links); max() of edges — rejected, optimistic-biased, ignores chain fragility; weighted average by edge type — rejected, no classical weighting scheme exists (B.10).
+- **Reversibility:** Formula versioned; degeneracy gate added (path_strength must not collapse to a constant across paths); re-derivable on rebuild.
+- **Consumer:** `bo_cgm_paths.path_strength` → CGM path ranking → L2+ synthesis, mi_* consumers of CGM.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-014 — Interim tiering: `ka_sangam` relative-percentile basis (DEFERRED recalibration)
+- **Phase:** BA Phase 2.5 (P3 J5)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `ka_sangam.convergence_score` sits far below downstream tier thresholds — should v1 weights be recalibrated now?
+- **Decision:** RATIFIED-DEFER. Do NOT recalibrate v1 weights now — P5A (strategic track) owns the full recalibration. Interim: tiers computed on a within-chart percentile basis, explicitly flagged `relative_uncalibrated` in the row. The absolute-threshold question (should tiers ever be judged against a fixed score, not just relative rank) is queued as an open question for the P5A brief.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J5; no-fabricated-weighting rule (§0) — recalibrating weights now would be a guess outside this session's scope.
+- **Alternatives considered:** Recalibrate weights immediately — rejected, out of scope for this deterministic fix wave and would preempt P5A's dedicated calibration pass; leave tiers on the current absolute (broken) scale — rejected, downstream consumers get a non-functional tier signal; drop tiering entirely until P5A — rejected, removes a partially-useful relative signal.
+- **Reversibility:** `relative_uncalibrated` flag removed and tiers recomputed once P5A lands an absolute calibration; fully reversible, no data loss.
+- **Consumer:** `ka_sangam` tier column → downstream convergence-window consumers; P5A brief (absolute-threshold question added).
+- **Date:** 2026-07-05
+- **Status:** RATIFIED-AS-DRAFTED (OPEN — closes at P5A recalibration)
+
+---
+
+### JL-015 — Registry: `ga_structural` count_sql category-ownership single source of truth
+- **Phase:** BA Phase 2.5 (P3 J2)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** The hand-maintained count_sql category allow-list has silently drifted twice (migrations 364, 368) — how should categories be derived going forward?
+- **Decision:** RATIFIED. Categories are derived from a registered category-ownership table (single source of truth for which categories `ga_structural` owns), retiring the recurring hand-maintenance drift class (M1/drift).
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J2; BA_AUDIT_FIX_PLAN_v1_0.md item 2 recommendation (b).
+- **Alternatives considered:** Rely on migration-comment discipline (option a) — rejected, already failed twice; leave as-is — rejected, a third silent-drift incident is a when-not-if.
+- **Reversibility:** New registry table, additive migration; count_sql regenerated from it, no destructive change to existing category data.
+- **Consumer:** `ga_structural` count_sql / cockpit stats route; `asset_registry` category consistency.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-016 — Serve-time: `ph_muhurta` real tarabala/chandrabala/gochara joins
+- **Phase:** BA Phase 2.5 (P3 J6)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `ph_muhurta` hardcodes 0.5 defaults for tarabala/chandrabala/gochara — should these be computed or joined from an existing source?
+- **Decision:** RATIFIED. These balas already exist in L1/panchanga — `ph_muhurta` joins them at serve time rather than recomputing or defaulting them.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J6; B.1 facts/interpretation separation (L1 is authoritative for these computed values, L4 references not restates — §N.5).
+- **Alternatives considered:** Recompute balas independently inside `ph_muhurta` — rejected, would duplicate L1 computation and risk drift (the exact MSR-drift trap N.5 exists to prevent); keep 0.5 defaults — rejected, flattens the score to a constant (degeneracy).
+- **Reversibility:** Serve-time join, no stored duplication; reversible by construction.
+- **Consumer:** `ph_muhurta` personalization_score → muhurta recommendation consumers.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-017 — Contamination: `ph_rectification` per-chart TRAINING_EVENTS + chart-attribution check
+- **Phase:** BA Phase 2.5 (P1 BLOCKER #11 + P3 J7)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `ph_rectification` hardcodes the native's own 19-event lifelog + natal positions as TRAINING_EVENTS for every chart it scores — how must this be fixed?
+- **Decision:** RATIFIED — CONTAMINATION-CLASS. Parameterize TRAINING_EVENTS per-chart (remove the hardcoded Abhisek 19-event lifelog + natal positions from the general path). The fix MUST add a chart-attribution check that FAILS LOUDLY if a chart is scored against another chart's life events — this is not an optional enhancement, it is the fix. The D41 sub-degree scorer (J7 proper) is implemented only AFTER this contamination check lands, never before.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §2 #11 + §4 J7 + §5 (JL-017 contamination-class); B.1 facts/interpretation separation (one chart's events must never silently score another chart).
+- **Alternatives considered:** Leave native's events as a documented "default" fallback for other charts — rejected, silently plausible-but-wrong scoring is exactly the failure class this audit exists to catch; fix the scorer (D41) before the contamination gate — rejected per explicit phase ordering in the brief.
+- **Reversibility:** Per-chart parameterization; existing scores for other charts were never valid and are cleared on next rebuild (delete-then-insert), not hand-patched.
+- **Consumer:** `ph_rectification` D41 scorer; any chart run through rectification.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-018 — Dimension retirement: `mi_pramana` manifestation dimension dropped + renormalized
+- **Phase:** BA Phase 2.5 (P3 J8)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `_score_manifestation()` hardcodes `(0.5, None)` for every match — a non-functional 5th dimension. Drop it or fabricate a scorer?
+- **Decision:** RATIFIED. Drop the manifestation dimension entirely and renormalize the remaining 4 weights so they sum to 1. The dropped dimension is REGISTERED (not silently deleted) so a future P6 pass (MIMAMSA_V2 S4) can re-add it once a real scorer exists.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §4 J8 + §5 ("register the dropped dimension"); B.10 no-fabricated-computation.
+- **Alternatives considered:** Invent a manifestation scoring heuristic to keep 5 dimensions — rejected, no real signal exists behind the hardcoded constant (B.10); silently drop with no registry note — rejected, loses the "P6 needs to re-add this" institutional memory.
+- **Reversibility:** Weight renormalization is versioned (`formula_version` bump); dimension re-addable from the registry note without re-deriving from scratch.
+- **Consumer:** `mi_pramana` composite score; MIMAMSA_V2 S4 (future P6 item).
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-019 — Safety: `mi_pariksha` negative-control status correction
+- **Phase:** BA Phase 2.5 (P1 cheap safety fix, first in sequence)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `mi_pariksha`'s negative-control QA substep is a tautology that can never fail — what should its reported status be?
+- **Decision:** RATIFIED. Status corrected to `status='not_implemented'` rather than reporting a passing (but meaningless) QA result — a non-functional negative control must never present as a passing gate.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §2 (J9, cheap safety fix, done first); BA_AUDIT_FIX_PLAN_v1_0.md item 9 (MAJOR, tautological QA).
+- **Alternatives considered:** Implement a real negative control immediately — deferred, out of scope for this fix wave's deterministic-fix budget; leave status as a false-passing gate — rejected, actively misleading to anyone reading QA results.
+- **Reversibility:** Pure status-field correction; trivially reversible when a real negative control is built.
+- **Consumer:** `mi_pariksha` QA substep status; any dashboard/report reading mimamsa QA state.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
+### JL-020 — Data protection: `mi_abhilekha` clear-protection + REBUILDABLE vs IRREPLACEABLE allowlist classification
+- **Phase:** BA Phase 2.5 (P1 cheap safety fix, second in sequence)
+- **Ruling agent:** Cowork (delegated Ācārya-Pratinidhi)
+- **Question:** `mi_abhilekha`'s per-chart clear destructively wipes the native's real journal answers. What is the correct clear-allowlist classification across the whole platform?
+- **Decision:** RATIFIED. `mi_abhilekha` is protected from unscoped/destructive per-chart clear (same pattern as the prior `mi_vistara` fix, JL-precedent in commit e306c475). Beyond this single table, run the full clear-allowlist classification: every table is either REBUILDABLE (writer-derived, safely clearable and regenerated on rebuild) or IRREPLACEABLE (journal answers, LEL intake, prediction outcomes, calibration snapshots, judgment ledgers) — all IRREPLACEABLE tables are protected from per-chart clear.
+- **Basis:** CLAUDECODE_BRIEF_BA_PHASE_2_5_CONSOLIDATED_v1_0.md §2 (J10) + §4 J9/J10 + §5 ("J10's allowlist classification"); precedent commit e306c475 (`mi_vistara`).
+- **Alternatives considered:** Protect only `mi_abhilekha` and stop — rejected, the brief explicitly requires the full-platform classification pass since the same class of bug (unscoped clear on irreplaceable data) was already found twice (`mi_vistara`, `mi_abhilekha`); allow soft-delete/versioned clear for irreplaceable tables instead of a hard block — deferred as a future enhancement, hard-block is the immediate safety fix.
+- **Reversibility:** Classification is additive metadata (an `EXPLICIT_CLEAR_OPS`-style allowlist/blocklist); no data touched, purely a guard.
+- **Consumer:** Every table's per-chart clear path in the cockpit/orchestrator clear operation; `mi_abhilekha`, `mi_vistara`, and any future L5 table holding irreplaceable data.
+- **Date:** 2026-07-05
+- **Status:** RATIFIED
+
+---
+
 ## RUNNING SUMMARY
 
 | ID | Phase | Category | Status | Reversible? |
@@ -143,6 +283,16 @@ values are frozen:
 | JL-008 | P3A/B | Schema: domain taxonomy | RATIFIED-AS-DRAFTED | Yes — migration + retrieval update |
 | JL-009 | P3A→P5B | Data: event base-rate priors | RATIFIED-AS-DRAFTED (OPEN) | Yes — ontology upsert |
 | JL-010 | P3A-absorption-fix | Absorption: karakamsa modeling | RATIFIED (OPEN) | Yes — sign-based pass supersedes |
+| JL-011 | BA-2.5 P1 | Extraction: bg_rules yoga_canonical_id | RATIFIED | Yes — re-derivable from rule text |
+| JL-012 | BA-2.5 P3 | Formula: ga_yoga.strength constituent_bala_v1 | RATIFIED | Yes — derivation versioned |
+| JL-013 | BA-2.5 P3 | Formula: bo_cgm_paths.path_strength product | RATIFIED | Yes — formula versioned |
+| JL-014 | BA-2.5 P3 | Interim: ka_sangam relative_uncalibrated tiers | RATIFIED-AS-DRAFTED (OPEN) | Yes — supersedes at P5A |
+| JL-015 | BA-2.5 P3 | Registry: ga_structural category-ownership table | RATIFIED | Yes — additive migration |
+| JL-016 | BA-2.5 P3 | Serve-time: ph_muhurta real bala joins | RATIFIED | Yes — no stored duplication |
+| JL-017 | BA-2.5 P1/P3 | Contamination: ph_rectification TRAINING_EVENTS | RATIFIED | Yes — cleared on rebuild |
+| JL-018 | BA-2.5 P3 | Dimension retirement: mi_pramana manifestation | RATIFIED | Yes — formula_version + registry note |
+| JL-019 | BA-2.5 P1 | Safety: mi_pariksha not_implemented status | RATIFIED | Yes — status-field correction |
+| JL-020 | BA-2.5 P1 | Data protection: mi_abhilekha + allowlist | RATIFIED | Yes — additive guard metadata |
 
 ---
 
