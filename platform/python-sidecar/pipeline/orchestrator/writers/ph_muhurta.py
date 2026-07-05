@@ -283,13 +283,23 @@ class PhMuhurtaWriter(WriterBase):
                     SELECT graha, condition_score
                     FROM ga_condition_composite
                     WHERE chart_id = %s
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    result[str(row[0]).lower()] = float(row[1]) if row[1] is not None else 0.5
+                    # conn's default row_factory is dict_row (see orchestrator/db.py);
+                    # this cursor did not override it, so `row` is a dict, not a tuple —
+                    # index by column name, not position (same bug class already fixed
+                    # in bg_concordance/bg_text_index/mi_darshana). The prior positional
+                    # row[0]/row[1] indexing raised on every call, was swallowed by the
+                    # bare except below, and silently produced an empty dict — every
+                    # caller then fell back to the literal 0.5 default for every graha.
+                    graha = row["graha"]
+                    score = row["condition_score"]
+                    result[str(graha).lower()] = float(score) if score is not None else 0.5
         except Exception as exc:
-            logger.debug("ph_muhurta: condition_scores load skipped: %s", exc)
+            logger.warning("ph_muhurta: condition_scores load failed: %s", exc)
         return result
 
     def _load_gochara_transits(self, conn, chart_id: str) -> dict[str, list[dict]]:
