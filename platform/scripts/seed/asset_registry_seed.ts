@@ -1235,7 +1235,11 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count 180 (45 resonances + 135 prescriptions) per L2 build (chart 482012f1). Ancillary RM tables excluded per migration 326 narrowing.',
-    depends_on: ['bo_laksana', 'bo_sangati'],
+    // Migration 412 (BA Phase 2.5 #4): added ga_structural (composite_dispositor_strength),
+    // ga_dashas (chart_dashas), bo_cgm_motifs (bodha_cgm_motifs) — bo_upaya now reads all
+    // three for real resonance_score_v1 inputs (dispositor_chain_weakness,
+    // dasha_proximity_activation_score, cgm_motifs_weakest_node).
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1766,7 +1770,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: "FILE_COUNT('01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md', 'EVT')",
     expected_volume_inputs: null,
     volume_explanation: 'Deterministic given the source-of-truth file. Re-runs MUST match the file count exactly; divergence is a bug.',
-    depends_on: [],
+    // BA Phase 2.5 #9 (derivation-ledger completeness, CLAUDE.md B.3): writer
+    // resolves event_class_id via brahma_event_ontology (bg_ghatana); L0-bedrock
+    // guard-exempted (dag_edge_guard never flagged this), doc-only addition.
+    depends_on: ['bg_ghatana'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -1783,7 +1790,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Fixed global catalogue of signal families + negative controls; grows only when new families are registered',
-    depends_on: ['bg_rules'],
+    // BA Phase 2.5 #9: writer references bg_class_priors for family-prior seeding;
+    // L0-bedrock guard-exempted, doc-only addition (CLAUDE.md B.3).
+    depends_on: ['bg_rules', 'bg_class_priors'],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
   {
@@ -1817,7 +1826,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Accumulates as prediction outcomes are recorded — not a deterministic target',
-    depends_on: ['mi_bhavisya', 'mi_jivanaghatana'],
+    // BA Phase 2.5 #9: base_rate from brahma_event_ontology (bg_ghatana), scoring
+    // weights from brahma_formula_constants (bg_formula_constants); L0-bedrock
+    // guard-exempted, doc-only additions (CLAUDE.md B.3).
+    depends_on: ['mi_bhavisya', 'mi_jivanaghatana', 'bg_ghatana', 'bg_formula_constants'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1834,7 +1846,12 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per multiplier type — small, stable catalog; grows only when new signal categories are added',
-    depends_on: ['mi_pramana'],
+    // mi_kula retained: migration 365 established this edge (mi_gunanaka.py:70
+    // reads mimamsa_signal_families, owned by mi_kula) — a real hard build-order
+    // dependency. BA Phase 2.5 #9 additionally adds bg_formula_constants
+    // (shrinkage_k/divergence_cap) — L0-bedrock guard-exempted, doc-only
+    // (CLAUDE.md B.3).
+    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1868,7 +1885,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Accumulates as eval runs are executed — not a deterministic target',
-    depends_on: ['mi_pramana', 'mi_kula'],
+    // BA Phase 2.5 #9: attribution dimension weights from brahma_formula_constants;
+    // L0-bedrock guard-exempted, doc-only addition (CLAUDE.md B.3).
+    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

@@ -249,6 +249,117 @@ def _fetch_chara_roles(conn: Any, chart_id: str, aya: str) -> dict[str, str]:
     return out
 
 
+def _fetch_dispositor_terminal_strength(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
+    """graha → dispositor-chain terminal strength (0..1; 1.0 = chain terminates in
+    an exalted sign-lord, 0.25 = terminates in a debilitated one).
+
+    BA-P2.5 #4: real L1 fact (§N.5 — L1 is the authority over L2+ derivations).
+    Written by ga_structural_writer.py (fact_category='composite_dispositor_strength',
+    fact_key='terminal_strength'); NEVER recomputed here — only referenced.
+    dispositor_chain_weakness = 1.0 - terminal_strength (weak terminal dispositor
+    means the graha's authority chain bottoms out in a weak sign-lord).
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_num FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'composite_dispositor_strength'
+             AND fact_key = 'terminal_strength'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: dict[str, float] = {}
+    for r in rows:
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
+        planet  = _SUBJECT_TO_PLANET.get(subject)
+        if planet is None:
+            continue
+        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 0.5)
+        out[planet] = max(0.0, min(val, 1.0))
+    return out
+
+
+def _fetch_dasha_proximity(conn: Any, chart_id: str, aya: str, at_dt: datetime) -> dict[str, float]:
+    """graha → dasha-timing proximity/activation score (0..1) as of ``at_dt``.
+
+    BA-P2.5 #4: real GA7 chart_dashas data (written by ga_dashas), not a fabricated
+    number. Reuses the same "which lord covers this instant" lookup pattern as
+    ga_sade_sati_writer.py's _lookup_dasha_lord_at() — a covering-interval query on
+    chart_dashas.start_iso/end_iso for the vimshottari system.
+
+    Scoring (mirrors this file's own 3-tier debility_score precedent):
+      - graha is BOTH the current mahadasha (level_n=1) AND antardasha (level_n=2)
+        lord  -> 1.0  (its own dasha-within-its-own-dasha: maximal classical activation)
+      - graha is the current mahadasha OR antardasha lord (not both) -> 0.6
+      - graha holds neither running period                            -> 0.0
+    """
+    rows = conn.execute(
+        """SELECT level_n, lord_graha FROM chart_dashas
+           WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = 'vimshottari'
+             AND level_n IN (1, 2) AND start_iso <= %s AND end_iso > %s""",
+        [chart_id, aya, at_dt, at_dt],
+    ).fetchall()
+    active_by_level: dict[int, str] = {}
+    for r in rows:
+        level = int(r[0] if isinstance(r, tuple) else r.get("level_n"))
+        lord  = str(r[1] if isinstance(r, tuple) else r.get("lord_graha") or "")
+        active_by_level[level] = lord
+
+    md_lord = active_by_level.get(1)
+    ad_lord = active_by_level.get(2)
+
+    out: dict[str, float] = {}
+    for graha in KNOWN_GRAHAS:
+        is_md = graha == md_lord
+        is_ad = graha == ad_lord
+        if is_md and is_ad:
+            out[graha] = 1.0
+        elif is_md or is_ad:
+            out[graha] = 0.6
+        else:
+            out[graha] = 0.0
+    return out
+
+
+def _fetch_cgm_motif_weakness(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
+    """graha → weakness burden (0..1) contributed by CGM structural motifs it
+    participates in (mutual_reception / stellium / parivartana_chain).
+
+    BA-P2.5 #4: real value from bodha_cgm_motifs.motif_strength (written by
+    bo_cgm_motifs), joined to bodha_cgm_nodes.node_subject to resolve graha
+    identity. Uses MIN(motif_strength) across a graha's motifs (a chain/pattern
+    is only as strong as its weakest constituent — same product/min-over-parts
+    philosophy already established for bo_cgm_paths.path_strength, JL-013).
+    weakness = 1.0 - min(motif_strength); grahas with no motif membership get
+    0.0 (honest "no burden observed", not a fabricated value).
+
+    NOTE: bo_cgm_motifs' stellium/parivartana_chain detectors are Tier-3-blocked
+    on missing bo_karanajala dispositor edges (see bo_cgm_motifs.py); only
+    mutual_reception motifs reliably populate today. That is a bo_cgm_motifs-side
+    gap, not something this reader should paper over.
+    """
+    rows = conn.execute(
+        """SELECT n.node_subject, MIN(m.motif_strength) AS weakest_strength
+           FROM bodha_cgm_motifs m
+           JOIN bodha_cgm_nodes n
+             ON n.node_id = ANY(m.involved_node_ids_array)
+            AND n.chart_id = m.chart_id AND n.ayanamsha_id = m.ayanamsha_id
+           WHERE m.chart_id = %s AND m.ayanamsha_id = %s
+           GROUP BY n.node_subject""",
+        [chart_id, aya],
+    ).fetchall()
+    out: dict[str, float] = {}
+    for r in rows:
+        # bo_bimba writes node_subject as the title-case graha name directly
+        # (e.g. "Sun", "Mars") — already KNOWN_GRAHAS-shaped, no code translation.
+        subject = str(r[0] if isinstance(r, tuple) else r.get("node_subject", ""))
+        if subject not in KNOWN_GRAHAS:
+            continue
+        strength = r[1] if isinstance(r, tuple) else r.get("weakest_strength")
+        if strength is None:
+            continue
+        out[subject] = max(0.0, min(1.0 - float(strength), 1.0))
+    return out
+
+
 def _fetch_chart_typology(conn: Any, chart_id: str, aya: str) -> str:
     """
     Derive chart typology from element distribution of graha sign placements.
@@ -404,6 +515,14 @@ def _build_resonances_and_prescriptions(
     chara_roles   = _fetch_chara_roles(conn, chart_id, aya)
     dosha_by_graha = _fetch_msr_dosha_sigs_by_graha(conn, chart_id, aya)
     chart_typology = _fetch_chart_typology(conn, chart_id, aya)
+    # BA-P2.5 #4: real wired inputs (see the 3 new fetchers above _fetch_chart_typology).
+    dispositor_strength = _fetch_dispositor_terminal_strength(conn, chart_id, aya)
+    try:
+        _now_dt = datetime.fromisoformat(now)
+    except (TypeError, ValueError):
+        _now_dt = datetime.now(timezone.utc)
+    dasha_proximity = _fetch_dasha_proximity(conn, chart_id, aya, _now_dt)
+    cgm_motif_weakness = _fetch_cgm_motif_weakness(conn, chart_id, aya)
 
     resonances: list[dict] = []
 
@@ -445,13 +564,28 @@ def _build_resonances_and_prescriptions(
             combustion_score=combustion,
             debility_score=debility,
             affliction_count_normalized=afflictions,
+            # BA-P2.5 #4 — honest placeholder: no already-computed per-graha
+            # cancellation aggregate exists. ga_structural's yoga_fires rows carry
+            # a per-YOGA cancellation_flag inside value_jsonb, keyed by yoga name,
+            # not by graha; deriving a per-graha ratio would require assembling a
+            # brand-new join across constituent_facts_array (fabricating a formula
+            # that doesn't already exist elsewhere) — left at 0.0 per B.10.
             cancellation_burden=0.0,
-            dispositor_chain_weakness=0.0,
+            # BA-P2.5 #4 — WIRED: real L1 fact (ga_structural composite_dispositor_strength).
+            dispositor_chain_weakness=round(1.0 - dispositor_strength.get(graha, 0.5), 6),
             vargottama_absence_score=0.5,  # placeholder — no vargottama L1 fact yet
-            dasha_proximity_activation_score=0.0,
+            # BA-P2.5 #4 — WIRED: real GA7 chart_dashas coverage as of computed_at.
+            dasha_proximity_activation_score=dasha_proximity.get(graha, 0.0),
             msr_signals_in_conflict=min(len(dosha_by_graha.get(graha, [])) * 0.1, 1.0),
+            # BA-P2.5 #4 — honest placeholder: bodha_cdlm_cells.weakest_constituent_graha_jsonb
+            # exists as a column but is never populated by bo_sangati (dead column) — no real
+            # per-graha CDLM value exists yet to reference. Left at 0.0 per B.10.
             cdlm_weakest_constituent_count=0.0,
-            cgm_motifs_weakest_node=0.0,
+            # BA-P2.5 #4 — WIRED: real bodha_cgm_motifs.motif_strength (min over the graha's
+            # motif memberships). Often 0.0 in practice while bo_cgm_motifs' stellium /
+            # parivartana_chain detectors remain Tier-3-blocked on missing bo_karanajala
+            # dispositor edges — that is a bo_cgm_motifs-side gap, not fabricated here.
+            cgm_motifs_weakest_node=cgm_motif_weakness.get(graha, 0.0),
             is_yoga_karaka=is_yk,
             chara_role=chara_role,
         )
@@ -486,8 +620,18 @@ def _build_resonances_and_prescriptions(
                 "missing_inputs": missing_inputs,
                 "sha_norm_used": round(sha_norm, 4),
                 "bh_norm_used": round(bh_norm, 4),
+                "dispositor_chain_weakness_used": round(1.0 - dispositor_strength.get(graha, 0.5), 4),
+                "dasha_proximity_activation_score_used": round(dasha_proximity.get(graha, 0.0), 4),
+                "cgm_motifs_weakest_node_used": round(cgm_motif_weakness.get(graha, 0.0), 4),
                 "vargottama_absence_score": 0.5,
-                "note": "vargottama_absence is a placeholder until L1 vargottama fact is wired",
+                "cancellation_burden": 0.0,
+                "cdlm_weakest_constituent_count": 0.0,
+                "note": (
+                    "vargottama_absence, cancellation_burden, cdlm_weakest_constituent_count "
+                    "remain honest 0.0/0.5 placeholders (no already-computed source exists yet); "
+                    "dispositor_chain_weakness, dasha_proximity_activation_score, "
+                    "cgm_motifs_weakest_node are now wired to real L1/L2 data (BA-P2.5 #4)"
+                ),
             }),
             "verification_pass_status": "documented_approximation",
             "citation_ref": f"bo_upaya/resonance/{graha}",
