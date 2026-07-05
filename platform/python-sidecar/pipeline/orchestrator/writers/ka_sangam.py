@@ -21,6 +21,7 @@ from services.ka_sangam.engine import (
     mode_d_av_bindhu,
     convergence_score,
     confidence_label,
+    relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
     EnrichmentContext,
@@ -418,7 +419,11 @@ class KaSangamWriter(WriterBase):
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
         rows_inserted = 0
-        for w in deduped:
+        # JL-014: within-chart relative tier, computed once over this batch's
+        # convergence_score distribution (additive to I-21's absolute confidence_label).
+        batch_scores = [w.get('convergence_score', 0.0) for w in deduped]
+        batch_relative_labels = relative_confidence_labels(batch_scores)
+        for w, c_label_relative in zip(deduped, batch_relative_labels):
                 cs = w.get('convergence_score', 0.0)
                 orb_s = w.get('orb_strength')
                 c_label = confidence_label(cs)
@@ -458,11 +463,13 @@ class KaSangamWriter(WriterBase):
                         signal_id, mode, peak_date, orb_strength, rarity_years,
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
-                        horizon_tier, domain
+                        horizon_tier, domain,
+                        confidence_label_relative, tier_basis
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
                         %s, %s, %s, %s, %s,
+                        %s, %s,
                         %s, %s,
                         %s, %s,
                         %s, %s
@@ -487,6 +494,9 @@ class KaSangamWriter(WriterBase):
                         horizon_tier,
                         # B4-src: domain from originating MSR signal's domains_affected_array[0]
                         w.get('primary_domain'),
+                        # JL-014: interim within-chart percentile tier + provenance flag
+                        c_label_relative,
+                        'relative_uncalibrated',
                     ),
                 )
                 rows_inserted += 1

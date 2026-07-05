@@ -30,6 +30,7 @@ from services.ka_sangam.engine import (
     convergence_score,
     orb_strength_score,
     confidence_label,
+    relative_confidence_labels,
     independent_current_count,
     mode_a_search,
     mode_b_sweep,
@@ -169,6 +170,42 @@ class TestConfidenceLabel:
         assert confidence_label(0.45) == 'moderate'
         assert confidence_label(0.44) == 'speculative'
         assert confidence_label(0.0)  == 'speculative'
+
+
+# ─── JL-014 (BA Phase 2.5 J5): relative_confidence_labels ────────────────────
+
+class TestRelativeConfidenceLabels:
+
+    def test_low_absolute_scores_are_not_all_speculative(self):
+        """The exact real-world defect this fixes: a batch whose scores all sit
+        far below I-21's absolute thresholds must still be discriminated by the
+        relative tier — proves it's not degenerate to a constant."""
+        scores = [0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16]
+        # All would be 'speculative' under the absolute confidence_label()
+        assert all(confidence_label(s) == 'speculative' for s in scores)
+        labels = relative_confidence_labels(scores)
+        assert len(set(labels)) > 1, "relative tier must discriminate within the batch"
+        assert labels[-1] == 'high'    # 0.16 is the top score in the batch
+
+    def test_empty_batch(self):
+        assert relative_confidence_labels([]) == []
+
+    def test_single_element_batch_is_moderate(self):
+        assert relative_confidence_labels([0.5]) == ['moderate']
+
+    def test_all_equal_scores_are_moderate_not_arbitrary(self):
+        labels = relative_confidence_labels([0.1, 0.1, 0.1, 0.1])
+        assert labels == ['moderate'] * 4
+
+    def test_top_score_is_high_bottom_is_speculative(self):
+        scores = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10]
+        labels = relative_confidence_labels(scores)
+        assert labels[-1] == 'high'          # top of the batch
+        assert labels[0] == 'speculative'    # bottom of the batch
+
+    def test_length_matches_input(self):
+        scores = [0.1, 0.5, 0.9, 0.3, 0.7]
+        assert len(relative_confidence_labels(scores)) == len(scores)
 
 
 # ─── I-22: independent_current_count ─────────────────────────────────────────
