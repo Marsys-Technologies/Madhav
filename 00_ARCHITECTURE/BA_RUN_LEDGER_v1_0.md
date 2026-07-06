@@ -34,6 +34,38 @@ governing_charter: 00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md
 
 ---
 
+## §1b — BA PHASE-3 FIXES + RE-RUN (Abhinandan `1c826d5a`, non-native) — 2026-07-06
+
+**Status: HALTED — PHASE-3 NOT CLEAN. Authoritative record: `BA_PHASE_3_FIXES_AND_RERUN_REPORT_v1_0.md`.**
+
+10 code/schema defects root-caused, fixed, landed + deployed (PRs #438–#445,
+HEAD `576ef7b3`; migrations 414/415/416): mi_jivanaghatana contamination gate +
+graceful-empty; ga_dashas COPY + completeness + KP-collision unique index +
+statement_timeout; run-state rollup (failed vs completed); ga_sade_sati Decimal
+JSON; bo_laksana connection-poison SAVEPOINT + in-memory salience percentile;
+ga_condition partial index + SAVEPOINT; ph_rectification per-chart corpus (no
+native contamination); ga_structural→ga_condition DAG edge.
+
+A **serial** diagnostic reached **65/66 lit** (L2 15/15, L3 12/12, L5 10/10,
+L4 8/9) — the deepest a non-native chart has ever built. Contamination firewall
+held throughout (Sun Aquarius ≠ native Capricorn). Snapshot `1783272757787` and
+native `482012f1` never touched.
+
+**NOT a clean 66/66.** Residuals (systemic; native decisions needed — see report §4):
+(1) `ga_structural` GA8/argala `Duplicate fact_ids` (surya_siddhanta; hard
+blocker; + `VARGA_MISSING: D30`); (2) ga_condition/ga_structural shared avastha-
+category ownership; (3) `ka_dasha_kala` self-test statement_timeout (parallel);
+(4) `bo_samskara` >600s watchdog (parallel); (5) `ph_rectification` per-chart
+output unverified end-to-end (cascade-blocked); (6) systemic: 30s/600s timeouts
+too tight at non-native scale under wave-parallel contention.
+
+**Prod config to reconcile:** pipeline job carries diagnostic overrides
+`ORCHESTRATOR_WORKER_LIMIT=1` + `WRITER_TIMEOUT_SECONDS=1200` (serial). Abhinandan
+chart left partial/failed (L1 incomplete; L2–L5 = 0). Phase-4 (native rebuild)
+NOT cleared until residuals resolved + one clean 66/66 confirmed.
+
+---
+
 ## §2 — P0 FINAL AC LOG
 
 **P0 Summary:** CLAUDECODE_BRIEF_BA_P0_SERVING_TRUTH_v1_0.md COMPLETE (BA-P0-SERVING-TRUTH-2026-07-03).
@@ -458,6 +490,27 @@ fully merged, then deleted (local + remote).
 **REBUILD-READY: YES (unconditional).** Full report: `BA_PRE_REBUILD_CLOSEOUT_REPORT_v1_0.md`. Handed back to
 the strategic track to issue the Phase-3 Abhinandan rebuild brief. No cockpit Build/Rebuild was run in this
 pass.
+
+---
+
+## §4 — PHASE 3: ABHINANDAN FULL REBUILD (PROVING RUN) — 2026-07-05
+
+Executed `CLAUDECODE_BRIEF_BA_PHASE_3_ABHINANDAN_REBUILD_v1_1.md` end-to-end via Chrome MCP against the live
+Nirmāṇa tracker (prod). Pre-flight clean (image digests confirmed on merged #436 HEAD; fresh on-demand
+`amjis-postgres` snapshot `1783272757787` as rollback point; baseline `count_sql` captured for all 44
+countable L1–L5 assets). Rebuild triggered correctly through the real product path (plan preview confirmed
+L1–L5 only, L0 excluded, before execution).
+
+**Result: RESIDUALS — NOT CLEAN.** Build run `8e5d1549-a695-4422-9b96-f7a7a3850aed` completed only 18/66
+assets before cascading into `BLOCKED: upstream dependency did not complete` across the rest. Two structural
+root causes: **(1)** `mi_jivanaghatana` raises a hard `RuntimeError` for a chart with zero life events instead
+of a valid empty build — a §4-class generality-by-construction gap (blocks any future client without a
+populated life-event log); **(2)** `ga_dashas` hit a 600s internal substep timeout mid-insert, leaving
+`chart_dashas` in a partial, non-atomic state (460,831 of 603,122 baseline rows), likely from autovacuum
+contention racing the post-clear reinsert on the largest table. Full report:
+`BA_PHASE_3_ABHINANDAN_REBUILD_REPORT_v1_0.md`. Native (`482012f1`) untouched — scope was Abhinandan-only.
+**Next:** land both code fixes, then re-run this brief against the same rollback snapshot before declaring
+PHASE-3 CLEAN.
 
 ---
 
