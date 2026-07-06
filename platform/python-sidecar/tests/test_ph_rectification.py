@@ -338,32 +338,52 @@ class _ScriptConn:
     def cursor(self, *a, **k): return _DictCursor(self._script)
 
 
-def test_load_training_events_empty_when_no_life_events():
+def test_load_training_events_empty_for_non_native_chart():
+    """life_events is the native's chart-less LEL. A non-native chart has NO
+    per-chart life-event corpus at L4 and must NEVER read the native's history
+    (JL-017 contamination firewall) — it returns [] WITHOUT querying life_events
+    (which has no chart_id column and would otherwise raise UndefinedColumn)."""
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    # A conn that would blow up if any query ran — proves the non-native path
+    # short-circuits before touching the DB at all.
+    class _ExplodingConn:
+        def cursor(self, *a, **k):
+            raise AssertionError("non-native rectification must not query life_events")
+    assert _load_chart_training_events(_ExplodingConn(), "1c826d5a-41cb-4450-b4dc-59d440e5f75a") == []
+
+
+def test_load_training_events_empty_when_no_life_events():
+    from pipeline.orchestrator.writers.ph_rectification import (
+        _load_chart_training_events, NATIVE_CHART_ID,
+    )
     conn = _ScriptConn([("FROM life_events", [])])
-    assert _load_chart_training_events(conn, "chart-x") == []
+    assert _load_chart_training_events(conn, NATIVE_CHART_ID) == []
 
 
 def test_load_training_events_skips_event_when_no_own_md_lord():
     """An event whose per-chart mahadasha lord can't be found in THIS chart's
     chart_dashas is skipped — never fabricated, never native-defaulted."""
-    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    from pipeline.orchestrator.writers.ph_rectification import (
+        _load_chart_training_events, NATIVE_CHART_ID,
+    )
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),
         ("FROM chart_dashas", []),  # no MD lord for this chart on that date
     ])
-    assert _load_chart_training_events(conn, "chart-x") == []
+    assert _load_chart_training_events(conn, NATIVE_CHART_ID) == []
 
 
 def test_load_training_events_uses_this_charts_own_md_lord():
-    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    from pipeline.orchestrator.writers.ph_rectification import (
+        _load_chart_training_events, NATIVE_CHART_ID,
+    )
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),
         ("FROM chart_dashas", [{"lord_graha": "Jupiter"}]),  # THIS chart's own lord
     ])
-    evs = _load_chart_training_events(conn, "chart-x")
+    evs = _load_chart_training_events(conn, NATIVE_CHART_ID)
     assert len(evs) == 1
     assert evs[0].maha_dasha_lord == "Jupiter"  # the chart's own, not the native's
     assert evs[0].domain == "career"

@@ -64,23 +64,33 @@ def _dasha_lord_on_date(conn, chart_id: str, ev_date, level_n: int):
 
 
 def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
-    """Build rectification training events from THIS chart's OWN life_events +
-    OWN chart_dashas — never the native's embedded TRAINING_EVENTS (JL-017
-    contamination firewall). The engine re-applies its leakage firewall
-    (pre-2020, exact/month-exact) to whatever we return, so a chart with no
-    qualifying life events yields [] — a clean, honest, lagna-stability-only
-    rectification, NOT the native's life history. Events whose per-chart
-    mahadasha lord can't be determined from this chart's chart_dashas are
-    skipped (never fabricated)."""
+    """Build rectification training events from THIS chart's OWN life history +
+    OWN chart_dashas.
+
+    `life_events` is the native's chart-less Life-Event Log — it has no
+    `chart_id` column and belongs exclusively to the canonical native
+    (NATIVE_CHART_ID). A NON-native chart therefore has NO per-chart life-event
+    corpus available at L4 (its own outcome events live in the L5
+    `mimamsa_event_provenance` table, which is built later in the DAG), so it
+    yields [] — a clean, honest, lagna-stability-only rectification, and NEVER
+    trains on the native's history (JL-017 contamination firewall). For the
+    native, its own life_events ARE the legitimate training set; the engine
+    re-applies its leakage firewall (pre-2020, exact/month-exact) to them.
+    Events whose per-chart mahadasha lord can't be determined from this chart's
+    chart_dashas are skipped (never fabricated)."""
+    if chart_id != NATIVE_CHART_ID:
+        # No per-chart life-event source at L4 for a non-native chart, and the
+        # native's chart-less LEL is off-limits (contamination firewall).
+        return []
+
     with conn.cursor() as cur:
         cur.execute(
             """
             SELECT event_id, event_date, category, domain
             FROM life_events
-            WHERE chart_id = %s AND event_date IS NOT NULL
+            WHERE event_date IS NOT NULL
             ORDER BY event_date
-            """,
-            (chart_id,),
+            """
         )
         rows = cur.fetchall()
 
