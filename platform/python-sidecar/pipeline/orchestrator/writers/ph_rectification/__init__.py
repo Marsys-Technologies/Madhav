@@ -28,11 +28,103 @@ from services.ph_rectification.engine import (
     AYANAMSHAS,
     AUTO_ACTION,
     NATIVE_CHART_ID,
+    TrainingEvent,
     run_rectification,
     select_best,
 )
 
 logger = logging.getLogger(__name__)
+
+_SIGN_INDEX = {
+    "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5,
+    "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9,
+    "Aquarius": 10, "Pisces": 11,
+}
+
+
+def _dasha_lord_on_date(conn, chart_id: str, ev_date, level_n: int):
+    """This chart's OWN Vimshottari dasha lord (level_n=1 maha, 2 antar) active
+    on ev_date, from ITS chart_dashas (lahiri reference). Never the native's.
+    Served by cd_temporal_lookup_idx (chart_id, ayanamsha_id, system_id,
+    level_n, start_date, end_date)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT lord_graha FROM chart_dashas
+            WHERE chart_id = %s AND system_id = 'vimshottari' AND level_n = %s
+              AND ayanamsha_id = 'lahiri_chitrapaksha'
+              AND start_date <= %s AND end_date >= %s
+            ORDER BY start_date
+            LIMIT 1
+            """,
+            (chart_id, level_n, ev_date, ev_date),
+        )
+        r = cur.fetchone()
+    return r["lord_graha"] if r else None
+
+
+def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
+    """Build rectification training events from THIS chart's OWN life_events +
+    OWN chart_dashas — never the native's embedded TRAINING_EVENTS (JL-017
+    contamination firewall). The engine re-applies its leakage firewall
+    (pre-2020, exact/month-exact) to whatever we return, so a chart with no
+    qualifying life events yields [] — a clean, honest, lagna-stability-only
+    rectification, NOT the native's life history. Events whose per-chart
+    mahadasha lord can't be determined from this chart's chart_dashas are
+    skipped (never fabricated)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT event_id, event_date, category, domain
+            FROM life_events
+            WHERE chart_id = %s AND event_date IS NOT NULL
+            ORDER BY event_date
+            """,
+            (chart_id,),
+        )
+        rows = cur.fetchall()
+
+    events: list[TrainingEvent] = []
+    for row in rows:
+        ev_date = row["event_date"]
+        d = ev_date.date() if hasattr(ev_date, "date") else ev_date
+        md_lord = _dasha_lord_on_date(conn, chart_id, d, 1)
+        if md_lord is None:
+            continue  # can't place this chart's own MD lord — skip, never guess
+        ad_lord = _dasha_lord_on_date(conn, chart_id, d, 2)
+        events.append(TrainingEvent(
+            event_id=str(row.get("event_id") or f"EVT.{d.isoformat()}"),
+            date=datetime(d.year, d.month, d.day, tzinfo=timezone.utc),
+            domain=str(row.get("domain") or row.get("category") or "unknown"),
+            maha_dasha_lord=str(md_lord).capitalize(),
+            date_confidence="month-exact",
+            antar_dasha_lord=(str(ad_lord).capitalize() if ad_lord else None),
+        ))
+    return events
+
+
+def _load_chart_natal_sign_index(conn, chart_id: str) -> dict[str, int]:
+    """This chart's OWN natal graha -> sidereal sign index (0=Aries..11=Pisces),
+    from ITS chart_facts graha_position/sign facts. Feeds the dasha-lord natal
+    house computation for per-chart rectification scoring. Never the native's."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT fact_subject, fact_value_text
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+              AND fact_category = 'graha_position' AND fact_key = 'sign'
+            """,
+            (chart_id,),
+        )
+        rows = cur.fetchall()
+    idx: dict[str, int] = {}
+    for row in rows:
+        subj = row.get("fact_subject")
+        sign_i = _SIGN_INDEX.get(row.get("fact_value_text"))
+        if subj and sign_i is not None:
+            idx[str(subj).capitalize()] = sign_i
+    return idx
 
 
 def _build_ascendant_fn(local_birth_dt: datetime, lat: float, lon: float, tz_offset_hours: float):
@@ -89,22 +181,19 @@ class PhRectificationWriter(WriterBase):
         conn = ctx.db_conn  # NEVER commit or close — orchestrator owns the txn
         chart_id = ctx.config["chart_id"]
 
-        # JL-017 (BA Phase 2.5 #11, CONTAMINATION-CLASS): the engine's embedded
-        # TRAINING_EVENTS + natal dasha-lord positions are the native's own LEL
-        # events and chart facts. No other chart has a training-event corpus in
-        # this system yet, so scoring any other chart against them would be
-        # silently attributing the native's life history to a stranger's chart —
-        # exactly the plausible-but-wrong failure class this audit hunts. Fail
-        # loudly, before any DB writes, instead of guessing.
-        if chart_id != NATIVE_CHART_ID:
-            raise ValueError(
-                f"ph_rectification: no chart-specific LEL training-event corpus exists for "
-                f"chart_id={chart_id!r}. The engine's TRAINING_EVENTS + natal dasha-lord "
-                f"positions belong exclusively to the native chart ({NATIVE_CHART_ID}); "
-                f"scoring another chart against them would silently misattribute the "
-                f"native's life events (JL-017). Refusing rather than guessing."
-            )
-
+        # JL-017 (CONTAMINATION-CLASS): the engine's embedded TRAINING_EVENTS +
+        # natal dasha-lord positions are the NATIVE's own LEL events / chart
+        # facts. rectification is a per-chart asset every chart gets — but each
+        # chart must be scored against ITS OWN life events, NEVER the native's.
+        # Native chart: pass None -> engine uses its embedded native corpus
+        # (correct; it IS the native's chart). Every other chart: source
+        # training events + natal sign index from ITS OWN life_events /
+        # chart_dashas / chart_facts, passed EXPLICITLY so the engine's
+        # native-default fallback is never reached. A chart with no qualifying
+        # life events yields an empty training set -> a clean lagna-stability-
+        # only rectification (185 candidates, no LEL fit), not the native's
+        # life history and not a hard failure.
+        is_native = chart_id == NATIVE_CHART_ID
         birth_params = resolve_birth_params(chart_id, ctx.config.get("birth_params"))
 
         # Derive LOCAL birth datetime and UTC birth datetime from birth_params.
@@ -130,9 +219,28 @@ class PhRectificationWriter(WriterBase):
                 "DELETE FROM phala_rectification WHERE chart_id = %s", (chart_id,)
             )
 
+        # Per-chart corpus (native uses its embedded default via None; every
+        # other chart is scored ONLY against its own events — see JL-017 note).
+        if is_native:
+            training_events = None
+            natal_sign_index = None
+        else:
+            training_events = _load_chart_training_events(conn, chart_id)
+            natal_sign_index = _load_chart_natal_sign_index(conn, chart_id)
+            logger.info(
+                "ph_rectification: chart %s sourced %d own training events "
+                "(0 = clean lagna-stability-only rectification, no native corpus)",
+                chart_id, len(training_events),
+            )
+
         ascendant_fn = _build_ascendant_fn(local_birth_dt, lat, lon, tz_offset_hours)
-        candidates = run_rectification(ascendant_fn, recorded_birth_utc=utc_birth_dt)
-        best = select_best(candidates)
+        candidates = run_rectification(
+            ascendant_fn,
+            recorded_birth_utc=utc_birth_dt,
+            training_events=training_events,
+            dasha_lord_natal_sign_index=natal_sign_index,
+        )
+        best = select_best(candidates, training_events=training_events)
         logger.info(
             "ph_rectification: scored %d candidate rows; best offset=%s label=%s",
             len(candidates),
