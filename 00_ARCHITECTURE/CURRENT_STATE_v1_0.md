@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.21
+version: 6.22
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,38 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.22 (2026-07-07, BA-PHASE-3-RULINGS-2-3 — PARALLEL RESTORE VALIDATED):
+    **Rulings JL-022 (avastha dual-write) + JL-023 (per-writer timeout budgets) implemented,
+    deployed, and validated in a clean PARALLEL rebuild.** After the clean serial 66/66 gate
+    (v6.21), executed the strategic-track next step. PR #450: (a) JL-023 — migration 417 adds
+    asset_registry.writer_timeout_seconds (default 600; ga_dashas/bo_samskara=1800,
+    ga_structural=1200) + a per-asset watchdog in runner.execute_dag (kills+fails over budget,
+    never hangs); (b) JL-022 Option A — ga_structural stops writing graha_avastha_lajjitadi /
+    graha_avastha_sayanadi (ga_condition's are authoritative: real combustion arc,
+    dignity_d1_from_sign, Phaladeepika/BPHS), migration 418 reassigns ownership + fixes a
+    pre-existing double-count. Parallel restore (ORCHESTRATOR_WORKER_LIMIT 1→2 on the 2-CPU job):
+    run #1 (8d12cde4) failed cleanly when ka_sangam hit its 600s budget (~1.8x parallel inflation
+    of its 373s serial time) → watchdog correctly evicted+failed it → 25 downstream BLOCKED (no
+    hang — JL-023 watchdog proven live). Migration 420 (PR #451) raised ka_sangam+bo_laksana to
+    1200; re-run d7cddc38-c56c-4424-b66a-8ae5d74b3d96 = **clean 66/66 parallel, 0 errors**, ~38m,
+    ka_sangam 515s, ph_rectification 185, karaka_web 1107/1107 no-dups, lajjitadi/sayanadi now
+    ga_condition-only, contamination clean (Sun=Aquarius). WORKER_LIMIT=2 is now the validated
+    production mode. Rulings logged JL-021..JL-026 in BA_JUDGMENT_LEDGER (JL-022/023 VALIDATED).
+    OPEN follow-on (JL-026): a THIRD ga_structural↔ga_condition dual-write (graha_yuddha) was
+    found; the migration-416 DAG edge is KEPT until a full dual-write audit → then migration 419
+    (edge removal, drafted) → JL-022 Option B. Self-test non-fatality (JL-023 part c) not needed
+    (no self-test failure once budgets were correct); deferred. Native 482012f1 + snapshot
+    1783272757787 untouched throughout.
+    last_session_id: BA-PHASE-3-RULINGS-2-3-2026-07-07.
+    predecessor_session: BA-PHASE-3-FIXES-AND-RERUN-2026-07-06.
+    next_session_objective: >
+      "Follow-on (JL-026): full ga_structural↔ga_condition dual-write audit (enumerate both
+      writers' idempotency DELETE category sets), resolve each shared category (graha_yuddha +
+      any others) to a single owner, then apply migration 419 (remove the mig-416 edge) and
+      verify a clean parallel rebuild. Optionally push WORKER_LIMIT higher (bo_laksana already
+      buffered) and take on JL-022 Option B. Phase-4 native 482012f1 rebuild fires only on
+      explicit native go-ahead."
+    file_updated_at: 2026-07-07. file_updated_by_session: BA-PHASE-3-RULINGS-2-3-2026-07-07.
   - v6.21 (2026-07-06, BA-PHASE-3-FIXES-AND-RERUN — GATE PASSED, CLEAN 66/66):
     **Abhinandan (non-native, 1c826d5a) reached the FIRST fully-clean end-to-end build (L1→L5).**
     Serial rebuild run d6ebca1e-b404-469f-901a-0717a05e59ae on HEAD 958afda9: **66 complete / 0 error /

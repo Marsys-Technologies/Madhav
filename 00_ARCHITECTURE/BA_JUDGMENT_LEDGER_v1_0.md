@@ -293,7 +293,16 @@ values are frozen:
 - **Reversibility:** Additive ownership registry + writer scoping; per-chart categories regenerate on rebuild.
 - **Consumer:** `ga_condition` (owner), `ga_structural` (reader); the J2 category-ownership registry; wave-parallel scheduler.
 - **Date:** 2026-07-06
-- **Status:** RATIFIED — IMPLEMENTATION PENDING (next fix wave)
+- **Status:** RATIFIED — VALIDATED (Option A). PR #450 + migration 418: ga_structural stopped
+  emitting graha_avastha_lajjitadi / graha_avastha_sayanadi; ownership reassigned to
+  ga_condition (also fixed a pre-existing double-count). Confirmed in parallel run
+  d7cddc38: both categories now sourced ONLY from ga_condition
+  (`._lajjitadi_from_context` / `._sayanadi_from_degree`); baladi/jagrad/deepta/lifetime
+  remain single-writer ga_structural. Full ALL-avastha consolidation (Option B) DEFERRED
+  (would change stored values + fact_keys + break a dormant MV, for zero parallel-safety
+  benefit). A THIRD ga_structural↔ga_condition dual-write (graha_yuddha) was discovered
+  during implementation → the migration-416 DAG edge is intentionally KEPT until a full
+  dual-write audit (see JL-026); the parallel restore succeeded with the edge in place.
 
 ---
 
@@ -305,9 +314,18 @@ values are frozen:
 - **Basis:** N.2 FROZEN orchestrator contract (orchestrator owns transaction + watchdog, writer never self-manages timeout); IS.8 integrity substrate (integrity gates stay fatal, cosmetic self-tests do not block); operational safety (a hung run is worse than a failed asset).
 - **Alternatives considered:** Single global timeout for all writers — rejected, forces the slowest writer's budget on everything or starves it; make all self-tests fatal — rejected, cosmetic self-test flakes would block otherwise-valid builds; make two-pass non-fatal too — rejected, duplicate fact_ids are a hard data-integrity violation (see JL-021).
 - **Reversibility:** Registry budget values are data (per-asset UPDATE); watchdog + fatality policy are versioned orchestrator config. Parallel restore is gated behind its own verification.
-- **Consumer:** `asset_registry.WRITER_TIMEOUT_SECONDS` per asset; orchestrator watchdog; every writer's self-test path; the eventual parallel-restore step.
+- **Consumer:** `asset_registry.writer_timeout_seconds` per asset; orchestrator watchdog; every writer's self-test path; the parallel-restore step.
 - **Date:** 2026-07-06
-- **Status:** RATIFIED — IMPLEMENTATION PENDING (WORKER_LIMIT=1 held; gate now met, parallel restore is next verified step)
+- **Status:** RATIFIED — VALIDATED (budgets + watchdog). PR #450 added
+  asset_registry.writer_timeout_seconds (default 600; ga_dashas/bo_samskara=1800,
+  ga_structural=1200) + per-asset watchdog in runner.execute_dag (kills+fails over budget,
+  never hangs). Parallel restore (WORKER_LIMIT=2, 2-CPU job) validated the watchdog live:
+  run #1 (8d12cde4) FAILED cleanly when ka_sangam hit 600s (~1.8x parallel inflation of its
+  373s serial time) → watchdog evicted+failed it → 25 downstream BLOCKED (correct behaviour,
+  no hang). Migration 420 raised ka_sangam+bo_laksana to 1200; re-run (d7cddc38) = clean
+  66/66 parallel, 0 errors, ka_sangam 515s. WORKER_LIMIT=2 is now the validated production
+  mode (was serial=1 during the fix wave). Self-test non-fatality (part c) was NOT needed —
+  no self-test failure occurred once budgets were correct; deferred until evidence demands it.
 
 ---
 
@@ -339,6 +357,36 @@ values are frozen:
 
 ---
 
+### JL-026 — Deferred: full ga_structural↔ga_condition dual-write audit before removing the mig-416 edge
+- **Phase:** BA Phase-3 (parallel restore)
+- **Ruling agent:** Ācārya-Pratinidhi (in-session judgment under standing delegation)
+- **Question:** JL-022 removed the lajjitadi/sayanadi dual-write; can the migration-416
+  serializing DAG edge (ga_structural → ga_condition) now be removed to fully restore
+  parallelism between the pair?
+- **Decision:** DEFERRED — do NOT remove the edge yet. During JL-022 implementation a THIRD
+  category written by BOTH writers surfaced: `graha_yuddha` (ga_condition delete-then-inserts
+  it in `_build_d1_avastha_rows`; ga_structural writes its richer winner/loser/orb rows, which
+  win only because the edge serializes them). Removing the edge without first enumerating the
+  COMPLETE set of categories both writers delete-then-insert risks a parallel deadlock on a
+  category found only by luck (systematic-debugging: no whack-a-mole). The parallel restore was
+  achieved WITH the edge kept — it costs only the one ga_structural/ga_condition overlap while
+  every other asset runs parallel. Edge removal is a separate follow-on gated on: (a) a full
+  dual-write audit of the two writers' idempotency DELETE category sets, (b) resolving each
+  shared category to a single owner, (c) then migration 419 (edge removal) + a verified parallel
+  rebuild.
+- **Basis:** systematic-debugging (root-cause completeness before structural change); N.2 FROZEN
+  orchestrator contract (edges are the safe serialization primitive); B.1 single-writer-per-category.
+- **Alternatives considered:** remove the edge now and resolve graha_yuddha alone — rejected, there
+  may be further shared categories; keep the edge permanently — rejected, it forfeits the pair's
+  parallelism and hides the single-writer-invariant violation (this ruling keeps it OPEN, not
+  permanent).
+- **Reversibility:** N/A (a deferral); migration 419 is drafted and ready once the audit closes.
+- **Consumer:** the follow-on dual-write-audit session; ga_structural + ga_condition; wave-parallel scheduler.
+- **Date:** 2026-07-07
+- **Status:** OPEN — follow-on
+
+---
+
 ## RUNNING SUMMARY
 
 | ID | Phase | Category | Status | Reversible? |
@@ -364,10 +412,11 @@ values are frozen:
 | JL-019 | BA-2.5 P1 | Safety: mi_pariksha not_implemented status | RATIFIED | Yes — status-field correction |
 | JL-020 | BA-2.5 P1 | Data protection: mi_abhilekha + allowlist | RATIFIED | Yes — additive guard metadata |
 | JL-021 | BA Phase-3 | Fix: ga_structural karaka-web canonical school | RATIFIED — VALIDATED | Yes — versioned query + rebuild |
-| JL-022 | BA Phase-3 | Ownership: ga_condition owns avastha categories (J2) | RATIFIED — IMPL PENDING | Yes — additive ownership registry |
-| JL-023 | BA Phase-3 | Contract: per-writer timeout budgets + watchdog + self-test fatality | RATIFIED — IMPL PENDING | Yes — registry data + versioned config |
+| JL-022 | BA Phase-3 | Ownership: ga_condition owns lajjitadi/sayanadi (Option A / J2) | RATIFIED — VALIDATED | Yes — additive ownership registry |
+| JL-023 | BA Phase-3 | Contract: per-writer timeout budgets + watchdog (self-test fatality deferred) | RATIFIED — VALIDATED | Yes — registry data + versioned config |
 | JL-024 | BA Phase-3 | Operational: rebuild Abhinandan fresh, never restore snapshot | RATIFIED — HONORED | N/A — protects insurance snapshot |
-| JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — IN PROGRESS | Yes — additive changelog entry |
+| JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — DONE | Yes — additive changelog entry |
+| JL-026 | BA Phase-3 | Deferred: full dual-write audit before removing mig-416 edge (graha_yuddha) | OPEN — follow-on | N/A — deferral; mig 419 ready |
 
 ---
 
