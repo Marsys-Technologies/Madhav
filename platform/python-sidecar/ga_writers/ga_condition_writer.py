@@ -558,6 +558,22 @@ def compute_motion_state(graha: str, speed: float) -> str:
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
+def _rollback_to_savepoint(conn: Any, sp: str) -> None:
+    """Best-effort ROLLBACK TO SAVEPOINT — used by the SAVEPOINT-guarded
+    per-graha lookups below so a single failed/slow read (e.g. a chart_dashas
+    lookup that hits statement_timeout under load) rolls back cleanly instead
+    of leaving the shared substep transaction in Postgres's aborted state.
+    Without this, the writer's swallow-without-rollback turned one slow query
+    into InFailedSqlTransaction on every subsequent statement + the final
+    DELETE — a failed L1 ga_condition that blocked the whole L2-L5 DAG
+    (BA-P3 Abhinandan diagnostic, 2026-07-06)."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+    except Exception:
+        pass
+
+
 def _load_dignity_ref(conn: Any) -> dict[str, dict]:
     """Load bg_dignity_reference into a dict keyed by graha name."""
     try:
@@ -719,8 +735,10 @@ def _load_varga_dignity_spread(
     Load varga dignity spread from chart_divisionals for a single graha.
     Returns None when chart_divisionals is unavailable or has no data.
     """
+    sp = "sp_ga_cond_varga"
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute(f"SAVEPOINT {sp}")
             # chart_divisionals.graha stores Title Case ("Sun", "Moon", ...) — pass graha directly.
             # Include both 'varga_position' (sign) and 'varga_dignity' (dignity, overall_dignity_score).
             cur.execute("""
@@ -732,9 +750,11 @@ def _load_varga_dignity_spread(
                   AND fact_category IN ('varga_position', 'varga_dignity')
                   AND fact_key       IN ('sign', 'dignity', 'overall_dignity_score')
             """, (chart_id, ayanamsha_id, graha))
+            fetched = cur.fetchall()
+            cur.execute(f"RELEASE SAVEPOINT {sp}")
 
             spread: dict[str, Any] = {}
-            for varga, key, val_text, val_num in cur.fetchall():
+            for varga, key, val_text, val_num in fetched:
                 if varga not in spread:
                     spread[varga] = {}
                 if key == "sign":
@@ -751,6 +771,7 @@ def _load_varga_dignity_spread(
 
     except Exception as exc:
         logger.warning("[ga_condition_writer] chart_divisionals varga spread failed for %s: %s", graha, exc)
+        _rollback_to_savepoint(conn, sp)
         return None
 
 
@@ -813,9 +834,14 @@ def _load_dasha_periods(
     fields are None for that graha (this is a real "no signal" case, not a
     stub — see BA-Phase-2.5 fast-follow #2).
     """
+    sp = "sp_ga_cond_dasha"
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            # chart_dashas column is lord_graha (not graha_label)
+            cur.execute(f"SAVEPOINT {sp}")
+            # chart_dashas column is lord_graha (not graha_label). Served by the
+            # partial index chart_dashas_condition_lookup_idx (chart_id,
+            # lord_graha, start_iso) WHERE level_n=1 (migration 415) — a direct
+            # ~27-row seek, not the ~20K-row heap scan that used to time out.
             cur.execute("""
                 SELECT system_id, level_n, lord_graha, start_iso, end_iso
                 FROM chart_dashas
@@ -826,6 +852,7 @@ def _load_dasha_periods(
                 LIMIT 3
             """, (chart_id, graha))
             rows = cur.fetchall()
+            cur.execute(f"RELEASE SAVEPOINT {sp}")
             if not rows:
                 return None, None
 
@@ -876,6 +903,7 @@ def _load_dasha_periods(
 
     except Exception as exc:
         logger.warning("[ga_condition_writer] chart_dashas lookup failed for %s: %s", graha, exc)
+        _rollback_to_savepoint(conn, sp)
         return None, None
 
 
