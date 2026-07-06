@@ -463,17 +463,27 @@ class TestAvasthas:
         for r in baladi:
             assert r["fact_value_text"] in valid
 
-    def test_jagrad_deepta_sayanadi_rows_produced(self):
+    def test_baladi_jagrad_deepta_rows_produced(self):
         rows = sut._build_avastha_rows(
             MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         cats = {r["fact_category"] for r in rows}
         expected_cats = {
             "graha_avastha_baladi", "graha_avastha_jagrad", "graha_avastha_deepta",
-            "graha_avastha_lajjitadi", "graha_avastha_sayanadi",
             "graha_avastha_lifetime_exposure_summary",
         }
         assert expected_cats.issubset(cats)
+
+    def test_lajjitadi_and_sayanadi_owned_by_ga_condition_not_emitted_here(self):
+        """JL-022: ga_structural no longer emits graha_avastha_lajjitadi /
+        graha_avastha_sayanadi — ga_condition is their sole (authoritative) writer.
+        This is the dual-write removal that fixes the migration-416 lock contention."""
+        rows = sut._build_avastha_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        cats = {r["fact_category"] for r in rows}
+        assert "graha_avastha_lajjitadi" not in cats
+        assert "graha_avastha_sayanadi" not in cats
 
     def test_deepta_state_saturn_exalted_is_deepta(self):
         rows = sut._build_avastha_rows(

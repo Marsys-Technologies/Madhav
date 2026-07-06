@@ -255,6 +255,7 @@ def execute_dag(
     on_block=None,
     should_stop=None,
     on_complete=None,         # called(asset_id) when asset lands in completed; errors are swallowed
+    timeouts_of=None,         # optional {asset_id: seconds}; per-writer watchdog budget (JL-023)
 ) -> tuple[set[str], Optional[str]]:
     """
     Pure (DB-free) wave-parallel DAG executor — the scheduling core, separated so it
@@ -277,6 +278,10 @@ def execute_dag(
     _block = on_block or (lambda a, b: None)
     _stop = should_stop or (lambda: None)
     _on_complete = on_complete or (lambda a: None)
+    # JL-023: per-writer watchdog budget from asset_registry.writer_timeout_seconds;
+    # fall back to the global env default when an asset has no explicit budget.
+    _budgets = timeouts_of or {}
+    _timeout_for = lambda a: int(_budgets.get(a) or _WRITER_TIMEOUT_SECONDS)
     wl = max(1, worker_limit)
 
     pool = _DaemonThreadPoolExecutor(max_workers=wl, thread_name_prefix="asset")
@@ -301,7 +306,8 @@ def execute_dag(
                     _fut = pool.submit(run_fn, a)
                     in_flight[_fut] = a
                     # H-3: record the per-asset deadline when we dispatch
-                    deadlines[_fut] = time.monotonic() + _WRITER_TIMEOUT_SECONDS
+                    # JL-023: per-writer budget (falls back to global default)
+                    deadlines[_fut] = time.monotonic() + _timeout_for(a)
                     pending.remove(a)
                     progressed = True
 
@@ -325,12 +331,13 @@ def execute_dag(
                 if fut not in done and deadlines.get(fut, float("inf")) < now:
                     a = in_flight.pop(fut)
                     deadlines.pop(fut, None)
+                    _budget = _timeout_for(a)
                     logger.warning(
-                        "[execute_dag] TIMEOUT: asset_id=%s exceeded WRITER_TIMEOUT_SECONDS=%d — "
+                        "[execute_dag] TIMEOUT: asset_id=%s exceeded writer_timeout_seconds=%d — "
                         "marking error; daemon thread will die on process exit",
-                        a, _WRITER_TIMEOUT_SECONDS,
+                        a, _budget,
                     )
-                    _block(a, [f"timeout:{_WRITER_TIMEOUT_SECONDS}s"])
+                    _block(a, [f"timeout:{_budget}s"])
                     failed.add(a)
 
             for fut in done:
@@ -457,6 +464,22 @@ def _schedule_parallel(
     ]
     conn.commit()  # release snapshot so subsequent reads are fresh
 
+    # JL-023: per-writer watchdog budgets from asset_registry. Guarded so a schema
+    # predating migration 417 (or a unit fixture without the column) degrades to the
+    # global WRITER_TIMEOUT_SECONDS default rather than crashing the run.
+    timeouts_of: dict[str, int] = {}
+    try:
+        cur.execute(
+            "SELECT asset_id, writer_timeout_seconds FROM asset_registry "
+            "WHERE writer_timeout_seconds IS NOT NULL"
+        )
+        timeouts_of = {r["asset_id"]: int(r["writer_timeout_seconds"]) for r in cur.fetchall()}
+        conn.commit()
+    except Exception as _te:
+        conn.rollback()
+        logger.warning("[orchestrator] writer_timeout_seconds unavailable (%s); "
+                       "using global WRITER_TIMEOUT_SECONDS=%d", _te, _WRITER_TIMEOUT_SECONDS)
+
     def worker(asset_id: str) -> str:
         """Run one asset on a DEDICATED connection. Returns its final state string."""
         wconn = connect()
@@ -548,6 +571,7 @@ def _schedule_parallel(
         on_block=on_block,
         should_stop=should_stop,
         on_complete=on_complete,
+        timeouts_of=timeouts_of,
     )
 
 
