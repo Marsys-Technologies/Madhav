@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.19
+version: 6.21
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,59 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.21 (2026-07-06, BA-PHASE-3-FIXES-AND-RERUN — GATE PASSED, CLEAN 66/66):
+    **Abhinandan (non-native, 1c826d5a) reached the FIRST fully-clean end-to-end build (L1→L5).**
+    Serial rebuild run d6ebca1e-b404-469f-901a-0717a05e59ae on HEAD 958afda9: **66 complete / 0 error /
+    0 queued, build_runs.state=completed**, ~41m serial (ORCHESTRATOR_WORKER_LIMIT=1,
+    WRITER_TIMEOUT_SECONDS=1200). Contamination clean (Sun=Aquarius/Shatabhisha, genuine non-native, not
+    native Capricorn). ph_rectification=185 rows + best=1 (clean lagna-stability-only, empty training
+    events). ga_structural karaka_web_per_varga=1107 total/1107 distinct (zero dup fact_ids). Downstream
+    healthy (msr 67,116 = embeddings 67,116; kala_taranga 79,728; phala_anchors 400).
+    Campaign total: ~13 root-caused bugs across L1→L5 landed via CI-gated PRs #438/#446/#447/#448 +
+    migrations 414/415/416. The two final blockers this session: (1) PR #447 — ga_structural GA8 duplicate
+    fact_ids from ga_sensitive's dual Jaimini-school karaka rows scrambled into one varga; fixed by scoping
+    karaka-web to the canonical kn_rao_rahu_included school (JL-021, VALIDATED). (2) PR #448 —
+    ph_rectification UndefinedColumn(chart_id) because life_events is the native's chart-less LEL (no
+    chart_id column); fixed so non-native charts return [] without querying it (contamination firewall) and
+    the native reads its own LEL unscoped. Strategic-track rulings logged as JL-021..JL-025 (avastha
+    ownership→ga_condition/J2; per-writer timeout budgets + watchdog + self-test fatality policy; rebuild-
+    fresh-never-restore-snapshot; this changelog rule). Detailed record: BA_PHASE_3_FIXES_AND_RERUN_REPORT_v1_0.md
+    + BA_RUN_LEDGER_v1_0.md §1b. Snapshot 1783272757787 and native 482012f1 untouched throughout.
+    GATE now MET: Phase-4 (native 482012f1 rebuild) is unblocked pending native go-ahead — NOT auto-fired.
+    last_session_id: BA-PHASE-3-FIXES-AND-RERUN-2026-07-06.
+    predecessor_session: BA-PHASE-3-ABHINANDAN-REBUILD-2026-07-05.
+    next_session_objective: >
+      "Execute JL-022 (accelerate J2 avastha category-ownership: ga_condition owns all avastha
+      fact_categories, ga_structural stops writing them — surgical, per-category) + JL-023 (per-writer
+      timeout budgets in asset_registry + watchdog + non-fatal self-tests except two-pass integrity), then
+      the parallel restore (lift ORCHESTRATOR_WORKER_LIMIT>1) as its OWN separately-verified step. Phase-4
+      native rebuild fires only on explicit native go-ahead."
+    file_updated_at: 2026-07-06. file_updated_by_session: BA-PHASE-3-FIXES-AND-RERUN-2026-07-06.
+  - v6.20 (2026-07-05, BA-PHASE-3-ABHINANDAN-REBUILD):
+    **Phase-3 Abhinandan full rebuild (proving run) executed via Chrome MCP on the live Nirmāṇa tracker
+    (prod, madhav.marsys.in) — RESIDUALS, NOT CLEAN.** Full report: BA_PHASE_3_ABHINANDAN_REBUILD_REPORT_v1_0.md.
+    Pre-flight clean (sidecar+JOB both on merged #436 HEAD 6a0aea6f; fresh on-demand amjis-postgres snapshot
+    1783272757787 taken as rollback point; baseline count_sql captured for all 44 countable L1-L5 assets).
+    Rebuild triggered correctly (header Rebuild → clear L1-L5 confirmed excluding L0 → chained rebuild POST),
+    but the build run (8e5d1549-a695-4422-9b96-f7a7a3850aed) only completed 18/66 assets before cascading
+    into a BLOCKED-dependency chain. Two structural-class root causes found: (1) `mi_jivanaghatana` throws a
+    hard RuntimeError when a chart has zero life events (neither LEL markdown nor life_events DB fallback) —
+    a direct generality-by-construction violation since any client without a populated life-event log cannot
+    complete a rebuild; (2) `ga_dashas` hit an internal 600s substep timeout mid-insert (461,127 of 603,122
+    baseline rows attempted, 460,831 actually persisted — a partial, non-atomic write), likely due to
+    autovacuum contention on the freshly-mass-deleted table racing the reinsert. Both need code fixes before
+    Phase-3 can be re-run to a clean result. Chart currently sits in a degraded state (L2/L4 empty, most of
+    L3/L5 empty) relative to pre-rebuild; the pre-rebuild snapshot remains the rollback point if the native
+    wants to restore. Native (482012f1) untouched; scope was Abhinandan-only per brief.
+    last_session_id: BA-PHASE-3-ABHINANDAN-REBUILD-2026-07-05.
+    predecessor_session: BA-PRE-REBUILD-CLOSEOUT-2026-07-05.
+    next_session_objective: >
+      "Fix the two code-plane defects found in the Phase-3 proving run: (a) mi_jivanaghatana must treat
+      zero life events as a valid empty build, not a RuntimeError; (b) the ga_dashas/orchestrator substep
+      timeout (600s) must be revisited — raise it and/or investigate autovacuum-vs-insert contention on the
+      mass-delete-then-rebuild path. Then re-run CLAUDECODE_BRIEF_BA_PHASE_3_ABHINANDAN_REBUILD_v1_1.md
+      end-to-end against the same rollback snapshot (1783272757787) before declaring PHASE-3 CLEAN."
+    file_updated_at: 2026-07-05. file_updated_by_session: BA-PHASE-3-ABHINANDAN-REBUILD-2026-07-05.
   - v6.19 (2026-07-05, BA-PRE-REBUILD-CLOSEOUT):
     **BA Pre-Rebuild Gate CLOSED — all checks GREEN, REBUILD-READY = YES.** Executed
     BA_PRE_REBUILD_GATE_REPORT_v1_0.md's residual executor confirm-pass, then

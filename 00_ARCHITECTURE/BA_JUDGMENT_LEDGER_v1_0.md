@@ -269,6 +269,76 @@ values are frozen:
 
 ---
 
+### JL-021 — Fix directive: `ga_structural` GA8 karaka-web duplicate fact_ids (canonical-school scoping)
+- **Phase:** BA Phase-3 (Abhinandan serial-gate fix wave)
+- **Ruling agent:** Cowork (strategic track, standing delegation)
+- **Question:** The GA8 two-pass integrity gate halts `ga_structural` on duplicate `karaka_web_per_varga` fact_ids for the non-native chart. Four-step directive: (1) DIAGNOSE the colliding rows by diffing payloads to find the missing natural-key field; (2) add it to the key; (3) root-cause `VARGA_MISSING` D30 as its own item; (4) verify migration 416's DAG reorder did not alter ga_structural's read of ga_condition mid-derivation.
+- **Decision:** RATIFIED + RESOLVED. Root cause was NOT a missing natural-key field: `ga_sensitive` legitimately emits `karaka_chara_position` for BOTH Jaimini schools (`parashari_rahu_excluded` 7-planet, `kn_rao_rahu_included` 8-planet), and `_build_karaka_web_rows` read all rows unscoped, scrambling two schools into one varga's karaka permutation → colliding fact_ids where the schools agree. Fix: karaka-web reads ONE canonical school (`kn_rao_rahu_included`, the canonical AK) via `AND formula_id = %s`, plus a defensive `dict.fromkeys` dedupe. D30 `VARGA_MISSING` confirmed benign (D30 legitimately absent for this chart, not a bug). Migration 416 reorder verified non-interfering (ga_structural runs strictly after ga_condition; no mid-derivation read hazard). Landed PR #447.
+- **Basis:** B.10 no-fabricated-computation (single-school truth, not a fabricated merge); N.5 L1-authority (karaka_web references ga_sensitive's dual-school facts, must not scramble them); live reproduction (14 colliding fact_ids reproduced before any fix).
+- **Alternatives considered:** Add school to the natural key so both schools coexist as distinct fact_ids — rejected, karaka_web is per-varga karaka-relationship modeling that must rest on ONE canonical karaka assignment, not a two-school union; dedupe silently without school scoping — rejected, masks which school won and is order-dependent.
+- **Reversibility:** Canonical-school constant + versioned query change; cleared on rebuild (delete-then-insert). Dual-school `karaka_chara_position` data in ga_sensitive untouched.
+- **Consumer:** `ga_structural` `karaka_web_per_varga`; GA8 two-pass integrity gate.
+- **Date:** 2026-07-06
+- **Status:** RATIFIED — VALIDATED (run d6ebca1e: 1107 total / 1107 distinct fact_ids, zero dups)
+
+---
+
+### JL-022 — Ownership: avastha fact_categories are `ga_condition`'s sole authority (J2 acceleration)
+- **Phase:** BA Phase-3 (Abhinandan serial-gate fix wave)
+- **Ruling agent:** Cowork (strategic track, standing delegation)
+- **Question:** `ga_condition` and `ga_structural` BOTH delete-then-insert the same avastha `chart_facts` categories (`graha_avastha_lajjitadi`, `graha_avastha_sayanadi`), causing wave-parallel lock contention (the migration-416 root cause). Who OWNS the avastha categories?
+- **Decision:** RATIFIED. `ga_condition` OWNS all avastha `fact_categories`. Consumers (incl. `ga_structural`) read them via the DAG edge, NEVER write them. This is the durable fix behind migration 416's interim edge-serialization: accelerate J2 (the per-category ownership registry, precedent JL-015 for ga_structural's count_sql categories) into this fix wave so category ownership is a single source of truth, not an implicit convention. NOTE: implementation must be surgical — ga_structural writes D1 avastha via pyjhora_adapter while ga_condition writes the `_per_varga` variants; the split is per-category, not a blind delete of ga_structural's avastha code.
+- **Basis:** B.1 facts/interpretation separation + single-writer-per-category invariant; JL-015 precedent (category-ownership as SSOT); migration 416 root-cause analysis (shared-category delete-then-insert contention).
+- **Alternatives considered:** Keep migration 416's DAG-edge serialization as the permanent fix — rejected, it serializes an otherwise-parallel pair to paper over dual-ownership; leave dual ownership and rely on WORKER_LIMIT=1 — rejected, forfeits parallelism permanently and hides the invariant violation.
+- **Reversibility:** Additive ownership registry + writer scoping; per-chart categories regenerate on rebuild.
+- **Consumer:** `ga_condition` (owner), `ga_structural` (reader); the J2 category-ownership registry; wave-parallel scheduler.
+- **Date:** 2026-07-06
+- **Status:** RATIFIED — IMPLEMENTATION PENDING (next fix wave)
+
+---
+
+### JL-023 — Contract: per-writer timeout budgets + watchdog + self-test fatality policy
+- **Phase:** BA Phase-3 (Abhinandan serial-gate fix wave)
+- **Ruling agent:** Cowork (strategic track, standing delegation)
+- **Question:** Several writers exceeded the 600s default timeout under load (ga_dashas ~5min, bo_samskara ~8min, ka_dasha_kala self-test). How should per-writer budgets, the watchdog, and self-test failures behave?
+- **Decision:** RATIFIED. (a) Per-writer timeout budgets live in `asset_registry` (default 600s; `ga_structural` / `ga_dashas` / `bo_samskara` get 1200–1800s). (b) The watchdog KILLS and FAILS a writer that exceeds its budget — it NEVER hangs the run indefinitely. (c) Writer self-test failures are NON-FATAL (logged, run continues) EXCEPT the two-pass duplicate-fact_id integrity check, which STAYS FATAL (data-integrity gate). (d) `ORCHESTRATOR_WORKER_LIMIT=1` (serial) stays until ONE clean 66/66 serial run on Abhinandan; the parallel restore is its OWN separately-verified step afterward.
+- **Basis:** N.2 FROZEN orchestrator contract (orchestrator owns transaction + watchdog, writer never self-manages timeout); IS.8 integrity substrate (integrity gates stay fatal, cosmetic self-tests do not block); operational safety (a hung run is worse than a failed asset).
+- **Alternatives considered:** Single global timeout for all writers — rejected, forces the slowest writer's budget on everything or starves it; make all self-tests fatal — rejected, cosmetic self-test flakes would block otherwise-valid builds; make two-pass non-fatal too — rejected, duplicate fact_ids are a hard data-integrity violation (see JL-021).
+- **Reversibility:** Registry budget values are data (per-asset UPDATE); watchdog + fatality policy are versioned orchestrator config. Parallel restore is gated behind its own verification.
+- **Consumer:** `asset_registry.WRITER_TIMEOUT_SECONDS` per asset; orchestrator watchdog; every writer's self-test path; the eventual parallel-restore step.
+- **Date:** 2026-07-06
+- **Status:** RATIFIED — IMPLEMENTATION PENDING (WORKER_LIMIT=1 held; gate now met, parallel restore is next verified step)
+
+---
+
+### JL-024 — Operational: rebuild Abhinandan fresh, never restore the snapshot
+- **Phase:** BA Phase-3 (Abhinandan serial-gate fix wave)
+- **Ruling agent:** Cowork (strategic track, standing delegation)
+- **Question:** To recover a clean Abhinandan build after the fix wave, restore Cloud SQL snapshot 1783272757787 or rebuild fresh?
+- **Decision:** RATIFIED. Do NOT restore the snapshot — rebuild Abhinandan FRESH through the orchestrator on the fixed HEAD. Snapshot 1783272757787 is disaster-insurance and is never touched/overwritten/restored as a routine recovery path; a fresh rebuild is the canonical proof that the fixed code produces a clean chart from scratch.
+- **Basis:** N.3 idempotency (delete-then-insert rebuild REPLACES cleanly); disaster-insurance invariant (the snapshot is a last-resort backup, not a working restore point); a fresh build is the only honest validation that the fixes work end-to-end.
+- **Alternatives considered:** Restore snapshot then patch forward — rejected, would validate nothing about the fixed code path and risks mutating the insurance snapshot's role; partial per-asset rebuild — rejected, the gate requires a full clean L1→L5 run.
+- **Reversibility:** N/A (directive protects an irreplaceable asset); fresh rebuilds are infinitely repeatable.
+- **Consumer:** Every Abhinandan rebuild in this campaign; snapshot 1783272757787 (protected).
+- **Date:** 2026-07-06
+- **Status:** RATIFIED — HONORED (run d6ebca1e was a fresh rebuild; snapshot never touched)
+
+---
+
+### JL-025 — Documentation: `CURRENT_STATE` append-only changelog at file top
+- **Phase:** BA Phase-3 (Abhinandan serial-gate fix wave)
+- **Ruling agent:** Cowork (strategic track, standing delegation)
+- **Question:** How should this campaign's state be recorded in `CURRENT_STATE_v1_0.md` given it is a large file with prior-session uncommitted edits?
+- **Decision:** RATIFIED. Add an APPEND-ONLY changelog entry at the TOP of `CURRENT_STATE_v1_0.md` — do NOT rewrite the file. The BA Phase-3 exit report (`BA_PHASE_3_FIXES_AND_RERUN_REPORT_v1_0.md`) + run ledger §1b remain the detailed record; CURRENT_STATE carries only the pointer.
+- **Basis:** B.8 versioning discipline (append-only, no silent mutation of a live state file); ONGOING_HYGIENE_POLICIES §D (SESSION_LOG/state completeness); avoid clobbering another session's uncommitted work.
+- **Alternatives considered:** Rewrite the CURRENT_STATE §2 open-items block inline — rejected, risks clobbering prior-session uncommitted edits in a 6000-line file; put the detail in CURRENT_STATE — rejected, duplicates the exit report and violates the "live pointer, not detailed record" role.
+- **Reversibility:** Additive changelog entry; trivially editable.
+- **Consumer:** `CURRENT_STATE_v1_0.md` top-of-file changelog; any session reading current state.
+- **Date:** 2026-07-06
+- **Status:** RATIFIED — IN PROGRESS (changelog entry being added this session)
+
+---
+
 ## RUNNING SUMMARY
 
 | ID | Phase | Category | Status | Reversible? |
@@ -293,6 +363,11 @@ values are frozen:
 | JL-018 | BA-2.5 P3 | Dimension retirement: mi_pramana manifestation | RATIFIED | Yes — formula_version + registry note |
 | JL-019 | BA-2.5 P1 | Safety: mi_pariksha not_implemented status | RATIFIED | Yes — status-field correction |
 | JL-020 | BA-2.5 P1 | Data protection: mi_abhilekha + allowlist | RATIFIED | Yes — additive guard metadata |
+| JL-021 | BA Phase-3 | Fix: ga_structural karaka-web canonical school | RATIFIED — VALIDATED | Yes — versioned query + rebuild |
+| JL-022 | BA Phase-3 | Ownership: ga_condition owns avastha categories (J2) | RATIFIED — IMPL PENDING | Yes — additive ownership registry |
+| JL-023 | BA Phase-3 | Contract: per-writer timeout budgets + watchdog + self-test fatality | RATIFIED — IMPL PENDING | Yes — registry data + versioned config |
+| JL-024 | BA Phase-3 | Operational: rebuild Abhinandan fresh, never restore snapshot | RATIFIED — HONORED | N/A — protects insurance snapshot |
+| JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — IN PROGRESS | Yes — additive changelog entry |
 
 ---
 
