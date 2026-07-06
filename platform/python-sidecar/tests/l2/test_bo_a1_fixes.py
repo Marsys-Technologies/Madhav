@@ -118,7 +118,7 @@ _build_navamsha_cross_check_signals = _mod._build_navamsha_cross_check_signals
 _build_signal_row         = _mod._build_signal_row
 _signature_tier           = _mod._signature_tier
 _DIGNITY_SCORE            = _mod._DIGNITY_SCORE
-_update_salience_pctl_in_class = _mod._update_salience_pctl_in_class
+_set_salience_pctl_in_class = _mod._set_salience_pctl_in_class
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -732,66 +732,56 @@ class TestI2NavamshaShаdbalaShortKey(unittest.TestCase):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# BA-P3 regression — salience_pctl_in_class must not poison the connection
+# BA-P3 — salience_pctl_in_class computed in memory (replaces the 600s UPDATE)
 # ──────────────────────────────────────────────────────────────────────────────
 
-class _FakeSpCursor:
-    """Cursor stub: records every execute() call; raises on the UPDATE statement
-    to simulate a `canceling statement due to statement timeout`, succeeds on
-    SAVEPOINT/RELEASE SAVEPOINT/SET LOCAL/ROLLBACK TO SAVEPOINT."""
-    def __init__(self, calls, fail_update):
-        self._calls = calls
-        self._fail_update = fail_update
+class TestSaliencePctlInMemory(unittest.TestCase):
+    """_set_salience_pctl_in_class must reproduce PERCENT_RANK() OVER (PARTITION BY
+    signal_type_class ORDER BY computed_salience) exactly — verified against live
+    Postgres output — so the pathological post-insert UPDATE can be dropped."""
 
-    def __enter__(self):
-        return self
+    def test_matches_postgres_percent_rank_with_ties(self):
+        # Live Postgres for [10,20,20,40] in one class → 0, 0.333333, 0.333333, 1.0
+        rows = [
+            {"signal_type_class": "a", "computed_salience": 10.0},
+            {"signal_type_class": "a", "computed_salience": 20.0},
+            {"signal_type_class": "a", "computed_salience": 20.0},
+            {"signal_type_class": "a", "computed_salience": 40.0},
+        ]
+        _set_salience_pctl_in_class(rows)
+        pctls = [r["salience_pctl_in_class"] for r in rows]
+        self.assertEqual(pctls, [0.0, 0.333333, 0.333333, 1.0])
 
-    def __exit__(self, *a):
-        return False
+    def test_single_row_partition_is_zero(self):
+        rows = [{"signal_type_class": "b", "computed_salience": 5.0}]
+        _set_salience_pctl_in_class(rows)
+        self.assertEqual(rows[0]["salience_pctl_in_class"], 0.0)
 
-    def execute(self, sql, params=None):
-        self._calls.append(sql.strip().split("\n")[0].strip() or sql.strip())
-        if self._fail_update and "UPDATE bodha_msr_signals" in sql:
-            raise RuntimeError("canceling statement due to statement timeout")
+    def test_partitions_are_independent(self):
+        rows = [
+            {"signal_type_class": "a", "computed_salience": 1.0},
+            {"signal_type_class": "a", "computed_salience": 2.0},
+            {"signal_type_class": "b", "computed_salience": 100.0},
+            {"signal_type_class": "b", "computed_salience": 50.0},
+        ]
+        _set_salience_pctl_in_class(rows)
+        by = {(r["signal_type_class"], r["computed_salience"]): r["salience_pctl_in_class"] for r in rows}
+        # each 2-row class: lowest→0.0, highest→1.0, independent of the other class
+        self.assertEqual(by[("a", 1.0)], 0.0)
+        self.assertEqual(by[("a", 2.0)], 1.0)
+        self.assertEqual(by[("b", 50.0)], 0.0)
+        self.assertEqual(by[("b", 100.0)], 1.0)
 
-
-class _FakeSpConn:
-    def __init__(self, fail_update=True):
-        self.calls: list[str] = []
-        self._fail_update = fail_update
-
-    def cursor(self):
-        return _FakeSpCursor(self.calls, self._fail_update)
-
-
-class TestSalienceUpdateSavepointGuard(unittest.TestCase):
-    """A timeout (or any error) in the salience_pctl_in_class UPDATE must not
-    propagate, and must leave the connection usable — i.e. ROLLBACK TO SAVEPOINT
-    is issued so the caller's subsequent statements don't fail with
-    InFailedSqlTransaction (the bug that broke bo_laksana on the BA-P3 rebuild)."""
-
-    def test_timeout_is_caught_and_rolled_back(self):
-        conn = _FakeSpConn(fail_update=True)
-        _update_salience_pctl_in_class(conn, "chart-1", "lahiri_chitrapaksha")  # must not raise
-        joined = " | ".join(conn.calls)
-        self.assertIn("SAVEPOINT sp_bo_laksana_salience_pctl", joined)
-        self.assertIn("ROLLBACK TO SAVEPOINT sp_bo_laksana_salience_pctl", joined)
-        self.assertNotIn("RELEASE SAVEPOINT sp_bo_laksana_salience_pctl", joined)
-
-    def test_success_path_releases_savepoint(self):
-        conn = _FakeSpConn(fail_update=False)
-        _update_salience_pctl_in_class(conn, "chart-1", "lahiri_chitrapaksha")
-        joined = " | ".join(conn.calls)
-        self.assertIn("RELEASE SAVEPOINT sp_bo_laksana_salience_pctl", joined)
-        self.assertNotIn("ROLLBACK TO SAVEPOINT sp_bo_laksana_salience_pctl", joined)
-
-    def test_disables_statement_timeout_before_the_update(self):
-        conn = _FakeSpConn(fail_update=False)
-        _update_salience_pctl_in_class(conn, "chart-1", "lahiri_chitrapaksha")
-        self.assertTrue(
-            any("SET LOCAL statement_timeout" in c for c in conn.calls),
-            f"expected a SET LOCAL statement_timeout call, got: {conn.calls}",
-        )
+    def test_every_row_gets_a_value(self):
+        rows = [
+            {"signal_type_class": "a", "computed_salience": 1.0},
+            {"signal_type_class": None, "computed_salience": 3.0},
+            {"signal_type_class": None, "computed_salience": 9.0},
+        ]
+        _set_salience_pctl_in_class(rows)
+        for r in rows:
+            self.assertIn("salience_pctl_in_class", r)
+            self.assertIsNotNone(r["salience_pctl_in_class"])
 
 
 if __name__ == "__main__":

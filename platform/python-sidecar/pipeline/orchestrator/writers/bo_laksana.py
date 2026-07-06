@@ -1481,7 +1481,7 @@ INSERT INTO bodha_msr_signals (
   house_weight_multiplier, ashtakavarga_support_multiplier,
   aspect_modifier, vargottama_amplification, argala_modifier,
   neechabhanga_modifier, cancellation_modifier,
-  computed_salience, salience_formula_version, salience_confidence_interval_jsonb,
+  computed_salience, salience_pctl_in_class, salience_formula_version, salience_confidence_interval_jsonb,
   domains_affected_array, domain_salience_jsonb,
   shared_factor_keys_jsonb, cross_domain_shared_factor_count,
   graph_edge_pattern_jsonb, graph_node_strength_contribution_jsonb, relationship_classification,
@@ -1509,7 +1509,7 @@ INSERT INTO bodha_msr_signals (
   %(house_weight_multiplier)s, %(ashtakavarga_support_multiplier)s,
   %(aspect_modifier)s, %(vargottama_amplification)s, %(argala_modifier)s,
   %(neechabhanga_modifier)s, %(cancellation_modifier)s,
-  %(computed_salience)s, %(salience_formula_version)s, %(salience_confidence_interval_jsonb)s::jsonb,
+  %(computed_salience)s, %(salience_pctl_in_class)s, %(salience_formula_version)s, %(salience_confidence_interval_jsonb)s::jsonb,
   %(domains_affected_array)s, %(domain_salience_jsonb)s::jsonb,
   %(shared_factor_keys_jsonb)s, %(cross_domain_shared_factor_count)s,
   %(graph_edge_pattern_jsonb)s, %(graph_node_strength_contribution_jsonb)s, %(relationship_classification)s,
@@ -1556,50 +1556,6 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
     return inserted
 
 
-def _update_salience_pctl_in_class(conn: Any, chart_id: str, ayanamsha: str) -> None:
-    """Compute salience_pctl_in_class within (signal_type_class × chart × ayanamsha) —
-    a best-effort refinement pass; a failure here must not abort the caller's substep.
-
-    SAVEPOINT-guarded (BA-P3 regression, 2026-07-05): the prior bare try/except caught
-    the exception but never rolled back, leaving the connection in Postgres's aborted-
-    transaction state; every subsequent statement (including the orchestrator's own
-    SAVEPOINT release and crash-cleanup) then failed with InFailedSqlTransaction. SET
-    LOCAL statement_timeout=0 avoids the timeout this PERCENT_RANK() UPDATE hit under
-    load on a large chart (same class of issue as ga_dashas's COPY — see #440); the
-    SAVEPOINT + ROLLBACK TO SAVEPOINT on any other failure keeps the connection usable
-    regardless of the specific error.
-    """
-    sp = "sp_bo_laksana_salience_pctl"
-    try:
-        with conn.cursor() as cur:
-            cur.execute(f"SAVEPOINT {sp}")
-            cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("""
-                UPDATE bodha_msr_signals s
-                SET salience_pctl_in_class = sub.pctl
-                FROM (
-                    SELECT signal_id,
-                           PERCENT_RANK() OVER (
-                               PARTITION BY chart_id, ayanamsha_id, signal_type_class
-                               ORDER BY computed_salience
-                           ) AS pctl
-                    FROM bodha_msr_signals
-                    WHERE chart_id=%s AND ayanamsha_id=%s
-                ) sub
-                WHERE s.signal_id = sub.signal_id
-                  AND s.chart_id=%s AND s.ayanamsha_id=%s
-            """, [chart_id, ayanamsha, chart_id, ayanamsha])
-            cur.execute(f"RELEASE SAVEPOINT {sp}")
-    except Exception as exc:
-        logger.warning("[bo_laksana] %s — salience_pctl_in_class update skipped: %s",
-                       ayanamsha, exc)
-        try:
-            with conn.cursor() as cur:
-                cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
-        except Exception:
-            pass
-
-
 def _set_top_k_ranks(rows: list[dict]) -> None:
     """Rank rows by computed_salience DESC in place — all rows get a rank."""
     for rank, row in enumerate(
@@ -1615,6 +1571,45 @@ def _normalize_by_chart_max(rows: list[dict]) -> None:
     max_sal = max(r["computed_salience"] for r in rows) or 1.0
     for row in rows:
         row["strength_normalized_to_chart_max"] = round(row["computed_salience"] / max_sal, 6)
+
+
+def _set_salience_pctl_in_class(rows: list[dict]) -> None:
+    """Set salience_pctl_in_class in place — the in-memory equivalent of
+    PERCENT_RANK() OVER (PARTITION BY chart_id, ayanamsha_id, signal_type_class
+    ORDER BY computed_salience). Rows here are already scoped to a single
+    (chart_id, ayanamsha_id) — the writer processes one ayanamsha per substep —
+    so partitioning by signal_type_class alone is equivalent.
+
+    BA-P3 (2026-07-06): replaces a post-insert `UPDATE bodha_msr_signals SET
+    salience_pctl_in_class = ...` that ran pathologically long (600s+, CPU/IO
+    bound, no lock) because updating one scalar column on ~28K freshly-inserted
+    rows forces a full-row rewrite against this table's 20 indexes (incl. 3 GIN
+    on jsonb arrays). Computing it here from the rows already in memory writes
+    the value in the single INSERT pass — zero extra DB work. PERCENT_RANK uses
+    RANK() (ties share the minimum rank); a single-row partition is 0.0.
+    """
+    from collections import defaultdict
+    by_class: dict[Any, list[dict]] = defaultdict(list)
+    for row in rows:
+        by_class[row.get("signal_type_class")].append(row)
+    for cls_rows in by_class.values():
+        n = len(cls_rows)
+        if n <= 1:
+            for row in cls_rows:
+                row["salience_pctl_in_class"] = 0.0
+            continue
+        # RANK with ties sharing the minimum rank: in ascending order, the rank of
+        # a value is 1 + (count of rows with strictly smaller computed_salience),
+        # i.e. the 1-based index of that value's first occurrence.
+        ordered = sorted(cls_rows, key=lambda r: r["computed_salience"])
+        rank_by_salience: dict[Any, int] = {}
+        for i, row in enumerate(ordered):
+            sal = row["computed_salience"]
+            if sal not in rank_by_salience:
+                rank_by_salience[sal] = i + 1
+        for row in cls_rows:
+            rank = rank_by_salience[row["computed_salience"]]
+            row["salience_pctl_in_class"] = round((rank - 1) / (n - 1), 6)
 
 
 # ── WriterBase subclass ───────────────────────────────────────────────────────
@@ -1744,22 +1739,19 @@ class BoLaksanaWriter(WriterBase):
             except Exception:
                 pass
 
-        # Post-processing: rank + normalize
+        # Post-processing: rank + normalize + in-class percentile — all computed in
+        # memory on the row dicts BEFORE the insert, so salience_pctl_in_class is
+        # written in the single INSERT pass (no separate post-insert UPDATE).
         _set_top_k_ranks(signal_rows)
         _normalize_by_chart_max(signal_rows)
+        _set_salience_pctl_in_class(signal_rows)
 
         # Idempotency: wipe prior rows for (chart_id, ayanamsha_id)
         deleted = replace_prior_msr_for_chart(conn, chart_id, ayanamsha)
         logger.info("[bo_laksana] %s — deleted %d prior rows", ayanamsha, deleted)
 
-        # Batch insert
+        # Batch insert (salience_pctl_in_class now carried on each row — no second pass)
         inserted = _batch_insert(conn, signal_rows)
-
-        # Second pass: compute salience_pctl_in_class within (signal_type_class × chart × ayanamsha)
-        # and salience_robustness (placeholder = cross-ayanamsha consistency; filled here as NULL
-        # since only this ayanamsha is in scope — the orchestrator's multi-substep execution
-        # naturally re-runs this UPDATE for each ayanamsha, so the final pass covers all 5.
-        _update_salience_pctl_in_class(conn, chart_id, ayanamsha)
 
         return WriterResult(
             asset_id=self.asset_id,
