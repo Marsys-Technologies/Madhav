@@ -290,45 +290,93 @@ def test_writer_parses_as_valid_python():
 
 # ── JL-017 contamination gate (BA Phase 2.5 #11) ────────────────────────────
 
-def test_writer_gates_on_native_chart_id():
-    """The writer must refuse any chart_id other than NATIVE_CHART_ID before any
-    DB write — never silently score a stranger's chart against the native's
-    own LEL training events / natal dasha-lord positions."""
+def test_writer_no_longer_hard_refuses_non_native():
+    """BA-P3 (native directive 2026-07-06): rectification is a per-chart asset
+    every chart gets. The writer must NOT hard-raise for non-native charts;
+    it sources each chart's OWN corpus instead (see the per-chart loaders)."""
     src = _writer_source()
-    assert "NATIVE_CHART_ID" in src
-    assert "chart_id != NATIVE_CHART_ID" in src or "chart_id != E.NATIVE_CHART_ID" in src
+    assert "Refusing rather than guessing" not in src
+    assert "_load_chart_training_events" in src
+    assert "_load_chart_natal_sign_index" in src
 
 
-def test_writer_gate_precedes_any_db_write():
-    """The chart_id gate must appear before the first DELETE in source order."""
+def test_writer_passes_explicit_training_events_for_non_native():
+    """Contamination firewall: for a non-native chart the writer must pass
+    EXPLICIT training_events (never None) so the engine's native-default
+    fallback (TRAINING_EVENTS) is never reached."""
     src = _writer_source()
-    gate_pos = src.index("chart_id != NATIVE_CHART_ID")
-    delete_pos = src.index("DELETE FROM phala_rectification")
-    assert gate_pos < delete_pos
+    # native -> None (embedded); else -> explicit per-chart lists
+    assert "training_events = _load_chart_training_events(conn, chart_id)" in src
+    assert "dasha_lord_natal_sign_index=natal_sign_index" in src
 
 
-class _FakeCursor:
+# ── per-chart loader unit tests (DB-free) ────────────────────────────────────
+
+class _DictCursor:
+    def __init__(self, script):
+        # script: list of (matcher_substr, rows) consumed in order per execute
+        self._script = script
+        self._result: list = []
+
     def __enter__(self): return self
     def __exit__(self, *a): return False
-    def execute(self, *a, **k): raise AssertionError("no SQL should run before the gate raises")
+
+    def execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        for matcher, rows in self._script:
+            if matcher in s:
+                self._result = list(rows)
+                return
+        self._result = []
+
+    def fetchall(self): return list(self._result)
+    def fetchone(self): return self._result[0] if self._result else None
 
 
-class _FakeConn:
-    def cursor(self, *a, **k): return _FakeCursor()
+class _ScriptConn:
+    def __init__(self, script): self._script = script
+    def cursor(self, *a, **k): return _DictCursor(self._script)
 
 
-class _FakeCtx:
-    def __init__(self, chart_id):
-        self.db_conn = _FakeConn()
-        self.config = {"chart_id": chart_id, "birth_params": {}}
+def test_load_training_events_empty_when_no_life_events():
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    conn = _ScriptConn([("FROM life_events", [])])
+    assert _load_chart_training_events(conn, "chart-x") == []
 
 
-def test_writer_raises_for_non_native_chart_before_any_write():
-    from pipeline.orchestrator.writers.ph_rectification import PhRectificationWriter
+def test_load_training_events_skips_event_when_no_own_md_lord():
+    """An event whose per-chart mahadasha lord can't be found in THIS chart's
+    chart_dashas is skipped — never fabricated, never native-defaulted."""
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    conn = _ScriptConn([
+        ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
+                                "category": "career", "domain": "career"}]),
+        ("FROM chart_dashas", []),  # no MD lord for this chart on that date
+    ])
+    assert _load_chart_training_events(conn, "chart-x") == []
 
-    writer = PhRectificationWriter()
-    with pytest.raises(ValueError, match="JL-017"):
-        writer.run(_FakeCtx("11111111-1111-1111-1111-111111111111"))
+
+def test_load_training_events_uses_this_charts_own_md_lord():
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    conn = _ScriptConn([
+        ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
+                                "category": "career", "domain": "career"}]),
+        ("FROM chart_dashas", [{"lord_graha": "Jupiter"}]),  # THIS chart's own lord
+    ])
+    evs = _load_chart_training_events(conn, "chart-x")
+    assert len(evs) == 1
+    assert evs[0].maha_dasha_lord == "Jupiter"  # the chart's own, not the native's
+    assert evs[0].domain == "career"
+
+
+def test_load_natal_sign_index_maps_this_charts_positions():
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_natal_sign_index
+    conn = _ScriptConn([
+        ("FROM chart_facts", [{"fact_subject": "SUN", "fact_value_text": "Aquarius"},
+                               {"fact_subject": "SATURN", "fact_value_text": "Libra"}]),
+    ])
+    idx = _load_chart_natal_sign_index(conn, "chart-x")
+    assert idx == {"Sun": 10, "Saturn": 6}
 
 
 # ── Antar-dasha double-match extension (BA Phase 2.5 Phase 3, J7) ───────────
