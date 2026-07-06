@@ -2156,42 +2156,18 @@ def _build_avastha_rows(
             citation_human=f"{g_name} deepta avastha: {deepta_state} ({ayanamsha_id}).",
         ))
 
-        # 4. Lajjitadi avastha (6 states)
-        # Based on conjunctions with Sun, Moon, enemy planets
-        sun_g = next((g2 for g2 in grahas_data if g2["name"] == "Sun"), None)
-        if sun_g and abs(float(g.get("longitude", 0)) - float(sun_g.get("longitude", 0))) < 5:
-            lajjitadi = "lajjita"  # combust → ashamed
-        elif dignity == "exalted" and house in {1, 4, 7, 10}:
-            lajjitadi = "garvita"  # proud
-        elif house in {6, 8, 12}:
-            lajjitadi = "kshudhita"  # hungry (in dusthana)
-        elif dignity == "own_sign":
-            lajjitadi = "mudita"  # happy
-        elif retro:
-            lajjitadi = "kshobhita"  # agitated
-        else:
-            lajjitadi = "trushita"  # thirsty
-        rows.append(_base_row(
-            "graha_avastha_lajjitadi", subject, "lajjitadi_state",
-            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_text=lajjitadi,
-            verif="two_pass_verified",
-            source=f"pyjhora_adapter.avastha_lajjitadi/{eng_ver}",
-            citation_human=f"{g_name} lajjitadi avastha: {lajjitadi} ({ayanamsha_id}).",
-        ))
-
-        # 5. Sayanadi avastha (10 states)
-        # Based on house offset from Lagna + time of day + degree position
-        sayanadi_idx = (house - 1 + int(degree_in_sign / 3)) % len(SAYANADI_STATES)
-        sayanadi_state = SAYANADI_STATES[sayanadi_idx]
-        rows.append(_base_row(
-            "graha_avastha_sayanadi", subject, "sayanadi_state",
-            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_text=sayanadi_state,
-            verif="two_pass_verified",
-            source=f"pyjhora_adapter.avastha_sayanadi/{eng_ver}",
-            citation_human=f"{g_name} sayanadi avastha: {sayanadi_state} ({ayanamsha_id}).",
-        ))
+        # 4-5. Lajjitadi + Sayanadi avastha — OWNERSHIP MOVED TO ga_condition (JL-022).
+        # These two D1 categories (graha_avastha_lajjitadi, graha_avastha_sayanadi) were
+        # written by BOTH ga_structural and ga_condition — the dual delete-then-insert on
+        # the same fact_category is exactly the wave-parallel lock-contention that
+        # migration 416 papered over with a serializing DAG edge. ga_condition's versions
+        # are authoritative (real combustion arc, dignity_d1_from_sign, Phaladeepika ch.13 /
+        # BPHS grounding — see ga_condition_writer._build_d1_avastha_rows), so ga_structural
+        # no longer emits them. With the dual-write gone the 416 edge is removed (migration
+        # 419) and ga_structural ↔ ga_condition run in parallel again. Baladi / Jagrad /
+        # Deepta / lifetime_exposure_summary remain ga_structural-owned (single-writer, never
+        # contended). Full ALL-avastha consolidation into ga_condition is a deferred
+        # follow-on (JL-022 Option B).
 
         # Lifetime exposure summary (counts per state across 1950-2100 dasha timeline)
         # This references GA7 data; we emit a reference row

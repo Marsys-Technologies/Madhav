@@ -122,6 +122,24 @@ def test_stop_halts_dispatch():
     assert rec.started == []
 
 
+def test_per_asset_timeout_evicts_and_fails_slow_writer(monkeypatch):
+    """JL-023: a writer that exceeds ITS asset_registry budget is killed+failed by
+    the watchdog (never hangs), and a fast writer under its budget still completes.
+    The budget comes per-asset from timeouts_of, not the global default."""
+    import pipeline.orchestrator.runner as R
+    monkeypatch.setattr(R, "_POLL_INTERVAL", 0.02)  # tight poll so the deadline check runs quickly
+    rec = _Recorder(dwell=3.0)  # every worker dwells 3s; only budgets decide the outcome
+    # SLOW gets a 1s budget (evicted ~1s in, well before its 3s dwell finishes);
+    # FAST is independent and gets a generous 100s budget (completes at ~3s dwell).
+    failed, terminal = R.execute_dag(
+        ["SLOW", "FAST"], {"SLOW": [], "FAST": []}, rec, worker_limit=2,
+        timeouts_of={"SLOW": 1, "FAST": 100},
+    )
+    assert "SLOW" in failed          # exceeded its per-asset budget -> killed+failed
+    assert "FAST" not in failed      # under its budget -> completed
+    assert terminal is None          # run finished cleanly, did not hang
+
+
 def test_stale_mark_lock_exists_and_is_a_lock():
     """_stale_mark_lock must be a threading.Lock so the parallel race is guarded."""
     from pipeline.orchestrator.asset_runner import _stale_mark_lock
