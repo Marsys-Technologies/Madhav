@@ -1604,3 +1604,65 @@ class TestCombustionRetrogradRelational:
         # No combusted planet should be Sun itself
         combust_planets = {r["fact_value_jsonb"]["planet"] for r in combust}
         assert "Sun" not in combust_planets
+
+
+class TestKarakaWebCanonicalSchool:
+    """BA-P3 (2026-07-06): the karaka web must read a SINGLE canonical karaka
+    school (kn_rao_rahu_included). ga_sensitive writes karaka_chara_position for
+    BOTH schools; reading both merged a scrambled cross-school role->planet map
+    that could map two roles to the same planet -> duplicate karaka_web fact_ids
+    -> TWO_PASS_FAILED (surfaced on surya_siddhanta_classical)."""
+
+    class _Cur:
+        def __init__(self, sink, rows):
+            self._sink, self._rows = sink, rows
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None):
+            self._sink.append((" ".join(sql.split()), params))
+        def fetchall(self):
+            return list(self._rows)
+
+    class _Conn:
+        def __init__(self, rows):
+            self.calls = []
+            self._rows = rows
+        def cursor(self, row_factory=None):
+            return TestKarakaWebCanonicalSchool._Cur(self.calls, self._rows)
+
+    def _varga_state(self):
+        # All karaka planets same sign/house -> every pair is a conjunction, so a
+        # duplicated planet in the map would produce a duplicate (subject,key) row.
+        return {p: {"sign": "Aries", "house": 1} for p in
+                ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"]}
+
+    def test_query_filters_to_canonical_school(self):
+        conn = self._Conn(rows=[])  # empty -> early return, we just inspect the SQL
+        sut._build_karaka_web_rows(conn, self._varga_state(), MOCK_CHART_OUTPUT, "D1",
+                                   CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        sql, params = conn.calls[0]
+        assert "formula_id = %s" in sql
+        assert "kn_rao_rahu_included" in params
+
+    def test_no_duplicate_fact_ids_from_single_school(self):
+        # 8 roles -> 8 distinct planets (a clean permutation, as a single school is)
+        roles = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
+                 "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
+        planets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"]
+        rows_in = [(r, p, None, None) for r, p in zip(roles, planets)]
+        conn = self._Conn(rows=rows_in)
+        out = sut._build_karaka_web_rows(conn, self._varga_state(), MOCK_CHART_OUTPUT, "D1",
+                                         CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        fids = [r["fact_id"] for r in out]
+        assert len(fids) == len(set(fids)), "karaka web produced duplicate fact_ids"
+
+    def test_defensive_dedupe_when_map_has_duplicate_planet(self):
+        # Degenerate: two roles map to the same planet (should not halt / dup)
+        rows_in = [("ATMAKARAKA", "Mercury", None, None),
+                   ("AMATYAKARAKA", "Mercury", None, None),
+                   ("BHRATRIKARAKA", "Sun", None, None)]
+        conn = self._Conn(rows=rows_in)
+        out = sut._build_karaka_web_rows(conn, self._varga_state(), MOCK_CHART_OUTPUT, "D1",
+                                         CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        fids = [r["fact_id"] for r in out]
+        assert len(fids) == len(set(fids)), "duplicate planet must not yield duplicate fact_ids"

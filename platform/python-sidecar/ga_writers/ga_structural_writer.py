@@ -3723,8 +3723,22 @@ def _build_karaka_web_rows(
 
     Queries DB for jaimini_chara_karaka assignments, then checks each pair of
     karaka-assigned grahas for conjunction (same sign) or Parashari aspect in this varga.
+
+    CANONICAL SCHOOL (BA-P3 fix, 2026-07-06): ga_sensitive writes
+    karaka_chara_position for BOTH karaka schools —
+    'parashari_rahu_excluded' (7 planets) and 'kn_rao_rahu_included' (8 planets,
+    Rāhu included) — coexisting in chart_facts via distinct formula_id. Reading
+    both merged a SCRAMBLED cross-school role→planet map (last-wins per role) that
+    could map two roles to the same planet → duplicate (subject,key) karaka-web
+    rows → a TWO_PASS_FAILED duplicate-fact_id halt (surfaced on
+    surya_siddhanta_classical). The natural-key discriminator absent from the read
+    was the SCHOOL. The derived karaka web uses the system's CANONICAL AK
+    reckoning — kn_rao_rahu_included (8-karaka, matching ga_sensitive's own
+    _build_karaka_rows) — so the map is a coherent single-school 8→8 permutation.
+    The dual-school karaka DATA itself is preserved intact at ga_sensitive.
     """
     rows: list[dict[str, Any]] = []
+    _CANONICAL_KARAKA_SCHOOL = "kn_rao_rahu_included"
 
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
@@ -3736,8 +3750,9 @@ def _build_karaka_web_rows(
                   AND ayanamsha_id = %s
                   AND fact_category = 'karaka_chara_position'
                   AND fact_key = 'assigned_graha'
+                  AND formula_id = %s
                 """,
-                (chart_id, ayanamsha_id),
+                (chart_id, ayanamsha_id, _CANONICAL_KARAKA_SCHOOL),
             )
             karaka_rows = cur.fetchall()
     except Exception as exc:
@@ -3747,7 +3762,7 @@ def _build_karaka_web_rows(
     if not karaka_rows:
         return rows
 
-    # Build role → planet mapping
+    # Build role → planet mapping (single canonical school → 8 distinct planets)
     karaka_map: dict[str, str] = {}
     for row in karaka_rows:
         role = row[0]   # fact_subject = role name (ATMAKARAKA, etc.)
@@ -3755,7 +3770,10 @@ def _build_karaka_web_rows(
         if role and planet:
             karaka_map[role] = planet
 
-    karaka_planets = list(karaka_map.values())
+    # Defensive: dedupe planets while preserving order — a single school is a
+    # clean 8→8 permutation, but a residual degree-tie must never re-introduce a
+    # duplicate-fact_id halt (the pair-loop keys rows on planet, not role).
+    karaka_planets = list(dict.fromkeys(karaka_map.values()))
     if len(karaka_planets) < 2:
         return rows
 
