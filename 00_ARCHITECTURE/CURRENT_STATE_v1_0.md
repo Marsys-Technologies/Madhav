@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.29
+version: 6.30
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,20 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.30 (2026-07-08, BA-R4-WRAP W3 CLOSED — Abhinandan re-zero + FREEZE):
+    **W3 done — clean Abhinandan (1c826d5a) rebuild on the new HEAD via the production Cloud Run job
+    (image brahma-pipeline:6cd7f509 = full W2 code, WORKER_LIMIT=2). Run 46370a48: completed, 66/66 assets,
+    0 errors.** All verification gates GREEN `[verify-against: prod db]`: identity (SUN=Aquarius; LAGNA Aries
+    23°32′ pada-4 Bharani — exact); contamination (Abhinandan facts distinct, native 138,380 intact, native LEL
+    57 intact); LEL presence-branching + calibration_state SERVED (structural/structural_no_lel via
+    phala_rectification_best.judgment_flags — folded W2 gate D validated live); JL-027 floor visible (10 floored
+    graha_yuddha rows, 0 winners) → **JL-027 CLOSED**; degeneracy (salience 192 distinct/67,121 signals,
+    chart_defining 786, contradictions 5 — non-degenerate); **trigger E2E round-trip both ways** (2 synthetic →
+    recalibration → structural→sparse; delete → sparse→structural; native untouched — folded W2 gate E validated
+    live). **FROZEN configuration:** run 46370a48 + main HEAD 7fddd5f0 (code image 6cd7f509, WORKER_LIMIT=2).
+    From the W3 freeze to W4 close: NO merges/migrations/env-changes/deploys. **W4 (native 482012f1 rebuild) fires
+    ONLY on an explicit, ledger-recorded native GO (silence never authorizes).** This session HOLDS at the freeze.
+    Native chart 482012f1 UNTOUCHED (its 57 LEL rows live). **NEXT = W4** on explicit native GO.
   - v6.29 (2026-07-08, BA-R4-WRAP W2b CLOSED — R2.2 LEL churn CODE-COMPLETE):
     **W2b done + independently verified (PR #460, main 6cd7f509).** Conductor + subagent-swarm (D/E1/E2/E3 +
     verifier ALL PASS). Native decisions: added an `asset_set` build-plan scope; folded the live-run trigger

@@ -30852,3 +30852,74 @@ session_close:
 ```
 
 *End of BA-R4-WRAP-W2B-2026-07-08 entry — 2026-07-08.*
+
+---
+
+## BA-R4-WRAP-W3-2026-07-08 — Abhinandan re-zero + FREEZE — CLOSED 2026-07-08
+
+```yaml
+session_open:
+  session_id: BA-R4-WRAP-W3-2026-07-08
+  opened_on: 2026-07-08
+  cowork_thread_name: BA-R4-WRAP-W3-ABHINANDAN-REZERO
+  governing_brief: CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md
+  scope_notes: >
+    W3 — re-zero the rifle: one clean full Abhinandan (1c826d5a) rebuild on the new HEAD via the production
+    Cloud Run job, verify all gates + the two folded W2 gates, then FREEZE. Native chart untouched (built at W4).
+  may_touch:
+    - "Abhinandan 1c826d5a build (proving ground) via production Cloud Run job"
+    - "build_runs/build_run_assets run rows for 1c826d5a"
+    - "transient synthetic life_events on 1c826d5a for the trigger E2E (deleted after)"
+    - "00_ARCHITECTURE ledgers + CURRENT_STATE + SESSION_LOG"
+  must_not_touch:
+    - "native chart 482012f1 (any write — built only at W4 on explicit GO)"
+    - "the native's 57 LEL rows"
+    - "code/migrations/env (frozen config) past the W3 freeze line"
+    - "orchestrator/planner core"
+  predecessor_session: BA-R4-WRAP-W2B-2026-07-08
+  current_state_version_at_open: 6.29
+  red_team_due: false
+```
+
+**Session:** BA Phase-4 Runway W3. Conductor drove the production Cloud Run rebuild + verification.
+
+**Done + verified `[prod db]`:**
+- Abhinandan rebuild (run **46370a48**, image brahma-pipeline:6cd7f509, WORKER_LIMIT=2): **completed, 66/66, 0 errors**.
+- Identity: SUN=Aquarius; LAGNA Aries **23°32′ pada-4 Bharani** (exact). Contamination: facts distinct, native intact.
+- LEL presence-branching + calibration_state SERVED (structural/structural_no_lel via judgment_flags) — folded gate D.
+- JL-027 floor visible (10 floored, 0 winners) → **JL-027 CLOSED**.
+- Degeneracy: salience 192 distinct/67,121, chart_defining 786, contradictions 5 — non-degenerate.
+- Trigger E2E both ways (structural→sparse→structural, native untouched) — folded gate E.
+
+**FROZEN:** run 46370a48 + main HEAD 7fddd5f0 (image 6cd7f509, WORKER_LIMIT=2). No changes past this line.
+**HOLDING for explicit native W4 GO.** Native chart 482012f1 UNTOUCHED.
+
+### Next session objective
+
+W4 — the one shot, ONLY on the native's explicit ledger-recorded GO (silence never authorizes). Snapshot native
+482012f1 L1–L5 incl. life_events (id + restore path in RUN_LEDGER) → rebuild native L1→L5 on the FROZEN config
+(image 6cd7f509, WORKER_LIMIT=2) → full gate battery (FORENSIC 7/7 · contamination · bhava_arudha 12×5 → flip P3A
+COMPLETE · 57 LEL rows intact + calibration_state='calibrated' + 10:43 re-validated · JL-009 row-normalized
+base_rates traced · JL-027 floor visible · degeneracy · retrieval smoke) → close-out (ledger, CURRENT_STATE runway
+CLOSED, SESSION_LOG, briefs → COMPLETE). Native chart untouched until that GO.
+
+```yaml
+session_close:
+  session_id: BA-R4-WRAP-W3-2026-07-08
+  closed_on: 2026-07-08
+  outcome: >
+    COMPLETE — W3 Abhinandan re-zero + FREEZE. Production rebuild run 46370a48 (66/66, 0 errors); all gates
+    green incl. the two folded W2 gates; JL-027 CLOSED. Frozen config recorded. Holding for explicit native W4 GO.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (BA Phase-4 Runway — W3 FROZEN; W4 on explicit GO)
+  current_state_updated: true
+  current_state_version: 6.30
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    W4 (native 482012f1 rebuild) ONLY on explicit ledger-recorded native GO — snapshot → rebuild on frozen
+    config → full gate battery → close-out. Silence never authorizes. Native untouched until GO.
+```
+
+*End of BA-R4-WRAP-W3-2026-07-08 entry — 2026-07-08.*

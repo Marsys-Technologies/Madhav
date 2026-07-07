@@ -552,5 +552,40 @@ explicit ledger-recorded GO only).
 
 ---
 
+## BA Phase-4 Runway — W3 RE-ZERO (Abhinandan revalidation) + FREEZE — 2026-07-08
+
+One clean full **Abhinandan (1c826d5a) rebuild** on the new HEAD via the production Cloud Run job
+`brahma-build-pipeline-job` (image `brahma-pipeline:6cd7f509` = W2b merge = full W2 code; `ORCHESTRATOR_WORKER_LIMIT=2`).
+
+- **Run `46370a48-742d-4c99-ab02-3d630e2f2273`** — scope=global, action=rebuild, **state=completed, 66/66 assets
+  complete, 0 errors** (20:56→21:36 UTC, ~40 min; 61 chart-scoped assets lit = prior baseline; `lel_events` is
+  `has_writer=false` so correctly not a built asset). No new canonical build asset registered → count unchanged 66/61.
+- **Verification `[verify-against: prod db]` — ALL GREEN:**
+  - **Identity:** SUN sign=Aquarius (long 317.89°, Shatabhisha); LAGNA sign=Aries, long **23.53°=23°32′, pada 4 →
+    Bharani-4** — exact match to the expected Abhinandan identity.
+  - **Contamination:** Abhinandan chart_facts=140,214 ≠ native 138,380 (native intact, not wiped); native LEL=57
+    intact with pre_instrument sentinel; Abhinandan LEL=0.
+  - **LEL presence-branching + calibration SERVED (folded W2 gate D):** Abhinandan
+    `phala_rectification_best.judgment_flags` = calibration_state='structural', rectification_basis=
+    'structural_no_lel', lel_event_count=0, load_bearing=false — judgment_flags live/served in a real build.
+  - **JL-027 floor visible:** graha_yuddha = 10 floored rows (winner/loser NULL + reason='no_ratified_classical_rule',
+    floored:true), **0 named winners**, orb_deg kept. Zero longitude proxy. → **JL-027 CLOSED.**
+  - **Degeneracy:** computed_salience min 0.0897 / max 2.99 / **192 distinct** across 67,121 signals (non-constant);
+    signature_tier chart_defining=786 (>0); bodha_contradictions=5 (>0). No scored column collapsed to a constant.
+  - **Trigger E2E round-trip (folded W2 gate E), both ways `[verify-against: prod db]`:** inserted 2 synthetic
+    events @ Abhinandan (recorded_at=now()) → dispatched an `asset_set` recalibration run (ph_rectification) →
+    judgment_flags flipped **structural→sparse** (lel_event_count=2); then DELETED the 2 synthetics → re-ran →
+    flipped **sparse→structural** (lel_event_count=0). Native 57 rows UNTOUCHED throughout. The debounced
+    asset_set recalibration + presence-branching + calibration serving all validated live.
+
+**W3 EXIT → FREEZE (2026-07-08).** The NEW validated configuration:
+  - **Frozen run id:** `46370a48-742d-4c99-ab02-3d630e2f2273` (Abhinandan clean rebuild).
+  - **Frozen HEAD:** main `7fddd5f0` (code image `brahma-pipeline:6cd7f509`, WORKER_LIMIT=2).
+From this line to W4 close: **no merges, no migrations, no env changes, no deploys — nothing.** W4 (native
+482012f1 rebuild) fires **ONLY on an explicit, ledger-recorded native GO** (brief v1.1: silence never authorizes).
+This session HOLDS at the freeze and hands off. Native chart 482012f1 remains untouched (its 57 LEL rows live).
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*
