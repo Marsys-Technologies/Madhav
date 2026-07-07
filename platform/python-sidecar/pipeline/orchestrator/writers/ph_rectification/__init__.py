@@ -24,10 +24,10 @@ from datetime import datetime, timezone
 
 from pipeline.orchestrator.birth_params import resolve_birth_params
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.mimamsa.lel_calibration import rectification_basis
 from services.ph_rectification.engine import (
     AYANAMSHAS,
     AUTO_ACTION,
-    NATIVE_CHART_ID,
     TrainingEvent,
     run_rectification,
     select_best,
@@ -65,34 +65,40 @@ def _dasha_lord_on_date(conn, chart_id: str, ev_date, level_n: int):
 
 def _load_chart_training_events(conn, chart_id: str) -> list[TrainingEvent]:
     """Build rectification training events from THIS chart's OWN life history +
-    OWN chart_dashas.
+    OWN chart_dashas — availability-driven (BA-P4 R2.2 / W2.2).
 
-    `life_events` is the native's chart-less Life-Event Log — it has no
-    `chart_id` column and belongs exclusively to the canonical native
-    (NATIVE_CHART_ID). A NON-native chart therefore has NO per-chart life-event
-    corpus available at L4 (its own outcome events live in the L5
-    `mimamsa_event_provenance` table, which is built later in the DAG), so it
-    yields [] — a clean, honest, lagna-stability-only rectification, and NEVER
-    trains on the native's history (JL-017 contamination firewall). For the
-    native, its own life_events ARE the legitimate training set; the engine
-    re-applies its leakage firewall (pre-2020, exact/month-exact) to them.
-    Events whose per-chart mahadasha lord can't be determined from this chart's
-    chart_dashas are skipped (never fabricated)."""
-    if chart_id != NATIVE_CHART_ID:
-        # No per-chart life-event source at L4 for a non-native chart, and the
-        # native's chart-less LEL is off-limits (contamination firewall).
-        return []
+    Since migration 423 `life_events` is chart-scoped (`chart_id` NOT NULL), so
+    every chart reads ONLY its own events (`WHERE chart_id = %s`). There is no
+    chart-identity branch: a chart with recorded events is scored against them
+    (LEL-fit); a chart with none yields [] — a clean, honest, lagna-stability-
+    only rectification. A chart NEVER trains on another chart's history (the
+    chart-scope filter IS the JL-017 contamination firewall). The engine still
+    re-applies its own leakage firewall (pre-2020, exact/month-exact).
 
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT event_id, event_date, category, domain
-            FROM life_events
-            WHERE event_date IS NOT NULL
-            ORDER BY event_date
-            """
+    Pre-migration-423 schema (no `chart_id` column) or a missing table yields []
+    rather than crashing or silently reading a different chart's rows — the safe,
+    structural-only default. Events whose per-chart mahadasha lord can't be
+    determined from this chart's chart_dashas are skipped (never fabricated)."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT event_id, event_date, category, domain
+                FROM life_events
+                WHERE chart_id = %s AND event_date IS NOT NULL
+                ORDER BY event_date
+                """,
+                (chart_id,),
+            )
+            rows = cur.fetchall()
+    except Exception as e:
+        # Pre-423 schema (no chart_id column) or missing table → no per-chart
+        # training source → structural-only rectification. Never a hard failure.
+        logger.warning(
+            "ph_rectification: chart-scoped life_events read failed (%s); "
+            "proceeding structural-only (no LEL training)", e,
         )
-        rows = cur.fetchall()
+        return []
 
     events: list[TrainingEvent] = []
     for row in rows:
@@ -191,19 +197,16 @@ class PhRectificationWriter(WriterBase):
         conn = ctx.db_conn  # NEVER commit or close — orchestrator owns the txn
         chart_id = ctx.config["chart_id"]
 
-        # JL-017 (CONTAMINATION-CLASS): the engine's embedded TRAINING_EVENTS +
-        # natal dasha-lord positions are the NATIVE's own LEL events / chart
-        # facts. rectification is a per-chart asset every chart gets — but each
-        # chart must be scored against ITS OWN life events, NEVER the native's.
-        # Native chart: pass None -> engine uses its embedded native corpus
-        # (correct; it IS the native's chart). Every other chart: source
-        # training events + natal sign index from ITS OWN life_events /
-        # chart_dashas / chart_facts, passed EXPLICITLY so the engine's
-        # native-default fallback is never reached. A chart with no qualifying
-        # life events yields an empty training set -> a clean lagna-stability-
-        # only rectification (185 candidates, no LEL fit), not the native's
-        # life history and not a hard failure.
-        is_native = chart_id == NATIVE_CHART_ID
+        # JL-017 (CONTAMINATION-CLASS) — now AVAILABILITY-DRIVEN (BA-P4 R2.2/W2.2):
+        # rectification is a per-chart asset every chart gets, and each chart is
+        # scored ONLY against ITS OWN life events. Since migration 423
+        # life_events is chart-scoped, so there is no native-identity branch and
+        # the engine's embedded native corpus is NEVER used: every chart (native
+        # included) sources its training events + natal sign index from ITS OWN
+        # rows, passed EXPLICITLY. A chart with no recorded events yields an
+        # empty training set -> a clean lagna-stability-only rectification
+        # (185 candidates, structural_no_lel), not another chart's history and
+        # not a hard failure.
         birth_params = resolve_birth_params(chart_id, ctx.config.get("birth_params"))
 
         # Derive LOCAL birth datetime and UTC birth datetime from birth_params.
@@ -229,19 +232,16 @@ class PhRectificationWriter(WriterBase):
                 "DELETE FROM phala_rectification WHERE chart_id = %s", (chart_id,)
             )
 
-        # Per-chart corpus (native uses its embedded default via None; every
-        # other chart is scored ONLY against its own events — see JL-017 note).
-        if is_native:
-            training_events = None
-            natal_sign_index = None
-        else:
-            training_events = _load_chart_training_events(conn, chart_id)
-            natal_sign_index = _load_chart_natal_sign_index(conn, chart_id)
-            logger.info(
-                "ph_rectification: chart %s sourced %d own training events "
-                "(0 = clean lagna-stability-only rectification, no native corpus)",
-                chart_id, len(training_events),
-            )
+        # Per-chart corpus — availability-driven for EVERY chart (no identity
+        # branch; the engine's embedded native corpus is never used).
+        training_events = _load_chart_training_events(conn, chart_id)
+        natal_sign_index = _load_chart_natal_sign_index(conn, chart_id)
+        basis = rectification_basis(len(training_events))  # lel_fit | structural_no_lel
+        logger.info(
+            "ph_rectification: chart %s sourced %d own training events -> basis=%s "
+            "(structural_no_lel = clean lagna-stability-only rectification)",
+            chart_id, len(training_events), basis,
+        )
 
         ascendant_fn = _build_ascendant_fn(local_birth_dt, lat, lon, tz_offset_hours)
         candidates = run_rectification(
@@ -317,7 +317,10 @@ class PhRectificationWriter(WriterBase):
                     best.win_margin,
                     json.dumps(best.competing_candidates),
                     best.lel_training_events, best.lel_training_matched,
-                    best.leakage_firewall_note, AUTO_ACTION,
+                    # Persist the availability-driven basis alongside the engine's
+                    # firewall note (no schema change; a dedicated column lands with
+                    # the calibration-state persistence migration).
+                    f"[basis={basis}] {best.leakage_firewall_note}", AUTO_ACTION,
                 ),
             )
             rows_inserted += 1

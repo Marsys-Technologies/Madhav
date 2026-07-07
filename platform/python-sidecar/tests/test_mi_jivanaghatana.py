@@ -176,9 +176,14 @@ def test_real_lel_file_recovers_every_real_evt_event_with_date_and_category():
 # ── BA-P3 FIX 1: native-contamination gate + graceful empty ──────────────────
 
 class _FakeCursor:
-    """Answers the two life_events queries run() issues; no chart_id column."""
-    def __init__(self, life_events_rows):
+    """Answers the life_events queries run() issues, incl. the presence COUNT.
+
+    `count` overrides the reported chart-scoped count (defaults to the number of
+    source rows). It can be set independently to exercise the defensive
+    anti-masking guard (count > 0 while the source read returns 0)."""
+    def __init__(self, life_events_rows, count=None):
         self._life_events_rows = life_events_rows
+        self._count = count if count is not None else len(life_events_rows)
         self._result = []
 
     def __enter__(self):
@@ -191,6 +196,8 @@ class _FakeCursor:
         s = " ".join(sql.split())
         if "information_schema.columns" in s:
             self._result = [{"column_name": "chart_id"}, {"column_name": "event_id"}]
+        elif "COUNT(*)" in s.upper():
+            self._result = [(self._count,)]
         elif "FROM life_events WHERE chart_id" in s:
             self._result = list(self._life_events_rows)
         else:
@@ -199,16 +206,20 @@ class _FakeCursor:
     def fetchall(self):
         return list(self._result)
 
+    def fetchone(self):
+        return self._result[0] if self._result else None
+
     def executemany(self, sql, params_list):
         self._result = []
 
 
 class _FakeConn:
-    def __init__(self, life_events_rows=()):
+    def __init__(self, life_events_rows=(), count=None):
         self._life_events_rows = list(life_events_rows)
+        self._count = count
 
     def cursor(self, row_factory=None):
-        return _FakeCursor(self._life_events_rows)
+        return _FakeCursor(self._life_events_rows, self._count)
 
 
 class _FakeCtx:
@@ -271,19 +282,40 @@ def test_native_chart_with_file_present_still_ingests_events(monkeypatch, tmp_pa
     assert result.rows_inserted == 1
 
 
-def test_native_chart_with_file_unreachable_warns_not_silent(monkeypatch, tmp_path, caplog):
+def test_genuinely_empty_chart_is_healthy_no_warning(monkeypatch, tmp_path, caplog):
+    """BA-P4 R2.2/W2.2 presence-branching: a chart with ZERO life_events rows
+    (count 0) and no markdown is a HEALTHY empty build — no anti-masking warning.
+    This is the Abhinandan / pre-intake case: structural, not an error."""
     missing_md = tmp_path / "does_not_exist.md"
     monkeypatch.setattr(
         "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", missing_md
     )
-
     writer = MiJivanaghatanaWriter()
-    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=[]))
+    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=[], count=0))
+    with caplog.at_level(logging.WARNING):
+        result = writer.run(ctx)
+
+    assert result.rows_inserted == 0
+    assert not any("built ZERO" in rec.message for rec in caplog.records), \
+        "a genuinely empty chart must NOT trigger the anti-masking warning"
+
+
+def test_present_rows_but_zero_build_warns_presence_based(monkeypatch, tmp_path, caplog):
+    """Defensive anti-masking (presence, not identity): if a chart's life_events
+    count is > 0 but the build sourced zero (a sourcing/packaging bug), warn
+    loudly rather than silently succeed. Any chart, not just the native."""
+    missing_md = tmp_path / "does_not_exist.md"
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._LEL_MARKDOWN_PATH", missing_md
+    )
+    writer = MiJivanaghatanaWriter()
+    # Inconsistent state the guard exists to catch: COUNT says 57, source read []
+    ctx = _FakeCtx(NON_NATIVE_CHART_ID, _FakeConn(life_events_rows=[], count=57))
     with caplog.at_level(logging.WARNING):
         result = writer.run(ctx)
 
     assert result.rows_inserted == 0
     assert any(
-        "NATIVE" in rec.message and "ZERO events" in rec.message
+        "has 57 life_events rows but" in rec.message and "ZERO" in rec.message
         for rec in caplog.records
-    ), "native zero-event build must log a loud warning, not silently succeed"
+    ), "a chart with rows present but a zero build must warn (presence-based anti-masking)"

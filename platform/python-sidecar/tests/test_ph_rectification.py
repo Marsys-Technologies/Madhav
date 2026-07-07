@@ -338,34 +338,46 @@ class _ScriptConn:
     def cursor(self, *a, **k): return _DictCursor(self._script)
 
 
-def test_load_training_events_empty_for_non_native_chart():
-    """life_events is the native's chart-less LEL. A non-native chart has NO
-    per-chart life-event corpus at L4 and must NEVER read the native's history
-    (JL-017 contamination firewall) — it returns [] WITHOUT querying life_events
-    (which has no chart_id column and would otherwise raise UndefinedColumn)."""
+def test_load_training_events_chart_scoped_no_contamination():
+    """BA-P4 R2.2/W2.2: post-migration-423 life_events is chart-scoped, so a chart
+    reads ONLY its own events via WHERE chart_id = %s (that filter IS the JL-017
+    contamination firewall). A chart with no rows of its own yields []. There is
+    no native-identity short-circuit — every chart queries the same way."""
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
-    # A conn that would blow up if any query ran — proves the non-native path
-    # short-circuits before touching the DB at all.
-    class _ExplodingConn:
-        def cursor(self, *a, **k):
-            raise AssertionError("non-native rectification must not query life_events")
-    assert _load_chart_training_events(_ExplodingConn(), "1c826d5a-41cb-4450-b4dc-59d440e5f75a") == []
+    other_chart = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+    conn = _ScriptConn([
+        # This chart has one own event; the WHERE chart_id filter scopes it.
+        ("FROM life_events", [{"event_id": "EVT.2011.03.03", "event_date": datetime(2011, 3, 3),
+                                "category": "career", "domain": "career"}]),
+        ("FROM chart_dashas", [{"lord_graha": "Venus"}]),
+    ])
+    evs = _load_chart_training_events(conn, other_chart)
+    assert len(evs) == 1
+    assert evs[0].maha_dasha_lord == "Venus"  # this chart's own MD lord
 
 
 def test_load_training_events_empty_when_no_life_events():
-    from pipeline.orchestrator.writers.ph_rectification import (
-        _load_chart_training_events, NATIVE_CHART_ID,
-    )
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([("FROM life_events", [])])
     assert _load_chart_training_events(conn, NATIVE_CHART_ID) == []
+
+
+def test_load_training_events_missing_column_is_structural_not_crash():
+    """Pre-423 schema (no chart_id column) → the chart-scoped read raises; the
+    writer swallows it and returns [] (structural-only), never a hard failure."""
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    class _RaisingConn:
+        def cursor(self, *a, **k):
+            raise RuntimeError('column "chart_id" does not exist')
+    assert _load_chart_training_events(_RaisingConn(), "any-chart") == []
 
 
 def test_load_training_events_skips_event_when_no_own_md_lord():
     """An event whose per-chart mahadasha lord can't be found in THIS chart's
     chart_dashas is skipped — never fabricated, never native-defaulted."""
-    from pipeline.orchestrator.writers.ph_rectification import (
-        _load_chart_training_events, NATIVE_CHART_ID,
-    )
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),
@@ -375,9 +387,8 @@ def test_load_training_events_skips_event_when_no_own_md_lord():
 
 
 def test_load_training_events_uses_this_charts_own_md_lord():
-    from pipeline.orchestrator.writers.ph_rectification import (
-        _load_chart_training_events, NATIVE_CHART_ID,
-    )
+    from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
+    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),

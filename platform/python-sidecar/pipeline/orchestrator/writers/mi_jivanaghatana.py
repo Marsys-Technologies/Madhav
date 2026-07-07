@@ -29,6 +29,7 @@ import psycopg.rows
 
 from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as NATIVE_CHART_ID
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.mimamsa.lel_calibration import count_chart_lel_events
 
 logger = logging.getLogger(__name__)
 
@@ -364,20 +365,24 @@ class MiJivanaghatanaWriter(WriterBase):
         )
 
         if not raw_events and not ctx.dry_run:
-            if is_native:
-                # Anti-masking (FIX 1(c)): the native HAS 57 events, so a zero
-                # build here means the LEL markdown is unreachable at its
-                # resolved path in this runtime (a deployment-packaging bug),
-                # not a legitimate empty chart. Warn loudly rather than let the
-                # graceful-empty path below silently swallow it as healthy.
+            # Anti-masking (presence-based, BA-P4 R2.2/W2.2): if THIS chart has
+            # recorded life_events rows but the build produced zero, that is a
+            # sourcing/packaging bug, not a healthy empty chart. Presence, not
+            # identity — post-intake the native's 57 rows live in life_events, so
+            # a chart-scoped count > 0 flags exactly the case the old native-only
+            # guard did, and correctly stays silent for a genuinely empty chart
+            # (e.g. Abhinandan). (The markdown-source branch above remains the
+            # Step-2 first-intake path; once intake is the source it is removed.)
+            expected_rows = count_chart_lel_events(conn, chart_id)
+            if expected_rows > 0:
                 logger.warning(
-                    "[mi_jivanaghatana] NATIVE chart_id=%s built ZERO events — "
-                    "the LEL markdown (%s, exists=%s) was unreachable and the "
-                    "life_events DB fallback is also empty. The native has 57 "
-                    "known events; this is NOT a healthy empty build. Verify "
-                    "the LEL markdown ships at this resolved path in the "
-                    "runtime container (or MI_LEL_MARKDOWN_PATH is set).",
-                    chart_id, _LEL_MARKDOWN_PATH, _LEL_MARKDOWN_PATH.exists(),
+                    "[mi_jivanaghatana] chart_id=%s has %d life_events rows but "
+                    "built ZERO provenance events — the configured source (%s) was "
+                    "unreachable/empty. This is NOT a healthy empty build; verify "
+                    "the source ships at its resolved path (markdown %s exists=%s, "
+                    "or MI_LEL_MARKDOWN_PATH).",
+                    chart_id, expected_rows, lel_source,
+                    _LEL_MARKDOWN_PATH, _LEL_MARKDOWN_PATH.exists(),
                 )
             # Graceful empty (FIX 1(b)): zero per-chart life events is the
             # normal, valid build for most (non-native) clients — never raise.
