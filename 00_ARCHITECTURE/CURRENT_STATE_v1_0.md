@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.26
+version: 6.27
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,23 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.27 (2026-07-08, BA-R4-WRAP W1 CLOSED — LEL schema deployed + JL-027 ruled):
+    **W1 (R2.2 Step 1) DONE end-to-end this session (prod write + interactive native).** PR **#457** merged
+    (single R2.2 PR: mig 423 + LEL code surfaces + tests + JL-027 options doc), CI 10/10 green, squash-merged
+    → main **4d036ca9**. **Migration 423 DEPLOYED to prod** via surgical psql (NOT migrate.ts) — pre-deploy
+    guard confirmed life_events empty so the no-backfill/no-native-literal path held; COMMIT clean.
+    **Independently verified `[prod db]`:** life_events + event_chart_state_index chart-scoped/re-keyed/indexed;
+    recorded_at/pool_consent/contributed_to_pool_at added; `lel_query(uuid,…)` live + chart-less fn GONE;
+    both charts empty-with-reason; asset_registry.lel_events per_chart/has_writer=false/count_sql binds $1.
+    **JL-027 RULED** (native, this session): Option A (Parāśari northern-latitude) ratified as doctrine +
+    **FLOOR now** (winner=NULL, reason='no_ratified_classical_rule'); floor impl = W2.3; longitude proxy never
+    ships; Option A ephemeris impl deferred to R5. **Native paced W2 into a dedicated next session** so the
+    native rebuild lands on settled reviewed code (not minutes-old code). **NATIVE_CHART_ID gate ruled STRICT
+    ZERO everywhere under brahmagyan/mimamsa.** W2 execution brief written: `CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md`.
+    **NEXT SESSION = W2:** first-intake 57 events @ 482012f1 (clear-safety proven vs prod FIRST), LEL Steps 2–7
+    (markdown-read removal, engine de-hardcode, strict NATIVE_CHART_ID eradication, calibration wiring, trigger/
+    debounce/intake API, leakage routing, pool migration+capture gated off), graha_yuddha FLOOR (both builders),
+    all LEL exit gates. Native chart NOT touched until W4 (explicit-GO-gated). RUN_LEDGER has the W1 close block.
   - v6.26 (2026-07-07, BA-PHASE4-RUNWAY R2.2 STEP-1 BANKED — session checkpoint):
     **R1 + R2.1 + R2.3 DONE/deployed/prod-verified; R2.2 (LEL re-architecture) Step-1 in progress, banked
     for a fresh focused session.** Session delivered: R1 (JL-009 CLOSED, ontology v1.1 mig 421, prod-verified

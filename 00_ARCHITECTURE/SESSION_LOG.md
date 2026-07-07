@@ -30611,3 +30611,93 @@ session_close:
 ```
 
 *End of BA-P0-SERVING-TRUTH-2026-07-03 entry — 2026-07-03.*
+
+---
+
+## BA-R4-WRAP-W1-2026-07-07 — LEL chart-scoping schema (R2.2 Step 1) — CLOSED 2026-07-08
+
+```yaml
+session_open:
+  session_id: BA-R4-WRAP-W1-2026-07-07
+  opened_on: 2026-07-07
+  cowork_thread_name: BA-R4-WRAP-W1→W4-STREAM1-COMPLETION
+  governing_brief: CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md
+  scope_notes: >
+    BA Phase-4 Runway, Stream-1. W1 (R2.2 Step 1: LEL chart-scoping schema) executed end-to-end with prod
+    write + interactive native; W2–W4 paced to dedicated next session(s). JL-027 ruled. Conductor +
+    subagent-verifier model.
+  may_touch:
+    - "life_events/event_chart_state_index schema + lel_query() SQL fn (migration 423 deploy)"
+    - "PR #457 merge (LEL code surfaces already committed)"
+    - "00_ARCHITECTURE ledgers + CURRENT_STATE + SESSION_LOG + JL-027 docs"
+    - "CLAUDECODE_BRIEF_BA_R4_WRAP_W2 (new W2 execution brief)"
+  must_not_touch:
+    - "orchestrator/planner core"
+    - "native chart 482012f1 builds (only at W4)"
+    - "salience/priors (frozen)"
+    - "the native's 57 LEL events (content)"
+    - "ph_pramana rectification logic validating 10:43"
+  predecessor_session: BA-PHASE-3-RULINGS-2-3-2026-07-07
+  current_state_version_at_open: 6.26
+  red_team_due: false
+```
+
+**Session:** Beyond-Acharya Phase-4 Runway, Stream-1 completion. Conductor + subagent-verifier model.
+This session HAD prod write access + an interactive native (prior sessions were read-only).
+
+**What shipped (W1):**
+- **PR #457** — single R2.2 PR (migration 423 + LEL code surfaces + tests + JL-027 options doc). Branch
+  brought current with main (#456), CI **10/10 green**, squash-merged → main **4d036ca9**.
+- **Migration 423 deployed to prod** via surgical `psql -v ON_ERROR_STOP=1 -f` (NOT migrate.ts). Pre-deploy
+  guard confirmed `life_events` empty (0 rows) → the no-backfill / SET-NOT-NULL / no-native-literal path held.
+- **Independently verified `[prod db]`** (verifier subagent gates 3–6 + conductor gates 1–2,7–9, ALL PASS):
+  life_events + event_chart_state_index chart-scoped/re-keyed/indexed; recorded_at/pool_consent/
+  contributed_to_pool_at added; `lel_query(uuid,…)` live + chart-less signature GONE; both charts
+  empty-with-reason (no error); asset_registry.lel_events = per_chart / has_writer=false / count_sql binds `$1`.
+
+**Native decisions this session:**
+- **JL-027 RULED:** Option A (Parāśari northern-latitude) ratified as doctrine + **FLOOR now**
+  (winner=NULL, reason='no_ratified_classical_rule'); longitude proxy never ships; Option A ephemeris impl
+  deferred to R5; floor implementation = W2.3. Ledger + options doc updated.
+- **W2 paced into a dedicated next session** so the native rebuild lands on settled, reviewed code.
+- **NATIVE_CHART_ID gate = STRICT ZERO** everywhere under brahmagyan/mimamsa.
+
+**Deferred:** W2 (intake 57 + LEL Steps 2–7 + JL-027 floor), W3 (Abhinandan re-zero + freeze), W4 (native
+rebuild, explicit-GO-gated). Native chart 482012f1 NOT touched. Hand-off: `CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md`.
+
+### Next session objective
+
+W2 per `CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md`: first-intake the 57 events @ 482012f1 (clear-safety proven
+vs prod schema FIRST), LEL Steps 2–7 (markdown-read removal, ph_rectification engine de-hardcode, STRICT-ZERO
+NATIVE_CHART_ID eradication across brahmagyan/mimamsa, calibration wiring, trigger/debounce/intake API,
+recorded_at leakage routing, pool migration + gated capture `MIMAMSA_CROSS_CHART_POOL=off`), JL-027
+graha_yuddha FLOOR in both builders, all LEL exit gates verified on Abhinandan + native DATA. Then W3
+(Abhinandan re-zero rebuild + FREEZE), then W4 (native rebuild — explicit native GO required). Native chart
+482012f1 untouched until W4.
+
+**Environment note:** MARSYS-JIS cockpit connector was not authorized this session; W3/W4 cockpit builds +
+cockpit MCP probes route through the orchestrator CLI / verified read-only SQL when those waves run.
+
+```yaml
+session_close:
+  session_id: BA-R4-WRAP-W1-2026-07-07
+  closed_on: 2026-07-08
+  outcome: >
+    COMPLETE — W1 (R2.2 Step 1 LEL chart-scoping schema) end-to-end: PR #457 merged (main 4d036ca9),
+    migration 423 deployed to prod + independently verified, JL-027 RULED (Option A ratified, FLOOR now),
+    W2 staged to a dedicated session with its execution brief.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (BA Phase-4 Runway — W1 CLOSED, W2 staged)
+  current_state_updated: true
+  current_state_version: 6.27
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    W2 per CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md — first-intake 57 events @ 482012f1 (clear-safety proven
+    vs prod FIRST), LEL Steps 2-7, JL-027 graha_yuddha FLOOR (both builders), all LEL exit gates. Then W3
+    (Abhinandan re-zero + FREEZE), then W4 (native rebuild, explicit native GO required). Native chart
+    untouched until W4.
+```
+
+*End of BA-R4-WRAP-W1-2026-07-07 entry — 2026-07-08.*
