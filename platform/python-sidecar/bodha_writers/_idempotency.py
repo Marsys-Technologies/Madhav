@@ -20,6 +20,16 @@ def _distinct(rows: Iterable[dict], key: str) -> list:
 
 
 def _delete(conn: Any, sql: str, params: list) -> int:
+    # Disable the per-statement timeout for this DELETE. Bodha idempotency
+    # deletes (esp. replace_prior_msr_signals child-cascades and
+    # replace_prior_msr_for_chart) can exceed the DB role's default
+    # statement_timeout (25-30s, sized for OLTP) on large charts — the
+    # bo_laksana native rebuild hit psycopg.errors.QueryCanceled here.
+    # SET LOCAL scopes to the orchestrator-managed transaction/savepoint
+    # (writers never commit/close conn), so it self-reverts at txn end.
+    # Mirrors the ka_* writer precedent (PR 422). Idempotent + cheap to
+    # repeat per _delete call.
+    conn.execute("SET LOCAL statement_timeout = 0")
     cur = conn.execute(sql, params)
     return getattr(cur, "rowcount", 0) or 0
 

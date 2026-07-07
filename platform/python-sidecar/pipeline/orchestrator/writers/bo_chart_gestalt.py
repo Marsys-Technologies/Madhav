@@ -388,6 +388,10 @@ class BoChartGestaltWriter(WriterBase):
 
         # Idempotency: delete prior rows for this chart
         with conn.cursor() as cur:
+            # Disable per-statement timeout for the heavy DELETE on large charts.
+            # SET LOCAL scopes to the orchestrator txn (writer never commits).
+            # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
+            cur.execute("SET LOCAL statement_timeout = 0")
             cur.execute("DELETE FROM bodha_chart_gestalt WHERE chart_id = %s", [chart_id])
 
         total = 0

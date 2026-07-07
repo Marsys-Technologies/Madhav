@@ -411,6 +411,13 @@ class BoSangatiWriter(WriterBase):
         total_conv   = 0
         total_triang = 0
 
+        # Disable per-statement timeout for the heavy DELETEs below (incl. the
+        # inline bodha_triangulation delete in the per-ayanamsha loop). One
+        # SET LOCAL persists to txn end and scopes to the orchestrator txn
+        # (writer never commits). Ref: bo_laksana native-rebuild timeout;
+        # ka_* precedent (PR 422).
+        conn.execute("SET LOCAL statement_timeout = 0")
+
         for aya in CANONICAL_AYAS:
             signals = _fetch_signals(conn, chart_id, aya)
             contradiction_domains = _fetch_contradiction_domains(conn, chart_id, aya)
