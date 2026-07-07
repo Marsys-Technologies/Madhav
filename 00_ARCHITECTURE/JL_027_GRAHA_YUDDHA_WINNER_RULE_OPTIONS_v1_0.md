@@ -1,7 +1,9 @@
 ---
 canonical_id: JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS
 version: 1.0
-status: SURFACED-FOR-RULING — awaiting native / Ācārya-Pratinidhi decision (gates W3/W4)
+status: RULED (2026-07-08) — native ratified OPTION A (northern-latitude) as doctrine + FLOOR now (winner=NULL,
+  reason='no_ratified_classical_rule'); floor implementation = W2.3 (before W3); Option A impl deferred to R5.
+  The uncited longitude proxy is REMOVED, never shipped.
 created: 2026-07-07
 author: Claude Code (BA-R4-WRAP W2.3) — research surface for the JL-027 native ruling
 program: CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md §W2.3; closes JL-027 in BA_JUDGMENT_LEDGER_v1_0.md before W3

@@ -461,5 +461,27 @@ pass.
 
 ---
 
+## BA Phase-4 Runway — W1 (R2.2 Step 1: LEL schema) CLOSE — 2026-07-07
+
+Executed `CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md` W1 as conductor (this session HAS prod write + interactive native).
+
+- **PR #457** (single R2.2 PR: migration 423 + LEL code surfaces + tests + JL-027 options doc) — branch
+  brought current with main (#456 merged in), CI **10/10 pass** (Build, Governance incl. native-literal,
+  TypeScript ×2, Unit, Planner, ICR, Naming, Coverage, Secret Scan), squash-**merged** → main `4d036ca9` @ 17:37Z.
+- **Migration 423 deployed to prod** via surgical `psql -v ON_ERROR_STOP=1 -f` (NOT migrate.ts) — pre-deploy
+  guard confirmed `life_events` empty (0 rows) so `SET NOT NULL` no-backfill/no-native-literal path held; COMMIT clean.
+- **Post-deploy verify (independent — verifier subagent gates 3–6 + conductor gates 1–2,7–9), ALL PASS
+  `[verify-against: prod db]`:** `life_events.chart_id` uuid NOT NULL; `recorded_at`/`pool_consent` NOT NULL +
+  `contributed_to_pool_at` nullable; `(chart_id,event_id)` unique + old `event_id` unique dropped + index;
+  `event_chart_state_index` scoped/re-keyed/indexed; `lel_query(uuid,text,date,date,int)` live and the
+  chart-less signature GONE; `lel_query(482012f1)` & `lel_query(1c826d5a)` → total_count=0 + honest
+  empty-with-reason (no error); `asset_registry.lel_events` = per_chart / has_writer=false / count_sql binds `$1`.
+- Destructive-op clear-safety test present in suite and green in CI (Unit Tests gate).
+
+**W1 EXIT: GREEN.** Next: W2 (first-intake 57 events @ 482012f1 with clear-safety proven vs prod schema FIRST;
+LEL Steps 3–7; JL-027 ruling). Native checkpoint at this boundary; JL-027 ruling requested.
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*
