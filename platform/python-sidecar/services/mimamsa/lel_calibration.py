@@ -13,7 +13,10 @@ read except the explicit `pool_enabled()` gate which takes an override for
 testing). The single thin DB helper `count_chart_lel_events` is the only
 IO-touching function and is trivially fixture-mockable.
 
-NOTHING here writes to the DB or mutates state — callers own persistence.
+NOTHING here reads/blends state — callers own persistence. The single exception
+is `record_pool_contribution`, a capture-only INSERT (Step-6 capture-now): it
+writes one provenance row and NEVER reads or serves pooled values (the consume
+side stays gated behind `may_consume_into_pool`).
 
 Post-migration-423 contract this assumes:
   - life_events is chart-scoped: (chart_id, event_id) keyed, chart_id NOT NULL.
@@ -23,6 +26,7 @@ Post-migration-423 contract this assumes:
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -50,13 +54,19 @@ BASIS_STRUCTURAL_NO_LEL = "structural_no_lel"
 BASIS_LEL_FIT = "lel_fit"
 
 
-def calibration_state(event_count: int) -> str:
-    """Map a chart's recorded LEL event count to its calibration state."""
+def calibration_state(event_count: int, n_min: int = CALIBRATED_MIN_EVENTS) -> str:
+    """Map a chart's recorded LEL event count to its calibration state.
+
+    `n_min` is the calibrated-state threshold; it defaults to CALIBRATED_MIN_EVENTS
+    but a caller may pass the value read from
+    brahma_formula_constants('mimamsa_calibration_min_events') so the threshold is
+    registry-tunable without touching this module.
+    """
     if event_count < 0:
         raise ValueError(f"event_count must be >= 0, got {event_count}")
     if event_count == 0:
         return STATE_STRUCTURAL
-    if event_count < CALIBRATED_MIN_EVENTS:
+    if event_count < n_min:
         return STATE_SPARSE
     return STATE_CALIBRATED
 
@@ -76,17 +86,24 @@ def is_load_bearing(event_count: int) -> bool:
     return calibration_state(event_count) == STATE_CALIBRATED
 
 
-def judgment_flags(event_count: int) -> dict[str, Any]:
+def judgment_flags(event_count: int, n_min: int = CALIBRATED_MIN_EVENTS) -> dict[str, Any]:
     """Assemble the per-chart calibration judgment flags.
 
-    This is the structured surface a writer stamps onto its output (a JSONB
-    judgment_flags column once the persistence migration lands). Deterministic
-    in `event_count` alone.
+    This is the structured surface a writer stamps onto its output — since
+    migration 424 it is PERSISTED to phala_rectification_best.judgment_flags
+    (a JSONB column) and SERVED via the L4 query_rectification capability.
+    Deterministic in (`event_count`, `n_min`) alone.
+
+    Persisted-contract note (DO NOT reshape without a coordinated migration +
+    serve-layer change): `calibration` and `calibration_state` are DUPLICATE
+    keys carrying the SAME value. Both are retained deliberately for back-compat —
+    older readers key on `calibration`; the canonical name going forward is
+    `calibration_state`. Keep BOTH until every consumer has migrated.
     """
-    state = calibration_state(event_count)
+    state = calibration_state(event_count, n_min=n_min)
     return {
-        "calibration": state,
-        "calibration_state": state,
+        "calibration": state,        # back-compat alias (legacy key)
+        "calibration_state": state,  # canonical key (same value as `calibration`)
         "rectification_basis": rectification_basis(event_count),
         "lel_event_count": event_count,
         "load_bearing": state == STATE_CALIBRATED,
@@ -160,6 +177,58 @@ def may_consume_into_pool(pool_consent: bool, override: Optional[str] = None) ->
     the global gate must also be on. This is the consume-side firewall.
     """
     return bool(pool_consent) and pool_enabled(override)
+
+
+def record_pool_contribution(
+    conn: Any,
+    chart_id: str,
+    event_classes: list[str],
+    weights: Optional[dict] = None,
+    priors_version: Optional[str] = None,
+    pool_consent: bool = False,
+) -> None:
+    """CAPTURE (not consume) a chart's cross-chart-pool contribution.
+
+    Writes ONE provenance-tagged row into `mimamsa_pool_contributions` (migration
+    425). This is the **capture-now** half of Step-6's capture-now / consume-gated
+    design:
+
+      - It ALWAYS writes, EVEN WHEN the pool flag (MIMAMSA_CROSS_CHART_POOL) is
+        OFF. Capture is decoupled from consume — we record what a chart WOULD
+        contribute, and its consent at that time, without acting on it. There is
+        deliberately NO pool_enabled() guard on this INSERT.
+      - It NEVER reads or blends any pooled prior. This function only INSERTs; it
+        is not a serving path. The CONSUME side (any read/blend of pooled priors)
+        is gated separately by `may_consume_into_pool(pool_consent, override)`,
+        which requires BOTH per-chart consent AND the global flag.
+
+    Idempotency/transaction: runs on the caller's `conn` and NEVER commits or
+    closes it (FROZEN orchestrator contract — the orchestrator owns the txn).
+
+    Args:
+        conn:           psycopg connection (caller owns the transaction).
+        chart_id:       the contributing chart.
+        event_classes:  event-class ids the contribution covers (NOT NULL text[]).
+        weights:        optional per-class weights (serialized to jsonb).
+        priors_version: optional provenance tag of the priors used.
+        pool_consent:   the chart's consent captured at contribution time. Stored
+                        as provenance ONLY — it does NOT gate this capture; it
+                        gates the later consume via may_consume_into_pool().
+    """
+    weights_json = json.dumps(weights) if weights is not None else None
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO mimamsa_pool_contributions "
+            "(chart_id, event_classes, weights, priors_version, pool_consent) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (
+                chart_id,
+                list(event_classes),
+                weights_json,
+                priors_version,
+                bool(pool_consent),
+            ),
+        )
 
 
 # ── Debounced save → targeted-recalibration trigger ──────────────────────────

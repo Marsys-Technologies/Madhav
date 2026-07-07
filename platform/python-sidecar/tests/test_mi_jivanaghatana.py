@@ -11,10 +11,14 @@ native ingestion, graceful empty, and the presence-based anti-masking guard.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 import pytest
 
-from pipeline.orchestrator.writers.mi_jivanaghatana import MiJivanaghatanaWriter
+from pipeline.orchestrator.writers.mi_jivanaghatana import (
+    MiJivanaghatanaWriter,
+    classify_leakage_partition,
+)
 
 # Chart ids are test-local literals (never sourced from the writer module).
 NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -174,3 +178,78 @@ def test_dry_run_reports_would_insert_without_writing(monkeypatch):
 
     assert result.rows_inserted == 1
     assert "dry_run" in result.notes
+
+
+# ── Step-5 leakage routing (recorded_at → training/outcome) ──────────────────
+
+_SENTINEL = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+
+class TestClassifyLeakagePartition:
+    """Pure function: recorded_at vs frozen snapshot → training/outcome."""
+
+    def test_missing_recorded_at_is_training(self):
+        # No recording time → treated as pre-instrument → training.
+        assert classify_leakage_partition(None, datetime(2025, 6, 1, tzinfo=timezone.utc)) == "training"
+
+    def test_sentinel_recorded_is_training(self):
+        assert classify_leakage_partition(datetime(1999, 1, 1, tzinfo=timezone.utc),
+                                          datetime(2025, 6, 1, tzinfo=timezone.utc)) == "training"
+
+    def test_after_snapshot_is_outcome(self):
+        assert classify_leakage_partition(datetime(2025, 12, 1, tzinfo=timezone.utc),
+                                          datetime(2025, 6, 1, tzinfo=timezone.utc)) == "outcome"
+
+    def test_no_snapshot_is_training(self):
+        assert classify_leakage_partition(datetime(2025, 12, 1, tzinfo=timezone.utc), None) == "training"
+
+
+def _life_event_row_with_recorded(event_id, recorded_at):
+    row = _life_event_row(event_id)
+    row["recorded_at"] = recorded_at
+    return row
+
+
+def test_events_get_leakage_partition_integration(monkeypatch):
+    """Integration (fakes): a sentinel-recorded event is 'training' while an event
+    recorded AFTER the frozen snapshot is 'outcome'. Exposed on the writer's
+    per-event leakage_partitions surface."""
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._lookup_event_class",
+        lambda conn, category, subcategory: None,
+    )
+    snapshot = datetime(2025, 6, 1, tzinfo=timezone.utc)
+    rows = [
+        _life_event_row_with_recorded("EVT.SENTINEL.01", _SENTINEL),
+        _life_event_row_with_recorded("EVT.AFTER.01", datetime(2025, 12, 1, tzinfo=timezone.utc)),
+    ]
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=rows))
+    ctx.config["prediction_snapshot_at"] = snapshot
+
+    result = writer.run(ctx)
+
+    assert result.rows_inserted == 2
+    parts = {p["event_id"]: p["leakage_partition"] for p in writer.leakage_partitions}
+    assert parts["EVT.SENTINEL.01"] == "training"
+    assert parts["EVT.AFTER.01"] == "outcome"
+
+
+def test_all_training_when_no_snapshot(monkeypatch):
+    """Default snapshot_at=None → every event routes to 'training' (correct for the
+    current pre-instrument corpus)."""
+    monkeypatch.setattr(
+        "pipeline.orchestrator.writers.mi_jivanaghatana._lookup_event_class",
+        lambda conn, category, subcategory: None,
+    )
+    rows = [
+        _life_event_row_with_recorded("EVT.A", datetime(2025, 12, 1, tzinfo=timezone.utc)),
+        _life_event_row_with_recorded("EVT.B", _SENTINEL),
+    ]
+    writer = MiJivanaghatanaWriter()
+    ctx = _FakeCtx(NATIVE_CHART_ID, _FakeConn(life_events_rows=rows))  # no snapshot in config
+
+    result = writer.run(ctx)
+
+    assert result.rows_inserted == 2
+    assert all(p["leakage_partition"] == "training" for p in writer.leakage_partitions)

@@ -349,6 +349,94 @@ describe('RELIABILITY — DAG source authority', () => {
   })
 })
 
+describe('resolveBuildPlan — scope:asset_set', () => {
+  // Mixed-layer registry; asset_set can span layers and pick an arbitrary subset.
+  const SET_REG = [
+    reg('ga_positions',  'ganita', []),
+    reg('ga_structural', 'ganita', ['ga_positions']),
+    reg('ga_dashas',     'ganita', ['ga_structural']),
+    reg('bo_laksana',    'bodha',  ['ga_structural']),
+  ]
+
+  it('returns exactly the requested assets (rebuild), dependency-ordered', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset_set',
+      scope_target: 'ga_dashas,ga_positions,ga_structural',
+      action: 'rebuild',
+      registry: SET_REG,
+      throughput: new Map(),
+    })
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
+    expect(new Set(plan)).toEqual(new Set(['ga_positions', 'ga_structural', 'ga_dashas']))
+    // dependency order preserved regardless of the order given in scope_target
+    expect(plan.indexOf('ga_positions')).toBeLessThan(plan.indexOf('ga_structural'))
+    expect(plan.indexOf('ga_structural')).toBeLessThan(plan.indexOf('ga_dashas'))
+    expect(plan).not.toContain('bo_laksana')
+  })
+
+  it('tolerates whitespace and de-dupes the comma list', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset_set',
+      scope_target: ' ga_positions , ga_positions ,ga_structural ',
+      action: 'rebuild',
+      registry: SET_REG,
+      throughput: new Map(),
+    })
+    expect(result.plan_waves.flat()).toEqual(['ga_positions', 'ga_structural'])
+  })
+
+  it('drops ids not present in the registry (phantom-safe)', () => {
+    const result = resolveBuildPlan({
+      scope: 'asset_set',
+      scope_target: 'ga_positions,does_not_exist',
+      action: 'rebuild',
+      registry: SET_REG,
+      throughput: new Map(),
+    })
+    expect(result.plan_waves.flat()).toEqual(['ga_positions'])
+  })
+
+  it('build action filters to dormant/error assets within the set', () => {
+    const throughput = new Map([
+      tp('ga_positions', 'lit'),
+      tp('ga_structural', 'dormant'),
+    ])
+    const result = resolveBuildPlan({
+      scope: 'asset_set',
+      scope_target: 'ga_positions,ga_structural',
+      action: 'build',
+      registry: SET_REG,
+      throughput,
+    })
+    expect(result.status).toBe('ok')
+    const plan = result.plan_waves.flat()
+    expect(plan).toContain('ga_structural')
+    expect(plan).not.toContain('ga_positions')
+  })
+
+  it('empty scope_target throws a clear error', () => {
+    expect(() => resolveBuildPlan({
+      scope: 'asset_set', scope_target: '', action: 'rebuild',
+      registry: SET_REG, throughput: new Map(),
+    })).toThrow(/asset_set scope requires a non-empty list/)
+  })
+
+  it('null scope_target throws a clear error', () => {
+    expect(() => resolveBuildPlan({
+      scope: 'asset_set', scope_target: null, action: 'rebuild',
+      registry: SET_REG, throughput: new Map(),
+    })).toThrow(/asset_set scope requires a non-empty list/)
+  })
+
+  it('all-phantom scope_target throws a clear error', () => {
+    expect(() => resolveBuildPlan({
+      scope: 'asset_set', scope_target: 'nope,also_nope', action: 'rebuild',
+      registry: SET_REG, throughput: new Map(),
+    })).toThrow(/asset_set scope requires a non-empty list/)
+  })
+})
+
 describe('resolveBuildPlan — edge cases', () => {
   it('asset scope with null target returns no-op (not error)', () => {
     const result = resolveBuildPlan({

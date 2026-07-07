@@ -24,7 +24,11 @@ from datetime import datetime, timezone
 
 from pipeline.orchestrator.birth_params import resolve_birth_params
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.mimamsa.lel_calibration import rectification_basis
+from services.mimamsa.lel_calibration import (
+    CALIBRATED_MIN_EVENTS,
+    judgment_flags,
+    rectification_basis,
+)
 from services.ph_rectification.engine import (
     AYANAMSHAS,
     AUTO_ACTION,
@@ -40,6 +44,27 @@ _SIGN_INDEX = {
     "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9,
     "Aquarius": 10, "Pisces": 11,
 }
+
+
+def _load_calibration_min_events(conn) -> int:
+    """Read the calibrated-state threshold from brahma_formula_constants; fall back
+    to CALIBRATED_MIN_EVENTS. Mirrors the mi_pramana constant-read pattern — a
+    missing table/row/column yields the module default, never a hard failure.
+    Runs on the orchestrator's connection (never commits)."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT value_jsonb FROM brahma_formula_constants "
+                "WHERE constant_id = 'mimamsa_calibration_min_events'"
+            )
+            row = cur.fetchone()
+        if row:
+            val = row[0] if not isinstance(row, dict) else row.get("value_jsonb")
+            if val and val.get("n_min") is not None:
+                return int(val["n_min"])
+    except Exception:
+        pass
+    return CALIBRATED_MIN_EVENTS
 
 
 def _dasha_lord_on_date(conn, chart_id: str, ev_date, level_n: int):
@@ -237,10 +262,17 @@ class PhRectificationWriter(WriterBase):
         training_events = _load_chart_training_events(conn, chart_id)
         natal_sign_index = _load_chart_natal_sign_index(conn, chart_id)
         basis = rectification_basis(len(training_events))  # lel_fit | structural_no_lel
+        # Availability-driven calibration judgment (BA-LEL R2.2 Step 4/5). Persisted
+        # to phala_rectification_best.judgment_flags and served via query_rectification.
+        # n_min is registry-tunable (brahma_formula_constants); falls back to
+        # CALIBRATED_MIN_EVENTS when the constant is absent.
+        n_min = _load_calibration_min_events(conn)
+        flags = judgment_flags(len(training_events), n_min=n_min)
         logger.info(
             "ph_rectification: chart %s sourced %d own training events -> basis=%s "
-            "(structural_no_lel = clean lagna-stability-only rectification)",
-            chart_id, len(training_events), basis,
+            "calibration_state=%s (structural_no_lel = clean lagna-stability-only "
+            "rectification)",
+            chart_id, len(training_events), basis, flags["calibration_state"],
         )
 
         ascendant_fn = _build_ascendant_fn(local_birth_dt, lat, lon, tz_offset_hours)
@@ -301,13 +333,13 @@ class PhRectificationWriter(WriterBase):
                     best_lagna_sign, best_lagna_longitude, best_lel_fit_score,
                     confidence_low, confidence_high, confidence_label, win_margin,
                     competing_candidates, lel_training_events, lel_training_matched,
-                    leakage_firewall_note, auto_action
+                    leakage_firewall_note, judgment_flags, auto_action
                 ) VALUES (
                     %s, %s, %s, %s,
                     %s, %s, %s,
                     %s, %s, %s, %s,
                     %s::jsonb, %s, %s,
-                    %s, %s
+                    %s, %s::jsonb, %s
                 )
                 """,
                 (
@@ -318,9 +350,10 @@ class PhRectificationWriter(WriterBase):
                     json.dumps(best.competing_candidates),
                     best.lel_training_events, best.lel_training_matched,
                     # Persist the availability-driven basis alongside the engine's
-                    # firewall note (no schema change; a dedicated column lands with
-                    # the calibration-state persistence migration).
-                    f"[basis={basis}] {best.leakage_firewall_note}", AUTO_ACTION,
+                    # firewall note (kept for back-compat), and the full calibration
+                    # judgment_flags in the dedicated jsonb column (migration 424).
+                    f"[basis={basis}] {best.leakage_firewall_note}",
+                    json.dumps(flags), AUTO_ACTION,
                 ),
             )
             rows_inserted += 1

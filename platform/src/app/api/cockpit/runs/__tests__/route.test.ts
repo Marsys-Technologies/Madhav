@@ -414,6 +414,72 @@ describe('POST /api/cockpit/runs — client + scope=asset + per_chart asset', ()
   })
 })
 
+// ─── 8. scope='asset_set' — targeted subset build for one chart ───────────────
+
+describe('POST /api/cockpit/runs — scope=asset_set', () => {
+  it('builds only the requested subset, dependency-ordered, and inserts build_runs with scope=asset_set', async () => {
+    seedRole('client')
+    // asset_set does NOT trigger the scope=asset global-asset lookup — same query flow as layer.
+    seedSuccessfulBuild(REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set',
+      scope_target: 'ga_strength,ga_positions', action: 'rebuild',
+    }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    // Exactly the requested subset, dependency-ordered (ga_positions before ga_strength).
+    expect(body.data.plan).toEqual(['ga_positions', 'ga_strength'])
+    expect(body.data.asset_count).toBe(2)
+
+    // build_runs INSERT carries scope='asset_set' and the comma-list scope_target.
+    const insertCall = mockQuery.mock.calls.find(
+      c => typeof c[0] === 'string' && c[0].includes('INSERT INTO build_runs')
+    )
+    expect(insertCall).toBeDefined()
+    const params = insertCall![1] as unknown[]
+    // params = [chart_id, scope, scope_target, action, state..., plan, triggered_by]
+    expect(params[1]).toBe('asset_set')
+    expect(params[2]).toBe('ga_strength,ga_positions')
+
+    // build_run_assets rows inserted for each planned asset.
+    const assetInsert = mockQuery.mock.calls.find(
+      c => typeof c[0] === 'string' && c[0].includes('INSERT INTO build_run_assets')
+    )
+    expect(assetInsert).toBeDefined()
+    const assetParams = assetInsert![1] as unknown[]
+    expect(assetParams).toContain('ga_positions')
+    expect(assetParams).toContain('ga_strength')
+  })
+
+  it('returns 400 EMPTY_ASSET_SET when scope_target is empty', async () => {
+    // Scope validation short-circuits BEFORE getUserRole — only an authed user is needed
+    // (queuing a getUserRole mock here would leak an unconsumed Once into the next test).
+    mockGetServerUser.mockResolvedValue(USER)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: '', action: 'rebuild',
+    }))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.code).toBe('EMPTY_ASSET_SET')
+  })
+
+  it('returns 400 EMPTY_ASSET_SET when scope_target is missing', async () => {
+    mockGetServerUser.mockResolvedValue(USER)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', action: 'rebuild',
+    }))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.code).toBe('EMPTY_ASSET_SET')
+  })
+})
+
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
 
 describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () => {

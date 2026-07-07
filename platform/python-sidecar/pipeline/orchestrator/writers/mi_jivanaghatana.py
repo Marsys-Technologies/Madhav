@@ -20,18 +20,61 @@ import hashlib
 import json
 import logging
 import time
-from typing import Any
+from datetime import datetime
+from typing import Any, Optional
 
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.mimamsa.lel_calibration import count_chart_lel_events
+from services.mimamsa.lel_calibration import (
+    PRE_INSTRUMENT_SENTINEL,
+    count_chart_lel_events,
+    recorded_at_partition,
+)
 
 logger = logging.getLogger(__name__)
 
 PARTITION_SEED_VERSION = "v1_md5_mod10"
 LEL_VERSION = "v1.7"
 PROVENANCE_FORMULA_VER = "mi_jivanaghatana_v2.0"
+
+
+def classify_leakage_partition(
+    recorded_at: Any,
+    snapshot_at: Optional[datetime],
+) -> str:
+    """Partition one life-event row as training vs outcome (Step-5 leakage routing).
+
+    Delegates to lel_calibration.recorded_at_partition (the code-not-convention
+    leakage firewall): an event recorded BEFORE the frozen prediction snapshot is
+    training evidence; recorded AT/AFTER is outcome evidence.
+
+    A row with no `recorded_at` is treated as pre-instrument (PRE_INSTRUMENT_SENTINEL
+    → always training) — the safe default for the current pre-instrument corpus,
+    e.g. the 57 native rows that carry the sentinel.
+    """
+    if recorded_at is None:
+        recorded_at = PRE_INSTRUMENT_SENTINEL
+    return recorded_at_partition(recorded_at, snapshot_at)
+
+
+def _resolve_snapshot_at(ctx) -> Optional[datetime]:
+    """The frozen-prediction snapshot to partition events against.
+
+    Read from ctx.config['prediction_snapshot_at'] (datetime or ISO string). None
+    means there is no prediction yet → every event classifies as training, which
+    is correct for the current pre-instrument corpus. Wiring is present so a
+    future recorded_at=now() event after a real snapshot routes to 'outcome'.
+    """
+    raw = ctx.config.get("prediction_snapshot_at")
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    try:
+        return datetime.fromisoformat(str(raw))
+    except Exception:
+        return None
 
 
 # LEL magnitude labels → canonical event_magnitude values
@@ -121,6 +164,12 @@ class MiJivanaghatanaWriter(WriterBase):
         t0 = time.time()
         conn = ctx.db_conn
         chart_id = str(ctx.config.get("chart_id") or "")
+
+        # Step-5 leakage routing: partition each event training-vs-outcome against
+        # the frozen prediction snapshot (None → all training). Exposed per-event
+        # on self.leakage_partitions so downstream can honor the two-key blind path.
+        snapshot_at = _resolve_snapshot_at(ctx)
+        self.leakage_partitions: list[dict[str, str]] = []
 
         # ── Chart-scoped life_events DB read is the ONLY source ──────────────
         # Every chart — including the native — sources its events exclusively
@@ -233,6 +282,17 @@ class MiJivanaghatanaWriter(WriterBase):
             admissible, reason = _admissibility(shaped_predictor, disclosure_timing, event_date)
             held = _held_out(event_id)
 
+            # Step-5 leakage routing (code, not convention): classify this row as
+            # training vs outcome against the frozen snapshot. The 57 native rows
+            # carry the pre_instrument sentinel → 'training'. Emitted per-event on
+            # self.leakage_partitions so downstream honors the two-key blind path.
+            leakage_partition = classify_leakage_partition(
+                ev.get("recorded_at"), snapshot_at
+            )
+            self.leakage_partitions.append(
+                {"event_id": event_id, "leakage_partition": leakage_partition}
+            )
+
             # event_class_id: SAVEPOINT-guarded ontology lookup
             subcategory = str(ev.get("subcategory") or "").strip() or None
             event_class_id = _lookup_event_class(conn, domain_primary, subcategory)
@@ -287,13 +347,19 @@ class MiJivanaghatanaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.executemany(INSERT_SQL, rows)
 
+        n_outcome = sum(
+            1 for p in self.leakage_partitions if p["leakage_partition"] == "outcome"
+        )
+        n_training = len(self.leakage_partitions) - n_outcome
         logger.info(
             "[mi_jivanaghatana] inserted %d provenance rows "
-            "(source=%s, sha=%s, held_out=%d, clean=%d)",
+            "(source=%s, sha=%s, held_out=%d, clean=%d, "
+            "leakage: training=%d, outcome=%d)",
             len(rows), lel_source,
             (lel_file_sha[:8] if lel_file_sha else "n/a"),
             sum(1 for r in rows if r[10]),
             sum(1 for r in rows if r[11]),
+            n_training, n_outcome,
         )
 
         return WriterResult(
