@@ -79,7 +79,6 @@ __all__ = [
     "AYANAMSHAS",
     "RECORDED_BIRTH_UTC",
     "AUTO_ACTION",
-    "NATIVE_CHART_ID",
     "build_candidate_offsets",
     "domain_significator_houses",
     "score_candidate",
@@ -99,10 +98,9 @@ NATIVE_TZ = 5.5
 # JL-017 (BA Phase 2.5 #11, CONTAMINATION-CLASS): TRAINING_EVENTS and
 # _DASHA_LORD_NATAL_SIGN_INDEX below are the native Abhisek Mohanty's OWN LEL
 # events and natal dasha-lord positions. The writer MUST gate their use behind
-# this chart_id — never silently apply one chart's life events / natal facts
-# to another chart's rectification scan. See pipeline/orchestrator/writers/
-# ph_rectification/__init__.py for the enforcing chart-attribution check.
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+# the native's chart attribution — never silently apply one chart's life events
+# / natal facts to another chart's rectification scan. See pipeline/orchestrator/
+# writers/ph_rectification/__init__.py for the enforcing chart-attribution check.
 
 # Five canonical ayanamsha ids that resolve DISTINCTLY in pyjhora_adapter
 # (_ayanamsha.AYANAMSHA_MAP). 'krishnamurti' is NOT a distinct key — it falls
@@ -508,8 +506,8 @@ def run_rectification(
     default to the native's own embedded TRAINING_EVENTS/_DASHA_LORD_NATAL_SIGN_INDEX
     ONLY for backward compatibility of direct callers (e.g. tests); the writer
     MUST pass explicit chart-scoped values (or refuse to score) for any chart
-    other than NATIVE_CHART_ID — never let another chart silently inherit the
-    native's life events / natal dasha-lord positions.
+    other than the native's own chart — never let another chart silently inherit
+    the native's life events / natal dasha-lord positions.
 
     Returns a flat list of RectificationCandidate (37 * 5 = 185 rows).
     """

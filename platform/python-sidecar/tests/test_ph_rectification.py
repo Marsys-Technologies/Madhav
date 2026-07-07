@@ -46,6 +46,10 @@ WRITER_PATH = os.path.join(
     "writers", "ph_rectification", "__init__.py",
 )
 
+# Test-local chart id (the engine no longer exports a NATIVE_CHART_ID literal).
+# Identity is immaterial to these loader tests — the fake conn scopes results.
+_TEST_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
 # ── Stub ascendant ───────────────────────────────────────────────────────────
 # Mirrors the empirical PyJHora scan (LOCAL JD): Aries ~12.4° at offset 0,
 # Pisces at ≈ -45 min and earlier, Taurus at ≈ +70 min and later.
@@ -358,9 +362,8 @@ def test_load_training_events_chart_scoped_no_contamination():
 
 def test_load_training_events_empty_when_no_life_events():
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
-    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([("FROM life_events", [])])
-    assert _load_chart_training_events(conn, NATIVE_CHART_ID) == []
+    assert _load_chart_training_events(conn, _TEST_CHART_ID) == []
 
 
 def test_load_training_events_missing_column_is_structural_not_crash():
@@ -377,24 +380,22 @@ def test_load_training_events_skips_event_when_no_own_md_lord():
     """An event whose per-chart mahadasha lord can't be found in THIS chart's
     chart_dashas is skipped — never fabricated, never native-defaulted."""
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
-    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),
         ("FROM chart_dashas", []),  # no MD lord for this chart on that date
     ])
-    assert _load_chart_training_events(conn, NATIVE_CHART_ID) == []
+    assert _load_chart_training_events(conn, _TEST_CHART_ID) == []
 
 
 def test_load_training_events_uses_this_charts_own_md_lord():
     from pipeline.orchestrator.writers.ph_rectification import _load_chart_training_events
-    from services.ph_rectification.engine import NATIVE_CHART_ID
     conn = _ScriptConn([
         ("FROM life_events", [{"event_id": "EVT.2001.01.01", "event_date": datetime(2001, 1, 1),
                                 "category": "career", "domain": "career"}]),
         ("FROM chart_dashas", [{"lord_graha": "Jupiter"}]),  # THIS chart's own lord
     ])
-    evs = _load_chart_training_events(conn, NATIVE_CHART_ID)
+    evs = _load_chart_training_events(conn, _TEST_CHART_ID)
     assert len(evs) == 1
     assert evs[0].maha_dasha_lord == "Jupiter"  # the chart's own, not the native's
     assert evs[0].domain == "career"

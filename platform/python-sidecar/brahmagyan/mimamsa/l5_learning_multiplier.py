@@ -60,7 +60,6 @@ SOURCE_CITATION = (
     "LIFE_EVENT_LOG_v1_2.md v1.7 §Calibration-outcomes; "
     "Brier (1950) Verification of Forecasts Expressed in Terms of Probability"
 )
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 VOLUME_FLOOR = 569
 
 # Initial multiplier for all signals (neutral — no outcome evidence yet)

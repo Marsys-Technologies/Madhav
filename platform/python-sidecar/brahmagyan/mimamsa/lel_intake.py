@@ -52,6 +52,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import date, datetime, timezone
@@ -62,6 +63,22 @@ logger = logging.getLogger(__name__)
 # ── Provenance constant ───────────────────────────────────────────────────────
 
 SOURCE_CITATION = "LIFE_EVENT_LOG_v1_2.md (native-disclosed)"
+
+# ── UUID validation (shared by seed_lel_intake + lel_query) ───────────────────
+
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+# ── Pre-instrument recording sentinel ─────────────────────────────────────────
+#
+# The 57 native LEL rows were recorded BEFORE the instrument existed / before any
+# prediction snapshot was ever taken — they are pure TRAINING data under the
+# MIMAMSA_V2 leakage discipline (recorded_at BEFORE any prediction snapshot ⇒
+# training, never holdout). Any real UUID chart's *future* events instead use
+# recorded_at=now() so the training/holdout boundary is honest for them.
+PRE_INSTRUMENT_SENTINEL = "2000-01-01T00:00:00+00:00"
 
 # ── Convergence score mapping ─────────────────────────────────────────────────
 #
@@ -1171,7 +1188,13 @@ def _build_row(event: dict[str, Any]) -> dict[str, Any]:
         "event_type":      event["event_type"],
         "description":     event["description"],
         "domain":          f"{event['event_type']}/{event['subcategory']}",
-        "outcome_observed": event.get("outcome"),
+        # outcome_observed is BOOLEAN in prod life_events ("was the real-world
+        # outcome observed"): True for the 57 historical events that carry a
+        # recorded match, False otherwise. The match-QUALITY string
+        # ('partial'/'yes'/'no'/...) lives separately in outcome_quality and
+        # feeds _convergence() + provenance/chart_state audit.
+        "outcome_observed": event.get("outcome") is not None,
+        "outcome_quality": event.get("outcome"),
         "source_citation": SOURCE_CITATION,
         "dasha_md":        event.get("dasha_md"),
         "dasha_ad":        event.get("dasha_ad"),
@@ -1208,6 +1231,7 @@ def _get_conn():  # type: ignore[return]
 
 def seed_lel_intake(
     *,
+    chart_id: str,
     dry_run: bool = False,
     verbose: bool = False,
 ) -> dict[str, Any]:
@@ -1216,12 +1240,18 @@ def seed_lel_intake(
 
     Idempotent: uses ON CONFLICT DO UPDATE so re-running is safe.
 
+    Since migration 423 life_events is chart-scoped (chart_id NOT NULL, unique
+    re-keyed to (chart_id, event_id)); this function scopes every row to
+    ``chart_id``. The 57 rows are stamped with ``recorded_at =
+    PRE_INSTRUMENT_SENTINEL`` (pre-instrument ⇒ training under MIMAMSA_V2).
+
     NO LEAKAGE guarantee:
         This function populates the calibration corpus ONLY.
         It never writes to prediction tables.
         Source citation is enforced non-null on every row.
 
     Args:
+        chart_id: Chart UUID to scope every ingested row to (required).
         dry_run: If True, compute rows but do not write to DB.
         verbose: Log each row.
 
@@ -1234,6 +1264,9 @@ def seed_lel_intake(
           "provenance_envelope": {...},
         }
     """
+    if not _UUID_RE.match(chart_id or ""):
+        raise ValueError(f"chart_id must be a valid UUID, got: {chart_id!r}")
+
     rows = [_build_row(e) for e in LEL_CORPUS]
 
     # Validate all rows carry non-empty source_citation
@@ -1272,23 +1305,54 @@ def seed_lel_intake(
 
         with conn.cursor() as cur:
             for row in rows:
+                # chart_state / provenance JSONB — same shape both branches build.
+                # Prod life_events is a HYBRID schema: the 'domain' column exists
+                # (so the probe routes to the brahma branch) but the legacy
+                # category / chart_state / source_section / build_id / provenance
+                # columns are ALSO retained NOT NULL. So the brahma INSERT must
+                # write the UNION of legacy-required + brahma columns.
+                row_provenance = json.dumps({
+                    "source": SOURCE_CITATION,
+                    "lel_id": row["lel_id"],
+                    "outcome": row["outcome_quality"],  # match-quality STRING (not the bool)
+                    "dasha_md": row["dasha_md"],
+                    "dasha_ad": row["dasha_ad"],
+                })
+                row_chart_state = json.dumps({
+                    "dasha_md": row["dasha_md"],
+                    "dasha_ad": row["dasha_ad"],
+                    "key_transits": row["key_transits"],
+                })
                 if brahma_schema:
-                    # Brahma schema (brahma_mimamsa_lel_intake.sql)
+                    # Brahma schema (brahma_mimamsa_lel_intake.sql) — chart-scoped
+                    # since migration 423. chart_id NOT NULL; unique is
+                    # (chart_id, event_id); recorded_at stamped with the
+                    # pre-instrument sentinel and NEVER overwritten on re-run.
+                    # Writes the FULL NOT NULL superset (brahma + legacy columns)
+                    # so it succeeds against the prod HYBRID schema. pool_consent
+                    # is omitted (DB DEFAULT false).
                     cur.execute(
                         """
                         INSERT INTO life_events
-                            (event_id, event_date, event_type, description,
-                             domain, outcome_observed, source_citation)
-                        VALUES (%s, %s::DATE, %s, %s, %s, %s, %s)
-                        ON CONFLICT (event_id) DO UPDATE SET
+                            (chart_id, event_id, event_date, event_type, description,
+                             domain, outcome_observed, source_citation, recorded_at,
+                             category, source_section, build_id, chart_state, provenance)
+                        VALUES (%s::uuid, %s, %s::DATE, %s, %s, %s, %s, %s, %s::timestamptz,
+                                %s, %s, %s, %s::JSONB, %s::JSONB)
+                        ON CONFLICT (chart_id, event_id) DO UPDATE SET
                             event_date       = EXCLUDED.event_date,
                             event_type       = EXCLUDED.event_type,
                             description      = EXCLUDED.description,
                             domain           = EXCLUDED.domain,
                             outcome_observed = EXCLUDED.outcome_observed,
-                            source_citation  = EXCLUDED.source_citation
+                            source_citation  = EXCLUDED.source_citation,
+                            category         = EXCLUDED.category,
+                            source_section   = EXCLUDED.source_section,
+                            chart_state      = EXCLUDED.chart_state,
+                            provenance       = EXCLUDED.provenance
                         """,
                         (
+                            chart_id,
                             row["event_id"],
                             row["event_date"],
                             row["event_type"],
@@ -1296,6 +1360,12 @@ def seed_lel_intake(
                             row["domain"],
                             row["outcome_observed"],
                             row["source_citation"],
+                            PRE_INSTRUMENT_SENTINEL,
+                            row["event_type"],          # category (NOT NULL legacy)
+                            row["source_citation"],     # source_section (NOT NULL legacy)
+                            "lel_intake-brahma-mi-5-1",  # build_id (NOT NULL legacy)
+                            row_chart_state,            # chart_state (NOT NULL legacy)
+                            row_provenance,             # provenance (NOT NULL legacy)
                         ),
                     )
                 else:
@@ -1304,26 +1374,16 @@ def seed_lel_intake(
                     # defaults so the insert succeeds until the brahma migration
                     # (brahma_mimamsa_lel_intake.sql) is applied to production.
                     # DCB-004: this branch is the fix for the NOT NULL violation.
-                    legacy_provenance = json.dumps({
-                        "source": SOURCE_CITATION,
-                        "lel_id": row["lel_id"],
-                        "outcome": row["outcome_observed"],
-                        "dasha_md": row["dasha_md"],
-                        "dasha_ad": row["dasha_ad"],
-                    })
-                    legacy_chart_state = json.dumps({
-                        "dasha_md": row["dasha_md"],
-                        "dasha_ad": row["dasha_ad"],
-                        "key_transits": row["key_transits"],
-                    })
+                    # chart_id NOT NULL since migration 423 — add it defensively
+                    # even though prod runs the brahma branch above.
                     cur.execute(
                         """
                         INSERT INTO life_events
-                            (event_id, event_date, category, description,
+                            (chart_id, event_id, event_date, category, description,
                              source_section, build_id,
                              chart_state, provenance)
-                        VALUES (%s, %s::DATE, %s, %s, %s, %s, %s::JSONB, %s::JSONB)
-                        ON CONFLICT (event_id) DO UPDATE SET
+                        VALUES (%s::uuid, %s, %s::DATE, %s, %s, %s, %s, %s::JSONB, %s::JSONB)
+                        ON CONFLICT (chart_id, event_id) DO UPDATE SET
                             event_date    = EXCLUDED.event_date,
                             category      = EXCLUDED.category,
                             description   = EXCLUDED.description,
@@ -1332,14 +1392,15 @@ def seed_lel_intake(
                             provenance    = EXCLUDED.provenance
                         """,
                         (
+                            chart_id,
                             row["event_id"],
                             row["event_date"],
                             row["event_type"],         # maps to category
                             row["description"],
                             row["source_citation"],    # maps to source_section
                             "lel_intake-brahma-mi-5-1",  # synthetic build_id
-                            legacy_chart_state,
-                            legacy_provenance,
+                            row_chart_state,
+                            row_provenance,
                         ),
                     )
 
@@ -1348,15 +1409,16 @@ def seed_lel_intake(
                 else:
                     updated += 1
 
-                # Upsert event_chart_state_index (key: event_id) — brahma schema only
+                # Upsert event_chart_state_index (key: (chart_id, event_id)) —
+                # chart-scoped since migration 423 — brahma schema only
                 if brahma_schema:
                     cur.execute(
                         """
                         INSERT INTO event_chart_state_index
-                            (event_id, dasha_active, antardasha_active,
+                            (chart_id, event_id, dasha_active, antardasha_active,
                              key_transits, convergence_score, source_citation)
-                        VALUES (%s, %s, %s, %s::JSONB, %s, %s)
-                        ON CONFLICT (event_id) DO UPDATE SET
+                        VALUES (%s::uuid, %s, %s, %s, %s::JSONB, %s, %s)
+                        ON CONFLICT (chart_id, event_id) DO UPDATE SET
                             dasha_active      = EXCLUDED.dasha_active,
                             antardasha_active = EXCLUDED.antardasha_active,
                             key_transits      = EXCLUDED.key_transits,
@@ -1364,6 +1426,7 @@ def seed_lel_intake(
                             source_citation   = EXCLUDED.source_citation
                         """,
                         (
+                            chart_id,
                             row["event_id"],
                             row["dasha_md"],
                             row["dasha_ad"],
@@ -1444,12 +1507,7 @@ def lel_query(
     """
     # Validate chart_id format if provided (contract compliance — B.3 mandate)
     if chart_id is not None:
-        import re as _re
-        _uuid_re = _re.compile(
-            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-            _re.IGNORECASE,
-        )
-        if not _uuid_re.match(chart_id):
+        if not _UUID_RE.match(chart_id):
             raise ValueError(f"chart_id must be a valid UUID, got: {chart_id!r}")
     with _get_conn() as conn:
         params: list[Any] = []
@@ -1723,6 +1781,7 @@ except ImportError:
 
 def _cmd_seed(args: argparse.Namespace) -> None:
     result = seed_lel_intake(
+        chart_id=getattr(args, "chart_id", None),
         dry_run=getattr(args, "dry_run", False),
         verbose=getattr(args, "verbose", False),
     )
@@ -1755,6 +1814,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command")
 
     p_seed = sub.add_parser("seed", help="Ingest all 57 LEL events into DB")
+    p_seed.add_argument("--chart-id", dest="chart_id", required=True,
+                        help="Chart UUID to scope the ingested rows to (required)")
     p_seed.add_argument("--dry-run", action="store_true", help="Compute but do not write to DB")
     p_seed.add_argument("--verbose", action="store_true", help="Log each row")
 

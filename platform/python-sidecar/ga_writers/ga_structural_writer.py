@@ -4820,8 +4820,14 @@ def _build_graha_yuddha_rows(
     """Detect graha yuddha (planetary war): two classical grahas within 1° in the same sign.
 
     Classical rule: only CLASSICAL_GRAHAS (no nodes) can be in yuddha.
-    Lower absolute longitude = winner; higher longitude = loser.
     Emits 3 rows per pair: fact_key='winner', 'loser', 'orb_deg'.
+
+    WINNER RULE FLOORED (JL-027 native ruling, JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md):
+    The prior "lower-longitude wins" proxy was uncited and is FORBIDDEN. Option A
+    (Parāśari northern-latitude wins) is the ratified classical rule, but its
+    implementation is DEFERRED to R5 because it requires Swiss Ephemeris ecliptic
+    latitude (not yet in L1). Until then we FLOOR: winner=None, loser=None,
+    reason='no_ratified_classical_rule'. orb_deg remains a true computed fact.
     """
     rows: list[dict[str, Any]] = []
 
@@ -4843,14 +4849,18 @@ def _build_graha_yuddha_rows(
             # Wrap-around within sign (max 30°, so no circular wrap needed beyond simple diff)
             if orb > 1.0:
                 continue
-            # Lower longitude = winner (classical rule: closer to 0° of sign)
-            if lon_a <= lon_b:
-                winner, loser = name_a, name_b
-            else:
-                winner, loser = name_b, name_a
-            subj_w = PLANET_TO_SUBJECT.get(winner, winner.upper())
-            subj_l = PLANET_TO_SUBJECT.get(loser, loser.upper())
-            pair_key = f"{subj_w}_v_{subj_l}"
+            # JL-027 FLOOR: no ratified classical rule decides the winner yet.
+            # No longitude comparison names a victor — winner/loser are NULL.
+            # (Ratified Option A = Parāśari northern-latitude wins; deferred to R5
+            #  pending Swiss Ephemeris ecliptic latitude in L1.)
+            winner = None
+            loser = None
+            # Pair key is derived from the two combatants by longitude order (stable,
+            # NOT a victor claim): lower-longitude graha first purely for a deterministic key.
+            first, second = (name_a, name_b) if lon_a <= lon_b else (name_b, name_a)
+            subj_1 = PLANET_TO_SUBJECT.get(first, first.upper())
+            subj_2 = PLANET_TO_SUBJECT.get(second, second.upper())
+            pair_key = f"{subj_1}_v_{subj_2}"
 
             rows.append(_base_row(
                 "graha_yuddha", pair_key, "winner",
@@ -4863,12 +4873,14 @@ def _build_graha_yuddha_rows(
                     "sign": sign_a,
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
+                    "reason": "no_ratified_classical_rule",
+                    "floored": True,
                 },
                 verif="two_pass_verified",
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
-                    f"Graha yuddha in {sign_a}: {winner} wins over {loser} "
-                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                    f"Graha yuddha in {sign_a} ({first} & {second}, orb={round(orb,4)}°): "
+                    f"winner rule floored pending ratified classical rule (JL-027) ({ayanamsha_id})."
                 ),
             ))
             rows.append(_base_row(
@@ -4882,12 +4894,14 @@ def _build_graha_yuddha_rows(
                     "sign": sign_a,
                     "ayanamsha_id": ayanamsha_id,
                     "uncatalogued": False,
+                    "reason": "no_ratified_classical_rule",
+                    "floored": True,
                 },
                 verif="two_pass_verified",
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
-                    f"Graha yuddha in {sign_a}: {loser} loses to {winner} "
-                    f"(orb={round(orb,4)}°) ({ayanamsha_id})."
+                    f"Graha yuddha in {sign_a} ({first} & {second}, orb={round(orb,4)}°): "
+                    f"winner rule floored pending ratified classical rule (JL-027) ({ayanamsha_id})."
                 ),
             ))
             rows.append(_base_row(
@@ -4906,7 +4920,7 @@ def _build_graha_yuddha_rows(
                 verif="two_pass_verified",
                 source=f"ga_structural.graha_yuddha/{eng_ver}",
                 citation_human=(
-                    f"Graha yuddha orb in {sign_a}: {winner} vs {loser} "
+                    f"Graha yuddha orb in {sign_a}: {first} vs {second} "
                     f"= {round(orb,4)}° ({ayanamsha_id})."
                 ),
             ))

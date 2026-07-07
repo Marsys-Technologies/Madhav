@@ -53,10 +53,6 @@ router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
-)
-
 # Valid techniques for calibration
 VALID_TECHNIQUES = frozenset({
     "vimshottari",
@@ -176,7 +172,7 @@ def record_outcome(
         outcome_observed: True = event occurred (confirmed); False = did not occur (falsified).
         technique:        Dasha/technique used for this prediction. Default 'vimshottari'.
         ayanamsha_id:     Ayanamsha for chart computation. Default 'lahiri'.
-        chart_id:         Chart UUID. Defaults to native chart.
+        chart_id:         Chart UUID (required; ValueError if None/empty).
         outcome_note:     Optional operator annotation on the outcome.
 
     Returns:
@@ -211,7 +207,9 @@ def record_outcome(
         ValueError:   Invalid prediction_id, technique, ayanamsha_id, or leakage violation.
         RuntimeError: DATABASE_URL not configured.
     """
-    effective_chart_id = chart_id or NATIVE_CHART_ID
+    if not chart_id or not str(chart_id).strip():
+        raise ValueError("chart_id is required and must be a non-empty string")
+    effective_chart_id = chart_id
 
     if technique not in VALID_TECHNIQUES:
         raise ValueError(
@@ -381,7 +379,7 @@ def query_calibration(
     Query the mimamsa_calibration table for current calibration state.
 
     Args:
-        chart_id:     Optional chart UUID filter. Defaults to native chart.
+        chart_id:     Chart UUID filter (required; ValueError if None/empty).
         technique:    Optional technique filter.
         ayanamsha_id: Optional ayanamsha filter.
         limit:        Max rows to return (most recent first). Default 10.
@@ -394,7 +392,9 @@ def query_calibration(
             "provenance_envelope": {...}
         }
     """
-    effective_chart_id = chart_id or NATIVE_CHART_ID
+    if not chart_id or not str(chart_id).strip():
+        raise ValueError("chart_id is required and must be a non-empty string")
+    effective_chart_id = chart_id
 
     # Validate before DB access (so invalid input raises ValueError, not RuntimeError)
     conditions = ["chart_id = %s"]
@@ -484,7 +484,9 @@ def run_acceptance_gate(chart_id: str | None = None) -> dict[str, Any]:
     Returns:
         {"chart_id": str, "gate_passed": bool, "checks": list[dict]}
     """
-    effective_chart_id = chart_id or NATIVE_CHART_ID
+    if not chart_id or not str(chart_id).strip():
+        raise ValueError("chart_id is required and must be a non-empty string")
+    effective_chart_id = chart_id
     checks: list[dict[str, Any]] = []
 
     # AC1: Brier score in [0.0, 1.0]
@@ -695,12 +697,10 @@ class RecordOutcomeRequest(BaseModel):
         "lahiri",
         description="Ayanamsha: lahiri | true_chitra | kp | raman | surya_siddhanta",
     )
-    chart_id: Optional[str] = Field(
-        None,
-        description=(
-            "Chart UUID. Default: native chart "
-            "(Abhisek Mohanty 482012f1-710e-4a25-994a-93821f5871aa)"
-        ),
+    chart_id: str = Field(
+        ...,
+        min_length=1,
+        description="Chart UUID (required).",
     )
     outcome_note: Optional[str] = Field(
         None,
@@ -709,9 +709,10 @@ class RecordOutcomeRequest(BaseModel):
 
 
 class QueryCalibrationRequest(BaseModel):
-    chart_id: Optional[str] = Field(
-        None,
-        description="Chart UUID filter. Default: native chart.",
+    chart_id: str = Field(
+        ...,
+        min_length=1,
+        description="Chart UUID filter (required).",
     )
     technique: Optional[str] = Field(
         None,
@@ -804,7 +805,7 @@ def api_query_calibration(req: QueryCalibrationRequest) -> dict[str, Any]:
                 "source": "mimamsa.outcome",
                 "asset": "MI-5-3",
                 "algorithm": "Brier score = (confidence - outcome_binary)²",
-                "chart_id": req.chart_id or "native",
+                "chart_id": req.chart_id,
                 "queried_at": datetime.now(tz=_tz.utc).isoformat(),
                 "db_note": str(exc),
                 "b3_citation_compliant": True,
@@ -830,9 +831,16 @@ def api_acceptance_gate(chart_id: str) -> dict[str, Any]:
 
 
 @router.get("/mimamsa/acceptance_gate")
-def api_acceptance_gate_native() -> dict[str, Any]:
-    """MI-5-3 acceptance gate for native chart."""
+def api_acceptance_gate_native(chart_id: str) -> dict[str, Any]:
+    """
+    MI-5-3 acceptance gate.
+
+    chart_id is a required query parameter (e.g. the native chart UUID) — it is
+    sourced from the request, never from a module-level constant.
+    """
     try:
-        return run_acceptance_gate()
+        return run_acceptance_gate(chart_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))

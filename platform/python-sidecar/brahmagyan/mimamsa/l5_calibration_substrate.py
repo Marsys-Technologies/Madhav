@@ -58,7 +58,6 @@ SOURCE_CITATION = (
     "l5_event_chart_state_index.py (MI-5-2); "
     "FORENSIC v8.0 §5.1 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
 )
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 HOLDOUT_BOUNDARY = "2020-01-01"
 
 # Outcomes that count as "concordant" (correct domain prediction)
@@ -252,6 +251,7 @@ def _provenance_envelope() -> dict[str, Any]:
 # ── DB persistence (optional) ─────────────────────────────────────────────────
 
 def seed_calibration_substrate(
+    chart_id: str,
     *,
     dry_run: bool = False,
     verbose: bool = False,
@@ -266,6 +266,7 @@ def seed_calibration_substrate(
         source_citation = SOURCE_CITATION
 
     Args:
+        chart_id: Chart UUID to scope the persisted fact to (required).
         dry_run: Compute but do not write.
         verbose: Log computation details.
 
@@ -316,7 +317,7 @@ def seed_calibration_substrate(
 
         fact_id = str(uuid.uuid5(
             uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8"),
-            f"BRAHMA-MI-5-3:concordance_summary:{NATIVE_CHART_ID}"
+            f"BRAHMA-MI-5-3:concordance_summary:{chart_id}"
         ))
 
         with psycopg.connect(db_url) as conn:
@@ -333,7 +334,7 @@ def seed_calibration_substrate(
                     """,
                     (
                         fact_id,
-                        NATIVE_CHART_ID,
+                        chart_id,
                         "mimamsa.calibration",
                         "concordance_summary",
                         _json.dumps({

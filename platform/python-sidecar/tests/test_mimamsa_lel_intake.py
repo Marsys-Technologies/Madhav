@@ -32,6 +32,10 @@ def _get_module():
     return mod
 
 
+# Native chart UUID — every seed call is chart-scoped since migration 423.
+_TEST_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+
 # ── Corpus integrity tests ─────────────────────────────────────────────────────
 
 class TestCorpusIntegrity:
@@ -220,23 +224,23 @@ class TestSeedDryRun:
 
     def test_dry_run_returns_57_total(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         assert result["total"] == 57
 
     def test_dry_run_is_flagged(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         assert result["dry_run"] is True
 
     def test_dry_run_source_citation_non_empty(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         assert result["source_citation"], "source_citation must be non-empty"
         assert "LIFE_EVENT_LOG" in result["source_citation"]
 
     def test_dry_run_has_provenance_envelope(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         env = result.get("provenance_envelope", {})
         assert env, "provenance_envelope must be present"
         assert env.get("source") == "mimamsa.lel_intake"
@@ -245,17 +249,109 @@ class TestSeedDryRun:
 
     def test_dry_run_no_leakage_check(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         assert "no_leakage_check" in result
         assert "PASS" in result["no_leakage_check"]
 
     def test_dry_run_confidence_in_range(self):
         mod = _get_module()
-        result = mod.seed_lel_intake(dry_run=True)
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
         confidence = result["provenance_envelope"]["confidence"]
         assert 0.0 <= confidence <= 1.0, (
             f"provenance confidence out of range: {confidence}"
         )
+
+
+# ── Chart-scoping tests (migration 423) ───────────────────────────────────────
+
+class TestSeedChartScoping:
+    """
+    seed_lel_intake is chart-scoped since migration 423:
+      - chart_id is required (keyword-only, no default),
+      - dry_run still yields 57 rows,
+      - the brahma INSERT is chart-scoped (chart_id + recorded_at columns,
+        ON CONFLICT (chart_id, event_id)).
+    """
+
+    def test_seed_requires_chart_id(self):
+        """Calling without chart_id raises TypeError (keyword-only, no default)."""
+        mod = _get_module()
+        with pytest.raises(TypeError):
+            mod.seed_lel_intake(dry_run=True)  # type: ignore[call-arg]
+
+    def test_seed_rejects_bad_chart_id(self):
+        """A non-UUID chart_id raises ValueError."""
+        mod = _get_module()
+        with pytest.raises(ValueError):
+            mod.seed_lel_intake(chart_id="not-a-uuid", dry_run=True)
+
+    def test_dry_run_yields_57_rows(self):
+        mod = _get_module()
+        result = mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=True)
+        assert result["total"] == 57
+
+    def test_sentinel_value(self):
+        """PRE_INSTRUMENT_SENTINEL is the pre-instrument recorded_at stamp."""
+        mod = _get_module()
+        assert mod.PRE_INSTRUMENT_SENTINEL == "2000-01-01T00:00:00+00:00"
+
+    def test_insert_sql_is_chart_scoped(self):
+        """
+        The brahma-schema INSERT must carry chart_id + recorded_at columns and
+        conflict on (chart_id, event_id). Assert against the SQL passed to the
+        mocked cursor — no live DB.
+        """
+        mod = _get_module()
+
+        # Probe cursor: report the brahma schema (domain column present).
+        probe_cursor = MagicMock()
+        probe_cursor.__enter__ = MagicMock(return_value=probe_cursor)
+        probe_cursor.__exit__ = MagicMock(return_value=False)
+        probe_cursor.fetchone = MagicMock(return_value=("domain",))
+
+        # Write cursor: capture every execute() SQL string.
+        executed_sql: list[str] = []
+        write_cursor = MagicMock()
+        write_cursor.__enter__ = MagicMock(return_value=write_cursor)
+        write_cursor.__exit__ = MagicMock(return_value=False)
+        write_cursor.rowcount = 1
+        write_cursor.statusmessage = "INSERT 0 1"
+
+        def _capture(sql, params=None):
+            executed_sql.append(sql)
+
+        write_cursor.execute = MagicMock(side_effect=_capture)
+
+        cursors = [probe_cursor, write_cursor]
+
+        mock_conn = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor = MagicMock(side_effect=lambda: cursors.pop(0))
+        mock_conn.commit = MagicMock()
+
+        with patch.object(mod, "_get_conn", return_value=mock_conn):
+            mod.seed_lel_intake(chart_id=_TEST_CHART_ID, dry_run=False)
+
+        life_events_sql = [s for s in executed_sql if "INSERT INTO life_events" in s]
+        assert life_events_sql, "expected an INSERT INTO life_events statement"
+        le_sql = life_events_sql[0]
+        assert "chart_id" in le_sql
+        assert "recorded_at" in le_sql
+        assert "ON CONFLICT (chart_id, event_id)" in le_sql
+        # Prod HYBRID schema: the brahma INSERT must also write the legacy
+        # NOT NULL superset (category / chart_state / source_section /
+        # build_id / provenance) or prod raises NotNullViolation.
+        assert "category" in le_sql
+        assert "chart_state" in le_sql
+        assert "provenance" in le_sql
+        assert "source_section" in le_sql
+        assert "build_id" in le_sql
+
+        eci_sql = [s for s in executed_sql if "INSERT INTO event_chart_state_index" in s]
+        assert eci_sql, "expected an INSERT INTO event_chart_state_index statement"
+        assert "chart_id" in eci_sql[0]
+        assert "ON CONFLICT (chart_id, event_id)" in eci_sql[0]
 
 
 # ── Mock lel_query tests ──────────────────────────────────────────────────────
@@ -547,7 +643,7 @@ class TestBuildRow:
         mod = _get_module()
         required_keys = {
             "event_id", "lel_id", "event_date", "event_type",
-            "description", "domain", "outcome_observed",
+            "description", "domain", "outcome_observed", "outcome_quality",
             "source_citation", "dasha_md", "dasha_ad",
             "key_transits", "convergence",
         }
@@ -565,3 +661,27 @@ class TestBuildRow:
             assert isinstance(row["key_transits"], list), (
                 f"key_transits must be list for {event['lel_id']}"
             )
+
+    def test_outcome_observed_is_boolean(self):
+        """
+        Prod life_events.outcome_observed is BOOLEAN. _build_row must emit a
+        bool (True when the event carries a recorded outcome), while the
+        match-quality string flows into outcome_quality.
+        """
+        mod = _get_module()
+        for event in mod.LEL_CORPUS:
+            row = mod._build_row(event)
+            assert isinstance(row["outcome_observed"], bool), (
+                f"outcome_observed must be bool for {event['lel_id']}, "
+                f"got {type(row['outcome_observed'])}"
+            )
+            assert row["outcome_observed"] == (event.get("outcome") is not None)
+            # outcome_quality preserves the raw match-quality string.
+            assert row["outcome_quality"] == event.get("outcome")
+
+    def test_convergence_uses_quality_string_not_bool(self):
+        """convergence is derived from the quality string, not the boolean."""
+        mod = _get_module()
+        for event in mod.LEL_CORPUS:
+            row = mod._build_row(event)
+            assert row["convergence"] == mod._convergence(row["outcome_quality"])

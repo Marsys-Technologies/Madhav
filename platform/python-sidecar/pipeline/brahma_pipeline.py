@@ -280,7 +280,7 @@ def _l5_mimamsa(build_id: str, chart_id: str) -> dict:
 
     try:
         from brahmagyan.mimamsa.lel_intake import seed_lel_intake
-        result = seed_lel_intake()
+        result = seed_lel_intake(chart_id=chart_id)
         n = result.get("seeded", 0) if isinstance(result, dict) else int(result or 0)
         counts["life_events"] = n
         _emit(build_id, chart_id, "mimamsa.lel_intake", "seed", "complete",

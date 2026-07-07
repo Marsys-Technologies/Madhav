@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 SOURCE_CITATION = "LIFE_EVENT_LOG_v1_2.md (v1.7, native-disclosed)"
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 VOLUME_FLOOR = 57
 
 # Training / hold-out boundary (ISO date string — exclusive upper bound for training)
@@ -206,6 +205,7 @@ def get_split_counts(rows: list[dict[str, Any]] | None = None) -> dict[str, int]
 
 def seed_lel_intake(
     *,
+    chart_id: str,
     dry_run: bool = False,
     verbose: bool = False,
 ) -> dict[str, Any]:
@@ -216,6 +216,8 @@ def seed_lel_intake(
     is_training / is_holdout / anchor_match via a patch query.
 
     Args:
+        chart_id: Chart UUID to scope the ingested rows to (required). The 57
+            LEL events belong to Abhisek Mohanty; chart-scoped since migration 423.
         dry_run: If True, compute rows but do not write to DB.
         verbose: Log each row.
 
@@ -231,11 +233,11 @@ def seed_lel_intake(
     for r in rows:
         assert r["source_citation"], f"Missing source_citation on {r['lel_id']}"
 
-    base_result = _base_seed(dry_run=dry_run, verbose=verbose)
+    base_result = _base_seed(chart_id=chart_id, dry_run=dry_run, verbose=verbose)
 
     # Back-fill training/holdout/anchor_match if not dry_run
     if not dry_run:
-        _backfill_training_flags(rows)
+        _backfill_training_flags(rows, chart_id=chart_id)
 
     return {
         **base_result,
@@ -260,10 +262,15 @@ def seed_lel_intake(
     }
 
 
-def _backfill_training_flags(rows: list[dict[str, Any]]) -> None:
+def _backfill_training_flags(
+    rows: list[dict[str, Any]],
+    *,
+    chart_id: str,
+) -> None:
     """
     Back-fill is_training / is_holdout / anchor_match columns in life_events.
     These columns may not exist in older schema — use ALTER TABLE IF NOT EXISTS pattern.
+    Scoped to (chart_id, event_id) since migration 423 made life_events chart-scoped.
     """
     db_url = os.environ.get("DATABASE_URL", "")
     if not db_url:
@@ -293,9 +300,10 @@ def _backfill_training_flags(rows: list[dict[str, Any]]) -> None:
                         SET is_training  = %s,
                             is_holdout   = %s,
                             anchor_match = %s
-                        WHERE event_id = %s::UUID
+                        WHERE event_id = %s::UUID AND chart_id = %s::UUID
                         """,
-                        (r["is_training"], r["is_holdout"], r["anchor_match"], r["event_id"]),
+                        (r["is_training"], r["is_holdout"], r["anchor_match"],
+                         r["event_id"], chart_id),
                     )
             conn.commit()
     except Exception as exc:  # noqa: BLE001

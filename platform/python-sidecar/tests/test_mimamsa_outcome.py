@@ -278,14 +278,14 @@ class TestRecordOutcomeShape:
             "prediction_state", "updated_calibration", "provenance_envelope",
         }
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         missing = required_keys - set(result.keys())
         assert not missing, f"Missing top-level keys: {missing}"
 
     def test_brier_score_in_range(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert 0.0 <= result["brier_score"] <= 1.0, (
             f"brier_score={result['brier_score']} not in [0,1]"
         )
@@ -293,7 +293,7 @@ class TestRecordOutcomeShape:
     def test_brier_score_in_range_falsified(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, False)
+            result = mod.record_outcome(TEST_PREDICTION_ID, False, chart_id=NATIVE_CHART_ID)
         assert 0.0 <= result["brier_score"] <= 1.0, (
             f"brier_score={result['brier_score']} not in [0,1]"
         )
@@ -301,25 +301,25 @@ class TestRecordOutcomeShape:
     def test_prediction_state_confirmed_when_true(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["prediction_state"] == "confirmed"
 
     def test_prediction_state_falsified_when_false(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, False)
+            result = mod.record_outcome(TEST_PREDICTION_ID, False, chart_id=NATIVE_CHART_ID)
         assert result["prediction_state"] == "falsified"
 
     def test_prediction_id_echoed(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["prediction_id"] == TEST_PREDICTION_ID
 
     def test_ok_is_true(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["ok"] is True
 
 
@@ -364,7 +364,7 @@ class TestProvenanceEnvelope:
             "l1_ground_truth", "b3_citation_compliant", "leakage_guard_passed",
         }
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         env = result["provenance_envelope"]
         missing = required - set(env.keys())
         assert not missing, f"Missing provenance_envelope keys: {missing}"
@@ -372,19 +372,19 @@ class TestProvenanceEnvelope:
     def test_source_is_mimamsa_outcome(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["provenance_envelope"]["source"] == "mimamsa.outcome"
 
     def test_asset_is_mi_5_3(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["provenance_envelope"]["asset"] == "MI-5-3"
 
     def test_l1_ground_truth_references_forensic(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         l1 = result["provenance_envelope"]["l1_ground_truth"]
         assert "FORENSIC" in l1
         assert "LEL" in l1
@@ -392,20 +392,20 @@ class TestProvenanceEnvelope:
     def test_b3_citation_compliant_is_bool(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert isinstance(result["provenance_envelope"]["b3_citation_compliant"], bool)
 
     def test_leakage_guard_passed_is_true(self):
         """Leakage guard must pass for a valid prediction (created in the past)."""
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         assert result["provenance_envelope"]["leakage_guard_passed"] is True
 
     def test_algorithm_mentions_brier(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         algo = result["provenance_envelope"]["algorithm"]
         assert "Brier" in algo or "brier" in algo
 
@@ -456,7 +456,7 @@ class TestLeakageGuard:
 
         with self._wrap_mock(mock_conn):
             with pytest.raises(ValueError, match="LEAKAGE"):
-                mod.record_outcome(TEST_PREDICTION_ID, True)
+                mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
 
     def test_valid_past_prediction_passes_guard(self):
         """Prediction created 24h ago → leakage guard passes."""
@@ -474,7 +474,7 @@ class TestLeakageGuard:
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
         with self._wrap_mock(mock_conn):
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
 
         assert result["provenance_envelope"]["leakage_guard_passed"] is True
 
@@ -487,22 +487,22 @@ class TestValidationErrors:
     def test_invalid_technique_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="technique"):
-            mod.record_outcome(TEST_PREDICTION_ID, True, technique="invalid_system")
+            mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID, technique="invalid_system")
 
     def test_invalid_ayanamsha_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="ayanamsha"):
-            mod.record_outcome(TEST_PREDICTION_ID, True, ayanamsha_id="ptolemy")
+            mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID, ayanamsha_id="ptolemy")
 
     def test_empty_prediction_id_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="prediction_id"):
-            mod.record_outcome("", True)
+            mod.record_outcome("", True, chart_id=NATIVE_CHART_ID)
 
     def test_whitespace_prediction_id_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="prediction_id"):
-            mod.record_outcome("   ", True)
+            mod.record_outcome("   ", True, chart_id=NATIVE_CHART_ID)
 
     def test_missing_prediction_in_db_raises(self):
         """prediction_id not found in phala_anchors → ValueError."""
@@ -523,17 +523,41 @@ class TestValidationErrors:
                     return_value="postgresql://mock/db"):
             with _patch("psycopg.connect", return_value=mock_conn):
                 with pytest.raises(ValueError, match="not found"):
-                    mod.record_outcome("PH-NONEXISTENT.2026H1.FAKE", True)
+                    mod.record_outcome("PH-NONEXISTENT.2026H1.FAKE", True, chart_id=NATIVE_CHART_ID)
+
+    def test_record_outcome_requires_chart_id(self):
+        """chart_id is required — None or empty raises ValueError (no native default)."""
+        mod = _get_outcome_module()
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.record_outcome(TEST_PREDICTION_ID, True)
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.record_outcome(TEST_PREDICTION_ID, True, chart_id="")
+
+    def test_query_calibration_requires_chart_id(self):
+        """chart_id is required for query_calibration — no native default."""
+        mod = _get_outcome_module()
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.query_calibration()
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.query_calibration(chart_id="")
+
+    def test_run_acceptance_gate_requires_chart_id(self):
+        """chart_id is required for run_acceptance_gate — no native default."""
+        mod = _get_outcome_module()
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.run_acceptance_gate()
+        with pytest.raises(ValueError, match="chart_id"):
+            mod.run_acceptance_gate(chart_id="")
 
     def test_invalid_query_calibration_technique_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="technique"):
-            mod.query_calibration(technique="invalid")
+            mod.query_calibration(chart_id=NATIVE_CHART_ID, technique="invalid")
 
     def test_invalid_query_calibration_ayanamsha_raises(self):
         mod = _get_outcome_module()
         with pytest.raises(ValueError, match="ayanamsha"):
-            mod.query_calibration(ayanamsha_id="ptolemy")
+            mod.query_calibration(chart_id=NATIVE_CHART_ID, ayanamsha_id="ptolemy")
 
 
 # ── §7 — updated_calibration structure ───────────────────────────────────────
@@ -573,21 +597,21 @@ class TestUpdatedCalibration:
         mod = _get_outcome_module()
         required = {"technique", "ayanamsha_id", "brier_score", "sample_size", "computed_at"}
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         missing = required - set(result["updated_calibration"].keys())
         assert not missing, f"Missing updated_calibration keys: {missing}"
 
     def test_updated_calibration_brier_in_range(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         cal = result["updated_calibration"]
         assert 0.0 <= cal["brier_score"] <= 1.0
 
     def test_updated_calibration_sample_size_positive(self):
         mod = _get_outcome_module()
         with self._mock_db():
-            result = mod.record_outcome(TEST_PREDICTION_ID, True)
+            result = mod.record_outcome(TEST_PREDICTION_ID, True, chart_id=NATIVE_CHART_ID)
         cal = result["updated_calibration"]
         assert cal["sample_size"] >= 1
 

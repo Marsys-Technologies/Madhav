@@ -45,7 +45,6 @@ Environment variables:
     GCP_PROJECT        — GCP project ID (default: marsys-jis)
     GCS_BUCKET         — GCS bucket for Parquet staging (default: marsys-brahma-exports)
     BQ_DATASET         — BigQuery dataset (default: brahma_l5_olap)
-    NATIVE_CHART_ID    — Native chart UUID (default: 482012f1-...)
 
 Authors:  Brahma MI-5-5 session
 Version:  1.0 — 2026-06-04
@@ -67,10 +66,6 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-
-NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
-)
 
 GCP_PROJECT   = os.environ.get("GCP_PROJECT",  "madhav-astrology")
 GCS_BUCKET    = os.environ.get("GCS_BUCKET",   "madhav-brahma-olap")
@@ -389,6 +384,7 @@ def _assert_not_prediction_feed(table_name: str, is_lel: bool) -> None:
 def export_table(
     table_key: str,
     *,
+    chart_id: str,
     export_timestamp: str | None = None,
     dry_run: bool = False,
     write_log: bool = True,
@@ -398,6 +394,7 @@ def export_table(
 
     Args:
         table_key:        Key in _TABLE_SPECS (e.g. 'chart_facts').
+        chart_id:         Chart UUID this export is attributed to (required).
         export_timestamp: ISO timestamp string for GCS path partitioning.
                           Defaults to current UTC time.
         dry_run:          If True, skip GCS/BQ writes and log-writes.
@@ -508,7 +505,7 @@ def export_table(
             "source": "brahmagyan.mimamsa.export_to_bigquery",
             "asset":  "MI-5-5",
             "layer":  "L5 Mīmāṃsā",
-            "native_chart_id": NATIVE_CHART_ID,
+            "native_chart_id": chart_id,
             "gcp_project": GCP_PROJECT,
             "bq_dataset":  BQ_DATASET,
             "gcs_bucket":  GCS_BUCKET,
@@ -520,6 +517,7 @@ def export_table(
 
 
 def run_export(
+    chart_id: str,
     tables: list[str] | None = None,
     *,
     include_life_events: bool = False,
@@ -529,6 +527,7 @@ def run_export(
     Run the full MI-5-5 export pipeline.
 
     Args:
+        chart_id:            Chart UUID this export run is attributed to (required).
         tables:              List of table_keys to export. Default: chart_facts + bodha_signals.
         include_life_events: If True, also export life_events_calibration.
                              CALIBRATION ONLY — never feeds prediction generation.
@@ -549,7 +548,7 @@ def run_export(
     for tkey in tables:
         logger.info("=== Exporting: %s ===", tkey)
         try:
-            result = export_table(tkey, export_timestamp=ts, dry_run=dry_run)
+            result = export_table(tkey, chart_id=chart_id, export_timestamp=ts, dry_run=dry_run)
             results.append(result)
             logger.info(
                 "DONE: %s — %d rows → %s",
@@ -703,6 +702,11 @@ def main() -> None:
         )
     )
     parser.add_argument(
+        "--chart-id",
+        required=True,
+        help="Chart UUID this export run is attributed to (required — no native default).",
+    )
+    parser.add_argument(
         "--tables",
         nargs="*",
         choices=list(_TABLE_SPECS.keys()),
@@ -749,6 +753,7 @@ def main() -> None:
         return
 
     results = run_export(
+        args.chart_id,
         tables=args.tables,
         include_life_events=args.include_life_events,
         dry_run=args.dry_run,
