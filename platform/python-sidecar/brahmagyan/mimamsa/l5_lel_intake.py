@@ -311,6 +311,7 @@ def lel_query(
     training_only: bool = False,
     holdout_only: bool = False,
     limit: int = 100,
+    chart_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Query LEL intake events with optional filters.
@@ -325,12 +326,16 @@ def lel_query(
         training_only: Return only training-partition events (< 2020-01-01).
         holdout_only:  Return only hold-out events (>= 2020-01-01).
         limit:         Max rows to return.
+        chart_id:      Chart UUID — real per-chart filter since migration 423
+                       (LEL is chart-scoped). Forwarded to the base query.
 
     Returns:
         {events:[...], total_count, split, filter_applied, provenance_envelope}
     """
     from brahmagyan.mimamsa.lel_intake import lel_query as _base_query
-    result = _base_query(domain=domain, date_from=date_from, date_to=date_to, limit=limit)
+    result = _base_query(
+        domain=domain, date_from=date_from, date_to=date_to, limit=limit, chart_id=chart_id
+    )
 
     # Augment events with training/holdout flags and anchor_match
     rows_map = {r["lel_id"]: r for r in build_intake_rows()}
@@ -358,6 +363,7 @@ def lel_query(
         "total_count":  len(augmented),
         "split":        split,
         "filter_applied": {
+            "chart_id":       chart_id,
             "domain":         domain,
             "date_from":      date_from,
             "date_to":        date_to,

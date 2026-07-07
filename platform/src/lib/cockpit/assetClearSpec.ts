@@ -168,4 +168,17 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   mi_abhilekha: [
     { sql: 'DELETE FROM mimamsa_journal WHERE chart_id = $1 AND answered_at IS NULL' },
   ],
+
+  // ── LEL — user-authored source data (BA-LEL R2.2 Step 1) ──────────────────────
+  // lel_events (migration 423) is a per-chart, user-authored, IRREPLACEABLE source
+  // corpus (has_writer=false): the native's real recorded life events + their
+  // chart-state index, intaken via the LEL save API — NOT regenerable by any build.
+  // Its count_sql is 'SELECT count(*) FROM life_events WHERE chart_id = $1', which
+  // deriveDeleteSqlFromCountSql() WOULD transform into a per-chart DELETE — wiping
+  // the 57 native events (and, via a companion op, event_chart_state_index) on any
+  // clear/rebuild. That is exactly the JL-010 / JL-020 IRREPLACEABLE-loss failure
+  // mode. null disables the auto-derived destructive DELETE entirely: a per-chart
+  // clear/rebuild leaves every life_events + event_chart_state_index row intact.
+  // LEL rows are only ever mutated by the intake API, never by the asset build path.
+  lel_events: null,
 }

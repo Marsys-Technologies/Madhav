@@ -78,6 +78,7 @@ export const ASSET_NAMES = {
   ph_rectification:  { sanskrit: 'Jananakāla-śuddhi', english: 'Birth-time rectification',  subtitle: 'PyJHora ascendant scan ±90 min; D43 no-auto-override; staged for review',  layer: 'L4' },
 
   // ── L5 Mīmāṃsā — Learning ────────────────────────────────────────────────
+  lel_events:      { sanskrit: 'Jīvanaghaṭanā Mūla', english: 'Life Event Log (source)', subtitle: 'Per-chart user-authored life events — availability-driven calibration, no leakage', layer: 'L5' },
   mi_lel_intake:   { sanskrit: 'Jīvanaghaṭanā',  english: 'Life Event Log',    subtitle: '57 events — held-out, isolated from generation',  layer: 'L5' },
   mi_ledger:       { sanskrit: 'Pratijñākoṣa',   english: 'Prediction Ledger', subtitle: 'Log before outcome — no leakage',               layer: 'L5' },
   mi_outcome:      { sanskrit: 'Phala Darpaṇa',  english: 'Outcome Record',    subtitle: 'Brier / calibration / timing scoring',          layer: 'L5' },

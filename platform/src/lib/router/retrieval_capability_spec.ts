@@ -533,12 +533,15 @@ const lel_query: RetrievalCapabilityEntry = {
     'that have already occurred (e.g. inferring marriage from dasha windows instead of reading the ' +
     'recorded marriage date).',
   data_surface:
-    'L1 — table life_events (migration 017). Fields: event_id, event_date, category in {career, ' +
-    'health, family, relationship, spiritual, travel, finance, education, residential, creative, ' +
-    'loss, other}, description, significance in {major, moderate, minor}, chart_state (JSON), ' +
-    'source_section. 36 events at v1.2 / v1.6.',
+    'L1 — table life_events, chart-scoped since migration 423 (BA-LEL R2.2 Step 1): per-chart, ' +
+    'keyed (chart_id, event_id), has_writer=false source data (asset lel_events). Fields: event_id, ' +
+    'event_date, category in {career, health, family, relationship, spiritual, travel, finance, ' +
+    'education, residential, creative, loss, other}, description, significance in {major, moderate, ' +
+    'minor}, chart_state (JSON via event_chart_state_index), source_section. Availability-driven: a ' +
+    'chart with no intaken events returns an honest empty-with-reason envelope (structural/no-lel).',
   supported_params:
-    '{ start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
+    '{ chart_id: UUID (REQUIRED — per-chart scoped since migration 423); ' +
+    'start_date?: YYYY-MM-DD; end_date?: YYYY-MM-DD; ' +
     'category?: "career"|"health"|"family"|"relationship"|"spiritual"|"travel"|"finance"|"education"|"residential"|"creative"|"loss"|"other"; ' +
     'significance?: "major"|"moderate"|"minor"; limit?: number (default 50, max 50) }',
   optimal_patterns: [

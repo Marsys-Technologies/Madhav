@@ -345,8 +345,11 @@ class TestLelQueryMock:
         env = result.get("provenance_envelope", {})
         assert env, "provenance_envelope must be present"
         assert env["source"] == "mimamsa.lel_intake"
-        assert env["asset"] == "MI-5-1"
-        assert env["total_events"] == 57
+        # BA-LEL R2.2 Step 1: chart-scoped envelope — asset is lel_events (per_chart),
+        # total_events reflects the actual per-chart count (not a hardcoded 57).
+        assert env["asset"] == "lel_events"
+        assert env["scope"] == "per_chart"
+        assert env["total_events"] == 1  # mock count
         assert env["b3_compliant"] is True
 
     def test_query_no_leakage_note_present(self):

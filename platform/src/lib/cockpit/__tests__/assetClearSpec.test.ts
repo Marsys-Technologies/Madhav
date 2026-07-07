@@ -76,6 +76,21 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(predictionsOp, 'mi_bhavisya must clear mimamsa_predictions').toBeTruthy()
     expect(predictionsOp!.sql).toMatch(/outcome_observed IS NULL/)
   })
+
+  it('lel_events is an explicit null — a clear/rebuild leaves LEL rows intact (JL-010/JL-020 IRREPLACEABLE)', () => {
+    // life_events + event_chart_state_index are user-authored source data (migration
+    // 423, has_writer=false). A per-chart clear must NEVER delete them.
+    expect('lel_events' in EXPLICIT_CLEAR_OPS).toBe(true)
+    expect(EXPLICIT_CLEAR_OPS['lel_events']).toBeNull()
+
+    // Destructive-op guard: prove the null is load-bearing. The registered count_sql
+    // WOULD auto-transform into a per-chart DELETE if not explicitly skipped — that is
+    // the exact irreplaceable-loss failure mode the null prevents.
+    const lelCountSql = 'SELECT count(*) FROM life_events WHERE chart_id = $1'
+    expect(deriveDeleteSqlFromCountSql(lelCountSql))
+      .toBe('DELETE FROM life_events WHERE chart_id = $1')
+    // Because the explicit spec is null, that derived DELETE is never executed.
+  })
 })
 
 describe('deriveDeleteSqlFromCountSql', () => {
