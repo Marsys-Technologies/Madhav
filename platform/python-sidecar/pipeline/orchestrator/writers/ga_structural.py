@@ -12,7 +12,11 @@ from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 class GaStructuralWriter(WriterBase):
     asset_id = 'ga_structural'
     has_substeps = True
-    depends_on = ['ga_condition', 'ga_nakshatra']
+    # JL-026 (2026-07-07): ga_condition edge removed (migration 419) — it existed
+    # only to serialize the graha_yuddha delete-clobber, now single-writer in
+    # ga_structural. The authoritative dependency set lives in asset_registry.depends_on
+    # (DB), which the scheduler reads; this attr is a documentation subset.
+    depends_on = ['ga_nakshatra']
     source_paths = ['platform/python-sidecar/ga_writers/ga_structural_writer.py']
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
