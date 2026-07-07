@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.27
+version: 6.28
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,21 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.28 (2026-07-08, BA-R4-WRAP W2a CLOSED — LEL churn: intake + strict-zero + graha_yuddha floor):
+    **W2a done end-to-end + independently verified (PR #459).** Conductor + subagent-swarm (5 implementers +
+    verifier≠implementer). Clear-safety PROVEN vs prod (lel_events:null skip honored by clear/execute route
+    before any per-chart DELETE). **57 LEL events intaken @ 482012f1** — verified prod (57 native / 0 Abhinandan
+    / 57 event_chart_state_index / recorded_at=pre_instrument sentinel 2000-01-01); reconciled vs markdown
+    (spot-5 + count). Fixed TWO latent prod-schema type bugs in the stale intake (hybrid legacy NOT NULL cols;
+    outcome_observed boolean vs quality-string). **Strict-zero NATIVE_CHART_ID** eradicated across ALL
+    brahmagyan/mimamsa + services/ph_* (both grep-gates EMPTY; engine.py de-hardcoded with 10:43 rectification
+    math UNTOUCHED). mi_jivanaghatana markdown-read path deleted (DB is sole source). **JL-027 FLOOR implemented
+    in code** (graha_yuddha winner/loser=NULL + reason; orb kept; proxy removed) — CLOSES when visible in W3
+    build. Verifier ALL PASS (full suite 2941 passed; 29 pre-existing unrelated failures; no breaking runtime
+    caller). **REMAINING for W2 = W2b** (D: judgment_flags persistence+wiring; E: LEL intake write API +
+    debounce + leakage routing + pool migration) — net-new builds paced to a dedicated session by the native.
+    Brief: `CLAUDECODE_BRIEF_BA_R4_WRAP_W2b_v1_0.md`. Native chart 482012f1 NOT rebuilt (built at W4, explicit GO).
+    **NEXT = W2b**, then W3 (Abhinandan re-zero + FREEZE) on the native's word, then W4 on explicit ledger GO.
   - v6.27 (2026-07-08, BA-R4-WRAP W1 CLOSED — LEL schema deployed + JL-027 ruled):
     **W1 (R2.2 Step 1) DONE end-to-end this session (prod write + interactive native).** PR **#457** merged
     (single R2.2 PR: mig 423 + LEL code surfaces + tests + JL-027 options doc), CI 10/10 green, squash-merged

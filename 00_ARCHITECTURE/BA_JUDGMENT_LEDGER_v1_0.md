@@ -404,7 +404,7 @@ values are frozen:
 - **Consumer:** `ga_structural._build_graha_yuddha_rows`; downstream graha_yuddha readers (bo_*/ka_* strength/affliction); native chart at R4.
 - **Date:** 2026-07-07
 - **Native ruling (2026-07-08, BA-R4-WRAP W1→W2 boundary):** **RATIFY OPTION A (Parāśari northern-latitude rule) as the doctrine, FLOOR NOW.** Options surfaced with classical citations in `JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md` (BPHS graha-yuddha śloka + Bṛhat Saṃhitā ch.17 + Sūrya Siddhānta ch.7). Native picked the mainstream Parāśari northern-latitude rule as authoritative, BUT ships the **FLOOR** now (`winner=NULL`, `loser=NULL`, `reason='no_ratified_classical_rule'` on all `graha_yuddha` rows) because implementing A is `[EXTERNAL_COMPUTATION_REQUIRED]` (Swiss Ephemeris ecliptic latitude per graha → new L1 fact + derivation ledger) + owes §5 critical-edition verse verification — neither lands in-session. **The uncited longitude proxy is REMOVED, never shipped.** Option A implementation deferred to R5 (post-runway). The native chart at W4 therefore carries the honest floor, not an uncited winner.
-- **Status:** **RULED (2026-07-08) — disposition = "Option A ratified, floored pending data".** Implementation of the FLOOR is W2.3 (deferred with W2 to a dedicated next session per the native's pace decision); JL-027 CLOSES when the floor ships (before W3). Not yet implemented in code as of this session close — `_build_graha_yuddha_rows` (L4815) + `_build_graha_yuddha_per_varga_rows` (L5198) still emit the proxy and MUST be floored in W2.3 before any native rebuild.
+- **Status:** **RULED (2026-07-08) — disposition = "Option A ratified, floored pending data"; FLOOR IMPLEMENTED IN CODE (W2a, PR #459).** `_build_graha_yuddha_rows` now emits winner/loser=NULL + `reason='no_ratified_classical_rule'` (`floored:true`), keeps `orb_deg`; the uncited longitude proxy is REMOVED; `_build_graha_yuddha_per_varga_rows` emits orb only (no winner/loser). Independently verified in code + tests. JL-027 **CLOSES** once the floor is visible in a prod build (first Abhinandan rebuild at W3 shows floored graha_yuddha rows). Option A (Swiss Ephemeris latitude) implementation remains deferred to R5.
 
 ---
 
@@ -438,7 +438,7 @@ values are frozen:
 | JL-024 | BA Phase-3 | Operational: rebuild Abhinandan fresh, never restore snapshot | RATIFIED — HONORED | N/A — protects insurance snapshot |
 | JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — DONE | Yes — additive changelog entry |
 | JL-026 | BA Phase-3 → P4 R2.1 | Audit: ga_structural↔ga_condition dual-write (graha_yuddha) | RESOLVED — single-writer + edge removed (mig 419) | Yes — code + mig 419 DOWN |
-| JL-027 | BA Phase-4 R2.1 | Correctness: graha_yuddha winner rule not true classical rule | RULED (2026-07-08) — Option A (northern-latitude) ratified, FLOOR now; floor impl = W2.3 (CLOSES when floor ships, before W3) | Yes — compute change + optional L1 latitude fact |
+| JL-027 | BA Phase-4 R2.1 | Correctness: graha_yuddha winner rule not true classical rule | RULED + FLOOR IMPLEMENTED in code (W2a, PR #459); CLOSES when floor visible in W3 Abhinandan build; Option A impl → R5 | Yes — compute change + optional L1 latitude fact |
 
 ---
 
