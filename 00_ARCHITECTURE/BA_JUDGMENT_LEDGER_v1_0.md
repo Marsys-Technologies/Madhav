@@ -111,7 +111,12 @@ values are frozen:
 - **Reversibility:** Ontology upsert + prior_version bump; no formula_version change needed.
 - **Consumer:** P5B `ph_nimitta` posterior = base_rate × lifts; CLAUDECODE_BRIEF_BA_P5B_PHALA_V2 v1.1 Step 1 gate + exit-gate line.
 - **Date:** 2026-07-04
-- **Status:** RATIFIED-AS-DRAFTED (OPEN — closes at P5B anchor freeze after native glance)
+- **Native glance + close (2026-07-07, BA_PHASE4_RUNWAY_PLAN R1.1 — Ācārya-Pratinidhi, native-delegated):** age-banded base-rate table (22 classes × 5 bands) surfaced from `brahma_event_ontology` v1.0. Ruling, four points:
+  1. **EDIT — bereavement** age-band weights `0.05/0.15/0.30/0.30/0.30` → **`0.10/0.15/0.30/0.35/0.40`** (rising with elder-cohort mortality). Applied via ontology upsert; `version` 1.0 → **1.1** ontology-wide (migration 421). All other 21 rows ratified as-drafted.
+  2. **STRUCTURAL DIRECTIVE — normalization at lookup.** Rows are *relative* weights with inconsistent per-row sums (observed range 0.81–1.30); therefore `ph_nimitta`'s `base_rate` consumption **MUST row-normalize the age-band vector to sum 1.0 at lookup** — this is code, not convention. Obligation: record as a `brahma_formula_constants` note (class=engineering) + a unit test asserting the normalized lookup. **Carried into R2 code churn** (L4 `ph_nimitta`); MUST be live before R4 native L4 anchors consume base_rate (R4 gate: native anchors' base_rate factors trace to R1.1-confirmed values).
+  3. **KEEP — nonzero 60+ tails** on `career_entry` (0.01) and `exam_outcome` (0.01): rare-not-impossible doctrine; not zeroed.
+  4. **CONFIRM — `separation` 26–40 peak (0.40)** as a conscious ruling on demographic-context basis (not spread later); ledger-noted.
+- **Status:** **CLOSED (2026-07-07)** — native glance done, four points recorded, ontology → v1.1. Point 2 spawns an R2 implementation obligation (ph_nimitta row-normalization + unit test + formula-constants note) tracked to R4 gate. Reversible via ontology upsert + version bump; L5 re-weights from outcomes. `[verify-against: ledger]`
 
 ---
 
@@ -399,7 +404,7 @@ values are frozen:
 | JL-006 | P3B | Formula: bala_gate | RATIFIED | Yes — formula_version + L2 regen |
 | JL-007 | P3B | Formula: verification_certainty | RATIFIED | Yes — formula_version + L2 regen |
 | JL-008 | P3A/B | Schema: domain taxonomy | RATIFIED-AS-DRAFTED | Yes — migration + retrieval update |
-| JL-009 | P3A→P5B | Data: event base-rate priors | RATIFIED-AS-DRAFTED (OPEN) | Yes — ontology upsert |
+| JL-009 | P3A→P5B | Data: event base-rate priors | RATIFIED — CLOSED (native glance 2026-07-07; ontology v1.1; ph_nimitta normalize obligation → R2) | Yes — ontology upsert (mig 421) |
 | JL-010 | P3A-absorption-fix | Absorption: karakamsa modeling | RATIFIED (OPEN) | Yes — sign-based pass supersedes |
 | JL-011 | BA-2.5 P1 | Extraction: bg_rules yoga_canonical_id | RATIFIED | Yes — re-derivable from rule text |
 | JL-012 | BA-2.5 P3 | Formula: ga_yoga.strength constituent_bala_v1 | RATIFIED | Yes — derivation versioned |
