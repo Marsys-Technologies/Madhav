@@ -117,7 +117,11 @@ class BoPratijnaWriter(WriterBase):
         conn = ctx.db_conn
         now = datetime.now(timezone.utc).isoformat()
 
-        # Idempotency: delete prior rows for this chart
+        # Idempotency: delete prior rows for this chart.
+        # Disable per-statement timeout for the heavy DELETE on large charts.
+        # SET LOCAL scopes to the orchestrator txn (writer never commits).
+        # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
+        conn.execute("SET LOCAL statement_timeout = 0")
         conn.execute("DELETE FROM bodha_pratijna WHERE chart_id=%s", [chart_id])
 
         # Load event classes
