@@ -1,17 +1,24 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_LEL_CHART_SCOPING
-version: 1.1
-status: READY-FOR-EXECUTION — Phase R2 of BA_PHASE4_RUNWAY_PLAN_v1_0.md (runs BEFORE the native rebuild;
-  native re-sequencing decision 2026-07-07); conductor fills ⟦SLOT⟧s
+version: 1.2
+status: IN-EXECUTION — Phase R2.2 of BA_PHASE4_RUNWAY_PLAN_v1_0.md (before the native rebuild). Step 1 in
+  progress: migration 423 reviewed + banked on WIP branch aa3a65e2 (NOT deployed); coupled Step-1 code
+  (2 Python lel_query chart_id filters, EXPLICIT_CLEAR_OPS + destructive test, capability-spec/tool_metadata,
+  ASSET_NAMES) pending in the SAME PR. Then Step 2 first-intake. Execute against THIS (v1.2).
 created: 2026-07-07
 changelog:
+  - v1.2 (2026-07-07): PREMISE CORRECTION from R2.2 Step-1 recon — prod `life_events` is EMPTY (0 rows),
+    not 57. The 57 events are safe in the canonical markdown + lel_intake.py corpus (assert len==57).
+    Step 1's "backfill existing rows" is void; the corrected path is Step 2 FIRST-INTAKE of the 57 into
+    the new chart-scoped table @ 482012f1. Every "native = 57 rows" sanity/exit gate is true only AFTER
+    Step-2 intake — gates re-tagged accordingly. Migration 423 (reviewed) banked on WIP branch aa3a65e2.
   - v1.1 (2026-07-07): re-sequenced BEFORE Phase-4 per native decision — the native rebuild lands on the
     final LEL architecture (one build, no post-rebuild recalibration pass). Validated-config claim is
     re-earned via the R3 Abhinandan revalidation run (see runway plan). Step 0 precondition updated.
 author: Cowork (Beyond-Acharya program) — native-directed LEL re-architecture, ratified in sitting 2026-07-07
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — governed by 00_ARCHITECTURE/BA_PHASE4_RUNWAY_PLAN_v1_0.md
   (Phase R2; runs together with the JL-026 dual-write audit, before the native rebuild)
-slots: ⟦NEXT_MIGRATION_NUMBERS⟧ ⟦HEAD_SHA⟧
+slots: Step-1 migration = 423 (banked, WIP aa3a65e2); ⟦NEXT_MIGRATION_NUMBERS for Steps 2+⟧ ⟦HEAD_SHA⟧
 common_rules: FROZEN orchestrator contract §N.2 (no contract changes — the trigger uses standard
   asset-scoped runs) · surgical migrations · two-chart rule (Abhinandan first for every verification) ·
   shrinkage-never-gates (MIMAMSA_V2 doctrine) · LEL is irreplaceable user-authored data (JL-010 class).
@@ -45,8 +52,9 @@ Dump `life_events` + `event_chart_state_index` +
 `mimamsa_event_provenance` + `phala_rectification` (both charts) → record snapshot id in RUN_LEDGER.
 
 ## Step 1 — Schema: chart-scope the storage (migrations ⟦NEXT_MIGRATION_NUMBERS⟧, surgical)
-1. `ALTER TABLE life_events ADD COLUMN chart_id uuid REFERENCES charts(id)`; backfill ALL existing rows
-   to `482012f1-710e-4a25-994a-93821f5871aa`; SET NOT NULL; re-key PK/uniques to `(chart_id, event_id)`;
+1. `ALTER TABLE life_events ADD COLUMN chart_id uuid REFERENCES charts(id)`; (v1.2: prod table is
+   EMPTY — no backfill; if any rows exist at execution time, backfill them to
+   `482012f1-710e-4a25-994a-93821f5871aa`); SET NOT NULL; re-key PK/uniques to `(chart_id, event_id)`;
    index on chart_id. Same for `event_chart_state_index` (chart_id + re-key `UNIQUE(chart_id, event_id)`).
 2. `ADD COLUMN occurred_at date` (rename/verify existing event_date semantics = occurrence) +
    `ADD COLUMN recorded_at timestamptz NOT NULL DEFAULT now()`; backfill recorded_at for the 57 native

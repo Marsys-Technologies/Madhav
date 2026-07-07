@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.25
+version: 6.26
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,26 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.26 (2026-07-07, BA-PHASE4-RUNWAY R2.2 STEP-1 BANKED — session checkpoint):
+    **R1 + R2.1 + R2.3 DONE/deployed/prod-verified; R2.2 (LEL re-architecture) Step-1 in progress, banked
+    for a fresh focused session.** Session delivered: R1 (JL-009 CLOSED, ontology v1.1 mig 421, prod-verified
+    22/22 classes), R2.1 (JL-026 RESOLVED — graha_yuddha single-writer, mig-416 edge removed mig 419,
+    prod-verified; JL-027 opened), R2.3 (JL-009 point-2 — ph_nimitta base_rate row-normalization, mig 422,
+    seed drift fixed). PRs #453/#454/#455 merged.
+    **R2.2 material finding:** prod `life_events`/`event_chart_state_index` are EMPTY (0 rows), not the 57 the
+    brief assumed — the 57 are safe in the canonical markdown + lel_intake.py corpus (`assert len==57`).
+    Brief bumped to **v1.2** (backfill premise → first-intake). Live LEL schema diverges from the old migration
+    file; migration 423 (chart-scope both tables, re-key, recorded_at/pool_consent, chart-scoped lel_query,
+    register lel_events) written against the ACTUAL schema, migration-guard-reviewed + blocker-fixed, **banked
+    on WIP branch `ba-p4/r2-2-step1-lel-chart-scope-WIP` (commit aa3a65e2), NOT deployed.**
+    **RESUME PLAN (next session):** (1) execute against brief v1.2. (2) Complete Step 1 as ONE PR from
+    aa3a65e2: mig 423 + 2 Python lel_query chart_id filters (lel_intake.py:1416, l5_lel_intake.py:307) +
+    EXPLICIT_CLEAR_OPS entries + destructive-op test (both tables) + retrieval_capability_spec/tool_metadata
+    reconcile + ASSET_NAMES entry; verify on empty state + Abhinandan first. (3) Step 2: first-intake the 57 @
+    482012f1 + markdown reconciliation (count + spot-5), clear-safety PROVEN BEFORE intake. (4) Steps 3–7 per
+    brief. (5) **JL-027 (gates R4, not R2):** surface graha_yuddha winner-rule OPTIONS with classical citations
+    (criterion/source/verse); canonical-or-floor — cited method or NULL+reason, no uncited computable
+    substitute (the current longitude proxy is NOT eligible). Native chart 482012f1 NOT touched (built at R4).
   - v6.25 (2026-07-07, BA-PHASE4-RUNWAY R2.3 — ph_nimitta base_rate age-normalization):
     **R2.3 (JL-009 point-2 structural directive) complete.** ph_nimitta previously used a flat
     `base_rate=0.10` placeholder; JL-009 closing lifted that gate. Wired the real consumption:
