@@ -51,6 +51,22 @@ export async function POST(req: NextRequest) {
     force_l0?: boolean
   }
 
+  // Validate scope is a known build scope. asset_set builds a caller-chosen subset of
+  // assets for one chart; its scope_target carries a comma-separated asset_id list.
+  const VALID_SCOPES: BuildScope[] = ['global', 'layer', 'asset', 'asset_set']
+  if (!VALID_SCOPES.includes(scope)) {
+    return NextResponse.json({ error: `Invalid scope: ${scope}`, code: 'INVALID_SCOPE' }, { status: 400 })
+  }
+  if (scope === 'asset_set') {
+    const setIds = (scope_target ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    if (setIds.length === 0) {
+      return NextResponse.json(
+        { error: 'scope=asset_set requires scope_target as a non-empty comma-separated asset_id list', code: 'EMPTY_ASSET_SET' },
+        { status: 400 }
+      )
+    }
+  }
+
   const role = await getUserRole(user.uid)
   const isSuperAdmin = role === 'super_admin'
   const allowedScopes: string[] = isSuperAdmin ? ['per_chart', 'global'] : ['per_chart']

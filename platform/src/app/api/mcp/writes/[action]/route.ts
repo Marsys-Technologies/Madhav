@@ -37,14 +37,17 @@ import {
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { logPrediction, recordOutcome } from '@/lib/mcp/ppl_writer'
 import { flagDisagreement } from '@/lib/mcp/disagreement_writer'
+import { recordLelEvent } from '@/lib/mcp/lel_event_writer'
+import { enqueueLelRecalibration } from '@/lib/build/recalibrationEnqueue'
 import type { PredictionEntry, OutcomeEntry } from '@/lib/mcp/ppl_writer'
 import type { DisagreementEntry } from '@/lib/mcp/disagreement_writer'
+import type { LelEvent } from '@/lib/mcp/lel_event_writer'
 
 export const maxDuration = 30
 
 // ── Allowed actions ───────────────────────────────────────────────────────────
 
-const ALLOWED_ACTIONS = ['log_prediction', 'record_outcome', 'flag_disagreement'] as const
+const ALLOWED_ACTIONS = ['log_prediction', 'record_outcome', 'flag_disagreement', 'lel_event_record'] as const
 type WriteAction = (typeof ALLOWED_ACTIONS)[number]
 
 function isAllowedAction(action: string): action is WriteAction {
@@ -149,7 +152,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   // M0 entitlement gate — authorize chart access when chart_id is supplied.
   const chartId = body['chart_id'] as string | undefined
-  if (chartId && (action === 'record_outcome' || action === 'log_prediction')) {
+  if (chartId && (action === 'record_outcome' || action === 'log_prediction' || action === 'lel_event_record')) {
     const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
     const { resolveMcpPrincipalRole } = await import('@/lib/mcp/auth')
     const { query } = await import('@/lib/db/client')
@@ -158,6 +161,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (action === 'record_outcome' && perm !== 'all') {
       return NextResponse.json(
         buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'record_outcome requires write (all) permission for this chart' }),
+        { status: 401 }
+      )
+    }
+    // lel_event_record is a Nirmāṇa (build/write) action — owner/super_admin only.
+    if (action === 'lel_event_record' && perm !== 'all') {
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'lel_event_record requires write (all) permission for this chart' }),
         { status: 401 }
       )
     }
@@ -338,6 +348,106 @@ export async function POST(request: Request, { params }: RouteParams) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[mcp:writes] flag_disagreement error', msg)
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'orchestrator_error', message: msg }),
+        { status: 500 }
+      )
+    }
+  }
+
+  if (action === 'lel_event_record') {
+    try {
+      if (!chartId) {
+        return NextResponse.json(
+          buildErrorEnvelope({
+            error_class: 'validation',
+            message: 'chart_id is required for lel_event_record',
+          }),
+          { status: 400 }
+        )
+      }
+
+      const event = body.event as Partial<LelEvent> | undefined
+      if (!event) {
+        return NextResponse.json(
+          buildErrorEnvelope({
+            error_class: 'validation',
+            message: 'body.event is required for lel_event_record',
+          }),
+          { status: 400 }
+        )
+      }
+
+      if (!event.event_class || !event.event_date || !event.description || !event.domain) {
+        return NextResponse.json(
+          buildErrorEnvelope({
+            error_class: 'validation',
+            message: 'lel_event_record requires: event.event_class, event.event_date, event.description, event.domain',
+          }),
+          { status: 400 }
+        )
+      }
+
+      // Persist the event (validates event_class against brahma_event_ontology).
+      let saved
+      try {
+        saved = await recordLelEvent({
+          chartId,
+          event: {
+            event_id: typeof event.event_id === 'string' ? event.event_id : undefined,
+            event_class: event.event_class,
+            event_date: event.event_date,
+            event_type: typeof event.event_type === 'string' ? event.event_type : undefined,
+            description: event.description,
+            domain: event.domain,
+            outcome_observed: typeof event.outcome_observed === 'boolean' ? event.outcome_observed : undefined,
+            source_citation: typeof event.source_citation === 'string' ? event.source_citation : undefined,
+          },
+          // Provenance stamped from the resolved principal, not caller body.
+          provenance: {
+            key_id: keyId,
+            trace_id: typeof body.trace_id === 'string' ? body.trace_id : null,
+            caller_context: typeof event.source_citation === 'string' ? event.source_citation : null,
+          },
+        })
+      } catch (writeErr) {
+        // Unknown event class (or other validation failure inside the writer).
+        const msg = writeErr instanceof Error ? writeErr.message : String(writeErr)
+        return NextResponse.json(
+          buildErrorEnvelope({ error_class: 'validation', message: msg }),
+          { status: 400 }
+        )
+      }
+
+      // Debounced recalibration enqueue — best-effort side effect. A failure to
+      // enqueue must NOT fail the save (the event is already durably recorded).
+      const force = body.force === true
+      let recalibration: Record<string, unknown> = { enqueued: false }
+      try {
+        const enqueue = await enqueueLelRecalibration({ chartId, triggeredBy: userUid, force })
+        recalibration = { ...enqueue }
+      } catch (enqErr) {
+        const msg = enqErr instanceof Error ? enqErr.message : String(enqErr)
+        console.error('[mcp:writes] lel_event_record recalibration enqueue error', msg)
+        recalibration = { enqueued: false, reason: 'enqueue_error' }
+      }
+
+      return NextResponse.json(
+        buildEnvelope({
+          trace_id: traceId,
+          audience_tier: audienceTier,
+          epistemics,
+          result: {
+            event_id: saved.event_id,
+            recorded_at: saved.recorded_at,
+            created: saved.created,
+            recalibration,
+          },
+        })
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[mcp:writes] lel_event_record error', msg)
       return NextResponse.json(
         buildErrorEnvelope({ error_class: 'orchestrator_error', message: msg }),
         { status: 500 }

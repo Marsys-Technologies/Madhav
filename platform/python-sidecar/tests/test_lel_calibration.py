@@ -7,6 +7,7 @@ schema (chart-scoped life_events) via a fake connection.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -218,3 +219,81 @@ class TestCountChartLelEvents:
     def test_missing_table_yields_zero_not_crash(self):
         conn = _FakeConn(None, raise_exc=RuntimeError("relation does not exist"))
         assert lc.count_chart_lel_events(conn, "chart-x") == 0
+
+
+# ── pool contribution capture (Step-6 capture-now, consume-gated) ────────────
+
+class _RecordingCursor:
+    """Captures the INSERT (sql, params) issued by record_pool_contribution."""
+    def __init__(self):
+        self.executed: list[tuple] = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+
+
+class _RecordingConn:
+    def __init__(self):
+        self._cursor = _RecordingCursor()
+
+    def cursor(self, *a, **k):
+        return self._cursor
+
+
+class TestRecordPoolContribution:
+    def _run(self, pool_consent, override=None, monkeypatch=None, weights=None):
+        conn = _RecordingConn()
+        if override is not None and monkeypatch is not None:
+            monkeypatch.setenv(lc.POOL_ENV_VAR, override)
+        lc.record_pool_contribution(
+            conn,
+            chart_id="chart-x",
+            event_classes=["career.role_change", "health.injury"],
+            weights=weights,
+            priors_version="priors_v1",
+            pool_consent=pool_consent,
+        )
+        return conn
+
+    def test_builds_the_right_insert(self):
+        conn = self._run(pool_consent=True, weights={"a": 0.5})
+        assert len(conn._cursor.executed) == 1
+        sql, params = conn._cursor.executed[0]
+        assert "INSERT INTO mimamsa_pool_contributions" in sql
+        assert "chart_id" in sql and "event_classes" in sql and "pool_consent" in sql
+        # params order: chart_id, event_classes, weights(jsonb str), priors_version, consent
+        assert params[0] == "chart-x"
+        assert params[1] == ["career.role_change", "health.injury"]
+        assert json.loads(params[2]) == {"a": 0.5}
+        assert params[3] == "priors_v1"
+        assert params[4] is True
+
+    def test_none_weights_serialize_to_none(self):
+        conn = self._run(pool_consent=False, weights=None)
+        _sql, params = conn._cursor.executed[0]
+        assert params[2] is None
+
+    def test_captures_even_when_pool_flag_off(self, monkeypatch):
+        # capture-now: the INSERT happens regardless of the global flag.
+        conn = self._run(pool_consent=True, override="off", monkeypatch=monkeypatch)
+        assert len(conn._cursor.executed) == 1
+
+    def test_captures_even_without_consent(self):
+        # capture is decoupled from consent — consent is stored as provenance only.
+        conn = self._run(pool_consent=False)
+        _sql, params = conn._cursor.executed[0]
+        assert params[4] is False
+        assert len(conn._cursor.executed) == 1
+
+    def test_capture_does_not_gate_on_pool_but_consume_does(self, monkeypatch):
+        # The capture writes with flag off; the CONSUME side stays gated.
+        monkeypatch.setenv(lc.POOL_ENV_VAR, "off")
+        conn = self._run(pool_consent=True)
+        assert len(conn._cursor.executed) == 1  # captured
+        assert lc.may_consume_into_pool(True) is False  # but not consumable

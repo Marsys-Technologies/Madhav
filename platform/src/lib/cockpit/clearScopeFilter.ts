@@ -14,7 +14,7 @@ export interface RegistryRow {
  */
 export function filterScopeAssets(
   registry: RegistryRow[],
-  scope: 'global' | 'layer' | 'asset',
+  scope: 'global' | 'layer' | 'asset' | 'asset_set',
   scopeTarget: string | null,
   allowedScopes: string[]
 ): RegistryRow[] {
@@ -28,6 +28,12 @@ export function filterScopeAssets(
     return registry.filter(r => allowedScopes.includes(r.scope) && r.layer !== 'brahmagyan')
   } else if (scope === 'layer') {
     return registry.filter(r => r.layer === scopeTarget && allowedScopes.includes(r.scope))
+  } else if (scope === 'asset_set') {
+    // scope_target carries a comma-separated asset_id list — clear each in-set asset.
+    const wanted = new Set(
+      (scopeTarget ?? '').split(',').map(s => s.trim()).filter(Boolean)
+    )
+    return registry.filter(r => wanted.has(r.asset_id) && allowedScopes.includes(r.scope))
   } else {
     return registry.filter(r => r.asset_id === scopeTarget && allowedScopes.includes(r.scope))
   }

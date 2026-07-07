@@ -18,6 +18,19 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
+/**
+ * Per-chart LEL calibration judgment persisted on phala_rectification_best.judgment_flags
+ * (migration 424) and produced by services.mimamsa.lel_calibration.judgment_flags().
+ * `calibration` is a back-compat alias carrying the same value as `calibration_state`.
+ */
+export interface JudgmentFlags {
+  calibration: 'structural' | 'sparse' | 'calibrated'
+  calibration_state: 'structural' | 'sparse' | 'calibrated'
+  rectification_basis: 'lel_fit' | 'structural_no_lel'
+  lel_event_count: number
+  load_bearing: boolean
+}
+
 // ── query_auspicious_windows ──────────────────────────────────────────────────
 
 export const queryAuspiciousWindowsCapability: CapabilityDescriptor = {
@@ -532,10 +545,29 @@ export const queryRectificationCapability: CapabilityDescriptor = {
 
       const result = await query(sql, [chart_id, ayanamsha_id, top_k])
 
+      // Surface the per-chart calibration judgment (BA-LEL R2.2 Step 4/5). The best
+      // row is chart-scoped (UNIQUE chart_id); judgment_flags carries the
+      // calibration_state (structural | sparse | calibrated), rectification_basis,
+      // lel_event_count and load_bearing. A chart that has not been rectified yet
+      // (no best row) surfaces judgment_flags: null.
+      const bestSql = `
+        SELECT judgment_flags, confidence_label, offset_minutes AS best_offset_minutes
+        FROM phala_rectification_best
+        WHERE chart_id = $1
+        LIMIT 1
+      `
+      const bestResult = await query(bestSql, [chart_id])
+      const best = (bestResult.rows[0] ?? null) as
+        | { judgment_flags: JudgmentFlags | null; confidence_label: string | null; best_offset_minutes: number | null }
+        | null
+      const judgment_flags: JudgmentFlags | null = best?.judgment_flags ?? null
+
       return {
         content: {
           chart_id, ayanamsha_id,
           candidates: result.rows, count: result.rows.length,
+          judgment_flags,
+          calibration_state: judgment_flags?.calibration_state ?? null,
           override_note: 'D43 NO-AUTO-OVERRIDE: the canonical chart birth time is never auto-mutated. phala_rectification has no staging/approval column — candidates are advisory LEL-fit scores only; native sign-off is required out-of-band before any rectification is adopted.',
           filters: { top_k },
         },

@@ -497,3 +497,141 @@ def test_run_rectification_accepts_explicit_training_events_and_dasha_map():
 
     best = select_best(candidates, training_events=custom_events)
     assert best.lel_training_events == 1
+
+
+# ── judgment_flags persistence (BA-LEL R2.2 Step 4/5, Feature D) ─────────────
+
+def test_writer_best_insert_includes_judgment_flags_column():
+    """The best-row INSERT must persist the judgment_flags jsonb column."""
+    src = _writer_source()
+    assert "judgment_flags" in src
+    # bound as jsonb from services.mimamsa.lel_calibration.judgment_flags()
+    assert "json.dumps(flags)" in src
+    assert "from services.mimamsa.lel_calibration import" in src
+
+
+class _RecordingCursor:
+    """Captures every (sql, params) executed and scripts SELECT results."""
+    def __init__(self, script, sink):
+        self._script = script
+        self._sink = sink
+        self._result: list = []
+
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+    def execute(self, sql, params=None):
+        self._sink.append((" ".join(sql.split()), params))
+        s = " ".join(sql.split())
+        for matcher, rows in self._script:
+            if matcher in s:
+                self._result = list(rows)
+                return
+        self._result = []
+
+    def fetchall(self): return list(self._result)
+    def fetchone(self): return self._result[0] if self._result else None
+
+
+class _RecordingConn:
+    def __init__(self, script, sink):
+        self._script = script
+        self._sink = sink
+
+    def cursor(self, *a, **k):
+        return _RecordingCursor(self._script, self._sink)
+
+
+def _run_writer_capture(n_events: int, n_min_row):
+    """Run PhRectificationWriter.run against a fully-faked conn/ctx and return the
+    params bound to the phala_rectification_best INSERT. Fully hermetic: the
+    ascendant fn + engine are exercised, no PyJHora/DB. n_events own life events
+    are scripted so calibration_state is driven purely by availability."""
+    import json as _json
+    from datetime import datetime as _dt
+    from pipeline.orchestrator.writers import ph_rectification as W
+
+    # Script the two per-chart loaders: n_events life_events rows (each resolving
+    # an MD lord) + a natal sign index. life_events + chart_dashas + chart_facts.
+    life_rows = [
+        {"event_id": f"EVT.19{90 + i:02d}.01.01",
+         "event_date": _dt(1990 + i, 1, 1),
+         "category": "career", "domain": "career"}
+        for i in range(n_events)
+    ]
+    script = [
+        ("FROM life_events", life_rows),
+        ("FROM chart_dashas", [{"lord_graha": "Saturn"}]),
+        ("FROM chart_facts", [{"fact_subject": "SUN", "fact_value_text": "Capricorn"}]),
+        ("FROM brahma_formula_constants", n_min_row),
+        # candidate INSERT ... RETURNING id (fetchone()["id"])
+        ("RETURNING id", [{"id": "00000000-0000-0000-0000-000000000001"}]),
+    ]
+    sink: list = []
+    conn = _RecordingConn(script, sink)
+
+    # Deterministic ascendant fn (bypass PyJHora entirely).
+    W._build_ascendant_fn = lambda *a, **k: _stub_ascendant  # type: ignore
+
+    class _Ctx:
+        db_conn = conn
+        config = {
+            "chart_id": _TEST_CHART_ID,
+            "birth_params": {
+                "datetime_iso": "1984-02-05T10:43:00",
+                "tz_offset_hours": 5.5,
+                "latitude_deg": 20.27,
+                "longitude_deg": 85.84,
+            },
+        }
+
+    # resolve_birth_params passes birth_params through; patch to avoid DB.
+    W.resolve_birth_params = lambda chart_id, bp: bp  # type: ignore
+
+    W.PhRectificationWriter().run(_Ctx())
+
+    for sql, params in sink:
+        if "INSERT INTO phala_rectification_best" in sql:
+            # judgment_flags is the 16th column / bound as json.dumps(flags)
+            flags = None
+            for pv in params:
+                if isinstance(pv, str):
+                    try:
+                        obj = _json.loads(pv)
+                    except (ValueError, TypeError):
+                        continue
+                    if isinstance(obj, dict) and "calibration_state" in obj:
+                        flags = obj
+            return flags
+    raise AssertionError("no phala_rectification_best INSERT captured")
+
+
+def test_structural_chart_yields_calibration_state_structural():
+    """A chart with 0 recorded life events → judgment_flags.calibration_state='structural'."""
+    flags = _run_writer_capture(0, n_min_row=[])
+    assert flags is not None
+    assert flags["calibration_state"] == "structural"
+    assert flags["calibration"] == "structural"  # back-compat alias
+    assert flags["rectification_basis"] == "structural_no_lel"
+    assert flags["load_bearing"] is False
+    assert flags["lel_event_count"] == 0
+
+
+def test_calibrated_chart_yields_calibration_state_calibrated():
+    """A chart with >= 10 recorded life events → calibration_state='calibrated'."""
+    flags = _run_writer_capture(12, n_min_row=[])
+    assert flags is not None
+    assert flags["calibration_state"] == "calibrated"
+    assert flags["calibration"] == "calibrated"
+    assert flags["rectification_basis"] == "lel_fit"
+    assert flags["load_bearing"] is True
+    assert flags["lel_event_count"] == 12
+
+
+def test_calibration_min_events_threshold_read_from_registry():
+    """n_min is read from brahma_formula_constants; a registry override of n_min=15
+    reclassifies a 12-event chart from calibrated back to sparse (tuple-row shape)."""
+    flags = _run_writer_capture(12, n_min_row=[({"n_min": 15},)])
+    assert flags is not None
+    assert flags["calibration_state"] == "sparse"
+    assert flags["lel_event_count"] == 12

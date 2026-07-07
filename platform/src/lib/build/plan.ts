@@ -2,7 +2,25 @@ export type AssetId = string
 export type AssetState =
   | 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'service_ok' | 'service_down'
 export type BuildAction = 'build' | 'update' | 'rebuild' | 'cascade'
-export type BuildScope = 'global' | 'layer' | 'asset'
+export type BuildScope = 'global' | 'layer' | 'asset' | 'asset_set'
+
+/**
+ * Parses the comma-separated asset_id list carried by scope_target for scope='asset_set'.
+ * Trims, drops empties, and de-dupes while preserving first-seen order.
+ */
+export function parseAssetSetTarget(scope_target: string | null): AssetId[] {
+  if (!scope_target) return []
+  const seen = new Set<AssetId>()
+  const out: AssetId[] = []
+  for (const raw of scope_target.split(',')) {
+    const id = raw.trim()
+    if (id && !seen.has(id)) {
+      seen.add(id)
+      out.push(id)
+    }
+  }
+  return out
+}
 
 export interface RegistryEntry {
   asset_id: AssetId
@@ -72,6 +90,12 @@ function assetsInScope(
   if (scope === 'global') return registry.map(r => r.asset_id)
   if (scope === 'layer') return registry.filter(r => r.layer === scope_target).map(r => r.asset_id)
   if (scope === 'asset') return scope_target ? [scope_target] : []
+  if (scope === 'asset_set') {
+    // scope_target carries a comma-separated asset_id list. Filter to registry
+    // membership (drops phantom/filtered-out ids) preserving registry order.
+    const wanted = new Set(parseAssetSetTarget(scope_target))
+    return registry.filter(r => wanted.has(r.asset_id)).map(r => r.asset_id)
+  }
   return []
 }
 
@@ -259,6 +283,12 @@ export function resolveBuildPlan({
   registry,
   throughput,
 }: ResolveBuildPlanArgs): BuildPlan {
+  // asset_set: the scope_target list must resolve to at least one in-registry asset.
+  // An empty/all-phantom list is a caller error, not a silent no-op.
+  if (scope === 'asset_set' && assetsInScope('asset_set', scope_target, registry).length === 0) {
+    throw new Error('asset_set scope requires a non-empty list of valid asset_ids')
+  }
+
   // update and cascade: no pre-flight, use existing behavior, return new shape
   if (action === 'update') {
     const scopeAssets = assetsInScope(scope, scope_target, registry)
