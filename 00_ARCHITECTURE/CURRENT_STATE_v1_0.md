@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.28
+version: 6.29
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,26 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.29 (2026-07-08, BA-R4-WRAP W2b CLOSED — R2.2 LEL churn CODE-COMPLETE):
+    **W2b done + independently verified (PR #460, main 6cd7f509).** Conductor + subagent-swarm (D/E1/E2/E3 +
+    verifier ALL PASS). Native decisions: added an `asset_set` build-plan scope; folded the live-run trigger
+    E2E into W3. **D:** mig 424 (phala_rectification_best.judgment_flags jsonb + n_min/debounce constants);
+    ph_rectification stamps judgment_flags; L4 capability now SERVES calibration_state. **E:** new LEL intake
+    write API (`lel_event_record` MCP action + lel_event_writer.ts, owner/super_admin, ontology-validated,
+    recorded_at=now()); `asset_set` scope (mig 426) for targeted subset runs (orchestrator contract untouched);
+    recalibrationEnqueue.ts (debounced asset_set recalibration over [mi_jivanaghatana, mi_pramana,
+    ph_rectification, ph_pramana], RUN_ACTIVE coalesce, force bypass); pool mig 425 (mimamsa_pool_contributions,
+    capture-now/consume-gated MIMAMSA_CROSS_CHART_POOL=off, no serving read); recorded_at leakage routing in
+    mi_jivanaghatana. **Migrations 424/425/426 DEPLOYED to prod + verified.** Verifier ALL PASS (python 2956
+    passed / 29 pre-existing baseline / no new; vitest 184; tsc clean; pool-gating + intake-authz + asset_set +
+    wiring + leakage all confirmed).
+    **R2.2 LEL churn (W2a+W2b) = CODE-COMPLETE.** Two LEL exit gates LIVE-validate at W3 (need a build):
+    calibration_state SERVED in judgment_flags, and the trigger E2E (synthetic → debounced recalibration →
+    state flip → revert). JL-027 floor becomes visible-in-prod at that build → JL-027 CLOSES then.
+    **NEXT = W3** (Abhinandan re-zero rebuild on new HEAD, WORKER_LIMIT=2 → record new asset count; verify
+    identity/contamination/LEL presence-branching/JL-027 disposition/degeneracy/retrieval; validate the two
+    folded gates; then FREEZE) — on the native's word. Then W4 (native 482012f1 rebuild) on explicit
+    ledger-recorded GO only. Native chart NOT touched until W4.
   - v6.28 (2026-07-08, BA-R4-WRAP W2a CLOSED — LEL churn: intake + strict-zero + graha_yuddha floor):
     **W2a done end-to-end + independently verified (PR #459).** Conductor + subagent-swarm (5 implementers +
     verifier≠implementer). Clear-safety PROVEN vs prod (lel_events:null skip honored by clear/execute route

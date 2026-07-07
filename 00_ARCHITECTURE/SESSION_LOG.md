@@ -30776,3 +30776,79 @@ session_close:
 ```
 
 *End of BA-R4-WRAP-W2A-2026-07-08 entry — 2026-07-08.*
+
+---
+
+## BA-R4-WRAP-W2B-2026-07-08 — LEL calibration serving + intake API + recalibration + pool — CLOSED 2026-07-08
+
+```yaml
+session_open:
+  session_id: BA-R4-WRAP-W2B-2026-07-08
+  opened_on: 2026-07-08
+  cowork_thread_name: BA-R4-WRAP-W2B-LEL-TRIGGERS
+  governing_brief: CLAUDECODE_BRIEF_BA_R4_WRAP_W2b_v1_0.md
+  scope_notes: >
+    W2b — the two net-new LEL builds: D (judgment_flags persistence + serving) and E (LEL intake write API +
+    debounced asset_set recalibration + pool + leakage routing). Conductor + subagent swarm; native-approved
+    asset_set scope; live-run trigger E2E folded to W3.
+  may_touch:
+    - "services/mimamsa/lel_calibration.py + ph_*/mi_* envelope wiring"
+    - "NEW migrations 424 (judgment_flags) / 425 (pool) / 426 (asset_set scope)"
+    - "NEW lel_event_writer.ts + mcp writes action + recalibrationEnqueue.ts + plan.ts asset_set"
+    - "L4 query_phala_calibration.ts serving"
+    - "00_ARCHITECTURE ledgers + CURRENT_STATE + SESSION_LOG"
+  must_not_touch:
+    - "orchestrator/planner WriterBase core"
+    - "native chart 482012f1 builds (only at W4)"
+    - "the native's 57 LEL rows content"
+    - "ph_pramana rectification logic validating 10:43"
+    - "salience/priors"
+  predecessor_session: BA-R4-WRAP-W2A-2026-07-08
+  current_state_version_at_open: 6.28
+  red_team_due: false
+```
+
+**Session:** BA Phase-4 Runway W2b. Conductor + 4 implementers (D/E1/E2/E3) + independent verifier (ALL PASS).
+
+**Landed (PR #460, main 6cd7f509) + verified:**
+- **D:** mig 424 (phala_rectification_best.judgment_flags jsonb + n_min/debounce constants); ph_rectification stamps
+  judgment_flags; L4 query_rectification capability now SERVES calibration_state.
+- **E:** new LEL intake write API (lel_event_record MCP action + lel_event_writer.ts, owner/super_admin,
+  ontology-validated, recorded_at=now()); asset_set build-plan scope (mig 426); recalibrationEnqueue.ts
+  (debounced asset_set recalibration, RUN_ACTIVE coalesce, force); pool mig 425 (capture-now/consume-gated,
+  no serving read); recorded_at leakage routing in mi_jivanaghatana.
+- Migrations 424/425/426 deployed to prod + verified. Verifier ALL PASS (python 2956 / no new failures;
+  vitest 184; tsc clean; pool-gating + authz + asset_set + wiring + leakage confirmed).
+
+**Folded to W3 (need a build):** calibration_state SERVED in judgment_flags; the trigger E2E; JL-027 floor visible.
+Native chart 482012f1 NOT rebuilt.
+
+### Next session objective
+
+W3 — one clean Abhinandan full rebuild on the new HEAD (WORKER_LIMIT=2): record the new canonical asset count;
+verify Abhinandan identity (Sun=Aquarius, Lagna=Aries 23°32′ Bharani-4) + zero native contamination + LEL
+presence-branching (calibration_state='structural', rectification_basis='structural_no_lel') + JL-027 floored
+graha_yuddha rows + degeneracy sweep + retrieval smoke; ALSO validate the two W2 folded gates (calibration_state
+served; debounced asset_set recalibration trigger E2E). Then FREEZE (run id + HEAD SHA in RUN_LEDGER). W4 (native
+482012f1 rebuild) fires ONLY on explicit ledger-recorded native GO. On the native's word.
+
+```yaml
+session_close:
+  session_id: BA-R4-WRAP-W2B-2026-07-08
+  closed_on: 2026-07-08
+  outcome: >
+    COMPLETE — W2b built + independently verified (PR #460, main 6cd7f509); migrations 424/425/426 deployed
+    to prod. R2.2 LEL churn (W2a+W2b) code-complete. Two LEL gates + JL-027 floor visibility fold to W3.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (BA Phase-4 Runway — R2.2 code-complete; W3 next)
+  current_state_updated: true
+  current_state_version: 6.29
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    W3 (Abhinandan re-zero + FREEZE) on the native's word — validates the two folded LEL gates + JL-027 floor;
+    then W4 (native rebuild) on explicit ledger-recorded GO. Native chart untouched until W4.
+```
+
+*End of BA-R4-WRAP-W2B-2026-07-08 entry — 2026-07-08.*
