@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from typing import Optional
 
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.ph_nimitta.base_rate import base_rate_for_age
 from services.ph_nimitta.engine import (
     NimittaContext,
     AnchorRecord,
@@ -32,6 +34,27 @@ _MAX_CONVERGENCE = 200  # top windows by convergence_score
 _MAX_DISCOVERIES = 100  # top discoveries by confidence_score
 
 
+def _parse_iso_date(v) -> Optional[date]:
+    """Coerce a psycopg date/datetime or ISO string to a date; None on failure."""
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    try:
+        return date.fromisoformat(str(v)[:10])
+    except Exception:
+        return None
+
+
+def _parse_birth_date(birth_params) -> Optional[date]:
+    """Native birth date from ctx.config['birth_params']['datetime_iso']."""
+    if not isinstance(birth_params, dict):
+        return None
+    return _parse_iso_date(birth_params.get('datetime_iso'))
+
+
 @register('ph_nimitta')
 class PhNimittaWriter(WriterBase):
     """
@@ -43,6 +66,8 @@ class PhNimittaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn
         chart_id = ctx.config['chart_id']
+        # JL-009 point-2: birth date drives the age-band base_rate lookup (per anchor).
+        self._birth_date = _parse_birth_date(ctx.config.get('birth_params'))
 
         # Step 1: disable statement timeout + delete-then-insert idempotency (§N.3 L4+)
         with conn.cursor() as cur:
@@ -95,9 +120,10 @@ class PhNimittaWriter(WriterBase):
 
         for row in discovery_rows:
             try:
-                ctx_n = self._build_ctx(row, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m)
-                # B5: enrich row with timing (window_start/end) + real domain before engine call
+                # B5: enrich row with timing (window_start/end) + real domain FIRST so the
+                # age-band base_rate lookup (JL-009 point-2) sees the discovery's window_start.
                 enriched_row = self._enrich_discovery_row(conn, dict(row), chart_id)
+                ctx_n = self._build_ctx(enriched_row, signal_meta, cgm_meta, contradiction_m, precedent_m, posterior_m)
                 a = derive_anchor_from_discovery(enriched_row, ctx_n)
                 anchors.append(a)
             except Exception as exc:
@@ -286,10 +312,12 @@ class PhNimittaWriter(WriterBase):
             return {}
 
         event_class_by_domain: dict[str, str] = {}
+        base_rate_by_class: dict[str, dict] = {}
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute("SELECT event_class_id, domain FROM brahma_event_ontology")
+            cur.execute("SELECT event_class_id, domain, base_rate_by_age FROM brahma_event_ontology")
             for r in cur.fetchall():
                 event_class_by_domain.setdefault(r['domain'], str(r['event_class_id']))
+                base_rate_by_class[str(r['event_class_id'])] = r.get('base_rate_by_age') or {}
 
         pratijna_by_key: dict[tuple[str, str], dict] = {}
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
@@ -334,6 +362,7 @@ class PhNimittaWriter(WriterBase):
             pratijna = pratijna_by_key.get((str(aya), str(event_class_id))) if event_class_id else None
             out[sid] = {
                 'event_class_id': event_class_id,
+                'base_rate_by_age': base_rate_by_class.get(str(event_class_id)) if event_class_id else None,
                 'pratijna_grade': float(pratijna['grade']) if pratijna and pratijna.get('grade') is not None else None,
                 'pratijna_status': pratijna['status'] if pratijna else None,
                 'multi_system_confirmation_count': confirmation_by_signal.get(sid, 0),
@@ -591,13 +620,29 @@ class PhNimittaWriter(WriterBase):
             # transit_trigger_jsonb is a symbolic type descriptor, not a potency score) — B.10
             # forbids inventing one, so it stays the documented placeholder pending a real
             # AV-transit-gate model.
-            # JL-009: base_rate=0.10 is PLACEHOLDER until native review and freeze.
+            # JL-009 CLOSED (native glance 2026-07-07): base_rate is the ontology's
+            # age-band prior, ROW-NORMALIZED to sum 1.0 at lookup (native point-2), for the
+            # age band containing this anchor's predicted date. See _resolve_base_rate.
             event_class_id=post.get('event_class_id'),
             pratijna_grade=post.get('pratijna_grade') if post.get('pratijna_grade') is not None else 5.0,
             pratijna_status=post.get('pratijna_status') or 'conditional',
             multi_system_confirmation_count=post.get('multi_system_confirmation_count', 0),
             av_transit_potency=0.0,
-            base_rate=0.10,
+            base_rate=self._resolve_base_rate(row, post),
+        )
+
+    def _resolve_base_rate(self, row: dict, post: dict) -> float:
+        """JL-009 point-2: normalized age-band base_rate for this anchor.
+
+        base_rate = normalize(brahma_event_ontology.base_rate_by_age)[age_band(peak_date)],
+        where age is the native's age at the anchor's predicted date (peak_date, else
+        window_start). Missing vector/birth/date → uniform age prior (0.20). Never the
+        old flat 0.10 placeholder, never a fabricated value."""
+        at = _parse_iso_date(row.get('peak_date') or row.get('window_start'))
+        return base_rate_for_age(
+            post.get('base_rate_by_age'),
+            getattr(self, '_birth_date', None),
+            at,
         )
 
     def _spine_gate(self, anchors: list[AnchorRecord]) -> None:
