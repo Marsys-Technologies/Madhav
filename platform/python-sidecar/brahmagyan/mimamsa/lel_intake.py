@@ -1428,11 +1428,11 @@ def lel_query(
         date_from:  ISO date string lower bound (inclusive).
         date_to:    ISO date string upper bound (inclusive).
         limit:      Max rows to return (default 100).
-        chart_id:   Chart UUID (accepted for API contract compliance; the
-                    life_events table is a native-only calibration corpus
-                    with no chart_id column — the parameter is validated
-                    but not used as a filter). Must be a valid UUID string
-                    when provided.
+        chart_id:   Chart UUID. Since migration 423 (BA-LEL R2.2 Step 1)
+                    life_events is chart-scoped, so chart_id is a REAL filter:
+                    when provided, only that chart's events are returned, with
+                    an honest empty-with-reason envelope when the chart has no
+                    recorded events. Must be a valid UUID string when provided.
 
     Returns:
         {
@@ -1454,6 +1454,11 @@ def lel_query(
     with _get_conn() as conn:
         params: list[Any] = []
         conditions = []
+
+        # chart_id is a real per-chart filter since migration 423 (LEL is chart-scoped).
+        if chart_id is not None:
+            conditions.append("le.chart_id = %s::UUID")
+            params.append(chart_id)
 
         if domain:
             conditions.append(
@@ -1487,7 +1492,8 @@ def lel_query(
                 cs.convergence_score,
                 le.source_citation
             FROM life_events le
-            LEFT JOIN event_chart_state_index cs ON cs.event_id = le.event_id
+            LEFT JOIN event_chart_state_index cs
+                   ON cs.event_id = le.event_id AND cs.chart_id = le.chart_id
             {where_clause}
             ORDER BY le.event_date
             LIMIT %s
@@ -1531,20 +1537,21 @@ def lel_query(
             "date_from":  date_from,
             "date_to":    date_to,
             "limit":      limit,
-            "chart_id_note": (
-                "chart_id accepted for API contract compliance; "
-                "life_events is a native-only calibration corpus with no chart_id column"
-            ) if chart_id is not None else None,
         },
         "provenance_envelope": {
             "source":          "mimamsa.lel_intake",
-            "asset":           "MI-5-1",
+            "asset":           "lel_events",
+            "scope":           "per_chart",
             "lel_version":     "LIFE_EVENT_LOG_v1_2.md v1.7",
-            "total_events":    57,
+            "total_events":    total_count,
             "confidence":      0.89,
             "source_citation": SOURCE_CITATION,
             "no_leakage_note": "life_events is calibration corpus only — must not feed prediction generation",
             "b3_compliant":    True,
+            "empty_reason": (
+                "no LEL events recorded for this chart (structural/no-lel)"
+                if chart_id is not None and total_count == 0 else None
+            ),
             "queried_at":      datetime.now(timezone.utc).isoformat(),
         },
     }
@@ -1660,13 +1667,13 @@ def run_acceptance_gate() -> dict[str, Any]:
 # Registers: POST /brahma/mimamsa/lel_query
 # Mounted by main.py under prefix "/brahma/mimamsa" → full path /brahma/mimamsa/lel_query
 #
-# Contract (CHECK 5 remediation — Phase 4 audit):
+# Contract (BA-LEL R2.2 Step 1 — supersedes CHECK 5 remediation):
 #   The MCP tool mimamsa_lel_intake.ts forwards chart_id to this route.
 #   The route accepts chart_id, validates it, and passes it to lel_query().
-#   lel_query() logs chart_id in filter_applied but does not filter on it
-#   (life_events has no chart_id column — it is a native-only calibration corpus).
-#   This satisfies the MCP-layer chart_id isolation contract without altering the
-#   underlying table schema.
+#   Since migration 423 life_events is chart-scoped, so chart_id is a REAL SQL
+#   filter: the query returns only that chart's events, with an honest
+#   empty-with-reason envelope when the chart has none. This closes the prior
+#   tool→SQL impedance mismatch (per_chart advertised but not enforced).
 
 try:
     from fastapi import APIRouter as _APIRouter
@@ -1676,9 +1683,8 @@ try:
         chart_id: str | None = _Field(
             default=None,
             description=(
-                "Chart UUID for API contract compliance. "
-                "life_events is a native-only corpus with no chart_id column; "
-                "the parameter is validated and logged but not used as a SQL filter."
+                "Chart UUID. Real per-chart filter since migration 423 — "
+                "life_events is chart-scoped; only this chart's events are returned."
             ),
         )
         domain: str | None = _Field(default=None, description="Domain substring filter")
@@ -1694,9 +1700,9 @@ try:
         POST /brahma/mimamsa/lel_query
 
         Query the Life Event Log calibration corpus.
-        Accepts chart_id for MCP-layer isolation contract compliance.
-        life_events is a native-only corpus — chart_id is validated but
-        not used as a SQL filter (table has no chart_id column).
+        Since migration 423 life_events is chart-scoped: chart_id is a real
+        per-chart SQL filter; an unknown/empty chart returns an honest
+        empty-with-reason envelope.
         """
         return lel_query(
             domain=body.domain,

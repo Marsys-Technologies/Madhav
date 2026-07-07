@@ -641,7 +641,7 @@ export const TOOL_METADATA: readonly ToolReconciliationEntry[] = [
     ayanamsha_role: null,
     intent: 'life_event',
     surface: 'both',
-    description: 'LEL ground-truth life events lookup.',
+    description: 'LEL ground-truth life events lookup — chart-scoped (chart_id required) since migration 423.',
     per_chart: true,
   },
 

@@ -161,8 +161,9 @@ describe('assetsByLayer', () => {
     expect(assetsByLayer('L4').length).toBe(9)
   })
 
-  it('returns 6 L5 Mīmāṃsā assets', () => {
-    expect(assetsByLayer('L5').length).toBe(6)
+  it('returns 7 L5 Mīmāṃsā assets', () => {
+    // 6 mi_* display assets + lel_events (user-authored source data, migration 423).
+    expect(assetsByLayer('L5').length).toBe(7)
   })
 
   it('every returned key actually has the requested layer', () => {
