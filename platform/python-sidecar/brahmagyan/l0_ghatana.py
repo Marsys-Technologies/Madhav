@@ -223,7 +223,10 @@ EVENT_CLASSES: list[dict] = [
         },
         "magnitude_floor": "significant",
         "adjacency": ["parental_event"],
-        "base_rate_by_age": {"band_0_12": 0.05, "band_13_25": 0.15, "band_26_40": 0.30, "band_41_60": 0.30, "band_60_plus": 0.30},
+        # JL-009 (native glance 2026-07-07): bereavement re-weighted to rise with
+        # elder-cohort mortality; ontology → v1.1 (migration 421). Kept in sync here so a
+        # re-seed does not revert the ratified edit via ON CONFLICT DO UPDATE.
+        "base_rate_by_age": {"band_0_12": 0.10, "band_13_25": 0.15, "band_26_40": 0.30, "band_41_60": 0.35, "band_60_plus": 0.40},
         "citations": ["BPHS ch.8,2 (maraka/nidhan)"],
     },
     {
@@ -624,14 +627,15 @@ def seed_ghatana(
                   (event_class_id, name_en, domain, lel_category,
                    signature_model, magnitude_floor, adjacency,
                    base_rate_by_age, citations, version)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, '1.0')
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, '1.1')
                 ON CONFLICT (event_class_id)
                 DO UPDATE SET
                     signature_model  = EXCLUDED.signature_model,
                     magnitude_floor  = EXCLUDED.magnitude_floor,
                     adjacency        = EXCLUDED.adjacency,
                     base_rate_by_age = EXCLUDED.base_rate_by_age,
-                    citations        = EXCLUDED.citations
+                    citations        = EXCLUDED.citations,
+                    version          = EXCLUDED.version
                 """,
                 (
                     ec["event_class_id"],

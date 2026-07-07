@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.24
+version: 6.25
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,19 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.25 (2026-07-07, BA-PHASE4-RUNWAY R2.3 — ph_nimitta base_rate age-normalization):
+    **R2.3 (JL-009 point-2 structural directive) complete.** ph_nimitta previously used a flat
+    `base_rate=0.10` placeholder; JL-009 closing lifted that gate. Wired the real consumption:
+    base_rate is now the **row-normalized** brahma_event_ontology `base_rate_by_age` weight (rows are
+    relative, per-row sums 0.81–1.30 → normalized to 1.0 at lookup) for the age band containing the
+    anchor's predicted date (peak_date, else window_start) relative to the native's birth date;
+    age-unknown → uniform prior 0.20. New pure helper services/ph_nimitta/base_rate.py; discovery
+    loop reordered (enrich→ctx) so discovery anchors get a real date band; formula constant
+    `ph_nimitta_base_rate_age_normalization` (migration 422, class=engineering); 8-case unit test
+    test_ph_nimitta_base_rate.py (218 sidecar tests green). Also fixed a latent seed bug: l0_ghatana.py
+    used ON CONFLICT DO UPDATE that would revert the bereavement v1.1 edit on re-seed — synced seed to
+    v1.1 + added version to the update set. JL-009 point-2 DISCHARGED; R4 base_rate-trace gate now
+    satisfiable. R2.2 (LEL re-architecture) remains before R2 closes. Native chart 482012f1 NOT touched.
   - v6.24 (2026-07-07, BA-PHASE4-RUNWAY R2.1 — JL-026 RESOLVED, graha_yuddha single-writer):
     **R2 (code churn) opened; workstream R2.1 (JL-026 dual-write audit) complete.** Full file:line
     audit of the ga_structural↔ga_condition dual-write proved `graha_yuddha` was the LAST co-written
