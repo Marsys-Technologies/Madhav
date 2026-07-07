@@ -171,7 +171,7 @@ class TestExportTableLogEntry:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log", side_effect=fake_write_log),
         ):
-            result = m.export_table("chart_facts", dry_run=False, write_log=True)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False, write_log=True)
 
         assert result["table_name"] == "chart_facts"
         assert result["row_count"] >= 0  # range assertion — not exact
@@ -202,7 +202,7 @@ class TestExportTableLogEntry:
             patch.object(m, "_load_parquet_to_bq", return_value=0),
             patch.object(m, "_write_export_log", side_effect=lambda *a, **kw: write_log_calls.append(a)),
         ):
-            result = m.export_table("chart_facts", dry_run=True, write_log=True)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=True, write_log=True)
 
         assert result["dry_run"] is True
         assert len(write_log_calls) == 0  # no DB write in dry_run
@@ -307,7 +307,7 @@ class TestSourceCitationFilter:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False)
 
         # Only 1 row with valid citation should be exported
         assert result["row_count"] == 1
@@ -337,7 +337,7 @@ class TestRunExport:
             }
 
         with patch.object(m, "export_table", side_effect=fake_export_table):
-            results = m.run_export(tables=["chart_facts", "bodha_signals"])
+            results = m.run_export(NATIVE_CHART_ID, tables=["chart_facts", "bodha_signals"])
 
         assert len(results) == 2
         table_names = [r["table_name"] for r in results]
@@ -354,7 +354,7 @@ class TestRunExport:
             return {"table_name": table_key, "row_count": 5, "source_citation": "test"}
 
         with patch.object(m, "export_table", side_effect=fake_export_table):
-            m.run_export()
+            m.run_export(NATIVE_CHART_ID)
 
         assert "life_events_calibration" not in exported_tables
         assert "chart_facts" in exported_tables
@@ -369,7 +369,7 @@ class TestRunExport:
             return {"table_name": table_key, "row_count": 57, "source_citation": "LEL v1.7"}
 
         with patch.object(m, "export_table", side_effect=fake_export_table):
-            m.run_export(include_life_events=True)
+            m.run_export(NATIVE_CHART_ID, include_life_events=True)
 
         assert "life_events_calibration" in exported_tables
 
@@ -392,7 +392,7 @@ class TestRunExport:
             }
 
         with patch.object(m, "export_table", side_effect=fail_bodha):
-            results = m.run_export(tables=["chart_facts", "bodha_signals"])
+            results = m.run_export(NATIVE_CHART_ID, tables=["chart_facts", "bodha_signals"])
 
         assert len(results) == 2
         failed = [r for r in results if "error" in r]
@@ -660,7 +660,7 @@ class TestProvenanceEnvelope:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False)
 
         envelope = result.get("provenance_envelope", {})
         assert envelope.get("source") == "brahmagyan.mimamsa.export_to_bigquery"
@@ -754,7 +754,7 @@ class TestGate3Contract:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", export_timestamp="20260604T120000Z", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, export_timestamp="20260604T120000Z", dry_run=False)
 
         assert len(captured_paths) == 1
         path = captured_paths[0]
@@ -796,7 +796,7 @@ class TestGate3Contract:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", export_timestamp="20260604T120000Z", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, export_timestamp="20260604T120000Z", dry_run=False)
 
         assert "madhav-brahma-olap" in result["gcs_uri"], (
             f"gcs_uri must reference 'madhav-brahma-olap', got {result['gcs_uri']!r}"
@@ -836,7 +836,7 @@ class TestGate3Contract:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False)
 
         assert result.get("source_citation"), "source_citation must be non-null and non-empty"
         assert "FORENSIC" in result["source_citation"], "source_citation must reference FORENSIC"
@@ -878,7 +878,7 @@ class TestGate3Contract:
             patch.object(m, "_load_parquet_to_bq", return_value=0),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False)
 
         assert isinstance(result["row_count"], int), "row_count must be int"
         assert result["row_count"] >= 0, "row_count must be >= 0"
@@ -921,7 +921,7 @@ class TestGate3Contract:
             patch.object(m, "_load_parquet_to_bq", return_value=1),
             patch.object(m, "_write_export_log"),
         ):
-            result = m.export_table("chart_facts", dry_run=False)
+            result = m.export_table("chart_facts", chart_id=NATIVE_CHART_ID, dry_run=False)
 
         env = result.get("provenance_envelope")
         assert env is not None, "provenance_envelope must be present"

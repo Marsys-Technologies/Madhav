@@ -56,7 +56,6 @@ SOURCE_CITATION = (
     "l5_learning_multiplier.py (MI-5-4-SCAFFOLD); "
     "LIFE_EVENT_LOG_v1_2.md v1.7"
 )
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # BigQuery settings (overridable via environment)
 BQ_DATASET = os.environ.get("BQ_DATASET", "brahma_l5_mimamsa")
@@ -70,7 +69,7 @@ JSONL_FALLBACK_PATH = _FALLBACK_DIR / "bigquery_export_preview.jsonl"
 
 # ── Payload builders ──────────────────────────────────────────────────────────
 
-def _build_mimamsa_events_payload(export_date: str) -> list[dict[str, Any]]:
+def _build_mimamsa_events_payload(export_date: str, chart_id: str) -> list[dict[str, Any]]:
     """Build the mimamsa_events export payload (57 rows)."""
     from brahmagyan.mimamsa.l5_lel_intake import build_intake_rows
     rows = build_intake_rows()
@@ -78,7 +77,7 @@ def _build_mimamsa_events_payload(export_date: str) -> list[dict[str, Any]]:
         {
             "export_date":      export_date,
             "table_name":       "mimamsa_events",
-            "chart_id":         NATIVE_CHART_ID,
+            "chart_id":         chart_id,
             "event_id":         r["event_id"],
             "lel_id":           r["lel_id"],
             "event_date":       r["event_date"],
@@ -100,7 +99,7 @@ def _build_mimamsa_events_payload(export_date: str) -> list[dict[str, Any]]:
     ]
 
 
-def _build_chart_state_index_payload(export_date: str) -> list[dict[str, Any]]:
+def _build_chart_state_index_payload(export_date: str, chart_id: str) -> list[dict[str, Any]]:
     """Build the event_chart_state_index export payload (57 rows)."""
     from brahmagyan.mimamsa.l5_event_chart_state_index import build_event_chart_state_index
     index = build_event_chart_state_index()
@@ -108,7 +107,7 @@ def _build_chart_state_index_payload(export_date: str) -> list[dict[str, Any]]:
         {
             "export_date":                export_date,
             "table_name":                 "event_chart_state_index",
-            "chart_id":                   NATIVE_CHART_ID,
+            "chart_id":                   chart_id,
             "event_id":                   e["event_id"],
             "lel_id":                     e["lel_id"],
             "event_date":                 e["event_date"],
@@ -131,7 +130,7 @@ def _build_chart_state_index_payload(export_date: str) -> list[dict[str, Any]]:
     ]
 
 
-def _build_calibration_substrate_payload(export_date: str) -> list[dict[str, Any]]:
+def _build_calibration_substrate_payload(export_date: str, chart_id: str) -> list[dict[str, Any]]:
     """Build the calibration_substrate export payload (1 summary row)."""
     from brahmagyan.mimamsa.l5_calibration_substrate import compute_calibration_substrate
     substrate = compute_calibration_substrate()
@@ -139,7 +138,7 @@ def _build_calibration_substrate_payload(export_date: str) -> list[dict[str, Any
         {
             "export_date":              export_date,
             "table_name":               "calibration_substrate",
-            "chart_id":                 NATIVE_CHART_ID,
+            "chart_id":                 chart_id,
             "concordance_pct":          substrate["concordance_pct"],
             "concordant_count":         substrate["concordant_count"],
             "total_training_events":    substrate["total_training_events"],
@@ -154,7 +153,7 @@ def _build_calibration_substrate_payload(export_date: str) -> list[dict[str, Any
     ]
 
 
-def _build_multiplier_payload(export_date: str) -> list[dict[str, Any]]:
+def _build_multiplier_payload(export_date: str, chart_id: str) -> list[dict[str, Any]]:
     """Build the signal multiplier export payload (569 rows)."""
     from brahmagyan.mimamsa.l5_learning_multiplier import build_multiplier_rows
     rows = build_multiplier_rows()
@@ -162,7 +161,7 @@ def _build_multiplier_payload(export_date: str) -> list[dict[str, Any]]:
         {
             "export_date":       export_date,
             "table_name":        "mimamsa_signal_multipliers",
-            "chart_id":          NATIVE_CHART_ID,
+            "chart_id":          chart_id,
             "signal_id":         r["signal_id"],
             "multiplier":        r["multiplier"],
             "mean_brier_score":  r["mean_brier_score"],
@@ -179,6 +178,7 @@ def _build_multiplier_payload(export_date: str) -> list[dict[str, Any]]:
 
 def build_export_payload(
     *,
+    chart_id: str,
     include_multipliers: bool = False,
     export_date: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
@@ -186,6 +186,7 @@ def build_export_payload(
     Build the full export payload as a dict of table_name → rows.
 
     Args:
+        chart_id:            Chart UUID stamped on every exported row (required).
         include_multipliers: Include the 569-row signal multiplier table.
         export_date:         Export partition date (ISO string). Defaults to today.
 
@@ -197,17 +198,19 @@ def build_export_payload(
             "mimamsa_signal_multipliers": [...569 rows...] if include_multipliers
         }
     """
+    if not chart_id:
+        raise ValueError("chart_id is required")
     if export_date is None:
         export_date = date.today().isoformat()
 
     payload: dict[str, list[dict[str, Any]]] = {
-        "mimamsa_events":          _build_mimamsa_events_payload(export_date),
-        "event_chart_state_index": _build_chart_state_index_payload(export_date),
-        "calibration_substrate":   _build_calibration_substrate_payload(export_date),
+        "mimamsa_events":          _build_mimamsa_events_payload(export_date, chart_id),
+        "event_chart_state_index": _build_chart_state_index_payload(export_date, chart_id),
+        "calibration_substrate":   _build_calibration_substrate_payload(export_date, chart_id),
     }
 
     if include_multipliers:
-        payload["mimamsa_signal_multipliers"] = _build_multiplier_payload(export_date)
+        payload["mimamsa_signal_multipliers"] = _build_multiplier_payload(export_date, chart_id)
 
     return payload
 
@@ -349,6 +352,7 @@ def export_to_jsonl(
 
 def run_export(
     *,
+    chart_id: str,
     include_multipliers: bool = False,
     export_date: str | None = None,
     dry_run: bool = False,
@@ -361,6 +365,7 @@ def run_export(
     Attempts BigQuery first. Falls back to JSONL if BQ credentials unavailable.
 
     Args:
+        chart_id:            Chart UUID stamped on every exported row (required).
         include_multipliers: Include 569-row signal multiplier table.
         export_date:         Export partition date (ISO string). Defaults to today.
         dry_run:             Build payload but do not write.
@@ -374,6 +379,7 @@ def run_export(
         export_date = date.today().isoformat()
 
     payload = build_export_payload(
+        chart_id=chart_id,
         include_multipliers=include_multipliers,
         export_date=export_date,
     )
@@ -457,11 +463,15 @@ def main() -> None:
         "--export-date", default=None, help="Export partition date (YYYY-MM-DD)"
     )
     parser.add_argument(
+        "--chart-id", required=True, help="Chart UUID stamped on every exported row"
+    )
+    parser.add_argument(
         "--verbose", action="store_true", help="Log export details"
     )
 
     args = parser.parse_args()
     result = run_export(
+        chart_id=args.chart_id,
         include_multipliers=args.include_multipliers,
         export_date=args.export_date,
         dry_run=args.dry_run,

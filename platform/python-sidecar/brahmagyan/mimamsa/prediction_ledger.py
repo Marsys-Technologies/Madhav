@@ -63,10 +63,6 @@ router = APIRouter()
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-NATIVE_CHART_ID = os.environ.get(
-    "NATIVE_CHART_ID", "482012f1-710e-4a25-994a-93821f5871aa"
-)
-
 # Valid domain values — extensible; used for soft validation only
 VALID_DOMAINS = frozenset({
     "career",

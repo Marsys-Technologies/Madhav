@@ -1582,6 +1582,29 @@ class TestGrahaYuddha:
         keys = {r["fact_key"] for r in yuddha_rows}
         assert "winner" in keys and "loser" in keys
 
+    def test_yuddha_winner_rule_floored_no_victor_named(self):
+        """JL-027: winner rule is FLOORED — no planet is named victor.
+        winner/loser rows carry NULL values + reason='no_ratified_classical_rule';
+        orb_deg remains a true computed fact."""
+        rows = sut._build_graha_yuddha_rows(
+            self._make_yuddha_chart(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+        )
+        yuddha_rows = [r for r in rows if r["fact_category"] == "graha_yuddha"]
+        assert len(yuddha_rows) >= 3  # at least one pair → winner, loser, orb_deg
+
+        for r in yuddha_rows:
+            if r["fact_key"] in ("winner", "loser"):
+                # No planet named as victor/loser:
+                assert r["fact_value_text"] is None
+                assert r["fact_value_jsonb"]["winner"] is None
+                assert r["fact_value_jsonb"]["loser"] is None
+                assert r["fact_value_jsonb"]["reason"] == "no_ratified_classical_rule"
+                assert r["fact_value_jsonb"]["floored"] is True
+            elif r["fact_key"] == "orb_deg":
+                # orb is a true fact — still present and numeric:
+                assert r["fact_value_num"] is not None
+                assert r["fact_value_num"] <= 1.0
+
 
 # ── §T9: Combustion and retrograde relational rows ────────────────────────────
 

@@ -30701,3 +30701,78 @@ session_close:
 ```
 
 *End of BA-R4-WRAP-W1-2026-07-07 entry — 2026-07-08.*
+
+---
+
+## BA-R4-WRAP-W2A-2026-07-08 — LEL churn (intake + strict-zero + graha_yuddha floor) — CLOSED 2026-07-08
+
+```yaml
+session_open:
+  session_id: BA-R4-WRAP-W2A-2026-07-08
+  opened_on: 2026-07-08
+  cowork_thread_name: BA-R4-WRAP-W2-LEL-CHURN
+  governing_brief: CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md
+  scope_notes: >
+    W2 (R2.2 LEL churn) — Steps 2-7 + JL-027 floor. Conductor + subagent swarm (verifier ≠ implementer).
+    W2a landed the verifiable bulk (intake + strict-zero + floor); D+E (new builds) paced to W2b.
+  may_touch:
+    - "brahmagyan/mimamsa LEL intake + de-hardcode surfaces"
+    - "ga_structural_writer graha_yuddha floor (JL-027)"
+    - "services/ph_rectification/engine.py NATIVE_CHART_ID removal"
+    - "life_events prod rows @ 482012f1 (intake only, chart-scoped)"
+    - "00_ARCHITECTURE ledgers + CURRENT_STATE + SESSION_LOG + W2b brief"
+  must_not_touch:
+    - "orchestrator/planner core"
+    - "native chart 482012f1 builds (only at W4)"
+    - "the native's 57 LEL events content (scoping only)"
+    - "ph_pramana rectification logic validating 10:43"
+    - "salience/priors (frozen)"
+  predecessor_session: BA-R4-WRAP-W1-2026-07-07
+  current_state_version_at_open: 6.27
+  red_team_due: false
+```
+
+**Session:** BA Phase-4 Runway W2. Conductor + subagent swarm (5 implementers + 1 independent verifier).
+
+**Landed (W2a) + independently verified (PR #459):**
+- Clear-safety proven vs prod (lel_events:null skip honored by clear/execute before any per-chart DELETE; test 17/17).
+- **57 LEL events intaken @ 482012f1** — verified prod (57 native / 0 Abhinandan / 57 event_chart_state_index /
+  recorded_at=pre_instrument sentinel). Fixed 2 latent prod-schema type bugs in the stale intake. Reconciled vs markdown.
+- **Strict-zero NATIVE_CHART_ID** across ALL brahmagyan/mimamsa + services/ph_* (both grep-gates EMPTY; engine.py
+  10:43 rectification math untouched). mi_jivanaghatana markdown-read path deleted.
+- **JL-027 FLOOR** implemented in code (graha_yuddha winner/loser=NULL + reason; orb kept; proxy removed).
+- Verifier ALL PASS: full suite 2941 passed (29 pre-existing unrelated); no breaking runtime caller.
+
+**Deferred to W2b:** D (judgment_flags persistence + wiring), E (LEL intake write API + debounce + leakage + pool
+migration). Native chart 482012f1 NOT rebuilt. Brief: `CLAUDECODE_BRIEF_BA_R4_WRAP_W2b_v1_0.md`.
+
+### Next session objective
+
+W2b per `CLAUDECODE_BRIEF_BA_R4_WRAP_W2b_v1_0.md`: build D (judgment_flags persistence migration + envelope
+wiring so calibration_state is served) and E (new authenticated LEL intake write API + debounced targeted
+recalibration + recorded_at leakage routing + mimamsa_pool_contributions migration, gated
+MIMAMSA_CROSS_CHART_POOL=off); verify the remaining LEL exit gates (state-machine served, trigger E2E on
+Abhinandan, leakage, pool, MCP probes). Then W3 (Abhinandan re-zero + FREEZE) on the native's word; W4 (native
+rebuild) only on explicit ledger-recorded GO. Native chart 482012f1 untouched until W4.
+
+```yaml
+session_close:
+  session_id: BA-R4-WRAP-W2A-2026-07-08
+  closed_on: 2026-07-08
+  outcome: >
+    COMPLETE — W2a (LEL churn: chart-scoped intake + strict-zero NATIVE_CHART_ID + graha_yuddha floor)
+    end-to-end + independently verified (PR #459). 57 LEL events intaken @ 482012f1. W2b (D+E new builds) staged.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: Beyond-Acharya unified program (BA Phase-4 Runway — W2a CLOSED, W2b staged)
+  current_state_updated: true
+  current_state_version: 6.28
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    W2b — D (judgment_flags persistence + wiring) + E (LEL intake write API + debounce + leakage routing +
+    pool migration), remaining LEL exit gates. Then W3 (Abhinandan re-zero + FREEZE) on the native's word,
+    then W4 (native rebuild) on explicit ledger-recorded GO. Native chart untouched until W4.
+```
+
+*End of BA-R4-WRAP-W2A-2026-07-08 entry — 2026-07-08.*

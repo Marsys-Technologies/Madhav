@@ -483,5 +483,37 @@ LEL Steps 3–7; JL-027 ruling). Native checkpoint at this boundary; JL-027 ruli
 
 ---
 
+## BA Phase-4 Runway — W2a (R2.2 LEL churn: intake + strict-zero + graha_yuddha floor) CLOSE — 2026-07-08
+
+Conductor + subagent-swarm (5 implementers + independent verifier; verifier ≠ implementer per swarm charter).
+
+- **Clear-safety PROVEN vs prod BEFORE intake:** `lel_events: null` in EXPLICIT_CLEAR_OPS; the clear/execute
+  route does `if (explicitOps === null) continue` (skips DELETE) — checked BEFORE the count_sql-derived
+  per-chart DELETE would ever be generated; event_chart_state_index is not a registered asset. Test 17/17.
+- **First-intake:** `seed_lel_intake` chart-scoped (required chart_id, recorded_at=PRE_INSTRUMENT_SENTINEL
+  2000-01-01, ON CONFLICT (chart_id,event_id)). Fixed TWO latent prod-schema type bugs never before run
+  against the live hybrid schema (legacy NOT NULL cols omitted by the brahma branch; outcome_observed
+  boolean vs match-quality string). **57 events intaken @ 482012f1** `[verify-against: prod db]`: native
+  life_events=57, Abhinandan=0, total=57, event_chart_state_index native=57, recorded_at sentinel on all 57.
+  Reconciliation: spot-5 descriptions present in LIFE_EVENT_LOG_v1_2.md; count-57 (corpus assert + DB).
+- **Strict-zero NATIVE_CHART_ID (native ruling):** eradicated across ALL brahmagyan/mimamsa + services/ph_*
+  — both grep-gates EMPTY. outcome.py chart_id required; l5_bigquery_export/l5_calibration_substrate/
+  export_to_bigquery threaded chart_id; dead consts deleted; engine.py NATIVE_CHART_ID removed with the
+  rectification math (10:43 validation) UNTOUCHED (verified). mi_jivanaghatana markdown-read path deleted.
+- **JL-027 FLOOR implemented in code:** graha_yuddha winner/loser=NULL + reason='no_ratified_classical_rule'
+  (floored:true), orb_deg kept; per-varga emits orb only; longitude proxy removed. Prod rows reflect the
+  floor at the next build (W3 Abhinandan / W4 native).
+- **Independent verifier ALL PASS:** grep-gates empty; full suite 2941 passed (29 pre-existing unrelated
+  failures — L0 corpus drift, L2 eval floors, prod-DB data state; none touch this chunk); NO breaking
+  runtime caller (chart_id-required fns only reachable via FastAPI routes with graceful 422); floor + engine
+  + prod intake confirmed. **PR #459.**
+
+**W2a EXIT: GREEN.** REMAINING for W2 = **W2b** (D: judgment_flags persistence+wiring; E: LEL intake write
+API + debounce + leakage routing + pool migration) — net-new builds, paced to a dedicated session by the
+native so they land on reviewed code. Brief: `CLAUDECODE_BRIEF_BA_R4_WRAP_W2b_v1_0.md`. Native chart 482012f1
+NOT rebuilt (only LEL data intaken; built at W4 on explicit GO).
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*

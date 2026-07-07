@@ -52,7 +52,6 @@ SOURCE_CITATION = (
     "l3_obstruction.py SADE_SATI_WINDOWS; "
     "l2_signals_scaffold.py"
 )
-NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 VOLUME_FLOOR = 57
 
 # ── L3 data import (graceful fallback if not available) ───────────────────────
