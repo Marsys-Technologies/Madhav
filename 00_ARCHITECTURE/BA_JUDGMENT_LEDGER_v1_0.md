@@ -388,7 +388,21 @@ values are frozen:
 - **Reversibility:** N/A (a deferral); migration 419 is drafted and ready once the audit closes.
 - **Consumer:** the follow-on dual-write-audit session; ga_structural + ga_condition; wave-parallel scheduler.
 - **Date:** 2026-07-07
-- **Status:** OPEN — follow-on
+- **Audit + resolution (2026-07-07, BA_PHASE4_RUNWAY_PLAN R2.1):** full dual-write audit run (file:line-evidenced). Findings: after JL-022, **`graha_yuddha` was the LAST remaining co-written `chart_facts` category** — ga_structural (`_build_graha_yuddha_rows`, `winner`/`loser`/`orb_deg`, two_pass_verified) and ga_condition (`_build_d1_avastha_rows` → fact_key `opponent`) both delete-then-insert it at identical scope `(chart_id, 'graha_yuddha', ayanamsha_id)`. The mig-416 edge forced ga_structural to run second, so its delete+re-insert **clobbered ga_condition's rows every build — ga_condition's write never survived** (dead write). Resolution (native ruling, "single-writer + remove edge", Option A of the R2.1 fork): (a) removed the graha_yuddha emission from `ga_condition_writer._build_d1_avastha_rows` (kept `_detect_graha_yuddha` for internal ga_condition_composite annotation); ga_structural is now sole authority — **DB-state-preserving** (it already won via clobber). (b) migration **419** removes the `ga_condition` element from `ga_structural.depends_on` (the documented DOWN of mig-416). Verified ga_structural reads NO ga_condition-produced category (it now produces only 4 avastha categories), so dag_edge_guard stays green with the edge gone. Guard test added (`test_ga_condition_jl026_graha_yuddha.py`). Zero co-written categories remain → single-writer-per-category invariant (B.1) restored.
+- **Status:** **RESOLVED (2026-07-07)** — audit complete, graha_yuddha single-writer, mig-416 edge removed (mig 419), invariant restored. Winner-rule correctness spun out to **JL-027** (see below). `[verify-against: repo + R3 parallel rebuild]`
+
+---
+
+### JL-027 — Correctness: `graha_yuddha` winner rule is not the true classical rule
+- **Phase:** BA Phase-4 runway R2.1 (surfaced by the JL-026 dual-write audit)
+- **Ruling agent:** Ācārya-Pratinidhi — **native ruling REQUIRED before R4** (bakes into the native chart)
+- **Question:** Graha yuddha (planetary war) winner determination. The audit found the two writers used **contradictory** simplified rules — ga_structural: winner = LOWER ecliptic longitude (`_build_graha_yuddha_rows`); ga_condition (now removed): winner = HIGHER longitude (`_detect_graha_yuddha`). **Neither implements the true classical rule** (winner = the more-northern planet / higher ecliptic latitude — BPHS ch.3), which both self-label as needing Swiss Ephemeris latitude data. JL-026 made ga_structural sole authority, so its "lower-longitude-wins" simplification is what currently ships (and what the native chart would compute at R4). Which rule is authoritative?
+- **Decision:** **OPEN — awaiting native/ācārya ruling.** JL-026's single-writer consolidation is orthogonal to and does NOT decide this (it preserved the already-shipping ga_structural value). Options: (a) ratify ga_structural's current longitude proxy as an accepted simplification with a disclosed provenance note; (b) correct it to the true latitude-based rule → requires `[EXTERNAL_COMPUTATION_REQUIRED]` Swiss Ephemeris latitude per graha at chart epoch (B.10), a spec + likely a new L1 fact. **Guardrail:** do NOT let the native chart R4-consume graha_yuddha as a load-bearing signal until this is ruled; if unresolved by R4, flag graha_yuddha outputs as provisional in judgment_flags.
+- **Basis:** J (acharya-grade) + B.10 (no fabricated computation — latitude rule needs real ephemeris data) + the silent-error class this program hunts (two contradictory rules, one silently clobbering the other, was live until R2.1).
+- **Reversibility:** ga_structural compute-logic change + optional new L1 latitude fact; re-derivable; no destructive write.
+- **Consumer:** `ga_structural._build_graha_yuddha_rows`; downstream graha_yuddha readers (bo_*/ka_* strength/affliction); native chart at R4.
+- **Date:** 2026-07-07
+- **Status:** OPEN — native ruling required before R4
 
 ---
 
@@ -421,7 +435,8 @@ values are frozen:
 | JL-023 | BA Phase-3 | Contract: per-writer timeout budgets + watchdog (self-test fatality deferred) | RATIFIED — VALIDATED | Yes — registry data + versioned config |
 | JL-024 | BA Phase-3 | Operational: rebuild Abhinandan fresh, never restore snapshot | RATIFIED — HONORED | N/A — protects insurance snapshot |
 | JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — DONE | Yes — additive changelog entry |
-| JL-026 | BA Phase-3 | Deferred: full dual-write audit before removing mig-416 edge (graha_yuddha) | OPEN — follow-on | N/A — deferral; mig 419 ready |
+| JL-026 | BA Phase-3 → P4 R2.1 | Audit: ga_structural↔ga_condition dual-write (graha_yuddha) | RESOLVED — single-writer + edge removed (mig 419) | Yes — code + mig 419 DOWN |
+| JL-027 | BA Phase-4 R2.1 | Correctness: graha_yuddha winner rule not true classical rule | OPEN — native ruling required before R4 | Yes — compute change + optional L1 latitude fact |
 
 ---
 

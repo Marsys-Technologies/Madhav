@@ -1209,7 +1209,14 @@ def _build_d1_avastha_rows(
     Build D1-level chart_facts rows for:
       - graha_avastha_sayanadi     (12-state degree-based, BPHS)
       - graha_avastha_lajjitadi    (6-state context-based, Phaladeepika)
-      - graha_yuddha               (explicit chart_facts row for retrieval)
+
+    NOTE (JL-026, 2026-07-07): the `graha_yuddha` chart_facts category is NO
+    LONGER emitted here — ga_structural is its sole authoritative writer
+    (_build_graha_yuddha_rows, richer two_pass_verified output). This removes the
+    third ga_structural↔ga_condition dual-write (the delete-scope clobber that the
+    migration-416 edge papered over). `_detect_graha_yuddha` is retained ONLY to
+    annotate ga_condition_composite rows (graha_yuddha_with/result columns) — an
+    internal avastha-context input, not a chart_facts category.
 
     Sources: _load_graha_positions() (already computed for ayanamsha_id).
     These supplement the existing ga_condition_composite columns.
@@ -1228,7 +1235,6 @@ def _build_d1_avastha_rows(
 
     sun_pos = position_map.get("Sun")
     sun_longitude = sun_pos.get("longitude") if sun_pos else None
-    yuddha_map = _detect_graha_yuddha(position_map)
     combustion_orbs: dict = {}
 
     for graha in ALL_GRAHAS:
@@ -1302,34 +1308,14 @@ def _build_d1_avastha_rows(
             "computed_at":             computed_at,
         })
 
-        # ── Graha yuddha chart_facts row (for MSR retrieval) ─────────────────
-        yuddha_data = yuddha_map.get(graha)
-        if yuddha_data:
-            opponent, result = yuddha_data
-            rows.append({
-                "fact_id":                 str(uuid.uuid4()),
-                "chart_id":                chart_id,
-                "ayanamsha_id":            ayanamsha_id,
-                "build_id":                build_id or "",
-                "fact_category":           "graha_yuddha",
-                "fact_subject":            graha.upper(),
-                "fact_key":                "opponent",
-                "fact_value_text":         f"{opponent}:{result}",
-                "fact_value_num":          None,
-                "fact_value_jsonb":        json.dumps({"opponent": opponent, "result": result}),
-                "unit":                    None,
-                "citation_ref":            f"graha_yuddha.{graha}.{opponent}@chart={chart_id}:ay={ayanamsha_id}:eng={eng_ver}",
-                "citation_human":          (
-                    f"{graha} in planetary war (graha yuddha) with {opponent}: {result}. "
-                    "Classical rule: two classical grahas within 1° in same sign — "
-                    "winner determined by higher ecliptic longitude (simplified per BPHS ch.3). "
-                    "True latitude-based determination requires Swiss Ephemeris latitude data."
-                ),
-                "source_calculation":      f"ga_condition_writer._detect_graha_yuddha/{eng_ver}",
-                "verification_pass_status":"computed_extension",
-                "engine_version":          eng_ver,
-                "computed_at":             computed_at,
-            })
+        # ── Graha yuddha chart_facts row REMOVED (JL-026, 2026-07-07) ─────────
+        # ga_structural is the sole authoritative writer of the `graha_yuddha`
+        # fact_category (_build_graha_yuddha_rows). Emitting it here too was the
+        # third ga_structural↔ga_condition dual-write: identical delete scope
+        # (chart_id, 'graha_yuddha', ayanamsha_id) → parallel clobber/deadlock,
+        # and ga_structural (running after ga_condition via the mig-416 edge)
+        # deleted+re-inserted these rows every build, so this write never
+        # survived. Single-writer now; the mig-416 edge is removed (migration 419).
 
     return rows
 

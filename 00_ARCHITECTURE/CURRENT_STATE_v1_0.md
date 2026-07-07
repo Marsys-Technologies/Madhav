@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.23
+version: 6.24
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,26 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.24 (2026-07-07, BA-PHASE4-RUNWAY R2.1 — JL-026 RESOLVED, graha_yuddha single-writer):
+    **R2 (code churn) opened; workstream R2.1 (JL-026 dual-write audit) complete.** Full file:line
+    audit of the ga_structural↔ga_condition dual-write proved `graha_yuddha` was the LAST co-written
+    chart_facts category after JL-022, with identical delete scope (parallel-clobber source) and
+    ga_structural already the de-facto sole authority (the mig-416 edge made it run second, clobbering
+    ga_condition's rows every build — a dead write). Native ruling (R2.1 fork): **single-writer +
+    remove edge**. Landed: (a) removed the graha_yuddha emission from
+    ga_condition_writer._build_d1_avastha_rows (kept _detect_graha_yuddha for ga_condition_composite
+    annotation), ga_structural (_build_graha_yuddha_rows, two_pass_verified) now sole writer —
+    DB-state-preserving; (b) migration **419** removes ga_condition from ga_structural.depends_on (the
+    documented DOWN of mig-416); (c) guard test test_ga_condition_jl026_graha_yuddha.py. Verified
+    ga_structural reads no ga_condition-produced category → dag_edge_guard stays green edge-free;
+    147 ga_structural + 5 ga_condition tests pass. Single-writer-per-category invariant (B.1) restored.
+    JL-026 → **RESOLVED**. **NEW JL-027 (OPEN — native ruling required before R4):** the audit surfaced
+    that neither writer's graha_yuddha winner rule is the true classical (latitude/northern-planet)
+    rule — ga_structural ships a "lower-longitude-wins" simplification; correcting it needs Swiss
+    Ephemeris latitude data (B.10 EXTERNAL_COMPUTATION_REQUIRED). Guardrail: graha_yuddha must not be a
+    load-bearing native signal at R4 until ruled. R2.2 (LEL re-architecture) + R2.3 (ph_nimitta
+    base_rate row-normalization, per JL-009 point-2) still pending before R2 closes. Native chart
+    482012f1 NOT touched.
   - v6.23 (2026-07-07, BA-PHASE4-RUNWAY R1 — NATIVE INPUTS / JL-009 CLOSED):
     **Runway plan `BA_PHASE4_RUNWAY_PLAN_v1_0.md` (churn → re-zero → one shot) opened; Phase R1
     (native inputs) closing.** R1.1 — the JL-009 age-banded event base-rate table (22 classes ×
