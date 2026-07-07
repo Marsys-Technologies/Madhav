@@ -515,5 +515,42 @@ NOT rebuilt (only LEL data intaken; built at W4 on explicit GO).
 
 ---
 
+## BA Phase-4 Runway — W2b (LEL Steps 4-6: calibration serving + intake API + pool) CLOSE — 2026-07-08
+
+Conductor + subagent-swarm (4 implementers D/E1/E2/E3 + independent verifier ALL PASS). Native decisions:
+add an `asset_set` build-plan scope; fold the live-run trigger E2E into W3's Abhinandan re-zero.
+
+- **D — calibration_state persistence + serving (mig 424, prod):** `phala_rectification_best.judgment_flags jsonb`
+  + `brahma_formula_constants` (`mimamsa_calibration_min_events={"n_min":10}`, `mimamsa_recalibration_debounce_seconds={"seconds":600}`).
+  `ph_rectification` writer stamps `judgment_flags` (n_min read from the constant, fallback 10); the L4
+  `query_rectification` capability now SELECTs + serves `judgment_flags` (structural|sparse|calibrated).
+- **E — intake write API + trigger + pool + leakage:**
+  - NEW `lel_event_writer.ts` + MCP action `lel_event_record` — owner/super_admin (write-all), ontology-validated,
+    `recorded_at=now()`, NOT-NULL hybrid superset, `ON CONFLICT (chart_id,event_id)`.
+  - `asset_set` build-plan scope (mig 426, prod: `build_runs.scope` CHECK += `asset_set`) — targeted subset runs;
+    FROZEN orchestrator WriterBase contract untouched.
+  - `recalibrationEnqueue.ts` — debounced (quiet-window from the constant) `asset_set` recalibration over
+    `[mi_jivanaghatana, mi_pramana, ph_rectification, ph_pramana]`; RUN_ACTIVE coalesce; `force` bypass.
+  - Pool (mig 425, prod): `mimamsa_pool_contributions` (capture-now via `record_pool_contribution`;
+    consume-gated `MIMAMSA_CROSS_CHART_POOL=off`; grep-confirmed NO serving path reads it).
+  - `recorded_at` leakage routing wired into `mi_jivanaghatana` (per-event partition; sentinel→training,
+    strictly-after-snapshot→outcome).
+- **Migrations 424/425/426 DEPLOYED to prod + verified `[verify-against: prod db]`:** judgment_flags col live;
+  2 constants seeded; pool table exists (0 rows); build_runs_scope_check includes asset_set; lel_query(native)=57,
+  lel_query(Abhinandan)=empty-with-reason.
+- **Independent verifier ALL PASS:** full regression (python 2956 passed / 29 pre-existing baseline / NO new
+  failures; vitest 184 passed; tsc clean); pool-gating (no serving read, flag off, dual-key consume); intake
+  authz (write-all only, view/deny rejected); asset_set no-regression + RUN_ACTIVE enforced; judgment_flags
+  wiring; leakage routing. **PR #460** merged (main 6cd7f509).
+
+**W2 (a+b) EXIT: CODE-COMPLETE + GREEN.** Two LEL exit gates are LIVE-validated at W3 by native decision
+(they require a build): (1) calibration_state SERVED in judgment_flags on a sampled L4/L5 envelope, and
+(2) the trigger E2E (synthetic events → debounced asset_set recalibration → state flip → revert) — W3's
+Abhinandan re-zero runs exactly the LEL-dependent writers, so both validate there. JL-027 floor (W2a) also
+becomes visible-in-prod at that build → JL-027 CLOSES then. Native chart 482012f1 NOT rebuilt (built at W4,
+explicit ledger-recorded GO only).
+
+---
+
 *RUN LEDGER v1.0 — initialized 2026-07-03 by CONDUCTOR (BA-AUTONOMOUS-RUN-2026-07-03)*
 *Update at every gate. Do not edit substance of prior entries — append only.*
