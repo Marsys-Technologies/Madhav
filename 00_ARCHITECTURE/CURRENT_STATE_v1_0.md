@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.22
+version: 6.23
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,24 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.23 (2026-07-07, BA-PHASE4-RUNWAY R1 — NATIVE INPUTS / JL-009 CLOSED):
+    **Runway plan `BA_PHASE4_RUNWAY_PLAN_v1_0.md` (churn → re-zero → one shot) opened; Phase R1
+    (native inputs) closing.** R1.1 — the JL-009 age-banded event base-rate table (22 classes ×
+    5 bands) was surfaced from `brahma_event_ontology` v1.0 for the native glance. Ācārya-Pratinidhi
+    (native-delegated) ruling, four points: (1) EDIT bereavement `0.05/0.15/0.30/0.30/0.30` →
+    `0.10/0.15/0.30/0.35/0.40` (elder-cohort mortality) + ontology-wide version bump 1.0→1.1
+    (migration 421); (2) STRUCTURAL DIRECTIVE — `ph_nimitta` base_rate consumption MUST row-normalize
+    the age-band vector to 1.0 at lookup (rows are relative weights, sums 0.81–1.30) → recorded as
+    an R2 code obligation (formula-constants note + unit test), MUST be live before R4; (3) KEEP
+    nonzero 60+ tails on career_entry/exam_outcome (rare-not-impossible); (4) CONFIRM separation
+    26–40 peak (demographic basis). JL-009 → **CLOSED** in BA_JUDGMENT_LEDGER. R1.2 retrospective
+    veto sweep — no native veto issued → JL-021…026 dispositions CONFIRMED (mig-416 edge kept;
+    WORKER_LIMIT=2). R1.3 environment quiesce — single writer stream declared (this session; no
+    parallel Claude/Antigravity sessions, no manual cockpit builds, no other open PRs/DB sessions).
+    **R1 exit met**: JL-009 CLOSED `[verify-against: ledger]`; quiesce declared. Next: R2 code churn
+    (JL-026 dual-write audit + LEL re-architecture + the ph_nimitta normalization obligation).
+    Migration 421 lands via this PR (CI-gated deploy applies to prod). Native chart 482012f1 NOT
+    touched (built only at R4).
   - v6.22 (2026-07-07, BA-PHASE-3-RULINGS-2-3 — PARALLEL RESTORE VALIDATED):
     **Rulings JL-022 (avastha dual-write) + JL-023 (per-writer timeout budgets) implemented,
     deployed, and validated in a clean PARALLEL rebuild.** After the clean serial 66/66 gate
