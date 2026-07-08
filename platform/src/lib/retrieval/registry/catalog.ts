@@ -68,6 +68,11 @@ import './layers/register_d8_assess_domain'
 // additive — no removal).
 import './layers/register_d9_judgment'
 
+// D10 (R5 W4, design §26/§28.3, brief §3 W4 lane 1): pact_query — the PACT protocol
+// (promise → confirmation → activation → trigger) as one chained investigation, halting
+// honestly the moment a stage is classically denied (B.10 — never fabricates a later stage).
+import './layers/register_d10_pact'
+
 // ── getCatalog ────────────────────────────────────────────────────────────────
 
 let _catalogLoaded = false

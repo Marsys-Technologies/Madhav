@@ -1417,4 +1417,122 @@ lane/consumer already depends on, independent of graha_portrait's own fate.
 - `00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md` (JL-015 appended)
 - `00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md` (this report)
 
+---
+
+## W4 — lane: PACT protocol end-to-end (`r5/w4-pact-protocol`, off `origin/r5/w4`) — worktree close report
+
+**Brief:** find the design's PACT chain definition and (1) wire typed drill_pointers so a caller
+can chain PACT stages, (2) implement denied-promise-halts-honestly, (3) decide new-capability
+vs. judgment_query-enhancement, (4) follow the MANDATORY MCP param-forwarding standing requirement.
+
+**The four PACT stages, as the design doc actually defines them (§26 + §28.3 — NOT the brief's
+own admitted guess of "Promise/Activation/Confirmation/Timing"):**
+1. **PROMISE** — the rashi checklist verdict (judgment_query's own recipe).
+2. **CONFIRMATION** — does the operative varga (e.g. D9 for marriage) confirm the promise.
+3. **ACTIVATION** — which dasha carries the promise-bearing lord/kāraka, and when.
+4. **TRIGGER** — a transit gate check within the activation window.
+(§28.3 names a further "posterior (phala_query anchors)" step after TRIGGER — explicitly not one
+of the four PACT-named stages; not attempted this wave, consistent with the brief's own framing.)
+
+**What was built:**
+1. `pact_stage` — a new optional/additive field on `DrillPointer` (`platform/src/lib/retrieval/
+   envelope.ts`), marking which of the four stages a pointer advances to, layered on the SAME
+   closed `pointer_type` vocabulary W3 already shipped (`confirm_in_varga`→confirmation,
+   `dasha_of_promise`→activation, `transit_gate`→trigger, `check_bhanga`→promise-recheck). Mirrored
+   into `platform-mcp/src/generated/envelope.ts` via the EXISTING `npm run codegen:envelope`
+   pipeline (§19 single-source; no hand-mirror; `codegen:check` passes clean).
+2. `pact_query` (`marsys://tool/L-PACT/pact_query`, D10, `register_d10_pact.ts`) — a NEW
+   capability that WALKS the four-stage chain and halts the moment a stage is classically denied.
+   Zero parallel data-fetch logic: stage 1 delegates entirely to `judgmentQueryCapability.handler`
+   (W3, unmodified); stage 3 reuses judgment_query's own already-fetched `timing_hooks` (no second
+   `get_dashas` call); stage 4 calls the existing `query_planet_transit` (L0) unchanged. See
+   JL-019 for the full "new capability, not a pure alias" ruling and the CONFIRMATION/ACTIVATION
+   denial-threshold rulings.
+3. MCP wiring (`platform-mcp/src/tools/registry_bridge.ts`): `pact_query` server.tool registration
+   forwarding every declared param (`chart_id`/`ayanamsha_id`/`domain`/`bhava`/`as_of_date`/
+   `max_signals`) — the MANDATORY standing requirement, verified by a dedicated mocked-seam test.
+4. `catalog.ts` — one import line for `register_d10_pact` (Gate A: registry/index.ts and
+   registry/types.ts untouched).
+
+**Denied-promise-halts-honestly — verified with a CONCRETE LIVE example (native chart
+`482012f1-…`, domain `marriage`):** `judgment_query`'s checklist verdict for bhava 7 (Venus, D9)
+came back `contested` (composite_score `-1.5`) on the live chart. `pact_query` returned
+`pact_status: "denied_at_promise"` with EXACTLY ONE stage in `stages[]` (PROMISE, status
+`denied`), citing 12 real `fact_id_refs`, and the judgment_flags entry `"PACT chain halted at
+PROMISE ... Stages 2-4 (CONFIRMATION/ACTIVATION/TRIGGER) NOT attempted (B.10: no fabrication past
+a denied promise)."` — CONFIRMATION's `chart_facts` dignity query never fired, ACTIVATION/TRIGGER
+never ran. This is the live, gate-verified proof the brief asked for, not merely a documented
+convention.
+
+**Gate verification (both canonical charts, live Cloud SQL):**
+`register_d10_pact.integration.test.ts` (new) — **6/6 PASS** live, both canonical charts, marriage
+domain + a bare-bhava (5th, progeny) call each: every response's `pact_status` is one of the five
+valid values, `stages.length` matches exactly what that status implies (chain-honesty invariant:
+a `denied_at_confirmation` MUST have exactly 2 stages, never 1 or 3+), `fact_id_refs` are non-empty
+once PROMISE passes, and TRIGGER (when reached) never asserts an open/closed gate verdict — only
+`gate_data_fetched` / `unreachable` / `not_yet`, each with an honest reason (B.10). Re-ran the
+pre-existing `register_d9_judgment.integration.test.ts` alongside — still 8/8 PASS, unaffected.
+
+**Legacy preservation:** no existing tool/alias touched or renamed; `pact_query` is a wholly new
+addition. `judgment_query`/`graha_portrait` unmodified (only imported, not edited).
+
+**Verification run + results:**
+- `platform`: `npx tsc --noEmit -p .` — 0 errors (needed `npm install` first; this worktree had no
+  `node_modules` at session start).
+- `platform-mcp`: `npx tsc --noEmit -p .` — 0 errors (also needed `npm install`).
+- `platform-mcp`: `npm run codegen:envelope` (regenerated `src/generated/envelope.ts` for the new
+  `pact_stage`/`PactStage` field) + `npm run codegen:check` — envelope generator reports
+  up-to-date; the sibling `generate_registry_shims.ts --check` halts on a PRE-EXISTING unrelated
+  `get_strength` descriptor issue (confirmed unrelated to this lane — that capability was not
+  touched here).
+- `platform` full `npx vitest run`: **433 test files passed, 19 skipped; 5220 tests passed, 223
+  skipped, 1 todo — 0 failed.**
+- `platform-mcp` full `npx vitest run`: **96 failed / 394 passed / 15 skipped (505)** — confirmed
+  PRE-EXISTING (re-ran on the pre-lane baseline via `git stash`: 101 failed / 389 passed / 15
+  skipped, the same failing test files; this lane's own new test file was the only delta, and it
+  now passes). Zero new failures introduced.
+- New unit test `register_d10_pact.test.ts` (DB-mocked, no live DB needed) — **8/8 PASS** —
+  concretely exercises all four denial/pending/complete chain paths, including asserting
+  `mockQuery` is never called at all when PROMISE is denied (proves stage-skipping, not merely
+  mis-reported skipping).
+- New MCP-seam test `registry_bridge_r5w4_pact.test.ts` — **5/5 PASS** — registration reachability,
+  full param forwarding (mandatory check), `pact_stage` on v3 `drill_pointers`, error paths.
+- New live-DB integration test `register_d10_pact.integration.test.ts` — **6/6 PASS**, both
+  canonical charts (Cloud SQL Auth Proxy reachable at `127.0.0.1:5433` in this environment via
+  `platform/.env.local`, same as the W3 graha_portrait lane's documented setup).
+- ESLint on changed/new `platform` files — 0 errors (1 pre-existing-class `_ctx` unused-var
+  warning, same as `register_d9_judgment.ts`'s own warning).
+
+**Judgment ledger:** JL-019 (full entry in `R5_JUDGMENT_LEDGER_v1_0.md`) — three sub-rulings:
+new-capability-vs-navigation-only scope; the four stage names as the design text actually gives
+them (not the brief's guess); the CONFIRMATION/ACTIVATION denial thresholds (reusing JL-015's
+dignity-weight vocabulary; no new vocabulary invented).
+
+**MCP-tool-registration / param-forwarding confirmation:** `pact_query` is registered as a real
+`server.tool(...)` callback in `registry_bridge.ts`; its Zod schema declares
+`chart_id`/`ayanamsha_id`/`domain`/`bhava`/`as_of_date`/`response_format`/`max_signals`, and every
+one is explicitly threaded into the `callRegistryCapability` args object (verified by the mocked
+MCP-seam test's param-forwarding assertions, per the MANDATORY standing requirement).
+
+**Standalone value if halted here:** `pact_query` is complete and shippable as specified in design
+§28.3 — all four stages implemented, gate-verified live on both canonical charts, chain-honesty
+invariant proven with a concrete live-denial example. The `pact_stage` typed-pointer field stands
+alone as a genuine navigation improvement (any caller reading `judgment_query`'s existing
+`confirm_in_varga`/`dasha_of_promise`/`transit_gate` pointers now additionally sees which PACT
+stage each one advances to) independent of `pact_query`'s own fate.
+
+**Files touched (for merge-conflict cross-referencing):**
+- `platform/src/lib/retrieval/envelope.ts` (new `PactStage` type + `pact_stage` field on `DrillPointer`)
+- `platform-mcp/src/generated/envelope.ts` (regenerated via `npm run codegen:envelope` — mirrors the above)
+- `platform/src/lib/retrieval/registry/layers/register_d10_pact.ts` (new — `pact_query` capability)
+- `platform/src/lib/retrieval/registry/catalog.ts` (added one import line for `register_d10_pact`)
+- `platform/src/lib/retrieval/registry/layers/__tests__/register_d10_pact.test.ts` (new — DB-mocked chain-honesty unit tests)
+- `platform/src/lib/retrieval/registry/layers/__tests__/register_d10_pact.integration.test.ts` (new — live-DB gate)
+- `platform-mcp/src/tools/registry_bridge.ts` (added `pact_query` MCP tool registration + `PactStage` import + widened `envelope()`'s `drill_pointers` param type)
+- `platform-mcp/src/__tests__/registry_bridge_r5w4_pact.test.ts` (new — MCP-seam mocked tests)
+- `00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md` (JL-019 appended)
+- `00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md` (this report)
+
+**HALTs:** none.
+
 **HALTs:** none.
