@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_R4_WRAP_W2
 version: 1.0
-status: READY-FOR-EXECUTION — dedicated W2 session (native paced W2 out of the W1 session, 2026-07-08)
+status: COMPLETE (2026-07-08) — W2 LEL churn code-complete (W2a+W2b); superseded by execution
 created: 2026-07-08
 author: Claude Code (BA-R4-WRAP W1 conductor) — hand-off brief for the W2 session
 parent: CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md (W2 section) + CLAUDECODE_BRIEF_BA_LEL_CHART_SCOPING_v1_0.md (v1.2, Steps 2–7)

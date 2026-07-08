@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_P3A_L0_SEEDS_AND_L1_EXT
 version: 1.0
-status: RING2_PARTIAL — Ring-1 PASS (PRs #398+#401+#402 merged; mig 385-389 applied; deploy run 28657023737 SUCCESS); Ring-2 4.5/5 gates evidenced; ONE NATIVE ACTION REQUIRED (cockpit L1 rebuild for bhava_arudha)
+status: COMPLETE (2026-07-08) — P3A deferred bhava_arudha 12x5 gate CLOSED by the native W4 rebuild (210 rows / 5 ayanamshas)
 created: 2026-07-03
 author: Cowork (Beyond-Acharya unified program; substance frozen — conductor fills slots only)
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — phase P3A (L0 judgment seeds + L1 extensions)
