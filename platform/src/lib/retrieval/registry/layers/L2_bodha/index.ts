@@ -16,6 +16,7 @@ import { querySignalsCapability }          from './query_signals'
 import { queryContradictionsCapability }   from './query_contradictions'
 import { queryRemediesCapability }         from './query_remedies'
 import { queryQualityScorecardCapability } from './query_quality_scorecard'
+import { grahaPortraitCapability }         from './graha_portrait'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -24,3 +25,4 @@ registerCapability(querySignalsCapability)
 registerCapability(queryContradictionsCapability)
 registerCapability(queryRemediesCapability)
 registerCapability(queryQualityScorecardCapability)
+registerCapability(grahaPortraitCapability)

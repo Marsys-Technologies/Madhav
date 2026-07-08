@@ -869,4 +869,95 @@ already fully implemented and gate-verified against both canonical charts) indep
 satisfies the W2 "from-Moon in ONE call" gate — the strength/signal annotations are additive
 value on top, not prerequisites for the gate to pass.
 
+---
+
+### JL-015 — W3 `graha_portrait` lane: two real hollow-field defects found and fixed in the L1 tools it synthesizes over, plus the yoga-participation honesty scope
+
+**context:** Building `graha_portrait` (design §28.2 — the graha-question mirror recipe) as a
+synthesis over already-built L1/L2 capability handlers (get_positions, get_dignity, get_strength,
+get_avasthas, get_yoga_dosha, get_dashas, query_signals, traverse_chart_graph — no new SQL against
+chart_facts/bodha_msr_signals/bodha_cgm_* beyond what those handlers already run) surfaced two real,
+previously-undiscovered P3-class hollow-field defects in the L1 tools themselves, live against both
+canonical charts, before this portrait could be honestly populated. Both are fixed at the source
+file rather than filtered around in the portrait, since every OTHER caller of these tools had the
+same silent-empty exposure.
+
+**(a) `get_strength`'s `graha_key` filter matched the wrong column.** The filter was
+`fact_key ILIKE '${graha_key}%'` — but `fact_key` is a GENERIC component name shared by every graha
+in a category (`"rupa"`, `"score"`, `"bphs_weighted"`); the graha's identity lives in
+`fact_subject` (`"SAT"`, `"SAT_IN_HOUSE_5"`, etc. — verified live: `graha_key ILIKE 'SAT%'` against
+`fact_key` returns 0 rows for every category on both canonical charts). **Ruling:** fix the filter
+to match `fact_subject` (exact, varga-prefix, and house-suffix forms — the same three shapes
+`subjectMatchesGraha` in the portrait itself has to recognize across categories), rather than
+working around the broken param by re-fetching all rows and filtering client-side in the portrait
+only. Any other in-flight or future caller passing `graha_key` had the identical silent-zero-rows
+bug; leaving it unfixed while building a new consumer next to it would repeat the exact defect
+class (P1/P3) this run has spent three waves hunting.
+
+**(b) `get_dignity`, `get_avasthas`, `get_strength`, and `get_yoga_dosha` never SELECTed
+`fact_subject` at all.** Confirmed live: all four handlers' SQL selects
+`fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb,
+unit, verification_pass_status, citation_ref` — omitting `fact_subject` entirely. This means every
+row these four tools have EVER returned is anonymous with respect to which graha/entity it
+describes (a `dignity_state = "exalted"` row with no way to know which graha is exalted). This is
+more severe than (a): it isn't a broken filter, it's a missing column that makes the returned data
+structurally unusable for any graha-scoped question — the graha_portrait's three most
+design-critical sections (dignity chain, avasthas, functional nature) would have been served
+completely hollow (fact_subject undefined on every row) without this fix, the textbook P3 failure
+shape. **Ruling:** add `fact_subject` to all four SELECT lists. Purely additive (a new field on an
+otherwise-unchanged row shape) — no existing caller's field access breaks; caller code that never
+looked at `fact_subject` is unaffected, and any caller who silently depended on the CURRENT
+behavior of "cannot tell which graha a row belongs to" was depending on a bug, not a feature.
+
+**(c) yoga/dosha participation is honestly scoped to what's actually populated, not what design
+§28.2 asks for verbatim.** §28.2 lists "yogas it participates in" as a portrait field. Live
+verification found: L1 `yoga_fires`/`dosha_fires` are 0 rows for both canonical charts (JL-004,
+restated rather than re-litigated — this is a requires_pass CATALOG, not confirmed firings); the L2
+`bodha_msr_signals` `yoga`/`dosha` `signal_type_class` rows carry the IDENTICAL catalog/
+`fire_reason: requires_pass` shape (verified live — same non-finding, different table). The one
+MSR `signal_type_class` that IS genuinely chart-specific and graha-attributed is `parivartana`
+(structural planetary exchanges, real `planet_a`/`planet_b` pairs, verified populated — 8 matches
+for Saturn on the native chart, including a real D33 Venus↔Saturn exchange). **Ruling:** serve
+`parivartana` matches as real data, serve `yoga`/`dosha` `signal_type_class` matches too but
+labeled `catalog_yoga_matches`/`catalog_dosha_matches` with an explicit "not confirmed firings"
+caveat, and state the L1 emptiness with its JL-004 reason rather than either (i) omitting the
+section (which would look like a portrait bug) or (ii) padding it with catalog rows presented as
+findings (which would be new fabrication on top of an old defect). This is E-3 empty-with-reason
+applied at the section level, not a workaround for a data gap this lane can't close (writers are
+must_not_touch/frozen; the yoga_fires emptiness is a build-plane issue, not a serving-plane one).
+
+**(d) `chart_dashas.lord_graha` stores full classical names, not codes.** Verified live:
+`SELECT DISTINCT lord_graha FROM chart_dashas` returns `"Saturn"`, `"Jupiter"`, etc. — not `"SAT"`/
+`"JUP"`. The portrait's dasha section passes `grahaName` (not `grahaCode`) to `get_dashas`'s
+`lord_graha` filter for this reason; noted here because it's the same class of naming-convention
+inconsistency as (a)/(b) even though `get_dashas.ts` itself needed no fix — the caller (portrait)
+just has to know which of its two normalized forms (code vs. name) each downstream tool actually
+stores.
+
+**basis:** ASTROLOGY > correctness (a) rejects a filter that silently returns nothing over one that
+plainly errors or actually works — Jyotish output must be genuinely case-derived, not accidentally
+empty. (b) is a correctness-tier fix, not a code-convenience one: an unscoped-by-entity dignity/
+avastha/yoga row is not a smaller version of the right answer, it's an unusable one. (c) honesty >
+completeness-for-its-own-sake — the design's field list is a target, not license to fabricate
+population where the underlying data doesn't support it (B.10 — no fabricated computation,
+generalized to "no fabricated findings"). All four are within this lane's `may_touch` scope
+(`platform/src/lib/retrieval/**`) and are exactly the files/columns the W3 brief's own instruction
+("reuse existing query functions... rather than re-deriving their data") requires working
+correctly, not routing around.
+
+**reversibility:** (a) fully reversible — the WHERE clause change only affects rows returned when
+`graha_key` is passed; omitting it is unaffected (matches prior behavior for the common case). (b)
+fully reversible and additive — a new column in the SELECT list, no removed/renamed fields, no
+behavior change for any caller not reading `fact_subject`. (c) fully reversible — purely a labeling/
+note choice in the new capability's own output; changing L1's yoga_fires build state later
+automatically improves this section without any portrait-side change. (d) not applicable (no code
+changed at the site; a documentation/comment note only).
+
+**standalone value if halted here:** every section of `graha_portrait` is independently useful and
+already gate-verified with real, non-hollow data (position, dignity, functional_nature, strength,
+avasthas, yogas, dashas, cgm_neighborhood) on both canonical charts — a halt after this lane loses
+no partially-built capability; the tool is complete and shippable as specified in design §28.2,
+modulo the honestly-scoped yoga/dosha caveat in (c) which is a data-maturity fact, not an
+implementation gap.
+
 No further entries — this ledger reopens for W3+ waves.

@@ -1217,3 +1217,104 @@ that stops at the capability-handler level is insufficient — it must include a
 bugs recur. Recording this as a standing Ring-2 requirement going forward, not just a one-off fix.
 
 **HALTs:** none.
+
+---
+
+## W3 — lane: graha_portrait (design §28.2) — worktree close report
+
+**Branch:** `r5/w3-graha-portrait`, off `origin/r5/w3`.
+
+**Built:** a new capability `marsys://tool/L2/graha_portrait` (registered in
+`registry/layers/L2_bodha/graha_portrait.ts` + `index.ts`) and a matching MCP tool `graha_portrait`
+in `platform-mcp/src/tools/registry_bridge.ts`. Per design §28.2's exact field list: current
+position, dignity chain across operative vargas (D1/D9/D10/D60 highlighted, full varga list
+included), shadbala decomposition, avasthas, yogas/configurations participated in, dasha periods
+across the lifetime (past/next Mahadashas), CGM neighborhood, and functional nature for the lagna.
+Pure synthesis over the already-built L1/L2 capability handlers (get_positions, get_dignity,
+get_strength, get_avasthas, get_yoga_dosha, get_dashas, query_signals, traverse_chart_graph) called
+in-process — no new SQL beyond what those handlers already run.
+
+**Two real hollow-field defects found live and fixed at the source (see JL-015 for full detail):**
+(a) `get_strength`'s `graha_key` filter matched `fact_key` (a generic component name shared by
+every graha) instead of `fact_subject` — silently 0 rows for every category on both canonical
+charts. (b) `get_dignity`/`get_avasthas`/`get_strength`/`get_yoga_dosha` never SELECTed
+`fact_subject` at all — every row from all four tools was anonymous with respect to which graha it
+describes. Both fixed (WHERE-clause correction; SELECT-list addition) — additive, no existing
+caller's behavior changes for callers not depending on the broken behavior. This is the exact
+P3 hollow-field failure class, found in tools OTHER lanes/the estate already ship, while building
+a new consumer of them — flagging as a process point: any new synthesis instrument that actually
+tries to USE an existing tool's data end-to-end is a strong defect-finder for the tools it calls.
+
+**MCP-tool-registration + param-forwarding check (the mandatory W2-lesson check):** `graha_portrait`
+is registered as an actual `server.tool(...)` call in `registry_bridge.ts` (not just a capability).
+All 5 capability params (`chart_id`, `graha`, `ayanamsha_id`, `operative_vargas`, `include`) are
+declared in the tool's Zod schema and explicitly threaded through the `callRegistryCapability(...)`
+args object (each one individually, via `...(x ? {x} : {})` — not a blind spread). Confirmed via
+grep of the diff (both files) and via the bootstrap-path trace: `graha_portrait` is registered by
+`L2_bodha/index.ts`'s side-effect `registerCapability()` call, which fires when
+`registerD5FanoutCapabilities()` dynamically imports `./L2_bodha/index` — the SAME bootstrap path
+`/api/retrieval/capability`'s `ensureBootstrapped()` already runs before every dispatch (no new
+registration mechanism introduced). Did not spin up a live local MCP server + `tools/call` in this
+pre-deploy pass (no deployed target to hit yet); the capability itself was run live end-to-end
+against the real Cloud SQL DB (see gate below) and the Zod-schema/forwarding correspondence was
+verified by direct diff inspection per the brief's stated fallback ("at minimum grep your own diff
+...").
+
+**Gate verification (both canonical charts, Saturn portrait, genuinely populated):**
+`graha_portrait.gate.integration.test.ts` (new) calls the real capability handler once per chart —
+**2/2 PASS** live against Cloud SQL. Every section returns real, non-empty data: position (9 rows,
+house 7, longitude 202.43°), dignity (D1=exalted, D9=debilitated, D10=neutral, D60=neutral),
+functional_nature (temporal_malefic, both bphs_canonical + raman_variant), strength (shadbala/
+in-house rows populated post-fix), avasthas (baladi=vriddha, deepta=mudita, jagrad=swapna,
+lajjitadi=garvita, sayanadi=naiveshya), yogas (8 parivartana exchange matches, honest
+empty-with-reason note on yoga_fires/dosha_fires per JL-004), dashas (1991-08-18 to 2010-08-18
+Saturn Mahadasha), cgm_neighborhood (9 nodes / 112 edges). `completeness` receipt (design §28.6
+vocabulary reused) shows `✓` on all 8/8 requested sections for Saturn on the native chart (found a
+self-inconsistency bug in-flight: the `yogas` section initially had no `count` field, so the
+completeness helper defaulted it to `zero_rows` even when `parivartana_count` was 8 — fixed by
+giving the section its own `count` before this report was written, not left as a known quirk).
+Manual full-output inspection (via `tsx --conditions=react-server`) confirms every field is real,
+not fabricated or null.
+
+**Legacy preservation:** no existing tool/alias was touched or renamed; `graha_portrait` is a
+wholly new addition. No breaking-alias-removal risk from this lane.
+
+**Verification run + results:**
+- `platform`: `npx tsc --noEmit` — 0 errors (clean; needed `npm install` first, this worktree had
+  no `node_modules` at session start).
+- `platform-mcp`: `npx tsc --noEmit` — 0 errors (clean; also needed `npm install`).
+- `platform` full `npx vitest run`: **432 test files passed, 17 skipped; 5212 tests passed, 209
+  skipped, 1 todo — 0 failed.** (Live Cloud SQL proxy available in this environment at
+  `127.0.0.1:5433`, credentials from `platform/.env.local` in the parent repo checkout.)
+- `platform-mcp` full `npx vitest run`: **96 failed / 380 passed / 15 skipped (491)** — matches the
+  documented pre-existing baseline (per W1 Ring-1 close report) exactly; zero new failures, no
+  `graha_portrait` test in this suite failed (no unit test added on the MCP side — the new tool is
+  a thin Zod-schema + proxy wrapper matching the established pattern, verified by direct diff
+  inspection instead per the mandatory check above).
+- ESLint on all changed `platform` files: 0 errors (4 pre-existing `_ctx` unused-var warnings in
+  files this lane added `fact_subject` to — same warning class already present in every other
+  L1_ganita handler, unrelated to this lane's edits).
+- New test: `graha_portrait.gate.integration.test.ts` — 2/2 PASS, live DB, both canonical charts.
+
+**Judgment ledger:** JL-015 (four sub-rulings — see above / full entry in
+`R5_JUDGMENT_LEDGER_v1_0.md`).
+
+**Standalone value if halted here:** the capability is complete and shippable as specified in
+design §28.2 (modulo the honestly-scoped yoga/dosha caveat, which is a data-maturity fact, not an
+implementation gap) — every section gate-verified with real data on both canonical charts. The two
+get_strength/get_dignity-family fixes stand alone as correctness improvements to tools every other
+lane/consumer already depends on, independent of graha_portrait's own fate.
+
+**Files touched (for merge-conflict cross-referencing):**
+- `platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts` (new)
+- `platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts` (added import + 2 registration lines)
+- `platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/graha_portrait.gate.integration.test.ts` (new)
+- `platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts` (graha_key filter fix + fact_subject SELECT)
+- `platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts` (fact_subject SELECT)
+- `platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts` (fact_subject SELECT)
+- `platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts` (fact_subject SELECT)
+- `platform-mcp/src/tools/registry_bridge.ts` (added `graha_portrait` MCP tool registration, appended before the final closing brace)
+- `00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md` (JL-015 appended)
+- `00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md` (this report)
+
+**HALTs:** none.
