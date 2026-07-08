@@ -49,6 +49,9 @@ import {
   registerD8AssessDomainCapabilities,
 } from '@/lib/retrieval/registry/layers/register_d8_assess_domain'
 import {
+  registerD9JudgmentCapabilities,
+} from '@/lib/retrieval/registry/layers/register_d9_judgment'
+import {
   registerRouterCapabilities,
 } from '@/lib/retrieval/registry/layers/router_registration'
 import {
@@ -69,6 +72,12 @@ async function ensureBootstrapped(): Promise<void> {
   registerD6SynergyCapabilities()
   registerD7ChannelCapabilities()
   registerD8AssessDomainCapabilities()
+  // R5 W3 (design §28.1): judgment_query — verified missing from this bootstrap list
+  // during MCP-registration verification (the exact P1/W2-alias-gap failure class,
+  // recurring one layer up: a capability registered in catalog.ts's per-wave import
+  // chain but NOT in this route's own separate bootstrap list is unreachable via the
+  // live HTTP path platform-mcp actually calls).
+  registerD9JudgmentCapabilities()
 
   // D-B fix: register L0 + L1 capabilities (not included in D5 fanout)
   // L0: exports registerL0Capabilities() — must be called explicitly

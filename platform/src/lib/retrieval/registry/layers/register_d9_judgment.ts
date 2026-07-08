@@ -1,0 +1,568 @@
+/**
+ * D9 — judgment_query: THE BHAVA-ADHYAYA RECIPE AS ONE INSTRUMENT
+ * ===================================================================
+ * GATE A compliance: per-wave registration file. Does NOT edit registry/index.ts or
+ * registry/types.ts.
+ *
+ * R5 W3 (design §28.1, brief §3 "W3 — THE ASTROLOGICAL SURFACE"). Implements the
+ * classical judgment protocol for ANY bhava-question in ONE call — general enough for
+ * "how is the marriage?" (bhava 7) as well as career/wealth/health/progeny or a bare
+ * house number — not hardcoded to marriage.
+ *
+ * THE CHECKLIST (design §28.1, cited per step below):
+ *   1. bhava condition                          — §28.1 "bhava condition"
+ *   2. bhavesha (lord) condition + placement     — §28.1 "bhavesha condition + placement"
+ *   3. karaka condition                          — §28.1 "karaka condition"
+ *   4. occupants + aspecting grahas               — §28.1 "occupants + aspecting grahas"
+ *   5. from-lagna AND from-chandra (Sudarshana)   — §28.1 "from-lagna AND from-chandra"
+ *   6. operative-varga confirmation status         — §28.1 "operative-varga confirmation status"
+ *   7. bearing yogas (formed AND notably-absent)   — §28.1 "bearing yogas (formed AND notably-absent)"
+ *   8. promise-register verdict                    — §28.1 "promise-register verdict"
+ *   9. timing hooks                                — §28.1 "timing hooks"
+ * Each element is GRADED (epistemic + strength) with its resolution chain, assembled into
+ * a `receipt` in the classical units design §28.6 specifies:
+ *   {bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}
+ *
+ * REUSE, NOT REBUILD (design §19 single-source mandate): every bhava/lord/karaka/occupant/
+ * from-Moon resolution goes through the SAME `resolveAddress`/address_resolver.ts the W1/W2
+ * waves built and tested — this file adds NO parallel resolver logic. Varga confirmation
+ * reuses `getDivisionalsCapability`; yoga/dosha signals reuse `querySignalsCapability`;
+ * timing reuses `getDashasCapability`; the frame-safety header reuses `getChartHeaderCapability`.
+ *
+ * THE SHASTRA MAP (design §28.5): domain → {bhava, karaka(s), operative varga}. Ratified per
+ * design's own worked examples (marriage→7th/Venus/D9; career→10th/Sun-Mercury-Saturn/D10)
+ * and — for domains the design doesn't spell out (wealth/health/progeny) — the SAME mapping
+ * `register_d8_assess_domain.ts`'s `assess_*` tools already use in production (2nd+11th/
+ * Jupiter/wealth; 1st+6th+8th/Sun/health), so this instrument never contradicts the existing
+ * apex_* tools it is designed to fold. See R5_JUDGMENT_LEDGER JL-015 for the full ruling
+ * (karaka-gender-neutrality, bhanga-unbuilt honesty, verdict-is-not-a-calibrated-posterior).
+ *
+ * WHAT THIS INSTRUMENT DOES NOT DO (honest gaps, not silently invented — B.10):
+ *   - "notably-absent" yogas / bhanga (cancellation) checking needs the D3 "near-miss band"
+ *     design §12 names as a FUTURE data-plane addition (a small stored column at L2 regen).
+ *     That column does not exist yet on any canonical chart. `bhanga_checked` in the receipt
+ *     is honestly `false` with a note, never fabricated.
+ *   - The `verdict` is a DETERMINISTIC weighted aggregation of already-computed dignity/
+ *     strength/aspect/vargottama signals — never an LLM synthesis, never a probability. Its
+ *     epistemic grade is capped at `structural_prior`; `calibrated_posterior` is reserved for
+ *     L5 Mimamsa's own calibration loop (this instrument reads L1/L2 data, not L5).
+ *
+ * Tool: marsys://tool/L-JUDGMENT/judgment_query
+ */
+import { registerCapability } from '../index'
+import type { CapabilityDescriptor } from '../types'
+import { query } from '@/lib/db/client'
+import {
+  resolveAddress,
+  GRAHA_CODE_TO_NAME,
+  AddressResolutionError,
+  type HouseNumber,
+  type ResolvedGraha,
+  type ResolvedSign,
+  type ResolvedOccupants,
+} from '../../address_resolver'
+import { DEFAULT_AYANAMSHA } from '../constants'
+
+// ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
+
+interface DomainSpec {
+  bhava: HouseNumber
+  /** Classical significator(s). Gender-neutral per design §28.5's own worked example
+   *  (marriage→7th/Venus/D9) — no jaimini chara-karaka (DK) substitution here; that
+   *  remains available separately via `karaka('DK')` on the address resolver. */
+  karakas: string[]
+  /** Operative varga for confirmation (design §28.1 "operative-varga confirmation"). */
+  varga: string
+  label: string
+  /** Maps onto bodha_msr_signals.domain (query_signals.ts) — 'other' where no exact
+   *  domain tag exists yet in the signal store. */
+  signal_domain: string
+}
+
+const SHASTRA_MAP: Record<string, DomainSpec> = {
+  marriage:     { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
+  relationship: { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
+  partnership:  { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
+  career:       { bhava: 10, karakas: ['Sun', 'Mercury', 'Saturn'],  varga: 'D10', label: 'Career / Vocation',      signal_domain: 'career' },
+  vocation:     { bhava: 10, karakas: ['Sun', 'Mercury', 'Saturn'],  varga: 'D10', label: 'Career / Vocation',      signal_domain: 'career' },
+  wealth:       { bhava: 2,  karakas: ['Jupiter'],                   varga: 'D2',  label: 'Wealth / Prosperity',    signal_domain: 'wealth' },
+  finance:      { bhava: 2,  karakas: ['Jupiter'],                   varga: 'D2',  label: 'Wealth / Prosperity',    signal_domain: 'wealth' },
+  health:       { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
+  vitality:     { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
+  progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
+  children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
+  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter'],        varga: 'D24', label: 'Education / Learning',   signal_domain: 'other' },
+  spirituality: { bhava: 9,  karakas: ['Jupiter', 'Ketu'],           varga: 'D20', label: 'Spirituality / Dharma',  signal_domain: 'spirituality' },
+}
+
+/** Reverse map — used only when the caller gives a bare bhava number with no domain, so the
+ *  instrument can still assemble a domain label + karaka(s) + operative varga where the
+ *  shastra map already names one for that house. */
+const BHAVA_TO_DOMAIN: Record<number, string> = {}
+for (const [key, spec] of Object.entries(SHASTRA_MAP)) {
+  if (!(spec.bhava in BHAVA_TO_DOMAIN)) BHAVA_TO_DOMAIN[spec.bhava] = key
+}
+
+// Simple, deterministic, classically-uncontested dignity/benefic weighting — never an LLM
+// judgment, never a fabricated probability. Design §28.1 "graded (epistemic + strength)".
+const DIGNITY_WEIGHT: Record<string, number> = {
+  exalted: 2, own: 1.5, moolatrikona: 1.5, great_friend: 1, friend: 0.5,
+  neutral: 0, enemy: -0.5, great_enemy: -1, debilitated: -2,
+}
+const NATURAL_BENEFICS = new Set(['Jupiter', 'Venus', 'Mercury', 'Moon'])
+const NATURAL_MALEFICS = new Set(['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'])
+
+interface GrahaCondition {
+  graha: string
+  graha_code: string
+  house: number | null
+  sign: string | null
+  dignity_state: string | null
+  dignity_weight: number | null
+  shadbala_rupa: number | null
+  fact_ids: string[]
+}
+
+/** D1 dignity + shadbala for one already-resolved graha entity. Never recomputes either —
+ *  both are frozen build-time formula output (must_not_touch, R5 brief). */
+async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
+  const fact_ids = [...g.fact_ids]
+  let dignity_state: string | null = null
+  let shadbala_rupa: number | null = null
+  try {
+    const dignityRes = await query<{ fact_id: string; fact_value_text: string | null }>(
+      `SELECT fact_id, fact_value_text FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
+         AND fact_subject = $3 AND fact_key = 'dignity_state'`,
+      [chartId, ayanamshaId, `D1_${g.graha_code}`],
+    )
+    if (dignityRes.rows[0]) {
+      dignity_state = dignityRes.rows[0].fact_value_text
+      fact_ids.push(dignityRes.rows[0].fact_id)
+    }
+  } catch {
+    // non-fatal: dignity annotation best-effort
+  }
+  try {
+    const shadbalaRes = await query<{ fact_id: string; fact_value_num: number | null }>(
+      `SELECT fact_id, fact_value_num FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
+         AND fact_subject = $3 AND fact_key = 'rupa'`,
+      [chartId, ayanamshaId, g.graha_code],
+    )
+    if (shadbalaRes.rows[0]) {
+      shadbala_rupa = shadbalaRes.rows[0].fact_value_num !== null ? Number(shadbalaRes.rows[0].fact_value_num) : null
+      fact_ids.push(shadbalaRes.rows[0].fact_id)
+    }
+  } catch {
+    // non-fatal: shadbala annotation best-effort
+  }
+  return {
+    graha: g.graha,
+    graha_code: g.graha_code,
+    house: g.house,
+    sign: g.sign,
+    dignity_state,
+    dignity_weight: dignity_state ? DIGNITY_WEIGHT[dignity_state] ?? 0 : null,
+    shadbala_rupa,
+    fact_ids: Array.from(new Set(fact_ids)),
+  }
+}
+
+async function fetchAspectingGrahas(
+  chartId: string, ayanamshaId: string, house: number,
+): Promise<{ grahas: string[]; fact_ids: string[] }> {
+  try {
+    const res = await query<{ fact_id: string; fact_key: string }>(
+      `SELECT fact_id, fact_key FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'aspect_parashari_received'
+         AND fact_subject = $3 AND fact_key LIKE 'from_%'`,
+      [chartId, ayanamshaId, `HOUSE_${house}`],
+    )
+    const grahas = res.rows
+      .map(r => r.fact_key.replace(/^from_/, ''))
+      .map(code => GRAHA_CODE_TO_NAME[code] ?? code)
+    return { grahas, fact_ids: res.rows.map(r => r.fact_id) }
+  } catch {
+    return { grahas: [], fact_ids: [] }
+  }
+}
+
+export const judgmentQueryCapability: CapabilityDescriptor = {
+  uri: 'marsys://tool/L-JUDGMENT/judgment_query',
+  type: 'tool',
+  layer: 'L2',
+  name: 'judgment_query',
+  scope: 'per_chart',
+
+  description: [
+    'THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — generalizes',
+    'apex_marriage_assess/apex_career_assess/apex_health_assess/apex_wealth_assess into the',
+    'acharya\'s own working method, for ANY bhava-question, not hardcoded to marriage.',
+    'Pass either `domain` (e.g. "marriage", "career", "wealth", "health", "progeny", "education",',
+    '"spirituality" — resolved via the shastra map) or a bare `bhava` (1-12) for any other house.',
+    'Runs the COMPLETE classical checklist in one call: bhava condition (sign + occupants +',
+    'aspecting grahas) · bhāveśa (lord) condition + own placement + dignity + strength ·',
+    'kāraka condition (classical significator, e.g. Venus for marriage) · judged from BOTH lagna',
+    'AND chandra (Sudarshana discipline, design §27.3 frame facet) · operative-varga confirmation',
+    '(e.g. D9 for marriage) via the divisional chart · bearing yogas/doshas from the MSR signal',
+    'store · timing hooks (which dasha periods carry the lord/karaka\'s promise, current + upcoming)',
+    '· a deterministic promise-register verdict (never an LLM judgment, never a probability —',
+    'that is L4/L5\'s job) · a classical-units completeness RECEIPT (design §28.6):',
+    '{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}.',
+    'Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address',
+    'resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here.',
+    'Honest gap: "notably-absent"/bhanga (cancellation) near-miss checking needs a data-plane',
+    'addition (design §12 D3) that does not exist yet — bhanga_checked reports false, not fabricated.',
+    'chart_id is required — never defaulted (principle #14).',
+  ].join(' '),
+
+  required_inputs: ['chart_id'],
+
+  input_schema: {
+    chart_id: {
+      type: 'string',
+      description: 'Chart UUID (<chart_uuid>). Required.',
+      required: true,
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: "Ayanamsha to use (default: 'lahiri_chitrapaksha').",
+    },
+    domain: {
+      type: 'string',
+      description:
+        'Life-domain name, resolved via the shastra map (design §28.5): marriage/relationship/' +
+        'partnership (bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), ' +
+        'wealth/finance (bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), ' +
+        'progeny/children (bhava 5, Jupiter, D7), education (bhava 4, Mercury+Jupiter, D24), ' +
+        'spirituality (bhava 9, Jupiter+Ketu, D20). Takes precedence over `bhava` if both given.',
+    },
+    bhava: {
+      type: 'number',
+      description:
+        'Bhava (house) number 1-12, for a judgment question the shastra map does not name a ' +
+        'domain for. If the house happens to match a mapped domain\'s bhava, its karaka(s)/varga ' +
+        'are still applied; otherwise the recipe runs bhava/bhavesha/occupants/aspects/timing ' +
+        'with no karaka leg (reported honestly in the receipt).',
+    },
+    response_format: {
+      type: 'string',
+      description: "Envelope shape: 'legacy' (default) or 'v3' (populated verdict/grounding/chart_header).",
+      enum: ['legacy', 'v3'],
+    },
+    max_signals: {
+      type: 'number',
+      description: 'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).',
+    },
+  },
+
+  archetype: 'rich_relational',
+  traversal_level: 'L-DOMAIN',
+  tool_role: 'drill',
+  emits_references: true,
+  grounds_to: { l1_fact_ids: true, l0_citation_ids: true },
+  lel_capable: false,
+  drill_children: [
+    'marsys://tool/L1/get_divisionals',
+    'marsys://tool/L2/query_signals',
+    'marsys://tool/L1/get_dashas',
+    'marsys://tool/L2/traverse_chart_graph',
+    'marsys://tool/L0/query_classical_texts',
+  ],
+
+  llm_hints: {
+    agentic: { cost_class: 'expensive', cacheable: true },
+    bulk_context: { pre_fetch_priority: 30 },
+  },
+
+  mcp_annotations: { readOnly: true, destructive: false },
+
+  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+    const chart_id = args['chart_id'] as string | undefined
+    if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
+
+    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    const domainInput = (args['domain'] as string | undefined)?.trim().toLowerCase()
+    const bhavaInput = args['bhava'] !== undefined ? Number(args['bhava']) : undefined
+    const max_signals = Math.min(Number(args['max_signals'] ?? 15), 50)
+
+    let spec: DomainSpec
+    let domainKey: string | null = null
+    if (domainInput && SHASTRA_MAP[domainInput]) {
+      domainKey = domainInput
+      spec = SHASTRA_MAP[domainInput]
+    } else if (bhavaInput !== undefined && Number.isInteger(bhavaInput) && bhavaInput >= 1 && bhavaInput <= 12) {
+      const impliedDomain = BHAVA_TO_DOMAIN[bhavaInput]
+      if (impliedDomain) {
+        domainKey = impliedDomain
+        spec = SHASTRA_MAP[impliedDomain]
+      } else {
+        spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'other' }
+      }
+    } else {
+      return {
+        content: {
+          error:
+            'judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) ' +
+            'or `bhava` (1-12).',
+        },
+        is_error: true,
+      }
+    }
+
+    const judgment_flags: string[] = []
+    const fact_ids = new Set<string>()
+
+    try {
+      // ── Step 1+2 (lagna frame): bhava condition, bhāveśa condition, occupants, aspects ──
+      const [bhavaLagna, lordLagna, occupantsLagna, aspectsLagna] = await Promise.all([
+        resolveAddress(chart_id, { type: 'bhava', house: spec.bhava }, { ayanamsha_id }),
+        resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava }, { ayanamsha_id }),
+        resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava }, { ayanamsha_id }),
+        fetchAspectingGrahas(chart_id, ayanamsha_id, spec.bhava),
+      ])
+      const bhavaSignLagna = bhavaLagna.entities[0] as ResolvedSign
+      const lordEntityLagna = lordLagna.entities[0] as ResolvedGraha
+      const occupantsLagnaEntity = occupantsLagna.entities[0] as ResolvedOccupants
+      const lordCondition = await gradeGraha(chart_id, ayanamsha_id, lordEntityLagna)
+      bhavaSignLagna.fact_ids.forEach(f => fact_ids.add(f))
+      occupantsLagnaEntity.fact_ids.forEach(f => fact_ids.add(f))
+      aspectsLagna.fact_ids.forEach(f => fact_ids.add(f))
+      lordCondition.fact_ids.forEach(f => fact_ids.add(f))
+
+      // ── Step 3: kāraka condition (one or more; e.g. career has 3) ──
+      const karakaConditions: GrahaCondition[] = []
+      for (const karakaName of spec.karakas) {
+        try {
+          const res = await resolveAddress(chart_id, { type: 'graha', graha: karakaName }, { ayanamsha_id })
+          const g = await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha)
+          g.fact_ids.forEach(f => fact_ids.add(f))
+          karakaConditions.push(g)
+        } catch (e) {
+          judgment_flags.push(`karaka_unresolved: ${karakaName} — ${String(e)}`)
+        }
+      }
+
+      // ── Step 5: from-chandra (Sudarshana discipline, design §27.3) ──
+      let bhavaSignMoon: ResolvedSign | null = null
+      let lordConditionMoon: GrahaCondition | null = null
+      let occupantsMoon: ResolvedOccupants | null = null
+      try {
+        const [bhavaMoon, lordMoon, occMoon] = await Promise.all([
+          resolveAddress(chart_id, { type: 'bhava', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id }),
+          resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id }),
+          resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id }),
+        ])
+        bhavaSignMoon = bhavaMoon.entities[0] as ResolvedSign
+        occupantsMoon = occMoon.entities[0] as ResolvedOccupants
+        lordConditionMoon = await gradeGraha(chart_id, ayanamsha_id, lordMoon.entities[0] as ResolvedGraha)
+        bhavaSignMoon.fact_ids.forEach(f => fact_ids.add(f))
+        occupantsMoon.fact_ids.forEach(f => fact_ids.add(f))
+        lordConditionMoon.fact_ids.forEach(f => fact_ids.add(f))
+      } catch (e) {
+        judgment_flags.push(`from_moon_resolution_failed: ${String(e)}`)
+      }
+
+      // ── Step 6: operative-varga confirmation (reuses get_divisionals — no parallel query) ──
+      const vargaConfirmation: Record<string, unknown>[] = []
+      let vargaConfirmed = false
+      try {
+        const { getDivisionalsCapability } = await import('./L1_ganita/get_divisionals')
+        const grahasToConfirm = [
+          { role: 'bhavesha', name: lordCondition.graha },
+          ...karakaConditions.map(k => ({ role: 'karaka', name: k.graha })),
+        ]
+        for (const { role, name } of grahasToConfirm) {
+          // chart_divisionals.graha stores the classical display name ("Venus"), NOT a
+          // 2-letter code — verified against both canonical charts before wiring this call
+          // (a 2-letter code here would silently return zero rows, the exact P1 failure
+          // class this run's standing requirement warns about).
+          const res = await getDivisionalsCapability.handler(
+            { chart_id, ayanamsha_id, varga: spec.varga, graha: name }, undefined,
+          )
+          if (!res.is_error) {
+            const c = res.content as Record<string, unknown>
+            const rows = (c['rows'] as Record<string, unknown>[]) ?? []
+            for (const r of rows) vargaConfirmation.push({ role, ...r })
+            if (rows.length > 0) vargaConfirmed = true
+          }
+        }
+      } catch (e) {
+        judgment_flags.push(`varga_confirmation_failed: ${String(e)}`)
+      }
+
+      // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
+      let yogasChecked = 0
+      let yogaSignals: Record<string, unknown>[] = []
+      try {
+        const { querySignalsCapability } = await import('./L2_bodha/query_signals')
+        const res = await querySignalsCapability.handler(
+          {
+            chart_id, ayanamsha_id, domain: spec.signal_domain,
+            signal_type_class: 'yoga', top_k: max_signals,
+          },
+          undefined,
+        )
+        if (!res.is_error) {
+          const c = res.content as Record<string, unknown>
+          yogaSignals = ((c['signals'] as Record<string, unknown>[]) ?? []).map(s => ({
+            signal_id: s['signal_id'],
+            signal_summary: s['signal_summary_text'],
+            computed_salience: s['computed_salience'],
+            signal_tradition: s['signal_tradition'],
+          }))
+          yogasChecked = yogaSignals.length
+        }
+      } catch (e) {
+        judgment_flags.push(`yoga_signal_fetch_failed: ${String(e)}`)
+      }
+      judgment_flags.push(
+        'bhanga_not_checked: notably-absent/cancellation (bhaṅga) near-miss checking requires ' +
+        'a data-plane addition (design §12 D3) not yet built for any chart — reported honestly, not fabricated.',
+      )
+
+      // ── Step 9: timing hooks (reuses get_dashas — no parallel dasha query) ──
+      const timing: Record<string, unknown> = { current: null, lord_mahadasha_windows: [], karaka_mahadasha_windows: [] }
+      let timingAnchored = false
+      try {
+        const { getDashasCapability } = await import('./L1_ganita/get_dashas')
+        const today = new Date().toISOString().slice(0, 10)
+        const currentRes = await getDashasCapability.handler(
+          { chart_id, ayanamsha_id, system: 'vimshottari', as_of_date: today, all_levels: true, limit: 5 },
+          undefined,
+        )
+        if (!currentRes.is_error) {
+          const c = currentRes.content as Record<string, unknown>
+          timing['current'] = c['rows'] ?? []
+        }
+        // chart_dashas.lord_graha stores the classical display name ("Venus"), NOT a 2-letter
+        // code — verified against both canonical charts before wiring this call (see the
+        // varga_confirmation note above; the same param-shape trap applies here).
+        const relevantNames = Array.from(new Set([lordCondition.graha, ...karakaConditions.map(k => k.graha)]))
+        const windowsByGraha: Record<string, unknown> = {}
+        for (const name of relevantNames) {
+          const windowRes = await getDashasCapability.handler(
+            { chart_id, ayanamsha_id, system: 'vimshottari', level: 1, lord_graha: name, window_start: '1900-01-01', window_end: '2100-01-01' },
+            undefined,
+          )
+          if (!windowRes.is_error) {
+            const c = windowRes.content as Record<string, unknown>
+            windowsByGraha[name] = c['rows'] ?? []
+          }
+        }
+        timing['mahadasha_windows_by_graha'] = windowsByGraha
+        timingAnchored = true
+      } catch (e) {
+        judgment_flags.push(`timing_hook_failed: ${String(e)}`)
+      }
+
+      // ── Step 8: deterministic promise-register verdict (never an LLM judgment) ──
+      let compositeScore = lordCondition.dignity_weight ?? 0
+      for (const k of karakaConditions) compositeScore += k.dignity_weight ?? 0
+      const beneficOccupants = occupantsLagnaEntity.grahas.filter(g => NATURAL_BENEFICS.has(g)).length
+      const maleficOccupants = occupantsLagnaEntity.grahas.filter(g => NATURAL_MALEFICS.has(g)).length
+      compositeScore += beneficOccupants * 0.5 - maleficOccupants * 0.5
+      const beneficAspects = aspectsLagna.grahas.filter(g => NATURAL_BENEFICS.has(g)).length
+      const maleficAspects = aspectsLagna.grahas.filter(g => NATURAL_MALEFICS.has(g)).length
+      compositeScore += beneficAspects * 0.3 - maleficAspects * 0.3
+      if (lordCondition.shadbala_rupa !== null && lordCondition.shadbala_rupa < 3) compositeScore -= 0.5
+      if (lordConditionMoon?.dignity_weight) compositeScore += lordConditionMoon.dignity_weight * 0.5
+
+      let verdict_grade: string
+      if (compositeScore >= 2.5) verdict_grade = 'convergent_strong'
+      else if (compositeScore >= 1) verdict_grade = 'convergent_moderate'
+      else if (compositeScore >= -1) verdict_grade = 'mixed'
+      else verdict_grade = 'contested'
+
+      const verdict = {
+        domain: domainKey ?? null,
+        domain_label: spec.label,
+        bhava: spec.bhava,
+        verdict_grade,
+        composite_score: Math.round(compositeScore * 100) / 100,
+        note:
+          'Deterministic weighted aggregation of already-computed dignity/shadbala/occupant/aspect ' +
+          'signals — NOT an LLM judgment and NOT a calibrated probability (that is L4/L5\'s domain). ' +
+          'Weights: dignity ±2..−2, benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, ' +
+          'weak-lord (<3 rupas) −0.5, from-Moon lord dignity ×0.5.',
+      }
+
+      // ── The receipt (design §28.6 — classical-units completeness) ──
+      const receipt = {
+        bhava: true,
+        bhavesha: true,
+        karaka: karakaConditions.length > 0,
+        from_moon: bhavaSignMoon !== null && lordConditionMoon !== null,
+        varga_confirmed: vargaConfirmed ? `${spec.varga}✓` : `${spec.varga}✗ (no divisional row found)`,
+        yogas_checked: yogasChecked,
+        bhanga_checked: false,
+        timing_anchored: timingAnchored,
+      }
+
+      const drill_pointers = [
+        { instrument: 'get_divisionals', hint: `full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka).` },
+        { instrument: 'query_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here.` },
+        { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.' },
+        { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.` },
+        { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).` },
+      ]
+
+      return {
+        content: {
+          chart_id,
+          ayanamsha_id,
+          about: { domain: domainKey, bhava: spec.bhava, label: spec.label, karakas: spec.karakas, operative_varga: spec.varga },
+          checklist: {
+            bhava_condition: {
+              from_lagna: { sign: bhavaSignLagna.sign, house_number: bhavaSignLagna.house_number, frame: 'lagna' },
+              from_chandra: bhavaSignMoon ? { sign: bhavaSignMoon.sign, house_number: bhavaSignMoon.house_number, frame: 'chandra' } : null,
+            },
+            bhavesha_condition: { from_lagna: lordCondition, from_chandra: lordConditionMoon },
+            karaka_condition: karakaConditions,
+            occupants: {
+              from_lagna: occupantsLagnaEntity.grahas,
+              from_chandra: occupantsMoon?.grahas ?? null,
+            },
+            aspecting_grahas: aspectsLagna.grahas,
+            varga_confirmation: { varga: spec.varga, rows: vargaConfirmation },
+            bearing_yogas: yogaSignals,
+            timing_hooks: timing,
+          },
+          verdict,
+          receipt,
+          judgment_flags,
+          drill_pointers,
+          resolution_chains: {
+            bhava_lagna: bhavaLagna.chain,
+            bhavesha_lagna: lordLagna.chain,
+            occupants_lagna: occupantsLagna.chain,
+          },
+          fact_id_refs: Array.from(fact_ids),
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      if (err instanceof AddressResolutionError) {
+        return { content: { error: err.message, chart_id, spec }, is_error: true }
+      }
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+  },
+}
+
+/**
+ * Register the D9 judgment-query capability.
+ * GATE A: only registers a NEW file for this wave — does not edit registry/index.ts.
+ */
+export function registerD9JudgmentCapabilities(): void {
+  registerCapability(judgmentQueryCapability)
+}
+
+/** D9 capability URI roster (for Gate C reverse-citation checks and roster smoke tests). */
+export const D9_CAPABILITY_URIS = [
+  'marsys://tool/L-JUDGMENT/judgment_query',
+] as const
+
+// Auto-register on import — consistent with the D5-D8 layer pattern.
+registerD9JudgmentCapabilities()

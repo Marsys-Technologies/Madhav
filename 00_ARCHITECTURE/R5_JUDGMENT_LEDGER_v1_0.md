@@ -869,4 +869,100 @@ already fully implemented and gate-verified against both canonical charts) indep
 satisfies the W2 "from-Moon in ONE call" gate — the strength/signal annotations are additive
 value on top, not prerequisites for the gate to pass.
 
-No further entries — this ledger reopens for W3+ waves.
+---
+
+### JL-015 (W3 `judgment_query` lane, `r5/w3-judgment-query`) — karaka-gender neutrality, the
+bhanga/near-miss honest gap, verdict-is-not-a-calibrated-posterior, and a registration-seam bug
+found during the standing MCP-verification requirement
+
+**question (a):** design §28.1's checklist names a "karaka condition" step for the bhava under
+judgment. For marriage (bhava 7) classical practice sometimes assigns the significator by the
+native's gender (Venus for a male chart, Jupiter for a female chart — the "husband/wife karaka"
+convention some traditions apply). Should `judgment_query` gender-condition its karaka assignment?
+
+**ruling (a):** No — gender-neutral, Venus for the marriage/relationship/partnership domain in
+every case. Basis, in constitution order: (1) ASTROLOGY — design §28.5 itself gives the worked
+example "marriage→7th/Venus/D9" with no gender branch, and `register_d8_assess_domain.ts`'s
+already-shipped `assess_marriage` capability (predating this lane) documents its own significator
+as "7th lord + Venus kāraka" unconditionally — adopting a gender-conditioned convention here would
+make `judgment_query` DISAGREE with the apex tool it is explicitly designed to generalize and fold
+in (design §29), which is a worse astrological outcome than picking one textbook-defensible
+convention consistently; (2) this is not underspecified enough to need Pratinidhi-R — design text
++ existing shipped code already agree. The classical jaimini Darakaraka (`karaka('DK')`, gender-
+free by construction — the 7th-from-Atmakaraka chara-karaka) remains separately reachable via the
+address resolver for a caller who wants that alternate convention; `judgment_query`'s built-in
+`karakas` list is the fixed-significator (naisargika) convention only.
+
+**question (b):** design §28.1 names "bearing yogas (formed AND notably-absent)" as a checklist
+step. `query_signals` (L2) readily supplies FORMED yogas/doshas. Is there a stored surface for
+NOTABLY-ABSENT (near-miss / bhaṅga-cancellation) yogas this lane can call?
+
+**ruling (b):** No — and the honest answer is to say so, not to approximate it. Design §12 D3
+("absence proofs... 'notable non-firings' needs a small stored near-miss band from bo_laksana...
+no new writer") explicitly frames this as a FUTURE data-plane addition that has not been built for
+any chart. `judgment_query`'s receipt reports `bhanga_checked: false` with an explanatory
+`judgment_flags` entry on every call, rather than either (i) silently omitting the checklist item
+(which would make the receipt claim more completeness than it has) or (ii) inventing a proxy
+computation from data not built for this purpose (B.10). This is the single honestly-incomplete
+cell in every `judgment_query` receipt until a future L2-regen wave ships the near-miss band.
+
+**question (c):** the deterministic `verdict`/`verdict_grade`/`composite_score` this lane
+assembles from dignity + shadbala + occupant + aspect signals — what epistemic status does it
+carry, and could it be labeled a "probability" or routed through the envelope's
+`calibrated_posterior` grade?
+
+**ruling (c):** Neither. It is a DETERMINISTIC WEIGHTED AGGREGATION of already-computed L1/L2
+signals — arithmetic, not inference, and never an LLM judgment. It is explicitly NOT a calibrated
+posterior: `calibrated_posterior` in `envelope.ts`'s closed epistemic vocabulary is reserved for
+L5 Mīmāṃsā's own prediction→outcome calibration loop (CLAUDE.md §E: "calibration owned by L5...
+ph_pramana D5 NO-SCORING gate"), and this instrument reads L1 (chart_facts/chart_divisionals) and
+L2 (bodha_msr_signals) only — it has no access to, and does not fabricate, an empirically
+calibrated confidence. The verdict's own `note` field states this plainly in every response so no
+downstream consumer mistakes "contested"/"convergent_moderate" for a probability estimate.
+
+**question (d) — found during the standing MCP-verification requirement, not asked in advance:**
+while confirming the capability was reachable through the actual product surface (not just its
+handler in-process — the mandatory W2-taught lesson), was `judgment_query` actually live on the
+HTTP seam `platform-mcp`'s `callRegistryCapability` calls?
+
+**finding:** No, initially. `platform/src/app/api/retrieval/capability/route.ts` (the endpoint
+`registry_bridge.ts`'s `callRegistryCapability` proxies every registry capability call through)
+maintains its OWN separate bootstrap list (`ensureBootstrapped()`), distinct from
+`registry/catalog.ts`'s per-wave import chain that this lane (following the D5–D8 precedent)
+registered `register_d9_judgment` into. A capability can be fully registered in the in-process
+singleton registry via one entry point (chat-channel's `catalog.ts`) while being invisible to the
+OTHER entry point (this HTTP route) that the MCP server actually calls — the exact "registered
+somewhere, unreachable from the live seam" failure class the W2 Ring-2 finding named, recurring
+one layer up (a registration gap, not a param-forwarding gap, but the same root cause: two
+independent bootstrap lists that must each be kept in sync by hand). Fixed by adding
+`registerD9JudgmentCapabilities()` to `route.ts`'s `ensureBootstrapped()`, alongside D5–D8 (same
+file, same pattern, same list D8 was already in). Re-verified LIVE after the fix: a real Next.js
+dev server + a real invocation of the exact `server.tool('judgment_query', ...)` callback
+`registerRegistryBridgeTools` registers (not just the capability handler) returned a complete
+receipt on both canonical charts through the actual HTTP capability seam.
+
+**basis:** (a) ASTROLOGY (agree with the design's own worked example + the already-shipped sibling
+tool) > code-convenience (a gender branch would be more "complete" but less correct here).
+(b) honesty > completeness-theater — B.10, applied to what the receipt itself claims. (c) honesty
+— never overstate a deterministic aggregate as a calibrated probability; layer discipline (§N.5
+analog) — this instrument does not reach into L5's job. (d) correctness — a capability that exists
+in the registry but is unreachable from the seam the product actually calls is not shipped, no
+matter how thoroughly its in-process handler was tested; this is exactly the class of finding the
+brief's standing MCP-verification requirement exists to catch, and it caught a second instance of
+it (registration-list drift, not just param-forwarding drift).
+
+**reversibility:** (a) fully reversible — a future `paradigm`-aware karaka table (mirroring the W1
+`karaka()` address type's own school parameter) could add a gender-conditioned convention as an
+opt-in without changing today's default. (b) fully reversible and additive — `bhanga_checked` and
+its `judgment_flags` note disappear (replaced by real data) the moment a future wave ships the D3
+near-miss column; no shape change needed elsewhere. (c) fully reversible — the verdict's weighting
+formula is documented inline in its own `note` field and can be tuned or superseded without any
+caller-facing contract change. (d) fully reversible and now closed — the fix is a one-line
+addition to an existing list, following the exact pattern D5–D8 already established there.
+
+**standalone value if halted here:** the capability + MCP tool + registration fix + capabilities-
+card update are already complete and independently gate-verified (live, both canonical charts, via
+the actual `server.tool` callback through the actual HTTP seam) — nothing about a later wave's work
+is a prerequisite for this lane's gate to hold.
+
+No further entries — this ledger reopens for W4+ waves.

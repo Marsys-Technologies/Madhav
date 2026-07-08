@@ -1217,3 +1217,108 @@ that stops at the capability-handler level is insufficient — it must include a
 bugs recur. Recording this as a standing Ring-2 requirement going forward, not just a one-off fix.
 
 **HALTs:** none.
+
+---
+
+## W3 — `judgment_query` lane (`r5/w3-judgment-query`, off `origin/r5/w3`)
+
+Built `judgment_query` (design §28.1): the bhava-adhyaya classical checklist recipe as one
+instrument, generalizing `apex_marriage_assess`/`apex_career_assess`/`apex_health_assess`/
+`apex_wealth_assess` for ANY bhava-question, not hardcoded to marriage.
+
+**Checklist implemented (design §28.1, cited per element):** bhava condition (sign + occupants +
+aspecting grahas) · bhāveśa (lord) condition + placement + dignity + shadbala · kāraka condition
+(one or more per domain) · judged from BOTH lagna AND chandra (Sudarshana discipline, §27.3 frame
+facet reused) · operative-varga confirmation (via `get_divisionals`) · bearing yogas/doshas (via
+`query_signals`, `signal_type_class:'yoga'`) · timing hooks (current dasha stack + per-graha
+mahadasha windows via `get_dashas`) · a deterministic promise-register verdict (never an LLM
+judgment or probability) · the completeness receipt in classical units (§28.6):
+`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}`.
+
+**The shastra map (§28.5):** marriage/relationship/partnership→7th/Venus/D9;
+career/vocation→10th/Sun+Mercury+Saturn/D10; wealth/finance→2nd/Jupiter/D2;
+health/vitality→1st/Sun/D6; progeny/children→5th/Jupiter/D7; education→4th/Mercury+Jupiter/D24;
+spirituality→9th/Jupiter+Ketu/D20 — consistent with the shipped `assess_*` apex tools' own
+significator choices (no disagreement introduced between the new and legacy surfaces).
+
+**Reuse discipline (design §19):** every bhava/lord/occupant/karaka resolution (both frames) goes
+through the SAME `resolveAddress` (`address_resolver.ts`, W1/W2) — no parallel resolver logic.
+Varga confirmation reuses `get_divisionals`; yoga/dosha signals reuse `query_signals`; timing
+reuses `get_dashas`; the frame-safety header reuses `get_chart_header`.
+
+**Two live data-shape bugs caught and fixed in-flight** (found by testing against the live DB
+instead of trusting docstrings): `chart_divisionals.graha` and `chart_dashas.lord_graha` both store
+the classical DISPLAY NAME ("Venus"), not a 2-letter code — an initial version of this lane passed
+2-letter codes to `get_divisionals`/`get_dashas` and silently got zero rows back (the exact
+P1-class "wrong param shape, no error, empty result" failure). Fixed by passing the resolved
+`ResolvedGraha.graha` name directly; re-verified live on both charts afterward (see JL-015 is
+silent on this specific bug — it is a within-lane fix, not a judgment call — but is noted here for
+the audit trail).
+
+**Registration-seam bug found via the standing MCP-verification requirement (JL-015(d)):**
+`platform/src/app/api/retrieval/capability/route.ts` — the HTTP endpoint `registry_bridge.ts`'s
+`callRegistryCapability` actually calls — maintains its own separate bootstrap list from
+`registry/catalog.ts`'s per-wave import chain. `judgment_query` was registered into `catalog.ts`
+(following the D5–D8 precedent) but NOT into `route.ts`'s `ensureBootstrapped()` — meaning it would
+have been invisible to platform-mcp despite passing every in-process capability-handler test.
+Fixed by adding `registerD9JudgmentCapabilities()` to `route.ts` alongside D5–D8. This is a second,
+DIFFERENT instance of the "registered somewhere, unreachable from the live seam" failure class the
+W2 Ring-2 finding named (that one was param-forwarding; this one is registration-list drift) —
+recorded as a second standing thing to check: **any new capability must be added to BOTH
+`registry/catalog.ts` AND `api/retrieval/capability/route.ts`'s bootstrap list**, not just one.
+
+### MCP tool registration + param-forwarding (the standing W2 requirement)
+
+Registered `judgment_query` as an actual MCP tool in `platform-mcp/src/tools/registry_bridge.ts`
+(`server.tool('judgment_query', description, zodSchema, handler)`, following the `get_signals`
+pattern exactly). Every param the capability accepts (`chart_id`, `ayanamsha_id`, `domain`,
+`bhava`, `max_signals`) is explicitly declared in the Zod schema and explicitly forwarded to
+`callRegistryCapability` (no spread) — `response_format` is intentionally NOT forwarded to the
+capability (it is an MCP-envelope-only facet consumed at this layer, matching every other tool's
+pattern). Verified LIVE, not just by diff inspection: started a real Next.js dev server (with a
+real `DATABASE_URL` against the live Cloud SQL proxy already running in this environment) and
+directly invoked the EXACT callback `registerRegistryBridgeTools` registers for `judgment_query`
+(captured via a stub `McpServer`, bypassing only the outer OAuth/transport wire format shared by
+every tool in the file — not something this lane touches) against the real HTTP capability seam.
+Confirmed on BOTH canonical charts: complete receipt, `isError: false`, all 21 pre-existing tools
+(including `get_signals`, spot-checked) still register and answer correctly alongside the new one
+— no alias regression.
+
+### Verification summary
+
+- `platform`: `npx tsc --noEmit` — 0 errors. ESLint on changed files — 0 errors (1 pre-existing-
+  style `_ctx` unused-var warning, matching the codebase's own convention elsewhere).
+- `platform-mcp`: `npx tsc --noEmit` — 0 errors.
+- `platform` full `vitest run`: **432 passed / 17 skipped (449 files), 5212 passed / 215 skipped /
+  1 todo (5428 tests)** — zero failures.
+- `platform-mcp` full `vitest run`: **96 failed / 380 passed / 15 skipped (491)** — matches the
+  W1-confirmed pre-existing baseline exactly (unrelated missing-package/legacy-tool failures);
+  `r5_codegen_parity.test.ts` 16/16 PASS; `registry_bridge_r5w1_signals_synthesis.test.ts` 3/3 PASS.
+- Live-DB integration test (`INTEGRATION=true`, both canonical charts, live Cloud SQL proxy):
+  `register_d9_judgment.integration.test.ts` — **8/8 PASS**, including the exact W3 gate assertion
+  (marriage domain → bhava 7 / Venus / D9, complete receipt with all 8 fields populated honestly,
+  `bhanga_checked:false` reported not fabricated) on both charts, plus a bare-bhava case (no domain
+  mapped → karaka honestly `false`) and a 3-karaka career-domain case.
+- Live MCP-tool-callback verification (see above): both charts, complete receipt, through the
+  actual HTTP capability seam, via the actual `server.tool` callback.
+
+### Judgment ledger
+
+JL-015 (4 sub-rulings + 1 in-flight finding): (a) karaka assignment is gender-neutral, agreeing
+with design §28.5's own example and the shipped `assess_marriage` apex tool; (b) `bhanga_checked`
+is honestly `false` — the D3 near-miss data-plane addition design §12 names does not exist yet;
+(c) the verdict is a deterministic aggregate, never a calibrated posterior (L5's exclusive domain);
+(d) found + fixed a registration-list gap in `api/retrieval/capability/route.ts` — a second,
+distinct instance of the W2-named "registered but unreachable from the live seam" failure class.
+
+### Verdict
+
+**W3 gate MET.** "How is the marriage?" resolves as ONE `judgment_query` call with a COMPLETE
+classical checklist receipt on both canonical charts (not partial/stubbed — every checklist
+element from design §28.1 is present, with the one data-plane-dependent gap, bhanga-checking,
+reported honestly rather than faked). All legacy `apex_*` tool names are unchanged and confirmed
+still answering (verified live alongside the new tool in the same registration pass). The
+capabilities card (`platform-mcp/src/resources/capabilities.ts`) now teaches both protocols:
+`judgment_query` + the shastra map, and the legacy apex_* names as still-valid.
+
+**HALTs:** none.

@@ -113,6 +113,40 @@ function buildCapabilitiesMarkdown(
 
 ---
 
+## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\`)
+
+**\`judgment_query\`** is the classical bhava-adhyaya judgment recipe as ONE instrument (design
+§28.1) — the acharya's own working method for ANY bhava-question, not hardcoded to marriage.
+Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality) or a
+bare \`bhava\` (1-12). One call returns the COMPLETE classical checklist: bhava condition (sign +
+occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + strength ·
+kāraka condition · judged from BOTH lagna AND chandra (Sudarshana discipline) · operative-varga
+confirmation (e.g. D9 for marriage) · bearing yogas/doshas · timing hooks (dasha windows) · a
+deterministic promise-register verdict · a classical-units completeness **receipt**:
+\`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`.
+
+**THE SHASTRA MAP** (domain → bhava/kāraka/operative varga, design §28.5):
+
+| Domain | Bhava | Kāraka(s) | Varga |
+|---|---|---|---|
+| marriage / relationship / partnership | 7th | Venus | D9 |
+| career / vocation | 10th | Sun, Mercury, Saturn | D10 |
+| wealth / finance | 2nd | Jupiter | D2 |
+| health / vitality | 1st | Sun | D6 |
+| progeny / children | 5th | Jupiter | D7 |
+| education | 4th | Mercury, Jupiter | D24 |
+| spirituality | 9th | Jupiter, Ketu | D20 |
+
+**LEGACY PROTOCOL — unchanged, still fully answerable.** \`apex_marriage_assess\`,
+\`apex_career_assess\`, \`apex_health_assess\`, \`apex_wealth_assess\` (aka \`assess_marriage\` /
+\`assess_career\` / \`assess_health\` / \`assess_wealth\`) remain live with no breaking change —
+they return their own domain-reading + temporal-activation + contradiction bundle exactly as
+before. \`judgment_query\` is the richer, shastra-shaped successor (design §29: apex folds INTO
+judgment_query as an alias relationship, not a removal) — prefer it for new bhava-judgment
+questions; the apex_* names are safe to keep calling for existing integrations.
+
+---
+
 ## Data Coverage Summary
 
 ${dc?.coverage?.map(c =>
@@ -181,6 +215,22 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 | \`log_prediction\` | Log a prospective prediction (PPL discipline) |
 | \`record_outcome\` | Record outcome against a prior prediction |
 | \`flag_disagreement\` | Open a governance disagreement entry |
+
+---
+
+## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\`)
+
+\`judgment_query\` — the classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1),
+for ANY bhava-question ("how is the marriage?", "how is my career?", or a bare house number).
+Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality — the
+shastra map, design §28.5) or \`bhava\` (1-12). Returns the full classical checklist — bhava
+condition, bhāveśa condition, kāraka condition, judged from lagna AND chandra, operative-varga
+confirmation, bearing yogas, timing hooks, a deterministic verdict, and a completeness receipt
+(\`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`).
+
+Legacy \`apex_marriage_assess\` / \`apex_career_assess\` / \`apex_health_assess\` / \`apex_wealth_assess\`
+remain unchanged and fully answerable — \`judgment_query\` is their richer successor (design §29),
+not a replacement that breaks existing callers.
 
 ---
 

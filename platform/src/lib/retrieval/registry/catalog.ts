@@ -62,6 +62,12 @@ import './layers/register_d7_channel'
 // assess_wealth, yoga_activation_by_dasha (F-032 — gates G10 witness)
 import './layers/register_d8_assess_domain'
 
+// D9 (R5 W3, design §28.1): judgment_query — the bhava-adhyaya classical checklist recipe
+// as one instrument, generalizing apex_marriage_assess/apex_career_assess/apex_health_assess/
+// apex_wealth_assess. Legacy apex_* tools are UNCHANGED aliases (design §29 fold-in is
+// additive — no removal).
+import './layers/register_d9_judgment'
+
 // ── getCatalog ────────────────────────────────────────────────────────────────
 
 let _catalogLoaded = false

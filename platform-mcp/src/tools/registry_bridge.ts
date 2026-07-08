@@ -1278,4 +1278,109 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
     }
   )
+
+  // ── judgment_query (R5 W3, design §28.1) ──────────────────────────────────
+  // marsys://tool/L-JUDGMENT/judgment_query — the bhava-adhyaya classical checklist
+  // recipe as one instrument, generalizing apex_marriage_assess/apex_career_assess/
+  // apex_health_assess/apex_wealth_assess (design §29 fold-in). Those apex_* aliases
+  // are UNCHANGED and remain fully answerable — no breaking removal (brief §W3 gate).
+  server.tool(
+    'judgment_query',
+    'THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — the acharya\'s ' +
+    'own working method for any bhava-question ("how is the marriage?", "how is my career?", or a ' +
+    'bare house number), not hardcoded to marriage. Pass `domain` (marriage/relationship/career/' +
+    'wealth/health/progeny/education/spirituality — resolved via the shastra map, design §28.5) or ' +
+    'a bare `bhava` (1-12). Returns the COMPLETE classical checklist in ONE call: bhava condition ' +
+    '(sign + occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + ' +
+    'strength · kāraka condition (e.g. Venus for marriage) · judged from BOTH lagna AND chandra ' +
+    '(Sudarshana discipline) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
+    'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
+    'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
+    'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +
+    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes apex_marriage_assess/' +
+    'apex_career_assess/apex_health_assess/apex_wealth_assess — those tools remain available ' +
+    'unchanged; this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
+    'default \'legacy\') returns the R5 unified envelope.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      domain: z.string().optional().describe(
+        'Life-domain name (shastra map, design §28.5): marriage/relationship/partnership ' +
+        '(bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), wealth/finance ' +
+        '(bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), progeny/children (bhava 5, ' +
+        'Jupiter, D7), education (bhava 4, Mercury+Jupiter, D24), spirituality (bhava 9, ' +
+        'Jupiter+Ketu, D20). Takes precedence over `bhava` if both given.'
+      ),
+      bhava: z.number().int().min(1).max(12).optional().describe(
+        'Bhava (house) number 1-12, for a judgment question the shastra map does not name a ' +
+        'domain for. Required if `domain` is omitted.'
+      ),
+      response_format: z.enum(['legacy', 'v3']).optional().describe(
+        "Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
+        "drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."
+      ),
+      max_signals: z.number().int().min(1).max(50).optional().describe(
+        'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).'
+      ),
+    },
+    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals }) => {
+      if (!chart_id) return errorOutput('judgment_query', 'chart_id is required')
+      if (!domain && bhava === undefined) {
+        return errorOutput('judgment_query', 'either `domain` or `bhava` is required')
+      }
+      try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
+
+        // B.11: fetch holistic orientation alongside the judgment recipe (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+          fetchOrientationContext(chart_id, resolvedAyanamsha),
+          callRegistryCapability(
+            'marsys://tool/L-JUDGMENT/judgment_query',
+            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, max_signals },
+            chart_id
+          ),
+        ])
+        const wrapper = raw as Record<string, unknown>
+        const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        if (format !== 'v3') {
+          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') })
+        }
+
+        // ── v3 population (design §10/§28.6) ──────────────────────────────────
+        const receipt = (inner['receipt'] as Record<string, unknown>) ?? {}
+        const verdictBlock = (inner['verdict'] as Record<string, unknown>) ?? {}
+        const factIdRefs = (inner['fact_id_refs'] as string[]) ?? []
+        const grounding = { fact_ids: factIdRefs, citations: [], grounding_score: null }
+
+        const verdict = {
+          ...verdictBlock,
+          receipt,
+          note: 'Deterministic classical-checklist verdict + completeness receipt (design §28.6) — see `receipt` for which checklist items were actually checked this call.',
+        }
+
+        const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
+        const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string }[]) ?? []
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        return dualOutput({
+          orientation_context, orientation_ok,
+          ...envelope(inner, 'judgment_query', undefined, 'v3', {
+            chart_header, verdict, grounding, drill_pointers, judgment_flags,
+          }),
+        })
+      } catch (err) {
+        return errorOutput('judgment_query', String(err), { chart_id })
+      }
+    }
+  )
 }
