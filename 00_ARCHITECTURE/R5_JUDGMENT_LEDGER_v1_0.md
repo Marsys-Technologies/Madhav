@@ -4,7 +4,9 @@ version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
 lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
   JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
-  (W1 Ring-1 reconciliation, r5/w1-reconcile) recorded
+  (W1 Ring-1 reconciliation, r5/w1-reconcile), JL-011 (W2 corpus lane, r5/w2-corpus-citations —
+  NOTE: sibling W2 lanes may also have authored a JL-011 in parallel; renumber sequentially at
+  Ring-1 per the brief's stated collision-handling instruction) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -555,3 +557,86 @@ choice leaves the server-side default question completely open for a future wave
 way with no sunk cost from this pass.
 
 No further entries — this ledger reopens for W2+ waves.
+
+---
+
+### JL-011 — W2 corpus lane (`r5/w2-corpus-citations`): reusing `query_classical_texts` as the `vector_search` target instead of building a new capability, and the hybrid-weighting/top_k defaults
+
+**question (a):** P7's 401 turned out to be two independent bugs stacked: (1) `register_p1_aliases.ts`'s
+own `callPlatformPrim` helper — never touched by the W0a punchlist fix, which only fixed
+`registry_bridge.ts`'s separate copy of the same helper — was still sending only the Layer-1
+internal token, missing `X-MCP-User`/`X-MCP-Key-Id`; (2) even with auth fixed, the retrieval-tool
+name `vector_search` had NO entry in `TOOL_NAME_TO_URI` (confirmed live: `getToolByName
+('vector_search')` returns `undefined`, so the primitives route would 500 with "Retrieval tool not
+found in registry" the moment auth stopped being the blocker). For (2): should `vector_search`
+get its own new capability/handler (a dedicated `ref_search`/vector-search implementation), or
+should it resolve to the SAME capability `classical_text_search`/`search_classical_texts`/
+`read_classical_text` already use (`marsys://tool/L0/query_classical_texts`)?
+
+**ruling (a):** Reuse the existing capability — map `vector_search` onto
+`marsys://tool/L0/query_classical_texts` in `TOOL_NAME_TO_URI`, and upgrade that ONE handler to
+genuine hybrid ranking, rather than standing up a second corpus-search implementation. This is
+the exact "parallel resolver" trap the brief names explicitly (W1 already hit it once with the
+`chart_query_about` stopgap vs. the canonical address resolver, reconciled in JL-010(a)) — a
+second corpus-search code path would immediately diverge on ranking, param names, or citation
+shape from the one already serving `read_classical_text`/`search_classical_texts`/
+`classical_text_search`, and there is no design-doc signal that `vector_search` is meant to be
+functionally distinct from those (design §3 CORPUS idiom / instrument #13 `ref_search` explicitly
+frames `vector_search`, `classical_citation`, and "all ref_* lookups" as ONE consolidated corpus
+idiom, with estate consolidation itself deferred to W3 — reusing the handler now is consistent
+with where W3 is headed, without pre-building W3's renaming).
+
+**question (b):** Three MCP-facing entry points (`registry_bridge.ts`'s bare `vector_search` tool,
+`register_p1_aliases.ts`'s `ref_vector_search` alias, and the existing `find_verses_about` tool)
+each use a different parameter name for "the free-text search string" (`query_text`, `query`,
+`topic` respectively) and none matches `query_classical_texts`'s pre-existing `keyword` (exact-
+phrase ILIKE) parameter. Normalize all three into the one handler (accepting any of
+`query_text`/`query`/`topic` as aliases for the same free-text field), or require callers to
+adapt to one canonical name and update the three call sites instead?
+
+**ruling (b):** Normalize inside the handler (accept all three names), leave the three call sites'
+own schemas untouched. The call sites' param names are each already load-bearing for a DIFFERENT
+existing MCP tool identity (`ref_vector_search`'s `query`, `find_verses_about`'s `topic`) that
+external/prior-session callers may already be using; renaming them is a breaking-change surface
+for zero benefit, whereas accepting all three in the one shared handler costs nothing and is the
+same "aliases are additive, canonicalize centrally" pattern JL-010(a) used for the Sanskrit graha
+aliases.
+
+**question (c):** No existing design-doc number pins (i) the hybrid vector/keyword weighting split,
+or (ii) the default `top_k` for the new free-text/interpretation-intent path (as opposed to the
+legacy `keyword`/list path's existing default of 20). Design §3 only says "hybrid keyword/vector +
+rerank" and the design's own audit prose (§20/§31) says "top-k≈5 verses in hand" for the
+interpretation-intent framing, without a numeric weight split. What values to pick?
+
+**ruling (c):** (i) 0.65 vector / 0.35 keyword. Reasoning: pg_trgm `similarity()` degrades as the
+length gap between a short query and a long verse-translation grows (this is a property of
+trigram overlap ratios, not a chart/astrology fact — no classical citation applies), so keyword
+alone under-ranks true semantic matches on long verses; embedding similarity carries most of the
+signal for meaning-level queries, but keyword still needs real weight to catch exact technical
+terms an embedding can blur across near-synonyms (e.g. "neecha bhanga" — the literal P8/JL-002
+example already in this corpus). (ii) top_k defaults to 5 for the free-text path specifically,
+directly citing the design doc's own "top-k≈5 verses in hand" language (§20/§31 audit prose) as
+the numeric anchor, while leaving the legacy `keyword`/list path's default of 20 untouched (that
+path is exact-phrase/browse behavior, not the interpretation-intent framing the "5 verses" language
+is about). Both (i) and (ii) are code-convenience-tier judgment calls, not astrology calls — no
+classical citation or contested-point flag applies to either.
+
+**basis:** (a) brief's own explicit "don't repeat the parallel-resolver trap" instruction (direct
+textual basis) + design §3/§5 instrument grouping (vector_search is framed as absorbed into corpus
+idiom #13, not a standalone). (b) reversibility/no-regression preference — extending a shared
+handler's accepted param names is strictly additive; renaming three live MCP tool schemas is not.
+(c) pillar order — neither the weighting constant nor the top_k default is an astrological claim;
+resolved at tier (4) code-convenience the same way JL-003/JL-008 resolved shape/format calls, with
+(ii) additionally citing a concrete design-doc number rather than an arbitrary pick.
+
+**reversibility:** (a) reversible — the `TOOL_NAME_TO_URI['vector_search']` mapping is a one-line
+pointer; repointing it at a dedicated capability later (if W3's estate consolidation decides
+`ref_search` needs handler-level differences from `query_classical_texts`) does not require
+touching any MCP-facing call site, since all three already call by tool name, not by URI. (b)
+fully reversible — accepted-alias param names are additive; dropping one later only breaks a
+caller using that specific alias, easily caught by the integration test added this pass. (c)
+reversible — both are named constants (`VECTOR_WEIGHT`/`KEYWORD_WEIGHT`/`DEFAULT_INTERPRETATION_TOP_K`)
+in one file, trivially re-tuned by a future wave with real eval-battery data (§7) once R5's natural-
+question battery runs against this path and produces an actual quality signal to tune against.
+
+No further entries — this ledger reopens for W3+ waves.
