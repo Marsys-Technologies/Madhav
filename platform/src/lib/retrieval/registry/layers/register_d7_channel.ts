@@ -50,6 +50,114 @@
 
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
+import { query } from '@/lib/db/client'
+import { resolveAddress, grahaCodeOf, AddressResolutionError, type HouseNumber } from '@/lib/retrieval/address_resolver'
+import { extractGroundingFromFactRows } from '../../envelope'
+
+/** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
+ *  (fact_subject codes to feed into the whitelisted SQL below), backed by the canonical
+ *  address resolver (`@/lib/retrieval/address_resolver.ts`, design §27.2) rather than a
+ *  second, parallel resolver implementation. See R5_RUN_LEDGER/JL-007(c) for why an inline
+ *  stopgap (`chart_query_about.ts`) existed for one wave, and JL-010 for the Ring-1
+ *  reconciliation that folded it into this single call site + retired the stopgap file. */
+interface AboutResolution {
+  subjects: string[]
+  category_hint?: string
+  chain: unknown[]
+  error?: string
+}
+
+function normalizeGrahaName(name: string): string | null {
+  try {
+    return grahaCodeOf(name)
+  } catch {
+    return null
+  }
+}
+
+async function resolveAboutForChartQuery(
+  chart_id: string,
+  ayanamsha_id: string,
+  about: unknown,
+): Promise<AboutResolution> {
+  if (about == null) return { subjects: [], chain: [] }
+
+  if (typeof about === 'string') {
+    const key = about.trim().toLowerCase()
+    if (key === 'lagna' || key === 'ascendant') {
+      // Trivial constant mapping (no computation, no classical derivation) — the LAGNA
+      // fact_subject is not a "graha" the address resolver normalizes, it's the chart_facts
+      // row itself. No DB read needed, keeping this the ONE-call/<=2KB gate case (JL-008-style
+      // reasoning, W1 GATE).
+      return {
+        subjects: ['LAGNA'],
+        category_hint: 'graha_position',
+        chain: ['about:"lagna" resolves directly to the LAGNA fact_subject.'],
+      }
+    }
+    const grahaCode = normalizeGrahaName(about)
+    if (grahaCode) {
+      return {
+        subjects: [grahaCode],
+        category_hint: 'graha_position',
+        chain: [`about:"${about}" resolves to graha ${grahaCode} via the canonical address resolver.`],
+      }
+    }
+    return { subjects: [], chain: [], error: `about: unrecognized address string "${about}"` }
+  }
+
+  if (typeof about === 'object') {
+    const obj = about as Record<string, unknown>
+
+    if (obj['graha'] != null) {
+      const raw = String(obj['graha'])
+      const grahaCode = normalizeGrahaName(raw)
+      if (!grahaCode) return { subjects: [], chain: [], error: `about.graha: unrecognized graha "${raw}"` }
+      return {
+        subjects: [grahaCode],
+        category_hint: 'graha_position',
+        chain: [`about.graha "${raw}" resolves to ${grahaCode} via the canonical address resolver.`],
+      }
+    }
+
+    if (obj['bhava'] != null || obj['house'] != null) {
+      const n = Number(obj['bhava'] ?? obj['house'])
+      if (!Number.isInteger(n) || n < 1 || n > 12) {
+        return { subjects: [], chain: [], error: 'about.bhava/house must be an integer 1-12' }
+      }
+      const subject = `HOUSE_${n}`
+      return {
+        subjects: [subject],
+        chain: [`about.bhava ${n} resolves directly to the ${subject} fact_subject (direct bhava addressing).`],
+      }
+    }
+
+    if (obj['house_lord'] != null || obj['bhava_lord'] != null) {
+      const n = Number(obj['house_lord'] ?? obj['bhava_lord'])
+      if (!Number.isInteger(n) || n < 1 || n > 12) {
+        return { subjects: [], chain: [], error: 'about.house_lord must be an integer 1-12' }
+      }
+      try {
+        const resolved = await resolveAddress(chart_id, { type: 'lord_of', house: n as HouseNumber }, { ayanamsha_id })
+        const entity = resolved.entities[0]
+        if (!entity || entity.kind !== 'graha') {
+          return { subjects: [], chain: [], error: `about.house_lord: unexpected resolution kind "${entity?.kind}"` }
+        }
+        return { subjects: [entity.graha_code], category_hint: 'graha_position', chain: resolved.chain }
+      } catch (err) {
+        return {
+          subjects: [],
+          chain: [],
+          error: err instanceof AddressResolutionError ? err.message : `about.house_lord: ${String(err)}`,
+        }
+      }
+    }
+
+    return { subjects: [], chain: [], error: 'about: unrecognized address object shape' }
+  }
+
+  return { subjects: [], chain: [], error: 'about: must be a string or an address object' }
+}
 
 // ── marsys://tool/channel/mcp_wiring ─────────────────────────────────────────
 
@@ -624,7 +732,32 @@ const classicalAttributionLookupCapability: CapabilityDescriptor = {
 // ── GAP FILL Wave C: marsys://tool/L1/chart_facts_query ──────────────────────
 // Ports the B.11-floor-injected chart_facts_query tool (lib/retrieve type stub +
 // contract alias for query_chart_facts). scope: per_chart — chart_id required.
-// Tier stripped per DG1. Delegates to L1 chart_facts table via Python sidecar.
+// Tier stripped per DG1.
+//
+// R5 W1 (lane: chart_query) REWRITE — this handler used to call a Python sidecar route
+// (`/api/ganita/chart_facts/query`) THAT DOES NOT EXIST, so it 404'd unconditionally
+// (R5_RUN_LEDGER NF-1, confirmed still broken as of the W0a Ring-2 re-audit). Fixed by
+// reading chart_facts DIRECTLY (same pattern as get_yoga_dosha.ts/get_positions.ts — this
+// process already owns a pg pool, no sidecar hop was ever necessary for a plain SQL read).
+//
+// Also implements design §1/§18 EAV-pivot mandate ("~15 EAV rows = one astrological row;
+// pivot INSIDE the tool") via `shape: 'pivoted'` (default) — GROUPs the flat (subject, key,
+// value) rows into one wide row per fact_subject with a {key: value} object, instead of
+// forcing the caller to page through raw rows. `shape: 'rows'` preserves the flat form for
+// callers that want it.
+//
+// Also implements §27.1/§27.2 the universal `about` facet (see ./L1_ganita/chart_query_about.ts
+// for the resolver + its scope note re: the sibling address-resolver lane).
+//
+// Fixed dead param: `ayanamsha_id` was declared on the MCP-side Zod shim
+// (platform-mcp/src/tools/registry_bridge.ts) and always sent, but this handler never read
+// it — every call silently queried whatever the sidecar defaulted to. Now honored, default
+// 'lahiri_chitrapaksha' (matches the MCP shim's own default).
+//
+// Removed dead params: `as_of_date` / `from_date` / `to_date` — chart_facts has NO
+// validity_start/validity_end columns (confirmed via information_schema); these params could
+// never have done anything even when the sidecar route existed. Declaring them was dishonest
+// (B.10) — a caller passing as_of_date got no error and no effect. See JL entry for this wave.
 
 const chartFactsQueryCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/chart_facts_query',
@@ -634,13 +767,18 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
   scope: 'per_chart',
 
   description: [
-    'Parametric lookup over the chart_facts table (27,554 rows per chart).',
-    'Covers all 27 fact categories: planet positions, dignities, strengths, house placements,',
-    'divisional charts, dashas, yogas, doshas, and more.',
-    'B.11-floor-injected on every query — provides the L1 fact foundation for all synthesis.',
-    'Required: chart_id. Optional filters: category (single or array), planet, house, sign,',
-    'nakshatra, divisional_chart, keyword, limit, as_of_date, from_date, to_date.',
-    'emits_references: returns fact_id references (not restated narrative).',
+    'Parametric EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha).',
+    'Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more.',
+    'Default shape="pivoted": rows are grouped by fact_subject into ONE wide row per subject',
+    '(e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows.',
+    'shape="rows" returns the flat EAV rows unpivoted.',
+    'The `about` facet lets you address the chart the way the shastra does instead of guessing categories:',
+    '`about:"lagna"`, `about:{graha:"Saturn"}`, `about:{bhava:10}` (the house itself),',
+    '`about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership,',
+    'and returns the resolved lord graha\'s own facts — the resolution chain is served in `about_resolution`).',
+    'Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign,',
+    'nakshatra, divisional_chart (e.g. D9/D10), keyword, ayanamsha_id (default lahiri_chitrapaksha), shape, limit.',
+    'emits_references: every pivoted field carries its source fact_id for Bodha back-reference.',
     'Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill).',
     'Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).',
   ].join(' '),
@@ -651,53 +789,57 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       description: 'Chart UUID (<chart_uuid>). Required.',
       required: true,
     },
+    about: {
+      type: 'object',
+      description: [
+        'Astrological address facet (design §27.1). A string ("lagna", a graha name) or an object:',
+        '{graha:"Saturn"} | {bhava:10} | {house_lord:10}. When set, overrides subject-selecting filters',
+        '(planet/house) and the resolution chain is served back in the response as `about_resolution`.',
+      ].join(' '),
+    },
     category: {
       type: 'string',
       description: [
-        'Fact category to filter by (e.g. "planet_position", "house_placement", "dignity",',
-        '"strength", "yoga", "dosha", "dasha", "divisional"). Accepts a single value or',
-        'comma-separated list for multiple categories.',
+        'Fact category to filter by (e.g. "graha_position", "graha_dignity_per_varga", "yoga_label",',
+        '"house_bhava_bala_total"). Accepts a single value or comma-separated list for multiple categories.',
       ].join(' '),
     },
     planet: {
       type: 'string',
-      description: 'Graha name to filter by (e.g. "Sun", "Moon", "Saturn"). Optional.',
+      description: 'Graha name to filter by (e.g. "Sun", "Moon", "Saturn", "Rahu", "Ketu"). Optional.',
     },
     house: {
       type: 'number',
-      description: 'Bhava number (1-12) to filter by. Optional.',
+      description: 'Bhava number (1-12) to filter by (matches fact_subject="HOUSE_<n>" rows). Optional.',
     },
     sign: {
       type: 'string',
-      description: 'Rashi name to filter by (e.g. "Aries", "Scorpio"). Optional.',
+      description: 'Rashi name to filter by (e.g. "Aries", "Scorpio") — matches subjects whose fact_key="sign" equals this. Optional.',
     },
     nakshatra: {
       type: 'string',
-      description: 'Nakshatra name to filter by. Optional.',
+      description: 'Nakshatra name to filter by — matches subjects whose fact_key="nakshatra" equals this. Optional.',
     },
     divisional_chart: {
       type: 'string',
-      description: 'Divisional chart code to filter by (e.g. "D9", "D10", "D1"). Optional.',
+      description: 'Divisional chart code to filter by (e.g. "D9", "D10"); matches fact_subject="D9_<GRAHA>" convention. Optional.',
     },
     keyword: {
       type: 'string',
-      description: 'Free-text keyword search over fact_value or fact_label. Optional.',
+      description: 'Free-text keyword search over fact_key/fact_value_text. Optional.',
+    },
+    ayanamsha_id: {
+      type: 'string',
+      description: 'Ayanamsha to query (default: lahiri_chitrapaksha — matches the platform-mcp shim default). One ayanamsha per call by design (§1 E4).',
+    },
+    shape: {
+      type: 'string',
+      description: '"pivoted" (default — one wide row per fact_subject) or "rows" (flat EAV rows).',
+      enum: ['pivoted', 'rows'],
     },
     limit: {
       type: 'number',
-      description: 'Maximum rows to return (default: 100, max: 1000).',
-    },
-    as_of_date: {
-      type: 'string',
-      description: 'ISO date — filter facts valid as of this date (for time-sensitive facts). Optional.',
-    },
-    from_date: {
-      type: 'string',
-      description: 'ISO date — filter facts with validity_start >= from_date. Optional.',
-    },
-    to_date: {
-      type: 'string',
-      description: 'ISO date — filter facts with validity_end <= to_date. Optional.',
+      description: 'Maximum rows/subjects to return (default: 100, max: 1000).',
     },
   },
 
@@ -724,46 +866,166 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     }
 
     try {
-      const sidecarUrl = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-      const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+      const ayanamsha_id = (args['ayanamsha_id'] as string) || 'lahiri_chitrapaksha'
+      const shape = args['shape'] === 'rows' ? 'rows' : 'pivoted'
       const limit = Math.min(Number(args['limit'] ?? 100), 1000)
 
-      const body: Record<string, unknown> = { chart_id, limit }
-      if (args['category'])          body['category']          = args['category']
-      if (args['planet'])            body['planet']            = args['planet']
-      if (typeof args['house'] === 'number') body['house'] = args['house']
-      if (args['sign'])              body['sign']              = args['sign']
-      if (args['nakshatra'])         body['nakshatra']         = args['nakshatra']
-      if (args['divisional_chart'])  body['divisional_chart']  = args['divisional_chart']
-      if (args['keyword'])           body['keyword']           = args['keyword']
-      if (args['as_of_date'])        body['as_of_date']        = args['as_of_date']
-      if (args['from_date'])         body['from_date']         = args['from_date']
-      if (args['to_date'])           body['to_date']           = args['to_date']
+      // ── `about` facet resolution — delegates to the canonical address resolver
+      // (@/lib/retrieval/address_resolver.ts) for anything requiring classical derivation
+      // (graha normalization, house-lord indirection); the lagna-sign pre-read that
+      // `house_lord`/`bhava_lord` needs is handled internally by `resolveAddress`'s own
+      // `lord_of` evaluator, not duplicated here. See JL-010 (Ring-1 reconciliation).
+      let aboutResolution: Awaited<ReturnType<typeof resolveAboutForChartQuery>> | null = null
+      let aboutError: string | null = null
+      const subjectsFromAbout: string[] = []
+      let categoryHintFromAbout: string | null = null
 
-      const res = await fetch(`${sidecarUrl}/api/ganita/chart_facts/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
-      })
-      if (!res.ok) {
-        return { content: { error: `Sidecar returned ${res.status}: ${await res.text()}`, chart_id }, is_error: true }
+      if (args['about'] != null) {
+        aboutResolution = await resolveAboutForChartQuery(chart_id, ayanamsha_id, args['about'])
+        if (aboutResolution.error) {
+          aboutError = aboutResolution.error
+        } else {
+          subjectsFromAbout.push(...aboutResolution.subjects)
+          categoryHintFromAbout = aboutResolution.category_hint ?? null
+        }
       }
-      const rows = await res.json() as unknown[]
-      return {
-        content: {
+
+      if (aboutError) {
+        return { content: { error: aboutError, chart_id }, is_error: true }
+      }
+
+      // ── Whitelisted facet -> parameterized SQL compilation (design §3 SQL idiom / P2 rule) ──
+      const params: unknown[] = [chart_id, ayanamsha_id]
+      let sql = `
+        SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+        FROM chart_facts
+        WHERE chart_id = $1 AND ayanamsha_id = $2
+      `
+
+      const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
+        ? categoryHintFromAbout
+        : (args['category'] as string | undefined)
+      if (categoriesRaw) {
+        const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
+        params.push(categories)
+        sql += ` AND fact_category = ANY($${params.length}::text[])`
+      }
+
+      if (subjectsFromAbout.length > 0) {
+        params.push(subjectsFromAbout)
+        sql += ` AND fact_subject = ANY($${params.length}::text[])`
+      } else {
+        if (typeof args['house'] === 'number') {
+          params.push(`HOUSE_${args['house']}`)
+          sql += ` AND fact_subject = $${params.length}`
+        }
+        if (args['planet']) {
+          const grahaCode = normalizeGrahaName(String(args['planet']))
+          if (!grahaCode) {
+            return { content: { error: `planet: unrecognized graha name "${args['planet']}"`, chart_id }, is_error: true }
+          }
+          params.push(grahaCode)
+          // Match the bare D1 subject (e.g. "SAT") OR any divisional-prefixed subject (e.g. "D9_SAT")
+          sql += ` AND (fact_subject = $${params.length} OR fact_subject LIKE '%\\_' || $${params.length} ESCAPE '\\')`
+        }
+      }
+
+      if (args['divisional_chart']) {
+        params.push(`${args['divisional_chart']}\\_%`)
+        sql += ` AND fact_subject ILIKE $${params.length} ESCAPE '\\'`
+      }
+
+      if (args['sign']) {
+        params.push('sign')
+        const keyParamIdx = params.length
+        params.push(args['sign'])
+        sql += ` AND fact_subject IN (
+          SELECT fact_subject FROM chart_facts
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
+        )`
+      }
+
+      if (args['nakshatra']) {
+        params.push('nakshatra')
+        const keyParamIdx = params.length
+        params.push(args['nakshatra'])
+        sql += ` AND fact_subject IN (
+          SELECT fact_subject FROM chart_facts
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
+        )`
+      }
+
+      if (args['keyword']) {
+        params.push(`%${args['keyword']}%`)
+        sql += ` AND (fact_key ILIKE $${params.length} OR fact_value_text ILIKE $${params.length})`
+      }
+
+      // Row cap: pivoting collapses ~15 EAV rows into one wide row, so the raw row fetch
+      // needs headroom over `limit` (a limit on SUBJECTS, not raw rows) before the pivot step.
+      params.push(limit * 20)
+      const rowCapParamIdx = params.length
+      sql += ` ORDER BY fact_subject, fact_category, fact_key LIMIT $${rowCapParamIdx}::int`
+
+      const result = await query<Record<string, unknown>>(sql, params)
+      const rows = result.rows ?? []
+      const grounding = extractGroundingFromFactRows(rows)
+
+      let content: Record<string, unknown>
+      if (shape === 'rows') {
+        content = {
           chart_id,
-          facts: rows,
-          returned_count: rows.length,
-          filters: { ...body, chart_id: undefined },
-          provenance: {
-            table: 'chart_facts',
-            note: 'fact_id references resolve to the canonical L1 chart_facts table.',
-            legacy_replacement: 'lib/retrieve/chart_facts_query.ts (TYPE_STUB) + B.11 floor injection (D7 gap fill)',
-          },
-        },
-        is_error: false,
+          ayanamsha_id,
+          shape: 'rows',
+          rows: rows.slice(0, limit),
+          returned_count: Math.min(rows.length, limit),
+        }
+      } else {
+        // Pivot: group by fact_subject into one wide row of {fact_key: value}
+        const bySubject = new Map<string, { fact_category: string; facts: Record<string, unknown>; fact_ids: Record<string, string> }>()
+        for (const row of rows) {
+          const subject = String(row['fact_subject'])
+          if (!bySubject.has(subject)) {
+            bySubject.set(subject, { fact_category: String(row['fact_category']), facts: {}, fact_ids: {} })
+          }
+          const entry = bySubject.get(subject)!
+          const key = String(row['fact_key'])
+          const value = row['fact_value_num'] ?? row['fact_value_text'] ?? row['fact_value_jsonb'] ?? null
+          entry.facts[key] = value
+          entry.fact_ids[key] = String(row['fact_id'])
+        }
+        const pivoted = Array.from(bySubject.entries())
+          .slice(0, limit)
+          .map(([subject, entry]) => ({
+            fact_subject: subject,
+            fact_category: entry.fact_category,
+            ...entry.facts,
+            fact_ids: entry.fact_ids,
+          }))
+        content = {
+          chart_id,
+          ayanamsha_id,
+          shape: 'pivoted',
+          facts: pivoted,
+          returned_count: pivoted.length,
+        }
       }
+
+      if (aboutResolution) {
+        content['about_resolution'] = {
+          requested: args['about'],
+          subjects: aboutResolution.subjects,
+          chain: aboutResolution.chain,
+        }
+      }
+
+      content['grounding'] = grounding
+      content['provenance'] = {
+        table: 'chart_facts',
+        note: 'fact_id references resolve to the canonical L1 chart_facts table.',
+      }
+
+      return { content, is_error: false }
     } catch (err) {
       return { content: { error: String(err), chart_id }, is_error: true }
     }

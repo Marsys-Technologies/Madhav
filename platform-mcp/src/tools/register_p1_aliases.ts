@@ -202,10 +202,39 @@ export function registerP1AliasTools(server: McpServer): void {
     'marsys://tool/L1/get_positions')
 
   // get_dashas → ganita_dashas_get
+  // R5 W1 (dasha_query lane, design §18/§21/§25 E-5): facets threaded through the seam so
+  // they don't die at the boundary the way as_of_date originally did (P1). Kept as a hand
+  // shim (single-source codegen for this instrument is a later-wave item) but every facet
+  // the handler (get_dashas.ts) now reads is declared here too.
   regAlias(server, 'ganita_dashas_get',
-    'L1 Vimshottari dasha chain (same as get_dashas)',
+    'L1 dasha periods, faceted by system/level/window (same as get_dashas). ' +
+    'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y. ' +
+    'ayanamsha_id has NO default here (unlike system/level/window) — omitting it returns ' +
+    'one row PER AYANAMSHA (5 rows, ~3.2KB), busting the <=1KB current-dasha gate. ' +
+    'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
+    'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
     'marsys://tool/L1/get_dashas',
-    { as_of_date: z.string().optional() })
+    {
+      // Override the shared ChartBase.ayanamsha_id description for this tool specifically:
+      // ChartBase's generic "(default: 'lahiri_chitrapaksha')" wording is TRUE for
+      // chart_facts_query but FALSE here — get_dashas.ts applies no ayanamsha filter unless
+      // the caller supplies one (R5 W1 verifier finding; JL-010 doc fix).
+      ayanamsha_id:  z.string().optional().describe(
+        'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
+        '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
+        'single-row current-dasha gate shape.'),
+      as_of_date:    z.string().optional(),
+      date_contains: z.string().optional(),
+      date_from:     z.string().optional(),
+      system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+      dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
+      level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
+      all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
+      window_start:  z.string().optional(),
+      window_end:    z.string().optional(),
+      lord_graha:    z.string().optional(),
+      fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+    })
 
   // get_temporal_windows → kala_windows_get
   regAlias(server, 'kala_windows_get',
@@ -328,12 +357,28 @@ export function registerP1AliasTools(server: McpServer): void {
     })
 
   // query_chart_facts → ganita_chart_facts_get
+  // R5 W1 (lane: chart_query) fix: extraSchema previously declared fact_category/fact_id,
+  // neither of which the registry handler (register_d7_channel.ts) ever read — a dead-param
+  // mismatch of the same class as P1 (design §18: "aliases carry DIVERGING param names").
+  // Reconciled to the real filter set the handler now implements (see query_chart_facts above
+  // for the full facet description); NF-1's 404 is fixed at the shared handler, so this alias
+  // is fixed for free once its own param names line up.
   regAlias(server, 'ganita_chart_facts_get',
-    'L1 chart_facts direct query (same as query_chart_facts)',
+    'L1 chart_facts EAV-crosstab query (same as query_chart_facts)',
     'marsys://tool/L1/chart_facts_query',
     {
-      fact_category: z.string().optional(),
-      fact_id:       z.string().optional(),
+      about: z.union([
+        z.string(),
+        z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
+      ]).optional(),
+      category:         z.string().optional(),
+      planet:           z.string().optional(),
+      house:            z.number().int().min(1).max(12).optional(),
+      sign:             z.string().optional(),
+      nakshatra:        z.string().optional(),
+      divisional_chart: z.string().optional(),
+      keyword:          z.string().optional(),
+      shape:            z.enum(['pivoted', 'rows']).optional(),
     })
 
   // vector_search → ref_vector_search

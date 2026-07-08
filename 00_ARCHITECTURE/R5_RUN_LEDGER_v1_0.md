@@ -886,6 +886,173 @@ baseline recorded for the next wave to diff against" — which this report satis
 
 ---
 
+## W1 — lane: chart_query (EAV crosstab + `about` facet) — worktree close report
+
+**Branch:** `r5/w1-chart-query`, off `origin/r5/w1`. **Scope:** `marsys://tool/L1/chart_facts_query`
+(the `query_chart_facts` / `ganita_chart_facts_get` tool) — the exact NF-1 code path flagged by the
+W0a Ring-2 re-audit ("`query_chart_facts` / `ganita_chart_facts_get` 404, STILL BROKEN, unchanged").
+
+**NF-1 root cause + fix:** the registry handler (`register_d7_channel.ts`) called
+`POST {sidecar}/api/ganita/chart_facts/query` — a route that has never existed anywhere in this
+repo, so the tool 404'd unconditionally regardless of deploy state. Rewritten to query
+`chart_facts` directly via `@/lib/db/client`, matching the sibling L1 handlers' established
+pattern (no sidecar hop was ever necessary for a plain parameterized SQL read). See JL-006(a).
+
+**EAV crosstab (design §1/§18):** `shape: 'pivoted'` (new default) groups the flat
+`(fact_subject, fact_key, fact_value)` rows into one wide row per subject
+(`{fact_subject, fact_category, <key>: <value>, ..., fact_ids: {<key>: <fact_id>}}`), collapsing
+e.g. LAGNA's 5 raw EAV rows into 1. `shape: 'rows'` preserves the flat form.
+
+**`about` facet (design §27.1/§27.2):** minimal inline resolver (new file
+`chart_query_about.ts`) supports `about:"lagna"`, `about:{graha:"Saturn"}`, `about:{bhava:10}`,
+`about:{house_lord:10}` (lagna-sign + whole-sign offset + BPHS ch.3 classical rulership, chain
+served back in `about_resolution`). The `r5/w1-address-resolver` sibling lane's shared module did
+not exist on this lane's base branch — see JL-006(c) for the scoped-stopgap ruling and the named
+Ring-1 reconciliation point.
+
+**Dead params fixed:** `ayanamsha_id` was declared on the MCP-side shim and always sent, but the
+old handler never read it (silent no-op — same class of bug as P1). `as_of_date`/`from_date`/
+`to_date` were removed — `chart_facts` has no validity_start/validity_end columns, so these params
+could never have filtered anything (JL-006(b)).
+
+**Gate results (measured, both charts, live prod DB):**
+- Native (`482012f1-…`) lagna lookup via `about:"lagna"`: **1,456 bytes**, ONE call — well inside
+  the ≤2KB/1-call gate.
+- Abhinandan (`1c826d5a-…`) lagna lookup: **1,456 bytes**, ONE call — identical shape/size.
+- Warm-path server time (post pool-connect): ~80ms; well inside the §24 surgical SLO (≤600ms p50).
+- `about:{house_lord:10}` resolver chain verified against `chart_facts` on both charts (test
+  asserts `chain[0]` = the LAGNA `sign` fact actually read from the DB, not a hardcoded value).
+- Facet-conformance (lane-scoped, not the full estate suite — that suite does not exist in the
+  repo yet): `shape` pivoted-vs-rows, `planet` filter, and `about` all independently verified to
+  alter the result on both charts (12 integration tests, `chart_query.integration.test.ts`).
+
+**Not done / flagged forward:** `sign`/`nakshatra`/`divisional_chart` filters were implemented
+(subquery-based, whitelisted-parameter) but not exercised against live data in this pass beyond
+typecheck — lower-priority filters vs. the gate's named cases (lagna, 10th lord). `karaka`/
+`dispositor_of` addressing (design §27.2's fuller address grammar) is out of this lane's scope —
+flagged for whichever lane owns the full shared resolver. The estate-wide facet-conformance CI
+suite (design §19's "a CI contract test round-trips every declared facet") does not exist yet
+anywhere in the repo; this lane's own integration test is a lane-scoped stand-in, not that suite.
+
+---
+
+## W1 Ring-1 — reconciliation lane (`r5/w1-reconcile`, off `origin/r5/w1` @ `2625ff4b`)
+
+The verifier ring that reviewed the merged `r5/w1` tree (all four W1 lanes: address-resolver,
+chart_query, dasha_query, signals/synthesis_query) issued "mergeable with one mandatory manual
+step and two follow-ups" ahead of Ring-2 (PR to main). This lane closes all three items before
+`r5/w1-reconcile` merges back into `r5/w1`.
+
+### 1. MANDATORY — dedupe the address resolver (JL-007(c) reconciliation point)
+
+Folded `chart_query_about.ts` (the chart_query lane's scoped inline stopgap — see JL-007(c)) into
+the canonical `address_resolver.ts` (`resolveAddress`/`parseAddressExpression`, JL-006). Changes:
+
+- `address_resolver.ts`: exported `grahaCodeOf` (was module-private) and extended `GRAHA_ALIASES`
+  with the Sanskrit graha names (shani, surya, chandra, mangala, kuja, budha, guru, brihaspati,
+  shukra) the stopgap supported but the canonical table didn't yet — single-source mandate means
+  the alias set lives in one table, not two (JL-010(a)).
+- `register_d7_channel.ts`: the `about` facet resolution for `chart_facts_query` now calls
+  `grahaCodeOf` (graha normalization) and `resolveAddress(..., {type:'lord_of', house})`
+  (`house_lord`/`bhava_lord` indirection) instead of the stopgap's own hand-rolled logic. The
+  trivial `'lagna'` string alias and `{bhava:n}` direct-subject mapping stay inline (no
+  computation to delegate — JL-010 rationale).
+- Deleted `chart_query_about.ts` and its unit test `chart_query_about.test.ts` (confirmed via
+  grep that nothing else imported the module first). `chart_query.integration.test.ts` updated
+  for the `house_lord` chain's new shape (canonical resolver serves a `string[]` chain, not the
+  stopgap's `{step,output}` object array — JL-010(b)); no other assertions changed.
+- Re-ran `chart_query.integration.test.ts` live (`INTEGRATION=true`, both canonical charts):
+  **12/12 PASS.** Lagna lookup via `about:"lagna"` still **1,456 bytes, ONE call** — the ≤2KB
+  gate is unaffected by the swap (the lagna case never touches the resolver's DB-backed paths).
+  `about:{house_lord:10}` and `about:{graha:"Saturn"}` both resolve correctly end-to-end against
+  live `chart_facts` on both charts.
+- Re-ran `address_resolver.test.ts` + `address_resolver.integration.test.ts` (37 tests, live DB)
+  to confirm the alias/export additions didn't regress the resolver's own suite: **37/37 PASS.**
+
+### 2. dasha_query gate documentation + regression test
+
+`get_dashas.ts` applies server-side defaults for `system`/`level`/`window` but NOT for
+`ayanamsha_id` — omitting it returns all 5 ayanamshas (one row per ayanamsha), busting the
+documented ≤1KB current-dasha gate 3x over (~3.2KB). Fixed the tool's own documented "Gate
+target" (file docstring + `input_schema.ayanamsha_id` description + top-level `description`) to
+state explicitly that `ayanamsha_id` has no default and must be passed
+(`ayanamsha_id: "lahiri_chitrapaksha"`) for the gate shape. Also fixed the MCP-side
+`ganita_dashas_get` alias in `platform-mcp/src/tools/register_p1_aliases.ts` — its shared
+`ChartBase.ayanamsha_id` schema description ("default: 'lahiri_chitrapaksha'") is true for
+`chart_facts_query` but FALSE for dashas; overrode it per-tool with an accurate description and
+added the explicit gate example to the tool's own top-level description string.
+
+Did NOT add a server-side default (see JL-010(c) for the ruling and why this is flagged forward
+rather than fixed here).
+
+Added `get_dashas.integration.test.ts` (new — no dasha test file existed before this pass),
+pinning the ≤1KB gate using the COMPLETE correct facet set (`system=vimshottari, level=1,
+as_of_date=<today>, ayanamsha_id=lahiri_chitrapaksha`) on both canonical charts, plus a
+companion regression test pinning the documented failure mode (omitting `ayanamsha_id` returns
+>1 row across >1 distinct ayanamsha and busts >1KB). Ran live (`INTEGRATION=true`, both charts):
+**4/4 PASS.**
+
+### 3. signals/synthesis_query regression coverage
+
+No dedicated test file existed for the `r5/w1-signals-synthesis-query` lane's work. Added:
+
+- `platform/src/lib/retrieval/ranking/__tests__/composite_ranker.buildHierarchicalProfiles.test.ts`
+  — 6 unit tests (no DB) covering: grouping by `configuration_jsonb.graha`, the
+  `extractPrimaryGraha` fallback-key chain (`primary_graha`/`lord_graha`/`planet`/`graha_key`/
+  `karaka_graha`), the `unattributed` bucket for signals with no resolvable graha, sort-by-
+  `aggregate_score`-desc + `top_k_entities` capping, the "never recomputes a score" B.10
+  invariant (aggregate/peak are pure sums/max of already-computed `final_rank_score`), and
+  `dominant_domains`/`dominant_valence` frequency tracking.
+- `platform-mcp/src/__tests__/registry_bridge_r5w1_signals_synthesis.test.ts` — regression-pins
+  both opportunistic fixes from JL-009(c): (b) `get_signals` forwards the caller's `limit` as
+  `top_k` (not the silently-ignored `limit` key) to `query_signals.ts`, and translates `cursor`
+  to a numeric `offset`; (c) `get_chart_orientation` correctly unwraps the capability handler's
+  `{content, is_error}` return shape, so digest fields (`chart_id`, `digest.msr_signal_count`,
+  `entity_profiles`) are populated, not silently `undefined`. `fetch` is mocked (no live
+  platform/DB needed — registry_bridge.ts's only I/O boundary) to answer per-capability-`uri`
+  with the correctly double-wrapped shape (HTTP envelope + capability handler return) so a wrong
+  mock shape can't produce a false pass.
+
+Ran: **9/9 new tests PASS** (6 composite_ranker + 3 registry_bridge).
+
+### Verification summary (this lane)
+
+- `platform`: `npx tsc --noEmit` — 70 pre-existing error lines, IDENTICAL count/content to the
+  `origin/r5/w1` baseline (confirmed by diffing against a `git stash`'d clean checkout); zero new
+  errors from this lane's changes (all pre-existing failures are unrelated missing-package
+  resolution errors — `zod`/`uuid`/`json-schema`/`ajv-formats` not present in this environment's
+  install, in files this lane never touches).
+- `platform-mcp`: `npx tsc --noEmit` — clean, 0 errors.
+- `platform-mcp` full `vitest run`: **96 failed / 380 passed / 15 skipped (491)** — matches the
+  confirmed 96-failure baseline exactly; `r5_codegen_parity.test.ts` **16/16 PASS**.
+- `platform` full `vitest run`: 40 failed test files / 6 failed tests / 4540 passed / 173 skipped
+  / 1 todo — diffed against a `git stash`'d clean-checkout baseline run (40 failed files / 6
+  failed tests / 4547 passed / 169 skipped / 1 todo): the only deltas are fully accounted for by
+  this lane's own test-file changes (−13 passed from deleting `chart_query_about.test.ts`, +6
+  passed from the new `composite_ranker` unit tests, +4 skipped from the new
+  `get_dashas.integration.test.ts` file when run without `INTEGRATION=true`) — zero unexplained
+  regressions.
+- ESLint on all changed `platform` files: 0 errors (pre-existing `_ctx`/`_args` unused-var
+  warnings only, unchanged from baseline).
+- Live-DB integration runs (via the Cloud SQL proxy already running in this environment, both
+  canonical charts `482012f1-…` + `1c826d5a-…`): `chart_query.integration.test.ts` 12/12,
+  `get_dashas.integration.test.ts` 4/4, `address_resolver.test.ts` + `.integration.test.ts` 37/37
+  — all PASS.
+
+### Judgment ledger
+
+JL-010 (3 sub-rulings: (a) fold Sanskrit graha aliases into the canonical `GRAHA_ALIASES` table
+rather than a second layer; (b) accept the canonical resolver's string-array `chain` shape for
+`about:{house_lord}`, updating the lane's own test; (c) document-only for the dasha
+`ayanamsha_id` no-default gap, flagged forward rather than fixed as a drive-by).
+
+### Verdict
+
+**Ready for Ring-2.** All three verifier findings closed (one MANDATORY + two follow-ups); no
+parallel resolver implementations remain; both gates (chart_query lagna ≤2KB, dasha current-dasha
+≤1KB with the correct facet set) reconfirmed live post-change; new regression coverage added for
+the previously-untested signals/synthesis_query lane; zero regressions against the `origin/r5/w1`
+baseline across tsc, ESLint, and both platforms' test suites.
 ## W0b — Ring-2 post-deploy prod verification (CLOSING REPORT)
 
 **Trigger:** `r5/w0b` merged to `main` at commit `d6c6759a` (PR #469). `amjis-mcp` redeployed to

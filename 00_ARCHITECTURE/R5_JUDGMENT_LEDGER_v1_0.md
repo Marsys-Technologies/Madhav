@@ -2,7 +2,9 @@
 canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
-  lane), JL-005 (W0b-codegen lane) recorded
+lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
+  JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
+  (W1 Ring-1 reconciliation, r5/w1-reconcile) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -231,4 +233,325 @@ contract shape.
 
 ---
 
-No further entries — this ledger reopens for W0b+ waves.
+### JL-006 — W1 address resolver: dispositor source (classical table vs L2 CGM edges) + karaka-school row disambiguation
+
+**question (a):** Design §27.2 says the address resolver is "backed by chart_facts + the CGM's
+dispositor edges — the data exists." `bodha_cgm_edges` does carry a `dispositor` `edge_type`
+(L2 Bodha layer). Should `dispositor_of(...)` resolve sign rulership from that L2 graph edge, or
+from a hardcoded classical fixed-rulership table?
+
+**ruling (a):** Classical fixed table (`SIGN_LORDS` in `address_resolver.ts`), not the CGM edge.
+Three reasons, in priority order per the constitution: (1) ASTROLOGY — sign rulership is a fixed
+BPHS constant, true for every chart under every school; it is not something that needs to be
+"computed" per chart, and citing a graph edge for it would dress a classical fact up as a
+derived one; (2) correctness/robustness — `bodha_cgm_edges` is an L2 Bodha campaign artifact that
+may not exist for a chart where L2 hasn't been built yet (L2 is "BUILT" for the two canonical
+charts today, but the resolver is meant to be a foundational, chart-build-stage-agnostic
+primitive per its own module contract); depending on it would make `dispositor_of` fail for any
+chart stopped at L1. (3) B.1 (facts/interpretation separation) — an L1-adjacent primitive utility
+should not depend on L2 derivations for its own basic correctness. Cross-checked: the classical
+table matches every `chart_facts.sign_lord` fact (written by L1 `ga_*` writers) observed on both
+canonical charts with zero divergence — so no information is lost by preferring it. The CGM
+`dispositor` edge remains available to a future caller wanting graph-context (betweenness,
+cross-subsystem mapping) layered ON TOP of this resolver's output; it is not the resolver's
+correctness dependency.
+
+**question (b):** `chart_facts.karaka_chara_position` value-rows (`assigned_graha`/`house_d1`/
+`sign`) carry no per-row `karaka_school` tag — only separate `karaka_school` rows do, with no
+shared row id to join the two together in the EAV shape as built. Should `karaka(...)` resolution
+silently assume the schools agree, or should it throw / require an upstream schema change before
+resolving at all?
+
+**ruling (b):** Read the value rows directly and document the assumption in code, rather than
+either silently hiding it or blocking the whole `karaka()` address type on a schema change outside
+this lane's `may_touch` (chart data / L0-L5 tables are read-only for W1; a schema fix there is a
+different lane's scope). Verified via direct SQL against both canonical charts: `parashari_
+rahu_excluded` and `kn_rao_rahu_included` agree exactly on `assigned_graha`/`house_d1`/`sign` for
+all 7 karakas the two schemes share; the 8th karaka (`STRIKARAKA`) exists only under
+`kn_rao_rahu_included` and the resolver defaults the school accordingly for that one code. The
+`school` field is still carried on both the `AddressExpression` input and the `ResolvedKaraka`
+output so a caller's audit trail is honest about which school was requested/assumed even though
+today's data doesn't yet distinguish the rows physically. Flagged as a real upstream data-model
+gap (no per-row school key) for a future L1/L2 schema-owning lane — not resolved here, only
+worked around safely with an explicit, verified assumption.
+
+**basis:** Pillar order (§1 constitution) — ASTROLOGY (fixed classical rulership must not be
+demoted to a "computed" graph fact) > correctness (resolver must work without an L2 build
+dependency; karaka schools verified to agree before relying on it) > honesty (school field
+preserved on the resolved output even where the physical row can't yet distinguish it) >
+code-convenience. No disputed-point contested-flag needed — sign rulership and the 7-karaka
+Parashari scheme are both textbook-uncontested (BPHS).
+
+**reversibility:** fully reversible on both counts. (a) if a future chart needs a non-Parashari
+custom rulership scheme (e.g. KP sub-lord addressing, already out of scope per design §27.4
+`paradigm` facet being a later wave), a `paradigm`-aware rulership table can be added alongside
+`SIGN_LORDS` without changing `dispositor_of`'s call shape. (b) if L1/L2 ever adds a per-row
+school key to `karaka_chara_position`, `fetchKarakaRow` can filter on it directly — the resolver's
+public `AddressExpression`/`ResolvedKaraka` shapes need no change, only the internal SQL.
+
+---
+
+No further entries — this ledger reopens for W1+ waves.
+### JL-007 — W1 chart_query lane: NF-1 fix approach, dead-param removal, and inline `about` resolver scope
+
+**question (a):** `marsys://tool/L1/chart_facts_query` (NF-1, confirmed still-broken by the W0a
+Ring-2 re-audit) 404s because its handler calls a Python sidecar route
+(`/api/ganita/chart_facts/query`) that does not exist anywhere in the codebase. The platform
+process already owns a live pg pool and every sibling L1 handler (`get_yoga_dosha.ts`,
+`get_positions.ts`) reads `chart_facts` directly with no sidecar hop. Should the fix restore/build
+the missing sidecar route, or remove the sidecar hop entirely and query Postgres in-process?
+
+**ruling (a):** Query Postgres directly, matching the established sibling pattern. There is no
+design mandate anywhere in RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md for a Python-sidecar
+hop on a plain relational read of `chart_facts` — §3's SQL idiom says facets "compile to
+parameterized SQL inside the existing handlers ... Postgres does the work it was built for." The
+sidecar route was never implemented (not merely broken); building it now would introduce a new
+network hop §22/§23 explicitly warns against (S1/S5 sinks) for zero benefit over the pattern
+every other L1 handler already uses. Lower latency, matches precedent, no design change.
+
+**question (b):** The old descriptor declared `as_of_date`/`from_date`/`to_date` filter params.
+`chart_facts` has no `validity_start`/`validity_end` (or any temporal-validity) columns
+(confirmed via `information_schema.columns`) — these params could never have filtered anything,
+even when the sidecar route existed (nothing in the repo ever defined its contract). Keep them as
+harmless no-ops for backward-compatible-looking signature, or remove them?
+
+**ruling (b):** Remove them. Per B.10 (no fabricated computation, generalized here to no
+fabricated CONTRACT surface) and the design's honesty mandate (§1: "an agent that can't
+distinguish [empty/error/ungranted] makes wrong fallbacks") — a parameter that silently accepts a
+value and does nothing is worse than no parameter at all; it teaches the calling LLM a false
+affordance. Since the tool 404'd unconditionally in prod, no live caller could have depended on
+these params' (nonexistent) behavior, so removal breaks nothing observable. Chart-facts is a
+point-in-time computed snapshot per chart_id, not a temporal table — genuine "as of" semantics
+belong to `dasha_query`/`kala_query` (already covered by chart_dashas' real date-range columns),
+not `chart_query`.
+
+**question (c):** Design §27.2 calls for ONE shared address resolver serving `about` across all
+16 instruments. The W1 brief names a sibling lane (`r5/w1-address-resolver`) as the owner of that
+shared module, but it did not exist on this lane's base branch at implementation time (parallel
+lanes). Should chart_query (a) block/wait for the sibling lane, (b) skip the `about` facet
+entirely this wave, or (c) implement a narrow inline resolver scoped to exactly what chart_query
+needs?
+
+**ruling (c):** Implement (c) — a minimal inline resolver
+(`platform/src/lib/retrieval/registry/layers/L1_ganita/chart_query_about.ts`) covering only
+graha-name normalization, bhava (house) addressing, and house-lord indirection (the exact cases
+the W1 brief's gate names — lagna, "10th lord"). Blocking on a sibling lane in a parallel-lanes
+wave defeats the wave structure; skipping `about` entirely would leave the lane's stated
+deliverable unmet. The module is explicitly scoped and commented as a stopgap with a named
+reconciliation point (Ring-1, against `r5/w1-address-resolver`'s eventual module) rather than
+presented as the permanent shared resolver — this avoids the two-hand-maintained-copies trap
+§19 exists to prevent, by making the intended supersession explicit in the code itself. The
+house-lord rashi computation uses whole-sign houses (confirmed against both charts' own
+`graha_position.house_d1` values — e.g. native chart: Jupiter/Venus in Sagittarius = house 9 from
+an Aries lagna, consistent with equal/whole-sign reckoning) and BPHS ch.3's classical rashi
+lordships (undisputed across every Vedic paradigm) — cited inline in the resolver module, no
+computation invented beyond arithmetic already implied by data already in `chart_facts`.
+
+**basis:** (a)/(b) code-convenience/honesty tier, no astrological content, same tier reasoning as
+JL-003/JL-005. (c) touches astrology (classical rashi lordship, whole-sign house convention) —
+resolved via cited classical method (BPHS ch.3) per constitution item 3 ("adopt a CITED classical
+method"), not an invented rule; the process/scope question (inline-vs-wait) resolves at the
+code-convenience tier once the astrological content is settled.
+
+**reversibility:** (a) reversible — a pure serving-layer implementation change; no schema/data
+change, no envelope shape change. (b) reversible in the loose sense that params can be re-added
+if a future migration ever adds real temporal-validity columns to `chart_facts`, but the current
+removal is a genuine contract simplification, not a placeholder. (c) fully reversible — the
+inline resolver is three narrow pure functions with no persisted state; Ring-1 can delete it in
+favor of the sibling lane's shared resolver, or fold it in as a special case, without touching any
+shipped response shape (the `about_resolution` field's shape — `{requested, subjects, chain}` —
+is designed to be resolver-implementation-agnostic).
+### JL-008 — W1 dasha_query gate: what "≤1KB, ONE call" measures, and the default projection needed to hit it
+
+**question:** Brief §W1 GATE requires "current-dasha lookup ≤1KB in ONE call." A raw `chart_dashas`
+row carries ~40 columns (citation strings, verification metadata, jsonb sandhi/concurrent-lord
+blobs) — a single unprojected row already serializes to ~2KB, busting the gate before any facet
+logic runs. Two sub-questions: (a) does "≤1KB" bind the tool's actual data payload (the capability's
+`content` / the MCP `structuredContent`), or the full wire bytes including the dual-output text
+duplicate (S3, JL-003) that low-size responses still carry below the 50KB threshold? (b) is adding
+a field-projection facet in-scope for a lane whose named facets are system/level/window?
+
+**ruling:** (a) "≤1KB" binds the data payload dimension the facets actually control —
+`content`/`structuredContent` — not the S3 dual-output text duplicate. That duplicate is a
+distinct, already-identified and already-partially-fixed (JL-003, W0a S3) mechanical serialization
+tax orthogonal to faceting; re-litigating it here would conflate two different defects. Measured:
+compact-projected single-row current-dasha response = 833B (capability `content`) / 860B
+(`structuredContent`) — both ≤1KB; full raw dual-output wire bytes (structuredContent + duplicated
+compact-JSON text, per the existing <50KB-keeps-both-copies rule) = ~1.8KB, which is expected and
+out of this lane's scope to change. (b) YES — a default `fields=compact` projection is in-scope and
+necessary: design §3's general SQL-idiom grammar already names `select: [fields...]` as "projection
+— the 63KB killer" for every SQL-idiom instrument (dasha_query is explicitly one, §21 W1 line),
+so trimming chart_dashas's verbose/internal columns by default (with `fields=all` or a custom
+column list as opt-out) is the same mechanism applied to this instrument, not scope creep. The
+compact set keeps `citation_ref` + `verification_pass_status` (B.3 derivation-ledger fields) so
+groundedness is not sacrificed for size.
+
+**basis:** Pillar order (§1 constitution) — no astrological content in either sub-question, so
+both resolve at tier (4) code-convenience / tier (2) latency-tokens, per the JL-003 precedent
+(same tier reasoning, same lane-family). Design doc §3 (line ~116) and §21 (W1 scope line) are the
+direct textual basis for treating `select`/projection as already-in-scope machinery, not a new
+facet invented outside the brief.
+
+**reversibility:** reversible — `fields` defaults to `compact`; any caller needing the full row
+(e.g. a future v3-envelope grounding block wanting every citation field) passes `fields=all` with
+no schema/data change required. The default itself could be flipped to `all` later without breaking
+the facet's existence, only its default value.
+
+---
+
+No further entries — this ledger reopens for W2+ waves.
+
+### JL-009 — W1 signals_query/synthesis_query lane: E-6 aggregation entity key, envelope wiring site, and two latent serving bugs fixed in-flight
+
+**question (a):** Design §E-6 requires the orient surface (`query_ucd.ts` / `get_chart_orientation`
+/ "synthesis_query") to consume the same ranking pipeline as its drill surface
+(`query_signals.ts` / `get_signals`) AND apply "hierarchical aggregation" ("one composite
+Saturn-AV profile row, never twenty atoms"). Neither the design doc nor the brief specifies the
+aggregation KEY. What entity should atomic MSR signals be grouped by?
+
+**ruling (a):** Group by primary graha (the same `extractPrimaryGraha` extraction
+`composite_ranker.ts`'s `intrinsicStrength`/`topicRelevance`/`temporalActivation` sub-scorers
+already use, read from `configuration_jsonb`), with an `unattributed` bucket for signals that
+carry no resolvable graha. This is the only entity dimension already load-bearing in the existing
+composite-ranking pipeline (B.10 — no new classification invented); the design doc's own worked
+example ("Saturn-AV profile") is graha-keyed; and grouping by graha, not domain or signal_type_class,
+keeps `entity_profiles` genuinely useful at the orient (pre-domain) stage — domain-scoped
+aggregation is already query_signals.ts's `domain` facet + composite ranking at the drill stage,
+so re-deriving domain groups at the orient stage would duplicate rather than complement it.
+
+**question (b):** `query_ucd.ts`'s candidate pool for composite ranking — how wide should it be,
+given query_signals.ts uses 500 (CANDIDATE_FETCH_SIZE) plus a dual-pool class-forced merge for
+domain-scoped calls?
+
+**ruling (b):** 300, single-pool (no dual-pool class-forcing). The orient surface is
+domain-agnostic (composite ranking runs with `domain=null`), so query_signals.ts's dual-pool
+rationale (yoga-class signals under-represented in a single top-500-by-salience pool for a
+SPECIFIC domain) does not transfer directly — there is no domain to under-represent against.
+300 is a judgment-call middle ground (wide enough that hierarchical aggregation has enough atoms
+per entity group to be meaningful; narrower than query_signals.ts's page-serving pool because
+query_ucd's output is aggregated down to ≤30 entity rows, not a full atomic page) rather than a
+measured optimum — flagged as a tuning parameter for the W4 battery to revisit, not a frozen
+constant.
+
+**question (c):** In implementing the envelope-wiring + E-6 work, two pre-existing serving bugs
+surfaced in `registry_bridge.ts` unrelated to the assigned lane's primary ask: (1) `get_signals`
+forwarded its `limit` param as `{ limit: ... }` to `query_signals.ts`, which only reads
+`args['top_k']` — the facet was silently ignored (design §18's "diverging param names" premise,
+`top_k` vs `limit`); `cursor` was accepted but never forwarded/consumed at all. (2)
+`get_chart_orientation` read fields directly off `callRegistryCapability()`'s return value
+(`responseData['chart_id']`, `['msr_signal_count']`, etc.) without unwrapping the `.content` layer
+that `{content, is_error}`-shaped capability handlers actually return — every one of those field
+reads was silently `undefined`, while `get_domain_reading` (three tools above it in the same file)
+already does the correct unwrap. Should these be fixed in this lane, or flagged and left for a
+separate lane/session given they're not literally "wire the envelope"?
+
+**ruling (c):** Fix both, in this lane. Design §17 states every W1+ wave's acceptance now includes
+facet-conformance (E-5 — "a declared-but-ignored parameter... is the worst contract violation in
+the estate") and this is exactly that failure class, discovered while touching the exact two
+functions this lane owns; deferring a known, already-diagnosed correctness bug in a file this
+lane is editing anyway (to fix it "later, elsewhere") would itself violate the pillar order
+(answer-correctness > code convenience) for no honesty or latency benefit. Both fixes are
+narrowly scoped (parameter plumbing + one unwrap pattern already established one function away in
+the same file) and do not touch any other lane's files.
+
+**basis:** B.10 (aggregation/grouping only reuses already-computed extraction logic, never invents
+a new classification) + E-5 (facet conformance, "worse than absence, because the endpoint TRUSTS
+it") + E-6 (ranking-governed orient surface) + pillar order (answer-correctness over code
+convenience, at tier below astrology/honesty — none of (a)/(b)/(c) are astrological calls requiring
+classical citation).
+
+**reversibility:** (a) reversible — `entity_type`/`entity` are stable field names; the grouping key
+could be widened to a composite (graha × dominant domain) later without an envelope-shape break.
+(b) fully reversible — a single constant, easily retuned once the W4 battery has entity-profile
+coverage data to measure against. (c) reversible in the trivial sense that it's a bug fix, not a
+design decision — but note the FIX ITSELF is not reversible-without-cost: any caller that was
+silently depending on `get_chart_orientation`'s previously-`undefined` digest fields (unlikely,
+since they were undefined) or on `get_signals`'s previously-ignored `limit`/`cursor` params
+resolving to the hardcoded default regardless of input, would see different (correct) values now.
+
+---
+
+### JL-010 — W1 Ring-1 reconciliation (`r5/w1-reconcile`): retiring the chart_query `about` stopgap, folding it into the canonical address resolver, and the dasha `ayanamsha_id` default question
+
+**question (a):** Per JL-007(c)'s own instruction, the chart_query lane's inline stopgap
+resolver (`chart_query_about.ts`) must be reconciled into the canonical address resolver
+(`address_resolver.ts`) now that both exist on `r5/w1`. The stopgap's graha-name normalizer
+(`normalizeGrahaName`) supported Sanskrit aliases (shani, surya, chandra, mangala, kuja, budha,
+guru, brihaspati, shukra) that the canonical resolver's `grahaCodeOf`/`GRAHA_ALIASES` did not
+yet have (canonical only had 2-letter shorthand + English names). Folding the call site over
+naively would silently drop Sanskrit-name support chart_query's own shipped test suite already
+covered. Should the canonical module gain these aliases (single table, extended), or should a
+second, thinner Sanskrit-alias layer sit in front of it at the chart_query call site?
+
+**ruling (a):** Extend the canonical `GRAHA_ALIASES` table in `address_resolver.ts` itself.
+Per design §19's single-source mandate — the exact principle this reconciliation task exists to
+enforce — a second alias layer anywhere, however thin, recreates the problem being fixed. These
+are standard, undisputed Sanskrit graha names (BPHS/classical nomenclature, no school disputes
+them), so adding them is a safe, citable, B.10-compliant addition to the one shared table, and it
+makes every other future caller of `grahaCodeOf`/`resolveAddress` benefit from the same coverage
+chart_query already had. Cross-checked: no alias collides with an existing key (shani/surya/
+chandra/mangala/kuja/budha/guru/brihaspati/shukra were previously entirely absent from
+`GRAHA_ALIASES`).
+
+**question (b):** The stopgap's `house_lord`/`bhava_lord` facet served a resolution `chain` as
+an array of structured `{step, input, output, basis}` objects (its own bespoke shape); the
+canonical resolver's `lord_of` address type produces `ResolvedAddress.chain` as an array of
+human-readable strings (its own, differently-shaped, already-shipped design). Folding
+`chart_query_about`'s `house_lord` case over to call `resolveAddress(..., {type:'lord_of', ...})`
+means the served `about_resolution.chain` shape changes for existing callers of
+`chart_facts_query`. Preserve the old object shape (requiring a translation layer that
+re-derives `{step,output}` from the string chain), or accept the string-array shape as the new
+contract?
+
+**ruling (b):** Accept the string-array shape; update the lane's own integration test
+accordingly (done — see `chart_query.integration.test.ts`). Building a translation layer back to
+the old object shape would mean maintaining a second parsing/formatting concern purely to
+preserve a one-wave-old, never-externally-documented response shape from a resolver that was
+itself only a temporary stopgap (JL-007(c) is explicit that the stopgap was never meant to be a
+stable contract). No external caller depends on `about_resolution.chain`'s exact shape yet (W1 is
+still pre-Ring-2/pre-ship); the string chain is equally informative and is the one the design
+doc's own worked examples use for `resolveAddress`. Reversibility below reflects this is a
+response-shape change, not a silent behavior change.
+
+**question (c):** The dasha_query verifier finding (see brief item 2) is that `get_dashas.ts`
+applies no server-side default for `ayanamsha_id` (unlike `system`/`level`/`window`, which all
+default), so omitting it returns all 5 ayanamshas and busts the ≤1KB current-dasha gate. Should
+this reconciliation pass ALSO add a server-side default (`ayanamsha_id` defaults to
+`lahiri_chitrapaksha` the same way `system` defaults to `vimshottari`), closing the defect at the
+source instead of only documenting it?
+
+**ruling (c):** Document only in this pass; do not add a server-side default. Reasoning: (1) the
+brief's item 2 scope is explicitly "gate documentation + regression test," not a behavior change
+— adding a default is a genuine, additional design decision (does a caller who wants all 5
+ayanamshas still have an easy way to ask for that? what's the "all" sentinel, mirroring
+`system="all"`?) that deserves its own judgment call and its own wave, not a drive-by fix bundled
+into a docs-and-tests task. (2) Unlike `system`, which already has a documented "all" opt-out
+convention (`system: 'all'`), `ayanamsha_id` has no such convention today — an unannounced default
+would silently change the result set for any existing caller who omits `ayanamsha_id` expecting
+all 5 rows back (unlikely usage, but not verifiably absent, unlike the NF-1 sidecar-404 case in
+JL-007(a) where the tool was provably unreachable). (3) The fix that IS safe and in-scope —
+fixing what an endpoint LLM is told to expect (docstring + input_schema description + the P1-alias
+shim's schema override in `register_p1_aliases.ts`) — was made in this pass; that alone should
+prevent essentially all real-world gate-busting occurrences, since it was a documentation gap, not
+a broken filter. Flagged forward (recorded in `get_dashas.ts`'s own doc comment) for a future wave
+to consider the server-side default + its "all" opt-out convention as a deliberate, reviewed
+change.
+
+**basis:** (a) design §19 single-source mandate (direct textual basis — this IS the reconciliation
+task) + B.10 (Sanskrit graha names are classical constants, no computation, safe to hardcode).
+(b) pillar order — none of (a)/(b)/(c) are astrological calls requiring classical citation or
+contested-point flagging; resolved at tier (4) code-convenience given no correctness or honesty
+cost either way, per the same tier reasoning JL-003/JL-008 used for shape/format judgment calls.
+(c) B.10 generalized (§N.4 "no fabricated computation," here extended to "no silent contract
+change") + pillar order (a scope-expanding behavior change is lower priority than the literal
+brief ask, and risks a new, unreviewed defect class if done as a drive-by).
+
+**reversibility:** (a) reversible — aliases are additive; removing one later only affects callers
+using that specific spelling, easily caught by a test. (b) hard-to-reverse in the sense that any
+caller who started depending on the new string-array `chain` shape during W1-era testing would
+need to re-adapt if a future wave reverted to object-shaped steps — but no such caller exists yet
+(pre-Ring-2), so practically reversible today. (c) fully reversible — the documentation-only
+choice leaves the server-side default question completely open for a future wave to decide either
+way with no sunk cost from this pass.
+
+No further entries — this ledger reopens for W2+ waves.

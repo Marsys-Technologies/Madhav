@@ -38,6 +38,17 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
+// R5 W1 (design §E-6 + brief §Lane signals_query/synthesis_query): wires get_signals
+// (signals_query) and get_chart_orientation (synthesis_query) onto the W0b generated
+// contract path — the SAME buildRetrievalEnvelope + response_format negotiation
+// pattern register_p1_ganita.ts's ganita_yogas_get established. Imports the GENERATED
+// module (not a hand-mirror) — see scripts/generate_envelope.ts / src/generated/envelope.ts.
+import {
+  buildRetrievalEnvelope,
+  resolveEnvelopeFormat,
+  type EnvelopeFormat,
+  type ChartHeader,
+} from '../generated/envelope.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -137,6 +148,43 @@ function buildCtx(chartId?: string) {
     chart_id: chartId,
     lel_enabled: false,
   }
+}
+
+// ── Unified envelope helper (R5 W1 — mirrors register_p1_ganita.ts's envelope()) ──
+
+// Three-arg call sites are UNCHANGED (format defaults to 'legacy', v3Extras undefined) —
+// they get the exact legacy shape. Call sites opting into 'v3' pass format='v3' +
+// v3Extras; those extras are silently ignored under 'legacy' (additive-only, brief §6.3).
+function envelope(
+  content: unknown,
+  toolName: string,
+  pagination?: { offset: number; limit: number; total: number | null },
+  format: EnvelopeFormat = 'legacy',
+  v3Extras?: {
+    chart_header?: ChartHeader | null
+    verdict?: unknown
+    ranking_basis?: Record<string, unknown> | null
+    grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
+    drill_pointers?: { instrument: string; hint: string }[]
+    judgment_flags?: string[]
+    as_of_date?: string
+  },
+) {
+  return buildRetrievalEnvelope(
+    {
+      tool: toolName,
+      content,
+      pagination,
+      chart_header: v3Extras?.chart_header,
+      verdict: v3Extras?.verdict,
+      ranking_basis: v3Extras?.ranking_basis,
+      grounding: v3Extras?.grounding,
+      drill_pointers: v3Extras?.drill_pointers,
+      judgment_flags: v3Extras?.judgment_flags,
+      as_of_date: v3Extras?.as_of_date,
+    },
+    format,
+  )
 }
 
 // ── Dual output helper ────────────────────────────────────────────────────────
@@ -281,11 +329,11 @@ async function fetchOrientationContext(
  */
 export function registerRegistryBridgeTools(server: McpServer, principal: Principal): void {
 
-  // ── get_chart_orientation (L-ORIENT umbrella) ─────────────────────────────
+  // ── get_chart_orientation (L-ORIENT umbrella — synthesis_query, design §5 #7) ──
   // marsys://tool/L2/query_ucd
   server.tool(
     'get_chart_orientation',
-    'Mandatory first call for any chart reading. Retrieves the L2 Bodha synthesis layer\'s Unified Chart Digest (UCD) — the holistic portrait of the chart distilled from 573 MSR signals, the CDLM domain activation grid, the CGM causal graph, and the Life Event Log. In classical Jyotish, an acharya reads the whole chart before any domain. This tool enforces that discipline: it surfaces the Lagna lord condition, Moon nakshatra character, dominant cross-domain themes, and active contradictions. Call this before get_domain_reading, get_signals, or any other per-chart tool — the B.11 Whole-Chart-Read Protocol requires it.',
+    'Mandatory first call for any chart reading. Retrieves the L2 Bodha synthesis layer\'s Unified Chart Digest (UCD) — the holistic portrait of the chart distilled from 573 MSR signals, the CDLM domain activation grid, the CGM causal graph, and the Life Event Log. In classical Jyotish, an acharya reads the whole chart before any domain. This tool enforces that discipline: it surfaces the Lagna lord condition, Moon nakshatra character, dominant cross-domain themes, and active contradictions. entity_profiles (design §E-6) are hierarchically-aggregated composite-ranked signal groups — one row per graha, not twenty atomic signals — computed by the SAME ranking pipeline get_signals uses. Call this before get_domain_reading, get_signals, or any other per-chart tool — the B.11 Whole-Chart-Read Protocol requires it. envelope_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope alongside the existing response_format verbosity control.',
     {
       chart_id: z.string().uuid().describe(
         'UUID of the chart to read. Required — no default chart.'
@@ -296,39 +344,102 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       top_k_signals: z.number().int().min(1).max(100).optional().describe(
         'Number of top MSR signals to return (default: 20)'
       ),
-      response_format: z.enum(['full', 'summary', 'digest']).optional().describe(
-        'Output verbosity: full (all fields), summary (key fields), digest (counts only). Default: summary.'
+      top_k_entities: z.number().int().min(1).max(30).optional().describe(
+        'Number of hierarchically-aggregated entity profiles to return (default: 10).'
       ),
+      response_format: z.enum(['full', 'summary', 'digest']).optional().describe(
+        'Output verbosity: full (all fields), summary (key fields), digest (counts + entity_profiles only, no atomic signals). Default: summary.'
+      ),
+      envelope_format: z.enum(['legacy', 'v3']).optional()
+        .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default). Distinct from response_format, which governs digest verbosity."),
     },
-    async ({ chart_id, ayanamsha_id, top_k_signals, response_format }) => {
+    async ({ chart_id, ayanamsha_id, top_k_signals, top_k_entities, response_format, envelope_format }) => {
       if (!chart_id) return errorOutput('get_chart_orientation', 'chart_id is required')
       try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
         const fmt = response_format ?? 'summary'
-        const data = await callRegistryCapability(
+        const format = resolveEnvelopeFormat(envelope_format)
+        const raw = await callRegistryCapability(
           'marsys://tool/L2/query_ucd',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: top_k_signals ?? 20, response_format: fmt },
+          { chart_id, ayanamsha_id: resolvedAyanamsha, top_k_signals: top_k_signals ?? 20,
+            top_k_entities: top_k_entities ?? 10, response_format: fmt },
           chart_id
         )
-        // F-026: Apply response_format bounding at MCP layer
-        const responseData = data as Record<string, unknown>
+        // R5 W1 fix: callRegistryCapability returns the capability handler's raw return
+        // value ({ content, is_error }) — this call site was reading fields directly off
+        // that wrapper (responseData['chart_id'] etc), which are actually one level
+        // deeper under `.content`, and always resolved to undefined. Unwrap here (matches
+        // get_domain_reading's established pattern) before any field access.
+        const wrapper = raw as Record<string, unknown>
+        const responseData = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        // F-026: response_format bounding is now genuinely applied server-side
+        // (query_ucd.ts) too; this MCP-layer bounding remains as defense-in-depth /
+        // backward-compat for callers relying on the exact prior shape.
+        let bounded: Record<string, unknown>
         if (fmt === 'digest') {
-          // Counts only — strip signal arrays
-          return dualOutput({
+          bounded = {
             chart_id: responseData['chart_id'],
             ayanamsha_id: responseData['ayanamsha_id'],
-            msr_signal_count: responseData['msr_signal_count'],
+            digest: responseData['digest'],
+            entity_profiles: responseData['entity_profiles'],
             convergence_domains: responseData['convergence_domains'],
             provenance: responseData['provenance'],
             response_format: 'digest',
-          })
+          }
         } else if (fmt === 'summary') {
-          // Top-k signals only (cap at 10)
           const signals = (responseData['top_signals'] as unknown[]) ?? []
-          return dualOutput({ ...responseData, top_signals: signals.slice(0, 10), response_format: 'summary' })
+          bounded = { ...responseData, top_signals: signals.slice(0, 10), response_format: 'summary' }
+        } else {
+          const signals = (responseData['top_signals'] as unknown[]) ?? []
+          bounded = { ...responseData, top_signals: signals.slice(0, 100), response_format: 'full' }
         }
-        // 'full' — cap at 100 signals hard limit
-        const signals = (responseData['top_signals'] as unknown[]) ?? []
-        return dualOutput({ ...responseData, top_signals: signals.slice(0, 100), response_format: 'full' })
+
+        if (format !== 'v3') {
+          return dualOutput(envelope(bounded, 'get_chart_orientation'))
+        }
+
+        // ── v3 population (design §10/§E-6) ──────────────────────────────────
+        const entityProfiles = (responseData['entity_profiles'] as Record<string, unknown>[]) ?? []
+        const rankingBasis = (responseData['ranking_basis'] as Record<string, unknown> | null) ?? null
+        const digestBlock = (responseData['digest'] as Record<string, unknown>) ?? {}
+
+        const verdict = {
+          entity_profile_count: entityProfiles.length,
+          msr_signal_count: digestBlock['msr_signal_count'] ?? null,
+          contradiction_count: digestBlock['contradiction_count'] ?? null,
+          weakest_graha: digestBlock['weakest_graha'] ?? null,
+          top_priority_class: digestBlock['top_priority_class'] ?? null,
+          note: 'entity_profile_count/msr_signal_count are chart-wide aggregates already computed by this response — not recomputed here.',
+        }
+
+        const citations = Array.from(new Set(
+          ((responseData['top_signals'] as Record<string, unknown>[]) ?? [])
+            .map(s => s['citation_human']).filter((v): v is string => typeof v === 'string' && v.length > 0)
+        ))
+        const grounding = { fact_ids: [], citations, grounding_score: null }
+
+        const judgment_flags: string[] = []
+        if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')
+
+        const drill_pointers = [
+          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.' },
+          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.' },
+        ]
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        return dualOutput(
+          envelope(bounded, 'get_chart_orientation', undefined, 'v3',
+            { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags })
+        )
       } catch (err) {
         return errorOutput('get_chart_orientation', String(err), { chart_id })
       }
@@ -436,11 +547,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
-  // ── get_signals (L-SIGNAL ranked signals) ────────────────────────────────
+  // ── get_signals (L-SIGNAL ranked signals — signals_query, design §5 #5) ──
   // marsys://tool/L2/query_signals
   server.tool(
     'get_signals',
-    'Retrieves ranked MSR (Multi-Signal Repository) signals for a chart — the 573-signal corpus of astrological patterns derived from L1 Gaṇita facts. Each signal encodes a classical Jyotish observation (yoga, placement, aspect, nakshatra condition) with its constituent L1 fact_ids, a computed_salience score reflecting how prominently it operates in this chart, and the domain tags it activates. Use min_salience to focus on high-confidence signals (≥0.7 = strong; ≥0.5 = moderate). The signal layer is the analytical backbone: get_domain_reading and get_chart_orientation both synthesize from this corpus. Query directly when you need raw signal evidence for a specific claim.',
+    'Retrieves ranked MSR (Multi-Signal Repository) signals for a chart — the 573-signal corpus of astrological patterns derived from L1 Gaṇita facts. Each signal encodes a classical Jyotish observation (yoga, placement, aspect, nakshatra condition) with its constituent L1 fact_ids, a computed_salience score reflecting how prominently it operates in this chart, and the domain tags it activates. Use min_salience to focus on high-confidence signals (≥0.7 = strong; ≥0.5 = moderate). The signal layer is the analytical backbone: get_domain_reading and get_chart_orientation both synthesize from this corpus. Query directly when you need raw signal evidence for a specific claim. response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: populated verdict (signal counts + composite-ranking mode), grounding (signal_id/citation coverage in this page), ranking_basis (the actual composite-4D scoring basis when domain was specified), drill_pointers (get_chart_orientation for the entity-level digest, traverse_graph for causal context), judgment_flags, and chart_header.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
@@ -449,24 +560,100 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'Minimum computed_salience threshold (0–1). Ranked by computed_salience DESC — NOT signature_tier.'
       ),
       limit: z.number().int().min(1).max(200).optional().describe('Max signals (default: 50)'),
-      cursor: z.string().optional().describe('Pagination cursor'),
+      // R5 W1 fix: this facet was declared but silently ignored — the call below forwarded
+      // it as `limit`, but query_signals.ts's handler only reads `top_k`/`offset` (design
+      // §18's "diverging param names" premise finding: top_k vs limit). cursor is now
+      // translated to a numeric offset instead of being dropped on the floor (E-5).
+      cursor: z.string().optional().describe('Pagination cursor — a stringified offset (e.g. "50"). Use next_cursor from a prior response.'),
       lel_enabled: z.boolean().optional().describe(
         'Include lel_origin=true signals (Life Event Log calibration). Default: false.'
       ),
+      response_format: z.enum(['legacy', 'v3']).optional()
+        .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."),
     },
-    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled }) => {
+    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
+        const resolvedLimit = limit ?? 50
+        const resolvedOffset = cursor && /^\d+$/.test(cursor) ? Number(cursor) : 0
+
         // B.11: fetch holistic orientation before signal drill (S1: parallelized)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+          fetchOrientationContext(chart_id, resolvedAyanamsha),
           callRegistryCapability(
             'marsys://tool/L2/query_signals',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
+            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, min_salience,
+              top_k: resolvedLimit, offset: resolvedOffset, lel_enabled: lel_enabled ?? false },
             chart_id
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        // callRegistryCapability returns the capability handler's raw return value
+        // ({ content, is_error }) — unwrap `.content` for the real payload (matches
+        // get_domain_reading's unwrap pattern; get_signals previously skipped this step).
+        const wrapper = raw as Record<string, unknown>
+        const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        if (format !== 'v3') {
+          return dualOutput({
+            orientation_context, orientation_ok,
+            ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null }),
+          })
+        }
+
+        // ── v3 population (design §10/§E-6) ──────────────────────────────────
+        const signals = (inner['signals'] as Record<string, unknown>[]) ?? []
+        const returned_count = Number(inner['returned_count'] ?? signals.length)
+        const truncated = Boolean(inner['truncated'])
+
+        const fact_ids = Array.from(new Set(
+          signals.flatMap(s => ((s['constituent_facts_array'] as string[] | null) ?? []))
+        )).filter(Boolean)
+        const citations = Array.from(new Set(
+          signals.map(s => s['citation_human']).filter((v): v is string => typeof v === 'string' && v.length > 0)
+        ))
+        const verifiedCount = signals.filter(s => {
+          const st = s['verification_pass_status']
+          return st === 'two_pass_verified' || st === 'pass'
+        }).length
+        const grounding = {
+          fact_ids, citations,
+          grounding_score: signals.length > 0 ? Math.round((verifiedCount / signals.length) * 1000) / 1000 : null,
+        }
+
+        const rankingBasis = (inner['ranking_basis'] as Record<string, unknown> | null) ?? null
+        const verdict = {
+          returned_count,
+          truncated,
+          domain: domain ?? null,
+          ranking_mode: rankingBasis?.['mode'] ?? 'salience_fallback',
+          note: 'Counts are of SIGNALS SERVED IN THIS PAGE only — pass a higher limit/cursor for more.',
+        }
+
+        const judgment_flags: string[] = []
+        if (returned_count === 0) judgment_flags.push('zero_rows_returned')
+        if (truncated) judgment_flags.push('response_size_truncated')
+
+        const drill_pointers = [
+          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).' },
+          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.' },
+        ]
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id
+          ) as ChartHeader
+        } catch {
+          chart_header = null // frame-safety header is best-effort; never fails the instrument
+        }
+
+        return dualOutput({
+          orientation_context, orientation_ok,
+          ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null },
+            'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags }),
+        })
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
       }
@@ -945,29 +1132,42 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
-  // ── query_chart_facts (L1 chart_facts parametric lookup) ─────────────────
+  // ── query_chart_facts (L1 chart_facts EAV-crosstab lookup) ────────────────
   // marsys://tool/L1/chart_facts_query  (D7 gap-fill / B.11 floor tool)
+  //
+  // R5 W1 (lane: chart_query) fix: this tool 404'd unconditionally in prod (R5_RUN_LEDGER
+  // NF-1) because the registry-side handler called a Python sidecar route that does not
+  // exist. The handler was rewritten to query chart_facts directly (see
+  // register_d7_channel.ts) — this shim now also: (a) adds `about` (design §27.1 universal
+  // address facet — "lagna", {graha}, {bhava}, {house_lord}) and `shape` (pivoted/rows,
+  // design §1/§18 EAV-crosstab mandate); (b) drops `as_of_date`/`from_date`/`to_date` —
+  // chart_facts has no validity_start/validity_end columns, so these params could never
+  // have done anything (a dead-param bug of the same class as P1's as_of_date, fixed here
+  // by removing the illusion of the filter rather than silently ignoring it). See
+  // R5_JUDGMENT_LEDGER for the ruling on both changes.
   server.tool(
     'query_chart_facts',
-    'Parametric lookup over the chart_facts table (27,554 rows per chart). Covers all 27 fact categories: planet positions, dignities, strengths, house placements, divisional charts, dashas, yogas, doshas, and more. Optional filters: category, planet, house, sign, nakshatra, divisional_chart (D9/D10/D6/etc.), keyword, date range. Returns fact_id references for downstream drill. B.11-floor-injected — provides the L1 fact foundation for all synthesis. chart_id is required — never defaulted.',
+    'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha per call). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      about: z.union([
+        z.string(),
+        z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
+      ]).optional().describe('Astrological address facet: "lagna", a graha name, {graha}, {bhava:N}, or {house_lord:N}.'),
       category: z.string().optional().describe(
-        'Fact category filter (e.g. "planet_position", "house_placement", "dignity", "strength", "yoga", "dosha", "dasha", "divisional"). Comma-separated for multiple.'
+        'Fact category filter (e.g. "graha_position", "graha_dignity_per_varga", "yoga_label", "house_bhava_bala_total"). Comma-separated for multiple.'
       ),
-      planet: z.string().optional().describe('Graha name filter (e.g. "Sun", "Moon", "Saturn").'),
+      planet: z.string().optional().describe('Graha name filter (e.g. "Sun", "Moon", "Saturn", "Rahu", "Ketu").'),
       house: z.number().int().min(1).max(12).optional().describe('Bhava number (1–12) filter.'),
       sign: z.string().optional().describe('Rashi name filter (e.g. "Aries", "Scorpio").'),
       nakshatra: z.string().optional().describe('Nakshatra name filter.'),
-      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10", "D1").'),
-      keyword: z.string().optional().describe('Free-text keyword search over fact_value or fact_label.'),
-      limit: z.number().int().min(1).max(1000).optional().describe('Max rows (default: 100, max: 1000).'),
-      as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts valid as of this date.'),
-      from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_start >= from_date.'),
-      to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_end <= to_date.'),
+      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10").'),
+      keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
+      shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
+      limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
     },
-    async ({ chart_id, ayanamsha_id, category, planet, house, sign, nakshatra, divisional_chart, keyword, limit, as_of_date, from_date, to_date }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -975,6 +1175,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           {
             chart_id,
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),
             ...(house != null ? { house } : {}),
@@ -982,10 +1183,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ...(nakshatra ? { nakshatra } : {}),
             ...(divisional_chart ? { divisional_chart } : {}),
             ...(keyword ? { keyword } : {}),
+            ...(shape ? { shape } : {}),
             ...(limit != null ? { limit } : {}),
-            ...(as_of_date ? { as_of_date } : {}),
-            ...(from_date ? { from_date } : {}),
-            ...(to_date ? { to_date } : {}),
           },
           chart_id
         )
