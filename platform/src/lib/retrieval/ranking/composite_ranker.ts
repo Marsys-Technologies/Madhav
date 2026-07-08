@@ -51,7 +51,7 @@ export interface L1ChartContext {
 
 // ── Signal row shape (from bodha_msr_signals) ─────────────────────────────────
 
-interface MsrSignalRow {
+export interface MsrSignalRow {
   signal_id: string
   signal_type_id?: string
   signal_type_class?: string | null
@@ -78,7 +78,7 @@ interface MsrSignalRow {
  * The jsonb structure varies by signal_type_class but common keys:
  *  - 'graha', 'primary_graha', 'lord_graha', 'planet', 'graha_key'
  */
-function extractPrimaryGraha(row: MsrSignalRow): string | null {
+export function extractPrimaryGraha(row: MsrSignalRow): string | null {
   const cfg = row.configuration_jsonb
   if (!cfg) return null
   const candidates = [
@@ -300,4 +300,85 @@ export function buildRankingBasis(
     },
     note: 'Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class.',
   }
+}
+
+// ── R5 W1 (design §E-6) — hierarchical aggregation for orient surfaces ────────
+
+/**
+ * One aggregated entity profile — "one composite Saturn-AV profile row, never
+ * twenty atoms" (design doc E-6). Groups composite-ranked atomic signals by
+ * their primary graha (extractPrimaryGraha) into a single summary row per
+ * entity, so an orientation/digest surface can present N entity profiles
+ * instead of N×k atomic signal rows while still being backed by the exact
+ * same composite ranking pipeline the drill surface (query_signals) uses.
+ */
+export interface EntityProfile {
+  entity_type: 'graha' | 'unattributed'
+  entity: string
+  /** Sum of final_rank_score across all constituent signals in this entity's group. */
+  aggregate_score: number
+  /** final_rank_score of the single strongest constituent signal. */
+  peak_score: number
+  signal_count: number
+  dominant_domains: string[]
+  dominant_valence: string | null
+  signal_type_classes: string[]
+  /** Top constituent signal_ids (drill handle back into query_signals). */
+  top_signal_ids: string[]
+}
+
+/**
+ * Aggregate a composite-ranked signal pool into top_k_entities entity-profile
+ * rows, each summarizing up to top_signals_per_entity constituent signals.
+ * Never re-derives a score — aggregate_score/peak_score are pure aggregations
+ * of final_rank_score already computed by applyCompositeRanking (B.10).
+ */
+export function buildHierarchicalProfiles(
+  scored: ScoredSignal[],
+  top_k_entities = 10,
+  top_signals_per_entity = 3,
+): EntityProfile[] {
+  const groups = new Map<string, ScoredSignal[]>()
+  for (const s of scored) {
+    const graha = extractPrimaryGraha(s)
+    const key = graha ? graha.toUpperCase() : 'UNATTRIBUTED'
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(s)
+    else groups.set(key, [s])
+  }
+
+  const profiles: EntityProfile[] = []
+  for (const [entity, rows] of groups) {
+    const sortedRows = [...rows].sort((a, b) => b.final_rank_score - a.final_rank_score)
+    const aggregate_score = sortedRows.reduce((sum, r) => sum + r.final_rank_score, 0)
+    const peak_score = sortedRows[0]?.final_rank_score ?? 0
+
+    const domainCounts: Record<string, number> = {}
+    const valenceCounts: Record<string, number> = {}
+    const classSet = new Set<string>()
+    for (const r of rows) {
+      for (const d of r.domains_affected_array ?? []) domainCounts[d] = (domainCounts[d] ?? 0) + 1
+      if (r.valence) valenceCounts[r.valence] = (valenceCounts[r.valence] ?? 0) + 1
+      if (r.signal_type_class) classSet.add(r.signal_type_class)
+    }
+    const dominant_domains = Object.entries(domainCounts)
+      .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d]) => d)
+    const dominant_valence = Object.entries(valenceCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+    profiles.push({
+      entity_type: entity === 'UNATTRIBUTED' ? 'unattributed' : 'graha',
+      entity,
+      aggregate_score,
+      peak_score,
+      signal_count: rows.length,
+      dominant_domains,
+      dominant_valence,
+      signal_type_classes: Array.from(classSet),
+      top_signal_ids: sortedRows.slice(0, top_signals_per_entity).map(r => r.signal_id),
+    })
+  }
+
+  profiles.sort((a, b) => b.aggregate_score - a.aggregate_score)
+  return profiles.slice(0, top_k_entities)
 }

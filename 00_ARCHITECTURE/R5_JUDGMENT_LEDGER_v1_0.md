@@ -2,7 +2,7 @@
 canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
-  lane), JL-005 (W0b-codegen lane) recorded
+  lane), JL-005 (W0b-codegen lane), JL-006 (W1 signals_query/synthesis_query lane) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -231,4 +231,74 @@ contract shape.
 
 ---
 
-No further entries — this ledger reopens for W0b+ waves.
+### JL-006 — W1 signals_query/synthesis_query lane: E-6 aggregation entity key, envelope wiring site, and two latent serving bugs fixed in-flight
+
+**question (a):** Design §E-6 requires the orient surface (`query_ucd.ts` / `get_chart_orientation`
+/ "synthesis_query") to consume the same ranking pipeline as its drill surface
+(`query_signals.ts` / `get_signals`) AND apply "hierarchical aggregation" ("one composite
+Saturn-AV profile row, never twenty atoms"). Neither the design doc nor the brief specifies the
+aggregation KEY. What entity should atomic MSR signals be grouped by?
+
+**ruling (a):** Group by primary graha (the same `extractPrimaryGraha` extraction
+`composite_ranker.ts`'s `intrinsicStrength`/`topicRelevance`/`temporalActivation` sub-scorers
+already use, read from `configuration_jsonb`), with an `unattributed` bucket for signals that
+carry no resolvable graha. This is the only entity dimension already load-bearing in the existing
+composite-ranking pipeline (B.10 — no new classification invented); the design doc's own worked
+example ("Saturn-AV profile") is graha-keyed; and grouping by graha, not domain or signal_type_class,
+keeps `entity_profiles` genuinely useful at the orient (pre-domain) stage — domain-scoped
+aggregation is already query_signals.ts's `domain` facet + composite ranking at the drill stage,
+so re-deriving domain groups at the orient stage would duplicate rather than complement it.
+
+**question (b):** `query_ucd.ts`'s candidate pool for composite ranking — how wide should it be,
+given query_signals.ts uses 500 (CANDIDATE_FETCH_SIZE) plus a dual-pool class-forced merge for
+domain-scoped calls?
+
+**ruling (b):** 300, single-pool (no dual-pool class-forcing). The orient surface is
+domain-agnostic (composite ranking runs with `domain=null`), so query_signals.ts's dual-pool
+rationale (yoga-class signals under-represented in a single top-500-by-salience pool for a
+SPECIFIC domain) does not transfer directly — there is no domain to under-represent against.
+300 is a judgment-call middle ground (wide enough that hierarchical aggregation has enough atoms
+per entity group to be meaningful; narrower than query_signals.ts's page-serving pool because
+query_ucd's output is aggregated down to ≤30 entity rows, not a full atomic page) rather than a
+measured optimum — flagged as a tuning parameter for the W4 battery to revisit, not a frozen
+constant.
+
+**question (c):** In implementing the envelope-wiring + E-6 work, two pre-existing serving bugs
+surfaced in `registry_bridge.ts` unrelated to the assigned lane's primary ask: (1) `get_signals`
+forwarded its `limit` param as `{ limit: ... }` to `query_signals.ts`, which only reads
+`args['top_k']` — the facet was silently ignored (design §18's "diverging param names" premise,
+`top_k` vs `limit`); `cursor` was accepted but never forwarded/consumed at all. (2)
+`get_chart_orientation` read fields directly off `callRegistryCapability()`'s return value
+(`responseData['chart_id']`, `['msr_signal_count']`, etc.) without unwrapping the `.content` layer
+that `{content, is_error}`-shaped capability handlers actually return — every one of those field
+reads was silently `undefined`, while `get_domain_reading` (three tools above it in the same file)
+already does the correct unwrap. Should these be fixed in this lane, or flagged and left for a
+separate lane/session given they're not literally "wire the envelope"?
+
+**ruling (c):** Fix both, in this lane. Design §17 states every W1+ wave's acceptance now includes
+facet-conformance (E-5 — "a declared-but-ignored parameter... is the worst contract violation in
+the estate") and this is exactly that failure class, discovered while touching the exact two
+functions this lane owns; deferring a known, already-diagnosed correctness bug in a file this
+lane is editing anyway (to fix it "later, elsewhere") would itself violate the pillar order
+(answer-correctness > code convenience) for no honesty or latency benefit. Both fixes are
+narrowly scoped (parameter plumbing + one unwrap pattern already established one function away in
+the same file) and do not touch any other lane's files.
+
+**basis:** B.10 (aggregation/grouping only reuses already-computed extraction logic, never invents
+a new classification) + E-5 (facet conformance, "worse than absence, because the endpoint TRUSTS
+it") + E-6 (ranking-governed orient surface) + pillar order (answer-correctness over code
+convenience, at tier below astrology/honesty — none of (a)/(b)/(c) are astrological calls requiring
+classical citation).
+
+**reversibility:** (a) reversible — `entity_type`/`entity` are stable field names; the grouping key
+could be widened to a composite (graha × dominant domain) later without an envelope-shape break.
+(b) fully reversible — a single constant, easily retuned once the W4 battery has entity-profile
+coverage data to measure against. (c) reversible in the trivial sense that it's a bug fix, not a
+design decision — but note the FIX ITSELF is not reversible-without-cost: any caller that was
+silently depending on `get_chart_orientation`'s previously-`undefined` digest fields (unlikely,
+since they were undefined) or on `get_signals`'s previously-ignored `limit`/`cursor` params
+resolving to the hardcoded default regardless of input, would see different (correct) values now.
+
+---
+
+No further entries — this ledger reopens for W1+ waves.
