@@ -32,14 +32,24 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   return data.content
 }
 
-function envelope(content: unknown, toolName: string) {
+// R5 W0a punch-list (P3): envelope changes are additive-only (R5_AUTHORITY_DOSSIER §2) — every
+// field below still ships, verbatim, on every call. The fix is that `pagination` is no longer
+// unconditionally hollow: callers that already know their real offset/limit/total (the content
+// they just fetched) may pass it through instead of it being silently dropped on the floor.
+function envelope(
+  content: unknown,
+  toolName: string,
+  pagination?: { offset: number; limit: number; total: number | null },
+) {
   return {
     envelope_version: 'v1',
     tool: toolName,
     verdict: null,
     ranking_basis: null,
     grounding: { fact_ids: [], citations: [], grounding_score: null },
-    pagination: { offset: 0, limit: 0, total: null, next_cursor: null },
+    pagination: pagination
+      ? { ...pagination, next_cursor: null }
+      : { offset: 0, limit: 0, total: null, next_cursor: null },
     drill_pointers: [],
     judgment_flags: [],
     insight_type: null,
@@ -48,10 +58,13 @@ function envelope(content: unknown, toolName: string) {
   }
 }
 
+// R5 W0a punch-list (P3, 174KB yogas overflow): dropped the `null, 2` pretty-print indent —
+// pure serialization padding (~30-40% of wire bytes on large row sets), no information content.
+// structuredContent + content dual-output is retained (provider-spec obligation, not padding).
 function dualOutput(data: unknown) {
   return {
     structuredContent: { type: 'object' as const, object: data },
-    content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(data) }],
   }
 }
 
@@ -279,16 +292,26 @@ export function registerP1GanitaTools(server: McpServer): void {
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+      // R5 W0a punch-list (P3): the prior default (25000, echoing an unbounded schema promise)
+      // silently overrode get_yoga_dosha's own sane default (500) and inflated the response
+      // to 174KB. The handler's hard cap is 2000 rows (get_yoga_dosha.ts Math.min(...,2000)) —
+      // schema bounds now tell the truth about what the server will actually return.
+      limit: z.number().int().min(1).max(2000).optional().describe('Max rows (default: 500, hard cap: 2000)'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
     },
     async ({ chart_id, ayanamsha_id, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_yogas_get', 'chart_id is required')
       try {
+        const resolvedOffset = offset ?? 0
         const data = await callRegistryCapability('marsys://tool/L1/get_yoga_dosha', {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
-        return dualOutput(envelope(data, 'ganita_yogas_get'))
+          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit, offset: resolvedOffset,
+        }) as { total?: number } | undefined
+        const total = typeof data?.total === 'number' ? data.total : null
+        return dualOutput(envelope(data, 'ganita_yogas_get', {
+          offset: resolvedOffset,
+          limit: limit ?? 500,
+          total,
+        }))
       } catch (err) {
         return errorOutput('ganita_yogas_get', String(err), { chart_id })
       }

@@ -47,7 +47,49 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
       if (args.topic)       { sql += ` AND $${params.length + 1} = ANY(topics)`; params.push(args.topic as string) }
       sql += ` ORDER BY text_id, chapter, verse_start LIMIT $1 OFFSET $2`
       const result = await query<Record<string, unknown>>(sql, params)
-      return { content: { rows: result.rows ?? [], total: result.rows?.length ?? 0 }, is_error: false }
+      const rows = result.rows ?? []
+
+      // E-3 empty-with-reason (R5 W0a punch-list, P8): a bare {rows: [], total: 0}
+      // is indistinguishable from "the corpus has nothing on this term" (false) vs.
+      // "this exact spelling/keyword is not indexed" (usually true). When a keyword
+      // search comes back empty, say WHY and — where pg_trgm is available — surface
+      // the nearest indexed topic tags as an honest, computed (not fabricated)
+      // alternate-spelling suggestion.
+      if (rows.length === 0 && args.keyword) {
+        const keyword = args.keyword as string
+        let nearestTopics: string[] = []
+        try {
+          const suggest = await query<{ topic: string }>(
+            `
+              SELECT topic FROM (
+                SELECT DISTINCT unnest(topics) AS topic FROM classical_text_chunks
+              ) t
+              WHERE similarity(topic, $1) > 0.15
+              ORDER BY similarity(topic, $1) DESC
+              LIMIT 5
+            `,
+            [keyword]
+          )
+          nearestTopics = suggest.rows.map(r => r.topic)
+        } catch {
+          // pg_trgm similarity() unavailable or query failed — degrade to a
+          // reason-only empty response rather than erroring the whole call.
+          nearestTopics = []
+        }
+        return {
+          content: {
+            rows: [],
+            total: 0,
+            empty_reason: `No classical_text_chunks rows matched keyword "${keyword}" — this exact ` +
+              `spelling/phrase is not indexed in the corpus (this does NOT mean the corpus is silent ` +
+              `on the underlying concept — try a topic filter or an alternate spelling).`,
+            nearest_indexed_topics: nearestTopics,
+          },
+          is_error: false,
+        }
+      }
+
+      return { content: { rows, total: rows.length }, is_error: false }
     } catch (err) {
       return { content: String(err), is_error: true }
     }

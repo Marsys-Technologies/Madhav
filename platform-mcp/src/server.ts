@@ -33,6 +33,28 @@ import { handleToken } from './oauth/token.js'
 import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
 import { validateAccessToken } from './oauth/token_store.js'
 import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
+// R5 W0a punch-list (#8, 401 headers): every 401 this server returns for a
+// client-facing Bearer/OAuth auth failure must carry a WWW-Authenticate
+// challenge per RFC 6750 §3 (bare 401s with no challenge header are non-
+// compliant and leave MCP clients with no signal to re-auth vs. give up).
+// This does NOT build full RFC 9728 protected-resource-metadata discovery —
+// that is explicitly routed to the MCP-elevation workstream, not R5 (design
+// doc §32 "OAuth/OIDC alignment ... Routes to the MCP-elevation workstream,
+// not R5"). It DOES point at the discovery endpoint this server already
+// serves (/mcp/.well-known/oauth-authorization-server) so compliant clients
+// have somewhere real to go.
+function sendUnauthorized(
+  res: Response,
+  body: { error: string; message?: string; error_description?: string },
+): void {
+  res.setHeader(
+    'WWW-Authenticate',
+    `Bearer realm="marsys-mcp", error="invalid_token", ` +
+      `error_description="${(body.message ?? body.error_description ?? 'Unauthorized').replace(/"/g, "'")}", ` +
+      `resource_metadata="/mcp/.well-known/oauth-authorization-server"`,
+  )
+  res.status(401).json(body)
+}
 import { registerMitigationMapTool } from './tools/phala_mitigation_map.js'
 import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
@@ -106,7 +128,7 @@ app.post('/mcp/oauth/register', async (req: Request, res: Response) => {
   // Registration requires a valid Bearer key to identify the registering user.
   const principal = await validateMcpKeyFromHeader(authHeader)
   if (!principal) {
-    res.status(401).json({ error: 'Unauthorized', message: 'Bearer key required to register an OAuth client' })
+    sendUnauthorized(res, { error: 'Unauthorized', message: 'Bearer key required to register an OAuth client' })
     return
   }
 
@@ -183,7 +205,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
           outcome: 'auth_denied',
           message: 'OAuth token carries no verified uid — rejected',
         })
-        res.status(401).json({ error: 'Unauthorized', message: 'OAuth token carries no verified uid' })
+        sendUnauthorized(res, { error: 'Unauthorized', message: 'OAuth token carries no verified uid' })
         return
       }
       // One identity core (M5.1): OAuth maps to the same Principal shape as Bearer key.
@@ -202,7 +224,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
       outcome: 'auth_denied',
       message: 'Invalid or missing Bearer API key',
     })
-    res.status(401).json({ error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
+    sendUnauthorized(res, { error: 'Unauthorized', message: 'Invalid or missing Bearer API key' })
     return
   }
 
@@ -311,12 +333,17 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // D7 — Registry-backed consolidated workflow tools (12 MCP tools → registry URIs)
   // These are chart-agnostic: chart_id required on per_chart tools, no default.
-  registerRegistryBridgeTools(server)
+  // R5 W0a punch-list (P7): principal threaded through so callPlatformPrimitive
+  // (vector_search) can send the 3-header auth pattern instead of the bare
+  // internal token that the primitives route was rejecting with 401.
+  registerRegistryBridgeTools(server, principal)
 
   // BA-P1 — New Group-1 computed-chart tools (9), Group-2 reference tools (7), Group-3 synthesis (3)
   registerP1GanitaTools(server)
   registerP1ReferenceTools(server)
-  registerP1SynthesisTools(server)
+  // R5 W0a punch-list (P6): principal threaded through so platformQuery
+  // (the four /api/mcp/db/query callers) can satisfy the route's Layer-2 auth.
+  registerP1SynthesisTools(server, principal)
   // BA-P1 — Phase-1 naming aliases for all 53 baseline tools (49 aliases; 6 documented deferrals)
   registerP1AliasTools(server)
 
@@ -338,10 +365,21 @@ app.post('/mcp', async (req: Request, res: Response) => {
   })
 
   // M8: Log request dispatch — captures the tool invocation context.
-  // The actual tool name is embedded in req.body.method; extract for logging.
-  const mcpMethod = typeof (req.body as Record<string, unknown>)?.['method'] === 'string'
-    ? (req.body as Record<string, unknown>)['method'] as string
-    : undefined
+  //
+  // R5 W0a punch-list prerequisite (§31.6 telemetry): this used to log
+  // req.body.method verbatim — the JSON-RPC envelope method (e.g. "tools/call",
+  // "initialize", "resources/list"), which is the MCP-protocol equivalent of an
+  // HTTP verb, NOT the actual tool being invoked. Every tool call was logged
+  // identically as "tools/call", making per-tool telemetry (§31.6 call-sequence
+  // analysis, all downstream waves) impossible. The real tool name lives at
+  // req.body.params.name for "tools/call" requests — extract that; fall back to
+  // the envelope method for non-tool-call requests (initialize, list, etc.).
+  const rpcBody = req.body as { method?: unknown; params?: { name?: unknown } } | undefined
+  const rpcMethod = typeof rpcBody?.method === 'string' ? rpcBody.method : undefined
+  const mcpMethod =
+    rpcMethod === 'tools/call' && typeof rpcBody?.params?.name === 'string'
+      ? rpcBody.params.name
+      : rpcMethod
   log({
     level: 'info',
     request_id: requestId,

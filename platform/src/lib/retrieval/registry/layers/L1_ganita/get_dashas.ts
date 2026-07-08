@@ -29,6 +29,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     level:         { type: 'number', description: 'Dasha level (1=Maha, 2=Antar, 3=Pratyantar). Omit for all.' },
     date_contains: { type: 'string', description: 'ISO date (YYYY-MM-DD). Returns dashas active on this date.' },
     date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
+    as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins.' },
     lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 200 },
@@ -70,10 +71,14 @@ export const getDashasCapability: CapabilityDescriptor = {
         sql += ` AND lord_graha = $${params.length + 1}`
         params.push(args.lord_graha as string)
       }
-      if (args.date_contains) {
+      // as_of_date is an alias for date_contains ("what dasha am I running as of X") — it
+      // MUST gate the same containment filter, not be silently dropped (P1, R5 W0a punch-list).
+      // date_contains wins if both are somehow present.
+      const containsDate = (args.date_contains as string | undefined) ?? (args.as_of_date as string | undefined)
+      if (containsDate) {
         sql += ` AND start_date <= $${params.length + 1}::date AND end_date >= $${params.length + 2}::date`
-        params.push(args.date_contains as string)
-        params.push(args.date_contains as string)
+        params.push(containsDate)
+        params.push(containsDate)
       }
       if (args.date_from) {
         // Exclude dashas that ended before date_from. The dasha running AT

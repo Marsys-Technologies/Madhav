@@ -38,36 +38,61 @@ def _make_anchor_row(
     anchor_id: str = "PH-4-1.2026H1.CAREER",
     window_start: str = "2026-01-01",
     window_end: str = "2026-06-30",
-    theme: str = "career_consolidation",
+    domain: str = "career",
+    event_type: str = "career_consolidation",
     confidence: float = 0.59,
     falsifier: str = "If no new contract before 2026-07-01, this prediction is false.",
     contributing_dashas: list | None = None,
     contributing_signals: list | None = None,
     source_citation: str = "FORENSIC v8.0 §5.1 DSH.V.023; MSR v5.0 SIG.09",
-    prediction_state: str = "open",
-    outcome_note: str | None = None,
 ) -> dict[str, Any]:
+    """
+    R5 W0a punch-list (P5): fixture rewritten against the REAL phala_anchors
+    schema (migrations 330 + 398) — see anchors.py fetch_anchors()/event_anchors()
+    fix notes. The prior fixture (id, theme, single confidence,
+    contributing_dashas/contributing_signals, prediction_state, outcome_note,
+    created_at/updated_at) modeled a schema that was never deployed — these
+    tests were passing against a fiction while production leaked "column ...
+    does not exist" errors on the real table.
+    """
     return {
-        "id": 1,
-        "chart_id": NATIVE_CHART_ID,
         "anchor_id": anchor_id,
+        "chart_id": NATIVE_CHART_ID,
+        "anchor_source": "convergence",
         "window_start": window_start,
+        "peak_date": None,
         "window_end": window_end,
-        "theme": theme,
-        "confidence": confidence,
-        "falsifier": falsifier,
-        "contributing_dashas": contributing_dashas or [
+        "domain": domain,
+        "event_type": event_type,
+        "direction": "elevated",
+        "horizon_tier": "near",
+        "magnitude": "moderate",
+        "magnitude_basis": None,
+        "confidence_low": max(0.0, confidence - 0.05),
+        "confidence_high": min(0.80, confidence + 0.05),
+        "confidence_basis": "structural_not_yet_empirical",
+        "posterior": confidence,
+        "lift_vector_jsonb": None,
+        "structured_falsifier_jsonb": None,
+        "karmic_frame": None,
+        "karmic_note": None,
+        "malleability": None,
+        "counterfactual_jsonb": None,
+        "contradiction_jsonb": None,
+        "causal_chain_jsonb": contributing_dashas or [
             "DSH.V.023: Mercury MD Saturn AD (2024-12-12 to 2027-08-21)"
         ],
-        "contributing_signals": contributing_signals or [
+        "precedent_refs_jsonb": None,
+        "dasha_consensus_count": None,
+        "school_consensus_jsonb": None,
+        "ayanamsha_robustness": None,
+        "falsifier": falsifier,
+        "derivation_ledger_jsonb": contributing_signals or [
             "SIG.09 Mercury 8-system convergence",
             "SIG.14 Sun 10H career-density",
         ],
         "source_citation": source_citation,
-        "prediction_state": prediction_state,
-        "outcome_note": outcome_note,
-        "created_at": "2026-06-04T00:00:00+00:00",
-        "updated_at": "2026-06-04T00:00:00+00:00",
+        "computed_at": "2026-06-04T00:00:00+00:00",
     }
 
 
@@ -77,10 +102,10 @@ def _make_three_anchors() -> list[dict[str, Any]]:
         _make_anchor_row("PH-4-1.2026H1.CAREER", "2026-01-01", "2026-06-30",
                          confidence=0.59),
         _make_anchor_row("PH-4-1.2026H2.SPIRIT", "2026-07-01", "2026-12-31",
-                         theme="spiritual_practice_intensification",
+                         domain="spiritual", event_type="spiritual_practice_intensification",
                          confidence=0.46),
         _make_anchor_row("PH-4-1.2027H1.TRANSITION", "2027-01-01", "2027-06-30",
-                         theme="life_transition_preparatory",
+                         domain="transition", event_type="life_transition_preparatory",
                          confidence=0.40),
     ]
 
@@ -163,10 +188,12 @@ class TestAnchorContractAssertions:
         )
 
     def test_confidence_in_unit_interval(self):
+        # R5 W0a punch-list (P5): raw phala_anchors rows carry `posterior`
+        # (migration 398), not a `confidence` column — see anchors.py fix notes.
         anchors = _make_three_anchors()
         for a in anchors:
-            assert 0.0 <= a["confidence"] <= 1.0, (
-                f"Anchor {a['anchor_id']} confidence={a['confidence']} out of [0,1]"
+            assert 0.0 <= a["posterior"] <= 1.0, (
+                f"Anchor {a['anchor_id']} posterior={a['posterior']} out of [0,1]"
             )
 
     def test_window_start_before_end(self):
@@ -449,10 +476,12 @@ class TestMinConfidenceFiltering:
 class TestAnchorStructureCompleteness:
     """Verify each anchor dict has all required keys."""
 
+    # R5 W0a punch-list (P5): required keys rewritten against the real
+    # event_anchors() field mapping (real phala_anchors schema, migrations
+    # 330 + 398) — see anchors.py fix notes.
     REQUIRED_KEYS = {
-        "anchor_id", "window", "theme", "confidence",
-        "falsifier", "contributing_dashas", "contributing_signals",
-        "source_citation", "prediction_state",
+        "anchor_id", "window", "domain", "event_type", "confidence",
+        "confidence_band", "falsifier", "source_citation",
     }
 
     def test_anchor_has_all_required_keys(self):
