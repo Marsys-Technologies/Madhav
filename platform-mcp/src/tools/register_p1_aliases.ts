@@ -17,6 +17,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -44,10 +45,33 @@ async function callRegistryCap(uri: string, args: Record<string, unknown>): Prom
   return data.content
 }
 
-async function callPlatformPrim(tool: string, params: Record<string, unknown>): Promise<unknown> {
+// R5 W2 corpus lane fix (P7 — corpus search 401, still failing after the W0a
+// punch-list's registry_bridge.ts fix because THIS helper — the one every
+// alias in this file calls, including ref_vector_search — was never touched).
+// Root cause: this helper sent only the Layer-1 x-mcp-internal-token header;
+// /api/mcp/primitives/[tool]/route.ts's Layer-2 gate requires X-MCP-User +
+// X-MCP-Key-Id (X-MCP-Audience-Tier is informational only, not gated) and
+// 401s any call missing them — see route.ts:91-106. The 3-header pattern was
+// already fixed once in registry_bridge.ts's OWN local callPlatformPrimitive
+// (that tool calls the bare `vector_search` MCP tool), but register_p1_aliases.ts
+// has always had its own separate copy of this proxy helper (a second,
+// never-fixed instance of the exact same bug class) — this is that instance.
+// Design doc RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §20 names this
+// explicitly: "Copy the working header pattern into BOTH proxy helpers."
+async function callPlatformPrim(
+  tool: string,
+  params: Record<string, unknown>,
+  principal: Principal,
+): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${encodeURIComponent(tool)}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Audience-Tier': principal.role === 'super_admin' ? 'super_admin' : 'client',
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ params }),
     signal: AbortSignal.timeout(25_000),
   })
@@ -160,7 +184,7 @@ function globalAlias(
   )
 }
 
-export function registerP1AliasTools(server: McpServer): void {
+export function registerP1AliasTools(server: McpServer, principal: Principal): void {
 
   // ── D7 + D8 Registry bridge aliases ──────────────────────────────────────
 
@@ -393,7 +417,7 @@ export function registerP1AliasTools(server: McpServer): void {
     },
     async ({ query, chart_id, top_k, filter_layer }) => {
       try {
-        const data = await callPlatformPrim('vector_search', { query, chart_id, top_k, filter_layer })
+        const data = await callPlatformPrim('vector_search', { query, chart_id, top_k, filter_layer }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_vector_search', String(err)) }
     }
@@ -515,7 +539,7 @@ export function registerP1AliasTools(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>)
+        const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedies_get', String(err)) }
     }
@@ -527,7 +551,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { affliction: z.string().describe('Planet name or domain keyword'), top_k: z.number().int().optional() },
     async ({ affliction, top_k }) => {
       try {
-        const data = await callPlatformPrim('query_remedies_for_chart', { affliction, top_k })
+        const data = await callPlatformPrim('query_remedies_for_chart', { affliction, top_k }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedies_chart_get', String(err)) }
     }
@@ -539,7 +563,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { category: z.string().describe('Remedy category (mantra/yantra/tantra/seva/gemstone/etc.)'), ...GlobalBase },
     async ({ category, limit, offset }) => {
       try {
-        const data = await callPlatformPrim('list_remedies_by_category', { category, limit, offset })
+        const data = await callPlatformPrim('list_remedies_by_category', { category, limit, offset }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedies_by_category_list', String(err)) }
     }
@@ -551,7 +575,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { remedy_id: z.string().describe('Remedy identifier') },
     async ({ remedy_id }) => {
       try {
-        const data = await callPlatformPrim('read_remedy', { remedy_id })
+        const data = await callPlatformPrim('read_remedy', { remedy_id }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedy_get', String(err)) }
     }
@@ -563,7 +587,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { planet: z.string().optional(), keyword: z.string().optional(), ...GlobalBase },
     async (params) => {
       try {
-        const data = await callPlatformPrim('query_tantric_remedies', params as Record<string, unknown>)
+        const data = await callPlatformPrim('query_tantric_remedies', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_tantric_remedies_get', String(err)) }
     }
@@ -575,7 +599,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { planet: z.string().describe('Planet name (sun/moon/mars/mercury/jupiter/venus/saturn/rahu/ketu)'), ...GlobalBase },
     async ({ planet, limit, offset }) => {
       try {
-        const data = await callPlatformPrim('query_remedies_by_planet', { planet, limit, offset })
+        const data = await callPlatformPrim('query_remedies_by_planet', { planet, limit, offset }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedies_by_planet_get', String(err), { planet }) }
     }
@@ -587,7 +611,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { planet: z.string().optional(), deity: z.string().optional(), keyword: z.string().optional(), ...GlobalBase },
     async (params) => {
       try {
-        const data = await callPlatformPrim('query_mantras', params as Record<string, unknown>)
+        const data = await callPlatformPrim('query_mantras', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_mantras_get', String(err)) }
     }
@@ -600,7 +624,7 @@ export function registerP1AliasTools(server: McpServer): void {
     { keyword: z.string().optional(), planet: z.string().optional(), category: z.string().optional(), ...GlobalBase },
     async (params) => {
       try {
-        const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>)
+        const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_remedies_search', String(err)) }
     }
@@ -637,7 +661,7 @@ export function registerP1AliasTools(server: McpServer): void {
     async ({ chart_id, domain }) => {
       if (!chart_id) return errOut('phala_mitigation_get', 'chart_id is required')
       try {
-        const data = await callPlatformPrim('mitigation_map', { chart_id, domain })
+        const data = await callPlatformPrim('mitigation_map', { chart_id, domain }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('phala_mitigation_get', String(err), { chart_id }) }
     }
@@ -693,7 +717,7 @@ export function registerP1AliasTools(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await callPlatformPrim('lel_query', params as Record<string, unknown>)
+        const data = await callPlatformPrim('lel_query', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('mimamsa_lel_query', String(err)) }
     }
@@ -710,7 +734,7 @@ export function registerP1AliasTools(server: McpServer): void {
     },
     async (params) => {
       try {
-        const data = await callPlatformPrim('record_outcome', params as Record<string, unknown>)
+        const data = await callPlatformPrim('record_outcome', params as Record<string, unknown>, principal)
         return dualOutput(data)
       } catch (err) { return errOut('mimamsa_outcome_record', String(err)) }
     }
@@ -726,7 +750,7 @@ export function registerP1AliasTools(server: McpServer): void {
     },
     async ({ chart_id, domain, limit, offset }) => {
       try {
-        const data = await callPlatformPrim('query_calibration', { chart_id, domain, limit, offset })
+        const data = await callPlatformPrim('query_calibration', { chart_id, domain, limit, offset }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }

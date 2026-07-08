@@ -4,7 +4,9 @@ version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
 lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
   JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
-  (W1 Ring-1 reconciliation, r5/w1-reconcile) recorded
+  (W1 Ring-1 reconciliation, r5/w1-reconcile), JL-011 (W2 corpus lane, r5/w2-corpus-citations),
+  JL-012 (W2 traverse_chart_graph lane), JL-013 (W2 frame-facet lane), JL-014 (W2 paradigm-facet
+  lane) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -554,4 +556,317 @@ need to re-adapt if a future wave reverted to object-shaped steps — but no suc
 choice leaves the server-side default question completely open for a future wave to decide either
 way with no sunk cost from this pass.
 
+---
+
+### JL-012 (W2 traverse_chart_graph lane) — three rulings: about-seed DSL requires the resolver's
+function-call form (not bare graha names); path endpoints take the resolver's first-listed entity
+on multi-entity resolutions; and the valence vocabulary fix scope
+
+**NOTE on numbering:** `address_resolver.ts`'s own header comment cites a `JL-011` (dispositor
+resolution — classical fixed-rulership table vs CGM dispositor edges) that does not appear in this
+ledger file as committed on this lane's base (`origin/r5/w2`) — likely a sibling W1/W2 lane's entry
+not yet merged into this copy (a W2 frame-facet lane appears to have independently claimed JL-011
+for a different ruling around the same time this entry was authored). Per the brief's own
+numbering-collision precedent (W0b/W1), using `JL-012` here rather than risking a second, different
+JL-011; flag for Ring-1 renumbering reconciliation.
+
+**context:** Extended `traverse_chart_graph` (L2 Bodha CGM traversal) per design §21/§30 ("EXTEND
+traverse_chart_graph — path patterns, direction facet, strength floors") for the W2 gate: a
+"10th-lord→Moon" path resolving in ONE tool call. Three judgment calls surfaced while wiring the
+shared address resolver (`resolveAddress`/`address_resolver.ts` — NOT reimplemented, per the lane
+brief's explicit instruction) into the graph capability's new `about_from`/`about_to`/`about` params.
+
+**(a) about-seed DSL form.** The design's §27.1 `about` facet examples read informally (e.g.
+`about:{graha:'Saturn'}`), which could be misread as accepting a bare graha name string like
+`"Moon"` in the `about` array. The resolver's actual DSL grammar (`parseAddressExpression`) requires
+either a structured `AddressExpression` object (`{type:'graha', graha:'Moon'}`) or its function-call
+DSL string (`"graha(Moon)"`) — a bare `"Moon"` throws `AddressResolutionError` (verified live against
+the native chart during this lane's own gate-test authoring: the first draft used a bare string and
+failed exactly this way). **Ruling:** document the correct forms in the capability's `input_schema`
+description rather than adding a second bare-string-tolerant parsing layer on top of the resolver —
+that second layer would be exactly the "duplicate resolver logic" trap the lane brief explicitly
+warned against repeating (W1 already hit and fixed it once). The fix is docs-only; the resolver's
+grammar is the single source of truth for what strings are valid addresses.
+
+**(b) path endpoints on multi-entity resolutions.** Some address expressions (`occupants_of(...)`)
+can resolve to more than one graha entity, but a `paths` query needs exactly one concrete start/end
+node. **Ruling:** take the first-listed entity and say so plainly in the returned resolution chain,
+rather than erroring or silently averaging/picking arbitrarily. This is not classically arbitrary —
+`occupants_of` already returns its graha list in a stable, deterministic order (not shuffled), so
+"first-listed" is a reproducible, auditable choice, not noise; a caller who wants a specific occupant
+as the endpoint should address it directly (`graha(<name>)`) rather than via `occupants_of`.
+
+**(c) valence vocabulary fix scope.** Verified live against `bodha_cgm_edges` on both canonical
+charts (`SELECT DISTINCT valence`) that the real vocabulary is `harmonious`/`antagonistic` only —
+the D4-era `benefic`/`malefic`/`mixed`/`neutral` enum the file shipped with never matches a single
+live row (the design doc's §21 "valence vocabulary drift... reconcile in W0" caveat was never
+actually reconciled, despite the run brief v1.2 changelog describing that caveat as "REPLACED by
+the real finding" [native-chart staleness] — the vocabulary drift itself is a SEPARATE, still-live
+bug, not superseded by the staleness finding). **Ruling:** fix the enum to the real vocabulary and
+accept the legacy D4 terms as normalized aliases (`benefic`→`harmonious`, `malefic`→`antagonistic`,
+`mixed`→`neutral`) so no in-flight caller silently breaks, rather than leaving a `valence_filter` that
+silently matches zero rows on live data (a strength/floors accuracy conflict — an unfiltered facet is
+strictly worse than a filter nobody can use). In scope for this lane because it's the exact file/
+exact field this wave's brief instructed to extend for "strength floors," and leaving a known-broken
+adjacent filter unfixed while adding new filters next to it would be inconsistent, not scope discipline.
+
+**basis:** (a)+(b) design §19 single-source mandate (do not duplicate the address resolver's
+parsing/entity-selection logic) + B.10 (no silent fabrication — a first-of-many-entities choice is
+disclosed, not hidden). (c) ASTROLOGY > correctness (a silently-broken valence filter degrades
+astrological signal quality — antagonistic/harmonious drishti and yoga distinctions the tradition
+cares about) > code-convenience (fixing an adjacent broken enum in the same file/wave is not scope
+creep, it's finishing what "extend traverse_chart_graph" already touches).
+
+**reversibility:** (a) fully reversible — pure documentation, no behavior change to the resolver or
+its grammar. (b) reversible — a future caller needing "all occupants as separate path endpoints" can
+be added as a new `about_from_all`-style param without disturbing this default. (c) reversible —
+alias table is additive; a future wave can drop the legacy aliases once no caller depends on them
+(easily verified by log/telemetry, per the pattern JL-007/JL-010 used for similar deprecations).
+
+---
+
+### JL-014 — W2 paradigm-facet lane: paradigm vocabulary scope, query_signals default-filter behavior, and the concrete backing for kp/tajika addressing
+
+**note on numbering:** this lane authored JL-011 against its own `origin/r5/w2` base (last entry
+on disk was JL-010). A sibling W2 lane (frame-facet) may have independently claimed JL-011 too —
+per the W2 brief this is an expected parallel-lane collision, resolved by sequential renumbering
+at Ring-1 (the same pattern JL-010 itself documents from W1). Reported clearly here for that pass.
+
+**question (a):** Design §27.4 names exactly 4 paradigms: `parashari (default) | jaimini | kp |
+tajika`. Live data (`bodha_msr_signals.signal_tradition` on the canonical chart) actually carries
+6 distinct values: the 4 named plus `esoteric` (624 rows) and `lal_kitab` (10 rows). Should the
+`paradigm` facet's vocabulary follow the design doc literally (4 values), or expose all 6 values
+the data actually supports?
+
+**ruling (a):** Literal 4-value vocabulary from design §27.4 (`parashari`, `jaimini`, `kp`,
+`tajika`); `esoteric`/`lal_kitab` are NOT exposed through the facet's enum. Design §27.4 is
+explicit and enumerated ("switches the COHERENT interpretive frame: jaimini activates …; kp
+activates …; tajika activates …") — it defines the facet as a closed classical vocabulary, not
+"whatever signal_tradition happens to contain." `esoteric` and `lal_kitab` are real traditions in
+the data but the design doc does not describe what "coherent interpretive frame" either one
+activates (no equivalent of "kp activates sub-lord/cusp addressing" is given for either) — adding
+them as first-class paradigm values would be inventing design scope, not implementing it. Both
+remain queryable via `query_signals`'s existing `source_subsystem`/raw filtering; only the
+enumerated 4 are exposed as `paradigm`.
+
+**question (b):** Design §27.4 literally says `paradigm: parashari (default) | ...` — i.e. a
+default value. `query_signals` (the L2 Bodha drill surface holding `signal_tradition`) is also
+the substrate the whole-chart-read discipline (B.11) and query_ucd's cross-tradition convergence
+scoring depend on. Should the default (paradigm omitted) narrow results to `signal_tradition =
+'parashari'` per the design's literal default, or return every tradition unfiltered (today's
+existing, shipped behavior)?
+
+**ruling (b):** No default filter — paradigm omitted returns every tradition, each row still
+individually tagged via its own `signal_tradition` column (never blended into one unattributed
+value). Reasons, in pillar order: (1) ASTROLOGY / correctness — B.11 (CLAUDE.md, PROJECT_ARCHITECTURE
+§H.4) requires whole-chart reads to route through MSR+CDLM+CGM+RM synthesis BEFORE producing a
+domain answer; silently narrowing the default drill surface to one tradition would remove signals
+an acharya-grade read needs by default, for every caller who doesn't know to ask for a specific
+`paradigm`. (2) honesty — this would be an undisclosed, breaking behavior change to an already-
+shipped W1 capability (`query_signals` predates this lane), narrowing what every existing caller
+gets back with no opt-out documented anywhere yet. (3) `paradigm` is explicitly presented in the
+tool's own description as an OPT-IN ("pass this when you specifically need ONE tradition's clean
+signal set") for exactly the design's stated purpose — "gives the triangulation register (A7) its
+clean per-paradigm inputs" (§27.4) — not as a universal default-scoping mechanism. The "mixing
+paradigms mid-answer" sin §27.4 warns against is a different failure (treating multi-tradition
+signals as if they were one coherent, unattributed method) than surfacing multiple individually-
+tagged traditions side by side, which `bodha_convergence.cross_tradition_count` shows is a
+deliberately-tracked FEATURE of the L2 synthesis layer, not a defect to filter away.
+
+**question (c):** Design §27.4 says "kp activates sub-lord/cusp addressing" and "tajika activates
+varshaphala/saham" as things the address resolver should support once paradigm-aware. `chart_facts`
+has real backing for kp sub-lord/cusp addressing (`cusp_kp_lords`: prana_lord/star_lord/sub_lord/
+sub_sub_lord per CUSP_01..12) and for tajika sāham addressing (`saham_position`: 16+ named sāhams
+with sign/house/nakshatra/sign_lord), but has NO varshaphala (annual/Tajika year-chart) data
+anywhere — no L1 asset builds an annual chart. Should this lane (a) build only the two address
+types with real backing (`sub_lord_of` for kp, `saham` for tajika) and leave varshaphala
+unaddressed, (b) block the whole tajika paradigm on varshaphala not existing, or (c) fabricate a
+varshaphala placeholder?
+
+**ruling (c):** (a) — build only what has real backing. B.10 (no fabricated computation) rules
+out option (c) outright. Blocking the entire tajika paradigm (option b) throws away real,
+already-built `saham_position` data over an unrelated missing asset — sāham addressing is itself
+a complete, citable tajika practice, not a stub. Ship `saham` (backed, real) now; `varshaphala`
+addressing is out of scope until an L1 writer materializes an annual chart — flagged in this
+lane's module-header comment and this ledger entry for whichever future wave builds that asset,
+so it is not silently forgotten. This mirrors the exact reasoning JL-006(b) used for the karaka
+school gap: work with what is verified to exist, document what is deferred, never invent.
+
+**basis:** ASTROLOGY (design §27.4's own enumerated vocabulary and per-paradigm activation list
+are the direct textual basis for (a) and (c); no disputed-point flag needed — the 4 named
+paradigms and their described addressing schemes are textbook-uncontested) > correctness (B.11
+whole-chart-read discipline directly drives (b); (c)'s "only build what chart_facts actually
+backs" is a correctness/B.10 call) > honesty ((b)'s no-silent-behavior-change reasoning; (c)'s
+explicit deferral note rather than a silent gap) > code-convenience.
+
+**reversibility:** (a) reversible — if a future wave wants `esoteric`/`lal_kitab` exposed as
+paradigm values, the enum is additive; no data or shape change needed elsewhere. (b) reversible —
+a later wave could add an explicit opt-in default-narrowing mode (e.g. a `strict_paradigm: true`
+flag) without breaking today's shipped no-filter default; the underlying data/columns are
+unchanged either way. (c) reversible in the strong sense: `sub_lord_of`/`saham` are pure additive
+`AddressExpression` variants; a future `varshaphala`-backed address type slots in beside them with
+no change to either's contract.
+
 No further entries — this ledger reopens for W2+ waves.
+
+---
+
+### JL-011 — W2 corpus lane (`r5/w2-corpus-citations`): reusing `query_classical_texts` as the `vector_search` target instead of building a new capability, and the hybrid-weighting/top_k defaults
+
+**question (a):** P7's 401 turned out to be two independent bugs stacked: (1) `register_p1_aliases.ts`'s
+own `callPlatformPrim` helper — never touched by the W0a punchlist fix, which only fixed
+`registry_bridge.ts`'s separate copy of the same helper — was still sending only the Layer-1
+internal token, missing `X-MCP-User`/`X-MCP-Key-Id`; (2) even with auth fixed, the retrieval-tool
+name `vector_search` had NO entry in `TOOL_NAME_TO_URI` (confirmed live: `getToolByName
+('vector_search')` returns `undefined`, so the primitives route would 500 with "Retrieval tool not
+found in registry" the moment auth stopped being the blocker). For (2): should `vector_search`
+get its own new capability/handler (a dedicated `ref_search`/vector-search implementation), or
+should it resolve to the SAME capability `classical_text_search`/`search_classical_texts`/
+`read_classical_text` already use (`marsys://tool/L0/query_classical_texts`)?
+
+**ruling (a):** Reuse the existing capability — map `vector_search` onto
+`marsys://tool/L0/query_classical_texts` in `TOOL_NAME_TO_URI`, and upgrade that ONE handler to
+genuine hybrid ranking, rather than standing up a second corpus-search implementation. This is
+the exact "parallel resolver" trap the brief names explicitly (W1 already hit it once with the
+`chart_query_about` stopgap vs. the canonical address resolver, reconciled in JL-010(a)) — a
+second corpus-search code path would immediately diverge on ranking, param names, or citation
+shape from the one already serving `read_classical_text`/`search_classical_texts`/
+`classical_text_search`, and there is no design-doc signal that `vector_search` is meant to be
+functionally distinct from those (design §3 CORPUS idiom / instrument #13 `ref_search` explicitly
+frames `vector_search`, `classical_citation`, and "all ref_* lookups" as ONE consolidated corpus
+idiom, with estate consolidation itself deferred to W3 — reusing the handler now is consistent
+with where W3 is headed, without pre-building W3's renaming).
+
+**question (b):** Three MCP-facing entry points (`registry_bridge.ts`'s bare `vector_search` tool,
+`register_p1_aliases.ts`'s `ref_vector_search` alias, and the existing `find_verses_about` tool)
+each use a different parameter name for "the free-text search string" (`query_text`, `query`,
+`topic` respectively) and none matches `query_classical_texts`'s pre-existing `keyword` (exact-
+phrase ILIKE) parameter. Normalize all three into the one handler (accepting any of
+`query_text`/`query`/`topic` as aliases for the same free-text field), or require callers to
+adapt to one canonical name and update the three call sites instead?
+
+**ruling (b):** Normalize inside the handler (accept all three names), leave the three call sites'
+own schemas untouched. The call sites' param names are each already load-bearing for a DIFFERENT
+existing MCP tool identity (`ref_vector_search`'s `query`, `find_verses_about`'s `topic`) that
+external/prior-session callers may already be using; renaming them is a breaking-change surface
+for zero benefit, whereas accepting all three in the one shared handler costs nothing and is the
+same "aliases are additive, canonicalize centrally" pattern JL-010(a) used for the Sanskrit graha
+aliases.
+
+**question (c):** No existing design-doc number pins (i) the hybrid vector/keyword weighting split,
+or (ii) the default `top_k` for the new free-text/interpretation-intent path (as opposed to the
+legacy `keyword`/list path's existing default of 20). Design §3 only says "hybrid keyword/vector +
+rerank" and the design's own audit prose (§20/§31) says "top-k≈5 verses in hand" for the
+interpretation-intent framing, without a numeric weight split. What values to pick?
+
+**ruling (c):** (i) 0.65 vector / 0.35 keyword. Reasoning: pg_trgm `similarity()` degrades as the
+length gap between a short query and a long verse-translation grows (this is a property of
+trigram overlap ratios, not a chart/astrology fact — no classical citation applies), so keyword
+alone under-ranks true semantic matches on long verses; embedding similarity carries most of the
+signal for meaning-level queries, but keyword still needs real weight to catch exact technical
+terms an embedding can blur across near-synonyms (e.g. "neecha bhanga" — the literal P8/JL-002
+example already in this corpus). (ii) top_k defaults to 5 for the free-text path specifically,
+directly citing the design doc's own "top-k≈5 verses in hand" language (§20/§31 audit prose) as
+the numeric anchor, while leaving the legacy `keyword`/list path's default of 20 untouched (that
+path is exact-phrase/browse behavior, not the interpretation-intent framing the "5 verses" language
+is about). Both (i) and (ii) are code-convenience-tier judgment calls, not astrology calls — no
+classical citation or contested-point flag applies to either.
+
+**basis:** (a) brief's own explicit "don't repeat the parallel-resolver trap" instruction (direct
+textual basis) + design §3/§5 instrument grouping (vector_search is framed as absorbed into corpus
+idiom #13, not a standalone). (b) reversibility/no-regression preference — extending a shared
+handler's accepted param names is strictly additive; renaming three live MCP tool schemas is not.
+(c) pillar order — neither the weighting constant nor the top_k default is an astrological claim;
+resolved at tier (4) code-convenience the same way JL-003/JL-008 resolved shape/format calls, with
+(ii) additionally citing a concrete design-doc number rather than an arbitrary pick.
+
+**reversibility:** (a) reversible — the `TOOL_NAME_TO_URI['vector_search']` mapping is a one-line
+pointer; repointing it at a dedicated capability later (if W3's estate consolidation decides
+`ref_search` needs handler-level differences from `query_classical_texts`) does not require
+touching any MCP-facing call site, since all three already call by tool name, not by URI. (b)
+fully reversible — accepted-alias param names are additive; dropping one later only breaks a
+caller using that specific alias, easily caught by the integration test added this pass. (c)
+reversible — both are named constants (`VECTOR_WEIGHT`/`KEYWORD_WEIGHT`/`DEFAULT_INTERPRETATION_TOP_K`)
+in one file, trivially re-tuned by a future wave with real eval-battery data (§7) once R5's natural-
+question battery runs against this path and produces an actual quality signal to tune against.
+
+---
+
+### JL-013 — W2 frame-facet lane: scope of `frame` on get_strength/query_signals (annotate vs. recompute) + reuse of the internal frame-sign resolver
+
+**context:** R5 W2 (lane `r5/w2-frame-facet`, design §27.3) asks for a `frame` facet on
+"positional/strength/signal surfaces." `get_positions.ts` is the clean case: `house_d1` is a
+stored lagna-relative number, and re-basing it onto another frame (chandra/surya/arudha/
+karakamsha) is a pure re-derivation of the SAME underlying fact (the graha's sign), so serving
+`house_from_frame` alongside the stored `house_d1` is uncontroversial. Two questions were less
+obvious and needed a ruling before touching `get_strength.ts` (L1) and `query_signals.ts` (L2):
+
+**question (a):** `graha_in_house_composite_strength` and similar strength categories store a
+FULL 12-row table per graha (`<GRAHA>_IN_HOUSE_1`..`_12`) — build-time formula output, not a
+single "current house" value. Does `frame` mean (i) recompute the strength NUMBERS for the
+graha's frame-relative house, or (ii) just tell the caller WHICH of the 12 already-served rows
+is the graha's actual house under that frame, leaving the numbers untouched?
+
+**question (b):** `bodha_msr_signals` (L2, query_signals) carries `computed_salience`,
+`house_weight_multiplier`, and other multi-factor composite-ranking fields. Does `frame` filter
+or re-rank these signals for a non-lagna frame, or does it only add context?
+
+**question (c):** Should the query surfaces call the exported `resolveAddress`/
+`parseAddressExpression` DSL, or should they use a lighter direct entry point into the same
+frame-sign resolution the address resolver already does internally?
+
+**ruling:**
+(a) **(ii) — annotate, never recompute.** Strength numbers (Shadbala, Vimsopaka, Ishta/Kashta,
+the house-composite table, etc.) are build-time formula output and are explicitly
+`must_not_touch` per the R5 brief ("salience/priors/formula constants frozen"). `get_strength.ts`
+now returns a `frame_context.active_house_by_graha` map (each graha's real house counted from the
+requested frame) so the caller can pick out the correct `<GRAHA>_IN_HOUSE_<N>` row from the SAME
+response — the classical judgment ("read Jupiter's in-house strength from Moon") becomes
+answerable in one call without inventing a second, frame-conditioned strength formula that no
+writer has ever computed or classically defined at build time.
+
+(b) **Annotate only, same reasoning.** `query_signals.ts` now accepts `frame` and, when
+non-lagna, returns a `frame_context` block (reference sign + each graha's frame-relative house)
+alongside the UNCHANGED signal rows and UNCHANGED `computed_salience`/composite-ranking output.
+A signal (e.g. a yoga, a dosha, a composite state) is a classical fact about the chart that does
+not stop being true under a different counting frame — what changes is only how its BHAVA
+relevance is judged, which the frame_context gives the caller the arithmetic for. Recomputing
+salience per-frame would require a second, frame-conditioned formula variant that does not exist
+in the frozen salience/priors surface and was explicitly out of this lane's scope.
+
+(c) **Direct entry point — added `resolveFrameReferenceSign` (a public wrapper over the existing
+internal `resolveFrameSign`) and a new pure-arithmetic export `houseCountedFrom` (the exact
+inverse of the already-exported `signAtHouseOffset`) to `address_resolver.ts`, rather than
+routing through the `AddressExpression`/DSL layer.** The DSL (`bhava_from`, `occupants_of`, etc.)
+is built for per-address queries where the caller names ONE house/graha at a time; `get_positions`
+/`get_strength`/`query_signals` need to re-base MANY rows returned from a single bulk query in one
+pass. Building N `bhava_from` calls (one per row) would mean N extra round-trips into the
+resolver's own DB reads, when the frame's reference sign only needs to be resolved ONCE per
+response and the rest is index arithmetic already available from data already in-hand (the
+`sign` column of the very rows being served). Exporting the two small primitives keeps a single
+source of truth for "frame → reference sign" and "sign → house-from-reference" (the DESIGN
+§27.2 resolver already owns and is tested for both directions) while avoiding a second resolver
+implementation — the exact duplication trap W1 hit and fixed once already (per this brief's
+explicit warning).
+
+**basis:** (a)/(b) B.10 ("no fabricated computation," generalized here to "no fabricated
+per-frame formula variant") + the R5 brief's explicit `must_not_touch` on salience/priors/formula
+constants — a correctness/honesty-tier call, not a code-convenience one: recomputing these
+numbers per-frame would be presenting a number nothing in the build pipeline ever computed. (c)
+design §19 single-source mandate (direct textual basis) + pillar order — reuse over rebuild is
+listed ahead of code-convenience in the authority dossier, and the brief names this exact
+duplication trap as something W1 already paid down once.
+
+**reversibility:** (a)/(b) fully reversible and additive — `frame_context` is a new field on an
+otherwise-unchanged response shape; removing it later (or later adding a genuinely-computed
+per-frame formula on top of it) affects no existing caller. (c) fully reversible — both new
+exports are pure, side-effect-free wrappers/arithmetic; a future wave replacing them with a
+`bhava_from`-based bulk path would only need to swap the internal call site, not any caller-facing
+contract.
+
+**standalone value if halted here:** `get_positions` frame facet alone (question (a)'s cousin,
+already fully implemented and gate-verified against both canonical charts) independently
+satisfies the W2 "from-Moon in ONE call" gate — the strength/signal annotations are additive
+value on top, not prerequisites for the gate to pass.
+
+No further entries — this ledger reopens for W3+ waves.

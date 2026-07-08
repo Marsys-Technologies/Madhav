@@ -1,5 +1,5 @@
 /**
- * traverse_chart_graph — CGM Graph Traversal (L2 Bodha, D4 wave)
+ * traverse_chart_graph — CGM Graph Traversal (L2 Bodha, D4 wave; extended R5 W2)
  * ================================================================
  * Traverses the Cosmological Graph Model (CGM) for a given chart.
  *
@@ -33,14 +33,72 @@
  *   the semantic-entry path using bodha_cgm_nodes.node_embedding_vec.
  *
  * D4 — GATE A compliant: new file only, no edits to registry/index.ts or types.ts.
+ *
+ * ── R5 W2 extension (design §21/§30: "EXTEND traverse_chart_graph — path patterns,
+ * direction facet, strength floors") ──────────────────────────────────────────────
+ *
+ *   1. `about_from` / `about_to` (paths mode) + `about` (neighbors mode) — accept the
+ *      §27.1/§27.2 astrological address vocabulary (an `AddressExpression` OR its DSL
+ *      string, e.g. `"lord_of(bhava 10)"`) as seeds, resolved via the SHARED
+ *      `resolveAddress`/`parseAddressExpression` from `address_resolver.ts` (W1's
+ *      canonical resolver — NOT reimplemented here; W1 already hit and fixed exactly
+ *      that duplication trap once). Resolution maps the resolved graha/sign/karaka
+ *      entity to its `bodha_cgm_nodes` row (node_type='graha'|'bhava', node_subject=
+ *      graha name | house number) and the resolver's human-readable `chain` is
+ *      threaded into the response's `about_resolution` field so callers can show
+ *      their reasoning ("the 10th lord is Saturn, placed in the 9th... Saturn aspects
+ *      Moon directly") — this is what makes a "10th-lord→Moon" path resolve in ONE
+ *      call instead of a resolve-then-traverse round trip.
+ *
+ *   2. `direction` facet — 'directed' (follow only `from_node_id → to_node_id`, the
+ *      graph's actual directed edges) vs 'both' (undirected touch — original D4
+ *      behavior, still the default for backward compatibility). Applies to both
+ *      `neighbors` and `paths` modes.
+ *
+ *   3. `min_strength` — floor on `bodha_cgm_edges.computed_strength` (numeric, mig 325),
+ *      applied to both the traversal join condition (so the BFS/path-search itself
+ *      does not cross weak edges) and the returned edge list.
+ *
+ *   4. VALENCE VOCAB FIX (design §21 caveat, verified live against both canonical
+ *      charts at W2 open — `SELECT DISTINCT valence FROM bodha_cgm_edges` on
+ *      `482012f1-…` returns ONLY `harmonious`/`antagonistic`; `benefic`/`malefic`/
+ *      `mixed` — the D4-era enum — never occur. The mig-325-drift the design doc
+ *      flagged for "reconcile in W0" was never actually reconciled; a `valence_filter`
+ *      using the old vocabulary silently matched zero rows on live data). The
+ *      `valence_filter` enum is corrected to the real vocabulary
+ *      (`harmonious`|`antagonistic`|`neutral`); the D4-era terms are still accepted
+ *      as input and normalized (`benefic`→`harmonious`, `malefic`→`antagonistic`,
+ *      `mixed`→`neutral`) so no existing caller silently breaks.
  */
 
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
+import {
+  resolveAddress,
+  type AddressExpression,
+  type ResolvedEntity,
+  AddressResolutionError,
+} from '../../../address_resolver'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
 
 type TraversalMode = 'neighbors' | 'paths' | 'convergence' | 'contradictions'
+type TraversalDirection = 'directed' | 'both'
+
+/** D4-era valence terms, normalized to the real live-DB vocabulary (see header note). */
+const VALENCE_ALIASES: Record<string, string> = {
+  benefic: 'harmonious',
+  malefic: 'antagonistic',
+  mixed: 'neutral',
+  harmonious: 'harmonious',
+  antagonistic: 'antagonistic',
+  neutral: 'neutral',
+}
+
+function normalizeValence(v: string): string {
+  return VALENCE_ALIASES[v.toLowerCase()] ?? v
+}
 
 // ── Exported capability ───────────────────────────────────────────────────────
 
@@ -98,8 +156,54 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
         'Seed node_ids (UUIDs from bodha_cgm_nodes) for neighbors/paths modes.',
         'For paths: first element = from_node_id, second = to_node_id.',
         'Omit for convergence and contradictions modes.',
+        'Prefer about_from/about_to (paths) or about (neighbors) for astrological addressing —',
+        'these raw UUIDs are for callers that already resolved a node_id themselves.',
       ].join(' '),
       items: { type: 'string' },
+    },
+    about_from: {
+      type: 'object',
+      description: [
+        'paths mode ONLY — the START of the path, given as the design §27.1/§27.2 astrological',
+        'address vocabulary: either a structured AddressExpression object or its DSL string',
+        '(e.g. "lord_of(bhava 10)", "dispositor_of(Venus)", "karaka(\'AK\')"). Resolved server-side',
+        'via the shared address resolver, then mapped to its bodha_cgm_nodes row. Lets the caller',
+        'say "10th lord" instead of first resolving to "Saturn" in a separate call.',
+      ].join(' '),
+    },
+    about_to: {
+      type: 'object',
+      description: 'paths mode ONLY — the END of the path, same address vocabulary as about_from.',
+    },
+    about: {
+      type: 'array',
+      description: [
+        'neighbors mode ONLY — seed(s) given as address expressions/DSL strings instead of raw',
+        'seed_node_ids (e.g. ["graha(Moon)"] or [{"type":"graha","graha":"Moon"}] or',
+        '["lord_of(bhava 7)"]). Resolved server-side via the shared address resolver; each',
+        'resolved entity becomes a BFS seed. Mutually exclusive with seed_node_ids (about wins',
+        'if both given).',
+      ].join(' '),
+      items: { type: 'object' },
+    },
+    direction: {
+      type: 'string',
+      description: [
+        'Traversal direction for neighbors/paths modes. "directed" follows only the graph\'s',
+        'actual directed edges (from_node_id -> to_node_id) — required for questions with an',
+        'inherent direction ("what does the 10th lord aspect?" vs "what aspects the 10th lord?").',
+        '"both" (default) treats edges as undirected touches — the original behavior.',
+      ].join(' '),
+      enum: ['directed', 'both'],
+      default: 'both',
+    },
+    min_strength: {
+      type: 'number',
+      description: [
+        'Strength floor on bodha_cgm_edges.computed_strength (0-1 range). Edges below this',
+        'threshold are excluded from BOTH the traversal itself (BFS/path-search will not cross',
+        'a weak edge) and the returned edge list. Omit for no floor.',
+      ].join(' '),
     },
     depth: {
       type: 'number',
@@ -124,8 +228,12 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     },
     valence_filter: {
       type: 'string',
-      description: "Optional valence filter on edges: 'benefic'|'malefic'|'mixed'|'neutral'.",
-      enum: ['benefic', 'malefic', 'mixed', 'neutral'],
+      description: [
+        "Optional valence filter on edges: 'harmonious'|'antagonistic'|'neutral' (the live",
+        "bodha_cgm_edges vocabulary). Legacy D4-era terms 'benefic'/'malefic'/'mixed' are still",
+        'accepted and normalized (benefic->harmonious, malefic->antagonistic, mixed->neutral).',
+      ].join(' '),
+      enum: ['harmonious', 'antagonistic', 'neutral', 'benefic', 'malefic', 'mixed'],
     },
     cross_subsystem_only: {
       type: 'boolean',
@@ -172,18 +280,21 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     const ayanamsha_id = args['ayanamsha_id'] as string | undefined
     const snapshot_type = args['snapshot_type'] as string | undefined
     const edge_types = args['edge_types'] as string[] | undefined
-    const valence_filter = args['valence_filter'] as string | undefined
+    const rawValenceFilter = args['valence_filter'] as string | undefined
+    const valence_filter = rawValenceFilter ? normalizeValence(rawValenceFilter) : undefined
     const cross_subsystem_only = Boolean(args['cross_subsystem_only'] ?? false)
     const depth = Math.min(Math.max(Number(args['depth'] ?? 1), 1), 3)
     const top_k_hubs = Math.min(Number(args['top_k_hubs'] ?? 10), 50)
+    const direction: TraversalDirection = (args['direction'] as TraversalDirection) ?? 'both'
+    const min_strength = args['min_strength'] !== undefined ? Number(args['min_strength']) : undefined
 
     try {
       switch (mode) {
         case 'neighbors':
-          return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth)
+          return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth, direction, min_strength)
 
         case 'paths':
-          return await _pathsMode(chart_id, args, ayanamsha_id, snapshot_type)
+          return await _pathsMode(chart_id, args, ayanamsha_id, snapshot_type, direction, min_strength)
 
         case 'convergence':
           return await _convergenceMode(chart_id, ayanamsha_id, snapshot_type, top_k_hubs)
@@ -206,11 +317,81 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
   },
 }
 
+// ── §27.2 address-resolver bridge — maps a resolved entity to bodha_cgm_nodes row(s) ────────
+
+/**
+ * Resolve an `about` address (AddressExpression or its DSL string) via the SHARED
+ * `resolveAddress` (address_resolver.ts — NOT reimplemented here) to concrete
+ * bodha_cgm_nodes.node_id(s), plus the human-readable resolution chain for the
+ * caller's `about_resolution` field.
+ */
+async function _resolveAboutToNodeIds(
+  chartId: string,
+  about: AddressExpression | string,
+  ayanamshaId: string | undefined,
+  snapshotType: string | undefined
+): Promise<{ node_ids: string[]; chain: string[]; entities: ResolvedEntity[] }> {
+  const resolved = await resolveAddress(chartId, about, { ayanamsha_id: ayanamshaId ?? DEFAULT_AYANAMSHA })
+  const nodeIds: string[] = []
+  for (const entity of resolved.entities) {
+    let nodeType: string
+    let subjects: string[]
+    if (entity.kind === 'graha') {
+      nodeType = 'graha'
+      subjects = [entity.graha]
+    } else if (entity.kind === 'karaka') {
+      nodeType = 'graha'
+      subjects = [entity.graha]
+    } else if (entity.kind === 'sign') {
+      if (!entity.house_number) {
+        throw new AddressResolutionError(
+          `Address resolved to sign "${entity.sign}" with no house number — cannot map to a bodha_cgm_nodes row (bhava nodes are keyed by house number, not sign).`
+        )
+      }
+      nodeType = 'bhava'
+      subjects = [String(entity.house_number)]
+    } else if (entity.kind === 'occupants') {
+      nodeType = 'graha'
+      subjects = entity.grahas
+      if (subjects.length === 0) {
+        return { node_ids: [], chain: resolved.chain, entities: resolved.entities }
+      }
+    } else {
+      throw new AddressResolutionError(`Cannot map resolved entity kind "${(entity as { kind: string }).kind}" to a bodha_cgm_nodes row.`)
+    }
+
+    const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+    let pIdx = params.length + 1
+    conds.push(`node_type = $${pIdx++}`)
+    params.push(nodeType)
+    const subjPhs = subjects.map(() => `$${pIdx++}`).join(', ')
+    conds.push(`node_subject IN (${subjPhs})`)
+    params.push(...subjects)
+
+    const res = await query<{ node_id: string }>(
+      `SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')} LIMIT ${subjects.length}`,
+      params
+    )
+    if (res.rows.length === 0) {
+      throw new AddressResolutionError(
+        `Address resolved to ${nodeType} "${subjects.join(', ')}" but no matching bodha_cgm_nodes row exists for chart ${chartId} (ayanamsha ${ayanamshaId ?? DEFAULT_AYANAMSHA}). Has L2 Bodha's CGM writer (bo_*) run for this chart/ayanamsha?`
+      )
+    }
+    nodeIds.push(...res.rows.map((r) => r.node_id))
+  }
+  return { node_ids: nodeIds, chain: resolved.chain, entities: resolved.entities }
+}
+
+function _parseAbout(input: unknown): AddressExpression | string {
+  if (typeof input === 'string') return input
+  return input as AddressExpression
+}
+
 // ── Mode implementations ──────────────────────────────────────────────────────
 
 /**
- * neighbors mode: BFS from seed_node_ids up to `depth` hops.
- * If semantic_query provided and no seed_node_ids: tries cosine-similarity entry
+ * neighbors mode: BFS from seed_node_ids (or about-resolved addresses) up to `depth` hops.
+ * If semantic_query provided and no seeds: tries cosine-similarity entry
  * via pgvector (requires embeddings populated). Falls back to all nodes if empty.
  */
 async function _neighborsMode(
@@ -221,12 +402,29 @@ async function _neighborsMode(
   edgeTypes: string[] | undefined,
   valenceFilter: string | undefined,
   crossSubsystemOnly: boolean,
-  depth: number
+  depth: number,
+  direction: TraversalDirection,
+  minStrength: number | undefined
 ): Promise<ToolResult> {
   const rawSeeds = (args['seed_node_ids'] as string[]) ?? []
   const semanticQuery = args['semantic_query'] as string | undefined
+  const rawAbout = args['about'] as unknown[] | undefined
 
   let seedNodeIds: string[] = rawSeeds
+  let aboutChain: string[] | undefined
+
+  // §27.1 `about` seeds — astrological addresses, resolved via the shared address resolver.
+  if (rawAbout && rawAbout.length > 0) {
+    const chains: string[] = []
+    const resolvedIds: string[] = []
+    for (const a of rawAbout) {
+      const { node_ids, chain } = await _resolveAboutToNodeIds(chartId, _parseAbout(a), ayanamshaId, snapshotType)
+      resolvedIds.push(...node_ids)
+      chains.push(...chain)
+    }
+    seedNodeIds = resolvedIds
+    aboutChain = chains
+  }
 
   // Semantic entry: find top-3 nodes by embedding cosine similarity
   if (seedNodeIds.length === 0 && semanticQuery) {
@@ -282,9 +480,25 @@ async function _neighborsMode(
     edgeFilterClauses.push(`e.edge_type IN (${ephs})`)
     baseParams.push(...edgeTypes)
   }
+  if (minStrength !== undefined) {
+    edgeFilterClauses.push(`e.computed_strength >= $${pIdx++}`)
+    baseParams.push(minStrength)
+  }
 
   const depthParam = pIdx++
   baseParams.push(depth)
+
+  // Direction facet: 'directed' follows only the graph's actual from_node_id -> to_node_id
+  // edges (the frontier must be the edge's from_node_id); 'both' (default) treats edges as
+  // undirected touches, matching the original D4 behavior.
+  const bfsJoinCond =
+    direction === 'directed'
+      ? `e.from_node_id = bfs.node_id`
+      : `(e.from_node_id = bfs.node_id OR e.to_node_id = bfs.node_id)`
+  const bfsNextNode =
+    direction === 'directed'
+      ? `e.to_node_id`
+      : `CASE WHEN e.from_node_id = bfs.node_id THEN e.to_node_id ELSE e.from_node_id END`
 
   // Recursive CTE: expand frontier node by node, up to depth hops
   const bfsSql = `
@@ -299,12 +513,11 @@ async function _neighborsMode(
 
       -- Expand: one hop per iteration
       SELECT
-        CASE WHEN e.from_node_id = bfs.node_id THEN e.to_node_id
-             ELSE e.from_node_id END AS node_id,
+        ${bfsNextNode} AS node_id,
         bfs.hop + 1 AS hop
       FROM bfs
       JOIN bodha_cgm_edges e
-        ON (e.from_node_id = bfs.node_id OR e.to_node_id = bfs.node_id)
+        ON ${bfsJoinCond}
         AND ${edgeFilterClauses.join(' AND ')}
       WHERE bfs.hop < $${depthParam}
     ),
@@ -337,7 +550,7 @@ async function _neighborsMode(
 
   // Fetch edges between visited nodes
   const edges = visitedIds.length > 0
-    ? await _fetchEdgesForNodes(chartId, visitedIds, ayanamshaId, snapshotType, edgeTypes, valenceFilter, crossSubsystemOnly)
+    ? await _fetchEdgesForNodes(chartId, visitedIds, ayanamshaId, snapshotType, edgeTypes, valenceFilter, crossSubsystemOnly, minStrength)
     : []
 
   return {
@@ -345,6 +558,9 @@ async function _neighborsMode(
       chart_id: chartId,
       mode: 'neighbors',
       seed_node_ids: seedNodeIds,
+      about_resolution: aboutChain ?? null,
+      direction,
+      min_strength: minStrength ?? null,
       depth_requested: depth,
       nodes: nodesResult.rows,
       edges,
@@ -363,20 +579,53 @@ async function _neighborsMode(
 
 /**
  * paths mode: BFS shortest path between two nodes.
- * Uses seed_node_ids[0] as from_node_id and seed_node_ids[1] as to_node_id.
+ * Endpoints come from about_from/about_to (§27.1 address expressions, resolved via the
+ * shared address resolver — the "10th lord -> Moon" ONE-call case) OR from
+ * seed_node_ids[0]/[1] (raw node_id UUIDs) if about_from/about_to are not given.
  */
 async function _pathsMode(
   chartId: string,
   args: Record<string, unknown>,
   ayanamshaId: string | undefined,
-  snapshotType: string | undefined
+  snapshotType: string | undefined,
+  direction: TraversalDirection,
+  minStrength: number | undefined
 ): Promise<ToolResult> {
+  const rawAboutFrom = args['about_from']
+  const rawAboutTo = args['about_to']
   const seedNodeIds = (args['seed_node_ids'] as string[]) ?? []
 
-  if (seedNodeIds.length < 2) {
+  let fromNodeId: string
+  let toNodeId: string
+  let aboutChain: string[] | undefined
+
+  if (rawAboutFrom !== undefined && rawAboutTo !== undefined) {
+    const fromResolved = await _resolveAboutToNodeIds(chartId, _parseAbout(rawAboutFrom), ayanamshaId, snapshotType)
+    const toResolved = await _resolveAboutToNodeIds(chartId, _parseAbout(rawAboutTo), ayanamshaId, snapshotType)
+    if (fromResolved.node_ids.length === 0 || toResolved.node_ids.length === 0) {
+      return {
+        content: {
+          error: 'about_from/about_to resolved to zero bodha_cgm_nodes rows — cannot traverse.',
+          chart_id: chartId,
+          mode: 'paths',
+        },
+        is_error: true,
+      }
+    }
+    // Address expressions resolve to a single concrete entity for graha/karaka/bhava addresses;
+    // occupants_of can resolve to several — path mode needs exactly one endpoint each, so take
+    // the first and say so in the resolution chain (still classically sound: e.g. occupants_of
+    // returns the graha list in a stable order, first-listed is not arbitrary noise).
+    fromNodeId = fromResolved.node_ids[0]
+    toNodeId = toResolved.node_ids[0]
+    aboutChain = [...fromResolved.chain, ...toResolved.chain]
+  } else if (seedNodeIds.length >= 2) {
+    fromNodeId = seedNodeIds[0]
+    toNodeId = seedNodeIds[1]
+  } else {
     return {
       content: {
-        error: 'paths mode requires seed_node_ids with at least 2 elements: [from_node_id, to_node_id]',
+        error: 'paths mode requires either about_from + about_to (address expressions) or seed_node_ids with at least 2 elements: [from_node_id, to_node_id]',
         chart_id: chartId,
         mode: 'paths',
       },
@@ -384,15 +633,35 @@ async function _pathsMode(
     }
   }
 
-  const fromNodeId = seedNodeIds[0]
-  const toNodeId   = seedNodeIds[1]
-
   const { conds: baseNodeConds, params: baseParams } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
   let pIdx = baseParams.length + 1
 
   const fromPh = `$${pIdx++}`
   const toPh   = `$${pIdx++}`
   baseParams.push(fromNodeId, toNodeId)
+
+  const edgeFilterClauses: string[] = [`e.chart_id = $1`]
+  if (ayanamshaId) {
+    edgeFilterClauses.push(`e.ayanamsha_id = $2`)
+  }
+  if (snapshotType) {
+    edgeFilterClauses.push(`e.snapshot_type = $${ayanamshaId ? 3 : 2}`)
+  }
+  if (minStrength !== undefined) {
+    edgeFilterClauses.push(`e.computed_strength >= $${pIdx++}`)
+    baseParams.push(minStrength)
+  }
+
+  // Direction facet (design §21/§30 "direction facet"): 'directed' requires the path to follow
+  // the graph's actual from_node_id -> to_node_id arrows; 'both' (default) allows either.
+  const pathJoinCond =
+    direction === 'directed'
+      ? `e.from_node_id = ps.node_id`
+      : `(e.from_node_id = ps.node_id OR e.to_node_id = ps.node_id)`
+  const pathNextNode =
+    direction === 'directed'
+      ? `e.to_node_id`
+      : `CASE WHEN e.from_node_id = ps.node_id THEN e.to_node_id ELSE e.from_node_id END`
 
   // BFS path-finding via recursive CTE (max depth 5)
   const pathSql = `
@@ -410,18 +679,15 @@ async function _pathsMode(
 
       -- Expand: one hop per iteration
       SELECT
-        CASE WHEN e.from_node_id = ps.node_id THEN e.to_node_id
-             ELSE e.from_node_id END AS node_id,
-        ps.path || CASE WHEN e.from_node_id = ps.node_id THEN e.to_node_id
-                        ELSE e.from_node_id END,
+        ${pathNextNode} AS node_id,
+        ps.path || ${pathNextNode},
         ps.hop + 1
       FROM path_search ps
       JOIN bodha_cgm_edges e
-        ON (e.from_node_id = ps.node_id OR e.to_node_id = ps.node_id)
-        AND e.chart_id = $1
+        ON ${pathJoinCond}
+        AND ${edgeFilterClauses.join(' AND ')}
       WHERE ps.hop < 5
-        AND NOT (CASE WHEN e.from_node_id = ps.node_id THEN e.to_node_id
-                      ELSE e.from_node_id END = ANY(ps.path))
+        AND NOT (${pathNextNode} = ANY(ps.path))
     )
     SELECT path, hop AS path_length
     FROM path_search
@@ -458,7 +724,7 @@ async function _pathsMode(
       np
     )
     nodes = nodeRes.rows
-    edges = await _fetchEdgesForNodes(chartId, nodeIds, ayanamshaId, snapshotType)
+    edges = await _fetchEdgesForNodes(chartId, nodeIds, ayanamshaId, snapshotType, undefined, undefined, false, minStrength)
   }
 
   return {
@@ -467,8 +733,12 @@ async function _pathsMode(
       mode: 'paths',
       from_node_id: fromNodeId,
       to_node_id: toNodeId,
+      about_resolution: aboutChain ?? null,
+      direction,
+      min_strength: minStrength ?? null,
       paths: pathResult.rows,
       path_count: pathResult.rows.length,
+      path_found: pathResult.rows.length > 0,
       nodes,
       edges,
       provenance: {
@@ -700,7 +970,8 @@ async function _fetchEdgesForNodes(
   snapshotType?: string,
   edgeTypes?: string[],
   valenceFilter?: string,
-  crossSubsystemOnly?: boolean
+  crossSubsystemOnly?: boolean,
+  minStrength?: number
 ): Promise<Record<string, unknown>[]> {
   if (nodeIds.length === 0) return []
 
@@ -727,6 +998,10 @@ async function _fetchEdgesForNodes(
     const ephs = edgeTypes.map(() => `$${pIdx++}`).join(', ')
     conds.push(`e.edge_type IN (${ephs})`)
     params.push(...edgeTypes)
+  }
+  if (minStrength !== undefined) {
+    conds.push(`e.computed_strength >= $${pIdx++}`)
+    params.push(minStrength)
   }
 
   // Filter to edges connecting the visited node set

@@ -244,3 +244,105 @@ describe('traverse_chart_graph — handler contract', () => {
   })
 
 })
+
+describe('traverse_chart_graph — R5 W2 extension (about seeds, direction, min_strength, valence)', () => {
+
+  beforeEach(() => {
+    vi.mocked(mockQuery).mockReset()
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+  })
+
+  it('input_schema exposes about_from/about_to/about/direction/min_strength', () => {
+    const schema = traverseChartGraphCapability.input_schema as Record<string, unknown>
+    expect(schema['about_from']).toBeDefined()
+    expect(schema['about_to']).toBeDefined()
+    expect(schema['about']).toBeDefined()
+    expect(schema['direction']).toBeDefined()
+    expect(schema['min_strength']).toBeDefined()
+  })
+
+  it('valence_filter enum now includes the real live-DB vocabulary (harmonious/antagonistic/neutral)', () => {
+    const schema = traverseChartGraphCapability.input_schema as Record<string, { enum?: string[] }>
+    const enumVals = schema['valence_filter']?.enum ?? []
+    expect(enumVals).toEqual(expect.arrayContaining(['harmonious', 'antagonistic', 'neutral']))
+  })
+
+  it('normalizes a legacy D4-era valence_filter ("benefic") to "harmonious" in the edge query params', async () => {
+    await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'neighbors', seed_node_ids: ['node-1'], valence_filter: 'benefic' },
+      undefined
+    )
+    const calls = vi.mocked(mockQuery).mock.calls
+    const sawHarmonious = calls.some(([, params]) => (params as unknown[])?.includes('harmonious'))
+    const sawLegacyBenefic = calls.some(([, params]) => (params as unknown[])?.includes('benefic'))
+    expect(sawHarmonious).toBe(true)
+    expect(sawLegacyBenefic).toBe(false)
+  })
+
+  it('paths mode: about_from + about_to trigger address resolution (resolveAddress path) rather than raw seed_node_ids', async () => {
+    // With the mocked DB returning zero rows, address resolution will fail to find a frame
+    // sign fact — the capability must surface this as a clean is_error, not throw uncaught.
+    const result = await traverseChartGraphCapability.handler(
+      {
+        chart_id: CHART_A,
+        mode: 'paths',
+        about_from: 'lord_of(bhava 10)',
+        about_to: { type: 'graha', graha: 'Moon' },
+      },
+      undefined
+    )
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['chart_id']).toBe(CHART_A)
+  })
+
+  it('paths mode error path never leaks the native chart UUID', async () => {
+    const result = await traverseChartGraphCapability.handler(
+      {
+        chart_id: CHART_A,
+        mode: 'paths',
+        about_from: 'lord_of(bhava 10)',
+        about_to: { type: 'graha', graha: 'Moon' },
+      },
+      undefined
+    )
+    expect(String((result.content as Record<string, unknown>)['error'])).not.toContain(NATIVE_CHART_ID)
+  })
+
+  it('paths mode: requires either about_from+about_to or 2 seed_node_ids', async () => {
+    const result = await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'paths', seed_node_ids: ['only-one'] },
+      undefined
+    )
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)?.['error']).toMatch(/about_from \+ about_to|2 elements/)
+  })
+
+  it('direction defaults to "both" and echoes back on the response envelope', async () => {
+    const result = await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'neighbors', seed_node_ids: ['node-1'] },
+      undefined
+    )
+    const content = result.content as Record<string, unknown>
+    expect(content['direction']).toBe('both')
+  })
+
+  it('direction="directed" is threaded through to the response envelope', async () => {
+    const result = await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'neighbors', seed_node_ids: ['node-1'], direction: 'directed' },
+      undefined
+    )
+    const content = result.content as Record<string, unknown>
+    expect(content['direction']).toBe('directed')
+  })
+
+  it('min_strength is applied to the edge query params when provided', async () => {
+    await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'neighbors', seed_node_ids: ['node-1'], min_strength: 0.6 },
+      undefined
+    )
+    const calls = vi.mocked(mockQuery).mock.calls
+    const sawFloor = calls.some(([, params]) => (params as unknown[])?.includes(0.6))
+    expect(sawFloor).toBe(true)
+  })
+
+})

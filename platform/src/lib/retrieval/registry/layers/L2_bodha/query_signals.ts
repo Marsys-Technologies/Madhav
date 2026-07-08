@@ -26,6 +26,31 @@
  * (class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation
  * × percentile_within_class) on top-CANDIDATE_FETCH_SIZE salience candidates. ranking_basis
  * is returned on every response. NEVER writes to bodha_* tables or modifies stored salience.
+ *
+ * FRAME FACET (R5 W2, design §27.3): computed_salience / house_weight_multiplier / etc. are
+ * FROZEN build-time formula output (must_not_touch per the R5 brief) and are NEVER
+ * recomputed here for a different frame. What `frame` DOES add: a `frame_context` block
+ * (each graha's actual house counted from the requested frame, via `resolveFrameReferenceSign`
+ * + `houseCountedFrom` — W1's address resolver, reused not re-derived, design §19) so the
+ * caller can judge a returned signal "from Moon" etc. against its own frame arithmetic in
+ * the SAME call, without a second get_positions round-trip. Signals themselves are unfiltered
+ * by frame — the shastra fact a signal encodes doesn't change; only the counting-frame for
+ * bhava-relative interpretation does.
+ *
+ * THE PARADIGM FACET (design §27.4, R5 W2): `paradigm: parashari | jaimini | kp | tajika`
+ * filters to bodha_msr_signals.signal_tradition — the column design §27.4 names as already
+ * "carrying" the paradigm dimension, made a navigation facet here. Default (paradigm omitted)
+ * returns signals from every tradition, UNFILTERED — this is deliberate, not an oversight: this
+ * drill surface's atomic signals already carry their own signal_tradition per row (never
+ * silently blended into one un-attributed value), and the design's own whole-chart-read
+ * discipline (B.11 / CLAUDE.md) depends on being able to see convergence ACROSS traditions.
+ * The "mixing paradigms mid-answer" sin design §27.4 warns against is a DIFFERENT failure —
+ * treating signals from two schools as if they were one coherent method's output without
+ * disclosing which is which — not merely listing multiple traditions' tagged signals side by
+ * side. Passing `paradigm` here is the opt-in for a caller (e.g. the triangulation register,
+ * A7) that specifically wants a single tradition's clean, coherent signal set for one leg of a
+ * per-paradigm comparison. `esoteric`/`lal_kitab` signal_tradition values also exist in the data
+ * but are outside design §27.4's named 4-paradigm vocabulary — not exposed through this facet.
  */
 
 import type { CapabilityDescriptor } from '../../types'
@@ -35,6 +60,12 @@ import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
+import {
+  resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
+  type ReferenceFrame, type ZodiacSign,
+} from '../../../address_resolver'
+
+const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
 // Coarse candidate pool for composite re-ranking when domain is specified.
 // Fetch this many by computed_salience, then composite-rank in TypeScript, then slice.
@@ -86,6 +117,17 @@ export const querySignalsCapability: CapabilityDescriptor = {
       type: 'string',
       description: "Filter by source subsystem (e.g. 'parashara', 'jaimini', 'tajika', 'nadi').",
     },
+    paradigm: {
+      type: 'string',
+      description: [
+        "The PARADIGM facet (design §27.4): filter to signal_tradition = one coherent classical",
+        "school. Default (omitted): no filter — signals from every tradition are returned, each",
+        "still tagged with its own signal_tradition (never blended into one unattributed value).",
+        "Pass this when you specifically need ONE tradition's clean signal set (e.g. a",
+        "per-paradigm leg of a triangulation comparison), not to suppress cross-tradition signals.",
+      ].join(' '),
+      enum: ['parashari', 'jaimini', 'kp', 'tajika'],
+    },
     signal_type_class: {
       type: 'string',
       description: "Filter by type class: 'yoga'|'dosha'|'karaka_alignment'|'composite_state'|'sade_sati'|'panchanga'.",
@@ -115,6 +157,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Pagination offset (default: 0).',
     },
+    frame: {
+      type: 'string',
+      description: 'Reference frame (default: lagna; design §27.3). When non-lagna, the response ' +
+        'includes a `frame_context` block with each graha\'s actual house counted from that frame ' +
+        '(e.g. "from Moon") — for judging returned signals\' bhava relevance under that frame in ' +
+        'this same call. Signal rows and computed_salience are NEVER recomputed by frame (frozen ' +
+        'formula output) — only the frame_context annotation is added.',
+      enum: FRAME_VALUES,
+      default: 'lagna',
+    },
   },
 
   llm_hints: {
@@ -134,13 +186,32 @@ export const querySignalsCapability: CapabilityDescriptor = {
     }
 
     const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    const frame           = ((args['frame'] as string | undefined) ?? 'lagna') as ReferenceFrame
+    if (!FRAME_VALUES.includes(frame)) {
+      return {
+        content: { error: `Unsupported frame "${frame}". Supported: ${FRAME_VALUES.join(', ')} (design §27.3).` },
+        is_error: true,
+      }
+    }
+
+    const PARADIGM_VALUES = ['parashari', 'jaimini', 'kp', 'tajika'] as const
+    const paradigmRaw = args['paradigm'] as string | undefined
+    if (paradigmRaw && !(PARADIGM_VALUES as readonly string[]).includes(paradigmRaw)) {
+      return {
+        content: {
+          error: `Unknown paradigm "${paradigmRaw}". Supported (design §27.4): ${PARADIGM_VALUES.join(', ')}.`,
+        },
+        is_error: true,
+      }
+    }
+    const paradigm = paradigmRaw as (typeof PARADIGM_VALUES)[number] | undefined
 
     // Cache check (H-11). priors_version in key ensures cache busts on prior updates.
-    const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id,
+    const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id, frame,
       domain: args['domain'], source_subsystem: args['source_subsystem'],
       signal_type_class: args['signal_type_class'], min_salience: args['min_salience'],
       lel_enabled: args['lel_enabled'], top_k: args['top_k'], offset: args['offset'],
-      semantic_query: args['semantic_query'], priors_version: PRIORS_VERSION })
+      semantic_query: args['semantic_query'], paradigm, priors_version: PRIORS_VERSION })
     const _cached = cacheGet(_cacheKey)
     if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
     const domain          = args['domain'] as string | undefined
@@ -170,6 +241,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
       if (signal_type_class) {
         filters.push(`m.signal_type_class = $${p++}`)
         params.push(signal_type_class)
+      }
+      if (paradigm) {
+        // design §27.4 paradigm facet — a coherent single-tradition slice.
+        filters.push(`m.signal_tradition = $${p++}`)
+        params.push(paradigm)
       }
       if (min_salience > 0) {
         filters.push(`m.computed_salience >= $${p++}`)
@@ -342,15 +418,47 @@ export const querySignalsCapability: CapabilityDescriptor = {
           `treat resolution as UNKNOWN for this response rather than assuming any historical figure.`
       }
 
+      // Frame facet (R5 W2, design §27.3): annotation only — signal rows/salience unchanged.
+      let frameContext: Record<string, unknown> | undefined
+      if (frame !== 'lagna') {
+        try {
+          const { sign: referenceSign } = await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id })
+          const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
+          const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
+            `SELECT fact_subject, fact_value_text FROM chart_facts
+             WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
+               AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'`,
+            [chart_id, ayanamsha_id, grahaCodes],
+          )
+          const activeHouseByGraha: Record<string, number> = {}
+          for (const r of signRes.rows) {
+            if (!r.fact_value_text) continue
+            activeHouseByGraha[GRAHA_CODE_TO_NAME[r.fact_subject] ?? r.fact_subject] =
+              houseCountedFrom(referenceSign as ZodiacSign, r.fact_value_text as ZodiacSign)
+          }
+          frameContext = {
+            frame, reference_sign: referenceSign, ayanamsha_id,
+            active_house_by_graha: activeHouseByGraha,
+            note: `Each graha's actual house counted from ${frame} (${referenceSign}). Signal rows ` +
+              `and computed_salience are unaffected by frame (frozen build-time formula output) — ` +
+              `use this to judge a returned signal's bhava relevance under ${frame} in this same call.`,
+          }
+        } catch (e) {
+          frameContext = { frame, error: `could not resolve frame "${frame}": ${String(e)}` }
+        }
+      }
+
       const responseContent = {
         chart_id,
+        frame,
+        ...(frameContext ? { frame_context: frameContext } : {}),
         ayanamsha_id,
         signals,
         returned_count: signals.length,
         truncated,
         ...(truncated_from !== undefined ? { truncated_from } : {}),
         ranking_basis,
-        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset },
+        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null },
         semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
         provenance: {
           tables: ['bodha_msr_signals'],
@@ -360,6 +468,13 @@ export const querySignalsCapability: CapabilityDescriptor = {
           defect_001_note: defect001Note,
           signature_tier_note: signatureTierNote,
           lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
+          paradigm_note: paradigm
+            ? `paradigm:"${paradigm}" applied — every signal in this response carries ` +
+              `signal_tradition="${paradigm}" (design §27.4 coherent single-tradition slice).`
+            : 'No paradigm filter applied — signals from every classical tradition are present, ' +
+              'each individually tagged via its own signal_tradition field. Do not treat this as ' +
+              'one coherent method\'s output; a caller building a single-paradigm answer should ' +
+              'pass paradigm to get one tradition\'s clean slice (design §27.4).',
         },
       }
       const response = { content: responseContent, is_error: false as const }
