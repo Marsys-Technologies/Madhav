@@ -49,8 +49,8 @@ describeIf('query_classical_texts — R5 W2 hybrid corpus search (live DB)', () 
     const content = result.content as { citations: CitationRow[]; total: number; search_mode: string }
     expect(content.total).toBeGreaterThan(0)
     expect(content.citations.length).toBeGreaterThan(0)
-    // Confirms this environment's ADC + GCP_PROJECT/VERTEX_AI_LOCATION resolve a real
-    // embedding — i.e. genuine hybrid, not the trigram-only degrade path.
+    // Confirms this environment's ADC + the configured Google Cloud project/location resolve a
+    // real embedding — i.e. genuine hybrid, not the trigram-only degrade path.
     expect(content.search_mode).toBe('hybrid_vector_keyword')
     for (const c of content.citations) {
       // The gate: verse text travels WITH the citation.
