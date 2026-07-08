@@ -883,3 +883,68 @@ P6/P7 as closed. Those carry forward to R5_PUNCHLIST per the brief's non-blockin
 rather than blocking W0a's close, since none of them regressed relative to pre-deploy (P6 changed
 shape but was never functional either way) and W0a's own gate was "probes pass or fail honestly,
 baseline recorded for the next wave to diff against" — which this report satisfies.
+
+---
+
+## W0b — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w0b` merged to `main` at commit `d6c6759a` (PR #469). `amjis-mcp` redeployed to
+`amjis-mcp-00397-s74`, `amjis-web` to `amjis-web-00875-n46` — both confirmed at 100% traffic on
+`latestCreatedRevisionName` (no repeat of W0a's deploy-race; only one auto-triggered `workflow_run`
+deploy fired this time since no manual `workflow_dispatch` was issued in parallel). Live verification
+below re-runs the brief's `[verify-against: prod]` gate against this deployment, not the worktree.
+
+### Legacy format — unchanged (critical check)
+
+`ganita_yogas_get` called live against native chart `482012f1-…` with no `response_format` param.
+`structuredContent.object` shows `verdict: null`, `ranking_basis: null`, `grounding: {fact_ids: [],
+citations: [], grounding_score: null}`, `drill_pointers: []`, `judgment_flags: []` — i.e. the exact
+same hollow shape P3 originally documented pre-W0b. **No breaking change**: legacy consumers see
+identical content to before this wave. One additive field observed even under legacy —
+`envelope_version: "v1"` — a new top-level tag, but additive per design §5 ("envelope changes
+additive only") and not something a lenient JSON consumer would choke on; noted for completeness,
+not a violation.
+
+### v3 format — genuinely populated on live prod (P3 fix confirmed, not just worktree-claimed)
+
+Same call with `response_format: "v3"` on live prod returns real, non-null content: `verdict`
+(`yogas_fired`/`doshas_fired` counts — both 0 here because they count the `*_fires` categories,
+which JL-004 already flagged as having zero rows for this chart, distinct from the populated
+`*_label` categories; not a new bug, restates JL-004), `ranking_basis` (`catalog_order` mode, stated
+honestly as not salience-ranked), `drill_pointers` (2 real cross-references to `query_signals` and
+`mimamsa_insight_get`), `judgment_flags` (`["zero_rows_returned"]`), `chart_header` (live DB values:
+Lagna=Aries 12.43°, Moon=Aquarius, Sun=Capricorn, current Mercury MD/Saturn AD — matches FORENSIC
+anchors), `epistemic` (`grade: structural_prior`), `timing` (`as_of_date`/`computed_at` populated).
+One partial gap: `grounding.fact_ids`/`citations` still empty even under v3 despite the served rows
+carrying real `fact_id`/`citation_ref` values — the grounding-extraction wiring is incomplete for
+this instrument; flagged to R5_PUNCHLIST, not a regression (was never populated before either).
+
+### §19 fix — live behavior
+
+No direct container-filesystem inspection is possible, but the v3 response's internal consistency
+(chart_header/epistemic/timing all present and mutually coherent, no stale/duplicate-looking
+values) is consistent with the generated (not hand-mirrored) envelope module actually running.
+
+### P1–P8 restate (unchanged from W0a Ring-2 except P3 additionally improved)
+
+Live spot-check: **P1** — `ganita_dashas_get(as_of_date=2010-01-01)` correctly returns the
+2005-2013 Mars Ashtottari period containing that date (fix holds). **P3** — now has a genuine v3
+opt-in fix (see above), legacy stays hollow by design pending the W4 default flip. **P4, P8** —
+unchanged from W0a's already-confirmed fixed state (not independently re-verified here, no W0b
+lane touched them). **P5, P6, P7, NF-1** — unchanged, still open, carried forward; W0b did not
+target them.
+
+### Perf sample (live, `ganita_yogas_get`, 3 calls each)
+
+Legacy: 751ms / 513ms / 548ms. v3: 628ms / 586ms / 731ms. Comparable — the extra `chart_header`
+fetch (60s-cached) and field population add no material overhead within this sample's noise band.
+
+### Overall Ring-2 verdict: **PASS**
+
+Legacy format confirmed byte-shape-unchanged (no HALT condition triggered); v3 opt-in confirmed
+genuinely populated on live prod, not a worktree-only claim; the §19 single-source violation a
+verifier ring caught pre-merge is resolved and its fix is live; perf is comparable; P1–P8 status
+restates cleanly with no new regressions. One partial gap (grounding extraction) and the pre-existing
+P3/P5/P6/P7/NF-1 carry-forwards go to R5_PUNCHLIST per the brief's non-blocking-findings rule.
+
+**HALTs:** none.
