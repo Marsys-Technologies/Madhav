@@ -382,3 +382,78 @@ export function buildHierarchicalProfiles(
   profiles.sort((a, b) => b.aggregate_score - a.aggregate_score)
   return profiles.slice(0, top_k_entities)
 }
+
+// ── R5.1 C2 item 2 — digest family-aggregation (E-6 completion) ──────────────
+
+/**
+ * One "family" of atomic signals collapsed into a single composite row for the
+ * top band. A family is the same classical construct repeated per-varga for the
+ * same graha — e.g. `graha_dignity_per_varga:dignity_state` for Saturn recurs
+ * ~20 times (once per varga), and because dignity strength is graha-driven, the
+ * composite scores cluster tightly. Left un-collapsed, this floods the top band
+ * with near-duplicate "dignity rows" for one graha, crowding out other distinct
+ * findings — the tie-block the native's closing probe observed on this class of
+ * signal specifically.
+ *
+ * `buildHierarchicalProfiles` (above) already solves this at the GRAHA axis
+ * (one row per planet, across every signal_type_class). This function solves
+ * the finer axis: within the still-atomic top-band list, collapse repeats of
+ * the SAME (graha × signal_type_id) construct into one representative row.
+ * Never fabricates or averages a score (B.10) — the representative is exactly
+ * the highest-final_rank_score member of its family, unmodified; the rest are
+ * demoted to `family_member_pointers` (signal_ids), still reachable via
+ * query_signals, never deleted from the underlying data.
+ */
+export interface FamilyCollapsedSignal extends ScoredSignal {
+  /** True if this row represents a family of >1 near-duplicate atomic signals. */
+  is_family_composite: boolean
+  /** Grouping key: `${graha}::${signal_type_id}` (or bare signal_type_id if no graha resolves). */
+  family_key: string
+  /** Total atomic signals in this family (including the representative itself). */
+  family_member_count: number
+  /** signal_ids of the OTHER family members (excludes the representative) — drill via query_signals. */
+  family_member_pointers: string[]
+}
+
+/**
+ * Collapse same-family atomic signals within a composite-ranked pool down to one
+ * representative row per family, ordered by final_rank_score DESC (unchanged
+ * scores — pure grouping, no re-derivation). Call BEFORE slicing to a top-K
+ * window so the collapsed representative — not N near-duplicate atoms — occupies
+ * the top-band slot.
+ *
+ * Family key: `${primary_graha}::${signal_type_id}` when a graha resolves
+ * (extractPrimaryGraha), else bare `signal_type_id` (still meaningfully groups
+ * e.g. repeated convergence-count signals with no single graha attribution).
+ * Signals with neither a graha NOR a signal_type_id are never grouped (each is
+ * its own family of 1) — nothing is dropped silently.
+ */
+export function collapseSignalFamilies(scored: ScoredSignal[]): FamilyCollapsedSignal[] {
+  const groups = new Map<string, ScoredSignal[]>()
+  for (const s of scored) {
+    const graha = extractPrimaryGraha(s)
+    const typeId = s.signal_type_id ?? null
+    const key = graha && typeId ? `${graha.toUpperCase()}::${typeId}`
+      : typeId ? typeId
+      : `__singleton__:${s.signal_id}`
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(s)
+    else groups.set(key, [s])
+  }
+
+  const collapsed: FamilyCollapsedSignal[] = []
+  for (const [key, rows] of groups) {
+    const sortedRows = [...rows].sort((a, b) => b.final_rank_score - a.final_rank_score)
+    const representative = sortedRows[0]
+    collapsed.push({
+      ...representative,
+      is_family_composite: rows.length > 1,
+      family_key: key,
+      family_member_count: rows.length,
+      family_member_pointers: sortedRows.slice(1).map(r => r.signal_id),
+    })
+  }
+
+  collapsed.sort((a, b) => b.final_rank_score - a.final_rank_score)
+  return collapsed
+}

@@ -3,12 +3,13 @@
  * =================================================================
  * Reads synthesis_quality_scorecard (bo_pramana_mapa, 2 rows).
  *
- * CRITICAL NOTE on DEFECT-001:
- * The scorecard field unresolved_constituent_facts_count=0 is a FALSE PASS.
- * This field was computed by the Bodha writer BEFORE the L1 rebuild that
- * changed all SHA-keyed fact_ids. The actual orphan count is 61,161/66,832
- * (91.5% of constituent_facts_array references are unresolvable).
- * This tool annotates this false pass in its output — never suppress it.
+ * E-2 freshness contract on DEFECT-001 (R5.1 C2 item 1):
+ * The scorecard field unresolved_constituent_facts_count was computed by the Bodha
+ * writer BEFORE a since-completed L1 rebuild, and its stored value should not be taken
+ * at face value. Rather than restate the historical "91.5% orphan (OPEN)" literal —
+ * which post-R4 is FALSE and would mislead worse than no note at all — this tool
+ * re-derives the CURRENT orphan rate live against chart_facts on every call and returns
+ * it as structured data (`defect_001` — `{ status, note, as_of, expires_on, metrics }`).
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
@@ -16,6 +17,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { deriveDefect001Note } from '../../../provenance/freshness_notes'
 
 export const queryQualityScorecardCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_quality_scorecard',
@@ -26,9 +28,10 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
   description: [
     'Returns the Bodha synthesis quality scorecard for a chart.',
     'Source: synthesis_quality_scorecard (keyed by chart_id + build_id; no ayanamsha split).',
-    'CRITICAL: unresolved_constituent_facts_count in the scorecard reads 0 (FALSE PASS).',
-    'Actual orphan count is ~61,161/66,832 (91.5%) per DEFECT-001 (OPEN).',
-    'This tool annotates the false pass in its output — use defect_001_alert in the response.',
+    'CRITICAL: unresolved_constituent_facts_count in the stored scorecard row may be stale —',
+    'it was computed before a since-completed L1 rebuild. This tool re-derives DEFECT-001',
+    'live on every call (E-2 freshness contract) — read `defect_001` in the response for the',
+    'CURRENT orphan rate, not the stored scorecard field.',
     'Use this tool to assess Bodha build quality before trusting constituent_facts provenance.',
   ].join(' '),
 
@@ -89,23 +92,29 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
       const result = await query<Record<string, unknown>>(scorecardSql, [chart_id])
       const scorecard = result.rows[0] as Record<string, unknown> | undefined
 
+      // E-2 freshness contract: re-derive DEFECT-001 live rather than trusting the stored
+      // unresolved_constituent_facts_count (computed by the writer before the L1 rebuild).
+      const defect001 = await deriveDefect001Note(chart_id)
+
       return {
         content: {
           chart_id,
           ayanamsha_id,
           scorecard: scorecard ?? null,
           no_data: !scorecard,
+          // Structured, live-derived — read this, not the stored scorecard field.
+          defect_001: defect001,
+          // Legacy field retained (additive) for callers of the prior wave's shape; text
+          // now sourced from the same live derivation rather than a hardcoded literal.
           defect_001_alert: {
-            severity: 'HIGH',
+            severity: defect001.status === 'RESOLVED' ? 'INFO' : defect001.status === 'UNKNOWN' ? 'UNKNOWN' : 'HIGH',
             message: [
-              'DEFECT-001 (OPEN): unresolved_constituent_facts_count in the scorecard is a FALSE PASS.',
-              'The Bodha writer computed this field before the L1 SHA hash rebuild.',
-              'Actual orphan count: ~61,161/66,832 constituent_facts_array references (91.5%).',
-              'Do NOT use this count as evidence of L1 provenance completeness.',
+              `DEFECT-001 status (derived live, as_of=${defect001.as_of}): ${defect001.status}.`,
+              defect001.note,
+              'The stored scorecard field unresolved_constituent_facts_count may not reflect this —',
+              'it was computed by the Bodha writer before the L1 SHA hash rebuild and is not refreshed here.',
             ].join(' '),
-            actual_orphan_count_estimate: 61161,
-            total_constituent_refs_estimate: 66832,
-            orphan_rate_pct: 91.5,
+            ...defect001.metrics,
           },
         },
         is_error: false,
