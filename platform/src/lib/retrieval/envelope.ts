@@ -164,12 +164,26 @@ export type DrillPointerType =
   | 'tail_dissent'
   | 'other'
 
+/**
+ * PACT chain stage marker (design §26 + §28.3 — "the same PACT chain the L4 redesign
+ * already encodes at the data layer"). The four classically-falsifiable stages, in
+ * chain order: PROMISE (judgment_query's checklist verdict) → CONFIRMATION (operative-
+ * varga check) → ACTIVATION (which promise-carrier dasha, when) → TRIGGER (transit gate
+ * in-window). A drill_pointer carrying `pact_stage` names WHICH stage firing this
+ * pointer would advance to — the mechanism the brief calls "typed pointers chain
+ * through all four stages". Optional/additive, same discipline as `pointer_type`.
+ */
+export type PactStage = 'promise' | 'confirmation' | 'activation' | 'trigger'
+
 export interface DrillPointer {
   instrument: string
   hint: string
   /** Astrologically typed classification of this pointer's classical move (design §28.4).
    *  Optional/additive — see DrillPointerType doc comment. */
   pointer_type?: DrillPointerType
+  /** Which PACT-chain stage firing this pointer advances to (design §28.3 + §30 chain-honesty
+   *  acceptance). Optional/additive — absent on pointers outside a PACT investigation. */
+  pact_stage?: PactStage
 }
 
 // ── envelope shapes ────────────────────────────────────────────────────────────

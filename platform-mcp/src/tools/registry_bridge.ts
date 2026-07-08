@@ -49,6 +49,7 @@ import {
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
+  type PactStage,
 } from '../generated/envelope.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -166,7 +167,7 @@ function envelope(
     verdict?: unknown
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
-    drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
+    drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[]
     judgment_flags?: string[]
     as_of_date?: string
   },
@@ -1485,6 +1486,117 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         })
       } catch (err) {
         return errorOutput('graha_portrait', String(err), { chart_id, graha })
+      }
+    }
+  )
+
+  // ── pact_query (R5 W4, design §26/§28.3 — the PACT protocol as one chained ──
+  // investigation) — marsys://tool/L-PACT/pact_query
+  //
+  // MANDATORY W2-lesson check (per the R5 run brief standing requirement): every
+  // param the capability accepts (chart_id, ayanamsha_id, domain, bhava, as_of_date,
+  // max_signals) is declared in this Zod schema AND explicitly threaded through the
+  // callRegistryCapability args object below — none spread blindly. Verified against
+  // register_d10_pact.ts's input_schema before wiring this call.
+  server.tool(
+    'pact_query',
+    'THE PACT PROTOCOL (design §26/§28.3) as one chained investigation for event/timing ' +
+    'questions — the classical predictive grammar "promise in the rashi → confirmation in ' +
+    'the varga → activation in the dasha → trigger in the transit", walked stage by stage. ' +
+    'HALTS HONESTLY the moment a stage is classically denied rather than fabricating the ' +
+    'stages after it (B.10) — pact_status reports denied_at_promise / denied_at_confirmation / ' +
+    'denied_at_activation / chain_pending_activation / chain_complete. Stage 1 PROMISE runs ' +
+    'judgment_query\'s full checklist verdict (design §28.1). Stage 2 CONFIRMATION checks the ' +
+    'promise-carrying bhāveśa/kāraka\'s dignity IN the operative varga (e.g. D9 for marriage). ' +
+    'Stage 3 ACTIVATION locates which Vimshottari mahadasha carries that lord/kāraka: active ' +
+    'now, upcoming (pending — NOT a denial), or none found (denied). Stage 4 TRIGGER, only ' +
+    'reached when ACTIVATION is active now, fetches the transiting tropical position for the ' +
+    'activating graha(s) as an honest PARTIAL gate check (full sidereal vedha/aspect gating is ' +
+    'a documented data-plane gap, reported not fabricated). Pass `domain` or `bhava` exactly ' +
+    'as judgment_query accepts. response_format=\'v3\' (opt-in; default \'legacy\') returns the ' +
+    'R5 unified envelope with typed drill_pointers carrying `pact_stage` metadata.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      domain: z.string().optional().describe(
+        'Life-domain name, resolved via judgment_query\'s shastra map (design §28.5): ' +
+        'marriage/relationship/partnership, career/vocation, wealth/finance, health/vitality, ' +
+        'progeny/children, education, spirituality. Takes precedence over `bhava` if both given.'
+      ),
+      bhava: z.number().int().min(1).max(12).optional().describe(
+        'Bhava (house) number 1-12, same semantics as judgment_query. Required if `domain` is omitted.'
+      ),
+      as_of_date: z.string().optional().describe(
+        'Date (YYYY-MM-DD) to evaluate ACTIVATION/TRIGGER as-of. Default: today.'
+      ),
+      response_format: z.enum(['legacy', 'v3']).optional().describe(
+        "Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
+        "drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."
+      ),
+      max_signals: z.number().int().min(1).max(50).optional().describe(
+        'Forwarded to judgment_query for the PROMISE stage (default: 15, max: 50).'
+      ),
+    },
+    async ({ chart_id, ayanamsha_id, domain, bhava, as_of_date, response_format, max_signals }) => {
+      if (!chart_id) return errorOutput('pact_query', 'chart_id is required')
+      if (!domain && bhava === undefined) {
+        return errorOutput('pact_query', 'either `domain` or `bhava` is required')
+      }
+      try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
+
+        // B.11: fetch holistic orientation alongside the PACT chain (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+          fetchOrientationContext(chart_id, resolvedAyanamsha),
+          callRegistryCapability(
+            'marsys://tool/L-PACT/pact_query',
+            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, as_of_date, max_signals },
+            chart_id
+          ),
+        ])
+        const wrapper = raw as Record<string, unknown>
+        const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        if (format !== 'v3') {
+          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'pact_query') })
+        }
+
+        // ── v3 population ──────────────────────────────────────────────────
+        const factIdRefs = (inner['fact_id_refs'] as string[]) ?? []
+        const grounding = { fact_ids: factIdRefs, citations: [], grounding_score: null }
+        const stages = (inner['stages'] as Record<string, unknown>[]) ?? []
+        const pactStatus = inner['pact_status'] as string | undefined
+
+        const verdict = {
+          pact_status: pactStatus,
+          stages_completed: stages.length,
+          stages: stages.map(s => ({ stage: s['stage'], status: s['status'] })),
+          note: 'Chain-honesty verdict (design §30 W4 acceptance): a denied stage halts the chain — ' +
+            'stages_completed < 4 with pact_status starting "denied_at_" is a CORRECT honest halt, ' +
+            'not a failure. pact_status="chain_complete" means all four stages ran and cite fact_id_refs.',
+        }
+
+        const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
+        const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[]) ?? []
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        return dualOutput({
+          orientation_context, orientation_ok,
+          ...envelope(inner, 'pact_query', undefined, 'v3', {
+            chart_header, verdict, grounding, drill_pointers, judgment_flags,
+          }),
+        })
+      } catch (err) {
+        return errorOutput('pact_query', String(err), { chart_id })
       }
     }
   )

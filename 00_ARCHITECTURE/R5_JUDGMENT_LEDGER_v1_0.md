@@ -1148,4 +1148,98 @@ added to `SHASTRA_MAP` later with a citation (a future wave choosing e.g. BPHS's
 8th-house/Saturn/D8 longevity assignment) without touching `judgment_query`'s existing seven
 entries or its bare-bhava fallback path.
 
-No further entries — this ledger reopens for W4+ waves.
+---
+
+### JL-019 — W4 `pact_query` lane (`r5/w4-pact-protocol`): new capability vs. pure typed-pointer
+navigation, the four PACT stage names, and the CONFIRMATION/ACTIVATION denial thresholds
+
+**question 1 (new capability vs. navigation-only):** design §29's "Adopted" verdict frames the
+estate as "15 substrate instruments + `judgment_query` + `graha_portrait` (17 total)... the
+`about`/`frame`/`paradigm` facets + the address resolver + PACT protocol + typed pointers +
+shastra map deliver the astrology-native navigation" — read narrowly, this could mean PACT is
+delivered ENTIRELY via typed `drill_pointers` chaining the existing 17 tools, with no 18th
+endpoint. But design §30 (W4 wave-absorption) requires the W4 battery to grade "PACT questions...
+on chain honesty (a denied promise must halt, a delivered prediction must cite all four stages)"
+— and §28.3 itself says "each stage can HALT the chain classically... a denied promise ends the
+investigation in two calls, honestly." A halting property that must be gate-VERIFIED (not merely
+documented as a convention an LLM caller might or might not honor) requires something that
+actually executes the chain and can stop mid-flight; typed pointers alone are pure routing
+metadata with no execution semantics — they cannot themselves "halt" anything.
+
+**ruling 1:** build BOTH halves, but keep them cleanly separated. (a) `pact_stage` — a new
+optional/additive field on `DrillPointer` (`envelope.ts`, mirrored via the EXISTING `npm run
+codegen:envelope` pipeline into `platform-mcp/src/generated/envelope.ts` — no hand-mirror, per
+design §19) — is the pure NAVIGATION half: it marks which of the four PACT stages a given pointer
+advances to, using the SAME closed `pointer_type` vocabulary already shipped in W3
+(`confirm_in_varga`→confirmation, `dasha_of_promise`→activation, `transit_gate`→trigger,
+`check_bhanga`→promise-recheck) — zero new pointer_type values invented, only a stage label layered
+on top. (b) `pact_query` (`marsys://tool/L-PACT/pact_query`, D10) is a NEW capability — the 18th —
+that WALKS the chain end-to-end and halts. It adds no parallel data-fetch logic: stage 1 delegates
+its ENTIRE computation to `judgmentQueryCapability.handler` (W3's own `judgment_query`, unmodified);
+stage 3 reuses `judgment_query`'s own already-fetched `checklist.timing_hooks` (no second
+`get_dashas` call); stage 4 calls the existing `query_planet_transit` (L0) unchanged. This is the
+narrowest capability-surface increase that makes chain-honesty a gate-verifiable server property
+rather than a documented-only convention, while everything it touches was already shipped.
+
+**question 2 (what are the four stage names, exactly):** the brief's own guess ("Promise →
+Activation → Confirmation → Timing, or similar") does not match the design text and the design's
+own prose order (§26: "promise in the rashi → confirmation in the varga → activation in the dasha
+→ trigger in the transit") does not literally spell "PACT" if read as an initialism in listed
+order (P-C-A-T, not P-A-C-T) — the acronym is the tradition's name for the whole chain, not a
+strict first-letter mnemonic of the stage list as written.
+
+**ruling 2:** the four stages, exactly as design §26/§28.3 name them, IN CHAIN ORDER, are: **1.
+PROMISE** (judgment_query's checklist verdict on the matter) → **2. CONFIRMATION** (operative-varga
+check) → **3. ACTIVATION** (which promise-carrier dasha, when) → **4. TRIGGER** (transit gate
+in-window). Design §28.3 additionally names a "posterior (phala_query anchors)" step AFTER trigger
+— explicitly NOT counted among the four PACT-named stages in either §26 or the brief's own "four
+stages" framing, so `pact_query` implements exactly four and does not attempt a fifth posterior
+stage this wave (flagged as a natural W5+ extension, not a gap in this wave's scope).
+
+**question 3 (CONFIRMATION/ACTIVATION denial thresholds — not specified numerically by the
+design):** the design says CONFIRMATION checks "does the operative varga confirm the promise" and
+ACTIVATION asks "which dasha, when" but gives no numeric denial threshold for either — an
+implementation judgment call was required.
+
+**ruling 3:** CONFIRMATION reuses the EXACT SAME closed `DIGNITY_WEIGHT` vocabulary
+`judgment_query`'s own `gradeGraha()` already uses for D1 (exalted:2 … debilitated:-2 — JL-015's
+already-ratified weighting, not a new one), applied to the bhāveśa/kāraka(s)' dignity IN the
+operative varga (`chart_facts` `graha_dignity_per_varga`, `fact_subject = '{varga}_{code}'` — the
+SAME fact-naming convention verified live against the native chart for D9 rows before wiring:
+`D9_VEN`, `D9_JUP`, etc., confirmed via direct query). Net weight ≤ −2 (one debilitation with no
+compensating factor) → `denied`; a MISSING dignity row (data gap, not a classical finding) is
+reported `inconclusive`, never fabricated as a denial (B.10) — and `inconclusive` does NOT halt the
+chain, only `denied` does. ACTIVATION reuses `judgment_query`'s OWN already-fetched
+`timing_hooks.current` (today's running dasha at any level) and `mahadasha_windows_by_graha` (full
+1900–2100 Vimshottari mahadasha windows for the lord/kāraka) — no second `get_dashas` fetch. No
+current period AND no future window found anywhere in that 200-year range → `denied` ("no dasha can
+deliver it", quoting design §28.3's own worked phrase); no current period but a genuine future
+window exists → `pending`, explicitly NOT a denial (an inactive-yet-to-come window is not a broken
+promise) — TRIGGER is then honestly reported `not_yet` rather than fabricated against a window that
+has not opened yet.
+
+**basis:** B.10 (no fabricated denial from a data gap; no fabricated transit-gate verdict past a
+documented sidereal-conversion gap at stage 4) + JL-015's already-ratified dignity-weight vocabulary
+(reuse, not a parallel invention) + design §19 (single-source: stage 1/3/4 delegate to existing
+handlers, zero parallel fetch logic) + pillar order (ASTROLOGY: ruling 2 resolves strictly from the
+design's own quoted prose, not the brief's admittedly-a-guess stage names).
+
+**reversibility:** fully reversible/additive. `pact_stage` on `DrillPointer` is optional and breaks
+no existing caller (same discipline as W3's `pointer_type`). `pact_query` is a new URI — removing
+it removes nothing from the 17-tool estate `judgment_query`/`graha_portrait` already deliver. The
+CONFIRMATION/ACTIVATION thresholds are isolated constants in `register_d10_pact.ts`, adjustable by
+a future wave with its own citation without touching `judgment_query`.
+
+**verification:** MCP seam mocked-fetch tests (`registry_bridge_r5w4_pact.test.ts`, 5/5 passing)
+pin tool registration + full param forwarding (`chart_id`/`ayanamsha_id`/`domain`/`bhava`/
+`as_of_date`/`max_signals`) + `pact_stage` on v3 `drill_pointers`. Capability-level DB-mocked unit
+tests (`register_d10_pact.test.ts`, 8/8 passing) exercise all four denial/pending/complete paths
+concretely, including a live-shaped example: a `contested` judgment_query verdict halts at ONE
+stage with zero `chart_facts` dignity queries fired (proving stages 2-4 are never attempted, not
+merely mis-reported as skipped). Live-MCP-call verification against Cloud SQL proxy / prod was NOT
+possible this session (the `claude.ai MARSYS-JIS` MCP connector requires interactive OAuth
+authorization not available in this run) — flagged honestly, not silently skipped; `mcp__postgres__query`
+(a separate, already-authorized read-only DB connection) WAS used to verify the `D9_VEN`/`D9_JUP`
+fact_subject convention against the live native chart before wiring the CONFIRMATION stage's SQL.
+
+No further entries — this ledger reopens for W5+ waves.
