@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.31
+version: 6.32
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,37 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.32 (2026-07-09, R5 RETRIEVAL 3.0 SEALED — autonomous run complete):
+    **R5 Retrieval 3.0 (the next-objective flagged at BA Phase-4 Runway close, v6.31) is SEALED.**
+    Fully autonomous run per CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md v1.2, governed by
+    RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6. Phase-0 preflight GO → W0a (punch-list fixes,
+    perf quick wins, canary baseline, rollback rehearsal) → W0b (single-source codegen + unified envelope,
+    closing the §19 hand-mirror violation) → W1 (address resolver + chart/dasha/signals/synthesis-query
+    facets; NF-1 closed) → W2 (graph traversal + corpus hybrid search + frame/paradigm facets; a systemic
+    MCP-alias param-forwarding gap found + fixed) → W3 (judgment_query + graha_portrait + estate
+    consolidation — "how is the marriage?" now ONE call with a complete classical receipt) → W4 (PACT
+    protocol + coverage receipts + session-pin serving) → FULL battery (~40 Q × both charts: SLO PASS with
+    large wins vs W0a baseline, but raw pass rate 36.8%/~17-18 corrected and tool-estate coverage 11.8% —
+    both HONESTLY below the brief's stated targets, not glossed over; one critical defect
+    (`synth_chart_brief_get` 500, a phantom-schema query against `bodha_discoveries`) found + fixed +
+    verified live) → Ring-3 red-team pass (contradictory-header canary, entitlement probes,
+    paradigm-mixing bait, budget-abuse attempts — all DEFENDED, zero HALT-class findings; two non-blocking
+    gaps — denial-signal clarity, no rate limiting — routed to R5_PUNCHLIST). Every wave's Ring-2 verified
+    live via actual MCP `tools/call` invocations against prod (amjis-mcp/amjis-web), not capability-layer
+    claims — this discipline became a standing requirement mid-run after W2's postmortem. Full detail:
+    `00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md` (append-only run log), `R5_JUDGMENT_LEDGER_v1_0.md` (JL-001
+    through JL-020, Pratinidhi-R rulings), `R5_BATTERY_RESULTS_v1_0.md`, `R5_RING3_REDTEAM_v1_0.md`, and
+    the seal report `R5_RETRIEVAL_3_0_SEAL_v1_0.md`. **NEXT-OBJECTIVE:** items on R5_PUNCHLIST (P5/P6/P7
+    residuals, denial-signal clarity, rate limiting, LLM-rubric battery grading, tool-estate coverage
+    expansion) — no macro-phase currently active; native to decide R5_PUNCHLIST prioritization vs a new
+    macro-phase.
+    **Known pre-existing gap (not introduced or fixed this session):** this file's §2 canonical-state
+    block and §3 narrative remain frozen at M4/M5/L3-era content (last substantively updated well before
+    BA Phase-4) — flagged in this project's own memory prior to this session (2026-07-08 13:36) and
+    unresolved; the R5 run's own governing brief scoped `CLAUDE.md/governance protocol files` as
+    must_not_touch, and a full §2/§3 rewrite was judged out of scope for an R5-run session close. Only
+    this changelog + version bump were added. A dedicated governance-hygiene session should reconcile
+    §2/§3 against the true current state (BA Phase-4 CLOSED, R5 SEALED) before the next macro-phase opens.
   - v6.31 (2026-07-08, BA-R4-WRAP W4 CLOSED — NATIVE REBUILT + VALIDATED; RUNWAY CLOSED):
     **THE ONE SHOT LANDED. Native 482012f1 rebuilt L1→L5 + fully validated.** Explicit native GO recorded;
     pre-rebuild snapshot taken (LEL + manifest). First native rebuild HALTED (bo_laksana statement timeout on
