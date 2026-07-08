@@ -666,15 +666,32 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'traverse_graph',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      seed_signal_ids: z.array(z.string()).min(1).describe(
-        'Seed signal UUIDs to start traversal from (use signal_id values from get_signals).'
+      seed_signal_ids: z.array(z.string()).min(1).optional().describe(
+        'Seed signal UUIDs to start traversal from (use signal_id values from get_signals). ' +
+        'Alternative to about/about_from/about_to for address-seeded traversal (R5 W2).'
       ),
       mode: z.enum(['neighbors', 'paths', 'cluster']).optional().describe(
         'Traversal mode: neighbors (adjacent nodes), paths (shortest paths between seeds), cluster (community). Default: neighbors.'
       ),
       depth: z.number().int().min(1).max(3).optional().describe('Traversal depth (default: 2, max: 3)'),
+      about: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression (AddressExpression object or DSL string, e.g. "lord_of(bhava 10)") ' +
+        'seeding neighbors mode — resolved via the shared address resolver.'
+      ),
+      about_from: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode start node, e.g. "lord_of(bhava 10)".'
+      ),
+      about_to: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode end node, e.g. {type:"graha", graha:"Moon"}.'
+      ),
+      direction: z.enum(['directed', 'both']).optional().describe(
+        'R5 W2: directed follows real from_node_id→to_node_id edges only; both treats edges as undirected. Default: both.'
+      ),
+      min_strength: z.number().min(0).max(1).optional().describe(
+        'R5 W2: filter traversal/edges to computed_strength >= this floor.'
+      ),
     },
-    async ({ chart_id, seed_signal_ids, mode, depth }) => {
+    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
@@ -682,7 +699,17 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id),
           callRegistryCapability(
             'marsys://tool/L2/traverse_chart_graph',
-            { chart_id, seed_signal_ids, mode: mode ?? 'neighbors', depth: depth ?? 2 },
+            {
+              chart_id,
+              seed_signal_ids,
+              mode: mode ?? 'neighbors',
+              depth: depth ?? 2,
+              about,
+              about_from,
+              about_to,
+              direction,
+              min_strength,
+            },
             chart_id
           ),
         ])
@@ -1103,8 +1130,23 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       target_node: z.string().uuid().optional().describe('Target node UUID for paths mode.'),
       query_text: z.string().optional().describe('Semantic seed: finds top-3 similar nodes and runs BFS from them.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      about: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression (e.g. "lord_of(bhava 10)") seeding neighbors mode — resolved via the shared address resolver.'
+      ),
+      about_from: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode start node, e.g. "lord_of(bhava 10)".'
+      ),
+      about_to: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode end node, e.g. {type:"graha", graha:"Moon"}.'
+      ),
+      direction: z.enum(['directed', 'both']).optional().describe(
+        'R5 W2: directed follows real from_node_id→to_node_id edges only; both treats edges as undirected. Default: both.'
+      ),
+      min_strength: z.number().min(0).max(1).optional().describe(
+        'R5 W2: filter traversal/edges to computed_strength >= this floor.'
+      ),
     },
-    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id }) => {
+    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength }) => {
       if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
       try {
         // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
@@ -1121,6 +1163,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(seed_node ? { seed_node } : {}),
               ...(target_node ? { target_node } : {}),
               ...(query_text ? { query_text } : {}),
+              ...(about ? { about } : {}),
+              ...(about_from ? { about_from } : {}),
+              ...(about_to ? { about_to } : {}),
+              ...(direction ? { direction } : {}),
+              ...(min_strength != null ? { min_strength } : {}),
             },
             chart_id
           ),
