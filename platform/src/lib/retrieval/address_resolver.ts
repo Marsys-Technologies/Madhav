@@ -231,6 +231,20 @@ function assertZodiacSign(sign: string): asserts sign is ZodiacSign {
   }
 }
 
+/** Inverse of `signAtHouseOffset` — given a reference sign and a target sign, which house
+ *  (1..12, whole-sign) is the target counted-from-reference in? Pure arithmetic, no I/O.
+ *  This is the exact math R5 W2 (frame facet, design §27.3) needs to re-base a graha's
+ *  lagna-relative `house_d1` into a `frame`-relative house WITHOUT a parallel resolver —
+ *  it is the one new primitive this lane adds, everything else reuses `resolveFrameSign`
+ *  (exported below as `resolveFrameReferenceSign`) for frame → reference-sign resolution. */
+export function houseCountedFrom(referenceSign: ZodiacSign, targetSign: ZodiacSign): number {
+  const refIdx = ZODIAC_SIGNS.indexOf(referenceSign)
+  const targetIdx = ZODIAC_SIGNS.indexOf(targetSign)
+  if (refIdx === -1) throw new AddressResolutionError(`"${referenceSign}" is not a recognized zodiac sign.`)
+  if (targetIdx === -1) throw new AddressResolutionError(`"${targetSign}" is not a recognized zodiac sign.`)
+  return ((targetIdx - refIdx + 12) % 12) + 1
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // § DB reads
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,6 +356,22 @@ async function resolveFrameSign(
   }
   assertZodiacSign(row.fact_value_text)
   return { sign: row.fact_value_text, fact_ids: [row.fact_id] }
+}
+
+/**
+ * PUBLIC wrapper over `resolveFrameSign` — R5 W2 (frame facet, design §27.3) consuming
+ * surfaces (get_positions, get_strength, query_signals) call this to re-base
+ * positional/strength/signal facts onto a non-lagna reference frame, rather than
+ * re-deriving frame → reference-sign resolution themselves (single-source mandate,
+ * design §19 — the resolver already solved this in W1; don't build a parallel one).
+ */
+export async function resolveFrameReferenceSign(
+  chart_id: string,
+  frame: ReferenceFrame,
+  opts?: { ayanamsha_id?: string },
+): Promise<{ sign: ZodiacSign; fact_ids: string[] }> {
+  const ctx: ResolveCtx = { chart_id, ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA }
+  return resolveFrameSign(ctx, frame)
 }
 
 async function fetchD1OccupantsOfHouse(ctx: ResolveCtx, house: number): Promise<{ grahas: string[]; fact_ids: string[] }> {

@@ -4,7 +4,8 @@ version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
 lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
   JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
-  (W1 Ring-1 reconciliation, r5/w1-reconcile) recorded
+  (W1 Ring-1 reconciliation, r5/w1-reconcile), JL-011 (W2 frame-facet lane, r5/w2-frame-facet)
+  recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -554,4 +555,81 @@ need to re-adapt if a future wave reverted to object-shaped steps — but no suc
 choice leaves the server-side default question completely open for a future wave to decide either
 way with no sunk cost from this pass.
 
-No further entries — this ledger reopens for W2+ waves.
+### JL-011 — W2 frame-facet lane: scope of `frame` on get_strength/query_signals (annotate vs. recompute) + reuse of the internal frame-sign resolver
+
+**context:** R5 W2 (lane `r5/w2-frame-facet`, design §27.3) asks for a `frame` facet on
+"positional/strength/signal surfaces." `get_positions.ts` is the clean case: `house_d1` is a
+stored lagna-relative number, and re-basing it onto another frame (chandra/surya/arudha/
+karakamsha) is a pure re-derivation of the SAME underlying fact (the graha's sign), so serving
+`house_from_frame` alongside the stored `house_d1` is uncontroversial. Two questions were less
+obvious and needed a ruling before touching `get_strength.ts` (L1) and `query_signals.ts` (L2):
+
+**question (a):** `graha_in_house_composite_strength` and similar strength categories store a
+FULL 12-row table per graha (`<GRAHA>_IN_HOUSE_1`..`_12`) — build-time formula output, not a
+single "current house" value. Does `frame` mean (i) recompute the strength NUMBERS for the
+graha's frame-relative house, or (ii) just tell the caller WHICH of the 12 already-served rows
+is the graha's actual house under that frame, leaving the numbers untouched?
+
+**question (b):** `bodha_msr_signals` (L2, query_signals) carries `computed_salience`,
+`house_weight_multiplier`, and other multi-factor composite-ranking fields. Does `frame` filter
+or re-rank these signals for a non-lagna frame, or does it only add context?
+
+**question (c):** Should the query surfaces call the exported `resolveAddress`/
+`parseAddressExpression` DSL, or should they use a lighter direct entry point into the same
+frame-sign resolution the address resolver already does internally?
+
+**ruling:**
+(a) **(ii) — annotate, never recompute.** Strength numbers (Shadbala, Vimsopaka, Ishta/Kashta,
+the house-composite table, etc.) are build-time formula output and are explicitly
+`must_not_touch` per the R5 brief ("salience/priors/formula constants frozen"). `get_strength.ts`
+now returns a `frame_context.active_house_by_graha` map (each graha's real house counted from the
+requested frame) so the caller can pick out the correct `<GRAHA>_IN_HOUSE_<N>` row from the SAME
+response — the classical judgment ("read Jupiter's in-house strength from Moon") becomes
+answerable in one call without inventing a second, frame-conditioned strength formula that no
+writer has ever computed or classically defined at build time.
+
+(b) **Annotate only, same reasoning.** `query_signals.ts` now accepts `frame` and, when
+non-lagna, returns a `frame_context` block (reference sign + each graha's frame-relative house)
+alongside the UNCHANGED signal rows and UNCHANGED `computed_salience`/composite-ranking output.
+A signal (e.g. a yoga, a dosha, a composite state) is a classical fact about the chart that does
+not stop being true under a different counting frame — what changes is only how its BHAVA
+relevance is judged, which the frame_context gives the caller the arithmetic for. Recomputing
+salience per-frame would require a second, frame-conditioned formula variant that does not exist
+in the frozen salience/priors surface and was explicitly out of this lane's scope.
+
+(c) **Direct entry point — added `resolveFrameReferenceSign` (a public wrapper over the existing
+internal `resolveFrameSign`) and a new pure-arithmetic export `houseCountedFrom` (the exact
+inverse of the already-exported `signAtHouseOffset`) to `address_resolver.ts`, rather than
+routing through the `AddressExpression`/DSL layer.** The DSL (`bhava_from`, `occupants_of`, etc.)
+is built for per-address queries where the caller names ONE house/graha at a time; `get_positions`
+/`get_strength`/`query_signals` need to re-base MANY rows returned from a single bulk query in one
+pass. Building N `bhava_from` calls (one per row) would mean N extra round-trips into the
+resolver's own DB reads, when the frame's reference sign only needs to be resolved ONCE per
+response and the rest is index arithmetic already available from data already in-hand (the
+`sign` column of the very rows being served). Exporting the two small primitives keeps a single
+source of truth for "frame → reference sign" and "sign → house-from-reference" (the DESIGN
+§27.2 resolver already owns and is tested for both directions) while avoiding a second resolver
+implementation — the exact duplication trap W1 hit and fixed once already (per this brief's
+explicit warning).
+
+**basis:** (a)/(b) B.10 ("no fabricated computation," generalized here to "no fabricated
+per-frame formula variant") + the R5 brief's explicit `must_not_touch` on salience/priors/formula
+constants — a correctness/honesty-tier call, not a code-convenience one: recomputing these
+numbers per-frame would be presenting a number nothing in the build pipeline ever computed. (c)
+design §19 single-source mandate (direct textual basis) + pillar order — reuse over rebuild is
+listed ahead of code-convenience in the authority dossier, and the brief names this exact
+duplication trap as something W1 already paid down once.
+
+**reversibility:** (a)/(b) fully reversible and additive — `frame_context` is a new field on an
+otherwise-unchanged response shape; removing it later (or later adding a genuinely-computed
+per-frame formula on top of it) affects no existing caller. (c) fully reversible — both new
+exports are pure, side-effect-free wrappers/arithmetic; a future wave replacing them with a
+`bhava_from`-based bulk path would only need to swap the internal call site, not any caller-facing
+contract.
+
+**standalone value if halted here:** `get_positions` frame facet alone (question (a)'s cousin,
+already fully implemented and gate-verified against both canonical charts) independently
+satisfies the W2 "from-Moon in ONE call" gate — the strength/signal annotations are additive
+value on top, not prerequisites for the gate to pass.
+
+No further entries — this ledger reopens for W3+ waves.

@@ -164,6 +164,7 @@ import {
   resolveAddress,
   parseAddressExpression,
   signAtHouseOffset,
+  houseCountedFrom,
   SIGN_LORDS,
   AddressResolutionError,
   type ResolvedGraha,
@@ -189,6 +190,46 @@ describe('signAtHouseOffset', () => {
   it('rejects out-of-range house numbers', () => {
     expect(() => signAtHouseOffset('Aries', 13)).toThrow(AddressResolutionError)
     expect(() => signAtHouseOffset('Aries', 0)).toThrow(AddressResolutionError)
+  })
+})
+
+describe('houseCountedFrom (R5 W2 frame facet — the inverse of signAtHouseOffset)', () => {
+  it('is the exact inverse of signAtHouseOffset over the full 1..12 range', () => {
+    for (const ref of ['Aries', 'Cancer', 'Libra', 'Capricorn'] as const) {
+      for (let house = 1; house <= 12; house++) {
+        const target = signAtHouseOffset(ref, house)
+        expect(houseCountedFrom(ref, target)).toBe(house)
+      }
+    }
+  })
+
+  it('reproduces the from-Moon gate on chart 482012f1 (native) — Moon in Aquarius', () => {
+    // Live-verified against chart_facts (chart_id 482012f1-710e-4a25-994a-93821f5871aa,
+    // lahiri_chitrapaksha): Moon=Aquarius, Jupiter=Sagittarius(house 9 from Lagna),
+    // Sun=Capricorn(10 from Lagna), Saturn=Libra(7 from Lagna), Lagna=Aries.
+    // Manual whole-sign count from Aquarius confirms these from-Moon houses:
+    expect(houseCountedFrom('Aquarius', 'Sagittarius')).toBe(11) // Jupiter: 9th-from-lagna -> 11th-from-Moon
+    expect(houseCountedFrom('Aquarius', 'Capricorn')).toBe(12)   // Sun: 10th-from-lagna -> 12th-from-Moon
+    expect(houseCountedFrom('Aquarius', 'Libra')).toBe(9)        // Saturn: 7th-from-lagna -> 9th-from-Moon
+    expect(houseCountedFrom('Aquarius', 'Aries')).toBe(3)        // Lagna itself -> 3rd-from-Moon
+    expect(houseCountedFrom('Aquarius', 'Aquarius')).toBe(1)     // Moon from itself -> house 1
+  })
+
+  it('reproduces the from-Moon gate on chart 1c826d5a (Abhinandan) — Moon in Gemini', () => {
+    // Live-verified against chart_facts (chart_id 1c826d5a-41cb-4450-b4dc-59d440e5f75a,
+    // lahiri_chitrapaksha): Moon=Gemini, Jupiter=Capricorn(10 from Lagna), Sun=Aquarius
+    // (11 from Lagna), Saturn=Scorpio(8 from Lagna), Lagna=Aries.
+    expect(houseCountedFrom('Gemini', 'Capricorn')).toBe(8)  // Jupiter: 10th-from-lagna -> 8th-from-Moon
+    expect(houseCountedFrom('Gemini', 'Aquarius')).toBe(9)   // Sun: 11th-from-lagna -> 9th-from-Moon
+    expect(houseCountedFrom('Gemini', 'Scorpio')).toBe(6)    // Saturn: 8th-from-lagna -> 6th-from-Moon
+    expect(houseCountedFrom('Gemini', 'Aries')).toBe(11)     // Lagna itself -> 11th-from-Moon
+  })
+
+  it('rejects unrecognized sign strings', () => {
+    // @ts-expect-error — intentionally invalid input for the runtime guard
+    expect(() => houseCountedFrom('NotASign', 'Aries')).toThrow(AddressResolutionError)
+    // @ts-expect-error — intentionally invalid input for the runtime guard
+    expect(() => houseCountedFrom('Aries', 'NotASign')).toThrow(AddressResolutionError)
   })
 })
 
