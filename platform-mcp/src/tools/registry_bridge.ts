@@ -37,6 +37,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -73,16 +74,27 @@ function normalizeAyanamsha(id?: string): string {
 /**
  * Call a platform primitive via /api/mcp/primitives/{tool}.
  * Used for tools (e.g. vector_search) that are not in the registry.
+ *
+ * R5 W0a punch-list fix (P7 — corpus search 401). Root cause per
+ * RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §20: this helper sent only
+ * X-MCP-Internal-Token, but /api/mcp/primitives/[tool]/route.ts's Layer 2 gate
+ * requires X-MCP-User + X-MCP-Key-Id (X-MCP-Audience-Tier is informational).
+ * The working 3-header pattern already existed in resources/capabilities.ts —
+ * copied here per the design doc's named fix class.
  */
 async function callPlatformPrimitive(
   tool: string,
   params: Record<string, unknown>,
+  principal: Principal,
 ): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${tool}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Audience-Tier': principal.role === 'super_admin' ? 'super_admin' : 'client',
+      'X-MCP-Key-Id': principal.key_id,
     },
     body: JSON.stringify({ params }),
     signal: AbortSignal.timeout(20_000),
@@ -129,20 +141,42 @@ function buildCtx(chartId?: string) {
 
 // ── Dual output helper ────────────────────────────────────────────────────────
 
+// S3 fix (R5 W0a perf lane, design §21 serialization tax — measured 2.4x):
+// above this size, skip the redundant text-duplicate serialization. Below it,
+// dual output is still built but WITHOUT pretty-printing (indent:2 was a
+// measured 20-30% byte inflation for zero client benefit — structuredContent
+// already carries the full typed payload).
+const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
+
 /**
  * Build MCP tool response with both structuredContent and text fallback.
  * Provider-spec obligation: dual output per MCP spec.
+ *
+ * R5 W0a punch-list (P3 fix class): dropped the `null, 2` pretty-print indent —
+ * pure serialization padding, no information content.
+ * S3 (R5 W0a perf lane): compact JSON.stringify, not indent:2; above the size
+ * threshold the text fallback is replaced with a pointer to structuredContent
+ * instead of re-serializing the full payload a second time on the wire. See
+ * JL-003 for the 50KB threshold ruling.
  */
 function dualOutput(data: unknown): {
   structuredContent?: { type: 'object'; object: unknown }
   content: Array<{ type: 'text'; text: string }>
 } {
+  const structuredContent = { type: 'object' as const, object: data }
+  const json = JSON.stringify(data)
+  if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
+    return {
+      structuredContent,
+      content: [{
+        type: 'text' as const,
+        text: '[large payload — see structuredContent; text duplicate suppressed per S3 serialization-tax fix]',
+      }],
+    }
+  }
   return {
-    structuredContent: { type: 'object' as const, object: data },
-    content: [{
-      type: 'text' as const,
-      text: JSON.stringify(data, null, 2),
-    }],
+    structuredContent,
+    content: [{ type: 'text' as const, text: json }],
   }
 }
 
@@ -245,7 +279,7 @@ async function fetchOrientationContext(
  * before executing their domain query. The UCD result is included in the
  * response as `orientation_context` so the LLM always has holistic context.
  */
-export function registerRegistryBridgeTools(server: McpServer): void {
+export function registerRegistryBridgeTools(server: McpServer, principal: Principal): void {
 
   // ── get_chart_orientation (L-ORIENT umbrella) ─────────────────────────────
   // marsys://tool/L2/query_ucd
@@ -329,15 +363,21 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens, max_signal_refs, response_format }) => {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before domain drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/query_domain_reading',
-          { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor,
-            ...(response_format ? { response_format } : {}),
-            ...(max_signal_refs != null ? { max_signal_refs } : {}) },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before domain drill.
+        // S1 fix (R5 W0a perf lane): orientation fetch and the domain query are
+        // independent HTTP calls (both hit the platform API) — parallelize
+        // rather than serially awaiting each (measured ~458ms/call added by
+        // the serial UCD pre-fetch; this is the biggest median win in §21).
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L2/query_domain_reading',
+            { chart_id, domain, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), cursor,
+              ...(response_format ? { response_format } : {}),
+              ...(max_signal_refs != null ? { max_signal_refs } : {}) },
+            chart_id
+          ),
+        ])
         // F-021R: Bound the response — default 3 lenses × 20 signals (was 17MB / 90k signal objects)
         // callRegistryCapability returns data.content from the HTTP response, where
         // the handler itself wraps in { content: {...}, is_error: false }. So the
@@ -417,13 +457,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before signal drill
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/query_signals',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before signal drill (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L2/query_signals',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, min_salience, limit: limit ?? 50, cursor, lel_enabled: lel_enabled ?? false },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
@@ -448,13 +490,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, seed_signal_ids, mode, depth }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before graph traversal
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/traverse_chart_graph',
-          { chart_id, seed_signal_ids, mode: mode ?? 'neighbors', depth: depth ?? 2 },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id),
+          callRegistryCapability(
+            'marsys://tool/L2/traverse_chart_graph',
+            { chart_id, seed_signal_ids, mode: mode ?? 'neighbors', depth: depth ?? 2 },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('traverse_graph', String(err), { chart_id })
@@ -540,13 +584,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, date_from, date_to, include_convergence }) => {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before temporal domain query
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L3/query_temporal_activation',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before temporal domain query (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L3/query_temporal_activation',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_temporal_windows', String(err), { chart_id })
@@ -570,13 +616,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections }) => {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before predictive projection
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L3/query_projections',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, horizon_years: horizon_years ?? 5 },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before predictive projection (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L3/query_projections',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, horizon_years: horizon_years ?? 5 },
+            chart_id
+          ),
+        ])
         // F-008: Cap projections array — was 117KB unbounded
         const projData = data as Record<string, unknown>
         const projections = (projData['projections'] as unknown[]) ?? []
@@ -632,13 +680,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, domain, remedy_type }) => {
       if (!chart_id) return errorOutput('get_remedies', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before remedy prescription
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/query_remedies',
-          { chart_id, domain, remedy_type },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before remedy prescription (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id),
+          callRegistryCapability(
+            'marsys://tool/L2/query_remedies',
+            { chart_id, domain, remedy_type },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_remedies', String(err), { chart_id })
@@ -656,13 +706,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id }) => {
       if (!chart_id) return errorOutput('get_chart_quality', 'chart_id is required')
       try {
-        // B.11: fetch holistic orientation before quality/calibration surface
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id)
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/query_quality_scorecard',
-          { chart_id },
-          chart_id
-        )
+        // B.11: fetch holistic orientation before quality/calibration surface (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id),
+          callRegistryCapability(
+            'marsys://tool/L2/query_quality_scorecard',
+            { chart_id },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_chart_quality', String(err), { chart_id })
@@ -710,12 +762,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L-DOMAIN/assess_marriage',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
-          chart_id
-        )
+        // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L-DOMAIN/assess_marriage',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
@@ -734,12 +789,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L-DOMAIN/assess_career',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
-          chart_id
-        )
+        // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L-DOMAIN/assess_career',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
@@ -758,12 +816,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L-DOMAIN/assess_health',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
-          chart_id
-        )
+        // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L-DOMAIN/assess_health',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
@@ -782,12 +843,15 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L-DOMAIN/assess_wealth',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
-          chart_id
-        )
+        // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L-DOMAIN/assess_wealth',
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
@@ -856,21 +920,24 @@ export function registerRegistryBridgeTools(server: McpServer): void {
     async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
       try {
-        const { orientation_context, orientation_ok } = await fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id))
-        const data = await callRegistryCapability(
-          'marsys://tool/L2/traverse_chart_graph',
-          {
-            chart_id,
-            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
-            mode: mode ?? 'neighbors',
-            ...(seed_node_ids ? { seed_node_ids } : {}),
-            ...(depth != null ? { depth } : {}),
-            ...(seed_node ? { seed_node } : {}),
-            ...(target_node ? { target_node } : {}),
-            ...(query_text ? { query_text } : {}),
-          },
-          chart_id
-        )
+        // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
+        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id)),
+          callRegistryCapability(
+            'marsys://tool/L2/traverse_chart_graph',
+            {
+              chart_id,
+              ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              mode: mode ?? 'neighbors',
+              ...(seed_node_ids ? { seed_node_ids } : {}),
+              ...(depth != null ? { depth } : {}),
+              ...(seed_node ? { seed_node } : {}),
+              ...(target_node ? { target_node } : {}),
+              ...(query_text ? { query_text } : {}),
+            },
+            chart_id
+          ),
+        ])
         return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
       } catch (err) {
         return errorOutput('get_cgm_subgraph', String(err), { chart_id })
@@ -948,7 +1015,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
           query_text,
           top_k: top_k ?? 10,
           ...(doc_type ? { doc_type } : {}),
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) {
         return errorOutput('vector_search', String(err))

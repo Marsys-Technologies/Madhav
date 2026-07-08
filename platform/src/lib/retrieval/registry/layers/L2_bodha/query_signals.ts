@@ -278,16 +278,68 @@ export const querySignalsCapability: CapabilityDescriptor = {
       }
 
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
+      // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not
+      // String.length — `.length` counts UTF-16 code units and undercounts the
+      // actual wire byte size for any multi-byte (non-ASCII) content, letting
+      // genuinely oversized payloads slip past this guard.
       let truncated = false
       let truncated_from: number | undefined
       if (signals.length > 0) {
-        const estimatedBytes = JSON.stringify(signals).length
+        const serialized = JSON.stringify(signals)
+        const estimatedBytes = Buffer.byteLength(serialized, 'utf8')
         if (estimatedBytes > 1_500_000) {
           truncated_from = signals.length
           const keepCount = Math.floor(signals.length * (1_400_000 / estimatedBytes))
           signals = signals.slice(0, keepCount)
           truncated = true
         }
+      }
+
+      // E-2 freshness contract (R5 W0a punch-list, P4): the provenance notes below used
+      // to be string literals in this handler ("100% background", "91.5% orphan rate")
+      // that went stale the moment the underlying data was recut — and then
+      // self-contradicted the very rows shipped in the SAME response (P4's finding).
+      // Both notes are now computed live from this response's own served rows.
+
+      const tierCounts: Record<string, number> = {}
+      for (const s of signals) {
+        const tier = (s['signature_tier'] as string | null) ?? 'unknown'
+        tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
+      }
+      const signatureTierNote = signals.length === 0
+        ? 'signature_tier distribution: no rows served in this response.'
+        : `signature_tier distribution in this response (computed live, not a cached historical ` +
+          `figure): ` +
+          Object.entries(tierCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([tier, n]) => `${tier}=${Math.round((n / signals.length) * 100)}%`)
+            .join(', ') +
+          '. Ranking uses computed_salience (coarse) + composite (fine, domain-conditioned) regardless of tier.'
+
+      let defect001Note: string
+      try {
+        const referencedFactIds = Array.from(new Set(
+          signals.flatMap(s => ((s['constituent_facts_array'] as string[] | null) ?? []))
+        )).filter(Boolean)
+        if (referencedFactIds.length === 0) {
+          defect001Note = 'No constituent_facts_array references in this response to check for orphan rate.'
+        } else {
+          const resolvedResult = await query<{ fact_id: string }>(
+            `SELECT fact_id FROM chart_facts WHERE chart_id = $1 AND fact_id = ANY($2::text[])`,
+            [chart_id, referencedFactIds]
+          )
+          const resolvedCount = resolvedResult.rows.length
+          const orphanPct = Math.round((1 - resolvedCount / referencedFactIds.length) * 100)
+          defect001Note = `constituent_facts_array resolution, computed live for this response: ` +
+            `${resolvedCount}/${referencedFactIds.length} referenced fact_id(s) resolve against ` +
+            `chart_facts (${orphanPct}% orphan rate in this page). ` +
+            (orphanPct > 0
+              ? 'Do not error on unresolved joins — treat unresolved refs as reference-only.'
+              : 'All references in this page resolve.')
+        }
+      } catch (e) {
+        defect001Note = `constituent_facts_array orphan-rate check failed live (${String(e)}) — ` +
+          `treat resolution as UNKNOWN for this response rather than assuming any historical figure.`
       }
 
       const responseContent = {
@@ -305,12 +357,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
           ranking_note: useComposite
             ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).`
             : `Salience-ranked (no domain specified — composite ranking requires domain).`,
-          defect_001_note: [
-            'DEFECT-001 OPEN: constituent_facts_array has 91.5% orphan rate.',
-            'Joins from constituent_fact_id to chart_facts will be empty for most signals.',
-            'Do not error on empty constituent_facts joins — this is expected until L2 rebuild.',
-          ].join(' '),
-          signature_tier_note: 'signature_tier is 100% background — ranking uses computed_salience (coarse) + composite (fine, domain-conditioned).',
+          defect_001_note: defect001Note,
+          signature_tier_note: signatureTierNote,
           lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
         },
       }

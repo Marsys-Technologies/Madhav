@@ -1,0 +1,161 @@
+/**
+ * /api/mcp/db/query — whitelisted read-only DB proxy for MCP synthesis tools.
+ *
+ * R5 W0a punch-list fix (P6 — "dissent organ" 404). Root cause per
+ * RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §20: four MCP tools
+ * (synth_tail_divergence_get, bodha_discoveries_get, synth_chart_brief_get,
+ * prashna_undertaking_get — platform-mcp/src/tools/register_p1_synthesis.ts)
+ * call POST /api/mcp/db/query, but the route never existed in the repo.
+ *
+ * This is deliberately NOT a general-purpose SQL executor. It is auth-gated
+ * (same two-layer model as /api/mcp/primitives/[tool]) AND whitelisted:
+ *   - only a single SELECT / WITH-...-SELECT statement is accepted;
+ *   - the statement may reference ONLY tables in ALLOWED_TABLES;
+ *   - write/DDL keywords and statement-separator characters are rejected
+ *     outright, defense-in-depth against the (already-parameterized,
+ *     server-authored) call sites ever drifting toward unsafe SQL.
+ *
+ * Auth model (two-layer, same as /api/mcp/primitives/[tool]):
+ *   Layer 1: X-MCP-Internal-Token — service-to-service secret.
+ *   Layer 2: X-MCP-User + X-MCP-Key-Id — resolved principal (proves an
+ *     authenticated MCP caller, not just the internal-token secret).
+ *
+ * This route does NOT perform per-chart entitlement checks (the query text
+ * is server-authored, not user-authored, and spans multiple tables per call
+ * in some tools — table-level whitelisting is the tractable gate here).
+ * Callers that read chart-scoped data MUST perform their own
+ * remoteAuthorize()/authorizeChartAccess() gate before calling this route
+ * (see register_p1_synthesis.ts call sites, which now do this for every
+ * chart_id-scoped query per the R5 W0a fix).
+ */
+
+import 'server-only'
+import { NextResponse } from 'next/server'
+import { query } from '@/lib/db/client'
+
+export const maxDuration = 20
+
+// ── Layer 1: service-to-service auth ────────────────────────────────────────
+
+function validateServiceToken(req: Request): boolean {
+  const token = req.headers.get('x-mcp-internal-token')
+  const expected = process.env.MCP_INTERNAL_TOKEN
+  if (!expected) {
+    if (process.env.NODE_ENV === 'development') return true
+    console.error('[mcp:db:query] MCP_INTERNAL_TOKEN not set in production')
+    return false
+  }
+  return token === expected
+}
+
+// ── Whitelist: tables the four synthesis tools are known to read ───────────
+
+const ALLOWED_TABLES = new Set([
+  'bodha_discoveries',
+  'bodha_msr_signals',
+  'mimamsa_insight_units',
+  'ga_prashna_judgment',
+  'phala_muhurta',
+  'phala_anchors',
+  'brahma_activity_ontology',
+])
+
+// Forbidden anywhere in the statement: write/DDL verbs and statement separators.
+const FORBIDDEN_PATTERN =
+  /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|COPY|EXECUTE|CALL|VACUUM|MERGE)\b|;|--/i
+
+// Matches identifiers following FROM/JOIN (schema-unqualified; this DB has no
+// cross-schema tables in the whitelist so unqualified matching is sufficient).
+const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?/gi
+
+function validateSql(sql: string): { ok: true } | { ok: false; reason: string } {
+  const trimmed = sql.trim()
+  if (!/^(WITH|SELECT)\b/i.test(trimmed)) {
+    return { ok: false, reason: 'Only SELECT (optionally WITH ... SELECT) statements are permitted.' }
+  }
+  if (FORBIDDEN_PATTERN.test(trimmed)) {
+    return { ok: false, reason: 'Statement contains a forbidden keyword or separator.' }
+  }
+  const referenced = new Set<string>()
+  let m: RegExpExecArray | null
+  TABLE_REF_PATTERN.lastIndex = 0
+  while ((m = TABLE_REF_PATTERN.exec(trimmed)) !== null) {
+    referenced.add(m[1].toLowerCase())
+  }
+  if (referenced.size === 0) {
+    return { ok: false, reason: 'Could not identify any referenced table (FROM/JOIN clause required).' }
+  }
+  for (const t of referenced) {
+    // CTE names (declared in WITH ... AS (...)) are legitimate self-references
+    // that will not appear in ALLOWED_TABLES; only reject real table names.
+    if (!ALLOWED_TABLES.has(t) && !trimmed.match(new RegExp(`\\b${t}\\s+AS\\s*\\(`, 'i'))) {
+      return { ok: false, reason: `Table '${t}' is not in the read-only whitelist for this route.` }
+    }
+  }
+  return { ok: true }
+}
+
+// ── POST handler ─────────────────────────────────────────────────────────────
+
+export async function POST(request: Request) {
+  if (!validateServiceToken(request)) {
+    return NextResponse.json(
+      { ok: false, error: { class: 'auth', message: 'Invalid service token' } },
+      { status: 401 }
+    )
+  }
+
+  const userUid = request.headers.get('x-mcp-user')
+  const keyId = request.headers.get('x-mcp-key-id')
+  if (!userUid || !keyId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          class: 'auth',
+          message: 'Missing principal headers (X-MCP-User, X-MCP-Key-Id)',
+        },
+      },
+      { status: 401 }
+    )
+  }
+
+  let body: { sql?: string; params?: unknown[] }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: { class: 'validation', message: 'Request body must be JSON: { sql, params }' } },
+      { status: 400 }
+    )
+  }
+
+  const sql = body.sql
+  const params = body.params ?? []
+  if (typeof sql !== 'string' || !sql.trim()) {
+    return NextResponse.json(
+      { ok: false, error: { class: 'validation', message: 'sql (string) is required' } },
+      { status: 400 }
+    )
+  }
+
+  const validation = validateSql(sql)
+  if (!validation.ok) {
+    return NextResponse.json(
+      { ok: false, error: { class: 'validation', message: `Rejected by whitelist: ${validation.reason}` } },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const result = await query<Record<string, unknown>>(sql, params)
+    return NextResponse.json({ rows: result.rows ?? [] })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[mcp:db:query] query failed', msg)
+    return NextResponse.json(
+      { ok: false, error: { class: 'internal', message: `Query failed: ${msg}` } },
+      { status: 500 }
+    )
+  }
+}

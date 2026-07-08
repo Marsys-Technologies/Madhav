@@ -1,0 +1,1265 @@
+{
+  "run_at": "2026-07-08T09:23:10.657Z",
+  "git_sha": "07990c60",
+  "label": "W0a pre-deploy baseline (punchlist + perf fixes merged to r5/w0a-integrated but NOT yet deployed)",
+  "mcp_url": "https://amjis-mcp-qm256lasva-el.a.run.app/mcp",
+  "native_chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "abhinandan_chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "eight_probes": [
+    {
+      "id": "P1",
+      "name": "A1 fact — dasha as-of",
+      "chart": "N",
+      "tool": "ganita_dashas_get",
+      "expected_pre_deploy": "STILL FAIL — as_of_date ignored, 1950-era rows returned",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "contains-1950=true; status=200",
+      "latencyMs": 1182.7
+    },
+    {
+      "id": "P2",
+      "name": "A2 orient — chart digest",
+      "chart": "N",
+      "tool": "bodha_chart_digest_get",
+      "expected_pre_deploy": "Substantially healed per R4 (native chart); Abhinandan was never stale",
+      "observed_status": "STILL_HEALTHY",
+      "detail": "status=200; isError=null",
+      "latencyMs": 649.7
+    },
+    {
+      "id": "P3",
+      "name": "A7 substrate — yogas",
+      "chart": "N",
+      "tool": "ganita_yogas_get",
+      "expected_pre_deploy": "STILL FAIL — hollow envelope (verdict/ranking_basis null), oversized (>64KB)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "bytes=100400; hollow=true; status=200",
+      "latencyMs": 292
+    },
+    {
+      "id": "P4",
+      "name": "A3 substrate — ranked signals",
+      "chart": "N",
+      "tool": "bodha_signals_get",
+      "expected_pre_deploy": "PARTIAL — stale signature_tier_note/defect_001_note persists",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "stale_note_present=true; status=200",
+      "latencyMs": 240.9
+    },
+    {
+      "id": "P5",
+      "name": "A4 prediction — 12-month outlook",
+      "chart": "N",
+      "tool": "phala_outlook_get",
+      "expected_pre_deploy": "STILL FAIL — raw SQL errors / leakage-internals leak pre-deploy",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "leak_detected=true; status=200",
+      "latencyMs": 414.1
+    },
+    {
+      "id": "P6",
+      "name": "dissent organ",
+      "chart": "N",
+      "tool": "synth_tail_divergence_get",
+      "expected_pre_deploy": "STILL DOWN pre-deploy — missing /api/mcp/db/query route (punchlist fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "looks_404=true; status=200",
+      "latencyMs": 259.6
+    },
+    {
+      "id": "P7",
+      "name": "corpus semantic search",
+      "chart": "N",
+      "tool": "ref_vector_search",
+      "expected_pre_deploy": "STILL DOWN pre-deploy — 401 auth-header gap (punchlist fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "looks_401=true; status=200",
+      "latencyMs": 191.6
+    },
+    {
+      "id": "P8",
+      "name": "citation lookup",
+      "chart": "N",
+      "tool": "ref_classical_citation_get",
+      "expected_pre_deploy": "STILL SILENT EMPTY pre-deploy — no empty_reason (punchlist JL-002 fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "silent_empty=true; status=200",
+      "latencyMs": 551
+    },
+    {
+      "id": "P1",
+      "name": "A1 fact — dasha as-of",
+      "chart": "A",
+      "tool": "ganita_dashas_get",
+      "expected_pre_deploy": "STILL FAIL — as_of_date ignored, 1950-era rows returned",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "contains-1950=true; status=200",
+      "latencyMs": 693.7
+    },
+    {
+      "id": "P2",
+      "name": "A2 orient — chart digest",
+      "chart": "A",
+      "tool": "bodha_chart_digest_get",
+      "expected_pre_deploy": "Substantially healed per R4 (native chart); Abhinandan was never stale",
+      "observed_status": "STILL_HEALTHY",
+      "detail": "status=200; isError=null",
+      "latencyMs": 270.7
+    },
+    {
+      "id": "P3",
+      "name": "A7 substrate — yogas",
+      "chart": "A",
+      "tool": "ganita_yogas_get",
+      "expected_pre_deploy": "STILL FAIL — hollow envelope (verdict/ranking_basis null), oversized (>64KB)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "bytes=100751; hollow=true; status=200",
+      "latencyMs": 484
+    },
+    {
+      "id": "P4",
+      "name": "A3 substrate — ranked signals",
+      "chart": "A",
+      "tool": "bodha_signals_get",
+      "expected_pre_deploy": "PARTIAL — stale signature_tier_note/defect_001_note persists",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "stale_note_present=true; status=200",
+      "latencyMs": 237.8
+    },
+    {
+      "id": "P5",
+      "name": "A4 prediction — 12-month outlook",
+      "chart": "A",
+      "tool": "phala_outlook_get",
+      "expected_pre_deploy": "STILL FAIL — raw SQL errors / leakage-internals leak pre-deploy",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "leak_detected=true; status=200",
+      "latencyMs": 812.9
+    },
+    {
+      "id": "P6",
+      "name": "dissent organ",
+      "chart": "A",
+      "tool": "synth_tail_divergence_get",
+      "expected_pre_deploy": "STILL DOWN pre-deploy — missing /api/mcp/db/query route (punchlist fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "looks_404=true; status=200",
+      "latencyMs": 195.7
+    },
+    {
+      "id": "P7",
+      "name": "corpus semantic search",
+      "chart": "A",
+      "tool": "ref_vector_search",
+      "expected_pre_deploy": "STILL DOWN pre-deploy — 401 auth-header gap (punchlist fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "looks_401=true; status=200",
+      "latencyMs": 203.1
+    },
+    {
+      "id": "P8",
+      "name": "citation lookup",
+      "chart": "A",
+      "tool": "ref_classical_citation_get",
+      "expected_pre_deploy": "STILL SILENT EMPTY pre-deploy — no empty_reason (punchlist JL-002 fix not yet live)",
+      "observed_status": "FAIL_AS_EXPECTED",
+      "detail": "silent_empty=true; status=200",
+      "latencyMs": 631
+    }
+  ],
+  "deterministic_battery": [
+    {
+      "id": "Q1-N-1",
+      "question": "What is my lagna? (N)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "contains_aries=true; status=200. NOTE: byte-budget assertion (≤2KB) is a product-answer-layer constraint, not checkable against this raw registry dump (this call returns the full per-chart fact table) — correctness-only check performed here.",
+      "latencyMs": 308.3
+    },
+    {
+      "id": "Q1-N-2",
+      "question": "What sign is my Sun, and is it a good placement? (N)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "capricorn=true; dignity_term=true; status=200",
+      "latencyMs": 263.1
+    },
+    {
+      "id": "Q1-N-3",
+      "question": "What is my Moon nakshatra and pada? (N)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "purva_bhadrapada=true; status=200. NOTE: ganita_nakshatra_get (the name-matched tool) returns chandra_bala_natal_baseline transit data, not nakshatra placement — flagging as a tool-naming/mapping issue for the punchlist, not conflated with P1-P8.",
+      "latencyMs": 258.7
+    },
+    {
+      "id": "Q1-N-4",
+      "question": "What dasha am I running today, down to antardasha? (N)",
+      "mechanically_checkable": true,
+      "pass": false,
+      "detail": "pre_birth_rows_present=true (expected FALSE; pre-deploy this is a KNOWN FAIL per P1)",
+      "latencyMs": 466.5
+    },
+    {
+      "id": "Q1-A-1",
+      "question": "What's Abhinandan's lagna exactly? (A)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "aries=true; bharani_pada_in_default_view=false (default unpaginated view may not surface pada-level nakshatra — inconclusive on the pada sub-claim if false, not a hard fail); status=200",
+      "latencyMs": 230.9
+    },
+    {
+      "id": "Q1-A-2",
+      "question": "Where is his Venus and what condition? (A)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "pisces_and_exalted=true; status=200",
+      "latencyMs": 219.7
+    },
+    {
+      "id": "Q1-A-3",
+      "question": "His current maha-antar-pratyantar? (A)",
+      "mechanically_checkable": true,
+      "pass": false,
+      "detail": "bytes=2153249 (ceiling ~2.3KB). OVERSIZED — consistent with the P1 as_of_date-ignored defect (same root cause, not a separate finding): pre_birth_rows_present=true; status=200",
+      "latencyMs": 473.7
+    },
+    {
+      "id": "Q1-N-5",
+      "question": "Which vargas is my Jupiter vargottama in? (N)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "status=200; NOTE: no dedicated vargottama-lookup tool found in the current 124-tool estate — this check only confirms ganita_positions_get answers, not vargottama-specific fabrication-avoidance (needs manual/product-layer follow-up)",
+      "latencyMs": 228.9
+    },
+    {
+      "id": "X-2",
+      "question": "Entitlement: query a chart id the session lacks",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "denial=true; raw_leak=false; status=200",
+      "latencyMs": 256.8
+    },
+    {
+      "id": "X-3",
+      "question": "Budget abuse: \"Give me every signal you have\" (N)",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "bytes=278 (ceiling 1.5MB H-12 guard); status=200",
+      "latencyMs": 251.3
+    },
+    {
+      "id": "X-5",
+      "question": "Broken-organ honesty: call a known-degraded surface",
+      "mechanically_checkable": true,
+      "pass": true,
+      "detail": "silent_failure=false (expect FALSE — organ should surface fault, not silently succeed); status=200",
+      "latencyMs": 241.6
+    },
+    {
+      "id": "X-8",
+      "question": "Stale-note check: any response carrying provenance notes",
+      "mechanically_checkable": true,
+      "pass": false,
+      "detail": "note_present=true (pre-deploy P4 finding: note self-contradicts rows — recorded honestly as expected-fail if present)",
+      "latencyMs": 192.8
+    },
+    {
+      "id": "Q2-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q2-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q3-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q3-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q3-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q2-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q3-A-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q5-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q5-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q5-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q5-A-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q6-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q6-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q7-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q7-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q7-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q8-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q8-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q9-N-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q9-A-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q9-N-2",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "Q9-N-3",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "X-1",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "X-4",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "X-6",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    },
+    {
+      "id": "X-7",
+      "question": "(see R5_ANSWER_BATTERY_v1_0.md §3 for full text)",
+      "mechanically_checkable": false,
+      "pass": null,
+      "detail": "requires G10-QT LLM rubric grading against a synthesized NL answer — no product-answer harness exists at the raw-MCP-tool canary layer; deferred to the product-level battery run",
+      "latencyMs": null
+    }
+  ],
+  "extra_findings": [
+    {
+      "id": "EXTRA-ganita_chart_facts_get",
+      "tool": "ganita_chart_facts_get",
+      "finding": "BROKEN — Sidecar returns 404 regardless of arguments",
+      "detail": "Both a bare-args call and an ayanamsha_id-qualified call returned \"Sidecar returned 404: {\"detail\":\"Not Found\"}\" with is_error=true, HTTP 200 wrapper. Not part of the original P1-P8 probe set or R5_ANSWER_BATTERY — discovered while mapping Q1 items to live tools during this canary build. Recommend punchlist follow-up: trace the platform-mcp → sidecar route for this tool and confirm whether it was ever wired to a live FastAPI endpoint."
+    },
+    {
+      "id": "EXTRA-query_chart_facts",
+      "tool": "query_chart_facts",
+      "finding": "BROKEN — Sidecar returns 404 regardless of arguments",
+      "detail": "Both a bare-args call and an ayanamsha_id-qualified call returned \"Sidecar returned 404: {\"detail\":\"Not Found\"}\" with is_error=true, HTTP 200 wrapper. Not part of the original P1-P8 probe set or R5_ANSWER_BATTERY — discovered while mapping Q1 items to live tools during this canary build. Recommend punchlist follow-up: trace the platform-mcp → sidecar route for this tool and confirm whether it was ever wired to a live FastAPI endpoint."
+    }
+  ],
+  "latency_sample": [
+    {
+      "tool": "ganita_chart_facts_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 276.2,
+      "p95": 358.9,
+      "min": 241.6,
+      "max": 358.9,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_dashas_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 459.3,
+      "p95": 713.4,
+      "min": 411.1,
+      "max": 713.4,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_positions_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 176.8,
+      "p95": 321.1,
+      "min": 165.4,
+      "max": 321.1,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_yogas_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 297.9,
+      "p95": 326.4,
+      "min": 178.1,
+      "max": 326.4,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_strength_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 264.2,
+      "p95": 304.9,
+      "min": 209.6,
+      "max": 304.9,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_nakshatra_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 230.2,
+      "p95": 232.9,
+      "min": 181.6,
+      "max": 232.9,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_condition_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 284.6,
+      "p95": 352.3,
+      "min": 212,
+      "max": 352.3,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_sade_sati_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 385.3,
+      "p95": 425.2,
+      "min": 343.1,
+      "max": 425.2,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_structural_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 554,
+      "p95": 811.8,
+      "min": 548.5,
+      "max": 811.8,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_tajaka_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 96.6,
+      "p95": 230.1,
+      "min": 93.6,
+      "max": 230.1,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_transit_anchors_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 87.9,
+      "p95": 110.1,
+      "min": 80.4,
+      "max": 110.1,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_dasha_periods_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 99.3,
+      "p95": 108.4,
+      "min": 90.8,
+      "max": 108.4,
+      "errors": 0
+    },
+    {
+      "tool": "ganita_special_lagnas_get",
+      "category": "ganita",
+      "n": 3,
+      "p50": 122.6,
+      "p95": 152.7,
+      "min": 97,
+      "max": 152.7,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_chart_digest_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 96.4,
+      "p95": 96.8,
+      "min": 85.9,
+      "max": 96.8,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_signals_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 99.6,
+      "p95": 99.8,
+      "min": 93.1,
+      "max": 99.8,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_domain_reading_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 105.3,
+      "p95": 105.7,
+      "min": 103.4,
+      "max": 105.7,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_graph_traverse_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 102.6,
+      "p95": 151.1,
+      "min": 94.7,
+      "max": 151.1,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_graph_subgraph_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 90.6,
+      "p95": 100.9,
+      "min": 84.3,
+      "max": 100.9,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_quality_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 97.8,
+      "p95": 104,
+      "min": 89,
+      "max": 104,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_remedies_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 95.2,
+      "p95": 101.4,
+      "min": 95.1,
+      "max": 101.4,
+      "errors": 0
+    },
+    {
+      "tool": "bodha_discoveries_get",
+      "category": "bodha",
+      "n": 3,
+      "p50": 97.4,
+      "p95": 119,
+      "min": 93.2,
+      "max": 119,
+      "errors": 0
+    },
+    {
+      "tool": "get_domain_reading",
+      "category": "bodha",
+      "n": 3,
+      "p50": 91.6,
+      "p95": 91.8,
+      "min": 90.8,
+      "max": 91.8,
+      "errors": 0
+    },
+    {
+      "tool": "get_signals",
+      "category": "bodha",
+      "n": 3,
+      "p50": 99.3,
+      "p95": 109.4,
+      "min": 95.7,
+      "max": 109.4,
+      "errors": 0
+    },
+    {
+      "tool": "get_chart_quality",
+      "category": "bodha",
+      "n": 3,
+      "p50": 109,
+      "p95": 158.1,
+      "min": 86.8,
+      "max": 158.1,
+      "errors": 0
+    },
+    {
+      "tool": "get_remedies",
+      "category": "bodha",
+      "n": 3,
+      "p50": 106,
+      "p95": 110,
+      "min": 100.3,
+      "max": 110,
+      "errors": 0
+    },
+    {
+      "tool": "get_cgm_subgraph",
+      "category": "bodha",
+      "n": 3,
+      "p50": 97.3,
+      "p95": 97.5,
+      "min": 92.4,
+      "max": 97.5,
+      "errors": 0
+    },
+    {
+      "tool": "assess_career",
+      "category": "bodha",
+      "n": 3,
+      "p50": 104.1,
+      "p95": 153.2,
+      "min": 95,
+      "max": 153.2,
+      "errors": 0
+    },
+    {
+      "tool": "assess_marriage",
+      "category": "bodha",
+      "n": 3,
+      "p50": 91.7,
+      "p95": 101.9,
+      "min": 89.6,
+      "max": 101.9,
+      "errors": 0
+    },
+    {
+      "tool": "assess_health",
+      "category": "bodha",
+      "n": 3,
+      "p50": 90.1,
+      "p95": 105.1,
+      "min": 88.7,
+      "max": 105.1,
+      "errors": 0
+    },
+    {
+      "tool": "assess_wealth",
+      "category": "bodha",
+      "n": 3,
+      "p50": 114.6,
+      "p95": 158.2,
+      "min": 102.4,
+      "max": 158.2,
+      "errors": 0
+    },
+    {
+      "tool": "apex_career_assess",
+      "category": "bodha",
+      "n": 3,
+      "p50": 91.5,
+      "p95": 102.8,
+      "min": 86.6,
+      "max": 102.8,
+      "errors": 0
+    },
+    {
+      "tool": "phala_outlook_get",
+      "category": "phala",
+      "n": 3,
+      "p50": 96.4,
+      "p95": 109.9,
+      "min": 88.6,
+      "max": 109.9,
+      "errors": 0
+    },
+    {
+      "tool": "phala_outlook",
+      "category": "phala",
+      "n": 3,
+      "p50": 101.4,
+      "p95": 102,
+      "min": 92.8,
+      "max": 102,
+      "errors": 0
+    },
+    {
+      "tool": "phala_anchors_get",
+      "category": "phala",
+      "n": 3,
+      "p50": 95.8,
+      "p95": 166,
+      "min": 95.1,
+      "max": 166,
+      "errors": 0
+    },
+    {
+      "tool": "phala_mitigation_get",
+      "category": "phala",
+      "n": 3,
+      "p50": 101.2,
+      "p95": 104.3,
+      "min": 98,
+      "max": 104.3,
+      "errors": 0
+    },
+    {
+      "tool": "phala_rectification_get",
+      "category": "phala",
+      "n": 3,
+      "p50": 98.8,
+      "p95": 104.2,
+      "min": 94.9,
+      "max": 104.2,
+      "errors": 0
+    },
+    {
+      "tool": "event_anchors",
+      "category": "phala",
+      "n": 3,
+      "p50": 96,
+      "p95": 178,
+      "min": 80.8,
+      "max": 178,
+      "errors": 0
+    },
+    {
+      "tool": "mitigation_map",
+      "category": "phala",
+      "n": 3,
+      "p50": 105.2,
+      "p95": 108.5,
+      "min": 90.6,
+      "max": 108.5,
+      "errors": 0
+    },
+    {
+      "tool": "muhurta_finder",
+      "category": "phala",
+      "n": 3,
+      "p50": 100.1,
+      "p95": 696.4,
+      "min": 92.6,
+      "max": 696.4,
+      "errors": 0
+    },
+    {
+      "tool": "prashna_undertaking_get",
+      "category": "phala",
+      "n": 3,
+      "p50": 103,
+      "p95": 443.6,
+      "min": 95.5,
+      "max": 443.6,
+      "errors": 0
+    },
+    {
+      "tool": "mimamsa_calibration_get",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 84,
+      "p95": 271.2,
+      "min": 81.9,
+      "max": 271.2,
+      "errors": 0
+    },
+    {
+      "tool": "mimamsa_insight_get",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 94.7,
+      "p95": 100.7,
+      "min": 88,
+      "max": 100.7,
+      "errors": 0
+    },
+    {
+      "tool": "mimamsa_lel_query",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 82.1,
+      "p95": 102.8,
+      "min": 78.2,
+      "max": 102.8,
+      "errors": 0
+    },
+    {
+      "tool": "lel_query",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 130.5,
+      "p95": 221.5,
+      "min": 97.8,
+      "max": 221.5,
+      "errors": 0
+    },
+    {
+      "tool": "query_calibration",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 88,
+      "p95": 98.8,
+      "min": 87.8,
+      "max": 98.8,
+      "errors": 0
+    },
+    {
+      "tool": "synth_tail_divergence_get",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 101.9,
+      "p95": 434.3,
+      "min": 84,
+      "max": 434.3,
+      "errors": 0
+    },
+    {
+      "tool": "synth_chart_brief_get",
+      "category": "mimamsa",
+      "n": 3,
+      "p50": 82.3,
+      "p95": 98.5,
+      "min": 76.8,
+      "max": 98.5,
+      "errors": 0
+    },
+    {
+      "tool": "kala_life_arc_get",
+      "category": "kala",
+      "n": 3,
+      "p50": 91.1,
+      "p95": 98.2,
+      "min": 85.5,
+      "max": 98.2,
+      "errors": 0
+    },
+    {
+      "tool": "kala_muhurta_get",
+      "category": "kala",
+      "n": 3,
+      "p50": 92.4,
+      "p95": 93.7,
+      "min": 75.4,
+      "max": 93.7,
+      "errors": 0
+    },
+    {
+      "tool": "kala_projections_get",
+      "category": "kala",
+      "n": 3,
+      "p50": 104.5,
+      "p95": 163.5,
+      "min": 86.9,
+      "max": 163.5,
+      "errors": 0
+    },
+    {
+      "tool": "kala_temporal_bundle",
+      "category": "kala",
+      "n": 3,
+      "p50": 96.9,
+      "p95": 110.1,
+      "min": 84.8,
+      "max": 110.1,
+      "errors": 0
+    },
+    {
+      "tool": "kala_windows_get",
+      "category": "kala",
+      "n": 3,
+      "p50": 95,
+      "p95": 180.6,
+      "min": 76.5,
+      "max": 180.6,
+      "errors": 0
+    },
+    {
+      "tool": "kala_yoga_activation_get",
+      "category": "kala",
+      "n": 3,
+      "p50": 139,
+      "p95": 231.1,
+      "min": 93.6,
+      "max": 231.1,
+      "errors": 0
+    },
+    {
+      "tool": "get_temporal_windows",
+      "category": "kala",
+      "n": 3,
+      "p50": 89.8,
+      "p95": 140.1,
+      "min": 77.7,
+      "max": 140.1,
+      "errors": 0
+    },
+    {
+      "tool": "get_projections",
+      "category": "kala",
+      "n": 3,
+      "p50": 92.3,
+      "p95": 326.8,
+      "min": 88.5,
+      "max": 326.8,
+      "errors": 0
+    },
+    {
+      "tool": "yoga_activation_by_dasha",
+      "category": "kala",
+      "n": 3,
+      "p50": 126.5,
+      "p95": 413.4,
+      "min": 119.2,
+      "max": 413.4,
+      "errors": 0
+    },
+    {
+      "tool": "ref_vector_search",
+      "category": "reference",
+      "n": 3,
+      "p50": 91.6,
+      "p95": 94.6,
+      "min": 80.1,
+      "max": 94.6,
+      "errors": 0
+    },
+    {
+      "tool": "ref_classical_citation_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 98.1,
+      "p95": 121.8,
+      "min": 94.9,
+      "max": 121.8,
+      "errors": 0
+    },
+    {
+      "tool": "ref_dasha_systems_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 94.9,
+      "p95": 170,
+      "min": 84.9,
+      "max": 170,
+      "errors": 0
+    },
+    {
+      "tool": "ref_dignity_reference_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 99.4,
+      "p95": 109.5,
+      "min": 89.4,
+      "max": 109.5,
+      "errors": 0
+    },
+    {
+      "tool": "ref_doshas_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 101.8,
+      "p95": 102.9,
+      "min": 78.8,
+      "max": 102.9,
+      "errors": 0
+    },
+    {
+      "tool": "ref_entities_list",
+      "category": "reference",
+      "n": 3,
+      "p50": 175.9,
+      "p95": 261.4,
+      "min": 95.1,
+      "max": 261.4,
+      "errors": 0
+    },
+    {
+      "tool": "ref_entity_resolve",
+      "category": "reference",
+      "n": 3,
+      "p50": 116.8,
+      "p95": 134.3,
+      "min": 86,
+      "max": 134.3,
+      "errors": 0
+    },
+    {
+      "tool": "ref_nakshatra_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 102.6,
+      "p95": 221.6,
+      "min": 79.8,
+      "max": 221.6,
+      "errors": 0
+    },
+    {
+      "tool": "ref_remedies_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 156.5,
+      "p95": 196.8,
+      "min": 83.7,
+      "max": 196.8,
+      "errors": 0
+    },
+    {
+      "tool": "ref_rules_search",
+      "category": "reference",
+      "n": 3,
+      "p50": 113.4,
+      "p95": 294.6,
+      "min": 89.3,
+      "max": 294.6,
+      "errors": 0
+    },
+    {
+      "tool": "ref_yogas_get",
+      "category": "reference",
+      "n": 3,
+      "p50": 102.6,
+      "p95": 381.1,
+      "min": 81.1,
+      "max": 381.1,
+      "errors": 0
+    },
+    {
+      "tool": "resolve_entity",
+      "category": "reference",
+      "n": 3,
+      "p50": 98.2,
+      "p95": 110.1,
+      "min": 94.9,
+      "max": 110.1,
+      "errors": 0
+    },
+    {
+      "tool": "list_entities",
+      "category": "reference",
+      "n": 3,
+      "p50": 97.7,
+      "p95": 98.3,
+      "min": 90,
+      "max": 98.3,
+      "errors": 0
+    },
+    {
+      "tool": "list_assets",
+      "category": "reference",
+      "n": 3,
+      "p50": 97.6,
+      "p95": 158.3,
+      "min": 85.9,
+      "max": 158.3,
+      "errors": 0
+    },
+    {
+      "tool": "query_chart_facts",
+      "category": "reference",
+      "n": 3,
+      "p50": 136,
+      "p95": 195.3,
+      "min": 84.6,
+      "max": 195.3,
+      "errors": 0
+    },
+    {
+      "tool": "query_dasha_periods",
+      "category": "reference",
+      "n": 3,
+      "p50": 149.6,
+      "p95": 211.5,
+      "min": 103.8,
+      "max": 211.5,
+      "errors": 0
+    },
+    {
+      "tool": "query_mantras",
+      "category": "reference",
+      "n": 3,
+      "p50": 148.7,
+      "p95": 488.5,
+      "min": 89.4,
+      "max": 488.5,
+      "errors": 0
+    },
+    {
+      "tool": "query_planet_position",
+      "category": "reference",
+      "n": 3,
+      "p50": 108.5,
+      "p95": 179.4,
+      "min": 102.5,
+      "max": 179.4,
+      "errors": 0
+    },
+    {
+      "tool": "query_remedies",
+      "category": "reference",
+      "n": 3,
+      "p50": 125.1,
+      "p95": 319.2,
+      "min": 85.9,
+      "max": 319.2,
+      "errors": 0
+    },
+    {
+      "tool": "list_my_charts",
+      "category": "reference",
+      "n": 3,
+      "p50": 143.3,
+      "p95": 221.3,
+      "min": 80.4,
+      "max": 221.3,
+      "errors": 0
+    }
+  ],
+  "summary": {
+    "probes_fail_as_expected": 14,
+    "probes_healed_unexpectedly": 0,
+    "probes_still_healthy": 2,
+    "probes_error": 0,
+    "probes_total": 16,
+    "battery_mechanically_checkable": 12,
+    "battery_pass": 9,
+    "battery_fail": 3,
+    "battery_requires_llm_rubric": 26,
+    "latency_tools_sampled": 76,
+    "latency_tools_with_errors": 0
+  }
+}

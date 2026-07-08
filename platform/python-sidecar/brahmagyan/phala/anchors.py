@@ -3,10 +3,19 @@ brahmagyan/phala/anchors.py — Brahma L4 Phala — phala.anchors (PH-4-1)
 
 Asset:    phala.anchors
 Tool:     event_anchors(chart_id, date_range, min_confidence?) →
-              {anchors:[{window,theme,confidence,falsifier,provenance}], provenance_envelope}
-Table:    phala_anchors (chart_id UUID, anchor_id TEXT, window_start DATE, window_end DATE,
-          theme TEXT, confidence FLOAT CHECK(0<=confidence<=1), falsifier TEXT NOT NULL,
-          contributing_dashas JSONB, contributing_signals JSONB, source_citation TEXT NOT NULL)
+              {anchors:[{window,domain,event_type,confidence,confidence_band,falsifier,
+              source_citation}], provenance_envelope}
+Table:    phala_anchors (anchor_id UUID PRIMARY KEY, chart_id UUID, window_start/peak_date/
+          window_end DATE, domain TEXT, event_type TEXT, confidence_low/confidence_high
+          DOUBLE PRECISION, posterior DOUBLE PRECISION (mig 398), falsifier TEXT NOT NULL,
+          derivation_ledger_jsonb/causal_chain_jsonb JSONB, source_citation TEXT NOT NULL).
+          R5 W0a punch-list (P5) NOTE (2026-07-08): this docstring previously described a
+          LEGACY schema (id, anchor_id TEXT, theme, single confidence, contributing_dashas/
+          contributing_signals, prediction_state, outcome_note) that migration 330
+          (platform/supabase/migrations/330_phala_anchors_and_drop_kala_timeline.sql) DROPped
+          and replaced wholesale — the mismatch was the root cause of live "column ... does
+          not exist" SQL errors leaking through phala_outlook_get. Corrected to the real,
+          deployed schema (verified against migrations 330 + 398) above.
 
 Algorithm:
     For each 6-month window in the requested date range:
@@ -123,8 +132,14 @@ def fetch_anchors(
         chart_id:         Chart UUID.
         range_start:      Query window start (inclusive).
         range_end:        Query window end (inclusive).
-        min_confidence:   Minimum confidence threshold [0.0, 1.0].
-        prediction_state: Optional filter: 'open'|'confirmed'|'falsified'|'expired'.
+        min_confidence:   Minimum confidence threshold [0.0, 1.0]. Applied against
+                          posterior (migration 398) when present, else the midpoint
+                          of confidence_low/confidence_high.
+        prediction_state: ACCEPTED BUT NOT APPLIED (R5 W0a punch-list, P5). No
+                          prediction_state column exists on phala_anchors — the
+                          concept is not yet modeled at this layer. Validated for
+                          input-contract compatibility only; passing it does not
+                          filter results. See module docstring / P5 fix note above.
 
     Returns:
         list[dict] — rows from phala_anchors, normalised.
@@ -143,31 +158,49 @@ def fetch_anchors(
             f"Valid: {sorted(VALID_PREDICTION_STATES)}"
         )
 
+    # R5 W0a punch-list (P5): this SELECT used to reference a schema
+    # (id, theme, confidence, contributing_dashas, contributing_signals,
+    # prediction_state, outcome_note, outcome_recorded_at, created_at, updated_at)
+    # that never matches the deployed table. Migration 330
+    # (platform/supabase/migrations/330_phala_anchors_and_drop_kala_timeline.sql)
+    # DROPped and recreated phala_anchors with anchor_id (UUID PK, not `id`),
+    # domain/event_type (not `theme`), confidence_low/confidence_high +
+    # posterior (migration 398) instead of a single `confidence`, and no
+    # prediction_state/outcome_note/outcome_recorded_at/created_at/updated_at
+    # columns at all — those concepts are not (yet) modeled on this table.
+    # This was the exact root cause of the live "column \"id\" does not exist"
+    # SQL errors leaking into phala_outlook_get responses.
+    #
+    # `confidence` filtering now uses posterior when present (the BA-P5B
+    # Bayesian point estimate — migration 398), falling back to the midpoint
+    # of the pre-posterior confidence_low/confidence_high band for older rows.
+    # prediction_state is NOT a real column — the filter is accepted for API
+    # compatibility but is a documented no-op (see event_anchors() docstring).
     conditions = [
         "chart_id = %s",
         "window_start <= %s",
         "window_end >= %s",
-        "confidence >= %s",
+        "COALESCE(posterior, (confidence_low + confidence_high) / 2.0, 0.0) >= %s",
     ]
     params: list[Any] = [chart_id, range_end, range_start, min_confidence]
-
-    if prediction_state:
-        conditions.append("prediction_state = %s")
-        params.append(prediction_state)
 
     where = " AND ".join(conditions)
     sql = f"""
         SELECT
-            id, chart_id, anchor_id,
-            window_start, window_end,
-            theme, confidence, falsifier,
-            contributing_dashas, contributing_signals,
-            source_citation,
-            prediction_state, outcome_note, outcome_recorded_at,
-            created_at, updated_at
+            anchor_id, chart_id, anchor_source,
+            event_type, direction, domain, horizon_tier,
+            window_start, peak_date, window_end,
+            magnitude, magnitude_basis,
+            confidence_low, confidence_high, confidence_basis,
+            posterior, lift_vector_jsonb, structured_falsifier_jsonb,
+            karmic_frame, karmic_note,
+            malleability, counterfactual_jsonb, contradiction_jsonb,
+            causal_chain_jsonb, precedent_refs_jsonb,
+            dasha_consensus_count, school_consensus_jsonb, ayanamsha_robustness,
+            falsifier, derivation_ledger_jsonb, source_citation, computed_at
         FROM public.phala_anchors
         WHERE {where}
-        ORDER BY window_start ASC, confidence DESC
+        ORDER BY window_start ASC, COALESCE(posterior, (confidence_low + confidence_high) / 2.0, 0.0) DESC
     """
 
     db_url = _get_db_url()
@@ -280,23 +313,41 @@ def event_anchors(
         prediction_state=prediction_state,
     )
 
-    # Build structured anchor list for the response
+    # Build structured anchor list for the response.
+    # R5 W0a punch-list (P5): field mapping rewritten against the REAL phala_anchors
+    # schema (migrations 330 + 398) — see fetch_anchors() note above. `theme` →
+    # domain/event_type; single `confidence` → posterior (point estimate) with the
+    # confidence_low/confidence_high band retained; contributing_dashas/
+    # contributing_signals → derivation_ledger_jsonb/causal_chain_jsonb (the real
+    # audit-trail columns); prediction_state/outcome_note dropped — not modeled on
+    # this table (no fabricated substitute served; see docstring above).
     anchor_list = []
     for row in anchors:
+        confidence_point = row.get("posterior")
+        if confidence_point is None:
+            cl, ch = row.get("confidence_low"), row.get("confidence_high")
+            confidence_point = (cl + ch) / 2.0 if cl is not None and ch is not None else None
         anchor_list.append({
             "anchor_id": row["anchor_id"],
             "window": {
                 "start": row["window_start"],
                 "end": row["window_end"],
             },
-            "theme": row["theme"],
-            "confidence": row["confidence"],
+            "domain": row.get("domain"),
+            "event_type": row.get("event_type"),
+            "direction": row.get("direction"),
+            "confidence": confidence_point,
+            "confidence_band": {
+                "low": row.get("confidence_low"),
+                "high": row.get("confidence_high"),
+                "basis": row.get("confidence_basis"),
+            },
+            "magnitude": row.get("magnitude"),
             "falsifier": row["falsifier"],
-            "contributing_dashas": row["contributing_dashas"],
-            "contributing_signals": row["contributing_signals"],
+            "structured_falsifier": row.get("structured_falsifier_jsonb"),
+            "derivation_ledger": row.get("derivation_ledger_jsonb"),
+            "causal_chain": row.get("causal_chain_jsonb"),
             "source_citation": row["source_citation"],
-            "prediction_state": row["prediction_state"],
-            "outcome_note": row["outcome_note"],
         })
 
     # Provenance checks
@@ -437,11 +488,13 @@ def run_acceptance_gate(chart_id: str) -> dict[str, Any]:
         checks.append({"id": "AC3", "desc": "citation completeness", "passed": False, "error": str(exc)})
 
     # AC4: All confidence values in [0.0, 1.0]
+    # (confidence may be None if a row predates both posterior (mig 398) and the
+    # confidence_low/confidence_high band — treat as out-of-range rather than crash.)
     try:
         out_of_range = [
             (a["anchor_id"], a["confidence"])
             for a in anchors
-            if not (0.0 <= float(a["confidence"]) <= 1.0)
+            if a["confidence"] is None or not (0.0 <= float(a["confidence"]) <= 1.0)
         ]
         checks.append({
             "id": "AC4",
