@@ -570,8 +570,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ),
       response_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."),
+      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
+        "R5 W2: annotates a frame_context (each graha's house counted from this reference sign) alongside the unchanged, unfiltered signal rows. Default: lagna."
+      ),
+      paradigm: z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional().describe(
+        'R5 W2: filters to one signal_tradition. Default: unfiltered (every tradition, each individually tagged) — required for whole-chart-read (B.11) discipline.'
+      ),
     },
-    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format }) => {
+    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
@@ -585,7 +591,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           callRegistryCapability(
             'marsys://tool/L2/query_signals',
             { chart_id, ayanamsha_id: resolvedAyanamsha, domain, min_salience,
-              top_k: resolvedLimit, offset: resolvedOffset, lel_enabled: lel_enabled ?? false },
+              top_k: resolvedLimit, offset: resolvedOffset, lel_enabled: lel_enabled ?? false,
+              frame, paradigm },
             chart_id
           ),
         ])
@@ -666,15 +673,32 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'traverse_graph',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      seed_signal_ids: z.array(z.string()).min(1).describe(
-        'Seed signal UUIDs to start traversal from (use signal_id values from get_signals).'
+      seed_signal_ids: z.array(z.string()).min(1).optional().describe(
+        'Seed signal UUIDs to start traversal from (use signal_id values from get_signals). ' +
+        'Alternative to about/about_from/about_to for address-seeded traversal (R5 W2).'
       ),
       mode: z.enum(['neighbors', 'paths', 'cluster']).optional().describe(
         'Traversal mode: neighbors (adjacent nodes), paths (shortest paths between seeds), cluster (community). Default: neighbors.'
       ),
       depth: z.number().int().min(1).max(3).optional().describe('Traversal depth (default: 2, max: 3)'),
+      about: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression (AddressExpression object or DSL string, e.g. "lord_of(bhava 10)") ' +
+        'seeding neighbors mode — resolved via the shared address resolver.'
+      ),
+      about_from: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode start node, e.g. "lord_of(bhava 10)".'
+      ),
+      about_to: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode end node, e.g. {type:"graha", graha:"Moon"}.'
+      ),
+      direction: z.enum(['directed', 'both']).optional().describe(
+        'R5 W2: directed follows real from_node_id→to_node_id edges only; both treats edges as undirected. Default: both.'
+      ),
+      min_strength: z.number().min(0).max(1).optional().describe(
+        'R5 W2: filter traversal/edges to computed_strength >= this floor.'
+      ),
     },
-    async ({ chart_id, seed_signal_ids, mode, depth }) => {
+    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
@@ -682,7 +706,17 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id),
           callRegistryCapability(
             'marsys://tool/L2/traverse_chart_graph',
-            { chart_id, seed_signal_ids, mode: mode ?? 'neighbors', depth: depth ?? 2 },
+            {
+              chart_id,
+              seed_signal_ids,
+              mode: mode ?? 'neighbors',
+              depth: depth ?? 2,
+              about,
+              about_from,
+              about_to,
+              direction,
+              min_strength,
+            },
             chart_id
           ),
         ])
@@ -701,13 +735,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       planet: z.string().optional().describe('Optional: filter by planet name (e.g. Sun, Moon, Mars)'),
+      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
+        "R5 W2: re-bases house_d1 onto this reference sign (adds house_from_frame per row). Default: lagna."
+      ),
     },
-    async ({ chart_id, ayanamsha_id, planet }) => {
+    async ({ chart_id, ayanamsha_id, planet, frame }) => {
       if (!chart_id) return errorOutput('get_positions', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_positions',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet, frame },
           chart_id
         )
         return dualOutput(data)
@@ -1103,8 +1140,23 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       target_node: z.string().uuid().optional().describe('Target node UUID for paths mode.'),
       query_text: z.string().optional().describe('Semantic seed: finds top-3 similar nodes and runs BFS from them.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      about: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression (e.g. "lord_of(bhava 10)") seeding neighbors mode — resolved via the shared address resolver.'
+      ),
+      about_from: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode start node, e.g. "lord_of(bhava 10)".'
+      ),
+      about_to: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe(
+        'R5 W2: address expression for the paths-mode end node, e.g. {type:"graha", graha:"Moon"}.'
+      ),
+      direction: z.enum(['directed', 'both']).optional().describe(
+        'R5 W2: directed follows real from_node_id→to_node_id edges only; both treats edges as undirected. Default: both.'
+      ),
+      min_strength: z.number().min(0).max(1).optional().describe(
+        'R5 W2: filter traversal/edges to computed_strength >= this floor.'
+      ),
     },
-    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id }) => {
+    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength }) => {
       if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
       try {
         // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
@@ -1121,6 +1173,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(seed_node ? { seed_node } : {}),
               ...(target_node ? { target_node } : {}),
               ...(query_text ? { query_text } : {}),
+              ...(about ? { about } : {}),
+              ...(about_from ? { about_from } : {}),
+              ...(about_to ? { about_to } : {}),
+              ...(direction ? { direction } : {}),
+              ...(min_strength != null ? { min_strength } : {}),
             },
             chart_id
           ),

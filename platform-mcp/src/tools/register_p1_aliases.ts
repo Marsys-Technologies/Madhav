@@ -202,28 +202,47 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   // get_signals → bodha_signals_get
   regAlias(server, 'bodha_signals_get',
-    'L2 Bodha signals ranked by relevance (same as get_signals)',
+    'L2 Bodha signals ranked by relevance (same as get_signals). R5 W2: frame (lagna/chandra/' +
+    'surya/arudha/karakamsha) annotates a frame_context (never recomputes frozen salience); ' +
+    'paradigm (parashari/jaimini/kp/tajika) filters to one tradition (default: all, unfiltered).',
     'marsys://tool/L2/query_signals',
     {
       domain:     z.string().optional(),
       top_k:      z.number().int().min(1).max(200).optional(),
       min_weight: z.number().min(0).max(1).optional(),
+      frame:      z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
+      paradigm:   z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional(),
     })
 
   // traverse_graph → bodha_graph_traverse_get
   regAlias(server, 'bodha_graph_traverse_get',
-    'L2 chart graph traversal (same as traverse_graph)',
+    'L2 chart graph traversal (same as traverse_graph). R5 W2: about/about_from/about_to accept ' +
+    'address expressions (e.g. "lord_of(bhava 10)") resolved via the shared address resolver; ' +
+    'direction/min_strength filter traversal. Gate: a "10th-lord to Moon" path resolves in ONE call ' +
+    'via mode="paths", about_from="lord_of(bhava 10)", about_to={type:"graha",graha:"Moon"}, direction="directed".',
     'marsys://tool/L2/traverse_chart_graph',
     {
+      mode:        z.enum(['neighbors', 'paths', 'cluster', 'convergence', 'contradictions']).optional(),
       start_node:  z.string().optional(),
       max_depth:   z.number().int().min(1).max(5).optional(),
       relation:    z.string().optional(),
+      about:       z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_from:  z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_to:    z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      direction:   z.enum(['directed', 'both']).optional(),
+      min_strength: z.number().min(0).max(1).optional(),
     })
 
   // get_positions → ganita_positions_get
   regAlias(server, 'ganita_positions_get',
-    'L1 graha positions (same as get_positions)',
-    'marsys://tool/L1/get_positions')
+    'L1 graha positions (same as get_positions). R5 W2: frame (lagna/chandra/surya/arudha/' +
+    'karakamsha, default lagna) re-bases house_d1 onto the requested reference sign, adding ' +
+    'house_from_frame per row — e.g. frame="chandra" answers "what house is X in, from Moon" ' +
+    'in this ONE call.',
+    'marsys://tool/L1/get_positions',
+    {
+      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
+    })
 
   // get_dashas → ganita_dashas_get
   // R5 W1 (dasha_query lane, design §18/§21/§25 E-5): facets threaded through the seam so
