@@ -118,6 +118,25 @@ export interface CoverageStamp {
   total: number | null
 }
 
+/**
+ * D5 coverage-receipt helper (design §10.5 / §12 D5).
+ *
+ * `family` names the complete relevant set this response is a bounded slice of
+ * (e.g. `'msr_signals[domain=career]'`, `'yoga_dosha_rows'`) — a stable, filter-
+ * qualified label so two responses with different filters are never mistaken
+ * for describing the same family. `served` is the row/entity count actually
+ * returned in THIS response. `total` is the true family size — a COUNT (or
+ * equivalent aggregate) the caller already computed against the SAME filter
+ * conditions as the main query, never a re-guess or a copy of `served`.
+ *
+ * `total: null` is the honest value when the family size genuinely is not
+ * computable for this response (e.g. the underlying capability has no cheap
+ * count path yet) — B.10 forbids fabricating a number to fill the field.
+ */
+export function buildCoverageStamp(family: string, served: number, total: number | null): CoverageStamp {
+  return { family, served, total }
+}
+
 // ── shared envelope substructures ─────────────────────────────────────────────
 
 export interface GroundingBlock {
@@ -164,12 +183,26 @@ export type DrillPointerType =
   | 'tail_dissent'
   | 'other'
 
+/**
+ * PACT chain stage marker (design §26 + §28.3 — "the same PACT chain the L4 redesign
+ * already encodes at the data layer"). The four classically-falsifiable stages, in
+ * chain order: PROMISE (judgment_query's checklist verdict) → CONFIRMATION (operative-
+ * varga check) → ACTIVATION (which promise-carrier dasha, when) → TRIGGER (transit gate
+ * in-window). A drill_pointer carrying `pact_stage` names WHICH stage firing this
+ * pointer would advance to — the mechanism the brief calls "typed pointers chain
+ * through all four stages". Optional/additive, same discipline as `pointer_type`.
+ */
+export type PactStage = 'promise' | 'confirmation' | 'activation' | 'trigger'
+
 export interface DrillPointer {
   instrument: string
   hint: string
   /** Astrologically typed classification of this pointer's classical move (design §28.4).
    *  Optional/additive — see DrillPointerType doc comment. */
   pointer_type?: DrillPointerType
+  /** Which PACT-chain stage firing this pointer advances to (design §28.3 + §30 chain-honesty
+   *  acceptance). Optional/additive — absent on pointers outside a PACT investigation. */
+  pact_stage?: PactStage
 }
 
 // ── envelope shapes ────────────────────────────────────────────────────────────
@@ -194,6 +227,12 @@ export interface V3Envelope extends LegacyEnvelope {
   epistemic: EpistemicSummary
   timing: TimingBlock
   coverage: CoverageStamp | null
+  /** Design §31.5 BUILD PROVENANCE AT SERVE TIME — chart-level build identifier for
+   *  this response's data. Undefined/null when not supplied by the caller (honest
+   *  null, never fabricated — B.10); callers that track chart builds (e.g. session-pin
+   *  serving, design §10.6/§31.3) populate this from the chart's latest complete
+   *  `builds` row. Consistency invariant (E-4, extended): one response = one build_id. */
+  build_id?: string | null
 }
 
 export type RetrievalEnvelope = LegacyEnvelope | V3Envelope
@@ -217,6 +256,7 @@ export interface BuildRetrievalEnvelopeParams {
   grounding?: Partial<GroundingBlock>
   drill_pointers?: DrillPointer[]
   judgment_flags?: string[]
+  build_id?: string | null
 }
 
 /**
@@ -274,6 +314,7 @@ export function buildRetrievalEnvelope(
     },
     drill_pointers: params.drill_pointers ?? [],
     judgment_flags: params.judgment_flags ?? [],
+    build_id: params.build_id ?? null,
   }
   return v3
 }

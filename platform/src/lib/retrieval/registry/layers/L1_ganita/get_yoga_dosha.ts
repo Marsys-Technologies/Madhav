@@ -51,22 +51,36 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       if (args.type === 'dosha') categories = categories.filter(c => c.startsWith('dosha'))
       if (args.type === 'flag')  categories = categories.filter(c => c.endsWith('_flag'))
 
-      const params: unknown[] = [chartId, categories, limit, offset]
-      let sql = `
-        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
-        FROM chart_facts
-        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
-      `
+      // Base filter params — shared by the COUNT query and the paged SELECT below, so
+      // `total` (D5 coverage receipt — family size, envelope.ts buildCoverageStamp)
+      // genuinely reflects the SAME filter conditions the page was drawn from, not a
+      // re-guess or the page length mislabeled as the family size (the prior bug here).
+      const baseParams: unknown[] = [chartId, categories]
+      let whereClause = `chart_id = $1 AND fact_category = ANY($2::text[])`
       if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
+        baseParams.push(args.ayanamsha_id as string)
+        whereClause += ` AND ayanamsha_id = $${baseParams.length}`
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const [countResult, result] = await Promise.all([
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${whereClause}`,
+          baseParams,
+        ),
+        query<Record<string, unknown>>(
+          `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                  fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+           FROM chart_facts
+           WHERE ${whereClause}
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
+          [...baseParams, limit, offset],
+        ),
+      ])
+
+      const total = Number(countResult.rows[0]?.total ?? 0)
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, categories, rows: result.rows ?? [], total },
         is_error: false,
       }
     } catch (err) {

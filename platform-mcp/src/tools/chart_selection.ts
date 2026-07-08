@@ -29,14 +29,21 @@
  *   - No native chart_id or name appears in this file.
  *   - list_my_charts takes no chart_id param.
  *
- * M2+M3+M4 chart selection (MCP elevation arc, 2026-07-01).
+ * Session pin (R5 W4 — design §10.6/§31.3/§31.5): select_chart is the natural
+ * "session open" anchor for the chart being selected — after persisting
+ * active_chart_id it also resolves/refreshes the session_pin for that same
+ * chart_id ({priors_version, formula_versions, ranking_config, build_id,
+ * now_context_date}) and returns it. A mid-session rebuild of the chart being
+ * (re-)selected surfaces honestly as an advisory + `judgment_flags`.
+ *
+ * M2+M3+M4 chart selection (MCP elevation arc, 2026-07-01). Session pin — R5 W4 (2026-07-09).
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
-import { getOrCreateSession, persistActiveChart } from '../lib/session.js'
+import { getOrCreateSession, persistActiveChartAndPin } from '../lib/session.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -221,12 +228,27 @@ export function registerChartSelectionTools(
         )
       }
 
-      // M3: persist the newly selected active_chart_id to the session (fire-and-forget;
-      // failure is non-fatal — the call still returns the selected chart_id).
+      // M3 + R5 W4: persist the newly selected active_chart_id AND resolve/refresh
+      // the session pin for it, in one round trip. Failure is non-fatal — the call
+      // still returns the selected chart_id even if session/pin persistence fails.
+      let sessionPin: unknown = undefined
+      let pinJudgmentFlags: string[] | undefined
       if (session) {
-        void persistActiveChart(principal, key, chart_id).catch((err: unknown) => {
-          console.error('[mcp:select_chart] session persist failed', err)
-        })
+        try {
+          const pinResult = await persistActiveChartAndPin(principal, key, chart_id)
+          if (pinResult.session_pin) {
+            sessionPin = pinResult.session_pin
+            pinJudgmentFlags = pinResult.judgment_flags
+            if (pinJudgmentFlags && pinJudgmentFlags.length > 0) {
+              advisories.push(
+                `Chart ${chart_id} was rebuilt since your session pin was last set — ` +
+                'pin refreshed to the new build.'
+              )
+            }
+          }
+        } catch (err: unknown) {
+          console.error('[mcp:select_chart] session/pin persist failed', err)
+        }
       }
 
       const result: Record<string, unknown> = {
@@ -235,6 +257,12 @@ export function registerChartSelectionTools(
         display_name: name,
         session_key: key,
         message: `Chart selected: ${name}. Pass this chart_id to subsequent tools.`,
+      }
+      if (sessionPin) {
+        result['session_pin'] = sessionPin
+      }
+      if (pinJudgmentFlags && pinJudgmentFlags.length > 0) {
+        result['judgment_flags'] = pinJudgmentFlags
       }
       if (advisories.length > 0) {
         result['advisories'] = advisories

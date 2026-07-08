@@ -23,6 +23,7 @@ import {
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
+  type CoverageStamp,
 } from '../generated/envelope.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
@@ -70,6 +71,7 @@ function envelope(
     judgment_flags?: string[]
     as_of_date?: string
     epistemic?: ReturnType<typeof buildEpistemicSummary>
+    coverage?: CoverageStamp | null
   },
 ) {
   return buildRetrievalEnvelope(
@@ -85,6 +87,7 @@ function envelope(
       judgment_flags: v3Extras?.judgment_flags,
       as_of_date: v3Extras?.as_of_date,
       epistemic: v3Extras?.epistemic,
+      coverage: v3Extras?.coverage,
     },
     format,
   )
@@ -431,11 +434,20 @@ export function registerP1GanitaTools(server: McpServer): void {
           note: 'verified_fraction = share of this page\'s rows with verification_pass_status=two_pass_verified.',
         })
 
+        // D5 coverage receipt (design §10.5): `total` above is a genuine COUNT(*) against
+        // the SAME chart_id/category/ayanamsha filters this page was drawn from (get_yoga_dosha.ts) —
+        // not a re-guess. family names the filtered set this page is a slice of.
+        const coverage: CoverageStamp = {
+          family: `yoga_dosha_rows[categories=${(data as { categories?: string[] } | undefined)?.categories?.join(',') ?? 'all'}]`,
+          served: rows.length,
+          total,
+        }
+
         return dualOutput(envelope(data, 'ganita_yogas_get', {
           offset: resolvedOffset,
           limit: limit ?? 500,
           total,
-        }, 'v3', { chart_header, verdict, ranking_basis, grounding, drill_pointers, judgment_flags, epistemic }))
+        }, 'v3', { chart_header, verdict, ranking_basis, grounding, drill_pointers, judgment_flags, epistemic, coverage }))
       } catch (err) {
         return errorOutput('ganita_yogas_get', String(err), { chart_id })
       }

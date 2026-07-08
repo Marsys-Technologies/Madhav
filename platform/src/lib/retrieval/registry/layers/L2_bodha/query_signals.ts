@@ -256,6 +256,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
         filters.push(`(m.lel_origin IS NULL OR m.lel_origin = false)`)
       }
 
+      // D5 coverage receipt (design §10.5): true family size — a COUNT(*) against the
+      // SAME base filters (chart_id/ayanamsha/domain/source_subsystem/signal_type_class/
+      // paradigm/min_salience/lel_enabled) the served page/candidate pool was drawn from,
+      // BEFORE any LIMIT/OFFSET/candidate-pool capping. Cheap (indexed columns, single
+      // aggregate) — run alongside the main query, never blocking it.
+      const familyCountPromise = query<{ total: string }>(
+        `SELECT COUNT(*)::text AS total FROM bodha_msr_signals m WHERE ${filters.join(' AND ')}`,
+        params.slice(0, p - 1),
+      )
+
       // BA-P2: composite re-rank when domain specified; salience fallback otherwise.
       const useComposite = Boolean(domain)
 
@@ -448,6 +458,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
         }
       }
 
+      // D5 coverage receipt: resolve the family-size COUNT alongside everything else.
+      // Never fails the instrument — an honest `null` beats a fabricated/guessed total.
+      let total_matching_filters: number | null
+      try {
+        const countResult = await familyCountPromise
+        total_matching_filters = Number(countResult.rows[0]?.total ?? 0)
+      } catch {
+        total_matching_filters = null
+      }
+
       const responseContent = {
         chart_id,
         frame,
@@ -455,6 +475,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         ayanamsha_id,
         signals,
         returned_count: signals.length,
+        total_matching_filters,
         truncated,
         ...(truncated_from !== undefined ? { truncated_from } : {}),
         ranking_basis,
