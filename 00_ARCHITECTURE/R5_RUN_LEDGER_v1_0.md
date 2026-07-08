@@ -1623,3 +1623,81 @@ feature wave of the R5 run — remaining work is the full ~40-question battery, 
 pass, and the seal report.
 
 **HALTs:** none.
+
+---
+
+## W4 — FULL BATTERY RUN (Ring-2/Ring-3 precursor)
+
+**Trigger:** final verification gate before Ring-3 red-team + seal, per the R5 autonomous-run
+brief. Ran ALL 38 items actually present in `R5_ANSWER_BATTERY_v1_0.md §3` (the file's own
+frontmatter/title say "40" — a documented count mismatch, not corrected in the frozen file) live
+against prod `amjis-mcp`, both canonical charts, using the provisioned probe-service-account
+credential. Full detail, per-item evidence, and honest gaps in
+`00_ARCHITECTURE/R5_BATTERY_RESULTS_v1_0.md`; raw results in
+`evals/r5-w4-full-battery/results_d5105222.json`.
+
+**Headline numbers:**
+- **Pass rate:** 14/38 automated (36.8%); manually-corrected to ~17-18/38 after fixing 3 confirmed
+  false-negative harness bugs (regex/keyword mismatches — see below). §4 seal gates (100%
+  Q1/X deterministic pass; ≥90% overall) are **NOT MET** even after correction — genuine gaps
+  remain (byte-budget overruns on several Q1 items, one broken tool, one missing per-varga
+  vargottama capability).
+- **SLO status: PASS, large genuine improvement.** Same 4 tools/methodology as the W0a baseline:
+  `ganita_dashas_get` p50 2451.7→248.4ms (-89.9%), p95 4923.1→354.2ms (-92.8%, the W0a-flagged
+  outlier is now fully healed, consistent with P1's already-documented fix); `bodha_chart_digest_get`
+  p50 580.5→84.7ms (-85.4%); `bodha_signals_get` p50 437.5→89.0ms (-79.7%); `phala_outlook_get`
+  p50 575.4→81.3ms (-85.9%). Zero regressions, zero 5xx/timeouts across the SLO sample.
+- **Utilization — two distinct numbers, neither fabricated:** (a) Q7-class grounding-ledger
+  citation ratio: **NOT MEASURED** (no NL-answer-synthesis harness exists in this sandboxed
+  environment, and 2/3 Q7 items are additionally blocked by the new `synth_chart_brief_get`
+  defect below — reported honestly as an open gap, not a fake 90%); (b) tool-estate coverage
+  breadth: **15/127 tools (11.8%)** exercised by the 38-item battery (a different metric from
+  (a), reported for completeness only, not a pass/fail gate).
+- **Frame-safety canary verdict: PASS on all three (X-1, X-7, X-8).** X-1 (D1 regression canary,
+  "he's Pisces lagna, right?" against the Aries-lagna Abhinandan chart) — live `chart_header` and
+  body checklist both consistently show `"lagna_sign": "Aries"`, never Pisces, at every level of
+  the response. X-7 (mixed-frame trap) — Saturn confirmed Scorpio/house-8 from lagna; the
+  from-Moon call adds a genuinely recomputed `"house_from_frame": 6` field, not a copy (the
+  harness's own automated regex initially mis-flagged this as FAIL — a regex bug, not a product
+  defect, corrected by manual read). X-8 (stale-note check) — confirmed to match the
+  already-documented P4 fix (notes now self-describe as "computed live, not a cached historical
+  figure" and match the served rows' actual distribution); the automated harness's keyword-presence
+  check produced the same false-FAIL pattern the W0a Ring-2 report already documented and warned
+  about for this exact field.
+- **New defects found: 2 confirmed + 2 lower-confidence** (cross-referenced against every
+  P1-P8/PUNCHLIST entry above — none are duplicates):
+  1. **CRITICAL, NEW:** `synth_chart_brief_get` throws a raw SQL 500 (`column "domain" does not
+     exist`, `[p1_synthesis]` tag) on both charts at both `depth=complete`/`depth=deep` — fully
+     blocks the entire Q7 whole-chart-investigation class (3/38 items unanswerable via the mapped
+     tool). Distinct tool + distinct missing column from the already-tracked P6 finding
+     (`synth_tail_divergence_get`, `column "tier" does not exist`), but same `[p1_synthesis]`
+     error-source tag — recommend a schema-conformance audit of the shared synthesis module, since
+     this failure mode has now surfaced twice independently.
+  2. **Minor, NEW:** `muhurta_finder` returns `windows:[], window_count:0` with no `empty_reason`
+     field on a genuine zero-result search (Q6-N-1) — a U4 gap.
+  3. **Low-confidence, NEW:** entitlement-denial and chart-not-found appear structurally
+     identical (X-2) — not a confirmed leak (no second real out-of-grant chart id was available to
+     test against), flagged as an information-architecture question for Ring-3.
+  4. **Observation, not asserted as fixed:** `ganita_yogas_get`'s P3 "hollow envelope"
+     (`verdict:null`/`ranking_basis:null`) appears **populated** in this run (plausibly a W4
+     envelope-consolidation side effect) — flagged for Ring-3 to confirm and credit, not
+     independently verified against a full before/after diff here.
+- **Grading gaps (honest disclosure):** **zero items received true LLM-rubric grading** — no
+  Gemini/DeepSeek network path exists in this sandboxed environment. All 22 Q-class items carrying
+  a numeric rubric floor (`Q2-N-1` through `Q9-N-3`, full list in the results doc §8) were graded
+  with a best-effort structural-proxy checklist only, explicitly labeled `NOT_LLM_GRADED` in the
+  raw results JSON — never presented as a real rubric pass.
+
+**Harness note:** the new `evals/r5-w4-full-battery/battery_runner.ts` independently rediscovered
+the same `structuredContent`-vs-placeholder-text parsing gap the W0a Ring-2 report already
+documented (the "S3 serialization-tax fix" changes where large payloads live in the response) —
+and additionally found a third response shape (`muhurta_finder`'s payload sits at a sibling
+`result.result` key, not `content[]` at all). The new harness's `unwrapPayload()` handles all three
+shapes generically so future runs do not need the manual-correction step every prior wave's Ring-2
+report has had to perform by hand.
+
+**Full detail, evidence, and the complete question-by-question table:**
+`00_ARCHITECTURE/R5_BATTERY_RESULTS_v1_0.md`.
+
+**HALTs:** none — this is a verification-only pass; no product code was touched or fixed. All
+findings above are reported for Ring-3, not actioned here.

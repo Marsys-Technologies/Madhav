@@ -335,10 +335,11 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
 
         const discLimit = depth === 'complete' ? 20 : 5
         const discResult = await platformQuery(`
-          SELECT discovery_id, domain, statement, salience_score, activation_status
+          SELECT discovery_id, affected_domains_array AS domains, surface_reading AS statement,
+                 composite_discovery_rank AS salience_score
           FROM bodha_discoveries
           WHERE chart_id = $1
-          ORDER BY salience_score DESC NULLS LAST
+          ORDER BY composite_discovery_rank DESC NULLS LAST
           LIMIT $2
         `, [chart_id, discLimit], principal)
 
