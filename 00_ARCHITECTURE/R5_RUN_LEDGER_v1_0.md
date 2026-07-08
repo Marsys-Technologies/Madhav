@@ -1704,6 +1704,62 @@ findings above are reported for Ring-3, not actioned here.
 
 ---
 
+## RING-3 — RED-TEAM PASS (adversarial verification, pre-seal)
+
+**Trigger:** per brief §3 Ring-3 spec, the adversarial verification gate between the W4 full
+battery and the seal report. Ran all four named adversarial classes (contradictory-header canary,
+entitlement probes, paradigm-mixing bait, budget-abuse attempts) LIVE against prod `amjis-mcp`
+using the provisioned `probe-service-account` credential, on both canonical charts where relevant.
+Full detail, exact requests/responses, and per-probe verdicts in
+`00_ARCHITECTURE/R5_RING3_REDTEAM_v1_0.md`.
+
+**Headline verdicts:**
+- **Class 1 (contradictory-header canary): DEFENDED, 4/4 constructible probes.** Extended the
+  already-passing W4-battery X-1 pattern (false-Pisces-lagna bait) to three new fields across both
+  charts — wrong nakshatra (Moon/Rohini bait vs. real Purva Bhadrapada), wrong lagna sign
+  (Pisces bait vs. Abhinandan's real Aries), wrong dasha lord (Rahu bait vs. the real current MD
+  lord Mercury). Every caller-supplied filter that contradicted ground truth was correctly treated
+  as a FILTER (returning an honest empty result), never laundered back as a false confirmation.
+- **Class 2 (entitlement probes): DEFENDED — zero data leakage across 5 probes** (nonexistent
+  UUID, 2 genuine ungranted chart_ids discovered via a read-only `chart_grants` query, 2
+  SQL-injection-shaped chart_id strings — all cleanly denied/rejected, no real data ever crossed
+  the boundary). **This DEFINITIVELY RESOLVES the W4 battery's open X-2 item** ("no second real
+  out-of-grant chart id was available to test against") — two real out-of-grant chart_ids
+  (`cb73cd3d-9eba-4220-9902-0de91566e980`, `acdf0d66-7541-451c-be35-80285028810b`, both with real
+  `chart_grants` rows to OTHER principals) were found and tested; **no leak confirmed**. One
+  honest, non-HALT gap flagged for `R5_PUNCHLIST`: the ungranted-real-chart response is
+  byte-identical in shape to a nonexistent-chart or legitimately-empty response (no explicit
+  `AUTHZ_DENIED` signal) — an information-architecture gap, not a security breach.
+- **Class 3 (paradigm-mixing bait): DEFENDED structurally, INCONCLUSIVE for live end-to-end
+  reachability.** Source-level read of `address_resolver.ts`'s `AddressExpression` grammar
+  (lines 180-191) confirms the expression tree is a linear chain (each nesting node has exactly
+  one child) — genuinely mixing two different paradigm-specific leaf types in one expression is
+  grammatically unconstructible by any real caller, not merely blocked by a runtime check. The
+  `assertParadigmCoherent` guard's other branch (explicit `paradigm` param conflicting with an
+  address type) is unit-tested and passing at the source level, but a full `tools/list` schema
+  audit (127 tools) found NO currently-shipped MCP tool exposes both an `about`
+  address-expression param and an explicit `paradigm` param together — so this pass could not
+  independently exercise that guard branch live against prod. Reported honestly as a scope gap,
+  not claimed as a pass.
+- **Class 4 (budget-abuse attempts): DEFENDED on hard per-request caps, VULNERABLE (honest gap,
+  non-HALT) on rate limiting.** Every paginated instrument tested (`ganita_yogas_get`,
+  `bodha_signals_get`, `query_chart_facts`, `get_signals`, `traverse_graph` depth) rejects an
+  oversized single request outright via Zod schema validation before it reaches any handler/DB
+  code (`limit`/`top_k`/`depth` ceilings confirmed live: 2000/200/1000/200/3 respectively). BUT a
+  20-call rapid-fire concurrent burst against the same tool/chart saw **all 20 calls succeed
+  (HTTP 200, no 429, no throttle signal)** — latency rose under load (0.9s→3.7s, consistent with
+  incidental Cloud Run/DB-pool backpressure) but no deliberate rate-limiting/throttling defense
+  was observed at the credential layer. Flagged plainly for `R5_PUNCHLIST` as a hardening item —
+  NOT a HALT (no entitlement/security regression: the credential's data access remained correctly
+  scoped throughout, only request VOLUME was unconstrained).
+
+**HALT-condition check (brief §4):** re-verified all four conditions — **no HALT triggered.** No
+entitlement/security regression found (condition 3); no deploy occurred in this pass (condition
+2 n/a); no write against chart data or frozen constants (condition 4 — this pass used read-only
+`tools/call` + one read-only `postgres` query against `chart_grants`/`charts` only, to identify
+genuine out-of-grant chart_ids for probe construction, never to bypass MCP authz).
+
+**HALTs:** none — this pass is clear to proceed to the seal report.
 ## FULL Battery — Ring-2 post-deploy fix verification (CLOSING NOTE)
 
 **Trigger:** the FULL battery run's critical finding (`synth_chart_brief_get` 500 on both charts —
