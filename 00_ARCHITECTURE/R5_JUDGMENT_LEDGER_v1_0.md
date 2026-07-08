@@ -5,7 +5,8 @@ status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL
 lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
   JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
   (W1 Ring-1 reconciliation, r5/w1-reconcile), JL-011 (W2 corpus lane, r5/w2-corpus-citations),
-  JL-012 (W2 traverse_chart_graph lane), JL-013 (W2 frame-facet lane) recorded
+  JL-012 (W2 traverse_chart_graph lane), JL-013 (W2 frame-facet lane), JL-014 (W2 paradigm-facet
+  lane) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -621,6 +622,90 @@ its grammar. (b) reversible — a future caller needing "all occupants as separa
 be added as a new `about_from_all`-style param without disturbing this default. (c) reversible —
 alias table is additive; a future wave can drop the legacy aliases once no caller depends on them
 (easily verified by log/telemetry, per the pattern JL-007/JL-010 used for similar deprecations).
+
+---
+
+### JL-014 — W2 paradigm-facet lane: paradigm vocabulary scope, query_signals default-filter behavior, and the concrete backing for kp/tajika addressing
+
+**note on numbering:** this lane authored JL-011 against its own `origin/r5/w2` base (last entry
+on disk was JL-010). A sibling W2 lane (frame-facet) may have independently claimed JL-011 too —
+per the W2 brief this is an expected parallel-lane collision, resolved by sequential renumbering
+at Ring-1 (the same pattern JL-010 itself documents from W1). Reported clearly here for that pass.
+
+**question (a):** Design §27.4 names exactly 4 paradigms: `parashari (default) | jaimini | kp |
+tajika`. Live data (`bodha_msr_signals.signal_tradition` on the canonical chart) actually carries
+6 distinct values: the 4 named plus `esoteric` (624 rows) and `lal_kitab` (10 rows). Should the
+`paradigm` facet's vocabulary follow the design doc literally (4 values), or expose all 6 values
+the data actually supports?
+
+**ruling (a):** Literal 4-value vocabulary from design §27.4 (`parashari`, `jaimini`, `kp`,
+`tajika`); `esoteric`/`lal_kitab` are NOT exposed through the facet's enum. Design §27.4 is
+explicit and enumerated ("switches the COHERENT interpretive frame: jaimini activates …; kp
+activates …; tajika activates …") — it defines the facet as a closed classical vocabulary, not
+"whatever signal_tradition happens to contain." `esoteric` and `lal_kitab` are real traditions in
+the data but the design doc does not describe what "coherent interpretive frame" either one
+activates (no equivalent of "kp activates sub-lord/cusp addressing" is given for either) — adding
+them as first-class paradigm values would be inventing design scope, not implementing it. Both
+remain queryable via `query_signals`'s existing `source_subsystem`/raw filtering; only the
+enumerated 4 are exposed as `paradigm`.
+
+**question (b):** Design §27.4 literally says `paradigm: parashari (default) | ...` — i.e. a
+default value. `query_signals` (the L2 Bodha drill surface holding `signal_tradition`) is also
+the substrate the whole-chart-read discipline (B.11) and query_ucd's cross-tradition convergence
+scoring depend on. Should the default (paradigm omitted) narrow results to `signal_tradition =
+'parashari'` per the design's literal default, or return every tradition unfiltered (today's
+existing, shipped behavior)?
+
+**ruling (b):** No default filter — paradigm omitted returns every tradition, each row still
+individually tagged via its own `signal_tradition` column (never blended into one unattributed
+value). Reasons, in pillar order: (1) ASTROLOGY / correctness — B.11 (CLAUDE.md, PROJECT_ARCHITECTURE
+§H.4) requires whole-chart reads to route through MSR+CDLM+CGM+RM synthesis BEFORE producing a
+domain answer; silently narrowing the default drill surface to one tradition would remove signals
+an acharya-grade read needs by default, for every caller who doesn't know to ask for a specific
+`paradigm`. (2) honesty — this would be an undisclosed, breaking behavior change to an already-
+shipped W1 capability (`query_signals` predates this lane), narrowing what every existing caller
+gets back with no opt-out documented anywhere yet. (3) `paradigm` is explicitly presented in the
+tool's own description as an OPT-IN ("pass this when you specifically need ONE tradition's clean
+signal set") for exactly the design's stated purpose — "gives the triangulation register (A7) its
+clean per-paradigm inputs" (§27.4) — not as a universal default-scoping mechanism. The "mixing
+paradigms mid-answer" sin §27.4 warns against is a different failure (treating multi-tradition
+signals as if they were one coherent, unattributed method) than surfacing multiple individually-
+tagged traditions side by side, which `bodha_convergence.cross_tradition_count` shows is a
+deliberately-tracked FEATURE of the L2 synthesis layer, not a defect to filter away.
+
+**question (c):** Design §27.4 says "kp activates sub-lord/cusp addressing" and "tajika activates
+varshaphala/saham" as things the address resolver should support once paradigm-aware. `chart_facts`
+has real backing for kp sub-lord/cusp addressing (`cusp_kp_lords`: prana_lord/star_lord/sub_lord/
+sub_sub_lord per CUSP_01..12) and for tajika sāham addressing (`saham_position`: 16+ named sāhams
+with sign/house/nakshatra/sign_lord), but has NO varshaphala (annual/Tajika year-chart) data
+anywhere — no L1 asset builds an annual chart. Should this lane (a) build only the two address
+types with real backing (`sub_lord_of` for kp, `saham` for tajika) and leave varshaphala
+unaddressed, (b) block the whole tajika paradigm on varshaphala not existing, or (c) fabricate a
+varshaphala placeholder?
+
+**ruling (c):** (a) — build only what has real backing. B.10 (no fabricated computation) rules
+out option (c) outright. Blocking the entire tajika paradigm (option b) throws away real,
+already-built `saham_position` data over an unrelated missing asset — sāham addressing is itself
+a complete, citable tajika practice, not a stub. Ship `saham` (backed, real) now; `varshaphala`
+addressing is out of scope until an L1 writer materializes an annual chart — flagged in this
+lane's module-header comment and this ledger entry for whichever future wave builds that asset,
+so it is not silently forgotten. This mirrors the exact reasoning JL-006(b) used for the karaka
+school gap: work with what is verified to exist, document what is deferred, never invent.
+
+**basis:** ASTROLOGY (design §27.4's own enumerated vocabulary and per-paradigm activation list
+are the direct textual basis for (a) and (c); no disputed-point flag needed — the 4 named
+paradigms and their described addressing schemes are textbook-uncontested) > correctness (B.11
+whole-chart-read discipline directly drives (b); (c)'s "only build what chart_facts actually
+backs" is a correctness/B.10 call) > honesty ((b)'s no-silent-behavior-change reasoning; (c)'s
+explicit deferral note rather than a silent gap) > code-convenience.
+
+**reversibility:** (a) reversible — if a future wave wants `esoteric`/`lal_kitab` exposed as
+paradigm values, the enum is additive; no data or shape change needed elsewhere. (b) reversible —
+a later wave could add an explicit opt-in default-narrowing mode (e.g. a `strict_paradigm: true`
+flag) without breaking today's shipped no-filter default; the underlying data/columns are
+unchanged either way. (c) reversible in the strong sense: `sub_lord_of`/`saham` are pure additive
+`AddressExpression` variants; a future `varshaphala`-backed address type slots in beside them with
+no change to either's contract.
 
 No further entries — this ledger reopens for W2+ waves.
 
