@@ -224,3 +224,127 @@ Phase-0 close.
 quiesced. (d) ledgers opened. Surviving defects catalogued above carry forward into W0a's punch-list
 scope, unchanged in kind from the design doc's own triage — Phase-0 found no new HALT-worthy
 contradiction of the governing design.
+
+---
+
+## Rollback Rehearsal (W0a lane — brief §6.7 / §7 item 7)
+
+**Purpose:** brief §7 item 7 mandates one deliberate, timed Cloud Run revision-pin rollback on
+`amjis-mcp`, exercised against real prod traffic, before any deeper W0a deploy goes out. This
+section is the proven, timed runbook produced by that exercise, discharging the "not yet exercised"
+flag left open at Phase-0 (§P0-ii above).
+
+**Service:** `amjis-mcp` · region `asia-south1` · project `madhav-astrology` · URL
+`https://amjis-mcp-qm256lasva-el.a.run.app` · health endpoint `GET /health`.
+
+**Date/time (UTC):** 2026-07-08, ~08:23–08:24 UTC.
+
+### Step 1 — record currently-live revision
+
+```
+gcloud run services describe amjis-mcp --region=asia-south1 --format="value(status.traffic)"
+# {'latestRevision': True, 'percent': 100, 'revisionName': 'amjis-mcp-00394-7hh'}
+gcloud run services describe amjis-mcp --region=asia-south1 --format="value(status.latestReadyRevisionName)"
+# amjis-mcp-00394-7hh
+```
+
+Live revision at start: **`amjis-mcp-00394-7hh`** (created 2026-07-08T08:09:12Z — the P0-ii
+redeploy revision).
+
+### Step 2 — identify immediately-prior healthy revision
+
+```
+gcloud run revisions list --service=amjis-mcp --region=asia-south1 \
+  --sort-by="~metadata.creationTimestamp" --limit=10 \
+  --format="table(metadata.name,status.conditions[0].status,metadata.creationTimestamp)"
+```
+
+| revision | Ready | created (UTC) |
+|---|---|---|
+| amjis-mcp-00394-7hh | True | 2026-07-08T08:09:12Z |
+| **amjis-mcp-00393-445** | **True** | **2026-07-05T15:38:30Z** |
+| amjis-mcp-00392-qsp | True | 2026-07-03T21:58:56Z |
+
+Prior healthy revision selected: **`amjis-mcp-00393-445`**.
+
+### Step 3 — baseline health check (pre-rollback)
+
+```
+curl -sS -o /dev/null -w "HTTP_STATUS:%{http_code}\n" https://amjis-mcp-qm256lasva-el.a.run.app/health
+# HTTP_STATUS:200 — {"status":"ok","service":"marsys-mcp","version":"1.0.0","tools":121,...}
+```
+
+### Step 4 — pin 100% traffic to prior revision (rollback)
+
+```
+gcloud run services update-traffic amjis-mcp --region=asia-south1 \
+  --to-revisions=amjis-mcp-00393-445=100
+```
+
+- Command issued: **08:23:32 UTC**
+- Command returned ("Routing traffic... done"): **08:23:40 UTC** — **wall time ≈ 8.1s**
+  (`real 0m8.083s` per shell `time`).
+- Post-command traffic verify: `{'percent': 100, 'revisionName': 'amjis-mcp-00393-445'}` — confirmed.
+- Health check against rolled-back revision: `HTTP_STATUS:200`, identical health payload
+  (`{"status":"ok","service":"marsys-mcp","version":"1.0.0","tools":121,...}`), verified at
+  **08:23:48 UTC**.
+- **End-to-end rollback time (command issue → confirmed-healthy on prior revision): ≈16s.**
+
+### Step 5 — restore traffic to current/latest revision (roll-forward)
+
+```
+gcloud run services update-traffic amjis-mcp --region=asia-south1 \
+  --to-revisions=amjis-mcp-00394-7hh=100
+```
+
+- Command issued: **08:23:51 UTC**
+- Command returned ("Routing traffic... done"): **08:23:59 UTC** — **wall time ≈ 7.8s**
+  (`real 0m7.804s`).
+- Post-command traffic verify: `{'percent': 100, 'revisionName': 'amjis-mcp-00394-7hh'}` — confirmed
+  restored to latest.
+- Health check against restored revision: `HTTP_STATUS:200`, identical health payload, verified at
+  **08:24:04 UTC**.
+- **End-to-end restore time (command issue → confirmed-healthy on latest revision): ≈13s.**
+
+### Outcome
+
+- Both directions of the revision-pin traffic switch completed in **well under 10 seconds** of
+  `update-traffic` command wall time, and were confirmed healthy (`GET /health` → 200, matching
+  payload) within **~16s** (rollback) and **~13s** (restore) end-to-end including verification
+  round-trips.
+- No errors, no 5xx observed on `/health` at any point during the exercise. Service was never fully
+  down — Cloud Run traffic-split is atomic at the routing layer, so this was a clean cutover, not a
+  redeploy.
+- Final state: **fully restored** to `amjis-mcp-00394-7hh` at 100% traffic — matches pre-exercise
+  state exactly. No residual drift.
+- **Runbook is proven and repeatable** for any subsequent W0a (or later-wave) deploy: identify
+  N-1 revision via `gcloud run revisions list`, `update-traffic --to-revisions=<rev>=100`, verify
+  `/health`, and if rollback needs to persist, stop there; otherwise reverse the same command with
+  the newer revision name to restore.
+
+**Command template for future rollback (copy-paste, region/service fixed):**
+
+```
+# 1. Find prior revision
+gcloud run revisions list --service=amjis-mcp --region=asia-south1 \
+  --sort-by="~metadata.creationTimestamp" --limit=5 \
+  --format="table(metadata.name,status.conditions[0].status,metadata.creationTimestamp)"
+
+# 2. Pin traffic to it
+gcloud run services update-traffic amjis-mcp --region=asia-south1 \
+  --to-revisions=<PRIOR_REVISION>=100
+
+# 3. Verify
+curl -sS -o /dev/null -w "%{http_code}\n" https://amjis-mcp-qm256lasva-el.a.run.app/health
+gcloud run services describe amjis-mcp --region=asia-south1 --format="value(status.traffic)"
+
+# 4. If rollback needs to persist: stop here.
+#    If this was only a rehearsal / issue resolved: restore forward
+gcloud run services update-traffic amjis-mcp --region=asia-south1 \
+  --to-revisions=<LATEST_REVISION>=100
+```
+
+**Verdict: DISCHARGED.** Brief §7 item 7 / §6.7 rollback rehearsal obligation is now satisfied. This
+lane touched only this ledger document and the live Cloud Run traffic config for `amjis-mcp` — no
+application code, no migrations, no writers. W0a's real deploy (and all subsequent wave deploys) may
+now proceed against a proven, timed rollback runbook.
