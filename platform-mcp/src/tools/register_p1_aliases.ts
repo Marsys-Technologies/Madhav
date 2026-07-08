@@ -202,10 +202,27 @@ export function registerP1AliasTools(server: McpServer): void {
     'marsys://tool/L1/get_positions')
 
   // get_dashas → ganita_dashas_get
+  // R5 W1 (dasha_query lane, design §18/§21/§25 E-5): facets threaded through the seam so
+  // they don't die at the boundary the way as_of_date originally did (P1). Kept as a hand
+  // shim (single-source codegen for this instrument is a later-wave item) but every facet
+  // the handler (get_dashas.ts) now reads is declared here too.
   regAlias(server, 'ganita_dashas_get',
-    'L1 Vimshottari dasha chain (same as get_dashas)',
+    'L1 dasha periods, faceted by system/level/window (same as get_dashas). ' +
+    'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y.',
     'marsys://tool/L1/get_dashas',
-    { as_of_date: z.string().optional() })
+    {
+      as_of_date:    z.string().optional(),
+      date_contains: z.string().optional(),
+      date_from:     z.string().optional(),
+      system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+      dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
+      level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
+      all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
+      window_start:  z.string().optional(),
+      window_end:    z.string().optional(),
+      lord_graha:    z.string().optional(),
+      fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+    })
 
   // get_temporal_windows → kala_windows_get
   regAlias(server, 'kala_windows_get',
