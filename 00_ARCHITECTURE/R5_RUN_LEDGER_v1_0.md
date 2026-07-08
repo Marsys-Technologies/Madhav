@@ -600,3 +600,88 @@ Committed: `evals/r5-w0a-canary/canary_runner.ts` + `evals/r5-w0a-canary/results
 verification), and this canary lane (§14 probe re-audit + deterministic battery subset + latency
 baseline). Typecheck clean on both `platform` and `platform-mcp`; no test regressions vs. the
 unmerged `origin/r5/w0a` baseline. Ready for Ring-2 (PR `r5/w0a-integrated` → `main`).
+
+---
+
+## W0b — envelope lane: unified populated envelope (design §10/§19; brief §6.3)
+
+**Branch:** `r5/w0b-envelope` off `r5/w0b` (post-W0a merge, HEAD `04b802ad`). Scope per lane brief:
+one populated envelope shape shared conceptually by platform + platform-mcp, consumer format
+negotiation (`response_format: legacy|v3`, default legacy), additive-only. Sibling lane
+`r5/w0b-codegen` (single-source contract generation / STRANGLER shim migration, §19/§6.2) is a
+separate, parallel workstream — not touched here beyond the shared-scope coordination note in the
+lane brief.
+
+**Delivered:**
+- `platform/src/lib/retrieval/envelope.ts` — canonical envelope types + `buildRetrievalEnvelope()` +
+  `deriveEpistemicGrade()`/`buildEpistemicSummary()` (D2) + `extractGroundingFromFactRows()`
+  (best-effort grounding aggregation from already-served L1 rows). Declared ONCE per §19's intent;
+  cannot be `import`-shared across the process boundary today (platform-mcp is a separate NodeNext
+  build with no path mapping into this repo — confirmed empty on inspection), so
+  `platform-mcp/src/lib/envelope.ts` is a byte-structural hand-mirror with a header comment pointing
+  back at the canonical file and flagging the w0b-codegen lane as its intended replacement.
+- `platform/src/lib/retrieval/chart_header.ts` + new capability
+  `marsys://tool/L1/get_chart_header` (registered in `L1_ganita/index.ts`) — D1 data-plane addition:
+  the ~40-token frame-safety block (`chart_id_short, name, lagna_sign, lagna_deg, moon_sign,
+  sun_sign, ayanamsha, current_maha_antar`), read-only, 60s in-process cache, three cheap queries
+  (`charts.name`, `chart_facts` LAGNA/MOON/SUN sign+longitude, `chart_dashas` current
+  vimshottari Maha/Antar). Frame values verified live against the canonical chart
+  (`482012f1-…`): Lagna=Aries 12.43°, Sun=Capricorn, Moon=(Aquarius per graha_position — the
+  FORENSIC nakshatra anchor Purva Bhadrapada is a separate fact_key, not contradicted).
+- `platform-mcp/src/tools/register_p1_ganita.ts` — `ganita_yogas_get` (the exact P3 instrument) is
+  the W0b pilot: added `response_format` param (default `legacy`), wired to the shared envelope
+  builder. Under `legacy` the response is byte-identical to pre-W0b (verified: smoke-tested the
+  compiled builder directly — legacy branch output matches the old hardcoded object field-for-field).
+  Under `v3`: `verdict` (fired yoga/dosha/flag counts aggregated from THIS response's own served
+  rows — see JL-004 for the `yoga_label`/`dosha_label`-as-fired-basis ruling), `grounding`
+  (`fact_ids`/`citations`/`grounding_score` extracted from the rows' own `fact_id`/`citation_ref`/
+  `verification_pass_status` columns — no new query), `ranking_basis` (states the true serve order,
+  `catalog_order` by category/key, not salience), `drill_pointers` (→ `query_signals` for
+  salience cross-validation, → `mimamsa_insight_get` for calibrated outlooks), `judgment_flags`
+  (`zero_rows_returned`, `partial_page_more_available`), `chart_header` (fetched via the new
+  capability, best-effort — a header-fetch failure never fails the instrument's own response), and
+  `epistemic` (grade derived from the page's own verification_pass_status ratio).
+- `00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md` JL-004 — the ruling on treating `yoga_label`/
+  `dosha_label` row-presence as the verdict's fired-count basis (live DB check: `yoga_fires`/
+  `dosha_fires` are 0 rows in every ayanamsha for the canonical chart; `yoga_label`=82,
+  `dosha_label`=22 rows/ayanamsha). Flags the `*_fires` vs `*_label` naming question for a future
+  data-plane audit rather than silently picking a side.
+
+**Fields closed for P3 (yogas hollow envelope), under `response_format=v3` only:** `verdict`,
+`ranking_basis`, `grounding.fact_ids`, `grounding.citations`, `grounding.grounding_score`,
+`drill_pointers`, `judgment_flags` — all were unconditionally `null`/`[]` before this lane; now
+populated from data the response already computed. `chart_header`/`epistemic`/`timing`/`coverage`
+are net-new v3-only fields (additive, §10.1/§10.2/§10.4/§10.5). `coverage` (D5 receipt) is declared
+in the shared type but NOT populated by this pilot — the `{family, served, total}` stamp needs a
+declared "family size" concept that only a broader facet/estate pass (W1/W3) can supply honestly;
+left `null` rather than guessed.
+
+**Confirmed NOT changed:** `response_format` omitted or `'legacy'` → the exact pre-W0b wire shape
+(verified via direct builder invocation against the compiled `dist/lib/envelope.js`, and via
+`git diff` inspection of the refactored `envelope()` call sites — the 3-arg legacy call path is
+untouched). No live consumer (portal/Claude/GPT channel) sees any behavior change unless it opts in.
+
+**Verification run:** `platform` — `npx tsc --noEmit` clean; `npx eslint` on all new/changed files
+(1 pre-existing-pattern `_ctx` unused-var warning, consistent with every other L1 capability
+handler in the repo — not a regression); `npx vitest run src/lib/retrieval` — 423/423 passing across
+14 test files (including `chart_agnostic_gate_registry.test.ts`, which the new `get_chart_header`
+capability passes cleanly). `platform-mcp` — `npx tsc --noEmit -p tsconfig.json` clean; `npm run
+build` (tsc) succeeds. Direct smoke test of the compiled envelope builder (legacy vs v3 shape,
+grounding extraction) — output inspected above.
+
+**Not done in this lane (explicitly out of scope per the lane brief):** the STRANGLER codegen
+mechanism itself (parity-gate corpus replay, generated Zod shims) — that is `r5/w0b-codegen`'s job;
+`dualOutput()`/serialization mechanics — left untouched per instruction; extending v3 population to
+the full 17-instrument estate — only the P3 pilot (`ganita_yogas_get`) was fully populated; other
+tools in `register_p1_ganita.ts`/`register_p1_synthesis.ts` gained the `response_format`-capable
+envelope() signature (backward-compatible, unused until they opt in) but were not individually
+wired with per-tool verdict/grounding logic — flagged for a later wave, not silently skipped.
+
+**Standalone value if halted here:** the unified envelope module + chart_header capability exist,
+typecheck, pass tests, and are committed even if no further wave lands — a future session can wire
+additional instruments into `buildRetrievalEnvelope()`/`fetchChartHeader()` without re-deriving the
+shape. The `ganita_yogas_get` v3 opt-in is live-deployable today with zero risk to existing
+consumers (default stays `legacy`, byte-identical) and directly demonstrates P3's fix for real
+consumers who choose to opt in ahead of the W4 default flip.
+
+**HALTs:** none. **Judgment ledger entries added:** JL-004.

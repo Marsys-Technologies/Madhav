@@ -140,6 +140,44 @@ sub-5KB to ~1KB range; only the known-oversized P3/P5 cases exceed it), so the c
 unaffected; (b) well below the H-12 1.5MB hard truncation guard already present in `query_signals.ts`,
 so it only engages the "large payload" path for genuinely large responses, not routine ones.
 
+---
+
+### JL-004 — W0b unified envelope: `ganita_yogas_get` v3 verdict basis when `yoga_fires`/`dosha_fires` are empty
+
+**question:** Design §10.2/§20 (P3) requires the yogas instrument's envelope `verdict`/`grounding` to
+be POPULATED, not hollow. `get_yoga_dosha.ts`'s default category set is
+`['yoga_fires', 'yoga_label', 'dosha_fires', 'dosha_label', 'bhadra_flag', 'panchaka_flag']`. Live DB
+inspection of the canonical chart (`482012f1-…`, all five ayanamshas) shows `yoga_fires` and
+`dosha_fires` return **zero rows** in every ayanamsha — only `yoga_label` (82 rows/ayanamsha) and
+`dosha_label` (22 rows/ayanamsha) carry data, plus `bhadra_flag` (1) and `panchaka_flag` (2). Is it
+safe to treat `yoga_label`/`dosha_label` row-presence as the "fired" verdict (B.10 — no fabricated
+computation), given the category names imply `*_fires` is the activation signal and `*_label` might
+be read as a mere catalog?
+
+**ruling:** Yes — treat `yoga_label`/`dosha_label` ROW PRESENCE (per this response's own served rows)
+as the fired-count basis, with the verdict's own `note` field stating explicitly that these are
+"rows served in this page" counts, not a cross-response total. This is not a fabricated computation:
+it counts real rows chart_facts already returned in the SAME response (no new query, no invented
+number), exactly the "compute live from this response's own rows" pattern already ratified for
+`query_signals.ts`'s DEFECT-001 orphan-rate note and signature_tier distribution (R5 W0a, P4/E-2). The
+apparent naming mismatch (`*_fires` vs `*_label`) is a genuine open question about the L1 writer's
+category semantics — flagged here, NOT silently resolved by assuming `*_fires` is "the truth" and
+`*_label` is "just a catalog." Both readings remain visible: the verdict's `category_counts` field
+reports the raw per-category counts (including the empty `yoga_fires`/`dosha_fires` buckets when they
+appear in a page) so no information is hidden either way.
+
+**basis:** B.10 (real computation over already-served rows, not invention) + Trap-1 precedent (P4/E-2
+freshness-contract pattern: compute honesty notes live rather than assume a stale/uncited fact) +
+honesty pillar (ranked above code-convenience) — stating the aggregation basis explicitly in the
+verdict's own `note` lets the endpoint LLM (and any acharya reviewer) judge the semantics rather than
+silently trusting an assumed label meaning.
+
+**reversibility:** reversible — if a later data-plane audit confirms `yoga_fires`/`dosha_fires` are a
+genuinely separate (currently unpopulated) signal rather than a naming variant of `*_label`, the
+verdict's `yogas_fired`/`doshas_fired` fields can be repointed without changing the envelope contract
+(field names stay stable; only the counting source changes). Flagged for the data-plane audit /
+R5_PUNCHLIST, not resolved here as a data-quality finding.
+
 **reversibility:** reversible — a pure serving-layer constant; no envelope shape change, no persisted
 state. A later wave can retune the threshold or drop the pointer-string convention without redoing any
 other shipped work.
