@@ -1,7 +1,7 @@
 ---
 canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
-status: LIVE — empty shell, ready for Pratinidhi-R rulings
+status: LIVE — JL-001 recorded (W0a perf lane, r5/w0a-perf)
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -40,5 +40,34 @@ Each entry is a level-3 heading `### JL-<NNN> — <short title>` with these fiel
   `hard-to-reverse` or `irreversible` reversibility get flagged for explicit native attention in the
   next checkpoint report, even though the run does not wait for a reply.
 
-No entries yet — this ledger opens empty at Phase-0 close. The first entry lands when W0a's first lane
-raises its first question to Pratinidhi-R.
+### JL-001 — S3 dual-output text-suppression size threshold
+
+**question:** Design §21/S3 prescribes "structuredContent-only above a size threshold" for the MCP
+dual-output helper (`dualOutput`/`errorOutput` in `registry_bridge.ts` and the four `register_p1_*.ts`
+files) but does not name the threshold. Below what payload size should the text-fallback duplicate
+still be sent, and above it suppressed?
+
+**ruling:** 50,000 UTF-8 bytes (`Buffer.byteLength`, compact `JSON.stringify`, no pretty-print). Below
+this, dual output (structuredContent + full compact-JSON text) is retained — small/typical responses
+keep the MCP provider-spec text fallback for clients that don't consume structuredContent. At or above
+it, the text fallback is replaced with a short pointer string and only structuredContent carries the
+payload, eliminating the redundant second serialization for the responses where it costs the most
+(the 174KB `ganita_yogas_get` case from the P3 probe would have transmitted a pretty-printed dual
+payload materially larger than 174KB under the old code; now ~174KB structuredContent-only, no
+duplicate text).
+
+**basis:** Pillar order tiebreak (design doc names the mechanism, not the number) — this is a
+latency/tokens vs. code-convenience question with no astrological content, so it resolves at tier (2)
+without needing classical citation. 50KB was chosen as: (a) comfortably above the vast majority of
+per-chart tool responses observed in the Phase-0 probe run (the healthy baseline responses were in the
+sub-5KB to ~1KB range; only the known-oversized P3/P5 cases exceed it), so the common case is
+unaffected; (b) well below the H-12 1.5MB hard truncation guard already present in `query_signals.ts`,
+so it only engages the "large payload" path for genuinely large responses, not routine ones.
+
+**reversibility:** reversible — a pure serving-layer constant; no envelope shape change, no persisted
+state. A later wave can retune the threshold or drop the pointer-string convention without redoing any
+other shipped work.
+
+---
+
+No further entries — this ledger reopens for W0b+ waves.

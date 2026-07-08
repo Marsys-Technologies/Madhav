@@ -48,11 +48,17 @@ function envelope(content: unknown, toolName: string) {
   }
 }
 
+const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
+
+// S3 fix (R5 W0a perf lane): no pretty-print; text duplicate suppressed above
+// threshold (structuredContent already carries the full payload).
 function dualOutput(data: unknown) {
-  return {
-    structuredContent: { type: 'object' as const, object: data },
-    content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
+  const structuredContent = { type: 'object' as const, object: data }
+  const json = JSON.stringify(data)
+  if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
+    return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
+  return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {

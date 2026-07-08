@@ -224,3 +224,112 @@ Phase-0 close.
 quiesced. (d) ledgers opened. Surviving defects catalogued above carry forward into W0a's punch-list
 scope, unchanged in kind from the design doc's own triage — Phase-0 found no new HALT-worthy
 contradiction of the governing design.
+
+---
+
+## W0a — Perf quick wins lane (`r5/w0a-perf`)
+
+Scope: min-instances (S2), serialization tax (S3), UCD pre-fetch parallelization (S1), salience index
+verification (S6, re-scoped low-priority per §7). Branch `r5/w0a-perf` off `origin/r5/w0a`.
+
+### S2 — min-instances=1 on amjis-web + amjis-mcp
+
+`.github/workflows/deploy.yml`: `deploy-web` job's `--min-instances=0` → `1` (line ~273);
+`deploy-mcp` job's `--min-instances=0` → `1` (line ~448). `amjis-sidecar`'s `--min-instances=0`
+(line ~385) left untouched — brief caps the pre-authorized spend at web+mcp only. No other flag on
+either line touched. **Not yet deployed** — this is a repo-level change on the lane branch; it takes
+effect on the next `deploy.yml` run after this branch merges to `r5/w0a` → main per §2's promotion
+policy. Cold-start cascade (S2 finding) will not be empirically closed until that deploy runs; this
+entry records the code-level fix only.
+
+### S3 — serialization tax (measured 2.4×, prioritized up per §7)
+
+Fixed at all five duplicated `dualOutput`/`errorOutput` sites (`registry_bridge.ts` — the 12 D7
+consolidated tools — plus `register_p1_synthesis.ts`, `register_p1_reference.ts`,
+`register_p1_ganita.ts`, `register_p1_aliases.ts`, which cover the P1 tool families):
+1. Dropped pretty-printing (`JSON.stringify(data, null, 2)` → compact `JSON.stringify(data)`).
+2. Above 50,000 UTF-8 bytes (`Buffer.byteLength`, measured on the compact string — JL-001 records the
+   threshold choice), the text-fallback duplicate is replaced with a short pointer string instead of
+   re-serializing the full payload a second time; `structuredContent` alone carries the payload above
+   threshold.
+3. `query_signals.ts`'s H-12 size guard (`estimatedBytes = JSON.stringify(signals).length`) switched
+   to `Buffer.byteLength(JSON.stringify(signals), 'utf8')` — `.length` counts UTF-16 code units and
+   undercounts true wire byte size for any multi-byte content, letting genuinely oversized payloads
+   slip past the 1.5MB truncation guard.
+
+**Measured (synthetic, realistic 200-signal payload shape, 67,079 compact bytes):** old path sent
+93,691 bytes pretty-printed text + a separately-serialized structuredContent object (~67,079 bytes) =
+~160,770 bytes total on the wire; new path sends structuredContent only (67,079 bytes) above the 50KB
+threshold — **~58% total-wire-bytes reduction** for payloads in this size class. Indent-2 overhead
+measured directly at **+39.7%** on this shape (design doc's own estimate was 20-30% — confirms the
+mechanism, on the high side of the estimate for signal-array-shaped payloads specifically).
+
+### S1 — UCD pre-fetch parallelization
+
+All 12 call sites in `registry_bridge.ts` where a domain tool serially awaited
+`fetchOrientationContext(...)` then `callRegistryCapability(...)` (both independent HTTP calls to the
+platform API) converted to `Promise.all([...])`: `get_domain_reading`, `get_signals`,
+`traverse_graph`, `get_temporal_windows`, `get_projections`, `get_remedies`, `get_chart_quality`,
+`assess_marriage`, `assess_career`, `assess_health`, `assess_wealth`, `get_cgm_subgraph`. Design doc's
+own estimate: ~458ms added per domain call by the serial pre-fetch — parallelizing removes the
+sequential half of that (the slower of the two calls now gates the latency instead of their sum).
+Not yet re-measured live against prod (that is a W0a canary/perf-baseline task, not this lane's scope
+per the brief's task split — recorded here as a code-level fix awaiting the perf-verifier's
+before/after prod measurement).
+
+### S6 — salience index: verify-planner-behavior (re-scoped low priority, no new index built)
+
+Confirmed via `pg_indexes` (read-only) that `msr_salience_rank_idx ON bodha_msr_signals
+(chart_id, ayanamsha_id, computed_salience DESC)` **already exists** — matches the brief's premise
+that the index exists. Ran `EXPLAIN (ANALYZE, BUFFERS)` against prod (read-only) on the native chart
+for the exact production query shape (`query_signals.ts`'s legacy/dual-pool salience query: chart_id +
+ayanamsha_id equality, `lel_origin` exclusion filter, `ORDER BY computed_salience DESC NULLS LAST
+LIMIT {50|500}`) and on `query_ucd.ts`'s equivalent query (same `ORDER BY ... DESC NULLS LAST` idiom).
+
+**Finding: the planner is NOT using `msr_salience_rank_idx` for this query shape** — it chooses a
+Bitmap Heap Scan on the 2-column `msr_chart_aya_idx` followed by an explicit top-N heapsort
+(23-27ms execution, ~2,587 buffer hits) instead of an Index Scan on the 3-column covering index.
+Root-caused live: the index (default btree DESC ordering) stores nulls FIRST; the query's
+`ORDER BY computed_salience DESC NULLS LAST` clause requests nulls LAST — Postgres cannot use an
+index to satisfy an ORDER BY when the requested null ordering doesn't match the index's stored null
+ordering, so it falls back to scanning + sorting. Verified directly: re-running the identical query
+with `NULLS FIRST` instead of `NULLS LAST` (same WHERE, same LIMIT) produces an Index Scan on
+`msr_salience_rank_idx`, 5.8ms execution (42 buffer hits) — a **~4.8× speedup** for this query alone.
+Also verified `computed_salience` has **zero NULL values** on the native chart (67,128/67,128 rows
+populated) — so for current data, `NULLS FIRST` and `NULLS LAST` are result-identical; the ordering
+keyword is the only thing standing between the planner and the existing index.
+
+Per the brief's explicit scoping ("this is a verification task, not a build task" — no new index), no
+code change was made to the `ORDER BY` clauses in `query_signals.ts` (2 sites: sqlA/sqlB) or
+`query_ucd.ts` (1 site). **Flagging for R5_PUNCHLIST, not actioned here:** changing
+`NULLS LAST` → `NULLS FIRST` (or dropping the explicit NULLS clause, which defaults to FIRST for
+DESC) in those three call sites is a one-line, result-identical (given zero current NULLs), ~4.8×
+query-level win that this lane's scope explicitly excludes from being built.
+
+### Verification run
+
+- `platform-mcp`: `npm run typecheck` (tsc --noEmit) — clean, 0 errors.
+- `platform`: `npx tsc --noEmit -p tsconfig.json` — clean, 0 errors.
+- `platform`: `npx eslint src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts` — 1
+  pre-existing warning (line 265, unrelated to this lane's edit; confirmed present before this
+  lane's changes via `git stash` diff-test).
+- `platform`: `npx vitest run` on `d5_l2_capabilities.test.ts` + `d5_roster_smoke.test.ts` — 50/50
+  passed.
+- `platform-mcp`: `npx vitest run src/__tests__/m8_e2e_proof.test.ts` — 33 passed, 2 pre-existing
+  failures (G12 tool-count constant, V6 D7-tool-count constant — both stale hardcoded counts
+  unrelated to this lane; confirmed identical failures before this lane's changes via `git stash`
+  diff-test).
+
+### Standalone value if the run halts here
+
+Even if R5 halts immediately after this lane merges: amjis-web/amjis-mcp get warm instances on the
+next deploy (eliminating the cold-start tail once deployed); every MCP tool response gets smaller and
+cheaper to serialize (no pretty-print tax, no duplicate large-payload transmission); every domain-tool
+call gets faster (parallel orientation fetch instead of serial); and the salience-index finding is a
+ready-made, pre-verified one-line fix sitting in the punchlist for whoever picks it up next — none of
+this depends on any later wave landing.
+
+### Judgment ledger
+
+JL-001 recorded in `R5_JUDGMENT_LEDGER_v1_0.md` — the 50KB dual-output text-suppression threshold
+(reversible, code-convenience tier, no astrological content).
