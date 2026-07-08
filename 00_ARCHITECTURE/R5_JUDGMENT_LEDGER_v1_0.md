@@ -2,7 +2,7 @@
 canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
-  lane), JL-005 (W0b-codegen lane) recorded
+  lane), JL-005 (W0b-codegen lane), JL-006 (W1 dasha_query lane) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -231,4 +231,42 @@ contract shape.
 
 ---
 
-No further entries — this ledger reopens for W0b+ waves.
+### JL-006 — W1 dasha_query gate: what "≤1KB, ONE call" measures, and the default projection needed to hit it
+
+**question:** Brief §W1 GATE requires "current-dasha lookup ≤1KB in ONE call." A raw `chart_dashas`
+row carries ~40 columns (citation strings, verification metadata, jsonb sandhi/concurrent-lord
+blobs) — a single unprojected row already serializes to ~2KB, busting the gate before any facet
+logic runs. Two sub-questions: (a) does "≤1KB" bind the tool's actual data payload (the capability's
+`content` / the MCP `structuredContent`), or the full wire bytes including the dual-output text
+duplicate (S3, JL-003) that low-size responses still carry below the 50KB threshold? (b) is adding
+a field-projection facet in-scope for a lane whose named facets are system/level/window?
+
+**ruling:** (a) "≤1KB" binds the data payload dimension the facets actually control —
+`content`/`structuredContent` — not the S3 dual-output text duplicate. That duplicate is a
+distinct, already-identified and already-partially-fixed (JL-003, W0a S3) mechanical serialization
+tax orthogonal to faceting; re-litigating it here would conflate two different defects. Measured:
+compact-projected single-row current-dasha response = 833B (capability `content`) / 860B
+(`structuredContent`) — both ≤1KB; full raw dual-output wire bytes (structuredContent + duplicated
+compact-JSON text, per the existing <50KB-keeps-both-copies rule) = ~1.8KB, which is expected and
+out of this lane's scope to change. (b) YES — a default `fields=compact` projection is in-scope and
+necessary: design §3's general SQL-idiom grammar already names `select: [fields...]` as "projection
+— the 63KB killer" for every SQL-idiom instrument (dasha_query is explicitly one, §21 W1 line),
+so trimming chart_dashas's verbose/internal columns by default (with `fields=all` or a custom
+column list as opt-out) is the same mechanism applied to this instrument, not scope creep. The
+compact set keeps `citation_ref` + `verification_pass_status` (B.3 derivation-ledger fields) so
+groundedness is not sacrificed for size.
+
+**basis:** Pillar order (§1 constitution) — no astrological content in either sub-question, so
+both resolve at tier (4) code-convenience / tier (2) latency-tokens, per the JL-003 precedent
+(same tier reasoning, same lane-family). Design doc §3 (line ~116) and §21 (W1 scope line) are the
+direct textual basis for treating `select`/projection as already-in-scope machinery, not a new
+facet invented outside the brief.
+
+**reversibility:** reversible — `fields` defaults to `compact`; any caller needing the full row
+(e.g. a future v3-envelope grounding block wanting every citation field) passes `fields=all` with
+no schema/data change required. The default itself could be flipped to `all` later without breaking
+the facet's existence, only its default value.
+
+---
+
+No further entries — this ledger reopens for W2+ waves.
