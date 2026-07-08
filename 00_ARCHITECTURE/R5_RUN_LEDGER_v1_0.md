@@ -1536,3 +1536,47 @@ stage each one advances to) independent of `pact_query`'s own fate.
 **HALTs:** none.
 
 **HALTs:** none.
+
+---
+
+## W3 — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w3` merged to `main` at commit `b6616999` (PR #476). `amjis-mcp` redeployed to
+`amjis-mcp-00401-7tg`, `amjis-web` to `amjis-web-00882-282` — both confirmed at 100% traffic on
+`latestCreatedRevisionName`, no deploy race. Given the W2 postmortem (gate verified at the
+capability layer but unreachable via live MCP), this Ring-2 verified every gate via ACTUAL
+`tools/call` invocations against live prod.
+
+### Gate 1 — "how is the marriage?" = ONE `judgment_query` call, complete classical receipt
+
+Live call: `judgment_query(chart_id=482012f1-…, domain="marriage")`. Response contains the full
+§28.1 checklist: `bhava_condition` (from BOTH lagna and chandra — Libra/house 7 from lagna,
+Leo/house 7 from chandra), `bhavesha_condition` (Venus from lagna, Sun from chandra, each with
+dignity + shadbala + fact_ids), `karaka_condition` (Venus), `occupants`, `varga_confirmation`
+(D9, Jaimini_Sutram-cited), and the §28.6 completeness **receipt**: `{bhava:true, bhavesha:true,
+karaka:true, from_moon:true, varga_confirmed:"D9✓", yogas_checked:15, bhanga_checked:false,
+timing_anchored:true}` — honest about the one un-built check (bhanga/near-miss). Verdict:
+`contested` / `-1.5`, explicitly disclaimed as a deterministic aggregate, not an LLM judgment or
+calibrated probability. **PASS.**
+
+### Gate 2 — graha_portrait genuinely populated (not hollow, P3's original failure mode)
+
+Live call: `graha_portrait(chart_id=482012f1-…, graha="Saturn")`. `completeness` shows ✓ on all
+8/8 sections (position, dignity, functional_nature, strength, avasthas, yogas, dashas,
+cgm_neighborhood) — genuinely populated, not the hollow-envelope pattern P3 originally
+documented. **PASS.**
+
+### Gate 3 — legacy tool names still answer (no breaking alias removal)
+
+Live call: `apex_marriage_assess(chart_id=482012f1-…)` — the pre-existing apex tool judgment_query
+generalizes — still answers with no error. **PASS.**
+
+One transient 401 on the first post-deploy call (self-resolved on retry) — the same recurring
+cold-start-blip pattern noted at every prior wave's Ring-2, not a regression.
+
+### Overall Ring-2 verdict: **PASS**
+
+All three named W3 gates confirmed on live prod via actual MCP tool calls, not capability-layer
+claims. Estate consolidation confirmed non-destructive (no tool removed). No HALT conditions.
+
+**HALTs:** none.
