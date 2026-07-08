@@ -1,0 +1,402 @@
+/**
+ * response_budget.ts — shared MCP-channel response-size trimmer (R5.1 C1)
+ * ==========================================================================
+ * PROBLEM (R5.1 C1 brief): judgment_query / graha_portrait / pact_query serve full-detail
+ * payloads sized for internal debugging (up to ~86KB) — practically unusable over a real
+ * MCP channel (context-window / token-budget blowout on the client side).
+ *
+ * THIS FILE is the ONE shared, reusable clipping mechanism for that problem — not three
+ * bespoke ad-hoc trims per tool. It is STRUCTURE-AWARE (shrinks specific named arrays
+ * inside the response object) rather than a byte-level string truncation — a byte-level
+ * truncation of serialized JSON (see platform/src/lib/retrieval/adapters/shared/
+ * result_clipper.ts, a sibling utility for a different consumer: LLM-context trimming of
+ * arbitrary tool-call text, not MCP JSON envelopes) would produce invalid/truncated JSON
+ * mid-object — unacceptable for a structured MCP tool response.
+ *
+ * MECHANICS:
+ *   - Caller declares, per tool, which sections of its own response shape are "trimmable"
+ *     arrays (a get/set pair + a floor + a recovery pointer).
+ *   - `applyResponseBudget` measures the serialized size; if under budget, returns the
+ *     content UNCHANGED (trim_report: null) — most calls never pay this cost's userland
+ *     effect at all.
+ *   - If over budget, it shrinks the HEAVIEST section first (by measured serialized size),
+ *     halving repeatedly down to each section's floor, re-measuring after each cut, until
+ *     under budget or every section has been floored.
+ *   - Every actual cut is recorded in a TrimReportEntry (path, original_count, kept_count,
+ *     reason, recover_via) — attached to the envelope's additive `trim_report` field
+ *     (platform/src/lib/retrieval/envelope.ts + its generated mirror here).
+ *   - CRITICAL (brief invariant): trimming only ever shortens ARRAYS the response already
+ *     computed — it never deletes/invents data, never touches scalar verdict/receipt/
+ *     pact_status fields, and the full detail remains reachable server-side via the
+ *     `recover_via` instrument + explicit params (e.g. `max_signals`, `include`,
+ *     `response_format:'legacy'`) — this file only governs what is DEFAULT-served.
+ */
+
+export interface TrimReportEntry {
+  path: string
+  original_count: number
+  kept_count: number
+  reason: string
+  recover_via: { instrument: string; hint: string }
+}
+
+/** A single trimmable section of a tool's response content. */
+export interface TrimmableSection<T> {
+  /** Dot-path label used in the trim_report (does not need to be a real JS path — just a
+   *  stable, human-readable pointer into the content shape). */
+  path: string
+  /** Read the current array at this section (undefined/non-array → section skipped). */
+  getArray: (content: T) => unknown[] | undefined
+  /** Replace the section with a shorter array (same shape/location as getArray). */
+  setArray: (content: T, kept: unknown[]) => void
+  /** Never cut below this many kept entries (0 allowed — fully droppable section). */
+  minKeep: number
+  /** How a caller recovers the full section. */
+  recover: { instrument: string; hint: string }
+  /** Human label used in the trim_report reason string. */
+  label: string
+}
+
+export interface BudgetResult<T> {
+  content: T
+  trim_report: TrimReportEntry[] | null
+  trimmed: boolean
+  approx_bytes_before: number
+  approx_bytes_after: number
+  /** R5.1 C1 hard-cap fix: true iff, even after every declared section was floored to 0
+   *  (past its normal minKeep — see HARD-CAP PASS below), the response is STILL over
+   *  `maxKb`. This must never be silently swallowed — a caller that sees this true knows
+   *  the response it is about to ship exceeds its stated ceiling despite every mechanical
+   *  lever this file has, and should surface that honestly (e.g. a judgment_flags entry)
+   *  rather than claim a clean trim. */
+  still_over_budget: boolean
+}
+
+/** Serialized-size estimate (UTF-8 bytes of JSON.stringify) — same measure the MCP wire
+ *  transport actually pays, not a character count. */
+export function estimateBytes(value: unknown): number {
+  try {
+    const json = JSON.stringify(value)
+    return json ? Buffer.byteLength(json, 'utf8') : 0
+  } catch {
+    return 0
+  }
+}
+
+/** Cut one section's array down toward `floor`, re-measuring `content` after each halving
+ *  step, stopping as soon as `content` is at/under `maxBytes` or `floor` is reached.
+ *  Only called when `arr.length > floor` (caller's responsibility) — always applies at
+ *  least one cut. Returns the count actually kept. */
+function shrinkSectionTo<T>(
+  content: T,
+  section: TrimmableSection<T>,
+  arr: unknown[],
+  floor: number,
+  maxBytes: number,
+): number {
+  let keepCount = arr.length
+  while (estimateBytes(content) > maxBytes && keepCount > floor) {
+    keepCount = Math.max(floor, Math.floor(keepCount / 2))
+    section.setArray(content, arr.slice(0, keepCount))
+  }
+  return keepCount
+}
+
+/**
+ * Shrink `content`'s declared trimmable sections until its serialized size is at or under
+ * `maxKb` KB, or every section has been floored — whichever comes first. Mutates `content`
+ * in place via each section's `setArray` (content is always a fresh, per-request object in
+ * every call site this ships with — never a shared/cached reference) and also returns it.
+ *
+ * Sections are cut in DESCENDING order of their own current serialized size — the biggest
+ * offender goes first, matching the "lean section summaries, not full detail" mandate
+ * (small sections are left alone whenever the big ones alone can close the gap).
+ *
+ * HARD-CAP PASS (R5.1 C1 fix — a live independent verifier caught the original version of
+ * this file silently returning `trimmed:true` on a response that was STILL over budget
+ * after every declared section had been floored to its normal `minKeep`; "I floored
+ * everything I know how to floor" is not the same claim as "this response is under
+ * budget", and this file must never conflate the two). If PASS 1 (respecting each
+ * section's declared `minKeep`) is not enough, PASS 2 re-applies the same declared
+ * sections but floors every one of them all the way to 0 (overriding `minKeep` — a
+ * documented, explicit degrade-further step, not a silent one: every section touched in
+ * PASS 2 gets its own trim_report entry saying so). If content is STILL over budget after
+ * PASS 2 — meaning the base, non-trimmable content alone exceeds the ceiling — this
+ * function does NOT pretend otherwise: `still_over_budget: true` is set, and a final
+ * trim_report entry records the honest residual gap instead of a silent pass-through.
+ */
+export function applyResponseBudget<T>(
+  content: T,
+  maxKb: number,
+  sections: TrimmableSection<T>[],
+): BudgetResult<T> {
+  const before = estimateBytes(content)
+  const maxBytes = maxKb * 1024
+  if (before <= maxBytes) {
+    return { content, trim_report: null, trimmed: false, approx_bytes_before: before, approx_bytes_after: before, still_over_budget: false }
+  }
+
+  // ONE entry per path (R5.1 C1 fix — a live independent verifier caught the original
+  // version pushing a SEPARATE trim_report entry per pass, with long per-entry prose;
+  // for a section touched in both PASS 1 and PASS 2 that meant two verbose entries where
+  // one honest one suffices, and the resulting trim_report array became a multi-KB
+  // artifact in its own right — the exact "clip mechanism's own overhead blows the
+  // budget it's enforcing" failure this rewrite closes). Keyed by path so PASS 2
+  // UPDATES a section's PASS-1 entry rather than duplicating it; `original_count`
+  // always reflects the TRUE pre-trim count (first write wins), `kept_count` always
+  // reflects the latest state (last write wins).
+  const trimReportByPath = new Map<string, TrimReportEntry>()
+  const recordTrim = (section: TrimmableSection<T>, trueOriginal: number, kept: number, hardCap: boolean): void => {
+    const existing = trimReportByPath.get(section.path)
+    trimReportByPath.set(section.path, {
+      path: section.path,
+      original_count: existing?.original_count ?? trueOriginal,
+      kept_count: kept,
+      // Short by design — this array itself counts against the same byte budget it
+      // enforces (R5.1 C1 fix); verbose per-entry prose is the mechanism this rewrite
+      // removes. The shared mechanism/rationale lives in this file's module doc-comment,
+      // not repeated per entry.
+      reason: hardCap ? `${section.label}: floored to ${kept} (hard-cap)` : `${section.label}: trimmed to ${kept}`,
+      recover_via: section.recover,
+    })
+  }
+
+  const runPass = (floorOverride: 'declared' | 'zero'): void => {
+    // Re-rank by CURRENT size on every pass invocation — cutting one section changes the
+    // overall total but not other sections' sizes, so a single ranking-then-iterate pass
+    // per floor tier is safe and avoids re-sorting after every micro-cut within a tier.
+    const ranked = sections
+      .map(section => ({ section, arr: section.getArray(content) }))
+      .filter((x): x is { section: TrimmableSection<T>; arr: unknown[] } => Array.isArray(x.arr) && x.arr.length > 0)
+      .map(x => ({ ...x, size: estimateBytes(x.arr) }))
+      .sort((a, b) => b.size - a.size)
+
+    for (const { section, arr } of ranked) {
+      if (estimateBytes(content) <= maxBytes) break
+      const floor = floorOverride === 'zero' ? 0 : section.minKeep
+      if (arr.length <= floor) continue // nothing left to cut at this tier for this section
+      const kept = shrinkSectionTo(content, section, arr, floor, maxBytes)
+      if (kept < arr.length) {
+        recordTrim(section, arr.length, kept, floorOverride === 'zero')
+      }
+    }
+  }
+
+  // PASS 1 — respect each section's declared minKeep.
+  runPass('declared')
+
+  // PASS 2 (hard-cap fallback) — only runs if PASS 1 wasn't enough. Floors every declared
+  // section to 0, overriding minKeep, and says so explicitly per section (merged into the
+  // SAME per-path entry PASS 1 created, not a second entry — see recordTrim above).
+  if (estimateBytes(content) > maxBytes) {
+    runPass('zero')
+  }
+
+  const afterSections = estimateBytes(content)
+  const stillOverBudgetAfterSections = afterSections > maxBytes
+  if (stillOverBudgetAfterSections) {
+    trimReportByPath.set('(whole response)', {
+      path: '(whole response)',
+      original_count: before,
+      kept_count: afterSections,
+      reason: `still ${afterSections}B after flooring every section to 0 (ceiling ${maxBytes}B) — base content exceeds budget`,
+      recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+    })
+  }
+
+  const trimReport = trimReportByPath.size > 0 ? Array.from(trimReportByPath.values()) : null
+
+  return {
+    content,
+    trim_report: trimReport,
+    trimmed: trimReport !== null,
+    approx_bytes_before: before,
+    approx_bytes_after: afterSections,
+    still_over_budget: stillOverBudgetAfterSections,
+  }
+}
+
+// ── finalizeMcpBudget — the whole-response, self-verifying entry point ────────
+
+export type DrillPointerLike = { instrument: string; hint: string; [k: string]: unknown }
+
+export interface FinalizeMcpBudgetOptions<T> {
+  maxKb: number
+  sections: TrimmableSection<T>[]
+  /** Field on `content` holding the tool's semantic drill_pointers array (merged with
+   *  each trim_report entry's `recover_via`, deduped). Default 'drill_pointers'. */
+  drillPointersField?: string
+  /** Field on `content` to append an honest over-budget note to if the hard cap below
+   *  still can't close the gap. Default 'judgment_flags'. */
+  judgmentFlagsField?: string
+}
+
+/**
+ * The self-verifying whole-response entry point (R5.1 C1 hard-cap fix).
+ *
+ * PROBLEM THIS CLOSES: the original version of this mechanism ran `applyResponseBudget`
+ * against `content`, then had the CALLER attach the resulting `trim_report` +
+ * merged `drill_pointers` to `content` AFTERWARD, un-measured. For a response that needed
+ * many sections trimmed (i.e. exactly the responses this mechanism exists for), the
+ * trim_report array's OWN serialized bytes could be several KB — enough on their own to
+ * push a response that measured "under budget" pre-attachment back OVER budget once
+ * attached. A live independent verifier caught exactly this (structuredContent measured
+ * ~7KB heavier than the pre-attachment number for graha_portrait). This function closes
+ * that gap by measuring the ACTUAL FINAL OBJECT — trim_report and merged drill_pointers
+ * included — and degrading the trim_report itself (never the underlying data sections
+ * again) if attaching it reopened the gap:
+ *   1. Run applyResponseBudget as before (data-section trimming, PASS 1 + hard-cap PASS 2).
+ *   2. Attach `trim_report` + merge `recover_via` pointers into `drill_pointers`.
+ *   3. Re-measure the WHOLE content object. If still over `maxKb`, shrink trim_report
+ *      itself — biggest entry first — same halving discipline as a data section, down to
+ *      a single one-line summary entry, then (if that alone is still too much) to null.
+ *   4. If the response is STILL over budget after trim_report is gone entirely (meaning
+ *      the base content plus merged drill_pointers alone exceed the ceiling), that is
+ *      recorded as an honest `judgment_flags` entry — cheap (one short string) — rather
+ *      than silently shipped over budget.
+ */
+// Fixed safety margin subtracted from the nominal ceiling for BOTH the initial
+// data-section trim and every post-attachment re-check below. Covers (a) the
+// dualOutput-style `{type:'object', object: <content>}` wrapper a caller may add AFTER
+// this function returns (this file has no way to see that wrapper, so it must leave
+// room for it), and (b) general safety margin so a response doesn't land within a few
+// bytes of the true ceiling (fragile against trivial future content growth). A live
+// independent verifier's re-check is what surfaced both the wrapper-overhead gap and a
+// then-remaining ~40-byte-from-the-edge case — 512B comfortably covers both.
+const SAFETY_MARGIN_BYTES = 512
+
+export function finalizeMcpBudget<T extends Record<string, unknown>>(
+  content: T,
+  opts: FinalizeMcpBudgetOptions<T>,
+): T {
+  const drillPointersField = opts.drillPointersField ?? 'drill_pointers'
+  const judgmentFlagsField = opts.judgmentFlagsField ?? 'judgment_flags'
+  const maxBytes = opts.maxKb * 1024 - SAFETY_MARGIN_BYTES
+  const effectiveMaxKb = maxBytes / 1024
+
+  const result = applyResponseBudget(content, effectiveMaxKb, opts.sections)
+  if (!result.trimmed) return content
+
+  const mutable = content as Record<string, unknown>
+  const existingPointers = (mutable[drillPointersField] as DrillPointerLike[] | undefined) ?? []
+  mutable['trim_report'] = result.trim_report
+  mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, result.trim_report)
+
+  // Re-measure the WHOLE object now that trim_report + merged pointers are attached —
+  // the step the original mechanism skipped.
+  if (estimateBytes(content) > maxBytes) {
+    let report = [...(result.trim_report ?? [])]
+    // Drop the single largest-by-bytes entry at a time until under budget or only one
+    // entry remains (never go to a fully-empty array here — see the null fallback below).
+    while (report.length > 1 && estimateBytes(content) > maxBytes) {
+      let worstIdx = 0
+      let worstBytes = -1
+      for (let i = 0; i < report.length; i++) {
+        const b = estimateBytes(report[i])
+        if (b > worstBytes) { worstBytes = b; worstIdx = i }
+      }
+      report.splice(worstIdx, 1)
+      mutable['trim_report'] = report
+    }
+    if (estimateBytes(content) > maxBytes) {
+      // Even a 1-entry trim_report doesn't fit — collapse to a minimal summary.
+      mutable['trim_report'] = [{
+        path: '(trim_report)',
+        original_count: result.trim_report?.length ?? 0,
+        kept_count: 1,
+        reason: 'full trim_report omitted to fit budget',
+        recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+      }]
+    }
+    if (estimateBytes(content) > maxBytes) {
+      // Still over even with trim_report gone — the merged drill_pointers additions are
+      // the next-cheapest thing to give up. Revert to the tool's own semantic pointers.
+      mutable[drillPointersField] = existingPointers
+    }
+    if (estimateBytes(content) > maxBytes) {
+      // Last resort: every declared array section is already at 0 and trim_report/
+      // drill_pointers have already been given up — the remaining bytes are scalar
+      // PROSE fields (e.g. a tool's own `note`/`reason` narrative strings) this
+      // function was never told about by name. Rather than leave those unbounded,
+      // truncate any long string found anywhere in `content` (bounded-depth walk,
+      // never touches arrays/numbers/booleans/short strings) until under budget.
+      truncateLongStringsInPlace(content, maxBytes)
+    }
+  }
+
+  // The TRUE requirement (opts.maxKb, no safety margin) is what actually gets reported —
+  // the internal SAFETY_MARGIN_BYTES is a deliberately-conservative working target for
+  // this function's OWN trimming decisions, not the bar a caller's honesty flag should
+  // be judged against. (Fixes a real messaging bug this file had: a response that fits
+  // the true ceiling but not the margined internal target must not claim "still over
+  // budget" — that's a false alarm, not honesty.)
+  const trueCeilingBytes = opts.maxKb * 1024
+  if (estimateBytes(content) > trueCeilingBytes) {
+    const existingFlags = (mutable[judgmentFlagsField] as string[] | undefined) ?? []
+    mutable[judgmentFlagsField] = [
+      ...existingFlags,
+      `response_still_over_${opts.maxKb}kb_budget_after_full_trim`,
+    ]
+  }
+
+  return content
+}
+
+/**
+ * Bounded-depth walk that truncates any string value longer than `MAX_STRING_CHARS`
+ * (appending an ellipsis marker) until `content`'s serialized size is at/under
+ * `maxBytes` or every long string found has been shortened — whichever comes first.
+ * Only touches string VALUES (never keys, never array/object structure) — the true
+ * last-resort lever once every declared array section and the trim_report/drill_pointers
+ * machinery have already given everything they can.
+ */
+const MAX_STRING_CHARS = 120
+const MAX_WALK_DEPTH = 6
+
+function truncateLongStringsInPlace(root: unknown, maxBytes: number): void {
+  const longStringSites: { obj: Record<string, unknown> | unknown[]; key: string | number }[] = []
+  const walk = (node: unknown, depth: number): void => {
+    if (depth > MAX_WALK_DEPTH || node === null || typeof node !== 'object') return
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => {
+        if (typeof v === 'string' && v.length > MAX_STRING_CHARS) longStringSites.push({ obj: node, key: i })
+        else walk(v, depth + 1)
+      })
+      return
+    }
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.length > MAX_STRING_CHARS) longStringSites.push({ obj: node as Record<string, unknown>, key: k })
+      else walk(v, depth + 1)
+    }
+  }
+  walk(root, 0)
+  // Longest strings first — fewest truncations needed to close the gap.
+  longStringSites.sort((a, b) => {
+    const av = Array.isArray(a.obj) ? (a.obj[a.key as number] as string) : (a.obj[a.key as string] as string)
+    const bv = Array.isArray(b.obj) ? (b.obj[b.key as number] as string) : (b.obj[b.key as string] as string)
+    return bv.length - av.length
+  })
+  for (const site of longStringSites) {
+    if (estimateBytes(root) <= maxBytes) break
+    const current = Array.isArray(site.obj) ? (site.obj[site.key as number] as string) : (site.obj[site.key as string] as string)
+    const truncated = current.slice(0, MAX_STRING_CHARS) + '…[truncated for budget]'
+    if (Array.isArray(site.obj)) site.obj[site.key as number] = truncated
+    else site.obj[site.key as string] = truncated
+  }
+}
+
+function mergeTrimPointersIntoPointers(
+  pointers: DrillPointerLike[],
+  trimReport: TrimReportEntry[] | null,
+): DrillPointerLike[] {
+  if (!trimReport || trimReport.length === 0) return pointers
+  const seen = new Set(pointers.map(p => `${p.instrument}::${p.hint}`))
+  const merged = [...pointers]
+  for (const entry of trimReport) {
+    const key = `${entry.recover_via.instrument}::${entry.recover_via.hint}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push({ instrument: entry.recover_via.instrument, hint: entry.recover_via.hint })
+  }
+  return merged
+}

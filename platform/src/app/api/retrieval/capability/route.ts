@@ -52,6 +52,9 @@ import {
   registerD9JudgmentCapabilities,
 } from '@/lib/retrieval/registry/layers/register_d9_judgment'
 import {
+  registerD10PactCapabilities,
+} from '@/lib/retrieval/registry/layers/register_d10_pact'
+import {
   registerRouterCapabilities,
 } from '@/lib/retrieval/registry/layers/router_registration'
 import {
@@ -78,6 +81,13 @@ async function ensureBootstrapped(): Promise<void> {
   // chain but NOT in this route's own separate bootstrap list is unreachable via the
   // live HTTP path platform-mcp actually calls).
   registerD9JudgmentCapabilities()
+  // R5.1 C1 fix (same failure class as the D9 fix immediately above, caught live by
+  // the independent verifier of commit 624f2934): pact_query (D10) was registered in
+  // catalog.ts's per-wave import chain but NEVER added to this route's separate
+  // bootstrap list — every live pact_query MCP call 404'd with "Unknown capability URI:
+  // marsys://tool/L-PACT/pact_query" and the R5.1 C1 trimming/budget code for this tool
+  // had never actually been exercised against real data. One-line fix, identical to D9's.
+  registerD10PactCapabilities()
 
   // D-B fix: register L0 + L1 capabilities (not included in D5 fanout)
   // L0: exports registerL0Capabilities() — must be called explicitly
