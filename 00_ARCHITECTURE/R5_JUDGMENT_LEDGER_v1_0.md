@@ -1242,4 +1242,74 @@ authorization not available in this run) — flagged honestly, not silently skip
 (a separate, already-authorized read-only DB connection) WAS used to verify the `D9_VEN`/`D9_JUP`
 fact_subject convention against the live native chart before wiring the CONFIRMATION stage's SQL.
 
-No further entries — this ledger reopens for W5+ waves.
+---
+
+### JL-020 — W4 session-pin lane: what "session pin" means per the design; the phantom `builds` table vs. the live `build_runs` table; and the scope boundary against full envelope build_id propagation
+
+**question:** three linked judgment calls for the W4 `r5/w4-session-pin` lane (design §10.6
+SESSION STABILITY + §31.3 SESSION-PIN COLLISION + §31.5 BUILD PROVENANCE AT SERVE TIME):
+(a) does "session pin" mean forcing a session to keep reading an OLDER chart build's data, or
+detecting+surfacing drift honestly? (b) which table is the chart's real build-tracking source —
+the brief's own hypothesis assumed a `builds` table (seen in `0001_brahma_baseline.sql` with a
+`salience_formula_ver` column) — is that live? (c) §31.5 calls for `build_id` on the UNIFIED
+ENVELOPE (all instrument responses) — should this lane retrofit all ~17 instruments to populate it?
+
+**ruling (a):** "session pin" cannot mean serving an older build's data — L1+ storage is
+delete-then-insert per chart (CLAUDE.md §N.3: "Rebuild REPLACES, never accretes"); there is no
+retained historical snapshot of a prior build to serve even if a mechanism wanted to. The design
+text itself confirms this reading: §31.5 says a mid-session build change "surfaces as a
+judgment_flag" — not "the response continues to serve the old build." Implemented: pin
+{priors_version, formula_versions, ranking_config, build_id, now_context_date} captured at
+first-touch, reused unchanged while the build is stable, and refreshed + flagged
+(`chart_rebuilt_mid_session_pin_refreshed`) the moment `build_id` changes — an honesty mechanism,
+never a time-travel one.
+
+**ruling (b):** the live schema was checked directly against Cloud SQL before wiring any query
+(per the brief's live-verification mandate) — `SELECT ... FROM builds` returns `relation "builds"
+does not exist`. The `builds`/`build_notifications`/`build_engine_versions` tables in
+`0001_brahma_baseline.sql` are dead legacy-schema artifacts from an unrelated prior product
+baseline dump, never provisioned in this environment (a genuine trap the design's own drafting
+process fell into — the same class of "assumed-vs-verified" gap Part IV's audit exists to catch,
+just surfacing one wave later on a narrower surface). The REAL, live, populated build tracker is
+`build_runs` (migration 171: `id UUID PK`, `chart_id`, `scope IN (global,layer,asset)`,
+`state IN (planned,running,paused,completed,stopped,failed)`, `ended_at`) — confirmed with real
+rows for the native chart (`482012f1-…`), including both full builds and single-asset rebuilds
+(e.g. a `bo_pramana_mapa` asset-scope rebuild). `getLatestChartBuild()` reads `build_runs WHERE
+chart_id=$1 AND state='completed' ORDER BY ended_at DESC LIMIT 1`, treating `id` as the pin's
+`build_id` — deliberately NOT filtered to `scope='global'` only, because a single-asset rebuild
+still replaces served data and must still be detectable as drift. `builds.salience_formula_ver`
+(the presumed source for the pin's `formula_versions` field) has no live equivalent either —
+`formula_versions.salience_formula_ver` is left honestly `null` (B.10: no fabricated value) with
+a doc comment marking it as reserved space for a future distinct formula-version stamp; the one
+formula-adjacent version that IS live and code-tracked (`PRIORS_VERSION`, `ranking/
+priors_config.ts`, frozen) already populates the pin's own `priors_version` field.
+
+**ruling (c):** no full-envelope retrofit this lane. §31.5's envelope `build_id` field was added
+to `V3Envelope`/`buildRetrievalEnvelopeParams` (additive, optional, mirrors the `chart_header`
+pattern) so any instrument CAN adopt it, but wiring live `build_id` values through all ~17
+instruments is a distinct, larger body of work than "session pin serving" (this lane's stated
+scope, brief §3 W4 lane 3) — it would mean touching every instrument's response-assembly site,
+overlapping the W4 coverage-stamps lane's own territory and risking file-level collisions with a
+sibling lane already examining `envelope.ts` concurrently (observed via claude-mem cross-session
+notes during this pass). Pillar order (ASTROLOGY/correctness > code-convenience) says: implement
+the piece this lane actually owns end-to-end and verify it live, rather than a shallow touch
+across 17 files that no gate in this lane can verify. The session-pin mechanism itself already
+gives the FULL build-provenance guarantee for the surface it owns (recall_session/select_chart
+pin resolution) — session pin and full envelope build_id propagation are related (both trace to
+§31.5) but are not the same deliverable; the ledger records this boundary explicitly so a future
+wave doesn't mistake the additive field for "done."
+
+**basis:** B.10 (no fabricated computation/values — applies to `formula_versions` and to not
+inventing a mechanism the design never asked for) + CLAUDE.md §N.3 (delete-then-insert storage
+model, which makes historical-build serving structurally impossible, not merely undesigned) +
+the brief's own standing mandate to verify against live prod/MCP calls before shipping (which is
+what caught the phantom-table error before it shipped) + pillar order (scope discipline: finish
+one lane's owned surface completely and verifiably rather than a shallow multi-file touch).
+
+**reversibility:** fully reversible and additive on all three counts — (a)/(b) the `build_runs`
+query can be extended (e.g. to also weight `scope='global'` runs differently) without changing
+the pin's external shape; (c) `V3Envelope.build_id` is already declared and any future lane can
+populate it per-instrument from the same `getLatestChartBuild()` helper this lane ships, with zero
+type-level change required.
+
+No further entries — this ledger reopens for later W4 lanes / Ring-2/3.

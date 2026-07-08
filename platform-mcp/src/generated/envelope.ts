@@ -217,6 +217,12 @@ export interface V3Envelope extends LegacyEnvelope {
   epistemic: EpistemicSummary
   timing: TimingBlock
   coverage: CoverageStamp | null
+  /** Design §31.5 BUILD PROVENANCE AT SERVE TIME — chart-level build identifier for
+   *  this response's data. Undefined/null when not supplied by the caller (honest
+   *  null, never fabricated — B.10); callers that track chart builds (e.g. session-pin
+   *  serving, design §10.6/§31.3) populate this from the chart's latest complete
+   *  `builds` row. Consistency invariant (E-4, extended): one response = one build_id. */
+  build_id?: string | null
 }
 
 export type RetrievalEnvelope = LegacyEnvelope | V3Envelope
@@ -240,6 +246,7 @@ export interface BuildRetrievalEnvelopeParams {
   grounding?: Partial<GroundingBlock>
   drill_pointers?: DrillPointer[]
   judgment_flags?: string[]
+  build_id?: string | null
 }
 
 /**
@@ -297,6 +304,7 @@ export function buildRetrievalEnvelope(
     },
     drill_pointers: params.drill_pointers ?? [],
     judgment_flags: params.judgment_flags ?? [],
+    build_id: params.build_id ?? null,
   }
   return v3
 }
