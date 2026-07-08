@@ -48,6 +48,7 @@ import {
   resolveEnvelopeFormat,
   type EnvelopeFormat,
   type ChartHeader,
+  type DrillPointerType,
 } from '../generated/envelope.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -165,7 +166,7 @@ function envelope(
     verdict?: unknown
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
-    drill_pointers?: { instrument: string; hint: string }[]
+    drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
     judgment_flags?: string[]
     as_of_date?: string
   },
@@ -422,9 +423,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const judgment_flags: string[] = []
         if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')
 
-        const drill_pointers = [
-          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.' },
-          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
+        // pre-existing {instrument, hint} shape. Neither pointer here is a named classical
+        // move (this is the domain-agnostic orient surface, not a bhava-judgment recipe),
+        // so both are honestly 'other' rather than force-fit into the classical vocabulary.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.', pointer_type: 'other' },
+          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.', pointer_type: 'other' },
         ]
 
         let chart_header: ChartHeader | null = null
@@ -642,9 +647,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         if (returned_count === 0) judgment_flags.push('zero_rows_returned')
         if (truncated) judgment_flags.push('response_size_truncated')
 
-        const drill_pointers = [
-          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).' },
-          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive; see get_chart_orientation's
+        // sibling comment above for why the orient-view pointer is 'other'. The graph
+        // traversal pointer genuinely IS a dispositor/causal-chain move.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).', pointer_type: 'other' },
+          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.', pointer_type: 'dispositor_chain' },
         ]
 
         let chart_header: ChartHeader | null = null
@@ -1275,6 +1283,208 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         return dualOutput(data)
       } catch (err) {
         return errorOutput('vector_search', String(err))
+      }
+    }
+  )
+
+  // ── judgment_query (R5 W3, design §28.1) ──────────────────────────────────
+  // marsys://tool/L-JUDGMENT/judgment_query — the bhava-adhyaya classical checklist
+  // recipe as one instrument, generalizing apex_marriage_assess/apex_career_assess/
+  // apex_health_assess/apex_wealth_assess (design §29 fold-in). Those apex_* aliases
+  // are UNCHANGED and remain fully answerable — no breaking removal (brief §W3 gate).
+  server.tool(
+    'judgment_query',
+    'THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — the acharya\'s ' +
+    'own working method for any bhava-question ("how is the marriage?", "how is my career?", or a ' +
+    'bare house number), not hardcoded to marriage. Pass `domain` (marriage/relationship/career/' +
+    'wealth/health/progeny/education/spirituality — resolved via the shastra map, design §28.5) or ' +
+    'a bare `bhava` (1-12). Returns the COMPLETE classical checklist in ONE call: bhava condition ' +
+    '(sign + occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + ' +
+    'strength · kāraka condition (e.g. Venus for marriage) · judged from BOTH lagna AND chandra ' +
+    '(Sudarshana discipline) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
+    'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
+    'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
+    'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +
+    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes apex_marriage_assess/' +
+    'apex_career_assess/apex_health_assess/apex_wealth_assess — those tools remain available ' +
+    'unchanged; this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
+    'default \'legacy\') returns the R5 unified envelope.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      domain: z.string().optional().describe(
+        'Life-domain name (shastra map, design §28.5): marriage/relationship/partnership ' +
+        '(bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), wealth/finance ' +
+        '(bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), progeny/children (bhava 5, ' +
+        'Jupiter, D7), education (bhava 4, Mercury+Jupiter, D24), spirituality (bhava 9, ' +
+        'Jupiter+Ketu, D20). Takes precedence over `bhava` if both given.'
+      ),
+      bhava: z.number().int().min(1).max(12).optional().describe(
+        'Bhava (house) number 1-12, for a judgment question the shastra map does not name a ' +
+        'domain for. Required if `domain` is omitted.'
+      ),
+      response_format: z.enum(['legacy', 'v3']).optional().describe(
+        "Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
+        "drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."
+      ),
+      max_signals: z.number().int().min(1).max(50).optional().describe(
+        'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).'
+      ),
+    },
+    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals }) => {
+      if (!chart_id) return errorOutput('judgment_query', 'chart_id is required')
+      if (!domain && bhava === undefined) {
+        return errorOutput('judgment_query', 'either `domain` or `bhava` is required')
+      }
+      try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
+
+        // B.11: fetch holistic orientation alongside the judgment recipe (S1: parallelized)
+        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+          fetchOrientationContext(chart_id, resolvedAyanamsha),
+          callRegistryCapability(
+            'marsys://tool/L-JUDGMENT/judgment_query',
+            { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, max_signals },
+            chart_id
+          ),
+        ])
+        const wrapper = raw as Record<string, unknown>
+        const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        if (format !== 'v3') {
+          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') })
+        }
+
+        // ── v3 population (design §10/§28.6) ──────────────────────────────────
+        const receipt = (inner['receipt'] as Record<string, unknown>) ?? {}
+        const verdictBlock = (inner['verdict'] as Record<string, unknown>) ?? {}
+        const factIdRefs = (inner['fact_id_refs'] as string[]) ?? []
+        const grounding = { fact_ids: factIdRefs, citations: [], grounding_score: null }
+
+        const verdict = {
+          ...verdictBlock,
+          receipt,
+          note: 'Deterministic classical-checklist verdict + completeness receipt (design §28.6) — see `receipt` for which checklist items were actually checked this call.',
+        }
+
+        const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
+        const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType }[]) ?? []
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        return dualOutput({
+          orientation_context, orientation_ok,
+          ...envelope(inner, 'judgment_query', undefined, 'v3', {
+            chart_header, verdict, grounding, drill_pointers, judgment_flags,
+          }),
+        })
+      } catch (err) {
+        return errorOutput('judgment_query', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── graha_portrait (R5 W3, design §28.2 — the mirror recipe for graha-questions) ──
+  // marsys://tool/L2/graha_portrait
+  //
+  // MANDATORY W2-lesson check (per the R5 run brief): every param the capability
+  // accepts (chart_id, graha, ayanamsha_id, operative_vargas, include) is declared
+  // in this Zod schema AND explicitly threaded through the callRegistryCapability
+  // args object below — none spread blindly. Verified by grep against
+  // graha_portrait.ts's input_schema (see W3 report).
+  server.tool(
+    'graha_portrait',
+    'The mirror recipe for graha-questions (design §28.2) — "how is my Saturn?" as ONE call. Returns a complete portrait of a single graha: current position (sign/house/nakshatra/pada), dignity chain across the operative vargas (D1/D9/D10/D60 highlighted; full varga list included), shadbala decomposition (6 components + total + vimsopaka + ishta/kashta), avasthas (baladi/jagrad/deepta/lajjitadi/sayanadi), yogas/configurations it participates in (parivartana exchanges served as real chart-specific data; yoga_fires/dosha_fires honestly reported empty-with-reason per JL-004 — they are a requires_pass catalog, not confirmed firings), its dasha periods across the lifetime (Mahadasha-level, past AND next, not clipped to the ±5y default window), its CGM neighborhood (direct graph neighbors + edges from traverse_chart_graph), and its functional nature for this lagna (benefic/malefic/yoga-karaka classification). Every section is a synthesis over already-built L1/L2 tools — not a new data source. Use `include` to narrow to a subset of sections for a cheaper call.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      graha: z.string().describe('The graha to portray — English name, Sanskrit name, 2-letter shorthand, or fact_subject code (e.g. "Saturn", "shani", "sa", "SAT"). Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      operative_vargas: z.array(z.string()).optional().describe('Which vargas to call out as "operative" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless of this list.'),
+      include: z.array(z.enum(['position', 'dignity', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all seven). Narrow this for a cheaper/leaner call.'),
+      response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
+    },
+    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format }) => {
+      if (!chart_id) return errorOutput('graha_portrait', 'chart_id is required')
+      if (!graha) return errorOutput('graha_portrait', 'graha is required')
+      try {
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
+
+        // B.11: fetch holistic orientation before this entity-level drill.
+        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+          fetchOrientationContext(chart_id, resolvedAyanamsha),
+          callRegistryCapability(
+            'marsys://tool/L2/graha_portrait',
+            {
+              chart_id, graha, ayanamsha_id: resolvedAyanamsha,
+              ...(operative_vargas ? { operative_vargas } : {}),
+              ...(include ? { include } : {}),
+            },
+            chart_id,
+          ),
+        ])
+        const wrapper = raw as Record<string, unknown>
+        const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
+
+        if (format !== 'v3') {
+          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') })
+        }
+
+        // ── v3 population ─────────────────────────────────────────────────
+        const completeness = (inner['completeness'] as Record<string, string> | undefined) ?? {}
+        const errors = (inner['errors'] as Record<string, string> | undefined) ?? undefined
+        const sectionsPopulated = Object.values(completeness).filter(v => v === '✓').length
+        const sectionsRequested = Object.values(completeness).filter(v => v !== 'not_requested').length
+
+        const positionRows = ((inner['position'] as Record<string, unknown> | undefined)?.['rows'] as Record<string, unknown>[] | undefined) ?? []
+        const fact_ids = Array.from(new Set(positionRows.map(r => r['fact_id']).filter((v): v is string => typeof v === 'string')))
+        const grounding = { fact_ids, citations: [], grounding_score: sectionsRequested > 0 ? Math.round((sectionsPopulated / sectionsRequested) * 1000) / 1000 : null }
+
+        const verdict = {
+          graha: inner['graha'] ?? graha,
+          graha_code: inner['graha_code'] ?? null,
+          completeness,
+          sections_populated: sectionsPopulated,
+          sections_requested: sectionsRequested,
+          note: 'completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section.',
+        }
+
+        const judgment_flags: string[] = []
+        if (errors && Object.keys(errors).length > 0) judgment_flags.push('partial_portrait_section_errors')
+        if (completeness['yogas'] === 'zero_rows') judgment_flags.push('no_parivartana_or_catalog_matches_for_graha')
+        if (completeness['dashas'] === 'zero_rows') judgment_flags.push('no_mahadasha_periods_for_graha')
+
+        // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
+        // pre-existing {instrument, hint} shape.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_dashas', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'traverse_graph', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.', pointer_type: 'dispositor_chain' },
+          { instrument: 'get_signals', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.', pointer_type: 'karaka_condition' },
+        ]
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id,
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        return dualOutput({
+          orientation_context, orientation_ok,
+          ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
+        })
+      } catch (err) {
+        return errorOutput('graha_portrait', String(err), { chart_id, graha })
       }
     }
   )

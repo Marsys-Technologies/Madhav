@@ -869,4 +869,283 @@ already fully implemented and gate-verified against both canonical charts) indep
 satisfies the W2 "from-Moon in ONE call" gate — the strength/signal annotations are additive
 value on top, not prerequisites for the gate to pass.
 
+---
+
+### JL-015 (W3 `judgment_query` lane, `r5/w3-judgment-query`) — karaka-gender neutrality, the
+bhanga/near-miss honest gap, verdict-is-not-a-calibrated-posterior, and a registration-seam bug
+found during the standing MCP-verification requirement
+
+**question (a):** design §28.1's checklist names a "karaka condition" step for the bhava under
+judgment. For marriage (bhava 7) classical practice sometimes assigns the significator by the
+native's gender (Venus for a male chart, Jupiter for a female chart — the "husband/wife karaka"
+convention some traditions apply). Should `judgment_query` gender-condition its karaka assignment?
+
+**ruling (a):** No — gender-neutral, Venus for the marriage/relationship/partnership domain in
+every case. Basis, in constitution order: (1) ASTROLOGY — design §28.5 itself gives the worked
+example "marriage→7th/Venus/D9" with no gender branch, and `register_d8_assess_domain.ts`'s
+already-shipped `assess_marriage` capability (predating this lane) documents its own significator
+as "7th lord + Venus kāraka" unconditionally — adopting a gender-conditioned convention here would
+make `judgment_query` DISAGREE with the apex tool it is explicitly designed to generalize and fold
+in (design §29), which is a worse astrological outcome than picking one textbook-defensible
+convention consistently; (2) this is not underspecified enough to need Pratinidhi-R — design text
++ existing shipped code already agree. The classical jaimini Darakaraka (`karaka('DK')`, gender-
+free by construction — the 7th-from-Atmakaraka chara-karaka) remains separately reachable via the
+address resolver for a caller who wants that alternate convention; `judgment_query`'s built-in
+`karakas` list is the fixed-significator (naisargika) convention only.
+
+**question (b):** design §28.1 names "bearing yogas (formed AND notably-absent)" as a checklist
+step. `query_signals` (L2) readily supplies FORMED yogas/doshas. Is there a stored surface for
+NOTABLY-ABSENT (near-miss / bhaṅga-cancellation) yogas this lane can call?
+
+**ruling (b):** No — and the honest answer is to say so, not to approximate it. Design §12 D3
+("absence proofs... 'notable non-firings' needs a small stored near-miss band from bo_laksana...
+no new writer") explicitly frames this as a FUTURE data-plane addition that has not been built for
+any chart. `judgment_query`'s receipt reports `bhanga_checked: false` with an explanatory
+`judgment_flags` entry on every call, rather than either (i) silently omitting the checklist item
+(which would make the receipt claim more completeness than it has) or (ii) inventing a proxy
+computation from data not built for this purpose (B.10). This is the single honestly-incomplete
+cell in every `judgment_query` receipt until a future L2-regen wave ships the near-miss band.
+
+**question (c):** the deterministic `verdict`/`verdict_grade`/`composite_score` this lane
+assembles from dignity + shadbala + occupant + aspect signals — what epistemic status does it
+carry, and could it be labeled a "probability" or routed through the envelope's
+`calibrated_posterior` grade?
+
+**ruling (c):** Neither. It is a DETERMINISTIC WEIGHTED AGGREGATION of already-computed L1/L2
+signals — arithmetic, not inference, and never an LLM judgment. It is explicitly NOT a calibrated
+posterior: `calibrated_posterior` in `envelope.ts`'s closed epistemic vocabulary is reserved for
+L5 Mīmāṃsā's own prediction→outcome calibration loop (CLAUDE.md §E: "calibration owned by L5...
+ph_pramana D5 NO-SCORING gate"), and this instrument reads L1 (chart_facts/chart_divisionals) and
+L2 (bodha_msr_signals) only — it has no access to, and does not fabricate, an empirically
+calibrated confidence. The verdict's own `note` field states this plainly in every response so no
+downstream consumer mistakes "contested"/"convergent_moderate" for a probability estimate.
+
+**question (d) — found during the standing MCP-verification requirement, not asked in advance:**
+while confirming the capability was reachable through the actual product surface (not just its
+handler in-process — the mandatory W2-taught lesson), was `judgment_query` actually live on the
+HTTP seam `platform-mcp`'s `callRegistryCapability` calls?
+
+**finding:** No, initially. `platform/src/app/api/retrieval/capability/route.ts` (the endpoint
+`registry_bridge.ts`'s `callRegistryCapability` proxies every registry capability call through)
+maintains its OWN separate bootstrap list (`ensureBootstrapped()`), distinct from
+`registry/catalog.ts`'s per-wave import chain that this lane (following the D5–D8 precedent)
+registered `register_d9_judgment` into. A capability can be fully registered in the in-process
+singleton registry via one entry point (chat-channel's `catalog.ts`) while being invisible to the
+OTHER entry point (this HTTP route) that the MCP server actually calls — the exact "registered
+somewhere, unreachable from the live seam" failure class the W2 Ring-2 finding named, recurring
+one layer up (a registration gap, not a param-forwarding gap, but the same root cause: two
+independent bootstrap lists that must each be kept in sync by hand). Fixed by adding
+`registerD9JudgmentCapabilities()` to `route.ts`'s `ensureBootstrapped()`, alongside D5–D8 (same
+file, same pattern, same list D8 was already in). Re-verified LIVE after the fix: a real Next.js
+dev server + a real invocation of the exact `server.tool('judgment_query', ...)` callback
+`registerRegistryBridgeTools` registers (not just the capability handler) returned a complete
+receipt on both canonical charts through the actual HTTP capability seam.
+
+**basis:** (a) ASTROLOGY (agree with the design's own worked example + the already-shipped sibling
+tool) > code-convenience (a gender branch would be more "complete" but less correct here).
+(b) honesty > completeness-theater — B.10, applied to what the receipt itself claims. (c) honesty
+— never overstate a deterministic aggregate as a calibrated probability; layer discipline (§N.5
+analog) — this instrument does not reach into L5's job. (d) correctness — a capability that exists
+in the registry but is unreachable from the seam the product actually calls is not shipped, no
+matter how thoroughly its in-process handler was tested; this is exactly the class of finding the
+brief's standing MCP-verification requirement exists to catch, and it caught a second instance of
+it (registration-list drift, not just param-forwarding drift).
+
+**reversibility:** (a) fully reversible — a future `paradigm`-aware karaka table (mirroring the W1
+`karaka()` address type's own school parameter) could add a gender-conditioned convention as an
+opt-in without changing today's default. (b) fully reversible and additive — `bhanga_checked` and
+its `judgment_flags` note disappear (replaced by real data) the moment a future wave ships the D3
+near-miss column; no shape change needed elsewhere. (c) fully reversible — the verdict's weighting
+formula is documented inline in its own `note` field and can be tuned or superseded without any
+caller-facing contract change. (d) fully reversible and now closed — the fix is a one-line
+addition to an existing list, following the exact pattern D5–D8 already established there.
+
+**standalone value if halted here:** the capability + MCP tool + registration fix + capabilities-
+card update are already complete and independently gate-verified (live, both canonical charts, via
+the actual `server.tool` callback through the actual HTTP seam) — nothing about a later wave's work
+is a prerequisite for this lane's gate to hold.
+
+### JL-016 — W3 `graha_portrait` lane: two real hollow-field defects found and fixed in the L1 tools it synthesizes over, plus the yoga-participation honesty scope
+
+**context:** Building `graha_portrait` (design §28.2 — the graha-question mirror recipe) as a
+synthesis over already-built L1/L2 capability handlers (get_positions, get_dignity, get_strength,
+get_avasthas, get_yoga_dosha, get_dashas, query_signals, traverse_chart_graph — no new SQL against
+chart_facts/bodha_msr_signals/bodha_cgm_* beyond what those handlers already run) surfaced two real,
+previously-undiscovered P3-class hollow-field defects in the L1 tools themselves, live against both
+canonical charts, before this portrait could be honestly populated. Both are fixed at the source
+file rather than filtered around in the portrait, since every OTHER caller of these tools had the
+same silent-empty exposure.
+
+**(a) `get_strength`'s `graha_key` filter matched the wrong column.** The filter was
+`fact_key ILIKE '${graha_key}%'` — but `fact_key` is a GENERIC component name shared by every graha
+in a category (`"rupa"`, `"score"`, `"bphs_weighted"`); the graha's identity lives in
+`fact_subject` (`"SAT"`, `"SAT_IN_HOUSE_5"`, etc. — verified live: `graha_key ILIKE 'SAT%'` against
+`fact_key` returns 0 rows for every category on both canonical charts). **Ruling:** fix the filter
+to match `fact_subject` (exact, varga-prefix, and house-suffix forms — the same three shapes
+`subjectMatchesGraha` in the portrait itself has to recognize across categories), rather than
+working around the broken param by re-fetching all rows and filtering client-side in the portrait
+only. Any other in-flight or future caller passing `graha_key` had the identical silent-zero-rows
+bug; leaving it unfixed while building a new consumer next to it would repeat the exact defect
+class (P1/P3) this run has spent three waves hunting.
+
+**(b) `get_dignity`, `get_avasthas`, `get_strength`, and `get_yoga_dosha` never SELECTed
+`fact_subject` at all.** Confirmed live: all four handlers' SQL selects
+`fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb,
+unit, verification_pass_status, citation_ref` — omitting `fact_subject` entirely. This means every
+row these four tools have EVER returned is anonymous with respect to which graha/entity it
+describes (a `dignity_state = "exalted"` row with no way to know which graha is exalted). This is
+more severe than (a): it isn't a broken filter, it's a missing column that makes the returned data
+structurally unusable for any graha-scoped question — the graha_portrait's three most
+design-critical sections (dignity chain, avasthas, functional nature) would have been served
+completely hollow (fact_subject undefined on every row) without this fix, the textbook P3 failure
+shape. **Ruling:** add `fact_subject` to all four SELECT lists. Purely additive (a new field on an
+otherwise-unchanged row shape) — no existing caller's field access breaks; caller code that never
+looked at `fact_subject` is unaffected, and any caller who silently depended on the CURRENT
+behavior of "cannot tell which graha a row belongs to" was depending on a bug, not a feature.
+
+**(c) yoga/dosha participation is honestly scoped to what's actually populated, not what design
+§28.2 asks for verbatim.** §28.2 lists "yogas it participates in" as a portrait field. Live
+verification found: L1 `yoga_fires`/`dosha_fires` are 0 rows for both canonical charts (JL-004,
+restated rather than re-litigated — this is a requires_pass CATALOG, not confirmed firings); the L2
+`bodha_msr_signals` `yoga`/`dosha` `signal_type_class` rows carry the IDENTICAL catalog/
+`fire_reason: requires_pass` shape (verified live — same non-finding, different table). The one
+MSR `signal_type_class` that IS genuinely chart-specific and graha-attributed is `parivartana`
+(structural planetary exchanges, real `planet_a`/`planet_b` pairs, verified populated — 8 matches
+for Saturn on the native chart, including a real D33 Venus↔Saturn exchange). **Ruling:** serve
+`parivartana` matches as real data, serve `yoga`/`dosha` `signal_type_class` matches too but
+labeled `catalog_yoga_matches`/`catalog_dosha_matches` with an explicit "not confirmed firings"
+caveat, and state the L1 emptiness with its JL-004 reason rather than either (i) omitting the
+section (which would look like a portrait bug) or (ii) padding it with catalog rows presented as
+findings (which would be new fabrication on top of an old defect). This is E-3 empty-with-reason
+applied at the section level, not a workaround for a data gap this lane can't close (writers are
+must_not_touch/frozen; the yoga_fires emptiness is a build-plane issue, not a serving-plane one).
+
+**(d) `chart_dashas.lord_graha` stores full classical names, not codes.** Verified live:
+`SELECT DISTINCT lord_graha FROM chart_dashas` returns `"Saturn"`, `"Jupiter"`, etc. — not `"SAT"`/
+`"JUP"`. The portrait's dasha section passes `grahaName` (not `grahaCode`) to `get_dashas`'s
+`lord_graha` filter for this reason; noted here because it's the same class of naming-convention
+inconsistency as (a)/(b) even though `get_dashas.ts` itself needed no fix — the caller (portrait)
+just has to know which of its two normalized forms (code vs. name) each downstream tool actually
+stores.
+
+**basis:** ASTROLOGY > correctness (a) rejects a filter that silently returns nothing over one that
+plainly errors or actually works — Jyotish output must be genuinely case-derived, not accidentally
+empty. (b) is a correctness-tier fix, not a code-convenience one: an unscoped-by-entity dignity/
+avastha/yoga row is not a smaller version of the right answer, it's an unusable one. (c) honesty >
+completeness-for-its-own-sake — the design's field list is a target, not license to fabricate
+population where the underlying data doesn't support it (B.10 — no fabricated computation,
+generalized to "no fabricated findings"). All four are within this lane's `may_touch` scope
+(`platform/src/lib/retrieval/**`) and are exactly the files/columns the W3 brief's own instruction
+("reuse existing query functions... rather than re-deriving their data") requires working
+correctly, not routing around.
+
+**reversibility:** (a) fully reversible — the WHERE clause change only affects rows returned when
+`graha_key` is passed; omitting it is unaffected (matches prior behavior for the common case). (b)
+fully reversible and additive — a new column in the SELECT list, no removed/renamed fields, no
+behavior change for any caller not reading `fact_subject`. (c) fully reversible — purely a labeling/
+note choice in the new capability's own output; changing L1's yoga_fires build state later
+automatically improves this section without any portrait-side change. (d) not applicable (no code
+changed at the site; a documentation/comment note only).
+
+**standalone value if halted here:** every section of `graha_portrait` is independently useful and
+already gate-verified with real, non-hollow data (position, dignity, functional_nature, strength,
+avasthas, yogas, dashas, cgm_neighborhood) on both canonical charts — a halt after this lane loses
+no partially-built capability; the tool is complete and shippable as specified in design §28.2,
+modulo the honestly-scoped yoga/dosha caveat in (c) which is a data-maturity fact, not an
+implementation gap.
+
 No further entries — this ledger reopens for W3+ waves.
+
+### JL-017 — W3 Phase B: apex_* fold-into-judgment_query scope — verified-consistent siblings, not code-identical delegation
+
+**question:** design §29 states "apex_* fold INTO judgment_query as aliases" (17-instrument
+estate count depends on reading apex_* as folded, not as four still-fully-separate tools).
+JL-015(a) (W3 Phase A) already verified `judgment_query`'s karaka assignment and the shastra
+map agree with `register_d8_assess_domain.ts`'s shipped `assess_marriage`/`assess_career`/
+`assess_health`/`assess_wealth` and treated that agreement as satisfying the "fold." Reading the
+actual code (`register_d8_assess_domain.ts`, unchanged) confirms the four `assess_*` capabilities
+still run their OWN independent implementation — richer domain-reading + temporal-activation +
+contradiction-register bundle, a different response shape from `judgment_query`'s classical-
+checklist receipt — they do not call into `judgment_query` internally. Should this Phase B pass
+refactor `assess_*` into thin wrappers that literally call `judgment_query`'s handler with
+`domain` preset (true code-level "fold"), or is "fold" satisfied by the already-verified
+astrological consistency + shared shastra map + capabilities-card cross-reference (JL-015(a))?
+
+**ruling:** The already-shipped state (verified-consistent siblings, NOT code-identical
+delegation) is the correct reading — no refactor. Three reasons, in constitution order:
+(1) §8's own anti-goals for EVERY wave state "NO envelope-shape breakage (extensions only)" —
+`assess_marriage`'s shipped response shape (`convergences`/`tensions`/`judgment_flags` bundle,
+predating R5 entirely) is a different, already-live contract from `judgment_query`'s classical-
+checklist receipt; making `assess_marriage` literally return `judgment_query`'s shape (or
+`judgment_query`'s shape wrapped to imitate the old one) is either a breaking change or a new
+translation layer that duplicates exactly the "two hand-maintained copies" trap design §19 exists
+to prevent — the opposite of what a "fold" should achieve. (2) `assess_*`'s own richer bundle
+(cross-domain contradictions, temporal activation via L3, per-domain judgment_flags) is real,
+already-verified-live capability that `judgment_query` does not reproduce (judgment_query has no
+contradiction-register step) — collapsing `assess_*` into a thin `judgment_query(domain=X)` call
+would be a net loss of capability for any existing caller, which the brief's hard rule ("do NOT
+remove any existing tool registration... or otherwise preserved as-is") is designed to prevent.
+(3) JL-015(a) already treated cross-verification (not code sharing) as the operative meaning of
+"fold" for this exact pair of surfaces, and no new evidence surfaced this pass changes that
+call — re-litigating an already-ratified reading absent new facts would violate the ledger's own
+append-only/non-relitigation discipline. "Fold... as aliases" is satisfied at the NAVIGATION
+layer (capabilities card teaches `judgment_query` as the richer, shastra-shaped successor;
+§29's "aliases keep everything alive" anti-goal is met because nothing was removed) rather than
+at the implementation layer. Capabilities card language updated this pass (see file diff) to
+state this explicitly ("an alias RELATIONSHIP, not a code-identical replacement") so no future
+session mistakes response-shape identity for the ratified fold.
+
+**basis:** pillar order — correctness/no-regression (1)+(2) > code-convenience of a
+literal-delegation refactor; (3) is the ledger's own non-relitigation discipline (JL-010's own
+precedent for not re-opening a settled call absent new facts).
+
+**reversibility:** reversible — a future wave could still choose to refactor `assess_*` into
+literal `judgment_query` delegates IF it also decides to accept `assess_*`'s response-shape
+change (a genuine, reviewed contract change, not a drive-by), or could add the missing
+contradiction-register step to `judgment_query` itself so a literal fold stops being a capability
+regression. Neither change is made here; this entry only records why Phase B did not attempt it
+silently.
+
+---
+
+### JL-018 — W3 Phase B: shastra map (design §28.5) verified complete against the design text; no domain expansion this wave
+
+**question:** the Phase B brief asks whether design §28.5 names life-domains beyond the seven
+`judgment_query` already maps (marriage/relationship/partnership, career/vocation, wealth/
+finance, health/vitality, progeny/children, education, spirituality) — candidates named in the
+brief itself included litigation, travel/foreign residence, siblings, parents, children beyond
+progeny, longevity. Should any of these be added to `SHASTRA_MAP` in
+`register_d9_judgment.ts`?
+
+**ruling:** No addition. A full-text search of `RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md`
+for litigation/siblings/parents/longevity/travel/foreign residence/enemies/disease/debts returns
+ZERO matches anywhere in the document — the design's own §28.5 worked example never names these
+domains even in passing, unlike wealth/health/progeny/education/spirituality, which — though
+also not literally spelled out in §28.1's two named examples — are already covered by the exact
+mapping `register_d8_assess_domain.ts`'s shipped `assess_wealth`/`assess_health` tools use in
+production (the basis JL-015 already cited for treating those five as in-scope). No equivalent
+already-shipped precedent exists for litigation/siblings/parents/longevity/travel. Per JL-014(a)'s
+directly analogous precedent (paradigm facet: "adding [undesigned values] as first-class... would
+be inventing design scope, not implementing it") — the correct discipline for a facet/map's closed
+vocabulary is to implement exactly what the design specifies plus what an already-shipped sibling
+tool independently corroborates, not to extrapolate to every textbook-plausible classical
+domain. The functional gap is small regardless: `judgment_query` already accepts a bare `bhava`
+(1-12) with no `domain` needed, so siblings (3rd), parents (4th/9th), longevity (8th),
+litigation/disputes (6th), and foreign residence (12th) are ALL already answerable today via
+`judgment_query(about:{bhava:N})` — they simply do not get a named-domain convenience alias or a
+`signal_domain`-tagged query_signals cross-reference the way the seven mapped domains do. This is
+documented in the capabilities card (this pass) so the endpoint LLM is not left assuming these
+topics are unanswerable.
+
+**basis:** B.10 generalized (no fabricated CONTRACT/vocabulary scope) + JL-014(a) direct
+precedent (closed classical vocabulary, mainstream-with-contested-flag reserved for genuinely
+disputed points — these candidate domains are not disputed, they are simply undesigned) +
+pillar order (ASTROLOGY tier: preferring the design's own text + an already-verified sibling
+tool's precedent over inventing five more domain rows on no textual basis).
+
+**reversibility:** fully reversible and additive — any of the five candidate domains can be
+added to `SHASTRA_MAP` later with a citation (a future wave choosing e.g. BPHS's standard
+8th-house/Saturn/D8 longevity assignment) without touching `judgment_query`'s existing seven
+entries or its bare-bhava fallback path.
+
+No further entries — this ledger reopens for W4+ waves.

@@ -1,0 +1,150 @@
+/**
+ * register_d9_judgment.integration.test.ts — live-DB gate for
+ * marsys://tool/L-JUDGMENT/judgment_query (R5 W3, design §28.1).
+ *
+ * THE W3 GATE: "how is the marriage?" resolves as ONE judgment_query call with a
+ * COMPLETE classical checklist receipt — verified against BOTH canonical charts.
+ *
+ * Run with: INTEGRATION=true npx vitest run src/lib/retrieval/registry/layers/__tests__/register_d9_judgment.integration.test.ts
+ */
+import { describe, it, expect, beforeAll } from 'vitest'
+import { registerD9JudgmentCapabilities } from '../register_d9_judgment'
+import { clearRegistry, getCapability } from '../../index'
+import { checkAllCapabilities } from '../../chart_agnostic_gate'
+
+const INTEGRATION = process.env.INTEGRATION === 'true'
+const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const ABHINANDAN_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+const BOTH_CHARTS = [NATIVE_CHART_ID, ABHINANDAN_CHART_ID]
+
+const describeIf = INTEGRATION ? describe : describe.skip
+
+describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB', () => {
+  beforeAll(() => {
+    clearRegistry()
+    registerD9JudgmentCapabilities()
+  })
+
+  function handler() {
+    const cap = getCapability('marsys://tool/L-JUDGMENT/judgment_query')
+    if (!cap) throw new Error('capability not registered')
+    return cap.handler
+  }
+
+  it('passes the chart-agnostic gate (per_chart, chart_id required)', () => {
+    const cap = getCapability('marsys://tool/L-JUDGMENT/judgment_query')
+    expect(cap).toBeTruthy()
+    const violations = checkAllCapabilities([cap!])
+    expect(violations, violations.map(v => `${v.rule}`).join('\n')).toHaveLength(0)
+  })
+
+  it('errors cleanly when neither domain nor bhava is given', async () => {
+    const result = await handler()({ chart_id: NATIVE_CHART_ID })
+    expect(result.is_error).toBe(true)
+  })
+
+  for (const chartId of BOTH_CHARTS) {
+    it(`[${chartId}] "how is the marriage?" — domain:"marriage" resolves as ONE call with a COMPLETE classical checklist receipt`, async () => {
+      const result = await handler()({ chart_id: chartId, domain: 'marriage' })
+      expect(result.is_error, JSON.stringify(result.content)).toBe(false)
+      const content = result.content as Record<string, unknown>
+
+      // ── §27.1 about resolution: bhava 7, Venus karaka, D9 varga (design §28.5 shastra map) ──
+      const about = content['about'] as Record<string, unknown>
+      expect(about['bhava']).toBe(7)
+      expect(about['karakas']).toEqual(['Venus'])
+      expect(about['operative_varga']).toBe('D9')
+
+      // ── §28.1 checklist — every named element is PRESENT (not stubbed/partial) ──
+      const checklist = content['checklist'] as Record<string, unknown>
+      expect(checklist).toBeTruthy()
+
+      const bhavaCondition = checklist['bhava_condition'] as Record<string, unknown>
+      const fromLagna = bhavaCondition['from_lagna'] as Record<string, unknown>
+      expect(fromLagna['sign']).toBeTruthy()
+      expect(fromLagna['house_number']).toBe(7)
+      const fromChandra = bhavaCondition['from_chandra'] as Record<string, unknown> | null
+      expect(fromChandra, 'Sudarshana from-Moon resolution must be present').toBeTruthy()
+      expect(fromChandra!['sign']).toBeTruthy()
+
+      const bhaveshaCondition = checklist['bhavesha_condition'] as Record<string, unknown>
+      const lordLagna = bhaveshaCondition['from_lagna'] as Record<string, unknown>
+      expect(lordLagna['graha']).toBeTruthy()
+      expect(lordLagna['graha_code']).toBeTruthy()
+      // dignity_state / shadbala_rupa are best-effort annotations — assert they were attempted
+      // (present as keys), not necessarily non-null for every possible chart.
+      expect('dignity_state' in lordLagna).toBe(true)
+      expect('shadbala_rupa' in lordLagna).toBe(true)
+
+      const karakaCondition = checklist['karaka_condition'] as Record<string, unknown>[]
+      expect(karakaCondition.length).toBe(1) // Venus
+      expect(karakaCondition[0]!['graha']).toBe('Venus')
+
+      expect(Array.isArray(checklist['occupants'])).toBe(false) // it's an object, not array
+      const occupants = checklist['occupants'] as Record<string, unknown>
+      expect(Array.isArray(occupants['from_lagna'])).toBe(true)
+
+      expect(Array.isArray(checklist['aspecting_grahas'])).toBe(true)
+
+      const vargaConfirmation = checklist['varga_confirmation'] as Record<string, unknown>
+      expect(vargaConfirmation['varga']).toBe('D9')
+      expect(Array.isArray(vargaConfirmation['rows'])).toBe(true)
+
+      expect(Array.isArray(checklist['bearing_yogas'])).toBe(true)
+
+      const timingHooks = checklist['timing_hooks'] as Record<string, unknown>
+      expect(timingHooks).toBeTruthy()
+      expect('mahadasha_windows_by_graha' in timingHooks).toBe(true)
+
+      // ── §28.1 promise-register verdict — deterministic, graded, never null ──
+      const verdict = content['verdict'] as Record<string, unknown>
+      expect(verdict['verdict_grade']).toBeTruthy()
+      expect(typeof verdict['composite_score']).toBe('number')
+      expect(verdict['domain']).toBe('marriage')
+
+      // ── §28.6 THE RECEIPT — the completeness contract itself ──
+      const receipt = content['receipt'] as Record<string, unknown>
+      expect(receipt['bhava']).toBe(true)
+      expect(receipt['bhavesha']).toBe(true)
+      expect(receipt['karaka']).toBe(true)          // Venus resolved
+      expect(receipt['from_moon']).toBe(true)        // Sudarshana leg completed
+      expect(typeof receipt['varga_confirmed']).toBe('string')
+      expect(typeof receipt['yogas_checked']).toBe('number')
+      expect(receipt['bhanga_checked']).toBe(false)  // honest gap (D3 unbuilt) — never fabricated
+      expect(receipt['timing_anchored']).toBe(true)
+
+      // ── grounding — real fact_id references back to chart_facts (§N.5) ──
+      const factIdRefs = content['fact_id_refs'] as string[]
+      expect(factIdRefs.length).toBeGreaterThan(0)
+
+      // ── drill pointers present (astrologically typed, design §28.4) ──
+      const drillPointers = content['drill_pointers'] as Record<string, unknown>[]
+      expect(drillPointers.length).toBeGreaterThan(0)
+    })
+
+    it(`[${chartId}] bare bhava (no domain) still runs the full recipe, honestly reporting no karaka`, async () => {
+      const result = await handler()({ chart_id: chartId, bhava: 3 })
+      expect(result.is_error, JSON.stringify(result.content)).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const about = content['about'] as Record<string, unknown>
+      expect(about['bhava']).toBe(3)
+      expect(about['karakas']).toEqual([])
+      const receipt = content['receipt'] as Record<string, unknown>
+      expect(receipt['bhava']).toBe(true)
+      expect(receipt['bhavesha']).toBe(true)
+      expect(receipt['karaka']).toBe(false) // honest — no karaka mapped for a bare bhava-3 question
+    })
+
+    it(`[${chartId}] career domain resolves bhava 10 / Sun+Mercury+Saturn / D10`, async () => {
+      const result = await handler()({ chart_id: chartId, domain: 'career' })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const about = content['about'] as Record<string, unknown>
+      expect(about['bhava']).toBe(10)
+      expect(about['karakas']).toEqual(['Sun', 'Mercury', 'Saturn'])
+      expect(about['operative_varga']).toBe('D10')
+      const karakaCondition = (content['checklist'] as Record<string, unknown>)['karaka_condition'] as unknown[]
+      expect(karakaCondition.length).toBe(3)
+    })
+  }
+})

@@ -109,7 +109,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
-        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
+        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
@@ -119,8 +119,19 @@ export const getStrengthCapability: CapabilityDescriptor = {
         params.push(args.ayanamsha_id as string)
       }
       if (args.graha_key) {
-        sql += ` AND fact_key ILIKE $${params.length + 1}`
-        params.push(`${args.graha_key as string}%`)
+        // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
+        // (e.g. "SAT", "SAT_IN_HOUSE_5"), NEVER in `fact_key` (fact_key is a generic
+        // component name shared across every graha — "rupa", "score", "bphs_weighted" —
+        // confirmed empty-set live against both canonical charts before this fix). The
+        // prior `fact_key ILIKE` filter matched zero rows for every category except by
+        // accident; filtering fact_subject with an exact-or-prefixed-or-suffixed match
+        // covers both the bare-code categories (fact_subject = "SAT") and the
+        // graha_in_house_composite_strength category (fact_subject = "SAT_IN_HOUSE_5").
+        sql += ` AND (fact_subject = $${params.length + 1}
+                  OR fact_subject ILIKE $${params.length + 2}
+                  OR fact_subject ILIKE $${params.length + 3})`
+        const grahaKey = args.graha_key as string
+        params.push(grahaKey, `${grahaKey}\\_%`, `%\\_${grahaKey}`)
       }
       sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
 
