@@ -12,6 +12,9 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+// R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
+// used to live at '../lib/envelope.js' was hand-written and has been deleted. See
+// scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
 import {
   buildRetrievalEnvelope,
   resolveEnvelopeFormat,
@@ -19,7 +22,7 @@ import {
   buildEpistemicSummary,
   type EnvelopeFormat,
   type ChartHeader,
-} from '../lib/envelope.js'
+} from '../generated/envelope.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -136,6 +139,32 @@ const CONDITION_FACET_URI: Record<string, string> = {
   karakas:  'marsys://tool/L1/get_karakas',
 }
 
+// R5 W0b-codegen parity gate (design §19 STRANGLER, brief §6.2): the three pilot instruments'
+// input schemas are exported as named consts so the parity test can import the SAME zod
+// schema objects the live handwritten shim registers — no re-typed duplicate schema in the
+// test file. Compared against src/generated/registry_shims.ts's independently-generated
+// schemas (derived from the registry CapabilityDescriptor) for byte-identical parse behavior.
+export const ganitaStrengthGetInputSchema = {
+  chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+  ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+  limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+  offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+}
+
+export const ganitaSadeSatiGetInputSchema = {
+  chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+  ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+  limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+  offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+}
+
+export const ganitaTajakaGetInputSchema = {
+  chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+  ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+  limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+  offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+}
+
 export function registerP1GanitaTools(server: McpServer): void {
 
   // ── 1. ganita_strength_get ────────────────────────────────────────────────
@@ -145,12 +174,7 @@ export function registerP1GanitaTools(server: McpServer): void {
     'strength scores: Sthana Bala (positional), Dig Bala (directional), Kaala Bala (temporal), ' +
     'Cheshta Bala (motional), Naisargika Bala (natural), Drig Bala (aspectual) — plus Ishta-Kashta, ' +
     'Vimsopaka, and Bhava Bala. Use to determine which planets are capable of delivering significations.',
-    {
-      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
-      offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
-    },
+    ganitaStrengthGetInputSchema,
     async ({ chart_id, ayanamsha_id, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_strength_get', 'chart_id is required')
       try {
@@ -241,12 +265,7 @@ export function registerP1GanitaTools(server: McpServer): void {
     'Covers all 15 classical Saturn period categories: Sade Sati cycles (with peak/rising/setting phases), ' +
     'Janma Shani, Ashtama Shani, Ardhashtama Shani, Dhaiya (Kantaka/2.5 year), and compound markers. ' +
     'Use to assess Saturn\'s current influence and upcoming heavy-transit windows.',
-    {
-      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
-      offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
-    },
+    ganitaSadeSatiGetInputSchema,
     async ({ chart_id, ayanamsha_id, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_sade_sati_get', 'chart_id is required')
       try {
@@ -268,12 +287,7 @@ export function registerP1GanitaTools(server: McpServer): void {
     'returns the current-year annual chart planetary positions, Muntha lord, year lord (Varshesha), ' +
     'Harsha Bala scores, and Tajaka aspects (Ithasala, Ishrafa, Nakta, Yamaya, Manahoo, Khallasara). ' +
     'Use for yearly-window predictions layered over the natal Vimshottari frame.',
-    {
-      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
-      offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
-    },
+    ganitaTajakaGetInputSchema,
     async ({ chart_id, ayanamsha_id, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_tajaka_get', 'chart_id is required')
       try {

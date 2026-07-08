@@ -1,7 +1,8 @@
 ---
 canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
-status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane) recorded
+status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
+  lane), JL-005 (W0b-codegen lane) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -181,6 +182,52 @@ R5_PUNCHLIST, not resolved here as a data-quality finding.
 **reversibility:** reversible — a pure serving-layer constant; no envelope shape change, no persisted
 state. A later wave can retune the threshold or drop the pointer-string convention without redoing any
 other shipped work.
+
+---
+
+### JL-005 — W0b-codegen: base-branch dependency resolution + registry-shim generation scope
+
+**question (a):** The W0b-codegen lane brief specifies starting from `origin/r5/w0b` (base
+04b802ad) and closing the §19 hand-mirror violation at `platform-mcp/src/lib/envelope.ts`. But
+neither the canonical `platform/src/lib/retrieval/envelope.ts` nor its hand-mirror exist at
+04b802ad — they were authored on the sibling `r5/w0b-envelope` lane (commit 4588cc7c, already
+pushed to origin, already verifier-reviewed) and are not yet merged into `r5/w0b`. Is it correct
+to merge `origin/r5/w0b-envelope` into the codegen lane's working branch before starting, or
+should the codegen lane wait / stub out the missing files?
+
+**ruling (a):** Merge `origin/r5/w0b-envelope` in (fast-forward, no conflicts — confirmed via
+`git merge --no-edit`, 8 files changed, 0 conflicts). The codegen lane's entire mandate is to
+replace a hand-mirror that only exists on that sibling lane; treating it as a required
+dependency (not an optional stub) is the only reading consistent with the task brief's own
+description of what the lane must do. This is a strangler-pattern stacking of two W0b sub-lanes,
+not a scope violation — both lanes are the same wave (W0b), the envelope lane is already
+verifier-approved, and `may_touch` for this lane already covers every file the merge brings in
+(`platform/src/lib/retrieval/**`, `platform-mcp/src/**`, `00_ARCHITECTURE` run ledgers).
+
+**question (b):** The registry CapabilityDescriptor's `input_schema` (the single source the
+codegen script parses) carries no numeric-bounds metadata (min/max) for fields like `limit` —
+only the handwritten MCP shim's hand-typed zod schema adds `.min(1).max(25000)`. Should the
+generator fabricate bounds to achieve a tighter parity match with the handwritten shim, or
+should it honestly reflect only what the descriptor declares?
+
+**ruling (b):** Generate only what the descriptor declares; do not invent bounds. Per B.10 (no
+fabricated computation, generalized to no fabricated CONTRACT metadata) — inventing a min/max
+that isn't in the single source of truth would itself be a new, uncited hand-authored fact bolted
+onto a "generated" artifact, defeating the purpose of codegen. The parity-gate test's corpus
+excludes out-of-range numeric values from the comparison (documented inline in both the generator
+and the test) rather than silently asserting a false equivalence. Widening the descriptor to
+carry bounds metadata (so a future codegen wave can derive `.min()/.max()` faithfully) is flagged
+as a real, separate follow-up — not resolved here.
+
+**basis:** Pillar order (§1 constitution) — both questions are engineering/tooling judgment calls
+with no astrological content, resolving at tier (4) code-convenience / tier (3) honesty without
+needing classical citation, per the JL-003 precedent (W0a perf lane, same tier reasoning).
+
+**reversibility:** (a) fully reversible — a normal git merge; no schema/data change. (b)
+reversible — if the registry descriptor type is later amended (D1 amendment procedure,
+`registry/types.ts`) to carry bounds metadata, the generator can be extended to emit `.min()/
+.max()` and the parity corpus's excluded cases can be reinstated without touching any shipped
+contract shape.
 
 ---
 
