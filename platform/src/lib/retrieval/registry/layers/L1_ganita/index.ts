@@ -24,6 +24,7 @@ import { getEclipseFlagsCapability }     from './get_eclipse_flags'
 import { getDashasCapability }           from './get_dashas'
 import { getDivisionalsCapability }      from './get_divisionals'
 import { getTransitAnchorsCapability }  from './get_transit_anchors'
+import { getChartHeaderCapability }      from './get_chart_header'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -45,3 +46,4 @@ registerCapability(getEclipseFlagsCapability)
 registerCapability(getDashasCapability)
 registerCapability(getDivisionalsCapability)
 registerCapability(getTransitAnchorsCapability)
+registerCapability(getChartHeaderCapability)

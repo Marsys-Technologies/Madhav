@@ -16,7 +16,11 @@
     "accuracy:diff": "tsx test/accuracy/diff.ts",
     "accuracy:regenerate-golden": "tsx test/accuracy/regenerate_golden.ts",
     "bench:capture": "vitest run test/bench/run.ts --reporter=verbose",
-    "bench:diff": "tsx test/bench/diff.ts"
+    "bench:diff": "tsx test/bench/diff.ts",
+    "codegen:envelope": "tsx scripts/generate_envelope.ts",
+    "codegen:registry-shims": "tsx scripts/generate_registry_shims.ts",
+    "codegen": "npm run codegen:envelope && npm run codegen:registry-shims",
+    "codegen:check": "tsx scripts/generate_envelope.ts --check && tsx scripts/generate_registry_shims.ts --check"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
