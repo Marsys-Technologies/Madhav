@@ -345,7 +345,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // (the four /api/mcp/db/query callers) can satisfy the route's Layer-2 auth.
   registerP1SynthesisTools(server, principal)
   // BA-P1 — Phase-1 naming aliases for all 53 baseline tools (49 aliases; 6 documented deferrals)
-  registerP1AliasTools(server)
+  // R5 W2 corpus lane (P7): principal threaded through so callPlatformPrim (used by
+  // ref_vector_search + the remedy/lel/calibration aliases) can send the 3-header
+  // auth pattern instead of the bare internal token the primitives route rejects.
+  registerP1AliasTools(server, principal)
 
   // M2 — Chart selection: list_my_charts + select_chart (2 tools)
   // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.

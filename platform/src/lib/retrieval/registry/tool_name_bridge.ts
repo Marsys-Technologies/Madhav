@@ -29,11 +29,23 @@ import crypto from 'crypto'
  * All entries verified against D7_CAPABILITY_URIS + L0/L1/L2 layer registrations.
  *
  * Tools NOT in RETRIEVAL_TOOLS (planner-injected strings that returned undefined
- * from getTool()): vector_search, pattern_register, cgm_graph_walk,
+ * from getTool()): pattern_register, cgm_graph_walk,
  * resonance_register, cluster_atlas, contradiction_register, temporal, kp_query,
  * query_kp_ruling_planets, query_ucn_walk, query_cdlm_lookup, query_rm_walk,
  * query_jaimini_drishti, timeline_query, query_signal_state — these also return
  * undefined from getToolByName() (no change in behaviour).
+ *
+ * R5 W2 corpus lane (P7 fix, part 2 of 2): `vector_search` USED to be in the
+ * above undefined-forever list too — even after the 401 auth-header bug was
+ * fixed (both proxy helpers now send the correct 3-header pattern — see
+ * registry_bridge.ts + register_p1_aliases.ts), the primitives route would
+ * still have 500'd with "Retrieval tool not found in registry: vector_search"
+ * because no URI was ever mapped for it. `vector_search` now resolves to the
+ * SAME capability `classical_text_search`/`search_classical_texts`/
+ * `read_classical_text` already use — query_classical_texts.ts, which is the
+ * corpus's one real hybrid vector+keyword search implementation (design doc
+ * §3 CORPUS idiom / instrument #13 `ref_search`). Deliberately reusing the
+ * existing capability rather than standing up a second implementation.
  */
 export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // L2 Bodha
@@ -59,6 +71,7 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   read_classical_text: 'marsys://tool/L0/query_classical_texts',
   search_classical_texts: 'marsys://tool/L0/query_classical_texts',
   classical_text_search: 'marsys://tool/L0/query_classical_texts',
+  vector_search: 'marsys://tool/L0/query_classical_texts',       // R5 W2 (P7): corpus hybrid search
   read_chapter: 'marsys://tool/L0/read_chapter',
   list_classical_texts: 'marsys://tool/L0/list_classical_texts',
   find_verses_about: 'marsys://tool/L0/find_verses_about',
