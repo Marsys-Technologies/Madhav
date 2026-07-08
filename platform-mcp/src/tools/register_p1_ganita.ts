@@ -58,14 +58,20 @@ function envelope(
   }
 }
 
+const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
+
 // R5 W0a punch-list (P3, 174KB yogas overflow): dropped the `null, 2` pretty-print indent —
 // pure serialization padding (~30-40% of wire bytes on large row sets), no information content.
 // structuredContent + content dual-output is retained (provider-spec obligation, not padding).
+// S3 fix (R5 W0a perf lane): text duplicate suppressed above threshold (structuredContent already
+// carries the full payload) — see JL-003 for the 50KB threshold ruling.
 function dualOutput(data: unknown) {
-  return {
-    structuredContent: { type: 'object' as const, object: data },
-    content: [{ type: 'text' as const, text: JSON.stringify(data) }],
+  const structuredContent = { type: 'object' as const, object: data }
+  const json = JSON.stringify(data)
+  if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
+    return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
+  return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {

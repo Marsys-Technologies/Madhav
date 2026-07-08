@@ -278,10 +278,15 @@ export const querySignalsCapability: CapabilityDescriptor = {
       }
 
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
+      // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not
+      // String.length — `.length` counts UTF-16 code units and undercounts the
+      // actual wire byte size for any multi-byte (non-ASCII) content, letting
+      // genuinely oversized payloads slip past this guard.
       let truncated = false
       let truncated_from: number | undefined
       if (signals.length > 0) {
-        const estimatedBytes = JSON.stringify(signals).length
+        const serialized = JSON.stringify(signals)
+        const estimatedBytes = Buffer.byteLength(serialized, 'utf8')
         if (estimatedBytes > 1_500_000) {
           truncated_from = signals.length
           const keepCount = Math.floor(signals.length * (1_400_000 / estimatedBytes))
