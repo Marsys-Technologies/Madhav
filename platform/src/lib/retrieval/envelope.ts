@@ -205,6 +205,29 @@ export interface DrillPointer {
   pact_stage?: PactStage
 }
 
+// ── R5.1 C1 — MCP-consume response-budget trim report ─────────────────────────
+
+/**
+ * One trimmed section of a response (R5.1 C1 "budget facet + trim discipline"). Names
+ * WHAT was cut (a dot-path into `content`), how much, and the exact instrument/params a
+ * caller uses to recover the full detail — the trim never destroys data server-side, it
+ * only declines to default-serve it over the size-constrained MCP channel (B.10-adjacent
+ * discipline: never silently drop information without saying so and naming the way back).
+ */
+export interface TrimReportEntry {
+  /** Dot-path into the response `content` where a section was shortened, e.g.
+   *  "checklist.bearing_yogas" or "dignity.all_varga_rows". */
+  path: string
+  /** How many entries the untrimmed section actually had. */
+  original_count: number
+  /** How many entries survived in this response. */
+  kept_count: number
+  /** Human-readable reason (always names the byte-budget rule, never silent). */
+  reason: string
+  /** The drill_pointer-shaped recipe for recovering the trimmed detail. */
+  recover_via: { instrument: string; hint: string }
+}
+
 // ── envelope shapes ────────────────────────────────────────────────────────────
 
 export interface LegacyEnvelope {
@@ -219,6 +242,10 @@ export interface LegacyEnvelope {
   insight_type: string | null
   query_class: string
   content: unknown
+  /** R5.1 C1 — additive, null unless this response's `content` was shortened to fit a
+   *  channel size ceiling (e.g. the MCP-channel budget facet). Never populated by fabrication
+   *  — only ever reports a trim that actually happened to THIS response's own content. */
+  trim_report: TrimReportEntry[] | null
 }
 
 export interface V3Envelope extends LegacyEnvelope {
@@ -257,6 +284,11 @@ export interface BuildRetrievalEnvelopeParams {
   drill_pointers?: DrillPointer[]
   judgment_flags?: string[]
   build_id?: string | null
+  /** R5.1 C1 — populated only by callers that ran this response's content through the
+   *  response-budget trimmer (e.g. platform-mcp's response_budget.ts). Emitted under BOTH
+   *  formats (additive on legacy too) since the trim is a channel-transport fact, not a
+   *  v3-only enrichment. */
+  trim_report?: TrimReportEntry[] | null
 }
 
 /**
@@ -288,6 +320,7 @@ export function buildRetrievalEnvelope(
     insight_type: params.insight_type ?? null,
     query_class: params.query_class ?? 'per_chart_structural',
     content: params.content,
+    trim_report: params.trim_report ?? null,
   }
 
   if (format !== 'v3') return legacy

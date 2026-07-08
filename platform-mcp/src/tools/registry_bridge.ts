@@ -51,7 +51,13 @@ import {
   type DrillPointerType,
   type CoverageStamp,
   type PactStage,
+  type TrimReportEntry,
 } from '../generated/envelope.js'
+// R5.1 C1 (MCP-consume hardening): the shared, reusable response-size trimmer for the
+// three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
+// channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
+// for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
+import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -172,6 +178,7 @@ function envelope(
     judgment_flags?: string[]
     as_of_date?: string
     coverage?: CoverageStamp | null
+    trim_report?: TrimReportEntry[] | null
   },
 ) {
   return buildRetrievalEnvelope(
@@ -187,9 +194,96 @@ function envelope(
       judgment_flags: v3Extras?.judgment_flags,
       as_of_date: v3Extras?.as_of_date,
       coverage: v3Extras?.coverage,
+      trim_report: v3Extras?.trim_report,
     },
     format,
   )
+}
+
+// ── R5.1 C1 — MCP-channel response-budget application ────────────────────────
+
+/** Response size ceilings (brief §C1): the wire budget for a fully-assembled MCP tool
+ *  response (envelope + orientation_context together — the whole structuredContent
+ *  object), not just the inner `content` block. */
+const MCP_RESPONSE_BUDGET_KB = {
+  judgment_query: 12,
+  graha_portrait: 12,
+  pact_query: 8,
+} as const
+
+/**
+ * A trimmable section targeting `orientation_context.entity_profiles` — shared by every
+ * B.11-orienting tool response (get_chart_orientation's own digest output, pre-fetched
+ * alongside each of these three instruments). Kept small (floor 3) since orientation is a
+ * frame, not the point of these calls — get_chart_orientation itself remains the full-
+ * detail path.
+ */
+function orientationEntityProfilesSection(): TrimmableSection<Record<string, unknown>> {
+  return {
+    path: 'orientation_context.entity_profiles',
+    getArray: (root) => {
+      const oc = root['orientation_context'] as Record<string, unknown> | undefined
+      const arr = oc?.['entity_profiles']
+      return Array.isArray(arr) ? arr : undefined
+    },
+    setArray: (root, kept) => {
+      const oc = root['orientation_context'] as Record<string, unknown> | undefined
+      if (oc) oc['entity_profiles'] = kept
+    },
+    minKeep: 3,
+    recover: { instrument: 'get_chart_orientation', hint: 'full entity_profiles digest (this call kept only a lean slice to fit the MCP response budget).' },
+    label: 'orientation_context.entity_profiles',
+  }
+}
+
+/**
+ * Merge each trim_report entry's `recover_via` into `drill_pointers` (deduped by
+ * instrument+hint) so a client that reads only drill_pointers (not trim_report) still
+ * finds the way back to full detail — the brief's "drill_pointers ARE how a client
+ * reaches the trimmed-out detail" mechanic.
+ */
+function mergeTrimPointersIntoDrillPointers(
+  drillPointers: { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[],
+  trimReport: TrimReportEntry[] | null,
+): { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[] {
+  if (!trimReport || trimReport.length === 0) return drillPointers
+  const seen = new Set(drillPointers.map(p => `${p.instrument}::${p.hint}`))
+  const merged = [...drillPointers]
+  for (const entry of trimReport) {
+    const key = `${entry.recover_via.instrument}::${entry.recover_via.hint}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push({ instrument: entry.recover_via.instrument, hint: entry.recover_via.hint, pointer_type: 'other' })
+  }
+  return merged
+}
+
+// Reserve headroom for the `trim_report` + merged `drill_pointers` entries THIS function
+// itself adds AFTER measuring against the budget — otherwise a response measured at
+// exactly maxKb could tip slightly over once its own trim_report is attached. 1.5KB
+// comfortably covers the largest trim_report this file ever produces (at most ~7
+// sections × ~180 bytes/entry).
+const TRIM_REPORT_RESERVE_KB = 1.5
+
+/**
+ * Apply the shared response-budget trimmer to a fully-assembled MCP response object
+ * (`{ orientation_context, orientation_ok, ...envelope-fields }`), then patch the
+ * envelope's own `trim_report`/`drill_pointers` fields to reflect what actually happened.
+ * Returns the same object reference (mutated), ready for `dualOutput`.
+ */
+function applyMcpBudget<T extends Record<string, unknown>>(
+  response: T,
+  maxKb: number,
+  sections: TrimmableSection<T>[],
+): T {
+  const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  const result = applyResponseBudget(response, Math.max(1, maxKb - TRIM_REPORT_RESERVE_KB), allSections)
+  if (!result.trimmed) return response
+  const mutable = response as Record<string, unknown>
+  const existingDrillPointers = (mutable['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[] | undefined) ?? []
+  mutable['trim_report'] = result.trim_report
+  mutable['drill_pointers'] = mergeTrimPointersIntoDrillPointers(existingDrillPointers, result.trim_report)
+  return response
 }
 
 // ── Dual output helper ────────────────────────────────────────────────────────
@@ -1371,7 +1465,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
-        const format = resolveEnvelopeFormat(response_format)
+        // R5.1 C1: 'v3' is now the MCP-channel DEFAULT for this instrument (an explicit
+        // response_format:'legacy' remains the escape hatch to the pre-C1 hollow envelope).
+        const format = resolveEnvelopeFormat(response_format ?? 'v3')
 
         // B.11: fetch holistic orientation alongside the judgment recipe (S1: parallelized)
         const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
@@ -1385,8 +1481,60 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const wrapper = raw as Record<string, unknown>
         const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
 
+        // R5.1 C1 — the trimmable sections of judgment_query's own content shape (see
+        // register_d9_judgment.ts's handler return for the shape these paths address).
+        // bearing_yogas (up to max_signals, default 15/max 50 signal objects) is the
+        // dominant lever; the rest are cheap defense-in-depth floors.
+        const judgmentSections: TrimmableSection<Record<string, unknown>>[] = [
+          {
+            path: 'content.checklist.bearing_yogas',
+            getArray: (root) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              const arr = checklist?.['bearing_yogas']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              if (checklist) checklist['bearing_yogas'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'query_signals', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k.' },
+            label: 'checklist.bearing_yogas',
+          },
+          {
+            path: 'content.checklist.varga_confirmation.rows',
+            getArray: (root) => {
+              const vc = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['varga_confirmation'] as Record<string, unknown> | undefined
+              const arr = vc?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const vc = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['varga_confirmation'] as Record<string, unknown> | undefined
+              if (vc) vc['rows'] = kept
+            },
+            minKeep: 4,
+            recover: { instrument: 'get_divisionals', hint: 'full operative-varga placements for every graha (this call confirmed only bhāveśa/kāraka).' },
+            label: 'checklist.varga_confirmation.rows',
+          },
+          {
+            path: 'content.fact_id_refs',
+            getArray: (root) => {
+              const arr = (root['content'] as Record<string, unknown> | undefined)?.['fact_id_refs']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const content = root['content'] as Record<string, unknown> | undefined
+              if (content) content['fact_id_refs'] = kept
+            },
+            minKeep: 20,
+            recover: { instrument: 'judgment_query', hint: 'full fact_id_refs list (this response kept a lean slice; grounding.fact_ids in the envelope still reflects the full set).' },
+            label: 'content.fact_id_refs',
+          },
+        ]
+
         if (format !== 'v3') {
-          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') })
+          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') }
+          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
         }
 
         // ── v3 population (design §10/§28.6) ──────────────────────────────────
@@ -1413,12 +1561,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null
         }
 
-        return dualOutput({
+        const v3Response = {
           orientation_context, orientation_ok,
           ...envelope(inner, 'judgment_query', undefined, 'v3', {
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
-        })
+        }
+        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
       } catch (err) {
         return errorOutput('judgment_query', String(err), { chart_id })
       }
@@ -1449,7 +1598,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       if (!graha) return errorOutput('graha_portrait', 'graha is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
-        const format = resolveEnvelopeFormat(response_format)
+        // R5.1 C1: 'v3' is now the MCP-channel DEFAULT for this instrument (an explicit
+        // response_format:'legacy' remains the escape hatch to the pre-C1 hollow envelope).
+        const format = resolveEnvelopeFormat(response_format ?? 'v3')
 
         // B.11: fetch holistic orientation before this entity-level drill.
         const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
@@ -1467,8 +1618,156 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const wrapper = raw as Record<string, unknown>
         const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
 
+        // R5.1 C1 — graha_portrait's dominant size levers (register_d9.../graha_portrait.ts
+        // handler shape): dignity.all_varga_rows is a near-duplicate SUPERSET of
+        // dignity.operative_varga_rows (which is left untouched — the "operative vargas"
+        // highlight survives any trim), so it floors to 0 first; strength/avasthas/yogas/
+        // cgm arrays keep a small lean slice rather than being fully dropped.
+        const portraitSections: TrimmableSection<Record<string, unknown>>[] = [
+          {
+            path: 'content.dignity.all_varga_rows',
+            getArray: (root) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              const arr = dignity?.['all_varga_rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              if (dignity) dignity['all_varga_rows'] = kept
+            },
+            minKeep: 0,
+            recover: { instrument: 'get_dignity', hint: 'full dignity_state rows across every varga (this response kept only operative_vargas — D1/D9/D10/D60 by default).' },
+            label: 'dignity.all_varga_rows',
+          },
+          {
+            path: 'content.dignity.other_rows',
+            getArray: (root) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              const arr = dignity?.['other_rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              if (dignity) dignity['other_rows'] = kept
+            },
+            minKeep: 0,
+            recover: { instrument: 'get_dignity', hint: 'full non-dignity/non-functional_class rows for this graha.' },
+            label: 'dignity.other_rows',
+          },
+          {
+            // Last-resort lever: the operative_vargas highlight (D1/D9/D10/D60 by default)
+            // is what a "how is my Saturn" mirror-recipe answer needs most — kept at a
+            // floor of 2 rather than fully dropped, but eligible to shrink if a
+            // well-connected graha's cgm_neighborhood/strength alone can't close the gap.
+            path: 'content.dignity.operative_varga_rows',
+            getArray: (root) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              const arr = dignity?.['operative_varga_rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const dignity = (root['content'] as Record<string, unknown> | undefined)?.['dignity'] as Record<string, unknown> | undefined
+              if (dignity) dignity['operative_varga_rows'] = kept
+            },
+            minKeep: 2,
+            recover: { instrument: 'get_dignity', hint: 'full operative-varga dignity rows (D1/D9/D10/D60) — this response kept a lean slice.' },
+            label: 'dignity.operative_varga_rows',
+          },
+          {
+            path: 'content.strength.rows',
+            getArray: (root) => {
+              const strength = (root['content'] as Record<string, unknown> | undefined)?.['strength'] as Record<string, unknown> | undefined
+              const arr = strength?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const strength = (root['content'] as Record<string, unknown> | undefined)?.['strength'] as Record<string, unknown> | undefined
+              if (strength) strength['rows'] = kept
+            },
+            minKeep: 4,
+            recover: { instrument: 'get_strength', hint: 'full shadbala decomposition (this response kept a lean slice of the 6-component + vimsopaka + ishta/kashta breakdown).' },
+            label: 'strength.rows',
+          },
+          {
+            path: 'content.avasthas.rows',
+            getArray: (root) => {
+              const avasthas = (root['content'] as Record<string, unknown> | undefined)?.['avasthas'] as Record<string, unknown> | undefined
+              const arr = avasthas?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const avasthas = (root['content'] as Record<string, unknown> | undefined)?.['avasthas'] as Record<string, unknown> | undefined
+              if (avasthas) avasthas['rows'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_avasthas', hint: 'full avastha rows across all five systems (baladi/jagrad/deepta/lajjitadi/sayanadi).' },
+            label: 'avasthas.rows',
+          },
+          {
+            path: 'content.yogas.catalog_yoga_matches',
+            getArray: (root) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              const arr = yogas?.['catalog_yoga_matches']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              if (yogas) yogas['catalog_yoga_matches'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_signals', hint: 'full signal_type_class=yoga MSR matches for this graha.' },
+            label: 'yogas.catalog_yoga_matches',
+          },
+          {
+            path: 'content.yogas.catalog_dosha_matches',
+            getArray: (root) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              const arr = yogas?.['catalog_dosha_matches']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              if (yogas) yogas['catalog_dosha_matches'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_signals', hint: 'full signal_type_class=dosha MSR matches for this graha.' },
+            label: 'yogas.catalog_dosha_matches',
+          },
+          {
+            path: 'content.cgm_neighborhood.edges',
+            getArray: (root) => {
+              const cgm = (root['content'] as Record<string, unknown> | undefined)?.['cgm_neighborhood'] as Record<string, unknown> | undefined
+              const arr = cgm?.['edges']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const cgm = (root['content'] as Record<string, unknown> | undefined)?.['cgm_neighborhood'] as Record<string, unknown> | undefined
+              if (cgm) cgm['edges'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'traverse_graph', hint: 'full CGM edge set (this response kept a lean slice of the depth-1 neighborhood).' },
+            label: 'cgm_neighborhood.edges',
+          },
+          {
+            path: 'content.cgm_neighborhood.nodes',
+            getArray: (root) => {
+              const cgm = (root['content'] as Record<string, unknown> | undefined)?.['cgm_neighborhood'] as Record<string, unknown> | undefined
+              const arr = cgm?.['nodes']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const cgm = (root['content'] as Record<string, unknown> | undefined)?.['cgm_neighborhood'] as Record<string, unknown> | undefined
+              if (cgm) cgm['nodes'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'traverse_graph', hint: 'full CGM node set (this response kept a lean slice of the depth-1 neighborhood).' },
+            label: 'cgm_neighborhood.nodes',
+          },
+        ]
+
         if (format !== 'v3') {
-          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') })
+          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
+          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
         }
 
         // ── v3 population ─────────────────────────────────────────────────
@@ -1512,10 +1811,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null
         }
 
-        return dualOutput({
+        const v3Response = {
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
-        })
+        }
+        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
       } catch (err) {
         return errorOutput('graha_portrait', String(err), { chart_id, graha })
       }
@@ -1576,7 +1876,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
-        const format = resolveEnvelopeFormat(response_format)
+        // R5.1 C1: 'v3' is now the MCP-channel DEFAULT for this instrument (an explicit
+        // response_format:'legacy' remains the escape hatch to the pre-C1 hollow envelope).
+        const format = resolveEnvelopeFormat(response_format ?? 'v3')
 
         // B.11: fetch holistic orientation alongside the PACT chain (S1: parallelized)
         const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
@@ -1590,8 +1892,57 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const wrapper = raw as Record<string, unknown>
         const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
 
+        // R5.1 C1 — pact_query is already lean by construction (register_d10_pact.ts
+        // deliberately does NOT re-embed judgment_query's full checklist — see that
+        // file's header). The remaining levers: a stage-scoped array field (TRIGGER's
+        // transiting_positions / CONFIRMATION's dignities / ACTIVATION's active_periods)
+        // and the accumulated fact_id_refs. `findStageArraySection` targets exactly ONE
+        // named field on exactly ONE named stage inside content.stages[] — never a
+        // parallel resolver, purely a view into what pact_query already computed.
+        const findStageArraySection = (
+          stageName: string, field: string, minKeep: number, recover: { instrument: string; hint: string },
+        ): TrimmableSection<Record<string, unknown>> => ({
+          path: `content.stages[stage=${stageName}].${field}`,
+          getArray: (root) => {
+            const stagesArr = (root['content'] as Record<string, unknown> | undefined)?.['stages']
+            if (!Array.isArray(stagesArr)) return undefined
+            const stage = (stagesArr as Record<string, unknown>[]).find(s => s['stage'] === stageName)
+            const arr = stage?.[field]
+            return Array.isArray(arr) ? arr : undefined
+          },
+          setArray: (root, kept) => {
+            const stagesArr = (root['content'] as Record<string, unknown> | undefined)?.['stages']
+            if (!Array.isArray(stagesArr)) return
+            const stage = (stagesArr as Record<string, unknown>[]).find(s => s['stage'] === stageName)
+            if (stage) stage[field] = kept
+          },
+          minKeep,
+          recover,
+          label: `stages[${stageName}].${field}`,
+        })
+        const pactSections: TrimmableSection<Record<string, unknown>>[] = [
+          findStageArraySection('TRIGGER', 'transiting_positions', 1, { instrument: 'query_planet_transit', hint: 'full transit series across the activation window (this call fetched only the single as_of_date snapshot).' }),
+          findStageArraySection('CONFIRMATION', 'dignities', 2, { instrument: 'get_dignity', hint: 'full dignity rows for the promise-carrying graha(s) in the operative varga.' }),
+          findStageArraySection('ACTIVATION', 'active_periods', 2, { instrument: 'get_dashas', hint: 'full dasha timeline for the promise-carrying graha(s).' }),
+          {
+            path: 'content.fact_id_refs',
+            getArray: (root) => {
+              const arr = (root['content'] as Record<string, unknown> | undefined)?.['fact_id_refs']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const content = root['content'] as Record<string, unknown> | undefined
+              if (content) content['fact_id_refs'] = kept
+            },
+            minKeep: 20,
+            recover: { instrument: 'pact_query', hint: 'full fact_id_refs list (this response kept a lean slice; grounding.fact_ids in the envelope still reflects the full set).' },
+            label: 'content.fact_id_refs',
+          },
+        ]
+
         if (format !== 'v3') {
-          return dualOutput({ orientation_context, orientation_ok, ...envelope(inner, 'pact_query') })
+          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'pact_query') }
+          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
         }
 
         // ── v3 population ──────────────────────────────────────────────────
@@ -1621,12 +1972,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null
         }
 
-        return dualOutput({
+        const v3Response = {
           orientation_context, orientation_ok,
           ...envelope(inner, 'pact_query', undefined, 'v3', {
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
-        })
+        }
+        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
       } catch (err) {
         return errorOutput('pact_query', String(err), { chart_id })
       }
