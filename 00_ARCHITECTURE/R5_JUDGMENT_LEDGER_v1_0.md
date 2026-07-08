@@ -554,4 +554,71 @@ need to re-adapt if a future wave reverted to object-shaped steps — but no suc
 choice leaves the server-side default question completely open for a future wave to decide either
 way with no sunk cost from this pass.
 
+---
+
+### JL-012 (W2 traverse_chart_graph lane) — three rulings: about-seed DSL requires the resolver's
+function-call form (not bare graha names); path endpoints take the resolver's first-listed entity
+on multi-entity resolutions; and the valence vocabulary fix scope
+
+**NOTE on numbering:** `address_resolver.ts`'s own header comment cites a `JL-011` (dispositor
+resolution — classical fixed-rulership table vs CGM dispositor edges) that does not appear in this
+ledger file as committed on this lane's base (`origin/r5/w2`) — likely a sibling W1/W2 lane's entry
+not yet merged into this copy (a W2 frame-facet lane appears to have independently claimed JL-011
+for a different ruling around the same time this entry was authored). Per the brief's own
+numbering-collision precedent (W0b/W1), using `JL-012` here rather than risking a second, different
+JL-011; flag for Ring-1 renumbering reconciliation.
+
+**context:** Extended `traverse_chart_graph` (L2 Bodha CGM traversal) per design §21/§30 ("EXTEND
+traverse_chart_graph — path patterns, direction facet, strength floors") for the W2 gate: a
+"10th-lord→Moon" path resolving in ONE tool call. Three judgment calls surfaced while wiring the
+shared address resolver (`resolveAddress`/`address_resolver.ts` — NOT reimplemented, per the lane
+brief's explicit instruction) into the graph capability's new `about_from`/`about_to`/`about` params.
+
+**(a) about-seed DSL form.** The design's §27.1 `about` facet examples read informally (e.g.
+`about:{graha:'Saturn'}`), which could be misread as accepting a bare graha name string like
+`"Moon"` in the `about` array. The resolver's actual DSL grammar (`parseAddressExpression`) requires
+either a structured `AddressExpression` object (`{type:'graha', graha:'Moon'}`) or its function-call
+DSL string (`"graha(Moon)"`) — a bare `"Moon"` throws `AddressResolutionError` (verified live against
+the native chart during this lane's own gate-test authoring: the first draft used a bare string and
+failed exactly this way). **Ruling:** document the correct forms in the capability's `input_schema`
+description rather than adding a second bare-string-tolerant parsing layer on top of the resolver —
+that second layer would be exactly the "duplicate resolver logic" trap the lane brief explicitly
+warned against repeating (W1 already hit and fixed it once). The fix is docs-only; the resolver's
+grammar is the single source of truth for what strings are valid addresses.
+
+**(b) path endpoints on multi-entity resolutions.** Some address expressions (`occupants_of(...)`)
+can resolve to more than one graha entity, but a `paths` query needs exactly one concrete start/end
+node. **Ruling:** take the first-listed entity and say so plainly in the returned resolution chain,
+rather than erroring or silently averaging/picking arbitrarily. This is not classically arbitrary —
+`occupants_of` already returns its graha list in a stable, deterministic order (not shuffled), so
+"first-listed" is a reproducible, auditable choice, not noise; a caller who wants a specific occupant
+as the endpoint should address it directly (`graha(<name>)`) rather than via `occupants_of`.
+
+**(c) valence vocabulary fix scope.** Verified live against `bodha_cgm_edges` on both canonical
+charts (`SELECT DISTINCT valence`) that the real vocabulary is `harmonious`/`antagonistic` only —
+the D4-era `benefic`/`malefic`/`mixed`/`neutral` enum the file shipped with never matches a single
+live row (the design doc's §21 "valence vocabulary drift... reconcile in W0" caveat was never
+actually reconciled, despite the run brief v1.2 changelog describing that caveat as "REPLACED by
+the real finding" [native-chart staleness] — the vocabulary drift itself is a SEPARATE, still-live
+bug, not superseded by the staleness finding). **Ruling:** fix the enum to the real vocabulary and
+accept the legacy D4 terms as normalized aliases (`benefic`→`harmonious`, `malefic`→`antagonistic`,
+`mixed`→`neutral`) so no in-flight caller silently breaks, rather than leaving a `valence_filter` that
+silently matches zero rows on live data (a strength/floors accuracy conflict — an unfiltered facet is
+strictly worse than a filter nobody can use). In scope for this lane because it's the exact file/
+exact field this wave's brief instructed to extend for "strength floors," and leaving a known-broken
+adjacent filter unfixed while adding new filters next to it would be inconsistent, not scope discipline.
+
+**basis:** (a)+(b) design §19 single-source mandate (do not duplicate the address resolver's
+parsing/entity-selection logic) + B.10 (no silent fabrication — a first-of-many-entities choice is
+disclosed, not hidden). (c) ASTROLOGY > correctness (a silently-broken valence filter degrades
+astrological signal quality — antagonistic/harmonious drishti and yoga distinctions the tradition
+cares about) > code-convenience (fixing an adjacent broken enum in the same file/wave is not scope
+creep, it's finishing what "extend traverse_chart_graph" already touches).
+
+**reversibility:** (a) fully reversible — pure documentation, no behavior change to the resolver or
+its grammar. (b) reversible — a future caller needing "all occupants as separate path endpoints" can
+be added as a new `about_from_all`-style param without disturbing this default. (c) reversible —
+alias table is additive; a future wave can drop the legacy aliases once no caller depends on them
+(easily verified by log/telemetry, per the pattern JL-007/JL-010 used for similar deprecations).
+
 No further entries — this ledger reopens for W2+ waves.
