@@ -1701,3 +1701,27 @@ report has had to perform by hand.
 
 **HALTs:** none — this is a verification-only pass; no product code was touched or fixed. All
 findings above are reported for Ring-3, not actioned here.
+
+---
+
+## FULL Battery — Ring-2 post-deploy fix verification (CLOSING NOTE)
+
+**Trigger:** the FULL battery run's critical finding (`synth_chart_brief_get` 500 on both charts —
+`bodha_discoveries` query referenced 4 non-existent columns: `domain`/`statement`/
+`salience_score`/`activation_status` vs. the real `affected_domains_array`/`surface_reading`/
+`composite_discovery_rank`, no activation-status analog) was fixed and merged to `main` at commit
+`cf8e2186` (PR #480), alongside the battery results doc. Redeployed
+(`amjis-mcp-00403-c6v`/`amjis-web-00886-gdv`, traffic confirmed on latest revisions).
+
+**Live re-verification:** `synth_chart_brief_get(chart_id=482012f1-…)` now returns `topics_covered:
+38`, real `domains_covered` (career/education/travel/residence/transition/family/progeny/wealth/
+spirituality/relationship/health), and 5 populated `top_discoveries` — no more 500. Confirmed
+`isError: false` on Abhinandan (`1c826d5a-…`) too. **Fixed and confirmed live on both charts.**
+
+This closes out the FULL battery's one critical/actionable finding. The battery's broader findings
+(raw pass rate 36.8%/~17-18 corrected, tool-estate coverage 11.8%, no LLM-rubric grading available
+in this sandbox) remain honestly reported in `R5_BATTERY_RESULTS_v1_0.md` and carry forward into
+the Ring-3 red-team pass and seal report — they are NOT resolved by this one fix, and the seal
+report must not overstate this as closing the battery's overall gate status.
+
+**HALTs:** none.
