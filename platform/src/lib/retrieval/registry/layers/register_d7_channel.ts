@@ -51,8 +51,113 @@
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
-import { resolveAboutFacet, normalizeGrahaName } from './L1_ganita/chart_query_about'
+import { resolveAddress, grahaCodeOf, AddressResolutionError, type HouseNumber } from '@/lib/retrieval/address_resolver'
 import { extractGroundingFromFactRows } from '../../envelope'
+
+/** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
+ *  (fact_subject codes to feed into the whitelisted SQL below), backed by the canonical
+ *  address resolver (`@/lib/retrieval/address_resolver.ts`, design §27.2) rather than a
+ *  second, parallel resolver implementation. See R5_RUN_LEDGER/JL-007(c) for why an inline
+ *  stopgap (`chart_query_about.ts`) existed for one wave, and JL-010 for the Ring-1
+ *  reconciliation that folded it into this single call site + retired the stopgap file. */
+interface AboutResolution {
+  subjects: string[]
+  category_hint?: string
+  chain: unknown[]
+  error?: string
+}
+
+function normalizeGrahaName(name: string): string | null {
+  try {
+    return grahaCodeOf(name)
+  } catch {
+    return null
+  }
+}
+
+async function resolveAboutForChartQuery(
+  chart_id: string,
+  ayanamsha_id: string,
+  about: unknown,
+): Promise<AboutResolution> {
+  if (about == null) return { subjects: [], chain: [] }
+
+  if (typeof about === 'string') {
+    const key = about.trim().toLowerCase()
+    if (key === 'lagna' || key === 'ascendant') {
+      // Trivial constant mapping (no computation, no classical derivation) — the LAGNA
+      // fact_subject is not a "graha" the address resolver normalizes, it's the chart_facts
+      // row itself. No DB read needed, keeping this the ONE-call/<=2KB gate case (JL-008-style
+      // reasoning, W1 GATE).
+      return {
+        subjects: ['LAGNA'],
+        category_hint: 'graha_position',
+        chain: ['about:"lagna" resolves directly to the LAGNA fact_subject.'],
+      }
+    }
+    const grahaCode = normalizeGrahaName(about)
+    if (grahaCode) {
+      return {
+        subjects: [grahaCode],
+        category_hint: 'graha_position',
+        chain: [`about:"${about}" resolves to graha ${grahaCode} via the canonical address resolver.`],
+      }
+    }
+    return { subjects: [], chain: [], error: `about: unrecognized address string "${about}"` }
+  }
+
+  if (typeof about === 'object') {
+    const obj = about as Record<string, unknown>
+
+    if (obj['graha'] != null) {
+      const raw = String(obj['graha'])
+      const grahaCode = normalizeGrahaName(raw)
+      if (!grahaCode) return { subjects: [], chain: [], error: `about.graha: unrecognized graha "${raw}"` }
+      return {
+        subjects: [grahaCode],
+        category_hint: 'graha_position',
+        chain: [`about.graha "${raw}" resolves to ${grahaCode} via the canonical address resolver.`],
+      }
+    }
+
+    if (obj['bhava'] != null || obj['house'] != null) {
+      const n = Number(obj['bhava'] ?? obj['house'])
+      if (!Number.isInteger(n) || n < 1 || n > 12) {
+        return { subjects: [], chain: [], error: 'about.bhava/house must be an integer 1-12' }
+      }
+      const subject = `HOUSE_${n}`
+      return {
+        subjects: [subject],
+        chain: [`about.bhava ${n} resolves directly to the ${subject} fact_subject (direct bhava addressing).`],
+      }
+    }
+
+    if (obj['house_lord'] != null || obj['bhava_lord'] != null) {
+      const n = Number(obj['house_lord'] ?? obj['bhava_lord'])
+      if (!Number.isInteger(n) || n < 1 || n > 12) {
+        return { subjects: [], chain: [], error: 'about.house_lord must be an integer 1-12' }
+      }
+      try {
+        const resolved = await resolveAddress(chart_id, { type: 'lord_of', house: n as HouseNumber }, { ayanamsha_id })
+        const entity = resolved.entities[0]
+        if (!entity || entity.kind !== 'graha') {
+          return { subjects: [], chain: [], error: `about.house_lord: unexpected resolution kind "${entity?.kind}"` }
+        }
+        return { subjects: [entity.graha_code], category_hint: 'graha_position', chain: resolved.chain }
+      } catch (err) {
+        return {
+          subjects: [],
+          chain: [],
+          error: err instanceof AddressResolutionError ? err.message : `about.house_lord: ${String(err)}`,
+        }
+      }
+    }
+
+    return { subjects: [], chain: [], error: 'about: unrecognized address object shape' }
+  }
+
+  return { subjects: [], chain: [], error: 'about: must be a string or an address object' }
+}
 
 // ── marsys://tool/channel/mcp_wiring ─────────────────────────────────────────
 
@@ -765,28 +870,18 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       const shape = args['shape'] === 'rows' ? 'rows' : 'pivoted'
       const limit = Math.min(Number(args['limit'] ?? 100), 1000)
 
-      // ── `about` facet resolution (may need one cheap pre-read: the lagna sign) ──
-      let aboutResolution: ReturnType<typeof resolveAboutFacet> | null = null
+      // ── `about` facet resolution — delegates to the canonical address resolver
+      // (@/lib/retrieval/address_resolver.ts) for anything requiring classical derivation
+      // (graha normalization, house-lord indirection); the lagna-sign pre-read that
+      // `house_lord`/`bhava_lord` needs is handled internally by `resolveAddress`'s own
+      // `lord_of` evaluator, not duplicated here. See JL-010 (Ring-1 reconciliation).
+      let aboutResolution: Awaited<ReturnType<typeof resolveAboutForChartQuery>> | null = null
       let aboutError: string | null = null
       const subjectsFromAbout: string[] = []
       let categoryHintFromAbout: string | null = null
 
       if (args['about'] != null) {
-        let lagnaSign: string | null = null
-        const aboutNeedsLagna =
-          typeof args['about'] === 'object' &&
-          args['about'] !== null &&
-          ('house_lord' in (args['about'] as Record<string, unknown>) || 'bhava_lord' in (args['about'] as Record<string, unknown>))
-        if (aboutNeedsLagna) {
-          const lagnaRes = await query<{ fact_value_text: string | null }>(
-            `SELECT fact_value_text FROM chart_facts
-             WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
-               AND fact_subject = 'LAGNA' AND fact_key = 'sign' LIMIT 1`,
-            [chart_id, ayanamsha_id],
-          )
-          lagnaSign = lagnaRes.rows[0]?.fact_value_text ?? null
-        }
-        aboutResolution = resolveAboutFacet(args['about'], lagnaSign)
+        aboutResolution = await resolveAboutForChartQuery(chart_id, ayanamsha_id, args['about'])
         if (aboutResolution.error) {
           aboutError = aboutResolution.error
         } else {

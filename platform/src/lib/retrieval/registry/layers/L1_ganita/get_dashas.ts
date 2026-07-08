@@ -10,7 +10,19 @@
  * made composable with the new facets). Design §18 line 92 / §475 (E-5): dasha_query must
  * NEVER serve unwindowed; (system, level-cap, date-range) required, defaulting to
  * vimshottari / 3 levels / ±5y. Gate target: system=vimshottari, level=Maha ("1"),
- * as_of=today → ≤1KB in ONE call.
+ * as_of=today, ayanamsha_id=lahiri_chitrapaksha → ≤1KB in ONE call.
+ *
+ * IMPORTANT — `ayanamsha_id` is NOT defaulted server-side (unlike `system`/`level`/`window`):
+ * omitting it returns one row per ayanamsha (5 rows, ~3.2KB for the current-dasha case — 3x
+ * over the ≤1KB gate) because chart_dashas carries all 5 ayanamshas and this handler applies
+ * no ayanamsha filter unless the caller supplies one. An endpoint LLM following only the
+ * "Gate target" line above (without noticing this paragraph) will silently bust the gate.
+ * ALWAYS pass `ayanamsha_id: "lahiri_chitrapaksha"` (the platform-mcp shim's own default,
+ * matching chart_facts_query's default) when the gate/current-dasha shape is what's wanted.
+ * Flagged (not fixed here — a silent default would change existing multi-ayanamsha callers'
+ * results): a future wave should consider defaulting `ayanamsha_id` server-side the same way
+ * `system` defaults to vimshottari, per the same E-5 "declared-but-silently-unfiltered is the
+ * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
@@ -98,10 +110,20 @@ export const getDashasCapability: CapabilityDescriptor = {
     'given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). ' +
     'Use as_of_date to retrieve the dasha running on a specific date (e.g. today). ' +
     'Contains 601,443 rows for the native across all systems, levels and ayanamshas — ' +
-    'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump.',
+    'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
+    'NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it ' +
+    'returns one row PER AYANAMSHA (5 rows). For the standard "current dasha" gate shape (one ' +
+    'row, <=1KB), ALWAYS pass ayanamsha_id="lahiri_chitrapaksha" explicitly.',
   input_schema: {
     chart_id:      { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id:  { type: 'string', description: 'Filter by ayanamsha_id (e.g. lahiri_chitrapaksha). Omit for all.' },
+    ayanamsha_id:  {
+      type: 'string',
+      description:
+        'Filter by ayanamsha_id (e.g. lahiri_chitrapaksha). Omit to get ALL 5 ayanamshas ' +
+        '(one row per ayanamsha for the same period — NOT a single unfiltered answer). For the ' +
+        'standard "current dasha" gate shape (one row, <=1KB) ALWAYS pass ' +
+        'ayanamsha_id="lahiri_chitrapaksha" explicitly — this param has no server-side default.',
+    },
     system: {
       type: 'string',
       description:

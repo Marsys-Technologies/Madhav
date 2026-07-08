@@ -58,15 +58,20 @@ describeIf('chart_query (marsys://tool/L1/chart_facts_query) — live DB', () =>
       expect(bytes, `lagna payload was ${bytes} bytes`).toBeLessThanOrEqual(2048)
     })
 
-    it(`[${chartId}] about:{house_lord:10} resolves the 10th lord and serves a chain grounded in chart_facts`, async () => {
+    it(`[${chartId}] about:{house_lord:10} resolves the 10th lord (via the canonical address resolver) and serves a chain grounded in chart_facts`, async () => {
       const result = await handler()({ chart_id: chartId, about: { house_lord: 10 } })
       expect(result.is_error).toBe(false)
       const content = result.content as Record<string, unknown>
       const resolution = content['about_resolution'] as Record<string, unknown>
       expect(resolution['subjects']).toHaveLength(1)
-      const chain = resolution['chain'] as Array<Record<string, unknown>>
-      expect(chain[0]['step']).toBe('lagna_sign')
-      expect(chain[0]['output']).toBeTruthy()
+      // Post-Ring-1-reconciliation (JL-010): `chain` is now the canonical address resolver's
+      // human-readable string chain (`ResolvedAddress.chain`), not the retired stopgap
+      // resolver's `{step, output}` object chain.
+      const chain = resolution['chain'] as string[]
+      expect(chain.length).toBeGreaterThanOrEqual(3)
+      expect(chain.some(step => /counted from lagna/i.test(step))).toBe(true)
+      expect(chain.some(step => /ruled by/i.test(step))).toBe(true)
+      expect(chain.some(step => /lord is/i.test(step))).toBe(true)
       const facts = content['facts'] as Array<Record<string, unknown>>
       expect(facts.length).toBe(1)
       expect(facts[0]['fact_subject']).toBe((resolution['subjects'] as string[])[0])

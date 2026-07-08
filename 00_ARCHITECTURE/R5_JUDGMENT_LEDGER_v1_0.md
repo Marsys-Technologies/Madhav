@@ -3,7 +3,8 @@ canonical_id: R5_JUDGMENT_LEDGER
 version: 1.0
 status: LIVE — JL-001, JL-002 (W0a punchlist lane), JL-003 (W0a perf lane), JL-004 (W0b-envelope
 lane), JL-005 (W0b-codegen lane), JL-006 (W1 address-resolver lane), JL-007 (W1 chart_query lane),
-  JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane) recorded
+  JL-008 (W1 dasha_query lane), JL-009 (W1 signals_query/synthesis_query lane), JL-010
+  (W1 Ring-1 reconciliation, r5/w1-reconcile) recorded
 created: 2026-07-08
 author: Claude Code (executing CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md Phase-0)
 program: RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md v1.6 (governing law)
@@ -468,5 +469,89 @@ silently depending on `get_chart_orientation`'s previously-`undefined` digest fi
 since they were undefined) or on `get_signals`'s previously-ignored `limit`/`cursor` params
 resolving to the hardcoded default regardless of input, would see different (correct) values now.
 
+---
+
+### JL-010 — W1 Ring-1 reconciliation (`r5/w1-reconcile`): retiring the chart_query `about` stopgap, folding it into the canonical address resolver, and the dasha `ayanamsha_id` default question
+
+**question (a):** Per JL-007(c)'s own instruction, the chart_query lane's inline stopgap
+resolver (`chart_query_about.ts`) must be reconciled into the canonical address resolver
+(`address_resolver.ts`) now that both exist on `r5/w1`. The stopgap's graha-name normalizer
+(`normalizeGrahaName`) supported Sanskrit aliases (shani, surya, chandra, mangala, kuja, budha,
+guru, brihaspati, shukra) that the canonical resolver's `grahaCodeOf`/`GRAHA_ALIASES` did not
+yet have (canonical only had 2-letter shorthand + English names). Folding the call site over
+naively would silently drop Sanskrit-name support chart_query's own shipped test suite already
+covered. Should the canonical module gain these aliases (single table, extended), or should a
+second, thinner Sanskrit-alias layer sit in front of it at the chart_query call site?
+
+**ruling (a):** Extend the canonical `GRAHA_ALIASES` table in `address_resolver.ts` itself.
+Per design §19's single-source mandate — the exact principle this reconciliation task exists to
+enforce — a second alias layer anywhere, however thin, recreates the problem being fixed. These
+are standard, undisputed Sanskrit graha names (BPHS/classical nomenclature, no school disputes
+them), so adding them is a safe, citable, B.10-compliant addition to the one shared table, and it
+makes every other future caller of `grahaCodeOf`/`resolveAddress` benefit from the same coverage
+chart_query already had. Cross-checked: no alias collides with an existing key (shani/surya/
+chandra/mangala/kuja/budha/guru/brihaspati/shukra were previously entirely absent from
+`GRAHA_ALIASES`).
+
+**question (b):** The stopgap's `house_lord`/`bhava_lord` facet served a resolution `chain` as
+an array of structured `{step, input, output, basis}` objects (its own bespoke shape); the
+canonical resolver's `lord_of` address type produces `ResolvedAddress.chain` as an array of
+human-readable strings (its own, differently-shaped, already-shipped design). Folding
+`chart_query_about`'s `house_lord` case over to call `resolveAddress(..., {type:'lord_of', ...})`
+means the served `about_resolution.chain` shape changes for existing callers of
+`chart_facts_query`. Preserve the old object shape (requiring a translation layer that
+re-derives `{step,output}` from the string chain), or accept the string-array shape as the new
+contract?
+
+**ruling (b):** Accept the string-array shape; update the lane's own integration test
+accordingly (done — see `chart_query.integration.test.ts`). Building a translation layer back to
+the old object shape would mean maintaining a second parsing/formatting concern purely to
+preserve a one-wave-old, never-externally-documented response shape from a resolver that was
+itself only a temporary stopgap (JL-007(c) is explicit that the stopgap was never meant to be a
+stable contract). No external caller depends on `about_resolution.chain`'s exact shape yet (W1 is
+still pre-Ring-2/pre-ship); the string chain is equally informative and is the one the design
+doc's own worked examples use for `resolveAddress`. Reversibility below reflects this is a
+response-shape change, not a silent behavior change.
+
+**question (c):** The dasha_query verifier finding (see brief item 2) is that `get_dashas.ts`
+applies no server-side default for `ayanamsha_id` (unlike `system`/`level`/`window`, which all
+default), so omitting it returns all 5 ayanamshas and busts the ≤1KB current-dasha gate. Should
+this reconciliation pass ALSO add a server-side default (`ayanamsha_id` defaults to
+`lahiri_chitrapaksha` the same way `system` defaults to `vimshottari`), closing the defect at the
+source instead of only documenting it?
+
+**ruling (c):** Document only in this pass; do not add a server-side default. Reasoning: (1) the
+brief's item 2 scope is explicitly "gate documentation + regression test," not a behavior change
+— adding a default is a genuine, additional design decision (does a caller who wants all 5
+ayanamshas still have an easy way to ask for that? what's the "all" sentinel, mirroring
+`system="all"`?) that deserves its own judgment call and its own wave, not a drive-by fix bundled
+into a docs-and-tests task. (2) Unlike `system`, which already has a documented "all" opt-out
+convention (`system: 'all'`), `ayanamsha_id` has no such convention today — an unannounced default
+would silently change the result set for any existing caller who omits `ayanamsha_id` expecting
+all 5 rows back (unlikely usage, but not verifiably absent, unlike the NF-1 sidecar-404 case in
+JL-007(a) where the tool was provably unreachable). (3) The fix that IS safe and in-scope —
+fixing what an endpoint LLM is told to expect (docstring + input_schema description + the P1-alias
+shim's schema override in `register_p1_aliases.ts`) — was made in this pass; that alone should
+prevent essentially all real-world gate-busting occurrences, since it was a documentation gap, not
+a broken filter. Flagged forward (recorded in `get_dashas.ts`'s own doc comment) for a future wave
+to consider the server-side default + its "all" opt-out convention as a deliberate, reviewed
+change.
+
+**basis:** (a) design §19 single-source mandate (direct textual basis — this IS the reconciliation
+task) + B.10 (Sanskrit graha names are classical constants, no computation, safe to hardcode).
+(b) pillar order — none of (a)/(b)/(c) are astrological calls requiring classical citation or
+contested-point flagging; resolved at tier (4) code-convenience given no correctness or honesty
+cost either way, per the same tier reasoning JL-003/JL-008 used for shape/format judgment calls.
+(c) B.10 generalized (§N.4 "no fabricated computation," here extended to "no silent contract
+change") + pillar order (a scope-expanding behavior change is lower priority than the literal
+brief ask, and risks a new, unreviewed defect class if done as a drive-by).
+
+**reversibility:** (a) reversible — aliases are additive; removing one later only affects callers
+using that specific spelling, easily caught by a test. (b) hard-to-reverse in the sense that any
+caller who started depending on the new string-array `chain` shape during W1-era testing would
+need to re-adapt if a future wave reverted to object-shaped steps — but no such caller exists yet
+(pre-Ring-2), so practically reversible today. (c) fully reversible — the documentation-only
+choice leaves the server-side default question completely open for a future wave to decide either
+way with no sunk cost from this pass.
 
 No further entries — this ledger reopens for W2+ waves.

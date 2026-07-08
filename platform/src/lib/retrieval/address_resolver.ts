@@ -88,15 +88,26 @@ export const GRAHA_CODE_TO_NAME: Record<string, string> = {
 const NAME_TO_GRAHA_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(GRAHA_CODE_TO_NAME).map(([code, name]) => [name.toLowerCase(), code]),
 )
-// Common shorthand aliases seen in classical/DSL usage.
+// Common shorthand aliases seen in classical/DSL usage, plus the standard Sanskrit graha
+// names (undisputed across every Vedic paradigm — BPHS nomenclature, safe to hardcode per
+// B.10). Sanskrit aliases folded in at R5 W1 Ring-1 reconciliation (JL-010) from the
+// chart_query lane's now-retired inline stopgap (`chart_query_about.ts`), which supported
+// these but this canonical module did not yet — single-source mandate (design §19) means the
+// alias set lives here, not duplicated in a second table.
 const GRAHA_ALIASES: Record<string, string> = {
   su: 'SUN', mo: 'MOON', ma: 'MAR', me: 'MER', ju: 'JUP', ve: 'VEN', sa: 'SAT',
   ra: 'RAH_MEAN', ke: 'KET_MEAN',
   rahu: 'RAH_MEAN', ketu: 'KET_MEAN', mars: 'MAR', mercury: 'MER',
   jupiter: 'JUP', venus: 'VEN', saturn: 'SAT', sun: 'SUN', moon: 'MOON',
+  // Sanskrit names (classical, undisputed):
+  surya: 'SUN', chandra: 'MOON', mangala: 'MAR', kuja: 'MAR', budha: 'MER',
+  guru: 'JUP', brihaspati: 'JUP', shukra: 'VEN', shani: 'SAT',
 }
 
-function grahaCodeOf(input: string): string {
+/** Normalize a graha name/alias/code (English, Sanskrit, or 2-letter shorthand) to its
+ *  canonical fact_subject code (e.g. "Saturn" | "shani" | "SAT" -> "SAT"). Throws
+ *  `AddressResolutionError` on an unrecognized name (B.10 — no silent fallback). */
+export function grahaCodeOf(input: string): string {
   const k = input.trim().toLowerCase()
   if (NAME_TO_GRAHA_CODE[k]) return NAME_TO_GRAHA_CODE[k]
   if (GRAHA_ALIASES[k]) return GRAHA_ALIASES[k]

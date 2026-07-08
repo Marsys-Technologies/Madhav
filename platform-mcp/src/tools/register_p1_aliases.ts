@@ -208,9 +208,21 @@ export function registerP1AliasTools(server: McpServer): void {
   // the handler (get_dashas.ts) now reads is declared here too.
   regAlias(server, 'ganita_dashas_get',
     'L1 dasha periods, faceted by system/level/window (same as get_dashas). ' +
-    'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y.',
+    'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y. ' +
+    'ayanamsha_id has NO default here (unlike system/level/window) — omitting it returns ' +
+    'one row PER AYANAMSHA (5 rows, ~3.2KB), busting the <=1KB current-dasha gate. ' +
+    'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
+    'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
     'marsys://tool/L1/get_dashas',
     {
+      // Override the shared ChartBase.ayanamsha_id description for this tool specifically:
+      // ChartBase's generic "(default: 'lahiri_chitrapaksha')" wording is TRUE for
+      // chart_facts_query but FALSE here — get_dashas.ts applies no ayanamsha filter unless
+      // the caller supplies one (R5 W1 verifier finding; JL-010 doc fix).
+      ayanamsha_id:  z.string().optional().describe(
+        'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
+        '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
+        'single-row current-dasha gate shape.'),
       as_of_date:    z.string().optional(),
       date_contains: z.string().optional(),
       date_from:     z.string().optional(),
