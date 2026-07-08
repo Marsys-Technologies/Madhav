@@ -231,4 +231,64 @@ contract shape.
 
 ---
 
-No further entries — this ledger reopens for W0b+ waves.
+---
+
+### JL-006 — W1 address resolver: dispositor source (classical table vs L2 CGM edges) + karaka-school row disambiguation
+
+**question (a):** Design §27.2 says the address resolver is "backed by chart_facts + the CGM's
+dispositor edges — the data exists." `bodha_cgm_edges` does carry a `dispositor` `edge_type`
+(L2 Bodha layer). Should `dispositor_of(...)` resolve sign rulership from that L2 graph edge, or
+from a hardcoded classical fixed-rulership table?
+
+**ruling (a):** Classical fixed table (`SIGN_LORDS` in `address_resolver.ts`), not the CGM edge.
+Three reasons, in priority order per the constitution: (1) ASTROLOGY — sign rulership is a fixed
+BPHS constant, true for every chart under every school; it is not something that needs to be
+"computed" per chart, and citing a graph edge for it would dress a classical fact up as a
+derived one; (2) correctness/robustness — `bodha_cgm_edges` is an L2 Bodha campaign artifact that
+may not exist for a chart where L2 hasn't been built yet (L2 is "BUILT" for the two canonical
+charts today, but the resolver is meant to be a foundational, chart-build-stage-agnostic
+primitive per its own module contract); depending on it would make `dispositor_of` fail for any
+chart stopped at L1. (3) B.1 (facts/interpretation separation) — an L1-adjacent primitive utility
+should not depend on L2 derivations for its own basic correctness. Cross-checked: the classical
+table matches every `chart_facts.sign_lord` fact (written by L1 `ga_*` writers) observed on both
+canonical charts with zero divergence — so no information is lost by preferring it. The CGM
+`dispositor` edge remains available to a future caller wanting graph-context (betweenness,
+cross-subsystem mapping) layered ON TOP of this resolver's output; it is not the resolver's
+correctness dependency.
+
+**question (b):** `chart_facts.karaka_chara_position` value-rows (`assigned_graha`/`house_d1`/
+`sign`) carry no per-row `karaka_school` tag — only separate `karaka_school` rows do, with no
+shared row id to join the two together in the EAV shape as built. Should `karaka(...)` resolution
+silently assume the schools agree, or should it throw / require an upstream schema change before
+resolving at all?
+
+**ruling (b):** Read the value rows directly and document the assumption in code, rather than
+either silently hiding it or blocking the whole `karaka()` address type on a schema change outside
+this lane's `may_touch` (chart data / L0-L5 tables are read-only for W1; a schema fix there is a
+different lane's scope). Verified via direct SQL against both canonical charts: `parashari_
+rahu_excluded` and `kn_rao_rahu_included` agree exactly on `assigned_graha`/`house_d1`/`sign` for
+all 7 karakas the two schemes share; the 8th karaka (`STRIKARAKA`) exists only under
+`kn_rao_rahu_included` and the resolver defaults the school accordingly for that one code. The
+`school` field is still carried on both the `AddressExpression` input and the `ResolvedKaraka`
+output so a caller's audit trail is honest about which school was requested/assumed even though
+today's data doesn't yet distinguish the rows physically. Flagged as a real upstream data-model
+gap (no per-row school key) for a future L1/L2 schema-owning lane — not resolved here, only
+worked around safely with an explicit, verified assumption.
+
+**basis:** Pillar order (§1 constitution) — ASTROLOGY (fixed classical rulership must not be
+demoted to a "computed" graph fact) > correctness (resolver must work without an L2 build
+dependency; karaka schools verified to agree before relying on it) > honesty (school field
+preserved on the resolved output even where the physical row can't yet distinguish it) >
+code-convenience. No disputed-point contested-flag needed — sign rulership and the 7-karaka
+Parashari scheme are both textbook-uncontested (BPHS).
+
+**reversibility:** fully reversible on both counts. (a) if a future chart needs a non-Parashari
+custom rulership scheme (e.g. KP sub-lord addressing, already out of scope per design §27.4
+`paradigm` facet being a later wave), a `paradigm`-aware rulership table can be added alongside
+`SIGN_LORDS` without changing `dispositor_of`'s call shape. (b) if L1/L2 ever adds a per-row
+school key to `karaka_chara_position`, `fetchKarakaRow` can filter on it directly — the resolver's
+public `AddressExpression`/`ResolvedKaraka` shapes need no change, only the internal SQL.
+
+---
+
+No further entries — this ledger reopens for W1+ waves.
