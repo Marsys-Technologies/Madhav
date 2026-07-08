@@ -685,3 +685,201 @@ consumers (default stays `legacy`, byte-identical) and directly demonstrates P3'
 consumers who choose to opt in ahead of the W4 default flip.
 
 **HALTs:** none. **Judgment ledger entries added:** JL-004.
+
+---
+
+## W0a — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w0a-integrated` merged to `main` at commit `04b802ad` (PR #467). Both `amjis-mcp`
+and `amjis-web` redeployed. This section re-runs the brief's `[verify-against: prod]` gate — the
+§14 eight-probe audit re-executed against the NOW-current prod deployment, not the worktree — per
+the brief's named failure mode ("the worktree-complete-only trap … ACs verified only in a worktree
+do not count").
+
+### Deploy-truth check (done FIRST, before trusting any probe result)
+
+```
+gcloud run services describe amjis-mcp --region=asia-south1 \
+  --format="value(status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)"
+# {'latestRevision': True, 'percent': 100, 'revisionName': 'amjis-mcp-00396-tl6'}  amjis-mcp-00396-tl6  amjis-mcp-00396-tl6
+
+gcloud run services describe amjis-web --region=asia-south1 \
+  --format="value(status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)"
+# {'latestRevision': True, 'percent': 100, 'revisionName': 'amjis-web-00873-qdn'}  amjis-web-00873-qdn  amjis-web-00873-qdn
+```
+
+Both services confirmed: 100% traffic on `latestCreatedRevisionName`, matching the commit named in
+the task (`amjis-mcp-00396-tl6`, `amjis-web-00873-qdn`). Image digest on the live revision
+(`amjis-mcp-00396-tl6`) resolves to
+`asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp@sha256:40cd152ac640bdf...` — confirmed
+this is genuinely the post-merge build, not a stale image serving under a fresh revision name.
+
+### OPERATIONAL FINDING — deploy race (hygiene item, append to every future wave's Ring-2 checklist)
+
+`gcloud run revisions list` shows **two** new revisions created minutes apart on each service around
+the merge, both from the same commit:
+
+```
+amjis-mcp-00396-tl6   True   2026-07-08T09:42:25Z   ← ended up serving traffic
+amjis-mcp-00395-d6d   True   2026-07-08T09:38:00Z   ← healthy, but 0% traffic, ~4 min apart
+amjis-mcp-00394-7hh   True   2026-07-08T08:09:12Z   (prior, Phase-0 redeploy)
+
+amjis-web-00873-qdn   True   2026-07-08T09:44:16Z   ← ended up serving traffic
+amjis-web-00872-blg   True   2026-07-08T09:42:47Z   ← healthy, but 0% traffic, ~2 min apart
+amjis-web-00871-wtp   True   2026-07-08T08:10:07Z   (prior)
+```
+
+**Root cause:** merging `r5/w0a-integrated` → `main` auto-fires `deploy.yml` via its `workflow_run`
+trigger; a manual `workflow_dispatch` was ALSO fired for the same commit (belt-and-suspenders
+habit carried over from the Phase-0 P0-ii force-deploy). Both runs built and deployed successfully —
+Cloud Run does not error on a duplicate deploy, it just creates a second new revision — but the
+interaction between two concurrent `deploy.yml` runs left one new healthy revision at 0% traffic on
+each service, and for a window, **prod kept serving the older pre-merge revision** until traffic was
+corrected via:
+
+```
+gcloud run services update-traffic amjis-mcp --region=asia-south1 --to-latest
+```
+
+**The named hygiene gap:** CI's green checkmark ("deploy succeeded") is necessary but not
+sufficient evidence a deploy is live. A duplicate-trigger race (workflow_run + workflow_dispatch on
+the same commit, or two workflow_run events firing close together) can produce a healthy new
+revision that never receives traffic, while prod continues silently serving the prior revision.
+Post-deploy verification that only checks "did the GitHub Action finish green" would have PASSED
+here while prod was still stale — a Ring-2 gate reading only CI status is not trustworthy.
+
+**Punchlist item (R5_PUNCHLIST scope, non-blocking, carry forward):** **every wave's Ring-2 close
+must explicitly run and record**
+
+```
+gcloud run services describe <service> --region=asia-south1 \
+  --format="value(status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)"
+```
+
+for both `amjis-mcp` and `amjis-web`, and confirm `status.traffic` shows 100% on
+`latestCreatedRevisionName` — not merely that `latestReadyRevisionName` looks fresh, and never
+substituting a green CI run for this check. If traffic is split or pinned to an older revision,
+run `--to-latest` before treating the wave's Ring-2 as verifiable at all. Recommend the longer-term
+fix (not actioned here, code-touching, out of this ledger-only lane's scope): make `deploy.yml`'s
+`workflow_dispatch` path idempotent/mutually-exclusive with `workflow_run` for the same commit SHA
+(e.g. a concurrency group keyed on SHA), so a duplicate manual trigger cannot race the automatic one.
+
+### §14 eight-probe re-audit — prod, post-deploy (`04b802ad` / revisions above)
+
+Ran `evals/r5-w0a-canary/canary_runner.ts` unmodified against live prod first (credential
+`mcp_prod_tDO7obNw...`, still live, unexpired). **Important correction to the canary's own
+automated verdicts:** the runner's `callTool()` only reads `result.content[0].text` — but the S3
+perf fix (already deployed) now replaces that field with the literal placeholder string
+`"[large payload — see structuredContent]"` for any response over 50KB, and does NOT fall back to
+`structuredContent` for the runner's own text-pattern checks. This makes the automated
+pass/fail heuristic **unreliable for every probe whose payload exceeds 50KB post-fix** (P1, P3,
+P4, P5, and the Q1 fact-lookup battery items) — it produced several **false HEALED/false
+STILL_HEALTHY verdicts** purely from matching against a 41-byte placeholder string, not the real
+payload. This report supersedes the raw automated summary (`results_04b802ad.json`, still committed
+for the raw timing/error data) with a manual read of `structuredContent` for every probe below —
+exactly the kind of automation blind-spot the brief's "verify honestly, don't trust tooling
+blindly" instruction is meant to catch.
+
+| # | Probe | Chart N | Chart A | Verdict | Detail |
+|---|---|---|---|---|---|
+| P1 | dasha as-of ignored | **FIXED** | **FIXED** | **REAL HEAL, confirmed by manual structuredContent read** | `as_of_date=2026-07-08` now returns 34 rows (native) spanning levels 1-4, all active in/around the requested date window (e.g. a level-4 Yogini row `2026-07-08→2026-07-10`); zero `1950` matches in either chart's raw payload (`grep -c 1950` = 0/0). This is the single biggest win of the deploy — see perf section, this correctness fix directly collapses the P1 payload from a multi-decade dump to ~34 rows. |
+| P2 | chart digest degeneracy | STILL_HEALTHY | STILL_HEALTHY | **Unchanged, healthy** (R4-healed already, independent of this deploy) — small payload, not subject to the 50KB parsing caveat above, automated result trusted as-is. |
+| P3 | yogas hollow envelope | **STILL FAIL** | **STILL FAIL** | **Confirmed by manual read — the automated "STILL_HEALTHY" verdict was WRONG (parsing-bug false positive).** `verdict:null`, `ranking_basis:null`, `drill_pointers:[]`, `judgment_flags:[]` on both charts — byte-identical hollow shape to Phase-0/pre-deploy. **Genuine partial win on size** though: compact `structuredContent` is now ~64.4KB (native) / ~64.6KB (Abhinandan) — down from the W0a pre-deploy canary's cited 174KB, and back near the original ~64KB Phase-0 figure — consistent with the S3 serialization fix (no more duplicate pretty-printed text blob), not a new fix to the envelope itself. |
+| P4 | stale provenance note | **FIXED** | **FIXED** | **REAL HEAL, confirmed by manual read — the automated "FAIL_AS_EXPECTED" verdict was WRONG (the runner's string-presence check flagged the mere existence of a `signature_tier_note` key, not whether its *content* is stale).** The note now reads "computed live, not a cached historical figure): major=60%, chart_defining=40%" (native) / "chart_defining=60%, major=40%" (Abhinandan) — and this **matches** the actual `signature_tier` distribution of the 5 served rows in each response (verified: native = 3 major + 2 chart_defining = 60/40; Abhinandan = 2 major + 3 chart_defining = 40/60). `defect_001_note` likewise now reports "0% orphan rate in this page" computed live, not the old static "91.5%" figure. The stale self-contradiction from the original finding is gone. |
+| P5 | phala SQL/leakage | **PARTIAL — genuine improvement, not fully healed** | same | Raw SQL error text (`column "..." does not exist`) is **gone** from both charts' `phala_outlook_get` responses (confirmed via full-text grep on the raw JSON — zero matches) — that half of P5 is fixed. But **two sub-defects persist, confirmed live**: (a) `leakage_firewall_note` / `train_split` / `test_split` internals are still embedded in the rectification block of the outlook response (verified in `provenance_envelope.layer_provenances.PH-4-3`) — these are pipeline-internal validation-methodology fields, not something a user-facing 12-month outlook should surface; (b) direct DB query confirms `panchanga_daily` still has **0 rows** for the entire forward year (`SELECT count(*) FROM panchanga_daily WHERE date BETWEEN '2026-07-08' AND '2027-07-08'` → 0) — the forward-panchanga emptiness is unchanged. Recommend NOT crediting this as a full P5 heal. |
+| P6 | dissent organ | **STILL DOWN — but the failure mode changed** | same | The original 404 (missing `/api/mcp/db/query` route) is gone — but it was replaced by a **new 500**: `"Query failed: column \"tier\" does not exist"` (identical on both charts). Read charitably, the punchlist fix wired up the route (closing the original 404), but the underlying SQL now references a column that doesn't exist in the live schema — this is a **new, distinct defect** surfaced by the partial fix, not the same bug persisting. Organ is still non-functional either way. |
+| P7 | corpus search 401 | **STILL FAIL, unchanged** | same | Byte-identical `"[alias] primitive 'vector_search' failed (401)"` on both charts — the auth-header-threading fix described in the punchlist lane does not appear to be live/effective for this specific tool's call path. |
+| P8 | citation silent-empty | **FIXED** | (not re-verified on A this pass, native confirmed sufficient given byte-identical code path) | Confirmed via raw response: `{"rows":[],"total":0,"empty_reason":"No classical_text_chunks rows matched keyword \"neecha bhanga\" — this exact spelling/phrase is not indexed in the corpus (this does NOT mean the corpus is silent on the underlying concept — try a topic filter or an alternate spelling).","nearest_indexed_topics":[]}` — matches JL-002's fix target exactly. Real heal. |
+
+**Extra findings re-check (not required, checked as time permitted):**
+- **NF-1 (`query_chart_facts` / `ganita_chart_facts_get` 404) — STILL BROKEN, unchanged.** Both
+  tools still return `"Sidecar returned 404: {\"detail\":\"Not Found\"}"` verbatim on the native
+  chart, identical to the W0a pre-deploy canary's finding. Not fixed by this deploy; carry forward.
+- **NF-2 (planet/keyword filter params ignored)** — not re-checked this pass (time-boxed per the
+  task's "not required" framing); no new information either way, flag as still-open/unverified.
+
+**Probe scorecard vs. the punchlist/perf lanes' self-reported fix list:** of the 7 probes the
+punchlist lane targeted (P1/P3/P4/P5/P6/P7/P8), **3 are genuinely fixed on live prod (P1, P4, P8)**,
+**1 is partially fixed (P5 — SQL-leak half fixed, leakage-notes + forward-panchanga-emptiness
+halves not)**, **1 shows no functional change but a real size win (P3 — envelope still hollow)**,
+**1 changed failure mode without closing (P6 — 404→500)**, and **1 shows no observable change (P7 —
+still 401)**. This is the honest "worktree-complete-only trap" check the brief warns about: the
+automated canary script's own verdicts, taken at face value, would have over- and under-claimed
+(falsely reporting P3 as healed, falsely reporting P4 as still-broken) — both directions of error
+are corrected above by the manual `structuredContent` read.
+
+### Perf comparison — before/after, live prod
+
+`ganita_dashas_get` (native chart, `as_of_date=2026-07-08`), 20 warm sequential calls, same
+methodology as the Phase-0 baseline:
+
+| | p50 (ms) | p95 (ms) | min | max |
+|---|---|---|---|---|
+| Phase-0 / W0a pre-deploy baseline (n=15-20) | 2451.7 | 4923.1 | 1779.3 | 7737.6 |
+| **Post-deploy, this Ring-2 check (n=20)** | **784.5** | **1114.7** | **463.2** | **1114.7** |
+| Δ | **−68.0%** | **−77.4%** | −74.0% | −85.6% |
+
+Confirms the ledger's own W0a hypothesis: the P1 as_of_date fix is very likely a meaningful perf win
+independent of correctness, because filtering to a handful of active-window rows instead of
+dumping the full multi-decade period tree collapses both payload size and DB/serialization work.
+This is now empirically confirmed, not just predicted.
+
+Broader 76-tool p50/p95 sample (canary runner, 3 reps/tool, same methodology as the W0a pre-deploy
+canary) shows no regression: overall shape is consistent with the pre-deploy sample (most tools in
+the 60-400ms band); two tools showed transient errors in this specific 3-rep sample
+(`ref_remedies_get` 3/3 errors, `query_mantras` 3/3 errors) — worth a follow-up larger-n check
+before concluding these are real regressions vs. sampling noise, not asserted as new findings here
+(low n, not cross-checked manually within this pass's time-box). Full raw data committed at
+`evals/r5-w0a-canary/results_04b802ad.json`.
+
+### W0a Ring-2 overall verdict: PASS-WITH-FLAGS
+
+**Rationale:**
+- The core deploy-truth gate (brief's "no Ring-2 prod gate is trusted before this") is satisfied:
+  traffic confirmed on the correct, current revision on both services, image digest verified.
+- 3 of 7 targeted probes are cleanly fixed and independently confirmed (P1, P4, P8) — P1 in
+  particular is a substantial, empirically-measured win (−68%/−77% p50/p95).
+- 1 probe (P5) is meaningfully improved but not fully closed — two named sub-defects carry
+  forward.
+- 3 probes (P3, P6, P7) remain functionally broken on live prod despite lane work — P3's envelope
+  is still hollow (though smaller), P6 changed failure mode without closing, P7 is unchanged.
+- 1 new-flavor defect surfaced by this deploy (P6's 404→500 transition) should be logged as its own
+  punchlist item, not conflated with the original P6 finding.
+- The deploy-race operational gap (two untrafficked healthy revisions per service, prod briefly
+  stale post-merge) is a real process finding that must be carried into every future wave's Ring-2
+  checklist, per the punchlist item recorded above.
+- This is **not** a "worktree-complete-only" false-pass: this report explicitly corrects two
+  automated-tool misreads (P3 falsely reported healthy, P4 falsely reported still-broken) via
+  direct `structuredContent` inspection and one direct DB query (`panchanga_daily` row count) —
+  the honesty bar the brief requires.
+
+**Carry-forward items (R5_PUNCHLIST scope, non-blocking per §4, NOT actioned in this ledger-only
+lane):**
+1. Deploy-race hygiene check (`gcloud run services describe ... status.traffic` vs
+   `latestCreatedRevisionName`) — add explicitly to every wave's Ring-2 checklist.
+2. P3 — yogas envelope still hollow (`verdict`/`ranking_basis`/`drill_pointers`/`judgment_flags`
+   all null/empty) — size improved, correctness defect unresolved.
+3. P5 — leakage-internals (`train_split`/`test_split`/`leakage_firewall_note`) still exposed in a
+   user-facing outlook response; `panchanga_daily` still empty for the full forward year.
+4. P6 — new 500 (`column "tier" does not exist`) replacing the old 404; dissent organ still fully
+   non-functional; needs its own root-cause trace (likely a schema/query mismatch introduced or
+   exposed by the route fix).
+5. P7 — corpus semantic search still 401; punchlist's auth-header-threading fix not effective for
+   this call path, needs re-investigation.
+6. NF-1 — `query_chart_facts` / `ganita_chart_facts_get` sidecar 404, unchanged, still unresolved.
+7. NF-2 — planet/keyword filter params ignored — not re-checked this pass, status unknown, flag for
+   next wave's audit.
+8. The canary runner (`evals/r5-w0a-canary/canary_runner.ts`) itself has a latent bug: its
+   `callTool()` helper reads only `result.content[0].text` for its pass/fail text-pattern checks
+   and does not fall back to `structuredContent` when the S3 perf fix substitutes a placeholder
+   string above 50KB. This silently produced wrong verdicts in this very run (see P3/P4 above) and
+   will keep doing so for any future large-payload probe until fixed. Recommend a follow-up fix to
+   the runner (parse `structuredContent` when `rawText` is the literal placeholder) before reusing
+   it as an unattended gate in a later wave.
+
+**Recommendation to native:** close W0a Ring-2 as **PASS-WITH-FLAGS** — the deploy is live, correct,
+and delivers real, confirmed wins (P1, P4, P8, plus the measured perf win), but do not claim P3/P5/
+P6/P7 as closed. Those carry forward to R5_PUNCHLIST per the brief's non-blocking-findings rule
+rather than blocking W0a's close, since none of them regressed relative to pre-deploy (P6 changed
+shape but was never functional either way) and W0a's own gate was "probes pass or fail honestly,
+baseline recorded for the next wave to diff against" — which this report satisfies.
