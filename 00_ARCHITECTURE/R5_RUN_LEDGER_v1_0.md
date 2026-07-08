@@ -1164,3 +1164,56 @@ holds in production (single canonical implementation actually serving traffic); 
 live; NF-1 closed. No HALT conditions.
 
 **HALTs:** none.
+
+---
+
+## W2 — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w2` merged to `main` at commit `86ff799f` (PR #473), deployed
+(`amjis-mcp-00399-dmb`/`amjis-web-00879-dzg`). Post-deploy live verification found a real,
+systemic gap: the graph-traversal, frame-facet, and paradigm-facet lanes had all verified their
+gates by calling the underlying capability handler directly (in-process), never through the live
+MCP tool layer — and none of the new params (`about_from`/`about_to`/`direction`/`min_strength`
+for graph traversal; `frame` for positions/signals; `paradigm` for signals) were actually forwarded
+by the MCP-facing tools/aliases. Confirmed live: `ganita_positions_get(frame:"chandra")` returned
+`frame:"lagna"` in the response — the exact same failure class as P1 (a param silently dropped at
+the platform/platform-mcp seam), recurring because verification stopped at the capability layer.
+
+**Fix (PR #474, commit `4b587035`):** declared and forwarded the missing params in all affected
+MCP-facing surfaces — `traverse_graph`/`get_cgm_subgraph` (registry_bridge.ts) and
+`bodha_graph_traverse_get` (register_p1_aliases.ts) for graph traversal; `get_signals`
+(registry_bridge.ts) and `bodha_signals_get` (register_p1_aliases.ts) for frame/paradigm on
+signals; `get_positions` (registry_bridge.ts) and `ganita_positions_get` (register_p1_aliases.ts)
+for frame on positions. Also confirmed `get_strength` has NO MCP-facing tool/alias at all yet —
+pre-existing gap, not introduced by W2, flagged to R5_PUNCHLIST rather than fixed here (out of
+this fix's scope).
+
+**Redeployed** (`amjis-mcp-00400-w24`/`amjis-web-00880-bxg`, traffic confirmed on latest revisions,
+no deploy race). All four W2 gates re-verified live via ACTUAL MCP tool calls (not the capability
+handler) after the fix:
+
+1. **Graph traversal** — `bodha_graph_traverse_get(mode:"paths", about_from:"lord_of(bhava 10)",
+   about_to:{graha:"Moon"}, direction:"directed")` on native chart: resolves the 10th lord to
+   Saturn (via the served `about_resolution` chain), finds a direct 1-hop path
+   Saturn→Moon (`path_length: 1`), ONE call. **PASS.**
+2. **Frame facet** — `ganita_positions_get(frame:"chandra")`: response now correctly reports
+   `frame: "chandra"` (was silently `"lagna"` before the fix). **PASS.**
+3. **Paradigm facet** — `bodha_signals_get(paradigm:"jaimini")`: every returned signal's
+   `signal_tradition` is `"jaimini"` — no mixing. **PASS.**
+4. **Corpus citations** — `vector_search(query_text:"neecha bhanga raja yoga")`: `search_mode:
+   "hybrid_vector_keyword"`, citations carry real `verse_text_en` (not bare refs), each with a
+   `source_citation` provenance tag. This gate was never broken by the MCP-alias gap (corpus
+   search's alias already forwarded its params correctly) — **PASS**, confirmed independently.
+
+One transient 401 on the very first post-deploy call (self-resolved on retry) — consistent with
+the cold-start blip pattern already noted at W1's Ring-2 close, not a regression.
+
+### Overall Ring-2 verdict: **PASS (after in-flight fix)**
+
+All four named W2 gates hold on live prod via the actual product surface (MCP tool calls), not
+just the capability layer. **Process finding for future waves:** lane/verifier gate verification
+that stops at the capability-handler level is insufficient — it must include at least one live MCP
+`tools/call` per gate, since the platform/platform-mcp seam is exactly where P1-class param-drop
+bugs recur. Recording this as a standing Ring-2 requirement going forward, not just a one-off fix.
+
+**HALTs:** none.
