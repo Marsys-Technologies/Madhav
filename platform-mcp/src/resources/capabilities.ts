@@ -113,9 +113,16 @@ function buildCapabilitiesMarkdown(
 
 ---
 
-## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\`)
+## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\` + \`graha_portrait\`)
 
-**\`judgment_query\`** is the classical bhava-adhyaya judgment recipe as ONE instrument (design
+**Estate consolidation (design §5/§29): ~70 legacy tool names → 15 substrate instruments +
+\`judgment_query\` + \`graha_portrait\` = 17.** Every legacy/absorbed name SURVIVES as a live
+alias — nothing is ever removed, only superseded by a richer entry point. When two tools can
+answer the same question, prefer the CONSOLIDATED one below for new work; the narrower legacy
+name remains correct for an existing integration that already depends on its exact response
+shape.
+
+**\`judgment_query\`** — the classical bhava-adhyaya judgment recipe as ONE instrument (design
 §28.1) — the acharya's own working method for ANY bhava-question, not hardcoded to marriage.
 Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality) or a
 bare \`bhava\` (1-12). One call returns the COMPLETE classical checklist: bhava condition (sign +
@@ -124,8 +131,35 @@ kāraka condition · judged from BOTH lagna AND chandra (Sudarshana discipline) 
 confirmation (e.g. D9 for marriage) · bearing yogas/doshas · timing hooks (dasha windows) · a
 deterministic promise-register verdict · a classical-units completeness **receipt**:
 \`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`.
+Astrologically typed \`drill_pointers\` (design §28.4) point to the next classical move —
+\`confirm_in_varga\`, \`opposing_yoga\`, \`dasha_of_promise\`, \`dispositor_chain\`, \`tail_dissent\`,
+etc. — not generic "more data" pointers.
 
-**THE SHASTRA MAP** (domain → bhava/kāraka/operative varga, design §28.5):
+**WHEN TO USE \`judgment_query\` vs a narrower tool:** use it for ANY "how is X" bhava-question
+(marriage/career/health/wealth/progeny/education/spirituality, or a bare house). Use a narrower
+tool instead when you already know exactly which single fact you need and want to avoid the
+fuller checklist's cost — e.g. \`get_dashas\` alone for "what dasha am I in", \`get_positions\`
+alone for "what sign is Saturn in".
+
+**\`graha_portrait\`** — the mirror recipe for graha-questions (design §28.2), "how is my
+Saturn?" as ONE call. Supersedes the pattern of separately calling \`get_positions\` +
+\`get_dignity\` + \`get_strength\` + \`get_avasthas\` + \`get_yoga_dosha\` + \`get_dashas\` +
+\`query_signals\` + \`traverse_graph\` one at a time for a single-graha question — all eight
+stay independently callable (nothing removed), but \`graha_portrait\` is the one-call synthesis.
+Returns: current position · dignity chain across operative vargas (D1/D9/D10/D60 highlighted) ·
+shadbala decomposition · avasthas · yogas/configurations it participates in (parivartana
+exchanges are real chart-specific data; catalog yoga/dosha matches are honestly labeled
+"not confirmed firings," JL-004/JL-016) · its dasha periods (past/next Mahadashas) · its CGM
+neighborhood · functional nature for this lagna. \`chart_id\` + \`graha\` required (accepts
+English/Sanskrit names, 2-letter shorthand, or the stored fact_subject code). Use \`include\` to
+narrow to a subset of sections when only one is needed.
+
+**THE SHASTRA MAP** (domain → bhava/kāraka/operative varga, design §28.5 — this is the ONLY
+domain vocabulary \`judgment_query\`'s \`domain\` param accepts; it is a closed classical set, not
+whatever \`bodha_msr_signals.domain\` happens to contain — see R5_JUDGMENT_LEDGER JL-018 for why
+it was NOT further widened this wave. Anything not on this list is still fully reachable via a
+bare \`bhava\` 1-12, e.g. siblings=3rd, parents=4th/9th, longevity=8th, disputes/litigation=6th,
+foreign residence=12th — the classical bhava signification the tradition already assigns them):
 
 | Domain | Bhava | Kāraka(s) | Varga |
 |---|---|---|---|
@@ -142,8 +176,11 @@ deterministic promise-register verdict · a classical-units completeness **recei
 \`assess_career\` / \`assess_health\` / \`assess_wealth\`) remain live with no breaking change —
 they return their own domain-reading + temporal-activation + contradiction bundle exactly as
 before. \`judgment_query\` is the richer, shastra-shaped successor (design §29: apex folds INTO
-judgment_query as an alias relationship, not a removal) — prefer it for new bhava-judgment
-questions; the apex_* names are safe to keep calling for existing integrations.
+judgment_query as an alias RELATIONSHIP, not a code-identical replacement — the two are verified
+astrologically consistent, R5_JUDGMENT_LEDGER JL-015(a)/JL-017, but each keeps its own response
+shape so neither breaks an existing caller) — prefer \`judgment_query\` for new bhava-judgment
+questions; the apex_* names are safe to keep calling for existing integrations, and are the
+right choice when you specifically want the apex bundle's own contradiction/convergence framing.
 
 ---
 
@@ -218,15 +255,25 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 
 ---
 
-## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\`)
+## THE ASTROLOGICAL SURFACE (R5 W3 — \`judgment_query\` + \`graha_portrait\`)
+
+Estate consolidation (design §5/§29): ~70 legacy names → 15 substrate instruments +
+\`judgment_query\` + \`graha_portrait\` = 17. Every absorbed legacy name survives as a live alias.
 
 \`judgment_query\` — the classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1),
 for ANY bhava-question ("how is the marriage?", "how is my career?", or a bare house number).
 Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality — the
 shastra map, design §28.5) or \`bhava\` (1-12). Returns the full classical checklist — bhava
 condition, bhāveśa condition, kāraka condition, judged from lagna AND chandra, operative-varga
-confirmation, bearing yogas, timing hooks, a deterministic verdict, and a completeness receipt
-(\`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`).
+confirmation, bearing yogas, timing hooks, a deterministic verdict, a completeness receipt
+(\`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`),
+and astrologically typed \`drill_pointers\` (design §28.4).
+
+\`graha_portrait\` — the mirror recipe for graha-questions (design §28.2), "how is my Saturn?" as
+ONE call: position, dignity chain, shadbala, avasthas, yoga participation, dasha periods, CGM
+neighborhood, functional nature — synthesized over the already-built L1/L2 tools (\`get_positions\`,
+\`get_dignity\`, \`get_strength\`, \`get_avasthas\`, \`get_yoga_dosha\`, \`get_dashas\`, \`query_signals\`,
+\`traverse_graph\`, all still independently callable) so a single-graha question is one call, not eight.
 
 Legacy \`apex_marriage_assess\` / \`apex_career_assess\` / \`apex_health_assess\` / \`apex_wealth_assess\`
 remain unchanged and fully answerable — \`judgment_query\` is their richer successor (design §29),

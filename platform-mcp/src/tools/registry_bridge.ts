@@ -48,6 +48,7 @@ import {
   resolveEnvelopeFormat,
   type EnvelopeFormat,
   type ChartHeader,
+  type DrillPointerType,
 } from '../generated/envelope.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -165,7 +166,7 @@ function envelope(
     verdict?: unknown
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
-    drill_pointers?: { instrument: string; hint: string }[]
+    drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
     judgment_flags?: string[]
     as_of_date?: string
   },
@@ -422,9 +423,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const judgment_flags: string[] = []
         if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')
 
-        const drill_pointers = [
-          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.' },
-          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
+        // pre-existing {instrument, hint} shape. Neither pointer here is a named classical
+        // move (this is the domain-agnostic orient surface, not a bhava-judgment recipe),
+        // so both are honestly 'other' rather than force-fit into the classical vocabulary.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_signals', hint: 'atomic composite-ranked signal drill for any entity_profiles.top_signal_ids.', pointer_type: 'other' },
+          { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.', pointer_type: 'other' },
         ]
 
         let chart_header: ChartHeader | null = null
@@ -642,9 +647,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         if (returned_count === 0) judgment_flags.push('zero_rows_returned')
         if (truncated) judgment_flags.push('response_size_truncated')
 
-        const drill_pointers = [
-          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).' },
-          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive; see get_chart_orientation's
+        // sibling comment above for why the orient-view pointer is 'other'. The graph
+        // traversal pointer genuinely IS a dispositor/causal-chain move.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_chart_orientation', hint: 'entity_profiles for the hierarchically-aggregated, same-pipeline orient view (design §E-6).', pointer_type: 'other' },
+          { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.', pointer_type: 'dispositor_chain' },
         ]
 
         let chart_header: ChartHeader | null = null
@@ -1361,7 +1369,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         }
 
         const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
-        const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string }[]) ?? []
+        const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType }[]) ?? []
 
         let chart_header: ChartHeader | null = null
         try {
@@ -1454,10 +1462,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         if (completeness['yogas'] === 'zero_rows') judgment_flags.push('no_parivartana_or_catalog_matches_for_graha')
         if (completeness['dashas'] === 'zero_rows') judgment_flags.push('no_mahadasha_periods_for_graha')
 
-        const drill_pointers = [
-          { instrument: 'get_dashas', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.' },
-          { instrument: 'traverse_graph', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.' },
-          { instrument: 'get_signals', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
+        // pre-existing {instrument, hint} shape.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'get_dashas', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'traverse_graph', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.', pointer_type: 'dispositor_chain' },
+          { instrument: 'get_signals', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.', pointer_type: 'karaka_condition' },
         ]
 
         let chart_header: ChartHeader | null = null

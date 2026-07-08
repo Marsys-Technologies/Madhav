@@ -1,0 +1,295 @@
+/**
+ * registry_bridge_r5w3_judgment_and_portrait.test.ts — MCP-tool-level regression
+ * pins for `judgment_query` (design §28.1) and `graha_portrait` (design §28.2),
+ * R5 W3 Phase B.
+ *
+ * Follows the `registry_bridge_r5w1_signals_synthesis.test.ts` precedent: mocks
+ * `fetch` (registry_bridge.ts's only I/O) and captures the REAL callback
+ * `server.tool(...)` registers via a fake `McpServer`, so this exercises the
+ * actual MCP seam (tool registration + Zod schema + handler invocation) — not
+ * just the capability handler in isolation. A future edit that silently breaks
+ * either tool's live MCP reachability (the exact "registered somewhere,
+ * unreachable from the seam" failure class named in JL-009/JL-015(d)) is caught
+ * here without needing a live DB.
+ *
+ * Also pins the R5 W3 Phase B standing checks:
+ *   - every Zod-declared param is forwarded to the capability call (the
+ *     mandatory W2-lesson, re-verified for both tools here);
+ *   - the astrologically typed `pointer_type` field (design §28.4) is present
+ *     on `drill_pointers` under response_format='v3', additively alongside the
+ *     pre-existing {instrument, hint} shape.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../types.js'
+
+type ToolHandler = (args: Record<string, unknown>) => Promise<{
+  structuredContent?: { type: 'object'; object: unknown }
+  content: Array<{ type: 'text'; text: string }>
+  isError?: boolean
+}>
+
+function makeCapturingServer(): { server: McpServer; handlers: Map<string, ToolHandler> } {
+  const handlers = new Map<string, ToolHandler>()
+  const server = {
+    tool: (name: string, _desc: string, _schema: unknown, handler: ToolHandler) => {
+      handlers.set(name, handler)
+    },
+  } as unknown as McpServer
+  return { server, handlers }
+}
+
+const PRINCIPAL: Principal = { user_uid: 'test-user', key_id: 'test-key', role: 'super_admin' }
+const TEST_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+
+/** See registry_bridge_r5w1_signals_synthesis.test.ts's stubFetch docstring for the two
+ *  wrapping layers this reproduces ({content, is_error} capability shape + {ok, content}
+ *  HTTP envelope). Falls back to an empty digest for query_ucd/get_chart_header so tests
+ *  that don't care about orientation/frame-safety don't need to mock them explicitly. */
+function stubFetch(payloads: Record<string, unknown>, captured: Array<{ uri: string; args: Record<string, unknown> }>) {
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, opts: { body: string }) => {
+    const body = JSON.parse(opts.body) as { uri: string; args: Record<string, unknown> }
+    captured.push(body)
+    const defaults: Record<string, unknown> = {
+      'marsys://tool/L2/query_ucd': { chart_id: body.args['chart_id'], digest: {}, entity_profiles: [] },
+      'marsys://tool/L1/get_chart_header': {
+        chart_id_short: '482012f1', name: 'native', lagna_sign: 'Aries', lagna_deg: 1.2,
+        moon_sign: 'Purva Bhadrapada', sun_sign: 'Capricorn', ayanamsha: 'lahiri_chitrapaksha',
+        current_maha_antar: 'Saturn/Mercury',
+      },
+    }
+    const payload = body.uri in payloads ? payloads[body.uri] : defaults[body.uri]
+    if (payload === undefined) {
+      throw new Error(`stubFetch: no mocked response for uri "${body.uri}"`)
+    }
+    const capabilityHandlerReturn = { content: payload, is_error: false }
+    return {
+      ok: true,
+      json: async () => ({ ok: true, content: capabilityHandlerReturn }),
+      text: async () => '',
+    }
+  }))
+}
+
+beforeEach(() => {
+  vi.unstubAllGlobals()
+})
+
+// ── judgment_query ────────────────────────────────────────────────────────────
+
+describe('judgment_query — MCP tool registration + seam reachability', () => {
+  it('registers as a real server.tool callback and is reachable', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    expect(handlers.get('judgment_query')).toBeDefined()
+    // Alongside the new tool, spot-check a pre-existing tool still registers too —
+    // no alias/registration regression from adding judgment_query (JL-015(d) precedent).
+    expect(handlers.get('get_signals')).toBeDefined()
+  })
+
+  it('forwards every declared param (chart_id, ayanamsha_id, domain, bhava, max_signals) to the capability call — the mandatory W2-lesson check', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha',
+        about: { domain: 'marriage', bhava: 7, label: 'Marriage / Partnership', karakas: ['Venus'], operative_varga: 'D9' },
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D9✓', yogas_checked: 2, bhanga_checked: false, timing_anchored: true },
+        drill_pointers: [{ instrument: 'get_divisionals', hint: 'x', pointer_type: 'confirm_in_varga' }],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    await handler({
+      chart_id: TEST_CHART_ID, ayanamsha_id: 'lahiri_chitrapaksha', domain: 'marriage',
+      max_signals: 12,
+    })
+
+    const call = captured.find(c => c.uri === 'marsys://tool/L-JUDGMENT/judgment_query')
+    expect(call).toBeDefined()
+    expect(call!.args['chart_id']).toBe(TEST_CHART_ID)
+    expect(call!.args['ayanamsha_id']).toBe('lahiri_chitrapaksha')
+    expect(call!.args['domain']).toBe('marriage')
+    expect(call!.args['max_signals']).toBe(12)
+  })
+
+  it('a bare `bhava` (no domain) is forwarded too', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID, about: { bhava: 3 },
+        receipt: {}, drill_pointers: [], judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, bhava: 3 })
+    expect(result.isError).toBeFalsy()
+
+    const call = captured.find(c => c.uri === 'marsys://tool/L-JUDGMENT/judgment_query')!
+    expect(call.args['bhava']).toBe(3)
+  })
+
+  it('rejects a call with neither `domain` nor `bhava`, without calling the capability', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({}, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID })
+    expect(result.isError).toBe(true)
+    expect(captured.find(c => c.uri === 'marsys://tool/L-JUDGMENT/judgment_query')).toBeUndefined()
+  })
+
+  it('response_format=v3 populates drill_pointers with the astrologically typed pointer_type field (design §28.4), additive alongside instrument/hint', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'career', bhava: 10, label: 'Career / Vocation', karakas: ['Sun', 'Mercury', 'Saturn'], operative_varga: 'D10' },
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D10✓', yogas_checked: 3, bhanga_checked: false, timing_anchored: true },
+        fact_id_refs: ['f-1', 'f-2'],
+        drill_pointers: [
+          { instrument: 'get_divisionals', hint: 'full D10 placements.', pointer_type: 'confirm_in_varga' },
+          { instrument: 'query_signals', hint: 'domain=career signal set.', pointer_type: 'opposing_yoga' },
+          { instrument: 'get_dashas', hint: 'full dasha timeline.', pointer_type: 'dasha_of_promise' },
+          { instrument: 'traverse_graph', hint: 'dispositor context.', pointer_type: 'dispositor_chain' },
+          { instrument: 'query_classical_texts', hint: 'verse citations.', pointer_type: 'other' },
+          { instrument: 'synth_tail_divergence_get', hint: 'tail-check.', pointer_type: 'tail_dissent' },
+        ],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'career', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const pointers = envelope['drill_pointers'] as Array<{ instrument: string; hint: string; pointer_type?: string }>
+    expect(pointers.length).toBe(6)
+    // Every pointer keeps the pre-existing {instrument, hint} shape (additive-only)...
+    for (const p of pointers) {
+      expect(typeof p.instrument).toBe('string')
+      expect(typeof p.hint).toBe('string')
+    }
+    // ...AND now carries a pointer_type drawn from the closed §28.4 vocabulary.
+    const types = pointers.map(p => p.pointer_type)
+    expect(types).toEqual([
+      'confirm_in_varga', 'opposing_yoga', 'dasha_of_promise',
+      'dispositor_chain', 'other', 'tail_dissent',
+    ])
+    // The tail_dissent move is new this pass — pin its presence + target instrument.
+    const tailPointer = pointers.find(p => p.pointer_type === 'tail_dissent')
+    expect(tailPointer?.instrument).toBe('synth_tail_divergence_get')
+  })
+})
+
+// ── graha_portrait ────────────────────────────────────────────────────────────
+
+describe('graha_portrait — MCP tool registration + seam reachability', () => {
+  it('registers as a real server.tool callback and is reachable', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    expect(handlers.get('graha_portrait')).toBeDefined()
+    expect(handlers.get('judgment_query')).toBeDefined()
+  })
+
+  it('forwards every declared param (chart_id, graha, ayanamsha_id, operative_vargas, include) to the capability call — the mandatory W2-lesson check', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L2/graha_portrait': {
+        chart_id: TEST_CHART_ID, graha: 'Saturn', graha_code: 'SAT',
+        position: { rows: [], count: 0 },
+        completeness: { position: '✓' },
+        notes: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('graha_portrait')!
+
+    await handler({
+      chart_id: TEST_CHART_ID, graha: 'Saturn', ayanamsha_id: 'lahiri_chitrapaksha',
+      operative_vargas: ['D1', 'D9'], include: ['position', 'dignity'],
+    })
+
+    const call = captured.find(c => c.uri === 'marsys://tool/L2/graha_portrait')
+    expect(call).toBeDefined()
+    expect(call!.args['chart_id']).toBe(TEST_CHART_ID)
+    expect(call!.args['graha']).toBe('Saturn')
+    expect(call!.args['ayanamsha_id']).toBe('lahiri_chitrapaksha')
+    expect(call!.args['operative_vargas']).toEqual(['D1', 'D9'])
+    expect(call!.args['include']).toEqual(['position', 'dignity'])
+  })
+
+  it('rejects a call missing `graha`, without calling the capability', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({}, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('graha_portrait')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID })
+    expect(result.isError).toBe(true)
+    expect(captured.find(c => c.uri === 'marsys://tool/L2/graha_portrait')).toBeUndefined()
+  })
+
+  it('response_format=v3 populates typed drill_pointers (design §28.4), additive alongside instrument/hint', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L2/graha_portrait': {
+        chart_id: TEST_CHART_ID, graha: 'Saturn', graha_code: 'SAT',
+        position: { rows: [{ fact_id: 'f-1' }], count: 1 },
+        completeness: { position: '✓', dignity: '✓', functional_nature: '✓', strength: '✓', avasthas: '✓', yogas: 'zero_rows', dashas: '✓', cgm_neighborhood: '✓' },
+        notes: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('graha_portrait')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, graha: 'Saturn', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const pointers = envelope['drill_pointers'] as Array<{ instrument: string; hint: string; pointer_type?: string }>
+    expect(pointers.length).toBe(3)
+    for (const p of pointers) {
+      expect(typeof p.instrument).toBe('string')
+      expect(typeof p.hint).toBe('string')
+      expect(typeof p.pointer_type).toBe('string')
+    }
+    expect(pointers.map(p => p.pointer_type)).toEqual([
+      'dasha_of_promise', 'dispositor_chain', 'karaka_condition',
+    ])
+
+    // v3 verdict carries the design §28.6 completeness receipt vocabulary.
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    expect(verdict['sections_populated']).toBe(7)
+    expect(verdict['sections_requested']).toBe(8)
+  })
+})

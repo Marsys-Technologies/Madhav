@@ -133,9 +133,43 @@ export interface PaginationBlock {
   next_cursor: string | null
 }
 
+/**
+ * The closed astrologically-typed drill-pointer vocabulary (design §28.4 — "the
+ * closed pointer vocabulary becomes shastra moves"). Each value names a classical
+ * NEXT STEP an acharya would actually take, not a generic "more data" pointer:
+ *   confirm_in_varga      — confirm the promise in the operative divisional chart
+ *   check_from_moon       — re-judge the same matter from the chandra frame (Sudarshana)
+ *   check_bhanga          — check for a cancellation/near-miss on a bearing yoga/dosha
+ *   opposing_yoga         — a yoga/dosha with the OPPOSITE valence bears on the same matter
+ *   karaka_condition      — examine the significator graha's own condition directly
+ *   dasha_of_promise      — locate which dasha period carries/activates the promise
+ *   transit_gate          — check current/upcoming transits gating an already-activated promise
+ *   dispositor_chain      — follow the lord-of-the-lord (dispositor) indirection one level deeper
+ *   tail_dissent          — the mandatory dissent/tail-check step of the investigation protocol
+ *   other                 — a real next step outside the classical vocabulary above (rare; kept
+ *                           so this remains additive rather than a hard enum that could reject a
+ *                           genuinely useful pointer with no classical-move label)
+ * Field is OPTIONAL and ADDITIVE — every existing `{instrument, hint}` pointer remains valid
+ * without a `pointer_type`; callers written against the untyped shape are unaffected.
+ */
+export type DrillPointerType =
+  | 'confirm_in_varga'
+  | 'check_from_moon'
+  | 'check_bhanga'
+  | 'opposing_yoga'
+  | 'karaka_condition'
+  | 'dasha_of_promise'
+  | 'transit_gate'
+  | 'dispositor_chain'
+  | 'tail_dissent'
+  | 'other'
+
 export interface DrillPointer {
   instrument: string
   hint: string
+  /** Astrologically typed classification of this pointer's classical move (design §28.4).
+   *  Optional/additive — see DrillPointerType doc comment. */
+  pointer_type?: DrillPointerType
 }
 
 // ── envelope shapes ────────────────────────────────────────────────────────────

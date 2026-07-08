@@ -22,6 +22,7 @@ import {
   buildEpistemicSummary,
   type EnvelopeFormat,
   type ChartHeader,
+  type DrillPointerType,
 } from '../generated/envelope.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
@@ -65,7 +66,7 @@ function envelope(
     verdict?: unknown
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
-    drill_pointers?: { instrument: string; hint: string }[]
+    drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
     judgment_flags?: string[]
     as_of_date?: string
     epistemic?: ReturnType<typeof buildEpistemicSummary>
@@ -409,9 +410,11 @@ export function registerP1GanitaTools(server: McpServer): void {
             'for salience-ranked cross-validation use query_signals(signal_type_class=yoga|dosha).',
         }
 
-        const drill_pointers = [
-          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.' },
-          { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.' },
+        // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
+        // pre-existing {instrument, hint} shape.
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+          { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.', pointer_type: 'other' },
         ]
 
         let chart_header: ChartHeader | null = null

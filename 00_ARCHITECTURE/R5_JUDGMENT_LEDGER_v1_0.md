@@ -1055,3 +1055,97 @@ modulo the honestly-scoped yoga/dosha caveat in (c) which is a data-maturity fac
 implementation gap.
 
 No further entries — this ledger reopens for W3+ waves.
+
+### JL-017 — W3 Phase B: apex_* fold-into-judgment_query scope — verified-consistent siblings, not code-identical delegation
+
+**question:** design §29 states "apex_* fold INTO judgment_query as aliases" (17-instrument
+estate count depends on reading apex_* as folded, not as four still-fully-separate tools).
+JL-015(a) (W3 Phase A) already verified `judgment_query`'s karaka assignment and the shastra
+map agree with `register_d8_assess_domain.ts`'s shipped `assess_marriage`/`assess_career`/
+`assess_health`/`assess_wealth` and treated that agreement as satisfying the "fold." Reading the
+actual code (`register_d8_assess_domain.ts`, unchanged) confirms the four `assess_*` capabilities
+still run their OWN independent implementation — richer domain-reading + temporal-activation +
+contradiction-register bundle, a different response shape from `judgment_query`'s classical-
+checklist receipt — they do not call into `judgment_query` internally. Should this Phase B pass
+refactor `assess_*` into thin wrappers that literally call `judgment_query`'s handler with
+`domain` preset (true code-level "fold"), or is "fold" satisfied by the already-verified
+astrological consistency + shared shastra map + capabilities-card cross-reference (JL-015(a))?
+
+**ruling:** The already-shipped state (verified-consistent siblings, NOT code-identical
+delegation) is the correct reading — no refactor. Three reasons, in constitution order:
+(1) §8's own anti-goals for EVERY wave state "NO envelope-shape breakage (extensions only)" —
+`assess_marriage`'s shipped response shape (`convergences`/`tensions`/`judgment_flags` bundle,
+predating R5 entirely) is a different, already-live contract from `judgment_query`'s classical-
+checklist receipt; making `assess_marriage` literally return `judgment_query`'s shape (or
+`judgment_query`'s shape wrapped to imitate the old one) is either a breaking change or a new
+translation layer that duplicates exactly the "two hand-maintained copies" trap design §19 exists
+to prevent — the opposite of what a "fold" should achieve. (2) `assess_*`'s own richer bundle
+(cross-domain contradictions, temporal activation via L3, per-domain judgment_flags) is real,
+already-verified-live capability that `judgment_query` does not reproduce (judgment_query has no
+contradiction-register step) — collapsing `assess_*` into a thin `judgment_query(domain=X)` call
+would be a net loss of capability for any existing caller, which the brief's hard rule ("do NOT
+remove any existing tool registration... or otherwise preserved as-is") is designed to prevent.
+(3) JL-015(a) already treated cross-verification (not code sharing) as the operative meaning of
+"fold" for this exact pair of surfaces, and no new evidence surfaced this pass changes that
+call — re-litigating an already-ratified reading absent new facts would violate the ledger's own
+append-only/non-relitigation discipline. "Fold... as aliases" is satisfied at the NAVIGATION
+layer (capabilities card teaches `judgment_query` as the richer, shastra-shaped successor;
+§29's "aliases keep everything alive" anti-goal is met because nothing was removed) rather than
+at the implementation layer. Capabilities card language updated this pass (see file diff) to
+state this explicitly ("an alias RELATIONSHIP, not a code-identical replacement") so no future
+session mistakes response-shape identity for the ratified fold.
+
+**basis:** pillar order — correctness/no-regression (1)+(2) > code-convenience of a
+literal-delegation refactor; (3) is the ledger's own non-relitigation discipline (JL-010's own
+precedent for not re-opening a settled call absent new facts).
+
+**reversibility:** reversible — a future wave could still choose to refactor `assess_*` into
+literal `judgment_query` delegates IF it also decides to accept `assess_*`'s response-shape
+change (a genuine, reviewed contract change, not a drive-by), or could add the missing
+contradiction-register step to `judgment_query` itself so a literal fold stops being a capability
+regression. Neither change is made here; this entry only records why Phase B did not attempt it
+silently.
+
+---
+
+### JL-018 — W3 Phase B: shastra map (design §28.5) verified complete against the design text; no domain expansion this wave
+
+**question:** the Phase B brief asks whether design §28.5 names life-domains beyond the seven
+`judgment_query` already maps (marriage/relationship/partnership, career/vocation, wealth/
+finance, health/vitality, progeny/children, education, spirituality) — candidates named in the
+brief itself included litigation, travel/foreign residence, siblings, parents, children beyond
+progeny, longevity. Should any of these be added to `SHASTRA_MAP` in
+`register_d9_judgment.ts`?
+
+**ruling:** No addition. A full-text search of `RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md`
+for litigation/siblings/parents/longevity/travel/foreign residence/enemies/disease/debts returns
+ZERO matches anywhere in the document — the design's own §28.5 worked example never names these
+domains even in passing, unlike wealth/health/progeny/education/spirituality, which — though
+also not literally spelled out in §28.1's two named examples — are already covered by the exact
+mapping `register_d8_assess_domain.ts`'s shipped `assess_wealth`/`assess_health` tools use in
+production (the basis JL-015 already cited for treating those five as in-scope). No equivalent
+already-shipped precedent exists for litigation/siblings/parents/longevity/travel. Per JL-014(a)'s
+directly analogous precedent (paradigm facet: "adding [undesigned values] as first-class... would
+be inventing design scope, not implementing it") — the correct discipline for a facet/map's closed
+vocabulary is to implement exactly what the design specifies plus what an already-shipped sibling
+tool independently corroborates, not to extrapolate to every textbook-plausible classical
+domain. The functional gap is small regardless: `judgment_query` already accepts a bare `bhava`
+(1-12) with no `domain` needed, so siblings (3rd), parents (4th/9th), longevity (8th),
+litigation/disputes (6th), and foreign residence (12th) are ALL already answerable today via
+`judgment_query(about:{bhava:N})` — they simply do not get a named-domain convenience alias or a
+`signal_domain`-tagged query_signals cross-reference the way the seven mapped domains do. This is
+documented in the capabilities card (this pass) so the endpoint LLM is not left assuming these
+topics are unanswerable.
+
+**basis:** B.10 generalized (no fabricated CONTRACT/vocabulary scope) + JL-014(a) direct
+precedent (closed classical vocabulary, mainstream-with-contested-flag reserved for genuinely
+disputed points — these candidate domains are not disputed, they are simply undesigned) +
+pillar order (ASTROLOGY tier: preferring the design's own text + an already-verified sibling
+tool's precedent over inventing five more domain rows on no textual basis).
+
+**reversibility:** fully reversible and additive — any of the five candidate domains can be
+added to `SHASTRA_MAP` later with a citation (a future wave choosing e.g. BPHS's standard
+8th-house/Saturn/D8 longevity assignment) without touching `judgment_query`'s existing seven
+entries or its bare-bhava fallback path.
+
+No further entries — this ledger reopens for W4+ waves.

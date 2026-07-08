@@ -62,6 +62,7 @@ import {
   type ResolvedOccupants,
 } from '../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../constants'
+import type { DrillPointerType } from '../../envelope'
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
 
@@ -500,12 +501,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         timing_anchored: timingAnchored,
       }
 
-      const drill_pointers = [
-        { instrument: 'get_divisionals', hint: `full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka).` },
-        { instrument: 'query_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here.` },
-        { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.' },
-        { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.` },
-        { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).` },
+      // Astrologically typed per design §28.4 ("the closed pointer vocabulary becomes
+      // shastra moves") — pointer_type is ADDITIVE alongside the pre-existing
+      // {instrument, hint} shape (R5 W3 Phase B); no caller reading only instrument/hint
+      // is affected. The tail_dissent pointer is new this pass — it names the mandatory
+      // dissent/tail-check step (design §26 PACT/investigation discipline) that a
+      // judgment_query verdict, being convergent-by-construction, does not itself surface.
+      const drill_pointers: Array<{ instrument: string; hint: string; pointer_type: DrillPointerType }> = [
+        { instrument: 'get_divisionals', hint: `full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka).`, pointer_type: 'confirm_in_varga' },
+        { instrument: 'query_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here.`, pointer_type: 'opposing_yoga' },
+        { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
+        { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
+        { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).`, pointer_type: 'other' },
+        { instrument: 'synth_tail_divergence_get', hint: `the mandatory dissent/tail-check step (design §26) — contrarian signals and unresolved tensions bearing on ${spec.label.toLowerCase()} not surfaced by this call's convergent verdict.`, pointer_type: 'tail_dissent' },
       ]
 
       return {
