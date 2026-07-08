@@ -20,7 +20,7 @@ from __future__ import annotations
 import sys
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
@@ -375,27 +375,49 @@ def test_build_mitigation_rows_empty_anchors(mock_l2, mock_concordance):
 # §5  mitigation_map — query engine (unit, mocked DB)
 # ──────────────────────────────────────────────────────────────────────────────
 
+# R5 W0a punch-list (P5): rewritten against the REAL phala_mitigation schema
+# (platform/supabase/migrations/332_phala_mitigation.sql) — see mitigation_map()
+# fix notes in brahmagyan/phala/mitigation.py. The prior fixture (anchor_id,
+# theme, mitigation_type, mitigation_text, source_l0_rule_id,
+# l2_remediation_hub_id, asset_version) modeled a schema that was never
+# deployed to phala_mitigation.
 SAMPLE_MITIGATION_ROWS = [
     {
-        "anchor_id": "ANC-001",
-        "theme": "career growth",
-        "mitigation_type": "mantra",
-        "mitigation_text": "Recite Surya mantra 108 times at sunrise.",
-        "source_l0_rule_id": "BPHS-CAREER-MANTRA",
+        "mitigation_id": "11111111-1111-1111-1111-111111111111",
+        "linked_anchor_id": "ANC-001",
+        "obstruction_id": 1,
+        "afflicting_graha": "Saturn",
+        "obstruction_severity": "moderate",
+        "intensity_tier": "moderate",
+        "program_jsonb": [{"prescription_id": "surya_mantra_108", "order": 1, "prereq_ids": []}],
+        "tradition_options_jsonb": {"vedic": ["Surya mantra 108x at sunrise"]},
+        "cross_tradition_corroboration": 1,
+        "recommended_tier_jsonb": {"free": {"desc": "Surya mantra, no cost"}},
+        "proportionality_basis": "moderate obstruction warrants moderate remedy per BPHS ch.46",
+        "window_start": None,
+        "window_end": None,
+        "re_evaluation_date": date(2026, 12, 31),
+        "classical_citation": "BPHS.3.6-8",
         "source_citation": "BPHS.3.6-8",
-        "l2_remediation_hub_id": None,
-        "asset_version": "1.0",
         "computed_at": datetime.now(timezone.utc),
     },
     {
-        "anchor_id": "ANC-001",
-        "theme": "career growth",
-        "mitigation_type": "timing",
-        "mitigation_text": "Initiate career changes during 10th lord dasha.",
-        "source_l0_rule_id": "BPHS-CAREER-TIMING",
+        "mitigation_id": "22222222-2222-2222-2222-222222222222",
+        "linked_anchor_id": "ANC-001",
+        "obstruction_id": 1,
+        "afflicting_graha": "Saturn",
+        "obstruction_severity": "moderate",
+        "intensity_tier": "light",
+        "program_jsonb": [{"prescription_id": "tenth_lord_dasha_timing", "order": 1, "prereq_ids": []}],
+        "tradition_options_jsonb": {"vedic": ["Initiate during 10th-lord dasha"]},
+        "cross_tradition_corroboration": 1,
+        "recommended_tier_jsonb": {"free": {"desc": "Timing only, no cost"}},
+        "proportionality_basis": "timing adjustment, light intensity",
+        "window_start": None,
+        "window_end": None,
+        "re_evaluation_date": date(2026, 12, 31),
+        "classical_citation": "BPHS.46.1-15",
         "source_citation": "BPHS.46.1-15",
-        "l2_remediation_hub_id": None,
-        "asset_version": "1.0",
         "computed_at": datetime.now(timezone.utc),
     },
 ]
@@ -490,13 +512,22 @@ def test_mitigation_map_invalid_type_raises():
 
 
 def test_mitigation_map_valid_types():
-    """mitigation_map: all valid types are accepted without error."""
+    """
+    mitigation_map: all valid types are accepted without error.
+
+    R5 W0a punch-list (P5): mitigation_type is not a column on the real
+    phala_mitigation schema (migration 332) — the filter is validated but
+    NOT applied to the SQL. provenance_envelope now reports this honestly
+    via mitigation_type_filter_requested / _applied rather than implying
+    the filter took effect.
+    """
     for mtype in sorted(VALID_MITIGATION_TYPES):
         conn = _make_mitigation_query_conn([], 0)
         result = mitigation_map(conn, NATIVE_CHART_ID, mitigation_type=mtype)
         assert "mitigations" in result
         env = result["provenance_envelope"]
-        assert env["mitigation_type_filter"] == mtype
+        assert env["mitigation_type_filter_requested"] == mtype
+        assert env["mitigation_type_filter_applied"] is False
 
 
 def test_mitigation_map_anchor_id_filter():

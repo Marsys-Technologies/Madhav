@@ -11,6 +11,8 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
+import { remoteAuthorize } from '../lib/authz.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -31,14 +33,31 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   return data.content
 }
 
-async function platformQuery(sql: string, params: unknown[]): Promise<{ rows: Record<string, unknown>[] }> {
+// R5 W0a punch-list (P6): the route now exists at /api/mcp/db/query (whitelisted,
+// two-layer auth — see platform/src/app/api/mcp/db/query/route.ts). Callers MUST
+// pass the resolved principal so Layer 2 (X-MCP-User/X-MCP-Key-Id) is satisfied —
+// a bare x-mcp-internal-token is no longer sufficient (it never was for this route
+// to be safely opened; the prior 404 masked the missing principal wiring too).
+async function platformQuery(
+  sql: string,
+  params: unknown[],
+  principal: Principal,
+): Promise<{ rows: Record<string, unknown>[] }> {
   const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ sql, params }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!res.ok) throw new Error(`[p1_synthesis] platform DB query failed: ${res.status}`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`[p1_synthesis] platform DB query failed (${res.status}): ${text.slice(0, 200)}`)
+  }
   return res.json() as Promise<{ rows: Record<string, unknown>[] }>
 }
 
@@ -58,10 +77,13 @@ function envelope(content: unknown, toolName: string, queryClass: string) {
   }
 }
 
+// R5 W0a punch-list (P3 fix class): dropped the `null, 2` pretty-print indent — pure
+// serialization padding, no information content. Dual output (structuredContent + content)
+// itself is retained (provider-spec obligation).
 function dualOutput(data: unknown) {
   return {
     structuredContent: { type: 'object' as const, object: data },
-    content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(data) }],
   }
 }
 
@@ -69,7 +91,7 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
 }
 
-export function registerP1SynthesisTools(server: McpServer): void {
+export function registerP1SynthesisTools(server: McpServer, principal: Principal): void {
 
   // ── 1. mimamsa_insight_get ────────────────────────────────────────────────
   server.tool(
@@ -136,6 +158,9 @@ export function registerP1SynthesisTools(server: McpServer): void {
     },
     async ({ chart_id, domain, min_salience, limit, offset }) => {
       if (!chart_id) return errorOutput('bodha_discoveries_get', 'chart_id is required')
+      if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
+        return errorOutput('bodha_discoveries_get', 'AUTHZ_DENIED', { chart_id })
+      }
       try {
         const params: unknown[] = [chart_id]
         const filters: string[] = ['chart_id = $1']
@@ -152,7 +177,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           ORDER BY salience_score DESC NULLS LAST
           LIMIT $${params.length - 1} OFFSET $${params.length}
         `
-        const result = await platformQuery(sql, params)
+        const result = await platformQuery(sql, params, principal)
         return dualOutput(envelope({
           discoveries: result.rows,
           total: result.rows.length,
@@ -213,6 +238,9 @@ export function registerP1SynthesisTools(server: McpServer): void {
     },
     async ({ chart_id, domain, top_k }) => {
       if (!chart_id) return errorOutput('synth_tail_divergence_get', 'chart_id is required')
+      if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
+        return errorOutput('synth_tail_divergence_get', 'AUTHZ_DENIED', { chart_id })
+      }
       try {
         const limitVal = top_k ?? 10
         const params: unknown[] = [chart_id, 'lahiri_chitrapaksha']
@@ -237,7 +265,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           ORDER BY salience_pctl ASC
           LIMIT $${params.length}
         `
-        const result = await platformQuery(sql, params)
+        const result = await platformQuery(sql, params, principal)
         return dualOutput(envelope({
           tail_signals: result.rows,
           total: result.rows.length,
@@ -273,6 +301,9 @@ export function registerP1SynthesisTools(server: McpServer): void {
     },
     async ({ chart_id, depth = 'standard' }) => {
       if (!chart_id) return errorOutput('synth_chart_brief_get', 'chart_id is required')
+      if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
+        return errorOutput('synth_chart_brief_get', 'AUTHZ_DENIED', { chart_id })
+      }
       try {
         const topK = depth === 'complete' ? 200 : depth === 'deep' ? 80 : 38
         const insightResult = await platformQuery(`
@@ -294,7 +325,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
             END,
             rank_consequence DESC NULLS LAST
           LIMIT $2
-        `, [chart_id, topK])
+        `, [chart_id, topK], principal)
 
         const discLimit = depth === 'complete' ? 20 : 5
         const discResult = await platformQuery(`
@@ -303,7 +334,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           WHERE chart_id = $1
           ORDER BY salience_score DESC NULLS LAST
           LIMIT $2
-        `, [chart_id, discLimit])
+        `, [chart_id, discLimit], principal)
 
         const rows = insightResult.rows
         const verdicts     = rows.filter(r => r['insight_type'] === 'verdict_object')
@@ -358,6 +389,10 @@ export function registerP1SynthesisTools(server: McpServer): void {
       top_windows:    z.number().int().min(1).max(10).default(3).describe('Number of top election windows to return.'),
     },
     async ({ chart_id, domain, top_windows }) => {
+      if (!chart_id) return errorOutput('prashna_undertaking_get', 'chart_id is required')
+      if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
+        return errorOutput('prashna_undertaking_get', 'AUTHZ_DENIED', { chart_id, domain })
+      }
       try {
         // 1. Prashna judgment (from ga_prashna_judgment)
         const prashnaResult = await platformQuery(`
@@ -367,7 +402,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           WHERE gj.chart_id = $1
           ORDER BY gj.ayanamsha_id
           LIMIT 5
-        `, [chart_id])
+        `, [chart_id], principal)
 
         // 2. Election windows (phala_muhurta for domain → action class mapping)
         const muhurtaResult = await platformQuery(`
@@ -380,7 +415,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
             AND pm.composite_quality IS NOT NULL
           ORDER BY pm.composite_quality DESC NULLS LAST
           LIMIT $2
-        `, [chart_id, top_windows])
+        `, [chart_id, top_windows], principal)
 
         // 3. Fructification timing from phala_anchors (domain-filtered)
         const anchorResult = await platformQuery(`
@@ -393,7 +428,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
             AND pa.posterior IS NOT NULL
           ORDER BY pa.posterior DESC NULLS LAST
           LIMIT 3
-        `, [chart_id, domain])
+        `, [chart_id, domain], principal)
 
         // 4. Activity ontology fructification rules for inferred action class
         const _DOMAIN_TO_ACTION: Record<string, string> = {
@@ -406,7 +441,7 @@ export function registerP1SynthesisTools(server: McpServer): void {
           SELECT activity_class_id, name_en, significators, fructification_rules, citations
           FROM brahma_activity_ontology
           WHERE activity_class_id = $1
-        `, [actionClass])
+        `, [actionClass], principal)
 
         // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior)
         const verdictStrength = prashnaResult.rows[0]?.['verdict_strength'] as number | null ?? 0.5

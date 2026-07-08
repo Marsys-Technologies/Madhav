@@ -42,3 +42,74 @@ Each entry is a level-3 heading `### JL-<NNN> — <short title>` with these fiel
 
 No entries yet — this ledger opens empty at Phase-0 close. The first entry lands when W0a's first lane
 raises its first question to Pratinidhi-R.
+
+---
+
+### JL-001 — P5 phala serving-code fix depth: rewrite read paths only, leave writer paths untouched
+
+**question:** §20's fix-class for P5 says "Rewrite serving SQL against mig-330 schema" for
+`anchors.py`/`mitigation.py`, but both files contain BOTH read functions (`fetch_anchors`/
+`event_anchors` in anchors.py; `mitigation_map` in mitigation.py — the actual live paths behind
+`phala_outlook_get` and the FastAPI `/api/compute/phala/event_anchors` route) AND writer functions
+(`build_mitigation_rows`/`upsert_mitigation_rows` in mitigation.py, which INSERT into
+`phala_mitigation`). The design doc doesn't say whether "rewrite serving SQL" extends to the writer
+functions those files also contain. The brief's `must_not_touch` says "orchestrator/planner + ALL
+writers (build plane is sealed)."
+
+**ruling:** Fix only the READ functions that are the live serving path (confirmed by tracing
+`phala_outlook_get` → `outlook.py::_fetch_anchors`/`_fetch_mitigations` → `anchors.py::event_anchors`/
+`mitigation.py::mitigation_map`, and the FastAPI route `POST /api/compute/phala/event_anchors` →
+`anchors.py::event_anchors` directly). Both were querying columns (`id`, `theme`, single `confidence`,
+`contributing_dashas`/`contributing_signals`, `prediction_state`/`outcome_note` on phala_anchors;
+`anchor_id`/`theme`/`mitigation_type` on phala_mitigation) that do not exist on the deployed schema
+(migrations 330 + 398 for phala_anchors; 332 for phala_mitigation) — confirmed root cause of the
+probe's leaked `column "id" does not exist` / `column "anchor_id" does not exist` errors. Rewrote both
+against the real, deployed columns. Left `mitigation.py::fetch_anchors` (used only by the sealed
+writer path `build_mitigation_rows`) and `upsert_mitigation_rows` completely untouched — those belong
+to the build plane. No new migration required: mig-330 already DROP+recreated phala_anchors with the
+correct UUID `anchor_id`; the TEXT-typed `anchor_id` the design doc's "type conflict" note refers to
+lives only in the superseded, unapplied `platform/migrations/brahma_phala_anchors.sql` /
+`brahma_phala_mitigation.sql` (the "Two-174 trap" — L4 migrations that never landed in the applied
+`supabase/migrations/` root). `prediction_state` (anchors) and `mitigation_type` (mitigations) params
+are retained as validated-but-not-applied no-ops (documented in both docstrings + the response
+provenance envelope) rather than silently dropped or fabricated against a nonexistent column.
+
+**basis:** design doc §20 fix-class for P5 (rewrite serving SQL) + brief `must_not_touch` (writers
+sealed) + live schema verification against `platform/supabase/migrations/330_phala_anchors_and_drop_
+kala_timeline.sql`, `332_phala_mitigation.sql`, `398_phala_anchors_posterior.sql` (read directly, not
+assumed) + code-trace confirmation that `query_remedy_program.ts` (the TS-side capability, already
+correct) is a DIFFERENT live path than `mitigation_map` in mitigation.py (which R5_RUN_LEDGER's P5
+probe evidence shows is still broken pre-fix).
+
+**reversibility:** hard-to-reverse — the response field renames (`theme`→`domain`/`event_type`,
+`confidence`→`posterior`+`confidence_band`, `contributing_dashas`/`contributing_signals`→
+`derivation_ledger`/`causal_chain`, mitigation's full field set) are a response-shape change on two
+live tool surfaces (`event_anchors`, `mitigation_map` via `phala_outlook_get`). Flagged for native
+attention per the reversibility rule.
+
+---
+
+### JL-002 — P8 empty-with-reason: pg_trgm `similarity()` as the "nearest indexed term" mechanism
+
+**question:** E-3's example fix for silent-empty citation lookups ("nearest indexed terms:
+[neechabhanga_rules, dignity_cancellation]") implies some notion of lexical nearness, but the design
+doc doesn't specify a mechanism. B.10 forbids fabricating a computed value. Is using Postgres
+`pg_trgm` trigram `similarity()` against the corpus's own `topics` tags acceptable "real computation,"
+or does it need a heavier NLP mechanism, or should the feature be floored/deferred instead?
+
+**ruling:** Use `pg_trgm` `similarity()` against the corpus's own `classical_text_chunks.topics`
+values — this is a real, already-precedented computation over live data (pg_trgm is already enabled
+DB-wide per migration 067, used for `conversation_messages`/`conversations` search), not a fabricated
+score. Wrapped in try/catch: if the extension or query is unavailable in some environment, degrade to
+a reason-only empty response (no suggestions) rather than erroring the whole call — never silently
+invent a similarity number, never let the enrichment attempt take down the primary result.
+
+**basis:** B.10 (no fabricated computation — pg_trgm similarity IS a real, deterministic, cited
+mechanism against live corpus data, not an invented number) + §16 E-3 (empty-with-reason is the
+contract; a reason without suggestions is still a legal degraded form) + existing precedent
+(migration 067 `pg_trgm` usage elsewhere in the codebase).
+
+**reversibility:** reversible — a later wave can replace the trigram heuristic with a stronger
+lexical/semantic nearest-neighbor mechanism (e.g. embedding-based) without changing the response
+contract (`empty_reason` + `nearest_indexed_topics` fields are stable regardless of the underlying
+computation).

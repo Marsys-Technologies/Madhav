@@ -37,6 +37,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -73,16 +74,27 @@ function normalizeAyanamsha(id?: string): string {
 /**
  * Call a platform primitive via /api/mcp/primitives/{tool}.
  * Used for tools (e.g. vector_search) that are not in the registry.
+ *
+ * R5 W0a punch-list fix (P7 — corpus search 401). Root cause per
+ * RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §20: this helper sent only
+ * X-MCP-Internal-Token, but /api/mcp/primitives/[tool]/route.ts's Layer 2 gate
+ * requires X-MCP-User + X-MCP-Key-Id (X-MCP-Audience-Tier is informational).
+ * The working 3-header pattern already existed in resources/capabilities.ts —
+ * copied here per the design doc's named fix class.
  */
 async function callPlatformPrimitive(
   tool: string,
   params: Record<string, unknown>,
+  principal: Principal,
 ): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${tool}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Audience-Tier': principal.role === 'super_admin' ? 'super_admin' : 'client',
+      'X-MCP-Key-Id': principal.key_id,
     },
     body: JSON.stringify({ params }),
     signal: AbortSignal.timeout(20_000),
@@ -132,6 +144,9 @@ function buildCtx(chartId?: string) {
 /**
  * Build MCP tool response with both structuredContent and text fallback.
  * Provider-spec obligation: dual output per MCP spec.
+ *
+ * R5 W0a punch-list (P3 fix class): dropped the `null, 2` pretty-print indent —
+ * pure serialization padding, no information content.
  */
 function dualOutput(data: unknown): {
   structuredContent?: { type: 'object'; object: unknown }
@@ -141,7 +156,7 @@ function dualOutput(data: unknown): {
     structuredContent: { type: 'object' as const, object: data },
     content: [{
       type: 'text' as const,
-      text: JSON.stringify(data, null, 2),
+      text: JSON.stringify(data),
     }],
   }
 }
@@ -245,7 +260,7 @@ async function fetchOrientationContext(
  * before executing their domain query. The UCD result is included in the
  * response as `orientation_context` so the LLM always has holistic context.
  */
-export function registerRegistryBridgeTools(server: McpServer): void {
+export function registerRegistryBridgeTools(server: McpServer, principal: Principal): void {
 
   // ── get_chart_orientation (L-ORIENT umbrella) ─────────────────────────────
   // marsys://tool/L2/query_ucd
@@ -948,7 +963,7 @@ export function registerRegistryBridgeTools(server: McpServer): void {
           query_text,
           top_k: top_k ?? 10,
           ...(doc_type ? { doc_type } : {}),
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) {
         return errorOutput('vector_search', String(err))

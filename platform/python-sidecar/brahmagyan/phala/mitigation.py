@@ -701,20 +701,41 @@ def mitigation_map(
     conn,
     chart_id: str,
     anchor_id: Optional[str] = None,
-    mitigation_type: Optional[str] = None,
+    mitigation_type: Optional[str] = None,  # ACCEPTED BUT NOT APPLIED — see docstring (P5 fix)
     limit: int = 100,
 ) -> dict:
     """
     Query phala_mitigation for a chart.
 
+    R5 W0a punch-list (P5): rewritten against the REAL deployed phala_mitigation
+    schema (platform/supabase/migrations/332_phala_mitigation.sql). The previous
+    version of this function queried columns (anchor_id, theme, mitigation_type,
+    mitigation_text, source_l0_rule_id, l2_remediation_hub_id) that do not exist
+    on the deployed table at all — the migration built a richer, differently-shaped
+    remedy-program schema (mitigation_id PK, linked_anchor_id, program_jsonb,
+    tradition_options_jsonb, intensity_tier, outcome_hook_jsonb, ...). This is the
+    same schema the TS-side `query_remedy_program` capability
+    (platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts)
+    already reads correctly — this Python copy (the phala_outlook_get dependency
+    path) had drifted and was the source of live "column ... does not exist" errors.
+
+    `mitigation_type` (mantra|charity|gemstone|ritual|timing) is NOT a column on
+    the real table — the closest real analog (`intensity_tier`: light|moderate|
+    intensive) is a different axis entirely. The parameter is accepted for input-
+    contract compatibility but is a documented no-op here (no fabricated column
+    substitute served) — matching the anchors.py prediction_state precedent.
+
     Returns {mitigations: [...], provenance_envelope}.
-    Each mitigation carries source_citation tracing to BPHS/concordance L0 rule_id.
+    Each mitigation carries source_citation + classical_citation tracing to BPHS.
 
     Contract output shape:
       {
         mitigations: [
-          {anchor_id, mitigation_type, mitigation_text, source_l0_rule_id, source_citation,
-           theme, l2_remediation_hub_id, computed_at},
+          {mitigation_id, linked_anchor_id, obstruction_id, afflicting_graha,
+           obstruction_severity, intensity_tier, program, tradition_options,
+           cross_tradition_corroboration, recommended_tier, proportionality_basis,
+           window_start, window_end, re_evaluation_date, classical_citation,
+           source_citation, computed_at},
           ...
         ],
         provenance_envelope: {
@@ -723,21 +744,21 @@ def mitigation_map(
         }
       }
     """
+    # Input-contract validation is retained even though the value is not applied
+    # to the SQL WHERE clause (see docstring) — reject an unrecognized value
+    # early rather than silently accept-and-ignore a typo.
+    if mitigation_type and mitigation_type not in VALID_MITIGATION_TYPES:
+        raise ValueError(
+            f"Invalid mitigation_type '{mitigation_type}'. "
+            f"Must be one of: {sorted(VALID_MITIGATION_TYPES)}"
+        )
+
     conditions = ["chart_id = %s"]
     params: list = [chart_id]
 
     if anchor_id:
-        conditions.append("anchor_id = %s")
+        conditions.append("linked_anchor_id = %s")
         params.append(anchor_id)
-
-    if mitigation_type:
-        if mitigation_type not in VALID_MITIGATION_TYPES:
-            raise ValueError(
-                f"Invalid mitigation_type '{mitigation_type}'. "
-                f"Must be one of: {sorted(VALID_MITIGATION_TYPES)}"
-            )
-        conditions.append("mitigation_type = %s")
-        params.append(mitigation_type)
 
     where = " AND ".join(conditions)
 
@@ -745,23 +766,55 @@ def mitigation_map(
         cur.execute(
             f"""
             SELECT
-                anchor_id,
-                theme,
-                mitigation_type,
-                mitigation_text,
-                source_l0_rule_id,
+                mitigation_id,
+                linked_anchor_id,
+                obstruction_id,
+                afflicting_graha,
+                obstruction_severity,
+                intensity_tier,
+                program_jsonb,
+                tradition_options_jsonb,
+                cross_tradition_corroboration,
+                recommended_tier_jsonb,
+                proportionality_basis,
+                window_start,
+                window_end,
+                re_evaluation_date,
+                classical_citation,
                 source_citation,
-                l2_remediation_hub_id,
-                asset_version,
                 computed_at
             FROM phala_mitigation
             WHERE {where}
-            ORDER BY anchor_id, mitigation_type
+            ORDER BY obstruction_severity DESC NULLS LAST, linked_anchor_id
             LIMIT %s
             """,
             params + [limit],
         )
-        rows = [dict(r) for r in cur.fetchall()]
+        raw_rows = [dict(r) for r in cur.fetchall()]
+        # Wire-friendly field names (drop the _jsonb suffix on output; the raw
+        # values are unchanged, this is purely a naming courtesy for consumers).
+        rows = [
+            {
+                "mitigation_id": r["mitigation_id"],
+                "anchor_id": r["linked_anchor_id"],
+                "obstruction_id": r["obstruction_id"],
+                "afflicting_graha": r["afflicting_graha"],
+                "obstruction_severity": r["obstruction_severity"],
+                "intensity_tier": r["intensity_tier"],
+                "program": r["program_jsonb"],
+                "tradition_options": r["tradition_options_jsonb"],
+                "cross_tradition_corroboration": r["cross_tradition_corroboration"],
+                "recommended_tier": r["recommended_tier_jsonb"],
+                "proportionality_basis": r["proportionality_basis"],
+                "window_start": r["window_start"],
+                "window_end": r["window_end"],
+                "re_evaluation_date": r["re_evaluation_date"],
+                "classical_citation": r["classical_citation"],
+                "source_citation": r["source_citation"],
+                "computed_at": r["computed_at"],
+            }
+            for r in raw_rows
+        ]
 
         # Total count
         cur.execute(
@@ -780,7 +833,13 @@ def mitigation_map(
         "provenance_envelope": {
             "chart_id": chart_id,
             "anchor_id_filter": anchor_id,
-            "mitigation_type_filter": mitigation_type,
+            "mitigation_type_filter_requested": mitigation_type,
+            "mitigation_type_filter_applied": False,
+            "mitigation_type_filter_note": (
+                "mitigation_type is not a column on the deployed phala_mitigation "
+                "schema (migration 332) — the filter is accepted but NOT applied. "
+                "See mitigation_map() docstring (R5 W0a punch-list, P5)."
+            ) if mitigation_type else None,
             "asset": ASSET_ID,
             "asset_version": ASSET_VERSION,
             "build_tag": BUILD_TAG,
