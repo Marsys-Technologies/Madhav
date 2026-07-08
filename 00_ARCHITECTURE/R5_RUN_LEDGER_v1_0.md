@@ -459,3 +459,144 @@ JL-003 recorded in `R5_JUDGMENT_LEDGER_v1_0.md` (renumbered from this lane's ori
 the `r5/w0a-integrated` merge — collided with the punchlist lane's own JL-001/JL-002; content
 unchanged, only the id shifted) — the 50KB dual-output text-suppression threshold (reversible,
 code-convenience tier, no astrological content).
+
+---
+
+## W0a — Integration (`r5/w0a-integrated`) + canary lane
+
+Closes the gap a verifier ring found before Ring-1 merge: `r5/w0a-punchlist` and `r5/w0a-perf` both
+independently rewrote `dualOutput()` in three shared files, and the canary lane (5) from the brief's
+W0 spec — "canary battery + system_health + p50/p95 baseline" — had never actually landed (the
+`r5/w0a-canary` branch was byte-identical to `origin/r5/w0a`, zero commits ahead).
+
+### Merge reconciliation
+
+Branch `r5/w0a-integrated` created off `origin/r5/w0a` (`a21d7099`). Merge order and outcome:
+
+1. `origin/r5/w0a-rollback` (`d67a1a5a`) — fast-forward, ledger-only, zero conflict.
+2. `origin/r5/w0a-punchlist` (`e8523a6a`) — clean auto-merge, zero conflicts (13 files, 737
+   insertions / 132 deletions).
+3. `origin/r5/w0a-perf` (`2e467b91`) — 5 conflicts, all resolved by hand after reading both sides'
+   full diffs (not picked blindly):
+   - `platform-mcp/src/tools/registry_bridge.ts`, `register_p1_ganita.ts`, `register_p1_synthesis.ts`:
+     kept perf's `dualOutput()` body (50KB `Buffer.byteLength` threshold + compact `JSON.stringify`,
+     no pretty-print) as the superset; preserved punchlist's non-overlapping edits in the same files
+     verbatim (P7 `X-MCP-User`/`X-MCP-Key-Id` header-threading via the new `Principal` param on
+     `registerRegistryBridgeTools`, P8 empty-with-reason additions, P3/pagination wiring). Verified
+     post-merge that both sets of edits are present (`grep -n "Principal\|X-MCP-User" registry_bridge.ts`
+     → present; dualOutput threshold logic → present).
+   - `00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md`: JL-numbering collision — both lanes had written a
+     `JL-001` with different content (punchlist: P5 fix-depth ruling; perf: 50KB dual-output
+     threshold). Resolved by keeping punchlist's JL-001 (P5) and JL-002 (P8) as-is (first-authored,
+     already cross-referenced from this ledger's earlier "Judgment ledger" section above) and
+     renumbering perf's entry to **JL-003**, content byte-identical to the original, only the
+     heading/id changed. Cross-references in this ledger's S3 section and in the three merged code
+     files were updated from "JL-001" to "JL-003" to match.
+   - `00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md` (this file): both lanes' append-only sections
+     (Rollback Rehearsal + Perf quick-wins lane) auto-merged as sibling sections in sequence;
+     content untouched beyond the JL-001→JL-003 cross-reference fix noted above.
+   - `platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts`: auto-merged cleanly by
+     git (perf's `Buffer.byteLength` H-12 fix + punchlist's edits were on non-overlapping lines).
+
+**Post-merge verification (all run on `r5/w0a-integrated`, commit `07990c60`):**
+- `platform-mcp`: `npx tsc --noEmit` — clean, 0 errors.
+- `platform`: `npx tsc --noEmit -p tsconfig.json` — clean, 0 errors.
+- `platform`: `npx vitest run d5_l2_capabilities.test.ts d5_roster_smoke.test.ts` — 50/50 passed.
+- `platform-mcp`: `npx vitest run src/__tests__/m8_e2e_proof.test.ts` — 33 passed, 2 pre-existing
+  failures (same G12/V6 stale-constant failures the perf lane already documented — unchanged by
+  this merge).
+- `platform-mcp`: full `npx vitest run` — 20 files passed / 19 failed (361 passed / 96 failed / 15
+  skipped tests). **Confirmed NOT a regression**: built a throwaway worktree at unmerged
+  `origin/r5/w0a` (pre-lane baseline), ran `npm install` + the identical full `vitest run`, and got
+  the byte-identical failing-file-set (`diff` on the sorted `FAIL` file lists = empty). All 19
+  failing files are integration/accuracy/bench tests that require a live DB or live services not
+  present in this sandboxed run — pre-existing environment-dependent failures, not something this
+  merge introduced or fixed.
+
+Pushed: `r5/w0a-integrated` → `origin/r5/w0a-integrated`.
+
+### Canary lane (built for real, this run)
+
+No prior canary work existed to build on (the `r5/w0a-canary` branch had zero commits). Built
+`evals/r5-w0a-canary/canary_runner.ts` — a live-prod MCP JSON-RPC probe/battery/latency harness
+(read-only tool calls only; no writes, no migrations) — following the existing `evals/mcp-routing/`
+precedent (runner.ts + `results_<git-sha>.json`). Tool argument shapes were introspected live via
+`tools/list` against prod before writing any probe (124 tools total on the live server), not guessed.
+
+Run against prod (`amjis-mcp-qm256lasva-el.a.run.app`) using the `probe-service-account` credential
+provisioned at Phase-0 (`mcp_prod_tDO7obNw...`, still live). **Labeled explicitly as the "W0a
+pre-deploy baseline"**: `r5/w0a-integrated`'s punchlist + perf fixes are NOT yet deployed at the time
+of this run (Ring-2 deploy happens after this branch merges) — so P1/P3/P4/P5/P6/P7 showing FAIL is
+the correct, expected, honest pre-deploy state, not a new regression.
+
+**§14 eight-probe audit (P1-P8 × native + Abhinandan = 16 probe-runs):**
+
+| # | Probe | Chart N | Chart A | Note |
+|---|---|---|---|---|
+| P1 | dasha as-of ignored | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | 1950-era rows still present pre-deploy |
+| P2 | chart digest degeneracy | STILL_HEALTHY | STILL_HEALTHY | R4-healed already, independent of this deploy |
+| P3 | yogas hollow envelope | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | ~100KB, verdict/ranking_basis null |
+| P4 | stale provenance note | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | signature_tier_note still present |
+| P5 | phala SQL/leakage | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | raw SQL-error / leakage-note text still present |
+| P6 | dissent organ 404 | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | still 404 pre-deploy |
+| P7 | corpus search 401 | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | still 401 pre-deploy |
+| P8 | citation silent-empty | FAIL_AS_EXPECTED | FAIL_AS_EXPECTED | `rows:[],total:0`, no `empty_reason` — confirmed via raw response inspection, matches JL-002's fix target exactly |
+
+**14/16 FAIL_AS_EXPECTED, 2/16 STILL_HEALTHY (P2 both charts), 0 unexpected heals, 0 transport
+errors.** Exactly the expected pre-deploy shape — no new HALT-worthy surprise.
+
+**Deterministic answer-battery subset (16 of 40 items are mechanically checkable without an LLM
+judge — Q1×8 + adversarial/canary×8; the remaining 24 Q2-Q9 items carry a rubric floor requiring the
+G10-QT LLM grading step against a synthesized NL answer, which no harness at this raw-MCP-tool layer
+produces — recorded as `requires_llm_rubric_step`, not faked):**
+
+- **9/12 pass, 3/12 fail** (all 12 mechanically-checkable items: Q1-N-1 through Q1-N-5, Q1-A-1
+  through Q1-A-3, X-2, X-3, X-5, X-8). The 3 fails are ALL directly attributable to already-known
+  pre-deploy defects, not new findings: Q1-N-4 (dasha as-of, = P1), Q1-A-3 (dasha response 2.15MB
+  oversized, same P1 root cause — as_of_date ignored dumps the full multi-decade period tree), X-8
+  (stale provenance note present, = P4). Two tool-mapping gaps surfaced while building the checks
+  (`ganita_nakshatra_get` returns chandra-bala transit data, not nakshatra placement, despite its
+  name; `ganita_positions_get` was substituted and confirmed working) — recorded in the script's
+  inline comments and the results JSON, not silently worked around.
+- 26/40 items flagged `requires_llm_rubric_step` (Q2-Q9 + X-1/X-4/X-6/X-7) — explicitly deferred to
+  a product-level battery run with a real NL-answer-synthesis harness, not silently skipped.
+
+**Extra finding (beyond the brief's named P1-P8 scope, discovered while building this canary):**
+`ganita_chart_facts_get` and `query_chart_facts` both return `"Sidecar returned 404: {"detail":"Not
+Found"}"` (HTTP 200, `is_error: true` inside the envelope) regardless of arguments (tested bare and
+with `ayanamsha_id` qualifier). Not part of P1-P8 or the answer battery — flagging for punchlist
+follow-up: trace whether this tool was ever wired to a live FastAPI sidecar route.
+
+**p50/p95 latency sample — 76 of 124 tools (61%), 3 reps each, live prod, no concurrency (sequential,
+matching Phase-0's methodology):**
+
+| category | tools sampled | median p50 (ms) | median p95 (ms) |
+|---|---|---|---|
+| ganita | 13 | 264.2 | 321.1 |
+| bodha | 18 | 97.6 | 104.6 |
+| phala | 9 | 100.1 | 109.9 |
+| mimamsa | 7 | 88.0 | 102.8 |
+| kala | 9 | 95.0 | 163.5 |
+| reference/L0 | 20 | 105.6 | 187.4 |
+
+Overall median-of-p50s across all 76 sampled tools: **100.7ms**; median-of-p95s: **153.0ms**; worst
+single-tool p95: `ganita_structural_get` at 811.8ms (n=3, small sample — flag for a larger-n re-check
+at Ring-2, not a conclusion). No timeouts, no 5xx across the full 76×3=228-call sample. Full per-tool
+detail in `evals/r5-w0a-canary/results_07990c60.json`.
+
+**Verdict: DISCHARGED.** W0a's own Ring-2 gate ("all 8 probes pass or fail honestly on prod; baseline
+recorded") is satisfied: all 8 probes ran against both charts, every result is labeled with its
+expected-vs-observed status and a checkable detail line, and the baseline (probes + 12-item
+deterministic battery + 76-tool latency sample) is recorded here and in the committed results JSON
+for Ring-2 to diff against post-deploy.
+
+Committed: `evals/r5-w0a-canary/canary_runner.ts` + `evals/r5-w0a-canary/results_07990c60.json`, on
+`r5/w0a-integrated`.
+
+### Branch state at this ledger entry
+
+`r5/w0a-integrated` contains all four W0a lanes' work: rollback rehearsal (ledger-only), punchlist
+(P1/P3/P4/P5/P6/P7/P8 fixes + auth headers + logger prereq), perf (S1/S2/S3 quick wins + S6
+verification), and this canary lane (§14 probe re-audit + deterministic battery subset + latency
+baseline). Typecheck clean on both `platform` and `platform-mcp`; no test regressions vs. the
+unmerged `origin/r5/w0a` baseline. Ready for Ring-2 (PR `r5/w0a-integrated` → `main`).
