@@ -555,7 +555,6 @@ need to re-adapt if a future wave reverted to object-shaped steps — but no suc
 choice leaves the server-side default question completely open for a future wave to decide either
 way with no sunk cost from this pass.
 
-<<<<<<< HEAD
 ---
 
 ### JL-012 (W2 traverse_chart_graph lane) — three rulings: about-seed DSL requires the resolver's
