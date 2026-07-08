@@ -105,7 +105,15 @@ class MiDarshanaWriter(WriterBase):
             n = r.get("n") or 0
             if n < 2:
                 continue
-            observed = r.get("observed_rate")
+            # observed_rate + brier_score are DB numeric columns → Decimal in
+            # Python. Coerce to float at point of use so downstream float
+            # arithmetic (conf_lo/conf_hi) and json.dumps() never see a Decimal.
+            # (Native charts carry real calibrated values; Abhinandan's were NULL,
+            # which fell through to the 0.5 float default and masked this.)
+            observed_raw = r.get("observed_rate")
+            observed = float(observed_raw) if observed_raw is not None else None
+            brier_raw = r.get("brier_score")
+            brier = float(brier_raw) if brier_raw is not None else None
             grade = r.get("evidence_grade", "prior_only")
             statement = (
                 f"In predictions scored {r['predicted_prob_bin']}, "
@@ -115,20 +123,21 @@ class MiDarshanaWriter(WriterBase):
                 f"Stratum {r['stratum_key']}: {n} predictions, insufficient events to compute rate."
             )
             insight_id = f"cal_{r['stratum_key'].replace('|','_')[:50]}_{i}"
-            conf_lo = max(0.0, (observed or 0.5) - 0.1)
-            conf_hi = min(1.0, (observed or 0.5) + 0.1)
+            obs = observed if observed is not None else 0.5
+            conf_lo = max(0.0, obs - 0.1)
+            conf_hi = min(1.0, obs + 0.1)
             rows.append((
                 chart_id, insight_id, "calibrated_outlook",
                 None, None, None,   # domain, horizon, question_lens
                 statement,
-                float(observed or 0.5),
+                float(obs),
                 f"[{round(conf_lo,2)},{round(conf_hi,2)})",
                 n,
                 "clean",
                 grade,
                 LEL_VERSION,
                 None,   # last_calibrated_at
-                json.dumps({"stratum": r["stratum_key"], "brier": r.get("brier_score")}),
+                json.dumps({"stratum": r["stratum_key"], "brier": brier}),
                 False,
                 SURFACE_FORMULA_VERSION,
             ))
