@@ -1115,3 +1115,52 @@ restates cleanly with no new regressions. One partial gap (grounding extraction)
 P3/P5/P6/P7/NF-1 carry-forwards go to R5_PUNCHLIST per the brief's non-blocking-findings rule.
 
 **HALTs:** none.
+
+---
+
+## W1 — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w1` merged to `main` at commit `df5ee5e8` (PR #471). `amjis-mcp` redeployed to
+`amjis-mcp-00398-kkh`, `amjis-web` to `amjis-web-00877-l52` — both confirmed at 100% traffic on
+`latestCreatedRevisionName` (single auto-triggered deploy, no race). Live re-verification below.
+
+### Gate 1 — chart_query lagna lookup ≤2KB, ONE call
+
+Live on native chart `482012f1-…` via `ganita_chart_facts_get(about: "lagna")`: **1,531 bytes**
+structuredContent / 1,468 bytes content-text — under the 2KB gate. Response correctly shows
+Lagna=Aries, house 1, sign_lord=Mars, matching FORENSIC anchors; `about_resolution.chain` confirms
+the call is wired through the canonical `address_resolver.ts` (not the deleted inline stopgap).
+Verified on Abhinandan (`1c826d5a-…`) too: Lagna=Aries house 1 (different longitude, same
+sign — plausible for a different birth chart), resolver logic holds on both charts.
+
+One transient 401 ("Invalid or missing Bearer API key") on the very first post-deploy call,
+self-resolved on immediate retry (200) — consistent with a brief connection-pool/cold-start blip
+right after traffic promotion, not a regression; no repeat on subsequent calls.
+
+### Gate 2 — dasha_query current-dasha lookup ≤1KB, ONE call
+
+Live on native chart, `ganita_dashas_get(system: vimshottari, level: 1, as_of_date: today,
+ayanamsha_id: lahiri_chitrapaksha)` — the exact facet set the reconciliation pass documented as
+required: **882 bytes** structuredContent / 830 bytes content-text — under the 1KB gate, matching
+the lane's and reconciliation's own measurements (833B/860B).
+
+### E-6 hierarchical aggregation — live
+
+`get_chart_orientation` (synthesis_query) on native chart returns `entity_profiles` populated (2
+profiles), non-error, confirming the composite-ranked/graha-grouped aggregation from the
+signals-synthesis lane is live and functional, not just worktree-tested.
+
+### P1–P8 / NF-1 restate
+
+Unchanged from W0b's Ring-2 close except: **NF-1 (query_chart_facts 404) is now FIXED** — this
+wave's chart_query lane rewired it to a direct Postgres query, confirmed live above (was previously
+carried forward as an open finding since W0a). P3/P5/P6/P7 remain open, unchanged, not this wave's
+scope, still on R5_PUNCHLIST.
+
+### Overall Ring-2 verdict: **PASS**
+
+Both named W1 gates confirmed on live prod (not worktree claims); the address-resolver dedupe
+holds in production (single canonical implementation actually serving traffic); E-6 aggregation is
+live; NF-1 closed. No HALT conditions.
+
+**HALTs:** none.
