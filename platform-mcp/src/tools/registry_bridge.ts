@@ -570,8 +570,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ),
       response_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."),
+      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
+        "R5 W2: annotates a frame_context (each graha's house counted from this reference sign) alongside the unchanged, unfiltered signal rows. Default: lagna."
+      ),
+      paradigm: z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional().describe(
+        'R5 W2: filters to one signal_tradition. Default: unfiltered (every tradition, each individually tagged) — required for whole-chart-read (B.11) discipline.'
+      ),
     },
-    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format }) => {
+    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
@@ -585,7 +591,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           callRegistryCapability(
             'marsys://tool/L2/query_signals',
             { chart_id, ayanamsha_id: resolvedAyanamsha, domain, min_salience,
-              top_k: resolvedLimit, offset: resolvedOffset, lel_enabled: lel_enabled ?? false },
+              top_k: resolvedLimit, offset: resolvedOffset, lel_enabled: lel_enabled ?? false,
+              frame, paradigm },
             chart_id
           ),
         ])
@@ -728,13 +735,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       planet: z.string().optional().describe('Optional: filter by planet name (e.g. Sun, Moon, Mars)'),
+      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
+        "R5 W2: re-bases house_d1 onto this reference sign (adds house_from_frame per row). Default: lagna."
+      ),
     },
-    async ({ chart_id, ayanamsha_id, planet }) => {
+    async ({ chart_id, ayanamsha_id, planet, frame }) => {
       if (!chart_id) return errorOutput('get_positions', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_positions',
-          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet },
+          { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet, frame },
           chart_id
         )
         return dualOutput(data)
