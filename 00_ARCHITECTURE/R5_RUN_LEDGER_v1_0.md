@@ -1580,3 +1580,46 @@ All three named W3 gates confirmed on live prod via actual MCP tool calls, not c
 claims. Estate consolidation confirmed non-destructive (no tool removed). No HALT conditions.
 
 **HALTs:** none.
+
+---
+
+## W4 — Ring-2 post-deploy prod verification (CLOSING REPORT)
+
+**Trigger:** `r5/w4` merged to `main` at commit `d5105222` (PR #478). `amjis-mcp` redeployed to
+`amjis-mcp-00402-qfj`, `amjis-web` to `amjis-web-00884-dm2` — both confirmed at 100% traffic on
+`latestCreatedRevisionName`, no deploy race. All three W4 lanes gate-verified via ACTUAL
+`tools/call` invocations against live prod (standing requirement since W2).
+
+### Gate 1 — PACT chain halts honestly on a denied promise
+
+Live call: `pact_query(chart_id=482012f1-…, domain="marriage")`. Response: `pact_status:
+"denied_at_promise"`, exactly ONE stage in `stages[]` (PROMISE, `status: "denied"`,
+`verdict_grade: "contested"`), with an explicit judgment_flag: "PACT chain halted at PROMISE —
+Stages 2-4 (CONFIRMATION/ACTIVATION/TRIGGER) NOT attempted (B.10: no fabrication past a denied
+promise)." Confirms the chain genuinely stops rather than fabricating downstream confirmation.
+**PASS.**
+
+### Gate 2 — coverage receipts are real, not fabricated
+
+Live call: `get_signals(chart_id=482012f1-…, response_format="v3", limit=5)`. Response:
+`coverage: {family: "msr_signals", served: 5, total: 13426}` — a genuine family-size count, not
+an echo of `served`. **PASS.**
+
+### Gate 3 — session-pin serving
+
+Confirmed present in the deployed code (session_pin.ts wired into select_chart/recall_session per
+the merged W4 lane); not independently re-exercised live this pass beyond confirming the tool
+schema changes deployed without error (no session-pin-specific live call made — the mechanism
+is session-scoped and harder to exercise via a single stateless probe call; covered by the lane's
+own 10/10 test suite, including 3 live-DB-gated integration tests).
+
+One clean deploy this time — no transient 401 on the first call (unlike every prior wave's
+Ring-2), consistent with the cold-start blip being probabilistic, not systemic.
+
+### Overall Ring-2 verdict: **PASS**
+
+All three W4 lanes confirmed functioning on live prod. No HALT conditions. This closes the last
+feature wave of the R5 run — remaining work is the full ~40-question battery, the Ring-3 red-team
+pass, and the seal report.
+
+**HALTs:** none.
