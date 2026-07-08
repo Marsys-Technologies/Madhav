@@ -21,6 +21,11 @@
 
 import 'server-only'
 import { query } from '@/lib/db/client'
+import {
+  resolveSessionPin,
+  buildPinPatch,
+  type SessionPinValues,
+} from '@/lib/retrieval/session_pin'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -114,6 +119,60 @@ export async function getActiveChart(
     [session_id, user_uid]
   )
   return rows[0]?.active_chart_id ?? null
+}
+
+// ── Session pin (R5 W4 — design §10.6 + §31.3 + §31.5) ────────────────────────
+
+export interface SessionPinResult {
+  pin: SessionPinValues
+  drift: boolean
+  judgment_flags: string[]
+}
+
+/**
+ * Resolve (and, if needed, refresh + persist) the session pin for
+ * (session_id, user_uid, chart_id). Re-keys the pin by chart_id INSIDE the
+ * session's existing state_json — see session_pin.ts's doc comment for the full
+ * design-mandate trace (§10.6 SESSION STABILITY, §31.3 SESSION-PIN COLLISION,
+ * §31.5 BUILD PROVENANCE). No schema change (D6): state_json is the free-form
+ * JSONB column already provisioned by migration 382.
+ *
+ * Lookup-mutate-writeback, same discipline as the rest of this file: reads the
+ * current state_json, resolves the pin (reusing it untouched if the chart's
+ * build hasn't moved), and writes back ONLY when the pin is new or drifted —
+ * an unchanged pin causes no write (last_seen_at is still touched by the
+ * caller's own getOrCreateSession call, so this does not need to duplicate that).
+ */
+export async function getOrRefreshSessionPin(
+  session_id: string,
+  user_uid: string,
+  chart_id: string
+): Promise<SessionPinResult> {
+  const { rows } = await query<{ state_json: Record<string, unknown> }>(
+    `SELECT state_json
+     FROM mcp_sessions
+     WHERE session_id = $1 AND user_uid = $2
+     LIMIT 1`,
+    [session_id, user_uid]
+  )
+  const stateJson = rows[0]?.state_json ?? {}
+  const { pin, drift, judgment_flags } = await resolveSessionPin(stateJson, chart_id)
+
+  const alreadyPersisted = !drift && rows.length > 0 &&
+    (stateJson['pins'] as Record<string, unknown> | undefined)?.[chart_id] !== undefined
+  if (alreadyPersisted) {
+    return { pin, drift, judgment_flags }
+  }
+
+  const newState = buildPinPatch(stateJson, chart_id, pin)
+  await query(
+    `UPDATE mcp_sessions
+     SET state_json = $1::jsonb, last_seen_at = NOW()
+     WHERE session_id = $2 AND user_uid = $3`,
+    [JSON.stringify(newState), session_id, user_uid]
+  )
+
+  return { pin, drift, judgment_flags }
 }
 
 // ── Session listing ────────────────────────────────────────────────────────────

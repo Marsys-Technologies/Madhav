@@ -12,11 +12,22 @@
  *   X-MCP-Role:           guest | super_admin
  *   X-MCP-Session-Key:    <opaque session key from the MCP client>
  *
+ * GET query params:
+ *   ?pin_chart_id=<uuid>  — optional (R5 W4, design §10.6/§31.3/§31.5). When present,
+ *                           resolves (and persists if new/drifted) the session pin for
+ *                           this chart_id and includes it in the response as
+ *                           `session_pin` + any `judgment_flags`. chart_id is ALWAYS
+ *                           explicit here — never inferred from active_chart_id (the
+ *                           §31.3 mitigation: correctness never rests on active_chart).
+ *
  * POST body (JSON):
- *   { active_chart_id?: string | null }
+ *   { active_chart_id?: string | null, pin_chart_id?: string }
+ *   pin_chart_id: same semantics as the GET query param — resolves/refreshes the pin
+ *   for this chart_id after the active_chart_id write (if any). Independent of
+ *   active_chart_id so a caller can pin a chart without also making it "active".
  *
  * Responses:
- *   200: { session: McpSession }
+ *   200: { session: McpSession, session_pin?: SessionPinValues, judgment_flags?: string[] }
  *   400: { error: string }    — missing required headers
  *   401: { error: string }    — invalid service token
  *   500: { error: string }    — DB error
@@ -27,13 +38,21 @@
  *   - active_chart_id from POST body is stored as-is; entitlement is NOT
  *     checked here (the MCP sidecar checks it before calling this endpoint).
  *   - All DB ops are scoped to user_uid — no cross-user access.
+ *   - pin_chart_id is NOT an entitlement check either (same as active_chart_id) —
+ *     the MCP sidecar/tool layer must already have authorized the chart before
+ *     ever passing its chart_id here.
  *
- * M3 — MCP elevation arc (2026-07-01).
+ * M3 — MCP elevation arc (2026-07-01). Session pin — R5 W4 (2026-07-09).
  */
 
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getOrCreateSession, updateActiveChart, listUserSessions } from '@/lib/mcp/sessions'
+import {
+  getOrCreateSession,
+  updateActiveChart,
+  listUserSessions,
+  getOrRefreshSessionPin,
+} from '@/lib/mcp/sessions'
 
 // ── Token validation ──────────────────────────────────────────────────────────
 
@@ -65,8 +84,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'X-MCP-Session-Key header required' }, { status: 400 })
   }
 
+  const url = new URL(request.url)
+  const pinChartId = url.searchParams.get('pin_chart_id')
+
   try {
     const session = await getOrCreateSession(uid, sessionKey)
+
+    if (pinChartId) {
+      const { pin, judgment_flags } = await getOrRefreshSessionPin(
+        session.session_id,
+        uid,
+        pinChartId
+      )
+      return NextResponse.json({
+        session,
+        session_pin: pin,
+        ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
+      })
+    }
+
     return NextResponse.json({ session })
   } catch (err) {
     console.error('[api/mcp/session] GET error', err)
@@ -78,6 +114,7 @@ export async function GET(request: Request) {
 
 interface SessionPostBody {
   active_chart_id?: string | null
+  pin_chart_id?: string
 }
 
 export async function POST(request: Request) {
@@ -109,6 +146,19 @@ export async function POST(request: Request) {
     if ('active_chart_id' in body) {
       await updateActiveChart(session.session_id, uid, body.active_chart_id ?? null)
       session.active_chart_id = body.active_chart_id ?? null
+    }
+
+    if (body.pin_chart_id) {
+      const { pin, judgment_flags } = await getOrRefreshSessionPin(
+        session.session_id,
+        uid,
+        body.pin_chart_id
+      )
+      return NextResponse.json({
+        session,
+        session_pin: pin,
+        ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
+      })
     }
 
     return NextResponse.json({ session })

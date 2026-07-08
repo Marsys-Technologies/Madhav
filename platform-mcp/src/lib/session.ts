@@ -17,7 +17,21 @@
  *   - active_chart_id in the session is a hint; every chart-scoped tool call
  *     still calls remoteAuthorize before serving data.
  *
- * M3 — MCP elevation arc (2026-07-01).
+ * Session pin (R5 W4 — design §10.6 SESSION STABILITY + §31.3 SESSION-PIN
+ * COLLISION + §31.5 BUILD PROVENANCE):
+ *   getOrCreateSession/persistActiveChart accept an optional `pinChartId` to
+ *   resolve+refresh {priors_version, formula_versions, ranking_config, build_id,
+ *   now_context_date} for that EXPLICIT chart_id (never inferred from
+ *   active_chart_id — the §31.3 mitigation). The pin is re-keyed inside
+ *   state_json by chart_id on the platform side, so two chart contexts sharing
+ *   one (user, session_key) get independent pins. A mid-session chart rebuild
+ *   surfaces as `judgment_flags: ['chart_rebuilt_mid_session_pin_refreshed']`.
+ *   `SessionPinValues` here mirrors `platform/src/lib/retrieval/session_pin.ts`
+ *   (same hand-mirror precedent already used for `McpSession` itself in this
+ *   file — the envelope shape is the one contract under the §19 codegen
+ *   mandate; this session-state shape is not).
+ *
+ * M3 — MCP elevation arc (2026-07-01). Session pin — R5 W4 (2026-07-09).
  */
 
 import type { Principal } from '../types.js'
@@ -42,6 +56,24 @@ export interface McpSessionSummary {
   session_key: string
   active_chart_id: string | null
   last_seen_at: string
+}
+
+/** Mirror of platform's SessionPinValues (session_pin.ts) — see doc comment above. */
+export interface SessionPinValues {
+  chart_id: string
+  priors_version: string
+  formula_versions: { salience_formula_ver: string | null }
+  ranking_config: { mode: string }
+  build_id: string | null
+  build_status: string | null
+  now_context_date: string
+  pinned_at: string
+}
+
+export interface SessionPinResponse {
+  session: McpSession | null
+  session_pin?: SessionPinValues
+  judgment_flags?: string[]
 }
 
 // ── Internal fetch helpers ────────────────────────────────────────────────────
@@ -85,7 +117,42 @@ export async function getOrCreateSession(
 }
 
 /**
- * Persist an active_chart_id to the session.
+ * Get or create a session AND resolve/refresh the session pin (R5 W4) for an
+ * EXPLICIT chart_id. Use this instead of getOrCreateSession whenever the
+ * caller needs pin data (recall_session, select_chart) — chart_id is never
+ * inferred from active_chart_id (design §31.3 mitigation).
+ *
+ * @param principal    The authenticated MCP principal.
+ * @param sessionKey   Opaque session identifier from the client.
+ * @param pinChartId   The chart_id to resolve/refresh the pin for.
+ * @returns {session, session_pin, judgment_flags}. `session` is null on platform
+ *          error; `session_pin`/`judgment_flags` are absent if the call failed
+ *          or no pin could be resolved.
+ */
+export async function getSessionWithPin(
+  principal: Principal,
+  sessionKey: string,
+  pinChartId: string
+): Promise<SessionPinResponse> {
+  try {
+    const url = new URL(`${PLATFORM_URL}/api/mcp/session`)
+    url.searchParams.set('pin_chart_id', pinChartId)
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: sessionHeaders(principal, sessionKey),
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!res.ok) return { session: null }
+    const data = (await res.json()) as SessionPinResponse
+    return { session: data.session ?? null, session_pin: data.session_pin, judgment_flags: data.judgment_flags }
+  } catch {
+    return { session: null }
+  }
+}
+
+/**
+ * Persist an active_chart_id to the session, and (R5 W4) resolve/refresh the
+ * session pin for that same chart_id in one round trip.
  * Called by select_chart after entitlement is confirmed.
  *
  * @param principal    The authenticated MCP principal.
@@ -108,6 +175,36 @@ export async function persistActiveChart(
     return res.ok
   } catch {
     return false
+  }
+}
+
+/**
+ * Persist an active_chart_id AND resolve/refresh the session pin for it, in
+ * one round trip. Use this (rather than persistActiveChart) when the caller
+ * wants the pin back synchronously (select_chart).
+ *
+ * @param principal    The authenticated MCP principal.
+ * @param sessionKey    Session key from the client.
+ * @param chartId       The chart_id to store as active AND pin.
+ * @returns {session, session_pin, judgment_flags}. `session` is null on platform error.
+ */
+export async function persistActiveChartAndPin(
+  principal: Principal,
+  sessionKey: string,
+  chartId: string
+): Promise<SessionPinResponse> {
+  try {
+    const res = await fetch(`${PLATFORM_URL}/api/mcp/session`, {
+      method: 'POST',
+      headers: sessionHeaders(principal, sessionKey),
+      body: JSON.stringify({ active_chart_id: chartId, pin_chart_id: chartId }),
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!res.ok) return { session: null }
+    const data = (await res.json()) as SessionPinResponse
+    return { session: data.session ?? null, session_pin: data.session_pin, judgment_flags: data.judgment_flags }
+  } catch {
+    return { session: null }
   }
 }
 
