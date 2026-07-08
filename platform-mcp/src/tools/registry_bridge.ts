@@ -49,6 +49,7 @@ import {
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
+  type CoverageStamp,
 } from '../generated/envelope.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
@@ -169,6 +170,7 @@ function envelope(
     drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
     judgment_flags?: string[]
     as_of_date?: string
+    coverage?: CoverageStamp | null
   },
 ) {
   return buildRetrievalEnvelope(
@@ -183,6 +185,7 @@ function envelope(
       drill_pointers: v3Extras?.drill_pointers,
       judgment_flags: v3Extras?.judgment_flags,
       as_of_date: v3Extras?.as_of_date,
+      coverage: v3Extras?.coverage,
     },
     format,
   )
@@ -441,9 +444,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null
         }
 
+        // D5 coverage receipt: digest.msr_signal_count is a chart-wide aggregate already
+        // computed by vw_chart_digest (query_ucd.ts) — no extra query needed. `served` is
+        // the atomic top_signals count actually returned in THIS response after the
+        // response_format bound (digest=0, summary<=10, full<=100).
+        const servedTopSignals = (bounded['top_signals'] as unknown[] | undefined)?.length ?? 0
+        const msrSignalCountRaw = digestBlock['msr_signal_count']
+        const coverage: CoverageStamp = {
+          family: 'msr_signals',
+          served: servedTopSignals,
+          total: typeof msrSignalCountRaw === 'number' ? msrSignalCountRaw
+            : (typeof msrSignalCountRaw === 'string' && msrSignalCountRaw !== '' ? Number(msrSignalCountRaw) : null),
+        }
+
         return dualOutput(
           envelope(bounded, 'get_chart_orientation', undefined, 'v3',
-            { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags })
+            { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage })
         )
       } catch (err) {
         return errorOutput('get_chart_orientation', String(err), { chart_id })
@@ -618,6 +634,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const signals = (inner['signals'] as Record<string, unknown>[]) ?? []
         const returned_count = Number(inner['returned_count'] ?? signals.length)
         const truncated = Boolean(inner['truncated'])
+        // D5 coverage receipt: query_signals.ts now computes a genuine COUNT(*) against the
+        // SAME base filters (domain/source_subsystem/signal_type_class/paradigm/min_salience/
+        // lel_enabled) this page was drawn from — never a guess.
+        const totalMatchingFilters = typeof inner['total_matching_filters'] === 'number'
+          ? (inner['total_matching_filters'] as number)
+          : null
 
         const fact_ids = Array.from(new Set(
           signals.flatMap(s => ((s['constituent_facts_array'] as string[] | null) ?? []))
@@ -664,10 +686,20 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null // frame-safety header is best-effort; never fails the instrument
         }
 
+        const filterLabel = [
+          domain ? `domain=${domain}` : null,
+          paradigm ? `paradigm=${paradigm}` : null,
+        ].filter(Boolean).join(',')
+        const coverage: CoverageStamp = {
+          family: `msr_signals${filterLabel ? `[${filterLabel}]` : ''}`,
+          served: signals.length,
+          total: totalMatchingFilters,
+        }
+
         return dualOutput({
           orientation_context, orientation_ok,
-          ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null },
-            'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags }),
+          ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: totalMatchingFilters },
+            'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }),
         })
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })

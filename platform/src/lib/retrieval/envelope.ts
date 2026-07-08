@@ -118,6 +118,25 @@ export interface CoverageStamp {
   total: number | null
 }
 
+/**
+ * D5 coverage-receipt helper (design §10.5 / §12 D5).
+ *
+ * `family` names the complete relevant set this response is a bounded slice of
+ * (e.g. `'msr_signals[domain=career]'`, `'yoga_dosha_rows'`) — a stable, filter-
+ * qualified label so two responses with different filters are never mistaken
+ * for describing the same family. `served` is the row/entity count actually
+ * returned in THIS response. `total` is the true family size — a COUNT (or
+ * equivalent aggregate) the caller already computed against the SAME filter
+ * conditions as the main query, never a re-guess or a copy of `served`.
+ *
+ * `total: null` is the honest value when the family size genuinely is not
+ * computable for this response (e.g. the underlying capability has no cheap
+ * count path yet) — B.10 forbids fabricating a number to fill the field.
+ */
+export function buildCoverageStamp(family: string, served: number, total: number | null): CoverageStamp {
+  return { family, served, total }
+}
+
 // ── shared envelope substructures ─────────────────────────────────────────────
 
 export interface GroundingBlock {
