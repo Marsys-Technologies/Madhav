@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.30
+version: 6.31
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,27 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.31 (2026-07-08, BA-R4-WRAP W4 CLOSED — NATIVE REBUILT + VALIDATED; RUNWAY CLOSED):
+    **THE ONE SHOT LANDED. Native 482012f1 rebuilt L1→L5 + fully validated.** Explicit native GO recorded;
+    pre-rebuild snapshot taken (LEL + manifest). First native rebuild HALTED (bo_laksana statement timeout on
+    the native's large dataset — Abhinandan couldn't surface it); native authorized fix+re-validate+re-run.
+    Fixed bodha idempotency timeout (PR #463, all 8 bo_* writers) → re-validated Abhinandan clean (run 87e47acf)
+    → re-run HALTED at 65/66 on mi_darshana (Decimal/float on the native's CALIBRATED path) → fixed (PR #464) →
+    **final native rebuild run `c86ac468` on image 98a570ac: completed, 66/66, 0 errors, LEL=57 throughout.**
+    **Full gate battery ALL PASS [prod db]:** FORENSIC 7/7 (Sun Cap ×5 · Moon Purva Bhadrapada ×5 · Lagna Aries
+    ×5 · Shukla Tritiya · Ravivara · Shiva · Garaja); Abhinandan 140,214 facts UNCHANGED (zero contamination);
+    LEL 57 intact + calibration_state='calibrated' (load_bearing) + rectification LEL-fit STILL validates 10:43
+    (offset 0, Aries); bhava_arudha 12×5 (210 rows) → **P3A CLOSED/COMPLETE**; JL-009 v1.1 base_rates traced;
+    JL-027 zero-proxy (native has no graha_yuddha pairs); degeneracy min(posterior)=0.02<0.2, chart_defining=1220,
+    contradictions=5, salience 153 distinct; retrieval ranking-clean. **Two native-only latent bugs found+fixed
+    (both pure-correctness, no value change) — the native's calibrated/57-LEL path is a far more thorough test
+    than Abhinandan's structural/0-LEL path.** JL-028 logged (Phase-4 executed, native-ratified). All 6 briefs
+    (runway plan, R4-WRAP + W2 + W2b, LEL scoping, P3A) → COMPLETE.
+    **BA PHASE-4 RUNWAY CLOSED.** The instrument is live on both charts under the full Beyond-Acharya architecture
+    (LEL chart-scoped + calibrated, presence-branching, graha_yuddha floored, calibration serving, intake API +
+    debounced recalibration + gated pool). **NEXT-OBJECTIVE = R5:** Retrieval 3.0 faceted-instruments ratification
+    + the serving-bug/quality punch-list (incl. this session's soft notes: lel_training_matched=0, lift_vector
+    base_rate_source stamping, posterior cardinality, graha_yuddha Option-A ephemeris impl per JL-027).
   - v6.30 (2026-07-08, BA-R4-WRAP W3 CLOSED — Abhinandan re-zero + FREEZE):
     **W3 done — clean Abhinandan (1c826d5a) rebuild on the new HEAD via the production Cloud Run job
     (image brahma-pipeline:6cd7f509 = full W2 code, WORKER_LIMIT=2). Run 46370a48: completed, 66/66 assets,

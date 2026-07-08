@@ -439,6 +439,7 @@ values are frozen:
 | JL-025 | BA Phase-3 | Docs: CURRENT_STATE append-only changelog at top | RATIFIED — DONE | Yes — additive changelog entry |
 | JL-026 | BA Phase-3 → P4 R2.1 | Audit: ga_structural↔ga_condition dual-write (graha_yuddha) | RESOLVED — single-writer + edge removed (mig 419) | Yes — code + mig 419 DOWN |
 | JL-027 | BA Phase-4 R2.1 | Correctness: graha_yuddha winner rule not true classical rule | CLOSED (2026-07-08) — Option A ratified + FLOOR shipped + confirmed visible in W3 Abhinandan build (0 winners, 10 floored); Option A impl → R5 | Yes — compute change + optional L1 latitude fact |
+| JL-028 | BA Phase-4 W4 | Operational: Phase-4 executed — native 482012f1 rebuilt L1→L5 on final validated config | CLOSED (2026-07-08) — native GO-ratified; run c86ac468 (image 98a570ac) 66/66; FORENSIC 7/7; LEL calibrated; 10:43 re-validated; all gates PASS; 2 native-only latent bugs fixed (bodha timeout PR #463, mi_darshana Decimal PR #464). Runway CLOSED. | N/A — rebuild is regenerable; LEL snapshotted |
 
 ---
 

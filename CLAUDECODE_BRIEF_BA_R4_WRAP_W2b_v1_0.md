@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_R4_WRAP_W2b
 version: 1.0
-status: READY-FOR-EXECUTION — dedicated W2b session (native paced D+E out of the W2a session, 2026-07-08)
+status: COMPLETE (2026-07-08) — W2b built+verified+deployed (PR #460); calibration serving + intake API + pool live
 created: 2026-07-08
 author: Claude Code (BA-R4-WRAP W2a conductor) — hand-off brief for the W2b session
 parent: CLAUDECODE_BRIEF_BA_R4_WRAP_W2_v1_0.md (Steps 4–6) + CLAUDECODE_BRIEF_BA_LEL_CHART_SCOPING_v1_0.md

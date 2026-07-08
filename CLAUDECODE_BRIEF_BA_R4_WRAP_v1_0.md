@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_R4_WRAP
 version: 1.1
-status: IN-EXECUTION — W1 code complete (fa2a8b2d on WIP branch); deploy steps per BA_R4_WRAP_W1_DEPLOY_RUNBOOK.md
+status: COMPLETE (2026-07-08) — W1-W4 executed; native rebuilt on final config (image 98a570ac); FORENSIC 7/7 + all gates PASS; runway CLOSED
 created: 2026-07-07
 changelog:
   - v1.1 (2026-07-07): W3→W4 gate HARDENED — "proceed on silence" is REVOKED (it defaulted to

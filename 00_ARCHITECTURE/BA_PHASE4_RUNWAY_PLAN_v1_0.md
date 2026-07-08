@@ -1,7 +1,7 @@
 ---
 canonical_id: BA_PHASE4_RUNWAY_PLAN
 version: 1.0
-status: CURRENT — governs the sequence from now to native-rebuild-closed
+status: COMPLETE (2026-07-08) — BA Phase-4 Runway executed end-to-end; native 482012f1 rebuilt+validated (run c86ac468); FORENSIC 7/7; all gates green
 created: 2026-07-07
 author: Cowork (Beyond-Acharya program) — native-directed consolidation, sitting 2026-07-07
 program: BEYOND_ACHARYA_UNIFIED_EXECUTION_PLAN_v1_0.md — the runway to Phase-4 (native 482012f1 rebuild)

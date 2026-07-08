@@ -30923,3 +30923,77 @@ session_close:
 ```
 
 *End of BA-R4-WRAP-W3-2026-07-08 entry — 2026-07-08.*
+
+---
+
+## BA-R4-WRAP-W4-2026-07-08 — THE ONE SHOT: native rebuild + validation — CLOSED 2026-07-08
+
+```yaml
+session_open:
+  session_id: BA-R4-WRAP-W4-2026-07-08
+  opened_on: 2026-07-08
+  cowork_thread_name: BA-R4-WRAP-W4-NATIVE-REBUILD
+  governing_brief: CLAUDECODE_BRIEF_BA_R4_WRAP_v1_0.md
+  scope_notes: >
+    W4 — the one shot: on explicit native GO, snapshot + rebuild native 482012f1 L1→L5 on the frozen config +
+    full gate battery + close the runway. HALT-and-restore on any FORENSIC miss / contamination / LEL loss /
+    build!=completed.
+  may_touch:
+    - "native chart 482012f1 rebuild (production Cloud Run job) — AUTHORIZED at W4 only"
+    - "bo_* / mi_darshana writer bugfixes exposed by the native rebuild (native-authorized recovery)"
+    - "00_ARCHITECTURE ledgers + CURRENT_STATE + SESSION_LOG + all Phase-4 brief statuses"
+  must_not_touch:
+    - "the native's 57 LEL rows (content)"
+    - "Abhinandan 1c826d5a data (no contamination)"
+    - "orchestrator/planner WriterBase core"
+    - "any computed-value logic (bugfixes are pure type/timeout, no value change)"
+  predecessor_session: BA-R4-WRAP-W3-2026-07-08
+  current_state_version_at_open: 6.30
+  red_team_due: false
+```
+
+**Session:** BA Phase-4 Runway W4 — the native rebuild. Conductor drove snapshot + production rebuild + two
+native-authorized bugfixes + gate battery + runway close.
+
+**Executed:**
+- Native GO recorded; pre-rebuild snapshot (57 LEL + manifest, restore path in RUN_LEDGER).
+- HALT #1 (bo_laksana statement timeout, native's large dataset) → fix all 8 bo_* idempotency deletes (PR #463) →
+  Abhinandan re-validated clean (run 87e47acf) → re-froze image 2e96b1d0.
+- HALT #2 (mi_darshana Decimal/float on the native's calibrated path, 65/66) → fix (PR #464) → image 98a570ac.
+- **Final native rebuild run c86ac468: completed, 66/66, 0 errors, LEL=57 throughout.**
+- **Gate battery ALL PASS:** FORENSIC 7/7 · Abhinandan uncontaminated (140,214) · LEL 57 + calibration_state=
+  'calibrated' + 10:43 re-validated (offset 0, Aries, lel_fit) · bhava_arudha 12×5 → P3A COMPLETE · JL-009 base_rates
+  traced · JL-027 zero-proxy · degeneracy (min posterior 0.02, chart_defining 1220, contradictions 5) · retrieval clean.
+- JL-028 logged; all 6 Phase-4 briefs → COMPLETE; runway CLOSED.
+
+Lesson: the native's calibrated / 57-LEL path is a far more thorough test than Abhinandan's structural / 0-LEL
+path — it surfaced two latent pre-existing bugs the proving ground could not.
+
+### Next session objective
+
+R5 — Retrieval 3.0 faceted-instruments design ratification + the serving-bug/quality punch-list: LEL-fit
+corroboration matching (lel_training_matched=0), lift_vector base_rate_source provenance stamping, posterior
+cardinality, JL-027 Option-A Swiss-Ephemeris latitude implementation, cross-chart pool opening decision,
+WORKER_LIMIT raise with fresh CPU data. The native chart is fully rebuilt + validated on image 98a570ac; no
+native-chart iteration is pending.
+
+```yaml
+session_close:
+  session_id: BA-R4-WRAP-W4-2026-07-08
+  closed_on: 2026-07-08
+  outcome: >
+    COMPLETE — native 482012f1 rebuilt L1→L5 on the final validated config (run c86ac468, 66/66, 0 errors);
+    full gate battery ALL PASS; two native-only latent bugs fixed en route; BA Phase-4 Runway CLOSED.
+  contract_violations: 0
+  native_chart_touched: true
+  active_layer_campaign_after: Beyond-Acharya unified program (BA Phase-4 Runway CLOSED; next = R5 Retrieval 3.0 + punch-list)
+  current_state_updated: true
+  current_state_version: 6.31
+  session_log_appended: true
+  red_team_pass: "n/a — execution phase (not a macro-phase close)"
+  next_session_objective: >
+    R5 — Retrieval 3.0 faceted-instruments ratification + serving-bug/quality punch-list. Native chart fully
+    rebuilt + validated on image 98a570ac; no native-chart iteration pending.
+```
+
+*End of BA-R4-WRAP-W4-2026-07-08 entry — 2026-07-08.*

@@ -1,7 +1,7 @@
 ---
 canonical_id: CLAUDECODE_BRIEF_BA_LEL_CHART_SCOPING
 version: 1.2
-status: IN-EXECUTION — Phase R2.2 of BA_PHASE4_RUNWAY_PLAN_v1_0.md (before the native rebuild). Step 1 in
+status: COMPLETE (2026-07-08) — LEL re-architecture executed across W1-W4; chart-scoped, calibrated, native-validated
   progress: migration 423 reviewed + banked on WIP branch aa3a65e2 (NOT deployed); coupled Step-1 code
   (2 Python lel_query chart_id filters, EXPLICIT_CLEAR_OPS + destructive test, capability-spec/tool_metadata,
   ASSET_NAMES) pending in the SAME PR. Then Step 2 first-intake. Execute against THIS (v1.2).
