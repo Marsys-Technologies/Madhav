@@ -292,3 +292,76 @@ public `AddressExpression`/`ResolvedKaraka` shapes need no change, only the inte
 ---
 
 No further entries — this ledger reopens for W1+ waves.
+### JL-007 — W1 chart_query lane: NF-1 fix approach, dead-param removal, and inline `about` resolver scope
+
+**question (a):** `marsys://tool/L1/chart_facts_query` (NF-1, confirmed still-broken by the W0a
+Ring-2 re-audit) 404s because its handler calls a Python sidecar route
+(`/api/ganita/chart_facts/query`) that does not exist anywhere in the codebase. The platform
+process already owns a live pg pool and every sibling L1 handler (`get_yoga_dosha.ts`,
+`get_positions.ts`) reads `chart_facts` directly with no sidecar hop. Should the fix restore/build
+the missing sidecar route, or remove the sidecar hop entirely and query Postgres in-process?
+
+**ruling (a):** Query Postgres directly, matching the established sibling pattern. There is no
+design mandate anywhere in RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md for a Python-sidecar
+hop on a plain relational read of `chart_facts` — §3's SQL idiom says facets "compile to
+parameterized SQL inside the existing handlers ... Postgres does the work it was built for." The
+sidecar route was never implemented (not merely broken); building it now would introduce a new
+network hop §22/§23 explicitly warns against (S1/S5 sinks) for zero benefit over the pattern
+every other L1 handler already uses. Lower latency, matches precedent, no design change.
+
+**question (b):** The old descriptor declared `as_of_date`/`from_date`/`to_date` filter params.
+`chart_facts` has no `validity_start`/`validity_end` (or any temporal-validity) columns
+(confirmed via `information_schema.columns`) — these params could never have filtered anything,
+even when the sidecar route existed (nothing in the repo ever defined its contract). Keep them as
+harmless no-ops for backward-compatible-looking signature, or remove them?
+
+**ruling (b):** Remove them. Per B.10 (no fabricated computation, generalized here to no
+fabricated CONTRACT surface) and the design's honesty mandate (§1: "an agent that can't
+distinguish [empty/error/ungranted] makes wrong fallbacks") — a parameter that silently accepts a
+value and does nothing is worse than no parameter at all; it teaches the calling LLM a false
+affordance. Since the tool 404'd unconditionally in prod, no live caller could have depended on
+these params' (nonexistent) behavior, so removal breaks nothing observable. Chart-facts is a
+point-in-time computed snapshot per chart_id, not a temporal table — genuine "as of" semantics
+belong to `dasha_query`/`kala_query` (already covered by chart_dashas' real date-range columns),
+not `chart_query`.
+
+**question (c):** Design §27.2 calls for ONE shared address resolver serving `about` across all
+16 instruments. The W1 brief names a sibling lane (`r5/w1-address-resolver`) as the owner of that
+shared module, but it did not exist on this lane's base branch at implementation time (parallel
+lanes). Should chart_query (a) block/wait for the sibling lane, (b) skip the `about` facet
+entirely this wave, or (c) implement a narrow inline resolver scoped to exactly what chart_query
+needs?
+
+**ruling (c):** Implement (c) — a minimal inline resolver
+(`platform/src/lib/retrieval/registry/layers/L1_ganita/chart_query_about.ts`) covering only
+graha-name normalization, bhava (house) addressing, and house-lord indirection (the exact cases
+the W1 brief's gate names — lagna, "10th lord"). Blocking on a sibling lane in a parallel-lanes
+wave defeats the wave structure; skipping `about` entirely would leave the lane's stated
+deliverable unmet. The module is explicitly scoped and commented as a stopgap with a named
+reconciliation point (Ring-1, against `r5/w1-address-resolver`'s eventual module) rather than
+presented as the permanent shared resolver — this avoids the two-hand-maintained-copies trap
+§19 exists to prevent, by making the intended supersession explicit in the code itself. The
+house-lord rashi computation uses whole-sign houses (confirmed against both charts' own
+`graha_position.house_d1` values — e.g. native chart: Jupiter/Venus in Sagittarius = house 9 from
+an Aries lagna, consistent with equal/whole-sign reckoning) and BPHS ch.3's classical rashi
+lordships (undisputed across every Vedic paradigm) — cited inline in the resolver module, no
+computation invented beyond arithmetic already implied by data already in `chart_facts`.
+
+**basis:** (a)/(b) code-convenience/honesty tier, no astrological content, same tier reasoning as
+JL-003/JL-005. (c) touches astrology (classical rashi lordship, whole-sign house convention) —
+resolved via cited classical method (BPHS ch.3) per constitution item 3 ("adopt a CITED classical
+method"), not an invented rule; the process/scope question (inline-vs-wait) resolves at the
+code-convenience tier once the astrological content is settled.
+
+**reversibility:** (a) reversible — a pure serving-layer implementation change; no schema/data
+change, no envelope shape change. (b) reversible in the loose sense that params can be re-added
+if a future migration ever adds real temporal-validity columns to `chart_facts`, but the current
+removal is a genuine contract simplification, not a placeholder. (c) fully reversible — the
+inline resolver is three narrow pure functions with no persisted state; Ring-1 can delete it in
+favor of the sibling lane's shared resolver, or fold it in as a special case, without touching any
+shipped response shape (the `about_resolution` field's shape — `{requested, subjects, chain}` —
+is designed to be resolver-implementation-agnostic).
+
+---
+
+No further entries — this ledger reopens for W2+ waves.

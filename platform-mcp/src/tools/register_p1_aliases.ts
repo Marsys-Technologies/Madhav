@@ -328,12 +328,28 @@ export function registerP1AliasTools(server: McpServer): void {
     })
 
   // query_chart_facts → ganita_chart_facts_get
+  // R5 W1 (lane: chart_query) fix: extraSchema previously declared fact_category/fact_id,
+  // neither of which the registry handler (register_d7_channel.ts) ever read — a dead-param
+  // mismatch of the same class as P1 (design §18: "aliases carry DIVERGING param names").
+  // Reconciled to the real filter set the handler now implements (see query_chart_facts above
+  // for the full facet description); NF-1's 404 is fixed at the shared handler, so this alias
+  // is fixed for free once its own param names line up.
   regAlias(server, 'ganita_chart_facts_get',
-    'L1 chart_facts direct query (same as query_chart_facts)',
+    'L1 chart_facts EAV-crosstab query (same as query_chart_facts)',
     'marsys://tool/L1/chart_facts_query',
     {
-      fact_category: z.string().optional(),
-      fact_id:       z.string().optional(),
+      about: z.union([
+        z.string(),
+        z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
+      ]).optional(),
+      category:         z.string().optional(),
+      planet:           z.string().optional(),
+      house:            z.number().int().min(1).max(12).optional(),
+      sign:             z.string().optional(),
+      nakshatra:        z.string().optional(),
+      divisional_chart: z.string().optional(),
+      keyword:          z.string().optional(),
+      shape:            z.enum(['pivoted', 'rows']).optional(),
     })
 
   // vector_search → ref_vector_search

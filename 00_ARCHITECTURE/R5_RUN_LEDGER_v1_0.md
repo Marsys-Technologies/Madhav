@@ -883,3 +883,53 @@ P6/P7 as closed. Those carry forward to R5_PUNCHLIST per the brief's non-blockin
 rather than blocking W0a's close, since none of them regressed relative to pre-deploy (P6 changed
 shape but was never functional either way) and W0a's own gate was "probes pass or fail honestly,
 baseline recorded for the next wave to diff against" — which this report satisfies.
+
+---
+
+## W1 — lane: chart_query (EAV crosstab + `about` facet) — worktree close report
+
+**Branch:** `r5/w1-chart-query`, off `origin/r5/w1`. **Scope:** `marsys://tool/L1/chart_facts_query`
+(the `query_chart_facts` / `ganita_chart_facts_get` tool) — the exact NF-1 code path flagged by the
+W0a Ring-2 re-audit ("`query_chart_facts` / `ganita_chart_facts_get` 404, STILL BROKEN, unchanged").
+
+**NF-1 root cause + fix:** the registry handler (`register_d7_channel.ts`) called
+`POST {sidecar}/api/ganita/chart_facts/query` — a route that has never existed anywhere in this
+repo, so the tool 404'd unconditionally regardless of deploy state. Rewritten to query
+`chart_facts` directly via `@/lib/db/client`, matching the sibling L1 handlers' established
+pattern (no sidecar hop was ever necessary for a plain parameterized SQL read). See JL-006(a).
+
+**EAV crosstab (design §1/§18):** `shape: 'pivoted'` (new default) groups the flat
+`(fact_subject, fact_key, fact_value)` rows into one wide row per subject
+(`{fact_subject, fact_category, <key>: <value>, ..., fact_ids: {<key>: <fact_id>}}`), collapsing
+e.g. LAGNA's 5 raw EAV rows into 1. `shape: 'rows'` preserves the flat form.
+
+**`about` facet (design §27.1/§27.2):** minimal inline resolver (new file
+`chart_query_about.ts`) supports `about:"lagna"`, `about:{graha:"Saturn"}`, `about:{bhava:10}`,
+`about:{house_lord:10}` (lagna-sign + whole-sign offset + BPHS ch.3 classical rulership, chain
+served back in `about_resolution`). The `r5/w1-address-resolver` sibling lane's shared module did
+not exist on this lane's base branch — see JL-006(c) for the scoped-stopgap ruling and the named
+Ring-1 reconciliation point.
+
+**Dead params fixed:** `ayanamsha_id` was declared on the MCP-side shim and always sent, but the
+old handler never read it (silent no-op — same class of bug as P1). `as_of_date`/`from_date`/
+`to_date` were removed — `chart_facts` has no validity_start/validity_end columns, so these params
+could never have filtered anything (JL-006(b)).
+
+**Gate results (measured, both charts, live prod DB):**
+- Native (`482012f1-…`) lagna lookup via `about:"lagna"`: **1,456 bytes**, ONE call — well inside
+  the ≤2KB/1-call gate.
+- Abhinandan (`1c826d5a-…`) lagna lookup: **1,456 bytes**, ONE call — identical shape/size.
+- Warm-path server time (post pool-connect): ~80ms; well inside the §24 surgical SLO (≤600ms p50).
+- `about:{house_lord:10}` resolver chain verified against `chart_facts` on both charts (test
+  asserts `chain[0]` = the LAGNA `sign` fact actually read from the DB, not a hardcoded value).
+- Facet-conformance (lane-scoped, not the full estate suite — that suite does not exist in the
+  repo yet): `shape` pivoted-vs-rows, `planet` filter, and `about` all independently verified to
+  alter the result on both charts (12 integration tests, `chart_query.integration.test.ts`).
+
+**Not done / flagged forward:** `sign`/`nakshatra`/`divisional_chart` filters were implemented
+(subquery-based, whitelisted-parameter) but not exercised against live data in this pass beyond
+typecheck — lower-priority filters vs. the gate's named cases (lagna, 10th lord). `karaka`/
+`dispositor_of` addressing (design §27.2's fuller address grammar) is out of this lane's scope —
+flagged for whichever lane owns the full shared resolver. The estate-wide facet-conformance CI
+suite (design §19's "a CI contract test round-trips every declared facet") does not exist yet
+anywhere in the repo; this lane's own integration test is a lane-scoped stand-in, not that suite.

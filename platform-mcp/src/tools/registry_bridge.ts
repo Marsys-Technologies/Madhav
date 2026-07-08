@@ -945,29 +945,42 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
-  // ── query_chart_facts (L1 chart_facts parametric lookup) ─────────────────
+  // ── query_chart_facts (L1 chart_facts EAV-crosstab lookup) ────────────────
   // marsys://tool/L1/chart_facts_query  (D7 gap-fill / B.11 floor tool)
+  //
+  // R5 W1 (lane: chart_query) fix: this tool 404'd unconditionally in prod (R5_RUN_LEDGER
+  // NF-1) because the registry-side handler called a Python sidecar route that does not
+  // exist. The handler was rewritten to query chart_facts directly (see
+  // register_d7_channel.ts) — this shim now also: (a) adds `about` (design §27.1 universal
+  // address facet — "lagna", {graha}, {bhava}, {house_lord}) and `shape` (pivoted/rows,
+  // design §1/§18 EAV-crosstab mandate); (b) drops `as_of_date`/`from_date`/`to_date` —
+  // chart_facts has no validity_start/validity_end columns, so these params could never
+  // have done anything (a dead-param bug of the same class as P1's as_of_date, fixed here
+  // by removing the illusion of the filter rather than silently ignoring it). See
+  // R5_JUDGMENT_LEDGER for the ruling on both changes.
   server.tool(
     'query_chart_facts',
-    'Parametric lookup over the chart_facts table (27,554 rows per chart). Covers all 27 fact categories: planet positions, dignities, strengths, house placements, divisional charts, dashas, yogas, doshas, and more. Optional filters: category, planet, house, sign, nakshatra, divisional_chart (D9/D10/D6/etc.), keyword, date range. Returns fact_id references for downstream drill. B.11-floor-injected — provides the L1 fact foundation for all synthesis. chart_id is required — never defaulted.',
+    'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha per call). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      about: z.union([
+        z.string(),
+        z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
+      ]).optional().describe('Astrological address facet: "lagna", a graha name, {graha}, {bhava:N}, or {house_lord:N}.'),
       category: z.string().optional().describe(
-        'Fact category filter (e.g. "planet_position", "house_placement", "dignity", "strength", "yoga", "dosha", "dasha", "divisional"). Comma-separated for multiple.'
+        'Fact category filter (e.g. "graha_position", "graha_dignity_per_varga", "yoga_label", "house_bhava_bala_total"). Comma-separated for multiple.'
       ),
-      planet: z.string().optional().describe('Graha name filter (e.g. "Sun", "Moon", "Saturn").'),
+      planet: z.string().optional().describe('Graha name filter (e.g. "Sun", "Moon", "Saturn", "Rahu", "Ketu").'),
       house: z.number().int().min(1).max(12).optional().describe('Bhava number (1–12) filter.'),
       sign: z.string().optional().describe('Rashi name filter (e.g. "Aries", "Scorpio").'),
       nakshatra: z.string().optional().describe('Nakshatra name filter.'),
-      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10", "D1").'),
-      keyword: z.string().optional().describe('Free-text keyword search over fact_value or fact_label.'),
-      limit: z.number().int().min(1).max(1000).optional().describe('Max rows (default: 100, max: 1000).'),
-      as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts valid as of this date.'),
-      from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_start >= from_date.'),
-      to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Filter facts with validity_end <= to_date.'),
+      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10").'),
+      keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
+      shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
+      limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
     },
-    async ({ chart_id, ayanamsha_id, category, planet, house, sign, nakshatra, divisional_chart, keyword, limit, as_of_date, from_date, to_date }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -975,6 +988,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           {
             chart_id,
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),
             ...(house != null ? { house } : {}),
@@ -982,10 +996,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ...(nakshatra ? { nakshatra } : {}),
             ...(divisional_chart ? { divisional_chart } : {}),
             ...(keyword ? { keyword } : {}),
+            ...(shape ? { shape } : {}),
             ...(limit != null ? { limit } : {}),
-            ...(as_of_date ? { as_of_date } : {}),
-            ...(from_date ? { from_date } : {}),
-            ...(to_date ? { to_date } : {}),
           },
           chart_id
         )
