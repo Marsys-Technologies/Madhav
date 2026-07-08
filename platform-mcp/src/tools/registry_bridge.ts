@@ -57,7 +57,7 @@ import {
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
-import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -237,39 +237,14 @@ function orientationEntityProfilesSection(): TrimmableSection<Record<string, unk
 }
 
 /**
- * Merge each trim_report entry's `recover_via` into `drill_pointers` (deduped by
- * instrument+hint) so a client that reads only drill_pointers (not trim_report) still
- * finds the way back to full detail — the brief's "drill_pointers ARE how a client
- * reaches the trimmed-out detail" mechanic.
- */
-function mergeTrimPointersIntoDrillPointers(
-  drillPointers: { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[],
-  trimReport: TrimReportEntry[] | null,
-): { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[] {
-  if (!trimReport || trimReport.length === 0) return drillPointers
-  const seen = new Set(drillPointers.map(p => `${p.instrument}::${p.hint}`))
-  const merged = [...drillPointers]
-  for (const entry of trimReport) {
-    const key = `${entry.recover_via.instrument}::${entry.recover_via.hint}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    merged.push({ instrument: entry.recover_via.instrument, hint: entry.recover_via.hint, pointer_type: 'other' })
-  }
-  return merged
-}
-
-// Reserve headroom for the `trim_report` + merged `drill_pointers` entries THIS function
-// itself adds AFTER measuring against the budget — otherwise a response measured at
-// exactly maxKb could tip slightly over once its own trim_report is attached. 1.5KB
-// comfortably covers the largest trim_report this file ever produces (at most ~7
-// sections × ~180 bytes/entry).
-const TRIM_REPORT_RESERVE_KB = 1.5
-
-/**
  * Apply the shared response-budget trimmer to a fully-assembled MCP response object
- * (`{ orientation_context, orientation_ok, ...envelope-fields }`), then patch the
- * envelope's own `trim_report`/`drill_pointers` fields to reflect what actually happened.
- * Returns the same object reference (mutated), ready for `dualOutput`.
+ * (`{ orientation_context, orientation_ok, ...envelope-fields }`). Thin wrapper over
+ * `finalizeMcpBudget` (response_budget.ts) — the self-verifying entry point that measures
+ * the ACTUAL final object (trim_report + merged drill_pointers included), not just the
+ * pre-attachment data-section trim, and degrades trim_report itself if attaching it
+ * reopens the gap. See that function's doc-comment for the full R5.1 C1 hard-cap
+ * rationale (a live independent verifier caught the original, simpler version of this
+ * wrapper attaching trim_report/drill_pointers AFTER the budget check, un-measured).
  */
 function applyMcpBudget<T extends Record<string, unknown>>(
   response: T,
@@ -277,13 +252,7 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   sections: TrimmableSection<T>[],
 ): T {
   const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
-  const result = applyResponseBudget(response, Math.max(1, maxKb - TRIM_REPORT_RESERVE_KB), allSections)
-  if (!result.trimmed) return response
-  const mutable = response as Record<string, unknown>
-  const existingDrillPointers = (mutable['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[] | undefined) ?? []
-  mutable['trim_report'] = result.trim_report
-  mutable['drill_pointers'] = mergeTrimPointersIntoDrillPointers(existingDrillPointers, result.trim_report)
-  return response
+  return finalizeMcpBudget(response, { maxKb, sections: allSections })
 }
 
 // ── Dual output helper ────────────────────────────────────────────────────────
@@ -324,6 +293,35 @@ function dualOutput(data: unknown): {
   return {
     structuredContent,
     content: [{ type: 'text' as const, text: json }],
+  }
+}
+
+/**
+ * R5.1 C1 fix (live-verifier finding #3): `dualOutput`'s 50KB text-duplication threshold
+ * (S3/JL-003) means every judgment_query/graha_portrait/pact_query response under 50KB —
+ * i.e. EVERY one of them, since they're now budget-capped at 8-12KB — still got the FULL
+ * structuredContent duplicated again as `content[0].text`, roughly DOUBLING real wire
+ * bytes (confirmed live: 22,841 + 22,814 ≈ 47,789 bytes for one judgment_query call).
+ *
+ * The brief's size ceilings ("≤12KB judgment/portrait, ≤8KB pact") are read as what an
+ * MCP client actually receives on the wire, not just the structuredContent's own byte
+ * count — so for these three budget-governed tools specifically, the text duplicate is
+ * ALWAYS suppressed in favor of the same short structuredContent-pointer message
+ * `dualOutput` already uses above its general 50KB threshold. This does NOT touch
+ * `dualOutput`/`DUAL_OUTPUT_TEXT_THRESHOLD_BYTES` itself — every other MCP tool in this
+ * file keeps the general S3 threshold/behavior unchanged; this is a narrower, explicit
+ * choice for the three tools whose whole point this phase is to keep small.
+ */
+function dualOutputBudgeted(data: unknown): {
+  structuredContent?: { type: 'object'; object: unknown }
+  content: Array<{ type: 'text'; text: string }>
+} {
+  return {
+    structuredContent: { type: 'object' as const, object: data },
+    content: [{
+      type: 'text' as const,
+      text: '[budget-capped response — see structuredContent; text duplicate suppressed for this instrument per R5.1 C1]',
+    }],
   }
 }
 
@@ -1530,11 +1528,61 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             recover: { instrument: 'judgment_query', hint: 'full fact_id_refs list (this response kept a lean slice; grounding.fact_ids in the envelope still reflects the full set).' },
             label: 'content.fact_id_refs',
           },
+          {
+            // R5.1 C1 fix (live-verifier finding #1): checklist.timing_hooks was NOT
+            // declared as trimmable at all — live measurement showed it alone at
+            // ~5.2-5.5KB for career/native, the dominant remaining lever after
+            // bearing_yogas/varga_confirmation. `current` is a flat array (get_dashas'
+            // ≤5-row snapshot) — trim it directly.
+            path: 'content.checklist.timing_hooks.current',
+            getArray: (root) => {
+              const timing = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['timing_hooks'] as Record<string, unknown> | undefined
+              const arr = timing?.['current']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const timing = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['timing_hooks'] as Record<string, unknown> | undefined
+              if (timing) timing['current'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_dashas', hint: 'full current-period rows across all dasha levels (this call kept a lean slice).' },
+            label: 'checklist.timing_hooks.current',
+          },
+          {
+            // `mahadasha_windows_by_graha` is a Record<graha, rows[]> — NOT a single array —
+            // so this section flattens it to a { graha, row } array for measurement/cutting,
+            // then regroups by graha in setArray. Trims total window-rows across ALL grahas
+            // combined (not per-graha), which is what actually drives the byte count.
+            path: 'content.checklist.timing_hooks.mahadasha_windows_by_graha',
+            getArray: (root) => {
+              const timing = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['timing_hooks'] as Record<string, unknown> | undefined
+              const windows = timing?.['mahadasha_windows_by_graha'] as Record<string, unknown[]> | undefined
+              if (!windows) return undefined
+              const flat: { graha: string; row: unknown }[] = []
+              for (const [graha, rows] of Object.entries(windows)) {
+                if (Array.isArray(rows)) for (const row of rows) flat.push({ graha, row })
+              }
+              return flat.length > 0 ? flat : undefined
+            },
+            setArray: (root, kept) => {
+              const timing = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['timing_hooks'] as Record<string, unknown> | undefined
+              if (!timing) return
+              const regrouped: Record<string, unknown[]> = {}
+              for (const item of kept as { graha: string; row: unknown }[]) {
+                if (!regrouped[item.graha]) regrouped[item.graha] = []
+                regrouped[item.graha]!.push(item.row)
+              }
+              timing['mahadasha_windows_by_graha'] = regrouped
+            },
+            minKeep: 4,
+            recover: { instrument: 'get_dashas', hint: 'full multi-level dasha timeline for the bhāveśa/kāraka(s) (this call kept a lean slice of mahadasha windows only).' },
+            label: 'checklist.timing_hooks.mahadasha_windows_by_graha',
+          },
         ]
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') }
-          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
         }
 
         // ── v3 population (design §10/§28.6) ──────────────────────────────────
@@ -1567,7 +1615,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
         }
-        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
+        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
       } catch (err) {
         return errorOutput('judgment_query', String(err), { chart_id })
       }
@@ -1734,6 +1782,26 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             label: 'yogas.catalog_dosha_matches',
           },
           {
+            // R5.1 C1 fix (live-verifier finding #1): the THIRD array inside content.yogas —
+            // parivartana_exchanges — was the one missed the first time (catalog_yoga_matches
+            // and catalog_dosha_matches were already declared above). Live measurement showed
+            // the whole content.yogas block at 10,784 bytes untrimmed for Saturn/native —
+            // bigger than the entire 12KB ceiling on its own.
+            path: 'content.yogas.parivartana_exchanges',
+            getArray: (root) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              const arr = yogas?.['parivartana_exchanges']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const yogas = (root['content'] as Record<string, unknown> | undefined)?.['yogas'] as Record<string, unknown> | undefined
+              if (yogas) yogas['parivartana_exchanges'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_signals', hint: 'full signal_type_class=parivartana MSR matches for this graha (structural exchange yogas).' },
+            label: 'yogas.parivartana_exchanges',
+          },
+          {
             path: 'content.cgm_neighborhood.edges',
             getArray: (root) => {
               const cgm = (root['content'] as Record<string, unknown> | undefined)?.['cgm_neighborhood'] as Record<string, unknown> | undefined
@@ -1763,11 +1831,80 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             recover: { instrument: 'traverse_graph', hint: 'full CGM node set (this response kept a lean slice of the depth-1 neighborhood).' },
             label: 'cgm_neighborhood.nodes',
           },
+          {
+            // R5.1 C1 fix: even with every data section above floored to 0, live
+            // measurement showed graha_portrait still ~270-300 bytes over the 12KB
+            // ceiling — this small provenance array (8 tool URIs, purely documentation,
+            // not classical/astrological content) was the remaining lever.
+            path: 'content.provenance.synthesis_of',
+            getArray: (root) => {
+              const provenance = (root['content'] as Record<string, unknown> | undefined)?.['provenance'] as Record<string, unknown> | undefined
+              const arr = provenance?.['synthesis_of']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const provenance = (root['content'] as Record<string, unknown> | undefined)?.['provenance'] as Record<string, unknown> | undefined
+              if (provenance) provenance['synthesis_of'] = kept
+            },
+            minKeep: 0,
+            recover: { instrument: 'graha_portrait', hint: 'full provenance.synthesis_of tool-URI list (documentation only, not chart data).' },
+            label: 'provenance.synthesis_of',
+          },
+          {
+            // R5.1 C1 fix: live cross-chart verification (Venus/Abhinandan) found
+            // position.rows alone at 3636 bytes — NOT declared trimmable at all in the
+            // first pass (the native/Saturn case happened to have only 1 row here, which
+            // is why this gap wasn't caught testing that chart alone — a genuine
+            // per-chart data-shape difference, not a bug in the trim logic itself).
+            path: 'content.position.rows',
+            getArray: (root) => {
+              const position = (root['content'] as Record<string, unknown> | undefined)?.['position'] as Record<string, unknown> | undefined
+              const arr = position?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const position = (root['content'] as Record<string, unknown> | undefined)?.['position'] as Record<string, unknown> | undefined
+              if (position) position['rows'] = kept
+            },
+            minKeep: 1,
+            recover: { instrument: 'get_positions', hint: 'full position rows for this graha across every category.' },
+            label: 'position.rows',
+          },
+          {
+            path: 'content.functional_nature.rows',
+            getArray: (root) => {
+              const fn = (root['content'] as Record<string, unknown> | undefined)?.['functional_nature'] as Record<string, unknown> | undefined
+              const arr = fn?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const fn = (root['content'] as Record<string, unknown> | undefined)?.['functional_nature'] as Record<string, unknown> | undefined
+              if (fn) fn['rows'] = kept
+            },
+            minKeep: 1,
+            recover: { instrument: 'get_dignity', hint: 'full functional-class rows for this graha across ascendant variants.' },
+            label: 'functional_nature.rows',
+          },
+          {
+            path: 'content.dashas.rows',
+            getArray: (root) => {
+              const dashas = (root['content'] as Record<string, unknown> | undefined)?.['dashas'] as Record<string, unknown> | undefined
+              const arr = dashas?.['rows']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const dashas = (root['content'] as Record<string, unknown> | undefined)?.['dashas'] as Record<string, unknown> | undefined
+              if (dashas) dashas['rows'] = kept
+            },
+            minKeep: 2,
+            recover: { instrument: 'get_dashas', hint: 'full Mahadasha-level dasha periods for this graha (1900-2100 window kept only a lean slice).' },
+            label: 'dashas.rows',
+          },
         ]
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
-          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
         }
 
         // ── v3 population ─────────────────────────────────────────────────
@@ -1815,7 +1952,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
         }
-        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
+        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
       } catch (err) {
         return errorOutput('graha_portrait', String(err), { chart_id, graha })
       }
@@ -1942,7 +2079,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'pact_query') }
-          return dualOutput(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
         }
 
         // ── v3 population ──────────────────────────────────────────────────
@@ -1978,7 +2115,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
         }
-        return dualOutput(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
+        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
       } catch (err) {
         return errorOutput('pact_query', String(err), { chart_id })
       }
